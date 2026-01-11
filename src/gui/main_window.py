@@ -126,6 +126,10 @@ def _load_module_class(module_key: str):
         from src.gui.widgets.bnim_meter import BNIMMeter
 
         return BNIMMeter
+    if module_key == "HRTF Player":
+        from src.gui.widgets.hrtf_player import HRTFPlayer
+
+        return HRTFPlayer
 
     raise KeyError(f"Unknown module key: {module_key}")
 
@@ -253,6 +257,7 @@ class MainWindow(QMainWindow):
             "Sound Quality Analyzer",
             "Timecode Monitor & Generator",
             "BNIM Meter",
+            "HRTF Player",
         ]
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
