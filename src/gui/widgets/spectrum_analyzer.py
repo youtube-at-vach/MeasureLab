@@ -29,6 +29,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self.buffer_size = 4096
         # Store stereo data: (frames, 2)
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_head = 0
 
         # Analysis parameters
         self.window_type = 'hanning'
@@ -70,6 +71,7 @@ class SpectrumAnalyzer(MeasurementModule):
     def set_buffer_size(self, size):
         self.buffer_size = size
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_head = 0
         self._avg_magnitude = None
         self._avg_cross_spectrum = None
         self._peak_magnitude = None
@@ -87,6 +89,10 @@ class SpectrumAnalyzer(MeasurementModule):
         self._peak_magnitude = None
         self.overall_rms = 0.0
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_head = 0
+
+        # Threshold for switching to "Snapshot / Slow" mode
+        LARGE_BUFFER_THRESHOLD = 500000
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -100,12 +106,31 @@ class SpectrumAnalyzer(MeasurementModule):
                 # If mono, duplicate to stereo for simplicity or handle gracefully
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
-            # Efficient ring buffer or just roll
-            if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
+            if self.buffer_size >= LARGE_BUFFER_THRESHOLD:
+                # --- Slow / Snapshot Mode ---
+                # Fill buffer linearly, then stop accepting data until processed (write_head reset)
+                
+                # If buffer is already "full" (waiting for processing), do nothing
+                if self.write_head >= self.buffer_size:
+                     outdata.fill(0)
+                     return
+
+                # Calculate how much space is left
+                space_left = self.buffer_size - self.write_head
+                to_write = min(len(new_data), space_left)
+
+                if to_write > 0:
+                    self.input_data[self.write_head : self.write_head + to_write] = new_data[:to_write]
+                    self.write_head += to_write
+                
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data):] = new_data
+                # --- Normal Rolling Mode ---
+                # Efficient ring buffer or just roll
+                if len(new_data) > self.buffer_size:
+                    self.input_data[:] = new_data[-self.buffer_size:]
+                else:
+                    self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
+                    self.input_data[-len(new_data):] = new_data
 
             outdata.fill(0)
 
@@ -226,7 +251,7 @@ class SpectrumAnalyzerWidget(QWidget):
         # FFT Size
         row1_layout.addWidget(QLabel(tr("FFT Size:")))
         self.fft_combo = QComboBox()
-        self.fft_combo.addItems(['1024', '2048', '4096', '8192', '16384', '32768', '65536', '131072', '262144'])
+        self.fft_combo.addItems(['1024', '2048', '4096', '8192', '16384', '32768', '65536', '131072', '262144', '1M (Slow)', '2M (Slow)', '4M (Slow)'])
         self.fft_combo.setCurrentText(str(self.module.buffer_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_size_changed)
         row1_layout.addWidget(self.fft_combo)
@@ -468,7 +493,15 @@ class SpectrumAnalyzerWidget(QWidget):
         self.peak_curve.setData([], [])
 
     def on_fft_size_changed(self, val):
-        self.module.set_buffer_size(int(val))
+        if '1M' in val:
+            size = 1048576
+        elif '2M' in val:
+            size = 2097152
+        elif '4M' in val:
+            size = 4194304
+        else:
+            size = int(val)
+        self.module.set_buffer_size(size)
 
     def on_window_changed(self, val):
         self.module.window_type = val
@@ -555,8 +588,25 @@ class SpectrumAnalyzerWidget(QWidget):
         if not self.module.is_running:
             return
 
-        data = self.module.input_data
-        # data shape is (buffer_size, 2)
+        # Threshold for switching to "Snapshot / Slow" mode (Must match module)
+        LARGE_BUFFER_THRESHOLD = 500000
+
+        if self.module.buffer_size >= LARGE_BUFFER_THRESHOLD:
+            # Snapshot Mode Logic
+            if self.module.write_head < self.module.buffer_size:
+                # Buffer not full yet, wait
+                return
+            
+            # Buffer full, take snapshot and reset
+            # IMPORTANT: Copy data to avoid race condition if we were to allow filling immediately (though we blocked it in callback)
+            data = self.module.input_data.copy() 
+            
+            # Reset write head to start new capture
+            self.module.write_head = 0
+        else:
+            # Normal Rolling Mode
+            data = self.module.input_data
+
 
         # Calculate Overall RMS (dBFS) - Raw Time Domain (Unweighted)
         # This is calculated for reference, but we will overwrite it with weighted value later
