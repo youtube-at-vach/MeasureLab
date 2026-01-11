@@ -8,6 +8,7 @@ from typing import Optional
 import netCDF4 as nc
 import numpy as np
 import pyqtgraph as pg
+import soundfile as sf
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QApplication,
@@ -173,6 +174,23 @@ class HRTFPlayer(MeasurementModule):
         self.click_duration = 0.05 # 50ms for noise
         self.swap_channels = False
 
+        # Rotation / Music Mode State
+        self.music_buffer: Optional[np.ndarray] = None # (N, 2)
+        self.music_sr = 48000
+        self.music_cursor = 0
+        
+        self.rotation_active = False
+        self.rotation_mode = 'Horizontal' # 'Horizontal', 'Vertical'
+        self.rotation_speed = 10.0 # deg/sec
+        self.current_az = 0.0
+        self.current_el = 0.0
+        
+        # Convolution State
+        # Overlap buffer for overlap-add method
+        # HRIR length is typically small (< 1024), block size ~1024
+        # We need to store the tail of the convolution
+        self.overlap_buffer: Optional[np.ndarray] = None # (TailLen, 2)
+
     @property
     def name(self) -> str:
         return "HRTF Player"
@@ -191,8 +209,57 @@ class HRTFPlayer(MeasurementModule):
         self.hrtf_data = SOFALoader.load(path)
         return self.hrtf_data is not None
 
+    def load_music(self, path):
+        try:
+            data, sr = sf.read(path, always_2d=True)
+            # Resample? For now assume close enough or user handles it. 
+            # Ideally we should resample if diff is large.
+            # Let's do a quick resample calc if needed, similar to RecorderPlayer
+            target_sr = self.audio_engine.sample_rate
+            if sr != target_sr:
+                # Basic resample
+                 num_samples = int(len(data) * target_sr / sr)
+                 # fast linear or just slice? scipy resample is better
+                 # Using scipy.signal.resample (Fourier) is good for signals
+                 import scipy.signal
+                 data = scipy.signal.resample(data, num_samples)
+                 self.music_sr = target_sr
+            else:
+                self.music_sr = sr
+                
+            self.music_buffer = data.astype(np.float32)
+            self.music_cursor = 0
+            return True, f"Loaded music: {path.split('/')[-1]}"
+        except Exception as e:
+            return False, str(e)
+
+    def start_rotation(self, mode, speed):
+        if self.music_buffer is None:
+            return False
+        
+        self.rotation_mode = mode
+        self.rotation_speed = speed
+        self.rotation_active = True
+        self.overlap_buffer = None # Reset overlap
+        
+        # Start if not already
+        if self.callback_id is None:
+            self.callback_id = self.audio_engine.register_callback(self._callback)
+        return True
+
+    def stop_rotation(self):
+        self.rotation_active = False
+        self.overlap_buffer = None
+
+    def set_source_position(self, az, el):
+        self.current_az = az
+        self.current_el = el
+
     def trigger_sound(self, azimuth, elevation):
         if self.hrtf_data is None: return
+        
+        # Update current position state
+        self.set_source_position(azimuth, elevation)
 
         # Find nearest point
         # Simple Euclidean distance in Az/El plane (approximation)
@@ -264,8 +331,123 @@ class HRTFPlayer(MeasurementModule):
         if self.callback_id is None:
             self.callback_id = self.audio_engine.register_callback(self._callback)
 
-    def _callback(self, indata, outdata, frames, time, status):
+    def _callback(self, indata, outdata, frames, time_info, status):
         outdata.fill(0)
+        
+        # --- Rotation Mode ---
+        if self.rotation_active and self.music_buffer is not None and self.hrtf_data is not None:
+            # 1. Update Position
+            dt = frames / self.audio_engine.sample_rate
+            angle_delta = self.rotation_speed * dt
+            
+            if self.rotation_mode == 'Horizontal':
+                self.current_az += angle_delta
+                # Wrap -180..180
+                if self.current_az > 180: self.current_az -= 360
+                if self.current_az < -180: self.current_az += 360
+            elif self.rotation_mode == 'Vertical':
+                self.current_el += angle_delta
+                if self.current_el > 90: self.current_el = -90
+                if self.current_el < -90: self.current_el = 90
+            elif self.rotation_mode == 'Manual':
+                pass # No auto movement
+
+            # 2. Get HRIR
+            # Find nearest
+            pos = self.hrtf_data.source_positions
+            dists = np.sqrt((pos[:, 0] - self.current_az)**2 + (pos[:, 1] - self.current_el)**2)
+            nearest_idx = np.argmin(dists)
+            
+            if self.swap_channels:
+                hrir_l = self.hrtf_data.ir_data[nearest_idx, 1, :]
+                hrir_r = self.hrtf_data.ir_data[nearest_idx, 0, :]
+            else:
+                hrir_l = self.hrtf_data.ir_data[nearest_idx, 0, :]
+                hrir_r = self.hrtf_data.ir_data[nearest_idx, 1, :]
+                
+            # 3. Get Audio Chunk
+            # Loop music
+            mus_len = len(self.music_buffer)
+            rem = mus_len - self.music_cursor
+            
+            chunk_l = np.zeros(frames)
+            chunk_r = np.zeros(frames)
+            
+            # Helper to get looped samples
+            needed = frames
+            fetched = 0
+            while fetched < needed:
+                 can_take = min(needed - fetched, mus_len - self.music_cursor)
+                 
+                 # Mono or Stereo music?
+                 mus_chunk = self.music_buffer[self.music_cursor : self.music_cursor + can_take]
+                 
+                 # Mix to mono for convolution source if source is "spatialized" 
+                 # Usually we treat source as mono point source.
+                 if mus_chunk.shape[1] > 1:
+                     mono = np.mean(mus_chunk, axis=1)
+                 else:
+                     mono = mus_chunk[:, 0]
+                     
+                 chunk_l[fetched:fetched+can_take] = mono
+                 chunk_r[fetched:fetched+can_take] = mono # Same source for both ears calc
+                 
+                 self.music_cursor += can_take
+                 if self.music_cursor >= mus_len:
+                     self.music_cursor = 0
+                 
+                 fetched += can_take
+            
+            # 4. Convolve
+            # Using overlap-add block convolution
+            # convolve returns len(chunk) + len(hrir) - 1
+            conv_l = convolve(chunk_l, hrir_l, mode='full')
+            conv_r = convolve(chunk_r, hrir_r, mode='full')
+            
+            # Add overlap from prev
+            if self.overlap_buffer is not None:
+                # overlap_buffer is (TailLen, 2)
+                # Add to start of conv
+                ov_len = self.overlap_buffer.shape[0]
+                # Ensure sizes match
+                # It is possible HRIR length changed if SOFA implies variable length? 
+                # Assume constant N mostly.
+                # conv len >= overlap len usually if frames is consistent
+                
+                # Careful with shapes
+                add_len = min(len(conv_l), ov_len)
+                conv_l[:add_len] += self.overlap_buffer[:add_len, 0]
+                conv_r[:add_len] += self.overlap_buffer[:add_len, 1]
+                
+            # Output
+            # chunk to output is first 'frames' samples
+            # new overlap is the rest
+            
+            out_chunk_l = conv_l[:frames]
+            out_chunk_r = conv_r[:frames]
+            
+            # Check bounds? convolve result is always >= frames (if hrir >= 1)
+            
+            # Set to outdata
+            if outdata.shape[1] >= 2:
+                outdata[:, 0] = out_chunk_l
+                outdata[:, 1] = out_chunk_r
+            
+            # Save overlap
+            # tail
+            tail_l = conv_l[frames:]
+            tail_r = conv_r[frames:]
+            
+            # Stack
+            max_tail = max(len(tail_l), len(tail_r))
+            new_ov = np.zeros((max_tail, 2), dtype=np.float32)
+            new_ov[:len(tail_l), 0] = tail_l
+            new_ov[:len(tail_r), 1] = tail_r
+            self.overlap_buffer = new_ov
+
+            return
+
+        # --- Static/One-shot Mode ---
         if not self.is_playing or self.playback_buffer is None:
             return
 
@@ -340,6 +522,43 @@ class HRTFPlayerWidget(QWidget):
         
         top_group.setLayout(top_layout)
         layout.addWidget(top_group)
+
+        # --- Rotation Control ---
+        rot_group = QGroupBox(tr("Rotation Mode"))
+        rot_layout = QHBoxLayout()
+        
+        # Load Music
+        self.load_music_btn = QPushButton(tr("Load Music"))
+        self.load_music_btn.clicked.connect(self.on_load_music)
+        rot_layout.addWidget(self.load_music_btn)
+        
+        # Play/Stop
+        self.play_rot_btn = QPushButton(tr("▶ Play Rotation"))
+        self.play_rot_btn.clicked.connect(self.on_play_rotation)
+        self.stop_rot_btn = QPushButton(tr("⏸ Stop"))
+        self.stop_rot_btn.clicked.connect(self.on_stop_rotation)
+        rot_layout.addWidget(self.play_rot_btn)
+        rot_layout.addWidget(self.stop_rot_btn)
+        
+        # Mode
+        rot_layout.addWidget(QLabel(tr("Mode:")))
+        self.rot_mode_combo = QComboBox()
+        self.rot_mode_combo.addItems(["Horizontal", "Vertical", "Manual"])
+        rot_layout.addWidget(self.rot_mode_combo)
+        
+        # Speed
+        rot_layout.addWidget(QLabel(tr("Speed:")))
+        self.speed_spin = pg.SpinBox(value=10.0, bounds=(0, 360), suffix="°/s", step=5)
+        self.speed_spin.setFixedWidth(80)
+        rot_layout.addWidget(self.speed_spin)
+        
+        rot_group.setLayout(rot_layout)
+        layout.addWidget(rot_group)
+        
+        # Update Timer for position visualization
+        self.vis_timer = QTimer()
+        self.vis_timer.timeout.connect(self.update_visualization)
+        self.vis_timer.start(50) # 20fps
         
         # --- Plot ---
         self.win = pg.GraphicsLayoutWidget()
@@ -379,6 +598,8 @@ class HRTFPlayerWidget(QWidget):
         # Actually, scene().sigMouseClicked is better for general plot clicking.
         # changing scatter.sigClicked to a generic click handler
         self.plot.scene().sigMouseClicked.connect(self.on_scene_clicked)
+        # Mouse move for dragging
+        self.plot.scene().sigMouseMoved.connect(self.on_mouse_move)
         
         # Color Bar (Histogram)
         self.hist = pg.HistogramLUTItem()
@@ -474,20 +695,76 @@ class HRTFPlayerWidget(QWidget):
             brush=pg.mkBrush(200, 200, 200, 150)
         )
         
+        # Update Position Indicator
+        if not hasattr(self, 'pos_indicator'):
+            self.pos_indicator = pg.ScatterPlotItem(
+                size=12, pen=pg.mkPen('r', width=2), brush=pg.mkBrush('r')
+            )
+            self.plot.addItem(self.pos_indicator)
+            
+        self.pos_indicator.setData(x=[self.module.current_az], y=[self.module.current_el])
+        
     def on_scene_clicked(self, event):
         if self.plot.sceneBoundingRect().contains(event.scenePos()):
             if event.button() == pg.QtCore.Qt.MouseButton.LeftButton:
-                # Convert scene pos to plot pos
-                pos = self.plot.vb.mapSceneToView(event.scenePos())
-                az, el = pos.x(), pos.y()
-                
-                # Check bounds
-                if -180 <= az <= 180 and -90 <= el <= 90:
-                    # Flash or indicator?
-                    # Trigger sound
-                    self.module.trigger_sound(az, el)
+                self.update_position_from_event(event.scenePos())
+
+    def on_mouse_move(self, pos):
+        # Check if Left Button is pressed
+        if QApplication.mouseButtons() & pg.QtCore.Qt.MouseButton.LeftButton:
+            if self.plot.sceneBoundingRect().contains(pos):
+                self.update_position_from_event(pos)
+
+    def update_position_from_event(self, scene_pos):
+        # Convert scene pos to plot pos
+        pos = self.plot.vb.mapSceneToView(scene_pos)
+        az, el = pos.x(), pos.y()
+        
+        # Bounds check
+        if -180 <= az <= 180 and -90 <= el <= 90:
+             # Always update model position (for Manual or Rotation mode jumps)
+             self.module.set_source_position(az, el)
+             
+             # If Rotation Active -> Position updated, music continues from there.
+             # If NOT Rotation Active -> Trigger One-shot sound at new position
+             if not self.module.rotation_active:
+                 self.module.trigger_sound(az, el)
+             
+             # Update visual
+             if hasattr(self, 'pos_indicator'):
+                 self.pos_indicator.setData(x=[az], y=[el])
 
     def on_point_clicked(self, plot, points):
         # Legacy/Scatter click
         pass
+
+    def on_load_music(self):
+        fname, _ = QFileDialog.getOpenFileName(
+            self, tr("Open Music File"), "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)"
+        )
+        if fname:
+            success, msg = self.module.load_music(fname)
+            if success:
+                QMessageBox.information(self, "Success", msg)
+            else:
+                QMessageBox.warning(self, "Error", msg)
+
+    def on_play_rotation(self):
+        mode = self.rot_mode_combo.currentText()
+        speed = self.speed_spin.value()
+        
+        if self.module.start_rotation(mode, speed):
+            # Disable non-compat controls?
+            pass
+        else:
+             QMessageBox.warning(self, "Error", "Failed to start rotation. Is music loaded?")
+
+    def on_stop_rotation(self):
+        self.module.stop_rotation()
+
+    def update_visualization(self):
+        if self.module.rotation_active:
+             # Update marker
+             if hasattr(self, 'pos_indicator'):
+                 self.pos_indicator.setData(x=[self.module.current_az], y=[self.module.current_el])
 
