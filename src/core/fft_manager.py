@@ -75,17 +75,30 @@ class FFTManager:
         except Exception as e:
             logger.error(f"Failed to save wisdom: {e}")
 
-    def get_plan(self, size, dtype='float64'):
+    def get_plan(self, size, dtype='float64', flags=('FFTW_ESTIMATE',)):
         """
         Get or create an FFT plan for the given size.
+        flags: tuple of strategies, e.g. ('FFTW_ESTIMATE',) or ('FFTW_MEASURE',)
         """
         key = (size, dtype)
-        if key not in self._plans:
-            self._create_plan(size, dtype)
+        
+        # Check if plan exists
+        if key in self._plans:
+            existing_plan = self._plans[key]
+            existing_flags = existing_plan.get('flags', ('FFTW_MEASURE',)) # Default to measure if unknown (legacy)
+            
+            # If we requested MEASURE but have ESTIMATE, we should upgrade (re-create)
+            if 'FFTW_MEASURE' in flags and 'FFTW_MEASURE' not in existing_flags:
+                logger.info(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
+                self._create_plan(size, dtype, flags)
+            # Otherwise, use existing (ESTIMATE is fine if we requested MEASURE or ESTIMATE and have MEASURE, 
+            # and MEASURE is fine if we requested ESTIMATE and have MEASURE)
+        else:
+            self._create_plan(size, dtype, flags)
         
         return self._plans.get(key)
 
-    def _create_plan(self, size, dtype_str):
+    def _create_plan(self, size, dtype_str, flags):
         if not HAS_PYFFTW:
             return
 
@@ -98,24 +111,28 @@ class FFTManager:
                 input_array = pyfftw.empty_aligned(size, dtype='float64')
                 output_array = pyfftw.empty_aligned(size // 2 + 1, dtype='complex128')
 
-            # Use ESTIMATE for faster creation. MEASURE can be very slow for large sizes.
+            # Use provided flags (ESTIMATE vs MEASURE)
             fft_object = pyfftw.FFTW(
                 input_array, 
                 output_array, 
                 direction='FFTW_FORWARD', 
-                flags=('FFTW_MEASURE',), 
+                flags=flags, 
                 threads=self.threads
             )
             
-            # Save wisdom after creating new plan
-            self.save_wisdom()
+            # Save wisdom only if we did a measurement (MEASURE or PATIENT etc), 
+            # though ESTIMATE doesn't generate wisdom worth saving usually, saving doesn't hurt.
+            # But typically we only care about saving after costly optimizations.
+            if 'FFTW_MEASURE' in flags:
+                self.save_wisdom()
             
             self._plans[(size, dtype_str)] = {
                 'object': fft_object,
                 'input': input_array,
-                'output': output_array
+                'output': output_array,
+                'flags': flags
             }
-            logger.info(f"Created pyfftw plan for size {size} ({dtype_str})")
+            logger.info(f"Created pyfftw plan for size {size} ({dtype_str}) with flags {flags}")
 
         except Exception as e:
             logger.error(f"Failed to create pyfftw plan for size {size}: {e}")
@@ -132,7 +149,8 @@ class FFTManager:
             dtype_str = 'float64' # Default for generic types
             
         if HAS_PYFFTW:
-            plan_entry = self.get_plan(size, dtype_str)
+            # fast default: ESTIMATE
+            plan_entry = self.get_plan(size, dtype_str, flags=('FFTW_ESTIMATE',))
             if plan_entry:
                 fft_obj = plan_entry['object']
                 input_arr = plan_entry['input']
@@ -186,10 +204,8 @@ class FFTManager:
             if callback:
                 callback(f"Optimizing FFT (Size {size})... {i+1}/{total}")
             
-            # Check if plan exists in memory first (fastest)
-            # If not, create it. _create_plan will use wisdom if available (fast),
-            # or MEASURE if not (slow).
-            self.get_plan(size, 'float64')
+            # Use MEASURE for warmup to ensure peak performance
+            self.get_plan(size, 'float64', flags=('FFTW_MEASURE',))
 
         # Save wisdom at the end of warmup to capture any new measurements
         self.save_wisdom()
