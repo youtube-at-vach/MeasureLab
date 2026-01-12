@@ -149,6 +149,12 @@ class FFTManager:
         # Fallback
         return np.fft.rfft(data)
 
+    def rfftfreq(self, n, d=1.0):
+        """
+        Wrapper for numpy.fft.rfftfreq.
+        """
+        return np.fft.rfftfreq(n, d)
+
     def warmup(self, callback=None, force=False, exhaustive=False, include_huge=False):
         """
         Pre-calculate plans for common sizes.
