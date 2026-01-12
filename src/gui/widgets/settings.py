@@ -1359,8 +1359,8 @@ class SettingsWidget(QWidget):
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setValue(0)
-        progress.setAutoClose(True)
-        progress.setAutoReset(True)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
 
         def callback(msg):
             progress.setLabelText(msg)
@@ -1380,11 +1380,15 @@ class SettingsWidget(QWidget):
         try:
             include_huge = self.include_huge_check.isChecked()
             fft_manager.warmup(callback=callback, force=True, exhaustive=True, include_huge=include_huge)
+            
+            # Ensure it hits 100% at the end
+            progress.setValue(100)
+            QApplication.processEvents()
+            
+            # Close progress dialog before showing success message
+            progress.close()
+            
             QMessageBox.information(self, tr("Success"), tr("FFT optimization completed successfully."))
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), tr("Optimization failed: {0}").format(str(e)))
-
-
-
-        finally:
             progress.close()
+            QMessageBox.critical(self, tr("Error"), tr("Optimization failed: {0}").format(str(e)))

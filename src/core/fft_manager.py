@@ -246,13 +246,19 @@ class FFTManager:
         total = len(sizes_to_optimize)
         for i, size in enumerate(sizes_to_optimize):
             if callback:
-                callback(f"Optimizing FFT (Size {size})... {i+1}/{total}")
+                # Progress ranges from 0 to total-1 during optimization
+                callback(f"Optimizing FFT (Size {size})... {i}/{total + 1}")
 
             # Use MEASURE for warmup to ensure peak performance
             self.get_plan(size, 'float64', flags=('FFTW_MEASURE',))
 
         # Save wisdom at the end of warmup to capture any new measurements
+        if callback:
+            callback(f"Saving optimization results... {total}/{total + 1}")
         self.save_wisdom()
+
+        if callback:
+            callback(f"Done {total + 1}/{total + 1}")
 
 
 
