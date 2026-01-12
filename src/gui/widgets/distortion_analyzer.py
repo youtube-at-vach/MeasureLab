@@ -27,6 +27,7 @@ from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.fft_manager import fft_manager
 
 
 class DistortionAnalyzer(MeasurementModule):
@@ -995,7 +996,7 @@ class DistortionAnalyzerWidget(QWidget):
         # Check signal type instead of mode
         if self.module.signal_type in ['smpte', 'ccif']:
             window = get_window(self.module.window_type, len(data))
-            fft_data = np.fft.rfft(data * window)
+            fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) * (2 / np.sum(window))
             freqs = np.fft.rfftfreq(len(data), 1/sample_rate)
 
@@ -1103,7 +1104,7 @@ class DistortionAnalyzerWidget(QWidget):
 
             # Update Spectrum Plot
             window = get_window(self.module.window_type, len(data))
-            fft_data = np.fft.rfft(data * window)
+            fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) / len(data) * 2
             mag_linear = self.module.apply_spectrum_averaging(mag_linear)
             mag = 20 * np.log10(mag_linear + 1e-12)
