@@ -7,7 +7,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 ## Quick glance (English)
 
-- PyQt6 desktop app bundling 26+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, lock-in/FRA, network/impedance analyzers, oscilloscope, spectrogram, distortion/IMD tools, recorder/player, inverse filter, frequency counter, lock-in frequency counter, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), and more.
+- PyQt6 desktop app bundling 27+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, lock-in/FRA, network/impedance analyzers, oscilloscope, spectrogram, distortion/IMD tools, recorder/player, inverse filter, frequency counter, lock-in frequency counter, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
 - Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes.
 - Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.10+).
 
@@ -42,8 +42,9 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 24. **Sound Quality Analyzer**: 音質評価指標 (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality) の数値およびグラフ表示。
 25. **Timecode Monitor & Generator**: LTC タイムコードのエンコード/デコードとリアルタイム監視。フレームベース計算、ドロップフレーム率、複数FPS表示、タイムゾーン/オフセット、JAMメモリ付きジェネレーターを備える。
 26. **BNIM Meter**: ステレオ入力から ITD/ILD の「ニューラルマップ」を可視化し、両耳定位の傾向を観察するメーター。
-27. **Detachable Wrapper**: 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。
-28. **Settings**: デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。
+27. **HRTF Player**: SOFA ファイルの読み込みと可視化。HRTF メトリクス (ITD/ILD/高域エネルギー/エンベロープピーク) のヒートマップ表示、クリックによる音源位置指定、任意の音楽ファイルを用いたリアルタイム回転再生 (Convolution による空間定位) に対応。
+28. **Detachable Wrapper**: 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。
+29. **Settings**: デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。
 
 ### 🌍 多言語対応 (Localization)
 世界中の主要な言語をサポートしています。設定画面から切り替え可能です。
