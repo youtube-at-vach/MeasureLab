@@ -23,6 +23,9 @@ from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
 
+from src.core.fft_manager import fft_manager
+from PyQt6.QtWidgets import QProgressDialog
+from PyQt6.QtCore import Qt
 
 def _design_c_weighting(sr: float):
     """Design digital C-weighting filter (IEC 61672) for sample rate sr."""
@@ -917,6 +920,20 @@ class SettingsWidget(QWidget):
         screenshot_group.setLayout(screenshot_layout)
         general_layout.addWidget(screenshot_group)
 
+        # --- FFT Optimization ---
+        fft_group = QGroupBox(tr("FFT Optimization"))
+        fft_layout = QVBoxLayout()
+        fft_desc = QLabel(tr("Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M)."))
+        fft_desc.setWordWrap(True)
+        fft_layout.addWidget(fft_desc)
+        
+        self.regen_fft_btn = QPushButton(tr("Regenerate Optimization"))
+        self.regen_fft_btn.clicked.connect(self.on_regenerate_fft)
+        fft_layout.addWidget(self.regen_fft_btn)
+        
+        fft_group.setLayout(fft_layout)
+        general_layout.addWidget(fft_group)
+
         general_layout.addStretch()
         general_tab.setLayout(general_layout)
         self.tabs.addTab(general_tab, tr("General"))
@@ -1328,3 +1345,37 @@ class SettingsWidget(QWidget):
                 self.audio_engine.block_size,
                 in_mode, out_mode
             )
+
+
+    def on_regenerate_fft(self):
+        # Create a modal progress dialog
+        progress = QProgressDialog(tr("Optimizing FFT..."), tr("Cancel"), 0, 100, self)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.setAutoClose(True)
+        progress.setAutoReset(True)
+        
+        def callback(msg):
+            progress.setLabelText(msg)
+            # Find progress from string "X/Y" roughly
+            try:
+                if "/" in msg:
+                    parts = msg.split("/")
+                    curr = int(parts[0].split()[-1])
+                    total = int(parts[1])
+                    val = int((curr / total) * 100)
+                    progress.setValue(val)
+            except Exception:
+                pass
+            QApplication.processEvents()
+
+        # Run optimization
+        try:
+            fft_manager.warmup(callback=callback, force=True, exhaustive=True)
+            QMessageBox.information(self, tr("Success"), tr("FFT optimization completed successfully."))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), tr("Optimization failed: {0}").format(str(e)))
+
+        finally:
+            progress.close()
