@@ -998,7 +998,7 @@ class DistortionAnalyzerWidget(QWidget):
             window = get_window(self.module.window_type, len(data))
             fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) * (2 / np.sum(window))
-            freqs = np.fft.rfftfreq(len(data), 1/sample_rate)
+            freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
 
             if self.module.signal_type == 'smpte':
                 res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, self.module.imd_f1, self.module.imd_f2)
@@ -1108,6 +1108,6 @@ class DistortionAnalyzerWidget(QWidget):
             mag_linear = np.abs(fft_data) / len(data) * 2
             mag_linear = self.module.apply_spectrum_averaging(mag_linear)
             mag = 20 * np.log10(mag_linear + 1e-12)
-            freqs = np.fft.rfftfreq(len(data), 1/sample_rate)
+            freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
 
             self.spectrum_curve.setData(freqs[1:], mag[1:])

@@ -638,7 +638,7 @@ class SpectrumAnalyzerWidget(QWidget):
 
         # Frequency axis
         sample_rate = self.module.audio_engine.sample_rate
-        freqs = np.fft.rfftfreq(len(data), 1/sample_rate)
+        freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
 
         # Calculate Weighting Curve
         weighting_db = self.module.compute_weighting(freqs, self.module.weighting)

@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.audio_engine import AudioEngine
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -335,9 +336,9 @@ class NetworkAnalyzer(MeasurementModule):
             win_ref = ir_ref[start:end]
             win_meas = ir_meas[start:end] # Use same window for Meas
 
-            H_ref = np.fft.rfft(win_ref)
-            H_meas = np.fft.rfft(win_meas)
-            freqs = np.fft.rfftfreq(len_win, d=1/sample_rate)
+            H_ref = fft_manager.rfft(win_ref)
+            H_meas = fft_manager.rfft(win_meas)
+            freqs = fft_manager.rfftfreq(len_win, d=1/sample_rate)
 
             # Transfer Function
             # Avoid div by zero
@@ -374,8 +375,8 @@ class NetworkAnalyzer(MeasurementModule):
             end = min(len(ir), peak_idx + post)
 
             ir_win = ir[start:end]
-            H = np.fft.rfft(ir_win)
-            freqs = np.fft.rfftfreq(len(ir_win), d=1/sample_rate)
+            H = fft_manager.rfft(ir_win)
+            freqs = fft_manager.rfftfreq(len(ir_win), d=1/sample_rate)
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
@@ -489,7 +490,7 @@ class NetworkAnalyzer(MeasurementModule):
         window = scipy.signal.windows.hann(len(recorded))
         rec_windowed = recorded * window
 
-        fft_rec = np.fft.rfft(rec_windowed)
+        fft_rec = fft_manager.rfft(rec_windowed)
         idx = np.argmax(np.abs(fft_rec))
 
         mag_linear = np.abs(fft_rec[idx]) * 2 / np.sum(window)

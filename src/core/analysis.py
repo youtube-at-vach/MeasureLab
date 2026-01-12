@@ -133,7 +133,7 @@ class AudioCalc:
         window = get_window(window_name, len(audio_data))
         windowed_data = audio_data * window
         fft_result = fft_manager.rfft(windowed_data)
-        freqs = np.fft.rfftfreq(len(audio_data), 1/sampling_rate)
+        freqs = fft_manager.rfftfreq(len(audio_data), 1/sampling_rate)
 
         # Coherent gain correction
         coherent_gain = np.sum(window) / len(window)
