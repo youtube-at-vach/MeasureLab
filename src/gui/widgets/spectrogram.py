@@ -20,6 +20,7 @@ from scipy.signal import get_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.fft_manager import fft_manager
 
 
 class Spectrogram(MeasurementModule):
@@ -96,8 +97,16 @@ class Spectrogram(MeasurementModule):
         # For simplicity, let's just roll and append.
 
         if frames > len(self.audio_buffer):
-            # Should not happen with reasonable buffer sizes
-            self.audio_buffer[:] = 0
+            # If incoming data exceeds buffer, just take the latest part that fits
+            # This handles cases like block_size=8192 vs fft_size=512 (buffer=1024)
+            nb_to_copy = len(self.audio_buffer)
+            self.audio_buffer[:] = 0 # Optional, but good practice
+            
+            if indata.shape[1] >= 2:
+                self.audio_buffer[:] = indata[-nb_to_copy:, :2]
+            else:
+                self.audio_buffer[:, 0] = indata[-nb_to_copy:, 0]
+                self.audio_buffer[:, 1] = indata[-nb_to_copy:, 0]
         else:
             self.audio_buffer = np.roll(self.audio_buffer, -frames, axis=0)
             if indata.shape[1] >= 2:
@@ -281,7 +290,7 @@ class SpectrogramWidget(QWidget):
         win_correction = 1.0 / np.mean(window)
 
         # FFT
-        fft_res = np.fft.rfft(sig_win)
+        fft_res = fft_manager.rfft(sig_win)
         mag = np.abs(fft_res)
 
         # Normalize
