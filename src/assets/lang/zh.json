@@ -962,5 +962,17 @@
     "Stop Monitor": "停止监测",
     "Loopback Finder is not available in PipeWire/JACK mode. Disable 'PipeWire / JACK Mode (Resident)' in Settings to use this tool.": "Loopback Finder 在 PipeWire/JACK 模式下不可用。请在设置中关闭 'PipeWire / JACK 模式（常驻）' 后使用此工具。",
     "Loopback Finder is not available in PipeWire/JACK mode. Please disable 'PipeWire / JACK Mode (Resident)' in Settings.": "Loopback Finder 在 PipeWire/JACK 模式下不可用。请在设置中禁用 'PipeWire / JACK 模式（常驻）'。",
-    "Unavailable": "不可用"
+    "Unavailable": "不可用",
+    "Failed to load SOFA file.": "加载 SOFA 文件失败。",
+    "HRTF Source Positions": "HRTF 声源位置",
+    "Load Music": "加载音乐",
+    "Load SOFA": "加载 SOFA",
+    "Metric:": "指标：",
+    "Open Music File": "打开音乐文件",
+    "Open SOFA File": "打开 SOFA 文件",
+    "Rotation Mode": "旋转模式",
+    "Sound:": "声音：",
+    "Swap L/R": "交换左/右",
+    "▶ Play Rotation": "▶ 播放旋转",
+    "⏸ Stop": "⏸ 停止"
 }

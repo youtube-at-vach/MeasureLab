@@ -962,5 +962,17 @@
     "Stop Monitor": "Parar monitoramento",
     "Loopback Finder is not available in PipeWire/JACK mode. Disable 'PipeWire / JACK Mode (Resident)' in Settings to use this tool.": "O Localizador de Loopback não está disponível no modo PipeWire/JACK. Desative 'Modo PipeWire / JACK (Residente)' nas Configurações para usar esta ferramenta.",
     "Loopback Finder is not available in PipeWire/JACK mode. Please disable 'PipeWire / JACK Mode (Resident)' in Settings.": "O Localizador de Loopback não está disponível no modo PipeWire/JACK. Desative 'Modo PipeWire / JACK (Residente)' nas Configurações.",
-    "Unavailable": "Indisponível"
+    "Unavailable": "Indisponível",
+    "Failed to load SOFA file.": "Falha ao carregar o arquivo SOFA.",
+    "HRTF Source Positions": "Posições de fonte HRTF",
+    "Load Music": "Carregar música",
+    "Load SOFA": "Carregar SOFA",
+    "Metric:": "Métrica:",
+    "Open Music File": "Abrir arquivo de música",
+    "Open SOFA File": "Abrir arquivo SOFA",
+    "Rotation Mode": "Modo de rotação",
+    "Sound:": "Som:",
+    "Swap L/R": "Trocar E/D",
+    "▶ Play Rotation": "▶ Reproduzir rotação",
+    "⏸ Stop": "⏸ Parar"
 }

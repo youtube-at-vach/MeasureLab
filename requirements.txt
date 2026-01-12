@@ -8,3 +8,4 @@ pyqtgraph
 soundfile
 PyWavelets
 inquirer
+netCDF4

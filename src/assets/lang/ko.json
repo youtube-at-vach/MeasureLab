@@ -962,5 +962,17 @@
     "Stop Monitor": "모니터 중지",
     "Loopback Finder is not available in PipeWire/JACK mode. Disable 'PipeWire / JACK Mode (Resident)' in Settings to use this tool.": "PipeWire/JACK 모드에서는 Loopback Finder를 사용할 수 없습니다. 설정에서 'PipeWire / JACK 모드(상주)'를 끄면 이 도구를 사용할 수 있습니다.",
     "Loopback Finder is not available in PipeWire/JACK mode. Please disable 'PipeWire / JACK Mode (Resident)' in Settings.": "PipeWire/JACK 모드에서는 Loopback Finder를 사용할 수 없습니다. 설정에서 'PipeWire / JACK 모드(상주)'를 비활성화해 주세요.",
-    "Unavailable": "사용할 수 없음"
+    "Unavailable": "사용할 수 없음",
+    "Failed to load SOFA file.": "SOFA 파일을 불러오지 못했습니다.",
+    "HRTF Source Positions": "HRTF 음원 위치",
+    "Load Music": "음악 불러오기",
+    "Load SOFA": "SOFA 불러오기",
+    "Metric:": "메트릭:",
+    "Open Music File": "음악 파일 열기",
+    "Open SOFA File": "SOFA 파일 열기",
+    "Rotation Mode": "회전 모드",
+    "Sound:": "사운드:",
+    "Swap L/R": "L/R 교환",
+    "▶ Play Rotation": "▶ 회전 재생",
+    "⏸ Stop": "⏸ 정지"
 }

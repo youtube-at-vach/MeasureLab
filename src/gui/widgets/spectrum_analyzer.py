@@ -109,7 +109,7 @@ class SpectrumAnalyzer(MeasurementModule):
             if self.buffer_size >= LARGE_BUFFER_THRESHOLD:
                 # --- Slow / Snapshot Mode ---
                 # Fill buffer linearly, then stop accepting data until processed (write_head reset)
-                
+
                 # If buffer is already "full" (waiting for processing), do nothing
                 if self.write_head >= self.buffer_size:
                      outdata.fill(0)
@@ -122,7 +122,7 @@ class SpectrumAnalyzer(MeasurementModule):
                 if to_write > 0:
                     self.input_data[self.write_head : self.write_head + to_write] = new_data[:to_write]
                     self.write_head += to_write
-                
+
             else:
                 # --- Normal Rolling Mode ---
                 # Efficient ring buffer or just roll
@@ -596,11 +596,11 @@ class SpectrumAnalyzerWidget(QWidget):
             if self.module.write_head < self.module.buffer_size:
                 # Buffer not full yet, wait
                 return
-            
+
             # Buffer full, take snapshot and reset
             # IMPORTANT: Copy data to avoid race condition if we were to allow filling immediately (though we blocked it in callback)
             data = self.module.input_data.copy() 
-            
+
             # Reset write head to start new capture
             self.module.write_head = 0
         else:
