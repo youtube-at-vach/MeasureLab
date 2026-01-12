@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -169,8 +170,8 @@ class FrequencyCounter(MeasurementModule):
 
         # 2. Coarse Estimate (FFT)
         window = np.hamming(len(data))
-        fft_res = np.fft.rfft(data * window)
-        freqs = np.fft.rfftfreq(len(data), 1/sr)
+        fft_res = fft_manager.rfft(data * window)
+        freqs = fft_manager.rfftfreq(len(data), 1/sr)
 
         idx = np.argmax(np.abs(fft_res))
         coarse_freq = freqs[idx]

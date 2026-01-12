@@ -3,6 +3,8 @@ from scipy.optimize import minimize_scalar
 from scipy.signal import butter, get_window, sosfiltfilt
 
 
+from src.core.fft_manager import fft_manager
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
@@ -130,8 +132,8 @@ class AudioCalc:
     def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
         window = get_window(window_name, len(audio_data))
         windowed_data = audio_data * window
-        fft_result = np.fft.rfft(windowed_data)
-        freqs = np.fft.rfftfreq(len(audio_data), 1/sampling_rate)
+        fft_result = fft_manager.rfft(windowed_data)
+        freqs = fft_manager.rfftfreq(len(audio_data), 1/sampling_rate)
 
         # Coherent gain correction
         coherent_gain = np.sum(window) / len(window)

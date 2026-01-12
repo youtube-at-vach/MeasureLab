@@ -30,6 +30,7 @@ from scipy.signal import convolve
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.fft_manager import fft_manager
 
 
 @dataclass
@@ -115,13 +116,13 @@ class SOFALoader:
             # Use simple FFT based energy
             energy_high = np.zeros(M)
             # Create mask for 8-16kHz
-            freqs = np.fft.rfftfreq(N, 1/sampling_rate)
+            freqs = fft_manager.rfftfreq(N, 1/sampling_rate)
             mask = (freqs >= 8000) & (freqs <= 16000)
 
             for i in range(M):
                 # Avg of L and R high band energy
-                spec_l = np.abs(np.fft.rfft(ir_data[i, 0, :]))
-                spec_r = np.abs(np.fft.rfft(ir_data[i, 1, :]))
+                spec_l = np.abs(fft_manager.rfft(ir_data[i, 0, :]))
+                spec_r = np.abs(fft_manager.rfft(ir_data[i, 1, :]))
                 e_l = np.sum(spec_l[mask]**2)
                 e_r = np.sum(spec_r[mask]**2)
                 avg_e = (e_l + e_r) / 2
@@ -296,11 +297,11 @@ class HRTFPlayer(MeasurementModule):
             # 8-16k Noise
             white = np.random.uniform(-0.5, 0.5, size=len_samples)
             # Simple filtered
-            fft = np.fft.rfft(white)
-            freqs = np.fft.rfftfreq(len_samples, d=1/sr)
+            fft = fft_manager.rfft(white)
+            freqs = fft_manager.rfftfreq(len_samples, d=1/sr)
             mask = (freqs >= 8000) & (freqs <= 16000)
             fft[~mask] = 0
-            source_sig = np.fft.irfft(fft)
+            source_sig = fft_manager.irfft(fft)
             # Normalize
             mx = np.max(np.abs(source_sig))
             if mx > 0: source_sig /= mx

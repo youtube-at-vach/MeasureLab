@@ -25,6 +25,7 @@ from scipy.interpolate import interp1d
 
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.fft_manager import fft_manager
 
 
 class InverseFilter(MeasurementModule):
@@ -131,7 +132,7 @@ class ProcessingWorker(QThread):
 
             # Create FIR Kernel via IFFT
             # irfft expects (n/2+1) points for n-point output
-            kernel = np.fft.irfft(H_inv, n=self.taps)
+            kernel = fft_manager.irfft(H_inv, n=self.taps)
 
             # Circular Shift to center
             # FFT assumes phase starts at t=0. If we have negative phase (delay), it wraps.

@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 from scipy.signal.windows import dpss
 
 from src.core.audio_engine import AudioEngine
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -637,7 +638,7 @@ class SpectrumAnalyzerWidget(QWidget):
 
         # Frequency axis
         sample_rate = self.module.audio_engine.sample_rate
-        freqs = np.fft.rfftfreq(len(data), 1/sample_rate)
+        freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
 
         # Calculate Weighting Curve
         weighting_db = self.module.compute_weighting(freqs, self.module.weighting)
@@ -662,11 +663,11 @@ class SpectrumAnalyzerWidget(QWidget):
                     w = windows[k]
 
                     # Channel 0
-                    fft_0 = np.fft.rfft(data[:, 0] * w)
+                    fft_0 = fft_manager.rfft(data[:, 0] * w)
                     psd_accum_0 += np.abs(fft_0)**2
 
                     # Channel 1
-                    fft_1 = np.fft.rfft(data[:, 1] * w)
+                    fft_1 = fft_manager.rfft(data[:, 1] * w)
                     psd_accum_1 += np.abs(fft_1)**2
 
                 # Average over K windows
@@ -749,8 +750,8 @@ class SpectrumAnalyzerWidget(QWidget):
 
                 for k in range(K):
                     w = windows[k]
-                    fft_0 = np.fft.rfft(data[:, 0] * w)
-                    fft_1 = np.fft.rfft(data[:, 1] * w)
+                    fft_0 = fft_manager.rfft(data[:, 0] * w)
+                    fft_1 = fft_manager.rfft(data[:, 1] * w)
                     cs_accum += fft_0 * np.conj(fft_1)
 
                 cs_avg = cs_accum / K
@@ -799,7 +800,10 @@ class SpectrumAnalyzerWidget(QWidget):
 
             # FFT
             # rfft on axis 0
-            fft_data = np.fft.rfft(windowed_data, axis=0)
+            # Use fft_manager (handles 1D, so we process channels separately)
+            f0 = fft_manager.rfft(windowed_data[:, 0])
+            f1 = fft_manager.rfft(windowed_data[:, 1])
+            fft_data = np.column_stack((f0, f1))
 
             # Normalization Factor for Peak Amplitude
             # 2/N for one-sided spectrum (DC and Nyquist need special handling but usually ignored for general audio display)

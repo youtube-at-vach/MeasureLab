@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 from scipy.signal import butter, sosfiltfilt
 
 from src.core.audio_engine import AudioEngine
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -596,9 +597,9 @@ class LockInTHDWidget(QWidget):
         # Calculate FFT of residual
         if len(res) > 0:
             window = np.hanning(len(res))
-            fft_res = np.fft.rfft(res * window)
+            fft_res = fft_manager.rfft(res * window)
             mag = 20 * np.log10(np.abs(fft_res) / len(res) * 2 + 1e-12)
-            freqs = np.fft.rfftfreq(len(res), 1/self.module.audio_engine.sample_rate)
+            freqs = fft_manager.rfftfreq(len(res), 1/self.module.audio_engine.sample_rate)
 
             # Skip DC
             self.curve_spec.setData(freqs[1:], mag[1:])

@@ -21,6 +21,7 @@ from scipy.ndimage import gaussian_filter
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.fft_manager import fft_manager
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -109,7 +110,7 @@ class BNIMMeter(MeasurementModule):
         self._itd_axis_norm = (self.itd_axis / max(1e-9, float(self.max_itd_ms))).astype(np.float32, copy=False)
 
         # Frequency bins for RFFT
-        freqs = np.fft.rfftfreq(self.fft_size, 1/self.sample_rate)
+        freqs = fft_manager.rfftfreq(self.fft_size, 1/self.sample_rate)
         # Select indices within range
         self.freq_indices = np.where((freqs >= self.freq_min) & (freqs <= self.freq_max))[0]
         self.frequencies = freqs[self.freq_indices]
@@ -374,8 +375,8 @@ class BNIMMeter(MeasurementModule):
         R_w = R * win
 
         # FFT
-        fft_L = np.fft.rfft(L_w)
-        fft_R = np.fft.rfft(R_w)
+        fft_L = fft_manager.rfft(L_w)
+        fft_R = fft_manager.rfft(R_w)
 
         # Select active frequencies
         fft_L = fft_L[self.freq_indices]

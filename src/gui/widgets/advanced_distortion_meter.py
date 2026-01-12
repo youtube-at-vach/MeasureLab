@@ -18,7 +18,10 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.audio_engine import AudioEngine
+from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.fft_manager import fft_manager
 
 
 class AdvancedDistortionMeter(MeasurementModule):
@@ -457,8 +460,8 @@ class AdvancedDistortionMeterWidget(QWidget):
 
         # Perform FFT
         window = np.blackman(len(data))
-        fft_res = np.fft.rfft(data * window)
-        freqs = np.fft.rfftfreq(len(data), 1/sr)
+        fft_res = fft_manager.rfft(data * window)
+        freqs = fft_manager.rfftfreq(len(data), 1/sr)
 
         # Magnitude in dB
         mag = np.abs(fft_res) * 2 / np.sum(window)

@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -392,10 +393,10 @@ class NoiseProfilerWidget(QWidget):
             else:
                 fft_input = data[:, 0]
 
-            fft_data = np.fft.rfft(fft_input * window)
+            fft_data = fft_manager.rfft(fft_input * window)
             mag_v_rthz = np.abs(fft_data) * psd_factor
 
-            freqs = np.fft.rfftfreq(len(data), 1/fs)
+            freqs = fft_manager.rfftfreq(len(data), 1/fs)
 
             # Averaging
             if self.module.average_mode:

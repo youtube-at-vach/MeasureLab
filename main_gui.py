@@ -17,7 +17,9 @@ from PyQt6.QtWidgets import QApplication, QSplashScreen, QWidget
 
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
+from src.core.localization import get_manager, tr
 from src.core.utils import resource_path
+from src.core.fft_manager import fft_manager
 from src.gui.main_window import MainWindow
 
 
@@ -148,6 +150,7 @@ def main():
 
     # Preload all modules while splash is visible, so module switching feels instant.
     def _update_splash(msg: str):
+        # Translate the message here if needed, or pass translated strings
         splash.showMessage(
             f"{tr('Loading...')}\n{msg}",
             Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
@@ -156,8 +159,14 @@ def main():
         app.processEvents()
 
     try:
+        # 1. Warmup FFT Optimization (Show progress)
+        # This will be fast if wisdom exists, or show progress if optimizing
+        fft_manager.warmup(callback=_update_splash)
+
+        # 2. Preload Modules
         window.preload_all_modules(progress_callback=_update_splash)
-    except Exception:
+    except Exception as e:
+        print(f"Startup error: {e}")
         # If preload fails, still show the window; individual pages may show errors.
         pass
 

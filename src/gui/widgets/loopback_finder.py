@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.audio_engine import AudioEngine
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -105,8 +106,8 @@ class LoopbackFinder(MeasurementModule):
             for in_ch in range(max_in):
                 # Simple RMS check or FFT? FFT is more robust against noise.
                 # Using FFT as in legacy code
-                input_fft = np.fft.rfft(recorded_signal[:, in_ch])
-                freqs = np.fft.rfftfreq(len(recorded_signal), 1/sample_rate)
+                input_fft = fft_manager.rfft(recorded_signal[:, in_ch])
+                freqs = fft_manager.rfftfreq(len(recorded_signal), 1/sample_rate)
 
                 target_bin = np.argmin(np.abs(freqs - test_freq))
                 magnitude = np.abs(input_fft[target_bin]) / len(recorded_signal) * 2
