@@ -101,7 +101,7 @@ class Spectrogram(MeasurementModule):
             # This handles cases like block_size=8192 vs fft_size=512 (buffer=1024)
             nb_to_copy = len(self.audio_buffer)
             self.audio_buffer[:] = 0 # Optional, but good practice
-            
+
             if indata.shape[1] >= 2:
                 self.audio_buffer[:] = indata[-nb_to_copy:, :2]
             else:

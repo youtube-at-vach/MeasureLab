@@ -927,7 +927,7 @@ class SettingsWidget(QWidget):
         fft_desc = QLabel(tr("Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M)."))
         fft_desc.setWordWrap(True)
         fft_layout.addWidget(fft_desc)
-        
+
         self.regen_fft_btn = QPushButton(tr("Regenerate Optimization"))
         self.regen_fft_btn.clicked.connect(self.on_regenerate_fft)
         fft_layout.addWidget(self.regen_fft_btn)
@@ -936,7 +936,7 @@ class SettingsWidget(QWidget):
         self.include_huge_check.setToolTip(tr("Optimizes sizes up to 4M. Can take several minutes."))
         self.include_huge_check.setChecked(False)
         fft_layout.addWidget(self.include_huge_check)
-        
+
         fft_group.setLayout(fft_layout)
         general_layout.addWidget(fft_group)
 
@@ -1361,7 +1361,7 @@ class SettingsWidget(QWidget):
         progress.setValue(0)
         progress.setAutoClose(True)
         progress.setAutoReset(True)
-        
+
         def callback(msg):
             progress.setLabelText(msg)
             # Find progress from string "X/Y" roughly

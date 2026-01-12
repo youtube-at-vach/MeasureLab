@@ -21,7 +21,7 @@ def benchmark():
         # float64 is standard for numpy, but audio often uses float32. Let's test float32 as well if we have time, 
         # but usually we want to see if we can beat the default which is float64 in the current code (zeros((N, 2))).
         input_data = np.random.rand(N).astype(np.float64)
-        
+
         # 1. NumPy
         t_numpy = timeit.timeit(lambda: np.fft.rfft(input_data), number=ITERATIONS)
         avg_numpy = (t_numpy / ITERATIONS) * 1000
@@ -31,7 +31,7 @@ def benchmark():
         # pyfftw.interfaces.cache.enable()
         pyfftw.interfaces.cache.enable()
         # We need to turn it on
-        
+
         t_pyfftw_iface = timeit.timeit(lambda: pyfftw.interfaces.numpy_fft.rfft(input_data, threads=n_threads), number=ITERATIONS)
         avg_pyfftw_iface = (t_pyfftw_iface / ITERATIONS) * 1000
 
@@ -46,10 +46,10 @@ def benchmark():
         # Requires aligned arrays
         aligned_in = pyfftw.empty_aligned(N, dtype='float64')
         aligned_out = pyfftw.empty_aligned(N//2 + 1, dtype='complex128')
-        
+
         # Plan
         fft_object = pyfftw.FFTW(aligned_in, aligned_out, direction='FFTW_FORWARD', flags=('FFTW_MEASURE',), threads=n_threads)
-        
+
         # Copy data in (simulating the update loop)
         def run_manual():
             aligned_in[:] = input_data # Copy takes time too, include it? 

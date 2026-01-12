@@ -16,10 +16,10 @@ def test_audiocalc_fft():
     fs = 48000
     t = np.arange(1024) / fs
     sig = np.sin(2 * np.pi * 1000 * t)
-    
+
     # Run analysis (which uses FFT)
     res = AudioCalc.analyze_harmonics(sig, 1000, 'hann', fs)
-    
+
     print(f"Result Frequency: {res['basic_wave']['frequency']:.2f}")
     assert abs(res['basic_wave']['frequency'] - 1000) < 10, "Frequency estimation failed"
     print("AudioCalc FFT test passed.")
@@ -30,7 +30,7 @@ def test_distortion_analyzer_usage():
     # but we can try to call the methods we modified if possible.
     # DistortionAnalyzer.update_realtime_analysis is usually called by a timer in the Widget.
     # The Widget requires the Module, and the Module requires AudioEngine.
-    
+
     # We'll stick to AudioCalc verification as it is the core logic change.
     pass
 

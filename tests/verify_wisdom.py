@@ -11,7 +11,7 @@ WISDOM_PATH = fft_manager.wisdom_path
 
 def run_test():
     print(f"Testing FFT Wisdom Persistence (Size: {SIZE})")
-    
+
     # Ensure no wisdom exists initially for clean test
     if WISDOM_PATH.exists():
         print("Removing existing wisdom for test...")
@@ -20,16 +20,16 @@ def run_test():
     # Reset manager to force reload (though we deleted the file)
     # Re-instantiating FFTManager won't clear internal pyfftw state entirely if the process is same,
     # but our logic loads from file on init.
-    
+
     print("\n--- Run 1: Cold Start (Should be slow due to MEASURE) ---")
     data = np.random.rand(SIZE)
-    
+
     t0 = time.time()
     # first call triggers planning
     fft_manager.rfft(data)
     t1 = time.time()
     print(f"Run 1 Planning + Exec Time: {t1 - t0:.4f} seconds")
-    
+
     if WISDOM_PATH.exists():
         print(f"SUCCESS: Wisdom file created at {WISDOM_PATH}")
     else:
@@ -40,26 +40,26 @@ def run_test():
     # However, pyfftw keeps wisdom in memory.
     # To truly test persistence, we should run this in a separate process, but for this script:
     # We will "forget" wisdom in pyfftw and reload from file.
-    
+
     pyfftw.forget_wisdom()
     fft_manager._plans.clear()
-    
+
     # Load wisdom manually to simulate startup
     fft_manager.load_wisdom()
-    
+
     t0 = time.time()
     fft_manager.rfft(data)
     t1 = time.time()
     print(f"Run 2 (Wisdom Loaded) Planning + Exec Time: {t1 - t0:.4f} seconds")
-    
+
     # Verify speedup
     # Note: Plan creation with wisdom should be much faster than MEASURE.
-    
+
     print("\n--- Run 3: Testing Warmup (Simulated) ---")
-    
+
     def callback(msg):
         print(f"Callback received: {msg}")
-        
+
     # Force warmup (re-measure) with exhaustive flag
     try:
         t0 = time.time()

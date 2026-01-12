@@ -36,7 +36,7 @@ class FFTManager:
         self.threads = multiprocessing.cpu_count()
         if HAS_PYFFTW:
              pyfftw.config.NUM_THREADS = self.threads
-        
+
         # Store wisdom in project root for portability
         root_dir = Path(__file__).resolve().parent.parent.parent
         self.wisdom_dir = root_dir / 'wisdom'
@@ -46,13 +46,13 @@ class FFTManager:
             self.wisdom_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
             pass
-        
+
         self.load_wisdom()
 
     def load_wisdom(self):
         if not HAS_PYFFTW:
             return
-            
+
         if self.wisdom_path.exists():
             try:
                 with open(self.wisdom_path, "rb") as f:
@@ -65,7 +65,7 @@ class FFTManager:
     def save_wisdom(self):
         if not HAS_PYFFTW:
             return
-            
+
         try:
             self.wisdom_path.parent.mkdir(parents=True, exist_ok=True)
             wisdom = pyfftw.export_wisdom()
@@ -82,12 +82,12 @@ class FFTManager:
         direction: 'FFTW_FORWARD' (rfft) or 'FFTW_BACKWARD' (irfft)
         """
         key = (size, dtype, direction)
-        
+
         # Check if plan exists
         if key in self._plans:
             existing_plan = self._plans[key]
             existing_flags = existing_plan.get('flags', ('FFTW_MEASURE',)) # Default to measure if unknown (legacy)
-            
+
             # If we requested MEASURE but have ESTIMATE, we should upgrade (re-create)
             if 'FFTW_MEASURE' in flags and 'FFTW_MEASURE' not in existing_flags:
                 logger.info(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
@@ -96,7 +96,7 @@ class FFTManager:
             # and MEASURE is fine if we requested ESTIMATE and have MEASURE)
         else:
             self._create_plan(size, dtype, flags, direction)
-        
+
         return self._plans.get(key)
 
     def _create_plan(self, size, dtype_str, flags, direction):
@@ -128,13 +128,13 @@ class FFTManager:
                 flags=flags, 
                 threads=self.threads
             )
-            
+
             # Save wisdom only if we did a measurement (MEASURE or PATIENT etc), 
             # though ESTIMATE doesn't generate wisdom worth saving usually, saving doesn't hurt.
             # But typically we only care about saving after costly optimizations.
             if 'FFTW_MEASURE' in flags:
                 self.save_wisdom()
-            
+
             self._plans[(size, dtype_str, direction)] = {
                 'object': fft_object,
                 'input': input_array,
@@ -156,23 +156,23 @@ class FFTManager:
             dtype_str = 'float32'
         else:
             dtype_str = 'float64' # Default for generic types
-            
+
         if HAS_PYFFTW:
             # fast default: ESTIMATE
             plan_entry = self.get_plan(size, dtype_str, flags=('FFTW_ESTIMATE',), direction='FFTW_FORWARD')
             if plan_entry:
                 fft_obj = plan_entry['object']
                 input_arr = plan_entry['input']
-                
+
                 # Copy data 
                 input_arr[:] = data
-                
+
                 # Execute
                 fft_obj()
-                
+
                 # Return copy of result (to avoid buffer reuse issues by caller)
                 return plan_entry['output'].copy()
-        
+
         # Fallback
         return np.fft.rfft(data)
 
@@ -182,19 +182,19 @@ class FFTManager:
         """
         if n is None:
             n = 2 * (len(data) - 1)
-            
+
         # Check dtype compatibility
         if data.dtype == np.complex64:
              dtype_str = 'float32'
         else:
              dtype_str = 'float64'
-             
+
         if HAS_PYFFTW:
              plan_entry = self.get_plan(n, dtype_str, flags=('FFTW_ESTIMATE',), direction='FFTW_BACKWARD')
              if plan_entry:
                   fft_obj = plan_entry['object']
                   input_arr = plan_entry['input']
-                  
+
                   # Safety check for input length
                   # PyFFTW input buffer expects n//2 + 1 complex numbers
                   expected_len = len(input_arr)
@@ -203,7 +203,7 @@ class FFTManager:
 
                   input_arr[:] = data
                   fft_obj()
-                  
+
                   # FFTW is unnormalized, numpy.fft.irfft includes 1/n scaling
                   result = plan_entry['output'].copy()
                   result /= n
@@ -247,7 +247,7 @@ class FFTManager:
         for i, size in enumerate(sizes_to_optimize):
             if callback:
                 callback(f"Optimizing FFT (Size {size})... {i+1}/{total}")
-            
+
             # Use MEASURE for warmup to ensure peak performance
             self.get_plan(size, 'float64', flags=('FFTW_MEASURE',))
 
