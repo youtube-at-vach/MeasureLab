@@ -974,5 +974,13 @@
     "Sound:": "사운드:",
     "Swap L/R": "L/R 교환",
     "▶ Play Rotation": "▶ 회전 재생",
-    "⏸ Stop": "⏸ 정지"
+    "⏸ Stop": "⏸ 정지",
+    "FFT Optimization": "FFT 최적화",
+    "FFT optimization completed successfully.": "FFT 최적화가 성공적으로 완료되었습니다.",
+    "Include Huge Sizes (Slow)": "대형 크기 포함 (느림)",
+    "Optimization failed: {0}": "최적화 실패: {0}",
+    "Optimizes sizes up to 4M. Can take several minutes.": "최대 4M 크기까지 최적화합니다. 몇 분이 걸릴 수 있습니다.",
+    "Optimizing FFT...": "FFT 최적화 중...",
+    "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "더 빠른 성능을 위해 FFT 계획을 미리 계산합니다. 몇 초가 걸릴 수 있습니다. 철저한 최적화 포함 (최대 4M).",
+    "Regenerate Optimization": "최적화 재생성"
 }

@@ -974,5 +974,13 @@
     "Sound:": "Sonido:",
     "Swap L/R": "Intercambiar L/R",
     "▶ Play Rotation": "▶ Reproducir rotación",
-    "⏸ Stop": "⏸ Detener"
+    "⏸ Stop": "⏸ Detener",
+    "FFT Optimization": "Optimización FFT",
+    "FFT optimization completed successfully.": "Optimización FFT completada con éxito.",
+    "Include Huge Sizes (Slow)": "Incluir tamaños grandes (lento)",
+    "Optimization failed: {0}": "Optimización fallida: {0}",
+    "Optimizes sizes up to 4M. Can take several minutes.": "Optimiza tamaños hasta 4M. Puede tardar varios minutos.",
+    "Optimizing FFT...": "Optimizando FFT...",
+    "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "Precalcular planes FFT para un rendimiento más rápido. Esto puede tardar unos segundos. Incluye optimización exhaustiva (hasta 4M).",
+    "Regenerate Optimization": "Regenerar optimización"
 }

@@ -974,5 +974,13 @@
     "Sound:": "Звук:",
     "Swap L/R": "Поменять Л/П",
     "▶ Play Rotation": "▶ Воспроизведение вращения",
-    "⏸ Stop": "⏸ Стоп"
+    "⏸ Stop": "⏸ Стоп",
+    "FFT Optimization": "Оптимизация FFT",
+    "FFT optimization completed successfully.": "Оптимизация FFT успешно завершена.",
+    "Include Huge Sizes (Slow)": "Включить большие размеры (медленно)",
+    "Optimization failed: {0}": "Оптимизация не удалась: {0}",
+    "Optimizes sizes up to 4M. Can take several minutes.": "Оптимизирует размеры до 4M. Может занять несколько минут.",
+    "Optimizing FFT...": "Оптимизация FFT...",
+    "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "Предварительный расчет планов FFT для повышения производительности. Это может занять несколько секунд. Включает исчерпывающую оптимизацию (до 4M).",
+    "Regenerate Optimization": "Регенерировать оптимизацию"
 }

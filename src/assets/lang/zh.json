@@ -974,5 +974,13 @@
     "Sound:": "声音：",
     "Swap L/R": "交换左/右",
     "▶ Play Rotation": "▶ 播放旋转",
-    "⏸ Stop": "⏸ 停止"
+    "⏸ Stop": "⏸ 停止",
+    "FFT Optimization": "FFT优化",
+    "FFT optimization completed successfully.": "FFT优化成功完成。",
+    "Include Huge Sizes (Slow)": "包含大尺寸（慢）",
+    "Optimization failed: {0}": "优化失败：{0}",
+    "Optimizes sizes up to 4M. Can take several minutes.": "优化最大4M的尺寸。可能需要几分钟。",
+    "Optimizing FFT...": "正在优化FFT...",
+    "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "预先计算FFT计划以获得更快的性能。这可能需要几秒钟。包括详尽的优化（最大4M）。",
+    "Regenerate Optimization": "重新生成优化"
 }
