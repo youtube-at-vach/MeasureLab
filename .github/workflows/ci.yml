@@ -39,6 +39,7 @@ jobs:
             portaudio19-dev
             libsndfile1
             libxcb-cursor0
+            libfftw3-dev
           )
 
           # Ubuntu 24.04 (noble) migrated several libs to *t64 names.

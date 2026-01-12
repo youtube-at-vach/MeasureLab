@@ -13,3 +13,4 @@ inquirer==3.4.1
 pytest==9.0.2
 ruff==0.14.11
 mypy==1.19.1
+pyfftw==0.15.0

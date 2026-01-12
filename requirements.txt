@@ -9,3 +9,4 @@ soundfile
 PyWavelets
 inquirer
 netCDF4
+pyfftw
