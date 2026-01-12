@@ -16,9 +16,14 @@ except ImportError:
     logger.warning("pyfftw not found. Falling back to numpy.fft")
 
 # Common FFT sizes to optimize during startup
+# Common FFT sizes to optimize during startup
 WARMUP_SIZES = [1024, 2048, 4096, 8192, 16384, 32768, 65536]
-# Extended sizes for exhaustive optimization (on-demand)
-EXTENDED_SIZES = [131072, 262144, 1048576, 2097152, 4194304]
+# Medium sizes for standard exhaustive optimization (on-demand)
+MEDIUM_SIZES = [131072, 262144]
+# Huge sizes that take very long to optimize (optional)
+HUGE_SIZES = [1048576, 2097152, 4194304]
+# Backwards compatibility or default full set if needed, but logic currently uses WARMUP + MEDIUM
+EXTENDED_SIZES = MEDIUM_SIZES + HUGE_SIZES
 
 
 
@@ -144,12 +149,13 @@ class FFTManager:
         # Fallback
         return np.fft.rfft(data)
 
-    def warmup(self, callback=None, force=False, exhaustive=False):
+    def warmup(self, callback=None, force=False, exhaustive=False, include_huge=False):
         """
         Pre-calculate plans for common sizes.
         callback: function(str) -> None, used to report progress.
         force: bool, if True, clears cached wisdom/plans and re-measures.
-        exhaustive: bool, if True, optimizes ALL supported sizes including very large ones.
+        exhaustive: bool, if True, optimizes WARMUP + MEDIUM sizes.
+        include_huge: bool, if True, also optimizes HUGE sizes (requires exhaustive=True).
         """
         if not HAS_PYFFTW:
             return
@@ -165,7 +171,9 @@ class FFTManager:
 
         sizes_to_optimize = WARMUP_SIZES
         if exhaustive:
-            sizes_to_optimize = WARMUP_SIZES + EXTENDED_SIZES
+            sizes_to_optimize = WARMUP_SIZES + MEDIUM_SIZES
+            if include_huge:
+                sizes_to_optimize += HUGE_SIZES
 
         total = len(sizes_to_optimize)
         for i, size in enumerate(sizes_to_optimize):

@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QApplication,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -930,6 +931,11 @@ class SettingsWidget(QWidget):
         self.regen_fft_btn = QPushButton(tr("Regenerate Optimization"))
         self.regen_fft_btn.clicked.connect(self.on_regenerate_fft)
         fft_layout.addWidget(self.regen_fft_btn)
+
+        self.include_huge_check = QCheckBox(tr("Include Huge Sizes (Slow)"))
+        self.include_huge_check.setToolTip(tr("Optimizes sizes up to 4M. Can take several minutes."))
+        self.include_huge_check.setChecked(False)
+        fft_layout.addWidget(self.include_huge_check)
         
         fft_group.setLayout(fft_layout)
         general_layout.addWidget(fft_group)
@@ -1372,10 +1378,13 @@ class SettingsWidget(QWidget):
 
         # Run optimization
         try:
-            fft_manager.warmup(callback=callback, force=True, exhaustive=True)
+            include_huge = self.include_huge_check.isChecked()
+            fft_manager.warmup(callback=callback, force=True, exhaustive=True, include_huge=include_huge)
             QMessageBox.information(self, tr("Success"), tr("FFT optimization completed successfully."))
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), tr("Optimization failed: {0}").format(str(e)))
+
+
 
         finally:
             progress.close()
