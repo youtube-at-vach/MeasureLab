@@ -36,7 +36,7 @@ class FrequencyCounter(MeasurementModule):
         # Settings
         self.gate_threshold_db = -60.0
         self.update_interval_ms = 100 # Fast: 100ms, Slow: 500ms
-        self.max_update_interval_ms = 5000  # Cap long measurements to keep load reasonable
+        self.max_update_interval_ms = 500  # Cap long measurements
         self.buffer_size = 8192 # Good resolution
         self.selected_channel = 0 # 0: Ch1, 1: Ch2
 
@@ -490,9 +490,6 @@ class FrequencyCounterWidget(QWidget):
         self.speed_combo = QComboBox()
         self.speed_combo.addItem(tr("Fast (10Hz)"), 100)
         self.speed_combo.addItem(tr("Slow (2Hz)"), 500)
-        self.speed_combo.addItem(tr("1 Sec (1Hz)"), 1000)
-        self.speed_combo.addItem(tr("2 Sec (0.5Hz)"), 2000)
-        self.speed_combo.addItem(tr("5 Sec (0.2Hz)"), 5000)
         self.speed_combo.currentIndexChanged.connect(self.on_speed_changed)
         speed_layout.addWidget(self.speed_combo)
         controls_layout.addLayout(speed_layout)
