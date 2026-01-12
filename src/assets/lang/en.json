@@ -962,5 +962,17 @@
     "Saved: Mem {0}": "Saved: Mem {0}",
     "Slot": "Slot",
     "TC I/O Delay Calibration": "TC I/O Delay Calibration",
-    "UTC": "UTC"
+    "UTC": "UTC",
+    "Failed to load SOFA file.": "Failed to load SOFA file.",
+    "HRTF Source Positions": "HRTF Source Positions",
+    "Load Music": "Load Music",
+    "Load SOFA": "Load SOFA",
+    "Metric:": "Metric:",
+    "Open Music File": "Open Music File",
+    "Open SOFA File": "Open SOFA File",
+    "Rotation Mode": "Rotation Mode",
+    "Sound:": "Sound:",
+    "Swap L/R": "Swap L/R",
+    "▶ Play Rotation": "▶ Play Rotation",
+    "⏸ Stop": "⏸ Stop"
 }
