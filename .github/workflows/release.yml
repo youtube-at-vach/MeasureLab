@@ -35,11 +35,11 @@ jobs:
 
     - name: Build (onefile) with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --collect-all backports --distpath dist/onefile --workpath build/onefile main_gui.py
+        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --collect-all backports --collect-all pyfftw --hidden-import pyfftw --distpath dist/onefile --workpath build/onefile main_gui.py
 
     - name: Build (onedir) with PyInstaller
       run: |
-        pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --collect-all backports --distpath dist/onedir --workpath build/onedir main_gui.py
+        pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --collect-all backports --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
 
     - name: Package Windows release assets
       shell: pwsh
@@ -100,7 +100,7 @@ jobs:
     - name: Build standalone binary with PyInstaller
       run: |
         mkdir -p libs
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports main_gui.py
+        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all pyfftw --hidden-import pyfftw main_gui.py
 
     - name: Build AppImage
       run: |
