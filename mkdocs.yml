@@ -38,5 +38,6 @@ nav:
   - Transient Analyzer: widgets/transient_analyzer.md
   - Welcome: widgets/welcome.md
 - 測定レシピ:
+  - 概要: measurement_recipes/index.md
   - ノイズ測定: measurement_recipes/noise_measurement.md
 - 付録: appendix.md
