@@ -1,0 +1,43 @@
+site_name: Measurement Tool Manual
+site_description: 測定ツールの操作マニュアル
+site_author: Your Name
+theme:
+  name: material
+  language: ja
+nav:
+- はじめに: index.md
+- クイックスタート: quickstart.md
+- ウィジット:
+  - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
+  - Bnim Meter: widgets/bnim_meter.md
+  - Boxcar Averager: widgets/boxcar_averager.md
+  - Detachable Wrapper: widgets/detachable_wrapper.md
+  - Distortion Analyzer: widgets/distortion_analyzer.md
+  - Frequency Counter: widgets/frequency_counter.md
+  - Goniometer: widgets/goniometer.md
+  - Hrtf Player: widgets/hrtf_player.md
+  - Impedance Analyzer: widgets/impedance_analyzer.md
+  - Inverse Filter: widgets/inverse_filter.md
+  - Lock In Amplifier: widgets/lock_in_amplifier.md
+  - Lock In Frequency Counter: widgets/lock_in_frequency_counter.md
+  - Lockin Thd Analyzer: widgets/lockin_thd_analyzer.md
+  - Loopback Finder: widgets/loopback_finder.md
+  - Lufs Meter: widgets/lufs_meter.md
+  - Network Analyzer: widgets/network_analyzer.md
+  - Noise Profiler: widgets/noise_profiler.md
+  - Oscilloscope: widgets/oscilloscope.md
+  - Raw Time Series: widgets/raw_time_series.md
+  - Recorder Player: widgets/recorder_player.md
+  - Settings: widgets/settings.md
+  - Signal Generator: widgets/signal_generator.md
+  - Sound Level Meter: widgets/sound_level_meter.md
+  - Sound Quality Analyzer: widgets/sound_quality_analyzer.md
+  - Spectrogram: widgets/spectrogram.md
+  - Spectrum Analyzer: widgets/spectrum_analyzer.md
+  - Timecode Monitor: widgets/timecode_monitor.md
+  - Transient Analyzer: widgets/transient_analyzer.md
+  - Welcome: widgets/welcome.md
+- 測定レシピ:
+  - 概要: measurement_recipes/index.md
+  - ノイズ測定: measurement_recipes/noise_measurement.md
+- 付録: appendix.md
