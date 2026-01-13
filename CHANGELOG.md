@@ -1,5 +1,37 @@
 # Changelog
 
+## [v0.3.2] - 2026-01-13
+
+### Added
+
+* HRTF Player モジュールを追加（音源の読み込み、回転制御、多言語対応）
+* FFTManager をコアモジュールに追加し、FFT 計算の最適化と共通化を実装
+* Spectrum Analyzer に Ultra Large Window（超巨大ウィンドウサイズ）オプションを追加
+* BNIM Meter にクリックでのテスト信号再生機能とプロット・ドラッグ操作の改善を追加
+
+### Changed
+
+* 全モジュール（Network Analyzer, Distortion Analyzer, BNIM Meter, Spectrogram 等）の FFT 計算を FFTManager に移行し、UI のフリーズ防止とパフォーマンスを向上
+* 日本語翻訳のカタカナ末尾長音（「ー」）を標準ガイドラインに従い統一（アナライザー、カウンター等）
+* Frequency Counter から 1 秒以上の測定オプションを削除
+* FFT 最適化設定に巨大サイズ（Huge sizes）のオプションを追加
+* GitHub リリースワークフローを FFTManager および pyfftw のパッケージングに対応するよう更新
+
+### Fixed
+
+* FFT 最適化ダイアログが処理完了前に閉じて UI がロックされる不具合を修正
+* Spectrogram におけるオーディオバッファのオーバーフロー処理を改善
+* 多数のファイルにわたる Ruff 警告（Lint エラー）およびコードスタイルを修正
+
+### Localization
+
+* HRTF Player、BNIM Meter の新機能、およびメニュー項目の翻訳を全 9 言語に追加・更新
+
+### CI/CD
+
+* 依存関係に `pyfftw` を追加
+* Python 依存関係のアップデート (Dependabot)
+
 ## [v0.3.1] - 2026-01-06
 
 ### Added
