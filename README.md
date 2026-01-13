@@ -5,6 +5,8 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 **MeasureLab** は、これらのツールを1つの GUI アプリにまとめた形で提供します。Python と PyQt6 製で、高精度な信号生成・解析・測定を直感的に扱えます。
 
+本プロジェクトは、高価な測定機器を入手できないオーディオ研究家に向けた代替手段として、より多くの人に届くことを目指しています。
+
 ## Quick glance (English)
 
 - PyQt6 desktop app bundling 27+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, lock-in/FRA, network/impedance analyzers, oscilloscope, spectrogram, distortion/IMD tools, recorder/player, inverse filter, frequency counter, lock-in frequency counter, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
