@@ -4,6 +4,41 @@ site_author: Your Name
 theme:
   name: material
   language: ja
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  logo: icon:material/chart-bell-curve-cumulative
+  favicon: icon:material/chart-bell-curve-cumulative
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - tables
+  - attr_list
+
+extra_css:
+  - stylesheets/extra.css
 nav:
 - はじめに: index.md
 - クイックスタート: quickstart.md

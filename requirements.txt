@@ -10,3 +10,5 @@ PyWavelets
 inquirer
 netCDF4
 pyfftw
+mkdocs
+mkdocs-material
