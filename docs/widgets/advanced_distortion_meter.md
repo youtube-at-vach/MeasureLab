@@ -1,0 +1,10 @@
+# Advanced Distortion Meter
+
+## 概要
+(ここにAdvanced Distortion Meterの概要を記述してください)
+
+## 操作方法
+(ここに操作方法を記述してください)
+
+## 設定項目
+(ここに設定項目を記述してください)
