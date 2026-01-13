@@ -56,7 +56,7 @@ def create_basic_docs():
     create_if_missing(DOCS_DIR / "quickstart.md", "クイックスタート", "インストール方法や簡単な使い方を説明します。")
     create_if_missing(DOCS_DIR / "appendix.md", "付録", "用語集や参考文献など。")
     create_if_missing(DOCS_DIR / "measurement_recipes/noise_measurement.md", "ノイズ測定", "ノイズ測定の具体的な手順レシピです。") # Per user request example
-    
+
 
 def generate_mkdocs_yml(widget_files):
     # Prepare widget nav items
@@ -67,7 +67,7 @@ def generate_mkdocs_yml(widget_files):
         title = name.replace("_", " ").title()
         md_file = f"widgets/{name}.md"
         widget_nav.append({title: md_file})
-        
+
         # Create the stub file for this widget
         create_markdown_stub(f"{name}.md", title)
 

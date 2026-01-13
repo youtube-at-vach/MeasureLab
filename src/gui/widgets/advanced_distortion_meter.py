@@ -25,15 +25,28 @@ from src.core.fft_manager import fft_manager
 
 
 class AdvancedDistortionMeter(MeasurementModule):
+    # State constants
+    STATE_IDLE = 0
+    STATE_MEASURING = 1
+    STATE_DONE = 2
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.buffer_size = 32768 # High resolution
-        self.input_data = np.zeros(self.buffer_size)
+        self.buffer_size = 65536  # High resolution (~0.73 Hz per bin at 48k)
+
+        # Buffers
+        self.recording_buffer = np.zeros(self.buffer_size)
+        self.output_buffer = np.zeros(self.buffer_size)
+
+        # State
+        self.state = self.STATE_IDLE
+        self.write_index = 0
+        self.read_index = 0
 
         # Generator Settings
         self.output_enabled = True
-        self.gen_amplitude = 0.5
+        self._gen_amplitude = 0.5
         self.output_channel = 0
         self.input_channel = 0
 
@@ -42,15 +55,11 @@ class AdvancedDistortionMeter(MeasurementModule):
         self.mim_min_freq = 20.0
         self.mim_max_freq = 20000.0
         self._mim_freqs = None
-        self._mim_phases = None
-        self._mim_phase_state = None
 
         # PIM Settings
         self.pim_f1 = 1800.0
         self.pim_f2 = 2100.0
         self.pim_amp_ratio = 1.0 # Equal amplitude
-        self._pim_phase_f1 = 0.0
-        self._pim_phase_f2 = 0.0
 
         # Mode
         self.mode = 'MIM' # 'MIM', 'SPDR', 'PIM'
@@ -69,6 +78,9 @@ class AdvancedDistortionMeter(MeasurementModule):
         elif value > 10.0:
             value = 10.0
         self._gen_amplitude = value
+        # Regenerate signal if running
+        if self.is_running:
+            self._update_output_buffer()
 
     @property
     def name(self) -> str:
@@ -89,57 +101,71 @@ class AdvancedDistortionMeter(MeasurementModule):
             return
 
         self.is_running = True
-        self.input_data = np.zeros(self.buffer_size)
+        self.recording_buffer = np.zeros(self.buffer_size)
         self.current_result = None
 
-        sample_rate = self.audio_engine.sample_rate
+        # Prepare output signal
+        self._update_output_buffer()
 
-        # Reset generator state
-        self._mim_freqs = None # Trigger regen
-        self._pim_phase_f1 = 0.0
-        self._pim_phase_f2 = 0.0
+        # Reset state
+        self.write_index = 0
+        self.read_index = 0
+        self.state = self.STATE_MEASURING
 
         def callback(indata, outdata, frames, time, status):
             if status:
                 print(status)
 
-            # Generate Signal
-            outdata.fill(0)
+            # Output
             if self.output_enabled:
-                if self.mode == 'MIM':
-                    sig = self._generate_mim(frames, sample_rate)
-                elif self.mode == 'PIM':
-                    sig = self._generate_pim(frames, sample_rate)
-                elif self.mode == 'SPDR':
-                    # SPDR typically uses a single pure tone
-                    sig = self._generate_sine(frames, sample_rate)
+                # Read from cyclic buffer
+                # Handle wrapping
+                remain = len(self.output_buffer) - self.read_index
+                if remain >= frames:
+                    self.output_buffer_chunk = self.output_buffer[self.read_index : self.read_index + frames]
+                    self.read_index += frames
                 else:
-                    sig = np.zeros(frames)
+                    # Wrap around
+                    part1 = self.output_buffer[self.read_index:]
+                    part2 = self.output_buffer[:frames - remain]
+                    self.output_buffer_chunk = np.concatenate((part1, part2))
+                    self.read_index = frames - remain
 
+                # Assign to channels
+                sig = self.output_buffer_chunk
+                outdata.fill(0)
                 if self.output_channel == 0:
                     outdata[:, 0] = sig
                 elif self.output_channel == 1:
                     if outdata.shape[1] > 1:
                         outdata[:, 1] = sig
                 elif self.output_channel == 2:
-                    # Stereo: mirror signal to both channels when available
                     outdata[:, 0] = sig
                     if outdata.shape[1] > 1:
                         outdata[:, 1] = sig
-
-            # Capture Input
-            capture_ch = self.input_channel
-            if indata.shape[1] > capture_ch:
-                new_data = indata[:, capture_ch]
             else:
-                new_data = indata[:, 0]
+                outdata.fill(0)
 
-            # Ring buffer
-            if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
-            else:
-                self.input_data = np.roll(self.input_data, -len(new_data))
-                self.input_data[-len(new_data):] = new_data
+            # Input (Capture State Machine)
+            if self.state == self.STATE_MEASURING:
+                capture_ch = self.input_channel
+                if indata.shape[1] > capture_ch:
+                    new_data = indata[:, capture_ch]
+                else:
+                    new_data = indata[:, 0]
+
+                # Write to buffer
+                space = self.buffer_size - self.write_index
+                if space >= frames:
+                    self.recording_buffer[self.write_index : self.write_index + frames] = new_data
+                    self.write_index += frames
+                else:
+                    # Fill remainder and stop
+                    self.recording_buffer[self.write_index:] = new_data[:space]
+                    self.write_index = self.buffer_size
+                    self.state = self.STATE_DONE
+
+            # If DONE, we just drop input samples until reset_measurement is called
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
@@ -149,65 +175,81 @@ class AdvancedDistortionMeter(MeasurementModule):
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
             self.is_running = False
+            self.state = self.STATE_IDLE
+
+    def reset_measurement(self):
+        """Called by UI after processing result to start next capture cycle"""
+        if not self.is_running:
+            return
+        self.write_index = 0
+        self.state = self.STATE_MEASURING
+
+    def _update_output_buffer(self):
+        sr = self.audio_engine.sample_rate
+        if self.mode == 'MIM':
+            self.output_buffer = self._generate_mim(self.buffer_size, sr)
+        elif self.mode == 'PIM':
+            self.output_buffer = self._generate_pim(self.buffer_size, sr)
+        elif self.mode == 'SPDR':
+            self.output_buffer = self._generate_sine(self.buffer_size, sr)
+        else:
+            self.output_buffer = np.zeros(self.buffer_size)
 
     def _generate_mim(self, frames, sample_rate):
-        # Initialize frequencies if needed
-        if self._mim_freqs is None or len(self._mim_freqs) != self.mim_tone_count:
-            self._mim_freqs = np.logspace(np.log10(self.mim_min_freq), np.log10(self.mim_max_freq), self.mim_tone_count)
-            self._mim_phase_state = np.random.uniform(0, 2*np.pi, self.mim_tone_count)
+        # Coherent Multitone Generation
+        # 1. Determine Bin Width
+        bin_width = sample_rate / frames
 
-        # Amplitude scaling: Peak should not exceed gen_amplitude
-        # Crest factor approx 12dB (4x).
-        # RMS per tone = TotalRMS / sqrt(N)
-        # Let's be safe and scale by N (very conservative) or sqrt(N) with headroom.
-        # Using sqrt(N) * 4 for peak safety?
-        # Let's use 1/sqrt(N) scaling for RMS, but keep peak check.
-        # Simple: Amp per tone = gen_amplitude / sqrt(N)
+        # 2. Setup Base Frequencies
+        # Use log spacing
+        raw_freqs = np.logspace(np.log10(self.mim_min_freq), np.log10(self.mim_max_freq), self.mim_tone_count)
+
+        # 3. Snap to nearest bins
+        self._mim_freqs = np.round(raw_freqs / bin_width) * bin_width
+
+        # 4. Generate Signal
+        # Random phase optimized for crest factor? 
+        # Newman phases: phi_n = pi * n^2 / N (quadratic phase) helps Crest Factor.
+        # But random is also okay. Let's stick to random but fixed for the buffer.
+        phases = np.random.uniform(0, 2*np.pi, self.mim_tone_count)
 
         amp_per_tone = self.gen_amplitude / np.sqrt(self.mim_tone_count)
 
         signal = np.zeros(frames)
-        t_idx = np.arange(frames)
+        t = np.arange(frames) / sample_rate
 
         for i, f in enumerate(self._mim_freqs):
-            inc = 2 * np.pi * f / sample_rate
-            phases = self._mim_phase_state[i] + t_idx * inc
-            signal += amp_per_tone * np.sin(phases)
-            self._mim_phase_state[i] = (self._mim_phase_state[i] + frames * inc) % (2 * np.pi)
+            # Because f is exactly k * (sample_rate / frames), 
+            # f * t = k/frames * n.
+            # 2*pi*f*t = 2*pi*k*n/frames.
+            # At n=frames, 2*pi*k -> 0 mod 2pi. Perfectly periodic.
+            signal += amp_per_tone * np.sin(2 * np.pi * f * t + phases[i])
 
         return signal
 
     def _generate_pim(self, frames, sample_rate):
-        # Two tones f1, f2
-        amp = self.gen_amplitude / 2 # Split power
+        # Snap to bins
+        bin_width = sample_rate / frames
+        f1 = np.round(self.pim_f1 / bin_width) * bin_width
+        f2 = np.round(self.pim_f2 / bin_width) * bin_width
 
-        inc1 = 2 * np.pi * self.pim_f1 / sample_rate
-        inc2 = 2 * np.pi * self.pim_f2 / sample_rate
+        # Update displayed freqs matches? 
+        # We might want to update the UI variables or keep them as "Requested".
+        # For calculation we must use snapped values.
+        # Let's temporarily store snapped values if needed, but AudioCalc uses passed args.
+        # Actually AudioCalc uses passed args. We should probably pass the actual snapped freq.
+        # But _generate_pim doesn't update self.pim_f1.
+        # We'll rely on the search window of AudioCalc (good enough).
 
-        t = np.arange(frames)
-        p1 = self._pim_phase_f1 + t * inc1
-        p2 = self._pim_phase_f2 + t * inc2
-
-        signal = amp * np.sin(p1) + amp * np.sin(p2)
-
-        self._pim_phase_f1 = (self._pim_phase_f1 + frames * inc1) % (2 * np.pi)
-        self._pim_phase_f2 = (self._pim_phase_f2 + frames * inc2) % (2 * np.pi)
-
-        return signal
+        amp = self.gen_amplitude / 2
+        t = np.arange(frames) / sample_rate
+        return amp * np.sin(2*np.pi * f1 * t) + amp * np.sin(2*np.pi * f2 * t)
 
     def _generate_sine(self, frames, sample_rate):
-        # For SPDR, use 1kHz default or configurable?
-        # Let's use 1kHz for now, or add a setting later.
-        f = 1000.0
-        if not hasattr(self, '_spdr_phase'):
-            self._spdr_phase = 0.0
-
-        inc = 2 * np.pi * f / sample_rate
-        t = np.arange(frames)
-        p = self._spdr_phase + t * inc
-        signal = self.gen_amplitude * np.sin(p)
-        self._spdr_phase = (self._spdr_phase + frames * inc) % (2 * np.pi)
-        return signal
+        bin_width = sample_rate / frames
+        f = np.round(1000.0 / bin_width) * bin_width
+        t = np.arange(frames) / sample_rate
+        return self.gen_amplitude * np.sin(2*np.pi * f * t)
 
 class AdvancedDistortionMeterWidget(QWidget):
     def __init__(self, module: AdvancedDistortionMeter):
@@ -246,19 +288,19 @@ class AdvancedDistortionMeterWidget(QWidget):
         self.mim_count_spin = QSpinBox()
         self.mim_count_spin.setRange(3, 100)
         self.mim_count_spin.setValue(self.module.mim_tone_count)
-        self.mim_count_spin.valueChanged.connect(lambda v: setattr(self.module, 'mim_tone_count', v))
+        self.mim_count_spin.valueChanged.connect(lambda v: self.set_param('mim_tone_count', v))
         mim_layout.addRow(tr("Tone Count:"), self.mim_count_spin)
 
         self.mim_min_spin = QDoubleSpinBox()
         self.mim_min_spin.setRange(10, 20000)
         self.mim_min_spin.setValue(self.module.mim_min_freq)
-        self.mim_min_spin.valueChanged.connect(lambda v: setattr(self.module, 'mim_min_freq', v))
+        self.mim_min_spin.valueChanged.connect(lambda v: self.set_param('mim_min_freq', v))
         mim_layout.addRow(tr("Min Freq:"), self.mim_min_spin)
 
         self.mim_max_spin = QDoubleSpinBox()
         self.mim_max_spin.setRange(10, 24000)
         self.mim_max_spin.setValue(self.module.mim_max_freq)
-        self.mim_max_spin.valueChanged.connect(lambda v: setattr(self.module, 'mim_max_freq', v))
+        self.mim_max_spin.valueChanged.connect(lambda v: self.set_param('mim_max_freq', v))
         mim_layout.addRow(tr("Max Freq:"), self.mim_max_spin)
 
         mim_widget.setLayout(mim_layout)
@@ -278,13 +320,13 @@ class AdvancedDistortionMeterWidget(QWidget):
         self.pim_f1_spin = QDoubleSpinBox()
         self.pim_f1_spin.setRange(10, 20000)
         self.pim_f1_spin.setValue(self.module.pim_f1)
-        self.pim_f1_spin.valueChanged.connect(lambda v: setattr(self.module, 'pim_f1', v))
+        self.pim_f1_spin.valueChanged.connect(lambda v: self.set_param('pim_f1', v))
         pim_layout.addRow(tr("Freq 1 (Hz):"), self.pim_f1_spin)
 
         self.pim_f2_spin = QDoubleSpinBox()
         self.pim_f2_spin.setRange(10, 20000)
         self.pim_f2_spin.setValue(self.module.pim_f2)
-        self.pim_f2_spin.valueChanged.connect(lambda v: setattr(self.module, 'pim_f2', v))
+        self.pim_f2_spin.valueChanged.connect(lambda v: self.set_param('pim_f2', v))
         pim_layout.addRow(tr("Freq 2 (Hz):"), self.pim_f2_spin)
 
         pim_widget.setLayout(pim_layout)
@@ -376,6 +418,11 @@ class AdvancedDistortionMeterWidget(QWidget):
         self.in_ch_combo.setCurrentIndex(self.module.input_channel)
         self.out_ch_combo.setCurrentIndex(self.module.output_channel)
 
+    def set_param(self, name, value):
+        setattr(self.module, name, value)
+        if self.module.is_running:
+            self.module._update_output_buffer()
+
     def on_mode_changed(self, index):
         if index == 0: # MIM
             self.module.mode = 'MIM'
@@ -387,9 +434,13 @@ class AdvancedDistortionMeterWidget(QWidget):
             self.module.mode = 'PIM'
             self.settings_stack.setCurrentIndex(2)
 
+        if self.module.is_running:
+            self.module._update_output_buffer()
+
         # Reset results
         self.main_metric_label.setText("--")
         self.sub_metric_label.setText("--")
+        self.module.reset_measurement()
 
     def on_output_channel_changed(self, index):
         self.module.output_channel = index
@@ -455,16 +506,22 @@ class AdvancedDistortionMeterWidget(QWidget):
         if not self.module.is_running:
             return
 
-        data = self.module.input_data
+        # Check if measurement batch is complete
+        if self.module.state != self.module.STATE_DONE:
+            return
+
+        data = self.module.recording_buffer
         sr = self.module.audio_engine.sample_rate
 
         # Perform FFT
-        window = np.blackman(len(data))
-        fft_res = fft_manager.rfft(data * window)
+        # Coherent sampling allows Rectangular window (no windowing) for max resolution.
+        # Ensure 'fft_manager' is used.
+        fft_res = fft_manager.rfft(data)
         freqs = fft_manager.rfftfreq(len(data), 1/sr)
 
-        # Magnitude in dB
-        mag = np.abs(fft_res) * 2 / np.sum(window)
+        # Magnitude in V (Linear)
+        # Normalize: |FFT| * 2 / N
+        mag = np.abs(fft_res) * 2 / len(data)
         mag_db = 20 * np.log10(mag + 1e-12)
 
         # Update Plot
@@ -472,14 +529,16 @@ class AdvancedDistortionMeterWidget(QWidget):
 
         # Calculate Metrics
         if self.module.mode == 'MIM':
-            # Need expected tone freqs
+            # Need expected tone freqs (snapped)
             if self.module._mim_freqs is not None:
                 res = AudioCalc.calculate_multitone_tdn(mag, freqs, self.module._mim_freqs)
                 self.main_metric_label.setText(f"TD+N: {res['tdn_db']:.1f} dB")
                 self.sub_metric_label.setText(f"{res['tdn']:.4f} %")
 
         elif self.module.mode == 'SPDR':
-            # Assume 1kHz fundamental for now
+            # Assume 1kHz fundamental (snapped check?)
+            # Since we didn't store the exact snapped freq on module for SPDR, 
+            # AudioCalc search will find it near 1000.
             res = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
             self.main_metric_label.setText(f"SPDR: {res['spdr_db']:.1f} dB")
             self.sub_metric_label.setText(f"Max Spur: {res['max_spur_freq']:.0f} Hz ({20*np.log10(res['max_spur_amp']+1e-12):.1f} dB)")
@@ -489,3 +548,6 @@ class AdvancedDistortionMeterWidget(QWidget):
             self.main_metric_label.setText(f"PIM: {res['pim_db']:.1f} dBc")
             products_str = ", ".join([f"{p['order']}th" for p in res['products']])
             self.sub_metric_label.setText(f"Orders: {products_str}")
+
+        # Restart Measurement for next batch
+        self.module.reset_measurement()
