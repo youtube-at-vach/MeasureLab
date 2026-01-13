@@ -37,15 +37,20 @@ class FFTManager:
         if HAS_PYFFTW:
              pyfftw.config.NUM_THREADS = self.threads
 
-        # Store wisdom in project root for portability
-        root_dir = Path(__file__).resolve().parent.parent.parent
-        self.wisdom_dir = root_dir / 'wisdom'
+        # Store wisdom in XDG compliant user data directory
+        # This fixes the issue where wisdom cannot be saved in read-only AppImage environments
+        xdg_data_home = os.environ.get('XDG_DATA_HOME')
+        if not xdg_data_home:
+            xdg_data_home = os.path.join(os.path.expanduser('~'), '.local', 'share')
+        
+        self.wisdom_dir = Path(xdg_data_home) / 'MeasureLab' / 'wisdom'
         self.wisdom_path = self.wisdom_dir / 'pyfftw_wisdom'
-        # Create directory if it doesn't exist (done in save, but good to ensure for load check logic if we expanded it)
+        
+        # Create directory if it doesn't exist
         try:
             self.wisdom_dir.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to create wisdom directory: {e}")
 
         self.load_wisdom()
 
