@@ -7,7 +7,7 @@
 * HRTF Player モジュールを追加（音源の読み込み、回転制御、多言語対応）
 * FFTManager をコアモジュールに追加し、FFT 計算の最適化と共通化を実装
 * Spectrum Analyzer に Ultra Large Window（超巨大ウィンドウサイズ）オプションを追加
-* BNIM Meter にクリックでのテスト信号再生機能とプロット・ドラッグ操作の改善を追加
+* BNIM Meter にクリックでのテスト信号再生機能とプロット・ドラッグ操作の改善を追加　
 
 ### Changed
 
