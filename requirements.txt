@@ -12,3 +12,4 @@ netCDF4
 pyfftw
 mkdocs
 mkdocs-material
+mkdocs-with-pdf

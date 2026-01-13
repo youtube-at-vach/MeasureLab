@@ -1,6 +1,6 @@
-site_name: Measurement Tool Manual
+site_name: MeasureLab 取扱説明書
 site_description: 測定ツールの操作マニュアル
-site_author: Your Name
+site_author: ''
 theme:
   name: material
   language: ja
@@ -36,6 +36,14 @@ markdown_extensions:
   - pymdownx.snippets
   - tables
   - attr_list
+
+plugins:
+  - search
+  - with-pdf:
+      author: ''
+      copyright: Unlicense
+      cover_subtitle: ''
+      output_path: pdf/manual.pdf
 
 extra_css:
   - stylesheets/extra.css
