@@ -23,7 +23,7 @@ jobs:
       - name: Install system dependencies for WeasyPrint
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0
+          sudo apt-get install -y python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
 
       - name: Install MkDocs and plugins
         run: |
