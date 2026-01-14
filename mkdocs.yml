@@ -46,6 +46,7 @@ extra_css:
 nav:
 - はじめに: index.md
 - クイックスタート: quickstart.md
+- 用途別ガイド: widget_guide.md
 - ウィジット:
   - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
   - Bnim Meter: widgets/bnim_meter.md
