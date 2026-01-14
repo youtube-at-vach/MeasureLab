@@ -985,5 +985,11 @@
     "Optimizes sizes up to 4M. Can take several minutes.": "优化最大4M的尺寸。可能需要几分钟。",
     "Optimizing FFT...": "正在优化FFT...",
     "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "预先计算FFT计划以获得更快的性能。这可能需要几秒钟。包括详尽的优化（最大4M）。",
-    "Regenerate Optimization": "重新生成优化"
+    "Regenerate Optimization": "重新生成优化",
+    "Buffer Optimization:": "缓冲区优化:",
+    "FAST": "快速",
+    "MINIMUM": "最小",
+    "STABLE": "稳定",
+    "LOW_FREQ": "低频优先",
+    "ULTRA": "极致"
 }
