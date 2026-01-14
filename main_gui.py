@@ -177,6 +177,11 @@ def main():
     app.processEvents()
     QTimer.singleShot(0, lambda: splash.finish(window))
 
+    # Self-test mode: exit automatically after 5 seconds to verify startup.
+    if "--self-test" in sys.argv:
+        print("[Self-Test] Application started successfully. Exiting in 5 seconds...")
+        QTimer.singleShot(5000, app.quit)
+
     sys.exit(app.exec())
 
 if __name__ == "__main__":

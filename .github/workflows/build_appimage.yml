@@ -48,6 +48,16 @@ jobs:
         chmod +x build_appimage.sh
         ./build_appimage.sh
 
+    - name: Verify AppImage (GUI Self-Test)
+      run: |
+        sudo apt-get install -y xvfb
+        # Find the generated AppImage
+        APPIMAGE=$(find . -name "MeasureLab-*.AppImage" | head -n 1)
+        chmod +x "$APPIMAGE"
+        echo "Testing $APPIMAGE with --self-test..."
+        # Run with xvfb and --appimage-extract-and-run to avoid FUSE issues in CI
+        xvfb-run -a "$APPIMAGE" --appimage-extract-and-run --self-test
+
     - name: Upload AppImage
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
