@@ -42,10 +42,10 @@ class FFTManager:
         xdg_data_home = os.environ.get('XDG_DATA_HOME')
         if not xdg_data_home:
             xdg_data_home = os.path.join(os.path.expanduser('~'), '.local', 'share')
-        
+
         self.wisdom_dir = Path(xdg_data_home) / 'MeasureLab' / 'wisdom'
         self.wisdom_path = self.wisdom_dir / 'pyfftw_wisdom'
-        
+
         # Create directory if it doesn't exist
         try:
             self.wisdom_dir.mkdir(parents=True, exist_ok=True)

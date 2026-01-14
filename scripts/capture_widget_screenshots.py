@@ -27,7 +27,7 @@ class MockCalibrationManager:
 
     def get_input_offset_db(self):
         return 0.0
-        
+
     def get_spl_offset_db(self):
         return 0.0
 
@@ -44,7 +44,7 @@ class MockAudioEngine:
 
     def unregister_callback(self, id):
         pass
-        
+
     def get_status(self):
         return {
             "active": False,
@@ -59,7 +59,7 @@ def setup_app():
     # Set QPA to offscreen if not already set, for headless environments
     if "QT_QPA_PLATFORM" not in os.environ:
          os.environ["QT_QPA_PLATFORM"] = "offscreen"
-    
+
     app = QApplication.instance()
     if not app:
         app = QApplication(sys.argv)
@@ -75,22 +75,22 @@ def find_widget_pair(module):
     """
     module_class = None
     widget_class = None
-    
+
     # 1. Find Module
     for name, obj in inspect.getmembers(module):
         if inspect.isclass(obj) and issubclass(obj, MeasurementModule) and obj is not MeasurementModule:
             module_class = obj
             break
-            
+
     if not module_class:
         return None, None
-        
+
     # 2. Find Widget
     # First pass: Look for 'NameWidget' matching 'Name' of module
     expected_widget_name = module_class.__name__ + "Widget"
     if hasattr(module, expected_widget_name):
         widget_class = getattr(module, expected_widget_name)
-    
+
     # Second pass: Look for any widget that seems to be the main interface
     if not widget_class:
         for name, obj in inspect.getmembers(module):
@@ -98,55 +98,55 @@ def find_widget_pair(module):
                 # Skip common utility widgets if they exist (unlikely in these files but good practice)
                 if name.startswith("Q"): continue 
                 if obj is module_class: continue # Just in case
-                
+
                 # Check init signature for 'module' arg?
                 sig = inspect.signature(obj.__init__)
                 if 'module' in sig.parameters:
                     widget_class = obj
                     break
-                    
+
     return module_class, widget_class
 
 def capture_widgets():
     app = setup_app()
-    
+
     widgets_dir = os.path.join(PROJECT_ROOT, 'src', 'gui', 'widgets')
     output_dir = os.path.join(PROJECT_ROOT, 'docs', 'assets', 'widgets')
     os.makedirs(output_dir, exist_ok=True)
-    
+
     mock_engine = MockAudioEngine()
-    
+
     success_count = 0
     fail_count = 0
-    
+
     # Iterate over python files
     for filename in sorted(os.listdir(widgets_dir)):
         if not filename.endswith('.py') or filename == '__init__.py':
             continue
-            
+
         module_name = filename[:-3]
         file_path = os.path.join(widgets_dir, filename)
-        
+
         print(f"Processing {module_name}...")
-        
+
         try:
             # Dynamic import
             spec = importlib.util.spec_from_file_location(f"src.gui.widgets.{module_name}", file_path)
             mod = importlib.util.module_from_spec(spec)
             sys.modules[f"src.gui.widgets.{module_name}"] = mod
             spec.loader.exec_module(mod)
-            
+
             # Find classes
             module_cls, widget_cls = find_widget_pair(mod)
-            
+
             if not module_cls or not widget_cls:
                 print(f"  -> Skipped: Could not identify Module/Widget pair (Mod: {module_cls}, Wid: {widget_cls})")
                 continue
-                
+
             # Instantiate
             print(f"  -> Found {module_cls.__name__} / {widget_cls.__name__}")
             measure_module = module_cls(audio_engine=mock_engine)
-            
+
             # Some widgets might expect 'parent' as second arg, or just module
             # We assume standard signature `__init__(self, module, parent=None)` or similar
             try:
@@ -155,36 +155,36 @@ def capture_widgets():
                 # Try positional if keyword fails (unlikely given code style but possible)
                 print(f"  -> Init failed with keyword, trying positional: {e}")
                 widget = widget_cls(measure_module)
-            
+
             # Setup for screenshot
             widget.setWindowTitle(f"Screenshot: {module_name}")
             # Ensure decent size - some widgets conform to content, others might be small
             # setting a fixed width is good for documentation consistency
             widget.resize(1000, 600) 
-            
+
             # If the widget is very tall, we might want to resize strictly?
             # Let's trust sizeHint or resize to a sensible default.
-            
+
             widget.show()
             app.processEvents()
-            
+
             # Force layout update
             widget.updateGeometry()
             # A little delay/loop to ensuring rendering
             for _ in range(5):
                 app.processEvents()
-            
+
             # Capture
             pixmap = widget.grab()
-            
+
             out_file = os.path.join(output_dir, f"{module_name}.png")
             pixmap.save(out_file)
             print(f"  -> Saved to {out_file}")
-            
+
             widget.close()
             widget.deleteLater()
             success_count += 1
-            
+
         except Exception as e:
             print(f"  -> ERROR: {e}")
             import traceback
