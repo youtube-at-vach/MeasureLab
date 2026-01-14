@@ -1013,7 +1013,7 @@ class SettingsWidget(QWidget):
 
         # Set default to STABLE if matches, otherwise Custom
         self._sync_buffer_level_from_size(self.audio_engine.block_size, self.audio_engine.sample_rate)
-        
+
         self.buffer_level_combo.currentIndexChanged.connect(self.on_buffer_level_changed)
         conf_layout.addRow(tr("Buffer Optimization:"), self.buffer_level_combo)
 
@@ -1380,19 +1380,19 @@ class SettingsWidget(QWidget):
 
         sr = self.audio_engine.sample_rate
         target_bs = self._calculate_buffer_size(sr, level)
-        
+
         # update bs_combo, which will trigger on_bs_changed and save config
         self.bs_combo.blockSignals(True)
         self.bs_combo.setCurrentText(str(target_bs))
         self.bs_combo.blockSignals(False)
-        
+
         # Manual trigger of logic in on_bs_changed without the feedback loop
         self.on_bs_changed(str(target_bs))
 
     def _calculate_buffer_size(self, sr, level):
         if level not in LEVELS_192K:
             return 1024
-        
+
         base = LEVELS_192K[level]
         scale = float(sr) / 192000.0
         n_raw = base * scale
@@ -1406,7 +1406,7 @@ class SettingsWidget(QWidget):
             if expected == size:
                 match = lvl
                 break
-        
+
         self.buffer_level_combo.blockSignals(True)
         idx = self.buffer_level_combo.findData(match)
         if idx >= 0:
