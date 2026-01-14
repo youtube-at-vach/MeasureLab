@@ -1,7 +1,24 @@
 # 用途別ガイド (Guide by Purpose)
 
 MeasureLab に搭載されている多数のウィジットを、用途ごとに分類して紹介します。
-各ウィジットの詳細な使い方は、リンク先の説明書（マニュアル）をご覧ください。
+
+---
+
+## 🔍 クイック検索ガイド (Quick Search Guide)
+
+「やりたいこと」から最適なツールをすぐに見つけるための早見表です。
+
+| あなたがやりたいこと | おすすめのウィジット |
+| :--- | :--- |
+| **まず音を出したい / 信号源がほしい** | [Signal Generator](widgets/signal_generator.md) |
+| **周波数成分（スペクトル）を見たい** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
+| **波形の形をそのまま見たい** | [Oscilloscope](widgets/oscilloscope.md) |
+| **アンプや部品の歪み(THD)を測りたい** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
+| **アンプ等の周波数特性(F特)を測りたい** | [Network Analyzer](widgets/network_analyzer.md) |
+| **スピーカーのインピーダンスを測りたい** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
+| **音の大きさ(LUFS)を管理したい** | [LUFS Meter](widgets/lufs_meter.md) |
+| **周囲の騒音レベル(SPL)を知りたい** | [Sound Level Meter](widgets/sound_level_meter.md) |
+| **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
 
 ---
 
