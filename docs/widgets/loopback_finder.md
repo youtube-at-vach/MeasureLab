@@ -1,5 +1,7 @@
 # Loopback Finder (ループバック経路探索)
 
+![Loopback Finder](../assets/widgets/loopback_finder.png)
+
 ## 概要
 オーディオインターフェース内で、どの「出力チャンネル」がどの「入力チャンネル」に繋がっているか（ループバックしているか）を自動的に調べるツールです。
 

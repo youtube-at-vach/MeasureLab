@@ -1,5 +1,7 @@
 # Network Analyzer
 
+![Network Analyzer](../assets/widgets/network_analyzer.png)
+
 ## 概要
 Network Analyzer（ネットワークアナライザ）は、機器やシステムの周波数特性（振幅特性、位相特性）を測定するためのツールです。正弦波を少しずつ変化させながら測定する「Stepped Sine」方式と、一瞬で全帯域を測定する「Fast Chirp」方式の2つのモードを備えています。
 

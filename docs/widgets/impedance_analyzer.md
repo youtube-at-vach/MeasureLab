@@ -1,5 +1,7 @@
 # Impedance Analyzer (LCRメーター)
 
+![Impedance Analyzer](../assets/widgets/impedance_analyzer.png)
+
 ## 概要
 Impedance Analyzer (インピーダンスアナライザ) は、スピーカーや電子部品などの**「インピーダンス ($Z$)」**を精密に測定するツールです。
 

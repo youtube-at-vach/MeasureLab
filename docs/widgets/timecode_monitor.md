@@ -1,5 +1,7 @@
 # Timecode Monitor
 
+![Timecode Monitor](../assets/widgets/timecode_monitor.png)
+
 ## 概要
 オーディオ信号として記録されたタイムコード (LTC: Linear Timecode) を読み取り、表示するツールです。
 映像と音声の同期確認や、タイムコードの生成（ジェネレーター）としても使用できます。

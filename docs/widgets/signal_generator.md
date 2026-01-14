@@ -1,5 +1,7 @@
 # Signal Generator
 
+![Signal Generator](../assets/widgets/signal_generator.png)
+
 ## 概要
 Signal Generator（シグナルジェネレータ）は、正弦波、矩形波、ノイズ、スイープ信号など、オーディオ測定に必要な様々なテスト信号を生成するツールです。左右のチャンネル（L/R）を独立して制御したり、リンクさせて同期操作したりすることができます。
 

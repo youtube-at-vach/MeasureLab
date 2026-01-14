@@ -1,5 +1,7 @@
 # Sound Quality Analyzer (音質評価・サイコアコースティック分析)
 
+![Sound Quality Analyzer](../assets/widgets/sound_quality_analyzer.png)
+
 ## 概要
 人間の耳で感じた「音の聞こえ方（主観量）」を数値化するための分析ツールです。単なる電圧や音圧の測定ではなく、心理音響学（Psychoacoustics）に基づいた指標を用いて、音の心地よさや不快さを客観的に評価します。
 

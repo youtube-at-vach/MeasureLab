@@ -1,5 +1,7 @@
 # Lock-in Frequency Counter (精密周波数・位相偏差測定)
 
+![Lock In Frequency Counter](../assets/widgets/lock_in_frequency_counter.png)
+
 ## 概要
 通常の周波数カウンターが「信号の揺れ」を大まかに捉えるのに対し、Lock-in Frequency Counter は、基準となる信号（NCO: 内部数値制御発振器）と入力信号を比較し、**その「ズレ」を極めて高い分解能で可視化**するツールです。
 

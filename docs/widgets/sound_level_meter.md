@@ -1,5 +1,7 @@
 # Sound Level Meter
 
+![Sound Level Meter](../assets/widgets/sound_level_meter.png)
+
 ## 概要
 Sound Level Meter（騒音計）は、環境騒音やオーディオ機器の音圧レベル（SPL）を測定するための精密なツールです。一般的な騒音計の規格（IEC 61672など）に準拠した重み付けフィルタや時間応答特性を備えています。
 

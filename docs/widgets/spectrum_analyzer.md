@@ -1,5 +1,7 @@
 # Spectrum Analyzer
 
+![Spectrum Analyzer](../assets/widgets/spectrum_analyzer.png)
+
 ## 概要
 リアルタイムでオーディオ信号の周波数成分を分析表示するツールです。  
 マイク入力やライン入力された音が、どの周波数帯域でどれくらいの大きさなのかを視覚的に確認できます。  

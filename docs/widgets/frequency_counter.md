@@ -1,5 +1,7 @@
 # Frequency Counter
 
+![Frequency Counter](../assets/widgets/frequency_counter.png)
+
 ## 概要
 入力信号の周波数を高精度に測定・表示するツールです。
 単に「今の周波数」を表示するだけでなく、周波数のふらつき（ジッター）や、時間経過による変動（ドリフト）を詳細に解析できます。

@@ -1,5 +1,7 @@
 # Oscilloscope
 
+![Oscilloscope](../assets/widgets/oscilloscope.png)
+
 ## 概要
 Oscilloscope（オシロスコープ）は、入力信号の波形をリアルタイムで時間軸上に表示する測定ツールです。信号の形状、振幅、周期などを視覚的に確認するために使用します。トリガー機能や自動測定機能、演算機能なども備えています。
 

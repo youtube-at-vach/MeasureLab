@@ -1,5 +1,7 @@
 # Distortion Analyzer
 
+![Distortion Analyzer](../assets/widgets/distortion_analyzer.png)
+
 ## 概要
 オーディオ機器の「性能」を数値で測るための最も基本的なツールです。
 アンプやDACなどが、元の信号をどれくらい正確に出力できているか（どれくらい歪んでしまっているか）を測定します。

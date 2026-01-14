@@ -1,5 +1,7 @@
 # Transient Analyzer (過渡再応答・ウェーブレット分析)
 
+![Transient Analyzer](../assets/widgets/transient_analyzer.png)
+
 ## 概要
 一瞬の衝撃音や、時々刻々と周波数が変化する「過渡的な音」を詳しく分析するためのツールです。
 通常の FFT 分析では捉えきれない「いつ、どの高さの音が鳴ったか」という時間的な解像度を維持したまま、**ウェーブレット変換 (CWT)** を用いて可視化します。

@@ -1,5 +1,7 @@
 # Recorder & Player
 
+![Recorder Player](../assets/widgets/recorder_player.png)
+
 ## 概要
 シンプルなオーディオ録音・再生ツールです。
 測定用のテスト信号（スイープ音やノイズなど）を再生して回路に入力したり、測定結果としての出力を録音してファイルに保存したりすることができます。

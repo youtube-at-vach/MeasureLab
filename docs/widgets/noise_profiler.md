@@ -1,5 +1,7 @@
 # Noise Profiler
 
+![Noise Profiler](../assets/widgets/noise_profiler.png)
+
 ## 概要
 入力信号に含まれる「ノイズ」の成分を詳細に分析・特性化するツールです。
 単にスペクトラムを表示するだけでなく、ノイズを以下の要素に分解して定量化します。

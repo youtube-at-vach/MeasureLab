@@ -1,5 +1,7 @@
 # Lock-in THD Analyzer (THD+N 測定)
 
+![Lockin Thd Analyzer](../assets/widgets/lockin_thd_analyzer.png)
+
 ## 概要
 Lock-in THD Analyzer は、特定の周波数の基本波成分だけを極めて高精度に「ロックイン検出」して除去し、残った**「歪み率 (THD+N)」** を測定するためのウィジットです。
 

@@ -1,5 +1,7 @@
 # Lock-in Amplifier (ロックインアンプ)
 
+![Lock In Amplifier](../assets/widgets/lock_in_amplifier.png)
+
 ## 概要
 Lock-in Amplifier (ロックインアンプ) は、ノイズに埋もれた微弱な信号から、特定の周波数成分の「振幅 (Magnitude)」と「位相 (Phase)」を高精度に抽出する測定ウィジットです。
 物理実験や電子計測で、S/N比（信号対雑音比）を劇的に改善するために使用されます。

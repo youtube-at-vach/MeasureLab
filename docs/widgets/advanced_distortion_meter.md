@@ -1,5 +1,7 @@
 # Advanced Distortion Meter (高度な歪み率測定)
 
+![Advanced Distortion Meter](../assets/widgets/advanced_distortion_meter.png)
+
 ## 概要
 通常の「THD（全高調波歪）」測定では分からない、より複雑で実践的な歪み（ひずみ）を分析するための高度なツールです。
 単一の純音ではなく、複数の音を同時に鳴らしたり、特定の周波数の組み合わせを使ったりすることで、実際の音楽再生時に近い状態でのアンプやスピーカーの性能を評価できます。

@@ -1,5 +1,7 @@
 # Inverse Filter (逆特性補正フィルター)
 
+![Inverse Filter](../assets/widgets/inverse_filter.png)
+
 ## 概要
 測定によって得られたシステムの周波数特性（スピーカーやマイクの癖など）を「打ち消す」ためのフィルターを作成し、音声ファイルに適用するツールです。
 
