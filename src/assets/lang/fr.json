@@ -985,5 +985,11 @@
     "Optimizes sizes up to 4M. Can take several minutes.": "Optimise les tailles jusqu'à 4M. Peut prendre plusieurs minutes.",
     "Optimizing FFT...": "Optimisation FFT en cours...",
     "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "Précalculer les plans FFT pour de meilleures performances. Cela peut prendre quelques secondes. Inclut l'optimisation exhaustive (jusqu'à 4M).",
-    "Regenerate Optimization": "Régénérer l'optimisation"
+    "Regenerate Optimization": "Régénérer l'optimisation",
+    "Buffer Optimization:": "Optimisation du tampon :",
+    "FAST": "RAPIDE",
+    "MINIMUM": "MINIMUM",
+    "STABLE": "STABLE",
+    "LOW_FREQ": "BASSES FRÉQ.",
+    "ULTRA": "ULTRA"
 }

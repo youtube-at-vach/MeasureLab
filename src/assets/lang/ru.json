@@ -985,5 +985,11 @@
     "Optimizes sizes up to 4M. Can take several minutes.": "Оптимизирует размеры до 4M. Может занять несколько минут.",
     "Optimizing FFT...": "Оптимизация FFT...",
     "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "Предварительный расчет планов FFT для повышения производительности. Это может занять несколько секунд. Включает исчерпывающую оптимизацию (до 4M).",
-    "Regenerate Optimization": "Регенерировать оптимизацию"
+    "Regenerate Optimization": "Регенерировать оптимизацию",
+    "Buffer Optimization:": "Оптимизация буфера:",
+    "FAST": "БЫСТРО",
+    "MINIMUM": "МИНИМУМ",
+    "STABLE": "СТАБИЛЬНО",
+    "LOW_FREQ": "НЧ-ПРИОРИТЕТ",
+    "ULTRA": "УЛЬТРА"
 }

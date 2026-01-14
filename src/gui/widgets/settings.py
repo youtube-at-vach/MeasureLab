@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.signal
+import math
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -793,6 +794,19 @@ class InputCalibrationDialog(QDialog):
         self.stop_measurement()
         super().closeEvent(event)
 
+LEVELS_192K = {
+    "FAST": 4096,
+    "MINIMUM": 8192,
+    "STABLE": 16384,
+    "LOW_FREQ": 32768,
+    "ULTRA": 65536
+}
+
+def next_power_of_two(n):
+    if n <= 0: return 256
+    return 1 << (int(n) - 1).bit_length()
+
+
 class SettingsWidget(QWidget):
     def __init__(self, audio_engine: AudioEngine, config_manager: ConfigManager):
         super().__init__()
@@ -989,9 +1003,23 @@ class SettingsWidget(QWidget):
         conf_layout.addRow(tr("Sample Rate:"), self.sr_combo)
 
         # Buffer Size
+        self.buffer_level_combo = QComboBox()
+        self.buffer_level_combo.addItem(tr("FAST"), "FAST")
+        self.buffer_level_combo.addItem(tr("MINIMUM"), "MINIMUM")
+        self.buffer_level_combo.addItem(tr("STABLE"), "STABLE")
+        self.buffer_level_combo.addItem(tr("LOW_FREQ"), "LOW_FREQ")
+        self.buffer_level_combo.addItem(tr("ULTRA"), "ULTRA")
+        self.buffer_level_combo.addItem(tr("Custom"), "Custom")
+
+        # Set default to STABLE if matches, otherwise Custom
+        self._sync_buffer_level_from_size(self.audio_engine.block_size, self.audio_engine.sample_rate)
+
+        self.buffer_level_combo.currentIndexChanged.connect(self.on_buffer_level_changed)
+        conf_layout.addRow(tr("Buffer Optimization:"), self.buffer_level_combo)
+
         self.bs_combo = QComboBox()
         # Include larger buffers for stability testing; host/driver will reject unsupported sizes.
-        self.bs_combo.addItems(['256', '512', '1024', '2048', '4096', '8192', '16384'])
+        self.bs_combo.addItems(['256', '512', '1024', '2048', '4096', '8192', '16384', '32768', '65536'])
         self.bs_combo.setCurrentText(str(self.audio_engine.block_size))
         self.bs_combo.currentTextChanged.connect(self.on_bs_changed)
 
@@ -1293,9 +1321,17 @@ class SettingsWidget(QWidget):
 
     def on_sr_changed(self, text):
         try:
-            rate = int(text)
             self.audio_engine.set_sample_rate(rate)
             self.update_buffer_duration()
+
+            # Update Buffer Size if not Custom
+            level = self.buffer_level_combo.currentData()
+            if level != "Custom":
+                target_bs = self._calculate_buffer_size(rate, level)
+                # This will trigger on_bs_changed which syncs config
+                self.bs_combo.setCurrentText(str(target_bs))
+            else:
+                 self._sync_buffer_level_from_size(self.audio_engine.block_size, rate)
 
             # Save config
             if self.input_combo.currentIndex() >= 0:
@@ -1318,6 +1354,9 @@ class SettingsWidget(QWidget):
             self.audio_engine.set_block_size(size)
             self.update_buffer_duration()
 
+            # Update level to Custom if it doesn't match expected
+            self._sync_buffer_level_from_size(size, self.audio_engine.sample_rate)
+
             # Save config
             if self.input_combo.currentIndex() >= 0:
                 in_id = self.input_combo.currentData()
@@ -1333,6 +1372,46 @@ class SettingsWidget(QWidget):
                 )
         except ValueError:
             pass
+
+    def on_buffer_level_changed(self):
+        level = self.buffer_level_combo.currentData()
+        if level == "Custom":
+            return
+
+        sr = self.audio_engine.sample_rate
+        target_bs = self._calculate_buffer_size(sr, level)
+
+        # update bs_combo, which will trigger on_bs_changed and save config
+        self.bs_combo.blockSignals(True)
+        self.bs_combo.setCurrentText(str(target_bs))
+        self.bs_combo.blockSignals(False)
+
+        # Manual trigger of logic in on_bs_changed without the feedback loop
+        self.on_bs_changed(str(target_bs))
+
+    def _calculate_buffer_size(self, sr, level):
+        if level not in LEVELS_192K:
+            return 1024
+
+        base = LEVELS_192K[level]
+        scale = float(sr) / 192000.0
+        n_raw = base * scale
+        return next_power_of_two(n_raw)
+
+    def _sync_buffer_level_from_size(self, size, sr):
+        """Check if current size matches any level. If so, select it. Else Custom."""
+        match = "Custom"
+        for lvl in ["FAST", "MINIMUM", "STABLE", "LOW_FREQ", "ULTRA"]:
+            expected = self._calculate_buffer_size(sr, lvl)
+            if expected == size:
+                match = lvl
+                break
+
+        self.buffer_level_combo.blockSignals(True)
+        idx = self.buffer_level_combo.findData(match)
+        if idx >= 0:
+            self.buffer_level_combo.setCurrentIndex(idx)
+        self.buffer_level_combo.blockSignals(False)
 
     def on_ch_mode_changed(self):
         in_mode = self.in_ch_combo.currentText().lower()
