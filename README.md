@@ -20,7 +20,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 ## ✨ 主な機能 (Features)
 
 ### 🛠️ ウィジット / 測定モジュール
-以下のモジュール/ウィジットが統合されています:
+以下のモジュール/ウィジットが統合されています。各機能の詳細は [**ウィジットガイド**](docs/widget_guide.md) を、実際の測定例については [**測定レシピ**](docs/measurement_recipes/index.md) を参照してください。
 
 1.  **Welcome**: 起動時のウェルカム画面で主要機能を案内。
 2.  **Signal Generator**: 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力に対応。

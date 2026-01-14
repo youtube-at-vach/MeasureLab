@@ -88,4 +88,4 @@ Linux 環境で高精度な測定（特に位相連続性が重要な測定）�
 *   **波形を直接見たい** → [Oscilloscope](widgets/oscilloscope.md)
 *   **信号を発生させたい** → [Signal Generator](widgets/signal_generator.md)
 
-各機能の詳細は [ウィジットガイド](widget_guide.md) を参照してください。
+各機能の詳細は [ウィジットガイド](widget_guide.md) を、実際の測定例については [測定レシピ](measurement_recipes/index.md) を参照してください。
