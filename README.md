@@ -1,5 +1,7 @@
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 
+![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) [![Docs](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/deploy_docs.yml/badge.svg)](https://youtube-at-vach.github.io/MeasureLab/)
+
 ![MeasureLab Banner](docs/assets/banner.png)
 
 A collection of DIY audio measurement and analysis tools, grown organically as needed.
