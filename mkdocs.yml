@@ -23,8 +23,9 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-  logo: icon:material/chart-bell-curve-cumulative
-  favicon: icon:material/chart-bell-curve-cumulative
+  icon:
+    logo: material/chart-bell-curve-cumulative
+    favicon: material/chart-bell-curve-cumulative
 
 markdown_extensions:
   - admonition
