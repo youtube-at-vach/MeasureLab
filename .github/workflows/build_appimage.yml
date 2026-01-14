@@ -49,7 +49,7 @@ jobs:
 
     - name: Verify AppImage (GUI Self-Test)
       run: |
-        sudo apt-get install -y xvfb libegl1 libopengl0
+        sudo apt-get install -y xvfb libegl1 libopengl0 libportaudio2
         sudo apt-get install -y libxcb-cursor0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 libxcb-render0 libxcb-shape0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0
 
         # Find the generated AppImage
