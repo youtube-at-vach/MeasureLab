@@ -1,4 +1,6 @@
 site_url: https://youtube-at-vach.github.io/MeasureLab/
+hooks:
+  - docs/hooks/render_math.py
 site_name: MeasureLab オペレーションマニュアル
 site_description: 測定ツールの操作マニュアル
 site_author: ''
@@ -39,8 +41,8 @@ markdown_extensions:
   - pymdownx.snippets
   - tables
   - attr_list
-  - markdown_katex:
-      no_inline_svg: true
+  - pymdownx.arithmatex:
+      generic: true
 
 plugins:
   - search
