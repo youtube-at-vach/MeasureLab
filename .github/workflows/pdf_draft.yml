@@ -27,7 +27,7 @@ jobs:
 
       - name: Install MkDocs and plugins
         run: |
-          pip install mkdocs-material mkdocs-with-pdf pyyaml
+          pip install mkdocs-material mkdocs-with-pdf mkdocs-static-i18n pyyaml
 
       - name: Create PDF config
         shell: python

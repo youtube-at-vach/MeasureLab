@@ -6,6 +6,7 @@ theme:
   language: ja
   features:
     - navigation.tabs
+    - i18n.languages
     - navigation.sections
     - navigation.top
     - search.suggest
@@ -40,6 +41,22 @@ markdown_extensions:
 
 plugins:
   - search
+  - i18n:
+      default_language: ja
+      languages:
+        ja:
+          name: 日本語
+          build: true
+        en:
+          name: English
+          build: true
+  - with-pdf:
+      author: MeasureLab maintainers
+      copyright: Unlicense
+      cover: true
+      back_cover: true
+      output_path: pdf/measurelab-manual.pdf
+      enabled_if_env: ENABLE_PDF_EXPORT
 
 
 extra_css:
