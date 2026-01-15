@@ -46,6 +46,7 @@ plugins:
       languages:
         - locale: ja
           name: 日本語
+          default: true
           build: true
         - locale: en
           name: English
