@@ -30,7 +30,7 @@ jobs:
 
       - name: Install MkDocs and plugins
         run: |
-          pip install mkdocs-material mkdocs-with-pdf mkdocs-static-i18n pyyaml qrcode
+          pip install mkdocs-material mkdocs-with-pdf mkdocs-static-i18n pyyaml qrcode py_mini_racer
 
       - name: Build Docs
         env:
