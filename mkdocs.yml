@@ -43,7 +43,6 @@ markdown_extensions:
 plugins:
   - search
   - i18n:
-      default_language: ja
       languages:
         - locale: ja
           name: 日本語
@@ -56,10 +55,9 @@ plugins:
           build: true
           site_name: MeasureLab Operation Manual
           site_description: Operation manual for measurement tools
-      nav_translations:
-        ja:
-          Widgets: ウィジット
-          Measurement Recipes: 測定レシピ
+          nav_translations:
+            ウィジット: Widgets
+            測定レシピ: Measurement Recipes
   - with-pdf:
       author: MeasureLab maintainers
       copyright: Unlicense
@@ -75,7 +73,7 @@ nav:
 - index.md
 - quickstart.md
 - widget_guide.md
-- Widgets:
+- ウィジット:
   - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
   - Bnim Meter: widgets/bnim_meter.md
   - Boxcar Averager: widgets/boxcar_averager.md
@@ -105,7 +103,7 @@ nav:
   - Timecode Monitor: widgets/timecode_monitor.md
   - Transient Analyzer: widgets/transient_analyzer.md
   - Welcome: widgets/welcome.md
-- Measurement Recipes:
+- 測定レシピ:
   - measurement_recipes/index.md
   - Noise Measurement: measurement_recipes/noise_measurement.md
   - Distortion Measurement: measurement_recipes/distortion_measurement.md
