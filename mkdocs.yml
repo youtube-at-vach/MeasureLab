@@ -56,7 +56,10 @@ plugins:
           build: true
           site_name: MeasureLab Operation Manual
           site_description: Operation manual for measurement tools
-      # nav_translations is not supported in this version, so we use H1 auto-labeling where possible.
+      nav_translations:
+        ja:
+          Widgets: ウィジット
+          Measurement Recipes: 測定レシピ
   - with-pdf:
       author: MeasureLab maintainers
       copyright: Unlicense

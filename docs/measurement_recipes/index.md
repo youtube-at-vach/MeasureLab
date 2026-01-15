@@ -1,4 +1,4 @@
-# 測定レシピ (Measurement Recipes)
+# 測定レシピ
 
 ![Banner](../assets/banner.png)
 
