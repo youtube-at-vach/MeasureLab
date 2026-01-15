@@ -113,6 +113,7 @@ After the settings are finished, let's actually output sound and look at the gra
 
 Once you are familiar with the basic operations, proceed to more detailed guides.
 
+*   **To measure accurate voltage or SPL** → [Calibration](calibration.en.md)
 *   **If you are unsure which tool to use** → [Widget Guide](widget_guide.md)
 *   **To know how to measure in practice** → [Measurement Recipes](measurement_recipes/index.md)
 *   **To see the waveform directly** → [Oscilloscope](widgets/oscilloscope.md)

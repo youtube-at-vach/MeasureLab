@@ -113,6 +113,7 @@ Linux 環境で高精度な測定を行う場合、**JACK** または **PipeWire
 
 基本操作に慣れたら、より詳細なガイドに進みましょう。
 
+*   **正確な電圧や音圧を測りたい** → [キャリブレーション](calibration.md)
 *   **どのツールを使えばいいか迷ったら** → [ウィジットガイド](widget_guide.md)
 *   **実際の測り方を知りたい** → [測定レシピ](measurement_recipes/index.md)
 *   **波形を直接見たい** → [Oscilloscope](widgets/oscilloscope.md)
