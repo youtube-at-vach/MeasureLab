@@ -3,13 +3,11 @@ import re
 import os
 from mkdocs.structure.pages import Page
 from mkdocs.config.defaults import MkDocsConfig
+
 try:
-    from py_mini_racer import MiniRacer
+    from mini_racer import MiniRacer
 except ImportError:
-    try:
-        from mini_racer import MiniRacer
-    except ImportError:
-        MiniRacer = None
+    MiniRacer = None
 
 def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     if MiniRacer is None:
