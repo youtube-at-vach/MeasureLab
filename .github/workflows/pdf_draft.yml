@@ -38,5 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: manual-pdf
-          path: site/pdf/measurelab-manual.pdf
+          path: |
+            site/pdf/operation_manual.pdf
+            site/en/pdf/operation_manual.pdf
           retention-days: 5
