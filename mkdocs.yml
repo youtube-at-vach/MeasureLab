@@ -77,8 +77,12 @@ nav:
   - Bnim Meter: widgets/bnim_meter.md
   - Boxcar Averager: widgets/boxcar_averager.md
   - Detachable Wrapper: widgets/detachable_wrapper.md
-  - Distortion Analyzer: widgets/distortion_analyzer.md
-  - Frequency Counter: widgets/frequency_counter.md
+  - Distortion Analyzer:
+      ja: widgets/distortion_analyzer.md
+      en: widgets/distortion_analyzer.en.md
+  - Frequency Counter:
+      ja: widgets/frequency_counter.md
+      en: widgets/frequency_counter.en.md
   - Goniometer: widgets/goniometer.md
   - Hrtf Player: widgets/hrtf_player.md
   - Impedance Analyzer: 
@@ -92,7 +96,9 @@ nav:
   - Lockin Thd Analyzer: widgets/lockin_thd_analyzer.md
   - Loopback Finder: widgets/loopback_finder.md
   - Lufs Meter: widgets/lufs_meter.md
-  - Network Analyzer: widgets/network_analyzer.md
+  - Network Analyzer:
+      ja: widgets/network_analyzer.md
+      en: widgets/network_analyzer.en.md
   - Noise Profiler: widgets/noise_profiler.md
   - Oscilloscope:
       ja: widgets/oscilloscope.md
@@ -103,9 +109,13 @@ nav:
   - Signal Generator:
       ja: widgets/signal_generator.md
       en: widgets/signal_generator.en.md
-  - Sound Level Meter: widgets/sound_level_meter.md
+  - Sound Level Meter:
+      ja: widgets/sound_level_meter.md
+      en: widgets/sound_level_meter.en.md
   - Sound Quality Analyzer: widgets/sound_quality_analyzer.md
-  - Spectrogram: widgets/spectrogram.md
+  - Spectrogram:
+      ja: widgets/spectrogram.md
+      en: widgets/spectrogram.en.md
   - Spectrum Analyzer:
       ja: widgets/spectrum_analyzer.md
       en: widgets/spectrum_analyzer.en.md
