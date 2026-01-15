@@ -1,5 +1,30 @@
 # Changelog
 
+## [v0.3.3] - 2026-01-15
+
+### Added
+
+* Buffer Optimization 設定（Aggressive / Huge）を追加し、サンプルレートに基づいたバッファサイズ動的計算を実装
+* CI/CD ワークフローに PDF ドラフト生成 (mkdocs-with-pdf) を追加
+* AppImage および Windows ビルドワークフローに GUI セルフテスト（起動確認）を追加
+* PyFFTW の wisdom ファイルを XDG 準拠のユーザーデータディレクトリ (`~/.local/share/MeasureLab` 等) に保存するように変更
+
+### Changed
+
+* MkDocs のプライマリナビゲーションを日本語化し、翻訳マッピングを反転（ja -> en）
+* サイト名を「MeasureLab オペレーションマニュアル」に変更
+* ドキュメントの構成を大幅に拡充（Widget Guide, Quickstart, Measurement Recipes の日本語・英語対応を完了）
+
+### Fixed
+
+* Linux AppImage 環境で不足していた `libportaudio2`, `libxcb-*`, `libegl1` 等の依存関係を追加し、起動安定性を向上
+* ドキュメントの 404 リンク切れや画像参照エラーを修正
+
+### Documentation
+
+* Widget Guide, Quickstart, Measurement Recipes, Appendix を含むほぼ全てのドキュメントを日本語・英語のバイリンガル対応完了
+* README にプロジェクトバナー画像と歓迎メッセージを追加
+
 ## [v0.3.2] - 2026-01-13
 
 ### Added
