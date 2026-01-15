@@ -63,6 +63,7 @@ plugins:
       copyright: Unlicense
       cover: true
       back_cover: true
+      cover_subtitle: "Open-source Audio & Signal Measurement Software for DIY and Research"
       output_path: pdf/operation_manual.pdf
       enabled_if_env: ENABLE_PDF_EXPORT
 
