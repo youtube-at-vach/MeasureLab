@@ -11,8 +11,8 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 1.  **Cable Connection**: Connect the **Output** and **Input** of the audio interface directly with a cable (this is called a loopback connection).
 2.  **Equipment Protection**: Initially, set the output volume (OUT) and input gain (IN) of the audio interface to the minimum.
 
-> [!NOTE]
-> By using this loopback connection, you can perform a test to "analyze the sound you output yourself" without using external equipment. This is the basis of all measurements.
+!!! note
+    By using this loopback connection, you can perform a test to "analyze the sound you output yourself" without using external equipment. This is the basis of all measurements.
 
 ---
 
@@ -37,12 +37,12 @@ Please download the latest version for your OS from the [Releases](https://githu
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
-> [!IMPORTANT]
-> **Note for the first launch: FFT Optimization (WISDOM)**
->
-> On the first launch, preparation (WISDOM generation) is performed to speed up measurement calculations.
-> - **The screen may appear to be frozen for several tens of seconds, but it is not a malfunction.** Heavy calculations are being performed in the background.
-> - From the next time, the cache will be used, and it will start instantly.
+!!! important
+    **Note for the first launch: FFT Optimization (WISDOM)**
+    
+    On the first launch, preparation (WISDOM generation) is performed to speed up measurement calculations.
+    - **The screen may appear to be frozen for several tens of seconds, but it is not a malfunction.** Heavy calculations are being performed in the background.
+    - From the next time, the cache will be used, and it will start instantly.
 
 ---
 

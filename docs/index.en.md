@@ -6,9 +6,9 @@ This documentation summarizes the **operation methods for observing and evaluati
 
 The purpose of this tool is to **turn your everyday PC and audio interface into a "high-end measurement instrument,"** even in environments without specialized equipment (oscilloscope, spectrum analyzer, distortion meter, etc.).
 
-> [!TIP]
-> **"MeasureLab" is a "virtual measurement desk" inside your PC.**
-> You can arrange the necessary instruments (widgets) on the desk and combine them freely to perform measurements.
+!!! tip
+    **"MeasureLab" is a "virtual measurement desk" inside your PC.**
+    You can arrange the necessary instruments (widgets) on the desk and combine them freely to perform measurements.
 
 ---
 
