@@ -29,36 +29,14 @@ jobs:
         run: |
           pip install mkdocs-material mkdocs-with-pdf mkdocs-static-i18n pyyaml
 
-      - name: Create PDF config
-        shell: python
-        run: |
-          import yaml
-          
-          with open('mkdocs.yml', 'r', encoding='utf-8') as f:
-              config = yaml.safe_load(f)
-          
-          if 'plugins' not in config:
-              config['plugins'] = []
-          
-          # Add with-pdf plugin
-          config['plugins'].append({
-              'with-pdf': {
-                  'author': '',
-                  'copyright': 'Unlicense',
-                  'cover_subtitle': '',
-                  'output_path': 'pdf/manual.pdf'
-              }
-          })
-          
-          with open('mkdocs_pdf.yml', 'w', encoding='utf-8') as f:
-              yaml.dump(config, f, allow_unicode=True)
-
       - name: Build Docs
-        run: mkdocs build -f mkdocs_pdf.yml
+        env:
+          ENABLE_PDF_EXPORT: 1
+        run: mkdocs build
 
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: manual-pdf
-          path: site/pdf/manual.pdf
+          path: site/pdf/measurelab-manual.pdf
           retention-days: 5
