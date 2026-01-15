@@ -4,10 +4,10 @@
 
 ![MeasureLab Banner](docs/assets/banner.png)
 
-A collection of DIY audio measurement and analysis tools, grown organically as needed.
+A collection of DIY audio measurement and analysis tools, grown organically as needed. This software is compatible with standard audio devices.
 「必要に応じて作り足しながら育ててきた DIY のオーディオ測定・解析ツール集」です。
 
-**MeasureLab** は、これらのツールを1つの GUI アプリにまとめた形で提供します。Python と PyQt6 製で、高精度な信号生成・解析・測定を直感的に扱えます。
+**MeasureLab** は、これらのツールを1つの GUI アプリにまとめた形で提供します。Python と PyQt6 製で、高精度な信号生成・解析・測定を直感的に扱えます。このソフトウェアは一般的なオーディオデバイスで使うことが出来ます。
 
 本プロジェクトは、高価な測定機器を入手できないオーディオ研究家に向けた代替手段として、より多くの人に届くことを目指しています。
 
