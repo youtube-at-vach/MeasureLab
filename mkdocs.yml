@@ -73,100 +73,38 @@ nav:
 - quickstart.md
 - widget_guide.md
 - Widgets:
-  - Advanced Distortion Meter:
-      ja: widgets/advanced_distortion_meter.md
-      en: widgets/advanced_distortion_meter.en.md
-  - Bnim Meter:
-      ja: widgets/bnim_meter.md
-      en: widgets/bnim_meter.en.md
-  - Boxcar Averager:
-      ja: widgets/boxcar_averager.md
-      en: widgets/boxcar_averager.en.md
-  - Detachable Wrapper:
-      ja: widgets/detachable_wrapper.md
-      en: widgets/detachable_wrapper.en.md
-  - Distortion Analyzer:
-      ja: widgets/distortion_analyzer.md
-      en: widgets/distortion_analyzer.en.md
-  - Frequency Counter:
-      ja: widgets/frequency_counter.md
-      en: widgets/frequency_counter.en.md
-  - Goniometer:
-      ja: widgets/goniometer.md
-      en: widgets/goniometer.en.md
-  - Hrtf Player:
-      ja: widgets/hrtf_player.md
-      en: widgets/hrtf_player.en.md
-  - Impedance Analyzer: 
-      ja: widgets/impedance_analyzer.md
-      en: widgets/impedance_analyzer.en.md
-  - Inverse Filter:
-      ja: widgets/inverse_filter.md
-      en: widgets/inverse_filter.en.md
-  - Lock In Amplifier:
-      ja: widgets/lock_in_amplifier.md
-      en: widgets/lock_in_amplifier.en.md
-  - Lock In Frequency Counter:
-      ja: widgets/lock_in_frequency_counter.md
-      en: widgets/lock_in_frequency_counter.en.md
-  - Lockin Thd Analyzer:
-      ja: widgets/lockin_thd_analyzer.md
-      en: widgets/lockin_thd_analyzer.en.md
-  - Loopback Finder:
-      ja: widgets/loopback_finder.md
-      en: widgets/loopback_finder.en.md
-  - Lufs Meter:
-      ja: widgets/lufs_meter.md
-      en: widgets/lufs_meter.en.md
-  - Network Analyzer:
-      ja: widgets/network_analyzer.md
-      en: widgets/network_analyzer.en.md
-  - Noise Profiler:
-      ja: widgets/noise_profiler.md
-      en: widgets/noise_profiler.en.md
-  - Oscilloscope:
-      ja: widgets/oscilloscope.md
-      en: widgets/oscilloscope.en.md
-  - Raw Time Series:
-      ja: widgets/raw_time_series.md
-      en: widgets/raw_time_series.en.md
-  - Recorder Player:
-      ja: widgets/recorder_player.md
-      en: widgets/recorder_player.en.md
-  - Settings:
-      ja: widgets/settings.md
-      en: widgets/settings.en.md
-  - Signal Generator:
-      ja: widgets/signal_generator.md
-      en: widgets/signal_generator.en.md
-  - Sound Level Meter:
-      ja: widgets/sound_level_meter.md
-      en: widgets/sound_level_meter.en.md
-  - Sound Quality Analyzer:
-      ja: widgets/sound_quality_analyzer.md
-      en: widgets/sound_quality_analyzer.en.md
-  - Spectrogram:
-      ja: widgets/spectrogram.md
-      en: widgets/spectrogram.en.md
-  - Spectrum Analyzer:
-      ja: widgets/spectrum_analyzer.md
-      en: widgets/spectrum_analyzer.en.md
-  - Timecode Monitor:
-      ja: widgets/timecode_monitor.md
-      en: widgets/timecode_monitor.en.md
-  - Transient Analyzer:
-      ja: widgets/transient_analyzer.md
-      en: widgets/transient_analyzer.en.md
-  - Welcome:
-      ja: widgets/welcome.md
-      en: widgets/welcome.en.md
+  - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
+  - Bnim Meter: widgets/bnim_meter.md
+  - Boxcar Averager: widgets/boxcar_averager.md
+  - Detachable Wrapper: widgets/detachable_wrapper.md
+  - Distortion Analyzer: widgets/distortion_analyzer.md
+  - Frequency Counter: widgets/frequency_counter.md
+  - Goniometer: widgets/goniometer.md
+  - Hrtf Player: widgets/hrtf_player.md
+  - Impedance Analyzer: widgets/impedance_analyzer.md
+  - Inverse Filter: widgets/inverse_filter.md
+  - Lock In Amplifier: widgets/lock_in_amplifier.md
+  - Lock In Frequency Counter: widgets/lock_in_frequency_counter.md
+  - Lockin Thd Analyzer: widgets/lockin_thd_analyzer.md
+  - Loopback Finder: widgets/loopback_finder.md
+  - Lufs Meter: widgets/lufs_meter.md
+  - Network Analyzer: widgets/network_analyzer.md
+  - Noise Profiler: widgets/noise_profiler.md
+  - Oscilloscope: widgets/oscilloscope.md
+  - Raw Time Series: widgets/raw_time_series.md
+  - Recorder Player: widgets/recorder_player.md
+  - Settings: widgets/settings.md
+  - Signal Generator: widgets/signal_generator.md
+  - Sound Level Meter: widgets/sound_level_meter.md
+  - Sound Quality Analyzer: widgets/sound_quality_analyzer.md
+  - Spectrogram: widgets/spectrogram.md
+  - Spectrum Analyzer: widgets/spectrum_analyzer.md
+  - Timecode Monitor: widgets/timecode_monitor.md
+  - Transient Analyzer: widgets/transient_analyzer.md
+  - Welcome: widgets/welcome.md
 - Measurement Recipes:
   - measurement_recipes/index.md
-  - Noise Measurement:
-      ja: measurement_recipes/noise_measurement.md
-      en: measurement_recipes/noise_measurement.en.md
-  - Distortion Measurement:
-      ja: measurement_recipes/distortion_measurement.md
-      en: measurement_recipes/distortion_measurement.en.md
+  - Noise Measurement: measurement_recipes/noise_measurement.md
+  - Distortion Measurement: measurement_recipes/distortion_measurement.md
   - measurement_recipes/lockin_amplifier.md
 - appendix.md
