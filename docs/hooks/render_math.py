@@ -6,7 +6,10 @@ from mkdocs.config.defaults import MkDocsConfig
 try:
     from py_mini_racer import MiniRacer
 except ImportError:
-    MiniRacer = None
+    try:
+        from mini_racer import MiniRacer
+    except ImportError:
+        MiniRacer = None
 
 def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     if MiniRacer is None:
