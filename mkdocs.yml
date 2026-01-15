@@ -44,10 +44,10 @@ plugins:
   - i18n:
       default_language: ja
       languages:
-        ja:
+        - locale: ja
           name: 日本語
           build: true
-        en:
+        - locale: en
           name: English
           build: true
   - with-pdf:
