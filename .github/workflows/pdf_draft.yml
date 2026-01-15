@@ -34,11 +34,16 @@ jobs:
           ENABLE_PDF_EXPORT: 1
         run: mkdocs build
 
+      - name: Rename Output Files
+        run: |
+          mv site/pdf/operation_manual.pdf site/pdf/operation_manual_ja.pdf
+          mv site/en/pdf/operation_manual.pdf site/en/pdf/operation_manual_en.pdf
+
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@v4
         with:
           name: manual-pdf
           path: |
-            site/pdf/operation_manual.pdf
-            site/en/pdf/operation_manual.pdf
+            site/pdf/operation_manual_ja.pdf
+            site/en/pdf/operation_manual_en.pdf
           retention-days: 5
