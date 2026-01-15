@@ -48,9 +48,14 @@ plugins:
           name: 日本語
           default: true
           build: true
+          site_name: MeasureLab オペレーションマニュアル
+          site_description: 測定ツールの操作マニュアル
         - locale: en
           name: English
           build: true
+          site_name: MeasureLab Operation Manual
+          site_description: Operation manual for measurement tools
+      # nav_translations is not supported in this version, so we use H1 auto-labeling where possible.
   - with-pdf:
       author: MeasureLab maintainers
       copyright: Unlicense
@@ -63,10 +68,10 @@ plugins:
 extra_css:
   - stylesheets/extra.css
 nav:
-- はじめに: index.md
-- クイックスタート: quickstart.md
-- 用途別ガイド: widget_guide.md
-- ウィジット:
+- index.md
+- quickstart.md
+- widget_guide.md
+- Widgets:
   - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
   - Bnim Meter: widgets/bnim_meter.md
   - Boxcar Averager: widgets/boxcar_averager.md
@@ -96,7 +101,9 @@ nav:
   - Timecode Monitor: widgets/timecode_monitor.md
   - Transient Analyzer: widgets/transient_analyzer.md
   - Welcome: widgets/welcome.md
-- 測定レシピ:
-  - 概要: measurement_recipes/index.md
-  - ノイズ測定: measurement_recipes/noise_measurement.md
-- 付録: appendix.md
+- Measurement Recipes:
+  - measurement_recipes/index.md
+  - measurement_recipes/noise_measurement.md
+  - measurement_recipes/distortion_measurement.md
+  - measurement_recipes/lockin_amplifier.md
+- appendix.md
