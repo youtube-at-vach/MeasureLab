@@ -5,7 +5,7 @@ from mkdocs.structure.pages import Page
 from mkdocs.config.defaults import MkDocsConfig
 
 try:
-    from mini_racer import MiniRacer
+    from py_mini_racer import MiniRacer
 except ImportError:
     MiniRacer = None
 
