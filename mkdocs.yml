@@ -81,24 +81,34 @@ nav:
   - Frequency Counter: widgets/frequency_counter.md
   - Goniometer: widgets/goniometer.md
   - Hrtf Player: widgets/hrtf_player.md
-  - Impedance Analyzer: widgets/impedance_analyzer.md
+  - Impedance Analyzer: 
+      ja: widgets/impedance_analyzer.md
+      en: widgets/impedance_analyzer.en.md
   - Inverse Filter: widgets/inverse_filter.md
-  - Lock In Amplifier: widgets/lock_in_amplifier.md
+  - Lock In Amplifier:
+      ja: widgets/lock_in_amplifier.md
+      en: widgets/lock_in_amplifier.en.md
   - Lock In Frequency Counter: widgets/lock_in_frequency_counter.md
   - Lockin Thd Analyzer: widgets/lockin_thd_analyzer.md
   - Loopback Finder: widgets/loopback_finder.md
   - Lufs Meter: widgets/lufs_meter.md
   - Network Analyzer: widgets/network_analyzer.md
   - Noise Profiler: widgets/noise_profiler.md
-  - Oscilloscope: widgets/oscilloscope.md
+  - Oscilloscope:
+      ja: widgets/oscilloscope.md
+      en: widgets/oscilloscope.en.md
   - Raw Time Series: widgets/raw_time_series.md
   - Recorder Player: widgets/recorder_player.md
   - Settings: widgets/settings.md
-  - Signal Generator: widgets/signal_generator.md
+  - Signal Generator:
+      ja: widgets/signal_generator.md
+      en: widgets/signal_generator.en.md
   - Sound Level Meter: widgets/sound_level_meter.md
   - Sound Quality Analyzer: widgets/sound_quality_analyzer.md
   - Spectrogram: widgets/spectrogram.md
-  - Spectrum Analyzer: widgets/spectrum_analyzer.md
+  - Spectrum Analyzer:
+      ja: widgets/spectrum_analyzer.md
+      en: widgets/spectrum_analyzer.en.md
   - Timecode Monitor: widgets/timecode_monitor.md
   - Transient Analyzer: widgets/transient_analyzer.md
   - Welcome: widgets/welcome.md

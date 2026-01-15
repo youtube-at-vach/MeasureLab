@@ -1,0 +1,84 @@
+# Signal Generator
+
+![Signal Generator](../assets/widgets/signal_generator.png)
+
+## Overview
+The Signal Generator is a tool that generates various test signals required for audio measurements, such as sine waves, square waves, noise, and sweep signals. It allows independent control of the left and right channels (L/R) or linked operation for synchronized control.
+
+Main features:
+*   **Diverse Waveforms**: In addition to basic waveforms, it can generate multitone, MLS, and burst signals.
+*   **Flexible Output Control**: Supports independent L/R output, phase inversion, and delay settings.
+*   **Advanced Modulation**: Supports sweep (frequency sweep), AM (amplitude modulation), FM (frequency modulation), and ΦM (phase modulation).
+
+## Basic Operation
+
+### 1. Starting and Stopping Output
+Clicking the **"Start Output"** button at the top of the screen begins the signal generation. Clicking it again stops the generation.
+
+### 2. Output Routing
+Selects which channel(s) will output the signal.
+*   **Left Only**: Outputs signal only from the left channel.
+*   **Right Only**: Outputs signal only from the right channel.
+*   **Stereo (L+R)**: Outputs signal from both channels (commonly used).
+
+### 3. Edit Settings For
+Selects the target channel for parameter changes.
+*   **Left Channel**: Modifies only the left channel settings.
+*   **Right Channel**: Modifies only the right channel settings.
+*   **Linked (Both)**: Links the left and right channels to apply the same settings. Selecting this copies the current left channel settings to the right channel.
+
+## Waveforms and Parameters
+
+Configure signal details in the **"Signal Parameters"** section.
+
+### Waveform
+You can choose from the following waveforms:
+
+*   **Sine**: Sine wave. The most basic test signal.
+*   **Square**: Square wave.
+*   **Triangle**: Triangle wave.
+*   **Sawtooth**: Sawtooth wave. You can choose "Rising" or "Falling".
+*   **Pulse**: Pulse wave. The pulse width (Duty cycle) can be adjusted.
+*   **Tone + Noise**: A signal with noise superimposed on a sine wave. Used for S/N ratio testing, etc.
+*   **Noise**: Noise signal. You can choose the color (frequency characteristic) such as "White", "Pink", or "Brown".
+*   **Multitone**: A signal synthesized from multiple sine waves.
+*   **MLS (Maximum Length Sequence)**: A pseudo-random signal used for measuring room acoustics, etc.
+*   **Burst**: Tone burst signal. You can specify the number of On/Off cycles. Selecting "Windowed" applies a Hanning window to reduce click noise.
+*   **PRBS (Pseudo-Random Binary Sequence)**: A pseudo-random binary sequence.
+
+### Basic Parameters
+Available parameters vary depending on the waveform.
+
+*   **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input.
+*   **Phase Offset (deg)**: The initial phase of the signal. Used when you want to create a phase difference between the left and right channels.
+*   **Delay (ms)**: The delay time of the signal. Useful for adjusting timing in burst signals, etc.
+*   **Amplitude**: The amplitude (volume) of the signal. You can select from the following units:
+    *   **Linear (0-1)**: Linear scale from 0.0 to 1.0.
+    *   **dBFS**: Decibel value relative to digital full scale. The maximum value is 0 dBFS.
+    *   **dBV, dBu, Vrms, Vpeak**: Voltage units (*requires output calibration for accurate display).
+
+## Modulation and Sweep Functions
+
+Advanced signal generation features can be configured in the tabs at the bottom of the screen.
+
+### Sweep
+Continuously changes the frequency of a sine wave. Used for measuring frequency response.
+*   **Start / End Freq**: The starting and ending frequencies.
+*   **Duration**: The time taken for the sweep (in seconds).
+*   **Logarithmic Sweep**: When checked, the sweep becomes logarithmic (constant rate of change per octave). When unchecked, it becomes a linear sweep.
+
+### AM (Amplitude Modulation)
+Periodically changes the amplitude of the signal.
+*   **Mod Freq**: The frequency of the modulation signal.
+*   **Depth**: The depth of modulation (%).
+
+### FM (Frequency Modulation) / ΦM (Phase Modulation)
+Periodically changes the frequency or phase of the signal.
+*   **Mod Freq**: The frequency of the modulation signal.
+*   **Deviation**: The maximum width of change (Hz or deg).
+
+## Measurement Tips
+
+*   **To measure frequency response**: Enable the "Sweep" tab and run a logarithmic sweep from 20 Hz to 20 kHz. You can record and analyze the signal using the **Recorder** widget.
+*   **To measure Total Harmonic Distortion (THD)**: Select the "Sine" waveform, output a pure sine wave, and measure it with the **Distortion Analyzer**.
+*   **To measure impulse response**: Use "MLS" or "Log Sweep".
