@@ -88,7 +88,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libasound2-dev libxcb-cursor0
+        sudo apt-get install -y libasound2-dev libxcb-cursor0 python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
 
     - name: Install Python dependencies
       run: |
@@ -96,11 +96,23 @@ jobs:
         pip install "setuptools<70.0.0"
         pip install -r requirements.txt
         pip install pyinstaller
+        pip install mkdocs-material mkdocs-with-pdf mkdocs-static-i18n pyyaml qrcode
 
     - name: Build standalone binary with PyInstaller
       run: |
         mkdir -p libs
         pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all pyfftw --hidden-import pyfftw main_gui.py
+
+    - name: Build Documentation
+      env:
+        ENABLE_PDF_EXPORT: 1
+      run: mkdocs build
+
+    - name: Prepare Manuals for release
+      run: |
+        mkdir -p dist/release
+        mv site/pdf/operation_manual.pdf dist/release/operation_manual_ja.pdf
+        mv site/en/pdf/operation_manual.pdf dist/release/operation_manual_en.pdf
 
     - name: Build AppImage
       run: |
@@ -135,5 +147,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: dist/release/*.AppImage
+        files: |
+          dist/release/*.AppImage
+          dist/release/*.pdf
         body_path: release_notes.md
