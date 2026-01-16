@@ -10,13 +10,13 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 ## Operation
 
 ### Starting and Stopping Measurement
-- **Start Analysis / Stop Analysis button**: Toggles the measurement start and stop.
+* **Start Analysis / Stop Analysis button**: Toggles the measurement start and stop.
 
 ### Reading the Graph
-- **Horizontal Axis (Frequency)**: Represents frequency (the pitch of the sound). Moving to the right indicates higher pitch. It is displayed on a logarithmic (Log) scale.
-- **Vertical Axis (Magnitude)**: Represents the size (strength) of the signal. Moving upwards indicates a stronger signal. The unit for the scale depends on the settings (Unit).
-- **Cursor**: When you hover the mouse cursor over the graph, the exact frequency and level at that point are displayed in "Cursor: ..." at the top of the screen.
-- **Overall**: Displays the total signal level (root mean square) across the entire frequency range.
+* **Horizontal Axis (Frequency)**: Represents frequency (the pitch of the sound). Moving to the right indicates higher pitch. It is displayed on a logarithmic (Log) scale.
+* **Vertical Axis (Magnitude)**: Represents the size (strength) of the signal. Moving upwards indicates a stronger signal. The unit for the scale depends on the settings (Unit).
+* **Cursor**: When you hover the mouse cursor over the graph, the exact frequency and level at that point are displayed in "Cursor: ..." at the top of the screen.
+* **Overall**: Displays the total signal level (root mean square) across the entire frequency range.
 
 ## Settings
 
