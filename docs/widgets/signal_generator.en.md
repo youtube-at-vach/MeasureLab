@@ -12,16 +12,16 @@ Main features:
 
 ## Basic Operation
 
-### 1. Starting and Stopping Output
+### Starting and Stopping Output
 Clicking the **"Start Output"** button at the top of the screen begins the signal generation. Clicking it again stops the generation.
 
-### 2. Output Routing
+### Output Routing
 Selects which channel(s) will output the signal.
 *   **Left Only**: Outputs signal only from the left channel.
 *   **Right Only**: Outputs signal only from the right channel.
 *   **Stereo (L+R)**: Outputs signal from both channels (commonly used).
 
-### 3. Edit Settings For
+### Edit Settings For
 Selects the target channel for parameter changes.
 *   **Left Channel**: Modifies only the left channel settings.
 *   **Right Channel**: Modifies only the right channel settings.

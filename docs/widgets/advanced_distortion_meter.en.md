@@ -29,7 +29,7 @@ Depending on the measurement mode, the most important indicators are displayed l
 
 Settings are performed in the panel on the left side of the screen.
 
-### 1. Measurement Mode
+### Measurement Mode
 This is the core function of this tool. The main modes are as follows:
 
 *   **MIM (Multitone Intermodulation Distortion)**
@@ -49,20 +49,20 @@ This is the core function of this tool. The main modes are as follows:
     *   **How to interpret**: **PIM (dBc)** represents how low the distortion component is relative to the original signal. The "lower (greater negative value)" the value, the higher the performance.
     *   **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
 
-### 2. Generator
+### Generator
 Sets the strength of the signal used for measurement.
 
 *   **Amplitude**: Loudness of the signal.
     *   Start from a low value (such as -20dBFS) initially to avoid damaging the measurement target (amplifier, etc.).
 *   **Unit**: Can be selected from `dBFS` (digital full scale), `dBV` (1V reference), `dBu` (professional reference), and `Vrms` (voltage).
 
-### 3. I/O (Input/Output)
+### I/O (Input/Output)
 *   **Input Ch**: Select the input terminal (microphone or line input) used for measurement.
 *   **Output Ch**: Select the terminal for outputting the signal (output to speakers or amplifier).
 
 ## Usage Examples
 
-### 1. Checking Amplifier Performance (MIM Measurement)
+### Checking Amplifier Performance (MIM Measurement)
 When "distortion rate in the spec sheet is good, but the sound is muddy when listening to intense songs," MIM mode is effective.
 
 1.  Set **Mode** to `MIM`.
@@ -72,7 +72,7 @@ When "distortion rate in the spec sheet is good, but the sound is muddy when lis
     *   At about -40dB, you might feel muddiness in complex songs.
 4.  Look at the graph and check if the "valleys" between the many columns (test signals) are deeply submerged. If the valleys are buried, it indicates a lot of some kind of distortion or noise.
 
-### 2. Finding Unknown Noise (Spurious) (SPDR Measurement)
+### Finding Unknown Noise (Spurious) (SPDR Measurement)
 Check if unexpected noise is mixed in, such as power supply noise or interference from digital circuits.
 
 1.  Set **Mode** to `SPDR`.
@@ -80,7 +80,7 @@ Check if unexpected noise is mixed in, such as power supply noise or interferenc
 3.  Look for "small mountains popping out" other than the large 1kHz mountain on the graph.
 4.  The frequency of the largest noise is displayed in **Max Spur**. You can see things like "Oh, 50Hz of the power supply frequency is appearing."
 
-### 3. Checking Intermodulation at High Frequencies (PIM Measurement)
+### Checking Intermodulation at High Frequencies (PIM Measurement)
 Check if high sounds are not muddy when mixed in a tweeter or wideband amplifier.
 
 1.  Set **Mode** to `PIM`.

@@ -8,15 +8,15 @@ It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while mai
 
 ## Operation
 
-### 1. Recording
+### Recording
 *   **Record**: Pressing this button starts the recording. It stops automatically after acquiring data for the set **Record Time**.
 *   **Trigger**: Like an oscilloscope, recording can be started at the moment a sound volume beyond a certain **Level** is detected.
 
-### 2. Analysis
+### Analysis
 *   After recording is complete, press the **Analyze** button to perform the Wavelet Transform.
     *   **Note**: This process is computationally intensive and may take several seconds to show results.
 
-### 3. Reading the Charts
+### Reading the Charts
 *   **Transient Waveform (Top)**: The waveform of the recorded sound (Time axis).
 *   **Wavelet Scalogram (Bottom)**: 
     *   **Horizontal axis**: Time

@@ -8,7 +8,7 @@ It is useful in spatial audio (3D audio) production and research for intuitively
 
 ## Features and UI
 
-### 1. Main Plot (Heatmap)
+### Main Plot (Heatmap)
 The graph occupying most of the screen displays HRTF characteristics based on the sound source position (Azimuth and Elevation).
 
 *   **X-axis (Azimuth)**: Horizontal angle. 0° is the front, -90° is left, 90° is right, and 180/-180° is directly behind.
@@ -16,7 +16,7 @@ The graph occupying most of the screen displays HRTF characteristics based on th
 *   **Color**: Represents the value of the selected metric (such as ITD or ILD).
 *   **Click Interaction**: Clicking anywhere on the graph plays a test sound with the HRTF corresponding to that position (one-shot audition).
 
-### 2. Controls (Basic Operations)
+### Controls (Basic Operations)
 *   **Load SOFA**: Load a SOFA file (`.sofa`, `.nc`) you want to analyze or audition.
 *   **Metric**: Select the analytical data to display on the heatmap.
     *   **ITD (µs)**: Interaural Time Difference. Displays the time difference between sound reaching the left and right ears.
@@ -29,7 +29,7 @@ The graph occupying most of the screen displays HRTF characteristics based on th
     *   **Band Noise**: 8kHz–16kHz band noise. Specialized for confirming high-frequency localization (up/down).
 *   **Swap L/R**: Swaps the left and right output channels.
 
-### 3. Rotation Mode (Continuous Playback / Rotation)
+### Rotation Mode (Continuous Playback / Rotation)
 Allows loading a music file and simulating a sound source rotating around you.
 
 *   **Load Music**: Load a music file (`.wav`, `.mp3`, etc.) for auditioning.
@@ -42,14 +42,14 @@ Allows loading a music file and simulating a sound source rotating around you.
 
 ## Usage Examples
 
-### 1. Checking HRTF Data Characteristics
+### Checking HRTF Data Characteristics
 When you obtain a new SOFA file, use this to verify if the data was measured correctly.
 1.  Set **Metric** to **ITD**.
 2.  Observe the graph to see if the color changes smoothly from left (-90°) to right (90°).
 3.  Switch to **High-band Energy**.
 4.  If colors change in a striped pattern along the median plane (Azimuth 0°) as Elevation changes (spectral cues), it indicates that up/down localization information is included.
 
-### 2. Selecting an HRTF That Suits You
+### Selecting an HRTF That Suits You
 Use this when looking for a suitable HRTF from a general-purpose database rather than a personalized profile.
 1.  Load music, set **Mode** to **Horizontal**, and play.
 2.  Listen with your eyes closed and check if the sound feels like it's "rotating outside your head" rather than "playing inside your head."

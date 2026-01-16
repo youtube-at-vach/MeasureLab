@@ -51,7 +51,7 @@ Displayed only when Mode is set to `External Reference`.
 
 ## Usage Examples
 
-### 1. Seeing the Step Response of Amplifiers and Effectors
+### Seeing the Step Response of Amplifiers and Effectors
 Measure the followability (rise characteristics and damping) when a sudden signal change is given to audio equipment.
 
 1.  Connect the output of the audio interface to the input of the measurement target, and return the output to the input (loopback connection).
@@ -60,7 +60,7 @@ Measure the followability (rise characteristics and damping) when a sudden signa
 4.  Press **Start** and look at the graph.
 5.  You can observe the waveform, which was jagged with noise, becoming a clean staircase-like waveform as the number of integrations (N) increases.
 
-### 2. Detection of Minute Signals (Noise Reduction)
+### Detection of Minute Signals (Noise Reduction)
 Observe small repetitive signals that are buried in noise and invisible with an oscilloscope.
 
 1.  Set **Mode** to `External Reference`.

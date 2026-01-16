@@ -76,7 +76,7 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 
 Below are a few specific usage scenarios for the Spectrum Analyzer.
 
-### 1. Basic Input Check
+### Basic Input Check
 Basic usage to confirm that the microphone is picking up sound correctly.
 
 1.  Press the **Start Analysis** button to begin measurement.
@@ -85,7 +85,7 @@ Basic usage to confirm that the microphone is picking up sound correctly.
 4.  If the graph reacts and changes shape, the input is functioning normally.
 5.  By turning ON **Peak Hold** and clapping, the frequency components of the momentary impact (the spectrum of the pulse sound) will remain as a red line, making it easier to observe.
 
-### 2. Noise Floor Measurement
+### Noise Floor Measurement
 Checks the noise level (noise floor) when there is no sound. This is useful for improving the S/N ratio or finding power supply noise.
 
 1.  Connect the input device (microphone or line input) and ensure no sound is being produced.
@@ -94,7 +94,7 @@ Checks the noise level (noise floor) when there is no sound. This is useful for 
 4.  If there is a sharp peak at a specific frequency (e.g., 50 Hz or 60 Hz), there may be power supply hum noise mixed in.
 5.  Setting **Smoothing** to `1/3 Octave` makes it easier to grasp the overall noise trend (whether it's closer to white noise or pink noise, etc.).
 
-### 3. Speaker Frequency Response
+### Speaker Frequency Response
 By playing a test signal (such as pink noise) and picking up the speaker's output with a microphone, you can perform a simple check of the frequency response.
 
 1.  Prepare and play a **Pink Noise** source separately.

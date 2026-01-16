@@ -61,7 +61,7 @@ This is called the "I-V method (Current-Voltage method)."
 
 ## Operation Procedures
 
-### 1. Initial Setup
+### Initial Setup
 1.  Confirm that the audio device is correctly selected in **Audio Settings**.
 2.  Open **Measurements** > **Impedance Analyzer**.
 3.  Configure the **Settings** panel.
@@ -69,13 +69,13 @@ This is called the "I-V method (Current-Voltage method)."
     *   **Current Ch**: `Right (Ch 2)` (shunt resistor side)
     *   **Ref Resistor**: Enter the value of the resistor being used (e.g., `100.0` $\Omega$). **If this number is incorrect, all calculations will be wrong.**
 
-### 2. Calibration
+### Calibration
 A process to cancel the resistance and capacitance of the measurement cables and connectors themselves to increase accuracy.
 *   **Open Cal**: Leave the measurement terminals unconnected (open) and press `Run Open Cal`.
 *   **Short Cal**: Connect the measurement terminals directly to each other (short circuit) and press `Run Short Cal`.
 *   **Load Cal** (Optional): Connect an accurate reference resistor and perform `Run Load Cal` (usually can be omitted).
 
-### 3. Manual Measurement
+### Manual Measurement
 Continuously measures values at a specific frequency.
 1.  Open the **Manual Control** tab.
 2.  **Frequency**: Set the frequency you want to measure (e.g., 1000 Hz).
@@ -85,7 +85,7 @@ Continuously measures values at a specific frequency.
     *   **θ (Phase)**: Phase angle.
     *   **Ls / Cs**: Equivalent inductance or capacitance value at that frequency.
 
-### 4. FRA Sweep
+### FRA Sweep
 Graphs changes in impedance while changing the frequency. Ideal for measuring the $f_0$ (resonant frequency) of speakers, etc.
 1.  Open the **Frequency Response (FRA)** tab.
 2.  **Start Freq** / **End Freq**: Determine the measurement range (e.g., 20 Hz to 20,000 Hz).

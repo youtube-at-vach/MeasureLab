@@ -9,7 +9,7 @@ It is an essential tool for discovering phase cancellation problems in mixdown a
 
 ## How to Read the Screen
 
-### 1. Main Display (Lissajous Waveform)
+### Main Display (Lissajous Waveform)
 The shape of the waveform spreading from the center represents the stereo image of the sound.
 
 *   **Vertically stretching line**: Represents mono components (L and R are the same). If it is a completely vertical straight line, it is a mono sound source.
@@ -18,7 +18,7 @@ The shape of the waveform spreading from the center represents the stereo image 
 *   **45-degree (upper right) line**: Only the right channel is sounding.
 *   **135-degree (upper left) line**: Only the left channel is sounding.
 
-### 2. Correlation Meter
+### Correlation Meter
 The bar at the bottom of the screen represents the correlation coefficient (-1 to +1) of the left and right channels.
 
 *   **+1 (right end, green)**: Complete correlation (mono). The phases match.
@@ -49,20 +49,20 @@ The bar at the bottom of the screen represents the correlation coefficient (-1 t
 
 ## Usage Examples
 
-### 1. Finding Phase Trouble
+### Finding Phase Trouble
 If a phenomenon occurs in which the mixed sound source "has spread when listening with speakers, but the vocals disappear when listening on a smartphone or radio (mono)," the phase may be inverted.
 1.  Look at the **Correlation Meter**.
 2.  If the needle is always swinging toward the **-1 (red)** side, the phase is inverted.
 3.  Check if the "Phase Invert" button is pressed on any of the tracks, or if effects such as a stereo imager are over-applied.
 
-### 2. Checking Stereo Width
+### Checking Stereo Width
 1.  Set **Display Mode** to **Phosphor** and slightly increase **Persistence**.
 2.  Look at the spreading of the waveform.
     *   **Thin vertical line**: Stereo feel is narrow (close to mono).
     *   **Close to a perfect circle**: Ideal stereo feel.
     *   **Horizontally squashed ellipse**: Stereo feel is too strong (there is a possibility of a hole in the middle).
 
-### 3. Checking Microphone Setting (XY method, etc.)
+### Checking Microphone Setting (XY method, etc.)
 When recording with stereo microphones, you can check if the microphone angle and distance are appropriate.
 1.  Set **Mapping** to **L/R**.
 2.  Confirm that when the sound is heard from the right, it stretches in the X-axis (or Y-axis) direction, and when heard from the left, it stretches in the Y-axis (or X-axis) direction.

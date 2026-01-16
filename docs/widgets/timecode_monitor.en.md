@@ -64,12 +64,12 @@ A function for outputting a timecode signal from MeasureLab. After performing se
 
 ## Usage Examples
 
-### 1. Checking Timecode
+### Checking Timecode
 Input an LTC signal output from a camera or recorder into the audio interface and check if the timecode is correctly recorded and if the time is correct.
 
-### 2. Synchronization Check for Multi-camera
+### Synchronization Check for Multi-camera
 Input the timecode outputs of two cameras into the L and R channels, respectively.
 By looking at the display of **CH Δ (R-L)**, you can see at a glance if the two cameras match perfectly (are synchronized) in frame units.
 
-### 3. Timecode Playback Instead of a Slate (Clapperboard)
+### Timecode Playback Instead of a Slate (Clapperboard)
 By running this tool as a generator in "Time of Day" mode during video shooting and sending that audio to the camera's audio input, it can be used as "audio timecode" to make it easier to automatically synchronize video and audio during editing.

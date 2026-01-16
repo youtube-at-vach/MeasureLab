@@ -7,16 +7,16 @@ The Sound Level Meter is a precision tool for measuring environmental noise and 
 
 ## Basic Operation
 
-### 1. Starting Measurement
+### Starting Measurement
 *   **Start Button**: Begins the measurement.
 *   **Reset Button**: Resets measurement values (such as Leq and Lmax) and recalculates from zero.
 
-### 2. Main Display
+### Main Display
 The large numbers displayed at the top of the screen.
 *   **Instantaneous (Lp)**: The current instantaneous sound pressure level.
 *   **Equivalent (Leq)**: Equivalent continuous sound level. Shows the "average" energy level from the start of measurement to the present. Often used for evaluating fluctuating noise.
 
-### 3. Detail Tabs
+### Detail Tabs
 *   **Histogram (LN)**: Displays the distribution of sound pressure levels in a bar graph.
 *   **Statistics**: Displays statistical indicators.
     *   **L50**: Median value (level exceeded 50% of the time).

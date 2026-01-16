@@ -9,7 +9,7 @@ It is used in physical experiments and electronic measurements to dramatically i
 While general spectrum analyzers "see all frequencies," the lock-in amplifier "monitors only one frequency pinpointed," which allows it to demonstrate overwhelming noise rejection performance.
 
 ## Principles of Lock-in Measurement
-### 1. Phase Sensitive Detection (PSD)
+### Phase Sensitive Detection (PSD)
 A lock-in amplifier performs measurement by multiplying a基準 wave called a "Reference Signal" with the input signal.
 
 *   **Input Signal**: A signal buried in noise ($A \sin(2\pi ft + \phi) + \text{Noise}$)
@@ -18,7 +18,7 @@ A lock-in amplifier performs measurement by multiplying a基準 wave called a "R
 When these are multiplied and passed through a Low-Pass Filter (LPF), only the components with matching frequencies remain as "Direct Current (DC)," and all other noise and different frequency components are cut as AC.
 This enables the detection of signals much smaller than the noise floor.
 
-### 2. Dual Phase Detection
+### Dual Phase Detection
 This widget is a "dual-phase" type that uses two reference signals (Sine and Cosine) simultaneously.
 This makes it possible to accurately capture the signal magnitude regardless of the phase of the input signal.
 *   **X (In-phase)**: In-phase component
@@ -28,7 +28,7 @@ This makes it possible to accurately capture the signal magnitude regardless of 
 
 ## Measurement Modes
 
-### 1. Signal Source Mode (Internal / External)
+### Signal Source Mode (Internal / External)
 Switch between these via the check boxes in the **Settings** panel or through physical connections.
 
 *   **Internal Mode**
@@ -41,7 +41,7 @@ Switch between these via the check boxes in the **Settings** panel or through ph
     *   **Usage**: Experiments using optical choppers or measurements using other oscillators.
     *   **Settings**: Check `External Mode (No Output)`. Input the reference signal into the `Reference Input` channel.
 
-### 2. Operation Mode (Manual / FRA)
+### Operation Mode (Manual / FRA)
 Switching between tabs allows you to choose between fixed-point measurement and sweep measurement.
 
 *   **Manual Control**

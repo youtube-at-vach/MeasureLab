@@ -14,7 +14,7 @@ The widget to use depends on what kind of noise you want to see.
 
 ---
 
-## 1. View Noise Spectrum (Spectrum Analyzer)
+## View Noise Spectrum (Spectrum Analyzer)
 
 Graphs the strength of noise per frequency (spectrum display). You can see things like "whether high sounds are noisy or low sounds are noisy" and "whether there is a peak at a specific frequency."
 
@@ -49,7 +49,7 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 
 ---
 
-## 2. Analyze Noise Types (Noise Profiler)
+## Analyze Noise Types (Noise Profiler)
 
 Automatically decomposes noise into three elements: "white noise," "1/f noise," and "hum noise," and quantitatively evaluates each amount.
 
@@ -80,7 +80,7 @@ Automatically decomposes noise into three elements: "white noise," "1/f noise," 
 
 ---
 
-## 3. View Time-Series Changes in Noise (Raw Time Series)
+## View Time-Series Changes in Noise (Raw Time Series)
 
 Records how voltage fluctuates with time like a chart recorder, rather than spectrum (frequency). It is suitable for capturing sudden phenomena or slow fluctuations, rather than continuous "hiss" noise.
 

@@ -38,7 +38,7 @@ Records input signals to memory and exports them as files.
 
 ## Usage Examples
 
-### 1. Using as a Signal Source
+### Using as a Signal Source
 Prepare a WAV file containing pink noise or a sine sweep, play it with this tool, and observe it with a measurement instrument (such as a Spectrum Analyzer).
 
 1.  Load a test signal file using **Load File** in the **Playback** section.
@@ -47,7 +47,7 @@ Prepare a WAV file containing pink noise or a sine sweep, play it with this tool
 4.  Open another widget (such as the Spectrum Analyzer) and verify that the input signal is being received correctly.
 5.  By switching the **Output Mode**, you can send a signal only to the left channel to measure crosstalk (leakage into the right channel), for example.
 
-### 2. Capturing Abnormalities
+### Capturing Abnormalities
 If a circuit is producing abnormal sounds, you can record them to keep as evidence or for detailed analysis later.
 
 1.  Verify the input settings in the **Recording** section.

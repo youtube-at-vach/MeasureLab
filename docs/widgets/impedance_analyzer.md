@@ -61,7 +61,7 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
 
 ## 操作手順
 
-### 1. Initial Setup (初期設定)
+### Initial Setup (初期設定)
 1.  **Audio Settings** でオーディオデバイスが正しく選択されていることを確認します。
 2.  **Measurements** > **Impedance Analyzer** を開きます。
 3.  **Settings** パネルを設定します。
@@ -69,13 +69,13 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
     *   **Current Ch**: `Right (Ch 2)` (シャント抵抗側)
     *   **Ref Resistor**: 使用する抵抗の値（例: `100.0` $\Omega$）を入力します。**ここの数値が間違っていると全ての計算が狂います。**
 
-### 2. キャリブレーション (Calibration)
+### キャリブレーション (Calibration)
 測定ケーブルやコネクタ自体の抵抗・容量をキャンセルして、精度を高める作業です。
 *   **Open Cal**: 測定端子を何も繋がない状態（開放）にして `Run Open Cal` を押します。
 *   **Short Cal**: 測定端子同士を直接繋いで（短絡）、`Run Short Cal` を押します。
 *   **Load Cal** (任意): 正確な基準抵抗をつないで `Run Load Cal` を行います（通常は省略可）。
 
-### 3. マニュアル測定 (Manual Measurement)
+### マニュアル測定 (Manual Measurement)
 特定の周波数での値を常時測定します。
 1.  **Manual Control** タブを開きます。
 2.  **Frequency**: 測りたい周波数（例: 1000 Hz）を設定します。
@@ -85,7 +85,7 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
     *   **θ (Phase)**: 位相角。
     *   **Ls / Cs**: その周波数でのインダクタンスまたはキャパシタンス相当値。
 
-### 4. スイープ測定 (FRA Sweep)
+### スイープ測定 (FRA Sweep)
 周波数を変えながらインピーダンスの変化をグラフ化します。スピーカーの $f_0$ (共振周波数) の測定などに最適です。
 1.  **Frequency Response (FRA)** タブを開きます。
 2.  **Start Freq** / **End Freq**: 測定範囲を決めます（例: 20 Hz ～ 20000 Hz）。

@@ -61,7 +61,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 
 ## Usage Examples
 
-### 1. Visualizing "Voice" (Voice Analysis)
+### Visualizing "Voice" (Voice Analysis)
 Try analyzing your own voice or speech.
 
 1.  Press the **Start** button.
@@ -69,7 +69,7 @@ Try analyzing your own voice or speech.
 3.  You can see the positions of color bands (formants) change depending on the vowel.
 4.  If you whistle, a very clear single line (close to a pure tone) appears.
 
-### 2. Identifying the Source of Unusual Noises (Noise Identification)
+### Identifying the Source of Unusual Noises (Noise Identification)
 Identify annoying sound components such as "whine" (high-frequency noise) or "hum" (low-frequency power line noise).
 
 1.  Set **FFT Size** to a large value (`4096` to `8192`).
@@ -79,7 +79,7 @@ Identify annoying sound components such as "whine" (high-frequency noise) or "hu
 5.  **A line running vertically**: Impact sounds or click noise.
 6.  **Hazy fog**: Wind noise from air conditioning (white noise), etc.
 
-### 3. Checking High-Res Audio Sources (High-Res Audio Check)
+### Checking High-Res Audio Sources (High-Res Audio Check)
 Confirm whether the music file being played is truly high-res (containing components up to high frequencies) or if it has simply been upsampled.
 
 1.  Play music.

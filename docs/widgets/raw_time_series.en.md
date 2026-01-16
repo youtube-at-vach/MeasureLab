@@ -46,7 +46,7 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
 
 ## Usage Examples
 
-### 1. Monitoring DC Offset Drift
+### Monitoring DC Offset Drift
 Check the operational stability of a DIY amplifier or circuit.
 
 1.  Press the **Start** button to begin measurement.
@@ -54,7 +54,7 @@ Check the operational stability of a DIY amplifier or circuit.
 3.  Turn **Show DC Offset** ON.
 4.  Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
 
-### 2. Finding Intermittent Noise
+### Finding Intermittent Noise
 Wait for and monitor noise that occurs sporadically, such as occasional "popping" sounds.
 
 1.  Set a long **Time Span** (`60s` or more).

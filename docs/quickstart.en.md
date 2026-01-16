@@ -4,7 +4,7 @@ This guide explains the flow from setting up MeasureLab to performing your first
 
 ---
 
-## 0. Hardware Preparation (Loopback)
+## Hardware Preparation (Loopback)
 
 Before starting the measurement, let's prepare to confirm **"whether the sound is being recorded correctly."**
 
@@ -16,7 +16,7 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 
 ---
 
-## 1. Starting the Software
+## Starting the Software
 
 MeasureLab works on Windows and Linux.
 Please download the latest version for your OS from the [Releases](https://github.com/vach/MeasureLab/releases) page.
@@ -46,7 +46,7 @@ Please download the latest version for your OS from the [Releases](https://githu
 
 ---
 
-## 2. UI Display Settings
+## UI Display Settings
 
 In the Settings widget, you can change the UI language and color scheme to make it easier to use.
 
@@ -64,7 +64,7 @@ Please select from the **Themes** combo box.
 
 ---
 
-## 3. Sound Device Settings
+## Sound Device Settings
 
 After starting, first configure the audio input/output settings.
 Open the **Settings** widget (gear icon) from the left menu.
@@ -93,7 +93,7 @@ When performing high-precision measurements in a Linux environment, we strongly 
 
 ---
 
-## 4. First Measurement (Hello Loopback!)
+## First Measurement (Hello Loopback!)
 
 After the settings are finished, let's actually output sound and look at the graph.
 
@@ -109,7 +109,7 @@ After the settings are finished, let's actually output sound and look at the gra
 
 ---
 
-## 5. Next Steps
+## Next Steps
 
 Once you are familiar with the basic operations, proceed to more detailed guides.
 

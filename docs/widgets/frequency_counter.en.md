@@ -68,14 +68,14 @@ By switching the tabs at the bottom of the screen, you can analyze the data from
 
 ## Usage Examples
 
-### 1. Checking the Stability of an Oscillation Circuit
+### Checking the Stability of an Oscillation Circuit
 Check how much the frequency of a DIY analog synthesizer or oscillation circuit shifts due to temperature changes (drift).
 1.  Input the signal and press **Start**.
 2.  Open the **Frequency Drift** tab.
 3.  Leave it for several to tens of minutes and observe the movement of the graph.
 4.  You can observe how the frequency moves significantly immediately after power-on and eventually stabilizes (warm-up characteristics).
 
-### 2. Precise Frequency Tuning
+### Precise Frequency Tuning
 1.  Set the **Update Rate** to **Fast**.
 2.  Look at the **Jitter Histogram** tab.
 3.  Adjust the circuit so that the histogram peak becomes sharp (reducing variation) and the peak comes to the target center.

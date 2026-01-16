@@ -38,7 +38,7 @@ Required equipment varies depending on the items being calibrated.
 
 All settings are performed from the **Calibration** tab of the **Settings** widget found on the widget screen.
 
-### 1. Calibration of Input Sensitivity
+### Calibration of Input Sensitivity
 Ensures that the voltage level of external input signals can be measured correctly.
 
 1.  Open the **Settings** widget and select the **Calibration** tab.
@@ -49,7 +49,7 @@ Ensures that the voltage level of external input signals can be measured correct
 5.  **Step 3**: Enter the voltage value of the signal being input. You can choose from Vrms, mVrms, dBV, or dBu. It is recommended to measure the voltage with a voltmeter at that time and enter it.
 6.  **Step 4**: Press **[Calculate & Save]** to calculate and save the voltage equivalent of 1.0 FS (0 dBFS).
 
-### 2. Calibration of Output Gain
+### Calibration of Output Gain
 Allows MeasureLab to output specific voltages.
 
 1.  In the **Calibration** tab of the **Settings** widget, press the **[Wizard]** button for Output Gain.
@@ -59,7 +59,7 @@ Allows MeasureLab to output specific voltages.
 5.  **Step 4**: Measure the voltage at the output terminal with the voltmeter and enter that value.
 6.  **Step 5**: Press **[Calculate & Save]** to save.
 
-### 3. Calibration of Sound Pressure Level (SPL)
+### Calibration of Sound Pressure Level (SPL)
 Enables microphone input to be displayed as Sound Pressure Level (dB SPL).
 
 1.  Set up the measurement microphone and speaker.

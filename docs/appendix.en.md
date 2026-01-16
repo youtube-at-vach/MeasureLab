@@ -1,6 +1,6 @@
 # Appendix
 
-## 5.1 This tool is not a "measurement instrument"
+## This tool is not a "measurement instrument"
 
 This software is a **simple signal analysis and observation tool** using a PC and an audio interface.
 While it is useful for learning, hobbies, or initial estimations in development, it cannot be used for strict quality assurance or standards compliance testing.
@@ -19,7 +19,7 @@ What this tool excels at is observing "relative changes."
 
 ---
 
-## 5.2 Troubleshooting
+## Troubleshooting
 
 If you have trouble, please check the following items.
 
@@ -40,5 +40,5 @@ If you have trouble, please check the following items.
 
 ---
 
-## 5.3 Finally
+## Finally
 If the problem is not resolved, please check the basic operation again with a loopback connection (direct connection from output to input) to see if there are any connection errors or cable defects.

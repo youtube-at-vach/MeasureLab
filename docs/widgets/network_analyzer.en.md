@@ -12,12 +12,12 @@ Primary uses:
 
 ## Basic Operation
 
-### 1. Starting Measurement
+### Starting Measurement
 1.  Set the measurement range (Start/End Freq) and Amplitude in the **"Sweep Settings"** tab.
 2.  Click the **"Start Sweep"** button to begin measurement. Progress is shown on the progress bar during measurement.
 3.  Click the button again to stop the measurement midway.
 
-### 2. Selecting Measurement Mode
+### Selecting Measurement Mode
 Two modes can be selected according to the application.
 *   **Stepped Sine**: Measures by changing the frequency one by one in steps. Although it takes more time, it has a high S/N ratio and allows for very high-precision measurements.
 *   **Fast Chirp**: Uses a signal (chirp signal) that changes rapidly from low to high frequencies. Since measurement of the entire band can be completed in just a few seconds, it is convenient for measuring while making adjustments.
@@ -45,10 +45,10 @@ Customize the graph display in the **"Display Settings"** tab.
 
 ## Calibration
 
-### 1. Latency
+### Latency
 Press the "Calibrate Latency" button to measure the input/output delay time of the system. It is recommended to perform this in advance with a loopback connection to ensure accurate phase measurement (especially at high frequencies).
 
-### 2. Reference Trace
+### Reference Trace
 Saves the current measurement result as a "reference" to compare with subsequent measurements or to subtract it.
 *   **Store Reference**: Saves the current graph as a reference.
 *   **Apply Reference**: Subtracts the saved reference from the current measurement result and displays it (useful for checking changes from a flat state).

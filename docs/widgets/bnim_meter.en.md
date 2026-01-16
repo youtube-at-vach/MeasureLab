@@ -53,16 +53,16 @@ By clicking on the graph, you can actually sound a test tone corresponding to th
 
 ## Usage Examples
 
-### 1. Checking Localization in Mixes
+### Checking Localization in Mixes
 When mixing down a song, you can check if each instrument is placed in the targeted position.
 *   Are vocals and bass firmly centered (central line)?
 *   Are the chorus and reverb components spreading beautifully to the left and right?
 *   Is there any frequency band that is unintentionally wavering to the left or right?
 
-### 2. Finding Phase Discrepancy
+### Finding Phase Discrepancy
 *   If "the sound is heard but the center of the screen is dark, and only the left and right ends are bright," it may be **Out of Phase**. Check if the polarities of the left and right speaker cables match.
 
-### 3. Education and Learning of Binaural Effects
+### Education and Learning of Binaural Effects
 *   Try dragging the graph using the **Click-to-play** function.
 *   You can experience that "moving it horizontally (changing the time difference) moves the sound from left to right inside your head."
 *   When operating at high frequencies (at the top), you can experience the mystery of the human ear, such as the sense of direction becoming difficult to understand with time difference alone, or the sense of direction suddenly appearing when ILD (volume difference) is added.

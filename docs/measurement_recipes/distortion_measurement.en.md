@@ -22,12 +22,12 @@ The smaller this value (the lower the %, or the larger the absolute value of dB)
 
 First, perform a "loopback measurement" to measure the distortion of the audio interface itself. This becomes the limit value (baseline) that can be measured in that environment.
 
-### 1. Physical Connection and Preparation
+### Physical Connection and Preparation
 
 1.  Directly connect **Output L (or Ch 1)** of the audio interface to **Input L (or Ch 1)** with a cable.
 2.  Start the **Distortion Analyzer** widget.
 
-### 2. Measurement Settings and Execution
+### Measurement Settings and Execution
 
 1.  Set the following in the **Signal Generator** section:
     *   **Signal**: `Sine Wave`
@@ -36,7 +36,7 @@ First, perform a "loopback measurement" to measure the distortion of the audio i
         *   *Distortion changes depending on amplitude. Distortion tends to increase near the maximum level.*
 2.  Press the **Start Measurement** button.
 
-### 3. Confirmation of Results
+### Confirmation of Results
 
 Measurement results are displayed in real-time.
 
