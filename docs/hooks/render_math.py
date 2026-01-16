@@ -19,7 +19,7 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     # Note: during build, docs/assets might be source or destination. 
     # We should look in the project docs dir.
     js_path = os.path.join(config['docs_dir'], 'assets', 'js', 'katex.min.js')
-    
+
     if not os.path.exists(js_path):
         print(f"Warning: Katex JS not found at {js_path}")
         return html
@@ -32,13 +32,13 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     def replace_math(match):
         tag = match.group(1) # span or div
         content = match.group(2) # content inside tags including delimiters
-        
+
         # Arithmatex generic output wraps content in \(...\) or \[...\]
         # We need to extract the raw TeX.
-        
+
         tex = content.strip()
         display_mode = False
-        
+
         # Check for delimiters
         if tex.startswith(r"\(") and tex.endswith(r"\)"):
             tex = tex[2:-2]
@@ -74,6 +74,6 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     # Matches <span class="arithmatex">...</span> or <div class="arithmatex">...</div>
     # Non-greedy match for content
     pattern = re.compile(r'<(span|div) class="arithmatex">(.*?)</\1>', re.DOTALL)
-    
+
     new_html = pattern.sub(replace_math, html)
     return new_html

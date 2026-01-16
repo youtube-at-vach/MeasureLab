@@ -11,8 +11,8 @@ _existing_rules = os.environ.get("QT_LOGGING_RULES")
 if not _existing_rules:
     os.environ["QT_LOGGING_RULES"] = _qt_rule
 
-from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, QRect
+from PyQt6.QtGui import QPixmap, QPainter, QColor
 from PyQt6.QtWidgets import QApplication, QSplashScreen, QWidget
 
 from src.core.config_manager import ConfigManager
@@ -85,6 +85,32 @@ class _TopLevelWindowLogger(QObject):
 
         return super().eventFilter(obj, event)
 
+
+class WrappingSplashScreen(QSplashScreen):
+    """
+    Custom QSplashScreen that supports text wrapping and padding.
+    """
+    def __init__(self, pixmap):
+        super().__init__(pixmap)
+        self._message = ""
+        self._alignment = Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter
+        self._color = Qt.GlobalColor.black
+
+    def showMessage(self, message, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, color=Qt.GlobalColor.black):
+        self._message = message
+        self._alignment = alignment
+        self._color = color
+        # Call super to trigger repaint, but we'll override drawContents
+        super().showMessage(message, alignment, color)
+
+    def drawContents(self, painter: QPainter):
+        painter.setPen(self._color)
+        # Add padding around the edges
+        margin = 20
+        rect = self.rect().adjusted(margin, margin, -margin, -margin)
+        # Draw text with word wrap
+        painter.drawText(rect, self._alignment | Qt.TextFlag.TextWordWrap, self._message)
+
 def main():
     """GUI Application Entry Point"""
     # Allow Ctrl+C to exit
@@ -109,17 +135,17 @@ def main():
     # Startup splash (loading screen): show immediately while MainWindow initializes.
     pixmap = QPixmap(resource_path('src/assets/welcome.png'))
     if pixmap.isNull():
-        pixmap = QPixmap(520, 300)
+        pixmap = QPixmap(624, 360)
         pixmap.fill(Qt.GlobalColor.black)
     else:
         pixmap = pixmap.scaled(
-            520,
-            300,
+            624,
+            360,
             Qt.AspectRatioMode.KeepAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
 
-    splash = QSplashScreen(pixmap)
+    splash = WrappingSplashScreen(pixmap)
     splash.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
     splash.show()
     # Center on primary screen
