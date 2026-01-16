@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 from pathlib import Path
+from src.core.localization import tr
 
 logger = logging.getLogger(__name__)
 
@@ -252,18 +253,18 @@ class FFTManager:
         for i, size in enumerate(sizes_to_optimize):
             if callback:
                 # Progress ranges from 0 to total-1 during optimization
-                callback(f"Optimizing FFT (Size {size})... {i}/{total + 1}")
+                callback(tr("Optimizing FFT... (Size {0})").format(size))
 
             # Use MEASURE for warmup to ensure peak performance
             self.get_plan(size, 'float64', flags=('FFTW_MEASURE',))
 
         # Save wisdom at the end of warmup to capture any new measurements
         if callback:
-            callback(f"Saving optimization results... {total}/{total + 1}")
+            callback(tr("Saving optimization results... {0}/{1}").format(total, total + 1))
         self.save_wisdom()
 
         if callback:
-            callback(f"Done {total + 1}/{total + 1}")
+            callback(tr("Done {0}/{1}").format(total + 1, total + 1))
 
 
 

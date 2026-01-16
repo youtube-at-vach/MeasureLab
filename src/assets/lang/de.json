@@ -991,5 +991,6 @@
     "MINIMUM": "MINIMUM",
     "STABLE": "STABIL",
     "LOW_FREQ": "TIEFE FREQUENZEN",
-    "ULTRA": "ULTRA"
+    "ULTRA": "ULTRA",
+    "Optimizing FFT... (Size {0})": "Optimiere FFT... (Größe {0})"
 }

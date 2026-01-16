@@ -2,6 +2,7 @@
     "Audio Measurement Suite": "Audio Measurement Suite",
     "Loading...": "Loading...",
     "Initializing application...": "Initializing application...",
+    "Optimizing FFT... (Size {0})": "Optimizing FFT... (Size {0})",
     "A comprehensive set of tools for precision audio analysis and measurement.\nSelect a module from the sidebar to begin.": "A comprehensive set of tools for precision audio analysis and measurement.\nSelect a module from the sidebar to begin.",
     "Signal Generator": "Signal Generator",
     "Spectrum Analyzer": "Spectrum Analyzer",
