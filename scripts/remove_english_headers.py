@@ -13,11 +13,11 @@ def process_files(root_dir, dry_run=True):
             # Skip English files
             if file.endswith('.en.md') or not file.endswith('.md'):
                 continue
-            
+
             path = os.path.join(root, file)
             with open(path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
-            
+
             new_lines = []
             changed = False
             for i, line in enumerate(lines):
@@ -41,7 +41,7 @@ def process_files(root_dir, dry_run=True):
                         new_lines.append(line)
                 else:
                     new_lines.append(line)
-            
+
             if changed and not dry_run:
                 with open(path, 'w', encoding='utf-8') as f:
                     f.writelines(new_lines)
@@ -49,6 +49,6 @@ def process_files(root_dir, dry_run=True):
 if __name__ == '__main__':
     print("--- DRY RUN ---")
     process_files('/home/hotstaff/github-vach/MeasureLab/docs', dry_run=True)
-    
+
     print("\n--- APPLYING CHANGES ---")
     process_files('/home/hotstaff/github-vach/MeasureLab/docs', dry_run=False)
