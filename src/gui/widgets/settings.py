@@ -1321,6 +1321,7 @@ class SettingsWidget(QWidget):
 
     def on_sr_changed(self, text):
         try:
+            rate = int(text)
             self.audio_engine.set_sample_rate(rate)
             self.update_buffer_duration()
 
