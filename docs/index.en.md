@@ -28,7 +28,7 @@ The purpose of this tool is to **turn your everyday PC and audio interface into 
 Please check the following preparations to start measurements smoothly.
 
 ### Software Installation
-Software must be ready to launch. If you haven't done so or want to know OS-specific notes, see [**Quick Start: Launching**](quickstart.md#starting-the-software).
+Software must be ready to launch. If you haven't done so or want to know OS-specific notes, see [**Quick Start: Launching**](quickstart.en.md#starting-the-software).
 
 ### Audio Interface (I/O)
 While built-in audio functions of the PC can be used, we recommend an external audio interface for serious measurements.
@@ -42,5 +42,5 @@ We recommend performing an operation check with a **"loopback connection,"** whe
 ## Troubleshooting
 
 If you have any questions during operation, please also utilize the following pages:
-- [**Troubleshooting**](appendix.md#troubleshooting)
-- [**Appendix: Limitations and Precautions**](appendix.md#this-tool-is-not-a-measurement-instrument)
+- [**Troubleshooting**](appendix.en.md#troubleshooting)
+- [**Appendix: Limitations and Precautions**](appendix.en.md#this-tool-is-not-a-measurement-instrument)

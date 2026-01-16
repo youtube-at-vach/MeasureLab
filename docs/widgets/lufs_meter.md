@@ -7,7 +7,7 @@ LUFS Meterは、放送や配信サービス（YouTube, Spotify, Netflixなど）
 
 ## 主な指標の意味
 
-### LUFS (Loudness Units Full Scale)
+### LUFS
 ラウドネス（音量感）の単位です。
 *   **Momentary (M)**: 瞬間的なラウドネス（400msの窓）。レベルの激しい変動を確認するのに使います。
 *   **Short-term (S)**: 短期間のラウドネス（3秒の窓）。直近の音量感を把握するのに適しています。

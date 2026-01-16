@@ -1,4 +1,4 @@
-# BNIM Meter (Binaural Neural Interferometric Meter)
+# BNIM Meter
 
 ![Bnim Meter](../assets/widgets/bnim_meter.png)
 
@@ -9,7 +9,7 @@
 
 ## 画面の見方
 
-### メイングラフ (Neural Map)
+### メイングラフ
 *   **横軸 (ITD - Interaural Time Difference)**: 音の到来方向を表します。
     *   **中央 (0 ms)**: 正面（センター）に定位している成分です。
     *   **左側 (- ms)**: 左耳に先に音が届いている、つまり「左」から聞こえる成分です。
@@ -51,7 +51,7 @@
 *   **On/Off cycles**: テスト音の鳴る長さと休む長さを調整します。
 *   **Playback ILD**: テスト音に人工的な音量差（ILD）を加えます。
 
-## 使用例 (Usage Examples)
+## 使用例
 
 ### ミックスの定位確認
 楽曲のミックスダウン時に、各楽器が狙った位置に配置されているかを確認できます。
