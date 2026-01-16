@@ -1,4 +1,4 @@
-# Network Analyzer
+# Network Analyzer (周波数特性測定 / FRA)
 
 ![Network Analyzer](../assets/widgets/network_analyzer.png)
 

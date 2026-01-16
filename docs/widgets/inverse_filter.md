@@ -1,4 +1,4 @@
-# Inverse Filter (逆特性補正フィルター)
+# Inverse Filter (逆フィルター作成)
 
 ![Inverse Filter](../assets/widgets/inverse_filter.png)
 

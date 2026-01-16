@@ -1,4 +1,4 @@
-# Detachable Wrapper (共通ヘッダー・ウィンドウ分離機能)
+# Detachable Wrapper (ウィジット切り離し)
 
 ## 概要
 MeasureLabのほとんどのウィジット（測定ツール）は、「Detachable Wrapper」と呼ばれる共通の枠組みで包まれています。

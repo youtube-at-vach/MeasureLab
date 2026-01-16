@@ -1,4 +1,4 @@
-# Distortion Analyzer
+# Distortion Analyzer (歪み率・THD測定)
 
 ![Distortion Analyzer](../assets/widgets/distortion_analyzer.png)
 

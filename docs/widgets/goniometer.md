@@ -1,4 +1,4 @@
-# Goniometer (ゴニオメーター)
+# Goniometer (ゴニオメーター / 位相スコープ)
 
 ![Goniometer](../assets/widgets/goniometer.png)
 

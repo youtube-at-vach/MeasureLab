@@ -1,4 +1,4 @@
-# Sound Quality Analyzer (音質評価・サイコアコースティック分析)
+# Sound Quality Analyzer (音質評価 / シャープネス・ラフネス)
 
 ![Sound Quality Analyzer](../assets/widgets/sound_quality_analyzer.png)
 

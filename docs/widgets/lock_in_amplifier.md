@@ -1,4 +1,4 @@
-# Lock-in Amplifier (ロックインアンプ)
+# Lock-in Amplifier (ロックインアンプ / 微小信号検出)
 
 ![Lock In Amplifier](../assets/widgets/lock_in_amplifier.png)
 

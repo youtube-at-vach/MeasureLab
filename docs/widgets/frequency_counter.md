@@ -1,4 +1,4 @@
-# Frequency Counter
+# Frequency Counter (周波数カウンター)
 
 ![Frequency Counter](../assets/widgets/frequency_counter.png)
 

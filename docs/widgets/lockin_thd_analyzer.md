@@ -1,4 +1,4 @@
-# Lock-in THD Analyzer (THD+N 測定)
+# Lock-in THD+N Analyzer (超低歪みロックイン測定)
 
 ![Lockin Thd Analyzer](../assets/widgets/lockin_thd_analyzer.png)
 

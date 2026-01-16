@@ -1,4 +1,4 @@
-# Timecode Monitor
+# Timecode Monitor & Generator (LTCタイムコード生成・監視)
 
 ![Timecode Monitor](../assets/widgets/timecode_monitor.png)
 

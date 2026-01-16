@@ -1,4 +1,4 @@
-# Spectrogram
+# Spectrogram (スペクトログラム・声紋分析)
 
 ![Spectrogram](../assets/widgets/spectrogram.png)
 

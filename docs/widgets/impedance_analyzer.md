@@ -1,4 +1,4 @@
-# Impedance Analyzer (LCRメーター)
+# Impedance Analyzer (インピーダンス測定 / LCR)
 
 ![Impedance Analyzer](../assets/widgets/impedance_analyzer.png)
 

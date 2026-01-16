@@ -1,4 +1,4 @@
-# Noise Profiler
+# Noise Profiler (ノイズ統計解析)
 
 ![Noise Profiler](../assets/widgets/noise_profiler.png)
 

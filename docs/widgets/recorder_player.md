@@ -1,4 +1,4 @@
-# Recorder & Player
+# Recorder & Player (録音・再生)
 
 ![Recorder Player](../assets/widgets/recorder_player.png)
 

@@ -1,4 +1,4 @@
-# LUFS & Level Meter
+# LUFS Meter (ラウドネスメーター)
 
 ![Lufs Meter](../assets/widgets/lufs_meter.png)
 

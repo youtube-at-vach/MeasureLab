@@ -1,4 +1,4 @@
-# Spectrum Analyzer
+# Spectrum Analyzer (スペクトラムアナライザ)
 
 ![Spectrum Analyzer](../assets/widgets/spectrum_analyzer.png)
 

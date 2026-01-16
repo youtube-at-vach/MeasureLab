@@ -1,4 +1,4 @@
-# Transient Analyzer (過渡再応答・ウェーブレット分析)
+# Transient Analyzer (過渡応答解析)
 
 ![Transient Analyzer](../assets/widgets/transient_analyzer.png)
 

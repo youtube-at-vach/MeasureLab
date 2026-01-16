@@ -1,4 +1,4 @@
-# Raw Time Series
+# Raw Time Series (長時間波形記録)
 
 ![Raw Time Series](../assets/widgets/raw_time_series.png)
 

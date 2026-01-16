@@ -1,4 +1,4 @@
-# Oscilloscope
+# Oscilloscope (オシロスコープ)
 
 ![Oscilloscope](../assets/widgets/oscilloscope.png)
 

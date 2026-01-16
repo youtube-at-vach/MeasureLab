@@ -1,4 +1,4 @@
-# HRTF Player
+# HRTF Player (3Dオーディオ再生 / HRTF)
 
 ![Hrtf Player](../assets/widgets/hrtf_player.png)
 

@@ -1,4 +1,4 @@
-# BNIM Meter
+# BNIM Meter (音像定位可視化 / BNIM)
 
 ![Bnim Meter](../assets/widgets/bnim_meter.png)
 

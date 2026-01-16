@@ -1,4 +1,4 @@
-# Boxcar Averager
+# Boxcar Averager (ボックスカー平均化)
 
 ![Boxcar Averager](../assets/widgets/boxcar_averager.png)
 

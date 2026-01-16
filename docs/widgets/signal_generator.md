@@ -1,4 +1,4 @@
-# Signal Generator
+# Signal Generator (信号発生器)
 
 ![Signal Generator](../assets/widgets/signal_generator.png)
 

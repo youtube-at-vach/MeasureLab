@@ -1,4 +1,4 @@
-# Sound Level Meter
+# Sound Level Meter (騒音計・SPLメーター)
 
 ![Sound Level Meter](../assets/widgets/sound_level_meter.png)
 

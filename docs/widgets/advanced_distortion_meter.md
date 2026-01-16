@@ -1,4 +1,4 @@
-# Advanced Distortion Meter (高度な歪み率測定)
+# Advanced Distortion Meter (高度歪み解析 / マルチトーン・IMD)
 
 ![Advanced Distortion Meter](../assets/widgets/advanced_distortion_meter.png)
 
