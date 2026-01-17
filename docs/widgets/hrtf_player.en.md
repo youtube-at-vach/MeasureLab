@@ -49,6 +49,7 @@ Allows loading a music file and simulating a sound source rotating around you.
 ### Checking HRTF Data Characteristics
 
 When you obtain a new SOFA file, use this to verify if the data was measured correctly.
+
 1.  Set **Metric** to **ITD**.
 2.  Observe the graph to see if the color changes smoothly from left (-90°) to right (90°).
 3.  Switch to **High-band Energy**.
@@ -57,6 +58,7 @@ When you obtain a new SOFA file, use this to verify if the data was measured cor
 ### Selecting an HRTF That Suits You
 
 Use this when looking for a suitable HRTF from a general-purpose database rather than a personalized profile.
+
 1.  Load music, set **Mode** to **Horizontal**, and play.
 2.  Listen with your eyes closed and check if the sound feels like it's "rotating outside your head" rather than "playing inside your head."
 3.  Switch to **Vertical** and confirm if the sound clearly moves up and down.

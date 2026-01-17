@@ -11,6 +11,7 @@ The LUFS Meter is a tool for measuring "Loudness" (the perceived volume by human
 ### LUFS (Loudness Units Full Scale)
 
 The unit for perceived loudness.
+
 *   **Momentary (M)**: Instantaneous loudness (400ms window). Used for checking sharp fluctuations in level.
 *   **Short-term (S)**: Short-term loudness (3-second window). Suitable for understanding the recent loudness feel.
 *   **Integrated (I)**: The overall average loudness from the start of measurement to the present. This is the most important indicator for evaluating the volume of an entire program or track. Gating is applied to exclude silent periods.
@@ -45,6 +46,7 @@ Provides a table of the current value (Current), minimum (Min), maximum (Max), a
 ### Graph Tab
 
 Displays time-series changes in Momentary (cyan) and Short-term (yellow) loudness.
+
 *   **Green dashed line**: A typical target level reference (around -23 LUFS).
 *   Use this as a guide to check if the track or audio fits within the target range.
 

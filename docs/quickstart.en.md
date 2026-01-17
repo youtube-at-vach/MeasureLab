@@ -79,6 +79,7 @@ Open the **Settings** widget (gear icon) from the left menu.
 ### For Windows
 
 Select the audio interface you want to use from the device list.
+
 - **ASIO**: If there is a dedicated driver for the audio interface, selecting this is the most stable.
 - **WASAPI**: Recommended setting if there is no dedicated driver or when using standard Windows functions.
 - **MME / DirectSound**: Large latency, not very suitable for measurement.
@@ -86,6 +87,7 @@ Select the audio interface you want to use from the device list.
 ### For Linux
 
 When performing high-precision measurements in a Linux environment, we strongly recommend using **JACK** or **PipeWire**.
+
 1. Select the `jack` or `pipewire` device.
 2. Please turn the **"Jack/Pipewire mode"** checkbox **ON**.
    - If you forget this, the measurement data may become intermittent, and accurate analysis may not be possible.

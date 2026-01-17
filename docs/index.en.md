@@ -38,6 +38,7 @@ While built-in audio functions of the PC can be used, we recommend an external a
 ### Connection Cables (for Loopback)
 
 We recommend performing an operation check with a **"loopback connection,"** where you output sound from the device and record it back yourself.
+
 - Connect a 3.5mm or 6.3mm standard plug cable from the output (OUT) to the input (IN).
 
 ---
@@ -45,5 +46,6 @@ We recommend performing an operation check with a **"loopback connection,"** whe
 ## Troubleshooting
 
 If you have any questions during operation, please also utilize the following pages:
+
 - [**Troubleshooting**](appendix.en.md#troubleshooting)
 - [**Appendix: Limitations and Precautions**](appendix.en.md#this-tool-is-not-a-measurement-instrument)

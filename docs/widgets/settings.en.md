@@ -13,6 +13,7 @@ Changes the display language of the application. A restart of the application is
 ### Appearance
 
 Selects the theme color of the application.
+
 *   **System**: Follows the system settings.
 *   **Light**: Light theme (white-based).
 *   **Dark**: Dark theme (black-based).
@@ -24,6 +25,7 @@ Specifies the destination folder for saving screenshots taken in each measuremen
 ### FFT Optimization
 
 Performs optimization to improve the processing speed of FFT (Fast Fourier Transform).
+
 *   **Regenerate Optimization**: Executes the optimization process. Execution may take several seconds to several minutes.
 *   **Include Huge Sizes**: If checked, it also performs optimization for very large data sizes (up to 4M samples). It takes time to process, but it is advantageous when performing huge FFTs.
 
@@ -32,6 +34,7 @@ Performs optimization to improve the processing speed of FFT (Fast Fourier Trans
 ### Audio Devices
 
 Selects the input and output devices to be used.
+
 *   **Input Device**: Selects the input device with a measurement microphone, etc., connected.
 *   **Output Device**: Selects the output device with speakers, etc., connected.
 *   **Refresh Devices**: Updates the device list.
@@ -54,14 +57,17 @@ Performs calibration to improve measurement accuracy. Pressing the "Wizard" butt
 ### Input Sensitivity
 
 Setting for correctly displaying the voltage level of the input signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is input, it is 1.0V.
+
 *   **Wizard**: Automatically calculates by inputting a known voltage (for example, a 1Vrms sine wave) and inputting that value.
 
 ### Output Gain
 
 Setting for correctly controlling the voltage level of the output signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is output, the terminal voltage is 1.0V.
+
 *   **Wizard**: Automatically calculates by outputting a test signal (such as a 1kHz sine wave) and measuring the voltage with a tester and inputting it.
 
 ### SPL Offset
 
 Offset (correction value) of the dB SPL value displayed by the Sound Level Meter, etc.
+
 *   **Wizard**: Automatically calculates the total correction value including microphone sensitivity by outputting noise from a speaker and inputting the value (dB SPL) measured with a commercially available sound level meter.

@@ -35,6 +35,7 @@ A graph showing noise density for each frequency. Both the horizontal and vertic
 #### Noise Contribution (Bottom Bar Graph)
 
 A bar graph showing which components are dominant in the total noise power.
+
 * **Cyan (Hum)**: Percentage of hum noise
 * **Green (White)**: Percentage of white noise
 * **Red (1/f)**: Percentage of 1/f noise
@@ -43,6 +44,7 @@ A bar graph showing which components are dominant in the total noise power.
 #### Noise Report (Right Panel)
 
 Displays analysis results in numerical values.
+
 * **Total Noise RMS**: Total noise amount in the audible range (20Hz-20kHz).
 * **White Density**: White noise voltage density per 1Hz (e.g., `nV/√Hz`).
 * **Corner Freq**: Frequency where 1/f noise and white noise intersect.
@@ -56,6 +58,7 @@ Perform detailed settings in the tab on the left side of the screen.
 #### Average Mode
 
 Since noise measurement includes random fluctuations, the true value can be seen by averaging.
+
 * **Enable Averaging**: Enables averaging processing.
 * **Count**: Number of times to average. The larger the number, the smoother the graph and the easier it is to see minute noise (usually 100 to 1000 times recommended).
 * **Reset Average**: Resets averaging and restarts measurement from the beginning.
@@ -63,6 +66,7 @@ Since noise measurement includes random fluctuations, the true value can be seen
 #### LNA / Input Settings
 
 Sets the criteria for thermal noise or when using an external preamplifier (LNA: Low Noise Amplifier).
+
 * **Pre-Amp Gain**: Enter the gain (dB) of the external preamplifier you are using.
 * **Apply to Plot**: If checked, the gain of the preamplifier is subtracted from the graph display (displayed as **Equivalent Input Noise**). This is useful for measuring the performance of the preamplifier itself.
 * **Temperature**: Temperature of the measurement environment (°C). Used for thermal noise calculation.
@@ -98,6 +102,7 @@ Check how low the noise is for homemade or commercial microphone preamplifiers.
 ### Evaluation of Power Supply Noise
 
 Check if hum noise is present on the power supply line of the circuit.
+
 1.  Look at the **Noise Contribution** bar graph.
 2.  If the percentage of **Cyan (Hum)** is high, there is a possibility of insufficient ripple removal of the power supply or a ground loop.
 3.  Look at the light blue dots on the graph to analyze whether the fundamental wave of 50Hz/60Hz is strong or the harmonics (100Hz/120Hz, etc.) are strong.
@@ -105,6 +110,7 @@ Check if hum noise is present on the power supply line of the circuit.
 ### Observation of Thermal Noise of Resistors (Experiment)
 
 As a physical experiment, try actually measuring the thermal noise generated from a resistor.
+
 1.  Input the noise of the resistor through a high-gain, low-noise amplifier.
 2.  Enter the resistance value in **Input Z** in the **Measurement** tab.
 3.  Confirm if the measured value of the graph (yellow) matches the theoretical value, **Thermal Limit** (magenta).

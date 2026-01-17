@@ -25,6 +25,7 @@ This enables the detection of signals much smaller than the noise floor.
 
 This widget is a "dual-phase" type that uses two reference signals (Sine and Cosine) simultaneously.
 This makes it possible to accurately capture the signal magnitude regardless of the phase of the input signal.
+
 *   **X (In-phase)**: In-phase component
 *   **Y (Quadrature)**: Quadrature component
 *   **Magnitude (R)**: Signal amplitude ($\sqrt{X^2 + Y^2}$)

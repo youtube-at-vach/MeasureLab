@@ -16,6 +16,7 @@ The Sound Level Meter is a precision tool for measuring environmental noise and 
 ### Main Display
 
 The large numbers displayed at the top of the screen.
+
 *   **Instantaneous (Lp)**: The current instantaneous sound pressure level.
 *   **Equivalent (Leq)**: Equivalent continuous sound level. Shows the "average" energy level from the start of measurement to the present. Often used for evaluating fluctuating noise.
 
@@ -36,6 +37,7 @@ Select the input channel (L or R) to be used for measurement.
 ### Freq Weight (Frequency Weighting)
 
 Select filters to match human hearing characteristics.
+
 *   **A-Weighting**: Characteristics close to the sensitivity of the human ear. Most commonly used for general noise measurement (environmental sounds, noise regulation, etc.).
 *   **C-Weighting**: Characteristics that do not cut low frequencies as much as A-weighting. Used for measuring loud sounds or mechanical noise.
 *   **Z-Weighting**: No correction (flat) characteristics. Used for measuring physical sound pressure itself.
@@ -43,6 +45,7 @@ Select filters to match human hearing characteristics.
 ### Time Weight (Time Weighting)
 
 Select the follow-up speed for level fluctuations.
+
 *   **FAST (125ms)**: For general-purpose measurement. Captures fluctuating sounds.
 *   **SLOW (1s)**: Suitable for observing the average level of slow fluctuations.
 *   **IMPULSE**: A special mode for measuring impact sounds (hitting sounds, etc.) (very fast rise, slow decay).
@@ -51,6 +54,7 @@ Select the follow-up speed for level fluctuations.
 ### Bandwidth
 
 Limits the frequency bandwidth to be measured.
+
 *   **20Hz - 20kHz (Wide)**: Entire audible range.
 *   **20Hz - 12.5kHz** / **8kHz**: Used when matching specific sound level meter standards, etc.
 

@@ -7,6 +7,7 @@
 The Network Analyzer is a tool for measuring the frequency response (amplitude and phase characteristics) of equipment and systems. It features two modes: "Stepped Sine," which measures by changing a sine wave incrementally, and "Fast Chirp," which measures the entire band instantaneously.
 
 Primary uses:
+
 *   Measuring frequency response (f-response) of amplifiers and filters.
 *   Measuring characteristics of speakers and headphones.
 *   Measuring phase difference and delay between two signals.
@@ -22,6 +23,7 @@ Primary uses:
 ### Selecting Measurement Mode
 
 Two modes can be selected according to the application.
+
 *   **Stepped Sine**: Measures by changing the frequency one by one in steps. Although it takes more time, it has a high S/N ratio and allows for very high-precision measurements.
 *   **Fast Chirp**: Uses a signal (chirp signal) that changes rapidly from low to high frequencies. Since measurement of the entire band can be completed in just a few seconds, it is convenient for measuring while making adjustments.
 
@@ -58,5 +60,6 @@ Press the "Calibrate Latency" button to measure the input/output delay time of t
 ### Reference Trace
 
 Saves the current measurement result as a "reference" to compare with subsequent measurements or to subtract it.
+
 *   **Store Reference**: Saves the current graph as a reference.
 *   **Apply Reference**: Subtracts the saved reference from the current measurement result and displays it (useful for checking changes from a flat state).

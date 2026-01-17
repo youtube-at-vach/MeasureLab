@@ -58,6 +58,7 @@ The bar at the bottom of the screen represents the correlation coefficient (-1 t
 ### Finding Phase Trouble
 
 If a phenomenon occurs in which the mixed sound source "has spread when listening with speakers, but the vocals disappear when listening on a smartphone or radio (mono)," the phase may be inverted.
+
 1.  Look at the **Correlation Meter**.
 2.  If the needle is always swinging toward the **-1 (red)** side, the phase is inverted.
 3.  Check if the "Phase Invert" button is pressed on any of the tracks, or if effects such as a stereo imager are over-applied.
@@ -73,6 +74,7 @@ If a phenomenon occurs in which the mixed sound source "has spread when listenin
 ### Checking Microphone Setting (XY method, etc.)
 
 When recording with stereo microphones, you can check if the microphone angle and distance are appropriate.
+
 1.  Set **Mapping** to **L/R**.
 2.  Confirm that when the sound is heard from the right, it stretches in the X-axis (or Y-axis) direction, and when heard from the left, it stretches in the Y-axis (or X-axis) direction.
 3.  If the phase is correct, the center sound will be a 45-degree line (upper right). If it is a 135-degree line (upper left), there is a possibility that one of the microphone cables is out of phase.

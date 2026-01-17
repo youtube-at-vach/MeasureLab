@@ -62,6 +62,7 @@ By clicking on the graph, you can actually sound a test tone corresponding to th
 ### Checking Localization in Mixes
 
 When mixing down a song, you can check if each instrument is placed in the targeted position.
+
 *   Are vocals and bass firmly centered (central line)?
 *   Are the chorus and reverb components spreading beautifully to the left and right?
 *   Is there any frequency band that is unintentionally wavering to the left or right?

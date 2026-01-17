@@ -18,6 +18,7 @@ It can be used for measuring the stability of crystal oscillators, instrument tu
 ### Understanding the Main Display
 
 The large numbers displayed at the top of the screen are the measurement results. It features a high-visibility LED-style design.
+
 - **Green Numbers**: The current frequency (or period).
 - **dB Display (bottom right)**: The current signal level (dBFS). Measurements are not taken if the signal is too small (below the Gate setting).
 
@@ -26,12 +27,14 @@ The large numbers displayed at the top of the screen are the measurement results
 ### Display Mode
 
 The numerical display format can be switched according to the application.
+
 - **Frequency**: Displays in Hertz (Hz). This is normally used.
 - **Period**: Displays the period (s, ms, µs, ns). Used when you want to know the time taken for one wave cycle.
 
 ### Statistics (Stats)
 
 Indicators showing the stability of the measurement are displayed in real-time below the display.
+
 - **Std Dev**: Standard Deviation. Indicates the amount of frequency variation. The smaller the value, the more stable it is.
 - **Allan Dev**: Allan Deviation. An indicator of short-term stability, used for evaluating oscillators, etc.
 
@@ -77,6 +80,7 @@ By switching the tabs at the bottom of the screen, you can analyze the data from
 ### Checking the Stability of an Oscillation Circuit
 
 Check how much the frequency of a DIY analog synthesizer or oscillation circuit shifts due to temperature changes (drift).
+
 1.  Input the signal and press **Start**.
 2.  Open the **Frequency Drift** tab.
 3.  Leave it for several to tens of minutes and observe the movement of the graph.

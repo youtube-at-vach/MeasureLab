@@ -7,7 +7,6 @@
         "MD034": false, // Bare URL used - sometimes intentional
         "MD041": false, // First line must be h1 - mkdocs often uses frontmatter title
         "MD029": false, // Ordered list item prefix - acceptable to have different styles
-        "MD004": false, // Unordered list style - allow mixed * and -
         "MD030": false, // Spaces after list markers - allow 2 or 3 spaces
         "MD007": false, // Unordered list indentation - allow mixed 2 or 4 spaces
         "MD046": false // Code block style - disabled due to conflict with pymdownx.admonition indentation

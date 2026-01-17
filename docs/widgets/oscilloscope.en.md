@@ -38,10 +38,12 @@ A function to stop (stabilize) the waveform for easier observation.
 ### Measurements
 
 The current signal measurement values are displayed in the upper left of the screen.
+
 *   **Vrms**: Root mean square voltage.
 *   **Vpp**: Peak-to-Peak voltage (the difference between maximum and minimum values).
 
 When **"Enable Waveform Measurements"** is checked, the following additional measurement values are also displayed (automatically calculated from the waveform shape).
+
 *   **Freq**: Frequency.
 *   **Rise/Fall**: Rise/Fall time.
 
@@ -52,6 +54,7 @@ When **"Enable Cursors"** is checked, two cursors (C1, C2) are displayed on the 
 ### Math Functions
 
 Displays the results of calculations performed on two channels or signals as a "Math" waveform (white dotted line).
+
 *   **Off**: No calculation.
 *   **A + B**: Left + Right.
 *   **A - B**: Left - Right.
@@ -62,5 +65,6 @@ Displays the results of calculations performed on two channels or signals as a "
 ### Filter
 
 Applies a simple filter to the input signal for display. Convenient for checking noise, etc.
+
 *   **Type**: LPF (Low Pass), HPF (High Pass), BPF (Band Pass).
 *   **Cutoff / Freq**: Sets the cutoff frequency or passband of the filter.

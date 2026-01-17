@@ -56,6 +56,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 ### 🌍 多言語対応 (Localization)
 
 世界中の主要な言語をサポートしています。設定画面から切り替え可能です。
+
 *   英語 (English)
 *   日本語 (Japanese)
 *   中国語 (Chinese)
