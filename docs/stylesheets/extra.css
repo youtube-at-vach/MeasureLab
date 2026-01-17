@@ -1,0 +1,43 @@
+/* 
+   Custom styles for MeasureLab documentation.
+   Primary focus: Fix SVG display issues in PDF export.
+*/
+
+/* Force light color scheme for PDF/Print output */
+@media print {
+    :root {
+        color-scheme: light !important;
+    }
+
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+
+    /* Ensure all images and SVGs have a white background */
+    img, svg, picture {
+        background-color: #ffffff !important;
+    }
+
+    /* 
+       Specific fix for draw.io exported SVGs that use light-dark() 
+       or have inline styles that might default to dark in WeasyPrint.
+    */
+    svg rect[fill="#ffffff"] {
+        fill: #ffffff !important;
+    }
+}
+
+/* 
+   General fixes for SVGs that might be affected by theme switching 
+   when rendered to PDF.
+*/
+.arithmatex svg {
+    background-color: #ffffff !important;
+    border-radius: 2px;
+}
+
+/* Ensure images in the guide are not transparent against a dark background in PDF */
+.md-content img {
+    background-color: #ffffff !important;
+}
