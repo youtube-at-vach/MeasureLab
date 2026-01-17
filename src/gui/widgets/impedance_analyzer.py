@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import threading
 import time
 from collections import deque
@@ -7,10 +8,12 @@ from collections import deque
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -29,7 +32,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.utils import format_si
+from src.core.utils import format_si, resource_path
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -1089,6 +1092,13 @@ class ImpedanceAnalyzerWidget(QWidget):
         sweep_layout.addStretch()
         self.tabs.addTab(tab_sweep, tr("Sweep / Cal"))
 
+        # --- Wiring Diagram Button (Bottom of Left Panel) ---
+        # Add a button to show the connection diagram in a popup
+        self.btn_wiring = QPushButton(tr("Show Connection Diagram"))
+        self.btn_wiring.clicked.connect(self.show_wiring_dialog)
+        self.btn_wiring.setStyleSheet("margin-top: 10px;")
+        left_layout.addWidget(self.btn_wiring)
+
         left_layout.addStretch()
         main_layout.addWidget(left_panel)
 
@@ -1463,6 +1473,46 @@ class ImpedanceAnalyzerWidget(QWidget):
                 QMessageBox.information(self, tr("Success"), tr("Calibration loaded successfully."))
             else:
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load calibration: ") + msg)
+
+    def show_wiring_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr("Connection Diagram"))
+        dialog.resize(800, 600)
+        
+        # Set white background for transparency
+        dialog.setStyleSheet("background-color: white;")
+
+        layout = QVBoxLayout(dialog)
+        
+        # Logic to find the PNG
+        img_path = resource_path("src/assets/speaker_impedance_wiring.png")
+        
+        # Fallback path logic
+        if not os.path.exists(img_path):
+             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+             alt_path = os.path.join(project_root, "src/assets/speaker_impedance_wiring.png")
+             if os.path.exists(alt_path):
+                 img_path = alt_path
+
+        if os.path.exists(img_path):
+            img_label = QLabel()
+            pixmap = QPixmap(img_path)
+            # Scale if too large, e.g. fit within dialog
+            scaled_pixmap = pixmap.scaled(750, 550, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            img_label.setPixmap(scaled_pixmap)
+            img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(img_label)
+        else:
+            layout.addWidget(QLabel(tr("Diagram not found.")))
+        
+        # Close button
+        btn_close = QPushButton(tr("Close"))
+        btn_close.clicked.connect(dialog.accept)
+        # Reset stylesheet for button so it doesn't look weird on white bg if global styles interfere
+        # But usually standard buttons are fine. 
+        layout.addWidget(btn_close)
+
+        dialog.exec()
 
     def update_plot_mode(self):
         mode = self.plot_mode_combo.currentText()
