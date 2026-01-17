@@ -42,7 +42,7 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
 
 ### 配線図
 
-![Impedance Analyzer Wiring](../assets/speaker_impedance_wiring.svg)
+![Impedance Analyzer Wiring](../assets/speaker_impedance_wiring.png)
 
 1. **Output L** から測定対象 (DUT) に信号を送ります。
 2. 測定対象を通過した後、**Ref Resistor** を通ってグランド (GND) に落ちるように繋ぎます。

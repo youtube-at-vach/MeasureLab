@@ -42,7 +42,7 @@ This is called the "I-V method (Current-Voltage method)."
 
 ### Wiring Diagram
 
-![Impedance Analyzer Wiring](../assets/speaker_impedance_wiring.svg)
+![Impedance Analyzer Wiring](../assets/speaker_impedance_wiring.png)
 
 1. Send the signal from **Output L** to the device under test (DUT).
 2. Connect it so that after passing through the DUT, it passes through the **Ref Resistor** to ground (GND).
