@@ -8,8 +8,8 @@ This guide explains the flow from setting up MeasureLab to performing your first
 
 Before starting the measurement, let's prepare to confirm **"whether the sound is being recorded correctly."**
 
-1.  **Cable Connection**: Connect the **Output** and **Input** of the audio interface directly with a cable (this is called a loopback connection).
-2.  **Equipment Protection**: Initially, set the output volume (OUT) and input gain (IN) of the audio interface to the minimum.
+1. **Cable Connection**: Connect the **Output** and **Input** of the audio interface directly with a cable (this is called a loopback connection).
+2. **Equipment Protection**: Initially, set the output volume (OUT) and input gain (IN) of the audio interface to the minimum.
 
 !!! note
     By using this loopback connection, you can perform a test to "analyze the sound you output yourself" without using external equipment. This is the basis of all measurements.
@@ -65,9 +65,9 @@ Select **Japanese** from the **Languages** combo box to switch the interface to 
 You can change the color scheme according to your environment and preference.
 Please select from the **Themes** combo box.
 
-*   **Dark**: Dark mode that is easy on the eyes even in dark places (recommended).
-*   **Light**: Bright display.
-*   **System**: Follows the OS settings.
+* **Dark**: Dark mode that is easy on the eyes even in dark places (recommended).
+* **Light**: Bright display.
+* **System**: Follows the OS settings.
 
 ---
 
@@ -94,13 +94,13 @@ When performing high-precision measurements in a Linux environment, we strongly 
 
 ### Recommendations for Input/Output and Sampling Settings
 
-*   **Input/Output Channels**
-    *   Basically, leave it at the default and select **Stereo (2ch)**.
-*   **Sampling Rate**
-    *   As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
-*   **Buffer Size / Buffer Optimization**
-    *   **We strongly recommend setting it to "Long (STABLE or higher)".**
-    *   Since this software is for "measurement," prioritize data stability over latency.
+* **Input/Output Channels**
+    * Basically, leave it at the default and select **Stereo (2ch)**.
+* **Sampling Rate**
+    * As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
+* **Buffer Size / Buffer Optimization**
+    * **We strongly recommend setting it to "Long (STABLE or higher)".**
+    * Since this software is for "measurement," prioritize data stability over latency.
 
 ---
 
@@ -126,7 +126,7 @@ After the settings are finished, let's actually output sound and look at the gra
 
 Once you are familiar with the basic operations, proceed to more detailed guides.
 
-*   **To measure accurate voltage or SPL** → [Calibration](calibration.en.md)
-*   **If you are unsure which tool to use** → [Widget Guide](widget_guide.md)
-*   **To know how to measure in practice** → [Measurement Recipes](measurement_recipes/index.md)
-*   **To see the waveform directly** → [Oscilloscope](widgets/oscilloscope.md)
+* **To measure accurate voltage or SPL** → [Calibration](calibration.en.md)
+* **If you are unsure which tool to use** → [Widget Guide](widget_guide.md)
+* **To know how to measure in practice** → [Measurement Recipes](measurement_recipes/index.md)
+* **To see the waveform directly** → [Oscilloscope](widgets/oscilloscope.md)

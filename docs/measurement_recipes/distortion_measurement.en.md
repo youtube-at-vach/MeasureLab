@@ -11,8 +11,8 @@ The low "distortion" in audio equipment is an indicator of performance in how fa
 **THD+N (Total Harmonic Distortion + Noise)** is an indicator of the "purity" of a signal.
 Even though a pure sine wave (single frequency) is supposed to be input, the output may contain other components (harmonics and noise).
 
-*   **THD (Total Harmonic Distortion)**: The sum of frequency (harmonic) components that are integer multiples of the input signal.
-*   **THD+N**: The sum of "all components other than the objective signal," which includes background noise in addition to THD.
+* **THD (Total Harmonic Distortion)**: The sum of frequency (harmonic) components that are integer multiples of the input signal.
+* **THD+N**: The sum of "all components other than the objective signal," which includes background noise in addition to THD.
 
 The smaller this value (the lower the %, or the larger the absolute value of dB), the higher the performance of the equipment.
 
@@ -24,24 +24,24 @@ First, perform a "loopback measurement" to measure the distortion of the audio i
 
 ### Physical Connection and Preparation
 
-1.  Directly connect **Output L (or Ch 1)** of the audio interface to **Input L (or Ch 1)** with a cable.
-2.  Start the **Distortion Analyzer** widget.
+1. Directly connect **Output L (or Ch 1)** of the audio interface to **Input L (or Ch 1)** with a cable.
+2. Start the **Distortion Analyzer** widget.
 
 ### Measurement Settings and Execution
 
-1.  Set the following in the **Signal Generator** section:
-    *   **Signal**: `Sine Wave`
-    *   **Frequency**: `1000 Hz` (standard)
-    *   **Amplitude**: around `-6 dBFS`
-        *   *Distortion changes depending on amplitude. Distortion tends to increase near the maximum level.*
-2.  Press the **Start Measurement** button.
+1. Set the following in the **Signal Generator** section:
+    * **Signal**: `Sine Wave`
+    * **Frequency**: `1000 Hz` (standard)
+    * **Amplitude**: around `-6 dBFS`
+        * *Distortion changes depending on amplitude. Distortion tends to increase near the maximum level.*
+2. Press the **Start Measurement** button.
 
 ### Confirmation of Results
 
 Measurement results are displayed in real-time.
 
-*   **THD+N**: An indicator of overall distortion.
-*   **Harmonics Tab**: The level (ratio to the fundamental wave) for each component, such as the 2nd harmonic (2nd), 3rd harmonic (3rd), etc., can be confirmed in the graph and table.
+* **THD+N**: An indicator of overall distortion.
+* **Harmonics Tab**: The level (ratio to the fundamental wave) for each component, such as the 2nd harmonic (2nd), 3rd harmonic (3rd), etc., can be confirmed in the graph and table.
 
 This numerical value is **"the lower measurement limit of your measurement environment (sound device)."** It is not possible to accurately measure equipment with distortion smaller than this.
 
@@ -51,8 +51,8 @@ This numerical value is **"the lower measurement limit of your measurement envir
 
 Next, connect the device you want to measure (DUT: Device Under Test) in between.
 
-1.  Change the connection: `[Output] -> [DUT] -> [Input]`
-2.  Perform the measurement again.
+1. Change the connection: `[Output] -> [DUT] -> [Input]`
+2. Perform the measurement again.
 
 If the distortion rate is larger than during the loopback measurement, that difference can be judged as the **distortion of the DUT itself**.
 Conversely, if the value is the same as during loopback, the performance of the DUT is very high, and it is possible that it exceeds the measurement limit of the audio interface.
@@ -82,7 +82,7 @@ If you want to measure ultra-high performance DACs and amplifiers that fall belo
 
 The following widgets are also available for those who want to perform more advanced analysis.
 
-*   **Advanced Distortion Meter**:
-    *   **MIM (Multitone Intermodulation)**: Measures distortion in a state closer to a music signal by sounding multiple sounds simultaneously.
-    *   **PIM (Phase Intermodulation)**: Measures phase modulation distortion.
-    *   **SPDR (Spurious Free Dynamic Range)**: Measures spurious-free dynamic range.
+* **Advanced Distortion Meter**:
+    * **MIM (Multitone Intermodulation)**: Measures distortion in a state closer to a music signal by sounding multiple sounds simultaneously.
+    * **PIM (Phase Intermodulation)**: Measures phase modulation distortion.
+    * **SPDR (Spurious Free Dynamic Range)**: Measures spurious-free dynamic range.

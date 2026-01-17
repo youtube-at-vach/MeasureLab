@@ -15,8 +15,8 @@ While general spectrum analyzers "see all frequencies," the lock-in amplifier "m
 
 A lock-in amplifier performs measurement by multiplying a基準 wave called a "Reference Signal" with the input signal.
 
-*   **Input Signal**: A signal buried in noise ($A \sin(2\pi ft + \phi) + \text{Noise}$)
-*   **Reference Signal**: Clean waves of the frequency $f$ you want to measure ($\sin(2\pi ft)$ and $\cos(2\pi ft)$)
+* **Input Signal**: A signal buried in noise ($A \sin(2\pi ft + \phi) + \text{Noise}$)
+* **Reference Signal**: Clean waves of the frequency $f$ you want to measure ($\sin(2\pi ft)$ and $\cos(2\pi ft)$)
 
 When these are multiplied and passed through a Low-Pass Filter (LPF), only the components with matching frequencies remain as "Direct Current (DC)," and all other noise and different frequency components are cut as AC.
 This enables the detection of signals much smaller than the noise floor.
@@ -26,10 +26,10 @@ This enables the detection of signals much smaller than the noise floor.
 This widget is a "dual-phase" type that uses two reference signals (Sine and Cosine) simultaneously.
 This makes it possible to accurately capture the signal magnitude regardless of the phase of the input signal.
 
-*   **X (In-phase)**: In-phase component
-*   **Y (Quadrature)**: Quadrature component
-*   **Magnitude (R)**: Signal amplitude ($\sqrt{X^2 + Y^2}$)
-*   **Phase ($\theta$)**: Signal phase ($\arctan(Y/X)$)
+* **X (In-phase)**: In-phase component
+* **Y (Quadrature)**: Quadrature component
+* **Magnitude (R)**: Signal amplitude ($\sqrt{X^2 + Y^2}$)
+* **Phase ($\theta$)**: Signal phase ($\arctan(Y/X)$)
 
 ## Measurement Modes
 
@@ -37,29 +37,29 @@ This makes it possible to accurately capture the signal magnitude regardless of 
 
 Switch between these via the check boxes in the **Settings** panel or through physical connections.
 
-*   **Internal Mode**
-    *   **Operation**: The widget itself outputs a signal (Sine wave), which is passed through the measurement target, and the returning signal is measured.
-    *   **Usage**: When you can output the signal yourself, such as for measuring frequency characteristics or impedance of circuits.
-    *   **Settings**: Start by clicking the `Start Output & Measure` button. Uncheck `External Mode`.
+* **Internal Mode**
+    * **Operation**: The widget itself outputs a signal (Sine wave), which is passed through the measurement target, and the returning signal is measured.
+    * **Usage**: When you can output the signal yourself, such as for measuring frequency characteristics or impedance of circuits.
+    * **Settings**: Start by clicking the `Start Output & Measure` button. Uncheck `External Mode`.
 
-*   **External Mode**
-    *   **Operation**: Input both a "Signal" and a "Reference Clock (Ref)" from an external device. The widget automatically locks to (follows) the frequency of the reference input and measures.
-    *   **Usage**: Experiments using optical choppers or measurements using other oscillators.
-    *   **Settings**: Check `External Mode (No Output)`. Input the reference signal into the `Reference Input` channel.
+* **External Mode**
+    * **Operation**: Input both a "Signal" and a "Reference Clock (Ref)" from an external device. The widget automatically locks to (follows) the frequency of the reference input and measures.
+    * **Usage**: Experiments using optical choppers or measurements using other oscillators.
+    * **Settings**: Check `External Mode (No Output)`. Input the reference signal into the `Reference Input` channel.
 
 ### Operation Mode (Manual / FRA)
 
 Switching between tabs allows you to choose between fixed-point measurement and sweep measurement.
 
-*   **Manual Control**
-    *   Continuously monitors a specific single frequency.
-    *   Since numerical values change in real-time, it is suitable for adjustment work and observing time-series changes (similar to a trend graph).
-    *   **Harmonic Measurement**: Setting `Harmonic` to `2` allows you to extract and measure only the frequency component at twice the fundamental frequency (2nd harmonic).
+* **Manual Control**
+    * Continuously monitors a specific single frequency.
+    * Since numerical values change in real-time, it is suitable for adjustment work and observing time-series changes (similar to a trend graph).
+    * **Harmonic Measurement**: Setting `Harmonic` to `2` allows you to extract and measure only the frequency component at twice the fundamental frequency (2nd harmonic).
 
-*   **Frequency Response Analyzer (FRA)**
-    *   Measures while automatically changing the frequency from `Start` to `End` (frequency sweep).
-    *   The results are displayed as a **Bode Plot** (Magnitude and Phase characteristics).
-    *   Ideal for measuring the bandwidth of filter circuits and amplifiers.
+* **Frequency Response Analyzer (FRA)**
+    * Measures while automatically changing the frequency from `Start` to `End` (frequency sweep).
+    * The results are displayed as a **Bode Plot** (Magnitude and Phase characteristics).
+    * Ideal for measuring the bandwidth of filter circuits and amplifiers.
 
 ## Key Parameter Descriptions
 
@@ -69,46 +69,46 @@ Important setting items for mastering the lock-in amplifier.
 
 The performance of a lock-in amplifier is determined by the "strength of the filter."
 
-1.  **Integration**:
-    *   The length of data used for a single measurement.
-    *   `Fast (2048)`: Fast response, but lower accuracy for low-frequency measurements.
-    *   `Slow / Very Slow`: Slower response, but higher noise rejection capability.
+1. **Integration**:
+    * The length of data used for a single measurement.
+    * `Fast (2048)`: Fast response, but lower accuracy for low-frequency measurements.
+    * `Slow / Very Slow`: Slower response, but higher noise rejection capability.
 
-2.  **Post-mix LPF (Time Constant $\tau$)**:
-    *   A filter that further smooths the signal after detection. Corresponds to the "Time Constant" of analog lock-in amplifiers.
-    *   **LPF Time Constant**: Increasing this time (e.g., `1 s` or `3 s`) will stop fluctuations in numerical values and yield extremely stable results, but the response to changes in the signal will be very slow.
-    *   **Post-mix LPF Order**: The number of filter stages (steepness). Usually, `4-pole` (24 dB/oct) is sufficient, but it can be increased to `8-pole` if you want to remove powerful noise.
+2. **Post-mix LPF (Time Constant $\tau$)**:
+    * A filter that further smooths the signal after detection. Corresponds to the "Time Constant" of analog lock-in amplifiers.
+    * **LPF Time Constant**: Increasing this time (e.g., `1 s` or `3 s`) will stop fluctuations in numerical values and yield extremely stable results, but the response to changes in the signal will be very slow.
+    * **Post-mix LPF Order**: The number of filter stages (steepness). Usually, `4-pole` (24 dB/oct) is sufficient, but it can be increased to `8-pole` if you want to remove powerful noise.
 
 ### Averaging
 
-*   **Count**: Averages and displays the specified number of measurement data points. Effective for reducing random noise.
+* **Count**: Averages and displays the specified number of measurement data points. Effective for reducing random noise.
 
 ## Quick Start Procedures
 
 ### Example: Measuring the Frequency Characteristics of a Filter Circuit (FRA)
 
-1.  **Wiring**:
-    *   Audio interface **Output 1 (Left)** -> Filter circuit input
-    *   Filter circuit output -> Audio interface **Input 1 (Left)**
-2.  **Settings**:
-    *   `Signal Input`: **Left (Ch 1)**
-    *   `Output Ch`: **Left (Ch 1)** (or Stereo)
-    *   `External Mode`: **OFF**
-    *   `Amplitude`: A voltage suitable for the circuit (e.g., -10 dBV)
-3.  **FRA Tab**:
-    *   `Start Freq`: **20 Hz**
-    *   `End Freq`: **20000 Hz**
-    *   `Steps`: **50** (or 100)
-    *   `Log Sweep`: **ON** (frequency response is usually viewed on a log scale)
-    *   `Plot Unit`: **dBV** (or dBFS)
-4.  **Execution**:
-    *   Click the **Start Sweep** button.
-    *   The frequency characteristics (Gain and Phase) will be plotted on the graph.
+1. **Wiring**:
+    * Audio interface **Output 1 (Left)** -> Filter circuit input
+    * Filter circuit output -> Audio interface **Input 1 (Left)**
+2. **Settings**:
+    * `Signal Input`: **Left (Ch 1)**
+    * `Output Ch`: **Left (Ch 1)** (or Stereo)
+    * `External Mode`: **OFF**
+    * `Amplitude`: A voltage suitable for the circuit (e.g., -10 dBV)
+3. **FRA Tab**:
+    * `Start Freq`: **20 Hz**
+    * `End Freq`: **20000 Hz**
+    * `Steps`: **50** (or 100)
+    * `Log Sweep`: **ON** (frequency response is usually viewed on a log scale)
+    * `Plot Unit`: **dBV** (or dBFS)
+4. **Execution**:
+    * Click the **Start Sweep** button.
+    * The frequency characteristics (Gain and Phase) will be plotted on the graph.
 
 ### Example: Continuous Monitoring of a Minute Signal (Manual)
 
-1.  Open the **Manual Control** tab.
-2.  Set `Frequency` to the frequency you want to measure (e.g., 1 kHz).
-3.  Click `Start Output & Measure`.
-4.  The voltage of that frequency component will be displayed in **Magnitude**.
-5.  If the values fluctuate, stabilize them by increasing the **LPF Time Constant** from `0.1s` to `0.3s` to `1.0s`.
+1. Open the **Manual Control** tab.
+2. Set `Frequency` to the frequency you want to measure (e.g., 1 kHz).
+3. Click `Start Output & Measure`.
+4. The voltage of that frequency component will be displayed in **Magnitude**.
+5. If the values fluctuate, stabilize them by increasing the **LPF Time Constant** from `0.1s` to `0.3s` to `1.0s`.

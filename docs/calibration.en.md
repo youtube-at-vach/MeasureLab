@@ -15,10 +15,10 @@ By doing this, displays such as the spectrum analyzer and oscilloscope can be re
 
 MeasureLab supports the following units:
 
-*   **dBFS**: Relative level to digital full scale. Always available without calibration. The maximum value is 0 dBFS.
-*   **dBV**: Unit of voltage where 1 Vrms is 0 dBV. ($20 \log_{10}(V / 1.0)$)
-*   **dBu**: Unit of voltage where 0.775 Vrms is 0 dBu. Commonly used in professional audio equipment. ($20 \log_{10}(V / 0.775)$)
-*   **dB SPL**: Sound Pressure Level. A unit of sound pressure where $20 \mu Pa$ is 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
+* **dBFS**: Relative level to digital full scale. Always available without calibration. The maximum value is 0 dBFS.
+* **dBV**: Unit of voltage where 1 Vrms is 0 dBV. ($20 \log_{10}(V / 1.0)$)
+* **dBu**: Unit of voltage where 0.775 Vrms is 0 dBu. Commonly used in professional audio equipment. ($20 \log_{10}(V / 0.775)$)
+* **dB SPL**: Sound Pressure Level. A unit of sound pressure where $20 \mu Pa$ is 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
 
 To perform displays and measurements in these units, **Input Sensitivity** and **Output Gain** calibration are required.
 
@@ -26,13 +26,13 @@ To perform displays and measurements in these units, **Input Sensitivity** and *
 
 Required equipment varies depending on the items being calibrated.
 
-*   **Input/Output Voltage Calibration**:
-    *   **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
-    *   **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
-*   **Sound Pressure Level (SPL) Calibration**:
-    *   **Speaker**: Required to play pink noise.
-    *   **Sound Level Meter**: Required to measure the reference sound pressure. Smartphone apps can be used as a substitute to some extent, but a dedicated measurement instrument is preferred.
-    *   Measurement Microphone: The microphone to be calibrated.
+* **Input/Output Voltage Calibration**:
+    * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
+    * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
+* **Sound Pressure Level (SPL) Calibration**:
+    * **Speaker**: Required to play pink noise.
+    * **Sound Level Meter**: Required to measure the reference sound pressure. Smartphone apps can be used as a substitute to some extent, but a dedicated measurement instrument is preferred.
+    * Measurement Microphone: The microphone to be calibrated.
 
 ## Basic Procedure
 
@@ -42,44 +42,44 @@ All settings are performed from the **Calibration** tab of the **Settings** widg
 
 Ensures that the voltage level of external input signals can be measured correctly.
 
-1.  Open the **Settings** widget and select the **Calibration** tab.
-2.  Press the **[Wizard]** button next to Input Sensitivity.
-3.  **Step 1**: Connect a signal source with a known voltage (such as an oscillator or another player outputting a known voltage) to the input terminal.
-    *   Alternatively, you can use MeasureLab's Signal Generator (if output-calibrated) and loop it back into the input, but using an external reference voltage is more reliable initially.
-4.  **Step 2**: Press **[Start Measurement]** and measure the input level. Wait for the Input Level display to stabilize.
-5.  **Step 3**: Enter the voltage value of the signal being input. You can choose from Vrms, mVrms, dBV, or dBu. It is recommended to measure the voltage with a voltmeter at that time and enter it.
-6.  **Step 4**: Press **[Calculate & Save]** to calculate and save the voltage equivalent of 1.0 FS (0 dBFS).
+1. Open the **Settings** widget and select the **Calibration** tab.
+2. Press the **[Wizard]** button next to Input Sensitivity.
+3. **Step 1**: Connect a signal source with a known voltage (such as an oscillator or another player outputting a known voltage) to the input terminal.
+    * Alternatively, you can use MeasureLab's Signal Generator (if output-calibrated) and loop it back into the input, but using an external reference voltage is more reliable initially.
+4. **Step 2**: Press **[Start Measurement]** and measure the input level. Wait for the Input Level display to stabilize.
+5. **Step 3**: Enter the voltage value of the signal being input. You can choose from Vrms, mVrms, dBV, or dBu. It is recommended to measure the voltage with a voltmeter at that time and enter it.
+6. **Step 4**: Press **[Calculate & Save]** to calculate and save the voltage equivalent of 1.0 FS (0 dBFS).
 
 ### Calibration of Output Gain
 
 Allows MeasureLab to output specific voltages.
 
-1.  In the **Calibration** tab of the **Settings** widget, press the **[Wizard]** button for Output Gain.
-2.  **Step 1**: Connect a voltmeter (multimeter) to the output terminal of the audio interface.
-3.  **Step 2**: Set the test signal frequency (usually 1000 Hz) and level (e.g., -12 dBFS). A larger volume that doesn't clip is suitable.
-4.  **Step 3**: Press **[Start Tone]** to output the signal.
-5.  **Step 4**: Measure the voltage at the output terminal with the voltmeter and enter that value.
-6.  **Step 5**: Press **[Calculate & Save]** to save.
+1. In the **Calibration** tab of the **Settings** widget, press the **[Wizard]** button for Output Gain.
+2. **Step 1**: Connect a voltmeter (multimeter) to the output terminal of the audio interface.
+3. **Step 2**: Set the test signal frequency (usually 1000 Hz) and level (e.g., -12 dBFS). A larger volume that doesn't clip is suitable.
+4. **Step 3**: Press **[Start Tone]** to output the signal.
+5. **Step 4**: Measure the voltage at the output terminal with the voltmeter and enter that value.
+6. **Step 5**: Press **[Calculate & Save]** to save.
 
 ### Calibration of Sound Pressure Level (SPL)
 
 Enables microphone input to be displayed as Sound Pressure Level (dB SPL).
 
-1.  Set up the measurement microphone and speaker.
-2.  In the **Calibration** tab of the **Settings** widget, press the **[Wizard]** button for SPL Offset.
-3.  Follow the instructions on the screen to configure settings:
-    *   **Test Signal Band**: Choose according to your speaker's reproduction capability (usually Speaker 500-2000Hz).
-    *   **Output Level**: Set the volume of the test signal (band-limited pink noise).
-    *   **Averaging Time**: The averaging time for the measurement.
-4.  Press **[Start]** to play the noise from the speaker.
-5.  Place the microphone of the Sound Level Meter very close to (at the same position as) the measurement microphone, and read the dB SPL value shown on the sound level meter.
-6.  Enter the sound level meter value in the **Measured SPL** field.
-7.  Press **[Calculate & Save]**. This records the difference (offset) between the input voltage level and the actual sound pressure.
+1. Set up the measurement microphone and speaker.
+2. In the **Calibration** tab of the **Settings** widget, press the **[Wizard]** button for SPL Offset.
+3. Follow the instructions on the screen to configure settings:
+    * **Test Signal Band**: Choose according to your speaker's reproduction capability (usually Speaker 500-2000Hz).
+    * **Output Level**: Set the volume of the test signal (band-limited pink noise).
+    * **Averaging Time**: The averaging time for the measurement.
+4. Press **[Start]** to play the noise from the speaker.
+5. Place the microphone of the Sound Level Meter very close to (at the same position as) the measurement microphone, and read the dB SPL value shown on the sound level meter.
+6. Enter the sound level meter value in the **Measured SPL** field.
+7. Press **[Calculate & Save]**. This records the difference (offset) between the input voltage level and the actual sound pressure.
 
 ## Cases Where Re-calibration is Necessary
 
 Even if you have calibrated once, re-calibration is required in the following cases:
 
-*   **When changing the audio interface**: Because the specified levels for input and output differ.
-*   **When moving hardware gain knobs**: Moving the Input Gain or Output Volume knobs on the interface itself changes the relationship between voltage and digital values. We recommend fixing the knob positions (e.g., with tape) when performing measurements and calibrating in that state.
-*   **When changing microphones or speakers**: Because microphone sensitivity or speaker efficiency changes, SPL calibration needs to be redone.
+* **When changing the audio interface**: Because the specified levels for input and output differ.
+* **When moving hardware gain knobs**: Moving the Input Gain or Output Volume knobs on the interface itself changes the relationship between voltage and digital values. We recommend fixing the knob positions (e.g., with tape) when performing measurements and calibrating in that state.
+* **When changing microphones or speakers**: Because microphone sensitivity or speaker efficiency changes, SPL calibration needs to be redone.

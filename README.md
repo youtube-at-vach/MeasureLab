@@ -23,15 +23,15 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 以下のモジュール/ウィジットが統合されています。各機能の詳細は [**ウィジットガイド**](docs/widget_guide.md) を、実際の測定例については [**測定レシピ**](docs/measurement_recipes/index.md) を参照してください。
 
-1.  **Welcome**: 起動時のウェルカム画面で主要機能を案内。
-2.  **Signal Generator**: 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力に対応。
-3.  **Spectrum Analyzer**: 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定に対応。
-4.  **Sound Level Meter**: A/C/Z 周波数重み付け、FAST/SLOW/IMPULSE/10ms 時間重み付け、20Hz–20k/12.5k/8k 帯域選択に対応した高機能騒音計。Lp/Leq/LE/Lmax/Lmin/Lpeak表示、キャリブレーションオフセット適用に対応。
-5.  **LUFS Meter**: ラウドネス (LUFS/LKFS) のリアルタイム測定。クレストファクター、ダイナミックレンジ表示。
-6.  **Loopback Finder**: オーディオインターフェースのレイテンシー(遅延)測定ツール。
-7.  **Distortion Analyzer**: THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ハーモニクスバーグラフ、平均化機能搭載。
-8.  **Advanced Distortion Meter**: MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。
-9.  **Network Analyzer**: 周波数特性(ゲイン・位相・群遅延)の測定。スイープ測定、複数トレース表示、周波数範囲制限対応。
+1. **Welcome**: 起動時のウェルカム画面で主要機能を案内。
+2. **Signal Generator**: 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力に対応。
+3. **Spectrum Analyzer**: 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定に対応。
+4. **Sound Level Meter**: A/C/Z 周波数重み付け、FAST/SLOW/IMPULSE/10ms 時間重み付け、20Hz–20k/12.5k/8k 帯域選択に対応した高機能騒音計。Lp/Leq/LE/Lmax/Lmin/Lpeak表示、キャリブレーションオフセット適用に対応。
+5. **LUFS Meter**: ラウドネス (LUFS/LKFS) のリアルタイム測定。クレストファクター、ダイナミックレンジ表示。
+6. **Loopback Finder**: オーディオインターフェースのレイテンシー(遅延)測定ツール。
+7. **Distortion Analyzer**: THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ハーモニクスバーグラフ、平均化機能搭載。
+8. **Advanced Distortion Meter**: MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。
+9. **Network Analyzer**: 周波数特性(ゲイン・位相・群遅延)の測定。スイープ測定、複数トレース表示、周波数範囲制限対応。
 10. **Oscilloscope**: 2チャンネル波形表示、トリガー機能、カーソル測定、演算波形(A+B, A-B)、リアルタイムローパス/ハイパスフィルタリング対応。
 11. **Raw Time Series**: 長時間スパンをリングバッファで保持する2chスクロール波形モニタ。
 12. **Transient Analyzer**: トリガ収録＋CWT で過渡解析、解析帯域/スケールを柔軟に指定。
@@ -57,22 +57,22 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 世界中の主要な言語をサポートしています。設定画面から切り替え可能です。
 
--   英語 (English)
--   日本語 (Japanese)
--   中国語 (Chinese)
--   スペイン語 (Spanish)
--   フランス語 (French)
--   ドイツ語 (German)
--   ポルトガル語 (Portuguese)
--   ロシア語 (Russian)
--   韓国語 (Korean)
+- 英語 (English)
+- 日本語 (Japanese)
+- 中国語 (Chinese)
+- スペイン語 (Spanish)
+- フランス語 (French)
+- ドイツ語 (German)
+- ポルトガル語 (Portuguese)
+- ロシア語 (Russian)
+- 韓国語 (Korean)
 
 ### ⚙️ 高度な設定
 
--   **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。
--   **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。
--   **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
--   **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
+- **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。
+- **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。
+- **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
+- **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
 
 ---
 
@@ -82,8 +82,8 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 **Releases** ページから最新のバージョンをダウンロードしてください。
 
--   **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
--   **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
+- **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
+- **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
 
     ```bash
     chmod +x MeasureLab-*-linux-x86_64.AppImage
@@ -108,7 +108,7 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 リリース版（AppImage/ZIP）はそのまま動作しますが、ソースコードから実行する場合に **APT（OSパッケージ）の Python 依存（例: PyQt6 など）が古くて動かない**ことがあります。
 そのため Linux では、**システムの Python はそのまま使いつつ、依存パッケージは venv + pip で入れる**運用を推奨します。
 
-1.  OS 依存ライブラリ（最低限）を入れます。
+1. OS 依存ライブラリ（最低限）を入れます。
     - `sounddevice` は PortAudio を利用するため、実行時に `libportaudio2` が必要です。
     - `soundfile` は libsndfile を利用するため、実行時に `libsndfile1` が必要です。
 
@@ -123,7 +123,7 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
     sudo apt install -y build-essential portaudio19-dev libsndfile1-dev
     ```
 
-2.  仮想環境を作成して有効化します（例: リポジトリ直下に `.venv`）。
+2. 仮想環境を作成して有効化します（例: リポジトリ直下に `.venv`）。
 
     ```bash
     python3 -m venv .venv
@@ -141,14 +141,14 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
     ./.venv/bin/python main_gui.py
     ```
 
-3.  リポジトリをクローンします。
-4.  依存関係をインストールします（再現性のため constraints を利用）：
+3. リポジトリをクローンします。
+4. 依存関係をインストールします（再現性のため constraints を利用）：
 
     ```bash
     pip install -c constraints.txt -r requirements.txt
     ```
 
-5.  アプリケーションを起動します：
+5. アプリケーションを起動します：
 
     ```bash
     python main_gui.py

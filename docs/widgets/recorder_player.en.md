@@ -45,18 +45,18 @@ Records input signals to memory and exports them as files.
 
 Prepare a WAV file containing pink noise or a sine sweep, play it with this tool, and observe it with a measurement instrument (such as a Spectrum Analyzer).
 
-1.  Load a test signal file using **Load File** in the **Playback** section.
-2.  Check **Loop** if you want to output the signal continuously.
-3.  Press **Play** to start playback.
-4.  Open another widget (such as the Spectrum Analyzer) and verify that the input signal is being received correctly.
-5.  By switching the **Output Mode**, you can send a signal only to the left channel to measure crosstalk (leakage into the right channel), for example.
+1. Load a test signal file using **Load File** in the **Playback** section.
+2. Check **Loop** if you want to output the signal continuously.
+3. Press **Play** to start playback.
+4. Open another widget (such as the Spectrum Analyzer) and verify that the input signal is being received correctly.
+5. By switching the **Output Mode**, you can send a signal only to the left channel to measure crosstalk (leakage into the right channel), for example.
 
 ### Capturing Abnormalities
 
 If a circuit is producing abnormal sounds, you can record them to keep as evidence or for detailed analysis later.
 
-1.  Verify the input settings in the **Recording** section.
-2.  Press the **Record** button and reproduce the situation where the abnormal sound occurs.
-3.  Once enough data is recorded, press **Stop Recording**.
-4.  Press **Save Recording** and save it with a name like `evidence.wav`.
-5.  The saved file can later be loaded and played back in this tool or opened in waveform editing software.
+1. Verify the input settings in the **Recording** section.
+2. Press the **Record** button and reproduce the situation where the abnormal sound occurs.
+3. Once enough data is recorded, press **Stop Recording**.
+4. Press **Save Recording** and save it with a name like `evidence.wav`.
+5. The saved file can later be loaded and played back in this tool or opened in waveform editing software.

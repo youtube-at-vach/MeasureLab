@@ -7,9 +7,9 @@
 This is a tool for detailed analysis and characterization of "noise" components contained in an input signal.
 It goes beyond simply displaying the spectrum and quantifies noise by decomposing it into the following elements:
 
-1.  **White Noise**: "Hissing" noise distributed evenly across all frequencies.
-2.  **1/f Noise (Flicker Noise)**: "Fluctuation" noise that becomes stronger at lower frequencies.
-3.  **Hum Noise**: Power supply-derived "humming" 50Hz/60Hz and its harmonic components.
+1. **White Noise**: "Hissing" noise distributed evenly across all frequencies.
+2. **1/f Noise (Flicker Noise)**: "Fluctuation" noise that becomes stronger at lower frequencies.
+3. **Hum Noise**: Power supply-derived "humming" 50Hz/60Hz and its harmonic components.
 
 In addition, based on the temperature and impedance settings, it displays the "Thermal Noise" line, which is the physical limit, allowing comparison with the performance limit of the measurement system.
 It is ideal for evaluating the low-noise performance of amplifiers and microphone preamplifiers, and for identifying noise sources in circuits.
@@ -93,24 +93,24 @@ Sets the criteria for thermal noise or when using an external preamplifier (LNA:
 
 Check how low the noise is for homemade or commercial microphone preamplifiers.
 
-1.  Short the input of the preamplifier (or connect a dummy resistor) and input the output to MeasureLab.
-2.  Enable **Average Mode** and set Count to about `1000`.
-3.  Wait a while and see the graph stabilize.
-4.  Enter the gain of the preamplifier in the **Measurement** tab and check **Apply to Plot**.
-5.  The displayed **White Density** (e.g., 4 nV/√Hz) is the equivalent input noise performance of the preamplifier.
+1. Short the input of the preamplifier (or connect a dummy resistor) and input the output to MeasureLab.
+2. Enable **Average Mode** and set Count to about `1000`.
+3. Wait a while and see the graph stabilize.
+4. Enter the gain of the preamplifier in the **Measurement** tab and check **Apply to Plot**.
+5. The displayed **White Density** (e.g., 4 nV/√Hz) is the equivalent input noise performance of the preamplifier.
 
 ### Evaluation of Power Supply Noise
 
 Check if hum noise is present on the power supply line of the circuit.
 
-1.  Look at the **Noise Contribution** bar graph.
-2.  If the percentage of **Cyan (Hum)** is high, there is a possibility of insufficient ripple removal of the power supply or a ground loop.
-3.  Look at the light blue dots on the graph to analyze whether the fundamental wave of 50Hz/60Hz is strong or the harmonics (100Hz/120Hz, etc.) are strong.
+1. Look at the **Noise Contribution** bar graph.
+2. If the percentage of **Cyan (Hum)** is high, there is a possibility of insufficient ripple removal of the power supply or a ground loop.
+3. Look at the light blue dots on the graph to analyze whether the fundamental wave of 50Hz/60Hz is strong or the harmonics (100Hz/120Hz, etc.) are strong.
 
 ### Observation of Thermal Noise of Resistors (Experiment)
 
 As a physical experiment, try actually measuring the thermal noise generated from a resistor.
 
-1.  Input the noise of the resistor through a high-gain, low-noise amplifier.
-2.  Enter the resistance value in **Input Z** in the **Measurement** tab.
-3.  Confirm if the measured value of the graph (yellow) matches the theoretical value, **Thermal Limit** (magenta).
+1. Input the noise of the resistor through a high-gain, low-noise amplifier.
+2. Enter the resistance value in **Input Z** in the **Measurement** tab.
+3. Confirm if the measured value of the graph (yellow) matches the theoretical value, **Thermal Limit** (magenta).

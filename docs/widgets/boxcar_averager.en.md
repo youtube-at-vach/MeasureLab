@@ -60,17 +60,17 @@ Displayed only when Mode is set to `External Reference`.
 
 Measure the followability (rise characteristics and damping) when a sudden signal change is given to audio equipment.
 
-1.  Connect the output of the audio interface to the input of the measurement target, and return the output to the input (loopback connection).
-2.  Set **Mode** to `Internal Step`.
-3.  Set **Period** to about `100 ms`.
-4.  Press **Start** and look at the graph.
-5.  You can observe the waveform, which was jagged with noise, becoming a clean staircase-like waveform as the number of integrations (N) increases.
+1. Connect the output of the audio interface to the input of the measurement target, and return the output to the input (loopback connection).
+2. Set **Mode** to `Internal Step`.
+3. Set **Period** to about `100 ms`.
+4. Press **Start** and look at the graph.
+5. You can observe the waveform, which was jagged with noise, becoming a clean staircase-like waveform as the number of integrations (N) increases.
 
 ### Detection of Minute Signals (Noise Reduction)
 
 Observe small repetitive signals that are buried in noise and invisible with an oscilloscope.
 
-1.  Set **Mode** to `External Reference`.
-2.  Input the synchronization signal (trigger) from the measurement system into Ch2 (Right), and input a minute sensor signal, etc., into Ch1 (Left).
-3.  Set **Ref** to `Right` and adjust **Lvl** appropriately.
-4.  When you press **Start**, Ch1 is overwritten in accordance with the timing of the synchronization signal, and only random noise is canceled and disappears.
+1. Set **Mode** to `External Reference`.
+2. Input the synchronization signal (trigger) from the measurement system into Ch2 (Right), and input a minute sensor signal, etc., into Ch1 (Left).
+3. Set **Ref** to `Right` and adjust **Lvl** appropriately.
+4. When you press **Start**, Ch1 is overwritten in accordance with the timing of the synchronization signal, and only random noise is canceled and disappears.

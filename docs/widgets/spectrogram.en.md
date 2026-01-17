@@ -69,27 +69,27 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 
 Try analyzing your own voice or speech.
 
-1.  Press the **Start** button.
-2.  Talk into the microphone saying "ah" or "ee".
-3.  You can see the positions of color bands (formants) change depending on the vowel.
-4.  If you whistle, a very clear single line (close to a pure tone) appears.
+1. Press the **Start** button.
+2. Talk into the microphone saying "ah" or "ee".
+3. You can see the positions of color bands (formants) change depending on the vowel.
+4. If you whistle, a very clear single line (close to a pure tone) appears.
 
 ### Identifying the Source of Unusual Noises (Noise Identification)
 
 Identify annoying sound components such as "whine" (high-frequency noise) or "hum" (low-frequency power line noise).
 
-1.  Set **FFT Size** to a large value (`4096` to `8192`).
-2.  Set **Speed** to about `Medium`.
-3.  Observe the screen while the noise is occurring.
-4.  **A line extending horizontally**: Constant noise such as a fan, motor, or power hum. You can identify the frequency by looking at the vertical axis.
-5.  **A line running vertically**: Impact sounds or click noise.
-6.  **Hazy fog**: Wind noise from air conditioning (white noise), etc.
+1. Set **FFT Size** to a large value (`4096` to `8192`).
+2. Set **Speed** to about `Medium`.
+3. Observe the screen while the noise is occurring.
+4. **A line extending horizontally**: Constant noise such as a fan, motor, or power hum. You can identify the frequency by looking at the vertical axis.
+5. **A line running vertically**: Impact sounds or click noise.
+6. **Hazy fog**: Wind noise from air conditioning (white noise), etc.
 
 ### Checking High-Res Audio Sources (High-Res Audio Check)
 
 Confirm whether the music file being played is truly high-res (containing components up to high frequencies) or if it has simply been upsampled.
 
-1.  Play music.
-2.  Expand **Max Freq** to `48000 Hz` (for 96kHz sampling), etc.
-3.  Look at the region above **20kHz (20000Hz)**.
-4.  If color is clearly present even above 20kHz, it contains high-res components. If it is cut off sharply at 20kHz and becomes pitch black, it is likely originally CD quality.
+1. Play music.
+2. Expand **Max Freq** to `48000 Hz` (for 96kHz sampling), etc.
+3. Look at the region above **20kHz (20000Hz)**.
+4. If color is clearly present even above 20kHz, it contains high-res components. If it is cut off sharply at 20kHz and becomes pitch black, it is likely originally CD quality.

@@ -42,16 +42,16 @@ Indicators showing the stability of the measurement are displayed in real-time b
 
 By switching the tabs at the bottom of the screen, you can analyze the data from different perspectives.
 
-1.  **Frequency Drift**
+1. **Frequency Drift**
     - Records how the frequency changes over time (horizontal axis).
     - Ideal for observing frequency drift due to device warm-up (changes caused by heat).
 
-2.  **Allan Deviation**
+2. **Allan Deviation**
     - For advanced stability analysis.
     - Displays stability on a log-log graph when the integration time (Tau) is varied, such as "fluctuation over 1 second" or "fluctuation over 10 seconds."
     - A downward-sloping graph means that precision improves as you average over longer periods.
 
-3.  **Jitter Histogram**
+3. **Jitter Histogram**
     - Displays frequency variation as a frequency distribution (histogram).
     - You can check how the measured values are distributed around the mean (whether it is a normal distribution or biased toward a specific frequency).
     - **Baseline Setting**: Choose whether to center the distribution on the "Mean" or an arbitrary "Reference" value.
@@ -81,14 +81,14 @@ By switching the tabs at the bottom of the screen, you can analyze the data from
 
 Check how much the frequency of a DIY analog synthesizer or oscillation circuit shifts due to temperature changes (drift).
 
-1.  Input the signal and press **Start**.
-2.  Open the **Frequency Drift** tab.
-3.  Leave it for several to tens of minutes and observe the movement of the graph.
-4.  You can observe how the frequency moves significantly immediately after power-on and eventually stabilizes (warm-up characteristics).
+1. Input the signal and press **Start**.
+2. Open the **Frequency Drift** tab.
+3. Leave it for several to tens of minutes and observe the movement of the graph.
+4. You can observe how the frequency moves significantly immediately after power-on and eventually stabilizes (warm-up characteristics).
 
 ### Precise Frequency Tuning
 
-1.  Set the **Update Rate** to **Fast**.
-2.  Look at the **Jitter Histogram** tab.
-3.  Adjust the circuit so that the histogram peak becomes sharp (reducing variation) and the peak comes to the target center.
-4.  Switching the units to **ppm** makes it easier to determine if it falls within the tolerable error range (e.g., within ±20ppm).
+1. Set the **Update Rate** to **Fast**.
+2. Look at the **Jitter Histogram** tab.
+3. Adjust the circuit so that the histogram peak becomes sharp (reducing variation) and the peak comes to the target center.
+4. Switching the units to **ppm** makes it easier to determine if it falls within the tolerable error range (e.g., within ±20ppm).

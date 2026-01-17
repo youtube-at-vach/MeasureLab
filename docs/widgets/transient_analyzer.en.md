@@ -11,29 +11,29 @@ It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while mai
 
 ### Recording
 
-*   **Record**: Pressing this button starts the recording. It stops automatically after acquiring data for the set **Record Time**.
-*   **Trigger**: Like an oscilloscope, recording can be started at the moment a sound volume beyond a certain **Level** is detected.
+* **Record**: Pressing this button starts the recording. It stops automatically after acquiring data for the set **Record Time**.
+* **Trigger**: Like an oscilloscope, recording can be started at the moment a sound volume beyond a certain **Level** is detected.
 
 ### Analysis
 
-*   After recording is complete, press the **Analyze** button to perform the Wavelet Transform.
-    *   **Note**: This process is computationally intensive and may take several seconds to show results.
+* After recording is complete, press the **Analyze** button to perform the Wavelet Transform.
+    * **Note**: This process is computationally intensive and may take several seconds to show results.
 
 ### Reading the Charts
 
-*   **Transient Waveform (Top)**: The waveform of the recorded sound (Time axis).
-*   **Wavelet Scalogram (Bottom)**:
-    *   **Horizontal axis**: Time
-    *   **Vertical axis**: Frequency (Logarithmic display)
-    *   **Color**: Intensity at that moment.
-    *   Similar to a spectrogram, but it analyzes low-pitched sounds broadly in the time direction and high-pitched sounds sharply. This allows for a well-balanced simultaneous display of instantaneous click sounds (time information) and low hums (frequency information).
+* **Transient Waveform (Top)**: The waveform of the recorded sound (Time axis).
+* **Wavelet Scalogram (Bottom)**:
+    * **Horizontal axis**: Time
+    * **Vertical axis**: Frequency (Logarithmic display)
+    * **Color**: Intensity at that moment.
+    * Similar to a spectrogram, but it analyzes low-pitched sounds broadly in the time direction and high-pitched sounds sharply. This allows for a well-balanced simultaneous display of instantaneous click sounds (time information) and low hums (frequency information).
 
 ## Settings
 
-*   **Wavelet**: Selection of the waveform (mother function) type used for analysis. Generally, `cmor` (Complex Morlet) is suitable.
-*   **Min / Max Freq**: Specifies the frequency range to be analyzed.
+* **Wavelet**: Selection of the waveform (mother function) type used for analysis. Generally, `cmor` (Complex Morlet) is suitable.
+* **Min / Max Freq**: Specifies the frequency range to be analyzed.
 
 ## Use Cases
 
-*   **Impact Sound Analysis**: Examining the response when a pulse is input to a speaker (impulse response) or changes in sound components when something collides.
-*   **Evaluation of Instrument Attack**: Detailed observation of how harmonics appear at the moment a musical instrument starts sounding.
+* **Impact Sound Analysis**: Examining the response when a pulse is input to a speaker (impulse response) or changes in sound components when something collides.
+* **Evaluation of Instrument Attack**: Detailed observation of how harmonics appear at the moment a musical instrument starts sounding.

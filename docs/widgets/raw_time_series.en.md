@@ -53,16 +53,16 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
 
 Check the operational stability of a DIY amplifier or circuit.
 
-1.  Press the **Start** button to begin measurement.
-2.  Set **Time Span** to `60s` or `300s`.
-3.  Turn **Show DC Offset** ON.
-4.  Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
+1. Press the **Start** button to begin measurement.
+2. Set **Time Span** to `60s` or `300s`.
+3. Turn **Show DC Offset** ON.
+4. Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
 
 ### Finding Intermittent Noise
 
 Wait for and monitor noise that occurs sporadically, such as occasional "popping" sounds.
 
-1.  Set a long **Time Span** (`60s` or more).
-2.  Set the **Scale** to a high value (`5.0x` or `10.0x`) to magnify the noise floor during silence.
-3.  When noise occurs, it will be recorded as a spike on the graph.
-4.  Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
+1. Set a long **Time Span** (`60s` or more).
+2. Set the **Scale** to a high value (`5.0x` or `10.0x`) to magnify the noise floor during silence.
+3. When noise occurs, it will be recorded as a spike on the graph.
+4. Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
