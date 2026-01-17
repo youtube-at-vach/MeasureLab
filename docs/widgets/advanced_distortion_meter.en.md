@@ -3,6 +3,7 @@
 ![Advanced Distortion Meter](../assets/widgets/advanced_distortion_meter.png)
 
 ## Overview
+
 This is an advanced tool for analyzing more complex and practical distortions that are not understandable by standard "THD (Total Harmonic Distortion)" measurements.
 Instead of a single pure tone, it uses simultaneous multiple tones or specific combinations of frequencies to evaluate the performance of amplifiers and speakers under conditions closer to actual music playback.
 
@@ -11,17 +12,20 @@ It is suitable for searching for the cause of phenomena such as "having good num
 ## Operation
 
 ### Starting and Stopping Measurement
+
 1.  In **Measurement Mode**, select the item you want to measure (MIM, SPDR, PIM, Multi-Tone, etc.).
 2.  Press the **Start Measurement** button to begin the measurement and output the signal.
 3.  During measurement, the graph is updated continuously, and values are displayed in the **Results** field.
 4.  Stop with **Stop Measurement**.
 
 ### How to Read the Graph
+
 - **Horizontal Axis (Frequency)**: Frequency.
 - **Vertical Axis (Amplitude)**: Loudness (dB).
 - The yellow line represents the spectrum of the input signal (intensity for each frequency).
 
 ### Results
+
 Depending on the measurement mode, the most important indicators are displayed largely here.
 - **TD+N / SPDR / PIM**: Main measurement values. Whether a larger (or smaller) value is better depends on the mode (described later).
 
@@ -30,6 +34,7 @@ Depending on the measurement mode, the most important indicators are displayed l
 Settings are performed in the panel on the left side of the screen.
 
 ### Measurement Mode
+
 This is the core function of this tool. The main modes are as follows:
 
 *   **MIM (Multitone Intermodulation Distortion)**
@@ -50,6 +55,7 @@ This is the core function of this tool. The main modes are as follows:
     *   **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
 
 ### Generator
+
 Sets the strength of the signal used for measurement.
 
 *   **Amplitude**: Loudness of the signal.
@@ -57,12 +63,14 @@ Sets the strength of the signal used for measurement.
 *   **Unit**: Can be selected from `dBFS` (digital full scale), `dBV` (1V reference), `dBu` (professional reference), and `Vrms` (voltage).
 
 ### I/O (Input/Output)
+
 *   **Input Ch**: Select the input terminal (microphone or line input) used for measurement.
 *   **Output Ch**: Select the terminal for outputting the signal (output to speakers or amplifier).
 
 ## Usage Examples
 
 ### Checking Amplifier Performance (MIM Measurement)
+
 When "distortion rate in the spec sheet is good, but the sound is muddy when listening to intense songs," MIM mode is effective.
 
 1.  Set **Mode** to `MIM`.
@@ -73,6 +81,7 @@ When "distortion rate in the spec sheet is good, but the sound is muddy when lis
 4.  Look at the graph and check if the "valleys" between the many columns (test signals) are deeply submerged. If the valleys are buried, it indicates a lot of some kind of distortion or noise.
 
 ### Finding Unknown Noise (Spurious) (SPDR Measurement)
+
 Check if unexpected noise is mixed in, such as power supply noise or interference from digital circuits.
 
 1.  Set **Mode** to `SPDR`.
@@ -81,6 +90,7 @@ Check if unexpected noise is mixed in, such as power supply noise or interferenc
 4.  The frequency of the largest noise is displayed in **Max Spur**. You can see things like "Oh, 50Hz of the power supply frequency is appearing."
 
 ### Checking Intermodulation at High Frequencies (PIM Measurement)
+
 Check if high sounds are not muddy when mixed in a tweeter or wideband amplifier.
 
 1.  Set **Mode** to `PIM`.

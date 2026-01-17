@@ -3,6 +3,7 @@
 ![Frequency Counter](../assets/widgets/frequency_counter.png)
 
 ## Overview
+
 This tool measures and displays the frequency of input signals with high precision.
 In addition to simply showing the "current frequency," it allows for detailed analysis of frequency fluctuations (jitter) and variations over time (drift).
 It can be used for measuring the stability of crystal oscillators, instrument tuning, rotation speed measurement, and more.
@@ -10,10 +11,12 @@ It can be used for measuring the stability of crystal oscillators, instrument tu
 ## Operation
 
 ### Starting and Stopping Measurements
+
 - **Start / Stop Button**: Toggles the measurement on and off.
     * While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
 
 ### Understanding the Main Display
+
 The large numbers displayed at the top of the screen are the measurement results. It features a high-visibility LED-style design.
 - **Green Numbers**: The current frequency (or period).
 - **dB Display (bottom right)**: The current signal level (dBFS). Measurements are not taken if the signal is too small (below the Gate setting).
@@ -21,16 +24,19 @@ The large numbers displayed at the top of the screen are the measurement results
 ## Screen Configuration and Features
 
 ### Display Mode
+
 The numerical display format can be switched according to the application.
 - **Frequency**: Displays in Hertz (Hz). This is normally used.
 - **Period**: Displays the period (s, ms, µs, ns). Used when you want to know the time taken for one wave cycle.
 
 ### Statistics (Stats)
+
 Indicators showing the stability of the measurement are displayed in real-time below the display.
 - **Std Dev**: Standard Deviation. Indicates the amount of frequency variation. The smaller the value, the more stable it is.
 - **Allan Dev**: Allan Deviation. An indicator of short-term stability, used for evaluating oscillators, etc.
 
 ### Graphical Analysis (Tab Switching)
+
 By switching the tabs at the bottom of the screen, you can analyze the data from different perspectives.
 
 1.  **Frequency Drift**
@@ -69,6 +75,7 @@ By switching the tabs at the bottom of the screen, you can analyze the data from
 ## Usage Examples
 
 ### Checking the Stability of an Oscillation Circuit
+
 Check how much the frequency of a DIY analog synthesizer or oscillation circuit shifts due to temperature changes (drift).
 1.  Input the signal and press **Start**.
 2.  Open the **Frequency Drift** tab.
@@ -76,6 +83,7 @@ Check how much the frequency of a DIY analog synthesizer or oscillation circuit 
 4.  You can observe how the frequency moves significantly immediately after power-on and eventually stabilizes (warm-up characteristics).
 
 ### Precise Frequency Tuning
+
 1.  Set the **Update Rate** to **Fast**.
 2.  Look at the **Jitter Histogram** tab.
 3.  Adjust the circuit so that the histogram peak becomes sharp (reducing variation) and the peak comes to the target center.

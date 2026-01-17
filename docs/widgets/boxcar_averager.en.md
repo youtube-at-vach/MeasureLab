@@ -3,6 +3,7 @@
 ![Boxcar Averager](../assets/widgets/boxcar_averager.png)
 
 ## Overview
+
 This tool removes random noise and clearly brings out hidden minute waveforms by repeatedly superimposing and averaging periodic signals.
 Also called a "boxcar integrator," it is used for measuring minute signals and high-precision observation of the impulse response and step response of systems.
 
@@ -11,10 +12,12 @@ This widget has both an "Internal mode," which outputs test signals itself to sy
 ## Operation
 
 ### Starting and Resetting Measurement
+
 - **Start / Stop Button**: Switches between starting and stopping measurement (integration).
 - **Reset Button**: Clears the integrated data up to now and restarts averaging from zero. Press this immediately after changing settings or moving the measurement target.
 
 ### Graph Display
+
 - **Horizontal Axis (Time)**: Represents the time for one cycle.
 - **Vertical Axis (Amplitude)**: The amplitude of the averaged signal.
 - **N=...**: The current number of integrations (number of times averaged) is displayed in the title part. As the number of times increases, the noise decreases and the waveform becomes smoother.
@@ -36,6 +39,7 @@ This widget has both an "Internal mode," which outputs test signals itself to sy
     * Select the input channel you want to measure (Stereo / Left / Right).
 
 ### Gate Settings (Gate)
+
 A function to limit the time range to be analyzed. Used when extracting only specific reflected sounds or reducing the processing load.
 
 * **Gate Checkbox**: Turns the function ON/OFF.
@@ -43,6 +47,7 @@ A function to limit the time range to be analyzed. Used when extracting only spe
 * **Width**: Sets the width (length) to be recorded.
 
 ### External Sync Settings (External Sync)
+
 Displayed only when Mode is set to `External Reference`.
 
 * **Ref (Reference Channel)**: Select the channel (Left or Right) to be used as a trigger. Usually, a clean synchronization signal is input here.
@@ -52,6 +57,7 @@ Displayed only when Mode is set to `External Reference`.
 ## Usage Examples
 
 ### Seeing the Step Response of Amplifiers and Effectors
+
 Measure the followability (rise characteristics and damping) when a sudden signal change is given to audio equipment.
 
 1.  Connect the output of the audio interface to the input of the measurement target, and return the output to the input (loopback connection).
@@ -61,6 +67,7 @@ Measure the followability (rise characteristics and damping) when a sudden signa
 5.  You can observe the waveform, which was jagged with noise, becoming a clean staircase-like waveform as the number of integrations (N) increases.
 
 ### Detection of Minute Signals (Noise Reduction)
+
 Observe small repetitive signals that are buried in noise and invisible with an oscilloscope.
 
 1.  Set **Mode** to `External Reference`.

@@ -3,6 +3,7 @@
 ![Signal Generator](../assets/widgets/signal_generator.png)
 
 ## Overview
+
 The Signal Generator is a tool that generates various test signals required for audio measurements, such as sine waves, square waves, noise, and sweep signals. It allows independent control of the left and right channels (L/R) or linked operation for synchronized control.
 
 Main features:
@@ -13,15 +14,18 @@ Main features:
 ## Basic Operation
 
 ### Starting and Stopping Output
+
 Clicking the **"Start Output"** button at the top of the screen begins the signal generation. Clicking it again stops the generation.
 
 ### Output Routing
+
 Selects which channel(s) will output the signal.
 *   **Left Only**: Outputs signal only from the left channel.
 *   **Right Only**: Outputs signal only from the right channel.
 *   **Stereo (L+R)**: Outputs signal from both channels (commonly used).
 
 ### Edit Settings For
+
 Selects the target channel for parameter changes.
 *   **Left Channel**: Modifies only the left channel settings.
 *   **Right Channel**: Modifies only the right channel settings.
@@ -32,6 +36,7 @@ Selects the target channel for parameter changes.
 Configure signal details in the **"Signal Parameters"** section.
 
 ### Waveform
+
 You can choose from the following waveforms:
 
 *   **Sine**: Sine wave. The most basic test signal.
@@ -47,6 +52,7 @@ You can choose from the following waveforms:
 *   **PRBS (Pseudo-Random Binary Sequence)**: A pseudo-random binary sequence.
 
 ### Basic Parameters
+
 Available parameters vary depending on the waveform.
 
 *   **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input.
@@ -62,17 +68,20 @@ Available parameters vary depending on the waveform.
 Advanced signal generation features can be configured in the tabs at the bottom of the screen.
 
 ### Sweep
+
 Continuously changes the frequency of a sine wave. Used for measuring frequency response.
 *   **Start / End Freq**: The starting and ending frequencies.
 *   **Duration**: The time taken for the sweep (in seconds).
 *   **Logarithmic Sweep**: When checked, the sweep becomes logarithmic (constant rate of change per octave). When unchecked, it becomes a linear sweep.
 
 ### AM (Amplitude Modulation)
+
 Periodically changes the amplitude of the signal.
 *   **Mod Freq**: The frequency of the modulation signal.
 *   **Depth**: The depth of modulation (%).
 
 ### FM (Frequency Modulation) / ΦM (Phase Modulation)
+
 Periodically changes the frequency or phase of the signal.
 *   **Mod Freq**: The frequency of the modulation signal.
 *   **Deviation**: The maximum width of change (Hz or deg).

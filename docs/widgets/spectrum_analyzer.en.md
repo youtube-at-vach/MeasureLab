@@ -3,6 +3,7 @@
 ![Spectrum Analyzer](../assets/widgets/spectrum_analyzer.png)
 
 ## Overview
+
 This tool analyzes and displays the frequency components of audio signals in real-time.  
 You can visually confirm the magnitude of each frequency band for sounds input via microphone or line-in.  
 In addition to general FFT (Fast Fourier Transformation) analysis, it also features advanced measurement functions such as PSD (Power Spectral Density) display useful for noise analysis, and weighting (A-weighting/C-weighting) that takes hearing sensitivity into account.
@@ -10,9 +11,11 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 ## Operation
 
 ### Starting and Stopping Measurement
+
 *   **Start Analysis / Stop Analysis button**: Toggles the measurement start and stop.
 
 ### Reading the Graph
+
 *   **Horizontal Axis (Frequency)**: Represents frequency (the pitch of the sound). Moving to the right indicates higher pitch. It is displayed on a logarithmic (Log) scale.
 *   **Vertical Axis (Magnitude)**: Represents the size (strength) of the signal. Moving upwards indicates a stronger signal. The unit for the scale depends on the settings (Unit).
 *   **Cursor**: When you hover the mouse cursor over the graph, the exact frequency and level at that point are displayed in "Cursor: ..." at the top of the screen.
@@ -77,6 +80,7 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 Below are a few specific usage scenarios for the Spectrum Analyzer.
 
 ### Basic Input Check
+
 Basic usage to confirm that the microphone is picking up sound correctly.
 
 1.  Press the **Start Analysis** button to begin measurement.
@@ -86,6 +90,7 @@ Basic usage to confirm that the microphone is picking up sound correctly.
 5.  By turning ON **Peak Hold** and clapping, the frequency components of the momentary impact (the spectrum of the pulse sound) will remain as a red line, making it easier to observe.
 
 ### Noise Floor Measurement
+
 Checks the noise level (noise floor) when there is no sound. This is useful for improving the S/N ratio or finding power supply noise.
 
 1.  Connect the input device (microphone or line input) and ensure no sound is being produced.
@@ -95,6 +100,7 @@ Checks the noise level (noise floor) when there is no sound. This is useful for 
 5.  Setting **Smoothing** to `1/3 Octave` makes it easier to grasp the overall noise trend (whether it's closer to white noise or pink noise, etc.).
 
 ### Speaker Frequency Response
+
 By playing a test signal (such as pink noise) and picking up the speaker's output with a microphone, you can perform a simple check of the frequency response.
 
 1.  Prepare and play a **Pink Noise** source separately.

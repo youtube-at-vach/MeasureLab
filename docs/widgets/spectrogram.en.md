@@ -3,6 +3,7 @@
 ![Spectrogram](../assets/widgets/spectrogram.png)
 
 ## Overview
+
 A tool that displays sound components in three dimensions: "Time (horizontal axis)," "Frequency (vertical axis)," and "Strength (color)".
 While a spectrum analyzer displays the "frequency distribution at the current moment," a spectrogram visualizes the ever-changing "audio signature (voiceprint)".
 It is ideal for observing the "transitions" of sound, such as voice intonation analysis, time-based changes in instrument overtones, bird call analysis, and discovering intermittent noise.
@@ -10,10 +11,12 @@ It is ideal for observing the "transitions" of sound, such as voice intonation a
 ## Operation
 
 ### Starting and Stopping Measurements
+
 - **Start / Stop Button**: Toggles the measurement on and off.
     * When started, new data appears from the right edge of the graph, and old data flows to the left (waterfall display).
 
 ### Understanding the Graph
+
 - **Horizontal Axis (Time)**: Represents the passage of time. The current time is at the right edge, and going left represents past sounds.
 - **Vertical Axis (Frequency)**: Represents frequency (pitch). Higher up means higher frequency.
 - **Color**: Represents the "strength" of the sound at that moment and frequency.
@@ -21,6 +24,7 @@ It is ideal for observing the "transitions" of sound, such as voice intonation a
     * **Dark colors (blue, purple, black, etc.)**: Weak sounds or silence
 
 ### Understanding the Distribution Map (Color Bar) on the Right
+
 This vertical bar on the right side of the graph is a **"correspondence table between color and volume (dB)"** and also acts as a controller to adjust the brightness of the display.
 
 * **Meaning of Colors**: The top of the bar shows colors corresponding to strong sounds (near 0dB), and the bottom shows colors for weak sounds (near -120dB). Use it as a legend to understand "this color on the graph is roughly this volume."
@@ -62,6 +66,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 ## Usage Examples
 
 ### Visualizing "Voice" (Voice Analysis)
+
 Try analyzing your own voice or speech.
 
 1.  Press the **Start** button.
@@ -70,6 +75,7 @@ Try analyzing your own voice or speech.
 4.  If you whistle, a very clear single line (close to a pure tone) appears.
 
 ### Identifying the Source of Unusual Noises (Noise Identification)
+
 Identify annoying sound components such as "whine" (high-frequency noise) or "hum" (low-frequency power line noise).
 
 1.  Set **FFT Size** to a large value (`4096` to `8192`).
@@ -80,6 +86,7 @@ Identify annoying sound components such as "whine" (high-frequency noise) or "hu
 6.  **Hazy fog**: Wind noise from air conditioning (white noise), etc.
 
 ### Checking High-Res Audio Sources (High-Res Audio Check)
+
 Confirm whether the music file being played is truly high-res (containing components up to high frequencies) or if it has simply been upsampled.
 
 1.  Play music.

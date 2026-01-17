@@ -28,12 +28,15 @@ The purpose of this tool is to **turn your everyday PC and audio interface into 
 Please check the following preparations to start measurements smoothly.
 
 ### Software Installation
+
 Software must be ready to launch. If you haven't done so or want to know OS-specific notes, see [**Quick Start: Launching**](quickstart.en.md#starting-the-software).
 
 ### Audio Interface (I/O)
+
 While built-in audio functions of the PC can be used, we recommend an external audio interface for serious measurements.
 
 ### Connection Cables (for Loopback)
+
 We recommend performing an operation check with a **"loopback connection,"** where you output sound from the device and record it back yourself.
 - Connect a 3.5mm or 6.3mm standard plug cable from the output (OUT) to the input (IN).
 

@@ -9,11 +9,8 @@
         "MD029": false, // Ordered list item prefix - acceptable to have different styles
         "MD004": false, // Unordered list style - allow mixed * and -
         "MD030": false, // Spaces after list markers - allow 2 or 3 spaces
-        "MD022": false, // Headings should be surrounded by blank lines - strict for existing docs
-        "MD031": false, // Fenced code blocks should be surrounded by blank lines
         "MD032": false, // Lists should be surrounded by blank lines
         "MD007": false, // Unordered list indentation - allow mixed 2 or 4 spaces
-        "MD009": false, // Trailing spaces - ignore invisible whitespace
         "MD046": false // Code block style - disabled due to conflict with pymdownx.admonition indentation
     },
     "ignores": [

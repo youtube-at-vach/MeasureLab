@@ -62,15 +62,18 @@ Conversely, if the value is the same as during loopback, the performance of the 
 ## Limits and Points to Note for This Instrument
 
 ### Regarding the Measurement Method
+
 This Distortion Analyzer removes the fundamental wave (such as 1kHz) with a method called a **digital notch filter**, analyzes the remaining components with FFT, and calculates the distortion rate.
 
 This method is versatile and fast, but there is a measurement limit of approximately **-120dB (0.0001%)**.
 
 ### Visualization of the Measurement Limit
+
 Try measuring by switching the signal output setting at the bottom right of the main window from "Physical Output" to **"Loopback (Virtual)"**.
 The value displayed at this time (probably around -120dB to -130dB) is the measurement lower limit of this algorithm itself. Noise and distortion lower than this are buried in calculation errors and the limits of the filter.
 
 ### When Even Higher Precision Measurement is Required
+
 If you want to measure ultra-high performance DACs and amplifiers that fall below -120dB, consider using the **[Lock-in THD Analyzer](../widgets/lockin_thd_analyzer.md)**. By using the lock-in method, it is possible to observe even deeper noise floors.
 
 ---

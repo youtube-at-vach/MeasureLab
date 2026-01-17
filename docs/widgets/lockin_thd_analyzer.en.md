@@ -3,11 +3,13 @@
 ![Lockin Thd Analyzer](../assets/widgets/lockin_thd_analyzer.png)
 
 ## Overview
+
 The Lock-in THD Analyzer is a widget designed to measure **"Total Harmonic Distortion + Noise (THD+N)"** by using high-precision "lock-in detection" to identify and remove only the fundamental frequency component.
 
 It provides higher fundamental rejection performance than typical FFT analyzers, allowing for accurate evaluation of minute distortion in amplifiers and DACs.
 
 ## How it Works (Fundamental Rejection)
+
 This widget applies lock-in amplifier technology to calculate THD+N as follows:
 
 1.  **Lock-in Detection**: Synchronously detects the input signal with an internally generated sine wave (e.g., 1 kHz) to precisely measure the "amplitude" and "phase" of the fundamental wave.
@@ -18,6 +20,7 @@ This widget applies lock-in amplifier technology to calculate THD+N as follows:
 ## Operation
 
 ### Basic Settings (Settings)
+
 Configure measurement conditions in the left panel.
 
 *   **Frequency**: Measurement frequency. Usually `1000 Hz`.
@@ -25,6 +28,7 @@ Configure measurement conditions in the left panel.
 *   **Averages**: Number of averages to stabilize measurement accuracy.
 
 ### Filter Settings (HPF / LPF)
+
 This is one of the most important settings in THD+N measurement. It is used to cut noise in unnecessary bands to evaluate pure audio performance.
 
 *   **HPF (Hz)**: High-pass filter.
@@ -34,6 +38,7 @@ This is one of the most important settings in THD+N measurement. It is used to c
     *   **80000 Hz or higher**: Used for evaluating high-frequency noise in high-resolution equipment.
 
 ### Reading Results (Result)
+
 *   **THD+N**: Total Harmonic Distortion + Noise. Smaller values indicate better performance.
     *   **-60dB (0.1%)**: Typical audio equipment.
     *   **-80dB (0.01%)**: High quality.

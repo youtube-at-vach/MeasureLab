@@ -3,6 +3,7 @@
 ![Sound Quality Analyzer](../assets/widgets/sound_quality_analyzer.png)
 
 ## Overview
+
 This tool is used to quantify how sound is perceived by the human ear ("subjective quantity"). Instead of simply measuring voltage or sound pressure, it uses metrics based on psychoacoustics to objectively evaluate the pleasantness or unpleasantness of a sound.
 
 This tool is for **offline analysis only**. It analyzes pre-recorded audio files (WAV, etc.).
@@ -22,9 +23,11 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 4.  The graph below shows how each of these metrics "changed over time."
 
 ### Playback and Verification
+
 *   **Playback Button (▶)**: Plays the analyzed audio file.
 *   **Follow Cursor**: The yellow cursor on the graph moves in synchronization with the playback. You can listen to the sound at specific "high (or low) value locations."
 
 ## Use Cases
+
 *   **Analysis of Unpleasant Noise**: Quantifies "why" fan or motor noise is annoying using metrics like roughness and sharpness.
 *   **Sound Design Evaluation**: Verifies if product operation sounds or notification sounds match the intended image (e.g., gentle, sharp, powerful).

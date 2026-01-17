@@ -3,15 +3,18 @@
 ![Raw Time Series](../assets/widgets/raw_time_series.png)
 
 ## Overview
+
 A tool like a "chart recorder" that continuously monitors and records signal changes over long periods.
 While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences.
 
 ## Operations
 
 ### Starting and Stopping Measurements
+
 - **Start / Stop Button**: Toggles monitoring between active and stopped states. Stopping does not clear the buffer; resuming continues drawing from where it left off.
 
 ### Reading the Graph
+
 - **X-axis (Time)**: Represents elapsed time. Current time is 0, and the display goes back into the past (e.g., -10s to 0s).
 - **Y-axis (Amplitude)**: Represents the signal amplitude.
 - **CH1 (Green) / CH2 (Red)**: Displays left and right channels arranged vertically. Time axes are synchronized.
@@ -47,6 +50,7 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
 ## Usage Examples
 
 ### Monitoring DC Offset Drift
+
 Check the operational stability of a DIY amplifier or circuit.
 
 1.  Press the **Start** button to begin measurement.
@@ -55,6 +59,7 @@ Check the operational stability of a DIY amplifier or circuit.
 4.  Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
 
 ### Finding Intermittent Noise
+
 Wait for and monitor noise that occurs sporadically, such as occasional "popping" sounds.
 
 1.  Set a long **Time Span** (`60s` or more).

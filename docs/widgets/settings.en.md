@@ -1,23 +1,28 @@
 # Settings
 
 ## Overview
+
 In the Settings widget, you manage settings related to the operation of the entire application. Audio device selection, calibration, changing display language and themes, etc., are performed here.
 
 ## General
 
 ### Language
+
 Changes the display language of the application. A restart of the application is required to apply the changes.
 
 ### Appearance
+
 Selects the theme color of the application.
 *   **System**: Follows the system settings.
 *   **Light**: Light theme (white-based).
 *   **Dark**: Dark theme (black-based).
 
 ### Screenshots
+
 Specifies the destination folder for saving screenshots taken in each measurement widget. You can select a folder with the "Browse..." button.
 
 ### FFT Optimization
+
 Performs optimization to improve the processing speed of FFT (Fast Fourier Transform).
 *   **Regenerate Optimization**: Executes the optimization process. Execution may take several seconds to several minutes.
 *   **Include Huge Sizes**: If checked, it also performs optimization for very large data sizes (up to 4M samples). It takes time to process, but it is advantageous when performing huge FFTs.
@@ -25,12 +30,14 @@ Performs optimization to improve the processing speed of FFT (Fast Fourier Trans
 ## Audio
 
 ### Audio Devices
+
 Selects the input and output devices to be used.
 *   **Input Device**: Selects the input device with a measurement microphone, etc., connected.
 *   **Output Device**: Selects the output device with speakers, etc., connected.
 *   **Refresh Devices**: Updates the device list.
 
 ### Audio Configuration
+
 *   **PipeWire / JACK Mode (Resident)**: Enable when using PipeWire or JACK in a Linux environment. If checked, the audio engine continues to operate even if all widgets are closed, and the routing connection in an external patchbay (such as Graph) is maintained.
 *   **Sample Rate**: Selects the sampling frequency (e.g., 48000Hz, 192000Hz). A sampling rate as high as possible is recommended for high-precision measurement.
 *   **Buffer Optimization**: Selects the optimization level of the buffer size according to the application.
@@ -41,16 +48,20 @@ Selects the input and output devices to be used.
 *   **Input/Output Channels**: Selects the channel mode (Stereo, Left, Right).
 
 ## Calibration
+
 Performs calibration to improve measurement accuracy. Pressing the "Wizard" button for each item allows you to perform calibration in an interactive format.
 
 ### Input Sensitivity
+
 Setting for correctly displaying the voltage level of the input signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is input, it is 1.0V.
 *   **Wizard**: Automatically calculates by inputting a known voltage (for example, a 1Vrms sine wave) and inputting that value.
 
 ### Output Gain
+
 Setting for correctly controlling the voltage level of the output signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is output, the terminal voltage is 1.0V.
 *   **Wizard**: Automatically calculates by outputting a test signal (such as a 1kHz sine wave) and measuring the voltage with a tester and inputting it.
 
 ### SPL Offset
+
 Offset (correction value) of the dB SPL value displayed by the Sound Level Meter, etc.
 *   **Wizard**: Automatically calculates the total correction value including microphone sensitivity by outputting noise from a speaker and inputting the value (dB SPL) measured with a commercially available sound level meter.

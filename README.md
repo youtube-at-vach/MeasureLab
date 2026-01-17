@@ -20,6 +20,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 ## ✨ 主な機能 (Features)
 
 ### 🛠️ ウィジット / 測定モジュール
+
 以下のモジュール/ウィジットが統合されています。各機能の詳細は [**ウィジットガイド**](docs/widget_guide.md) を、実際の測定例については [**測定レシピ**](docs/measurement_recipes/index.md) を参照してください。
 
 1.  **Welcome**: 起動時のウェルカム画面で主要機能を案内。
@@ -53,6 +54,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 29. **Settings**: デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。
 
 ### 🌍 多言語対応 (Localization)
+
 世界中の主要な言語をサポートしています。設定画面から切り替え可能です。
 *   英語 (English)
 *   日本語 (Japanese)
@@ -65,6 +67,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 *   韓国語 (Korean)
 
 ### ⚙️ 高度な設定
+
 *   **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。
 *   **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。
 *   **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
@@ -75,6 +78,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 ## 🚀 インストールと実行 (Installation & Usage)
 
 ### 📦 ビルド済みパッケージを使用する場合
+
 **Releases** ページから最新のバージョンをダウンロードしてください。
 
 *   **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。

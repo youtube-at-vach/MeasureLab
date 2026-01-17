@@ -19,6 +19,7 @@ The widget to use depends on what kind of noise you want to see.
 Graphs the strength of noise per frequency (spectrum display). You can see things like "whether high sounds are noisy or low sounds are noisy" and "whether there is a peak at a specific frequency."
 
 ### Preparation
+
 *   **Equipment Connection**: Connect the device under test (DUT) to the input of the audio interface.
 *   **Input Short (for self-noise measurement)**: When measuring the noise of the audio interface itself or the residual noise of an amplifier, short the inputs or connect a dummy load to prevent external noise from entering.
 
@@ -45,6 +46,7 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
     *   **Pink Noise (1/f Noise)**: If the graph appears generally flat (decreasing slightly to the right), the 1/f noise component is dominant.
 
 ### Precautions
+
 *   **Ground Loop**: If the grounds of the computer and the device under test form a loop, a huge amount of hum noise may be present. In that case, try using a USB isolator or battery power for the laptop.
 
 ---
@@ -54,6 +56,7 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 Automatically decomposes noise into three elements: "white noise," "1/f noise," and "hum noise," and quantitatively evaluates each amount.
 
 ### Preparation
+
 *   **Temperature Check**: If you want to compare with the thermal limit (thermal noise), check the room temperature.
 *   **Impedance Check**: Checking the output impedance of the device under test (e.g., 150 Ω to 600 Ω for a microphone) allows comparison with theoretical limits.
 
@@ -76,6 +79,7 @@ Automatically decomposes noise into three elements: "white noise," "1/f noise," 
     *   Noise that increases at lower frequencies. It is often caused by the quality of transistors or DC instability.
 
 ### Precautions
+
 *   **Convergence Time**: Until averaging progresses, the numbers may vary. Wait for the count value to be reached (until the progress bar is full) before reading the value.
 
 ---
@@ -85,6 +89,7 @@ Automatically decomposes noise into three elements: "white noise," "1/f noise," 
 Records how voltage fluctuates with time like a chart recorder, rather than spectrum (frequency). It is suitable for capturing sudden phenomena or slow fluctuations, rather than continuous "hiss" noise.
 
 ### Preparation
+
 *   **DC Coupling**: If you want to see the fluctuation (drift) of DC offset, the audio interface must support DC coupling. Since general audio interfaces are AC-coupled (with a high-pass filter), ultra-low frequencies or DC may not be visible.
 
 ### Measurement Procedure
@@ -106,4 +111,5 @@ Records how voltage fluctuates with time like a chart recorder, rather than spec
     *   Irregular voltage fluctuations due to poor contact are also obvious when viewed in time series.
 
 ### Precautions
+
 *   **Misses**: Behavior while the widget is not displayed (e.g., in the background) depends on environment settings, but basically, drawing continues. However, very short spike noises may fall between screen drawing update intervals (aliasing). If you want to capture them reliably, consider using the trigger function of the oscilloscope widget as well.

@@ -3,13 +3,16 @@
 ![Lock In Amplifier](../assets/widgets/lock_in_amplifier.png)
 
 ## Overview
+
 The Lock-in Amplifier is a measurement widget that extracts the "Magnitude" and "Phase" of specific frequency components with high precision from weak signals buried in noise.
 It is used in physical experiments and electronic measurements to dramatically improve the signal-to-noise (S/N) ratio.
 
 While general spectrum analyzers "see all frequencies," the lock-in amplifier "monitors only one frequency pinpointed," which allows it to demonstrate overwhelming noise rejection performance.
 
 ## Principles of Lock-in Measurement
+
 ### Phase Sensitive Detection (PSD)
+
 A lock-in amplifier performs measurement by multiplying a基準 wave called a "Reference Signal" with the input signal.
 
 *   **Input Signal**: A signal buried in noise ($A \sin(2\pi ft + \phi) + \text{Noise}$)
@@ -19,6 +22,7 @@ When these are multiplied and passed through a Low-Pass Filter (LPF), only the c
 This enables the detection of signals much smaller than the noise floor.
 
 ### Dual Phase Detection
+
 This widget is a "dual-phase" type that uses two reference signals (Sine and Cosine) simultaneously.
 This makes it possible to accurately capture the signal magnitude regardless of the phase of the input signal.
 *   **X (In-phase)**: In-phase component
@@ -29,6 +33,7 @@ This makes it possible to accurately capture the signal magnitude regardless of 
 ## Measurement Modes
 
 ### Signal Source Mode (Internal / External)
+
 Switch between these via the check boxes in the **Settings** panel or through physical connections.
 
 *   **Internal Mode**
@@ -42,6 +47,7 @@ Switch between these via the check boxes in the **Settings** panel or through ph
     *   **Settings**: Check `External Mode (No Output)`. Input the reference signal into the `Reference Input` channel.
 
 ### Operation Mode (Manual / FRA)
+
 Switching between tabs allows you to choose between fixed-point measurement and sweep measurement.
 
 *   **Manual Control**
@@ -59,6 +65,7 @@ Switching between tabs allows you to choose between fixed-point measurement and 
 Important setting items for mastering the lock-in amplifier.
 
 ### Time Constant and LPF
+
 The performance of a lock-in amplifier is determined by the "strength of the filter."
 
 1.  **Integration**:
@@ -72,6 +79,7 @@ The performance of a lock-in amplifier is determined by the "strength of the fil
     *   **Post-mix LPF Order**: The number of filter stages (steepness). Usually, `4-pole` (24 dB/oct) is sufficient, but it can be increased to `8-pole` if you want to remove powerful noise.
 
 ### Averaging
+
 *   **Count**: Averages and displays the specified number of measurement data points. Effective for reducing random noise.
 
 ## Quick Start Procedures

@@ -3,6 +3,7 @@
 ![Recorder Player](../assets/widgets/recorder_player.png)
 
 ## Overview
+
 A simple audio recording and playback tool.
 It allows you to play test signals (such as sweeps or noise) to input into a circuit, or record output results and save them to files.
 It supports loading common audio files such as WAV, MP3, FLAC, and OGG.
@@ -10,6 +11,7 @@ It supports loading common audio files such as WAV, MP3, FLAC, and OGG.
 ## Operations
 
 ### Playback
+
 Load and play files.
 
 * **Load File**: Opens an audio file.
@@ -26,6 +28,7 @@ Load and play files.
 * **Playback Gain**: Adjusts playback volume digitally (-60dB to +12dB).
 
 ### Recording
+
 Records input signals to memory and exports them as files.
 
 * **Record / Stop Recording**: Starts and stops recording.
@@ -39,6 +42,7 @@ Records input signals to memory and exports them as files.
 ## Usage Examples
 
 ### Using as a Signal Source
+
 Prepare a WAV file containing pink noise or a sine sweep, play it with this tool, and observe it with a measurement instrument (such as a Spectrum Analyzer).
 
 1.  Load a test signal file using **Load File** in the **Playback** section.
@@ -48,6 +52,7 @@ Prepare a WAV file containing pink noise or a sine sweep, play it with this tool
 5.  By switching the **Output Mode**, you can send a signal only to the left channel to measure crosstalk (leakage into the right channel), for example.
 
 ### Capturing Abnormalities
+
 If a circuit is producing abnormal sounds, you can record them to keep as evidence or for detailed analysis later.
 
 1.  Verify the input settings in the **Recording** section.
