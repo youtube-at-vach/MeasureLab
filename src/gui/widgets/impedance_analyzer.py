@@ -1478,15 +1478,15 @@ class ImpedanceAnalyzerWidget(QWidget):
         dialog = QDialog(self)
         dialog.setWindowTitle(tr("Connection Diagram"))
         dialog.resize(800, 600)
-        
+
         # Set white background for transparency
         dialog.setStyleSheet("background-color: white;")
 
         layout = QVBoxLayout(dialog)
-        
+
         # Logic to find the PNG
         img_path = resource_path("src/assets/speaker_impedance_wiring.png")
-        
+
         # Fallback path logic
         if not os.path.exists(img_path):
              project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
@@ -1504,7 +1504,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             layout.addWidget(img_label)
         else:
             layout.addWidget(QLabel(tr("Diagram not found.")))
-        
+
         # Close button
         btn_close = QPushButton(tr("Close"))
         btn_close.clicked.connect(dialog.accept)
