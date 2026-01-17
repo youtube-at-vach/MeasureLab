@@ -62,7 +62,8 @@ Cancel the resistance of cables, etc. for more accurate measurement.
 
 1. **Open Cal**: Remove the speaker and run `Run Open Cal` with the cables open.
 2. **Short Cal**: Short the clips where the speaker is connected and run `Run Short Cal`.
-3. After calibration, connect the speaker.
+3. **Load Cal** (Optional): If you have a resistor with a known accurate value (e.g., a 10Ω or 100Ω precision resistor), connect it and run `Run Load Cal` to further improve measurement accuracy.
+4. After calibration, connect the speaker.
 
 ### 3. Sweep Measurement
 
@@ -76,9 +77,6 @@ Perform a sweep measurement to see changes by frequency.
 ## Interpretation of Results
 
 The impedance curve is displayed on the graph (Bode Plot).
-
-![Impedance Curve Example](../assets/widgets/impedance_analyzer.png)
-*(Reference image: General measurement image)*
 
 ### Points to Watch
 

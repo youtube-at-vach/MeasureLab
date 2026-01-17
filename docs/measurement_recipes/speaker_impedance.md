@@ -62,7 +62,8 @@ MeasureLab の **Impedance Analyzer** は、電流-電圧法（I-V法）を使�
 
 1. **Open Cal**: スピーカーを外し、ケーブルを開放状態で `Run Open Cal` を実行。
 2. **Short Cal**: スピーカーを繋ぐ箇所のクリップ同士をショートさせ、 `Run Short Cal` を実行。
-3. キャリブレーション後、スピーカーを接続します。
+3. **Load Cal** (任意): 正確な抵抗値（例えば 10Ω や 100Ω の精密抵抗）が手元にある場合、それを接続して `Run Load Cal` を実行すると、さらに測定精度が向上します。
+4. キャリブレーション後、スピーカーを接続します。
 
 ### 3. スイープ測定
 
@@ -76,9 +77,6 @@ MeasureLab の **Impedance Analyzer** は、電流-電圧法（I-V法）を使�
 ## 結果の解釈
 
 グラフ（Bode Plot）にインピーダンス曲線が表示されます。
-
-![Impedance Curve Example](../assets/widgets/impedance_analyzer.png)
-*(参考画像: 一般的な測定イメージ)*
 
 ### 見るべきポイント
 
