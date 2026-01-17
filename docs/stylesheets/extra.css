@@ -15,7 +15,9 @@
     }
 
     /* Ensure all images and SVGs have a white background */
-    img, svg, picture {
+    img,
+    svg,
+    picture {
         background-color: #ffffff !important;
     }
 
@@ -25,6 +27,29 @@
     */
     svg rect[fill="#ffffff"] {
         fill: #ffffff !important;
+    }
+
+    /* Fix list indentation and styling for Material theme in PDF */
+    .md-typeset ul,
+    .md-typeset ol {
+        margin-left: 0.5cm !important;
+        padding-left: 0 !important;
+    }
+
+    .md-typeset li {
+        margin-left: 0.5cm !important;
+        list-style-position: outside !important;
+        margin-bottom: 0.2em !important;
+    }
+
+    /* Specific fix for nested lists */
+    .md-typeset ul ul,
+    .md-typeset ul ol,
+    .md-typeset ol ul,
+    .md-typeset ol ol {
+        margin-left: 0.5cm !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
 }
 
