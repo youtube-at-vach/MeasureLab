@@ -13,7 +13,7 @@ It can be used for measuring the stability of crystal oscillators, instrument tu
 ### Starting and Stopping Measurements
 
 - **Start / Stop Button**: Toggles the measurement on and off.
-    * While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
+    - While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
 
 ### Understanding the Main Display
 
@@ -43,37 +43,37 @@ Indicators showing the stability of the measurement are displayed in real-time b
 By switching the tabs at the bottom of the screen, you can analyze the data from different perspectives.
 
 1.  **Frequency Drift**
-    * Records how the frequency changes over time (horizontal axis).
-    * Ideal for observing frequency drift due to device warm-up (changes caused by heat).
+    - Records how the frequency changes over time (horizontal axis).
+    - Ideal for observing frequency drift due to device warm-up (changes caused by heat).
 
 2.  **Allan Deviation**
-    * For advanced stability analysis.
-    * Displays stability on a log-log graph when the integration time (Tau) is varied, such as "fluctuation over 1 second" or "fluctuation over 10 seconds."
-    * A downward-sloping graph means that precision improves as you average over longer periods.
+    - For advanced stability analysis.
+    - Displays stability on a log-log graph when the integration time (Tau) is varied, such as "fluctuation over 1 second" or "fluctuation over 10 seconds."
+    - A downward-sloping graph means that precision improves as you average over longer periods.
 
 3.  **Jitter Histogram**
-    * Displays frequency variation as a frequency distribution (histogram).
-    * You can check how the measured values are distributed around the mean (whether it is a normal distribution or biased toward a specific frequency).
-    * **Baseline Setting**: Choose whether to center the distribution on the "Mean" or an arbitrary "Reference" value.
-    * **X-axis Setting**: Choose whether the horizontal axis unit is "Hz/s (Native)" or the deviation rate "ppm".
+    - Displays frequency variation as a frequency distribution (histogram).
+    - You can check how the measured values are distributed around the mean (whether it is a normal distribution or biased toward a specific frequency).
+    - **Baseline Setting**: Choose whether to center the distribution on the "Mean" or an arbitrary "Reference" value.
+    - **X-axis Setting**: Choose whether the horizontal axis unit is "Hz/s (Native)" or the deviation rate "ppm".
 
 ## Settings
 
-* **Gate (dB)**
-    * Sets the "threshold" of the signal level for measurement.
-    * Prevents nonsensical numbers from being displayed when there is no input signal or only noise (e.g., -60dB).
+- **Gate (dB)**
+    - Sets the "threshold" of the signal level for measurement.
+    - Prevents nonsensical numbers from being displayed when there is no input signal or only noise (e.g., -60dB).
 
-* **Channel**
-    * Select the audio channel (Ch 1 / Ch 2) to be measured.
+- **Channel**
+    - Select the audio channel (Ch 1 / Ch 2) to be measured.
 
-* **Update Rate**
-    * Sets the frequency of measurement and display updates.
-    * **Fast (10Hz)**: Reacts quickly. Useful during circuit adjustment.
-    * **Slow (2Hz)**: Updates slowly. Uses a larger buffer, allowing for more stable, high-precision measurements.
+- **Update Rate**
+    - Sets the frequency of measurement and display updates.
+    - **Fast (10Hz)**: Reacts quickly. Useful during circuit adjustment.
+    - **Slow (2Hz)**: Updates slowly. Uses a larger buffer, allowing for more stable, high-precision measurements.
 
-* **Calibrate**
-    * A function to compensate measured values using a reference signal (an accurate base signal).
-    * Since computer audio interface clocks have errors, if strict measurement is required, input a known frequency (e.g., 10MHz rubidium oscillator or GPS standard) and set the correction factor using this function.
+- **Calibrate**
+    - A function to compensate measured values using a reference signal (an accurate base signal).
+    - Since computer audio interface clocks have errors, if strict measurement is required, input a known frequency (e.g., 10MHz rubidium oscillator or GPS standard) and set the correction factor using this function.
 
 ## Usage Examples
 

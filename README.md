@@ -57,22 +57,22 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 世界中の主要な言語をサポートしています。設定画面から切り替え可能です。
 
-*   英語 (English)
-*   日本語 (Japanese)
-*   中国語 (Chinese)
-*   スペイン語 (Spanish)
-*   フランス語 (French)
-*   ドイツ語 (German)
-*   ポルトガル語 (Portuguese)
-*   ロシア語 (Russian)
-*   韓国語 (Korean)
+-   英語 (English)
+-   日本語 (Japanese)
+-   中国語 (Chinese)
+-   スペイン語 (Spanish)
+-   フランス語 (French)
+-   ドイツ語 (German)
+-   ポルトガル語 (Portuguese)
+-   ロシア語 (Russian)
+-   韓国語 (Korean)
 
 ### ⚙️ 高度な設定
 
-*   **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。
-*   **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。
-*   **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
-*   **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
+-   **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。
+-   **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。
+-   **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
+-   **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
 
 ---
 
@@ -82,8 +82,8 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 **Releases** ページから最新のバージョンをダウンロードしてください。
 
-*   **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
-*   **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
+-   **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
+-   **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
 
     ```bash
     chmod +x MeasureLab-*-linux-x86_64.AppImage

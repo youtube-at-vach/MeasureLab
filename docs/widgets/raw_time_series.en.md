@@ -23,29 +23,29 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
 
 ### General Settings
 
-* **Time Span**
-    * Sets the length of time displayed on the screen.
-    * **10s**: Monitors the last 10 seconds of activity. Highly responsive.
-    * **60s (1 minute)**: Displays transitions over a one-minute period.
-    * **300s (5 minutes)**: Used for long-term trend monitoring.
+- **Time Span**
+    - Sets the length of time displayed on the screen.
+    - **10s**: Monitors the last 10 seconds of activity. Highly responsive.
+    - **60s (1 minute)**: Displays transitions over a one-minute period.
+    - **300s (5 minutes)**: Used for long-term trend monitoring.
 
-* **Scale (Vertical Scale)**
-    * Changes the display magnification of the waveform.
-    * **1.0x**: Standard size (Full Scale or 1V reference).
-    * **Larger numbers (e.g., 10.0x)**: Magnifies the signal. Useful for viewing minute noise or offsets.
-    * **Smaller numbers (e.g., 0.1x)**: Shrinks the display. Effective for seeing the overall picture of loud signals that might otherwise clip.
+- **Scale (Vertical Scale)**
+    - Changes the display magnification of the waveform.
+    - **1.0x**: Standard size (Full Scale or 1V reference).
+    - **Larger numbers (e.g., 10.0x)**: Magnifies the signal. Useful for viewing minute noise or offsets.
+    - **Smaller numbers (e.g., 0.1x)**: Shrinks the display. Effective for seeing the overall picture of loud signals that might otherwise clip.
 
-* **Show Volts**
-    * **OFF (Default)**: Displays relative to digital Full Scale (FS) (-1.0 to +1.0).
-    * **ON**: Displays in voltage units (V). Reflects the input sensitivity setting (calibration) of the audio interface.
+- **Show Volts**
+    - **OFF (Default)**: Displays relative to digital Full Scale (FS) (-1.0 to +1.0).
+    - **ON**: Displays in voltage units (V). Reflects the input sensitivity setting (calibration) of the audio interface.
 
-* **Pause**
-    * Pauses only the screen updates.
-    * **Important**: Data recording continues in the background. When unpaused, the display updates all at once to include data recorded during the pause. This is useful for carefully reading values while viewing the graph.
+- **Pause**
+    - Pauses only the screen updates.
+    - **Important**: Data recording continues in the background. When unpaused, the display updates all at once to include data recorded during the pause. This is useful for carefully reading values while viewing the graph.
 
-* **Show DC Offset**
-    * **ON**: Displays the DC component (average value) contained in the signal in real-time.
-    * Used for monitoring DC leakage in amplifiers or fluctuations in bias voltage.
+- **Show DC Offset**
+    - **ON**: Displays the DC component (average value) contained in the signal in real-time.
+    - Used for monitoring DC leakage in amplifiers or fluctuations in bias voltage.
 
 ## Usage Examples
 

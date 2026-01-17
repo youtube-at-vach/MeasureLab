@@ -38,35 +38,35 @@ Settings are performed in the panel on the left side of the screen.
 
 This is the core function of this tool. The main modes are as follows:
 
-*   **MIM (Multitone Intermodulation Distortion)**
-    *   **Overview**: Uses "multitone" signals that sound many tones, such as 31 tones, simultaneously. It measures "Distortion + Noise (TD+N)" when applying a complex load close to a music signal.
-    *   **How to interpret**: For **TD+N (dB)**, the "lower (greater negative value)" the value, the higher the performance.
-    *   **Settings**:
-        *   **Tone Count**: Number of tones to sound. The higher the number, the higher the density.
-        *   **Min / Max Freq**: Frequency range to be measured.
+-   **MIM (Multitone Intermodulation Distortion)**
+    -   **Overview**: Uses "multitone" signals that sound many tones, such as 31 tones, simultaneously. It measures "Distortion + Noise (TD+N)" when applying a complex load close to a music signal.
+    -   **How to interpret**: For **TD+N (dB)**, the "lower (greater negative value)" the value, the higher the performance.
+    -   **Settings**:
+        -   **Tone Count**: Number of tones to sound. The higher the number, the higher the density.
+        -   **Min / Max Freq**: Frequency range to be measured.
 
-*   **SPDR (Spurious Free Dynamic Range)**
-    *   **Overview**: When outputting a signal such as 1kHz, it measures how low the "unnecessary components other than the signal (spurious)" are from the signal.
-    *   **How to interpret**: For **SPDR (dB)**, the "higher (greater positive value)" the value, the fewer the unnecessary components and the cleaner it is.
-    *   **Settings**: Basically fixed at 1kHz.
+-   **SPDR (Spurious Free Dynamic Range)**
+    -   **Overview**: When outputting a signal such as 1kHz, it measures how low the "unnecessary components other than the signal (spurious)" are from the signal.
+    -   **How to interpret**: For **SPDR (dB)**, the "higher (greater positive value)" the value, the fewer the unnecessary components and the cleaner it is.
+    -   **Settings**: Basically fixed at 1kHz.
 
-*   **PIM (Passive Intermodulation / 2-Tone)**
-    *   **Overview**: Sounds two tones of different pitches (f1, f2) and measures the "tones that did not exist originally (intermodulation distortion)" produced by mixing those two tones.
-    *   **How to interpret**: **PIM (dBc)** represents how low the distortion component is relative to the original signal. The "lower (greater negative value)" the value, the higher the performance.
-    *   **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
+-   **PIM (Passive Intermodulation / 2-Tone)**
+    -   **Overview**: Sounds two tones of different pitches (f1, f2) and measures the "tones that did not exist originally (intermodulation distortion)" produced by mixing those two tones.
+    -   **How to interpret**: **PIM (dBc)** represents how low the distortion component is relative to the original signal. The "lower (greater negative value)" the value, the higher the performance.
+    -   **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
 
 ### Generator
 
 Sets the strength of the signal used for measurement.
 
-*   **Amplitude**: Loudness of the signal.
-    *   Start from a low value (such as -20dBFS) initially to avoid damaging the measurement target (amplifier, etc.).
-*   **Unit**: Can be selected from `dBFS` (digital full scale), `dBV` (1V reference), `dBu` (professional reference), and `Vrms` (voltage).
+-   **Amplitude**: Loudness of the signal.
+    -   Start from a low value (such as -20dBFS) initially to avoid damaging the measurement target (amplifier, etc.).
+-   **Unit**: Can be selected from `dBFS` (digital full scale), `dBV` (1V reference), `dBu` (professional reference), and `Vrms` (voltage).
 
 ### I/O (Input/Output)
 
-*   **Input Ch**: Select the input terminal (microphone or line input) used for measurement.
-*   **Output Ch**: Select the terminal for outputting the signal (output to speakers or amplifier).
+-   **Input Ch**: Select the input terminal (microphone or line input) used for measurement.
+-   **Output Ch**: Select the terminal for outputting the signal (output to speakers or amplifier).
 
 ## Usage Examples
 
@@ -77,8 +77,8 @@ When "distortion rate in the spec sheet is good, but the sound is muddy when lis
 1.  Set **Mode** to `MIM`.
 2.  Connect to an amplifier and press **Start**.
 3.  Look at the **TD+N** value.
-    *   In high-end audio equipment, it may reach -80dB to -100dB or less.
-    *   At about -40dB, you might feel muddiness in complex songs.
+    -   In high-end audio equipment, it may reach -80dB to -100dB or less.
+    -   At about -40dB, you might feel muddiness in complex songs.
 4.  Look at the graph and check if the "valleys" between the many columns (test signals) are deeply submerged. If the valleys are buried, it indicates a lot of some kind of distortion or noise.
 
 ### Finding Unknown Noise (Spurious) (SPDR Measurement)

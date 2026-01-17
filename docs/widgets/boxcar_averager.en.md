@@ -26,33 +26,33 @@ This widget has both an "Internal mode," which outputs test signals itself to sy
 
 ### Basic Settings (Controls)
 
-* **Mode (Sync Mode)**
-    * **Internal Pulse / Step / Impulse**: Generates test signals (pulse, step waveform, impulse) internally and synchronizes based on them. Signals are output from the output terminal.
-    * **Internal PRBS/MLS**: Uses pseudo-random signals (for special measurements).
-    * **External Reference**: Averaging the signal of another channel using an external reference signal (such as a square wave) as a trigger.
+- **Mode (Sync Mode)**
+    - **Internal Pulse / Step / Impulse**: Generates test signals (pulse, step waveform, impulse) internally and synchronizes based on them. Signals are output from the output terminal.
+    - **Internal PRBS/MLS**: Uses pseudo-random signals (for special measurements).
+    - **External Reference**: Averaging the signal of another channel using an external reference signal (such as a square wave) as a trigger.
 
-* **Period**
-    * Specifies the length of time to perform one averaging in milliseconds (ms).
-    * Set it to a length where the response of the measurement target is sufficiently contained. If it is too short, reverberation will overlap with the next cycle (aliasing).
+- **Period**
+    - Specifies the length of time to perform one averaging in milliseconds (ms).
+    - Set it to a length where the response of the measurement target is sufficiently contained. If it is too short, reverberation will overlap with the next cycle (aliasing).
 
-* **Channel (Measurement Channel)**
-    * Select the input channel you want to measure (Stereo / Left / Right).
+- **Channel (Measurement Channel)**
+    - Select the input channel you want to measure (Stereo / Left / Right).
 
 ### Gate Settings (Gate)
 
 A function to limit the time range to be analyzed. Used when extracting only specific reflected sounds or reducing the processing load.
 
-* **Gate Checkbox**: Turns the function ON/OFF.
-* **Start**: Sets the delay time from the start point of the cycle (t=0) to the actual start of recording.
-* **Width**: Sets the width (length) to be recorded.
+- **Gate Checkbox**: Turns the function ON/OFF.
+- **Start**: Sets the delay time from the start point of the cycle (t=0) to the actual start of recording.
+- **Width**: Sets the width (length) to be recorded.
 
 ### External Sync Settings (External Sync)
 
 Displayed only when Mode is set to `External Reference`.
 
-* **Ref (Reference Channel)**: Select the channel (Left or Right) to be used as a trigger. Usually, a clean synchronization signal is input here.
-* **Edge**: Select whether to trigger on the **Rising** edge or the **Falling** edge.
-* **Lvl (Level)**: Sets the voltage level (threshold) for trigger determination.
+- **Ref (Reference Channel)**: Select the channel (Left or Right) to be used as a trigger. Usually, a clean synchronization signal is input here.
+- **Edge**: Select whether to trigger on the **Rising** edge or the **Falling** edge.
+- **Lvl (Level)**: Sets the voltage level (threshold) for trigger determination.
 
 ## Usage Examples
 

@@ -26,22 +26,22 @@ If you have trouble, please check the following items.
 
 ### ❓ No sound / No response to input
 
-- **Power and Connection**: Confirm that the audio interface is turned on and the USB cable is correctly plugged in.
-- **Settings Widget**: Confirm that the correct device (ASIO/WASAPI, etc.) is selected.
-- **OS Shared Mode**: Confirm that other recording software, browsers, or web conferencing tools are not occupying the device.
+* **Power and Connection**: Confirm that the audio interface is turned on and the USB cable is correctly plugged in.
+* **Settings Widget**: Confirm that the correct device (ASIO/WASAPI, etc.) is selected.
+* **OS Shared Mode**: Confirm that other recording software, browsers, or web conferencing tools are not occupying the device.
 
 ### ❓ Graph movement is jerky / Sound is intermittent
 
-- **Buffer Size**: Change **Buffer Optimization** to `STABLE` or `ULTRA` in the Settings widget.
-- **CPU Load**: Close other heavy applications.
+* **Buffer Size**: Change **Buffer Optimization** to `STABLE` or `ULTRA` in the Settings widget.
+* **CPU Load**: Close other heavy applications.
 
 ### ❓ Screen appears to be frozen at startup
 
-- **WISDOM Generation**: On the first launch, it may take several tens of seconds to calculate "WISDOM (FFT optimization)." It is not a malfunction, so please wait.
+* **WISDOM Generation**: On the first launch, it may take several tens of seconds to calculate "WISDOM (FFT optimization)." It is not a malfunction, so please wait.
 
 ### ❓ Mountain appears at a different frequency even though a 1kHz signal is being output
 
-- **Sampling Rate Mismatch**: Confirm that the sampling rate setting in MeasureLab and the setting on the audio interface side (or OS sound setting) are the same (e.g., 48kHz, 192kHz).
+* **Sampling Rate Mismatch**: Confirm that the sampling rate setting in MeasureLab and the setting on the audio interface side (or OS sound setting) are the same (e.g., 48kHz, 192kHz).
 
 ---
 
