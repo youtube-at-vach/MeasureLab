@@ -83,6 +83,6 @@ If you want to measure ultra-high performance DACs and amplifiers that fall belo
 The following widgets are also available for those who want to perform more advanced analysis.
 
 * **Advanced Distortion Meter**:
-  * **MIM (Multitone Intermodulation)**: Measures distortion in a state closer to a music signal by sounding multiple sounds simultaneously.
-  * **PIM (Phase Intermodulation)**: Measures phase modulation distortion.
-  * **SPDR (Spurious Free Dynamic Range)**: Measures spurious-free dynamic range.
+    * **MIM (Multitone Intermodulation)**: Measures distortion in a state closer to a music signal by sounding multiple sounds simultaneously.
+    * **PIM (Phase Intermodulation)**: Measures phase modulation distortion.
+    * **SPDR (Spurious Free Dynamic Range)**: Measures spurious-free dynamic range.

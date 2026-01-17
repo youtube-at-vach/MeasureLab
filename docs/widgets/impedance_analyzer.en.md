@@ -38,7 +38,7 @@ This is called the "I-V method (Current-Voltage method)."
 
 * Audio interface (2-in/2-out recommended)
 * **Reference Resistor**: A precision resistor of about $10 \Omega$ to $1 k\Omega$ (e.g., $100 \Omega$).
-  * Choosing a value close to the impedance of the target you want to measure will increase accuracy. Generally, $100 \Omega$ is versatile.
+    * Choosing a value close to the impedance of the target you want to measure will increase accuracy. Generally, $100 \Omega$ is versatile.
 
 ### Wiring Diagram
 
@@ -102,11 +102,11 @@ LCR meters have two display modes: "Series equivalent circuit" and "Parallel equ
 These can be switched via buttons or settings.
 
 * **Series (Ls, Cs, Rs)**:
-  * Used when measuring components with **low** impedance (a few ohms or less).
-  * Examples: Low-resistance coils, large-capacity capacitors.
+    * Used when measuring components with **low** impedance (a few ohms or less).
+    * Examples: Low-resistance coils, large-capacity capacitors.
 * **Parallel (Lp, Cp, Rp)**:
-  * Used when measuring components with **high** impedance (tens of kΩ or more).
-  * Examples: Small-capacity capacitors, high-resistance.
+    * Used when measuring components with **high** impedance (tens of kΩ or more).
+    * Examples: Small-capacity capacitors, high-resistance.
 
 *Note: If unsure, for intermediate values (hundreds of ohms to several kΩ), either mode will yield almost the same value.*
 
@@ -114,8 +114,8 @@ These can be switched via buttons or settings.
 
 * **Rs (Equiv. Series Resistance)**: The "pure resistance component (loss)" of a capacitor or coil. The smaller this value, the more ideal the component is.
 * **Q factor (Quality Factor)**: The sharpness of resonance or the quality of a component.
-  * For coils: A higher value means less loss and better performance.
-  * For speakers: An index indicating the damping of resonance.
+    * For coils: A higher value means less loss and better performance.
+    * For speakers: An index indicating the damping of resonance.
 * **D factor (Dissipation Factor)**: The loss tangent ($D = 1/Q$). Often used for evaluating capacitor performance. A smaller value indicates better performance.
 
 ## Application Examples

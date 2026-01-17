@@ -17,16 +17,16 @@ It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while mai
 ### Analysis
 
 * After recording is complete, press the **Analyze** button to perform the Wavelet Transform.
-  * **Note**: This process is computationally intensive and may take several seconds to show results.
+    * **Note**: This process is computationally intensive and may take several seconds to show results.
 
 ### Reading the Charts
 
 * **Transient Waveform (Top)**: The waveform of the recorded sound (Time axis).
 * **Wavelet Scalogram (Bottom)**:
-  * **Horizontal axis**: Time
-  * **Vertical axis**: Frequency (Logarithmic display)
-  * **Color**: Intensity at that moment.
-  * Similar to a spectrogram, but it analyzes low-pitched sounds broadly in the time direction and high-pitched sounds sharply. This allows for a well-balanced simultaneous display of instantaneous click sounds (time information) and low hums (frequency information).
+    * **Horizontal axis**: Time
+    * **Vertical axis**: Frequency (Logarithmic display)
+    * **Color**: Intensity at that moment.
+    * Similar to a spectrogram, but it analyzes low-pitched sounds broadly in the time direction and high-pitched sounds sharply. This allows for a well-balanced simultaneous display of instantaneous click sounds (time information) and low hums (frequency information).
 
 ## Settings
 

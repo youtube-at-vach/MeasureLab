@@ -83,6 +83,6 @@
 より高度な分析を行いたい方向けに、以下のウィジットも用意されています。
 
 * **Advanced Distortion Meter**:
-  * **MIM (Multitone Intermodulation)**: 複数の音を同時に鳴らして、より音楽信号に近い状態での歪みを測ります。
-  * **PIM (Phase Intermodulation)**: 位相変調歪みを測定します。
-  * **SPDR (Spurious Free Dynamic Range)**: スプリアスフリーダイナミックレンジを測定します。
+    * **MIM (Multitone Intermodulation)**: 複数の音を同時に鳴らして、より音楽信号に近い状態での歪みを測ります。
+    * **PIM (Phase Intermodulation)**: 位相変調歪みを測定します。
+    * **SPDR (Spurious Free Dynamic Range)**: スプリアスフリーダイナミックレンジを測定します。

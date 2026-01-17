@@ -27,12 +27,12 @@ To perform displays and measurements in these units, **Input Sensitivity** and *
 Required equipment varies depending on the items being calibrated.
 
 * **Input/Output Voltage Calibration**:
-  * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
-  * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
+    * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
+    * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
 * **Sound Pressure Level (SPL) Calibration**:
-  * **Speaker**: Required to play pink noise.
-  * **Sound Level Meter**: Required to measure the reference sound pressure. Smartphone apps can be used as a substitute to some extent, but a dedicated measurement instrument is preferred.
-  * Measurement Microphone: The microphone to be calibrated.
+    * **Speaker**: Required to play pink noise.
+    * **Sound Level Meter**: Required to measure the reference sound pressure. Smartphone apps can be used as a substitute to some extent, but a dedicated measurement instrument is preferred.
+    * Measurement Microphone: The microphone to be calibrated.
 
 ## Basic Procedure
 

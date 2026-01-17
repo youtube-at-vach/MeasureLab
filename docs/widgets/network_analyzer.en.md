@@ -33,8 +33,8 @@ Two modes can be selected according to the application.
 
 * **Output Ch**: Select the channel to output the measurement signal.
 * **Input Mode**: Select where to receive the signal returning from the measurement target.
-  * **Left (Ch1)** / **Right (Ch2)**: Measures the signal of the selected channel as is (absolute level measurement).
-  * **XFER (Transfer Function Mode)**: Uses the Left channel as a "reference signal" and the Right channel as the "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface itself (relative measurement).
+    * **Left (Ch1)** / **Right (Ch2)**: Measures the signal of the selected channel as is (absolute level measurement).
+    * **XFER (Transfer Function Mode)**: Uses the Left channel as a "reference signal" and the Right channel as the "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface itself (relative measurement).
 
 ## Display and Analysis (Display)
 

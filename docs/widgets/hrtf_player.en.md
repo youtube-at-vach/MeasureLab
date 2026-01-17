@@ -22,14 +22,14 @@ The graph occupying most of the screen displays HRTF characteristics based on th
 
 * **Load SOFA**: Load a SOFA file (`.sofa`, `.nc`) you want to analyze or audition.
 * **Metric**: Select the analytical data to display on the heatmap.
-  * **ITD (µs)**: Interaural Time Difference. Displays the time difference between sound reaching the left and right ears.
-  * **ILD (dB)**: Interaural Level Difference. Displays the difference in sound level between left and right ears due to head shadowing.
-  * **High-band Energy**: Strength of high-frequency components (8kHz to 16kHz). Provides clues for perceiving "above and below" sound positioning.
-  * **Envelope Peak**: Peak time of the delay. Similar to ITD, but looks at characteristics closer to group delay.
+    * **ITD (µs)**: Interaural Time Difference. Displays the time difference between sound reaching the left and right ears.
+    * **ILD (dB)**: Interaural Level Difference. Displays the difference in sound level between left and right ears due to head shadowing.
+    * **High-band Energy**: Strength of high-frequency components (8kHz to 16kHz). Provides clues for perceiving "above and below" sound positioning.
+    * **Envelope Peak**: Peak time of the delay. Similar to ITD, but looks at characteristics closer to group delay.
 * **Sound**: Choose the type of test sound used for click auditions.
-  * **Click**: A brief impulse sound. Useful for sharply confirming reflections and localization.
-  * **White Noise**: 50ms white noise. A "hissing" sound that makes it easy to check changes in frequency response.
-  * **Band Noise**: 8kHz–16kHz band noise. Specialized for confirming high-frequency localization (up/down).
+    * **Click**: A brief impulse sound. Useful for sharply confirming reflections and localization.
+    * **White Noise**: 50ms white noise. A "hissing" sound that makes it easy to check changes in frequency response.
+    * **Band Noise**: 8kHz–16kHz band noise. Specialized for confirming high-frequency localization (up/down).
 * **Swap L/R**: Swaps the left and right output channels.
 
 ### Rotation Mode (Continuous Playback / Rotation)
@@ -39,9 +39,9 @@ Allows loading a music file and simulating a sound source rotating around you.
 * **Load Music**: Load a music file (`.wav`, `.mp3`, etc.) for auditioning.
 * **Play Rotation / Stop**: Starts and stops rotation playback.
 * **Mode**: Select the rotation pattern.
-  * **Horizontal**: Rotates horizontally around you.
-  * **Vertical**: Rotates vertically (up and down).
-  * **Manual**: No automatic rotation. You can move the sound source position in real-time by dragging on the graph with your mouse.
+    * **Horizontal**: Rotates horizontally around you.
+    * **Vertical**: Rotates vertically (up and down).
+    * **Manual**: No automatic rotation. You can move the sound source position in real-time by dragging on the graph with your mouse.
 * **Speed**: Sets the speed of automatic rotation (degrees per second).
 
 ## Usage Examples

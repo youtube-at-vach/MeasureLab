@@ -38,12 +38,12 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 ### How to Read Results
 
 * **What is PSD (Power Spectral Density)?**
-  * `Spectrum mode` is suitable for measuring the level of "sine wave-like signals," while `PSD mode` measures the density (power per 1 Hz) of "noise-like signals". The unit is $/√Hz$.
+    * `Spectrum mode` is suitable for measuring the level of "sine wave-like signals," while `PSD mode` measures the density (power per 1 Hz) of "noise-like signals". The unit is $/√Hz$.
 
 * **What Can You See?**
-  * **Hum Noise**: If sharp peaks stand at 50Hz or 60Hz (and their harmonics), it is induction noise from the power supply.
-  * **White Noise**: If the graph is upward-sloping (showing higher energy at higher frequencies), it is white noise (equal energy across all bands). *Note: White noise is flat on a linear frequency axis but appears upward-sloping on a logarithmic axis.*
-  * **Pink Noise (1/f Noise)**: If the graph appears generally flat (decreasing slightly to the right), the 1/f noise component is dominant.
+    * **Hum Noise**: If sharp peaks stand at 50Hz or 60Hz (and their harmonics), it is induction noise from the power supply.
+    * **White Noise**: If the graph is upward-sloping (showing higher energy at higher frequencies), it is white noise (equal energy across all bands). *Note: White noise is flat on a linear frequency axis but appears upward-sloping on a logarithmic axis.*
+    * **Pink Noise (1/f Noise)**: If the graph appears generally flat (decreasing slightly to the right), the 1/f noise component is dominant.
 
 ### Precautions
 
@@ -72,11 +72,11 @@ Automatically decomposes noise into three elements: "white noise," "1/f noise," 
 ### How to Read Results
 
 * **Cycle (Hum)** (Cyan):
-  * Specific frequency components, such as hum noise entering from power lines. If this is large, suspect defective cable shielding or a ground loop.
+    * Specific frequency components, such as hum noise entering from power lines. If this is large, suspect defective cable shielding or a ground loop.
 * **White** (Green):
-  * Noise that occurs uniformly regardless of frequency, such as thermal noise from resistors or shot noise from semiconductors. It shows the basic capability of the amplifier.
+    * Noise that occurs uniformly regardless of frequency, such as thermal noise from resistors or shot noise from semiconductors. It shows the basic capability of the amplifier.
 * **1/f** (Red):
-  * Noise that increases at lower frequencies. It is often caused by the quality of transistors or DC instability.
+    * Noise that increases at lower frequencies. It is often caused by the quality of transistors or DC instability.
 
 ### Precautions
 
@@ -104,11 +104,11 @@ Records how voltage fluctuates with time like a chart recorder, rather than spec
 ### How to Read Results
 
 * **Pop Noise / Click Noise**:
-  * Sudden "pop" noises remain clearly as "spikes" in a time-series plot.
+    * Sudden "pop" noises remain clearly as "spikes" in a time-series plot.
 * **DC Drift**:
-  * If the line of the entire graph is slowly waving up and down, the DC offset (direct current component) is not stable. Circuit drift due to temperature changes or leakage current of capacitors is suspected.
+    * If the line of the entire graph is slowly waving up and down, the DC offset (direct current component) is not stable. Circuit drift due to temperature changes or leakage current of capacitors is suspected.
 * **Rustling Noise**:
-  * Irregular voltage fluctuations due to poor contact are also obvious when viewed in time series.
+    * Irregular voltage fluctuations due to poor contact are also obvious when viewed in time series.
 
 ### Precautions
 

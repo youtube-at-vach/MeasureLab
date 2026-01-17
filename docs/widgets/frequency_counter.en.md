@@ -13,7 +13,7 @@ It can be used for measuring the stability of crystal oscillators, instrument tu
 ### Starting and Stopping Measurements
 
 - **Start / Stop Button**: Toggles the measurement on and off.
-  - While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
+    - While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
 
 ### Understanding the Main Display
 
@@ -60,20 +60,20 @@ By switching the tabs at the bottom of the screen, you can analyze the data from
 ## Settings
 
 - **Gate (dB)**
-  - Sets the "threshold" of the signal level for measurement.
-  - Prevents nonsensical numbers from being displayed when there is no input signal or only noise (e.g., -60dB).
+    - Sets the "threshold" of the signal level for measurement.
+    - Prevents nonsensical numbers from being displayed when there is no input signal or only noise (e.g., -60dB).
 
 - **Channel**
-  - Select the audio channel (Ch 1 / Ch 2) to be measured.
+    - Select the audio channel (Ch 1 / Ch 2) to be measured.
 
 - **Update Rate**
-  - Sets the frequency of measurement and display updates.
-  - **Fast (10Hz)**: Reacts quickly. Useful during circuit adjustment.
-  - **Slow (2Hz)**: Updates slowly. Uses a larger buffer, allowing for more stable, high-precision measurements.
+    - Sets the frequency of measurement and display updates.
+    - **Fast (10Hz)**: Reacts quickly. Useful during circuit adjustment.
+    - **Slow (2Hz)**: Updates slowly. Uses a larger buffer, allowing for more stable, high-precision measurements.
 
 - **Calibrate**
-  - A function to compensate measured values using a reference signal (an accurate base signal).
-  - Since computer audio interface clocks have errors, if strict measurement is required, input a known frequency (e.g., 10MHz rubidium oscillator or GPS standard) and set the correction factor using this function.
+    - A function to compensate measured values using a reference signal (an accurate base signal).
+    - Since computer audio interface clocks have errors, if strict measurement is required, input a known frequency (e.g., 10MHz rubidium oscillator or GPS standard) and set the correction factor using this function.
 
 ## Usage Examples
 

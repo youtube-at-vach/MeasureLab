@@ -26,54 +26,54 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 ### Basic Settings (Analysis Settings)
 
 * **Mode**
-  * **Spectrum**: The most common mode. Displays the peak levels for each frequency. Suitable for measuring signal levels such as sine waves.
-  * **PSD (Power Spectral Density)**: Displays the power spectral density. Use this when you want to evaluate the noise distribution uniformly. The unit is $/√Hz$.
-  * **Cross Spectrum**: Displays the correlation components between the L and R channels (advanced setting).
+    * **Spectrum**: The most common mode. Displays the peak levels for each frequency. Suitable for measuring signal levels such as sine waves.
+    * **PSD (Power Spectral Density)**: Displays the power spectral density. Use this when you want to evaluate the noise distribution uniformly. The unit is $/√Hz$.
+    * **Cross Spectrum**: Displays the correlation components between the L and R channels (advanced setting).
 
 * **Channel**
-  * **Left / Right**: Displays only the specified channel.
-  * **Average**: Displays the average of the left and right channels.
-  * **Dual**: Displays both left and right channels simultaneously on the graph (Left=Green, Right=Red).
+    * **Left / Right**: Displays only the specified channel.
+    * **Average**: Displays the average of the left and right channels.
+    * **Dual**: Displays both left and right channels simultaneously on the graph (Left=Green, Right=Red).
 
 * **FFT Size (Frequency Resolution)**
-  * Specifies the number of samples used for analysis.
-  * **Higher numbers (e.g., 131072, 1M)**: Frequency resolution becomes finer, making it easier to distinguish fine peaks, but the response time becomes slower.
-  * **Lower numbers (e.g., 1024, 4096)**: Response time is faster and moves briskly, but the frequency resolution becomes coarser.
-  * Usually, a value between `4096` and `16384` is recommended for a good balance.
+    * Specifies the number of samples used for analysis.
+    * **Higher numbers (e.g., 131072, 1M)**: Frequency resolution becomes finer, making it easier to distinguish fine peaks, but the response time becomes slower.
+    * **Lower numbers (e.g., 1024, 4096)**: Response time is faster and moves briskly, but the frequency resolution becomes coarser.
+    * Usually, a value between `4096` and `16384` is recommended for a good balance.
 
 * **Window (Window Function)**
-  * A process to suppress errors (spectral leakage) that occur during FFT analysis.
-  * **hanning**: The most versatile and common window function. Choose this if you are unsure.
-  * **rect (Rectangular)**: No window function is applied. Errors will be large for any signals other than transient signals or signals whose cycles match perfectly.
-  * **Multitaper**: When the Multitaper feature (described below) is turned ON, a dedicated window function is automatically applied.
+    * A process to suppress errors (spectral leakage) that occur during FFT analysis.
+    * **hanning**: The most versatile and common window function. Choose this if you are unsure.
+    * **rect (Rectangular)**: No window function is applied. Errors will be large for any signals other than transient signals or signals whose cycles match perfectly.
+    * **Multitaper**: When the Multitaper feature (described below) is turned ON, a dedicated window function is automatically applied.
 
 * **Weighting**
-  * **Z**: No weighting (flat). Use this for measuring physical, accurate values.
-  * **A**: **A-weighting**. A filter that matches the sensitivity characteristics of the human ear. Common for noise level measurements (low and very high frequencies are evaluated with lower sensitivity).
-  * **C**: **C-weighting**. Closer to flat than A-weighting, but with very low and very high frequencies cut.
+    * **Z**: No weighting (flat). Use this for measuring physical, accurate values.
+    * **A**: **A-weighting**. A filter that matches the sensitivity characteristics of the human ear. Common for noise level measurements (low and very high frequencies are evaluated with lower sensitivity).
+    * **C**: **C-weighting**. Closer to flat than A-weighting, but with very low and very high frequencies cut.
 
 * **Unit**
-  * **dBFS**: A relative value with 0 dB as the digital full scale. It is the level relative to the input limit of the audio interface.
-  * **dBV**: Voltage level with 1 V as 0 dB (requires calibration settings).
-  * **dB SPL**: Sound pressure level (requires calibration settings such as microphone sensitivity correction).
+    * **dBFS**: A relative value with 0 dB as the digital full scale. It is the level relative to the input limit of the audio interface.
+    * **dBV**: Voltage level with 1 V as 0 dB (requires calibration settings).
+    * **dB SPL**: Sound pressure level (requires calibration settings such as microphone sensitivity correction).
 
 ### Advanced Controls
 
 * **Smoothing**
-  * Smooths out the jaggedness of the graph to make it easier to read.
-  * **1/3 Octave**, etc., are common display formats used in audio analysis.
+    * Smooths out the jaggedness of the graph to make it easier to read.
+    * **1/3 Octave**, etc., are common display formats used in audio analysis.
 
 * **Avg (Averaging)**
-  * Specifies the strength of the averaging process in the time direction.
-  * Moving the slider to the right makes the graph move more slowly, suppressing fluctuations in noise components for easier viewing.
+    * Specifies the strength of the averaging process in the time direction.
+    * Moving the slider to the right makes the graph move more slowly, suppressing fluctuations in noise components for easier viewing.
 
 * **Multitaper**
-  * When turned ON, it uses multiple window functions to reduce the variance (scatter) of the spectrum estimation. This can result in smoother and more reliable results in noise analysis. When ON, the Window setting is disabled.
+    * When turned ON, it uses multiple window functions to reduce the variance (scatter) of the spectrum estimation. This can result in smoother and more reliable results in noise analysis. When ON, the Window setting is disabled.
 
 * **Peak Hold**
-  * Continues to hold the maximum level from the past with a red dotted line.
-  * Convenient for checking loud sounds that occur only momentarily.
-  * **Clear Peak button**: Resets the held peak display.
+    * Continues to hold the maximum level from the past with a red dotted line.
+    * Convenient for checking loud sounds that occur only momentarily.
+    * **Clear Peak button**: Resets the held peak display.
 
 ## Usage Examples
 

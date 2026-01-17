@@ -25,8 +25,8 @@ The following equipment is required for measurement.
 
 * **Audio Interface**: One with 2 inputs and 2 outputs (line input/output).
 * **Reference Resistor**: One resistor of about 10Ω to 100Ω.
-  * High precision (1% error or less) is desirable, but even a normal 5% product can measure with high precision if you input the value measured by a tester.
-  * For speaker measurement, about **10Ω to 47Ω** is easy to use.
+    * High precision (1% error or less) is desirable, but even a normal 5% product can measure with high precision if you input the value measured by a tester.
+    * For speaker measurement, about **10Ω to 47Ω** is easy to use.
 * **Connection Cable**: Cables that are easy to connect to the object to be measured, such as alligator clips.
 
 ## Connection Setup (I-V Method)

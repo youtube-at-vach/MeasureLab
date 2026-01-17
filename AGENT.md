@@ -30,8 +30,8 @@ VS Code から `pytest (venv)` タスクを利用可能です。
 1) venv 作成
 
 - Linux:
-  - `python3 -m venv .venv`
-  - `./.venv/bin/python -m pip install -U pip`
+    - `python3 -m venv .venv`
+    - `./.venv/bin/python -m pip install -U pip`
 
 1) 依存導入
 
@@ -51,12 +51,12 @@ VS Code から `pytest (venv)` タスクを利用可能です。
 起動時の流れ（コード確認ベース）:
 
 - `main_gui.py`:
-  - `ConfigManager` で言語設定を読み、スプラッシュ表示（`welcome.png`）中にモジュールを事前ロード
-  - 必要に応じて起動時のウィンドウ挙動ログを出せます（後述）
+    - `ConfigManager` で言語設定を読み、スプラッシュ表示（`welcome.png`）中にモジュールを事前ロード
+    - 必要に応じて起動時のウィンドウ挙動ログを出せます（後述）
 - `src/gui/main_window.py`:
-  - 左サイドバーで Welcome / Settings / 各測定モジュールに切替
-  - Settings と各モジュールは **遅延 import / 遅延生成** されます（重い依存の起動時コスト低減）
-  - `preload_all_modules()` はスプラッシュ中に Settings + 全モジュールをロードします
+    - 左サイドバーで Welcome / Settings / 各測定モジュールに切替
+    - Settings と各モジュールは **遅延 import / 遅延生成** されます（重い依存の起動時コスト低減）
+    - `preload_all_modules()` はスプラッシュ中に Settings + 全モジュールをロードします
 
 ### CLI（任意）
 
@@ -84,9 +84,9 @@ VS Code から `pytest (venv)` タスクを利用可能です。
 - `src/gui/main_window.py`: 画面全体（サイドバー・遅延ロード・モジュール切替・ステータス表示）。
 - `src/gui/widgets/`: 各測定モジュールのウィジェット実装。
 - `src/core/audio_engine.py`: `sounddevice` ベースの Audio I/O。
-  - 複数クライアントをミックスするコールバック・レジストリ方式
-  - ソフトウェアループバック（Internal Loopback）やミュート制御
-  - PipeWire/JACK 向けにストリーム常駐モード（resident）をサポート
+    - 複数クライアントをミックスするコールバック・レジストリ方式
+    - ソフトウェアループバック（Internal Loopback）やミュート制御
+    - PipeWire/JACK 向けにストリーム常駐モード（resident）をサポート
 - `src/core/config_manager.py`: `config.json` のロード/保存（デバイス・SR・ブロックサイズ・言語・テーマ等）。
 - `src/core/localization.py`: `LocalizationManager` と `tr()`。
 - `src/core/theme_manager.py`: light/dark/system テーマ切替（Qt 6.5+ では OS の theme change を検出）。
@@ -100,9 +100,9 @@ README にもある通り、Linux では PortAudio バックエンドのまま�
 ## デバッグ用の環境変数（確認できた範囲）
 
 - `MEASURELAB_DEBUG_WINDOWS=1`
-  - 起動時の「一瞬出るトップレベルウィンドウ（flash）」調査用に、表示/サイズ変化等をログします。
+    - 起動時の「一瞬出るトップレベルウィンドウ（flash）」調査用に、表示/サイズ変化等をログします。
 - `MEASURELAB_DEBUG_WINDOWS_TRACE=1`
-  - 条件に合う “怪しい” 小さな無題ウィンドウの出現時にスタックトレースを出します。
+    - 条件に合う “怪しい” 小さな無題ウィンドウの出現時にスタックトレースを出します。
 
 ## 変更時のガイド
 
@@ -120,15 +120,15 @@ README にもある通り、Linux では PortAudio バックエンドのまま�
 以下のルールが自動的にチェック（および一部自動修正）されます。
 
 - **空白・改行**:
-  - 行末の不要な空白は削除する (MD009)
-  - 見出し (H1, H2...) の前後には空行を入れる (MD022)
-  - コードブロック、リストの前後には空行を入れる (MD031, MD032)
+    - 行末の不要な空白は削除する (MD009)
+    - 見出し (H1, H2...) の前後には空行を入れる (MD022)
+    - コードブロック、リストの前後には空行を入れる (MD031, MD032)
 - **リスト**:
-  - ファイル内でリストマーカー（`-` または `*`）を統一する (MD004)
-  - 番号付きリストは `1.` から順に振る (MD029)
-  - リストマーカーの後のスペースは1つにする (MD030)
+    - ファイル内でリストマーカー（`-` または `*`）を統一する (MD004)
+    - 番号付きリストは `1.` から順に振る (MD029)
+    - リストマーカーの後のスペースは1つにする (MD030)
 - **その他**:
-  - URL は `<https://example.com>` のように `<>` で囲む (MD034)
-  - Admonitions (`!!! note` 等) は許可されています（コードブロック判定の誤検知を防ぐため MD046 は無効化済）
+    - URL は `<https://example.com>` のように `<>` で囲む (MD034)
+    - Admonitions (`!!! note` 等) は許可されています（コードブロック判定の誤検知を防ぐため MD046 は無効化済）
 
 編集後は `npx markdownlint-cli2 "**/*.md" "#node_modules"` でチェック可能です。

@@ -32,24 +32,24 @@ Configure measurement conditions in the left panel.
 This is one of the most important settings in THD+N measurement. It is used to cut noise in unnecessary bands to evaluate pure audio performance.
 
 * **HPF (Hz)**: High-pass filter.
-  * **20 Hz**: Removes DC offset and ultra-low frequency fluctuations. This is the standard setting.
+    * **20 Hz**: Removes DC offset and ultra-low frequency fluctuations. This is the standard setting.
 * **LPF (Hz)**: Low-pass filter. Determines the upper limit of the measurement bandwidth.
-  * **20000 Hz**: Standard setting for measuring distortion only within the audible range (below 20 kHz) (e.g., AES17 compliant).
-  * **80000 Hz or higher**: Used for evaluating high-frequency noise in high-resolution equipment.
+    * **20000 Hz**: Standard setting for measuring distortion only within the audible range (below 20 kHz) (e.g., AES17 compliant).
+    * **80000 Hz or higher**: Used for evaluating high-frequency noise in high-resolution equipment.
 
 ### Reading Results (Result)
 
 * **THD+N**: Total Harmonic Distortion + Noise. Smaller values indicate better performance.
-  * **-60dB (0.1%)**: Typical audio equipment.
-  * **-80dB (0.01%)**: High quality.
-  * **-100dB (0.001%)**: Professional/High-end grade.
+    * **-60dB (0.1%)**: Typical audio equipment.
+    * **-80dB (0.01%)**: High quality.
+    * **-100dB (0.001%)**: Professional/High-end grade.
 * **Fundamental**: The voltage of the fundamental wave detected by lock-in.
 * **Residual RMS**: The total voltage of distortion and noise.
 
 ## Graph Description (Tabs)
 
 * **Waveform**:
-  * **Cyan**: Input waveform.
-  * **Red**: **Residual Component (Residual)** magnified by 10x. A flat line indicates low distortion. Waves indicate harmonic distortion, while jagged patterns indicate dominant noise.
+    * **Cyan**: Input waveform.
+    * **Red**: **Residual Component (Residual)** magnified by 10x. A flat line indicates low distortion. Waves indicate harmonic distortion, while jagged patterns indicate dominant noise.
 * **Residual**: Time-series change of the residual component level.
 * **Spectrum**: Frequency analysis of the residual component. The fundamental wave (1 kHz) is cleanly removed, making it easier to see 2nd (2k) and 3rd (3k) harmonics.

@@ -37,8 +37,8 @@ The bar at the bottom of the screen represents the correlation coefficient (-1 t
 ### Display Controls
 
 * **Display Mode**: You can choose the waveform drawing method.
-  * **Line**: Draws with a simple line. CPU load is low, making it suitable for seeing instantaneous movements.
-  * **Phosphor**: Simulates the afterimage (phosphorescence) of an analog oscilloscope. Since the "density" and "frequency" of the sound are expressed in color, it is easier to grasp the overall trend.
+    * **Line**: Draws with a simple line. CPU load is low, making it suitable for seeing instantaneous movements.
+    * **Phosphor**: Simulates the afterimage (phosphorescence) of an analog oscilloscope. Since the "density" and "frequency" of the sound are expressed in color, it is easier to grasp the overall trend.
 * **Color Palette**: You can change the graph color (Green / Fire / Ice / Rainbow).
 * **Persistence**: Adjusts the length of the afterimage. When lengthened, past sounds remain on the screen, making it easier to see the average distribution of the sound image.
 * **Glow**: Blurs the lines and makes them glow, improving visibility.
@@ -47,10 +47,10 @@ The bar at the bottom of the screen represents the correlation coefficient (-1 t
 ### Signal Controls
 
 * **Mapping**: Changes how the axes are taken.
-  * **Mid/Side (M/S)**: Standard goniometer display. The vertical axis corresponds to Mid (mono component) and the horizontal axis to Side (stereo component).
-  * **Left/Right (L/R)**: Display as an XY oscilloscope. The X-axis is left and the Y-axis is right (or vice versa).
+    * **Mid/Side (M/S)**: Standard goniometer display. The vertical axis corresponds to Mid (mono component) and the horizontal axis to Side (stereo component).
+    * **Left/Right (L/R)**: Display as an XY oscilloscope. The X-axis is left and the Y-axis is right (or vice versa).
 * **Gain**: Adjusts the display size of the input signal.
-  * **Auto Gain**: When checked, the size is automatically adjusted so that the waveform fits on the screen.
+    * **Auto Gain**: When checked, the size is automatically adjusted so that the waveform fits on the screen.
 * **Invert X / Y**: Inverts the X-axis or Y-axis. Used to match the coordinate system with other measuring instruments when used as an oscilloscope in "L/R" mode.
 
 ## Usage Examples

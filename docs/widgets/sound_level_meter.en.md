@@ -24,8 +24,8 @@ The large numbers displayed at the top of the screen.
 
 * **Histogram (LN)**: Displays the distribution of sound pressure levels in a bar graph.
 * **Statistics**: Displays statistical indicators.
-  * **L50**: Median value (level exceeded 50% of the time).
-  * **L5 / L95**: Represent levels close to the noise peaks and background noise (ambient noise), respectively.
+    * **L50**: Median value (level exceeded 50% of the time).
+    * **L5 / L95**: Represent levels close to the noise peaks and background noise (ambient noise), respectively.
 * **Details**: Displays detailed data such as Lmax (maximum value), Lmin (minimum value), Lpeak (peak value of the waveform), and LE (sound exposure level for single events).
 
 ## Settings

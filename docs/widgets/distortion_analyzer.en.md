@@ -13,16 +13,16 @@ It is like a "blood test" in a health checkup, allowing you to know the basic st
 This tool measures the following values:
 
 * **THD (Total Harmonic Distortion)**
-  * Represents "how many extra overtones (harmonics) were mixed in" relative to a pure signal.
-  * The smaller the value, the cleaner and more faithful the sound is to the original.
+    * Represents "how many extra overtones (harmonics) were mixed in" relative to a pure signal.
+    * The smaller the value, the cleaner and more faithful the sound is to the original.
 * **THD+N (Total Harmonic Distortion + Noise)**
-  * Total level of contamination, including not only distortion but also noise like "hiss".
-  * Most commonly used as a realistic performance indicator.
+    * Total level of contamination, including not only distortion but also noise like "hiss".
+    * Most commonly used as a realistic performance indicator.
 * **SINAD (Signal-to-Noise and Distortion ratio)**
-  * THD+N expressed in dB as a reciprocal.
-  * The larger the value, the higher the performance. (e.g., SINAD 100dB corresponds to THD+N 0.001%)
+    * THD+N expressed in dB as a reciprocal.
+    * The larger the value, the higher the performance. (e.g., SINAD 100dB corresponds to THD+N 0.001%)
 * **IMD (Intermodulation Distortion)**
-  * Measures the muddiness that occurs when two different sounds are mixed. This indicator is closer to the performance during playback of complex music signals.
+    * Measures the muddiness that occurs when two different sounds are mixed. This indicator is closer to the performance during playback of complex music signals.
 
 ## Operation
 
@@ -66,18 +66,18 @@ Measures by changing the volume from small to large.
 Settings for the test signal used for measurement.
 
 * **Signal Generator**:
-  * **Sine Wave**: A basic sine wave. Used for THD measurement.
-  * **SMPTE / CCIF**: Special pair signals for IMD measurement.
+    * **Sine Wave**: A basic sine wave. Used for THD measurement.
+    * **SMPTE / CCIF**: Special pair signals for IMD measurement.
 * **Frequency**: Frequency of the sine wave. Standard is `1000 Hz`.
 * **Amplitude**: Strength of the signal.
-  * When measuring an amplifier, do not set it to maximum volume immediately; raise it gradually from a low value.
+    * When measuring an amplifier, do not set it to maximum volume immediately; raise it gradually from a low value.
 * **Signal Generator Mode**: Select `Off (External Source)` when using an external CD player or similar as the sound source.
 
 ### Settings
 
 * **Averaging**
-  * Sets how many measurements to average to stabilize the values.
-  * Increasing the value stabilizes the display, but reaction to changes becomes slower.
+    * Sets how many measurements to average to stabilize the values.
+    * Increasing the value stabilizes the display, but reaction to changes becomes slower.
 
 ## Usage Examples
 

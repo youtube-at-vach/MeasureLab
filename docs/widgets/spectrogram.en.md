@@ -13,15 +13,15 @@ It is ideal for observing the "transitions" of sound, such as voice intonation a
 ### Starting and Stopping Measurements
 
 - **Start / Stop Button**: Toggles the measurement on and off.
-  - When started, new data appears from the right edge of the graph, and old data flows to the left (waterfall display).
+    - When started, new data appears from the right edge of the graph, and old data flows to the left (waterfall display).
 
 ### Understanding the Graph
 
 - **Horizontal Axis (Time)**: Represents the passage of time. The current time is at the right edge, and going left represents past sounds.
 - **Vertical Axis (Frequency)**: Represents frequency (pitch). Higher up means higher frequency.
 - **Color**: Represents the "strength" of the sound at that moment and frequency.
-  - **Bright colors (yellow, red, etc.)**: Strong sounds
-  - **Dark colors (blue, purple, black, etc.)**: Weak sounds or silence
+    - **Bright colors (yellow, red, etc.)**: Strong sounds
+    - **Dark colors (blue, purple, black, etc.)**: Weak sounds or silence
 
 ### Understanding the Distribution Map (Color Bar) on the Right
 
@@ -29,39 +29,39 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 
 - **Meaning of Colors**: The top of the bar shows colors corresponding to strong sounds (near 0dB), and the bottom shows colors for weak sounds (near -120dB). Use it as a legend to understand "this color on the graph is roughly this volume."
 - **Adjusting the Display Range (Contrast Adjustment)**:
-  - **Drag the white handles (triangle marks)**: You can adjust the range of colors displayed.
-  - **Changing the Overall Brightness**: Drag the entire bar up or down, or scroll with the mouse wheel.
-  - **Changing the Contrast (Sharpness)**: Widen or narrow the width between the handles. Narrowing the width causes colors to change rapidly with small volume differences, making subtle changes easier to see.
+    - **Drag the white handles (triangle marks)**: You can adjust the range of colors displayed.
+    - **Changing the Overall Brightness**: Drag the entire bar up or down, or scroll with the mouse wheel.
+    - **Changing the Contrast (Sharpness)**: Widen or narrow the width between the handles. Narrowing the width causes colors to change rapidly with small volume differences, making subtle changes easier to see.
 
 ## Settings
 
 ### Settings (Basic Settings)
 
 - **Channel**
-  - **Left / Right / Average**: Select the audio channel to analyze.
+    - **Left / Right / Average**: Select the audio channel to analyze.
 
 - **FFT Size (Frequency Resolution)**
-  - Sets the granularity of the analysis.
-  - **4096 / 8192, etc.**: Frequencies are seen in more detail, but response in the time direction becomes slightly blurred.
-  - **512 / 1024, etc.**: Time response (rhythm, etc.) appears sharp, but frequency resolution becomes coarser.
-  - `2048` is generally recommended for a good balance.
+    - Sets the granularity of the analysis.
+    - **4096 / 8192, etc.**: Frequencies are seen in more detail, but response in the time direction becomes slightly blurred.
+    - **512 / 1024, etc.**: Time response (rhythm, etc.) appears sharp, but frequency resolution becomes coarser.
+    - `2048` is generally recommended for a good balance.
 
 - **Window (Window Function)**
-  - `hann` (standard) or `blackman` are suitable for noise analysis.
+    - `hann` (standard) or `blackman` are suitable for noise analysis.
 
 - **Colormap**
-  - Changes the color scheme of the graph.
-  - **viridis / plasma / inferno / magma**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
-  - **turbo**: A colorful rainbow-like scheme suitable for distinguishing fine level differences.
+    - Changes the color scheme of the graph.
+    - **viridis / plasma / inferno / magma**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
+    - **turbo**: A colorful rainbow-like scheme suitable for distinguishing fine level differences.
 
 - **Speed (Flow Rate)**
-  - Adjusts the speed at which the graph scrolls.
-  - **Fast (Realtime)**: Flows in real-time. Suitable for viewing short-term changes.
-  - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen).
+    - Adjusts the speed at which the graph scrolls.
+    - **Fast (Realtime)**: Flows in real-time. Suitable for viewing short-term changes.
+    - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen).
 
 - **Min Freq / Max Freq**
-  - Narrows down the display range of the vertical axis (frequency).
-  - For example, if you want to see low frequencies in detail, set Max Freq to `1000 Hz`.
+    - Narrows down the display range of the vertical axis (frequency).
+    - For example, if you want to see low frequencies in detail, set Max Freq to `1000 Hz`.
 
 ## Usage Examples
 

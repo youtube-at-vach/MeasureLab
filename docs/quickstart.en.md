@@ -95,12 +95,12 @@ When performing high-precision measurements in a Linux environment, we strongly 
 ### Recommendations for Input/Output and Sampling Settings
 
 * **Input/Output Channels**
-  * Basically, leave it at the default and select **Stereo (2ch)**.
+    * Basically, leave it at the default and select **Stereo (2ch)**.
 * **Sampling Rate**
-  * As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
+    * As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
 * **Buffer Size / Buffer Optimization**
-  * **We strongly recommend setting it to "Long (STABLE or higher)".**
-  * Since this software is for "measurement," prioritize data stability over latency.
+    * **We strongly recommend setting it to "Long (STABLE or higher)".**
+    * Since this software is for "measurement," prioritize data stability over latency.
 
 ---
 
