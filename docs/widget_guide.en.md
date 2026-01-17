@@ -30,7 +30,8 @@ Tools for outputting signals or generating reference signals.
 
   * Generates sine waves, noise, sweep signals, etc. It is the basic signal source for measurements.
 * **[Timecode Monitor & Generator](widgets/timecode_monitor.md)**
-* Generates and monitors LTC (Linear Timecode). Used for checking synchronization with video equipment.
+  * Generates and monitors LTC (Linear Timecode). Used for checking synchronization with video equipment.
+
 
 ---
 
@@ -39,15 +40,20 @@ Tools for outputting signals or generating reference signals.
 Measures basic characteristics of audio signals (spectrum, level, frequency).
 
 * **[Spectrum Analyzer](widgets/spectrum_analyzer.md)**
-* Real-time display of frequency components (spectrum) using FFT.
+  * Real-time display of frequency components (spectrum) using FFT.
+
 * **[Sound Level Meter](widgets/sound_level_meter.md)**
-* A sound level meter. Measures sound pressure level (SPL) and equivalent continuous sound level (Leq).
+  * A sound level meter. Measures sound pressure level (SPL) and equivalent continuous sound level (Leq).
+
 * **[LUFS Meter](widgets/lufs_meter.md)**
-* Measures loudness units relative to full scale (LUFS). Suitable for level management for broadcasting and distribution.
+  * Measures loudness units relative to full scale (LUFS). Suitable for level management for broadcasting and distribution.
+
 * **[Frequency Counter](widgets/frequency_counter.md)**
-* Counts the frequency of input signals with high precision. Statistical analysis such as Allan deviation is also possible.
+  * Counts the frequency of input signals with high precision. Statistical analysis such as Allan deviation is also possible.
+
 * **[Spectrogram](widgets/spectrogram.md)**
-* Visualizes changes in frequency components over time with colors (voiceprint analysis, etc.).
+  * Visualizes changes in frequency components over time with colors (voiceprint analysis, etc.).
+
 
 ---
 
@@ -56,15 +62,20 @@ Measures basic characteristics of audio signals (spectrum, level, frequency).
 Tools for evaluating equipment performance and sound quality.
 
 * **[Distortion Analyzer](widgets/distortion_analyzer.md)**
-* Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
+  * Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
+
 * **[Advanced Distortion Meter](widgets/advanced_distortion_meter.md)**
-* Performs more advanced distortion analysis, such as multitone measurement and IMD (Intermodulation Distortion).
+  * Performs more advanced distortion analysis, such as multitone measurement and IMD (Intermodulation Distortion).
+
 * **[Lock-in THD+N Analyzer](widgets/lockin_thd_analyzer.md)**
-* An extremely low-noise distortion measurement module using the principle of a lock-in amplifier.
+  * An extremely low-noise distortion measurement module using the principle of a lock-in amplifier.
+
 * **[Sound Quality Analyzer](widgets/sound_quality_analyzer.md)**
-* Calculates psychoacoustic "sound quality" metrics such as sharpness and roughness.
+  * Calculates psychoacoustic "sound quality" metrics such as sharpness and roughness.
+
 * **[Noise Profiler](widgets/noise_profiler.md)**
-* Analyzes noise floor characteristics (1/f noise, white noise, etc.).
+  * Analyzes noise floor characteristics (1/f noise, white noise, etc.).
+
 
 ---
 
@@ -73,15 +84,20 @@ Tools for evaluating equipment performance and sound quality.
 Measures transmission characteristics, impedance, etc., of electronic circuits and systems.
 
 * **[Network Analyzer](widgets/network_analyzer.md)**
-* Measures frequency response (gain, phase, group delay). Useful for checking characterisics of amplifiers and filters.
+  * Measures frequency response (gain, phase, group delay). Useful for checking characterisics of amplifiers and filters.
+
 * **[Impedance Analyzer](widgets/impedance_analyzer.md)**
-* Measures impedance characteristics (LCR) of speakers and components.
+  * Measures impedance characteristics (LCR) of speakers and components.
+
 * **[Lock-in Amplifier](widgets/lock_in_amplifier.md)**
-* Detects infinitesimal signals buried in noise. Can also be used as an FRA (Frequency Response Analyzer).
+  * Detects infinitesimal signals buried in noise. Can also be used as an FRA (Frequency Response Analyzer).
+
 * **[Lock-in Frequency Counter](widgets/lock_in_frequency_counter.md)**
-* Tracks minute frequency deviations or phase fluctuations relative to a reference signal.
+  * Tracks minute frequency deviations or phase fluctuations relative to a reference signal.
+
 * **[Loopback Finder](widgets/loopback_finder.md)**
-* Measures input/output delay (latency) of audio interfaces.
+  * Measures input/output delay (latency) of audio interfaces.
+
 
 ---
 
@@ -90,13 +106,17 @@ Measures transmission characteristics, impedance, etc., of electronic circuits a
 Observes waveform shapes and transient changes on the time axis.
 
 * **[Oscilloscope](widgets/oscilloscope.md)**
-* A general-purpose oscilloscope. Observes the waveform itself.
+  * A general-purpose oscilloscope. Observes the waveform itself.
+
 * **[Raw Time Series](widgets/raw_time_series.md)**
-* A tool like a chart recorder that records waveforms over a long period and allows you to check them by scrolling.
+  * A tool like a chart recorder that records waveforms over a long period and allows you to check them by scrolling.
+
 * **[Transient Analyzer](widgets/transient_analyzer.md)**
-* Triggers and analyzes transient phenomena such as impulse responses. Wavelet transform display is also possible.
+  * Triggers and analyzes transient phenomena such as impulse responses. Wavelet transform display is also possible.
+
 * **[Boxcar Averager](widgets/boxcar_averager.md)**
-* Averages repetitive signals to remove noise and extract minute waveforms.
+  * Averages repetitive signals to remove noise and extract minute waveforms.
+
 
 ---
 
@@ -105,11 +125,14 @@ Observes waveform shapes and transient changes on the time axis.
 Handles stereo image and spatial sound reverberation.
 
 * **[Goniometer](widgets/goniometer.md)**
-* Displays phase relationship (spread) of stereo signals using Lissajous figures, etc.
+  * Displays phase relationship (spread) of stereo signals using Lissajous figures, etc.
+
 * **[BNIM Meter](widgets/bnim_meter.md)**
-* Binaural Neural Image Map. Visualizes sound source localization (ITD/ILD) based on auditory models.
+  * Binaural Neural Image Map. Visualizes sound source localization (ITD/ILD) based on auditory models.
+
 * **[HRTF Player](widgets/hrtf_player.md)**
-* Loads Head-Related Transfer Functions (HRTF/SOFA) and simulates 3D audio playback via convolution.
+  * Loads Head-Related Transfer Functions (HRTF/SOFA) and simulates 3D audio playback via convolution.
+
 
 ---
 
@@ -118,12 +141,12 @@ Handles stereo image and spatial sound reverberation.
 Other useful functions.
 
 * **[Recorder & Player](widgets/recorder_player.md)**
-* Simple recording and playback function.
+  * Simple recording and playback function.
 * **[Inverse Filter](widgets/inverse_filter.md)**
-* Creates an inverse filter to cancel out the characteristics of speakers and rooms.
+  * Creates an inverse filter to cancel out the characteristics of speakers and rooms.
 * **[Detachable Wrapper](widgets/detachable_wrapper.md)**
-* A framework for detaching any widget into a separate window.
+  * A framework for detaching any widget into a separate window.
 * **[Settings](widgets/settings.md)**
-* Configure audio device settings, language settings, theme changes, etc.
+  * Configure audio device settings, language settings, theme changes, etc.
 * **[Welcome](widgets/welcome.md)**
-* The startup screen.
+  * The startup screen.
