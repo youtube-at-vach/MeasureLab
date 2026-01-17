@@ -992,5 +992,9 @@
     "MINIMUM": "МИНИМУМ",
     "STABLE": "СТАБИЛЬНО",
     "LOW_FREQ": "НЧ-ПРИОРИТЕТ",
-    "ULTRA": "УЛЬТРА"
+    "ULTRA": "УЛЬТРА",
+    "Close": "Закрыть",
+    "Connection Diagram": "Схема подключения",
+    "Diagram not found.": "Схема не найдена.",
+    "Show Connection Diagram": "Показать схему подключения"
 }

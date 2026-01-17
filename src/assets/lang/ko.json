@@ -992,5 +992,9 @@
     "MINIMUM": "최소",
     "STABLE": "안정",
     "LOW_FREQ": "저주파 우선",
-    "ULTRA": "울트라"
+    "ULTRA": "울트라",
+    "Close": "닫기",
+    "Connection Diagram": "결선도",
+    "Diagram not found.": "다이어그램을 찾을 수 없습니다.",
+    "Show Connection Diagram": "결선도 보기"
 }

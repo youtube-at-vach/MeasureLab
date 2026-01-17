@@ -992,5 +992,9 @@
     "MINIMUM": "MÍNIMO",
     "STABLE": "ESTABLE",
     "LOW_FREQ": "FREC. BAJA",
-    "ULTRA": "ULTRA"
+    "ULTRA": "ULTRA",
+    "Close": "Cerrar",
+    "Connection Diagram": "Diagrama de conexión",
+    "Diagram not found.": "Diagrama no encontrado.",
+    "Show Connection Diagram": "Mostrar diagrama de conexión"
 }

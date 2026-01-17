@@ -994,5 +994,9 @@
     "Optimizes sizes up to 4M. Can take several minutes.": "最大4Mまでのサイズを最適化します。数分かかる場合があります。",
     "Optimizing FFT...": "FFTを最適化中...",
     "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M).": "高速化のためFFTプランを事前計算します。数秒かかる場合があります。徹底的な最適化（最大4M）を含みます。",
-    "Regenerate Optimization": "最適化を再生成"
+    "Regenerate Optimization": "最適化を再生成",
+    "Close": "閉じる",
+    "Connection Diagram": "結線図",
+    "Diagram not found.": "図が見つかりません。",
+    "Show Connection Diagram": "結線図を表示"
 }

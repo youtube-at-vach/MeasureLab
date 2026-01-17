@@ -992,5 +992,9 @@
     "STABLE": "STABIL",
     "LOW_FREQ": "TIEFE FREQUENZEN",
     "ULTRA": "ULTRA",
-    "Optimizing FFT... (Size {0})": "Optimiere FFT... (Größe {0})"
+    "Optimizing FFT... (Size {0})": "Optimiere FFT... (Größe {0})",
+    "Close": "Schließen",
+    "Connection Diagram": "Anschlussdiagramm",
+    "Diagram not found.": "Diagramm nicht gefunden.",
+    "Show Connection Diagram": "Anschlussdiagramm anzeigen"
 }

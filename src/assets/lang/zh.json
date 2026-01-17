@@ -992,5 +992,9 @@
     "STABLE": "稳定",
     "LOW_FREQ": "低频优先",
     "ULTRA": "极致",
-    "Optimizing FFT... (Size {0})": "正在优化 FFT... (大小 {0})"
+    "Optimizing FFT... (Size {0})": "正在优化 FFT... (大小 {0})",
+    "Close": "关闭",
+    "Connection Diagram": "接线图",
+    "Diagram not found.": "未找到图表。",
+    "Show Connection Diagram": "显示接线图"
 }
