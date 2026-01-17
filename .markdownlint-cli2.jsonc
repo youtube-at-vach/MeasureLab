@@ -13,7 +13,8 @@
         "MD031": false, // Fenced code blocks should be surrounded by blank lines
         "MD032": false, // Lists should be surrounded by blank lines
         "MD007": false, // Unordered list indentation - allow mixed 2 or 4 spaces
-        "MD009": false // Trailing spaces - ignore invisible whitespace
+        "MD009": false, // Trailing spaces - ignore invisible whitespace
+        "MD046": false // Code block style - disabled due to conflict with pymdownx.admonition indentation
     },
     "ignores": [
         "site/",
