@@ -31,10 +31,13 @@ MeasureLab は Windows および Linux で動作します。
 
 1. `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードします。
 2. ファイルに実行権限を付与します。
+
    ```bash
    chmod +x MeasureLab-*-linux-x86_64.AppImage
    ```
+
 3. そのまま実行します。
+
    ```bash
    ./MeasureLab-*-linux-x86_64.AppImage
    ```

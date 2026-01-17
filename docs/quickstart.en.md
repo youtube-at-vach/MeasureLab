@@ -31,10 +31,13 @@ Please download the latest version for your OS from the [Releases](https://githu
 
 1. Download `MeasureLab-<version>-linux-x86_64.AppImage`.
 2. Grant execution permission to the file.
+
    ```bash
    chmod +x MeasureLab-*-linux-x86_64.AppImage
    ```
+
 3. Run it directly.
+
    ```bash
    ./MeasureLab-*-linux-x86_64.AppImage
    ```

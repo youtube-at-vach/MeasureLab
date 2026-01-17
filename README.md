@@ -83,6 +83,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 *   **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
 *   **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
+
     ```bash
     chmod +x MeasureLab-*-linux-x86_64.AppImage
     ./MeasureLab-*-linux-x86_64.AppImage
@@ -109,24 +110,30 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 1.  OS 依存ライブラリ（最低限）を入れます。
     - `sounddevice` は PortAudio を利用するため、実行時に `libportaudio2` が必要です。
     - `soundfile` は libsndfile を利用するため、実行時に `libsndfile1` が必要です。
+
     ```bash
     sudo apt update
     sudo apt install -y python3 python3-venv python3-pip libportaudio2 libsndfile1
     ```
+
     もし `pip install` でビルドエラーが出る場合のみ、追加で開発ヘッダ等を入れてください：
+
     ```bash
     sudo apt install -y build-essential portaudio19-dev libsndfile1-dev
     ```
 
 2.  仮想環境を作成して有効化します（例: リポジトリ直下に `.venv`）。
+
     ```bash
     python3 -m venv .venv
     source .venv/bin/activate
     python -m pip install -U pip
     ```
+
     以降は `python` / `pip` が venv を指します（`sudo pip` は使わないでください）。
 
     ※ `activate` を使わずに実行したい場合は、常に venv の Python を直接呼び出してもOKです：
+
     ```bash
     ./.venv/bin/python -m pip install -U pip
     ./.venv/bin/python -m pip install -c constraints.txt -r requirements.txt
@@ -135,10 +142,13 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 
 1.  リポジトリをクローンします。
 2.  依存関係をインストールします（再現性のため constraints を利用）：
+
     ```bash
     pip install -c constraints.txt -r requirements.txt
     ```
+
 3.  アプリケーションを起動します：
+
     ```bash
     python main_gui.py
     ```
