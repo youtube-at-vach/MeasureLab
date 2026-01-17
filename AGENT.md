@@ -33,7 +33,7 @@ VS Code から `pytest (venv)` タスクを利用可能です。
   - `python3 -m venv .venv`
   - `./.venv/bin/python -m pip install -U pip`
 
-2) 依存導入
+1) 依存導入
 
 - `./.venv/bin/python -m pip install -r requirements.txt`
 

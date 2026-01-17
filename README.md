@@ -141,14 +141,14 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
     ./.venv/bin/python main_gui.py
     ```
 
-1.  リポジトリをクローンします。
-2.  依存関係をインストールします（再現性のため constraints を利用）：
+3.  リポジトリをクローンします。
+4.  依存関係をインストールします（再現性のため constraints を利用）：
 
     ```bash
     pip install -c constraints.txt -r requirements.txt
     ```
 
-3.  アプリケーションを起動します：
+5.  アプリケーションを起動します：
 
     ```bash
     python main_gui.py
