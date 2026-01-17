@@ -27,19 +27,7 @@
 MeasureLab の **Impedance Analyzer** は、電流-電圧法（I-V法）を使用します。
 以下のように接続してください。
 
-```text
-[Output L] ------+
-                 |
-             [Speaker (DUT)]
-                 |
-[Input L (V)] ---+-----------+
-                             |
-                      [Ref Resistor (10Ω)]
-                             |
-[Input R (I)] ---+-----------+
-                 |
-[GND] -----------------------+
-```
+![Connection Setup (I-V Method)](../assets/speaker_impedance_wiring.svg)
 
 1. **Output L** からスピーカーのプラス端子へ繋ぎます。
 2. スピーカーの後ろ（マイナス端子）に **Ref Resistor（基準抵抗）** を繋ぎ、GNDへ落とします。

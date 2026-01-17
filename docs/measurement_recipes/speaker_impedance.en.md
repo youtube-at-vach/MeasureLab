@@ -27,19 +27,7 @@ The following equipment is required for measurement.
 MeasureLab's **Impedance Analyzer** uses the Current-Voltage Method (I-V Method).
 Connect as follows.
 
-```text
-[Output L] ------+
-                 |
-             [Speaker (DUT)]
-                 |
-[Input L (V)] ---+-----------+
-                             |
-                      [Ref Resistor (10Ω)]
-                             |
-[Input R (I)] ---+-----------+
-                 |
-[GND] -----------------------+
-```
+![Connection Setup (I-V Method)](../assets/speaker_impedance_wiring.svg)
 
 1. Connect **Output L** to the positive terminal of the speaker.
 2. Connect the **Ref Resistor** to the back of the speaker (negative terminal) and drop it to GND.
