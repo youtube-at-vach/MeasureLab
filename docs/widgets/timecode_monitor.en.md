@@ -37,8 +37,8 @@ At the top of the screen, the timecode information for each of the left and righ
 
 * **CH Δ (R-L)**:
     Displays the discrepancy between the timecodes of the right and left channels.
-    * If perfectly synchronized, `0 fr (0.0 ms)` is displayed.
-    * This is convenient for checking if the timecodes between cameras are not out of sync in multi-camera recordings, etc.
+  * If perfectly synchronized, `0 fr (0.0 ms)` is displayed.
+  * This is convenient for checking if the timecodes between cameras are not out of sync in multi-camera recordings, etc.
 
 ## Settings
 
@@ -48,21 +48,21 @@ Detailed settings are possible within the tabs for each channel (Left / Right).
 
 * **Frame Rate**:
     Manually sets the frame rate of the timecode (e.g., `24.00`, `29.97`, `30.00`, etc.).
-    * Normally it is automatically detected, but if it does not lock correctly, please set it manually.
+  * Normally it is automatically detected, but if it does not lock correctly, please set it manually.
 
 * **Display Local Time**:
     Interprets the timecode (Hour:Minute:Second) as the current time and displays it converted to the time of the specified time zone.
-    * **Display TZ**: Target time zone to convert to (e.g., `Asia/Tokyo` for Japan time).
-    * Example: Used when the timecode is recorded in "UTC time" and you want to display it corrected to "Japan time."
+  * **Display TZ**: Target time zone to convert to (e.g., `Asia/Tokyo` for Japan time).
+  * Example: Used when the timecode is recorded in "UTC time" and you want to display it corrected to "Japan time."
 
 ### Generator (Generator Function)
 
 A function for outputting a timecode signal from MeasureLab. After performing settings in this tab and pressing `Enable Generator`, a timecode sound will flow from the audio output.
 
 * **Gen Mode (Generation Mode)**:
-    * **Time of Day (TOD)**: Outputs the current time of the computer as timecode.
-    * **Free Run**: Starts counting up from `00:00:00:00` or a specified time.
-    * **JAM**: Outputs in synchronization with the external timecode captured with the JAM button.
+  * **Time of Day (TOD)**: Outputs the current time of the computer as timecode.
+  * **Free Run**: Starts counting up from `00:00:00:00` or a specified time.
+  * **JAM**: Outputs in synchronization with the external timecode captured with the JAM button.
 
 * **Link Stereo Output**:
     A checkbox in the center of the main screen.

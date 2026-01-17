@@ -38,28 +38,28 @@ This makes it possible to accurately capture the signal magnitude regardless of 
 Switch between these via the check boxes in the **Settings** panel or through physical connections.
 
 * **Internal Mode**
-    * **Operation**: The widget itself outputs a signal (Sine wave), which is passed through the measurement target, and the returning signal is measured.
-    * **Usage**: When you can output the signal yourself, such as for measuring frequency characteristics or impedance of circuits.
-    * **Settings**: Start by clicking the `Start Output & Measure` button. Uncheck `External Mode`.
+  * **Operation**: The widget itself outputs a signal (Sine wave), which is passed through the measurement target, and the returning signal is measured.
+  * **Usage**: When you can output the signal yourself, such as for measuring frequency characteristics or impedance of circuits.
+  * **Settings**: Start by clicking the `Start Output & Measure` button. Uncheck `External Mode`.
 
 * **External Mode**
-    * **Operation**: Input both a "Signal" and a "Reference Clock (Ref)" from an external device. The widget automatically locks to (follows) the frequency of the reference input and measures.
-    * **Usage**: Experiments using optical choppers or measurements using other oscillators.
-    * **Settings**: Check `External Mode (No Output)`. Input the reference signal into the `Reference Input` channel.
+  * **Operation**: Input both a "Signal" and a "Reference Clock (Ref)" from an external device. The widget automatically locks to (follows) the frequency of the reference input and measures.
+  * **Usage**: Experiments using optical choppers or measurements using other oscillators.
+  * **Settings**: Check `External Mode (No Output)`. Input the reference signal into the `Reference Input` channel.
 
 ### Operation Mode (Manual / FRA)
 
 Switching between tabs allows you to choose between fixed-point measurement and sweep measurement.
 
 * **Manual Control**
-    * Continuously monitors a specific single frequency.
-    * Since numerical values change in real-time, it is suitable for adjustment work and observing time-series changes (similar to a trend graph).
-    * **Harmonic Measurement**: Setting `Harmonic` to `2` allows you to extract and measure only the frequency component at twice the fundamental frequency (2nd harmonic).
+  * Continuously monitors a specific single frequency.
+  * Since numerical values change in real-time, it is suitable for adjustment work and observing time-series changes (similar to a trend graph).
+  * **Harmonic Measurement**: Setting `Harmonic` to `2` allows you to extract and measure only the frequency component at twice the fundamental frequency (2nd harmonic).
 
 * **Frequency Response Analyzer (FRA)**
-    * Measures while automatically changing the frequency from `Start` to `End` (frequency sweep).
-    * The results are displayed as a **Bode Plot** (Magnitude and Phase characteristics).
-    * Ideal for measuring the bandwidth of filter circuits and amplifiers.
+  * Measures while automatically changing the frequency from `Start` to `End` (frequency sweep).
+  * The results are displayed as a **Bode Plot** (Magnitude and Phase characteristics).
+  * Ideal for measuring the bandwidth of filter circuits and amplifiers.
 
 ## Key Parameter Descriptions
 

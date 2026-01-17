@@ -62,9 +62,9 @@ Available parameters vary depending on the waveform.
 * **Phase Offset (deg)**: The initial phase of the signal. Used when you want to create a phase difference between the left and right channels.
 * **Delay (ms)**: The delay time of the signal. Useful for adjusting timing in burst signals, etc.
 * **Amplitude**: The amplitude (volume) of the signal. You can select from the following units:
-    * **Linear (0-1)**: Linear scale from 0.0 to 1.0.
-    * **dBFS**: Decibel value relative to digital full scale. The maximum value is 0 dBFS.
-    * **dBV, dBu, Vrms, Vpeak**: Voltage units (*requires output calibration for accurate display).
+  * **Linear (0-1)**: Linear scale from 0.0 to 1.0.
+  * **dBFS**: Decibel value relative to digital full scale. The maximum value is 0 dBFS.
+  * **dBV, dBu, Vrms, Vpeak**: Voltage units (*requires output calibration for accurate display).
 
 ## Modulation and Sweep Functions
 

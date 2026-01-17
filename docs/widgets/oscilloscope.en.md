@@ -16,7 +16,7 @@ The Oscilloscope is a measurement tool that displays the waveform of the input s
 
 * **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration, while smaller values zoom in on the waveform.
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
-    * **Left Scale / Right Scale**: Allows you to set the display magnification for each of the left and right channels. "1.0x" is the standard; setting it to a larger value, such as "2.0x", will vertically expand the display of the waveform.
+  * **Left Scale / Right Scale**: Allows you to set the display magnification for each of the left and right channels. "1.0x" is the standard; setting it to a larger value, such as "2.0x", will vertically expand the display of the waveform.
 * **Channels**: Check boxes can be used to toggle the display/hide status of each channel (Left/Right).
 
 ## Trigger Settings
@@ -25,12 +25,12 @@ A function to stop (stabilize) the waveform for easier observation.
 
 * **Source**: Selects the signal source for the trigger (Left or Right).
 * **Slope**: Selects the direction in which the signal crosses the trigger level.
-    * **Rising**: Triggers when the voltage increases from low to high (rising edge).
-    * **Falling**: Triggers when the voltage decreases from high to low (falling edge).
+  * **Rising**: Triggers when the voltage increases from low to high (rising edge).
+  * **Falling**: Triggers when the voltage decreases from high to low (falling edge).
 * **Mode**:
-    * **Auto**: Updates the waveform at regular intervals even if the trigger conditions are not met (something is displayed even if no signal is found).
-    * **Normal**: Updates the waveform only when the trigger conditions are met (the screen stays frozen until a signal arrives).
-    * **Single**: Captures the waveform only once when the trigger conditions are met and then automatically stops (useful for observing one-time signals).
+  * **Auto**: Updates the waveform at regular intervals even if the trigger conditions are not met (something is displayed even if no signal is found).
+  * **Normal**: Updates the waveform only when the trigger conditions are met (the screen stays frozen until a signal arrives).
+  * **Single**: Captures the waveform only once when the trigger conditions are met and then automatically stops (useful for observing one-time signals).
 * **Level**: Sets the voltage level at which the trigger occurs.
 
 ## Tools and Measurements

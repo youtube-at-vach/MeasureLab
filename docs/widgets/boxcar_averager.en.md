@@ -27,16 +27,16 @@ This widget has both an "Internal mode," which outputs test signals itself to sy
 ### Basic Settings (Controls)
 
 - **Mode (Sync Mode)**
-    - **Internal Pulse / Step / Impulse**: Generates test signals (pulse, step waveform, impulse) internally and synchronizes based on them. Signals are output from the output terminal.
-    - **Internal PRBS/MLS**: Uses pseudo-random signals (for special measurements).
-    - **External Reference**: Averaging the signal of another channel using an external reference signal (such as a square wave) as a trigger.
+  - **Internal Pulse / Step / Impulse**: Generates test signals (pulse, step waveform, impulse) internally and synchronizes based on them. Signals are output from the output terminal.
+  - **Internal PRBS/MLS**: Uses pseudo-random signals (for special measurements).
+  - **External Reference**: Averaging the signal of another channel using an external reference signal (such as a square wave) as a trigger.
 
 - **Period**
-    - Specifies the length of time to perform one averaging in milliseconds (ms).
-    - Set it to a length where the response of the measurement target is sufficiently contained. If it is too short, reverberation will overlap with the next cycle (aliasing).
+  - Specifies the length of time to perform one averaging in milliseconds (ms).
+  - Set it to a length where the response of the measurement target is sufficiently contained. If it is too short, reverberation will overlap with the next cycle (aliasing).
 
 - **Channel (Measurement Channel)**
-    - Select the input channel you want to measure (Stereo / Left / Right).
+  - Select the input channel you want to measure (Stereo / Left / Right).
 
 ### Gate Settings (Gate)
 

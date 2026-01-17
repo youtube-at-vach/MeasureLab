@@ -83,8 +83,8 @@ Sets the criteria for thermal noise or when using an external preamplifier (LNA:
 #### Display Options
 
 * **Show as Resistance (Ω)**:
-    * Displays the noise level converted to "the equivalent resistance value that generates that noise voltage."
-    * Used when evaluating things like "The noise of this amplifier is as quiet as a 50Ω resistor."
+  * Displays the noise level converted to "the equivalent resistance value that generates that noise voltage."
+  * Used when evaluating things like "The noise of this amplifier is as quiet as a 50Ω resistor."
 * **Show Thermal Limit**: Displays the theoretical limit line of thermal noise.
 
 ## Usage Examples

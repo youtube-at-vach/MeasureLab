@@ -39,28 +39,28 @@ Settings are performed in the panel on the left side of the screen.
 This is the core function of this tool. The main modes are as follows:
 
 - **MIM (Multitone Intermodulation Distortion)**
-    - **Overview**: Uses "multitone" signals that sound many tones, such as 31 tones, simultaneously. It measures "Distortion + Noise (TD+N)" when applying a complex load close to a music signal.
-    - **How to interpret**: For **TD+N (dB)**, the "lower (greater negative value)" the value, the higher the performance.
-    - **Settings**:
-        - **Tone Count**: Number of tones to sound. The higher the number, the higher the density.
-        - **Min / Max Freq**: Frequency range to be measured.
+  - **Overview**: Uses "multitone" signals that sound many tones, such as 31 tones, simultaneously. It measures "Distortion + Noise (TD+N)" when applying a complex load close to a music signal.
+  - **How to interpret**: For **TD+N (dB)**, the "lower (greater negative value)" the value, the higher the performance.
+  - **Settings**:
+    - **Tone Count**: Number of tones to sound. The higher the number, the higher the density.
+    - **Min / Max Freq**: Frequency range to be measured.
 
 - **SPDR (Spurious Free Dynamic Range)**
-    - **Overview**: When outputting a signal such as 1kHz, it measures how low the "unnecessary components other than the signal (spurious)" are from the signal.
-    - **How to interpret**: For **SPDR (dB)**, the "higher (greater positive value)" the value, the fewer the unnecessary components and the cleaner it is.
-    - **Settings**: Basically fixed at 1kHz.
+  - **Overview**: When outputting a signal such as 1kHz, it measures how low the "unnecessary components other than the signal (spurious)" are from the signal.
+  - **How to interpret**: For **SPDR (dB)**, the "higher (greater positive value)" the value, the fewer the unnecessary components and the cleaner it is.
+  - **Settings**: Basically fixed at 1kHz.
 
 - **PIM (Passive Intermodulation / 2-Tone)**
-    - **Overview**: Sounds two tones of different pitches (f1, f2) and measures the "tones that did not exist originally (intermodulation distortion)" produced by mixing those two tones.
-    - **How to interpret**: **PIM (dBc)** represents how low the distortion component is relative to the original signal. The "lower (greater negative value)" the value, the higher the performance.
-    - **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
+  - **Overview**: Sounds two tones of different pitches (f1, f2) and measures the "tones that did not exist originally (intermodulation distortion)" produced by mixing those two tones.
+  - **How to interpret**: **PIM (dBc)** represents how low the distortion component is relative to the original signal. The "lower (greater negative value)" the value, the higher the performance.
+  - **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
 
 ### Generator
 
 Sets the strength of the signal used for measurement.
 
 - **Amplitude**: Loudness of the signal.
-    - Start from a low value (such as -20dBFS) initially to avoid damaging the measurement target (amplifier, etc.).
+  - Start from a low value (such as -20dBFS) initially to avoid damaging the measurement target (amplifier, etc.).
 - **Unit**: Can be selected from `dBFS` (digital full scale), `dBV` (1V reference), `dBu` (professional reference), and `Vrms` (voltage).
 
 ### I/O (Input/Output)

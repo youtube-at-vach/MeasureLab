@@ -6,7 +6,6 @@
         "MD033": false, // Inline HTML - needed for some advanced formatting
         "MD034": false, // Bare URL used - sometimes intentional
         "MD041": false, // First line must be h1 - mkdocs often uses frontmatter title
-        "MD046": false // Code block style - disabled due to conflict with pymdownx.admonition indentation
     },
     "ignores": [
         "site/",
