@@ -6,6 +6,13 @@
 This guide measures the electrical characteristics (impedance) of speaker units.
 By plotting the impedance curve, you can obtain clues for identifying the speaker's lowest resonant frequency ($f_0$) and parameters necessary for enclosure (box) design.
 
+## Measurement Scope and Limitations
+
+This configuration is not optimized for measuring low-impedance loads such as speakers.
+While it is possible to observe the shape of the impedance curve and resonance behavior, the accuracy of absolute values may be limited due to the output impedance of the audio interface.
+
+If accurate impedance values or calculation of small-signal parameters is required, please use an external low-output impedance driver stage (such as a buffer or power amplifier).
+
 ## Purpose
 
 * **Identify $f_0$ (Lowest Resonant Frequency)**: Identify the low frequency at which the speaker vibrates most efficiently.
