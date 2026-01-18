@@ -19,7 +19,7 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 ## Starting the Software
 
 MeasureLab works on Windows and Linux.
-Please download the latest version for your OS from the [Releases](https://github.com/vach/MeasureLab/releases) page.
+Please download the latest version for your OS from the [Releases](https://github.com/youtube-at-vach/MeasureLab/releases) page.
 
 ### For Windows
 

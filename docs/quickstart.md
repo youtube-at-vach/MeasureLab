@@ -19,7 +19,7 @@
 ## ソフトウェアを起動する {: #starting }
 
 MeasureLab は Windows および Linux で動作します。
-[Releases](https://github.com/vach/MeasureLab/releases) ページから、お使いの OS に合わせた最新バージョンをダウンロードしてください。
+[Releases](https://github.com/youtube-at-vach/MeasureLab/releases) ページから、お使いの OS に合わせた最新バージョンをダウンロードしてください。
 
 ### Windows の場合
 
