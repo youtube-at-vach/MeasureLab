@@ -77,3 +77,50 @@ def test_bnim_mono():
     assert abs(peak_itd_ms) < 0.1 # Relaxed slightly for resolution
 
     bnim.stop_analysis()
+
+def test_bnim_symmetry():
+    engine = MockAudioEngine()
+    bnim = BNIMMeter(engine)
+    bnim.start_analysis()
+    
+    # Enable ILD for this test
+    bnim.enable_ild = True
+    bnim.ild_strength = 0.6
+    bnim.decay = 0.0 # Instant update
+    
+    # Generate random stereo noise
+    np.random.seed(42)
+    fs = 48000
+    noise_L = np.random.randn(bnim.fft_size).astype(np.float32)
+    noise_R = np.random.randn(bnim.fft_size).astype(np.float32) * 0.5 # Make R quieter to have ILD
+    
+    # Pass 1: Normal (L, R)
+    with bnim._buffer_lock:
+        bnim.audio_buffer[-bnim.fft_size:, 0] = noise_L
+        bnim.audio_buffer[-bnim.fft_size:, 1] = noise_R
+        bnim._buffer_seq += 1 # Force update
+        
+    bnim.process_buffer()
+    map_normal = bnim.neural_map.copy()
+    
+    # Pass 2: Swapped (R, L)
+    with bnim._buffer_lock:
+        bnim.audio_buffer[-bnim.fft_size:, 0] = noise_R
+        bnim.audio_buffer[-bnim.fft_size:, 1] = noise_L
+        bnim._buffer_seq += 1
+        
+    bnim.process_buffer()
+    map_swapped = bnim.neural_map.copy()
+    
+    # Expectation: map_swapped should be horizontal flip of map_normal
+    # neural_map shape: (freqs, itd)
+    # flip along axis 1 (itd)
+    map_normal_flipped = np.fliplr(map_normal)
+    
+    diff = np.abs(map_swapped - map_normal_flipped)
+    max_diff = np.max(diff)
+    
+    print(f"Symmetry Max Diff: {max_diff}")
+    assert max_diff < 1e-5, f"Asymmetry detected: {max_diff}"
+    
+    bnim.stop_analysis()
