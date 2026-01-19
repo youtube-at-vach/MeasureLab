@@ -1,9 +1,14 @@
+import functools
 import numpy as np
 from scipy.optimize import minimize_scalar
 from scipy.signal import butter, get_window, sosfiltfilt
 
 
 from src.core.fft_manager import fft_manager
+
+@functools.lru_cache(maxsize=16)
+def _get_cached_window(window_name, nx):
+    return get_window(window_name, nx)
 
 class AudioCalc:
     """
@@ -130,7 +135,7 @@ class AudioCalc:
 
     @staticmethod
     def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
-        window = get_window(window_name, len(audio_data))
+        window = _get_cached_window(window_name, len(audio_data))
         windowed_data = audio_data * window
         fft_result = fft_manager.rfft(windowed_data)
         freqs = fft_manager.rfftfreq(len(audio_data), 1/sampling_rate)
