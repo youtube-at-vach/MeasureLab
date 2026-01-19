@@ -72,4 +72,4 @@ wisdom/pyfftw_wisdom
 site/
 
 # Agent Local Rules
-.agent/Rules/*
+.agent/rules/*
