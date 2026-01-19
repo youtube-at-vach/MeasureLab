@@ -996,5 +996,10 @@
     "Close": "닫기",
     "Connection Diagram": "결선도",
     "Diagram not found.": "다이어그램을 찾을 수 없습니다.",
-    "Show Connection Diagram": "결선도 보기"
+    "Show Connection Diagram": "결선도 보기",
+    "Integrated Loudness (LUFS)": "통합 라우드니스 (LUFS)",
+    "Mean Roughness (asper)": "평균 거칠기 (asper)",
+    "Mean Tonality (0-1)": "평균 조성 (0-1)",
+    "Resampling to {}Hz (Analysis)...": "{}Hz로 리샘플링 중 (분석)...",
+    "Resampling to {}Hz (Playback)...": "{}Hz로 리샘플링 중 (재생)..."
 }

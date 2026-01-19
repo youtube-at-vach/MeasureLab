@@ -998,5 +998,10 @@
     "Close": "閉じる",
     "Connection Diagram": "結線図",
     "Diagram not found.": "図が見つかりません。",
-    "Show Connection Diagram": "結線図を表示"
+    "Show Connection Diagram": "結線図を表示",
+    "Integrated Loudness (LUFS)": "積分ラウドネス (LUFS)",
+    "Mean Roughness (asper)": "平均ラフネス (asper)",
+    "Mean Tonality (0-1)": "平均トーナリティ (0-1)",
+    "Resampling to {}Hz (Analysis)...": "{}Hz にリサンプリング中 (解析)...",
+    "Resampling to {}Hz (Playback)...": "{}Hz にリサンプリング中 (再生)..."
 }

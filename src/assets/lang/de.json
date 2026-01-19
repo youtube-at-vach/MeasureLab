@@ -996,5 +996,10 @@
     "Close": "Schließen",
     "Connection Diagram": "Anschlussdiagramm",
     "Diagram not found.": "Diagramm nicht gefunden.",
-    "Show Connection Diagram": "Anschlussdiagramm anzeigen"
+    "Show Connection Diagram": "Anschlussdiagramm anzeigen",
+    "Integrated Loudness (LUFS)": "Integrierte Lautheit (LUFS)",
+    "Mean Roughness (asper)": "Mittlere Rauheit (asper)",
+    "Mean Tonality (0-1)": "Mittlere Tonalität (0-1)",
+    "Resampling to {}Hz (Analysis)...": "Resampling auf {}Hz (Analyse)...",
+    "Resampling to {}Hz (Playback)...": "Resampling auf {}Hz (Wiedergabe)..."
 }

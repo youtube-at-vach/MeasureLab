@@ -13,18 +13,20 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "Close",
-    "Connection Diagram",
-    "Diagram not found.",
-    "Show Connection Diagram",
+    "Integrated Loudness (LUFS)",
+    "Mean Roughness (asper)",
+    "Mean Tonality (0-1)",
+    "Resampling to {}Hz (Analysis)...",
+    "Resampling to {}Hz (Playback)...",
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
 MISSING_OTHER_KEYS = [
-    "Close",
-    "Connection Diagram",
-    "Diagram not found.",
-    "Show Connection Diagram",
+    "Integrated Loudness (LUFS)",
+    "Mean Roughness (asper)",
+    "Mean Tonality (0-1)",
+    "Resampling to {}Hz (Analysis)...",
+    "Resampling to {}Hz (Playback)...",
 ]
 
 def load_json(path):

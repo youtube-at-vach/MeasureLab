@@ -996,5 +996,10 @@
     "Close": "关闭",
     "Connection Diagram": "接线图",
     "Diagram not found.": "未找到图表。",
-    "Show Connection Diagram": "显示接线图"
+    "Show Connection Diagram": "显示接线图",
+    "Integrated Loudness (LUFS)": "集成响度 (LUFS)",
+    "Mean Roughness (asper)": "平均粗糙度 (asper)",
+    "Mean Tonality (0-1)": "平均音调 (0-1)",
+    "Resampling to {}Hz (Analysis)...": "重采样至 {}Hz (分析)...",
+    "Resampling to {}Hz (Playback)...": "重采样至 {}Hz (播放)..."
 }

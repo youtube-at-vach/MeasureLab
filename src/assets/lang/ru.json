@@ -996,5 +996,10 @@
     "Close": "Закрыть",
     "Connection Diagram": "Схема подключения",
     "Diagram not found.": "Схема не найдена.",
-    "Show Connection Diagram": "Показать схему подключения"
+    "Show Connection Diagram": "Показать схему подключения",
+    "Integrated Loudness (LUFS)": "Интегральная громкость (LUFS)",
+    "Mean Roughness (asper)": "Средняя шероховатость (asper)",
+    "Mean Tonality (0-1)": "Средняя тональность (0-1)",
+    "Resampling to {}Hz (Analysis)...": "Ресемплирование в {}Гц (Анализ)...",
+    "Resampling to {}Hz (Playback)...": "Ресемплирование в {}Гц (Воспроизведение)..."
 }

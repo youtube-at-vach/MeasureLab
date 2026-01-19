@@ -530,10 +530,10 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Headers
         self.summary_grid.addWidget(QLabel(tr("Channel")), 0, 0)
-        self.summary_grid.addWidget(QLabel(tr("Integrated Loudness")), 0, 1)
+        self.summary_grid.addWidget(QLabel(tr("Integrated Loudness (LUFS)")), 0, 1)
         self.summary_grid.addWidget(QLabel(tr("Mean Sharpness (acum)")), 0, 2)
-        self.summary_grid.addWidget(QLabel(tr("Mean Roughness")), 0, 3)
-        self.summary_grid.addWidget(QLabel(tr("Mean Tonality")), 0, 4)
+        self.summary_grid.addWidget(QLabel(tr("Mean Roughness (asper)")), 0, 3)
+        self.summary_grid.addWidget(QLabel(tr("Mean Tonality (0-1)")), 0, 4)
 
         summary_group.setLayout(self.summary_grid)
         layout.addWidget(summary_group)
@@ -591,6 +591,10 @@ class SoundQualityAnalyzerWidget(QWidget):
         # Stop playback if running
         if hasattr(self, 'stop_playback'):
             self.stop_playback()
+
+        if self.worker is not None and self.worker.isRunning():
+            self.worker.cancel()
+            self.worker.wait()
 
         target_sr = self.module.audio_engine.sample_rate
         self.worker = AnalysisWorker(self.current_file, target_sr)
@@ -702,7 +706,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Roughness Plot
         p3 = pg.PlotWidget(title=tr("Roughness"))
-        p3.setLabel('left', 'arb') # Arbitrary unit for now
+        p3.setLabel('left', 'asper')
         p3.showGrid(y=True)
         p3.setLabel('bottom', 'Time', units='s')
         p3.addLegend()
@@ -901,5 +905,13 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         self.playback_position = int(t * self.samplerate)
         self.update_playback_cursor()
+
+    def closeEvent(self, event):
+        """Cleanup on close."""
+        self.stop_playback()
+        if self.worker is not None and self.worker.isRunning():
+            self.worker.cancel()
+            self.worker.wait()
+        super().closeEvent(event)
 
 

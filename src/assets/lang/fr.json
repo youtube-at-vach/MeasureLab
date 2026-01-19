@@ -996,5 +996,10 @@
     "Close": "Fermer",
     "Connection Diagram": "Schéma de connexion",
     "Diagram not found.": "Schéma non trouvé.",
-    "Show Connection Diagram": "Afficher le schéma de connexion"
+    "Show Connection Diagram": "Afficher le schéma de connexion",
+    "Integrated Loudness (LUFS)": "Sonie Intégrée (LUFS)",
+    "Mean Roughness (asper)": "Rugosité Moyenne (asper)",
+    "Mean Tonality (0-1)": "Tonalité Moyenne (0-1)",
+    "Resampling to {}Hz (Analysis)...": "Rééchantillonnage à {}Hz (Analyse)...",
+    "Resampling to {}Hz (Playback)...": "Rééchantillonnage à {}Hz (Lecture)..."
 }
