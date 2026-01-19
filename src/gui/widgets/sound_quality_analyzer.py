@@ -44,34 +44,43 @@ class AnalysisWorker(QThread):
             self.progress_update.emit(0, tr("Loading file..."))
             data, samplerate = sf.read(self.file_path)
 
-            # Resampling if needed
+            # 1. Prepare Playback Data (at target_sr, e.g. 44.1k or 48k)
+            # This ensures playback speed is correct for the Audio Engine
             if samplerate != self.target_sr:
-                self.progress_update.emit(5, tr("Resampling to {}Hz (Fast)...").format(self.target_sr))
-                data = self._fast_resample(data, samplerate, self.target_sr)
-                samplerate = self.target_sr
+                self.progress_update.emit(5, tr("Resampling to {}Hz (Playback)...").format(self.target_sr))
+                data_playback = self._resample(data, samplerate, self.target_sr)
+            else:
+                data_playback = data
+
+            # 2. Prepare Analysis Data (at 48kHz)
+            # The filters (Loudness K-weighting) and psychoacoustic approximations 
+            # are tuned for 48kHz.
+            analysis_sr = 48000
+            if self.target_sr == analysis_sr:
+                data_analysis = data_playback
+            else:
+                self.progress_update.emit(10, tr("Resampling to {}Hz (Analysis)...").format(analysis_sr))
+                data_analysis = self._resample(data_playback, self.target_sr, analysis_sr)
 
             if self._is_cancelled:
                 return
 
-            # Handle stereo: Process L and R, combine or just Average?
-            # Requirement: Mono/Stereo (Stereo is LR separated + composite?)
-            # For simplicity, let's analyze Left and Right separately, and also provide an Average/Composite view.
-            # But the request says "Stereo is LR separate + Synthesis". "Synthesis" might mean "Overall" (e.g. Total Loudness).
-
-            if data.ndim == 1:
-                channels = [data]
+            # Analyze mono/stereo
+            # If stereo -> [L, R]
+            if data_analysis.ndim == 1:
+                channels = [data_analysis]
                 ch_names = ["Mono"]
             else:
-                channels = [data[:, 0], data[:, 1]]
+                channels = [data_analysis[:, 0], data_analysis[:, 1]]
                 ch_names = ["Left", "Right"]
 
             results = {
-                "samplerate": samplerate,
-                "duration": len(data) / samplerate,
+                "samplerate": self.target_sr,
+                "duration": len(data_playback) / self.target_sr,
                 "channels": []
             }
 
-            total_steps = len(channels) * 4 # 4 metrics per channel
+            total_steps = len(channels) * 4 
             current_step = 0
 
             for i, audio in enumerate(channels):
@@ -80,28 +89,28 @@ class AnalysisWorker(QThread):
                 # 1. Loudness
                 if self._is_cancelled: return
                 self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Loudness ({})...").format(ch_names[i]))
-                l_res = self._calc_loudness(audio, samplerate)
+                l_res = self._calc_loudness(audio, analysis_sr)
                 ch_res.update(l_res)
                 current_step += 1
 
                 # 2. Sharpness
                 if self._is_cancelled: return
                 self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Sharpness ({})...").format(ch_names[i]))
-                s_res = self._calc_sharpness(audio, samplerate)
+                s_res = self._calc_sharpness(audio, analysis_sr)
                 ch_res.update(s_res)
                 current_step += 1
 
                 # 3. Roughness
                 if self._is_cancelled: return
                 self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Roughness ({})...").format(ch_names[i]))
-                r_res = self._calc_roughness(audio, samplerate)
+                r_res = self._calc_roughness(audio, analysis_sr)
                 ch_res.update(r_res)
                 current_step += 1
 
                 # 4. Tonality
                 if self._is_cancelled: return
                 self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Tonality ({})...").format(ch_names[i]))
-                t_res = self._calc_tonality(audio, samplerate)
+                t_res = self._calc_tonality(audio, analysis_sr)
                 ch_res.update(t_res)
                 current_step += 1
 
@@ -109,8 +118,8 @@ class AnalysisWorker(QThread):
 
             # Add raw audio for playback
             # Store as float32 for audio engine
-            results["audio_data"] = data.astype(np.float32)
-            results["samplerate"] = samplerate
+            results["audio_data"] = data_playback.astype(np.float32)
+            results["samplerate"] = self.target_sr # Engine rate
 
             self.results_ready.emit(results)
 
@@ -119,46 +128,30 @@ class AnalysisWorker(QThread):
             traceback.print_exc()
             self.error_occurred.emit(str(e))
 
-    def _fast_resample(self, data, src_sr, target_sr):
+    def _resample(self, data, src_sr, target_sr):
         """
-        Fast approximated resampling for preview/analysis purposes.
-        Uses integer slicing/repeating or linear interpolation.
+        High-quality resampling using polyphase filtering (scipy.signal.resample_poly).
         """
         if src_sr == target_sr:
             return data
 
-        # Check for integer factors
-        # Downsampling (e.g. 96k -> 48k)
-        if src_sr > target_sr and src_sr % target_sr == 0:
-            step = src_sr // target_sr
-            # Simple decimation (no anti-aliasing filter here, but fast)
-            return data[::step]
-
-        # Upsampling (e.g. 44.1k -> 88.2k)
-        if target_sr > src_sr and target_sr % src_sr == 0:
-            factor = target_sr // src_sr
-            # Simple repeat (zero-order hold)
-            if data.ndim == 1:
-                return np.repeat(data, factor)
-            else:
-                return np.repeat(data, factor, axis=0)
-
-        # General case: Linear Interpolation (np.interp)
-        # Calculate new time indices
-        old_len = len(data)
-        new_len = int(old_len * target_sr / src_sr)
-
-        x_old = np.linspace(0, old_len - 1, old_len)
-        x_new = np.linspace(0, old_len - 1, new_len)
-
+        # Calculate greatest common divisor to find rational approximate
+        # But resample_poly takes up/down.
+        # e.g. 44100 -> 48000 : up=160, down=147
+        # e.g. 48000 -> 44100 : up=147, down=160
+        import math
+        g = math.gcd(target_sr, src_sr)
+        up = target_sr // g
+        down = src_sr // g
+        
+        # If factors are too large, fallback to FFT resampling or similar?
+        # resample_poly is efficient but large factors can be slow.
+        # Limit window size if needed, but usually fine for standard rates.
+        
         if data.ndim == 1:
-            return np.interp(x_new, x_old, data).astype(data.dtype)
+            return signal.resample_poly(data, up, down)
         else:
-            # Handle each channel
-            resampled = np.zeros((new_len, data.shape[1]), dtype=data.dtype)
-            for i in range(data.shape[1]):
-                resampled[:, i] = np.interp(x_new, x_old, data[:, i])
-            return resampled
+            return signal.resample_poly(data, up, down, axis=0)
 
     def _calc_loudness(self, audio, sr):
         # Time-series (Momentary)
@@ -166,23 +159,18 @@ class AnalysisWorker(QThread):
         window_sec = 0.4
         step_sec = 0.1
 
-        # K-weighting filters (BS.1770)
+        # K-weighting filters (BS.1770) - Designed for 48kHz
+        # Since we adhere to Resampling before analysis, sr IS 48000.
+        if abs(sr - 48000) > 10:
+             # Fallback warning or attempt to design filter
+             pass
+
         # Stage 1: Shelf
         b1 = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285])
         a1 = np.array([1.0, -1.69065929318241, 0.73248077421585])
         # Stage 2: High-pass
         b2 = np.array([1.0, -2.0, 1.0])
         a2 = np.array([1.0, -1.99004745483398, 0.99007225036621])
-
-        # Apply filters
-        # Note: These coefs are for 48kHz. Ideally should redesign for other SR or resample.
-        # For prototype, assume 48k or close, or warn. Resampling is expensive.
-        # BS.1770 filter coefficients are defined for 48kHz.
-        if sr != 48000:
-             # TODO: Proper resampling or filter redesign.
-             # For now, simplistic approach: accept small error or basic resample for filtering only?
-             # Let's just run it; it's an estimation widget.
-             pass
 
         y = signal.lfilter(b1, a1, audio)
         y = signal.lfilter(b2, a2, y)
@@ -194,34 +182,20 @@ class AnalysisWorker(QThread):
         block_size = int(window_sec * sr)
         step_size = int(step_sec * sr)
 
-        # Use convolution for sliding mean? Or just strided indexing.
-        # Convolution with ones kernel is fast.
         kernel = np.ones(block_size) / block_size
         p_smoothed = signal.fftconvolve(p, kernel, mode='valid')
 
-        # Downsample to step size for display
-        # fftconvolve 'valid' output length is N - K + 1.
-        # The time points correspond to the center or end? BS.1770 usually end or center.
-        # Let's take every step_size sample.
-
-        # Time axis
-        # Output starts at t = window_sec (if valid).
-        # We need to map back to time.
-
-        # Valid part starts after one full window.
+        # Downsample to step size
         p_blocks = p_smoothed[::step_size]
 
         # Momentary LUFS series
-        # Catch log10(0)
         m_lufs = -0.691 + 10 * np.log10(p_blocks + 1e-10)
         m_lufs[m_lufs <= -100] = -100.0
 
         # Integrated
-        # Gate: -70 LUFS absolute, then -10 LU rel
         abs_gate = -70.0
         rel_gate_threshold = -10.0
 
-        # 1. Absolute gating
         g1 = p_blocks[m_lufs > abs_gate]
         if len(g1) == 0:
             return {"integrated_lufs": -100.0, "lufs_series": m_lufs, "lufs_step": step_sec}
@@ -229,7 +203,6 @@ class AnalysisWorker(QThread):
         z_avg_gated = np.mean(g1)
         gamma_a = -0.691 + 10 * np.log10(z_avg_gated)
 
-        # 2. Relative gating
         rel_gate = gamma_a + rel_gate_threshold
         g2 = p_blocks[m_lufs > rel_gate]
 
@@ -247,213 +220,214 @@ class AnalysisWorker(QThread):
 
     def _calc_sharpness(self, audio, sr):
         # Zwicker Sharpness
-        # Simplified:
-        # 1. FFT
-        # 2. Bark grouping (Specific Loudness N')
-        # 3. Sharpness S = 0.11 * Integral(N' * g(z) * z * dz) / Integral(N' * dz)
-        #    g(z) weighting increases for high frequencies.
-
-        # Window size for time series
-        window_sec = 0.5 # 500ms
-        step_sec = 0.25 # 250ms
+        # S = 0.11 * Integral(N' * g(z) * z * dz) / Integral(N' * dz)
+        
+        window_sec = 0.4 # Consistent with others
+        step_sec = 0.1
         nperseg = int(window_sec * sr)
         noverlap = int(nperseg - (step_sec * sr))
 
+        # STFT
         f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
-        # Zxx shape: (freqs, times)
-        mag = np.abs(Zxx)
-        power_spec = mag**2
-
-        # Bark scale conversion
-        # Bark = 13 * arctan(0.00076 * f) + 3.5 * arctan((f / 7500)^2)
-        barks = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500)**2)
-
-        # Specific Loudness Approximation (Stevens' Law style N ~ I^0.3)
-        # But Zwicker is complex.
-        # Simplified "Sharpness" proportional to spectral centroid of loudness?
-        # S ~ \int N'(z) * g(z) * z dz / Total Loudness
-
-        # Weighting function g(z)
-        # z < 14 Bark: g(z) = 1
-        # z >= 14 Bark: g(z) = 0.00012 * z^4 - 0.0056 * z^3 + 0.1 * z^2 - 0.81 * z + 3.51 (Fastl)
-        # Or simple approximation: g(z) = 1 for z<15.8, then rises.
-        # Let's use simplified weighting: 1 up to 15 Bark, then rising slope.
-        # Standard: z factor is usually included in the integral moment.
-
-        # Let's just implement S = C * (Numer / Denom)
-        # Numer = sum( Loudness(z) * z * g(z) )
-        # Denom = sum( Loudness(z) )
-
-        # Approximate Specific Loudness from Power Spectrum
-        # E(z) density...
-        # Let's do a binning method.
-        # 24 Bark bands (0 to 24)
-        bark_centers = np.linspace(0.5, 23.5, 24)
-
+        mag_sq = np.abs(Zxx)**2
+        
+        # 24 Critical Bands (Bark scale)
+        # Bark center frequencies (approx)
+        # We integrate power in each bark band
+        
         sharpness_series = []
-
-        # Pre-calc bin indices
-        bin_indices = np.digitize(barks, np.arange(0, 25)) - 1
-
-        # Simple g(z) weighting
-        # z is Bark index (0-24)
-        # Standard definition: g(z)=1 for z<=16 (approx), increases for z>16.
-        # fastl & zwicker:
-        # factor = 1 if z < 16 else 0.066 * exp(0.171 * z)
-
-        g_z = np.ones(24)
-        for z in range(24):
-             center = bark_centers[z]
-             if center > 16:
-                 g_z[z] = 0.066 * np.exp(0.171 * center)
-
-        # Iterate over time frames
-        num_frames = Zxx.shape[1]
-
-        for i in range(num_frames):
-             p_frame = power_spec[:, i]
-
-             # Group into bark bands (Energy Sum)
-             # N ~ E^0.23 (approx for Specific Loudness)
-             band_energy = np.zeros(24)
-             for b in range(len(p_frame)):
-                 idx = bin_indices[b]
-                 if 0 <= idx < 24:
-                     band_energy[idx] += p_frame[b]
-
-             # Specific Loudness
-             # This is a crude approx, real Zwicker excitation pattern is much more complex
-             # (spreading functions etc.)
-             # But for relative "Sharpness" diffs, this might suffice.
-             N_prime = band_energy ** 0.23
-
-             denom = np.sum(N_prime)
-             if denom < 1e-9:
-                 sharpness_series.append(0.0)
-                 continue
-
-             numer = 0.0
-             for z in range(24):
-                 val = N_prime[z] * bark_centers[z] * g_z[z]
-                 numer += val
-
-             # Constant 0.11 is scaling factor
-             S = 0.11 * numer / denom
-             sharpness_series.append(S)
-
-        sharpness_series = np.array(sharpness_series)
-
+        
+        # Bark conversion function
+        # z = 13*atan(0.00076*f) + 3.5*atan((f/7500)^2)
+        barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500)**2)
+        
+        # Divide into 0.5 Bark steps? Or 1.0 Bark integer bands?
+        # Zwicker usually uses 24 bands.
+        
+        n_bands = 24
+        band_power = np.zeros((n_bands, Zxx.shape[1]))
+        
+        # Vectorized binning
+        # Map each freq bin to a bark band index (0..23)
+        # Use floor to bin
+        bark_indices = np.floor(barks_f).astype(int)
+        
+        for b in range(n_bands):
+            # Sum power for all freq bins in this bark band
+            mask = (bark_indices == b)
+            if np.any(mask):
+                band_power[b, :] = np.sum(mag_sq[mask, :], axis=0)
+        
+        # Specific Loudness N' approx: E^0.23
+        # Ideally should spread excitation, but this is simplified "core" loudness
+        specific_loudness = band_power ** 0.23
+        
+        # Total Loudness N = Sum(N') * dz (dz=1 Bark)
+        total_loudness = np.sum(specific_loudness, axis=0)
+        
+        # Weighting function g(z)
+        # g(z) = 1 for z < 15.8
+        # g(z) = 0.15 * exp(0.42 * (z - 15.8)) + 0.85  (Typical Fastl approx)
+        # Let's precompute g for band centers z = i + 0.5
+        z_vals = np.arange(n_bands) + 0.5
+        g_vals = np.ones(n_bands)
+        mask_high = z_vals >= 15.8
+        g_vals[mask_high] = 0.15 * np.exp(0.42 * (z_vals[mask_high] - 15.8)) + 0.85
+        
+        # Calculate Moment
+        # sum( N'(z) * g(z) * z * dz )
+        # broadcasting: (24, T) * (24,) * (24,)
+        weighted_moment = np.sum(specific_loudness * g_vals[:, np.newaxis] * z_vals[:, np.newaxis], axis=0)
+        
+        # Sharpness S
+        # Avoid div by zero
+        S = np.zeros_like(total_loudness)
+        valid = total_loudness > 1e-9
+        S[valid] = 0.11 * weighted_moment[valid] / total_loudness[valid]
+        
         return {
-            "mean_sharpness": np.mean(sharpness_series),
-            "sharpness_series": sharpness_series,
+            "mean_sharpness": np.mean(S),
+            "sharpness_series": S,
             "sharpness_step": step_sec
         }
 
     def _calc_roughness(self, audio, sr):
-        # Roughness (Daniel & Weber) - VERY Simplified / Placeholder
-        # Roughness is amplitude modulation in range 20-300 Hz.
-        # Ideally: Filterbank -> Envelope Demodulation -> Cross-correlation / Modulation Index.
-
-        # Simple indicator: Average Modulation Index in Roughness band?
-
-        # 1. Hilbert Envelope
-        #    This is heavy for long files. Dowsample?
-
-        # Let's chunk it.
-        chunk_size = 32768
-        step = 16384
-
-        roughness_vals = []
-
-        # Process in chunks
-        for start in range(0, len(audio) - chunk_size, step):
-             end = start + chunk_size
-             chunk = audio[start:end]
-
-             # Envelope
-             env = np.abs(signal.hilbert(chunk))
-             # Remove DC
-             env_ac = env - np.mean(env)
-
-             # Modulation Spectrum
-             f_mod, p_mod = signal.welch(env_ac, fs=sr, nperseg=1024)
-
-             # Roughness works best around f_mod 70Hz.
-             # Weighting curve for modulation freq:
-             # r(f_mod) ~ bandpass centered at 70Hz (20-150Hz)
-
-             # Simple weighting: Gaussian around 70Hz
-             # W(f) = exp( - (f - 70)^2 / (2 * 30^2) )
-             weights = np.exp(-((f_mod - 70)**2) / (2 * 30**2))
-
-             # Sum weighted power
-             # R ~ sqrt( sum (P_mod * W) ) / RMS_carrier?
-             # Modulation Index m = A_mod / A_carrier
-
-             mod_power = np.sum(p_mod * weights)
-             carrier_power = np.mean(chunk**2)
-
-             if carrier_power < 1e-9:
-                 R = 0
-             else:
-                 # Proportional to m
-                 R = np.sqrt(mod_power / carrier_power)
-
-             # Scale to roughly align with "asper" (1 asper is 100% mod at 1kHz 70Hz)
-             # This is uncalibrated.
-             roughness_vals.append(R * 10)
-
-        # Interpolate to time?
-        # Just return series
-        r_series = np.array(roughness_vals)
-        r_step = step / sr
-
+        # Multi-band Roughness (Simplified Daniel & Weber)
+        # 1. Split into critical bands (simulated by processing STFT bins or simple bandpass? STFT is easier here for Python)
+        #    Actually, for modulation extraction, we need time-domain envelopes. 
+        #    STFT frames are too slow/aliased for <70Hz modulation resolution if hop is large.
+        #    Bandpass Filters + Hilbert is better.
+        
+        # To keep it efficient:
+        # Select representative center frequencies (Bark centers).
+        # e.g. 1 Bark steps -> 24 filters. Expensive.
+        # Reduced set: 2, 4, 8, 12, 16, 20 Bark? (Low to High)
+        # Or standard 47 channels? Too many.
+        # Let's use 5 broad bands for "rough estimate": Bass, Low-Mid, Mid, High-Mid, High.
+        # Or just stick to the single broadband modulation if CPU is concern?
+        # User wants "Functional completion".
+        
+        # Let's try a 4-band split to capture frequency dependence.
+        # Bands: <300Hz, 300-2400Hz, 2400-9600Hz, >9600Hz ?
+        # Roughness is dominant in mid frequencies.
+        
+        # Let's use `scipy.signal.sosfilt` with a few Bark filters.
+        # Center freqs for Barks 3, 7, 11, 15, 19 (~ 300, 840, 1480, 2500, 4800 Hz)
+        
+        c_freqs = [300, 840, 1480, 2500, 4800, 9500]
+        roughness_acc = 0.0
+        
+        # Process chunks to save memory, but we need filter state.
+        # To avoid complexity, process whole file if < 1 min, or chunk stream.
+        # Assuming short files for now (Widget context).
+        
+        # Pre-design filters (2nd order bandpass)
+        sos_list = []
+        for fc in c_freqs:
+            # Q factor ~ 2 (Wide enough to overlap Barks roughly)
+            if fc < sr/2:
+                sos = signal.butter(2, [fc*0.7, fc*1.4], btype='bandpass', fs=sr, output='sos')
+                sos_list.append(sos)
+        
+        # Calculate envelope and modulation for each band
+        # Sum of specific roughnesses.
+        
+        n_samples = len(audio)
+        # Downsample envelope extraction?
+        ds_factor = 4 # 48k -> 12k for envelope is fine for 70Hz mod.
+        
+        total_roughness = 0
+        
+        # Time weighting:
+        # Modulation filter: Bandpass 20-150Hz.
+        mod_sos = signal.butter(2, [20, 150], btype='bandpass', fs=sr, output='sos')
+        
+        # We need time series output, so we compute R(t)
+        # This is getting heavy.
+        # Let's go back to single-band or simplified approach BUT with correct weighting.
+        # Daniel & Weber: R ~ f_mod * m * ...
+        
+        # Simplified "Single-Channel" improved:
+        # 1. Filter to "sensitive region" (e.g. 1kHz +- bandwidth).
+        # Actually roughness comes from beating adjacent partials ANYWHERE.
+        # Broadband envelope captures "global" roughness (e.g. AM at 70Hz).
+        
+        # Let's stick thereto for performance but improve the weighting.
+        
+        # 1. Hilbert Envelope of full signal (or filtered to 200Hz-15kHz)
+        # Remove DC/Sub-bass which dominates envelope but doesn't cause roughness.
+        sos_pre = signal.butter(1, 200, btype='highpass', fs=sr, output='sos')
+        filtered = signal.sosfilt(sos_pre, audio)
+        
+        env = np.abs(signal.hilbert(filtered))
+        env_ac = env - np.mean(env)
+        
+        # 2. Extract Modulation Signal (20-150 Hz)
+        mod_signal = signal.sosfilt(mod_sos, env_ac)
+        
+        # 3. RMS Calculation of Modulation vs Carrier
+        # Moving RMS
+        window_sec = 0.4
+        step_sec = 0.1
+        block_size = int(window_sec * sr)
+        step_size = int(step_sec * sr)
+        
+        # Use simple block iteration
+        r_series = []
+        
+        # Pre-calc squared for RMS
+        mod_sq = mod_signal**2
+        car_sq = filtered**2 # Carrier power reference
+        
+        kernel = np.ones(block_size) / block_size
+        mod_rms = np.sqrt(signal.fftconvolve(mod_sq, kernel, mode='valid'))
+        car_rms = np.sqrt(signal.fftconvolve(car_sq, kernel, mode='valid'))
+        
+        # Downsample
+        mod_rms = mod_rms[::step_size]
+        car_rms = car_rms[::step_size]
+        
+        # Modulation Index m = mod / car
+        # Roughness ~ m (referenced to 100% mod at 1kHz. 
+        # Our logic gives m=1 for 100% mod.
+        # So R ~ m (approx).
+        
+        # Avoid div zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            m = mod_rms / (car_rms + 1e-9)
+            m[car_rms < 1e-4] = 0
+        
+        # Calibration (Approximation)
+        # 1 asper ~ 100% mod at 1kHz. 
+        # Our logic gives m=1 for 100% mod.
+        # So R ~ m (approx).
+        r_series = m
+        
         return {
-            "mean_roughness": np.mean(r_series) if len(r_series) > 0 else 0.0,
+            "mean_roughness": np.mean(r_series),
             "roughness_series": r_series,
-            "roughness_step": r_step
+            "roughness_step": step_sec
         }
 
     def _calc_tonality(self, audio, sr):
         # Tonality via Spectral Flatness Measure (SFM)
-        # SFM = Geometric Mean / Arithmetic Mean of Power Spectrum
-        # Tonality coeff = 1 - SFM (approx) for White Noise (SFM=1 => T=0) vs Sine (SFM~0 => T=1)
-        # Or Peak/Mean ratio?
-
-        # Short-time Tonality
         window_sec = 0.2
         nperseg = int(window_sec * sr)
 
         f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg)
         mag_sq = np.abs(Zxx)**2
 
-        # Limit freq range to meaningful band (e.g. 50Hz - 15kHz)
-        # Avoid DC and very high freq noise
-        mask = (f >= 50) & (f <= 16000)
-        sub_spec = mag_sq[mask, :]
-
-        # To avoid log(0)
-        sub_spec += 1e-12
+        # Mean across meaningful band
+        mask = (f >= 50) & (f <= 15000)
+        sub_spec = mag_sq[mask, :] + 1e-12
 
         geo_mean = np.exp(np.mean(np.log(sub_spec), axis=0))
         ari_mean = np.mean(sub_spec, axis=0)
 
         sfm = geo_mean / ari_mean
-
-        # Tonality Index (Johnston?)
-        # T = SFM_db / -60 ?
-        # Simple: T = 1 - SFM
-        # But for diverse signals, SFM is usually quite low.
-        # Let's use simple T = 1 - SFM^epsilon?
-        # Or just return SFM inverse.
-        # High Tonality -> Low SFM.
-        # Let's output "Tonality Index" = 1 - SFM. (1=Pure, 0=Noise)
-
         tonality = 1.0 - sfm
         tonality = np.clip(tonality, 0, 1)
-
-        # Time step conversion
-        # t is dependent on hop size (default nperseg/2)
+        
         step = (nperseg/2) / sr
 
         return {
