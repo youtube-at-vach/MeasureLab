@@ -75,13 +75,13 @@ class TrVisitor(ast.NodeVisitor):
                 target_name = '_module_keys'
             elif isinstance(target, ast.Name) and target.id == '_module_keys':
                 target_name = '_module_keys'
-        
+
         if target_name == '_module_keys':
             if isinstance(node.value, ast.List):
                 for elt in node.value.elts:
                     if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
                         self.keys.add(elt.value)
-        
+
         self.generic_visit(node)
 
 def extract_tr_keys(filepath):
@@ -156,7 +156,7 @@ def main():
             if len(data) < original_len:
                 save_json(jf, data)
                 print(f"  Updated {os.path.basename(jf)}: removed {original_len - len(data)} keys.")
-        
+
         # Re-load en_keys after fix
         en_data = load_json(en_path)
         en_keys = set(en_data.keys())
@@ -203,7 +203,7 @@ def main():
         else:
             has_error = True
             print(f"FAIL: {len(unused_in_code)} keys defined in en.json but NOT used in code:")
-        
+
         for k in sorted(unused_in_code)[:10]:
             print(f"  - \"{k}\"")
         if len(unused_in_code) > 10:

@@ -412,7 +412,7 @@ class AnalysisWorker(QThread):
     def _calc_tonality(self, audio, sr):
         # Tonality via Spectral Flatness Measure (SFM)
         # Improved: Per-band SFM (Bark scale) to handle spectral tilt and silence.
-        
+
         window_sec = 0.2
         nperseg = int(window_sec * sr)
         noverlap = int(nperseg // 2)
@@ -428,7 +428,7 @@ class AnalysisWorker(QThread):
         bark_indices = np.floor(barks_f).astype(int)
 
         n_bands = 24
-        
+
         # Accumulators for weighted average
         weighted_tonality_sum = np.zeros(Zxx.shape[1])
         total_weight = np.zeros(Zxx.shape[1])
@@ -438,33 +438,33 @@ class AnalysisWorker(QThread):
             mask = (bark_indices == b)
             if not np.any(mask):
                 continue
-            
+
             # Extract power for this band: shape (n_bins_in_band, time_steps)
             band_p = mag_sq[mask, :]
-            
+
             # Geometric Mean of this band
             # exp(mean(log(x)))
             geo_mean = np.exp(np.mean(np.log(band_p), axis=0))
-            
+
             # Arithmetic Mean of this band
             ari_mean = np.mean(band_p, axis=0)
-            
+
             # SFM for this band
             # Limit SFM to 1.0
             sfm_b = geo_mean / (ari_mean + 1e-12)
-            
+
             # Band Tonality
             # t_b = 1 - sfm
             t_b = 1.0 - sfm_b
             t_b = np.clip(t_b, 0.0, 1.0)
-            
+
             # Weighting: Use Total Power in this band
             # Loud bands contribute more to tonality perception.
             # Silent bands (noise floor) will have tiny weight.
             w_b = np.sum(band_p, axis=0)
-            
+
             # Weighting by loudness (N') might be better conceptually, but Power is a good proxy here.
-            
+
             weighted_tonality_sum += t_b * w_b
             total_weight += w_b
 
@@ -649,7 +649,7 @@ class SoundQualityAnalyzerWidget(QWidget):
                     item = layout.takeAt(0)
                     w = item.widget()
                     if w: w.deleteLater()
-        
+
         # Reset references
         self.p1 = None
         self.p2 = None
@@ -762,7 +762,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         p3.showGrid(y=True)
         p3.addLegend()
         p3.setXLink(p1)
-        
+
         # Tonality Plot (Tab 4)
         p4 = pg.PlotWidget(title=tr("Tonality"))
         p4.setLabel('left', 'SFM inv')
@@ -788,7 +788,7 @@ class SoundQualityAnalyzerWidget(QWidget):
              # Roughness
              t_r = np.arange(len(ch["roughness_series"])) * ch["roughness_step"]
              p3.plot(t_r, ch["roughness_series"], pen=c, name=name)
-             
+
              # Tonality
              t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
              p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
@@ -932,7 +932,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         # Determine which plot was clicked
         target_plot = None
         plots = [p for p in [self.p1, self.p2, self.p3, self.p4] if p is not None]
-        
+
         for p in plots:
             if p.sceneBoundingRect().contains(event.scenePos()):
                 target_plot = p
