@@ -660,8 +660,8 @@ class SoundQualityAnalyzerWidget(QWidget):
             self.summary_grid.addWidget(QLabel(name), row, 0)
             self.summary_grid.addWidget(QLabel(f"{i_lufs:.1f} LUFS"), row, 1)
             self.summary_grid.addWidget(QLabel(f"{m_sh:.2f} acum"), row, 2)
-            self.summary_grid.addWidget(QLabel(f"{m_r:.2f}"), row, 3)
-            self.summary_grid.addWidget(QLabel(f"{m_t:.2f}"), row, 4)
+            self.summary_grid.addWidget(QLabel(f"{m_r:.2f} asper"), row, 3)
+            self.summary_grid.addWidget(QLabel(f"{m_t:.2f} (0-1)"), row, 4)
             row += 1
 
     def plot_series(self, results):
@@ -829,13 +829,31 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Follow
         if self.chk_follow.isChecked() and self.is_playing:
-            # Center view if out of range?
-            # Or just ensure visible.
-            # Simple: setXRange centered? That prevents manual pan.
-            # Just verify it's in view?
-            # pg plot auto-range might fight.
-            # Let's just do nothing for now, or maybe simple pan if continuous.
-            pass
+            # Check if cursor is visible in the first plot (all are linked)
+            vb = self.p1.plotItem.vb
+            view_range = vb.viewRange()[0] # x range (min, max)
+            
+            # Define margin (e.g. 5%)
+            width = view_range[1] - view_range[0]
+            margin = width * 0.05
+            
+            if t > view_range[1] - margin:
+                 # Shift view so t is at 20% from left, or just center?
+                 # Continuous scrolling: center t
+                 # Step scrolling: shift by 80% width?
+                 # Let's simple shift so t is at left + margin (paging) OR center.
+                 # Let's center it for smoother following if updates are frequent.
+                 # But standard logic is often "page flip".
+                 # Let's do simple "keep in view" -> center it if it goes out.
+                 
+                 new_center = t + width / 2 - margin
+                 # vb.setXRange(new_center - width/2, new_center + width/2, padding=0)
+                 # Actually simpler: just shift the range.
+                 vb.setXRange(t - margin, t + width - margin, padding=0)
+                 
+            elif t < view_range[0]:
+                 # Should not happen on playback, but maybe seeked back
+                 vb.setXRange(t - margin, t + width - margin, padding=0)
 
     def on_plot_clicked(self, event):
         if self.audio_data is None: return
@@ -858,11 +876,23 @@ class SoundQualityAnalyzerWidget(QWidget):
         # All plots share X axis.
         # Just use the X coordinate of the mouse click in the scene, map to first plot's ViewBox.
 
-        items = self.p1.scene().items(event.scenePos())
-        # Check if one of our plots is determining this.
-        # Simplified: Just grab X from the first plot assuming full width alignment
+        # Determine which plot was clicked
+        # We know we have 3 plots: p1, p2, p3
+        # Check if the event's scene position maps to a valid X in any of them
+        # Since they are vertically stacked, X mapping should be similar if aligned, 
+        # but safe way is to check bounding rect.
+        
+        target_plot = None
+        for p in [self.p1, self.p2, self.p3]:
+            if p.sceneBoundingRect().contains(event.scenePos()):
+                target_plot = p
+                break
+        
+        if target_plot is None:
+            return
 
-        pos = self.p1.plotItem.vb.mapSceneToView(event.scenePos())
+        # Map scene pos to view pos for the target plot
+        pos = target_plot.plotItem.vb.mapSceneToView(event.scenePos())
         t = pos.x()
 
         if t < 0: t = 0
