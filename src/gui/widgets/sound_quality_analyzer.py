@@ -411,28 +411,81 @@ class AnalysisWorker(QThread):
 
     def _calc_tonality(self, audio, sr):
         # Tonality via Spectral Flatness Measure (SFM)
+        # Improved: Per-band SFM (Bark scale) to handle spectral tilt and silence.
+        
         window_sec = 0.2
         nperseg = int(window_sec * sr)
+        noverlap = int(nperseg // 2)
 
-        f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg)
-        mag_sq = np.abs(Zxx)**2
+        # STFT
+        f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
+        mag_sq = np.abs(Zxx)**2 + 1e-12 # Power
 
-        # Mean across meaningful band
-        mask = (f >= 50) & (f <= 15000)
-        sub_spec = mag_sq[mask, :] + 1e-12
+        # Define Critical Bands (Bark scale approx)
+        # Using a simplified 24-band mapping
+        # Bark = 13*atan(0.00076*f) + 3.5*atan((f/7500)^2)
+        barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500)**2)
+        bark_indices = np.floor(barks_f).astype(int)
 
-        geo_mean = np.exp(np.mean(np.log(sub_spec), axis=0))
-        ari_mean = np.mean(sub_spec, axis=0)
+        n_bands = 24
+        
+        # Accumulators for weighted average
+        weighted_tonality_sum = np.zeros(Zxx.shape[1])
+        total_weight = np.zeros(Zxx.shape[1])
 
-        sfm = geo_mean / ari_mean
-        tonality = 1.0 - sfm
-        tonality = np.clip(tonality, 0, 1)
+        for b in range(n_bands):
+            # Find bins in this band
+            mask = (bark_indices == b)
+            if not np.any(mask):
+                continue
+            
+            # Extract power for this band: shape (n_bins_in_band, time_steps)
+            band_p = mag_sq[mask, :]
+            
+            # Geometric Mean of this band
+            # exp(mean(log(x)))
+            geo_mean = np.exp(np.mean(np.log(band_p), axis=0))
+            
+            # Arithmetic Mean of this band
+            ari_mean = np.mean(band_p, axis=0)
+            
+            # SFM for this band
+            # Limit SFM to 1.0
+            sfm_b = geo_mean / (ari_mean + 1e-12)
+            
+            # Band Tonality
+            # t_b = 1 - sfm
+            t_b = 1.0 - sfm_b
+            t_b = np.clip(t_b, 0.0, 1.0)
+            
+            # Weighting: Use Total Power in this band
+            # Loud bands contribute more to tonality perception.
+            # Silent bands (noise floor) will have tiny weight.
+            w_b = np.sum(band_p, axis=0)
+            
+            # Weighting by loudness (N') might be better conceptually, but Power is a good proxy here.
+            
+            weighted_tonality_sum += t_b * w_b
+            total_weight += w_b
 
-        step = (nperseg/2) / sr
+        # Global Tonality
+        # Avoid div by zero
+        global_tonality = np.zeros_like(total_weight)
+        valid = total_weight > 1e-12
+        global_tonality[valid] = weighted_tonality_sum[valid] / total_weight[valid]
+
+        # Calibration:
+        # Raw SFM on short frames yields ~0.45 Tonality for White Noise.
+        # We rescale so that Noise floor -> 0.0.
+        # T_final = (T_raw - 0.45) / 0.55
+        global_tonality = (global_tonality - 0.45) / 0.55
+        global_tonality = np.clip(global_tonality, 0, 1)
+
+        step = (nperseg - noverlap) / sr
 
         return {
-            "mean_tonality": np.mean(tonality),
-            "tonality_series": tonality,
+            "mean_tonality": np.mean(global_tonality),
+            "tonality_series": global_tonality,
             "tonality_step": step
         }
 
