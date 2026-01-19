@@ -927,5 +927,22 @@
     "Mean Roughness (asper)": "平均粗糙度 (asper)",
     "Mean Tonality (0-1)": "平均音调 (0-1)",
     "Resampling to {}Hz (Analysis)...": "重采样至 {}Hz (分析)...",
-    "Resampling to {}Hz (Playback)...": "重采样至 {}Hz (播放)..."
+    "Resampling to {}Hz (Playback)...": "重采样至 {}Hz (播放)...",
+    "Advanced Distortion Meter": "高级失真仪",
+    "BNIM Meter": "BNIM 计",
+    "Boxcar Averager": "Boxcar 平均器",
+    "Goniometer": "测角仪",
+    "HRTF Player": "HRTF 播放器",
+    "Inverse Filter": "逆滤波器",
+    "LUFS Meter": "LUFS 计",
+    "Lock-in THD Analyzer": "锁定 THD 分析仪",
+    "Loopback Finder": "回环查找器",
+    "Recorder / Player": "录音/播放器",
+    "Sound Level Meter": "声级计",
+    "Sound Quality Analyzer": "音质分析仪",
+    "Transient Analyzer": "瞬态分析仪",
+    "Raw Time Series": "原始时间序列",
+    "Loudness": "响度",
+    "Sharpness": "尖锐度",
+    "Tonality": "音调性"
 }

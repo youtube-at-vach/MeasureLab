@@ -67,6 +67,23 @@ class TrVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Assign(self, node):
+        # Look for self._module_keys = [...] or _module_keys = [...]
+        target_name = None
+        for target in node.targets:
+            if isinstance(target, ast.Attribute) and target.attr == '_module_keys':
+                target_name = '_module_keys'
+            elif isinstance(target, ast.Name) and target.id == '_module_keys':
+                target_name = '_module_keys'
+        
+        if target_name == '_module_keys':
+            if isinstance(node.value, ast.List):
+                for elt in node.value.elts:
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                        self.keys.add(elt.value)
+        
+        self.generic_visit(node)
+
 def extract_tr_keys(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:

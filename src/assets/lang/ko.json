@@ -927,5 +927,22 @@
     "Mean Roughness (asper)": "평균 거칠기 (asper)",
     "Mean Tonality (0-1)": "평균 조성 (0-1)",
     "Resampling to {}Hz (Analysis)...": "{}Hz로 리샘플링 중 (분석)...",
-    "Resampling to {}Hz (Playback)...": "{}Hz로 리샘플링 중 (재생)..."
+    "Resampling to {}Hz (Playback)...": "{}Hz로 리샘플링 중 (재생)...",
+    "Advanced Distortion Meter": "고급 왜곡 측정기",
+    "BNIM Meter": "BNIM 미터",
+    "Boxcar Averager": "박스카 평균화기",
+    "Goniometer": "고니오미터",
+    "HRTF Player": "HRTF 플레이어",
+    "Inverse Filter": "역필터",
+    "LUFS Meter": "LUFS 미터",
+    "Lock-in THD Analyzer": "락인 THD 분석기",
+    "Loopback Finder": "루프백 파인더",
+    "Recorder / Player": "녹음기 / 플레이어",
+    "Sound Level Meter": "소음계",
+    "Sound Quality Analyzer": "음질 분석기",
+    "Transient Analyzer": "과도 응답 분석기",
+    "Raw Time Series": "원시 시계열",
+    "Loudness": "라우드니스",
+    "Sharpness": "샤프니스",
+    "Tonality": "조성"
 }

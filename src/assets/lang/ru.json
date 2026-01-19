@@ -927,5 +927,22 @@
     "Mean Roughness (asper)": "Средняя шероховатость (asper)",
     "Mean Tonality (0-1)": "Средняя тональность (0-1)",
     "Resampling to {}Hz (Analysis)...": "Ресемплирование в {}Гц (Анализ)...",
-    "Resampling to {}Hz (Playback)...": "Ресемплирование в {}Гц (Воспроизведение)..."
+    "Resampling to {}Hz (Playback)...": "Ресемплирование в {}Гц (Воспроизведение)...",
+    "Advanced Distortion Meter": "Расширенный измеритель искажений",
+    "BNIM Meter": "Измеритель BNIM",
+    "Boxcar Averager": "Усреднитель Boxcar",
+    "Goniometer": "Гониометр",
+    "HRTF Player": "HRTF плеер",
+    "Inverse Filter": "Обратный фильтр",
+    "LUFS Meter": "Измеритель LUFS",
+    "Lock-in THD Analyzer": "Анализатор THD с синхронным детектированием",
+    "Loopback Finder": "Поиск петли",
+    "Recorder / Player": "Рекордер / Плеер",
+    "Sound Level Meter": "Шумомер",
+    "Sound Quality Analyzer": "Анализатор качества звука",
+    "Transient Analyzer": "Анализатор переходных процессов",
+    "Raw Time Series": "Исходный временной ряд",
+    "Loudness": "Громкость",
+    "Sharpness": "Резкость",
+    "Tonality": "Тональность"
 }

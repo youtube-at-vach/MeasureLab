@@ -927,5 +927,22 @@
     "Mean Roughness (asper)": "Rugosidade Média (asper)",
     "Mean Tonality (0-1)": "Tonalidade Média (0-1)",
     "Resampling to {}Hz (Analysis)...": "Reamostrando para {}Hz (Análise)...",
-    "Resampling to {}Hz (Playback)...": "Reamostrando para {}Hz (Reprodução)..."
+    "Resampling to {}Hz (Playback)...": "Reamostrando para {}Hz (Reprodução)...",
+    "Advanced Distortion Meter": "Medidor de Distorção Avançado",
+    "BNIM Meter": "Medidor BNIM",
+    "Boxcar Averager": "Média Boxcar",
+    "Goniometer": "Goniômetro",
+    "HRTF Player": "Reprodutor HRTF",
+    "Inverse Filter": "Filtro Inverso",
+    "LUFS Meter": "Medidor LUFS",
+    "Lock-in THD Analyzer": "Analisador THD Lock-in",
+    "Loopback Finder": "Localizador de Loopback",
+    "Recorder / Player": "Gravador / Reprodutor",
+    "Sound Level Meter": "Medidor de Nível Sonoro",
+    "Sound Quality Analyzer": "Analisador de Qualidade Sonora",
+    "Transient Analyzer": "Analisador de Transientes",
+    "Raw Time Series": "Série Temporal Bruta",
+    "Loudness": "Sonoridade",
+    "Sharpness": "Nitidez",
+    "Tonality": "Tonalidade"
 }
