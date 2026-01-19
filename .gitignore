@@ -71,3 +71,5 @@ wisdom/pyfftw_wisdom
 # Documentation build artifacts
 site/
 
+# Agent Local Rules
+.agent/Rules/*
