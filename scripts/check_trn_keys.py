@@ -1,4 +1,4 @@
-
+import argparse
 import ast
 import glob
 import json
@@ -19,6 +19,12 @@ def get_json_files():
 def load_json(path):
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+def save_json(path, data):
+    """Save JSON file with proper formatting"""
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+        f.write('\n')  # Add trailing newline
 
 def find_duplicate_keys(path):
     """
@@ -73,6 +79,11 @@ def extract_tr_keys(filepath):
         return set()
 
 def main():
+    parser = argparse.ArgumentParser(description="Check translation keys consistency.")
+    parser.add_argument("--lax", action="store_true", help="Do not fail even if unused keys are found in en.json")
+    parser.add_argument("--fix", action="store_true", help="Remove unused keys from all translation files")
+    args = parser.parse_args()
+
     print("=== Translation Check Script ===")
 
     # 1. Load EN JSON (Source of Truth)
@@ -109,7 +120,32 @@ def main():
         if k not in en_keys:
             missing_in_en.append(k)
 
-    # 4. Check: Other JSONs have all keys from en.json
+    # 4. Check: Unused keys in en.json (Defined but not used in code)
+    unused_in_code = []
+    for k in en_keys:
+        if k not in code_keys:
+            unused_in_code.append(k)
+
+    # 5. Fix: Remove unused keys if requested
+    if args.fix and unused_in_code:
+        print(f"\n--- Fixing: Removing {len(unused_in_code)} unused keys ---")
+        json_files = get_json_files()
+        for jf in json_files:
+            data = load_json(jf)
+            original_len = len(data)
+            for k in unused_in_code:
+                if k in data:
+                    del data[k]
+            if len(data) < original_len:
+                save_json(jf, data)
+                print(f"  Updated {os.path.basename(jf)}: removed {original_len - len(data)} keys.")
+        
+        # Re-load en_keys after fix
+        en_data = load_json(en_path)
+        en_keys = set(en_data.keys())
+        unused_in_code = [] # Cleared after fix
+
+    # 6. Check: Other JSONs have all keys from en.json
     json_files = get_json_files()
     missing_translations = {} # filename -> list of missing keys
 
@@ -124,7 +160,7 @@ def main():
         if diff:
             missing_translations[fname] = list(diff)
 
-    # 5. Check Duplicates (Warning only)
+    # 7. Check Duplicates (Warning only)
     duplicates_map = {}
     for jf in json_files:
         dups = find_duplicate_keys(jf)
@@ -143,7 +179,22 @@ def main():
     else:
         print("OK")
 
-    print("\n--- Check 2: Missing translations in other languages (Compared to en.json) ---")
+    print("\n--- Check 2: Unused keys in en.json (Not used in Code) ---")
+    if unused_in_code:
+        if args.lax:
+            print(f"WARNING: {len(unused_in_code)} keys defined in en.json but NOT used in code:")
+        else:
+            has_error = True
+            print(f"FAIL: {len(unused_in_code)} keys defined in en.json but NOT used in code:")
+        
+        for k in sorted(unused_in_code)[:10]:
+            print(f"  - \"{k}\"")
+        if len(unused_in_code) > 10:
+            print(f"  ... and {len(unused_in_code)-10} more.")
+    else:
+        print("OK")
+
+    print("\n--- Check 3: Missing translations in other languages (Compared to en.json) ---")
     if missing_translations:
         has_error = True
         for fname, keys in missing_translations.items():
@@ -156,7 +207,7 @@ def main():
     else:
         print("OK")
 
-    print("\n--- Check 3: Duplicate Keys (Warning) ---")
+    print("\n--- Check 4: Duplicate Keys (Warning) ---")
     if duplicates_map:
         for fname, keys in duplicates_map.items():
             print(f"WARNING: {fname} has duplicate keys:")
