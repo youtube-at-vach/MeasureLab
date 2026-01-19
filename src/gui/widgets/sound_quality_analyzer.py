@@ -143,11 +143,11 @@ class AnalysisWorker(QThread):
         g = math.gcd(target_sr, src_sr)
         up = target_sr // g
         down = src_sr // g
-        
+
         # If factors are too large, fallback to FFT resampling or similar?
         # resample_poly is efficient but large factors can be slow.
         # Limit window size if needed, but usually fine for standard rates.
-        
+
         if data.ndim == 1:
             return signal.resample_poly(data, up, down)
         else:
@@ -221,7 +221,7 @@ class AnalysisWorker(QThread):
     def _calc_sharpness(self, audio, sr):
         # Zwicker Sharpness
         # S = 0.11 * Integral(N' * g(z) * z * dz) / Integral(N' * dz)
-        
+
         window_sec = 0.4 # Consistent with others
         step_sec = 0.1
         nperseg = int(window_sec * sr)
@@ -230,41 +230,41 @@ class AnalysisWorker(QThread):
         # STFT
         f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
         mag_sq = np.abs(Zxx)**2
-        
+
         # 24 Critical Bands (Bark scale)
         # Bark center frequencies (approx)
         # We integrate power in each bark band
-        
+
         sharpness_series = []
-        
+
         # Bark conversion function
         # z = 13*atan(0.00076*f) + 3.5*atan((f/7500)^2)
         barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500)**2)
-        
+
         # Divide into 0.5 Bark steps? Or 1.0 Bark integer bands?
         # Zwicker usually uses 24 bands.
-        
+
         n_bands = 24
         band_power = np.zeros((n_bands, Zxx.shape[1]))
-        
+
         # Vectorized binning
         # Map each freq bin to a bark band index (0..23)
         # Use floor to bin
         bark_indices = np.floor(barks_f).astype(int)
-        
+
         for b in range(n_bands):
             # Sum power for all freq bins in this bark band
             mask = (bark_indices == b)
             if np.any(mask):
                 band_power[b, :] = np.sum(mag_sq[mask, :], axis=0)
-        
+
         # Specific Loudness N' approx: E^0.23
         # Ideally should spread excitation, but this is simplified "core" loudness
         specific_loudness = band_power ** 0.23
-        
+
         # Total Loudness N = Sum(N') * dz (dz=1 Bark)
         total_loudness = np.sum(specific_loudness, axis=0)
-        
+
         # Weighting function g(z)
         # g(z) = 1 for z < 15.8
         # g(z) = 0.15 * exp(0.42 * (z - 15.8)) + 0.85  (Typical Fastl approx)
@@ -273,18 +273,18 @@ class AnalysisWorker(QThread):
         g_vals = np.ones(n_bands)
         mask_high = z_vals >= 15.8
         g_vals[mask_high] = 0.15 * np.exp(0.42 * (z_vals[mask_high] - 15.8)) + 0.85
-        
+
         # Calculate Moment
         # sum( N'(z) * g(z) * z * dz )
         # broadcasting: (24, T) * (24,) * (24,)
         weighted_moment = np.sum(specific_loudness * g_vals[:, np.newaxis] * z_vals[:, np.newaxis], axis=0)
-        
+
         # Sharpness S
         # Avoid div by zero
         S = np.zeros_like(total_loudness)
         valid = total_loudness > 1e-9
         S[valid] = 0.11 * weighted_moment[valid] / total_loudness[valid]
-        
+
         return {
             "mean_sharpness": np.mean(S),
             "sharpness_series": S,
@@ -297,7 +297,7 @@ class AnalysisWorker(QThread):
         #    Actually, for modulation extraction, we need time-domain envelopes. 
         #    STFT frames are too slow/aliased for <70Hz modulation resolution if hop is large.
         #    Bandpass Filters + Hilbert is better.
-        
+
         # To keep it efficient:
         # Select representative center frequencies (Bark centers).
         # e.g. 1 Bark steps -> 24 filters. Expensive.
@@ -306,21 +306,21 @@ class AnalysisWorker(QThread):
         # Let's use 5 broad bands for "rough estimate": Bass, Low-Mid, Mid, High-Mid, High.
         # Or just stick to the single broadband modulation if CPU is concern?
         # User wants "Functional completion".
-        
+
         # Let's try a 4-band split to capture frequency dependence.
         # Bands: <300Hz, 300-2400Hz, 2400-9600Hz, >9600Hz ?
         # Roughness is dominant in mid frequencies.
-        
+
         # Let's use `scipy.signal.sosfilt` with a few Bark filters.
         # Center freqs for Barks 3, 7, 11, 15, 19 (~ 300, 840, 1480, 2500, 4800 Hz)
-        
+
         c_freqs = [300, 840, 1480, 2500, 4800, 9500]
         roughness_acc = 0.0
-        
+
         # Process chunks to save memory, but we need filter state.
         # To avoid complexity, process whole file if < 1 min, or chunk stream.
         # Assuming short files for now (Widget context).
-        
+
         # Pre-design filters (2nd order bandpass)
         sos_list = []
         for fc in c_freqs:
@@ -328,81 +328,81 @@ class AnalysisWorker(QThread):
             if fc < sr/2:
                 sos = signal.butter(2, [fc*0.7, fc*1.4], btype='bandpass', fs=sr, output='sos')
                 sos_list.append(sos)
-        
+
         # Calculate envelope and modulation for each band
         # Sum of specific roughnesses.
-        
+
         n_samples = len(audio)
         # Downsample envelope extraction?
         ds_factor = 4 # 48k -> 12k for envelope is fine for 70Hz mod.
-        
+
         total_roughness = 0
-        
+
         # Time weighting:
         # Modulation filter: Bandpass 20-150Hz.
         mod_sos = signal.butter(2, [20, 150], btype='bandpass', fs=sr, output='sos')
-        
+
         # We need time series output, so we compute R(t)
         # This is getting heavy.
         # Let's go back to single-band or simplified approach BUT with correct weighting.
         # Daniel & Weber: R ~ f_mod * m * ...
-        
+
         # Simplified "Single-Channel" improved:
         # 1. Filter to "sensitive region" (e.g. 1kHz +- bandwidth).
         # Actually roughness comes from beating adjacent partials ANYWHERE.
         # Broadband envelope captures "global" roughness (e.g. AM at 70Hz).
-        
+
         # Let's stick thereto for performance but improve the weighting.
-        
+
         # 1. Hilbert Envelope of full signal (or filtered to 200Hz-15kHz)
         # Remove DC/Sub-bass which dominates envelope but doesn't cause roughness.
         sos_pre = signal.butter(1, 200, btype='highpass', fs=sr, output='sos')
         filtered = signal.sosfilt(sos_pre, audio)
-        
+
         env = np.abs(signal.hilbert(filtered))
         env_ac = env - np.mean(env)
-        
+
         # 2. Extract Modulation Signal (20-150 Hz)
         mod_signal = signal.sosfilt(mod_sos, env_ac)
-        
+
         # 3. RMS Calculation of Modulation vs Carrier
         # Moving RMS
         window_sec = 0.4
         step_sec = 0.1
         block_size = int(window_sec * sr)
         step_size = int(step_sec * sr)
-        
+
         # Use simple block iteration
         r_series = []
-        
+
         # Pre-calc squared for RMS
         mod_sq = mod_signal**2
         car_sq = filtered**2 # Carrier power reference
-        
+
         kernel = np.ones(block_size) / block_size
         mod_rms = np.sqrt(signal.fftconvolve(mod_sq, kernel, mode='valid'))
         car_rms = np.sqrt(signal.fftconvolve(car_sq, kernel, mode='valid'))
-        
+
         # Downsample
         mod_rms = mod_rms[::step_size]
         car_rms = car_rms[::step_size]
-        
+
         # Modulation Index m = mod / car
         # Roughness ~ m (referenced to 100% mod at 1kHz. 
         # Our logic gives m=1 for 100% mod.
         # So R ~ m (approx).
-        
+
         # Avoid div zero
         with np.errstate(divide='ignore', invalid='ignore'):
             m = mod_rms / (car_rms + 1e-9)
             m[car_rms < 1e-4] = 0
-        
+
         # Calibration (Approximation)
         # 1 asper ~ 100% mod at 1kHz. 
         # Our logic gives m=1 for 100% mod.
         # So R ~ m (approx).
         r_series = m
-        
+
         return {
             "mean_roughness": np.mean(r_series),
             "roughness_series": r_series,
@@ -427,7 +427,7 @@ class AnalysisWorker(QThread):
         sfm = geo_mean / ari_mean
         tonality = 1.0 - sfm
         tonality = np.clip(tonality, 0, 1)
-        
+
         step = (nperseg/2) / sr
 
         return {
@@ -832,11 +832,11 @@ class SoundQualityAnalyzerWidget(QWidget):
             # Check if cursor is visible in the first plot (all are linked)
             vb = self.p1.plotItem.vb
             view_range = vb.viewRange()[0] # x range (min, max)
-            
+
             # Define margin (e.g. 5%)
             width = view_range[1] - view_range[0]
             margin = width * 0.05
-            
+
             if t > view_range[1] - margin:
                  # Shift view so t is at 20% from left, or just center?
                  # Continuous scrolling: center t
@@ -845,12 +845,12 @@ class SoundQualityAnalyzerWidget(QWidget):
                  # Let's center it for smoother following if updates are frequent.
                  # But standard logic is often "page flip".
                  # Let's do simple "keep in view" -> center it if it goes out.
-                 
+
                  new_center = t + width / 2 - margin
                  # vb.setXRange(new_center - width/2, new_center + width/2, padding=0)
                  # Actually simpler: just shift the range.
                  vb.setXRange(t - margin, t + width - margin, padding=0)
-                 
+
             elif t < view_range[0]:
                  # Should not happen on playback, but maybe seeked back
                  vb.setXRange(t - margin, t + width - margin, padding=0)
@@ -881,13 +881,13 @@ class SoundQualityAnalyzerWidget(QWidget):
         # Check if the event's scene position maps to a valid X in any of them
         # Since they are vertically stacked, X mapping should be similar if aligned, 
         # but safe way is to check bounding rect.
-        
+
         target_plot = None
         for p in [self.p1, self.p2, self.p3]:
             if p.sceneBoundingRect().contains(event.scenePos()):
                 target_plot = p
                 break
-        
+
         if target_plot is None:
             return
 
