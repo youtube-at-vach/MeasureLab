@@ -1085,10 +1085,18 @@ class DistortionAnalyzerWidget(QWidget):
             levels = []
 
             for i, h in enumerate(results['harmonics']):
-                self.harmonics_table.setItem(i, 0, QTableWidgetItem(str(h['order'])))
-                self.harmonics_table.setItem(i, 1, QTableWidgetItem(f"{h['frequency']:.1f}"))
-                self.harmonics_table.setItem(i, 2, QTableWidgetItem(f"{h['amplitude_dbr']:.2f}"))
-                self.harmonics_table.setItem(i, 3, QTableWidgetItem(f"{h['amplitude_linear']:.6f}"))
+                texts = [
+                    str(h['order']),
+                    f"{h['frequency']:.1f}",
+                    f"{h['amplitude_dbr']:.2f}",
+                    f"{h['amplitude_linear']:.6f}"
+                ]
+                for j, text in enumerate(texts):
+                    item = self.harmonics_table.item(i, j)
+                    if item:
+                        item.setText(text)
+                    else:
+                        self.harmonics_table.setItem(i, j, QTableWidgetItem(text))
 
                 orders.append(h['order'])
                 levels.append(h['amplitude_dbr'])
