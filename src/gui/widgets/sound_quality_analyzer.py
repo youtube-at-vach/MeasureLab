@@ -478,6 +478,9 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         self.init_ui()
 
+
+
+
     def init_ui(self):
         layout = QVBoxLayout()
 
@@ -541,17 +544,25 @@ class SoundQualityAnalyzerWidget(QWidget):
         # --- Bottom: Graphs ---
         self.tabs = QTabWidget()
 
-        # 1. Time Series
-        self.ts_tab = QWidget()
-        ts_layout = QVBoxLayout(self.ts_tab)
+        # Tab 1: Loudness
+        self.tab_loudness = QWidget()
+        self.layout_loudness = QVBoxLayout(self.tab_loudness)
+        self.tabs.addTab(self.tab_loudness, tr("Loudness"))
 
-        self.plot_widget = pg.PlotWidget()
-        self.plot_widget.addLegend()
-        self.plot_widget.setLabel('bottom', 'Time', units='s')
-        self.plot_widget.showGrid(x=True, y=True)
-        ts_layout.addWidget(self.plot_widget)
+        # Tab 2: Sharpness
+        self.tab_sharpness = QWidget()
+        self.layout_sharpness = QVBoxLayout(self.tab_sharpness)
+        self.tabs.addTab(self.tab_sharpness, tr("Sharpness"))
 
-        self.tabs.addTab(self.ts_tab, tr("Time Series"))
+        # Tab 3: Roughness
+        self.tab_roughness = QWidget()
+        self.layout_roughness = QVBoxLayout(self.tab_roughness)
+        self.tabs.addTab(self.tab_roughness, tr("Roughness"))
+
+        # Tab 4: Tonality
+        self.tab_tonality = QWidget()
+        self.layout_tonality = QVBoxLayout(self.tab_tonality)
+        self.tabs.addTab(self.tab_tonality, tr("Tonality"))
 
         layout.addWidget(self.tabs)
 
@@ -577,6 +588,22 @@ class SoundQualityAnalyzerWidget(QWidget):
             self.analyze_btn.setEnabled(True)
             self.progress_bar.setVisible(False)
 
+    def clear_plots(self):
+        # Clear all separate layouts
+        for layout in [self.layout_loudness, self.layout_sharpness, self.layout_roughness, self.layout_tonality]:
+            if layout is not None:
+                while layout.count():
+                    item = layout.takeAt(0)
+                    w = item.widget()
+                    if w: w.deleteLater()
+        
+        # Reset references
+        self.p1 = None
+        self.p2 = None
+        self.p3 = None
+        self.p4 = None
+        self.cursors = []
+
     def start_analysis(self):
         if not hasattr(self, 'current_file'):
             return
@@ -586,7 +613,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
 
-        self.plot_widget.clear()
+        self.clear_plots()
 
         # Stop playback if running
         if hasattr(self, 'stop_playback'):
@@ -627,17 +654,6 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.display_metrics(results)
         self.plot_series(results)
 
-        # Ensure we have lines
-        self.cursors = []
-        for p in [self.p1, self.p2, self.p3]:
-            # Click event
-            p.scene().sigMouseClicked.connect(self.on_plot_clicked)
-
-            # Add cursor
-            line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen('y', width=2))
-            p.addItem(line)
-            self.cursors.append(line)
-
     def on_error(self, msg):
         self.progress_bar.setVisible(False)
         self.analyze_btn.setEnabled(True)
@@ -669,48 +685,38 @@ class SoundQualityAnalyzerWidget(QWidget):
             row += 1
 
     def plot_series(self, results):
-        self.plot_widget.clear()
+        self.clear_plots()
 
-        # Plot only first channel/average to avoid clutter?
-        # Or provide checkboxes?
-        # Let's plot Left (or Mono) Loudness, Sharpness (scaled?), Roughness (scaled?)
-
-        # To visualize different units, maybe we need multiple ViewBoxes or normalized view.
-        # Simple approach: Just plot Loudness for now, or create separate plot items.
-
-        # Let's use the tab widget to separate graphs if needed, or stacking.
-        # User request: "Graphs (1 screen): Loudness vs Time, Sharpness vs Time..."
-        # Implies stacked or same plot.
-        # Metrics have vastly different ranges (-60..0 LUFS vs 0..4 Sharpness).
-        # We need "Add Plot" or multiple areas.
-
-        # Let's clear the layout of ts_tab and rebuild with 3 vertical plots.
-        layout = self.ts_tab.layout()
-        while layout.count():
-            item = layout.takeAt(0)
-            w = item.widget()
-            if w: w.deleteLater()
-
-        # Loudness Plot
+        # Loudness Plot (Tab 1)
         p1 = pg.PlotWidget(title=tr("Loudness (Momentary)"))
         p1.setLabel('left', 'LUFS')
+        p1.setLabel('bottom', 'Time', units='s')
         p1.showGrid(y=True)
         p1.addLegend()
 
-        # Sharpness Plot
+        # Sharpness Plot (Tab 2)
         p2 = pg.PlotWidget(title=tr("Sharpness (Zwicker)"))
         p2.setLabel('left', 'acum')
+        p2.setLabel('bottom', 'Time', units='s')
         p2.showGrid(y=True)
         p2.addLegend()
         p2.setXLink(p1)
 
-        # Roughness Plot
+        # Roughness Plot (Tab 3)
         p3 = pg.PlotWidget(title=tr("Roughness"))
         p3.setLabel('left', 'asper')
-        p3.showGrid(y=True)
         p3.setLabel('bottom', 'Time', units='s')
+        p3.showGrid(y=True)
         p3.addLegend()
         p3.setXLink(p1)
+        
+        # Tonality Plot (Tab 4)
+        p4 = pg.PlotWidget(title=tr("Tonality"))
+        p4.setLabel('left', 'SFM inv')
+        p4.setLabel('bottom', 'Time', units='s')
+        p4.showGrid(y=True)
+        p4.addLegend()
+        p4.setXLink(p1)
 
         colors = ['c', 'm', 'g', 'y']
 
@@ -729,14 +735,32 @@ class SoundQualityAnalyzerWidget(QWidget):
              # Roughness
              t_r = np.arange(len(ch["roughness_series"])) * ch["roughness_step"]
              p3.plot(t_r, ch["roughness_series"], pen=c, name=name)
+             
+             # Tonality
+             t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
+             p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
 
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
+        self.p4 = p4
 
-        layout.addWidget(p1)
-        layout.addWidget(p2)
-        layout.addWidget(p3)
+        self.layout_loudness.addWidget(p1)
+        self.layout_sharpness.addWidget(p2)
+        self.layout_roughness.addWidget(p3)
+        self.layout_tonality.addWidget(p4)
+
+        # Add cursors
+        self.cursors = []
+        for p in [self.p1, self.p2, self.p3, self.p4]:
+            if p is None: continue
+            # Click event
+            p.scene().sigMouseClicked.connect(self.on_plot_clicked)
+
+            # Add cursor
+            line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen('y', width=2))
+            p.addItem(line)
+            self.cursors.append(line)
 
     # --- Playback Logic ---
 
@@ -832,7 +856,7 @@ class SoundQualityAnalyzerWidget(QWidget):
             line.setValue(t)
 
         # Follow
-        if self.chk_follow.isChecked() and self.is_playing:
+        if self.chk_follow.isChecked() and self.is_playing and self.p1:
             # Check if cursor is visible in the first plot (all are linked)
             vb = self.p1.plotItem.vb
             view_range = vb.viewRange()[0] # x range (min, max)
@@ -842,17 +866,7 @@ class SoundQualityAnalyzerWidget(QWidget):
             margin = width * 0.05
 
             if t > view_range[1] - margin:
-                 # Shift view so t is at 20% from left, or just center?
-                 # Continuous scrolling: center t
-                 # Step scrolling: shift by 80% width?
-                 # Let's simple shift so t is at left + margin (paging) OR center.
-                 # Let's center it for smoother following if updates are frequent.
-                 # But standard logic is often "page flip".
-                 # Let's do simple "keep in view" -> center it if it goes out.
-
-                 new_center = t + width / 2 - margin
-                 # vb.setXRange(new_center - width/2, new_center + width/2, padding=0)
-                 # Actually simpler: just shift the range.
+                 # Shift view
                  vb.setXRange(t - margin, t + width - margin, padding=0)
 
             elif t < view_range[0]:
@@ -862,32 +876,11 @@ class SoundQualityAnalyzerWidget(QWidget):
     def on_plot_clicked(self, event):
         if self.audio_data is None: return
 
-        # Map mouse to x
-        # event is GraphicsSceneMouseEvent
-        # We need to map to plot coordinates.
-        # This is tricky with multiple plots.
-        # simpler: use the plot widget that sent it?
-
-        # We connected scene signal, so sender is scene.
-        # But we don't know which ViewBox.
-        # Actually ViewBox has sigClicked?
-
-        # Let's try getting the position from event.scenePos() mapped to view.
-        # But we have 3 plots.
-        # Easier: capture which plot was clicked or just use event position if they are aligned vertically.
-
-        # Better approach:
-        # All plots share X axis.
-        # Just use the X coordinate of the mouse click in the scene, map to first plot's ViewBox.
-
         # Determine which plot was clicked
-        # We know we have 3 plots: p1, p2, p3
-        # Check if the event's scene position maps to a valid X in any of them
-        # Since they are vertically stacked, X mapping should be similar if aligned, 
-        # but safe way is to check bounding rect.
-
         target_plot = None
-        for p in [self.p1, self.p2, self.p3]:
+        plots = [p for p in [self.p1, self.p2, self.p3, self.p4] if p is not None]
+        
+        for p in plots:
             if p.sceneBoundingRect().contains(event.scenePos()):
                 target_plot = p
                 break
