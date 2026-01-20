@@ -14,7 +14,7 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 ### Starting and Stopping Measurement
 
 * **Start Monitor / Stop Monitor Button**: Starts and stops monitoring (reading) the timecode.
-  * When the generator is enabled, monitoring also starts automatically.
+    * When the generator is enabled, monitoring also starts automatically.
 
 ### How to Read the Screen
 
