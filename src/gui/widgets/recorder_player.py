@@ -55,7 +55,7 @@ class TempFileRegistry:
 
 
 class FileLoadWorker(QThread):
-    finished = pyqtSignal(bool, object, str, object) # success, data, message, temp_file_path
+    finished = pyqtSignal(bool, object, str, object) # success, data_meta(shape, dtype), message, temp_file_path
 
     def __init__(self, filepath, target_sr):
         super().__init__()
@@ -71,71 +71,39 @@ class FileLoadWorker(QThread):
             channels = info.channels
             frames = info.frames
 
-            # Determine if we need to stream/map
-            # 1 minute of stereo float32 is ~20MB.
-            # If file > 50MB, use memory mapping
-            # 50MB ~= 50 * 1024*1024 / (4 * 2) = 6.5M samples
-
-            # Use a conservative threshold to prefer memory mapping for safety
-            LARGE_FILE_THRESHOLD_FRAMES = 5 * 1024 * 1024 # ~5 million frames
-
-            is_large = frames > LARGE_FILE_THRESHOLD_FRAMES
             needs_resample = file_sr != self.target_sr
 
             msg_extra = ""
-            final_data = None
+            final_shape = None
+            final_dtype = 'float32'
 
             # Create a temporary file for the loaded/processed data
-            # We use mkstemp to get a file path, then wrap in memmap
             fd, temp_path = tempfile.mkstemp(suffix='.dat')
             os.close(fd)
             TempFileRegistry.register(temp_path)
 
             if needs_resample:
-                # We must resample.
-                # To save memory, we decode to the temp file first (if large),
-                # or just stream read -> resample -> write to output temp file.
-
                 # Calculating output size
                 gcd = math.gcd(int(file_sr), int(self.target_sr))
                 up = int(self.target_sr // gcd)
                 down = int(file_sr // gcd)
 
-                # Calculate expected output frames
-                # output_frames = ceil(input_frames * up / down)
-                # But resample_poly might produce slightly different length depending on padding
                 # Safe estimate:
                 target_frames = int(math.ceil(frames * up / down))
+                final_shape = (target_frames, channels)
 
                 # Prepare output memmap
-                shape = (target_frames, channels)
-                # Ensure file size
                 bytes_needed = target_frames * channels * 4 # float32
                 with open(temp_path, 'wb') as f:
                     f.truncate(bytes_needed)
 
-                output_mmap = np.memmap(temp_path, dtype='float32', mode='r+', shape=shape)
-
-                # If we cannot implement artifact-free streaming resampling easily,
-                # we have two choices:
-                # 1. Load full input (if fits), resample to mmap (saves output RAM).
-                # 2. Use a "good enough" blocked resampling (might have minor artifacts).
-                #
-                # Given the user wants "Safety" for large files, avoiding OOM is priority.
-                # If we map the INPUT file (decoded), we save input RAM.
-                # If we map the OUTPUT file, we save output RAM.
-                #
-                # Let's try to map the INPUT first.
+                output_mmap = np.memmap(temp_path, dtype='float32', mode='r+', shape=final_shape)
 
                 # Input Temp File
                 fd_in, temp_in_path = tempfile.mkstemp(suffix='.dat')
                 os.close(fd_in)
                 try:
                     # Decode input to temp file
-                    # We can use sf.read with blocks to avoid loading all at once
-                    # Or sf.read directly to a memmap if it fits disk.
-
-                    # Prepare input memmap
                     in_shape = (frames, channels)
                     in_bytes = frames * channels * 4
                     with open(temp_in_path, 'wb') as f:
@@ -143,51 +111,34 @@ class FileLoadWorker(QThread):
 
                     input_mmap = np.memmap(temp_in_path, dtype='float32', mode='r+', shape=in_shape)
 
-                    # Read into input_mmap
-                    # soundfile.read can write to array
                     sf.read(self.filepath, out=input_mmap, always_2d=True)
                     input_mmap.flush()
 
-                    # Now resample from input_mmap to output_mmap?
-                    # AudioCalc.resample returns a new array.
-                    # We can't make it write to output_mmap.
-                    # BUT, since input is on disk (mmap), we only pay RAM for output array if we use AudioCalc.resample.
-                    # If output array is huge, we still OOM.
-
-                    # If we use AudioCalc.resample(input_mmap, ...), it reads from disk.
-                    # The result is in RAM.
-                    # If result fits in RAM, we are good.
-                    # If result doesn't fit, we crash.
-
-                    # If we want to support HUGE files, we MUST stream resampling.
-                    # But since we struggled with artifact-free streaming in POC,
-                    # let's assume "Performance Improvement" here means "Avoiding double RAM usage".
-                    # By mapping the input, we reduce peak RAM by size(Input).
-                    # This allows processing files ~2x larger than before.
-
-                    # Can we write result to output_mmap?
-                    # No, unless we modify AudioCalc or use chunks.
-
-                    # COMPROMISE:
-                    # Load input to mmap (safe input).
-                    # Resample to RAM (standard).
-                    # Save RAM to output mmap (fast serialization).
-                    # Return output mmap.
-
-                    # Wait, if we resample to RAM, we allocate it.
-                    # Then we copy to mmap.
-                    # The peak is size(Output).
-                    # Previous peak was size(Input) + size(Output).
-                    # So we save size(Input). That is a significant win.
-
+                    # Resample
+                    # Note: This loads result into RAM before writing to disk
                     data_resampled = AudioCalc.resample(input_mmap, file_sr, self.target_sr)
 
+                    # If resampled size differs slightly from estimation, resize file?
+                    # AudioCalc.resample (scipy) output length matches what?
+                    # Let's adjust output_mmap if needed.
+                    if data_resampled.shape[0] != final_shape[0]:
+                        # Re-open or adjust?
+                        # It's safer to just write what we got.
+                        # But memmap expects fixed size.
+                        # Since we truncated, we might have extra or missing.
+                        pass # For now assume estimate is close enough or use data_resampled length to truncate correctly?
+
                     # Write to the final output mmap
-                    # Actually if data_resampled is already in RAM, we can just use it?
-                    # The user wants "Streaming or memory mapping is safer".
-                    # If we keep it in RAM, we are limited by RAM.
-                    # If we write to mmap and delete RAM array, we free RAM.
-                    # This allows the app to stay light after loading.
+                    # We should match the shape of the result
+                    real_len = data_resampled.shape[0]
+                    if real_len != final_shape[0]:
+                        del output_mmap
+                        # resize file
+                        final_shape = (real_len, channels)
+                        new_bytes = real_len * channels * 4
+                        with open(temp_path, 'r+b') as f:
+                            f.truncate(new_bytes)
+                        output_mmap = np.memmap(temp_path, dtype='float32', mode='r+', shape=final_shape)
 
                     output_mmap[:] = data_resampled[:]
                     output_mmap.flush()
@@ -201,35 +152,30 @@ class FileLoadWorker(QThread):
 
             else:
                 # No resampling needed.
-                # Just decode to memmap.
-
-                # Prepare memmap
-                shape = (frames, channels)
+                final_shape = (frames, channels)
                 bytes_needed = frames * channels * 4
                 with open(temp_path, 'wb') as f:
                     f.truncate(bytes_needed)
 
-                output_mmap = np.memmap(temp_path, dtype='float32', mode='r+', shape=shape)
+                output_mmap = np.memmap(temp_path, dtype='float32', mode='r+', shape=final_shape)
 
-                # Stream read to mmap
-                # sf.read directly to mmap
                 sf.read(self.filepath, out=output_mmap, always_2d=True)
                 output_mmap.flush()
 
-            # Switch output_mmap to read-only mode for safety?
-            # Creating a new memmap view is cheap
-            final_data = np.memmap(temp_path, dtype='float32', mode='r', shape=output_mmap.shape)
-
-            # Explicitly close the previous write-mode mmap
+            # Explicitly close the write-mode mmap
             del output_mmap
 
-            result_msg = f"Loaded: {os.path.basename(self.filepath)} ({self.target_sr}Hz{msg_extra}, {final_data.shape[1]}ch, {len(final_data)/self.target_sr:.2f}s)"
+            duration = final_shape[0] / self.target_sr
+            result_msg = f"Loaded: {os.path.basename(self.filepath)} ({self.target_sr}Hz{msg_extra}, {final_shape[1]}ch, {duration:.2f}s)"
 
-            # Pass temp_path so receiver can own it
-            self.finished.emit(True, final_data, result_msg, temp_path)
+            # Pass META data only, not the memmap object
+            meta = {'shape': final_shape, 'dtype': final_dtype}
+
+            self.finished.emit(True, meta, result_msg, temp_path)
 
         except Exception as e:
             # Cleanup on failure
+            print(f"FileLoadWorker Error: {e}") # Print to stderr for visibility
             if temp_path:
                 TempFileRegistry.unregister(temp_path)
             self.finished.emit(False, None, str(e), None)
@@ -599,15 +545,25 @@ class RecorderPlayerWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), tr("Failed to read file info:\n{0}").format(e))
 
-    def on_load_finished(self, success, data, msg, temp_path):
+    def on_load_finished(self, success, meta, msg, temp_path):
         if self.progress_dialog:
             self.progress_dialog.close()
             self.progress_dialog = None
 
         if success:
-            self.module.set_playback_data(data, temp_path)
-            self.file_label.setText(msg)
-            self.pb_progress.setValue(0)
+            try:
+                # Re-open memmap here in the main thread
+                # This ensures the memmap object is created in the correct context
+                # and avoids passing it through signals
+                data = np.memmap(temp_path, dtype=meta['dtype'], mode='r', shape=meta['shape'])
+                self.module.set_playback_data(data, temp_path)
+                self.file_label.setText(msg)
+                self.pb_progress.setValue(0)
+            except Exception as e:
+                 QMessageBox.critical(self, tr("Error"), tr("Failed to open loaded file:\n{0}").format(e))
+                 # Cleanup
+                 if temp_path:
+                     TempFileRegistry.unregister(temp_path)
         else:
             if msg != "Cancelled": # Don't show error if user cancelled
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load file:\n{0}").format(msg))
