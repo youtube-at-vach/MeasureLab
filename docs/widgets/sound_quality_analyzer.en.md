@@ -13,7 +13,7 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 - **Integrated Loudness**: An average value of "sound volume" that takes into account the sensitivity characteristics of the human ear (BS.1770 K-weighting). The unit is `LUFS`.
 - **Sharpness**: Represents the "sharpness" or "metallic" quality of a sound. Higher values indicate more high-frequency components (typically above 15.8 Bark). The unit is `acum`.
 - **Roughness**: Represents the "graininess" or "roughness" of a sound. It evaluates unpleasant modulations (around 70 Hz, for example) that cause a sensation of "roughness." The unit is `asper`.
-- **Tonality**: Represents the extent to which the sound contains "sine-wave-like components" (Spectral Flatness). Sounds like white noise have low tonality, while sounds like a whistle or a pure sine wave approach 1.0.
+- **Tonality**: Represents the extent to which the sound contains "sine-wave-like components" (Spectral Flatness). Sounds like white noise have low tonality, while sounds like a whistle or a pure sine wave approach 1.0. The unit is `0-1` (normalized value).
 
 ## Operation
 
@@ -23,7 +23,7 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
     - Internally, the audio is resampled to 48kHz for analysis (to optimize psychoacoustic filters).
     - Long files may take some time to process.
 3. Once the analysis is complete, the **Summary Metrics** will display the average values for each channel.
-4. The graphs below show how each of these metrics (Loudness, Sharpness, Roughness) "changed over time."
+4. The graphs below show how each of these metrics (Loudness, Sharpness, Roughness, Tonality) "changed over time." Use the tabs to switch between metrics.
 
 ### Playback and Verification
 
@@ -35,3 +35,4 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 
 - **Analysis of Unpleasant Noise**: Quantifies "why" fan or motor noise is annoying using metrics like roughness and sharpness.
 - **Sound Design Evaluation**: Verifies if product operation sounds or notification sounds match the intended image (e.g., gentle, sharp, powerful).
+- **Detection of Abnormal Sounds**: Detects sudden changes in tonality (e.g., occurrence of a beep) within stationary noise.

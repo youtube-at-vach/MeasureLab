@@ -14,6 +14,7 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 ### Starting and Stopping Measurement
 
 * **Start Monitor / Stop Monitor Button**: Starts and stops monitoring (reading) the timecode.
+    * When the generator is enabled, monitoring also starts automatically.
 
 ### How to Read the Screen
 
@@ -67,6 +68,16 @@ A function for outputting a timecode signal from MeasureLab. After performing se
 * **Link Stereo Output**:
     A checkbox in the center of the main screen.
     When this is enabled, the generator settings of one channel (Source) are copied to the other, and exactly the same timecode is output from both left and right.
+
+### Calibration
+
+A feature to measure and automatically compensate for the input/output latency (delay) of the audio interface.
+
+1. Connect the output (L or R) of the audio interface to the input in a loopback configuration.
+2. Select the connected channel in **Channel**.
+3. Press **Run Calibration**.
+4. A short test signal is output, and the number of frames delayed until it is input is measured.
+5. Based on the measurement result, **In Delay** (input compensation) and **Out Delay** (output compensation) are automatically set. This corrects display discrepancies during monitoring and phase discrepancies in generator output.
 
 ## Usage Examples
 
