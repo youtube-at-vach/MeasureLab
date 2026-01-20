@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 class MeasurementModule(ABC):
     """
     Base class for all measurement modules.
-    
+
     Provides interfaces for both GUI (get_widget) and CLI (run).
     Note: CLI functionality (run method) is currently suspended/frozen.
     """
