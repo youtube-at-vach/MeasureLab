@@ -10,6 +10,10 @@ from src.core.fft_manager import fft_manager
 def _get_cached_window(window_name, nx):
     return get_window(window_name, nx)
 
+@functools.lru_cache(maxsize=128)
+def _get_butter_sos(order, Wn, btype, fs=None):
+    return butter(order, Wn, btype=btype, fs=fs, output='sos')
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
@@ -43,21 +47,24 @@ class AudioCalc:
         highcut = min(nyquist - 1, highcut)
         if lowcut >= highcut:
             return signal
-        sos = butter(8, [lowcut / nyquist, highcut / nyquist], btype='bandpass', output='sos')
+
+        # Wn must be a tuple to be hashable for lru_cache
+        Wn = (lowcut / nyquist, highcut / nyquist)
+        sos = _get_butter_sos(8, Wn, 'bandpass')
         return sosfiltfilt(sos, signal)
 
     @staticmethod
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = butter(8, cutoff / nyquist, btype='lowpass', output='sos')
+        sos = _get_butter_sos(8, cutoff / nyquist, 'lowpass')
         return sosfiltfilt(sos, signal)
 
     @staticmethod
     def highpass_filter(signal, sampling_rate, cutoff=20.0):
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = butter(8, cutoff / nyquist, btype='highpass', output='sos')
+        sos = _get_butter_sos(8, cutoff / nyquist, 'highpass')
         return sosfiltfilt(sos, signal)
 
     @staticmethod
@@ -65,7 +72,10 @@ class AudioCalc:
         nyquist = 0.5 * sampling_rate
         w0 = target_frequency / nyquist
         bandwidth = w0 / quality_factor
-        sos = butter(2, [w0 - bandwidth/2, w0 + bandwidth/2], btype='bandstop', output='sos')
+
+        # Wn must be a tuple to be hashable for lru_cache
+        Wn = (w0 - bandwidth/2, w0 + bandwidth/2)
+        sos = _get_butter_sos(2, Wn, 'bandstop')
         return sosfiltfilt(sos, signal)
 
     @staticmethod
@@ -128,12 +138,12 @@ class AudioCalc:
         # 3. Bandwidth Limit Residual (20Hz - 20kHz)
         # Highpass 20Hz (Remove DC/Drift if any left)
         if sampling_rate > 40:
-            sos_hp = butter(4, 20, 'hp', fs=sampling_rate, output='sos')
+            sos_hp = _get_butter_sos(4, 20, 'hp', fs=sampling_rate)
             residual = sosfiltfilt(sos_hp, residual)
 
         # Lowpass 20kHz
         if sampling_rate > 44100:
-            sos_lp = butter(4, 20000, 'lp', fs=sampling_rate, output='sos')
+            sos_lp = _get_butter_sos(4, 20000, 'lp', fs=sampling_rate)
             residual = sosfiltfilt(sos_lp, residual)
 
         # 4. Calculate RMS
