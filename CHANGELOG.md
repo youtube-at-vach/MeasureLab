@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.3.6] - 2026-01-20
+
+### Added
+
+* UI: Sound Quality Analyzer のグラフを Loudness, Sharpness, Roughness, Tonality の個別タブに再構成
+* UI: 再生中のプロット自動追従機能およびクリック操作の改善
+* Core: 高品質な2段階ポリフェーズリサンプリングによる解析用データの標準化 (48kHz)
+* Core: Timecode Generator 有効化時に Timecode Monitor を自動開始する機能を追加
+* Core: BNIM Meter のニューラルマップ対称性テストを追加
+* CI/CD: 翻訳キーの整合性チェック (`check_trn_keys.py`) および Markdown リントをワークフローに追加
+
+### Changed
+
+* Perf: FFT パイプラインとウィンドウ生成を float32 向けに最適化
+* Perf: フィルタ係数計算のキャッシュ加（`lru_cache`）とリアルタイムコールバックのバッファ割り当てを最適化
+* Perf: `LTCDecoder` のリセット処理を最適化
+* Docs: Markdown のリストインデント形式を標準化し、全体的な読みやすさを向上
+* Build: `ruff` および GitHub Actions の依存関係をアップデート
+
+### Fixed
+
+* Core: SoundLevelMeter における LE 積分器の冗長なロジックを修正
+* UI: Distortion Analyzer のプロット更新およびテーブル項目の再利用を改善
+* Docs: クイックスタートガイドの GitHub リリース URL を修正
+* Config: `.gitignore` 内のパスの大文字小文字設定を修正
+
 ## [v0.3.5] - 2026-01-17
 
 ### Added
