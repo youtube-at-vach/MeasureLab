@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.analysis import AudioCalc
 
 
 class FileLoadWorker(QThread):
@@ -44,11 +45,8 @@ class FileLoadWorker(QThread):
 
             msg_extra = ""
             if file_sr != self.target_sr:
-                # Resample
-                num_samples = int(len(data) * self.target_sr / file_sr)
-                # scipy.signal.resample is Fourier method, good for quality but slow for huge files
-                # For this task, we assume it's acceptable as long as it's in a thread
-                data = scipy.signal.resample(data, num_samples)
+                # Resample using AudioCalc.resample (Polyphase filtering)
+                data = AudioCalc.resample(data, file_sr, self.target_sr)
                 msg_extra = f" (Resampled from {file_sr}Hz)"
 
             result_msg = f"Loaded: {os.path.basename(self.filepath)} ({self.target_sr}Hz{msg_extra}, {data.shape[1]}ch, {len(data)/self.target_sr:.2f}s)"
@@ -112,13 +110,9 @@ class RecorderPlayer(MeasurementModule):
             # Resample if needed
             if file_sr != engine_sr:
                 print(f"Resampling {os.path.basename(filepath)}: {file_sr}Hz -> {engine_sr}Hz")
-                # Calculate new number of samples
-                num_samples = int(len(data) * engine_sr / file_sr)
 
-                # Use scipy.signal.resample (Fourier method)
-                # Note: For very large files, this might be slow and memory intensive.
-                # But for typical measurement signals it's fine.
-                data = scipy.signal.resample(data, num_samples)
+                # Use efficient polyphase resampling
+                data = AudioCalc.resample(data, file_sr, engine_sr)
                 msg_extra = f" (Resampled from {file_sr}Hz)"
 
             self.playback_buffer = data
