@@ -258,6 +258,28 @@ class LTCDecoder:
         self.total_samples = 0
         self.last_frame_offset_in_chunk: Optional[int] = None
 
+    def reset(self, sample_rate: float, fps: float):
+        self.sample_rate = sample_rate
+        self.fps = fps
+        self.samples_since_last_zc = 0
+        self._last_sign = None
+        self.bit_stream = 0
+        self.bits_count = 0
+        self.current_bits = []
+        self.last_bit_is_one = False
+
+        # Pulse Width discrimination
+        # Initial guess for half-bit (Short pulse)
+        # 80 bits per frame.
+        self.pulse_avg = (sample_rate / fps) / 160.0
+
+        self.decoded_bits = []
+        self.decoded_tc = "--:--:--:--"
+        self.locked = False
+
+        self.total_samples = 0
+        self.last_frame_offset_in_chunk = None
+
     def process_samples(self, samples: np.ndarray):
         """Process a chunk of audio samples. Returns True if a new frame was decoded."""
         # Vectorized zero-crossing (sign change) detection.
@@ -506,7 +528,7 @@ class TimecodeMonitor(MeasurementModule):
         sr = int(getattr(self.audio_engine, "sample_rate", 48000))
         for ch in self.channels.values():
             ch.fps = fps
-            ch.decoder = LTCDecoder(sr, fps)
+            ch.decoder.reset(sr, fps)
             ch.decoded_tc = "--:--:--:--"
             ch.locked = False
             ch.gen.encoder.sample_rate = sr
@@ -528,7 +550,7 @@ class TimecodeMonitor(MeasurementModule):
         sr = int(getattr(self.audio_engine, "sample_rate", 48000))
         ch = self.channels[key]
         ch.fps = fps
-        ch.decoder = LTCDecoder(sr, fps)
+        ch.decoder.reset(sr, fps)
         ch.decoded_tc = "--:--:--:--"
         ch.locked = False
         ch.gen.encoder.sample_rate = sr
@@ -584,7 +606,7 @@ class TimecodeMonitor(MeasurementModule):
             ch.gen.jam_base_total_frames = None
             ch.gen.jam_base_fps = None
 
-            ch.decoder = LTCDecoder(sr, ch.fps)
+            ch.decoder.reset(sr, ch.fps)
             ch.decoded_tc = "--:--:--:--"
             ch.locked = False
 
