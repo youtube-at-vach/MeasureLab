@@ -740,6 +740,41 @@ class DistortionAnalyzerWidget(QWidget):
         self.on_unit_changed(self.unit_combo.currentText())
         self.out_mode_combo.setCurrentIndex(1) # Default to Sine Wave
 
+    def sync_module_with_gui(self):
+        """Synchronize the measurement module state with current GUI values."""
+        # 1. Generator Settings
+        self.module.gen_frequency = self.freq_spin.value()
+        self.on_amp_changed(self.amp_spin.value()) # Handles unit conversion and sets module.gen_amplitude
+
+        # 2. Signal Type (from out_mode_combo)
+        out_idx = self.out_mode_combo.currentIndex()
+        if out_idx == 0:
+            self.module.output_enabled = False
+        else:
+            self.module.output_enabled = True
+            if out_idx == 1:
+                self.module.signal_type = 'sine'
+            elif out_idx == 2:
+                self.module.signal_type = 'smpte'
+                self.module.imd_standard = 'smpte'
+            elif out_idx == 3:
+                self.module.signal_type = 'ccif'
+                self.module.imd_standard = 'ccif'
+
+        # 3. IMD Settings
+        self.module.imd_f1 = self.imd_f1_spin.value()
+        self.module.imd_f2 = self.imd_f2_spin.value()
+        self.module.imd_ratio = self.imd_ratio_spin.value()
+
+        # 4. IO Channels
+        self.module.input_channel = self.in_channel_combo.currentIndex()
+        self.module.output_channel = self.channel_combo.currentIndex()
+
+        # 5. Averaging
+        self.module.averaging = self.avg_slider.value() / 100.0
+
+        self.module.reset_averaging_state()
+
     def on_mode_changed(self, idx):
         # 0: Real-time, 1: Frequency Sweep, 2: Amplitude Sweep
         modes = ["Real-time", "Frequency Sweep", "Amplitude Sweep"]
@@ -751,6 +786,7 @@ class DistortionAnalyzerWidget(QWidget):
             self.meters_group.setVisible(True)
             self.set_meters_mode('thd')
             self.tabs.setCurrentIndex(0)
+            self.sync_module_with_gui()
         else:
             self.settings_tabs.setCurrentIndex(1)
             self.meters_group.setVisible(False)
@@ -877,6 +913,7 @@ class DistortionAnalyzerWidget(QWidget):
             amp_linear = 0.0
 
         self.module.gen_amplitude = amp_linear
+        self.module.reset_averaging_state()
 
     def on_action(self, checked):
         idx = self.mode_combo.currentIndex()
@@ -890,6 +927,7 @@ class DistortionAnalyzerWidget(QWidget):
 
     def on_toggle_realtime(self, checked):
         if checked:
+            self.sync_module_with_gui()
             self.module.start_analysis()
             self.timer.start()
             self.action_btn.setText(tr("Stop Measurement"))
@@ -942,7 +980,9 @@ class DistortionAnalyzerWidget(QWidget):
         if self.sweep_worker:
             self.sweep_worker.stop()
             self.sweep_worker.wait()
+            self.sweep_worker = None
         self.module.stop_analysis()
+        self.sync_module_with_gui() # Restore manual settings
         self.action_btn.setText(tr("Start Measurement"))
         self.action_btn.setChecked(False)
 
