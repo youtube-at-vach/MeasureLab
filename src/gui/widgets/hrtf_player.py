@@ -31,6 +31,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
+from src.core.analysis import AudioCalc
 
 
 @dataclass
@@ -218,13 +219,9 @@ class HRTFPlayer(MeasurementModule):
             # Let's do a quick resample calc if needed, similar to RecorderPlayer
             target_sr = self.audio_engine.sample_rate
             if sr != target_sr:
-                # Basic resample
-                 num_samples = int(len(data) * target_sr / sr)
-                 # fast linear or just slice? scipy resample is better
-                 # Using scipy.signal.resample (Fourier) is good for signals
-                 import scipy.signal
-                 data = scipy.signal.resample(data, num_samples)
-                 self.music_sr = target_sr
+                # Use efficient polyphase resampling
+                data = AudioCalc.resample(data, sr, target_sr)
+                self.music_sr = target_sr
             else:
                 self.music_sr = sr
 

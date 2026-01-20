@@ -15,6 +15,27 @@ class AudioCalc:
     Shared audio calculation utilities.
     """
     @staticmethod
+    def resample(data, source_sr, target_sr):
+        """
+        Resamples audio data from source_sr to target_sr using polyphase filtering.
+        This is more efficient than Fourier method for large arrays.
+        """
+        if source_sr == target_sr:
+            return data
+
+        import math
+        import scipy.signal
+
+        # Calculate integer ratios for up/down sampling
+        gcd = math.gcd(int(source_sr), int(target_sr))
+        up = int(target_sr // gcd)
+        down = int(source_sr // gcd)
+
+        # resample_poly assumes axis=0 is the time axis, which matches (samples, channels)
+        # It handles both 1D and 2D arrays correctly.
+        return scipy.signal.resample_poly(data, up, down)
+
+    @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
         nyquist = 0.5 * sampling_rate
         # Ensure valid bounds
