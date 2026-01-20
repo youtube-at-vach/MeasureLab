@@ -112,6 +112,11 @@ jobs:
         run: |
           mypy src
 
+      - name: Check Translation Keys
+        continue-on-error: true
+        run: |
+          python scripts/check_trn_keys.py
+
       - name: Markdown lint
         run: |
           npx markdownlint-cli2 "**/*.md"
