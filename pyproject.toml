@@ -20,7 +20,6 @@ dependencies = [
   "pyqtgraph>=0.13,<0.15",
   "soundfile>=0.12,<0.14",
   "PyWavelets>=1.5,<1.9",
-  "inquirer>=3.1,<4.0",
   "pyfftw>=0.13,<0.16",
 ]
 

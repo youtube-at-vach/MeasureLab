@@ -7,7 +7,6 @@ PyQt6
 pyqtgraph
 soundfile
 PyWavelets
-inquirer
 netCDF4
 pyfftw
 mkdocs
