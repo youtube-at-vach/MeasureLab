@@ -2084,6 +2084,11 @@ class TimecodeMonitorWidget(QWidget):
             ch.gen.jam_base_fps = None
         else:
             ch.gen.gen_current_tc = "--:--:--:--"
+
+        # UX Improvement: Auto-start monitor if enabling generator and not running
+        if checked and not self.module.is_running:
+            self._set_monitor_running(True)
+
         btn.setText(tr("Stop Generator") if checked else tr("Enable Generator"))
 
     def _build_jam_tab(self) -> QWidget:
