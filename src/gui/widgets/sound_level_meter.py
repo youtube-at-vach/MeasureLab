@@ -44,7 +44,6 @@ class SoundLevelMeter(MeasurementModule):
         self.lmax = -np.inf
         self.lmin = np.inf
         self.lpeak = -np.inf
-        self.le_integrator = 0.0
 
         # LN Statistics
         self.ln_history = []
@@ -133,7 +132,6 @@ class SoundLevelMeter(MeasurementModule):
         self.lmax = -np.inf
         self.lmin = np.inf
         self.lpeak = -np.inf
-        self.le_integrator = 0.0
 
         # Reset LN Statistics
         self.ln_history = []
@@ -451,11 +449,8 @@ class SoundLevelMeter(MeasurementModule):
         self.leq_integrator += np.sum(sq_sig)
         self.leq_samples += len(sq_sig)
 
-        # LE (Sound Exposure Level)
-        # Energy normalized to 1 second.
-        self.le_integrator += np.sum(sq_sig) / sr # Energy accumulator?
-        # LE = 10 log10( sum(p^2 * dt) / p0^2 / T0 ) where T0 = 1s.
-        # dt = 1/sr. sum(p^2) / sr.
+        # LE (Sound Exposure Level) will be calculated from leq_integrator in update_display logic
+        # LE = 10 log10( sum(sq_sig) / sr )
 
         # Lpeak (Peak Sound Level)
         # Max of the absolute raw signal (freq weighted, NO time weighting).
@@ -481,14 +476,10 @@ class SoundLevelMeter(MeasurementModule):
         # Store for display (Atomic update preferred)
         self.results['Lp'] = 10 * np.log10(lp_inst + 1e-12)
         self.results['Leq'] = 10 * np.log10((self.leq_integrator / (self.leq_samples + 1e-12)) + 1e-12)
-        # LE: 10 log10 ( Integral(p^2) dt ). dt = 1/sr.
-        # Leq = LE - 10 log10(T).
-        # LE = 10 log10 ( sum(sq_sig) / sr ).
-        total_energy = self.le_integrator # sum(sq_sig) // wait, leq_int is sum(sq_sig).
-        # My le_integrator variable above was accumulating sum/sr?
-        # Let's fix. le_integrator will track sum of p^2.
-        # Actually, self.leq_integrator tracks sum(p^2).
 
+        # LE: 10 log10 ( Integral(p^2) dt ). dt = 1/sr.
+        # LE = 10 log10 ( sum(sq_sig) / sr ).
+        # self.leq_integrator tracks sum(p^2).
         le_val = (self.leq_integrator / sr) + 1e-12
         self.results['LE'] = 10 * np.log10(le_val)
 
