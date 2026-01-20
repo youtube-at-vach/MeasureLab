@@ -46,6 +46,10 @@ class AudioEngine:
         # Accumulate callback status flags between UI polls.
         self.accumulated_status = sd.CallbackFlags()
 
+        # Pre-allocated buffers to reduce GC pressure
+        self._mix_buffer = None
+        self._client_buffer = None
+
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
         enabled = bool(enabled)
@@ -237,11 +241,23 @@ class AudioEngine:
                 return
 
             # Mix buffer
-            mix_buffer = np.zeros((frames, logical_out_ch), dtype='float32')
+            if (self._mix_buffer is not None and
+                self._mix_buffer.shape == (frames, logical_out_ch)):
+                mix_buffer = self._mix_buffer
+                mix_buffer.fill(0)
+            else:
+                mix_buffer = np.zeros((frames, logical_out_ch), dtype='float32')
+                self._mix_buffer = mix_buffer
 
             for cb in active_callbacks:
                 # Temp buffer for this client
-                client_out = np.zeros_like(mix_buffer)
+                if (self._client_buffer is not None and
+                    self._client_buffer.shape == (frames, logical_out_ch)):
+                    client_out = self._client_buffer
+                    client_out.fill(0)
+                else:
+                    client_out = np.zeros_like(mix_buffer)
+                    self._client_buffer = client_out
 
                 try:
                     cb(logical_in, client_out, frames, time, status)
