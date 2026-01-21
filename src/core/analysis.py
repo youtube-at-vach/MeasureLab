@@ -359,33 +359,30 @@ class AudioCalc:
     @staticmethod
     def calculate_multitone_tdn(mag, freqs, tone_freqs, window_width_pct=0.05):
         """
-        Calculates Multi-tone TD+N.
+        Calculates Multi-tone TD+N using efficient bin lookup.
         mag: Linear magnitude spectrum
         freqs: Frequency bins
         tone_freqs: List of expected tone frequencies
         """
-        # Use a mask to identify bins belonging to tones
         is_tone_bin = np.zeros(len(mag), dtype=bool)
 
         for f in tone_freqs:
-            # Find peak near f
             width = max(10.0, f * window_width_pct)
-            mask_search = (freqs >= f - width) & (freqs <= f + width)
+            # Efficiently find indices using np.searchsorted
+            idx_start = np.searchsorted(freqs, f - width)
+            idx_end = np.searchsorted(freqs, f + width, side='right')
 
-            if np.any(mask_search):
-                subset_idxs = np.where(mask_search)[0]
-                subset_mag = mag[subset_idxs]
+            if idx_end > idx_start:
+                subset_mag = mag[idx_start:idx_end]
                 local_peak_idx_rel = np.argmax(subset_mag)
-                peak_idx = subset_idxs[local_peak_idx_rel]
+                peak_idx = idx_start + local_peak_idx_rel
 
-                # Mark bins around peak as tone
-                # Blackman-Harris main lobe is approx +/- 4 bins
-                start = max(0, peak_idx - 4)
-                end = min(len(mag), peak_idx + 5)
-                is_tone_bin[start:end] = True
+                # Mark bins around peak as tone (Blackman-Harris main lobe ~+/- 4 bins)
+                start_tone = max(0, peak_idx - 4)
+                end_tone = min(len(mag), peak_idx + 5)
+                is_tone_bin[start_tone:end_tone] = True
 
         # Calculate Energies
-        # We can sum squares directly
         tone_energy = np.sum(mag[is_tone_bin]**2)
         noise_energy = np.sum(mag[~is_tone_bin]**2)
 
@@ -451,43 +448,30 @@ class AudioCalc:
         For 2-tone test, PIM usually manifests as IMD products.
         This implementation focuses on odd-order IMD products which are typical for PIM.
         """
-        # Similar to IMD CCIF/SMPTE but we look for specific PIM orders (IM3, IM5, IM7)
-        # IM3: 2f1 - f2, 2f2 - f1
-        # IM5: 3f1 - 2f2, 3f2 - 2f1
-        # IM7: 4f1 - 3f2, 4f2 - 3f1
-
         # Find carrier amplitudes
         amp_f1 = AudioCalc._find_peak(mag, freqs, f1)
         amp_f2 = AudioCalc._find_peak(mag, freqs, f2)
         carrier_amp = (amp_f1 + amp_f2) / 2 # Average carrier power
 
         if carrier_amp < 1e-6:
-            return {'pim_db': -100.0, 'products': []}
+            return {'pim_db': -100.0, 'products': [], 'pim_rss_db': -100.0}
 
         products = []
         sum_sq_pim = 0.0
+        max_pim_amp = 0.0
 
-        # Calculate up to specified order (must be odd)
         for n in range(3, order + 2, 2):
-            # n is order (3, 5, 7...)
-            # For order n, coeffs sum to 1? No.
-            # IM3: 2,-1 (sum 1).
-            # IM5: 3,-2 (sum 1).
-            # General: k * f1 - (k-1) * f2
-            # where 2k - 1 = n => k = (n+1)/2
-
             k = (n + 1) // 2
             m = k - 1
 
-            # Lower side
             im_low = k * f1 - m * f2
-            # Upper side
             im_high = k * f2 - m * f1
 
             amp_low = AudioCalc._find_peak(mag, freqs, im_low) if im_low > 0 else 0
             amp_high = AudioCalc._find_peak(mag, freqs, im_high)
 
             sum_sq_pim += amp_low**2 + amp_high**2
+            max_pim_amp = max(max_pim_amp, amp_low, amp_high)
 
             products.append({
                 'order': n,
@@ -497,16 +481,14 @@ class AudioCalc:
                 'amp_high': amp_high
             })
 
-        pim_rms = np.sqrt(sum_sq_pim)
+        pim_rss_db = 20 * np.log10(np.sqrt(sum_sq_pim) / carrier_amp + 1e-15)
 
-        if pim_rms < 1e-12:
-            pim_db = -140.0
-        else:
-            # PIM is often relative to carrier power (dBc)
-            pim_db = 20 * np.log10(pim_rms / carrier_amp)
+        # PIM reporting often focuses on the worst-case single component level (dBc)
+        pim_db = 20 * np.log10(max_pim_amp / carrier_amp + 1e-15)
 
         return {
             'pim_db': pim_db,
+            'pim_rss_db': pim_rss_db,
             'products': products
         }
 

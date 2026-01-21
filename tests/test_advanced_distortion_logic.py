@@ -88,11 +88,11 @@ def test_pim():
 
     res = AudioCalc.calculate_pim(mag, freqs, f1, f2)
     print(f"PIM: {res['pim_db']:.2f} dBc")
+    print(f"PIM (RSS): {res['pim_rss_db']:.2f} dBc")
 
-    if abs(res['pim_db'] - (-80)) < 2: # Windowing might affect slightly
-        print("PASS")
-    else:
-        print(f"FAIL: Expected ~-80dB, got {res['pim_db']:.2f}")
+    # We expect -80dBc for each component. 
+    # The refined calculate_pim returns max(component levels) as pim_db.
+    assert abs(res['pim_db'] - (-80)) < 2, f"Expected ~-80dBc, got {res['pim_db']:.2f} dBc"
 
 if __name__ == "__main__":
     test_mim()
