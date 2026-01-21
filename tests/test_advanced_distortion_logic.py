@@ -89,10 +89,11 @@ def test_pim():
     res = AudioCalc.calculate_pim(mag, freqs, f1, f2)
     print(f"PIM: {res['pim_db']:.2f} dBc")
 
-    if abs(res['pim_db'] - (-80)) < 2: # Windowing might affect slightly
+    # Combined RMS of two -80dBc signals is -77dBc (3dB increase)
+    if abs(res['pim_db'] - (-77)) < 2: # Windowing might affect slightly
         print("PASS")
     else:
-        print(f"FAIL: Expected ~-80dB, got {res['pim_db']:.2f}")
+        print(f"FAIL: Expected ~-77dB, got {res['pim_db']:.2f}")
 
 if __name__ == "__main__":
     test_mim()
