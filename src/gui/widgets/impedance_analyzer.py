@@ -1,4 +1,5 @@
 import argparse
+import bisect
 import json
 import os
 import threading
@@ -77,6 +78,12 @@ class ImpedanceAnalyzer(MeasurementModule):
         self.averaging_count = 1
         self.history_v = deque(maxlen=100)
         self.history_i = deque(maxlen=100)
+
+        # Calibration Cache (to avoid sorting keys every time)
+        # We store (ref, length, sorted_keys) for each known dictionary attribute.
+        # This is strictly local to this instance and avoids global cache memory leaks.
+        # Map: 'open'/'short'/'load' -> (cal_dict_obj, cal_dict_len, sorted_keys_list)
+        self._cal_cache_state = {}
 
         # Post-mix IIR LPF (dynamic reserve) — same scheme as Lock-in Amplifier.
         # Implemented as a cascade of up to 8 one-pole IIR sections on the complex baseband.
@@ -411,10 +418,11 @@ class ImpedanceAnalyzer(MeasurementModule):
             return z_meas
 
         # Get Calibration Data (Always Interpolate)
-        z_short = self._get_interpolated_cal_value(self.cal_short, freq)
-        z_open = self._get_interpolated_cal_value(self.cal_open, freq)
+        # Pass cache keys to enable safe caching of sorted keys.
+        z_short = self._get_interpolated_cal_value(self.cal_short, freq, cache_key='short')
+        z_open = self._get_interpolated_cal_value(self.cal_open, freq, cache_key='open')
         if self.cal_load:
-            z_load = self._get_interpolated_cal_value(self.cal_load, freq)
+            z_load = self._get_interpolated_cal_value(self.cal_load, freq, cache_key='load')
         else:
             z_load = None
 
@@ -445,13 +453,33 @@ class ImpedanceAnalyzer(MeasurementModule):
 
         return numerator / denominator
 
-    def _get_interpolated_cal_value(self, cal_dict, freq):
+    def _get_interpolated_cal_value(self, cal_dict, freq, cache_key=None):
         """
         Get interpolated calibration value for a specific frequency.
         Uses linear interpolation on complex real/imag parts.
         If freq is outside range, uses nearest neighbor.
         """
-        sorted_freqs = sorted(cal_dict.keys())
+        # --- Caching sorted keys ---
+        # Sorting is expensive (O(N log N)), so we cache the sorted keys.
+        # Safe caching requires validation of identity and content change.
+        # We rely on 'cache_key' (e.g., 'open') to scope the cache to a specific attribute.
+
+        sorted_freqs = None
+
+        if cache_key is not None:
+            # Check if we have a valid cache entry
+            if cache_key in self._cal_cache_state:
+                cached_ref, cached_len, cached_keys = self._cal_cache_state[cache_key]
+                # Validate: Object Identity AND Length (detects in-place additions)
+                if (cal_dict is cached_ref) and (len(cal_dict) == cached_len):
+                    sorted_freqs = cached_keys
+
+        if sorted_freqs is None:
+            # Cache miss or invalid -> Re-sort
+            sorted_freqs = sorted(cal_dict.keys())
+            if cache_key is not None:
+                self._cal_cache_state[cache_key] = (cal_dict, len(cal_dict), sorted_freqs)
+
         if not sorted_freqs:
             return 0j
 
@@ -460,22 +488,28 @@ class ImpedanceAnalyzer(MeasurementModule):
         if freq >= sorted_freqs[-1]:
             return cal_dict[sorted_freqs[-1]]
 
-        # Find interval
-        # Use binary search or simple iteration (small lists usually)
-        for i in range(len(sorted_freqs) - 1):
-            f_low = sorted_freqs[i]
-            f_high = sorted_freqs[i+1]
-            if f_low <= freq <= f_high:
-                t = (freq - f_low) / (f_high - f_low)
-                z_low = cal_dict[f_low]
-                z_high = cal_dict[f_high]
+        # --- Binary Search Interval ---
+        # Find index i such that sorted_freqs[i] <= freq <= sorted_freqs[i+1]
 
-                # Interpolate Real and Imag separately
-                r = z_low.real + t * (z_high.real - z_low.real)
-                im = z_low.imag + t * (z_high.imag - z_low.imag)
-                return complex(r, im)
+        idx = bisect.bisect_right(sorted_freqs, freq)
+        # bisect_right returns insertion point after freq.
+        # Since we checked freq > sorted_freqs[0] and freq < sorted_freqs[-1],
+        # idx will be in range [1, len-1].
 
-        return cal_dict[sorted_freqs[0]] # Should not reach here
+        i = idx - 1
+        # Now sorted_freqs[i] <= freq < sorted_freqs[i+1]
+
+        f_low = sorted_freqs[i]
+        f_high = sorted_freqs[i+1]
+
+        t = (freq - f_low) / (f_high - f_low)
+        z_low = cal_dict[f_low]
+        z_high = cal_dict[f_high]
+
+        # Interpolate Real and Imag separately
+        r = z_low.real + t * (z_high.real - z_low.real)
+        im = z_low.imag + t * (z_high.imag - z_low.imag)
+        return complex(r, im)
 
     def save_calibration(self, filename):
         data = {
