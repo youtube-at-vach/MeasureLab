@@ -370,13 +370,18 @@ class AudioCalc:
         for f in tone_freqs:
             # Find peak near f
             width = max(10.0, f * window_width_pct)
-            mask_search = (freqs >= f - width) & (freqs <= f + width)
 
-            if np.any(mask_search):
-                subset_idxs = np.where(mask_search)[0]
-                subset_mag = mag[subset_idxs]
+            # Use searchsorted for O(log N) lookup instead of O(N) mask
+            start_freq = f - width
+            end_freq = f + width
+
+            idx_min = np.searchsorted(freqs, start_freq, side='left')
+            idx_max = np.searchsorted(freqs, end_freq, side='right')
+
+            if idx_max > idx_min:
+                subset_mag = mag[idx_min:idx_max]
                 local_peak_idx_rel = np.argmax(subset_mag)
-                peak_idx = subset_idxs[local_peak_idx_rel]
+                peak_idx = idx_min + local_peak_idx_rel
 
                 # Mark bins around peak as tone
                 # Blackman-Harris main lobe is approx +/- 4 bins
