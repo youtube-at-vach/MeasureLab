@@ -6,7 +6,7 @@ import numpy as np
 sys.path.append(os.getcwd())
 
 from src.core.analysis import AudioCalc
-
+from scipy.signal import get_window
 
 def test_mim():
     print("Testing MIM...")
@@ -25,7 +25,7 @@ def test_mim():
     noise = np.random.normal(0, 0.0001, N)
     sig += noise
 
-    window = np.blackman(N)
+    window = get_window('blackmanharris', N)
     fft_res = np.fft.rfft(sig * window)
     mag = np.abs(fft_res) * 2 / np.sum(window)
 
@@ -50,7 +50,7 @@ def test_spdr():
     # Spur at 2.5kHz, -60dB
     sig += 0.001 * np.sin(2*np.pi*2500*t)
 
-    window = np.blackman(N)
+    window = get_window('blackmanharris', N)
     fft_res = np.fft.rfft(sig * window)
     mag = np.abs(fft_res) * 2 / np.sum(window)
 
@@ -82,7 +82,7 @@ def test_pim():
     sig += 0.00005 * np.sin(2*np.pi*1500*t)
     sig += 0.00005 * np.sin(2*np.pi*2400*t)
 
-    window = np.blackman(N)
+    window = get_window('blackmanharris', N)
     fft_res = np.fft.rfft(sig * window)
     mag = np.abs(fft_res) * 2 / np.sum(window)
 
