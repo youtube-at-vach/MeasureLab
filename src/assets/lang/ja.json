@@ -945,5 +945,6 @@
     "Recorder / Player": "レコーダー / プレーヤー",
     "Sound Level Meter": "騒音計",
     "Sound Quality Analyzer": "音質アナライザ",
-    "Transient Analyzer": "トランジェントアナライザ"
+    "Transient Analyzer": "トランジェントアナライザ",
+    "Optimizing FFT... (Size {0})": "FFTを最適化中... (サイズ {0})"
 }

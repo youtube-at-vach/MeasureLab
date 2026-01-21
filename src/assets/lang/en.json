@@ -943,5 +943,8 @@
     "Recorder / Player": "Recorder / Player",
     "Sound Level Meter": "Sound Level Meter",
     "Sound Quality Analyzer": "Sound Quality Analyzer",
-    "Transient Analyzer": "Transient Analyzer"
+    "Transient Analyzer": "Transient Analyzer",
+    "Done {0}/{1}": "Done {0}/{1}",
+    "Optimizing FFT... (Size {0})": "Optimizing FFT... (Size {0})",
+    "Saving optimization results... {0}/{1}": "Saving optimization results... {0}/{1}"
 }
