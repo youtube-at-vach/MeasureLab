@@ -305,10 +305,18 @@ class AudioCalc:
 
     @staticmethod
     def _find_peak(mag, freqs, target_freq, width=20.0):
-        mask = (freqs >= target_freq - width) & (freqs <= target_freq + width)
-        if not np.any(mask):
+        # Optimizing peak finding using binary search on sorted frequency array
+        # This reduces complexity from O(N) to O(log N) + O(k) where k is the window width
+        start_freq = target_freq - width
+        end_freq = target_freq + width
+
+        idx_min = np.searchsorted(freqs, start_freq, side='left')
+        idx_max = np.searchsorted(freqs, end_freq, side='right')
+
+        if idx_min >= idx_max:
             return 0.0
-        return np.max(mag[mask])
+
+        return np.max(mag[idx_min:idx_max])
 
     @staticmethod
     def calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands=3):
