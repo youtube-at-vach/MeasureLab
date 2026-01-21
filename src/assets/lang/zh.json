@@ -944,5 +944,8 @@
     "Raw Time Series": "原始时间序列",
     "Loudness": "响度",
     "Sharpness": "尖锐度",
-    "Tonality": "音调性"
+    "Tonality": "音调性",
+    "Done {0}/{1}": "完成 {0}/{1}",
+    "Optimizing FFT... (Size {0})": "正在优化 FFT... (大小 {0})",
+    "Saving optimization results... {0}/{1}": "正在保存优化结果... {0}/{1}"
 }

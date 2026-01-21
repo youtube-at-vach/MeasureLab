@@ -944,5 +944,8 @@
     "Raw Time Series": "원시 시계열",
     "Loudness": "라우드니스",
     "Sharpness": "샤프니스",
-    "Tonality": "조성"
+    "Tonality": "조성",
+    "Done {0}/{1}": "완료 {0}/{1}",
+    "Optimizing FFT... (Size {0})": "FFT 최적화 중... (크기 {0})",
+    "Saving optimization results... {0}/{1}": "최적화 결과 저장 중... {0}/{1}"
 }

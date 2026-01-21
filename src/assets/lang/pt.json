@@ -944,5 +944,8 @@
     "Raw Time Series": "Série Temporal Bruta",
     "Loudness": "Sonoridade",
     "Sharpness": "Nitidez",
-    "Tonality": "Tonalidade"
+    "Tonality": "Tonalidade",
+    "Done {0}/{1}": "Concluído {0}/{1}",
+    "Optimizing FFT... (Size {0})": "Otimizando FFT... (Tamanho {0})",
+    "Saving optimization results... {0}/{1}": "Salvando resultados da otimização... {0}/{1}"
 }
