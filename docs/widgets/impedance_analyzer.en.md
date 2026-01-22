@@ -52,6 +52,8 @@ This is called the "I-V method (Current-Voltage method)."
         * **Voltage Ch (Input L)**: Measures the voltage $V$ across the DUT.
         * **Current Ch (Input R)**: Measures the voltage $V_{shunt}$ across the shunt resistor. The current is $I = V_{shunt} / R_{shunt}$.
 
+Click the "Show Connection Diagram" button at the bottom left to view this diagram in a separate window.
+
 ## Operation Procedures
 
 ### Initial Setup
@@ -82,6 +84,8 @@ Continuously measures values at a specific frequency.
     * **|Z| (Magnitude)**: Absolute value of impedance.
     * **θ (Phase)**: Phase angle.
     * **Ls / Cs**: Equivalent inductance or capacitance value at that frequency.
+
+*Note: Check "Time Series (Manual)" below the plot to graph impedance changes over time instead of frequency.*
 
 ### FRA Sweep
 
