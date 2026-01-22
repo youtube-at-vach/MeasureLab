@@ -252,6 +252,7 @@ class LTCDecoder:
         self.pulse_avg = (sample_rate / fps) / 160.0
 
         self.decoded_bits = []
+        self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
 
@@ -274,6 +275,7 @@ class LTCDecoder:
         self.pulse_avg = (sample_rate / fps) / 160.0
 
         self.decoded_bits = []
+        self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
 
@@ -384,6 +386,7 @@ class LTCDecoder:
         self.decoded_bits.append(bit)
         if len(self.decoded_bits) > 160:
              self.decoded_bits.pop(0)
+        self.sync_val = ((self.sync_val << 1) | bit) & 0xFFFF
 
     def _check_sync(self) -> bool:
         if len(self.decoded_bits) >= 16:
@@ -393,12 +396,7 @@ class LTCDecoder:
 
             # Optimization: could allow reverse play, but for now forward only
 
-            last16 = self.decoded_bits[-16:]
-            val = 0
-            for b in last16:
-                val = (val << 1) | b
-
-            if val == 0x3FFD:
+            if self.sync_val == 0x3FFD:
                 if len(self.decoded_bits) >= 80:
                     frame_bits = self.decoded_bits[-80:]
                     self._decode_frame_bits(frame_bits)
