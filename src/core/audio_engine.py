@@ -49,6 +49,7 @@ class AudioEngine:
         # Pre-allocated buffers to reduce GC pressure
         self._mix_buffer = None
         self._client_buffer = None
+        self._logical_in_buffer = None
 
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
@@ -205,7 +206,12 @@ class AudioEngine:
                 # logical_in is usually stereo (2)
 
                 lb_src = self.last_output_buffer
-                logical_in = np.zeros((frames, 2), dtype='float32')
+                if (self._logical_in_buffer is not None and
+                        self._logical_in_buffer.shape == (frames, 2)):
+                    logical_in = self._logical_in_buffer
+                else:
+                    logical_in = np.zeros((frames, 2), dtype='float32')
+                    self._logical_in_buffer = logical_in
 
                 if lb_src.shape[1] >= 2:
                     logical_in[:, :2] = lb_src[:, :2]
