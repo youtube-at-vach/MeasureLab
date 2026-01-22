@@ -172,8 +172,7 @@ class LTCEncoder:
         # Calculate samples per bit (80 bits total)
         # Note: Samples per bit is not integer usually. We need sub-sample precision or just accumulate phase.
 
-        samples = np.zeros(int(self.samples_per_frame + 1.0)) # Over allocate slightly
-        idx = 0
+        samples = np.zeros(int(self.samples_per_frame) + 2, dtype=np.float32) # Over allocate slightly
 
         samples_per_bit = self.samples_per_frame / 80.0
 
@@ -187,8 +186,6 @@ class LTCEncoder:
         current_level = self.phase
 
         # For each bit
-        buffer = []
-
         for bit_val in bits:
             # Duration of this bit is 1.0 bit-time
             # Start of bit -> transition
@@ -211,20 +208,20 @@ class LTCEncoder:
                 # Fill until end
                 count = end_sample - start_sample
                 if count > 0:
-                    buffer.extend([current_level] * count)
+                    samples[out_idx : out_idx + count] = current_level
                     out_idx += count
             else:
                 # 1 -> Transition at mid
                 count1 = mid_sample - start_sample
                 if count1 > 0:
-                    buffer.extend([current_level] * count1)
+                    samples[out_idx : out_idx + count1] = current_level
                     out_idx += count1
 
                 current_level = -current_level # Mid transition
 
                 count2 = end_sample - mid_sample
                 if count2 > 0:
-                    buffer.extend([current_level] * count2)
+                    samples[out_idx : out_idx + count2] = current_level
                     out_idx += count2
 
             t += 1.0
@@ -232,7 +229,7 @@ class LTCEncoder:
         # Update phase for next frame
         self.phase = current_level
 
-        return np.array(buffer, dtype=np.float32)
+        return samples[:out_idx]
 
 class LTCDecoder:
     """Decodes audio samples to Timecode."""
