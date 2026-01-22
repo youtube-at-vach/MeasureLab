@@ -947,5 +947,21 @@
     "Tonality": "音调性",
     "Done {0}/{1}": "完成 {0}/{1}",
     "Optimizing FFT... (Size {0})": "正在优化 FFT... (大小 {0})",
-    "Saving optimization results... {0}/{1}": "正在保存优化结果... {0}/{1}"
+    "Saving optimization results... {0}/{1}": "正在保存优化结果... {0}/{1}",
+    "Calibration Profiles": "校准配置文件",
+    "Confirm Delete": "确认删除",
+    "Confirm Overwrite": "确认覆盖",
+    "Current Settings": "当前设置",
+    "Delete": "删除",
+    "Delete profile '{0}'?": "删除配置文件 '{0}'？",
+    "Device: {0}": "设备：{0}",
+    "Load": "加载",
+    "New Profile Name": "新配置文件名称",
+    "Please enter a profile name.": "请输入配置文件名称。",
+    "Profile '{0}' already exists. Overwrite?": "配置文件 '{0}' 已存在。是否覆盖？",
+    "Profile loaded.": "配置文件已加载。",
+    "Profile saved.": "配置文件已保存。",
+    "Save As...": "另存为...",
+    "Saving recording...": "正在保存录音...",
+    "Select Profile:": "选择配置文件："
 }

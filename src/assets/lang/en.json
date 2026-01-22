@@ -946,5 +946,21 @@
     "Transient Analyzer": "Transient Analyzer",
     "Done {0}/{1}": "Done {0}/{1}",
     "Optimizing FFT... (Size {0})": "Optimizing FFT... (Size {0})",
-    "Saving optimization results... {0}/{1}": "Saving optimization results... {0}/{1}"
+    "Saving optimization results... {0}/{1}": "Saving optimization results... {0}/{1}",
+    "Calibration Profiles": "Calibration Profiles",
+    "Confirm Delete": "Confirm Delete",
+    "Confirm Overwrite": "Confirm Overwrite",
+    "Current Settings": "Current Settings",
+    "Delete": "Delete",
+    "Delete profile '{0}'?": "Delete profile '{0}'?",
+    "Device: {0}": "Device: {0}",
+    "Load": "Load",
+    "New Profile Name": "New Profile Name",
+    "Please enter a profile name.": "Please enter a profile name.",
+    "Profile '{0}' already exists. Overwrite?": "Profile '{0}' already exists. Overwrite?",
+    "Profile loaded.": "Profile loaded.",
+    "Profile saved.": "Profile saved.",
+    "Save As...": "Save As...",
+    "Saving recording...": "Saving recording...",
+    "Select Profile:": "Select Profile:"
 }

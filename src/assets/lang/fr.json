@@ -947,5 +947,21 @@
     "Tonality": "Tonalité",
     "Done {0}/{1}": "Terminé {0}/{1}",
     "Optimizing FFT... (Size {0})": "Optimisation FFT... (Taille {0})",
-    "Saving optimization results... {0}/{1}": "Enregistrement des résultats d'optimisation... {0}/{1}"
+    "Saving optimization results... {0}/{1}": "Enregistrement des résultats d'optimisation... {0}/{1}",
+    "Calibration Profiles": "Profils d'étalonnage",
+    "Confirm Delete": "Confirmer la suppression",
+    "Confirm Overwrite": "Confirmer l'écrasement",
+    "Current Settings": "Paramètres actuels",
+    "Delete": "Supprimer",
+    "Delete profile '{0}'?": "Supprimer le profil '{0}' ?",
+    "Device: {0}": "Appareil : {0}",
+    "Load": "Charger",
+    "New Profile Name": "Nouveau nom de profil",
+    "Please enter a profile name.": "Veuillez saisir un nom de profil.",
+    "Profile '{0}' already exists. Overwrite?": "Le profil '{0}' existe déjà. Écraser ?",
+    "Profile loaded.": "Profil chargé.",
+    "Profile saved.": "Profil enregistré.",
+    "Save As...": "Enregistrer sous...",
+    "Saving recording...": "Enregistrement en cours...",
+    "Select Profile:": "Sélectionner un profil :"
 }

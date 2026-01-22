@@ -1058,8 +1058,48 @@ class SettingsWidget(QWidget):
         calibration_tab = QWidget()
         calibration_layout = QVBoxLayout()
 
+        # Profiles Group
+        prof_group = QGroupBox(tr("Calibration Profiles"))
+        prof_layout = QVBoxLayout()
+
+        # Row 1: Profile Selection
+        prof_sel_layout = QHBoxLayout()
+        self.cal_profile_combo = QComboBox()
+        self.cal_profile_combo.currentIndexChanged.connect(self.on_profile_selected)
+        prof_sel_layout.addWidget(QLabel(tr("Select Profile:")))
+        prof_sel_layout.addWidget(self.cal_profile_combo, 1)
+        prof_layout.addLayout(prof_sel_layout)
+
+        # Device Label
+        self.cal_profile_device_label = QLabel("")
+        self.cal_profile_device_label.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
+        prof_layout.addWidget(self.cal_profile_device_label)
+
+        # Row 2: Actions
+        prof_act_layout = QHBoxLayout()
+        self.load_prof_btn = QPushButton(tr("Load"))
+        self.load_prof_btn.clicked.connect(self.on_load_profile)
+        self.del_prof_btn = QPushButton(tr("Delete"))
+        self.del_prof_btn.clicked.connect(self.on_delete_profile)
+        prof_act_layout.addWidget(self.load_prof_btn)
+        prof_act_layout.addWidget(self.del_prof_btn)
+        prof_layout.addLayout(prof_act_layout)
+
+        # Row 3: Save New
+        prof_save_layout = QHBoxLayout()
+        self.cal_profile_name_edit = QLineEdit()
+        self.cal_profile_name_edit.setPlaceholderText(tr("New Profile Name"))
+        self.save_prof_btn = QPushButton(tr("Save As..."))
+        self.save_prof_btn.clicked.connect(self.on_save_profile)
+        prof_save_layout.addWidget(self.cal_profile_name_edit, 1)
+        prof_save_layout.addWidget(self.save_prof_btn)
+        prof_layout.addLayout(prof_save_layout)
+
+        prof_group.setLayout(prof_layout)
+        calibration_layout.addWidget(prof_group)
+
         # Calibration Group
-        cal_group = QGroupBox(tr("Calibration"))
+        cal_group = QGroupBox(tr("Current Settings"))
         cal_layout = QFormLayout()
 
         # Input Sensitivity
@@ -1133,7 +1173,9 @@ class SettingsWidget(QWidget):
         self.update_buffer_duration()
         self.update_in_sens_display()
         self.update_out_gain_display()
+
         self.update_spl_display()
+        self.refresh_cal_profiles()
 
     def on_pipewire_jack_resident_toggled(self, checked: bool):
         self.config_manager.set_pipewire_jack_resident(bool(checked))
@@ -1472,3 +1514,95 @@ class SettingsWidget(QWidget):
         except Exception as e:
             progress.close()
             QMessageBox.critical(self, tr("Error"), tr("Optimization failed: {0}").format(str(e)))
+
+    # --- Calibration Profiles ---
+
+    def refresh_cal_profiles(self):
+        self.cal_profile_combo.blockSignals(True)
+        self.cal_profile_combo.clear()
+
+        profiles = self.audio_engine.calibration.get_profiles()
+        for name in sorted(profiles.keys()):
+            self.cal_profile_combo.addItem(name)
+
+        self.cal_profile_combo.blockSignals(False)
+        self.on_profile_selected()
+
+    def on_profile_selected(self):
+        name = self.cal_profile_combo.currentText()
+        profiles = self.audio_engine.calibration.get_profiles()
+        if name in profiles:
+            dev_name = profiles[name].get('device_name', '')
+            self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
+            self.load_prof_btn.setEnabled(True)
+            self.del_prof_btn.setEnabled(True)
+        else:
+            self.cal_profile_device_label.setText("")
+            self.load_prof_btn.setEnabled(False)
+            self.del_prof_btn.setEnabled(False)
+
+    def on_save_profile(self):
+        name = self.cal_profile_name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, tr("Warning"), tr("Please enter a profile name."))
+            return
+
+        # Get active device name to store with profile
+        try:
+            # Try to get input device name
+            devices = self.audio_engine.list_devices()
+            in_dev_id = self.audio_engine.input_device
+            dev_name = "Unknown"
+            if in_dev_id is not None and 0 <= int(in_dev_id) < len(devices):
+                dev_name = devices[int(in_dev_id)].get('name', 'Unknown')
+        except Exception:
+            dev_name = "Unknown"
+
+        if name in self.audio_engine.calibration.get_profiles():
+            ret = QMessageBox.question(self, tr("Confirm Overwrite"), 
+                                       tr("Profile '{0}' already exists. Overwrite?").format(name),
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if ret != QMessageBox.StandardButton.Yes:
+                return
+
+        try:
+            self.audio_engine.calibration.save_profile(name, dev_name)
+            self.refresh_cal_profiles()
+            # Select the saved profile
+            idx = self.cal_profile_combo.findText(name)
+            if idx >= 0:
+                self.cal_profile_combo.setCurrentIndex(idx)
+            self.cal_profile_name_edit.clear()
+            QMessageBox.information(self, tr("Success"), tr("Profile saved."))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), str(e))
+
+    def on_load_profile(self):
+        name = self.cal_profile_combo.currentText()
+        if not name:
+            return
+
+        try:
+            self.audio_engine.calibration.load_profile(name)
+            # Update UI to reflect loaded values
+            self.update_in_sens_display()
+            self.update_out_gain_display()
+            self.update_spl_display()
+            QMessageBox.information(self, tr("Success"), tr("Profile loaded."))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), str(e))
+
+    def on_delete_profile(self):
+        name = self.cal_profile_combo.currentText()
+        if not name:
+            return
+
+        ret = QMessageBox.question(self, tr("Confirm Delete"), 
+                                   tr("Delete profile '{0}'?").format(name),
+                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if ret == QMessageBox.StandardButton.Yes:
+            try:
+                self.audio_engine.calibration.delete_profile(name)
+                self.refresh_cal_profiles()
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), str(e))

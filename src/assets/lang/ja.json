@@ -946,5 +946,21 @@
     "Sound Level Meter": "騒音計",
     "Sound Quality Analyzer": "音質アナライザ",
     "Transient Analyzer": "トランジェントアナライザ",
-    "Optimizing FFT... (Size {0})": "FFTを最適化中... (サイズ {0})"
+    "Optimizing FFT... (Size {0})": "FFTを最適化中... (サイズ {0})",
+    "Calibration Profiles": "キャリブレーション・プロファイル",
+    "Confirm Delete": "消去の確認",
+    "Confirm Overwrite": "上書きの確認",
+    "Current Settings": "現在の設定",
+    "Delete": "削除",
+    "Delete profile '{0}'?": "プロファイル '{0}' を削除しますか？",
+    "Device: {0}": "デバイス: {0}",
+    "Load": "ロード",
+    "New Profile Name": "新規プロファイル名",
+    "Please enter a profile name.": "プロファイル名を入力してください。",
+    "Profile '{0}' already exists. Overwrite?": "プロファイル '{0}' は既に存在します。上書きしますか？",
+    "Profile loaded.": "プロファイルがロードされました。",
+    "Profile saved.": "プロファイルが保存されました。",
+    "Save As...": "別名で保存...",
+    "Saving recording...": "録音を保存中...",
+    "Select Profile:": "プロファイルを選択:"
 }
