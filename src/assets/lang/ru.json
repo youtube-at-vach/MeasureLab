@@ -947,5 +947,21 @@
     "Tonality": "Тональность",
     "Done {0}/{1}": "Готово {0}/{1}",
     "Optimizing FFT... (Size {0})": "Оптимизация FFT... (Размер {0})",
-    "Saving optimization results... {0}/{1}": "Сохранение результатов оптимизации... {0}/{1}"
+    "Saving optimization results... {0}/{1}": "Сохранение результатов оптимизации... {0}/{1}",
+    "Calibration Profiles": "Профили калибровки",
+    "Confirm Delete": "Подтвердите удаление",
+    "Confirm Overwrite": "Подтвердите перезапись",
+    "Current Settings": "Текущие настройки",
+    "Delete": "Удалить",
+    "Delete profile '{0}'?": "Удалить профиль '{0}'?",
+    "Device: {0}": "Устройство: {0}",
+    "Load": "Загрузить",
+    "New Profile Name": "Имя нового профиля",
+    "Please enter a profile name.": "Пожалуйста, введите имя профиля.",
+    "Profile '{0}' already exists. Overwrite?": "Профиль '{0}' уже существует. Перезаписать?",
+    "Profile loaded.": "Профиль загружен.",
+    "Profile saved.": "Профиль сохранен.",
+    "Save As...": "Сохранить как...",
+    "Saving recording...": "Сохранение записи...",
+    "Select Profile:": "Выберите профиль:"
 }

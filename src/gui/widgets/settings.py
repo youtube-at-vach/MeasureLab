@@ -1084,7 +1084,7 @@ class SettingsWidget(QWidget):
         prof_act_layout.addWidget(self.load_prof_btn)
         prof_act_layout.addWidget(self.del_prof_btn)
         prof_layout.addLayout(prof_act_layout)
-        
+
         # Row 3: Save New
         prof_save_layout = QHBoxLayout()
         self.cal_profile_name_edit = QLineEdit()
@@ -1520,11 +1520,11 @@ class SettingsWidget(QWidget):
     def refresh_cal_profiles(self):
         self.cal_profile_combo.blockSignals(True)
         self.cal_profile_combo.clear()
-        
+
         profiles = self.audio_engine.calibration.get_profiles()
         for name in sorted(profiles.keys()):
             self.cal_profile_combo.addItem(name)
-        
+
         self.cal_profile_combo.blockSignals(False)
         self.on_profile_selected()
 
@@ -1546,7 +1546,7 @@ class SettingsWidget(QWidget):
         if not name:
             QMessageBox.warning(self, tr("Warning"), tr("Please enter a profile name."))
             return
-        
+
         # Get active device name to store with profile
         try:
             # Try to get input device name
@@ -1581,7 +1581,7 @@ class SettingsWidget(QWidget):
         name = self.cal_profile_combo.currentText()
         if not name:
             return
-            
+
         try:
             self.audio_engine.calibration.load_profile(name)
             # Update UI to reflect loaded values
@@ -1596,7 +1596,7 @@ class SettingsWidget(QWidget):
         name = self.cal_profile_combo.currentText()
         if not name:
             return
-            
+
         ret = QMessageBox.question(self, tr("Confirm Delete"), 
                                    tr("Delete profile '{0}'?").format(name),
                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)

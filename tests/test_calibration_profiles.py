@@ -14,12 +14,12 @@ class TestCalibrationProfiles(unittest.TestCase):
 
     def test_save_load_profile(self):
         cm = CalibrationManager(self.config_path)
-        
+
         # Set some values
         cm.input_sensitivity = 0.5
         cm.output_gain = 2.0
         cm.save_profile("Test Profile", "Test Device")
-        
+
         # Check file content
         with open(self.config_path, 'r') as f:
             data = json.load(f)
@@ -31,10 +31,10 @@ class TestCalibrationProfiles(unittest.TestCase):
         # Modify current values
         cm.input_sensitivity = 1.0
         cm.output_gain = 1.0
-        
+
         # Load profile
         cm.load_profile("Test Profile")
-        
+
         # Verify values restored
         self.assertEqual(cm.input_sensitivity, 0.5)
         self.assertEqual(cm.output_gain, 2.0)
@@ -42,13 +42,13 @@ class TestCalibrationProfiles(unittest.TestCase):
     def test_delete_profile(self):
         cm = CalibrationManager(self.config_path)
         cm.save_profile("Delete Me", "Dev")
-        
+
         self.assertIn("Delete Me", cm.get_profiles())
-        
+
         cm.delete_profile("Delete Me")
-        
+
         self.assertNotIn("Delete Me", cm.get_profiles())
-        
+
         with open(self.config_path, 'r') as f:
             data = json.load(f)
             self.assertNotIn("Delete Me", data['profiles'])

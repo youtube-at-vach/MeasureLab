@@ -66,7 +66,7 @@ class CalibrationManager:
                                     self.spl_offset_db = float(entry.get('offset_db'))
                                 except Exception:
                                     self.spl_offset_db = None
-                    
+
                     self.profiles = data.get('profiles', {})
             except Exception as e:
                 print(f"Failed to load calibration: {e}")
@@ -147,7 +147,7 @@ class CalibrationManager:
         """Saves current settings as a named profile."""
         if not hasattr(self, 'profiles'):
             self.profiles = {}
-        
+
         self.profiles[name] = {
             'device_name': device_name,
             'input_sensitivity': self.input_sensitivity,

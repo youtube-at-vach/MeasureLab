@@ -947,5 +947,21 @@
     "Tonality": "조성",
     "Done {0}/{1}": "완료 {0}/{1}",
     "Optimizing FFT... (Size {0})": "FFT 최적화 중... (크기 {0})",
-    "Saving optimization results... {0}/{1}": "최적화 결과 저장 중... {0}/{1}"
+    "Saving optimization results... {0}/{1}": "최적화 결과 저장 중... {0}/{1}",
+    "Calibration Profiles": "보정 프로필",
+    "Confirm Delete": "삭제 확인",
+    "Confirm Overwrite": "덮어쓰기 확인",
+    "Current Settings": "현재 설정",
+    "Delete": "삭제",
+    "Delete profile '{0}'?": "'{0}' 프로필을 삭제하시겠습니까?",
+    "Device: {0}": "장치: {0}",
+    "Load": "불러오기",
+    "New Profile Name": "새 프로필 이름",
+    "Please enter a profile name.": "프로필 이름을 입력해 주세요.",
+    "Profile '{0}' already exists. Overwrite?": "'{0}' 프로필이 이미 존재합니다. 덮어쓰시겠습니까?",
+    "Profile loaded.": "프로필을 불러왔습니다.",
+    "Profile saved.": "프로필을 저장했습니다.",
+    "Save As...": "다른 이름으로 저장...",
+    "Saving recording...": "녹음 저장 중...",
+    "Select Profile:": "프로필 선택:"
 }
