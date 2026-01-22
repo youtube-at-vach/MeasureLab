@@ -259,6 +259,59 @@ class SoundLevelMeter(MeasurementModule):
 
         return sos
 
+    def _apply_impulse_weighting(self, sq_sig, sr):
+        """
+        Apply Impulse time weighting using a downsampled approximation to improve performance.
+        Impulse: Rise 35ms, Fall 1500ms.
+        """
+        factor = 8 # Processing 1/8th of samples gives ~8x speedup with good accuracy
+
+        # 1. Adjust time constants for lower sample rate
+        sr_low = sr / factor
+
+        tau_rise = self.TIME_CONSTANTS.get('IMPULSE', 0.035)
+        tau_fall = self.IMPULSE_FALL_TAU
+
+        alpha_rise = 1.0 - np.exp(-1.0 / (sr_low * tau_rise))
+        alpha_fall = 1.0 - np.exp(-1.0 / (sr_low * tau_fall))
+
+        # 2. Downsample using Max pooling (to capture peaks)
+        # Pad to multiple of factor
+        n = len(sq_sig)
+        rem = n % factor
+        if rem != 0:
+            pad_width = factor - rem
+            # Pad with 0 (silence) to avoid extending loud signals artificially
+            sig_padded = np.pad(sq_sig, (0, pad_width), mode='constant', constant_values=0)
+        else:
+            sig_padded = sq_sig
+
+        # Reshape to (chunks, factor) and take max of each chunk
+        chunks = sig_padded.reshape(-1, factor)
+        sig_low = np.max(chunks, axis=1)
+
+        # 3. Apply standard Impulse logic on reduced data (Python loop)
+        curr = self.current_sq_val
+        out_low = np.empty_like(sig_low)
+
+        # Performance critical loop (now 8x smaller)
+        for i in range(len(sig_low)):
+            s = sig_low[i]
+            if s > curr:
+                curr = alpha_rise * s + (1.0 - alpha_rise) * curr
+            else:
+                curr = alpha_fall * s + (1.0 - alpha_fall) * curr
+            out_low[i] = curr
+
+        # 4. Upsample (Repeat)
+        out_high = np.repeat(out_low, factor)
+
+        # Trim padding
+        if rem != 0:
+            out_high = out_high[:n]
+
+        return out_high, curr
+
     def start_analysis(self):
         if self.is_running:
             return
@@ -393,34 +446,8 @@ class SoundLevelMeter(MeasurementModule):
             self.current_sq_val = filtered_sq[-1]
             block_vals = filtered_sq
         else:
-            # Impulse implementation
-            # Need to iterate.
-            # x[n] is input power.
-            # if x[n] > y[n-1]: tau = 35ms
-            # else: tau = 1500ms
-            # This is a Peak detector with different attack/release.
-
-            vals = []
-            curr = self.current_sq_val
-            alpha_rise = 1.0 - np.exp(-1.0 / (sr * 0.035))
-            alpha_fall = 1.0 - np.exp(-1.0 / (sr * 1.5))
-
-            # Very slow in pure python.
-            # Let's process in small chunks or use a numba JIT if available (likely not in this env).
-            # We'll assume the user isn't running very high sample rates or accept some CPU load.
-            # Vectorization trick:
-            # It's an attack/release filter.
-            # We can use a recursive approach.
-
-            for s in sq_sig:
-                if s > curr:
-                    curr = alpha_rise * s + (1 - alpha_rise) * curr
-                else:
-                    curr = alpha_fall * s + (1 - alpha_fall) * curr
-                vals.append(curr)
-
-            self.current_sq_val = curr
-            block_vals = np.array(vals)
+            # Impulse implementation using optimized downsampling strategy
+            block_vals, self.current_sq_val = self._apply_impulse_weighting(sq_sig, sr)
 
         # Update Measurements
 
