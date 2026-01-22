@@ -56,6 +56,33 @@ class FileLoadWorker(QThread):
             self.finished.emit(False, None, str(e))
 
 
+class FileSaveWorker(QThread):
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, record_buffer, sample_rate, filepath, format=None, subtype=None):
+        super().__init__()
+        # Create a shallow copy of the list to avoid concurrent modification issues
+        # (though arrays themselves are not modified, the list might be if recording wasn't stopped properly)
+        self.record_buffer = list(record_buffer)
+        self.sample_rate = sample_rate
+        self.filepath = filepath
+        self.format = format
+        self.subtype = subtype
+
+    def run(self):
+        if not self.record_buffer:
+            self.finished.emit(False, "No recording data")
+            return
+
+        try:
+            # Perform the heavy lifting: concatenation and IO
+            data = np.concatenate(self.record_buffer, axis=0)
+            sf.write(self.filepath, data, self.sample_rate, format=self.format, subtype=self.subtype)
+            self.finished.emit(True, f"Saved: {self.filepath}")
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
 class RecorderPlayer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -249,6 +276,7 @@ class RecorderPlayerWidget(QWidget):
         self.init_ui()
 
         self.load_worker = None
+        self.save_worker = None
         self.progress_dialog = None
 
         # Update timer
@@ -447,13 +475,48 @@ class RecorderPlayerWidget(QWidget):
 
     def on_save(self):
         fname, selected_filter = QFileDialog.getSaveFileName(self, tr("Save Recording"), "recording.wav", tr("WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)"))
-        if fname:
-            # Determine format/subtype if needed, or let soundfile guess from extension
-            success, msg = self.module.save_recording(fname)
-            if success:
-                QMessageBox.information(self, tr("Success"), msg)
-            else:
-                QMessageBox.critical(self, tr("Error"), tr("Failed to save:\n{0}").format(msg))
+        if not fname:
+            return
+
+        # Disable UI to prevent concurrent actions
+        self.rec_btn.setEnabled(False)
+        self.save_btn.setEnabled(False)
+
+        # Start background saving
+        # Pass explicit data to worker to decouple from module state during thread execution
+        self.save_worker = FileSaveWorker(
+            self.module.record_buffer,
+            self.module.audio_engine.sample_rate,
+            fname
+        )
+        self.save_worker.finished.connect(self.on_save_finished)
+
+        # Show progress dialog
+        self.progress_dialog = QProgressDialog(tr("Saving recording..."), None, 0, 0, self)
+        self.progress_dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self.progress_dialog.setMinimumDuration(0)
+        # Cannot cancel a save operation easily in the middle of sf.write, so no cancel button or handler for now.
+        # If we wanted to cancel, we'd need to chunk the write or use a cancellable write loop.
+        # For now, just indeterminate progress.
+        self.progress_dialog.setCancelButton(None)
+        self.progress_dialog.show()
+
+        self.save_worker.start()
+
+    def on_save_finished(self, success, msg):
+        if self.progress_dialog:
+            self.progress_dialog.close()
+            self.progress_dialog = None
+
+        self.rec_btn.setEnabled(True)
+        self.save_btn.setEnabled(True)
+
+        if success:
+            QMessageBox.information(self, tr("Success"), msg)
+        else:
+            QMessageBox.critical(self, tr("Error"), tr("Failed to save:\n{0}").format(msg))
+
+        self.save_worker = None
 
     def on_in_mode_changed(self, text):
         self.module.input_mode = self.in_mode_combo.currentData()
