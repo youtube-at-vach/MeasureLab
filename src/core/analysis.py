@@ -390,19 +390,23 @@ class AudioCalc:
         # Use a mask to identify bins belonging to tones
         is_tone_bin = np.zeros(len(mag), dtype=bool)
 
-        for f in tone_freqs:
-            # Find peak near f
-            width = max(10.0, f * window_width_pct)
+        # Vectorized searchsorted
+        tone_freqs_arr = np.asarray(tone_freqs)
+        widths = np.maximum(10.0, tone_freqs_arr * window_width_pct)
 
-            # Use searchsorted for O(log N) lookup instead of O(N) mask
-            start_freq = f - width
-            end_freq = f + width
+        start_freqs = tone_freqs_arr - widths
+        end_freqs = tone_freqs_arr + widths
 
-            idx_min = np.searchsorted(freqs, start_freq, side='left')
-            idx_max = np.searchsorted(freqs, end_freq, side='right')
+        idx_mins = np.searchsorted(freqs, start_freqs, side='left')
+        idx_maxs = np.searchsorted(freqs, end_freqs, side='right')
+
+        for i in range(len(tone_freqs_arr)):
+            idx_min = idx_mins[i]
+            idx_max = idx_maxs[i]
 
             if idx_max > idx_min:
                 subset_mag = mag[idx_min:idx_max]
+                # argmax on empty slice raises error, but checked idx_max > idx_min
                 local_peak_idx_rel = np.argmax(subset_mag)
                 peak_idx = idx_min + local_peak_idx_rel
 
