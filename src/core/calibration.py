@@ -22,6 +22,7 @@ class CalibrationManager:
         # Stored as an offset: SPL[dB] = dBFS_C + spl_offset_db.
         self.spl_offset_db = None
         self.spl_offset_db = None
+        self.profiles = {}
         self.load()
 
     def load(self):
@@ -65,6 +66,8 @@ class CalibrationManager:
                                     self.spl_offset_db = float(entry.get('offset_db'))
                                 except Exception:
                                     self.spl_offset_db = None
+                    
+                    self.profiles = data.get('profiles', {})
             except Exception as e:
                 print(f"Failed to load calibration: {e}")
 
@@ -77,6 +80,7 @@ class CalibrationManager:
             'lockin_gain_offset': self.lockin_gain_offset,
             # Keep a single SPL calibration value.
             'spl_offset_db': self.spl_offset_db,
+            'profiles': getattr(self, 'profiles', {}),
         }
         try:
             with open(self.config_path, 'w') as f:
@@ -134,10 +138,52 @@ class CalibrationManager:
         self.frequency_calibration = factor
         self.save()
 
-    def set_lockin_gain_offset(self, offset_db):
-        """Sets the absolute gain offset for the Lock-in Amplifier in dB."""
         self.lockin_gain_offset = offset_db
         self.save()
+
+    # --- Profile Management ---
+
+    def save_profile(self, name, device_name):
+        """Saves current settings as a named profile."""
+        if not hasattr(self, 'profiles'):
+            self.profiles = {}
+        
+        self.profiles[name] = {
+            'device_name': device_name,
+            'input_sensitivity': self.input_sensitivity,
+            'output_gain': self.output_gain,
+            'output_gain_is_calibrated': self.output_gain_is_calibrated,
+            'frequency_calibration': self.frequency_calibration,
+            'lockin_gain_offset': self.lockin_gain_offset,
+            'spl_offset_db': self.spl_offset_db
+        }
+        self.save()
+
+    def load_profile(self, name):
+        """Loads settings from a named profile."""
+        if not hasattr(self, 'profiles') or name not in self.profiles:
+            raise ValueError(f"Profile '{name}' not found")
+
+        p = self.profiles[name]
+        self.input_sensitivity = p.get('input_sensitivity', 1.0)
+        self.output_gain = p.get('output_gain', 1.0)
+        self.output_gain_is_calibrated = p.get('output_gain_is_calibrated', False)
+        self.frequency_calibration = p.get('frequency_calibration', 1.0)
+        self.lockin_gain_offset = p.get('lockin_gain_offset', 0.0)
+        self.spl_offset_db = p.get('spl_offset_db')
+        self.save() # Persist as current
+
+    def delete_profile(self, name):
+        """Deletes a named profile."""
+        if hasattr(self, 'profiles') and name in self.profiles:
+            del self.profiles[name]
+            self.save()
+
+    def get_profiles(self):
+        """Returns the dictionary of profiles."""
+        if not hasattr(self, 'profiles'):
+            self.profiles = {}
+        return self.profiles
 
     def dbfs_to_dbv(self, dbfs):
         """Converts dBFS to dBV."""
