@@ -206,18 +206,22 @@ class AudioEngine:
                 # logical_in is usually stereo (2)
 
                 lb_src = self.last_output_buffer
-                if (self._logical_in_buffer is not None and
-                        self._logical_in_buffer.shape == (frames, 2)):
-                    logical_in = self._logical_in_buffer
-                else:
-                    logical_in = np.zeros((frames, 2), dtype='float32')
-                    self._logical_in_buffer = logical_in
+                # Reuse logical input buffer if possible to avoid allocation
+                if (self._logical_in_buffer is None or
+                        self._logical_in_buffer.shape != (frames, 2)):
+                    # Allocate new buffer (zeros is safer than empty for initial state)
+                    self._logical_in_buffer = np.zeros((frames, 2), dtype='float32')
+
+                logical_in = self._logical_in_buffer
 
                 if lb_src.shape[1] >= 2:
                     logical_in[:, :2] = lb_src[:, :2]
                 elif lb_src.shape[1] == 1:
                     logical_in[:, 0] = lb_src[:, 0]
                     logical_in[:, 1] = lb_src[:, 0]
+                else:
+                    # Should not happen, but ensure silence if shape is unexpected
+                    logical_in.fill(0)
             else:
                 # Standard Hardware Input Mapping
                 if in_mode == 'left':
@@ -276,7 +280,10 @@ class AudioEngine:
 
             # Store for next loopback cycle
             if self.loopback:
-                self.last_output_buffer = mix_buffer.copy()
+                if (self.last_output_buffer is None or
+                        self.last_output_buffer.shape != mix_buffer.shape):
+                    self.last_output_buffer = np.empty_like(mix_buffer)
+                np.copyto(self.last_output_buffer, mix_buffer)
 
             # Map Logical Output -> Hardware Output
             if not self.mute_output:
