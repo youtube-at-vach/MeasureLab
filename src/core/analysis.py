@@ -1,5 +1,7 @@
 import functools
+import math
 import numpy as np
+import scipy.signal
 from scipy.optimize import minimize_scalar
 from scipy.signal import butter, get_window, sosfiltfilt
 
@@ -26,9 +28,6 @@ class AudioCalc:
         """
         if source_sr == target_sr:
             return data
-
-        import math
-        import scipy.signal
 
         # Calculate integer ratios for up/down sampling
         gcd = math.gcd(int(source_sr), int(target_sr))
