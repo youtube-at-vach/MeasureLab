@@ -85,12 +85,17 @@ class AudioCalc:
         N = len(signal)
         t = np.arange(N) / sampling_rate
 
+        # Pre-allocate arrays to avoid repeated allocation in loop
+        M = np.empty((N, 3), dtype=t.dtype)
+        M[:, 2] = 1.0  # The 'ones' column is constant
+
         def get_residual_rms(f):
             w = 2 * np.pi * f
-            sin_t = np.sin(w * t)
-            cos_t = np.cos(w * t)
-            ones = np.ones(N)
-            M = np.column_stack([sin_t, cos_t, ones])
+
+            # Fill pre-allocated M columns
+            # Using direct slice assignment is faster than column_stack
+            np.sin(w * t, out=M[:, 0])
+            np.cos(w * t, out=M[:, 1])
 
             # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
             # This avoids SVD used by lstsq and is much faster for this 3x3 system.
@@ -135,10 +140,13 @@ class AudioCalc:
 
         # 2. Get Final Residual
         w = 2 * np.pi * best_freq
-        sin_t = np.sin(w * t)
-        cos_t = np.cos(w * t)
-        ones = np.ones(N)
-        M = np.column_stack([sin_t, cos_t, ones])
+
+        # Pre-allocate M to avoid column_stack allocation
+        M = np.empty((N, 3), dtype=t.dtype)
+        np.sin(w * t, out=M[:, 0])
+        np.cos(w * t, out=M[:, 1])
+        M[:, 2] = 1.0
+
         coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
         fitted_fund = M @ coeffs
         residual = signal - fitted_fund
