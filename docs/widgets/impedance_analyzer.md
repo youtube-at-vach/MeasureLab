@@ -52,6 +52,8 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
         * **Voltage Ch (Input L)**: 測定対象にかかる電圧 $V$ を測る。
         * **Current Ch (Input R)**: シャント抵抗にかかる電圧 $V_{shunt}$ を測る。電流 $I = V_{shunt} / R_{shunt}$ となる。
 
+画面左下の「Show Connection Diagram」ボタンをクリックすると、この配線図を別ウィンドウで確認できます。
+
 ## 操作手順
 
 ### Initial Setup (初期設定)
@@ -82,6 +84,8 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
     * **|Z| (Magnitude)**: インピーダンスの絶対値。
     * **θ (Phase)**: 位相角。
     * **Ls / Cs**: その周波数でのインダクタンスまたはキャパシタンス相当値。
+
+※ プロット右下の「Time Series (Manual)」にチェックを入れると、周波数特性ではなく「時間経過に伴うインピーダンス変化」をグラフにプロットできます。
 
 ### スイープ測定
 
