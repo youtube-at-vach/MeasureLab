@@ -592,7 +592,11 @@ class AudioCalc:
         fit_mask = (freqs >= 1.0) & (freqs <= 100.0)
         # Exclude hum regions
         for f_h, _ in hum_components:
-            fit_mask &= ~((freqs >= f_h - 5.0) & (freqs <= f_h + 5.0))
+            f_start = f_h - 5.0
+            f_end = f_h + 5.0
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='right')
+            fit_mask[idx_start:idx_end] = False
 
         # Estimate White Noise (Median of 1k-20k)
         i_white_start = np.searchsorted(freqs, 1000.0, side='left')
@@ -640,7 +644,11 @@ class AudioCalc:
 
         # Exclude hum
         for h_freq, h_amp in hum_components:
-            mask_1f &= ~((freqs >= h_freq - 5.0) & (freqs <= h_freq + 5.0))
+            f_start = h_freq - 5.0
+            f_end = h_freq + 5.0
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='right')
+            mask_1f[idx_start:idx_end] = False
 
         if np.sum(mask_1f) > 5:
             f_log = np.log10(freqs[mask_1f])
