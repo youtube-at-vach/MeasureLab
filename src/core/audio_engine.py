@@ -2,7 +2,11 @@ import logging
 import threading
 
 import numpy as np
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except OSError:
+    # Handle cases where PortAudio is not found (e.g. CI or restricted environments)
+    sd = None
 
 from src.core.calibration import CalibrationManager
 
@@ -44,7 +48,10 @@ class AudioEngine:
         self.last_output_buffer = None
 
         # Accumulate callback status flags between UI polls.
-        self.accumulated_status = sd.CallbackFlags()
+        if sd:
+            self.accumulated_status = sd.CallbackFlags()
+        else:
+            self.accumulated_status = 0
 
         # Pre-allocated buffers to reduce GC pressure
         self._mix_buffer = None
@@ -81,7 +88,14 @@ class AudioEngine:
         We enrich PortAudio device info with a human-readable host API name
         (e.g. ASIO/WASAPI/DirectSound on Windows) to make UI selection clearer.
         """
-        devices = sd.query_devices()
+        if sd is None:
+            return []
+
+        try:
+            devices = sd.query_devices()
+        except Exception as e:
+            self.logger.error(f"Failed to query audio devices: {e}")
+            return []
 
         # Try to attach host API names; fall back to raw device dicts on error.
         try:
@@ -173,6 +187,10 @@ class AudioEngine:
     def _start_master_stream(self):
         """Starts the underlying sounddevice stream."""
         if self.stream is not None:
+            return
+
+        if sd is None:
+            self.logger.error("Cannot start stream: sounddevice/PortAudio not available")
             return
 
         # Determine hardware channels needed based on mode
@@ -296,9 +314,19 @@ class AudioEngine:
                     # Fallback to default output device.
                     dev_id = sd.default.device[1]
                 if dev_id is not None and dev_id != -1:
-                    hostapi_idx = sd.query_devices(dev_id).get('hostapi')
+                    # Check if devices can be queried
+                    try:
+                        dev_info = sd.query_devices(dev_id)
+                        hostapi_idx = dev_info.get('hostapi') if dev_info else None
+                    except Exception:
+                        hostapi_idx = None
+
                     if hostapi_idx is not None:
-                        hostapi_name = sd.query_hostapis(hostapi_idx).get('name')
+                        try:
+                            api_info = sd.query_hostapis(hostapi_idx)
+                            hostapi_name = api_info.get('name') if api_info else None
+                        except Exception:
+                            hostapi_name = None
                 if hostapi_name and 'jack' in str(hostapi_name).lower():
                     extra_settings = sd.JackSettings(client_name=self.jack_client_name)
             except Exception:
@@ -350,7 +378,10 @@ class AudioEngine:
 
         # Get and reset accumulated status
         current_status_flags = self.accumulated_status
-        self.accumulated_status = sd.CallbackFlags()
+        if sd:
+            self.accumulated_status = sd.CallbackFlags()
+        else:
+            self.accumulated_status = 0
 
         return {
             "active": active,
