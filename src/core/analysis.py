@@ -542,14 +542,20 @@ class AudioCalc:
         # 1. Hum Noise Detection (50Hz vs 60Hz)
         # Search for peaks at 50Hz and 60Hz
         def get_power_in_band(f_center, width=5.0):
-            mask = (freqs >= f_center - width) & (freqs <= f_center + width)
-            if not np.any(mask):
+            f_start = f_center - width
+            f_end = f_center + width
+
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='right')
+
+            if idx_start >= idx_end:
                 return 0.0
+
             # Integration: Power = sum(PSD^2 * bin_width)
             # mag is V/rtHz. mag^2 is V^2/Hz.
             # bin_width = fs / N = freqs[1] - freqs[0]
             bin_width = freqs[1] - freqs[0] if len(freqs) > 1 else 1.0
-            power = np.sum(mag[mask]**2) * bin_width
+            power = np.sum(mag[idx_start:idx_end]**2) * bin_width
             return power
 
         p50 = get_power_in_band(50.0)
@@ -581,11 +587,13 @@ class AudioCalc:
             fit_mask &= ~((freqs >= f_h - 5.0) & (freqs <= f_h + 5.0))
 
         # Estimate White Noise (Median of 1k-20k)
-        white_mask = (freqs >= 1000.0) & (freqs <= 20000.0)
-        if np.any(white_mask):
+        i_white_start = np.searchsorted(freqs, 1000.0, side='left')
+        i_white_end = np.searchsorted(freqs, 20000.0, side='right')
+
+        if i_white_start < i_white_end:
             # Median is robust to peaks, but under-estimates RMS of Gaussian noise (Rayleigh magnitude)
             # Factor: RMS / Median = 1 / sqrt(ln(2)) ~= 1.2011
-            white_density = np.median(mag[white_mask]) * 1.2011
+            white_density = np.median(mag[i_white_start:i_white_end]) * 1.2011
         else:
             white_density = 1e-9 # Fallback
 
@@ -594,9 +602,11 @@ class AudioCalc:
         # Determine Fit Upper Bound
         # Find first frequency where mag < white_density * 1.5 (approx 3.5dB margin)
         # Search in 1Hz - 1kHz range
-        search_mask = (freqs >= 1.0) & (freqs <= 1000.0)
-        search_freqs = freqs[search_mask]
-        search_mags = mag[search_mask]
+        i_search_start = np.searchsorted(freqs, 1.0, side='left')
+        i_search_end = np.searchsorted(freqs, 1000.0, side='right')
+
+        search_freqs = freqs[i_search_start:i_search_end]
+        search_mags = mag[i_search_start:i_search_end]
 
         # Smooth magnitudes slightly to avoid triggering on dips
         # Simple moving average of 3 bins
@@ -686,30 +696,32 @@ class AudioCalc:
 
         # 4. Integrated Noise in Bands
         def integrate_band(f_start, f_end):
-            mask = (freqs >= f_start) & (freqs < f_end)
-            if not np.any(mask):
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='left')
+
+            if idx_start >= idx_end:
                 return 0.0
             bin_width = freqs[1] - freqs[0]
-            return np.sqrt(np.sum(mag[mask]**2) * bin_width)
+            return np.sqrt(np.sum(mag[idx_start:idx_end]**2) * bin_width)
 
         results['noise_rms_20k'] = integrate_band(20, 20000)
         results['noise_rms_100k'] = integrate_band(20, 100000)
 
         # Peak Detection
-        # Find peak in 20Hz-20kHz, excluding Hum components
-        peak_mask = (freqs >= 20.0) & (freqs <= 20000.0)
+        # Find peak in 20Hz-20kHz
+        i_peak_start = np.searchsorted(freqs, 20.0, side='left')
+        i_peak_end = np.searchsorted(freqs, 20000.0, side='right')
 
         # Exclude Hum regions from peak search (optional, but requested to find "Other" noise)
         # If we want the absolute peak, we shouldn't exclude hum.
         # But user asked for "Other" noise.
         # Let's find the absolute peak first.
-        if np.any(peak_mask):
-            peak_idx_rel = np.argmax(mag[peak_mask])
-            peak_freqs = freqs[peak_mask]
-            peak_mags = mag[peak_mask]
+        if i_peak_start < i_peak_end:
+            peak_mags_slice = mag[i_peak_start:i_peak_end]
+            peak_idx_rel = np.argmax(peak_mags_slice)
 
-            results['peak_freq'] = peak_freqs[peak_idx_rel]
-            results['peak_amp'] = peak_mags[peak_idx_rel]
+            results['peak_freq'] = freqs[i_peak_start + peak_idx_rel]
+            results['peak_amp'] = peak_mags_slice[peak_idx_rel]
         else:
             results['peak_freq'] = 0.0
             results['peak_amp'] = 0.0
@@ -732,10 +744,12 @@ class AudioCalc:
         mag_a = mag * weighting_linear
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
-        mask_a = (freqs >= 20) & (freqs <= 20000)
-        if np.any(mask_a):
+        i_a_start = np.searchsorted(freqs, 20.0, side='left')
+        i_a_end = np.searchsorted(freqs, 20000.0, side='right')
+
+        if i_a_start < i_a_end:
             bin_width = freqs[1] - freqs[0]
-            results['noise_rms_a_weighted'] = np.sqrt(np.sum(mag_a[mask_a]**2) * bin_width)
+            results['noise_rms_a_weighted'] = np.sqrt(np.sum(mag_a[i_a_start:i_a_end]**2) * bin_width)
         else:
             results['noise_rms_a_weighted'] = 0.0
 
