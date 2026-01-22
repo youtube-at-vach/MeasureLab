@@ -542,14 +542,19 @@ class AudioCalc:
         # 1. Hum Noise Detection (50Hz vs 60Hz)
         # Search for peaks at 50Hz and 60Hz
         def get_power_in_band(f_center, width=5.0):
-            mask = (freqs >= f_center - width) & (freqs <= f_center + width)
-            if not np.any(mask):
+            f_start = f_center - width
+            f_end = f_center + width
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='right')
+
+            if idx_start >= idx_end:
                 return 0.0
+
             # Integration: Power = sum(PSD^2 * bin_width)
             # mag is V/rtHz. mag^2 is V^2/Hz.
             # bin_width = fs / N = freqs[1] - freqs[0]
             bin_width = freqs[1] - freqs[0] if len(freqs) > 1 else 1.0
-            power = np.sum(mag[mask]**2) * bin_width
+            power = np.sum(mag[idx_start:idx_end]**2) * bin_width
             return power
 
         p50 = get_power_in_band(50.0)
@@ -578,7 +583,11 @@ class AudioCalc:
         fit_mask = (freqs >= 1.0) & (freqs <= 100.0)
         # Exclude hum regions
         for f_h, _ in hum_components:
-            fit_mask &= ~((freqs >= f_h - 5.0) & (freqs <= f_h + 5.0))
+            f_start = f_h - 5.0
+            f_end = f_h + 5.0
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='right')
+            fit_mask[idx_start:idx_end] = False
 
         # Estimate White Noise (Median of 1k-20k)
         white_mask = (freqs >= 1000.0) & (freqs <= 20000.0)
@@ -622,7 +631,11 @@ class AudioCalc:
 
         # Exclude hum
         for h_freq, h_amp in hum_components:
-            mask_1f &= ~((freqs >= h_freq - 5.0) & (freqs <= h_freq + 5.0))
+            f_start = h_freq - 5.0
+            f_end = h_freq + 5.0
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='right')
+            mask_1f[idx_start:idx_end] = False
 
         if np.sum(mask_1f) > 5:
             f_log = np.log10(freqs[mask_1f])
@@ -686,11 +699,13 @@ class AudioCalc:
 
         # 4. Integrated Noise in Bands
         def integrate_band(f_start, f_end):
-            mask = (freqs >= f_start) & (freqs < f_end)
-            if not np.any(mask):
+            idx_start = np.searchsorted(freqs, f_start, side='left')
+            idx_end = np.searchsorted(freqs, f_end, side='left')
+
+            if idx_start >= idx_end:
                 return 0.0
             bin_width = freqs[1] - freqs[0]
-            return np.sqrt(np.sum(mag[mask]**2) * bin_width)
+            return np.sqrt(np.sum(mag[idx_start:idx_end]**2) * bin_width)
 
         results['noise_rms_20k'] = integrate_band(20, 20000)
         results['noise_rms_100k'] = integrate_band(20, 100000)
