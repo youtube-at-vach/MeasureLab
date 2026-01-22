@@ -85,17 +85,22 @@ class AudioCalc:
         N = len(signal)
         t = np.arange(N) / sampling_rate
 
+        # Pre-allocate M to avoid repeated allocation in loop
+        # Use Fortran order so columns are contiguous, speeding up in-place writes
+        M = np.empty((N, 3), dtype=t.dtype, order='F')
+        M[:, 2] = 1.0
+
         def get_residual_rms(f):
             w = 2 * np.pi * f
-            sin_t = np.sin(w * t)
-            cos_t = np.cos(w * t)
-            ones = np.ones(N)
-            M = np.column_stack([sin_t, cos_t, ones])
+            # In-place update of sin/cos columns
+            np.sin(w * t, out=M[:, 0])
+            np.cos(w * t, out=M[:, 1])
 
             # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
             # This avoids SVD used by lstsq and is much faster for this 3x3 system.
             try:
                 MT = M.T
+                # Note: MT @ M is 3x3, very fast
                 coeffs = np.linalg.solve(MT @ M, MT @ signal)
             except np.linalg.LinAlgError:
                 # Fallback to lstsq if matrix is singular (unlikely unless w=0)
