@@ -177,7 +177,7 @@ pip install -c constraints.txt -e .[dev]
 
 ## 👥 コントリビューター (Contributors)
 
-### 🧑‍💻 開発者 (Humans)
+### 🧑‍💻 支援者 (Humans)
 - [バーチャ農ちゃんねる](https://www.youtube.com/@va-ch)
 
 ### 🤖 AI パートナー (AI Models)
