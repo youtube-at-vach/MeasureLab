@@ -280,7 +280,10 @@ class AudioCalc:
         # THD Calculation
         # THD = sqrt(sum(harmonics^2)) / fundamental
         if max_amplitude > 0:
-            thd_linear = np.sqrt(sum(a**2 for a in harmonic_amplitudes_linear)) / max_amplitude
+            if harmonic_amplitudes_linear:
+                thd_linear = np.sqrt(np.sum(np.square(harmonic_amplitudes_linear))) / max_amplitude
+            else:
+                thd_linear = 0.0
             thd_percent = thd_linear * 100
             thd_db = 20 * np.log10(thd_linear + 1e-12)
         else:
