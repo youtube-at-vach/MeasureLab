@@ -565,7 +565,7 @@ class TimecodeMonitor(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return tr("Timecode Monitor & Generator")
+        return "Timecode Monitor & Generator"
 
     @property
     def description(self) -> str:

@@ -187,7 +187,7 @@ class ImpedanceAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return tr("Impedance Analyzer")
+        return "Impedance Analyzer"
 
     @property
     def description(self) -> str:

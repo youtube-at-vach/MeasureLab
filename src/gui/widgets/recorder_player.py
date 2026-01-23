@@ -108,7 +108,7 @@ class RecorderPlayer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Recorder & Player"
+        return "Recorder / Player"
 
     @property
     def description(self) -> str:

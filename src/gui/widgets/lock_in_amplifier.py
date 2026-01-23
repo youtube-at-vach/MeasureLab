@@ -1113,8 +1113,8 @@ class LockInAmplifierWidget(QWidget):
         if unit == "dBFS":
             if mag_fs > 0:
                 val = 20 * np.log10(mag_fs + 1e-12)
-                fmt = "{0:." + str(prec_db) + "f} dBFS"
-                self.mag_label.setText(tr(fmt).format(val))
+                val_str = ("{0:." + str(prec_db) + "f}").format(val)
+                self.mag_label.setText(tr("{0} dBFS").format(val_str))
             else:
                 self.mag_label.setText(tr("-inf dBFS"))
             self.mag_db_label.setText("") # Clear secondary
@@ -1122,8 +1122,8 @@ class LockInAmplifierWidget(QWidget):
         elif unit == "dBV":
             if v_rms > 0:
                 val = 20 * np.log10(v_rms + 1e-12)
-                fmt = "{0:." + str(prec_db) + "f} dBV"
-                self.mag_label.setText(tr(fmt).format(val))
+                val_str = ("{0:." + str(prec_db) + "f}").format(val)
+                self.mag_label.setText(tr("{0} dBV").format(val_str))
             else:
                 self.mag_label.setText(tr("-inf dBV"))
             self.mag_db_label.setText("")
@@ -1131,60 +1131,48 @@ class LockInAmplifierWidget(QWidget):
         elif unit == "dBu":
             if v_rms > 0:
                 val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
-                fmt = "{0:." + str(prec_db) + "f} dBu"
-                self.mag_label.setText(tr(fmt).format(val))
+                val_str = ("{0:." + str(prec_db) + "f}").format(val)
+                self.mag_label.setText(tr("{0} dBu").format(val_str))
             else:
                 self.mag_label.setText(tr("-inf dBu"))
             self.mag_db_label.setText("")
 
         elif unit == "V":
-            fmt = "{0:." + str(prec_mag + 3) + "f} V" # V usually needs more decimal places than raw linear if < 1
-            if v_rms < 1.0: fmt = "{0:." + str(prec_mag + 4) + "f} V" # e.g. 0.00123
-
-            # If prec_mag is calculated from FS (0-1),
-            # if std(FS) = 1e-6 (6 places), then std(V) ~ 1e-6 * sensitivity.
-            # So places should be roughly same or +sensitivity factor.
-            # Let's use simple logic: recalculate prec for V?
-            # or just use prec_mag + 2 safe buffer?
-            # Re-calculating proper clean precision for V:
-            # std_v = mag_std * sensitivity / sqrt(2)
-            # prec_v = get_decimal_places(std_v)
+            decimals = 6
             if self.module.averaging_count > 1:
                 std_v = self.module.current_magnitude_std * sensitivity / np.sqrt(2)
-                prec_v_val = self.get_decimal_places(std_v, default=6)
-                fmt = "{0:." + str(prec_v_val) + "f} V"
-            else:
-                fmt = "{0:.6f} V"
+                decimals = self.get_decimal_places(std_v, default=6)
 
-            self.mag_label.setText(tr(fmt).format(v_rms))
+            val_str = ("{0:." + str(decimals) + "f}").format(v_rms)
+            self.mag_label.setText(tr("{0} V").format(val_str))
+
             # Show dBFS as secondary
             if mag_fs > 0:
                 db = 20 * np.log10(mag_fs + 1e-12)
-                fmt_db = "{0:." + str(prec_db) + "f} dBFS"
-                self.mag_db_label.setText(tr(fmt_db).format(db))
+                db_str = ("{0:." + str(prec_db) + "f}").format(db)
+                self.mag_db_label.setText(tr("{0} dBFS").format(db_str))
             else:
                 self.mag_db_label.setText(tr("-inf dBFS"))
 
         elif unit == "mV":
-            # std_mv = std_v * 1000
+            decimals = 3
             if self.module.averaging_count > 1:
                 std_mv = self.module.current_magnitude_std * sensitivity / np.sqrt(2) * 1000
-                prec_mv_val = self.get_decimal_places(std_mv, default=3)
-                fmt = "{0:." + str(prec_mv_val) + "f} mV"
-            else:
-                fmt = "{0:.3f} mV"
+                decimals = self.get_decimal_places(std_mv, default=3)
 
-            self.mag_label.setText(tr(fmt).format(v_rms * 1000))
+            val_str = ("{0:." + str(decimals) + "f}").format(v_rms * 1000)
+            self.mag_label.setText(tr("{0} mV").format(val_str))
+
             # Show dBFS as secondary
             if mag_fs > 0:
                 db = 20 * np.log10(mag_fs + 1e-12)
-                fmt_db = "{0:." + str(prec_db) + "f} dBFS"
-                self.mag_db_label.setText(tr(fmt_db).format(db))
+                db_str = ("{0:." + str(prec_db) + "f}").format(db)
+                self.mag_db_label.setText(tr("{0} dBFS").format(db_str))
             else:
                 self.mag_db_label.setText(tr("-inf dBFS"))
 
-        fmt_phase = "{0:." + str(prec_phase) + "f} deg"
-        self.phase_label.setText(tr(fmt_phase).format(phase))
+        phase_str = ("{0:." + str(prec_phase) + "f}").format(phase)
+        self.phase_label.setText(tr("{0} deg").format(phase_str))
 
         # Update X/Y
         x_fs = self.module.current_x
@@ -1195,29 +1183,32 @@ class LockInAmplifierWidget(QWidget):
 
         if unit == "dBFS":
             # For X/Y in FS, use prec_xy
-            fmt_xy = "{0:." + str(prec_xy) + "f} FS"
-            self.x_label.setText(tr(fmt_xy).format(x_fs))
-            self.y_label.setText(tr(fmt_xy).format(y_fs))
+            val_x = ("{0:." + str(prec_xy) + "f}").format(x_fs)
+            val_y = ("{0:." + str(prec_xy) + "f}").format(y_fs)
+            self.x_label.setText(tr("{0} FS").format(val_x))
+            self.y_label.setText(tr("{0} FS").format(val_y))
         elif unit == "mV":
              # Use prec_mv from above logic or similar
+            decimals = 3
             if self.module.averaging_count > 1:
                 std_mv = self.module.current_magnitude_std * sensitivity / np.sqrt(2) * 1000
-                prec_mv_val = self.get_decimal_places(std_mv, default=3)
-                fmt_xy = "{0:." + str(prec_mv_val) + "f} mV"
-            else:
-                fmt_xy = "{0:.3f} mV"
-            self.x_label.setText(tr(fmt_xy).format(x_v * 1000))
-            self.y_label.setText(tr(fmt_xy).format(y_v * 1000))
+                decimals = self.get_decimal_places(std_mv, default=3)
+
+            val_x = ("{0:." + str(decimals) + "f}").format(x_v * 1000)
+            val_y = ("{0:." + str(decimals) + "f}").format(y_v * 1000)
+            self.x_label.setText(tr("{0} mV").format(val_x))
+            self.y_label.setText(tr("{0} mV").format(val_y))
         else: # V, dBV, dBu -> Show V
             # Use prec_v
+            decimals = 6
             if self.module.averaging_count > 1:
                 std_v = self.module.current_magnitude_std * sensitivity / np.sqrt(2)
-                prec_v_val = self.get_decimal_places(std_v, default=6)
-                fmt_xy = "{0:." + str(prec_v_val) + "f} V"
-            else:
-                fmt_xy = "{0:.6f} V"
-            self.x_label.setText(tr(fmt_xy).format(x_v))
-            self.y_label.setText(tr(fmt_xy).format(y_v))
+                decimals = self.get_decimal_places(std_v, default=6)
+
+            val_x = ("{0:." + str(decimals) + "f}").format(x_v)
+            val_y = ("{0:." + str(decimals) + "f}").format(y_v)
+            self.x_label.setText(tr("{0} V").format(val_x))
+            self.y_label.setText(tr("{0} V").format(val_y))
 
         # Update Ref Status
         self.module.ref_level

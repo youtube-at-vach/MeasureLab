@@ -68,7 +68,7 @@ class LockInTHDAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Lock-in THD+N"
+        return "Lock-in THD Analyzer"
 
     @property
     def description(self) -> str:

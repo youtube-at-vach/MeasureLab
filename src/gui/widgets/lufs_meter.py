@@ -101,7 +101,7 @@ class LufsMeter(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "LUFS & Level Meter"
+        return "LUFS Meter"
 
     @property
     def description(self) -> str:

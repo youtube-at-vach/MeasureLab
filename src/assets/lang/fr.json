@@ -963,5 +963,12 @@
     "Profile saved.": "Profil enregistré.",
     "Save As...": "Enregistrer sous...",
     "Saving recording...": "Enregistrement en cours...",
-    "Select Profile:": "Sélectionner un profil :"
+    "Select Profile:": "Sélectionner un profil :",
+    "{0} deg": "{0} deg",
+    "{0} dBFS": "{0} dBFS",
+    "{0} dBV": "{0} dBV",
+    "{0} dBu": "{0} dBu",
+    "{0} V": "{0} V",
+    "{0} mV": "{0} mV",
+    "{0} FS": "{0} FS"
 }
