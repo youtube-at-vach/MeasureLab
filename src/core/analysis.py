@@ -9,7 +9,7 @@ from scipy.signal import butter, get_window, sosfiltfilt
 from src.core.fft_manager import fft_manager
 
 @functools.lru_cache(maxsize=16)
-def _get_cached_window(window_name, nx, dtype=np.float64):
+def get_cached_window(window_name, nx, dtype=np.float64):
     return get_window(window_name, nx).astype(dtype)
 
 @functools.lru_cache(maxsize=128)
@@ -189,7 +189,7 @@ class AudioCalc:
 
     @staticmethod
     def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
-        window = _get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
+        window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
         windowed_data = audio_data * window
         fft_result = fft_manager.rfft(windowed_data)
         freqs = fft_manager.rfftfreq(len(audio_data), 1/sampling_rate)

@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 from scipy.signal import get_window
 
 from src.core.audio_engine import AudioEngine
+from src.core.analysis import get_cached_window
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
@@ -283,7 +284,7 @@ class SpectrogramWidget(QWidget):
             sig = np.mean(raw_data, axis=1)
 
         # Windowing
-        window = get_window(self.module.window_type, len(sig))
+        window = get_cached_window(self.module.window_type, len(sig))
         sig_win = sig * window
 
         # Window Correction Factor (Coherent Gain)
