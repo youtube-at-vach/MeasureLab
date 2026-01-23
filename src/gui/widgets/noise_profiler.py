@@ -59,7 +59,7 @@ class NoiseProfiler(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return tr("Noise Profiler")
+        return "Noise Profiler"
 
     @property
     def description(self) -> str:

@@ -85,6 +85,26 @@ class TrVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_FunctionDef(self, node):
+        # Look for @property def name(self) -> str: return "..."
+        is_property = False
+        for decorator in node.decorator_list:
+            if isinstance(decorator, ast.Name) and decorator.id == 'property':
+                is_property = True
+                break
+            if isinstance(decorator, ast.Attribute) and decorator.attr == 'property':
+                is_property = True
+                break
+
+        if is_property and node.name == 'name':
+            # Look for return "some string"
+            for stmt in node.body:
+                if isinstance(stmt, ast.Return):
+                    if isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str):
+                        self.keys.add(stmt.value.value)
+        
+        self.generic_visit(node)
+
 def extract_tr_keys(filepath):
     try:
         with open(filepath, 'r', encoding='utf-8') as f:

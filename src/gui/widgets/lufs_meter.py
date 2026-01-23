@@ -27,7 +27,6 @@ from src.measurement_modules.base import MeasurementModule
 class LufsMeter(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
-        self._module_keys = ["LUFS & Level Meter"]
         self.is_running = False
         self.sample_rate = 48000 # Default, updated on start
 
@@ -102,7 +101,7 @@ class LufsMeter(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "LUFS & Level Meter"
+        return "LUFS Meter"
 
     @property
     def description(self) -> str:

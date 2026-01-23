@@ -75,7 +75,7 @@ class LockInFrequencyCounter(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return tr("Lock-in Frequency Counter")
+        return "Lock-in Frequency Counter"
 
     @property
     def description(self) -> str:
