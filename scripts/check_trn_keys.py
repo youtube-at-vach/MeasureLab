@@ -102,7 +102,7 @@ class TrVisitor(ast.NodeVisitor):
                 if isinstance(stmt, ast.Return):
                     if isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str):
                         self.keys.add(stmt.value.value)
-        
+
         self.generic_visit(node)
 
 def extract_tr_keys(filepath):
