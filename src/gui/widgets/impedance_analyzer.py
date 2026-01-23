@@ -567,6 +567,17 @@ class ImpedanceSweepWorker(QThread):
         self.cal_mode = cal_mode
         self.is_cancelled = False
 
+    def _sleep_interruptible(self, duration):
+        start = time.monotonic()
+        while True:
+            if self.is_cancelled:
+                return
+            elapsed = time.monotonic() - start
+            remaining = duration - elapsed
+            if remaining <= 0:
+                break
+            time.sleep(min(0.05, remaining))
+
     def run(self):
         if self.log_sweep:
             freqs = np.logspace(np.log10(self.start_f), np.log10(self.end_f), self.steps)
@@ -575,13 +586,14 @@ class ImpedanceSweepWorker(QThread):
 
         if not self.module.is_running:
             self.module.start_analysis()
-            time.sleep(0.5)
+            self._sleep_interruptible(0.5)
 
         for i, f in enumerate(freqs):
             if self.is_cancelled: break
 
             self.module.gen_frequency = f
-            time.sleep(self.settle_time)
+            self._sleep_interruptible(self.settle_time)
+            if self.is_cancelled: break
 
             # Clear history to avoid averaging with old freq data
             self.module.history_v.clear()
@@ -592,12 +604,14 @@ class ImpedanceSweepWorker(QThread):
             buffer_duration = self.module.buffer_size / sample_rate
             wait_time = max(0.05, buffer_duration)
 
-            time.sleep(wait_time) # Wait for settling in buffer
+            self._sleep_interruptible(wait_time) # Wait for settling in buffer
+            if self.is_cancelled: break
 
             # Average
             for _ in range(self.module.averaging_count):
                 if self.is_cancelled: break
-                time.sleep(wait_time)
+                self._sleep_interruptible(wait_time)
+                if self.is_cancelled: break
                 self.module.process_data(ignore_calibration=self.cal_mode in ('open', 'short', 'load'))
 
             # During calibration capture, always store the uncalibrated impedance.
