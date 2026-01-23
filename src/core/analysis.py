@@ -147,7 +147,14 @@ class AudioCalc:
         np.cos(w * t, out=M[:, 1])
         M[:, 2] = 1.0
 
-        coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+        # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
+        # This avoids SVD used by lstsq and is much faster for this 3x3 system.
+        try:
+            MT = M.T
+            coeffs = np.linalg.solve(MT @ M, MT @ signal)
+        except np.linalg.LinAlgError:
+            # Fallback to lstsq if matrix is singular (unlikely unless w=0)
+            coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
         fitted_fund = M @ coeffs
         residual = signal - fitted_fund
 
