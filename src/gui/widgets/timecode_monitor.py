@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import math
 import threading
 import time
@@ -172,8 +173,7 @@ class LTCEncoder:
         # Calculate samples per bit (80 bits total)
         # Note: Samples per bit is not integer usually. We need sub-sample precision or just accumulate phase.
 
-        samples = np.zeros(int(self.samples_per_frame + 1.0)) # Over allocate slightly
-        idx = 0
+        samples = np.zeros(int(self.samples_per_frame) + 2, dtype=np.float32) # Over allocate slightly
 
         samples_per_bit = self.samples_per_frame / 80.0
 
@@ -187,8 +187,6 @@ class LTCEncoder:
         current_level = self.phase
 
         # For each bit
-        buffer = []
-
         for bit_val in bits:
             # Duration of this bit is 1.0 bit-time
             # Start of bit -> transition
@@ -211,20 +209,20 @@ class LTCEncoder:
                 # Fill until end
                 count = end_sample - start_sample
                 if count > 0:
-                    buffer.extend([current_level] * count)
+                    samples[out_idx : out_idx + count] = current_level
                     out_idx += count
             else:
                 # 1 -> Transition at mid
                 count1 = mid_sample - start_sample
                 if count1 > 0:
-                    buffer.extend([current_level] * count1)
+                    samples[out_idx : out_idx + count1] = current_level
                     out_idx += count1
 
                 current_level = -current_level # Mid transition
 
                 count2 = end_sample - mid_sample
                 if count2 > 0:
-                    buffer.extend([current_level] * count2)
+                    samples[out_idx : out_idx + count2] = current_level
                     out_idx += count2
 
             t += 1.0
@@ -232,7 +230,7 @@ class LTCEncoder:
         # Update phase for next frame
         self.phase = current_level
 
-        return np.array(buffer, dtype=np.float32)
+        return samples[:out_idx]
 
 class LTCDecoder:
     """Decodes audio samples to Timecode."""
@@ -252,6 +250,7 @@ class LTCDecoder:
         self.pulse_avg = (sample_rate / fps) / 160.0
 
         self.decoded_bits = []
+        self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
 
@@ -274,6 +273,7 @@ class LTCDecoder:
         self.pulse_avg = (sample_rate / fps) / 160.0
 
         self.decoded_bits = []
+        self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
 
@@ -384,6 +384,7 @@ class LTCDecoder:
         self.decoded_bits.append(bit)
         if len(self.decoded_bits) > 160:
              self.decoded_bits.pop(0)
+        self.sync_val = ((self.sync_val << 1) | bit) & 0xFFFF
 
     def _check_sync(self) -> bool:
         if len(self.decoded_bits) >= 16:
@@ -393,12 +394,7 @@ class LTCDecoder:
 
             # Optimization: could allow reverse play, but for now forward only
 
-            last16 = self.decoded_bits[-16:]
-            val = 0
-            for b in last16:
-                val = (val << 1) | b
-
-            if val == 0x3FFD:
+            if self.sync_val == 0x3FFD:
                 if len(self.decoded_bits) >= 80:
                     frame_bits = self.decoded_bits[-80:]
                     self._decode_frame_bits(frame_bits)
@@ -1049,10 +1045,20 @@ class TimecodeMonitor(MeasurementModule):
         with self._cal_lock:
             if not self._cal_active:
                 return self._cal_result
-            samples = list(self._cal_samples)
+
             need = int(self._cal_need)
             started = float(self._cal_started_at)
             key = str(self._cal_key)
+
+            # Optimization: avoid full list copy of the deque.
+            # We only need the last 'need' samples.
+            current_len = len(self._cal_samples)
+            if current_len < need:
+                samples = []
+            else:
+                # Efficiently retrieve last 'need' elements by iterating from the end
+                rev_samples = list(itertools.islice(reversed(self._cal_samples), need))
+                samples = rev_samples[::-1]
 
         if (time.time() - started) > 8.0:
             with self._cal_lock:
@@ -1065,9 +1071,9 @@ class TimecodeMonitor(MeasurementModule):
         if len(samples) < need:
             return None
 
-        diffs = [int(s[1]) for s in samples[-need:]]
-        in_lat = [float(s[2]) for s in samples[-need:]]
-        out_lat = [float(s[3]) for s in samples[-need:]]
+        diffs = [int(s[1]) for s in samples]
+        in_lat = [float(s[2]) for s in samples]
+        out_lat = [float(s[3]) for s in samples]
 
         diffs.sort()
         mid = len(diffs) // 2
