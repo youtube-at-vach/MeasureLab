@@ -32,7 +32,7 @@ Load and play files.
 Records input signals to memory and exports them as files.
 
 * **Record / Stop Recording**: Starts and stops recording.
-* **Save Recording**: Saves recorded data to a file. This can only be pressed when recording is stopped.
+* **Save Recording**: Saves recorded data to a file. This can only be pressed when recording is stopped. Saving is performed in the background with a progress dialog, preventing the interface from freezing even with large files.
 * **Input Mode**
     * **Stereo**: Records both L/R channels.
     * **Left / Right**: Records only the specified single channel.
