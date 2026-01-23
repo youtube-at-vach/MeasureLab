@@ -962,5 +962,15 @@
     "Profile saved.": "プロファイルが保存されました。",
     "Save As...": "別名で保存...",
     "Saving recording...": "録音を保存中...",
-    "Select Profile:": "プロファイルを選択:"
+    "Select Profile:": "プロファイルを選択:",
+    "Recorder & Player": "レコーダー & プレーヤー",
+    "LUFS & Level Meter": "LUFS & レベルメーター",
+    "Lock-in THD+N": "ロックイン THD+N",
+    "{0} deg": "{0} 度",
+    "{0} dBFS": "{0} dBFS",
+    "{0} dBV": "{0} dBV",
+    "{0} dBu": "{0} dBu",
+    "{0} V": "{0} V",
+    "{0} mV": "{0} mV",
+    "{0} FS": "{0} FS"
 }

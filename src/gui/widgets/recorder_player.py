@@ -86,6 +86,7 @@ class FileSaveWorker(QThread):
 class RecorderPlayer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
+        self._module_keys = ["Recorder & Player"]
 
         # State
         self.is_playing = False

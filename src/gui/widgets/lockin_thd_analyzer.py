@@ -29,6 +29,7 @@ from src.measurement_modules.base import MeasurementModule
 class LockInTHDAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
+        self._module_keys = ["Lock-in THD+N"]
         self.is_running = False
         self.buffer_size = 8192 # Good compromise for latency vs precision
         self.input_data = np.zeros(self.buffer_size)

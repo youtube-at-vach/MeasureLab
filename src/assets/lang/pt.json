@@ -963,5 +963,15 @@
     "Profile saved.": "Perfil salvo.",
     "Save As...": "Salvar como...",
     "Saving recording...": "Salvando gravação...",
-    "Select Profile:": "Selecionar perfil:"
+    "Select Profile:": "Selecionar perfil:",
+    "Recorder & Player": "Gravador e Leitor",
+    "LUFS & Level Meter": "Medidor de LUFS e Nível",
+    "Lock-in THD+N": "Lock-in THD+N",
+    "{0} deg": "{0} graus",
+    "{0} dBFS": "{0} dBFS",
+    "{0} dBV": "{0} dBV",
+    "{0} dBu": "{0} dBu",
+    "{0} V": "{0} V",
+    "{0} mV": "{0} mV",
+    "{0} FS": "{0} FS"
 }

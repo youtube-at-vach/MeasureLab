@@ -963,5 +963,15 @@
     "Profile saved.": "Profil gespeichert.",
     "Save As...": "Speichern unter...",
     "Saving recording...": "Aufnahme wird gespeichert...",
-    "Select Profile:": "Profil auswählen:"
+    "Select Profile:": "Profil auswählen:",
+    "Recorder & Player": "Recorder & Player",
+    "LUFS & Level Meter": "LUFS & Pegelmesser",
+    "Lock-in THD+N": "Lock-in THD+N",
+    "{0} deg": "{0} Grad",
+    "{0} dBFS": "{0} dBFS",
+    "{0} dBV": "{0} dBV",
+    "{0} dBu": "{0} dBu",
+    "{0} V": "{0} V",
+    "{0} mV": "{0} mV",
+    "{0} FS": "{0} FS"
 }
