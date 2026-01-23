@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import math
 import threading
 import time
@@ -1046,10 +1047,20 @@ class TimecodeMonitor(MeasurementModule):
         with self._cal_lock:
             if not self._cal_active:
                 return self._cal_result
-            samples = list(self._cal_samples)
+
             need = int(self._cal_need)
             started = float(self._cal_started_at)
             key = str(self._cal_key)
+
+            # Optimization: avoid full list copy of the deque.
+            # We only need the last 'need' samples.
+            current_len = len(self._cal_samples)
+            if current_len < need:
+                samples = []
+            else:
+                # Efficiently retrieve last 'need' elements by iterating from the end
+                rev_samples = list(itertools.islice(reversed(self._cal_samples), need))
+                samples = rev_samples[::-1]
 
         if (time.time() - started) > 8.0:
             with self._cal_lock:
@@ -1062,9 +1073,9 @@ class TimecodeMonitor(MeasurementModule):
         if len(samples) < need:
             return None
 
-        diffs = [int(s[1]) for s in samples[-need:]]
-        in_lat = [float(s[2]) for s in samples[-need:]]
-        out_lat = [float(s[3]) for s in samples[-need:]]
+        diffs = [int(s[1]) for s in samples]
+        in_lat = [float(s[2]) for s in samples]
+        out_lat = [float(s[3]) for s in samples]
 
         diffs.sort()
         mid = len(diffs) // 2
