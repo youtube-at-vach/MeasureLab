@@ -323,8 +323,7 @@ class FrequencyCounter(MeasurementModule):
 
         self.allan_taus = taus
         self.allan_devs = devs
-        self.allan_taus = taus
-        self.allan_devs = devs
+
         return taus, devs
 
 class FrequencyCalibrationDialog(QDialog):
@@ -442,6 +441,7 @@ class FrequencyCounterWidget(QWidget):
         self.timer.setInterval(self.module.update_interval_ms)
 
         self._last_hist_update_t = 0.0
+        self._last_allan_update_t = 0.0
 
         # Start time tracking
         self.module.start_time = time.time()
@@ -994,11 +994,12 @@ class FrequencyCounterWidget(QWidget):
 
             elif current_tab == 1: # Allan Deviation
                 # Update Allan Plot
-                # For fast updates, limit to approx 2Hz (every 500ms) to save CPU
-                # For slow updates (>= 1000ms), update every time
-                should_update = self.module.update_interval_ms >= 1000 or (int(time.time() * 10) % 5 == 0)
+                # Throttle updates to ~2Hz (every 500ms) unless update_interval is slow
+                now_t = time.time()
+                should_update = (now_t - self._last_allan_update_t) >= 0.5
 
                 if len(self.module.freq_history) > 10 and should_update:
+                    self._last_allan_update_t = now_t
                     if self.display_mode == 'period':
                         dt_seconds = self.module.update_interval_ms / 1000.0
                         freq_data = np.array(self.module.freq_history, dtype=float)
@@ -1009,7 +1010,16 @@ class FrequencyCounterWidget(QWidget):
                         taus, devs = self.module.calculate_allan_plot_data()
 
                     if len(taus) > 0:
-                        self.allan_curve.setData(taus, devs)
+                        # Log-Log plot cannot handle 0.0. Replace 0 with NaN or filter.
+                        # Using filter is safer for lines.
+                        taus = np.array(taus, dtype=float)
+                        devs = np.array(devs, dtype=float)
+                        mask = (devs > 1e-20) # Filter purely zero or extremely small vals
+
+                        if np.any(mask):
+                            self.allan_curve.setData(taus[mask], devs[mask])
+                        else:
+                            self.allan_curve.setData([], [])
 
             elif current_tab == 2:  # Jitter Histogram (Modulation Domain)
                 # Throttle histogram updates slightly to reduce UI churn.
