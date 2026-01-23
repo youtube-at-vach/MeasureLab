@@ -160,19 +160,21 @@ class AudioCalc:
 
         # 3. Bandwidth Limit Residual (20Hz - 20kHz)
         # Highpass 20Hz (Remove DC/Drift if any left)
-        if sampling_rate > 40:
-            sos_hp = _get_butter_sos(4, 20, 'hp', fs=sampling_rate)
-            residual = sosfiltfilt(sos_hp, residual)
+        # Only filter if we have enough samples to support padding (padlen > 15)
+        if N > 18:
+            if sampling_rate > 40:
+                sos_hp = _get_butter_sos(4, 20, 'hp', fs=sampling_rate)
+                residual = sosfiltfilt(sos_hp, residual)
 
-        # Lowpass 20kHz
-        if sampling_rate > 44100:
-            sos_lp = _get_butter_sos(4, 20000, 'lp', fs=sampling_rate)
-            residual = sosfiltfilt(sos_lp, residual)
+            # Lowpass 20kHz
+            if sampling_rate > 44100:
+                sos_lp = _get_butter_sos(4, 20000, 'lp', fs=sampling_rate)
+                residual = sosfiltfilt(sos_lp, residual)
 
         # 4. Calculate RMS
         # Trim edges slightly to avoid filter transients from bandwidth limit
         trim = min(100, N//8)
-        if N > 2*trim:
+        if trim > 0 and N > 2*trim:
             nd_rms = np.sqrt(np.mean(residual[trim:-trim]**2))
             fund_rms = np.sqrt(np.mean(fitted_fund[trim:-trim]**2))
         else:
