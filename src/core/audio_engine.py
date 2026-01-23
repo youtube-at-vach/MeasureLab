@@ -147,25 +147,29 @@ class AudioEngine:
             cid = self.next_callback_id
             self.next_callback_id += 1
             self.callbacks[cid] = callback
-            self.logger.info(f"Registered callback {cid}")
 
             # Start stream if not running
             if self.stream is None:
                 self._start_master_stream()
 
-            return cid
+        self.logger.info(f"Registered callback {cid}")
+        return cid
 
     def unregister_callback(self, callback_id):
         """Unregisters a callback by ID."""
         should_stop = False
+        unregistered = False
         with self.lock:
             if callback_id in self.callbacks:
                 del self.callbacks[callback_id]
-                self.logger.info(f"Unregistered callback {callback_id}")
+                unregistered = True
 
             # Check if we should stop the stream
             if (not self.callbacks) and (self.stream is not None) and (not self.pipewire_jack_resident):
                 should_stop = True
+
+        if unregistered:
+            self.logger.info(f"Unregistered callback {callback_id}")
 
         # Stop stream outside the lock to avoid deadlock with callback
         if should_stop:
