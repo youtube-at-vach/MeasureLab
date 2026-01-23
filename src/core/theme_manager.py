@@ -34,7 +34,7 @@ class ThemeManager(QObject):
         self._original_style_name = style.objectName() if style is not None else None
 
         # Cache available styles to avoid repeated queries
-        self._available_styles = {k.casefold(): k for k in QStyleFactory.keys()}
+        self._available_styles: dict[str, str] = {k.casefold(): k for k in QStyleFactory.keys()}
 
         # Check if Qt supports colorScheme (Qt 6.5+)
         style_hints = self.app.styleHints()
@@ -224,6 +224,7 @@ class ThemeManager(QObject):
         if current.casefold() == "fusion":
             return
 
+        # Use cached style key to avoid expensive QStyleFactory.keys() call
         fusion_key = self._available_styles.get("fusion")
         if not fusion_key:
             self.logger.warning("Fusion style not available; cannot stabilize dark palette on Windows")
