@@ -1015,7 +1015,7 @@ class FrequencyCounterWidget(QWidget):
                         taus = np.array(taus, dtype=float)
                         devs = np.array(devs, dtype=float)
                         mask = (devs > 1e-20) # Filter purely zero or extremely small vals
-                        
+
                         if np.any(mask):
                             self.allan_curve.setData(taus[mask], devs[mask])
                         else:

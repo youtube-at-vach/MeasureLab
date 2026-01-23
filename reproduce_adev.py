@@ -53,11 +53,11 @@ class MockFrequencyCounter:
 
 def test_adev():
     counter = MockFrequencyCounter()
-    
+
     # constant freq - should be 0 ADEV
     for _ in range(100):
         counter.freq_history.append(1000.0)
-    
+
     taus, devs = counter.calculate_allan_plot_data()
     print("Constant Freq Test:")
     print(f"Taus: {taus}")
@@ -70,7 +70,7 @@ def test_adev():
     noise = np.random.normal(1000.0, 1.0, 1000)
     for v in noise:
         counter.freq_history.append(v)
-        
+
     taus, devs = counter.calculate_allan_plot_data()
     print("\nWhite Noise Test:")
     for t, d in zip(taus, devs):
