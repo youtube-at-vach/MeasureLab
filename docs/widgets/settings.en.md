@@ -54,6 +54,17 @@ Selects the input and output devices to be used.
 
 Performs calibration to improve measurement accuracy. Pressing the "Wizard" button for each item allows you to perform calibration in an interactive format.
 
+### Calibration Profiles
+
+You can save the current calibration settings (Input Sensitivity, Output Gain, SPL Offset, etc.) as a named profile.
+This is useful for quickly switching settings when using different audio interfaces or microphones.
+The profile also records the device name used at the time of saving.
+
+* **Select Profile**: Select a saved profile. When selected, the device name associated with that profile is displayed.
+* **Load**: Loads the settings of the selected profile and applies them to the current settings.
+* **Delete**: Deletes the selected profile.
+* **Save As...**: Saves the current settings with a new name. Entering an existing name overwrites it.
+
 ### Input Sensitivity
 
 Setting for correctly displaying the voltage level of the input signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is input, it is 1.0V.
