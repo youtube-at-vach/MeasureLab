@@ -94,8 +94,6 @@ class LockInTHDAnalyzer(MeasurementModule):
         # We'll do filtering in the callback or process loop
 
         def callback(indata, outdata, frames, time, status):
-            if status: print(status)
-
             # Guard against zombie callback
             if not self.is_running:
                 outdata.fill(0)
