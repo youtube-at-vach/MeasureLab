@@ -7,6 +7,7 @@ The features listed below have been categorized based on this new direction. Fea
 ---
 
 ## 1. Multitone Analyzer
+
 **[ACTIVE PROPOSAL]** - *Aligns with Signal Measurement Focus*
 
 **Current State:**
@@ -16,6 +17,7 @@ The `SignalGenerator` (`src/gui/widgets/signal_generator.py`) already supports g
 Extend `DistortionAnalyzer` or create `MultitoneAnalyzer`.
 
 **Key Features:**
+
 - **Synchronized Analysis:** Configure analysis bins to match the generator's multitone frequencies.
 - **Metrics:** Calculate TD+N (Total Distortion + Noise) across the full bandwidth in a single shot.
 - **Speed:** Provides a comprehensive "System Health" check (Freq Response + Distortion) in < 2 seconds, compared to minutes for a stepped sine sweep.
@@ -23,6 +25,7 @@ Extend `DistortionAnalyzer` or create `MultitoneAnalyzer`.
 ---
 
 ## 2. Room Acoustics Analyzer (RT60)
+
 **[DEFERRED / REFERENCE ONLY]** - *Acoustic Focus*
 
 **Current State:**
@@ -32,6 +35,7 @@ The existing `TransientAnalyzer` utilizes Wavelet transforms (CWT) for time-freq
 Create a new widget `RoomAcousticsAnalyzer`.
 
 **Key Features:**
+
 - **Impulse Response Recording:** Support for Sine Sweep (with deconvolution) and Impulse (balloon pop/clapper) recording.
 - **Schroeder Integration:** Calculate the energy decay curve using backward integration.
 - **Metrics:** Automatically calculate T20, T30, and T60 decay times.
@@ -40,6 +44,7 @@ Create a new widget `RoomAcousticsAnalyzer`.
 ---
 
 ## 3. Loudspeaker Parameter Calculator (Thiele/Small)
+
 **[DEFERRED / REFERENCE ONLY]** - *Electro-Acoustic Focus*
 
 **Current State:**
@@ -49,6 +54,7 @@ The `ImpedanceAnalyzer` (`src/gui/widgets/impedance_analyzer.py`) accurately mea
 Extend `ImpedanceAnalyzer` or create a "Loudspeaker Wizard" wrapper.
 
 **Key Features:**
+
 - **Workflow:** Guided steps to measure "Free Air" impedance, followed by "Added Mass" (or Sealed Box) measurement.
 - **Calculation:** Derive $Q_{ms}$, $Q_{es}$, $Q_{ts}$, $V_{as}$, $R_e$, $B_l$, $M_{ms}$, and $C_{ms}$ from the shift in resonance.
 - **Export:** Save parameters to JSON/Text for simulation software.
@@ -56,6 +62,7 @@ Extend `ImpedanceAnalyzer` or create a "Loudspeaker Wizard" wrapper.
 ---
 
 ## 4. EQ Designer / Target Match
+
 **[DEFERRED / REFERENCE ONLY]** - *Correction Focus*
 
 **Current State:**
@@ -65,6 +72,7 @@ The `SpectrumAnalyzer` and `NetworkAnalyzer` provide excellent visualization of 
 Extend `SpectrumAnalyzer` or `NetworkAnalyzer`.
 
 **Key Features:**
+
 - **Target Import:** Load "House Curves" (e.g., Harman Target) or custom text files.
 - **Difference Calculation:** Real-time display of the delta between measured response and target.
 - **Auto-EQ:** Calculate Biquad filter coefficients (PEQ) to minimize the error.
@@ -72,6 +80,7 @@ Extend `SpectrumAnalyzer` or `NetworkAnalyzer`.
 ---
 
 ## 5. Loudspeaker Polarity Tester
+
 **[DEFERRED / REFERENCE ONLY]** - *Acoustic Focus*
 
 **Current State:**
@@ -81,6 +90,7 @@ The `Goniometer` provides phase correlation statistics, which is useful for gene
 Create a simple utility widget `PolarityTester`.
 
 **Key Features:**
+
 - **Signal:** Generate a specific asymmetric pulse (positive-going).
 - **Detection:** Analyze the step response to determine if the initial transient is positive or negative.
 - **UI:** Simple "Green (+)" / "Red (-)" indicator.
