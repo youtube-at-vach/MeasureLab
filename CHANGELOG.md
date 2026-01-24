@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.3.7] - 2026-01-24
+
+### Changed
+
+* Perf: `resample` パフォーマンスをインポート最適化により改善
+* Perf: インピーダンス校正（`Impedance calibration`）をバイナリサーチとキャッシングで最適化
+* Perf: サイン波フィッティング（`Sine fitting`）を正規方程式（Normal Equations）の使用により最適化
+* Perf: マルチトーンのビン探索（`Multitone Bin Search`）をバイナリサーチにより最適化
+* Core: `np.blackman` を `scipy.signal.get_window('blackmanharris')` に置き換え（distortion tests）
+
+### Fixed
+
+* Test: `test_mim` の期待 PIM 値を -80dBc から -77dBc に修正（信号合成のRMS反映）
+* I18n: 翻訳キーの欠落を修正し、チェッカースクリプトを更新
+
 ## [v0.3.6] - 2026-01-20
 
 ### Added
