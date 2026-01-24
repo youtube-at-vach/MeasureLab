@@ -91,8 +91,6 @@ class Spectrogram(MeasurementModule):
             self.is_running = False
 
     def _callback(self, indata, outdata, frames, time, status):
-        if status: print(status)
-
         # Append to ring buffer
         # We need to handle the case where frames > buffer space, but usually frames is small (e.g. 1024)
         # For simplicity, let's just roll and append.
