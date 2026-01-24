@@ -152,7 +152,7 @@ class FFTManager:
         except Exception as e:
             logger.error(f"Failed to create pyfftw plan for size {size}: {e}")
 
-    def rfft(self, data):
+    def rfft(self, data, out=None):
         """
         Perform Real FFT.
         """
@@ -177,12 +177,20 @@ class FFTManager:
                 fft_obj()
 
                 # Return copy of result (to avoid buffer reuse issues by caller)
-                return plan_entry['output'].copy()
+                if out is not None:
+                    out[:] = plan_entry['output']
+                    return out
+                else:
+                    return plan_entry['output'].copy()
 
         # Fallback
-        return np.fft.rfft(data)
+        result = np.fft.rfft(data)
+        if out is not None:
+            out[:] = result
+            return out
+        return result
 
-    def irfft(self, data, n=None):
+    def irfft(self, data, n=None, out=None):
         """
         Perform Inverse Real FFT.
         """
@@ -205,17 +213,29 @@ class FFTManager:
                   # PyFFTW input buffer expects n//2 + 1 complex numbers
                   expected_len = len(input_arr)
                   if len(data) != expected_len:
-                      return np.fft.irfft(data, n=n)
+                      result = np.fft.irfft(data, n=n)
+                      if out is not None:
+                          out[:] = result
+                          return out
+                      return result
 
                   input_arr[:] = data
                   fft_obj()
 
                   # FFTW is unnormalized, numpy.fft.irfft includes 1/n scaling
-                  result = plan_entry['output'].copy()
-                  result /= n
-                  return result
+                  if out is not None:
+                      np.divide(plan_entry['output'], n, out=out)
+                      return out
+                  else:
+                      result = plan_entry['output'].copy()
+                      result /= n
+                      return result
 
-        return np.fft.irfft(data, n=n)
+        result = np.fft.irfft(data, n=n)
+        if out is not None:
+            out[:] = result
+            return out
+        return result
 
     def rfftfreq(self, n, d=1.0):
         """
