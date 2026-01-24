@@ -34,6 +34,7 @@ class AudioEngine:
 
         # Mixer State
         self.callbacks = {} # id -> callback
+        self._cached_callbacks = [] # Cached list of values(self.callbacks)
         self.next_callback_id = 0
         self.lock = threading.Lock()
 
@@ -147,6 +148,7 @@ class AudioEngine:
             cid = self.next_callback_id
             self.next_callback_id += 1
             self.callbacks[cid] = callback
+            self._cached_callbacks = list(self.callbacks.values())
 
             # Start stream if not running
             if self.stream is None:
@@ -162,6 +164,7 @@ class AudioEngine:
         with self.lock:
             if callback_id in self.callbacks:
                 del self.callbacks[callback_id]
+                self._cached_callbacks = list(self.callbacks.values())
                 unregistered = True
 
             # Check if we should stop the stream
@@ -241,9 +244,8 @@ class AudioEngine:
             # Create a temp output buffer for clients
             logical_out_ch = 2 if out_mode == 'stereo' else 1
 
-            # Snapshot of callbacks
-            with self.lock:
-                active_callbacks = list(self.callbacks.values())
+            # Use cached callbacks (atomic read)
+            active_callbacks = self._cached_callbacks
 
             if not active_callbacks:
                 # Even if no callbacks, we might need to update last_output_buffer (silence)
@@ -392,5 +394,6 @@ class AudioEngine:
         self.stop_stream()
         with self.lock:
             self.callbacks.clear()
+            self._cached_callbacks = []
 
         self.register_callback(callback)
