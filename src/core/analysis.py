@@ -319,7 +319,8 @@ class AudioCalc:
             'raw_fund_rms': fund_rms,
             'raw_res_rms': res_rms,
             'raw_harmonics': harmonic_amplitudes_linear,
-            'raw_fund_amp': max_amplitude
+            'raw_fund_amp': max_amplitude,
+            'fft_data': fft_result
         }
 
     @staticmethod
