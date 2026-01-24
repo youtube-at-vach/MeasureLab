@@ -90,7 +90,7 @@ class Oscilloscope(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                pass
 
             if indata.shape[1] >= 2:
                 new_data = indata[:, :2]
