@@ -1151,8 +1151,7 @@ class DistortionAnalyzerWidget(QWidget):
                 self.harmonics_plot.setXRange(min(orders)-1, max(orders)+1)
 
             # Update Spectrum Plot
-            window = get_window(self.module.window_type, len(data))
-            fft_data = fft_manager.rfft(data * window)
+            fft_data = results['fft_data']
             mag_linear = np.abs(fft_data) / len(data) * 2
             mag_linear = self.module.apply_spectrum_averaging(mag_linear)
             mag = 20 * np.log10(mag_linear + 1e-12)
