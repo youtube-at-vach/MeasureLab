@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -374,6 +375,11 @@ class OscilloscopeWidget(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
         self.timer.setInterval(30) # 30ms refresh
+
+    def closeEvent(self, event: QCloseEvent):
+        self.timer.stop()
+        self.module.stop_analysis()
+        super().closeEvent(event)
 
     def init_ui(self):
         main_layout = QHBoxLayout()

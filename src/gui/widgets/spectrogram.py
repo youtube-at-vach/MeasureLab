@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QTransform
+from PyQt6.QtGui import QTransform, QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -125,6 +125,11 @@ class SpectrogramWidget(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_spectrogram)
         self.timer.setInterval(30) # ~30 FPS
+
+    def closeEvent(self, event: QCloseEvent):
+        self.timer.stop()
+        self.module.stop_analysis()
+        super().closeEvent(event)
 
     def init_ui(self):
         layout = QVBoxLayout()
