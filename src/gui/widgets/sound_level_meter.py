@@ -391,46 +391,6 @@ class SoundLevelMeter(MeasurementModule):
 
         tau = self.TIME_CONSTANTS.get(self.time_weighting, 0.125)
 
-        # Impulse is special: Rise fast, fall very slow
-        if self.time_weighting == 'IMPULSE':
-            alpha_rise = 1.0 - np.exp(-1.0 / (sr * 0.035))
-            alpha_fall = 1.0 - np.exp(-1.0 / (sr * 1.5))
-
-            # This is sample-by-sample, which is slow in Python.
-            # We can try a block approximation if frames is small, or numba if allowed.
-            # Vectorized approximation:
-            # It's hard to vectorize conditional IIR.
-            # Fallback: strict simple IIR with one tau if we can't do dual easily,
-            # OR simple max envelope per chunk for peak? No, Impulse is defined dynamics.
-            # Let's do a simple Cython-like optimization or just use slow Python loop for Impulse?
-            # Or... just use the small tau for everything? No, that's wrong.
-            # Let's approximate:
-            # Since audio callbacks are small chunks (e.g. 1024 frames),
-            # doing a loop of 1024 in Python is arguably ok-ish for a specialized meter?
-            # Actually, standard Impulse metering is often just "Fast" with peak hold, but the standard says different.
-            # Let's implement a simplified block-based approach or use scipy lfilter if possible.
-            # Since true Impulse weighting requires conditional update, it's non-linear.
-            # We will use a naive python loop for now. It might eat CPU.
-            # Optimization: Use just FAST for now if Impulse is too heavy?
-            # Let's try to implement a slightly optimized numpy version if possible.
-            # Actually, scipy.signal.lfilter is good for constant alpha.
-            # For 'IMPULSE', we use a distinct detector.
-
-            # Hack for performance: Use 'FAST' alpha for the whole block for now if time is tight,
-            # but that's not 'IMPULSE'.
-            # Let's stick to 'FAST', 'SLOW', '10ms' using lfilter for now.
-            # 'IMPULSE' logic:
-            self.current_sq_val
-
-            # Simple Python loop - optimizing by minimizing lookups
-            # This is risky for performance.
-            # Let's default Impulse to Fast for the initial 'execute' phase to ensure stability
-            # unless we find a fast way.
-            # User asked for Impulse. Let's do it properly but watch out.
-
-            # Actually, let's implement the block filter with constant time constant for F/S/10ms
-            # and only do special logic for Impulse.
-
         alpha = 1.0 - np.exp(-1.0 / (sr * tau))
 
         if self.time_weighting != 'IMPULSE':
