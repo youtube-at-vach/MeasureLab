@@ -1,8 +1,29 @@
 # Feature Proposals for MeasureLab
 
-After investigating the existing codebase and widget library, the following features are proposed to enhance the application's capabilities as a sound device measurement tool.
+**Project Direction Update (2025):**
+The primary focus of this project has shifted towards **Signal Measurement** (analyzing audio signals directly, e.g., DAC/Amp performance, generated signal integrity) rather than Acoustic Measurement (speakers/rooms).
+The features listed below have been categorized based on this new direction. Features related to physical acoustics are preserved here for reference and historical context but are **not currently planned for implementation**.
 
-## 1. Room Acoustics Analyzer (RT60)
+---
+
+## 1. Multitone Analyzer
+**[ACTIVE PROPOSAL]** - *Aligns with Signal Measurement Focus*
+
+**Current State:**
+The `SignalGenerator` (`src/gui/widgets/signal_generator.py`) already supports generating optimized Multitone signals (log-spaced, crest-factor optimized). However, the `DistortionAnalyzer` is limited to Single-Tone THD or Dual-Tone IMD and does not support multi-bin analysis.
+
+**Proposal:**
+Extend `DistortionAnalyzer` or create `MultitoneAnalyzer`.
+
+**Key Features:**
+- **Synchronized Analysis:** Configure analysis bins to match the generator's multitone frequencies.
+- **Metrics:** Calculate TD+N (Total Distortion + Noise) across the full bandwidth in a single shot.
+- **Speed:** Provides a comprehensive "System Health" check (Freq Response + Distortion) in < 2 seconds, compared to minutes for a stepped sine sweep.
+
+---
+
+## 2. Room Acoustics Analyzer (RT60)
+**[DEFERRED / REFERENCE ONLY]** - *Acoustic Focus*
 
 **Current State:**
 The existing `TransientAnalyzer` utilizes Wavelet transforms (CWT) for time-frequency analysis. While powerful for visualizing transient events, it does not perform the industry-standard Schroeder integration required for reverberation time (RT60) measurements.
@@ -18,7 +39,8 @@ Create a new widget `RoomAcousticsAnalyzer`.
 
 ---
 
-## 2. Loudspeaker Parameter Calculator (Thiele/Small)
+## 3. Loudspeaker Parameter Calculator (Thiele/Small)
+**[DEFERRED / REFERENCE ONLY]** - *Electro-Acoustic Focus*
 
 **Current State:**
 The `ImpedanceAnalyzer` (`src/gui/widgets/impedance_analyzer.py`) accurately measures Impedance (Z), Phase, and Resonance Frequency ($F_s$). However, it stops at raw data and does not calculate the electromechanical parameters required for loudspeaker enclosure design.
@@ -33,22 +55,8 @@ Extend `ImpedanceAnalyzer` or create a "Loudspeaker Wizard" wrapper.
 
 ---
 
-## 3. Multitone Analyzer
-
-**Current State:**
-The `SignalGenerator` (`src/gui/widgets/signal_generator.py`) already supports generating optimized Multitone signals (log-spaced, crest-factor optimized). However, the `DistortionAnalyzer` is limited to Single-Tone THD or Dual-Tone IMD and does not support multi-bin analysis.
-
-**Proposal:**
-Extend `DistortionAnalyzer` or create `MultitoneAnalyzer`.
-
-**Key Features:**
-- **Synchronized Analysis:** Configure analysis bins to match the generator's multitone frequencies.
-- **Metrics:** Calculate TD+N (Total Distortion + Noise) across the full bandwidth in a single shot.
-- **Speed:** Provides a comprehensive "System Health" check (Freq Response + Distortion) in < 2 seconds, compared to minutes for a stepped sine sweep.
-
----
-
 ## 4. EQ Designer / Target Match
+**[DEFERRED / REFERENCE ONLY]** - *Correction Focus*
 
 **Current State:**
 The `SpectrumAnalyzer` and `NetworkAnalyzer` provide excellent visualization of the current frequency response. However, users often measure systems to correct them, and currently, there is no built-in tool to calculate the necessary corrections.
@@ -64,6 +72,7 @@ Extend `SpectrumAnalyzer` or `NetworkAnalyzer`.
 ---
 
 ## 5. Loudspeaker Polarity Tester
+**[DEFERRED / REFERENCE ONLY]** - *Acoustic Focus*
 
 **Current State:**
 The `Goniometer` provides phase correlation statistics, which is useful for general stereo checking. However, determining the absolute polarity of a driver (e.g., "Is this tweeter wired correctly?") often requires a dedicated impulse test.
