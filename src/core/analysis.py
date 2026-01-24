@@ -78,7 +78,7 @@ class AudioCalc:
         return sosfiltfilt(sos, signal)
 
     @staticmethod
-    def optimize_frequency(signal, sampling_rate, freq_guess):
+    def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
         """
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
         """
@@ -88,6 +88,14 @@ class AudioCalc:
         # Pre-allocate arrays to avoid repeated allocation in loop
         M = np.empty((N, 3), dtype=t.dtype)
         M[:, 2] = 1.0  # The 'ones' column is constant
+
+        # Container for best result to avoid re-computation
+        best_state = {
+            'rms': float('inf'),
+            'freq': 0.0,
+            'coeffs': None,
+            'residual': None
+        }
 
         def get_residual_rms(f):
             w = 2 * np.pi * f
@@ -108,7 +116,17 @@ class AudioCalc:
 
             fitted = M @ coeffs
             residual = signal - fitted
-            return np.sqrt(np.mean(residual**2))
+            rms = np.sqrt(np.mean(residual**2))
+
+            # Update best state if improved
+            if rms < best_state['rms']:
+                best_state['rms'] = rms
+                best_state['freq'] = f
+                if return_full:
+                    best_state['coeffs'] = coeffs.copy()
+                    best_state['residual'] = residual.copy()
+
+            return rms
 
         # Search around guess
         # The objective function has local minima spaced by approx sampling_rate/N.
@@ -117,10 +135,20 @@ class AudioCalc:
         search_width = 1.5 * bin_width # Slightly more than 1 bin width to be safe
 
         if not np.isfinite(freq_guess):
+            if return_full:
+                return freq_guess, None, None
             return freq_guess
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
         res = minimize_scalar(get_residual_rms, bounds=bounds, method='bounded')
+
+        if return_full:
+            # If for some reason we didn't update state (shouldn't happen if finite)
+            if best_state['coeffs'] is None:
+                # Fallback: just return what we have (likely failure)
+                return res.x, None, None
+            return best_state['freq'], best_state['coeffs'], best_state['residual']
+
         return res.x
 
     @staticmethod
@@ -130,33 +158,23 @@ class AudioCalc:
         Returns (thdn_db, fund_rms, noise_dist_rms)
         """
         N = len(signal)
-        t = np.arange(N) / sampling_rate
+        # t = np.arange(N) / sampling_rate # Not needed if we use returned residual
 
         # 1. Optimize Frequency
-        best_freq = AudioCalc.optimize_frequency(signal, sampling_rate, freq_guess)
+        best_freq, coeffs, residual = AudioCalc.optimize_frequency(
+            signal, sampling_rate, freq_guess, return_full=True
+        )
 
         if not np.isfinite(best_freq):
             return -140.0, 0.0, 0.0
 
+        if residual is None:
+             return -140.0, 0.0, 0.0
+
         # 2. Get Final Residual
-        w = 2 * np.pi * best_freq
-
-        # Pre-allocate M to avoid column_stack allocation
-        M = np.empty((N, 3), dtype=t.dtype)
-        np.sin(w * t, out=M[:, 0])
-        np.cos(w * t, out=M[:, 1])
-        M[:, 2] = 1.0
-
-        # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
-        # This avoids SVD used by lstsq and is much faster for this 3x3 system.
-        try:
-            MT = M.T
-            coeffs = np.linalg.solve(MT @ M, MT @ signal)
-        except np.linalg.LinAlgError:
-            # Fallback to lstsq if matrix is singular (unlikely unless w=0)
-            coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
-        fitted_fund = M @ coeffs
-        residual = signal - fitted_fund
+        # We already have residual and coeffs from optimize_frequency!
+        # Reconstruct fitted_fund
+        fitted_fund = signal - residual
 
         # 3. Bandwidth Limit Residual (20Hz - 20kHz)
         # Highpass 20Hz (Remove DC/Drift if any left)
