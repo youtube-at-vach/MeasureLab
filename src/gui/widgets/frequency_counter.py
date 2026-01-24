@@ -3,7 +3,7 @@ from collections import deque
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QRunnable, QThreadPool, QObject, pyqtSignal
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -27,6 +27,86 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 
+
+class AllanWorkerSignals(QObject):
+    """Signals for the AllanWorker."""
+    result = pyqtSignal(list, list)  # taus, devs
+
+
+class AllanWorker(QRunnable):
+    """
+    Worker thread for calculating Allan Deviation.
+    """
+    def __init__(self, freq_history, update_interval_ms, display_mode):
+        super().__init__()
+        self.freq_history = freq_history  # Should be a copy/list
+        self.update_interval_ms = update_interval_ms
+        self.display_mode = display_mode
+        self.signals = AllanWorkerSignals()
+
+    def run(self):
+        try:
+            if len(self.freq_history) < 10:
+                self.signals.result.emit([], [])
+                return
+
+            dt_seconds = self.update_interval_ms / 1000.0
+
+            # Prepare data based on mode
+            data = np.asarray(self.freq_history, dtype=float)
+
+            if self.display_mode == 'period':
+                # Filter valid
+                valid_mask = (np.isfinite(data)) & (data > 0)
+                data = data[valid_mask]
+                if len(data) < 10:
+                    self.signals.result.emit([], [])
+                    return
+                # Convert to period
+                data = 1.0 / data
+            else:
+                # Frequency mode
+                data = data[np.isfinite(data)]
+                if len(data) < 10:
+                    self.signals.result.emit([], [])
+                    return
+
+            # --- Allan Deviation Calculation ---
+            n = len(data)
+            taus = []
+            devs = []
+            max_m = n // 2
+            m = 1
+
+            # Optimization: Don't calculate EVERY m if n is huge.
+            while m <= max_m:
+                num_samples = (n // m) * m
+                if num_samples < 2 * m:
+                    break
+
+                # Efficient mean calculation
+                y = data[:num_samples].reshape(-1, m).mean(axis=1)
+
+                if len(y) < 2:
+                    break
+
+                diffs = np.diff(y)
+                sigma = float(np.sqrt(0.5 * np.mean(diffs**2)))
+                tau_seconds = m * dt_seconds
+
+                taus.append(tau_seconds)
+                devs.append(sigma)
+
+                m *= 2
+
+            self.signals.result.emit(taus, devs)
+
+        except Exception as e:
+            # On error, just emit empty
+            print(f"Allan calc error: {e}")
+            self.signals.result.emit([], [])
+
+
 class FrequencyCounter(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -48,7 +128,7 @@ class FrequencyCounter(MeasurementModule):
 
         # State
         self.input_buffer = np.zeros(self.buffer_size)
-        self.history_len = 2000 # Increased for Allan Plot
+        self.history_len = 360000 # Increased for long-term Allan Plot (~10h at 10Hz)
         self.freq_history = deque(maxlen=self.history_len)
         self.time_history = deque(maxlen=self.history_len)
         self.start_time = 0
@@ -116,8 +196,9 @@ class FrequencyCounter(MeasurementModule):
         self._warmup_remaining = int(max(0, getattr(self, 'warmup_discard_points', 0)))
 
         def callback(indata, outdata, frames, time, status):
-            if status:
-                print(status)
+            # REMOVED blocking print(status) to prevent buffer overflows
+            # if status:
+            #     print(status)
 
             # Capture Selected Channel
             if indata.shape[1] > self.selected_channel:
@@ -445,6 +526,10 @@ class FrequencyCounterWidget(QWidget):
 
         # Start time tracking
         self.module.start_time = time.time()
+
+        # Async Allan Calculation
+        self.threadpool = QThreadPool()
+        self.is_allan_calculating = False
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -949,6 +1034,20 @@ class FrequencyCounterWidget(QWidget):
             self.timer.stop()
             self.run_btn.setText(tr("Start"))
 
+    def on_allan_results(self, taus, devs):
+        self.is_allan_calculating = False
+
+        if len(taus) > 0:
+            taus = np.array(taus, dtype=float)
+            devs = np.array(devs, dtype=float)
+            mask = (devs > 1e-20)
+            if np.any(mask):
+                self.allan_curve.setData(taus[mask], devs[mask])
+            else:
+                self.allan_curve.setData([], [])
+        else:
+            self.allan_curve.setData([], [])
+
     def update_display(self):
         freq = self.module.process()
 
@@ -993,33 +1092,21 @@ class FrequencyCounterWidget(QWidget):
                     self.curve.setData(list(self.module.time_history), list(self.module.freq_history))
 
             elif current_tab == 1: # Allan Deviation
-                # Update Allan Plot
-                # Throttle updates to ~2Hz (every 500ms) unless update_interval is slow
+                # Update Allan Plot (Async)
+                # Throttle updates to ~1Hz (every 1000ms) to reduce CPU load on worker
                 now_t = time.time()
-                should_update = (now_t - self._last_allan_update_t) >= 0.5
+                should_update = (now_t - self._last_allan_update_t) >= 1.0
 
-                if len(self.module.freq_history) > 10 and should_update:
+                if len(self.module.freq_history) > 10 and should_update and not self.is_allan_calculating:
                     self._last_allan_update_t = now_t
-                    if self.display_mode == 'period':
-                        dt_seconds = self.module.update_interval_ms / 1000.0
-                        freq_data = np.array(self.module.freq_history, dtype=float)
-                        freq_data = freq_data[np.isfinite(freq_data) & (freq_data > 0)]
-                        period_series = (1.0 / freq_data).tolist()
-                        taus, devs = self._calculate_allan_plot_data_for_series(period_series, dt_seconds)
-                    else:
-                        taus, devs = self.module.calculate_allan_plot_data()
+                    self.is_allan_calculating = True
 
-                    if len(taus) > 0:
-                        # Log-Log plot cannot handle 0.0. Replace 0 with NaN or filter.
-                        # Using filter is safer for lines.
-                        taus = np.array(taus, dtype=float)
-                        devs = np.array(devs, dtype=float)
-                        mask = (devs > 1e-20) # Filter purely zero or extremely small vals
+                    # Create snapshot of data
+                    history_snapshot = list(self.module.freq_history)
 
-                        if np.any(mask):
-                            self.allan_curve.setData(taus[mask], devs[mask])
-                        else:
-                            self.allan_curve.setData([], [])
+                    worker = AllanWorker(history_snapshot, self.module.update_interval_ms, self.display_mode)
+                    worker.signals.result.connect(self.on_allan_results)
+                    self.threadpool.start(worker)
 
             elif current_tab == 2:  # Jitter Histogram (Modulation Domain)
                 # Throttle histogram updates slightly to reduce UI churn.
