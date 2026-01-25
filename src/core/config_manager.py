@@ -197,7 +197,7 @@ class ConfigManager:
         self._ensure_screenshot_dir(self.config)
         self.save_config()
 
-    def _detect_system_language(self) -> str:
+    def _detect_system_language(self) -> str | None:
         """Detects the system locale and returns a supported language code, or None."""
         try:
             # getlocale() returns (language_code, encoding), e.g., ('ja_JP', 'UTF-8')
