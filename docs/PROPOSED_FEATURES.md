@@ -19,7 +19,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 **Description:** Automated measurement of channel separation vs Frequency (e.g., Drive L -> Measure R).
 **Gap:** `NetworkAnalyzer` supports generic XFER (Meas/Ref) but requires manual patching/setup. A dedicated mode should handle the routing and plot "Crosstalk (dB)" directly.
 
-
 ### 3. DC Stability & Drift Logger
 
 **Status:** Planned (New Widget or Extend `Voltmeter`)
