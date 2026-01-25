@@ -1243,6 +1243,13 @@ class SignalGeneratorWidget(QWidget):
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
         self._apply_waveform_key(str(key), update_params=True)
 
+        # Refix RMS if unit is maintaining RMS
+        unit = self.unit_combo.currentText()
+        if unit in ['Vrms', 'dBu', 'dBV']:
+            # Value in spinner is the desired RMS. 
+            # We must update peak amplitude to match this RMS with new crest factor.
+            self.on_amp_spin_changed(self.amp_spin.value())
+
     # --- Frequency Helpers ---
     def _freq_to_slider(self, freq):
         return int(1000 * (np.log10(freq) - np.log10(20)) / (np.log10(20000) - np.log10(20)))
@@ -1303,6 +1310,8 @@ class SignalGeneratorWidget(QWidget):
 
         self.amp_spin.blockSignals(True)
 
+        cf = self._get_current_crest_factor()
+
         if unit == 'Linear (0-1)':
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
@@ -1314,21 +1323,21 @@ class SignalGeneratorWidget(QWidget):
             self.amp_spin.setValue(val)
         elif unit == 'dBV':
             v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
+            v_rms = v_peak / cf
             val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setValue(val)
         elif unit == 'dBu':
             v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
+            v_rms = v_peak / cf
             val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setValue(val)
         elif unit == 'Vrms':
             v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
+            v_rms = v_peak / cf
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setValue(v_rms)
@@ -1355,14 +1364,14 @@ class SignalGeneratorWidget(QWidget):
             amp_0_1 = 10**(val/20)
         elif unit == 'dBV':
             v_rms = 10**(val/20)
-            v_peak = v_rms * np.sqrt(2)
+            v_peak = v_rms * self._get_current_crest_factor()
             amp_0_1 = v_peak / gain
         elif unit == 'dBu':
             v_rms = 0.7746 * 10**(val/20)
-            v_peak = v_rms * np.sqrt(2)
+            v_peak = v_rms * self._get_current_crest_factor()
             amp_0_1 = v_peak / gain
         elif unit == 'Vrms':
-            v_peak = val * np.sqrt(2)
+            v_peak = val * self._get_current_crest_factor()
             amp_0_1 = v_peak / gain
         elif unit == 'Vpeak':
             amp_0_1 = val / gain
@@ -1388,3 +1397,18 @@ class SignalGeneratorWidget(QWidget):
         else:
             self.module.stop_generation()
             self.toggle_btn.setText(tr("Start Output"))
+
+    def _get_current_crest_factor(self):
+        """Returns the Crest Factor (Peak / RMS) for the current waveform."""
+        key = self.wave_combo.currentData() or self.wave_combo.currentText()
+        # Square, Pulse, MLS, PRBS (if full-swing -1..1) have Signal Power = Peak Power => CF=1
+        if key in ['square', 'pulse', 'mls', 'prbs']:
+            return 1.0
+        # Triangle, Sawtooth have CF = sqrt(3)
+        if key in ['triangle', 'sawtooth']:
+            import numpy as np
+            return np.sqrt(3.0)
+        
+        # Sine, Noise (approx), etc. default to standard sine convention (sqrt(2))
+        import numpy as np
+        return np.sqrt(2.0)
