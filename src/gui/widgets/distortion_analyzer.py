@@ -36,6 +36,8 @@ class DistortionAnalyzer(MeasurementModule):
         self.is_running = False
         self.buffer_size = 16384 # Larger buffer for better frequency resolution
         self.input_data = np.zeros(self.buffer_size)
+        self._buffers = [self.input_data, np.zeros(self.buffer_size)]
+        self._buffer_idx = 0
 
         # Generator Settings
         self.gen_frequency = 1000.0
@@ -245,7 +247,9 @@ class DistortionAnalyzer(MeasurementModule):
 
         self.is_running = True
         self.reset_averaging_state()
-        self.input_data = np.zeros(self.buffer_size)
+        self._buffers = [np.zeros(self.buffer_size), np.zeros(self.buffer_size)]
+        self._buffer_idx = 0
+        self.input_data = self._buffers[0]
         self.current_result = None
 
         sample_rate = self.audio_engine.sample_rate
@@ -284,11 +288,22 @@ class DistortionAnalyzer(MeasurementModule):
                 new_data = indata[:, 0]
 
             # Ring buffer update
-            if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
-            else:
-                self.input_data = np.roll(self.input_data, -len(new_data))
-                self.input_data[-len(new_data):] = new_data
+            num_new = len(new_data)
+            if num_new > 0:
+                # Double buffering (Ping-Pong) update to avoid allocation
+                next_idx = 1 - self._buffer_idx
+                next_buf = self._buffers[next_idx]
+
+                if num_new >= self.buffer_size:
+                    next_buf[:] = new_data[-self.buffer_size:]
+                else:
+                    current_buf = self._buffers[self._buffer_idx]
+                    next_buf[:-num_new] = current_buf[num_new:]
+                    next_buf[-num_new:] = new_data
+
+                # Atomic swap
+                self.input_data = next_buf
+                self._buffer_idx = next_idx
 
             # Handle Capture Request (Thread-safe copy)
             if self.capture_requested:
