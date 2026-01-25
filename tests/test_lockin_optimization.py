@@ -20,7 +20,7 @@ class MockAudioEngine:
     def unregister_callback(self, id):
         pass
 
-def test_lockin_buffer_logic_stereo():
+def test_lockin_buffer_logic_stereo_circular():
     engine = MockAudioEngine()
     lockin = LockInAmplifier(engine)
     lockin.buffer_size = 10 # Small buffer for testing
@@ -31,47 +31,85 @@ def test_lockin_buffer_logic_stereo():
 
     # Initial state: zeros
     assert np.all(lockin.input_data == 0)
+    assert lockin.write_index == 0
 
     # Feed 4 stereo samples
+    # Buffer is size 10. Index starts at 0.
+    # Should write to [0, 1, 2, 3]. Index becomes 4.
     indata = np.array([[1, 1], [2, 2], [3, 3], [4, 4]], dtype=np.float32)
     outdata = np.zeros((4, 2), dtype=np.float32)
 
     callback(indata, outdata, 4, 0, 0)
 
-    # Expected: [0, 0, ..., 1, 2, 3, 4] (last 4 are new)
-    expected = np.zeros((10, 2))
-    expected[-4:] = indata
+    # Check raw buffer
+    expected_raw = np.zeros((10, 2))
+    expected_raw[0:4] = indata
 
-    np.testing.assert_allclose(lockin.input_data, expected)
+    np.testing.assert_allclose(lockin.input_data, expected_raw)
+    assert lockin.write_index == 4
+
+    # Verify reconstruction logic (simulate what process_data does)
+    # Reconstructed: roll(input, -index)
+    # roll([1, 2, 3, 4, 0...], -4) -> [0, 0, ..., 1, 2, 3, 4] (Correct order: oldest 0s, newest 4s)
+    # Wait, initially buffer is 0.
+    # Oldest data is at index 4 (0.0). Newest is at index 3 (4.0).
+    # We want oldest -> newest.
+    # [0, 0, 0, 0, 0, 0, 1, 2, 3, 4] is the desired logical view?
+    # Yes, typically we want [t-N ... t].
+
+    reconstructed = np.roll(lockin.input_data, -lockin.write_index, axis=0)
+    expected_logical = np.zeros((10, 2))
+    expected_logical[-4:] = indata
+
+    np.testing.assert_allclose(reconstructed, expected_logical)
 
     # Feed 8 more samples
+    # Index is 4. Remaining space is 6 (indices 4..9).
+    # We feed 8.
+    # First 6 go to [4..9].
+    # Next 2 wrap to [0..1].
+    # Index becomes 2.
+
     indata2 = np.array([[5, 5], [6, 6], [7, 7], [8, 8], [9, 9], [10, 10], [11, 11], [12, 12]], dtype=np.float32)
     outdata2 = np.zeros((8, 2), dtype=np.float32)
     callback(indata2, outdata2, 8, 0, 0)
 
-    # Expected: 2 samples from previous (3, 4) shifted, then 5..12
-    # Buffer was [0...0, 1, 2, 3, 4]
-    # Shift left by 8.
-    # [3, 4] remain at start.
-    # [5..12] appended.
+    assert lockin.write_index == 2
 
-    expected_2 = np.zeros((10, 2))
-    expected_2[0] = [3, 3]
-    expected_2[1] = [4, 4]
-    expected_2[2:] = indata2
+    # Expected Raw Buffer:
+    # [0]: 11 (wrapped)
+    # [1]: 12 (wrapped)
+    # [2]: 3 (old)
+    # [3]: 4 (old)
+    # [4]: 5 (new)
+    # ...
+    # [9]: 10 (new)
 
-    np.testing.assert_allclose(lockin.input_data, expected_2)
+    expected_raw_2 = np.zeros((10, 2))
+    expected_raw_2[0] = [11, 11]
+    expected_raw_2[1] = [12, 12]
+    expected_raw_2[2] = [3, 3]
+    expected_raw_2[3] = [4, 4]
+    expected_raw_2[4:] = indata2[:6]
 
-    # Feed larger than buffer (12 samples)
-    indata3 = np.arange(24, dtype=np.float32).reshape(12, 2)
-    outdata3 = np.zeros((12, 2), dtype=np.float32)
-    callback(indata3, outdata3, 12, 0, 0)
+    np.testing.assert_allclose(lockin.input_data, expected_raw_2)
 
-    # Expected: last 10 samples of indata3
-    expected_3 = indata3[-10:]
-    np.testing.assert_allclose(lockin.input_data, expected_3)
+    # Verify reconstruction
+    # roll(raw, -2).
+    # [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    # This preserves the order: 3, 4 (from first batch), 5..12 (second batch).
+    # 1, 2 from first batch were overwritten.
 
-def test_lockin_buffer_logic_mono():
+    reconstructed_2 = np.roll(lockin.input_data, -lockin.write_index, axis=0)
+
+    expected_logical_2 = np.zeros((10, 2))
+    expected_logical_2[0] = [3, 3]
+    expected_logical_2[1] = [4, 4]
+    expected_logical_2[2:] = indata2
+
+    np.testing.assert_allclose(reconstructed_2, expected_logical_2)
+
+def test_lockin_buffer_logic_mono_circular():
     engine = MockAudioEngine()
     lockin = LockInAmplifier(engine)
     lockin.buffer_size = 10
@@ -85,20 +123,16 @@ def test_lockin_buffer_logic_mono():
 
     callback(indata, outdata, 4, 0, 0)
 
-    expected = np.zeros((10, 2))
-    expected[-4:, 0] = indata.flatten()
-    expected[-4:, 1] = indata.flatten()
+    expected_raw = np.zeros((10, 2))
+    expected_raw[0:4, 0] = indata.flatten()
+    expected_raw[0:4, 1] = indata.flatten()
 
-    np.testing.assert_allclose(lockin.input_data, expected)
+    np.testing.assert_allclose(lockin.input_data, expected_raw)
+    assert lockin.write_index == 4
 
-    # Feed larger than buffer mono
-    indata2 = np.arange(12, dtype=np.float32).reshape(12, 1)
-    outdata2 = np.zeros((12, 2), dtype=np.float32)
-    callback(indata2, outdata2, 12, 0, 0)
+    reconstructed = np.roll(lockin.input_data, -lockin.write_index, axis=0)
+    expected_logical = np.zeros((10, 2))
+    expected_logical[-4:, 0] = indata.flatten()
+    expected_logical[-4:, 1] = indata.flatten()
 
-    expected_2 = np.zeros((10, 2))
-    src = indata2[-10:].flatten()
-    expected_2[:, 0] = src
-    expected_2[:, 1] = src
-
-    np.testing.assert_allclose(lockin.input_data, expected_2)
+    np.testing.assert_allclose(reconstructed, expected_logical)

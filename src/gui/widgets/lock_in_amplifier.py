@@ -36,6 +36,7 @@ class LockInAmplifier(MeasurementModule):
         self.is_running = False
         self.buffer_size = 4096 # Adjust for integration time
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_index = 0
 
         # Settings
         self.gen_frequency = 1000.0
@@ -125,6 +126,7 @@ class LockInAmplifier(MeasurementModule):
 
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_index = 0
         self.reset_postmix_lpf()
 
         # Generator State
@@ -136,27 +138,49 @@ class LockInAmplifier(MeasurementModule):
                 print(status)
 
             # --- Input Capture ---
-            # Optimize: avoid allocation in callback (no np.roll, no np.column_stack)
+            # Optimize: Use circular buffer approach to avoid shift/copy of old data
+            # and avoid tearing/instability by only modifying the 'new' segment.
             n_new = len(indata)
 
+            # Prepare new data block
             if indata.shape[1] >= 2:
                 # Stereo Input
-                if n_new > self.buffer_size:
-                    self.input_data[:] = indata[-self.buffer_size:, :2]
-                else:
-                    self.input_data[:-n_new] = self.input_data[n_new:]
-                    self.input_data[-n_new:] = indata[:, :2]
+                block = indata[:, :2]
             else:
                 # Mono Input (Expand to Stereo)
-                if n_new > self.buffer_size:
-                    src = indata[-self.buffer_size:, 0]
-                    self.input_data[:, 0] = src
-                    self.input_data[:, 1] = src
+                # We can't use column_stack if we want to avoid alloc, but
+                # since we are about to copy into input_data, we can do it per channel there.
+                # However, for simplicity of logic below, let's just make a view or small temp if needed.
+                # But to be perfectly zero-alloc for mono, we handle it in the loop.
+                block = indata # Handle mono expansion in write
+
+            # Write to circular buffer
+            idx = self.write_index
+            remaining = self.buffer_size - idx
+
+            if n_new <= remaining:
+                if indata.shape[1] >= 2:
+                    self.input_data[idx:idx+n_new] = block
                 else:
-                    self.input_data[:-n_new] = self.input_data[n_new:]
-                    src = indata[:, 0]
-                    self.input_data[-n_new:, 0] = src
-                    self.input_data[-n_new:, 1] = src
+                    self.input_data[idx:idx+n_new, 0] = indata[:, 0]
+                    self.input_data[idx:idx+n_new, 1] = indata[:, 0]
+                self.write_index += n_new
+            else:
+                # Wrap around
+                # First part
+                if indata.shape[1] >= 2:
+                    self.input_data[idx:] = block[:remaining]
+                    self.input_data[:n_new-remaining] = block[remaining:]
+                else:
+                    self.input_data[idx:, 0] = indata[:remaining, 0]
+                    self.input_data[idx:, 1] = indata[:remaining, 0]
+                    self.input_data[:n_new-remaining, 0] = indata[remaining:, 0]
+                    self.input_data[:n_new-remaining, 1] = indata[remaining:, 0]
+
+                self.write_index = n_new - remaining
+
+            if self.write_index >= self.buffer_size:
+                self.write_index = 0
 
             # --- Output Generation ---
             # Generate Sine Wave
@@ -189,7 +213,16 @@ class LockInAmplifier(MeasurementModule):
         """
         Perform Lock-in calculation on the current buffer.
         """
-        data = self.input_data
+        # Unroll circular buffer to get linear time history
+        # We do this copy in the GUI thread to ensure we work on a consistent snapshot
+        # (mostly consistent, barring the small write race).
+        # np.roll allows us to reconstruct the order: oldest -> newest.
+        # write_index points to the *next* write location, which is also the *oldest* data.
+        # So rolling by -write_index puts oldest at 0.
+
+        # Note: np.roll allocates a new array, which is acceptable here (10Hz).
+        data = np.roll(self.input_data, -self.write_index, axis=0)
+
         sig = data[:, self.signal_channel]
         ref = data[:, self.ref_channel]
 
@@ -1065,6 +1098,7 @@ class LockInAmplifierWidget(QWidget):
 
         # Re-allocate buffer
         self.module.input_data = np.zeros((self.module.buffer_size, 2))
+        self.module.write_index = 0
         self.module.reset_postmix_lpf()
 
     def on_postmix_lpf_changed(self, idx):
