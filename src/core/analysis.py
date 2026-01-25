@@ -16,6 +16,20 @@ def get_cached_window(window_name, nx, dtype=np.float64):
 def _get_butter_sos(order, Wn, btype, fs=None):
     return butter(order, Wn, btype=btype, fs=fs, output='sos')
 
+def _calculate_ra_raw(f):
+    f2 = f**2
+    const = 12194**2 * f**4
+    denom = (f2 + 20.6**2) * np.sqrt((f2 + 107.7**2) * (f2 + 737.9**2)) * (f2 + 12194**2)
+    # Avoid division by zero
+    denom[denom == 0] = 1.0
+    Ra = const / denom
+    return Ra
+
+@functools.lru_cache(maxsize=32)
+def _compute_a_weighting_curve(n_bins, step):
+    f = np.arange(n_bins) * step
+    return _calculate_ra_raw(f)
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
@@ -764,13 +778,18 @@ class AudioCalc:
         # Gain = 20*log10(Ra(f)) + 2.00
         # Linear Gain = Ra(f) * 10^(2.0/20) = Ra(f) * 1.2589
 
-        f = freqs
-        f2 = f**2
-        const = 12194**2 * f**4
-        denom = (f2 + 20.6**2) * np.sqrt((f2 + 107.7**2) * (f2 + 737.9**2)) * (f2 + 12194**2)
-        # Avoid division by zero
-        denom[denom == 0] = 1.0
-        Ra = const / denom
+        # Optimization: Use cached A-weighting curve if freqs is linear starting at 0
+        use_cached = False
+        if len(freqs) > 1 and freqs[0] == 0:
+            step = freqs[1]
+            # Check linearity (approximate) to safely use cache
+            if abs(freqs[-1] - step * (len(freqs) - 1)) < 1e-5:
+                Ra = _compute_a_weighting_curve(len(freqs), step)
+                use_cached = True
+
+        if not use_cached:
+            Ra = _calculate_ra_raw(freqs)
+
         weighting_linear = Ra * 1.2589
 
         # Apply weighting to magnitude (V/rtHz)
