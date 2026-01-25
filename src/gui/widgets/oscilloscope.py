@@ -34,6 +34,7 @@ class Oscilloscope(MeasurementModule):
         # Buffer enough for low frequency analysis, but we'll display a subset
         self.buffer_size = 8192
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_index = 0
 
         # Settings
         self.timebase = 0.01 # Seconds per division (approx) -> Total view window
@@ -98,6 +99,7 @@ class Oscilloscope(MeasurementModule):
 
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_index = 0
 
         # Reset heatmaps
         if self.persistence_mode:
@@ -111,17 +113,48 @@ class Oscilloscope(MeasurementModule):
             if status:
                 pass
 
-            if indata.shape[1] >= 2:
-                new_data = indata[:, :2]
-            else:
-                new_data = np.column_stack((indata[:, 0], indata[:, 0]))
+            # Ring buffer implementation to avoid allocation
+            idx = self.write_index
+            remaining = self.buffer_size - idx
+            input_channels = indata.shape[1]
 
-            # Roll buffer
-            if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
+            if frames > self.buffer_size:
+                # If new data is larger than buffer, just take the last part
+                start_read = frames - self.buffer_size
+                if input_channels >= 2:
+                    self.input_data[:] = indata[start_read:, :2]
+                else:
+                    self.input_data[:, 0] = indata[start_read:, 0]
+                    self.input_data[:, 1] = indata[start_read:, 0]
+                self.write_index = 0
+            elif frames <= remaining:
+                if input_channels >= 2:
+                    self.input_data[idx:idx+frames, :2] = indata[:, :2]
+                else:
+                    self.input_data[idx:idx+frames, 0] = indata[:, 0]
+                    self.input_data[idx:idx+frames, 1] = indata[:, 0]
+                self.write_index += frames
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data):] = new_data
+                # Wrap around
+                # Part 1: idx to end
+                part1_len = remaining
+                if input_channels >= 2:
+                    self.input_data[idx:idx+part1_len, :2] = indata[:part1_len, :2]
+                else:
+                    self.input_data[idx:idx+part1_len, 0] = indata[:part1_len, 0]
+                    self.input_data[idx:idx+part1_len, 1] = indata[:part1_len, 0]
+
+                # Part 2: 0 to rest
+                part2_len = frames - remaining
+                if input_channels >= 2:
+                    self.input_data[0:part2_len, :2] = indata[part1_len:, :2]
+                else:
+                    self.input_data[0:part2_len, 0] = indata[part1_len:, 0]
+                    self.input_data[0:part2_len, 1] = indata[part1_len:, 0]
+                self.write_index = part2_len
+
+            if self.write_index >= self.buffer_size:
+                self.write_index = 0
 
             outdata.fill(0)
 
@@ -145,7 +178,8 @@ class Oscilloscope(MeasurementModule):
         if required_samples > self.buffer_size:
             required_samples = self.buffer_size
 
-        data = self.input_data
+        # Unroll ring buffer to get ordered data [oldest ... newest]
+        data = np.roll(self.input_data, -self.write_index, axis=0)
 
         if self.trigger_mode == 'Single' and not self.single_shot_armed:
             return None
