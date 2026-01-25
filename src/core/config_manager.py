@@ -1,7 +1,10 @@
+import locale
 import json
 import logging
 import os
 from copy import deepcopy
+
+from src.core.utils import resource_path
 
 # Default configuration used for initialization and validation
 DEFAULT_CONFIG = {
@@ -33,6 +36,13 @@ class ConfigManager:
         if not os.path.exists(self.config_path):
             self.logger.info("No config file found, creating default.")
             config = self._default_config()
+
+            # Auto-detect language on first run
+            detected_lang = self._detect_system_language()
+            if detected_lang:
+                config["language"] = detected_lang
+                self.logger.info(f"Auto-detected language: {detected_lang}")
+
             self._ensure_screenshot_dir(config)
             return config
 
@@ -186,3 +196,31 @@ class ConfigManager:
         self.config["screenshot"]["output_dir"] = str(output_dir)
         self._ensure_screenshot_dir(self.config)
         self.save_config()
+
+    def _detect_system_language(self) -> str:
+        """Detects the system locale and returns a supported language code, or None."""
+        try:
+            # getlocale() returns (language_code, encoding), e.g., ('ja_JP', 'UTF-8')
+            # It may return (None, None) if not set.
+            loc = locale.getlocale()
+            if not loc or not loc[0]:
+                # Fallback to getdefaultlocale() which might work even if setlocale wasn't called
+                loc = locale.getdefaultlocale()
+
+            if not loc or not loc[0]:
+                return None
+
+            lang_code = loc[0].split('_')[0]  # e.g., 'ja' from 'ja_JP'
+
+            # Check if this language is supported
+            # We check if src/assets/lang/{lang_code}.json exists
+            # We need to be careful about the path. Using resource_path helper.
+            lang_file = resource_path(f'src/assets/lang/{lang_code}.json')
+            if os.path.exists(lang_file):
+                return lang_code
+
+            return None
+        except Exception as e:
+            self.logger.warning(f"Failed to detect system language: {e}")
+            return None
+
