@@ -473,7 +473,8 @@ class OscilloscopeWidget(QWidget):
 
         # Plot
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setLabel('left', tr('Amplitude'), units='V')
+        # Hide Y-axis labels as they are confusing (showing raw FS instead of calibrated Volts)
+        self.plot_widget.getPlotItem().getAxis('left').setStyle(showValues=False)
         self.plot_widget.setLabel('bottom', tr('Time'), units='s')
         self.plot_widget.setYRange(-1.1, 1.1)
         self.plot_widget.showGrid(x=True, y=True)
