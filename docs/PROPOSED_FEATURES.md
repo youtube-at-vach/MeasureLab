@@ -1,42 +1,41 @@
 # Feature Proposals for MeasureLab
 
 **Project Direction Update (2025):**
-The primary focus of this project has shifted towards **Signal Measurement** (analyzing audio signals directly, e.g., DAC/Amp performance, generated signal integrity) rather than Acoustic Measurement (speakers/rooms).
-The features listed below have been categorized based on this new direction.
+The primary focus of this project is **Signal Measurement** (analyzing audio signals directly, e.g., DAC/Amp performance, signal integrity) rather than Acoustic Measurement (speakers/rooms).
 
 ---
 
 ## 🚀 Active / High Priority (Signal Focus)
 
-### 1. Multitone Analyzer
+### 1. Linearity Analyzer (Gain vs Level)
 
 **Status:** Planned (Extend `DistortionAnalyzer`)
-**Description:** Use log-spaced multitone signals (already supported by `SignalGenerator`) to measure TD+N (Total Distortion + Noise) across the full bandwidth in a single shot (< 2 seconds).
-**Gap:** `DistortionAnalyzer` currently only supports Single-Tone THD or Dual-Tone IMD and does not support multi-bin analysis.
+**Description:** Measure output level accuracy and linearity error (AES17) by sweeping input amplitude from -120 dBFS to 0 dBFS.
+**Gap:** The current Amplitude Sweep plots THD+N vs Amplitude. It needs to calculate and plot **Deviation from Linearity (dB)** vs Amplitude to verify DAC low-level performance.
 
-### 2. Linearity Analyzer (Gain vs Level)
+### 2. Crosstalk Analyzer
 
-**Status:** Proposed (Extend `DistortionAnalyzer`)
-**Description:** Measure output level accuracy and linearity error by sweeping input amplitude from -120 dBFS to 0 dBFS. This is critical for verifying DAC dynamic range, noise floor, and bit-depth performance (AES17).
-**Gap:** `DistortionAnalyzer` supports Amplitude Sweep but currently plots THD+N vs Amplitude, not the Deviation (Linearity Error) vs Amplitude.
+**Status:** Planned (Extend `NetworkAnalyzer`)
+**Description:** Automated measurement of channel separation vs Frequency (e.g., Drive L -> Measure R).
+**Gap:** `NetworkAnalyzer` supports generic XFER (Meas/Ref) but requires manual patching/setup. A dedicated mode should handle the routing and plot "Crosstalk (dB)" directly.
 
-### 3. Crosstalk Analyzer
+### 3. Oscilloscope Persistence / Eye Pattern
 
-**Status:** Proposed (Extend `NetworkAnalyzer`)
-**Description:** Measure signal leakage between channels vs. Frequency (e.g., Stimulate Left -> Measure Right).
-**Gap:** `NetworkAnalyzer` focuses on Transfer Function (Input vs Output) or Single Channel analysis. It requires a dedicated "Crosstalk" mode to handle the specific routing and plotting of relative isolation (dB).
+**Status:** Planned (Extend `Oscilloscope`)
+**Description:** Add an "Infinite Persistence" or "Phosphor" mode to visualize signal integrity, jitter, and ISI (Eye Pattern).
+**Gap:** `Oscilloscope` currently clears the trace on every frame (`goniometer.py` has this, but `oscilloscope.py` does not).
 
-### 4. Wow & Flutter Meter
+### 4. DC Stability & Drift Logger
 
-**Status:** Proposed (Extend `FrequencyCounter` or New Widget)
-**Description:** Measure frequency fluctuation of analog playback devices (Turntables, Tape). Needs FM demodulation and standard weighting filters (IEC 60386 / DIN 45507).
-**Gap:** `FrequencyCounter` measures raw Jitter (Std Dev) but lacks the specific demodulation, weighting, and ballistics required for standard W&F measurements.
+**Status:** Planned (New Widget or Extend `Voltmeter`)
+**Description:** Long-term logging of DC Offset (and Temperature if supported) to verify amplifier thermal stability over minutes/hours.
+**Gap:** No existing widget focuses on slow, long-term trend logging of DC parameters.
 
-### 5. Oscilloscope Eye Pattern / Persistence
+---
 
-**Status:** Proposed (Extend `Oscilloscope`)
-**Description:** Add an "Infinite Persistence" mode to visualize signal integrity, jitter, and ISI (Inter-Symbol Interference) by overlaying multiple trigger cycles without clearing the screen.
-**Gap:** The current `Oscilloscope` clears and replaces the trace on every update.
+## ✅ Already Implemented
+
+* **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter` (supports MIM/Multitone TD+N).
 
 ---
 
@@ -44,24 +43,8 @@ The features listed below have been categorized based on this new direction.
 
 *Features related to physical acoustics are preserved here for reference but are **not currently planned**.*
 
-### 6. Room Acoustics Analyzer (RT60)
-
-**Status:** Deferred
-**Description:** Schroeder integration for T20/T30/T60 decay times, Impulse Response recording, and Waterfall plots.
-**Current State:** `TransientAnalyzer` uses Wavelets, not Schroeder integration.
-
-### 7. Loudspeaker Parameter Calculator (Thiele/Small)
-
-**Status:** Deferred
-**Description:** Derive $Q_{ms}$, $Q_{es}$, $Q_{ts}$, $V_{as}$, etc., from impedance sweeps (Free Air + Added Mass/Sealed Box).
-**Current State:** `ImpedanceAnalyzer` measures raw Z-curves but lacks parameter derivation logic.
-
-### 8. EQ Designer / Target Match
-
-**Status:** Deferred
-**Description:** Auto-calculate PEQ filters to minimize the delta between measured response and a target curve (e.g., Harman Target).
-
-### 9. Loudspeaker Polarity Tester
-
-**Status:** Deferred
-**Description:** Detect absolute polarity (positive/negative) using asymmetric pulses.
+* **Wow & Flutter Meter:** Measure frequency fluctuation of analog playback devices (IEC 60386). Deferred as current focus is digital/signal.
+* **Room Acoustics (RT60):** Schroeder integration for decay times. (`TransientAnalyzer` uses Wavelets).
+* **Loudspeaker Parameters (T/S):** Derive Thiele/Small parameters from impedance sweeps. (`ImpedanceAnalyzer` measures Z only).
+* **EQ Designer:** Auto-calculate PEQ to match target curves.
+* **Polarity Tester:** Pulse-based polarity detection.
