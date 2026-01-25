@@ -19,13 +19,8 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 **Description:** Automated measurement of channel separation vs Frequency (e.g., Drive L -> Measure R).
 **Gap:** `NetworkAnalyzer` supports generic XFER (Meas/Ref) but requires manual patching/setup. A dedicated mode should handle the routing and plot "Crosstalk (dB)" directly.
 
-### 3. Oscilloscope Persistence / Eye Pattern
 
-**Status:** Planned (Extend `Oscilloscope`)
-**Description:** Add an "Infinite Persistence" or "Phosphor" mode to visualize signal integrity, jitter, and ISI (Eye Pattern).
-**Gap:** `Oscilloscope` currently clears the trace on every frame (`goniometer.py` has this, but `oscilloscope.py` does not).
-
-### 4. DC Stability & Drift Logger
+### 3. DC Stability & Drift Logger
 
 **Status:** Planned (New Widget or Extend `Voltmeter`)
 **Description:** Long-term logging of DC Offset (and Temperature if supported) to verify amplifier thermal stability over minutes/hours.
@@ -36,6 +31,7 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 ## ✅ Already Implemented
 
 * **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter` (supports MIM/Multitone TD+N).
+* **Oscilloscope Persistence / Eye Pattern:** Implemented "Infinite Persistence" / "Eye Pattern" mode in `Oscilloscope`.
 
 ---
 
