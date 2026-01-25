@@ -1408,7 +1408,7 @@ class SignalGeneratorWidget(QWidget):
         if key in ['triangle', 'sawtooth']:
             import numpy as np
             return np.sqrt(3.0)
-        
+
         # Sine, Noise (approx), etc. default to standard sine convention (sqrt(2))
         import numpy as np
         return np.sqrt(2.0)
