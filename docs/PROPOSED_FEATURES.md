@@ -19,12 +19,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 **Description:** Automated measurement of channel separation vs Frequency (e.g., Drive L -> Measure R).
 **Gap:** `NetworkAnalyzer` supports generic XFER (Meas/Ref) but requires manual patching/setup. A dedicated mode should handle the routing and plot "Crosstalk (dB)" directly.
 
-### 3. DC Stability & Drift Logger
-
-**Status:** Planned (New Widget or Extend `Voltmeter`)
-**Description:** Long-term logging of DC Offset (and Temperature if supported) to verify amplifier thermal stability over minutes/hours.
-**Gap:** No existing widget focuses on slow, long-term trend logging of DC parameters.
-
 ---
 
 ## ✅ Already Implemented
@@ -38,6 +32,9 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 *Features related to physical acoustics are preserved here for reference but are **not currently planned**.*
 
+* **DC Stability & Drift Logger:** Long-term logging of DC Offset to verify amplifier thermal stability.
+    * **Status:** Impossible (AC Coupled)
+    * **Reason:** Sound devices are AC coupled, making DC measurement impossible without external circuitry. This is not currently planned.
 * **Wow & Flutter Meter:** Measure frequency fluctuation of analog playback devices (IEC 60386). Deferred as current focus is digital/signal.
 * **Room Acoustics (RT60):** Schroeder integration for decay times. (`TransientAnalyzer` uses Wavelets).
 * **Loudspeaker Parameters (T/S):** Derive Thiele/Small parameters from impedance sweeps. (`ImpedanceAnalyzer` measures Z only).

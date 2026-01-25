@@ -970,5 +970,9 @@
     "{0} dBu": "{0} dBu",
     "{0} V": "{0} V",
     "{0} mV": "{0} mV",
-    "{0} FS": "{0} FS"
+    "{0} FS": "{0} FS",
+    "Decay:": "衰减:",
+    "Enable Persistence": "启用余辉",
+    "Intensity:": "强度:",
+    "Persistence": "余辉"
 }
