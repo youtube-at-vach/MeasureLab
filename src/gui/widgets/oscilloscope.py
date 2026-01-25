@@ -62,6 +62,15 @@ class Oscilloscope(MeasurementModule):
         self.filter_low = 1000.0 # For BPF
         self.filter_high = 2000.0 # For BPF
 
+        # Persistence Settings
+        self.persistence_mode = False
+        self.persistence_decay = 0.90
+        self.persistence_intensity = 0.5
+        # Buffers for persistence (initially None, created on demand)
+        self.heatmap_l = None
+        self.heatmap_r = None
+        self.heatmap_size = (600, 400) # Width, Height (pixels/bins)
+
         self.callback_id = None
 
     @property
@@ -78,12 +87,21 @@ class Oscilloscope(MeasurementModule):
     def get_widget(self):
         return OscilloscopeWidget(self)
 
+    def reset_persistence(self):
+        w, h = self.heatmap_size
+        self.heatmap_l = np.zeros((w, h))
+        self.heatmap_r = np.zeros((w, h))
+
     def start_analysis(self):
         if self.is_running:
             return
 
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
+
+        # Reset heatmaps
+        if self.persistence_mode:
+            self.reset_persistence()
 
         if self.trigger_mode == 'Single':
             self.single_shot_armed = True
@@ -442,6 +460,25 @@ class OscilloscopeWidget(QWidget):
         self.cursor_1.setVisible(False)
         self.cursor_2.setVisible(False)
 
+
+        # Persistence Images
+        # We need two images for L/R or composited.
+        # Let's use two ImageItems, one for each channel with different colors (Green/Red).
+        # We'll use CompositionMode to blend them? pg.ImageItem doesn't support easy blending on top of each other easily without opacity.
+        # Alternatively, we calculate the RGB image manually and display one ImageItem.
+        # Let's start with one RGB ImageItem for simplicity of display, we'll compose the heatmap in update_plot.
+        self.persistence_img = pg.ImageItem()
+        # Scale to match plot: 
+        # X: range derived from timebase. 
+        # Y: range -1.1 to 1.1?
+        # We need to setRect dynamically or fixed? Oscilloscope scales change.
+        # We will update setRect in update_plot or when timebase/scale changes?
+        # For now, just add it, hide it.
+        self.plot_widget.addItem(self.persistence_img)
+        self.persistence_img.setVisible(False)
+        self.persistence_img.setZValue(0) # Behind cursors
+
+
         # Math Curve
         self.curve_math = self.plot_widget.plot(pen=pg.mkPen('w', width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
 
@@ -649,6 +686,37 @@ class OscilloscopeWidget(QWidget):
         self.chk_wave_meas.toggled.connect(self.on_wave_meas_toggled)
         tools_layout.addWidget(self.chk_wave_meas)
 
+        # Persistence Controls
+        persist_group = QGroupBox(tr("Persistence"))
+        persist_layout = QVBoxLayout()
+
+        self.chk_persist = QCheckBox(tr("Enable Persistence"))
+        self.chk_persist.setChecked(self.module.persistence_mode)
+        self.chk_persist.toggled.connect(self.on_persist_toggled)
+        persist_layout.addWidget(self.chk_persist)
+
+        hbox_decay = QHBoxLayout()
+        hbox_decay.addWidget(QLabel(tr("Decay:")))
+        self.decay_slider = QSlider(Qt.Orientation.Horizontal)
+        self.decay_slider.setRange(0, 99)
+        self.decay_slider.setValue(int(self.module.persistence_decay * 100))
+        self.decay_slider.valueChanged.connect(self.on_decay_changed)
+        hbox_decay.addWidget(self.decay_slider)
+        persist_layout.addLayout(hbox_decay)
+
+        hbox_intensity = QHBoxLayout()
+        hbox_intensity.addWidget(QLabel(tr("Intensity:")))
+        self.intensity_slider = QSlider(Qt.Orientation.Horizontal)
+        self.intensity_slider.setRange(1, 100)
+        self.intensity_slider.setValue(int(self.module.persistence_intensity * 100))
+        self.intensity_slider.valueChanged.connect(self.on_intensity_changed)
+        hbox_intensity.addWidget(self.intensity_slider)
+        persist_layout.addLayout(hbox_intensity)
+
+        persist_group.setLayout(persist_layout)
+        tools_layout.addWidget(persist_group)
+
+
         # per-tab stretch handled by tools_tab_layout
 
         # 5. Filter Controls
@@ -748,6 +816,8 @@ class OscilloscopeWidget(QWidget):
         # We display 10 divisions usually. So window is 10 * val
         self.module.timebase = val * 10
         self.plot_widget.setXRange(0, self.module.timebase)
+        if self.module.persistence_mode:
+            self.module.reset_persistence()
 
         # Sync slider
         if text in self.timebase_keys:
@@ -772,6 +842,8 @@ class OscilloscopeWidget(QWidget):
             return
         scale = float(self.vscale_options[text])
         self.module.vscale_left = scale
+        if self.module.persistence_mode:
+            self.module.reset_persistence()
 
         if text in self.vscale_keys:
             idx = self.vscale_keys.index(text)
@@ -789,6 +861,8 @@ class OscilloscopeWidget(QWidget):
             return
         scale = float(self.vscale_options[text])
         self.module.vscale_right = scale
+        if self.module.persistence_mode:
+            self.module.reset_persistence()
 
         if text in self.vscale_keys:
             idx = self.vscale_keys.index(text)
@@ -938,6 +1012,24 @@ class OscilloscopeWidget(QWidget):
         else:
             self.filter_stack.setCurrentIndex(1) # LPF/HPF share same widget
 
+    def on_persist_toggled(self, checked):
+        self.module.persistence_mode = checked
+        if checked:
+            self.module.reset_persistence()
+            self.persistence_img.setVisible(True)
+            self.curve_l.setVisible(False)
+            self.curve_r.setVisible(False)
+        else:
+            self.persistence_img.setVisible(False)
+            self.curve_l.setVisible(self.module.show_left)
+            self.curve_r.setVisible(self.module.show_right)
+
+    def on_decay_changed(self, val):
+        self.module.persistence_decay = val / 100.0
+
+    def on_intensity_changed(self, val):
+        self.module.persistence_intensity = val / 100.0
+
     def update_plot(self):
         if not self.module.is_running:
             return
@@ -946,19 +1038,12 @@ class OscilloscopeWidget(QWidget):
         data = self.module.get_display_data(window_duration)
 
         if data is not None:
+            # Create time axis
+            t = np.linspace(0, window_duration, len(data))
+
             # Apply Filter if enabled
             sr = self.module.audio_engine.sample_rate
             if self.module.filter_type != 'None':
-                # Filter both channels
-                # Note: filtering short segments might have transient artifacts at edges.
-                # Ideally we filter the continuous buffer, but for visualization this might be acceptable
-                # if the segment is long enough or if we accept the edge effects.
-                # get_display_data returns a copy, so we can modify it.
-
-                # To reduce edge artifacts, we could fetch a bit more data, filter, then trim?
-                # get_display_data logic is complex with trigger.
-                # Let's try direct filtering first.
-
                 if self.module.filter_type == 'LPF':
                     data[:, 0] = AudioCalc.lowpass_filter(data[:, 0], sr, self.module.filter_cutoff)
                     data[:, 1] = AudioCalc.lowpass_filter(data[:, 1], sr, self.module.filter_cutoff)
@@ -981,9 +1066,6 @@ class OscilloscopeWidget(QWidget):
 
             self.meas_l_label.setText(tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(l_rms, l_vpp))
             self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(r_rms, r_vpp))
-
-            # Create time axis
-            t = np.linspace(0, window_duration, len(data))
 
             # Waveform-derived measurements (optional)
             def _format_time(seconds):
@@ -1012,18 +1094,16 @@ class OscilloscopeWidget(QWidget):
 
             if wave_meas_enabled:
                 if self.module.show_left:
-                    y = data[:, 0]
-                    freq_hz = self.module.estimate_frequency_hz(t, y)
-                    rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, y)
+                    freq_hz = self.module.estimate_frequency_hz(t, l_data)
+                    rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, l_data)
                     self.meas_l_auto_label.setText(
                         tr("Freq") + f": {_format_freq(freq_hz)}  "
                         + tr("Rise") + f": {_format_time(rise_s)}  "
                         + tr("Fall") + f": {_format_time(fall_s)}"
                     )
                 if self.module.show_right:
-                    y = data[:, 1]
-                    freq_hz = self.module.estimate_frequency_hz(t, y)
-                    rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, y)
+                    freq_hz = self.module.estimate_frequency_hz(t, r_data)
+                    rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, r_data)
                     self.meas_r_auto_label.setText(
                         tr("Freq") + f": {_format_freq(freq_hz)}  "
                         + tr("Rise") + f": {_format_time(rise_s)}  "
@@ -1034,15 +1114,110 @@ class OscilloscopeWidget(QWidget):
             self.latest_data = data
             self.latest_t = t
 
-            if self.module.show_left:
-                self.curve_l.setData(t, data[:, 0] * float(getattr(self.module, 'vscale_left', 1.0)))
-            else:
-                self.curve_l.setData([], [])
+            scaled_l = data[:, 0] * float(getattr(self.module, 'vscale_left', 1.0))
+            scaled_r = data[:, 1] * float(getattr(self.module, 'vscale_right', 1.0))
 
-            if self.module.show_right:
-                self.curve_r.setData(t, data[:, 1] * float(getattr(self.module, 'vscale_right', 1.0)))
+            if self.module.persistence_mode:
+                # Update Persistence
+                decay = self.module.persistence_decay
+                intensity = self.module.persistence_intensity
+
+                # Decay
+                self.module.heatmap_l *= decay
+                self.module.heatmap_r *= decay
+
+                # Binning
+                w, h = self.module.heatmap_size
+                # X Range: 0 to window_duration
+                # Y Range: Fixed -1.1 to 1.1 (Plot View)
+                # Note: We bin SCALED data.
+
+                rng = [[0, window_duration], [-1.1, 1.1]]
+
+                if self.module.show_left:
+                    hist_l, _, _ = np.histogram2d(t, scaled_l, bins=[w, h], range=rng)
+                    self.module.heatmap_l += hist_l * intensity * 100
+
+                if self.module.show_right:
+                    hist_r, _, _ = np.histogram2d(t, scaled_r, bins=[w, h], range=rng)
+                    self.module.heatmap_r += hist_r * intensity * 100
+
+                # Compose Image
+                # L = Green, R = Red
+                # Output shape (h, w, 4) (RGBA) or (w, h, 4)?
+                # pg.ImageItem takes (w, h) or (h, w) depending on axisOrder.
+                # Default is col-major (w, h)?
+                # histogram2d returns (nx, ny). T -> (ny, nx) i.e. (h, w).
+                # ImageItem expects (width, height) usually if axisOrder='col-major'.
+                # Let's check Goniometer: self.img_item.setImage(self.module.heatmap.T)
+                # It transposes.
+                # If we construct RGBA, we can match direct dimensions.
+
+                # Let's construct RGBA image of shape (w, h, 4)
+                # heatmap_l is (h, w) due to Transpose above?
+                # heatmap_l shape is (w, h) init.
+                # histogram2d(x, y, bins=[w, h]) -> shape (w, h).
+                # So hist_l is (w, h).
+                # We added hist_l.T -> (h, w)?
+                # If we want to map X(time) to X(screen), and Y(amp) to Y(screen).
+                # ImageItem: 
+                # "image data is interpreted as a row-major array (shape=(height, width))" IF axisOrder='row-major'.
+                # Default is 'col-major' (width, height).
+                # Let's stick to (w, h) if default.
+
+                # Reset buffers to not Transpose if we want (w, h).
+                # self.module.heatmap_l is initialized as (w, h).
+                # hist_l is (w, h).
+                # So: self.module.heatmap_l += hist_l * intensity.
+
+                # But wait, y axis in numpy is usually index 0 or 1?
+                # histogram2d returns H[x, y].
+                # So H[0,0] is x=min, y=min.
+                # If ImageItem expects data[x, y], then we are good.
+
+                w, h = self.module.heatmap_size
+                rgba = np.zeros((w, h, 4), dtype=np.ubyte)
+
+                # Clip and map to 0-255
+                # Green (Left)
+                l_val = np.clip(self.module.heatmap_l, 0, 255).astype(np.ubyte)
+                # Red (Right)
+                r_val = np.clip(self.module.heatmap_r, 0, 255).astype(np.ubyte)
+
+                rgba[..., 0] = r_val # R
+                rgba[..., 1] = l_val # G
+                # B is 0
+                # Alpha: Max of L/R? Or just opaque blocks?
+                # If Alpha is 0, it's transparent.
+                # We want black background?
+                # Plot background is Black.
+                # So we can set Alpha = Max(R, G).
+
+                alpha = np.maximum(l_val, r_val)
+                rgba[..., 3] = alpha
+
+                self.persistence_img.setImage(rgba, autoLevels=False)
+                self.persistence_img.setRect(pg.QtCore.QRectF(0, -1.1, window_duration, 2.2))
+
+                # Hide curves
+                self.curve_l.setVisible(False)
+                self.curve_r.setVisible(False)
+
             else:
-                self.curve_r.setData([], [])
+                # Normal Mode
+                if self.module.show_left:
+                    self.curve_l.setData(t, scaled_l)
+                    self.curve_l.setVisible(True)
+                else:
+                    self.curve_l.setVisible(False)
+
+                if self.module.show_right:
+                    self.curve_r.setData(t, scaled_r)
+                    self.curve_r.setVisible(True)
+                else:
+                    self.curve_r.setVisible(False)
+
+                self.persistence_img.setVisible(False)
 
             # Math Processing
             if self.module.math_mode != 'Off':
