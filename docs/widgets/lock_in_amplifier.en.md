@@ -83,6 +83,28 @@ The performance of a lock-in amplifier is determined by the "strength of the fil
 
 * **Count**: Averages and displays the specified number of measurement data points. Effective for reducing random noise.
 
+## Calibration
+
+This widget provides calibration features to improve the absolute accuracy of measurements.
+
+### Absolute Gain Calibration
+
+Adjusts the offset of the displayed Magnitude (voltage) to match an external reference value.
+
+1. Use the calibration section in the **Settings** panel.
+2. Input a signal with a known level (e.g., 1.0 Vrms sine wave).
+3. Enter the value in `Target` and select the unit (dBFS, dBV, dBu, Vrms).
+4. Click the `Calibrate Absolute Gain` button.
+5. The difference between the measured value and the target value is calculated and applied as an offset.
+
+### Frequency Response Calibration (Map)
+
+A feature to compensate for the frequency response of the measurement system (attenuation of cables, probes, etc.).
+
+* **Save Map**: Saves the current frequency sweep result (measured in FRA mode) as calibration data.
+* **Load Map**: Loads saved calibration data.
+* **Apply Calibration**: When checked, the measurement values are corrected in real-time based on the loaded map.
+
 ## Quick Start Procedures
 
 ### Example: Measuring the Frequency Characteristics of a Filter Circuit (FRA)
