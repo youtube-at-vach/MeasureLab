@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "measurelab"
-version = "0.3.7"
+version = "0.3.8"
 description = "DIY audio measurement and analysis suite (GUI + CLI)"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.3.8] - 2026-01-25
+
+### Added
+
+* UI: オシロスコープの残光表示（`Persistence / Eye Pattern`）機能を追加（減衰・強度設定付き）
+* Core: `AllanWorker` を導入し、Allan Deviation の非同期計算に対応
+
+### Changed
+
+* Perf: `AudioCalc` の A-weighting 計算を `lru_cache` で最適化
+* Perf: スペクトル平滑化のビン探索をバイナリサーチにより最適化
+* I18n: 初回起動時のシステム言語自動検出機能を実装
+* Docs: `PROPOSED_FEATURES.md` を信号計測フォーカスへリファクタリングし、全体を整理
+
+### Fixed
+
+* Core: Oscilloscope および Spectrogram ウィジェットにおけるオーディオコールバック等のリソースリークを修正
+* I18n: 翻訳キーの不足と重複、および他言語への漏れを修正
+* Chore: Allan Deviation 関連の不要なテスト・再現スクリプトを削除
+
 ## [v0.3.7] - 2026-01-24
 
 ### Changed
