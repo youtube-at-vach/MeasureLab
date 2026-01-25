@@ -1,4 +1,5 @@
 
+import functools
 import numpy as np
 import multiprocessing
 import logging
@@ -237,11 +238,14 @@ class FFTManager:
             return out
         return result
 
+    @functools.lru_cache(maxsize=32)
     def rfftfreq(self, n, d=1.0):
         """
         Wrapper for numpy.fft.rfftfreq.
         """
-        return np.fft.rfftfreq(n, d)
+        result = np.fft.rfftfreq(n, d)
+        result.flags.writeable = False
+        return result
 
     def warmup(self, callback=None, force=False, exhaustive=False, include_huge=False):
         """
