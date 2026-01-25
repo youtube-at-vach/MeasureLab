@@ -20,96 +20,89 @@ class MockAudioEngine:
     def unregister_callback(self, id):
         pass
 
-def test_lockin_buffer_logic_stereo_circular():
+def test_lockin_buffer_logic_deque():
     engine = MockAudioEngine()
     lockin = LockInAmplifier(engine)
-    lockin.buffer_size = 10 # Small buffer for testing
+    lockin.buffer_size = 10
     lockin.start_analysis()
 
-    assert len(engine.callbacks) > 0
     callback = engine.callbacks[0]
 
-    # Initial state: zeros
-    assert np.all(lockin.input_data == 0)
-    assert lockin.write_index == 0
-
-    # Feed 4 stereo samples
-    # Buffer is size 10. Index starts at 0.
-    # Should write to [0, 1, 2, 3]. Index becomes 4.
+    # 1. Feed 4 stereo samples
     indata = np.array([[1, 1], [2, 2], [3, 3], [4, 4]], dtype=np.float32)
     outdata = np.zeros((4, 2), dtype=np.float32)
-
     callback(indata, outdata, 4, 0, 0)
 
-    # Check raw buffer
-    expected_raw = np.zeros((10, 2))
-    expected_raw[0:4] = indata
+    # Verify deque content
+    assert len(lockin.input_blocks) == 1
+    np.testing.assert_allclose(lockin.input_blocks[0], indata)
 
-    np.testing.assert_allclose(lockin.input_data, expected_raw)
-    assert lockin.write_index == 4
+    # Verify reconstruction (process_data logic)
+    # Concatenate blocks. Pad if less than buffer_size?
+    # Current implementation pads with zeros at start if < buffer_size.
 
-    # Verify reconstruction logic (simulate what process_data does)
-    # Reconstructed: roll(input, -index)
-    # roll([1, 2, 3, 4, 0...], -4) -> [0, 0, ..., 1, 2, 3, 4] (Correct order: oldest 0s, newest 4s)
-    # Wait, initially buffer is 0.
-    # Oldest data is at index 4 (0.0). Newest is at index 3 (4.0).
-    # We want oldest -> newest.
-    # [0, 0, 0, 0, 0, 0, 1, 2, 3, 4] is the desired logical view?
-    # Yes, typically we want [t-N ... t].
+    # Mock process_data logic manually to test it
+    blocks = list(lockin.input_blocks)
+    full_data = np.concatenate(blocks)
+    if len(full_data) < lockin.buffer_size:
+        padding = np.zeros((lockin.buffer_size - len(full_data), 2))
+        data = np.vstack((padding, full_data))
+    else:
+        data = full_data[-lockin.buffer_size:]
 
-    reconstructed = np.roll(lockin.input_data, -lockin.write_index, axis=0)
-    expected_logical = np.zeros((10, 2))
-    expected_logical[-4:] = indata
+    expected = np.zeros((10, 2))
+    expected[-4:] = indata
+    np.testing.assert_allclose(data, expected)
 
-    np.testing.assert_allclose(reconstructed, expected_logical)
-
-    # Feed 8 more samples
-    # Index is 4. Remaining space is 6 (indices 4..9).
-    # We feed 8.
-    # First 6 go to [4..9].
-    # Next 2 wrap to [0..1].
-    # Index becomes 2.
-
+    # 2. Feed 8 more samples
     indata2 = np.array([[5, 5], [6, 6], [7, 7], [8, 8], [9, 9], [10, 10], [11, 11], [12, 12]], dtype=np.float32)
     outdata2 = np.zeros((8, 2), dtype=np.float32)
     callback(indata2, outdata2, 8, 0, 0)
 
-    assert lockin.write_index == 2
+    # Total samples fed: 12. Buffer size: 10.
+    # Deque logic keeps "at least" buffer_size?
+    # Deque: [4 samples], [8 samples] -> Total 12.
+    # Pruning: while size - first >= 10.
+    # 12 - 4 = 8 < 10. So it keeps both blocks.
 
-    # Expected Raw Buffer:
-    # [0]: 11 (wrapped)
-    # [1]: 12 (wrapped)
-    # [2]: 3 (old)
-    # [3]: 4 (old)
-    # [4]: 5 (new)
-    # ...
-    # [9]: 10 (new)
-
-    expected_raw_2 = np.zeros((10, 2))
-    expected_raw_2[0] = [11, 11]
-    expected_raw_2[1] = [12, 12]
-    expected_raw_2[2] = [3, 3]
-    expected_raw_2[3] = [4, 4]
-    expected_raw_2[4:] = indata2[:6]
-
-    np.testing.assert_allclose(lockin.input_data, expected_raw_2)
+    assert len(lockin.input_blocks) == 2
 
     # Verify reconstruction
-    # roll(raw, -2).
-    # [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    # This preserves the order: 3, 4 (from first batch), 5..12 (second batch).
-    # 1, 2 from first batch were overwritten.
+    # Should contain last 10 samples: [3..12]
+    # Input was [1..4] then [5..12].
+    # Concatenated: [1..12].
+    # Last 10: [3..12].
 
-    reconstructed_2 = np.roll(lockin.input_data, -lockin.write_index, axis=0)
+    blocks = list(lockin.input_blocks)
+    full_data = np.concatenate(blocks)
+    data = full_data[-lockin.buffer_size:]
 
-    expected_logical_2 = np.zeros((10, 2))
-    expected_logical_2[0] = [3, 3]
-    expected_logical_2[1] = [4, 4]
-    expected_logical_2[2:] = indata2
+    expected_2 = np.vstack((indata[-2:], indata2)) # [3, 4] + [5..12]
+    np.testing.assert_allclose(data, expected_2)
 
-    np.testing.assert_allclose(reconstructed_2, expected_logical_2)
+    # 3. Feed huge block (15 samples)
+    indata3 = np.ones((15, 2), dtype=np.float32) * 99
+    outdata3 = np.zeros((15, 2), dtype=np.float32)
+    callback(indata3, outdata3, 15, 0, 0)
 
-def test_lockin_buffer_logic_mono_circular():
+    # Deque: [4], [8], [15]. Size = 27.
+    # Pruning:
+    # 27 - 4 = 23 >= 10. Pop [4]. Size = 23.
+    # 23 - 8 = 15 >= 10. Pop [8]. Size = 15.
+    # 15 - 15 = 0 < 10. Stop.
+    # Remaining: [15].
+
+    assert len(lockin.input_blocks) == 1
+    np.testing.assert_allclose(lockin.input_blocks[0], indata3)
+
+    # Verify data is just the last 10 of indata3
+    blocks = list(lockin.input_blocks)
+    full_data = np.concatenate(blocks)
+    data = full_data[-lockin.buffer_size:]
+
+    np.testing.assert_allclose(data, indata3[-10:])
+
+def test_lockin_buffer_logic_mono_expansion():
     engine = MockAudioEngine()
     lockin = LockInAmplifier(engine)
     lockin.buffer_size = 10
@@ -118,21 +111,29 @@ def test_lockin_buffer_logic_mono_circular():
     callback = engine.callbacks[0]
 
     # Feed 4 mono samples
-    indata = np.array([[1], [2], [3], [4]], dtype=np.float32)
+    indata = np.array([[1], [2], [3], [4]], dtype=np.float32) # (4, 1)
     outdata = np.zeros((4, 2), dtype=np.float32)
-
     callback(indata, outdata, 4, 0, 0)
 
-    expected_raw = np.zeros((10, 2))
-    expected_raw[0:4, 0] = indata.flatten()
-    expected_raw[0:4, 1] = indata.flatten()
+    # Verify stored block is (4, 1)
+    assert len(lockin.input_blocks) == 1
+    assert lockin.input_blocks[0].shape == (4, 1)
 
-    np.testing.assert_allclose(lockin.input_data, expected_raw)
-    assert lockin.write_index == 4
+    # Verify reconstruction expands to stereo
+    blocks = list(lockin.input_blocks)
+    full_data = np.concatenate(blocks)
 
-    reconstructed = np.roll(lockin.input_data, -lockin.write_index, axis=0)
-    expected_logical = np.zeros((10, 2))
-    expected_logical[-4:, 0] = indata.flatten()
-    expected_logical[-4:, 1] = indata.flatten()
+    # Expansion logic
+    if full_data.shape[1] < 2:
+        col = full_data[:, 0]
+        full_data = np.column_stack((col, col))
 
-    np.testing.assert_allclose(reconstructed, expected_logical)
+    if len(full_data) < 10:
+        padding = np.zeros((10 - len(full_data), 2))
+        data = np.vstack((padding, full_data))
+
+    expected = np.zeros((10, 2))
+    expected[-4:, 0] = indata.flatten()
+    expected[-4:, 1] = indata.flatten()
+
+    np.testing.assert_allclose(data, expected)

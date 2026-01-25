@@ -35,8 +35,8 @@ class LockInAmplifier(MeasurementModule):
         self.audio_engine = audio_engine
         self.is_running = False
         self.buffer_size = 4096 # Adjust for integration time
-        self.input_data = np.zeros((self.buffer_size, 2))
-        self.write_index = 0
+        self.input_blocks = deque()
+        self.input_blocks_size = 0
 
         # Settings
         self.gen_frequency = 1000.0
@@ -125,8 +125,8 @@ class LockInAmplifier(MeasurementModule):
             return
 
         self.is_running = True
-        self.input_data = np.zeros((self.buffer_size, 2))
-        self.write_index = 0
+        self.input_blocks.clear()
+        self.input_blocks_size = 0
         self.reset_postmix_lpf()
 
         # Generator State
@@ -138,49 +138,29 @@ class LockInAmplifier(MeasurementModule):
                 print(status)
 
             # --- Input Capture ---
-            # Optimize: Use circular buffer approach to avoid shift/copy of old data
-            # and avoid tearing/instability by only modifying the 'new' segment.
-            n_new = len(indata)
+            # Optimize: Store blocks in deque to avoid O(N) copy in callback.
+            # This allocates O(chunk) but avoids O(buffer_size) moves.
+            # Snapshot isolation is preserved for the reader.
 
-            # Prepare new data block
+            # Create a copy of input data (indata is transient)
             if indata.shape[1] >= 2:
-                # Stereo Input
-                block = indata[:, :2]
+                block = np.array(indata[:, :2], copy=True)
             else:
-                # Mono Input (Expand to Stereo)
-                # We can't use column_stack if we want to avoid alloc, but
-                # since we are about to copy into input_data, we can do it per channel there.
-                # However, for simplicity of logic below, let's just make a view or small temp if needed.
-                # But to be perfectly zero-alloc for mono, we handle it in the loop.
-                block = indata # Handle mono expansion in write
+                block = np.array(indata, copy=True) # Keep as (N, 1) or (N, channels), expand later
 
-            # Write to circular buffer
-            idx = self.write_index
-            remaining = self.buffer_size - idx
+            # Handle channel count change (reset if needed)
+            if self.input_blocks and self.input_blocks[-1].shape[1] != block.shape[1]:
+                self.input_blocks.clear()
+                self.input_blocks_size = 0
 
-            if n_new <= remaining:
-                if indata.shape[1] >= 2:
-                    self.input_data[idx:idx+n_new] = block
-                else:
-                    self.input_data[idx:idx+n_new, 0] = indata[:, 0]
-                    self.input_data[idx:idx+n_new, 1] = indata[:, 0]
-                self.write_index += n_new
-            else:
-                # Wrap around
-                # First part
-                if indata.shape[1] >= 2:
-                    self.input_data[idx:] = block[:remaining]
-                    self.input_data[:n_new-remaining] = block[remaining:]
-                else:
-                    self.input_data[idx:, 0] = indata[:remaining, 0]
-                    self.input_data[idx:, 1] = indata[:remaining, 0]
-                    self.input_data[:n_new-remaining, 0] = indata[remaining:, 0]
-                    self.input_data[:n_new-remaining, 1] = indata[remaining:, 0]
+            self.input_blocks.append(block)
+            self.input_blocks_size += len(block)
 
-                self.write_index = n_new - remaining
-
-            if self.write_index >= self.buffer_size:
-                self.write_index = 0
+            # Prune old blocks to keep size roughly equal to buffer_size
+            # We keep at least buffer_size. Processing will trim the exact tail.
+            while self.input_blocks_size - len(self.input_blocks[0]) >= self.buffer_size:
+                removed = self.input_blocks.popleft()
+                self.input_blocks_size -= len(removed)
 
             # --- Output Generation ---
             # Generate Sine Wave
@@ -213,15 +193,32 @@ class LockInAmplifier(MeasurementModule):
         """
         Perform Lock-in calculation on the current buffer.
         """
-        # Unroll circular buffer to get linear time history
-        # We do this copy in the GUI thread to ensure we work on a consistent snapshot
-        # (mostly consistent, barring the small write race).
-        # np.roll allows us to reconstruct the order: oldest -> newest.
-        # write_index points to the *next* write location, which is also the *oldest* data.
-        # So rolling by -write_index puts oldest at 0.
+        # Reconstruct linear buffer from blocks (Thread-safe snapshot)
+        blocks = list(self.input_blocks) # Atomic copy of references
+        if not blocks:
+            return
 
-        # Note: np.roll allocates a new array, which is acceptable here (10Hz).
-        data = np.roll(self.input_data, -self.write_index, axis=0)
+        try:
+            full_data = np.concatenate(blocks)
+        except ValueError:
+            # Shape mismatch during update?
+            return
+
+        # Handle Mono -> Stereo expansion if needed
+        if full_data.shape[1] < 2:
+            # Expand (N, 1) -> (N, 2)
+            col = full_data[:, 0]
+            full_data = np.column_stack((col, col))
+
+        # Trim to buffer_size (take latest)
+        if len(full_data) > self.buffer_size:
+            data = full_data[-self.buffer_size:]
+        elif len(full_data) < self.buffer_size:
+            # Pad with zeros if starting up
+            padding = np.zeros((self.buffer_size - len(full_data), 2))
+            data = np.vstack((padding, full_data))
+        else:
+            data = full_data
 
         sig = data[:, self.signal_channel]
         ref = data[:, self.ref_channel]
@@ -1096,9 +1093,7 @@ class LockInAmplifierWidget(QWidget):
         elif idx == 2: self.module.buffer_size = 16384
         elif idx == 3: self.module.buffer_size = 65536
 
-        # Re-allocate buffer
-        self.module.input_data = np.zeros((self.module.buffer_size, 2))
-        self.module.write_index = 0
+        # Reset LPF as time constant relation changes
         self.module.reset_postmix_lpf()
 
     def on_postmix_lpf_changed(self, idx):
