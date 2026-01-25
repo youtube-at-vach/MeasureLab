@@ -970,5 +970,9 @@
     "{0} dBu": "{0} dBu",
     "{0} V": "{0} V",
     "{0} mV": "{0} mV",
-    "{0} FS": "{0} FS"
+    "{0} FS": "{0} FS",
+    "Decay:": "Decaimiento:",
+    "Enable Persistence": "Habilitar persistencia",
+    "Intensity:": "Intensidad:",
+    "Persistence": "Persistencia"
 }
