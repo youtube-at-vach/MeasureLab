@@ -34,6 +34,7 @@ class Oscilloscope(MeasurementModule):
         # Buffer enough for low frequency analysis, but we'll display a subset
         self.buffer_size = 8192
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_index = 0
 
         # Settings
         self.timebase = 0.01 # Seconds per division (approx) -> Total view window
@@ -98,6 +99,7 @@ class Oscilloscope(MeasurementModule):
 
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.write_index = 0
 
         # Reset heatmaps
         if self.persistence_mode:
@@ -116,12 +118,25 @@ class Oscilloscope(MeasurementModule):
             else:
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
-            # Roll buffer
-            if len(new_data) > self.buffer_size:
+            # Ring buffer write (zero allocation)
+            n_frames = len(new_data)
+            if n_frames > self.buffer_size:
+                # Just take the last part
                 self.input_data[:] = new_data[-self.buffer_size:]
+                self.write_index = 0
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data):] = new_data
+                # Wrapped write
+                idx = self.write_index
+                end_idx = idx + n_frames
+                if end_idx <= self.buffer_size:
+                    self.input_data[idx:end_idx] = new_data
+                else:
+                    # Split
+                    part1_len = self.buffer_size - idx
+                    self.input_data[idx:] = new_data[:part1_len]
+                    self.input_data[:n_frames - part1_len] = new_data[part1_len:]
+
+                self.write_index = (idx + n_frames) % self.buffer_size
 
             outdata.fill(0)
 
@@ -178,7 +193,8 @@ class Oscilloscope(MeasurementModule):
         if required_samples > self.buffer_size:
             required_samples = self.buffer_size
 
-        data = self.input_data
+        # Unroll buffer to linear time (allocation here on GUI thread is fine)
+        data = np.roll(self.input_data, -self.write_index, axis=0)
 
         if self.trigger_mode == 'Single' and not self.single_shot_armed:
             return None
