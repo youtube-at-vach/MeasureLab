@@ -565,15 +565,18 @@ class SpectrumAnalyzerWidget(QWidget):
         smoothed_mags = []
 
         current_f = f_min
+        factor = 2**(1/(2*fraction))
+        step_factor = 2**(1/fraction)
+
         while current_f < f_max:
-            factor = 2**(1/(2*fraction))
             lower = current_f / factor
             upper = current_f * factor
 
-            indices = np.where((freqs >= lower) & (freqs < upper))[0]
+            idx_start = np.searchsorted(freqs, lower, side='left')
+            idx_end = np.searchsorted(freqs, upper, side='left')
 
-            if len(indices) > 0:
-                linear_mags = 10**(magnitude[indices]/20)
+            if idx_end > idx_start:
+                linear_mags = 10**(magnitude[idx_start:idx_end]/20)
                 # Use axis=0 to preserve channel dimension if present (Dual mode)
                 avg_linear = np.mean(linear_mags, axis=0)
                 avg_db = 20 * np.log10(avg_linear + 1e-12)
@@ -581,7 +584,7 @@ class SpectrumAnalyzerWidget(QWidget):
                 smoothed_freqs.append(current_f)
                 smoothed_mags.append(avg_db)
 
-            current_f *= 2**(1/fraction)
+            current_f *= step_factor
 
         return np.array(smoothed_freqs), np.array(smoothed_mags)
 
