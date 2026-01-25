@@ -549,6 +549,7 @@ class LockInAmplifierWidget(QWidget):
 
         self.amp_spin = QDoubleSpinBox()
         self.amp_spin.setRange(-120, 0)
+        self.amp_spin.setDecimals(4)
         self.amp_spin.setValue(-6)
         self.amp_spin.valueChanged.connect(self.on_amp_spin_changed)
 
