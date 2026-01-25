@@ -136,17 +136,27 @@ class LockInAmplifier(MeasurementModule):
                 print(status)
 
             # --- Input Capture ---
-            if indata.shape[1] >= 2:
-                new_data = indata[:, :2]
-            else:
-                new_data = np.column_stack((indata[:, 0], indata[:, 0]))
+            # Optimize: avoid allocation in callback (no np.roll, no np.column_stack)
+            n_new = len(indata)
 
-            # Roll buffer
-            if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
+            if indata.shape[1] >= 2:
+                # Stereo Input
+                if n_new > self.buffer_size:
+                    self.input_data[:] = indata[-self.buffer_size:, :2]
+                else:
+                    self.input_data[:-n_new] = self.input_data[n_new:]
+                    self.input_data[-n_new:] = indata[:, :2]
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data):] = new_data
+                # Mono Input (Expand to Stereo)
+                if n_new > self.buffer_size:
+                    src = indata[-self.buffer_size:, 0]
+                    self.input_data[:, 0] = src
+                    self.input_data[:, 1] = src
+                else:
+                    self.input_data[:-n_new] = self.input_data[n_new:]
+                    src = indata[:, 0]
+                    self.input_data[-n_new:, 0] = src
+                    self.input_data[-n_new:, 1] = src
 
             # --- Output Generation ---
             # Generate Sine Wave
