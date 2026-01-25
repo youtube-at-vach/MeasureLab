@@ -127,6 +127,39 @@ class Oscilloscope(MeasurementModule):
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
+    def get_measurements(self, data):
+        """
+        Calculate measurements (RMS, Vpp) for the given data, applying calibration.
+        Returns a dict with 'l_rms', 'l_vpp', 'r_rms', 'r_vpp'.
+        """
+        if data is None:
+            return {'l_rms': 0.0, 'l_vpp': 0.0, 'r_rms': 0.0, 'r_vpp': 0.0}
+
+        # Apply Input Sensitivity (Calibration)
+        # raw data is -1.0 to 1.0 (FS).
+        # sensitivity is Volts per FS (Peak).
+        sensitivity = self.audio_engine.calibration.input_sensitivity
+
+        l_data = data[:, 0]
+        r_data = data[:, 1]
+
+        # RMS calculation
+        # RMS(Volts) = RMS(FS) * Sensitivity
+        l_rms = np.sqrt(np.mean(l_data**2)) * sensitivity
+        r_rms = np.sqrt(np.mean(r_data**2)) * sensitivity
+
+        # Vpp calculation
+        # Vpp(Volts) = (Max(FS) - Min(FS)) * Sensitivity
+        l_vpp = (np.max(l_data) - np.min(l_data)) * sensitivity
+        r_vpp = (np.max(r_data) - np.min(r_data)) * sensitivity
+
+        return {
+            'l_rms': l_rms,
+            'l_vpp': l_vpp,
+            'r_rms': r_rms,
+            'r_vpp': r_vpp
+        }
+
     def stop_analysis(self):
         if self.is_running:
             if self.callback_id is not None:
@@ -1058,14 +1091,10 @@ class OscilloscopeWidget(QWidget):
             l_data = data[:, 0]
             r_data = data[:, 1]
 
-            l_rms = np.sqrt(np.mean(l_data**2))
-            l_vpp = np.max(l_data) - np.min(l_data)
+            meas = self.module.get_measurements(data)
 
-            r_rms = np.sqrt(np.mean(r_data**2))
-            r_vpp = np.max(r_data) - np.min(r_data)
-
-            self.meas_l_label.setText(tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(l_rms, l_vpp))
-            self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(r_rms, r_vpp))
+            self.meas_l_label.setText(tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas['l_rms'], meas['l_vpp']))
+            self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas['r_rms'], meas['r_vpp']))
 
             # Waveform-derived measurements (optional)
             def _format_time(seconds):
