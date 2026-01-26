@@ -13,7 +13,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 ## Quick glance (English)
 
-- PyQt6 desktop app bundling 27+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, lock-in/FRA, network/impedance analyzers, oscilloscope, spectrogram, distortion/IMD tools, recorder/player, inverse filter, frequency counter, lock-in frequency counter, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
+- PyQt6 desktop app bundling 28+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, loopback finder, distortion/IMD tools, network/impedance analyzers, oscilloscope, spectrogram, ultrasound modulator, transient analyzer, lock-in/FRA, inverse filter, frequency counter, recorder/player, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
 - Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes.
 - Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.10+).
 
@@ -50,8 +50,9 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 25. **Timecode Monitor & Generator**: LTC タイムコードのエンコード/デコードとリアルタイム監視。フレームベース計算、ドロップフレーム率、複数FPS表示、タイムゾーン/オフセット、JAMメモリ付きジェネレーターを備える。
 26. **BNIM Meter**: ステレオ入力から ITD/ILD の「ニューラルマップ」を可視化し、両耳定位の傾向を観察するメーター。
 27. **HRTF Player**: SOFA ファイルの読み込みと可視化。HRTF メトリクス (ITD/ILD/高域エネルギー/エンベロープピーク) のヒートマップ表示、クリックによる音源位置指定、任意の音楽ファイルを用いたリアルタイム回転再生 (Convolution による空間定位) に対応。
-28. **Detachable Wrapper**: 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。
-29. **Settings**: デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。
+28. **Ultrasound AM Modulator**: オーディオ信号を振幅変調(AM)し、搬送波(40kHz)に乗せて超音波として出力。パラメトリックスピーカーの実験等に使用可能。
+29. **Detachable Wrapper**: 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。
+30. **Settings**: デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。
 
 ### 🌍 多言語対応 (Localization)
 
