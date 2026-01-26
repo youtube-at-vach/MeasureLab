@@ -34,6 +34,7 @@ class UltrasoundModulator(MeasurementModule):
         self.modulation_depth = 1.0  # 0.0 to 1.0
         self.lpf_cutoff = 8000.0
         self.output_gain = 1.0
+        self.input_gain = 1.0
         self.enable_predistortion = False
         self.output_gain = 1.0
         self.enable_predistortion = False
@@ -135,7 +136,10 @@ class UltrasoundModulator(MeasurementModule):
                         else:
                             src = indata[:, :2]
 
-                # Apply gain
+                # Apply input gain (manual normalize/boost)
+                src = src * self.input_gain
+
+                # Apply output gain
                 src = src * self.output_gain
 
                 # Map to Output
@@ -186,6 +190,9 @@ class UltrasoundModulator(MeasurementModule):
                      signal_in = np.column_stack((indata[:, 0], indata[:, 0]))
                 else:
                      signal_in = indata[:, :2]
+
+            # Apply input gain
+            signal_in = signal_in * self.input_gain
 
             # Measure Input Level (Max RMS across channels)
             if signal_in.ndim == 2: # Stereo
@@ -329,7 +336,7 @@ class UltrasoundModulatorWidget(QWidget):
 
         # Input Group
         in_grp = QGroupBox("Input")
-        in_layout = QVBoxLayout()
+        in_layout = QHBoxLayout()
         self.in_bg = QButtonGroup()
         for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
             rb = QRadioButton(label)
@@ -338,12 +345,13 @@ class UltrasoundModulatorWidget(QWidget):
             self.in_bg.addButton(rb)
             in_layout.addWidget(rb)
         self.in_bg.buttonClicked.connect(self.on_in_mode_changed)
+
         in_grp.setLayout(in_layout)
         routing_layout.addWidget(in_grp)
 
         # Output Group
         out_grp = QGroupBox("Output")
-        out_layout = QVBoxLayout()
+        out_layout = QHBoxLayout()
         self.out_bg = QButtonGroup()
         for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
             rb = QRadioButton(label)
@@ -357,37 +365,90 @@ class UltrasoundModulatorWidget(QWidget):
 
         form_layout.addRow(routing_bg)
 
+        # Input Gain (Moved from Input group)
+        in_gain_layout = QHBoxLayout()
+        self.in_gain_spin = QDoubleSpinBox()
+        self.in_gain_spin.setRange(0.0, 20.0)
+        self.in_gain_spin.setSingleStep(0.1)
+        self.in_gain_spin.setValue(self.module.input_gain)
+        self.in_gain_spin.valueChanged.connect(self.on_in_gain_changed)
+        
+        self.in_gain_slider = QSlider(Qt.Orientation.Horizontal)
+        self.in_gain_slider.setRange(0, 200) # 0.0 to 20.0
+        self.in_gain_slider.setValue(int(self.module.input_gain * 10))
+        self.in_gain_slider.valueChanged.connect(self.on_in_gain_slider_changed)
+        
+        in_gain_layout.addWidget(self.in_gain_spin)
+        in_gain_layout.addWidget(self.in_gain_slider)
+        form_layout.addRow("Input Gain:", in_gain_layout)
+
         # Carrier Frequency
+        freq_layout = QHBoxLayout()
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(2000.0, 96000.0)
         self.freq_spin.setValue(self.module.carrier_freq)
         self.freq_spin.setSuffix(" Hz")
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
-        form_layout.addRow("Carrier Freq:", self.freq_spin)
+        
+        self.freq_slider = QSlider(Qt.Orientation.Horizontal)
+        self.freq_slider.setRange(0, 1000)
+        self.freq_slider.setValue(self._freq_to_slider(self.module.carrier_freq, 2000.0, 96000.0))
+        self.freq_slider.valueChanged.connect(self.on_freq_slider_changed)
+        
+        freq_layout.addWidget(self.freq_spin)
+        freq_layout.addWidget(self.freq_slider)
+        form_layout.addRow("Carrier Freq:", freq_layout)
 
         # LPF Cutoff
+        lpf_layout = QHBoxLayout()
         self.lpf_spin = QDoubleSpinBox()
         self.lpf_spin.setRange(100.0, 20000.0)
         self.lpf_spin.setValue(self.module.lpf_cutoff)
         self.lpf_spin.setSuffix(" Hz")
         self.lpf_spin.valueChanged.connect(self.on_lpf_changed)
-        form_layout.addRow("Audio LPF:", self.lpf_spin)
+        
+        self.lpf_slider = QSlider(Qt.Orientation.Horizontal)
+        self.lpf_slider.setRange(0, 1000)
+        self.lpf_slider.setValue(self._freq_to_slider(self.module.lpf_cutoff, 100.0, 20000.0))
+        self.lpf_slider.valueChanged.connect(self.on_lpf_slider_changed)
+        
+        lpf_layout.addWidget(self.lpf_spin)
+        lpf_layout.addWidget(self.lpf_slider)
+        form_layout.addRow("Audio LPF:", lpf_layout)
 
         # Modulation Depth
+        depth_layout = QHBoxLayout()
         self.depth_spin = QDoubleSpinBox()
         self.depth_spin.setRange(0.0, 1.0)
         self.depth_spin.setSingleStep(0.1)
         self.depth_spin.setValue(self.module.modulation_depth)
         self.depth_spin.valueChanged.connect(self.on_depth_changed)
-        form_layout.addRow("Mod. Depth (k):", self.depth_spin)
+        
+        self.depth_slider = QSlider(Qt.Orientation.Horizontal)
+        self.depth_slider.setRange(0, 100)
+        self.depth_slider.setValue(int(self.module.modulation_depth * 100))
+        self.depth_slider.valueChanged.connect(self.on_depth_slider_changed)
+        
+        depth_layout.addWidget(self.depth_spin)
+        depth_layout.addWidget(self.depth_slider)
+        form_layout.addRow("Mod. Depth (k):", depth_layout)
 
         # Output Gain
+        gain_layout = QHBoxLayout()
         self.gain_spin = QDoubleSpinBox()
         self.gain_spin.setRange(0.0, 2.0)
         self.gain_spin.setSingleStep(0.1)
         self.gain_spin.setValue(self.module.output_gain)
         self.gain_spin.valueChanged.connect(self.on_gain_changed)
-        form_layout.addRow("Output Gain:", self.gain_spin)
+        
+        self.gain_slider = QSlider(Qt.Orientation.Horizontal)
+        self.gain_slider.setRange(0, 200)
+        self.gain_slider.setValue(int(self.module.output_gain * 100))
+        self.gain_slider.valueChanged.connect(self.on_gain_slider_changed)
+        
+        gain_layout.addWidget(self.gain_spin)
+        gain_layout.addWidget(self.gain_slider)
+        form_layout.addRow("Output Gain:", gain_layout)
 
         group.setLayout(form_layout)
         layout.addWidget(group)
@@ -442,20 +503,80 @@ class UltrasoundModulatorWidget(QWidget):
     def on_in_mode_changed(self, btn):
         self.module.input_mode = btn.text()
 
+    def on_in_gain_changed(self, val):
+        self.module.input_gain = val
+        self.in_gain_slider.blockSignals(True)
+        self.in_gain_slider.setValue(int(val * 10))
+        self.in_gain_slider.blockSignals(False)
+
+    def on_in_gain_slider_changed(self, val):
+        gain = val / 10.0
+        self.module.input_gain = gain
+        self.in_gain_spin.blockSignals(True)
+        self.in_gain_spin.setValue(gain)
+        self.in_gain_spin.blockSignals(False)
+
     def on_out_mode_changed(self, btn):
         self.module.output_mode = btn.text()
 
+    def _freq_to_slider(self, freq, min_f, max_f):
+        return int(1000 * (np.log10(freq) - np.log10(min_f)) / (np.log10(max_f) - np.log10(min_f)))
+
+    def _slider_to_freq(self, val, min_f, max_f):
+        log_freq = np.log10(min_f) + (val / 1000) * (np.log10(max_f) - np.log10(min_f))
+        return 10**log_freq
+
     def on_freq_changed(self, val):
         self.module.carrier_freq = val
+        self.freq_slider.blockSignals(True)
+        self.freq_slider.setValue(self._freq_to_slider(val, 2000.0, 96000.0))
+        self.freq_slider.blockSignals(False)
+
+    def on_freq_slider_changed(self, val):
+        freq = self._slider_to_freq(val, 2000.0, 96000.0)
+        self.module.carrier_freq = freq
+        self.freq_spin.blockSignals(True)
+        self.freq_spin.setValue(freq)
+        self.freq_spin.blockSignals(False)
 
     def on_lpf_changed(self, val):
         self.module.lpf_cutoff = val
+        self.lpf_slider.blockSignals(True)
+        self.lpf_slider.setValue(self._freq_to_slider(val, 100.0, 20000.0))
+        self.lpf_slider.blockSignals(False)
+
+    def on_lpf_slider_changed(self, val):
+        freq = self._slider_to_freq(val, 100.0, 20000.0)
+        self.module.lpf_cutoff = freq
+        self.lpf_spin.blockSignals(True)
+        self.lpf_spin.setValue(freq)
+        self.lpf_spin.blockSignals(False)
 
     def on_depth_changed(self, val):
         self.module.modulation_depth = val
+        self.depth_slider.blockSignals(True)
+        self.depth_slider.setValue(int(val * 100))
+        self.depth_slider.blockSignals(False)
+
+    def on_depth_slider_changed(self, val):
+        depth = val / 100.0
+        self.module.modulation_depth = depth
+        self.depth_spin.blockSignals(True)
+        self.depth_spin.setValue(depth)
+        self.depth_spin.blockSignals(False)
 
     def on_gain_changed(self, val):
         self.module.output_gain = val
+        self.gain_slider.blockSignals(True)
+        self.gain_slider.setValue(int(val * 100))
+        self.gain_slider.blockSignals(False)
+
+    def on_gain_slider_changed(self, val):
+        gain = val / 100.0
+        self.module.output_gain = gain
+        self.gain_spin.blockSignals(True)
+        self.gain_spin.setValue(gain)
+        self.gain_spin.blockSignals(False)
 
     def on_predist_toggled(self, checked):
         self.module.enable_predistortion = checked
