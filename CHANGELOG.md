@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.3.9] - 2026-01-26
+
+### Added
+
+* Docs: `CONTRIBUTING.md` を追加し、開発ガイドラインを整備
+* UI: Oscilloscope に校正済み RMS および Vpp 測定表示を追加
+* UI: Lock-in Amplifier のスピンボックス表示桁数を 4 桁に拡張
+
+### Changed
+
+* Docs: Lock-in Amplifier にキャリブレーション手順を追加
+
+### Fixed
+
+* Core: Oscilloscope のオーディオコールバックにおけるメモリ割り当ての問題（重大なバグ）をリングバッファ導入により修正
+* Core: Signal Generator で波形ごとのクレストファクターを考慮し、RMS 振幅計算の精度を向上
+* UI: Oscilloscope の Y 軸ラベル（0, 0.5, 1）を非表示にし、混乱を防止
+
 ## [v0.3.8] - 2026-01-25
 
 ### Added
