@@ -106,7 +106,7 @@ class UltrasoundModulator(MeasurementModule):
                     # Fallback or strict error. For now, try to proceed or use zeros.
                     # Ideally we might want a precomputed set or a simpler design if remez fails.
                     self._hilbert_coeffs = np.zeros(numtaps)
-                
+
                 # Reset ZI when filter changes
                 self._hilbert_zi = None
                 self._delay_zi = None
@@ -275,7 +275,7 @@ class UltrasoundModulator(MeasurementModule):
 
             # 5. Modulation
             k = self.modulation_depth
-            
+
             # Prepare modulation signal 'm' for SSB if needed
             if self.modulation_mode == 'DSB':
                  if self.enable_predistortion:
@@ -285,14 +285,14 @@ class UltrasoundModulator(MeasurementModule):
                      envelope = np.sqrt(val)
                  else:
                      envelope = (1.0 + k * m)
-                 
+
                  modulated = envelope * carrier
-            
+
             else: # LSB or USB
                 # For SSB, we need Analytic Signal: m_a = m_i + j*m_q
                 # m_q is Hilbert Transform of m
                 # m_i is m delayed by group delay of Hilbert filter
-                
+
                 if self._hilbert_coeffs is None:
                      # Should have been initialized
                      modulated = np.zeros_like(carrier)
@@ -300,11 +300,11 @@ class UltrasoundModulator(MeasurementModule):
                      # Hilbert Filtering
                      # Need to handle dimensions carefully.
                      # m: (frames,) or (frames, 2)
-                     
+
                      channels_ssb = 1 if m.ndim == 1 else m.shape[1]
                      # Hilbert coeffs are (taps,).
                      # zi shape: (taps-1, channels)
-                     
+
                      if channels_ssb == 1:
                          target_h_zi_shape = (len(self._hilbert_coeffs)-1,)
                      else:
@@ -312,7 +312,7 @@ class UltrasoundModulator(MeasurementModule):
 
                      if self._hilbert_zi is None or self._hilbert_zi.shape != target_h_zi_shape:
                           self._hilbert_zi = np.zeros(target_h_zi_shape)
-                          
+
                      # Filter for Image (Quadrature) component
                      m_q, self._hilbert_zi = scipy.signal.lfilter(self._hilbert_coeffs, 1.0, m, axis=0, zi=self._hilbert_zi)
                      # If mono, m_q is 1D. If stereo, 2D.
@@ -320,11 +320,11 @@ class UltrasoundModulator(MeasurementModule):
                      # Delay for Real (In-phase) component
                      # Group delay is (N-1)/2
                      delay_samples = (len(self._hilbert_coeffs) - 1) // 2
-                     
+
                      # Construct delay filter (impulse at delay_samples)
                      b_delay = np.zeros(delay_samples + 1)
                      b_delay[-1] = 1.0
-                     
+
                      if channels_ssb == 1:
                          target_d_zi_shape = (len(b_delay)-1,)
                      else:
@@ -334,7 +334,7 @@ class UltrasoundModulator(MeasurementModule):
                          self._delay_zi = np.zeros(target_d_zi_shape)
 
                      m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
-                         
+
                      # Carrier generation for SSB
                      # We have carrier = cos(wt). We need sin(wt).
                      # sin(wt) = cos(wt - pi/2). 
@@ -343,7 +343,7 @@ class UltrasoundModulator(MeasurementModule):
                      # Note: phase was updated at step 4. Ideally needs to be synchronous.
                      # The 'phase' variable in step 4 is buffer-aligned.
                      # Recalculate full buffer valid phase for sin and cos
-                     
+
                      # Recalculate carrier phases to be safe or reuse 'carrier'
                      # carrier = cos(phase).
                      # sin_carrier = sin(phase).
@@ -357,24 +357,24 @@ class UltrasoundModulator(MeasurementModule):
                      # self._phase += ...
                      # carrier = np.cos(phase)
                      # So 'phase' variable here holds the correct instantaneous phase for this block.
-                     
+
                      sin_carrier = np.sin(phase)
                      if m.ndim == 2:
                          sin_carrier = sin_carrier[:, np.newaxis]
-                         
+
                      # SSB Logic
                      # USB: I * cos - Q * sin
                      # LSB: I * cos + Q * sin
                      # (Assuming analytic signal convention. Sign might need flip if Q is inverted etc, but this is standard)
-                     
+
                      term1 = m_i * carrier
                      term2 = m_q * sin_carrier
-                     
+
                      if self.modulation_mode == 'USB':
                          sb = term1 - term2
                      else: # LSB
                          sb = term1 + term2
-                         
+
                      # Carrier re-insertion?
                      # SSB-SC (Suppressed Carrier) or SSB-LC (Large Carrier/AM-compatible)?
                      # Request says "New Carrier Mode... SSB".
@@ -394,11 +394,11 @@ class UltrasoundModulator(MeasurementModule):
                      # Approx C + m_i for C >> m.
                      # So for "SSB Mode" in parametric speakers, we usually mean SSB with Carrier.
                      # Let's add the carrier.
-                     
+
                      # Apply depth k to the sideband part?
                      # AM: (1 + km) cos = cos + k m cos.
                      # SSB equivalent: cos + k * (m_i cos -/+ m_q sin).
-                     
+
                      modulated = carrier + k * sb
 
             # 6. Gain & Limit
@@ -579,7 +579,7 @@ class UltrasoundModulatorWidget(QWidget):
         gain_layout.addWidget(self.gain_spin)
         gain_layout.addWidget(self.gain_slider)
         form_layout.addRow(tr("Output Gain:"), gain_layout)
-        
+
         # Mode Selection
         mode_label = QLabel(tr("Carrier Mode:"))
         mode_layout = QHBoxLayout()
