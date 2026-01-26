@@ -33,6 +33,10 @@ Configure signal processing parameters in the **"Modulation"** tab.
 * **Audio LPF**: The cutoff frequency of the Low Pass Filter applied to the audio signal before modulation. Adjust this to prevent sidebands from exceeding the bandwidth limits.
 * **Mod. Depth (k)**: The modulation depth (0.0 to 1.0). 1.0 indicates 100% modulation.
 * **Output Gain**: The output gain after modulation. **Operate with caution for safety.**
+* **Carrier Mode**: Select the modulation mode.
+    * **DSB (AM)**: Standard Amplitude Modulation (Double Sideband).
+    * **USB**: Upper Sideband modulation. Used for bandwidth saving or specific experimental purposes.
+    * **LSB**: Lower Sideband modulation.
 
 ### Routing and Settings
 
