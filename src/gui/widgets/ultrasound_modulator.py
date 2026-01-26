@@ -323,7 +323,7 @@ class UltrasoundModulatorWidget(QWidget):
         layout = QVBoxLayout()
 
         # Header
-        header = QLabel("<h3>Ultrasound AM Modulator</h3>")
+        header = QLabel(f"<h3>{tr('Ultrasound AM Modulator')}</h3>")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
@@ -333,7 +333,7 @@ class UltrasoundModulatorWidget(QWidget):
         self.safety_frame.setLineWidth(2)
         self.safety_frame.setStyleSheet("background-color: #444; border-radius: 5px;")
         safety_layout = QVBoxLayout(self.safety_frame)
-        self.safety_label = QLabel("STANDBY")
+        self.safety_label = QLabel(tr("STANDBY"))
         self.safety_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
         safety_layout.addWidget(self.safety_label)
@@ -355,7 +355,7 @@ class UltrasoundModulatorWidget(QWidget):
         self.in_gain_spin = QDoubleSpinBox()
         self.in_gain_spin.setRange(-60.0, 26.0)
         self.in_gain_spin.setSingleStep(0.5)
-        self.in_gain_spin.setSuffix(" dB")
+        self.in_gain_spin.setSuffix(tr(" dB"))
         self.in_gain_spin.setValue(self._lin2db(self.module.input_gain))
         self.in_gain_spin.valueChanged.connect(self.on_in_gain_changed)
 
@@ -366,14 +366,14 @@ class UltrasoundModulatorWidget(QWidget):
 
         in_gain_layout.addWidget(self.in_gain_spin)
         in_gain_layout.addWidget(self.in_gain_slider)
-        form_layout.addRow("Input Gain:", in_gain_layout)
+        form_layout.addRow(tr("Input Gain:"), in_gain_layout)
 
         # Carrier Frequency
         freq_layout = QHBoxLayout()
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(2000.0, 96000.0)
         self.freq_spin.setValue(self.module.carrier_freq)
-        self.freq_spin.setSuffix(" Hz")
+        self.freq_spin.setSuffix(tr(" Hz"))
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
 
         self.freq_slider = QSlider(Qt.Orientation.Horizontal)
@@ -383,14 +383,14 @@ class UltrasoundModulatorWidget(QWidget):
 
         freq_layout.addWidget(self.freq_spin)
         freq_layout.addWidget(self.freq_slider)
-        form_layout.addRow("Carrier Freq:", freq_layout)
+        form_layout.addRow(tr("Carrier Freq:"), freq_layout)
 
         # LPF Cutoff
         lpf_layout = QHBoxLayout()
         self.lpf_spin = QDoubleSpinBox()
         self.lpf_spin.setRange(100.0, 20000.0)
         self.lpf_spin.setValue(self.module.lpf_cutoff)
-        self.lpf_spin.setSuffix(" Hz")
+        self.lpf_spin.setSuffix(tr(" Hz"))
         self.lpf_spin.valueChanged.connect(self.on_lpf_changed)
 
         self.lpf_slider = QSlider(Qt.Orientation.Horizontal)
@@ -400,7 +400,7 @@ class UltrasoundModulatorWidget(QWidget):
 
         lpf_layout.addWidget(self.lpf_spin)
         lpf_layout.addWidget(self.lpf_slider)
-        form_layout.addRow("Audio LPF:", lpf_layout)
+        form_layout.addRow(tr("Audio LPF:"), lpf_layout)
 
         # Modulation Depth
         depth_layout = QHBoxLayout()
@@ -417,14 +417,14 @@ class UltrasoundModulatorWidget(QWidget):
 
         depth_layout.addWidget(self.depth_spin)
         depth_layout.addWidget(self.depth_slider)
-        form_layout.addRow("Mod. Depth (k):", depth_layout)
+        form_layout.addRow(tr("Mod. Depth (k):"), depth_layout)
 
         # Output Gain
         gain_layout = QHBoxLayout()
         self.gain_spin = QDoubleSpinBox()
         self.gain_spin.setRange(-60.0, 6.0) # Approx 0.001x to 2.0x
         self.gain_spin.setSingleStep(0.5)
-        self.gain_spin.setSuffix(" dB")
+        self.gain_spin.setSuffix(tr(" dB"))
         self.gain_spin.setValue(self._lin2db(self.module.output_gain))
         self.gain_spin.valueChanged.connect(self.on_gain_changed)
 
@@ -435,25 +435,25 @@ class UltrasoundModulatorWidget(QWidget):
 
         gain_layout.addWidget(self.gain_spin)
         gain_layout.addWidget(self.gain_slider)
-        form_layout.addRow("Output Gain:", gain_layout)
+        form_layout.addRow(tr("Output Gain:"), gain_layout)
 
         tab1_layout.addLayout(form_layout)
         tab1_layout.addStretch()
-        self.tabs.addTab(tab1, "Modulation")
+        self.tabs.addTab(tab1, tr("Modulation"))
 
         # Tab 2: Settings (Routing & Options)
         tab2 = QWidget()
         tab2_layout = QVBoxLayout(tab2)
 
         # Input/Output Routing
-        routing_group = QGroupBox("Routing")
+        routing_group = QGroupBox(tr("Routing"))
         routing_layout = QHBoxLayout() 
 
         # Input Group
-        in_grp = QGroupBox("Input Channel")
+        in_grp = QGroupBox(tr("Input Channel"))
         in_layout = QHBoxLayout()
         self.in_bg = QButtonGroup()
-        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
+        for label, val in [(tr("L"), "L"), (tr("R"), "R"), (tr("Stereo"), "Stereo")]:
             rb = QRadioButton(label)
             if val == self.module.input_mode:
                 rb.setChecked(True)
@@ -464,10 +464,10 @@ class UltrasoundModulatorWidget(QWidget):
         routing_layout.addWidget(in_grp)
 
         # Output Group
-        out_grp = QGroupBox("Output Channel")
+        out_grp = QGroupBox(tr("Output Channel"))
         out_layout = QHBoxLayout()
         self.out_bg = QButtonGroup()
-        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
+        for label, val in [(tr("L"), "L"), (tr("R"), "R"), (tr("Stereo"), "Stereo")]:
             rb = QRadioButton(label)
             if val == self.module.output_mode:
                 rb.setChecked(True)
@@ -481,15 +481,15 @@ class UltrasoundModulatorWidget(QWidget):
         tab2_layout.addWidget(routing_group)
 
         # Options Group
-        opt_group = QGroupBox("Advanced Options")
+        opt_group = QGroupBox(tr("Advanced Options"))
         opt_layout = QVBoxLayout()
 
-        self.predist_check = QCheckBox("Enable √ Pre-distortion")
+        self.predist_check = QCheckBox(tr("Enable √ Pre-distortion"))
         self.predist_check.setChecked(self.module.enable_predistortion)
         self.predist_check.toggled.connect(self.on_predist_toggled)
         opt_layout.addWidget(self.predist_check)
 
-        self.bypass_check = QCheckBox("Bypass Modulation (Passthrough)")
+        self.bypass_check = QCheckBox(tr("Bypass Modulation (Passthrough)"))
         self.bypass_check.setChecked(self.module.bypass)
         self.bypass_check.toggled.connect(self.on_bypass_toggled)
         opt_layout.addWidget(self.bypass_check)
@@ -498,11 +498,11 @@ class UltrasoundModulatorWidget(QWidget):
         tab2_layout.addWidget(opt_group)
 
         tab2_layout.addStretch()
-        self.tabs.addTab(tab2, "Settings")
+        self.tabs.addTab(tab2, tr("Settings"))
 
 
         # Main Toggle
-        self.start_btn = QPushButton("Start Modulation")
+        self.start_btn = QPushButton(tr("Start Modulation"))
         self.start_btn.setCheckable(True)
         self.start_btn.setStyleSheet("QPushButton:checked { background-color: #ffcccc; }")
         self.start_btn.clicked.connect(self.on_toggle_start)
@@ -528,9 +528,9 @@ class UltrasoundModulatorWidget(QWidget):
         # Yes.
         # So I need to add Meters back.
 
-        meter_group = QGroupBox("Signal Levels")
+        meter_group = QGroupBox(tr("Signal Levels"))
         meter_layout = QVBoxLayout()
-        in_label = QLabel("Input Level")
+        in_label = QLabel(tr("Input Level"))
         self.in_bar = QProgressBar()
         self.in_bar.setRange(0, 100)
         self.in_bar.setTextVisible(False)
@@ -538,7 +538,7 @@ class UltrasoundModulatorWidget(QWidget):
         meter_layout.addWidget(in_label)
         meter_layout.addWidget(self.in_bar)
 
-        out_label = QLabel("Output Level (40kHz)")
+        out_label = QLabel(tr("Output Level (40kHz)"))
         self.out_bar = QProgressBar()
         self.out_bar.setRange(0, 100)
         self.out_bar.setTextVisible(False)
@@ -646,7 +646,7 @@ class UltrasoundModulatorWidget(QWidget):
     def update_safety_status(self):
         if not self.module.is_running:
             self.safety_frame.setStyleSheet("background-color: #555; border-radius: 5px; border: 2px solid #777;")
-            self.safety_label.setText("STANDBY")
+            self.safety_label.setText(tr("STANDBY"))
             self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #BBB;")
             return
 
@@ -660,17 +660,17 @@ class UltrasoundModulatorWidget(QWidget):
         if gain_db > 0.0:
             # Dangerous
             self.safety_frame.setStyleSheet("background-color: #FFCDD2; border-radius: 5px; border: 2px solid #F44336;")
-            self.safety_label.setText("🔴 DANGEROUS - HIGH INTENSITY 🔴")
+            self.safety_label.setText(tr("🔴 DANGEROUS - HIGH INTENSITY 🔴"))
             self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #B71C1C;")
         elif gain_db > -10.0:
             # Caution
             self.safety_frame.setStyleSheet("background-color: #FFF9C4; border-radius: 5px; border: 2px solid #FBC02D;")
-            self.safety_label.setText("🟡 CAUTION - ULTRASOUND ACTIVE 🟡")
+            self.safety_label.setText(tr("🟡 CAUTION - ULTRASOUND ACTIVE 🟡"))
             self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #F57F17;")
         else:
             # Safe
             self.safety_frame.setStyleSheet("background-color: #C8E6C9; border-radius: 5px; border: 2px solid #4CAF50;")
-            self.safety_label.setText("🟢 SAFE - LOW INTENSITY 🟢")
+            self.safety_label.setText(tr("🟢 SAFE - LOW INTENSITY 🟢"))
             self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #1B5E20;")
 
     def on_predist_toggled(self, checked):
@@ -683,8 +683,8 @@ class UltrasoundModulatorWidget(QWidget):
         if checked:
             # Safety Confirmation
             dlg = QMessageBox(self)
-            dlg.setWindowTitle("Safety Warning")
-            dlg.setText("High intensity ultrasound can be dangerous to hearing (even if inaudible) and pets.\n\nAre you sure you want to start emission?")
+            dlg.setWindowTitle(tr("Safety Warning"))
+            dlg.setText(tr("High intensity ultrasound can be dangerous to hearing (even if inaudible) and pets.\n\nAre you sure you want to start emission?"))
             dlg.setIcon(QMessageBox.Icon.Warning)
             dlg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             dlg.setDefaultButton(QMessageBox.StandardButton.No)
@@ -694,10 +694,10 @@ class UltrasoundModulatorWidget(QWidget):
                 return
 
             self.module.start()
-            self.start_btn.setText("Stop Modulation")
+            self.start_btn.setText(tr("Stop Modulation"))
         else:
             self.module.stop()
-            self.start_btn.setText("Start Modulation")
+            self.start_btn.setText(tr("Start Modulation"))
 
         self.update_safety_status()
 
@@ -705,7 +705,7 @@ class UltrasoundModulatorWidget(QWidget):
         # Update button state if changed externally (though unlikely)
         if self.module.is_running != self.start_btn.isChecked():
             self.start_btn.setChecked(self.module.is_running)
-            self.start_btn.setText("Stop Modulation" if self.module.is_running else "Start Modulation")
+            self.start_btn.setText(tr("Stop Modulation") if self.module.is_running else tr("Start Modulation"))
 
         # Update Meters
         in_val = int(np.clip(self.module.input_level * 100, 0, 100))
