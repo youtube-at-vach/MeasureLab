@@ -109,6 +109,7 @@ nav:
   - Spectrum Analyzer: widgets/spectrum_analyzer.md
   - Timecode Monitor: widgets/timecode_monitor.md
   - Transient Analyzer: widgets/transient_analyzer.md
+  - Ultrasound Modulator: widgets/ultrasound_modulator.md
   - Welcome: widgets/welcome.md
 - 測定レシピ:
   - measurement_recipes/index.md
