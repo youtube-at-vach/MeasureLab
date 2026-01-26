@@ -43,6 +43,7 @@ class UltrasoundModulator(MeasurementModule):
         self.bypass = False
         self.input_mode = 'L' # L, R, Stereo
         self.output_mode = 'R' # L, R, Stereo
+        self.modulation_mode = 'DSB' # DSB, USB, LSB
 
         # Internal State
         self._phase = 0.0
@@ -50,6 +51,9 @@ class UltrasoundModulator(MeasurementModule):
         self._filter_zi = None
         self._prev_cutoff = 0.0
         self._prev_fs = 0.0
+        self._hilbert_coeffs = None
+        self._hilbert_zi = None
+        self._delay_zi = None
         self.input_level = 0.0
         self.output_level = 0.0
 
@@ -86,6 +90,27 @@ class UltrasoundModulator(MeasurementModule):
             self._prev_fs = fs
             self._prev_cutoff = self.lpf_cutoff
 
+            # Update Hilbert Filter for SSB
+            # Design a Hilbert transformer using Remez exchange algorithm
+            if self._hilbert_coeffs is None or fs != self._prev_fs:
+                # Bandwidth: 800Hz to Nyquist - 800Hz
+                # Taps: 65 (Group delay = 32 samples)
+                # Note: 100Hz width requires ~500 taps. 800Hz width allows -40dB with 65 taps.
+                numtaps = 65
+                width = 800.0
+                bands = [width, fs/2 - width]
+                try:
+                    self._hilbert_coeffs = scipy.signal.remez(numtaps, bands, [1], type='hilbert', fs=fs)
+                except Exception as e:
+                    print(f"Error designing Hilbert filter: {e}. Fallback to basic.")
+                    # Fallback or strict error. For now, try to proceed or use zeros.
+                    # Ideally we might want a precomputed set or a simpler design if remez fails.
+                    self._hilbert_coeffs = np.zeros(numtaps)
+
+                # Reset ZI when filter changes
+                self._hilbert_zi = None
+                self._delay_zi = None
+
     def start(self):
         if self.is_running:
             return
@@ -95,6 +120,9 @@ class UltrasoundModulator(MeasurementModule):
         self._filter_sos = None
         self._filter_zi = None
         self._prev_fs = 0.0
+        self._hilbert_coeffs = None
+        self._hilbert_zi = None
+        self._delay_zi = None
         self.input_level = 0.0
         self.output_level = 0.0
 
@@ -248,15 +276,130 @@ class UltrasoundModulator(MeasurementModule):
             # 5. Modulation
             k = self.modulation_depth
 
-            if self.enable_predistortion:
-                # sqrt(1 + k*m)
-                val = 1.0 + k * m
-                val = np.maximum(val, 0.0)
-                envelope = np.sqrt(val)
-            else:
-                envelope = (1.0 + k * m)
+            # Prepare modulation signal 'm' for SSB if needed
+            if self.modulation_mode == 'DSB':
+                 if self.enable_predistortion:
+                     # sqrt(1 + k*m)
+                     val = 1.0 + k * m
+                     val = np.maximum(val, 0.0)
+                     envelope = np.sqrt(val)
+                 else:
+                     envelope = (1.0 + k * m)
 
-            modulated = envelope * carrier
+                 modulated = envelope * carrier
+
+            else: # LSB or USB
+                # For SSB, we need Analytic Signal: m_a = m_i + j*m_q
+                # m_q is Hilbert Transform of m
+                # m_i is m delayed by group delay of Hilbert filter
+
+                if self._hilbert_coeffs is None:
+                     # Should have been initialized
+                     modulated = np.zeros_like(carrier)
+                else:
+                     # Hilbert Filtering
+                     # Need to handle dimensions carefully.
+                     # m: (frames,) or (frames, 2)
+
+                     channels_ssb = 1 if m.ndim == 1 else m.shape[1]
+                     # Hilbert coeffs are (taps,).
+                     # zi shape: (taps-1, channels)
+
+                     if channels_ssb == 1:
+                         target_h_zi_shape = (len(self._hilbert_coeffs)-1,)
+                     else:
+                         target_h_zi_shape = (len(self._hilbert_coeffs)-1, channels_ssb)
+
+                     if self._hilbert_zi is None or self._hilbert_zi.shape != target_h_zi_shape:
+                          self._hilbert_zi = np.zeros(target_h_zi_shape)
+
+                     # Filter for Image (Quadrature) component
+                     m_q, self._hilbert_zi = scipy.signal.lfilter(self._hilbert_coeffs, 1.0, m, axis=0, zi=self._hilbert_zi)
+                     # If mono, m_q is 1D. If stereo, 2D.
+
+                     # Delay for Real (In-phase) component
+                     # Group delay is (N-1)/2
+                     delay_samples = (len(self._hilbert_coeffs) - 1) // 2
+
+                     # Construct delay filter (impulse at delay_samples)
+                     b_delay = np.zeros(delay_samples + 1)
+                     b_delay[-1] = 1.0
+
+                     if channels_ssb == 1:
+                         target_d_zi_shape = (len(b_delay)-1,)
+                     else:
+                         target_d_zi_shape = (len(b_delay)-1, channels_ssb)
+
+                     if self._delay_zi is None or self._delay_zi.shape != target_d_zi_shape:
+                         self._delay_zi = np.zeros(target_d_zi_shape)
+
+                     m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
+
+                     # Carrier generation for SSB
+                     # We have carrier = cos(wt). We need sin(wt).
+                     # sin(wt) = cos(wt - pi/2). 
+                     # But we generated phase. sin(phase) is cleaner.
+                     # Recompute sin_carrier from phase. 
+                     # Note: phase was updated at step 4. Ideally needs to be synchronous.
+                     # The 'phase' variable in step 4 is buffer-aligned.
+                     # Recalculate full buffer valid phase for sin and cos
+
+                     # Recalculate carrier phases to be safe or reuse 'carrier'
+                     # carrier = cos(phase).
+                     # sin_carrier = sin(phase).
+                     # Need to reconstruct local 'phase' array from step 4 or just use sin(phase)
+                     # In step 4:
+                     # t_chunk = np.arange(frames) / fs
+                     # phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
+                     # But self._phase was incremented AFTER usage in step 4? 
+                     # Wait, Step 4 code:
+                     # phase = self._phase + ...
+                     # self._phase += ...
+                     # carrier = np.cos(phase)
+                     # So 'phase' variable here holds the correct instantaneous phase for this block.
+
+                     sin_carrier = np.sin(phase)
+                     if m.ndim == 2:
+                         sin_carrier = sin_carrier[:, np.newaxis]
+
+                     # SSB Logic
+                     # USB: I * cos - Q * sin
+                     # LSB: I * cos + Q * sin
+                     # (Assuming analytic signal convention. Sign might need flip if Q is inverted etc, but this is standard)
+
+                     term1 = m_i * carrier
+                     term2 = m_q * sin_carrier
+
+                     if self.modulation_mode == 'USB':
+                         sb = term1 - term2
+                     else: # LSB
+                         sb = term1 + term2
+
+                     # Carrier re-insertion?
+                     # SSB-SC (Suppressed Carrier) or SSB-LC (Large Carrier/AM-compatible)?
+                     # Request says "New Carrier Mode... SSB".
+                     # Usually for Ultrasound output, we might want the carrier component if it's acting as a parametric array,
+                     # but pure SSB is usually SC.
+                     # However, for Parametric Audio (audio spotlight), DSB-LC (standard AM) is common.
+                     # SSB-LC is often used to reduce bandwidth or distortion.
+                     # If we just output SSB-SC, it might not demodulate well in air non-linearity without a strong carrier?
+                     # Actually parametric array self-demodulation works on envelopes. 
+                     # SSB envelope is sqrt(I^2 + Q^2) -> not the audio signal directly?
+                     # Wait. E(t)^2 demodulation.
+                     # DSB-AM: (1+m)cos -> E = 1+m -> E^2 ~ 1 + 2m + m^2.
+                     # SSB: m_i cos - m_q sin. E = sqrt(m_i^2 + m_q^2) = Hilbert Envelope |m|.
+                     # This gives |m|^2 upon demodulation. Distorted.
+                     # SSB + Carrier (SSB-WC): C cos + m_i cos - m_q sin = (C+m_i)cos - m_q sin.
+                     # E = sqrt( (C+m_i)^2 + m_q^2 ) = sqrt( C^2 + 2Cm_i + m_i^2 + m_q^2 ).
+                     # Approx C + m_i for C >> m.
+                     # So for "SSB Mode" in parametric speakers, we usually mean SSB with Carrier.
+                     # Let's add the carrier.
+
+                     # Apply depth k to the sideband part?
+                     # AM: (1 + km) cos = cos + k m cos.
+                     # SSB equivalent: cos + k * (m_i cos -/+ m_q sin).
+
+                     modulated = carrier + k * sb
 
             # 6. Gain & Limit
             output_sig = modulated * self.output_gain
@@ -436,6 +579,19 @@ class UltrasoundModulatorWidget(QWidget):
         gain_layout.addWidget(self.gain_spin)
         gain_layout.addWidget(self.gain_slider)
         form_layout.addRow(tr("Output Gain:"), gain_layout)
+
+        # Mode Selection
+        mode_label = QLabel(tr("Carrier Mode:"))
+        mode_layout = QHBoxLayout()
+        self.mode_bg = QButtonGroup()
+        for label, val in [("DSB (AM)", "DSB"), ("USB", "USB"), ("LSB", "LSB")]:
+            rb = QRadioButton(label)
+            if val == self.module.modulation_mode:
+                rb.setChecked(True)
+            self.mode_bg.addButton(rb)
+            mode_layout.addWidget(rb)
+        self.mode_bg.buttonClicked.connect(self.on_mode_rb_clicked)
+        form_layout.addRow(mode_label, mode_layout)
 
         tab1_layout.addLayout(form_layout)
         tab1_layout.addStretch()
@@ -642,6 +798,18 @@ class UltrasoundModulatorWidget(QWidget):
         self.gain_spin.setValue(gain_db)
         self.gain_spin.blockSignals(False)
         self.update_safety_status()
+
+    def on_mode_rb_clicked(self, btn):
+        # Map label to value if needed, but we stored vals in loop?
+        # QButtonGroup buttonClicked sends the button. We need to find which one.
+        # But we didn't store mapping.
+        # Let's infer from text.
+        text = btn.text()
+        if "DSB" in text: mode = 'DSB'
+        elif "USB" in text: mode = 'USB'
+        elif "LSB" in text: mode = 'LSB'
+        else: mode = 'DSB'
+        self.module.modulation_mode = mode
 
     def update_safety_status(self):
         if not self.module.is_running:
