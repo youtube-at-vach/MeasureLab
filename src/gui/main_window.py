@@ -130,6 +130,10 @@ def _load_module_class(module_key: str):
         from src.gui.widgets.hrtf_player import HRTFPlayer
 
         return HRTFPlayer
+    if module_key == "Ultrasound AM Modulator":
+        from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
+
+        return UltrasoundModulator
 
     raise KeyError(f"Unknown module key: {module_key}")
 
@@ -258,6 +262,7 @@ class MainWindow(QMainWindow):
             "Timecode Monitor & Generator",
             "BNIM Meter",
             "HRTF Player",
+            "Ultrasound AM Modulator",
         ]
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)

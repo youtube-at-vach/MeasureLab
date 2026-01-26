@@ -1,0 +1,488 @@
+import argparse
+import numpy as np
+import scipy.signal
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QRadioButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.core.audio_engine import AudioEngine
+from src.core.localization import tr
+from src.measurement_modules.base import MeasurementModule
+
+
+class UltrasoundModulator(MeasurementModule):
+    def __init__(self, audio_engine: AudioEngine):
+        self.audio_engine = audio_engine
+        self.is_running = False
+        self.callback_id = None
+
+        # Parameters
+        self.carrier_freq = 40000.0
+        self.modulation_depth = 1.0  # 0.0 to 1.0
+        self.lpf_cutoff = 8000.0
+        self.output_gain = 1.0
+        self.enable_predistortion = False
+        self.output_gain = 1.0
+        self.enable_predistortion = False
+        self.bypass = False
+        self.input_mode = 'Stereo' # L, R, Stereo
+        self.output_mode = 'Stereo' # L, R, Stereo
+
+        # Internal State
+        self._phase = 0.0
+        self._filter_sos = None
+        self._filter_zi = None
+        self._prev_cutoff = 0.0
+        self._prev_fs = 0.0
+        self.input_level = 0.0
+        self.output_level = 0.0
+
+    @property
+    def name(self) -> str:
+        return "Ultrasound AM Modulator"
+
+    @property
+    def description(self) -> str:
+        return "Real-time AM modulator for ultrasonic speakers (40kHz)"
+
+    def run(self, args: argparse.Namespace):
+        print("Ultrasound Modulator running from CLI (not fully implemented)")
+
+    def get_widget(self):
+        return UltrasoundModulatorWidget(self)
+
+    def _update_filter(self, fs):
+        if fs != self._prev_fs or self.lpf_cutoff != self._prev_cutoff:
+            if self.lpf_cutoff >= fs / 2:
+                # Bypass filter if cutoff is too high
+                self._filter_sos = None
+                self._filter_zi = None
+            else:
+                self._filter_sos = scipy.signal.butter(4, self.lpf_cutoff, fs=fs, output='sos')
+                self._filter_zi = scipy.signal.sosfilt_zi(self._filter_sos)
+                # If we had multiple channels, we would need independent zi for each channel
+                # For now, we'll handle stereo by duplicating state if strictly needed, 
+                # or just filtering channels independently with new zi if it resets.
+                # To avoid clicks on param change, we ideally keep state, but zi shape depends on order.
+                # Simple approach: reset filter on param change.
+                self._filter_zi = np.zeros((self._filter_sos.shape[0], 2)) # Stereo state
+
+            self._prev_fs = fs
+            self._prev_cutoff = self.lpf_cutoff
+
+    def start(self):
+        if self.is_running:
+            return
+
+        self.is_running = True
+        self._phase = 0.0
+        self._filter_sos = None
+        self._filter_zi = None
+        self._prev_fs = 0.0
+        self.input_level = 0.0
+        self.output_level = 0.0
+
+        def callback(indata, outdata, frames, time, status):
+            if status:
+                print(status)
+
+            fs = self.audio_engine.sample_rate
+
+            # 1. Update/Init Filter
+            self._update_filter(fs)
+
+            # Prepare Output
+            outdata.fill(0)
+
+            if self.bypass:
+                # Bypass logic: Pass input through to output (subject to gain)
+                # We need to map Input Ch -> Output Ch.
+
+                # Fetch Source(s)
+                if self.input_mode == 'L':
+                    # Mono source from L
+                    src = indata[:, 0] # (frames,)
+                elif self.input_mode == 'R':
+                    # Mono source from R
+                    if indata.shape[1] >= 2:
+                        src = indata[:, 1]
+                    else:
+                        src = np.zeros(frames)
+                else: # Stereo
+                    if indata.shape[1] >= 2:
+                        src = indata[:, :2] # (frames, 2)
+                    else:
+                        # Fallback if mono input device in stereo mode?
+                        # Just replicate? Or padded? audio_engine usually handles HW mapping.
+                        # Assuming logical_in is (frames, 2) usually if stereo requested.
+                        # But logical_in depends on engine config. 
+                        # Let's assume indata has at least 1 channel.
+                        if indata.shape[1] == 1:
+                            src = np.column_stack((indata[:, 0], indata[:, 0]))
+                        else:
+                            src = indata[:, :2]
+
+                # Apply gain
+                src = src * self.output_gain
+
+                # Map to Output
+                if self.output_mode == 'L':
+                    if src.ndim == 1:
+                        outdata[:, 0] = src
+                    else: # src is stereo
+                        outdata[:, 0] = src[:, 0] # L -> L
+                elif self.output_mode == 'R':
+                    if src.ndim == 1:
+                        if outdata.shape[1] >= 2:
+                            outdata[:, 1] = src
+                    else:
+                        if outdata.shape[1] >= 2:
+                            outdata[:, 1] = src[:, 1] # R -> R
+                else: # Stereo
+                    if src.ndim == 1:
+                        # Mono source -> L+R
+                        outdata[:, 0] = src
+                        if outdata.shape[1] >= 2:
+                            outdata[:, 1] = src
+                    else:
+                        # Stereo source -> Stereo Out
+                        outdata[:, 0] = src[:, 0]
+                        if outdata.shape[1] >= 2:
+                            outdata[:, 1] = src[:, 1]
+                return
+
+            # 2. Input Processing
+            # Determine source signal 'm' (modulation signal)
+            # It can be Mono (shape (frames,)) or Stereo (shape (frames, 2)).
+
+            signal_in = None
+
+            if self.input_mode == 'L':
+                signal_in = indata[:, 0]
+            elif self.input_mode == 'R':
+                if indata.shape[1] >= 2:
+                    signal_in = indata[:, 1]
+                else:
+                    signal_in = np.zeros(frames)
+            else: # Stereo
+                # "Both" means L->L, R->R. We act as stereo processor.
+                if indata.shape[1] >= 2:
+                    signal_in = indata[:, :2]
+                elif indata.shape[1] == 1:
+                     # Mono input expanded to stereo?
+                     signal_in = np.column_stack((indata[:, 0], indata[:, 0]))
+                else:
+                     signal_in = indata[:, :2]
+
+            # Measure Input Level (Max RMS across channels)
+            if signal_in.ndim == 2: # Stereo
+                rms_in = np.sqrt(np.mean(np.mean(signal_in**2, axis=1))) # Average power of L/R? Or Max? 
+                # Let's take global RMS
+                rms_in = np.sqrt(np.mean(signal_in**2))
+            else:
+                rms_in = np.sqrt(np.mean(signal_in**2))
+
+            self.input_level = self.input_level * 0.8 + rms_in * 0.2
+
+
+            # 3. LPF
+            m = signal_in
+            if self._filter_sos is not None:
+                # Handle state dimensions.
+                # If m is mono, zi should be (sections, 2).
+                # If m is stereo, zi should be (sections, 2, 2).
+
+                channels = 1 if m.ndim == 1 else m.shape[1]
+
+                # Check zi shape
+                target_shape = (self._filter_sos.shape[0], 2) if channels == 1 else (self._filter_sos.shape[0], 2, channels)
+
+                if self._filter_zi is None or self._filter_zi.shape != target_shape:
+                     self._filter_zi = np.zeros(target_shape)
+
+                # Execute filter
+                # axis=-1 is default.
+                # If m is (frames,), axis=-1 is frames. Correct.
+                # If m is (frames, 2), axis=-1 is channels. We want to filter along frames (axis 0).
+
+                if channels == 1:
+                     m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
+                else:
+                     m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
+
+            # 4. Carrier
+            # Same carrier for both channels usually.
+            t_chunk = np.arange(frames) / fs
+            phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
+            self._phase += 2 * np.pi * self.carrier_freq * (frames / fs)
+            self._phase %= 2 * np.pi
+
+            carrier = np.cos(phase)
+            # If m is stereo (frames, 2), carrier (frames,) must broadcast.
+            # carrier[:, None] -> (frames, 1)
+            if m.ndim == 2:
+                carrier = carrier[:, np.newaxis]
+
+            # 5. Modulation
+            k = self.modulation_depth
+
+            if self.enable_predistortion:
+                # sqrt(1 + k*m)
+                val = 1.0 + k * m
+                val = np.maximum(val, 0.0)
+                envelope = np.sqrt(val)
+            else:
+                envelope = (1.0 + k * m)
+
+            modulated = envelope * carrier
+
+            # 6. Gain & Limit
+            output_sig = modulated * self.output_gain
+            output_sig = np.clip(output_sig, -1.0, 1.0)
+
+            # 7. Route Output
+            if self.output_mode == 'L':
+                 # Output to L only
+                 if output_sig.ndim == 2:
+                     # If we processed stereo but want L out? 
+                     # Usually means "Mix down" or "Take L".
+                     # User requirement is vague on "In Stereo -> Out L".
+                     # Assuming "Take L". 
+                     outdata[:, 0] = output_sig[:, 0]
+                 else:
+                     outdata[:, 0] = output_sig
+            elif self.output_mode == 'R':
+                 # Output to R only
+                 if outdata.shape[1] >= 2:
+                     if output_sig.ndim == 2:
+                         outdata[:, 1] = output_sig[:, 1]
+                     else:
+                         outdata[:, 1] = output_sig
+            else: # Stereo
+                 if output_sig.ndim == 2:
+                     # Stereo Result -> Stereo Out
+                     outdata[:, 0] = output_sig[:, 0]
+                     if outdata.shape[1] >= 2:
+                         outdata[:, 1] = output_sig[:, 1]
+                 else:
+                     # Mono Result -> Stereo Out (Dual Mono)
+                     outdata[:, 0] = output_sig
+                     if outdata.shape[1] >= 2:
+                         outdata[:, 1] = output_sig
+
+            # Measure Output Level
+            if output_sig.ndim == 2:
+                rms_out = np.sqrt(np.mean(output_sig**2))
+            else:
+                rms_out = np.sqrt(np.mean(output_sig**2))
+            self.output_level = self.output_level * 0.8 + rms_out * 0.2
+
+        self.callback_id = self.audio_engine.register_callback(callback)
+
+    def stop(self):
+        if self.is_running:
+            if self.callback_id is not None:
+                self.audio_engine.unregister_callback(self.callback_id)
+                self.callback_id = None
+            self.is_running = False
+
+class UltrasoundModulatorWidget(QWidget):
+    def __init__(self, module: UltrasoundModulator):
+        super().__init__()
+        self.module = module
+        self.init_ui()
+
+        # Timer to update status or debug info if needed
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_ui_state)
+        self.timer.start(200)
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        # Header
+        header = QLabel("<h3>Ultrasound AM Modulator</h3>")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(header)
+
+        # Controls Group
+        group = QGroupBox("Modulation Parameters")
+        form_layout = QFormLayout()
+
+        # Input/Output Routing
+        routing_bg = QWidget()
+        routing_layout = QHBoxLayout(routing_bg)
+        routing_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Input Group
+        in_grp = QGroupBox("Input")
+        in_layout = QVBoxLayout()
+        self.in_bg = QButtonGroup()
+        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
+            rb = QRadioButton(label)
+            if val == self.module.input_mode:
+                rb.setChecked(True)
+            self.in_bg.addButton(rb)
+            in_layout.addWidget(rb)
+        self.in_bg.buttonClicked.connect(self.on_in_mode_changed)
+        in_grp.setLayout(in_layout)
+        routing_layout.addWidget(in_grp)
+
+        # Output Group
+        out_grp = QGroupBox("Output")
+        out_layout = QVBoxLayout()
+        self.out_bg = QButtonGroup()
+        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
+            rb = QRadioButton(label)
+            if val == self.module.output_mode:
+                rb.setChecked(True)
+            self.out_bg.addButton(rb)
+            out_layout.addWidget(rb)
+        self.out_bg.buttonClicked.connect(self.on_out_mode_changed)
+        out_grp.setLayout(out_layout)
+        routing_layout.addWidget(out_grp)
+
+        form_layout.addRow(routing_bg)
+
+        # Carrier Frequency
+        self.freq_spin = QDoubleSpinBox()
+        self.freq_spin.setRange(2000.0, 96000.0)
+        self.freq_spin.setValue(self.module.carrier_freq)
+        self.freq_spin.setSuffix(" Hz")
+        self.freq_spin.valueChanged.connect(self.on_freq_changed)
+        form_layout.addRow("Carrier Freq:", self.freq_spin)
+
+        # LPF Cutoff
+        self.lpf_spin = QDoubleSpinBox()
+        self.lpf_spin.setRange(100.0, 20000.0)
+        self.lpf_spin.setValue(self.module.lpf_cutoff)
+        self.lpf_spin.setSuffix(" Hz")
+        self.lpf_spin.valueChanged.connect(self.on_lpf_changed)
+        form_layout.addRow("Audio LPF:", self.lpf_spin)
+
+        # Modulation Depth
+        self.depth_spin = QDoubleSpinBox()
+        self.depth_spin.setRange(0.0, 1.0)
+        self.depth_spin.setSingleStep(0.1)
+        self.depth_spin.setValue(self.module.modulation_depth)
+        self.depth_spin.valueChanged.connect(self.on_depth_changed)
+        form_layout.addRow("Mod. Depth (k):", self.depth_spin)
+
+        # Output Gain
+        self.gain_spin = QDoubleSpinBox()
+        self.gain_spin.setRange(0.0, 2.0)
+        self.gain_spin.setSingleStep(0.1)
+        self.gain_spin.setValue(self.module.output_gain)
+        self.gain_spin.valueChanged.connect(self.on_gain_changed)
+        form_layout.addRow("Output Gain:", self.gain_spin)
+
+        group.setLayout(form_layout)
+        layout.addWidget(group)
+
+        # Meters
+        meter_group = QGroupBox("Signal Levels")
+        meter_layout = QVBoxLayout()
+
+        # Input Meter
+        in_label = QLabel("Input Level")
+        self.in_bar = QProgressBar()
+        self.in_bar.setRange(0, 100)
+        self.in_bar.setTextVisible(False)
+        self.in_bar.setStyleSheet("QProgressBar::chunk { background-color: #4CAF50; }")
+        meter_layout.addWidget(in_label)
+        meter_layout.addWidget(self.in_bar)
+
+        # Output Meter
+        out_label = QLabel("Output Level (40kHz)")
+        self.out_bar = QProgressBar()
+        self.out_bar.setRange(0, 100)
+        self.out_bar.setTextVisible(False)
+        self.out_bar.setStyleSheet("QProgressBar::chunk { background-color: #2196F3; }")
+        meter_layout.addWidget(out_label)
+        meter_layout.addWidget(self.out_bar)
+
+        meter_group.setLayout(meter_layout)
+        layout.addWidget(meter_group)
+
+
+        # Switches
+        self.predist_check = QCheckBox("Enable √ Pre-distortion")
+        self.predist_check.setChecked(self.module.enable_predistortion)
+        self.predist_check.toggled.connect(self.on_predist_toggled)
+        layout.addWidget(self.predist_check)
+
+        self.bypass_check = QCheckBox("Bypass Modulation (Passthrough)")
+        self.bypass_check.setChecked(self.module.bypass)
+        self.bypass_check.toggled.connect(self.on_bypass_toggled)
+        layout.addWidget(self.bypass_check)
+
+        # Main Toggle
+        self.start_btn = QPushButton("Start Modulation")
+        self.start_btn.setCheckable(True)
+        self.start_btn.setStyleSheet("QPushButton:checked { background-color: #ffcccc; }")
+        self.start_btn.clicked.connect(self.on_toggle_start)
+        layout.addWidget(self.start_btn)
+
+        layout.addStretch()
+        self.setLayout(layout)
+
+    def on_in_mode_changed(self, btn):
+        self.module.input_mode = btn.text()
+
+    def on_out_mode_changed(self, btn):
+        self.module.output_mode = btn.text()
+
+    def on_freq_changed(self, val):
+        self.module.carrier_freq = val
+
+    def on_lpf_changed(self, val):
+        self.module.lpf_cutoff = val
+
+    def on_depth_changed(self, val):
+        self.module.modulation_depth = val
+
+    def on_gain_changed(self, val):
+        self.module.output_gain = val
+
+    def on_predist_toggled(self, checked):
+        self.module.enable_predistortion = checked
+
+    def on_bypass_toggled(self, checked):
+        self.module.bypass = checked
+
+    def on_toggle_start(self, checked):
+        if checked:
+            self.module.start()
+            self.start_btn.setText("Stop Modulation")
+        else:
+            self.module.stop()
+            self.start_btn.setText("Start Modulation")
+
+    def update_ui_state(self):
+        # Update button state if changed externally (though unlikely)
+        if self.module.is_running != self.start_btn.isChecked():
+            self.start_btn.setChecked(self.module.is_running)
+            self.start_btn.setText("Stop Modulation" if self.module.is_running else "Start Modulation")
+
+        # Update Meters
+        # Convert 0-1 float to 0-100 int
+        # Use simple linear scaling for visualization or sqrt for "perceptual"
+
+        in_val = int(np.clip(self.module.input_level * 100, 0, 100))
+        out_val = int(np.clip(self.module.output_level * 100, 0, 100))
+
+        self.in_bar.setValue(in_val)
+        self.out_bar.setValue(out_val)
