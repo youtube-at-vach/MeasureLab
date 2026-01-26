@@ -14,11 +14,11 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QSlider,
-    QSlider,
     QVBoxLayout,
     QWidget,
     QFrame,
     QMessageBox,
+    QTabWidget,
 )
 
 
@@ -39,8 +39,6 @@ class UltrasoundModulator(MeasurementModule):
         self.lpf_cutoff = 8000.0
         self.output_gain = 1.0
         self.input_gain = 1.0
-        self.enable_predistortion = False
-        self.output_gain = 1.0
         self.enable_predistortion = False
         self.bypass = False
         self.input_mode = 'Stereo' # L, R, Stereo
@@ -329,9 +327,6 @@ class UltrasoundModulatorWidget(QWidget):
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(header)
-
         # Safety Status Indicator
         self.safety_frame = QFrame()
         self.safety_frame.setFrameShape(QFrame.Shape.StyledPanel)
@@ -344,47 +339,18 @@ class UltrasoundModulatorWidget(QWidget):
         safety_layout.addWidget(self.safety_label)
         layout.addWidget(self.safety_frame)
 
-        # Controls Group
-        group = QGroupBox("Modulation Parameters")
+        # Tab Widget
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+
+        # Tab 1: Modulation Controls
+        tab1 = QWidget()
+        tab1_layout = QVBoxLayout(tab1)
+
+        # Controls Group (Modulation)
         form_layout = QFormLayout()
 
-        # Input/Output Routing
-        routing_bg = QWidget()
-        routing_layout = QHBoxLayout(routing_bg)
-        routing_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Input Group
-        in_grp = QGroupBox("Input")
-        in_layout = QHBoxLayout()
-        self.in_bg = QButtonGroup()
-        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
-            rb = QRadioButton(label)
-            if val == self.module.input_mode:
-                rb.setChecked(True)
-            self.in_bg.addButton(rb)
-            in_layout.addWidget(rb)
-        self.in_bg.buttonClicked.connect(self.on_in_mode_changed)
-
-        in_grp.setLayout(in_layout)
-        routing_layout.addWidget(in_grp)
-
-        # Output Group
-        out_grp = QGroupBox("Output")
-        out_layout = QHBoxLayout()
-        self.out_bg = QButtonGroup()
-        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
-            rb = QRadioButton(label)
-            if val == self.module.output_mode:
-                rb.setChecked(True)
-            self.out_bg.addButton(rb)
-            out_layout.addWidget(rb)
-        self.out_bg.buttonClicked.connect(self.on_out_mode_changed)
-        out_grp.setLayout(out_layout)
-        routing_layout.addWidget(out_grp)
-
-        form_layout.addRow(routing_bg)
-
-        # Input Gain (Moved from Input group)
+        # Input Gain
         in_gain_layout = QHBoxLayout()
         self.in_gain_spin = QDoubleSpinBox()
         self.in_gain_spin.setRange(-60.0, 26.0)
@@ -471,45 +437,69 @@ class UltrasoundModulatorWidget(QWidget):
         gain_layout.addWidget(self.gain_slider)
         form_layout.addRow("Output Gain:", gain_layout)
 
-        group.setLayout(form_layout)
-        layout.addWidget(group)
+        tab1_layout.addLayout(form_layout)
+        tab1_layout.addStretch()
+        self.tabs.addTab(tab1, "Modulation")
 
-        # Meters
-        meter_group = QGroupBox("Signal Levels")
-        meter_layout = QVBoxLayout()
+        # Tab 2: Settings (Routing & Options)
+        tab2 = QWidget()
+        tab2_layout = QVBoxLayout(tab2)
 
-        # Input Meter
-        in_label = QLabel("Input Level")
-        self.in_bar = QProgressBar()
-        self.in_bar.setRange(0, 100)
-        self.in_bar.setTextVisible(False)
-        self.in_bar.setStyleSheet("QProgressBar::chunk { background-color: #4CAF50; }")
-        meter_layout.addWidget(in_label)
-        meter_layout.addWidget(self.in_bar)
+        # Input/Output Routing
+        routing_group = QGroupBox("Routing")
+        routing_layout = QHBoxLayout() 
 
-        # Output Meter
-        out_label = QLabel("Output Level (40kHz)")
-        self.out_bar = QProgressBar()
-        self.out_bar.setRange(0, 100)
-        self.out_bar.setTextVisible(False)
-        self.out_bar.setStyleSheet("QProgressBar::chunk { background-color: #2196F3; }")
-        meter_layout.addWidget(out_label)
-        meter_layout.addWidget(self.out_bar)
+        # Input Group
+        in_grp = QGroupBox("Input Channel")
+        in_layout = QHBoxLayout()
+        self.in_bg = QButtonGroup()
+        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
+            rb = QRadioButton(label)
+            if val == self.module.input_mode:
+                rb.setChecked(True)
+            self.in_bg.addButton(rb)
+            in_layout.addWidget(rb)
+        self.in_bg.buttonClicked.connect(self.on_in_mode_changed)
+        in_grp.setLayout(in_layout)
+        routing_layout.addWidget(in_grp)
 
-        meter_group.setLayout(meter_layout)
-        layout.addWidget(meter_group)
+        # Output Group
+        out_grp = QGroupBox("Output Channel")
+        out_layout = QHBoxLayout()
+        self.out_bg = QButtonGroup()
+        for label, val in [("L", "L"), ("R", "R"), ("Stereo", "Stereo")]:
+            rb = QRadioButton(label)
+            if val == self.module.output_mode:
+                rb.setChecked(True)
+            self.out_bg.addButton(rb)
+            out_layout.addWidget(rb)
+        self.out_bg.buttonClicked.connect(self.on_out_mode_changed)
+        out_grp.setLayout(out_layout)
+        routing_layout.addWidget(out_grp)
 
+        routing_group.setLayout(routing_layout)
+        tab2_layout.addWidget(routing_group)
 
-        # Switches
+        # Options Group
+        opt_group = QGroupBox("Advanced Options")
+        opt_layout = QVBoxLayout()
+
         self.predist_check = QCheckBox("Enable √ Pre-distortion")
         self.predist_check.setChecked(self.module.enable_predistortion)
         self.predist_check.toggled.connect(self.on_predist_toggled)
-        layout.addWidget(self.predist_check)
+        opt_layout.addWidget(self.predist_check)
 
         self.bypass_check = QCheckBox("Bypass Modulation (Passthrough)")
         self.bypass_check.setChecked(self.module.bypass)
         self.bypass_check.toggled.connect(self.on_bypass_toggled)
-        layout.addWidget(self.bypass_check)
+        opt_layout.addWidget(self.bypass_check)
+
+        opt_group.setLayout(opt_layout)
+        tab2_layout.addWidget(opt_group)
+
+        tab2_layout.addStretch()
+        self.tabs.addTab(tab2, "Settings")
+
 
         # Main Toggle
         self.start_btn = QPushButton("Start Modulation")
@@ -521,24 +511,53 @@ class UltrasoundModulatorWidget(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
+        # Meters - Add to bottom (outside tabs) but above button? 
+        # User requested shorter height. Meters at bottom might be good.
+        # But earlier implementation had meters inside layout. 
+        # Let's put meters ABOVE the Start Button.
+
+        # NOTE: In previous code, Meters were added before Start Button. 
+        # My replacement block removed them (lines 480-503 in existing file were not included in my specific replacement block, but I am rewriting the file).
+        # Wait, I need to look at lines 480-503 again.
+        # Check Step 222. Lines 480-503 are creating meter_group and adding to layout.
+        # My replacement block REPLACED Controls Group and Switchs. It stopped before Meters?
+        # NO. Step 222 shows Meters starts at 480.
+        # My replacement block target ended at line 515.
+        # Start of replacement was line 350.
+        # So I DELETED Meters in the replacement block logic above?
+        # Yes.
+        # So I need to add Meters back.
+
+        meter_group = QGroupBox("Signal Levels")
+        meter_layout = QVBoxLayout()
+        in_label = QLabel("Input Level")
+        self.in_bar = QProgressBar()
+        self.in_bar.setRange(0, 100)
+        self.in_bar.setTextVisible(False)
+        self.in_bar.setStyleSheet("QProgressBar::chunk { background-color: #4CAF50; }")
+        meter_layout.addWidget(in_label)
+        meter_layout.addWidget(self.in_bar)
+
+        out_label = QLabel("Output Level (40kHz)")
+        self.out_bar = QProgressBar()
+        self.out_bar.setRange(0, 100)
+        self.out_bar.setTextVisible(False)
+        self.out_bar.setStyleSheet("QProgressBar::chunk { background-color: #2196F3; }")
+        meter_layout.addWidget(out_label)
+        meter_layout.addWidget(self.out_bar)
+
+        meter_group.setLayout(meter_layout)
+
+        # Where to put meters? Global at bottom.
+        # Before start button?
+        # layout is VBox.
+        # widgets: Header, Safety, Tabs, Meters, StartBtn.
+
+        layout.insertWidget(layout.indexOf(self.start_btn), meter_group)
+
+
     def on_in_mode_changed(self, btn):
         self.module.input_mode = btn.text()
-
-    def on_in_gain_changed(self, val):
-        self.module.input_gain = val
-        self.in_gain_slider.blockSignals(True)
-        self.in_gain_slider.setValue(int(val * 10))
-        self.in_gain_slider.blockSignals(False)
-
-    def on_in_gain_slider_changed(self, val):
-        gain = val / 10.0
-        self.module.input_gain = gain
-        self.in_gain_spin.blockSignals(True)
-        self.in_gain_spin.setValue(gain)
-        self.in_gain_spin.blockSignals(False)
-
-    def on_out_mode_changed(self, btn):
-        self.module.output_mode = btn.text()
 
     def _lin2db(self, val):
         if val <= 0: return -60.0 # Floor
@@ -606,11 +625,15 @@ class UltrasoundModulatorWidget(QWidget):
         self.depth_spin.setValue(depth)
         self.depth_spin.blockSignals(False)
 
+    def on_out_mode_changed(self, btn):
+        self.module.output_mode = btn.text()
+
     def on_gain_changed(self, val): # val is dB
         self.module.output_gain = self._db2lin(val)
         self.gain_slider.blockSignals(True)
         self.gain_slider.setValue(int(val * 10))
         self.gain_slider.blockSignals(False)
+        self.update_safety_status()
 
     def on_gain_slider_changed(self, val): # val is int(dB*10)
         gain_db = val / 10.0
@@ -665,7 +688,7 @@ class UltrasoundModulatorWidget(QWidget):
             dlg.setIcon(QMessageBox.Icon.Warning)
             dlg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             dlg.setDefaultButton(QMessageBox.StandardButton.No)
-            
+
             if dlg.exec() != QMessageBox.StandardButton.Yes:
                 self.start_btn.setChecked(False)
                 return
@@ -675,7 +698,7 @@ class UltrasoundModulatorWidget(QWidget):
         else:
             self.module.stop()
             self.start_btn.setText("Start Modulation")
-        
+
         self.update_safety_status()
 
     def update_ui_state(self):
@@ -685,9 +708,6 @@ class UltrasoundModulatorWidget(QWidget):
             self.start_btn.setText("Stop Modulation" if self.module.is_running else "Start Modulation")
 
         # Update Meters
-        # Convert 0-1 float to 0-100 int
-        # Use simple linear scaling for visualization or sqrt for "perceptual"
-
         in_val = int(np.clip(self.module.input_level * 100, 0, 100))
         out_val = int(np.clip(self.module.output_level * 100, 0, 100))
 
