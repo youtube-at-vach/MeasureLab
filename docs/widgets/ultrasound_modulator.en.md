@@ -11,7 +11,7 @@ It is used for experiments with parametric speakers and acoustic measurements in
 Key Features:
 
 * **Real-time AM Modulation**: Modulates a carrier wave (default 40kHz) using the input audio signal.
-* **Safety Features**: Displays warnings if the output gain reaches dangerous levels.
+* **Safety Features**: Displays safety status (SAFE, CAUTION, DANGEROUS) based on output gain and warns if levels are high.
 * **Flexible Routing**: Supports arbitrary selection of input/output channels (L/R/Stereo).
 * **Pre-distortion**: Supports square-root processing to reduce distortion caused by demodulation.
 
@@ -39,13 +39,16 @@ Configure signal processing parameters in the **"Modulation"** tab.
 Configure input/output routing in the **"Settings"** tab.
 
 #### Input/Output Channel
+
 Select the input source and output destination.
 
 * **L / R**: Processes as mono.
 * **Stereo**: Processes as stereo signals (carrier phase is identical for both).
 
 #### Advanced Options
-* **Enable √ Pre-distortion**: Applies square-root processing ($\sqrt{1+m(t)}$) to the signal beforehand to correct distortion that occurs during amplitude demodulation. This is useful for reducing distortion during self-demodulation in parametric speakers.
+
+* **Enable √ Pre-distortion**: Applies square-root processing ($\sqrt{1+km(t)}$) to the signal beforehand to correct distortion that occurs during amplitude demodulation. This is useful for reducing distortion during self-demodulation in parametric speakers.
+
 * **Bypass Modulation**: Outputs the input signal directly without modulation (gain is still applied). Use this for checking settings or as a pass-through output.
 
 ## Signal Meters
