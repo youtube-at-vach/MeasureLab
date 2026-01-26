@@ -126,12 +126,22 @@ class SpectrumAnalyzer(MeasurementModule):
 
             else:
                 # --- Normal Rolling Mode ---
-                # Efficient ring buffer or just roll
-                if len(new_data) > self.buffer_size:
+                # Efficient ring buffer (zero allocation)
+                n_frames = len(new_data)
+                if n_frames > self.buffer_size:
                     self.input_data[:] = new_data[-self.buffer_size:]
+                    self.write_head = 0
                 else:
-                    self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                    self.input_data[-len(new_data):] = new_data
+                    idx = self.write_head
+                    end_idx = idx + n_frames
+                    if end_idx <= self.buffer_size:
+                        self.input_data[idx:end_idx] = new_data
+                    else:
+                        part1_len = self.buffer_size - idx
+                        self.input_data[idx:] = new_data[:part1_len]
+                        self.input_data[:n_frames - part1_len] = new_data[part1_len:]
+
+                    self.write_head = (idx + n_frames) % self.buffer_size
 
             outdata.fill(0)
 
@@ -609,7 +619,9 @@ class SpectrumAnalyzerWidget(QWidget):
             self.module.write_head = 0
         else:
             # Normal Rolling Mode
-            data = self.module.input_data
+            # Unroll ring buffer
+            head = self.module.write_head
+            data = np.concatenate((self.module.input_data[head:], self.module.input_data[:head]))
 
 
         # Calculate Overall RMS (dBFS) - Raw Time Domain (Unweighted)
