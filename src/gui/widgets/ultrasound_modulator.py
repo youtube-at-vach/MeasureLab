@@ -14,9 +14,13 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QSlider,
+    QSlider,
     QVBoxLayout,
     QWidget,
+    QFrame,
+    QMessageBox,
 )
+
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -325,6 +329,21 @@ class UltrasoundModulatorWidget(QWidget):
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(header)
+
+        # Safety Status Indicator
+        self.safety_frame = QFrame()
+        self.safety_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.safety_frame.setLineWidth(2)
+        self.safety_frame.setStyleSheet("background-color: #444; border-radius: 5px;")
+        safety_layout = QVBoxLayout(self.safety_frame)
+        self.safety_label = QLabel("STANDBY")
+        self.safety_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        safety_layout.addWidget(self.safety_label)
+        layout.addWidget(self.safety_frame)
+
         # Controls Group
         group = QGroupBox("Modulation Parameters")
         form_layout = QFormLayout()
@@ -368,16 +387,17 @@ class UltrasoundModulatorWidget(QWidget):
         # Input Gain (Moved from Input group)
         in_gain_layout = QHBoxLayout()
         self.in_gain_spin = QDoubleSpinBox()
-        self.in_gain_spin.setRange(0.0, 20.0)
-        self.in_gain_spin.setSingleStep(0.1)
-        self.in_gain_spin.setValue(self.module.input_gain)
+        self.in_gain_spin.setRange(-60.0, 26.0)
+        self.in_gain_spin.setSingleStep(0.5)
+        self.in_gain_spin.setSuffix(" dB")
+        self.in_gain_spin.setValue(self._lin2db(self.module.input_gain))
         self.in_gain_spin.valueChanged.connect(self.on_in_gain_changed)
-        
+
         self.in_gain_slider = QSlider(Qt.Orientation.Horizontal)
-        self.in_gain_slider.setRange(0, 200) # 0.0 to 20.0
-        self.in_gain_slider.setValue(int(self.module.input_gain * 10))
+        self.in_gain_slider.setRange(-600, 260) # -60.0 to +26.0 dB
+        self.in_gain_slider.setValue(int(self._lin2db(self.module.input_gain) * 10))
         self.in_gain_slider.valueChanged.connect(self.on_in_gain_slider_changed)
-        
+
         in_gain_layout.addWidget(self.in_gain_spin)
         in_gain_layout.addWidget(self.in_gain_slider)
         form_layout.addRow("Input Gain:", in_gain_layout)
@@ -389,12 +409,12 @@ class UltrasoundModulatorWidget(QWidget):
         self.freq_spin.setValue(self.module.carrier_freq)
         self.freq_spin.setSuffix(" Hz")
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
-        
+
         self.freq_slider = QSlider(Qt.Orientation.Horizontal)
         self.freq_slider.setRange(0, 1000)
         self.freq_slider.setValue(self._freq_to_slider(self.module.carrier_freq, 2000.0, 96000.0))
         self.freq_slider.valueChanged.connect(self.on_freq_slider_changed)
-        
+
         freq_layout.addWidget(self.freq_spin)
         freq_layout.addWidget(self.freq_slider)
         form_layout.addRow("Carrier Freq:", freq_layout)
@@ -406,12 +426,12 @@ class UltrasoundModulatorWidget(QWidget):
         self.lpf_spin.setValue(self.module.lpf_cutoff)
         self.lpf_spin.setSuffix(" Hz")
         self.lpf_spin.valueChanged.connect(self.on_lpf_changed)
-        
+
         self.lpf_slider = QSlider(Qt.Orientation.Horizontal)
         self.lpf_slider.setRange(0, 1000)
         self.lpf_slider.setValue(self._freq_to_slider(self.module.lpf_cutoff, 100.0, 20000.0))
         self.lpf_slider.valueChanged.connect(self.on_lpf_slider_changed)
-        
+
         lpf_layout.addWidget(self.lpf_spin)
         lpf_layout.addWidget(self.lpf_slider)
         form_layout.addRow("Audio LPF:", lpf_layout)
@@ -423,12 +443,12 @@ class UltrasoundModulatorWidget(QWidget):
         self.depth_spin.setSingleStep(0.1)
         self.depth_spin.setValue(self.module.modulation_depth)
         self.depth_spin.valueChanged.connect(self.on_depth_changed)
-        
+
         self.depth_slider = QSlider(Qt.Orientation.Horizontal)
         self.depth_slider.setRange(0, 100)
         self.depth_slider.setValue(int(self.module.modulation_depth * 100))
         self.depth_slider.valueChanged.connect(self.on_depth_slider_changed)
-        
+
         depth_layout.addWidget(self.depth_spin)
         depth_layout.addWidget(self.depth_slider)
         form_layout.addRow("Mod. Depth (k):", depth_layout)
@@ -436,16 +456,17 @@ class UltrasoundModulatorWidget(QWidget):
         # Output Gain
         gain_layout = QHBoxLayout()
         self.gain_spin = QDoubleSpinBox()
-        self.gain_spin.setRange(0.0, 2.0)
-        self.gain_spin.setSingleStep(0.1)
-        self.gain_spin.setValue(self.module.output_gain)
+        self.gain_spin.setRange(-60.0, 6.0) # Approx 0.001x to 2.0x
+        self.gain_spin.setSingleStep(0.5)
+        self.gain_spin.setSuffix(" dB")
+        self.gain_spin.setValue(self._lin2db(self.module.output_gain))
         self.gain_spin.valueChanged.connect(self.on_gain_changed)
-        
+
         self.gain_slider = QSlider(Qt.Orientation.Horizontal)
-        self.gain_slider.setRange(0, 200)
-        self.gain_slider.setValue(int(self.module.output_gain * 100))
+        self.gain_slider.setRange(-600, 60) # -60.0 to +6.0 dB
+        self.gain_slider.setValue(int(self._lin2db(self.module.output_gain) * 10))
         self.gain_slider.valueChanged.connect(self.on_gain_slider_changed)
-        
+
         gain_layout.addWidget(self.gain_spin)
         gain_layout.addWidget(self.gain_slider)
         form_layout.addRow("Output Gain:", gain_layout)
@@ -519,6 +540,26 @@ class UltrasoundModulatorWidget(QWidget):
     def on_out_mode_changed(self, btn):
         self.module.output_mode = btn.text()
 
+    def _lin2db(self, val):
+        if val <= 0: return -60.0 # Floor
+        return 20.0 * np.log10(val)
+
+    def _db2lin(self, val):
+        return 10.0 ** (val / 20.0)
+
+    def on_in_gain_changed(self, val): # val is dB
+        self.module.input_gain = self._db2lin(val)
+        self.in_gain_slider.blockSignals(True)
+        self.in_gain_slider.setValue(int(val * 10))
+        self.in_gain_slider.blockSignals(False)
+
+    def on_in_gain_slider_changed(self, val): # val is int(dB*10)
+        gain_db = val / 10.0
+        self.module.input_gain = self._db2lin(gain_db)
+        self.in_gain_spin.blockSignals(True)
+        self.in_gain_spin.setValue(gain_db)
+        self.in_gain_spin.blockSignals(False)
+
     def _freq_to_slider(self, freq, min_f, max_f):
         return int(1000 * (np.log10(freq) - np.log10(min_f)) / (np.log10(max_f) - np.log10(min_f)))
 
@@ -565,18 +606,49 @@ class UltrasoundModulatorWidget(QWidget):
         self.depth_spin.setValue(depth)
         self.depth_spin.blockSignals(False)
 
-    def on_gain_changed(self, val):
-        self.module.output_gain = val
+    def on_gain_changed(self, val): # val is dB
+        self.module.output_gain = self._db2lin(val)
         self.gain_slider.blockSignals(True)
-        self.gain_slider.setValue(int(val * 100))
+        self.gain_slider.setValue(int(val * 10))
         self.gain_slider.blockSignals(False)
 
-    def on_gain_slider_changed(self, val):
-        gain = val / 100.0
-        self.module.output_gain = gain
+    def on_gain_slider_changed(self, val): # val is int(dB*10)
+        gain_db = val / 10.0
+        self.module.output_gain = self._db2lin(gain_db)
         self.gain_spin.blockSignals(True)
-        self.gain_spin.setValue(gain)
+        self.gain_spin.setValue(gain_db)
         self.gain_spin.blockSignals(False)
+        self.update_safety_status()
+
+    def update_safety_status(self):
+        if not self.module.is_running:
+            self.safety_frame.setStyleSheet("background-color: #555; border-radius: 5px; border: 2px solid #777;")
+            self.safety_label.setText("STANDBY")
+            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #BBB;")
+            return
+
+        # Check Output Gain (dB)
+        # We need the current dB value. 
+        # Since we store linear in module, convert back or use spinbox value? 
+        # Safest is module value.
+        gain_lin = self.module.output_gain
+        gain_db = self._lin2db(gain_lin)
+
+        if gain_db > 0.0:
+            # Dangerous
+            self.safety_frame.setStyleSheet("background-color: #FFCDD2; border-radius: 5px; border: 2px solid #F44336;")
+            self.safety_label.setText("🔴 DANGEROUS - HIGH INTENSITY 🔴")
+            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #B71C1C;")
+        elif gain_db > -10.0:
+            # Caution
+            self.safety_frame.setStyleSheet("background-color: #FFF9C4; border-radius: 5px; border: 2px solid #FBC02D;")
+            self.safety_label.setText("🟡 CAUTION - ULTRASOUND ACTIVE 🟡")
+            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #F57F17;")
+        else:
+            # Safe
+            self.safety_frame.setStyleSheet("background-color: #C8E6C9; border-radius: 5px; border: 2px solid #4CAF50;")
+            self.safety_label.setText("🟢 SAFE - LOW INTENSITY 🟢")
+            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #1B5E20;")
 
     def on_predist_toggled(self, checked):
         self.module.enable_predistortion = checked
@@ -586,11 +658,25 @@ class UltrasoundModulatorWidget(QWidget):
 
     def on_toggle_start(self, checked):
         if checked:
+            # Safety Confirmation
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Safety Warning")
+            dlg.setText("High intensity ultrasound can be dangerous to hearing (even if inaudible) and pets.\n\nAre you sure you want to start emission?")
+            dlg.setIcon(QMessageBox.Icon.Warning)
+            dlg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            dlg.setDefaultButton(QMessageBox.StandardButton.No)
+            
+            if dlg.exec() != QMessageBox.StandardButton.Yes:
+                self.start_btn.setChecked(False)
+                return
+
             self.module.start()
             self.start_btn.setText("Stop Modulation")
         else:
             self.module.stop()
             self.start_btn.setText("Start Modulation")
+        
+        self.update_safety_status()
 
     def update_ui_state(self):
         # Update button state if changed externally (though unlikely)
