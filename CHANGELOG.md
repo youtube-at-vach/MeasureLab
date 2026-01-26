@@ -14,7 +14,8 @@
 
 ### Fixed
 
-* Core: Oscilloscope のオーディオコールバックにおけるメモリ割り当ての問題（重大なバグ）をリングバッファ導入により修正
+* UI: Oscilloscope の Vrms および Vpp 表示の計算不具合（重大なバグ）を修正
+* Core: Oscilloscope のオーディオコールバックにおけるメモリ割り当ての問題をリングバッファ導入により修正
 * Core: Signal Generator で波形ごとのクレストファクターを考慮し、RMS 振幅計算の精度を向上
 * UI: Oscilloscope の Y 軸ラベル（0, 0.5, 1）を非表示にし、混乱を防止
 
