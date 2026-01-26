@@ -41,8 +41,8 @@ class UltrasoundModulator(MeasurementModule):
         self.input_gain = 1.0
         self.enable_predistortion = False
         self.bypass = False
-        self.input_mode = 'Stereo' # L, R, Stereo
-        self.output_mode = 'Stereo' # L, R, Stereo
+        self.input_mode = 'L' # L, R, Stereo
+        self.output_mode = 'R' # L, R, Stereo
 
         # Internal State
         self._phase = 0.0
