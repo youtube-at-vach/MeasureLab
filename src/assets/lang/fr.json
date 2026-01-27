@@ -998,5 +998,9 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEREUX - HAUTE INTENSITÉ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ATTENTION - ULTRASONS ACTIFS 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SÉCURISÉ - FAIBLE INTENSITÉ 🟢",
-    "Carrier Mode:": "Mode porteuse :"
+    "Carrier Mode:": "Mode porteuse :",
+    "Crosstalk (Meas / Ref)": "Diaphonie (Mes / Réf)",
+    "Crosstalk L -> R": "Diaphonie G -> D",
+    "Crosstalk R -> L": "Diaphonie D -> G",
+    "XFER (Ref=R, Meas=L)": "XFER (Réf=D, Mes=G)"
 }

@@ -13,7 +13,10 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "Carrier Mode:",
+    "Crosstalk (Meas / Ref)",
+    "Crosstalk L -> R",
+    "Crosstalk R -> L",
+    "XFER (Ref=R, Meas=L)",
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)

@@ -997,5 +997,9 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危険 - 高強度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波放射中 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢",
-    "Carrier Mode:": "キャリアモード:"
+    "Carrier Mode:": "キャリアモード:",
+    "Crosstalk (Meas / Ref)": "クロストーク (測定 / 基準)",
+    "Crosstalk L -> R": "クロストーク L -> R",
+    "Crosstalk R -> L": "クロストーク R -> L",
+    "XFER (Ref=R, Meas=L)": "XFER (基準=R, 測定=L)"
 }
