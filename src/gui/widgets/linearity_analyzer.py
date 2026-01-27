@@ -195,9 +195,14 @@ class LinearityAnalyzer(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             # Input
+            new_data = None
             if indata.shape[1] >= 2:
-                # Handle ring buffer safely
                 new_data = indata[:, :2]
+            elif indata.shape[1] == 1:
+                # Mono input -> duplicate
+                new_data = np.repeat(indata, 2, axis=1)
+
+            if new_data is not None:
                 new_frames = len(new_data)
 
                 if new_frames >= self.buffer_size:
@@ -207,9 +212,6 @@ class LinearityAnalyzer(MeasurementModule):
                     # Otherwise roll and append
                     self.input_data[:] = np.roll(self.input_data, -new_frames, axis=0)
                     self.input_data[-new_frames:] = new_data
-            else:
-                # Mono input -> duplicate? 
-                pass # TODO handle mono gracefully
 
             # Output
             t = (np.arange(frames) + self._phase) / sample_rate
