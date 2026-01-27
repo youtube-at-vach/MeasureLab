@@ -62,6 +62,9 @@ Tools for evaluating equipment performance and sound quality.
 * **[Distortion Analyzer](widgets/distortion_analyzer.md)**
     * Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
 
+* **[Linearity Analyzer](widgets/linearity_analyzer.md)**
+    * Measures input/output level linearity. Used for verifying the low-level signal reproduction capability and dynamic range of DACs.
+
 * **[Advanced Distortion Meter](widgets/advanced_distortion_meter.md)**
     * Performs more advanced distortion analysis, such as multitone measurement and IMD (Intermodulation Distortion).
 
