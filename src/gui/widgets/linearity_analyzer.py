@@ -348,12 +348,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.error_plot.setYRange(-5, 5) # Typical range focus
         self.error_curve = self.error_plot.plot(pen=pg.mkPen('r', width=3), symbol='o')
 
-        # Linear Region Visualization (Safe Area)
-        # semi-transparent green
-        self.linear_region = pg.LinearRegionItem(values=(0, 0), orientation='vertical', brush=(0, 255, 0, 50), movable=False)
-        for line in self.linear_region.lines:
-            line.setPen(pg.mkPen(None))
-        self.error_plot.addItem(self.linear_region)
+
 
         # Add tolerance lines? +/- 1dB maybe?
 
@@ -471,8 +466,7 @@ class LinearityAnalyzerWidget(QWidget):
             else:
                  self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
 
-        # Update Visual Region
-        self.linear_region.setRegion((min_good, max_good))
+
 
     def on_finished(self):
         self.start_btn.setChecked(False)
