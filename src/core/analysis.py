@@ -265,14 +265,20 @@ class AudioCalc:
         harmonic_amplitudes_linear = []
 
         # Up to 10th harmonic
+        if len(freqs) > 1:
+            bin_width = freqs[1]
+        else:
+            bin_width = sampling_rate / len(audio_data)
+        freqs_len = len(freqs)
+
         for i in range(2, 11):
             harmonic_freq = max_freq * i
             if harmonic_freq >= sampling_rate / 2:
                 break
 
             # Search near harmonic
-            h_idx_min = np.searchsorted(freqs, harmonic_freq - search_window)
-            h_idx_max = np.searchsorted(freqs, harmonic_freq + search_window)
+            h_idx_min = max(0, min(freqs_len, int(math.ceil((harmonic_freq - search_window) / bin_width))))
+            h_idx_max = max(0, min(freqs_len, int(math.ceil((harmonic_freq + search_window) / bin_width))))
 
             if h_idx_max < len(amplitude_spectrum) and h_idx_max > h_idx_min:
                 subset = amplitude_spectrum[h_idx_min:h_idx_max]
