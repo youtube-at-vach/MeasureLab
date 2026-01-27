@@ -93,7 +93,17 @@ class LinearitySweepWorker(QThread):
                     sig, freq, sample_rate, phase_ref=0, window_name='blackmanharris'
                 )
 
+                # Sideband Noise Measurement (to detect noise floor)
+                # Use a frequency offset that is unlikely to be a harmonic
+                noise_freq = freq * 1.15
+                noise_mag, _ = AudioCalc.calculate_lockin_measurement(
+                    sig, noise_freq, sample_rate, phase_ref=0, window_name='blackmanharris'
+                )
+
                 meas_db = 20 * np.log10(mag + 1e-15)
+                
+                if noise_mag < 1e-15: noise_mag = 1e-15
+                snr_db = 20 * np.log10(mag / noise_mag)
 
                 # Calculate Gain & Linearity Error
                 # Gain = Measured - Input
@@ -112,7 +122,8 @@ class LinearitySweepWorker(QThread):
                     'measured_level': meas_db,
                     'gain': current_gain,
                     'linearity_error': lin_error,
-                    'phase': phase
+                    'phase': phase,
+                    'snr': snr_db
                 }
 
                 self.result_ready.emit(result)
@@ -144,6 +155,7 @@ class LinearityAnalyzer(MeasurementModule):
         self.start_level = -5.0
         self.end_level = -120.0
         self.steps = 30
+        self.snr_threshold = 10.0
 
         self.callback_id = None
         self.worker = None
@@ -254,7 +266,9 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_x = []
         self.results_error = []
         self.results_gain = []
+        self.results_gain = []
         self.results_measured = [] # Store raw measured levels (dBFS)
+        self.results_snr = []
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -287,6 +301,11 @@ class LinearityAnalyzerWidget(QWidget):
         self.steps_spin.setRange(2, 200); self.steps_spin.setValue(30)
         self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, 'steps', v))
         form.addRow(tr("Steps:"), self.steps_spin)
+
+        self.snr_spin = QDoubleSpinBox()
+        self.snr_spin.setRange(0, 100); self.snr_spin.setValue(10); self.snr_spin.setSuffix(" dB")
+        self.snr_spin.valueChanged.connect(lambda v: setattr(self.module, 'snr_threshold', v))
+        form.addRow(tr("SNR Limit:"), self.snr_spin)
 
         group.setLayout(form)
         settings_layout.addWidget(group)
@@ -359,7 +378,21 @@ class LinearityAnalyzerWidget(QWidget):
         self.error_plot.setLabel('bottom', tr('Input Level'), units='dBFS')
         self.error_plot.showGrid(x=True, y=True)
         self.error_plot.setYRange(-5, 5) # Typical range focus
+        self.error_plot.setYRange(-5, 5) # Typical range focus
         self.error_curve = self.error_plot.plot(pen=pg.mkPen('r', width=3), symbol='o')
+
+        # Noise Floor Region
+        # Gray band indicating measurement limit
+        self.noise_region = pg.LinearRegionItem(orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(100, 100, 100, 50), movable=False)
+        for line in self.noise_region.lines:
+            line.setPen(pg.mkPen((150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
+        self.noise_region.setRegion([-140, -140]) # Hidden initially
+        self.error_plot.addItem(self.noise_region)
+        
+        # Label for noise region
+        self.noise_label = pg.TextItem(text=tr("Below Noise Floor"), color=(150, 150, 150), anchor=(0, 1))
+        self.error_plot.addItem(self.noise_label)
+        self.noise_label.setVisible(False)
 
 
 
@@ -385,7 +418,10 @@ class LinearityAnalyzerWidget(QWidget):
             self.results_x = []
             self.results_error = []
             self.results_gain = []
+            self.results_gain = []
             self.results_measured = []
+            self.results_snr = []
+            self.error_curve.setData([], [])
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
             
@@ -412,6 +448,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_error.append(res['linearity_error'])
         self.results_gain.append(res['gain'])
         self.results_measured.append(res['measured_level'])
+        self.results_snr.append(res['snr'])
 
         self.update_plots()
         self.update_stats()
@@ -462,6 +499,9 @@ class LinearityAnalyzerWidget(QWidget):
         else: # dBFS
             x_plot = x_data
             y_plot_2 = gain_data # Show Gain in dB
+            
+            # Offset for region calculation is 0
+            out_gain_db = 0 
 
             self.error_plot.setLabel('bottom', tr('Input Level'), units='dBFS')
             self.gain_plot.setTitle(tr("Absolute Gain"))
@@ -470,6 +510,40 @@ class LinearityAnalyzerWidget(QWidget):
 
         self.error_curve.setData(x_plot, error_data)
         self.gain_curve.setData(x_plot, y_plot_2)
+
+        # Update Noise Region
+        if hasattr(self, 'results_snr') and self.results_snr:
+            snr_data = np.array(self.results_snr)
+            threshold = self.module.snr_threshold
+            
+            # Find Noise Limit (Highest Input Level where SNR < Threshold)
+            # Use original x_data (dBFS) for sorting, then apply offset
+            sorted_indices = np.argsort(x_data)
+            x_sorted = x_data[sorted_indices]
+            snr_sorted = snr_data[sorted_indices]
+            
+            limit_dbfs = None
+            # Scan from High to Low
+            for i in range(len(x_sorted)-1, -1, -1):
+                if snr_sorted[i] < threshold:
+                    limit_dbfs = x_sorted[i]
+                    break # Found the highest level that failed (or rather, the boundary)
+            
+            # Wait, if sorting Low to High (indexes 0..N), range(len-1, -1, -1) goes High to Low.
+            # If [i] is bad, does that mean [i-1] (lower level) is also bad?
+            # Yes, usually. So we find the *first* bad point from the top.
+            
+            if limit_dbfs is not None:
+                region_edge = limit_dbfs + (out_gain_db if unit == "dBV" else 0)
+                # Region covers everything to the left
+                self.noise_region.setRegion([-200, region_edge])
+                self.noise_region.setVisible(True)
+                
+                self.noise_label.setPos(region_edge, 4) # Top of plot
+                self.noise_label.setVisible(True)
+            else:
+                self.noise_region.setVisible(False)
+                self.noise_label.setVisible(False)
 
     def update_stats(self):
         if not self.results_gain:
@@ -500,37 +574,38 @@ class LinearityAnalyzerWidget(QWidget):
             slope, _ = np.polyfit(inputs, gains, 1)
             self.stat_slope.setText(f"{slope:.5f} dB/dB")
         
-        # 4. Linear Range (Lowest level where error < 0.5 dB)
+        # 4. Linear Range (Lowest level where error < 0.5 dB AND SNR > Threshold)
         limit = 0.5
-        bad_indices = np.where(np.abs(errors) > limit)[0]
+        
+        # Calculate SNR Limit
+        snr_threshold = self.module.snr_threshold
+        snr_data = np.array(self.results_snr)
+        
+        # Sort everything by Input Level
+        sorted_indices = np.argsort(self.results_x)[::-1] # High to Low
+        inputs_sorted = np.array(self.results_x)[sorted_indices]
+        errors_sorted = errors[sorted_indices]
+        snr_sorted = snr_data[sorted_indices]
 
-        max_good = np.max(self.results_x) # Start of range (usually top)
-        min_good = np.min(self.results_x) # Default to bottom
-
-        if len(bad_indices) == 0:
-            # All good
-            self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
-        else:
-            # Find the failure point from top
-            sorted_indices = np.argsort(self.results_x)[::-1]
-            inputs_sorted = np.array(self.results_x)[sorted_indices]
-            errors_sorted = errors[sorted_indices]
-            
-            fail_idx = -1
-            for i, err in enumerate(errors_sorted):
-                if abs(err) > limit:
-                    fail_idx = i
-                    break
-            
-            if fail_idx != -1:
-                 if fail_idx > 0:
-                     min_good = inputs_sorted[fail_idx-1]
-                     self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
-                 else:
-                     min_good = max_good # No good range really
-                     self.stat_linear_range.setText("Poor Linearity")
-            else:
+        # Find first failure (Error > 0.5 OR SNR < Threshold)
+        fail_idx = -1
+        for i in range(len(inputs_sorted)):
+            if abs(errors_sorted[i]) > limit:
+                fail_idx = i
+                break
+            if snr_sorted[i] < snr_threshold:
+                fail_idx = i
+                break
+        
+        if fail_idx != -1:
+             if fail_idx > 0:
+                 min_good = inputs_sorted[fail_idx-1]
                  self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
+             else:
+                 self.stat_linear_range.setText("Poor Linearity")
+        else:
+             min_good = np.min(self.results_x)
+             self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
 
 
 
