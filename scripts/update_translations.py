@@ -13,30 +13,7 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    " Hz",
-    " dB",
-    "Advanced Options",
-    "Audio LPF:",
-    "Bypass Modulation (Passthrough)",
-    "Carrier Freq:",
-    "Enable √ Pre-distortion",
-    "High intensity ultrasound can be dangerous to hearing (even if inaudible) and pets.\n\nAre you sure you want to start emission?",
-    "Input Gain:",
-    "Input Level",
-    "Mod. Depth (k):",
-    "Modulation",
-    "Output Level (40kHz)",
-    "Routing",
-    "STANDBY",
-    "Safety Warning",
-    "Signal Levels",
-    "Start Modulation",
-    "Stop Modulation",
-    "Ultrasound AM Modulator",
-    "Ultrasound Modulator running from CLI (not fully implemented)",
-    "🔴 DANGEROUS - HIGH INTENSITY 🔴",
-    "🟡 CAUTION - ULTRASOUND ACTIVE 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢",
+    "Carrier Mode:",
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
