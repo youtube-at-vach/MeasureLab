@@ -169,7 +169,7 @@ class LinearityAnalyzer(MeasurementModule):
             
         # Safety: Ensure we don't leak a callback if state is inconsistent
         if self.callback_id is not None:
-            print(f"LinearityAnalyzer: Found lingering callback {self.callback_id} during start. Unregistering.")
+            # print(f"LinearityAnalyzer: Found lingering callback {self.callback_id} during start. Unregistering.")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
             
@@ -348,6 +348,13 @@ class LinearityAnalyzerWidget(QWidget):
         self.error_plot.setYRange(-5, 5) # Typical range focus
         self.error_curve = self.error_plot.plot(pen=pg.mkPen('r', width=3), symbol='o')
 
+        # Linear Region Visualization (Safe Area)
+        # semi-transparent green
+        self.linear_region = pg.LinearRegionItem(values=(0, 0), orientation='vertical', brush=(0, 255, 0, 50), movable=False)
+        for line in self.linear_region.lines:
+            line.setPen(pg.mkPen(None))
+        self.error_plot.addItem(self.linear_region)
+
         # Add tolerance lines? +/- 1dB maybe?
 
         plot_layout.addWidget(self.error_plot)
@@ -433,46 +440,39 @@ class LinearityAnalyzerWidget(QWidget):
             self.stat_slope.setText(f"{slope:.5f} dB/dB")
         
         # 4. Linear Range (Lowest level where error < 0.5 dB)
-        # This assumes monotonic definition from Ref downwards.
         limit = 0.5
-        # Find indices where error exceeds limit
         bad_indices = np.where(np.abs(errors) > limit)[0]
-        
+
+        max_good = np.max(self.results_x) # Start of range (usually top)
+        min_good = np.min(self.results_x) # Default to bottom
+
         if len(bad_indices) == 0:
-            # All good, use min input
-            min_input = np.min(self.results_x)
-            self.stat_linear_range.setText(f"> {min_input:.1f} dBFS")
+            # All good
+            self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
         else:
-            # Find the highest input level that fails? 
-            # Or usually we define it as "Dynamic Range" 
-            # We want the point where it falls off.
-            # Assuming sweeping downwards, we look for the first point (highest level) that fails?
-            # No, usually low levels fail.
-            # We want the lowest level that PASSES.
-            
-            # Sort by level descending
+            # Find the failure point from top
             sorted_indices = np.argsort(self.results_x)[::-1]
             inputs_sorted = np.array(self.results_x)[sorted_indices]
             errors_sorted = errors[sorted_indices]
             
-            # Find first failure from top
-            # Usually top is good.
             fail_idx = -1
             for i, err in enumerate(errors_sorted):
                 if abs(err) > limit:
                     fail_idx = i
                     break
             
-            if fail_idx == -1:
-                 # Should have been caught by bad_indices check, but just in case
-                 self.stat_linear_range.setText(f"> {np.min(inputs_sorted):.1f} dBFS")
-            else:
-                 # The last good point was i-1
+            if fail_idx != -1:
                  if fail_idx > 0:
-                     last_good = inputs_sorted[fail_idx-1]
-                     self.stat_linear_range.setText(f"> {last_good:.1f} dBFS")
+                     min_good = inputs_sorted[fail_idx-1]
+                     self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
                  else:
+                     min_good = max_good # No good range really
                      self.stat_linear_range.setText("Poor Linearity")
+            else:
+                 self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
+
+        # Update Visual Region
+        self.linear_region.setRegion((min_good, max_good))
 
     def on_finished(self):
         self.start_btn.setChecked(False)
