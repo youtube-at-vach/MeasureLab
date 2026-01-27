@@ -1002,5 +1002,18 @@
     "Crosstalk (Meas / Ref)": "크로스토크 (측정 / 기준)",
     "Crosstalk L -> R": "크로스토크 L -> R",
     "Crosstalk R -> L": "크로스토크 R -> L",
-    "XFER (Ref=R, Meas=L)": "XFER (기준=R, 측정=L)"
+    "XFER (Ref=R, Meas=L)": "XFER (기준=R, 측정=L)",
+    "Absolute Gain": "절대 게인",
+    "Below Noise Floor": "노이즈 플로어 미만",
+    "End Level:": "종료 레벨:",
+    "I/O Routing": "I/O 라우팅",
+    "Linear Range (<0.5dB):": "선형 범위 (<0.5dB):",
+    "Linearity Analyzer": "선형성 분석기",
+    "Linearity Error (Deviation)": "선형성 오차 (편차)",
+    "Max Deviation:": "최대 편차:",
+    "Measured Level": "측정 레벨",
+    "Poor Linearity": "선형성 불량",
+    "Ref Gain:": "참조 게인:",
+    "SNR Limit:": "SNR 제한:",
+    "Start Level:": "시작 레벨:"
 }

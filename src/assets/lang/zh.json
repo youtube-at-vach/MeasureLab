@@ -1002,5 +1002,18 @@
     "Crosstalk (Meas / Ref)": "串扰 (测量 / 参考)",
     "Crosstalk L -> R": "串扰 L -> R",
     "Crosstalk R -> L": "串扰 R -> L",
-    "XFER (Ref=R, Meas=L)": "XFER (参考=R, 测量=L)"
+    "XFER (Ref=R, Meas=L)": "XFER (参考=R, 测量=L)",
+    "Absolute Gain": "绝对增益",
+    "Below Noise Floor": "低于底噪",
+    "End Level:": "结束电平:",
+    "I/O Routing": "输入/输出路由",
+    "Linear Range (<0.5dB):": "线性范围 (<0.5dB):",
+    "Linearity Analyzer": "线性度分析仪",
+    "Linearity Error (Deviation)": "线性度误差 (偏差)",
+    "Max Deviation:": "最大偏差:",
+    "Measured Level": "测量电平",
+    "Poor Linearity": "线性度差",
+    "Ref Gain:": "参考增益:",
+    "SNR Limit:": "信噪比限制:",
+    "Start Level:": "开始电平:"
 }

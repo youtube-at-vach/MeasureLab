@@ -1002,5 +1002,18 @@
     "Crosstalk (Meas / Ref)": "Übersprechen (Mess / Ref)",
     "Crosstalk L -> R": "Übersprechen L -> R",
     "Crosstalk R -> L": "Übersprechen R -> L",
-    "XFER (Ref=R, Meas=L)": "XFER (Ref=R, Mess=L)"
+    "XFER (Ref=R, Meas=L)": "XFER (Ref=R, Mess=L)",
+    "Absolute Gain": "Absolute Verstärkung",
+    "Below Noise Floor": "Unter dem Grundrauschen",
+    "End Level:": "Endpegel:",
+    "I/O Routing": "E/A-Routing",
+    "Linear Range (<0.5dB):": "Linearer Bereich (<0,5dB):",
+    "Linearity Analyzer": "Linearitätsanalysator",
+    "Linearity Error (Deviation)": "Linearitätsfehler (Abweichung)",
+    "Max Deviation:": "Maximale Abweichung:",
+    "Measured Level": "Gemessener Pegel",
+    "Poor Linearity": "Schlechte Linearität",
+    "Ref Gain:": "Ref-Verstärkung:",
+    "SNR Limit:": "SNR-Grenze:",
+    "Start Level:": "Startpegel:"
 }

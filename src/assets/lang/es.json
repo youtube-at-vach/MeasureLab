@@ -1002,5 +1002,18 @@
     "Crosstalk (Meas / Ref)": "Diafonía (Med / Ref)",
     "Crosstalk L -> R": "Diafonía I -> D",
     "Crosstalk R -> L": "Diafonía D -> I",
-    "XFER (Ref=R, Meas=L)": "XFER (Ref=D, Med=I)"
+    "XFER (Ref=R, Meas=L)": "XFER (Ref=D, Med=I)",
+    "Absolute Gain": "Ganancia absoluta",
+    "Below Noise Floor": "Bajo el umbral de ruido",
+    "End Level:": "Nivel final:",
+    "I/O Routing": "Enrutamiento E/S",
+    "Linear Range (<0.5dB):": "Rango lineal (<0.5dB):",
+    "Linearity Analyzer": "Analizador de linealidad",
+    "Linearity Error (Deviation)": "Error de linealidad (Desviación)",
+    "Max Deviation:": "Desviación máxima:",
+    "Measured Level": "Nivel medido",
+    "Poor Linearity": "Linealidad pobre",
+    "Ref Gain:": "Ganancia de ref:",
+    "SNR Limit:": "Límite SNR:",
+    "Start Level:": "Nivel inicial:"
 }

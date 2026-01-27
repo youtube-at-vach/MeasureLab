@@ -325,12 +325,12 @@ class LinearityAnalyzerWidget(QWidget):
         io_form = QFormLayout()
 
         self.out_combo = QComboBox()
-        self.out_combo.addItems(["Left", "Right", "Stereo"])
+        self.out_combo.addItems([tr("Left"), tr("Right"), tr("Stereo")])
         self.out_combo.currentIndexChanged.connect(lambda v: setattr(self.module, 'output_channel', v))
         io_form.addRow(tr("Output:"), self.out_combo)
 
         self.in_combo = QComboBox()
-        self.in_combo.addItems(["Left", "Right"])
+        self.in_combo.addItems([tr("Left"), tr("Right")])
         self.in_combo.currentIndexChanged.connect(lambda v: setattr(self.module, 'input_channel', v))
         io_form.addRow(tr("Input:"), self.in_combo)
 
@@ -622,7 +622,7 @@ class LinearityAnalyzerWidget(QWidget):
                  min_good = inputs_sorted[fail_idx-1]
                  self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
              else:
-                 self.stat_linear_range.setText("Poor Linearity")
+                 self.stat_linear_range.setText(tr("Poor Linearity"))
         else:
              min_good = np.min(self.results_x)
              self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
