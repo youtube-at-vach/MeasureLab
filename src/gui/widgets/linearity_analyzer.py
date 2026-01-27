@@ -216,15 +216,16 @@ class LinearityAnalyzer(MeasurementModule):
 
         cid = self.audio_engine.register_callback(callback)
         self.callback_id = cid
-        print(f"LinearityAnalyzer: Started analysis. Registered callback {cid}")
+        # print(f"LinearityAnalyzer: Started analysis. Registered callback {cid}")
 
     def stop_analysis(self):
         if self.callback_id:
-            print(f"LinearityAnalyzer: Stopping analysis. Unregistering callback {self.callback_id}")
+            # print(f"LinearityAnalyzer: Stopping analysis. Unregistering callback {self.callback_id}")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
         else:
-            print("LinearityAnalyzer: Stop requested but no callback ID.")
+            # print("LinearityAnalyzer: Stop requested but no callback ID.")
+            pass
             
         self.is_running = False
 
@@ -306,6 +307,23 @@ class LinearityAnalyzerWidget(QWidget):
         io_group.setLayout(io_form)
         settings_layout.addWidget(io_group)
 
+        # Statistics
+        stats_group = QGroupBox(tr("Statistics"))
+        stats_layout = QFormLayout()
+
+        self.stat_ref_gain = QLabel("-- dB")
+        self.stat_max_error = QLabel("-- dB")
+        self.stat_linear_range = QLabel("-- dB")
+        self.stat_slope = QLabel("--")
+
+        stats_layout.addRow(tr("Ref Gain:"), self.stat_ref_gain)
+        stats_layout.addRow(tr("Max Deviation:"), self.stat_max_error)
+        stats_layout.addRow(tr("Linear Range (<0.5dB):"), self.stat_linear_range) # Using 0.5dB as standard
+        stats_layout.addRow(tr("Slope:"), self.stat_slope)
+
+        stats_group.setLayout(stats_layout)
+        settings_layout.addWidget(stats_group)
+
         # Run
         self.start_btn = QPushButton(tr("Start Sweep"))
         self.start_btn.setCheckable(True)
@@ -354,6 +372,12 @@ class LinearityAnalyzerWidget(QWidget):
             self.results_gain = []
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
+            
+            # Reset Stats
+            self.stat_ref_gain.setText("-- dB")
+            self.stat_max_error.setText("-- dB")
+            self.stat_linear_range.setText("-- dB")
+            self.stat_slope.setText("--")
 
             worker = self.module.start_sweep()
             worker.progress.connect(self.progress.setValue)
@@ -376,6 +400,79 @@ class LinearityAnalyzerWidget(QWidget):
         # Plot
         self.error_curve.setData(self.results_x, self.results_error)
         self.gain_curve.setData(self.results_x, self.results_gain)
+
+        self.update_stats()
+
+    def update_stats(self):
+        if not self.results_gain:
+            return
+
+        # 1. Ref Gain (Gain at highest input level)
+        # Assuming sorted high-to-low or low-to-high, find max input
+        max_input_idx = np.argmax(self.results_x)
+        ref_gain = self.results_gain[max_input_idx]
+        self.stat_ref_gain.setText(f"{ref_gain:.3f} dB")
+
+        # 2. Max Deviation (Max absolute linearity error)
+        errors = np.array(self.results_error)
+        max_dev = np.max(np.abs(errors))
+        self.stat_max_error.setText(f"{max_dev:.3f} dB")
+
+        # 3. Slope (Linear Regression of Output vs Input)
+        # Measured = Input + Gain
+        # We want to check how close Measured is to Input + const.
+        # Here we just calculate slope of Gain vs Input? No, Gain should be flat (slope 0).
+        # OR Measured Level vs Input Level (slope 1).
+        # Let's do Gain Slope (should be 0).
+        if len(self.results_x) > 1:
+            inputs = np.array(self.results_x)
+            gains = np.array(self.results_gain)
+            # Filter for valid range? E.g. exclude noise floor bottom
+            # For now use all points
+            slope, _ = np.polyfit(inputs, gains, 1)
+            self.stat_slope.setText(f"{slope:.5f} dB/dB")
+        
+        # 4. Linear Range (Lowest level where error < 0.5 dB)
+        # This assumes monotonic definition from Ref downwards.
+        limit = 0.5
+        # Find indices where error exceeds limit
+        bad_indices = np.where(np.abs(errors) > limit)[0]
+        
+        if len(bad_indices) == 0:
+            # All good, use min input
+            min_input = np.min(self.results_x)
+            self.stat_linear_range.setText(f"> {min_input:.1f} dBFS")
+        else:
+            # Find the highest input level that fails? 
+            # Or usually we define it as "Dynamic Range" 
+            # We want the point where it falls off.
+            # Assuming sweeping downwards, we look for the first point (highest level) that fails?
+            # No, usually low levels fail.
+            # We want the lowest level that PASSES.
+            
+            # Sort by level descending
+            sorted_indices = np.argsort(self.results_x)[::-1]
+            inputs_sorted = np.array(self.results_x)[sorted_indices]
+            errors_sorted = errors[sorted_indices]
+            
+            # Find first failure from top
+            # Usually top is good.
+            fail_idx = -1
+            for i, err in enumerate(errors_sorted):
+                if abs(err) > limit:
+                    fail_idx = i
+                    break
+            
+            if fail_idx == -1:
+                 # Should have been caught by bad_indices check, but just in case
+                 self.stat_linear_range.setText(f"> {np.min(inputs_sorted):.1f} dBFS")
+            else:
+                 # The last good point was i-1
+                 if fail_idx > 0:
+                     last_good = inputs_sorted[fail_idx-1]
+                     self.stat_linear_range.setText(f"> {last_good:.1f} dBFS")
+                 else:
+                     self.stat_linear_range.setText("Poor Linearity")
 
     def on_finished(self):
         self.start_btn.setChecked(False)
