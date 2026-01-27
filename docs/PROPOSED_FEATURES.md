@@ -13,16 +13,11 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 **Description:** Measure output level accuracy and linearity error (AES17) by sweeping input amplitude from -120 dBFS to 0 dBFS.
 **Gap:** The current Amplitude Sweep plots THD+N vs Amplitude. It needs to calculate and plot **Deviation from Linearity (dB)** vs Amplitude to verify DAC low-level performance.
 
-### 2. Crosstalk Analyzer
-
-**Status:** Planned (Extend `NetworkAnalyzer`)
-**Description:** Automated measurement of channel separation vs Frequency (e.g., Drive L -> Measure R).
-**Gap:** `NetworkAnalyzer` supports generic XFER (Meas/Ref) but requires manual patching/setup. A dedicated mode should handle the routing and plot "Crosstalk (dB)" directly.
-
 ---
 
 ## ✅ Already Implemented
 
+* **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer` as a dedicated mode (L->R and R->L). Includes automated routing and "Crosstalk (dB)" plotting.
 * **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter` (supports MIM/Multitone TD+N).
 * **Oscilloscope Persistence / Eye Pattern:** Implemented "Infinite Persistence" / "Eye Pattern" mode in `Oscilloscope`.
 
