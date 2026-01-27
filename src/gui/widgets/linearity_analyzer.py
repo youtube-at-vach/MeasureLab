@@ -13,8 +13,10 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSpinBox,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
+    QTabWidget,
 )
 
 from src.core.analysis import AudioCalc
@@ -275,8 +277,16 @@ class LinearityAnalyzerWidget(QWidget):
 
         # --- Settings Panel ---
         settings_panel = QWidget()
-        settings_panel.setFixedWidth(300)
+        settings_panel.setFixedWidth(320) # Slightly wider for tabs
         settings_layout = QVBoxLayout(settings_panel)
+
+        self.tabs = QTabWidget()
+        settings_layout.addWidget(self.tabs)
+
+        # Tab 1: Configuration
+        config_tab = QWidget()
+        config_layout = QVBoxLayout(config_tab)
+        # config_layout.setContentsMargins(5, 5, 5, 5) # Compact
 
         # Controls
         group = QGroupBox(tr("Sweep Settings"))
@@ -308,19 +318,7 @@ class LinearityAnalyzerWidget(QWidget):
         form.addRow(tr("SNR Limit:"), self.snr_spin)
 
         group.setLayout(form)
-        settings_layout.addWidget(group)
-
-        # Display Settings
-        disp_group = QGroupBox(tr("Display"))
-        disp_form = QFormLayout()
-
-        self.unit_combo = QComboBox()
-        self.unit_combo.addItems(["dBFS", "dBV"])
-        self.unit_combo.currentIndexChanged.connect(self.update_plots)
-        disp_form.addRow(tr("Unit:"), self.unit_combo)
-
-        disp_group.setLayout(disp_form)
-        settings_layout.addWidget(disp_group)
+        config_layout.addWidget(group)
 
         # IO
         io_group = QGroupBox(tr("I/O Routing"))
@@ -337,7 +335,26 @@ class LinearityAnalyzerWidget(QWidget):
         io_form.addRow(tr("Input:"), self.in_combo)
 
         io_group.setLayout(io_form)
-        settings_layout.addWidget(io_group)
+        config_layout.addWidget(io_group)
+        
+        config_layout.addStretch()
+        self.tabs.addTab(config_tab, tr("Settings"))
+
+        # Tab 2: Results & Display
+        results_tab = QWidget()
+        results_layout = QVBoxLayout(results_tab)
+
+        # Display Settings
+        disp_group = QGroupBox(tr("Display"))
+        disp_form = QFormLayout()
+
+        self.unit_combo = QComboBox()
+        self.unit_combo.addItems(["dBFS", "dBV"])
+        self.unit_combo.currentIndexChanged.connect(self.update_plots)
+        disp_form.addRow(tr("Unit:"), self.unit_combo)
+
+        disp_group.setLayout(disp_form)
+        results_layout.addWidget(disp_group)
 
         # Statistics
         stats_group = QGroupBox(tr("Statistics"))
@@ -354,9 +371,12 @@ class LinearityAnalyzerWidget(QWidget):
         stats_layout.addRow(tr("Slope:"), self.stat_slope)
 
         stats_group.setLayout(stats_layout)
-        settings_layout.addWidget(stats_group)
+        results_layout.addWidget(stats_group)
 
-        # Run
+        results_layout.addStretch()
+        self.tabs.addTab(results_tab, tr("Results"))
+
+        # Run Controls (Persistent)
         self.start_btn = QPushButton(tr("Start Sweep"))
         self.start_btn.setCheckable(True)
         self.start_btn.clicked.connect(self.on_start_stop)
@@ -366,7 +386,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.progress = QProgressBar()
         settings_layout.addWidget(self.progress)
 
-        settings_layout.addStretch()
+        settings_layout.addStretch() # Bottom stretch for the whole panel
         layout.addWidget(settings_panel)
 
         # --- Plots ---
