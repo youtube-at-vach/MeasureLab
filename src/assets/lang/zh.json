@@ -998,5 +998,9 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危险 - 高强度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波活跃 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢",
-    "Carrier Mode:": "载波模式："
+    "Carrier Mode:": "载波模式：",
+    "Crosstalk (Meas / Ref)": "串扰 (测量 / 参考)",
+    "Crosstalk L -> R": "串扰 L -> R",
+    "Crosstalk R -> L": "串扰 R -> L",
+    "XFER (Ref=R, Meas=L)": "XFER (参考=R, 测量=L)"
 }

@@ -998,5 +998,9 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 ОПАСНО - ВЫСОКАЯ ИНТЕНСИВНОСТЬ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ОСТОРОЖНО - УЛЬТРАЗВУК АКТИВЕН 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢",
-    "Carrier Mode:": "Режим несущей:"
+    "Carrier Mode:": "Режим несущей:",
+    "Crosstalk (Meas / Ref)": "Перекрестные помехи (Изм / Опорн)",
+    "Crosstalk L -> R": "Перекрестные помехи Л -> П",
+    "Crosstalk R -> L": "Перекрестные помехи П -> Л",
+    "XFER (Ref=R, Meas=L)": "XFER (Опорн=П, Изм=Л)"
 }

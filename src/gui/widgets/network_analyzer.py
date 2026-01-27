@@ -147,7 +147,9 @@ class NetworkAnalyzer(MeasurementModule):
 
         # Routing
         self.output_channel = 'STEREO' # 'L', 'R', 'STEREO'
-        self.input_mode = 'L' # 'L', 'R', 'XFER'
+        self.input_mode = 'L' # 'L', 'R', 'XFER', 'XTALK_LR', 'XTALK_RL'
+        self.ref_channel_index = 0
+        self.meas_channel_index = 1
 
         # Fast Sweep Parameters
         self.sweep_mode = "Fast Chirp" # or "Stepped Sine"
@@ -309,14 +311,14 @@ class NetworkAnalyzer(MeasurementModule):
         def get_ir(signal):
             return scipy.signal.fftconvolve(signal, inv_filter, mode='full')
 
-        if self.input_mode == 'XFER':
-            # XFER Mode: Ref = Ch0, Meas = Ch1
+        if self.input_mode in ['XFER', 'XTALK_LR', 'XTALK_RL', 'XFER_REV']:
+            # XFER Mode: Ref = Ch0, Meas = Ch1 (Default) or Custom for Crosstalk
             # We assume Ch0 is Reference (e.g. Source Loopback) and Ch1 is Measurement (DUT)
             # Or user can physically patch it.
             # Standard XFER: H = Meas / Ref
 
-            ref_sig = rec_data[:, 0]
-            meas_sig = rec_data[:, 1]
+            ref_sig = rec_data[:, self.ref_channel_index]
+            meas_sig = rec_data[:, self.meas_channel_index]
 
             ir_ref = get_ir(ref_sig)
             ir_meas = get_ir(meas_sig)
@@ -359,7 +361,10 @@ class NetworkAnalyzer(MeasurementModule):
 
         else:
             # Single Channel Mode
-            ch_idx = 1 if self.input_mode == 'R' else 0
+            ch_idx = 0
+            if self.input_mode == 'R':
+                ch_idx = 1
+
             # If we recorded 1 channel, it's at index 0
             if rec_data.shape[1] == 1:
                 sig = rec_data[:, 0]
@@ -436,10 +441,10 @@ class NetworkAnalyzer(MeasurementModule):
                 end_idx = start_idx + len(tone)
                 if end_idx > len(rec_data): end_idx = len(rec_data)
 
-                if self.input_mode == 'XFER':
+                if self.input_mode in ['XFER', 'XTALK_LR', 'XTALK_RL', 'XFER_REV']:
                     # XFER Analysis
-                    ref_seg = rec_data[start_idx:end_idx, 0]
-                    meas_seg = rec_data[start_idx:end_idx, 1]
+                    ref_seg = rec_data[start_idx:end_idx, self.ref_channel_index]
+                    meas_seg = rec_data[start_idx:end_idx, self.meas_channel_index]
                     tone_seg = tone[:len(ref_seg)]
 
                     mag_ref, phase_ref = self._analyze_tone(ref_seg, tone_seg, freq, sample_rate, comp_latency=False)
@@ -454,7 +459,9 @@ class NetworkAnalyzer(MeasurementModule):
 
                 else:
                     # Single Channel
-                    ch_idx = 1 if self.input_mode == 'R' else 0
+                    ch_idx = 0
+                    if self.input_mode == 'R':
+                        ch_idx = 1
                     if rec_data.shape[1] == 1: ch_idx = 0
 
                     seg = rec_data[start_idx:end_idx, ch_idx]
@@ -570,6 +577,9 @@ class NetworkAnalyzerWidget(QWidget):
         self.in_combo.addItem(tr("Left (Ch1)"), "L")
         self.in_combo.addItem(tr("Right (Ch2)"), "R")
         self.in_combo.addItem(tr("XFER (Ref=L, Meas=R)"), "XFER")
+        self.in_combo.addItem(tr("XFER (Ref=R, Meas=L)"), "XFER_REV")
+        self.in_combo.addItem(tr("Crosstalk L -> R"), "XTALK_LR")
+        self.in_combo.addItem(tr("Crosstalk R -> L"), "XTALK_RL")
         self.in_combo.setCurrentIndex(0)
         self.in_combo.currentIndexChanged.connect(self.on_routing_changed)
         form.addRow(tr("Input Mode:"), self.in_combo)
@@ -785,12 +795,57 @@ class NetworkAnalyzerWidget(QWidget):
             self.duration_label.show(); self.duration_spin.show()
 
     def on_routing_changed(self, index):
-        self.module.output_channel = self.out_combo.currentData()
         self.module.input_mode = self.in_combo.currentData()
 
+        # Handle Crosstalk Macros
+        if self.module.input_mode == 'XTALK_LR':
+            # Drive L, Meas R (Ref=L)
+            self.module.output_channel = 'L'
+            self.module.ref_channel_index = 0
+            self.module.meas_channel_index = 1
+
+            # Lock Output Combo
+            idx = self.out_combo.findData('L')
+            if idx != -1: self.out_combo.setCurrentIndex(idx)
+            self.out_combo.setEnabled(False)
+
+        elif self.module.input_mode == 'XTALK_RL':
+            # Drive R, Meas L (Ref=R)
+            self.module.output_channel = 'R'
+            self.module.ref_channel_index = 1
+            self.module.meas_channel_index = 0
+
+            # Lock Output Combo
+            idx = self.out_combo.findData('R')
+            if idx != -1: self.out_combo.setCurrentIndex(idx)
+            self.out_combo.setEnabled(False)
+
+        elif self.module.input_mode == 'XFER':
+            # Standard XFER
+            self.module.ref_channel_index = 0
+            self.module.meas_channel_index = 1
+            self.out_combo.setEnabled(True)
+            self.module.output_channel = self.out_combo.currentData()
+
+        elif self.module.input_mode == 'XFER_REV':
+            # Reverse XFER (Ref=R, Meas=L)
+            self.module.ref_channel_index = 1
+            self.module.meas_channel_index = 0
+            # Output selection remains flexible
+            self.out_combo.setEnabled(True)
+            self.module.output_channel = self.out_combo.currentData()
+
+        else:
+            # Single Channel
+            self.out_combo.setEnabled(True)
+            self.module.output_channel = self.out_combo.currentData()
+
         # Update UI hints
-        if self.module.input_mode == 'XFER':
-            self.mag_plot.setTitle(tr("Transfer Function (Meas / Ref)"))
+        if self.module.input_mode in ['XFER', 'XTALK_LR', 'XTALK_RL', 'XFER_REV']:
+            if 'XTALK' in self.module.input_mode:
+                self.mag_plot.setTitle(tr("Crosstalk (Meas / Ref)"))
+            else:
+                self.mag_plot.setTitle(tr("Transfer Function (Meas / Ref)"))
             self.unit_combo.setEnabled(False) # XFER is always relative dB
         else:
             self.mag_plot.setTitle(tr("Magnitude Response"))

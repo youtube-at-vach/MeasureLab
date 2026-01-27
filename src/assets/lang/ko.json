@@ -998,5 +998,9 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 위험 - 고강도 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 주의 - 초음파 활성 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢",
-    "Carrier Mode:": "캐리어 모드:"
+    "Carrier Mode:": "캐리어 모드:",
+    "Crosstalk (Meas / Ref)": "크로스토크 (측정 / 기준)",
+    "Crosstalk L -> R": "크로스토크 L -> R",
+    "Crosstalk R -> L": "크로스토크 R -> L",
+    "XFER (Ref=R, Meas=L)": "XFER (기준=R, 측정=L)"
 }
