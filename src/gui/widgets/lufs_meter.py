@@ -266,9 +266,6 @@ class LufsMeter(MeasurementModule):
             return pos, filled, sum_p
 
         def callback(indata, outdata, frames, time, status):
-            if status:
-                print(status)
-
             # --- Stereo RMS & Peak Calculation ---
             # indata is (frames, channels)
             num_channels = indata.shape[1]
