@@ -49,7 +49,7 @@ Signal Generator（シグナルジェネレータ）は、正弦波、矩形波�
 * **Pulse**: パルス波。パルス幅（Duty比）を調整可能。
 * **Tone + Noise**: 正弦波にノイズを重畳した信号。S/N比のテストなどに使用。
 * **Noise**: ノイズ信号。「White」「Pink」「Brown」などの色（周波数特性）を選択可能。
-* **Multitone**: 複数の正弦波を合成した信号。
+* **Multitone**: 複数の正弦波を対数間隔（Log-spaced）で合成した信号。クレストファクタ（波高率）が最小になるよう位相が最適化されています。
 * **MLS (Maximum Length Sequence)**: 室響特性の測定などに使用される擬似ランダム信号。
 * **Burst**: トーンバースト信号。On/Offのサイクル数を指定可能。「Windowed」を選ぶとハン窓が適用され、クリックノイズを低減します。
 * **PRBS (Pseudo-Random Binary Sequence)**: 擬似ランダムビット列。
