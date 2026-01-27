@@ -163,7 +163,16 @@ class LinearityAnalyzer(MeasurementModule):
         return LinearityAnalyzerWidget(self)
 
     def start_analysis(self):
-        if self.is_running: return
+        if self.is_running:
+            print(f"LinearityAnalyzer: Already running (callback_id={self.callback_id})")
+            return
+            
+        # Safety: Ensure we don't leak a callback if state is inconsistent
+        if self.callback_id is not None:
+            print(f"LinearityAnalyzer: Found lingering callback {self.callback_id} during start. Unregistering.")
+            self.audio_engine.unregister_callback(self.callback_id)
+            self.callback_id = None
+            
         self.is_running = True
 
         # Reset generator phase
@@ -205,12 +214,18 @@ class LinearityAnalyzer(MeasurementModule):
                 if outdata.shape[1] > 1:
                     outdata[:, 1] = sig
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        cid = self.audio_engine.register_callback(callback)
+        self.callback_id = cid
+        print(f"LinearityAnalyzer: Started analysis. Registered callback {cid}")
 
     def stop_analysis(self):
         if self.callback_id:
+            print(f"LinearityAnalyzer: Stopping analysis. Unregistering callback {self.callback_id}")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
+        else:
+            print("LinearityAnalyzer: Stop requested but no callback ID.")
+            
         self.is_running = False
 
     def start_sweep(self):
