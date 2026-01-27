@@ -819,8 +819,10 @@ class AudioCalc:
 
         # Generate Reference Sine/Cosine (Quadrature)
         # We need two orthogonal references to recover Phase and Magnitude independent of alignment
-        ref_sin = np.sin(2 * np.pi * frequency * t + phase_ref)
-        ref_cos = np.cos(2 * np.pi * frequency * t + phase_ref)
+        # Optimization: Pre-calculate theta to avoid redundant ops
+        theta = 2 * np.pi * frequency * t + phase_ref
+        ref_sin = np.sin(theta)
+        ref_cos = np.cos(theta)
 
         # Windowing
         # Important if N is not integer number of cycles
@@ -828,16 +830,16 @@ class AudioCalc:
         w_mean = np.mean(w)
 
         # Multiply (Mix)
-        mix_x = signal * ref_sin * w
-        mix_y = signal * ref_cos * w
+        # Optimization: Use dot product to avoid allocating full mix arrays
+        # val = 2 * mean(sig * ref * w) / w_mean
+        #     = 2 * sum(sig * w * ref) / N / w_mean
+        #     = 2 * dot(sig * w, ref) / (N * w_mean)
 
-        # Low Pass Filter (Integration) = Mean
-        # Factor of 2 because sin^2 average is 0.5
-        # We want the peak amplitude.
-        # X = 2 * mean(sig * sin)
-        # Y = 2 * mean(sig * cos)
-        val_x = 2 * np.mean(mix_x) / w_mean
-        val_y = 2 * np.mean(mix_y) / w_mean
+        sig_w = signal * w
+        scaling = 2.0 / (N * w_mean)
+
+        val_x = np.dot(sig_w, ref_sin) * scaling
+        val_y = np.dot(sig_w, ref_cos) * scaling
 
         magnitude = np.sqrt(val_x**2 + val_y**2)
         phase = np.arctan2(val_y, val_x)
