@@ -254,6 +254,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_x = []
         self.results_error = []
         self.results_gain = []
+        self.results_measured = [] # Store raw measured levels (dBFS)
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -289,6 +290,18 @@ class LinearityAnalyzerWidget(QWidget):
 
         group.setLayout(form)
         settings_layout.addWidget(group)
+
+        # Display Settings
+        disp_group = QGroupBox(tr("Display"))
+        disp_form = QFormLayout()
+
+        self.unit_combo = QComboBox()
+        self.unit_combo.addItems(["dBFS", "dBV"])
+        self.unit_combo.currentIndexChanged.connect(self.update_plots)
+        disp_form.addRow(tr("Unit:"), self.unit_combo)
+
+        disp_group.setLayout(disp_form)
+        settings_layout.addWidget(disp_group)
 
         # IO
         io_group = QGroupBox(tr("I/O Routing"))
@@ -372,6 +385,7 @@ class LinearityAnalyzerWidget(QWidget):
             self.results_x = []
             self.results_error = []
             self.results_gain = []
+            self.results_measured = []
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
             
@@ -397,13 +411,65 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_x.append(res['input_level'])
         self.results_error.append(res['linearity_error'])
         self.results_gain.append(res['gain'])
+        self.results_measured.append(res['measured_level'])
 
-        # Sort data just in case? Usually sweep is monotonic, so appending is fine.
-        # Plot
-        self.error_curve.setData(self.results_x, self.results_error)
-        self.gain_curve.setData(self.results_x, self.results_gain)
-
+        self.update_plots()
         self.update_stats()
+
+    def update_plots(self):
+        if not self.results_x:
+            return
+
+        unit = self.unit_combo.currentText()
+        
+        x_data = np.array(self.results_x)
+        error_data = np.array(self.results_error)
+        gain_data = np.array(self.results_gain)
+        measured_data = np.array(self.results_measured)
+
+        if unit == "dBV":
+            # Convert X (Input Level dBFS) to dBV
+            # Input is generated, so use Output Gain calibration
+            # Input dBV = Input dBFS + 20*log10(OutputGain)
+             # Note: module.audio_engine.calibration is accessible
+            cal = self.module.audio_engine.calibration
+             # We need Output Gain to know what voltage we sent
+            # Wait, Output Gain is usually "Volts per FS"
+            # So dBV = dBFS + 20*log10(v_per_fs)
+            try:
+                out_gain_db = 20 * np.log10(cal.output_gain)
+            except:
+                out_gain_db = 0
+            
+            x_plot = x_data + out_gain_db
+            
+            # For the "Gain/Measured" plot:
+            # If dBV, we probably want to see Measured Level in dBV vs Input Level in dBV
+            # Measured dBFS to dBV using Input Sensitivity
+            try:
+                in_sens_db = 20 * np.log10(cal.input_sensitivity)
+            except:
+                in_sens_db = 0
+                
+            y_plot_2 = measured_data + in_sens_db
+
+            # Update Labels
+            self.error_plot.setLabel('bottom', tr('Input Level'), units='dBV')
+            self.gain_plot.setTitle(tr("Measured Level"))
+            self.gain_plot.setLabel('left', tr('Level'), units='dBV')
+            self.gain_plot.setLabel('bottom', tr('Input Level'), units='dBV')
+
+        else: # dBFS
+            x_plot = x_data
+            y_plot_2 = gain_data # Show Gain in dB
+
+            self.error_plot.setLabel('bottom', tr('Input Level'), units='dBFS')
+            self.gain_plot.setTitle(tr("Absolute Gain"))
+            self.gain_plot.setLabel('left', tr('Gain'), units='dB')
+            self.gain_plot.setLabel('bottom', tr('Input Level'), units='dBFS')
+
+        self.error_curve.setData(x_plot, error_data)
+        self.gain_curve.setData(x_plot, y_plot_2)
 
     def update_stats(self):
         if not self.results_gain:
