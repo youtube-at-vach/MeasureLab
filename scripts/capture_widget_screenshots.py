@@ -107,7 +107,7 @@ def find_widget_pair(module):
 
     return module_class, widget_class
 
-def capture_widgets():
+def capture_widgets(targets=None):
     app = setup_app()
 
     widgets_dir = os.path.join(PROJECT_ROOT, 'src', 'gui', 'widgets')
@@ -122,6 +122,10 @@ def capture_widgets():
     # Iterate over python files
     for filename in sorted(os.listdir(widgets_dir)):
         if not filename.endswith('.py') or filename == '__init__.py':
+            continue
+
+        module_name = filename[:-3]
+        if targets and module_name not in targets:
             continue
 
         module_name = filename[:-3]
@@ -193,5 +197,12 @@ def capture_widgets():
 
     print(f"\nFinished. Success: {success_count}, Failed: {fail_count}")
 
+    print(f"\nFinished. Success: {success_count}, Failed: {fail_count}")
+
 if __name__ == "__main__":
-    capture_widgets()
+    import argparse
+    parser = argparse.ArgumentParser(description="Capture screenshots of widgets.")
+    parser.add_argument('targets', nargs='*', help='Specific widget names to capture (e.g. linearity_analyzer). If empty, captures all.')
+    args = parser.parse_args()
+
+    capture_widgets(targets=args.targets)
