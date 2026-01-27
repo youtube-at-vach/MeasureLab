@@ -103,7 +103,7 @@ class LinearitySweepWorker(QThread):
                 )
 
                 meas_db = 20 * np.log10(mag + 1e-15)
-                
+
                 if noise_mag < 1e-15: noise_mag = 1e-15
                 snr_db = 20 * np.log10(mag / noise_mag)
 
@@ -180,13 +180,13 @@ class LinearityAnalyzer(MeasurementModule):
         if self.is_running:
             print(f"LinearityAnalyzer: Already running (callback_id={self.callback_id})")
             return
-            
+
         # Safety: Ensure we don't leak a callback if state is inconsistent
         if self.callback_id is not None:
             # print(f"LinearityAnalyzer: Found lingering callback {self.callback_id} during start. Unregistering.")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
-            
+
         self.is_running = True
 
         # Reset generator phase
@@ -199,7 +199,7 @@ class LinearityAnalyzer(MeasurementModule):
                 # Handle ring buffer safely
                 new_data = indata[:, :2]
                 new_frames = len(new_data)
-                
+
                 if new_frames >= self.buffer_size:
                     # If incoming data handles the entire buffer or more, just take the last part
                     self.input_data[:] = new_data[-self.buffer_size:]
@@ -240,7 +240,7 @@ class LinearityAnalyzer(MeasurementModule):
         else:
             # print("LinearityAnalyzer: Stop requested but no callback ID.")
             pass
-            
+
         self.is_running = False
 
     def start_sweep(self):
@@ -336,7 +336,7 @@ class LinearityAnalyzerWidget(QWidget):
 
         io_group.setLayout(io_form)
         config_layout.addWidget(io_group)
-        
+
         config_layout.addStretch()
         self.tabs.addTab(config_tab, tr("Settings"))
 
@@ -408,7 +408,7 @@ class LinearityAnalyzerWidget(QWidget):
             line.setPen(pg.mkPen((150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
         self.noise_region.setRegion([-140, -140]) # Hidden initially
         self.error_plot.addItem(self.noise_region)
-        
+
         # Label for noise region
         self.noise_label = pg.TextItem(text=tr("Below Noise Floor"), color=(150, 150, 150), anchor=(0, 1))
         self.error_plot.addItem(self.noise_label)
@@ -444,7 +444,7 @@ class LinearityAnalyzerWidget(QWidget):
             self.error_curve.setData([], [])
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
-            
+
             # Reset Stats
             self.stat_ref_gain.setText("-- dB")
             self.stat_max_error.setText("-- dB")
@@ -478,7 +478,7 @@ class LinearityAnalyzerWidget(QWidget):
             return
 
         unit = self.unit_combo.currentText()
-        
+
         x_data = np.array(self.results_x)
         error_data = np.array(self.results_error)
         gain_data = np.array(self.results_gain)
@@ -497,9 +497,9 @@ class LinearityAnalyzerWidget(QWidget):
                 out_gain_db = 20 * np.log10(cal.output_gain)
             except:
                 out_gain_db = 0
-            
+
             x_plot = x_data + out_gain_db
-            
+
             # For the "Gain/Measured" plot:
             # If dBV, we probably want to see Measured Level in dBV vs Input Level in dBV
             # Measured dBFS to dBV using Input Sensitivity
@@ -507,7 +507,7 @@ class LinearityAnalyzerWidget(QWidget):
                 in_sens_db = 20 * np.log10(cal.input_sensitivity)
             except:
                 in_sens_db = 0
-                
+
             y_plot_2 = measured_data + in_sens_db
 
             # Update Labels
@@ -519,7 +519,7 @@ class LinearityAnalyzerWidget(QWidget):
         else: # dBFS
             x_plot = x_data
             y_plot_2 = gain_data # Show Gain in dB
-            
+
             # Offset for region calculation is 0
             out_gain_db = 0 
 
@@ -535,30 +535,30 @@ class LinearityAnalyzerWidget(QWidget):
         if hasattr(self, 'results_snr') and self.results_snr:
             snr_data = np.array(self.results_snr)
             threshold = self.module.snr_threshold
-            
+
             # Find Noise Limit (Highest Input Level where SNR < Threshold)
             # Use original x_data (dBFS) for sorting, then apply offset
             sorted_indices = np.argsort(x_data)
             x_sorted = x_data[sorted_indices]
             snr_sorted = snr_data[sorted_indices]
-            
+
             limit_dbfs = None
             # Scan from High to Low
             for i in range(len(x_sorted)-1, -1, -1):
                 if snr_sorted[i] < threshold:
                     limit_dbfs = x_sorted[i]
                     break # Found the highest level that failed (or rather, the boundary)
-            
+
             # Wait, if sorting Low to High (indexes 0..N), range(len-1, -1, -1) goes High to Low.
             # If [i] is bad, does that mean [i-1] (lower level) is also bad?
             # Yes, usually. So we find the *first* bad point from the top.
-            
+
             if limit_dbfs is not None:
                 region_edge = limit_dbfs + (out_gain_db if unit == "dBV" else 0)
                 # Region covers everything to the left
                 self.noise_region.setRegion([-200, region_edge])
                 self.noise_region.setVisible(True)
-                
+
                 self.noise_label.setPos(region_edge, 4) # Top of plot
                 self.noise_label.setVisible(True)
             else:
@@ -593,14 +593,14 @@ class LinearityAnalyzerWidget(QWidget):
             # For now use all points
             slope, _ = np.polyfit(inputs, gains, 1)
             self.stat_slope.setText(f"{slope:.5f} dB/dB")
-        
+
         # 4. Linear Range (Lowest level where error < 0.5 dB AND SNR > Threshold)
         limit = 0.5
-        
+
         # Calculate SNR Limit
         snr_threshold = self.module.snr_threshold
         snr_data = np.array(self.results_snr)
-        
+
         # Sort everything by Input Level
         sorted_indices = np.argsort(self.results_x)[::-1] # High to Low
         inputs_sorted = np.array(self.results_x)[sorted_indices]
@@ -616,7 +616,7 @@ class LinearityAnalyzerWidget(QWidget):
             if snr_sorted[i] < snr_threshold:
                 fail_idx = i
                 break
-        
+
         if fail_idx != -1:
              if fail_idx > 0:
                  min_good = inputs_sorted[fail_idx-1]
