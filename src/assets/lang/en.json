@@ -1001,5 +1001,18 @@
     "Crosstalk (Meas / Ref)": "Crosstalk (Meas / Ref)",
     "Crosstalk L -> R": "Crosstalk L -> R",
     "Crosstalk R -> L": "Crosstalk R -> L",
-    "XFER (Ref=R, Meas=L)": "XFER (Ref=R, Meas=L)"
+    "XFER (Ref=R, Meas=L)": "XFER (Ref=R, Meas=L)",
+    "Absolute Gain": "Absolute Gain",
+    "Below Noise Floor": "Below Noise Floor",
+    "End Level:": "End Level:",
+    "I/O Routing": "I/O Routing",
+    "Linear Range (<0.5dB):": "Linear Range (<0.5dB):",
+    "Linearity Analyzer": "Linearity Analyzer",
+    "Linearity Error (Deviation)": "Linearity Error (Deviation)",
+    "Max Deviation:": "Max Deviation:",
+    "Measured Level": "Measured Level",
+    "Poor Linearity": "Poor Linearity",
+    "Ref Gain:": "Ref Gain:",
+    "SNR Limit:": "SNR Limit:",
+    "Start Level:": "Start Level:"
 }

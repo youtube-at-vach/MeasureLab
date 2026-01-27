@@ -1002,5 +1002,18 @@
     "Crosstalk (Meas / Ref)": "Перекрестные помехи (Изм / Опорн)",
     "Crosstalk L -> R": "Перекрестные помехи Л -> П",
     "Crosstalk R -> L": "Перекрестные помехи П -> Л",
-    "XFER (Ref=R, Meas=L)": "XFER (Опорн=П, Изм=Л)"
+    "XFER (Ref=R, Meas=L)": "XFER (Опорн=П, Изм=Л)",
+    "Absolute Gain": "Абсолютное усиление",
+    "Below Noise Floor": "Ниже уровня шума",
+    "End Level:": "Конечный уровень:",
+    "I/O Routing": "Маршрутизация вводов/выводов",
+    "Linear Range (<0.5dB):": "Линейный диапазон (<0.5дБ):",
+    "Linearity Analyzer": "Анализатор линейности",
+    "Linearity Error (Deviation)": "Ошибка линейности (Отклонение)",
+    "Max Deviation:": "Максимальное отклонение:",
+    "Measured Level": "Измеренный уровень",
+    "Poor Linearity": "Плохая линейность",
+    "Ref Gain:": "Усиление реф.:",
+    "SNR Limit:": "Предел SNR:",
+    "Start Level:": "Начальный уровень:"
 }

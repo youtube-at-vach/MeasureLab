@@ -1001,5 +1001,18 @@
     "Crosstalk (Meas / Ref)": "クロストーク (測定 / 基準)",
     "Crosstalk L -> R": "クロストーク L -> R",
     "Crosstalk R -> L": "クロストーク R -> L",
-    "XFER (Ref=R, Meas=L)": "XFER (基準=R, 測定=L)"
+    "XFER (Ref=R, Meas=L)": "XFER (基準=R, 測定=L)",
+    "Absolute Gain": "絶対ゲイン",
+    "Below Noise Floor": "ノイズフロア以下",
+    "End Level:": "終了レベル:",
+    "I/O Routing": "I/Oルーティング",
+    "Linear Range (<0.5dB):": "リニア・レンジ (<0.5dB):",
+    "Linearity Analyzer": "リニアリティ・アナライザー",
+    "Linearity Error (Deviation)": "直線偏差 (リニアリティ誤差)",
+    "Max Deviation:": "最大偏差:",
+    "Measured Level": "測定レベル",
+    "Poor Linearity": "直線性が不十分です",
+    "Ref Gain:": "基準ゲイン:",
+    "SNR Limit:": "SNR制限:",
+    "Start Level:": "開始レベル:"
 }

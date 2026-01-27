@@ -13,10 +13,20 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "Crosstalk (Meas / Ref)",
-    "Crosstalk L -> R",
-    "Crosstalk R -> L",
-    "XFER (Ref=R, Meas=L)",
+    "Absolute Gain",
+    "Below Noise Floor",
+    "End Level:",
+    "I/O Routing",
+    "Linear Range (<0.5dB):",
+    "Linearity Analyzer",
+    "Linearity Error (Deviation)",
+    "Max Deviation:",
+    "Measure Linearity Error (Gain Accuracy vs Level).",
+    "Measured Level",
+    "Poor Linearity",
+    "Ref Gain:",
+    "SNR Limit:",
+    "Start Level:",
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)

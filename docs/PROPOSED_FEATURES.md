@@ -7,12 +7,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 ## 🚀 Active / High Priority (Signal Focus)
 
-### 1. Linearity Analyzer (Gain vs Level)
-
-**Status:** Planned (Extend `DistortionAnalyzer`)
-**Description:** Measure output level accuracy and linearity error (AES17) by sweeping input amplitude from -120 dBFS to 0 dBFS.
-**Gap:** The current Amplitude Sweep plots THD+N vs Amplitude. It needs to calculate and plot **Deviation from Linearity (dB)** vs Amplitude to verify DAC low-level performance.
-
 ---
 
 ## ✅ Already Implemented
@@ -20,6 +14,7 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 * **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer` as a dedicated mode (L->R and R->L). Includes automated routing and "Crosstalk (dB)" plotting.
 * **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter` (supports MIM/Multitone TD+N).
 * **Oscilloscope Persistence / Eye Pattern:** Implemented "Infinite Persistence" / "Eye Pattern" mode in `Oscilloscope`.
+* **Linearity Analyzer:** Implemented as a dedicated widget (`LinearityAnalyzer`). Measures linearity error (AES17), gain accuracy, and noise floor by sweeping input amplitude.
 
 ---
 

@@ -799,10 +799,47 @@ class AudioCalc:
         i_a_start = np.searchsorted(freqs, 20.0, side='left')
         i_a_end = np.searchsorted(freqs, 20000.0, side='right')
 
-        if i_a_start < i_a_end:
-            bin_width = freqs[1] - freqs[0]
-            results['noise_rms_a_weighted'] = np.sqrt(np.sum(mag_a[i_a_start:i_a_end]**2) * bin_width)
-        else:
-            results['noise_rms_a_weighted'] = 0.0
+        # Integration
+        # Power = sum(PSD^2 * bin_width)
+        bin_width = freqs[1] - freqs[0] if len(freqs) > 1 else 1.0
+        power_a = np.sum(mag_a[i_a_start:i_a_end]**2) * bin_width
+
+        results['noise_rms_a_weighted'] = np.sqrt(power_a)
 
         return results
+
+    @staticmethod
+    def calculate_lockin_measurement(signal, frequency, sampling_rate, phase_ref=0.0, window_name='hann'):
+        """
+        Performs a single-point Lock-in detection (Coherent Demodulation).
+        Returns: magnitude, phase (degrees)
+        """
+        N = len(signal)
+        t = np.arange(N) / sampling_rate
+
+        # Generate Reference Sine/Cosine (Quadrature)
+        # We need two orthogonal references to recover Phase and Magnitude independent of alignment
+        ref_sin = np.sin(2 * np.pi * frequency * t + phase_ref)
+        ref_cos = np.cos(2 * np.pi * frequency * t + phase_ref)
+
+        # Windowing
+        # Important if N is not integer number of cycles
+        w = get_cached_window(window_name, N)
+        w_mean = np.mean(w)
+
+        # Multiply (Mix)
+        mix_x = signal * ref_sin * w
+        mix_y = signal * ref_cos * w
+
+        # Low Pass Filter (Integration) = Mean
+        # Factor of 2 because sin^2 average is 0.5
+        # We want the peak amplitude.
+        # X = 2 * mean(sig * sin)
+        # Y = 2 * mean(sig * cos)
+        val_x = 2 * np.mean(mix_x) / w_mean
+        val_y = 2 * np.mean(mix_y) / w_mean
+
+        magnitude = np.sqrt(val_x**2 + val_y**2)
+        phase = np.arctan2(val_y, val_x)
+
+        return magnitude, np.degrees(phase)

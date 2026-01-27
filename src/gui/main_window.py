@@ -134,6 +134,10 @@ def _load_module_class(module_key: str):
         from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
 
         return UltrasoundModulator
+    if module_key == "Linearity Analyzer":
+        from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
+
+        return LinearityAnalyzer
 
     raise KeyError(f"Unknown module key: {module_key}")
 
@@ -263,6 +267,7 @@ class MainWindow(QMainWindow):
             "BNIM Meter",
             "HRTF Player",
             "Ultrasound AM Modulator",
+            "Linearity Analyzer",
         ]
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
