@@ -92,7 +92,7 @@ class AudioCalc:
         return sosfiltfilt(sos, signal)
 
     @staticmethod
-    def optimize_frequency(signal, sampling_rate, freq_guess):
+    def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
         """
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
         """
@@ -131,11 +131,27 @@ class AudioCalc:
         search_width = 1.5 * bin_width # Slightly more than 1 bin width to be safe
 
         if not np.isfinite(freq_guess):
+            if return_full:
+                return freq_guess, None, None
             return freq_guess
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
         res = minimize_scalar(get_residual_rms, bounds=bounds, method='bounded')
-        return res.x
+        best_freq = res.x
+
+        if return_full:
+            # Re-compute coeffs for the best frequency
+            w = 2 * np.pi * best_freq
+            np.sin(w * t, out=M[:, 0])
+            np.cos(w * t, out=M[:, 1])
+            try:
+                MT = M.T
+                coeffs = np.linalg.solve(MT @ M, MT @ signal)
+            except np.linalg.LinAlgError:
+                coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+            return best_freq, coeffs, M
+
+        return best_freq
 
     @staticmethod
     def calculate_thdn_sine_fit(signal, sampling_rate, freq_guess):
@@ -144,31 +160,14 @@ class AudioCalc:
         Returns (thdn_db, fund_rms, noise_dist_rms)
         """
         N = len(signal)
-        t = np.arange(N) / sampling_rate
 
         # 1. Optimize Frequency
-        best_freq = AudioCalc.optimize_frequency(signal, sampling_rate, freq_guess)
+        best_freq, coeffs, M = AudioCalc.optimize_frequency(signal, sampling_rate, freq_guess, return_full=True)
 
         if not np.isfinite(best_freq):
             return -140.0, 0.0, 0.0
 
         # 2. Get Final Residual
-        w = 2 * np.pi * best_freq
-
-        # Pre-allocate M to avoid column_stack allocation
-        M = np.empty((N, 3), dtype=t.dtype)
-        np.sin(w * t, out=M[:, 0])
-        np.cos(w * t, out=M[:, 1])
-        M[:, 2] = 1.0
-
-        # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
-        # This avoids SVD used by lstsq and is much faster for this 3x3 system.
-        try:
-            MT = M.T
-            coeffs = np.linalg.solve(MT @ M, MT @ signal)
-        except np.linalg.LinAlgError:
-            # Fallback to lstsq if matrix is singular (unlikely unless w=0)
-            coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
         fitted_fund = M @ coeffs
         residual = signal - fitted_fund
 
