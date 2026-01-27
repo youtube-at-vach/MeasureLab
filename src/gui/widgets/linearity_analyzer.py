@@ -268,9 +268,9 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_x = []
         self.results_error = []
         self.results_gain = []
-        self.results_gain = []
         self.results_measured = [] # Store raw measured levels (dBFS)
         self.results_snr = []
+        self.current_step_index = 0
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -435,13 +435,14 @@ class LinearityAnalyzerWidget(QWidget):
 
     def on_start_stop(self):
         if self.start_btn.isChecked():
-            self.results_x = []
-            self.results_error = []
-            self.results_gain = []
-            self.results_gain = []
-            self.results_measured = []
-            self.results_snr = []
-            self.error_curve.setData([], [])
+            steps = self.module.steps
+            self.results_x = np.zeros(steps)
+            self.results_error = np.zeros(steps)
+            self.results_gain = np.zeros(steps)
+            self.results_measured = np.zeros(steps)
+            self.results_snr = np.zeros(steps)
+            self.current_step_index = 0
+
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
 
@@ -464,25 +465,28 @@ class LinearityAnalyzerWidget(QWidget):
             self.start_btn.setText(tr("Start Sweep"))
 
     def on_result(self, res):
-        self.results_x.append(res['input_level'])
-        self.results_error.append(res['linearity_error'])
-        self.results_gain.append(res['gain'])
-        self.results_measured.append(res['measured_level'])
-        self.results_snr.append(res['snr'])
+        if self.current_step_index < len(self.results_x):
+            self.results_x[self.current_step_index] = res['input_level']
+            self.results_error[self.current_step_index] = res['linearity_error']
+            self.results_gain[self.current_step_index] = res['gain']
+            self.results_measured[self.current_step_index] = res['measured_level']
+            self.results_snr[self.current_step_index] = res['snr']
+            self.current_step_index += 1
 
         self.update_plots()
         self.update_stats()
 
     def update_plots(self):
-        if not self.results_x:
+        if self.current_step_index == 0:
             return
 
         unit = self.unit_combo.currentText()
 
-        x_data = np.array(self.results_x)
-        error_data = np.array(self.results_error)
-        gain_data = np.array(self.results_gain)
-        measured_data = np.array(self.results_measured)
+        idx = self.current_step_index
+        x_data = self.results_x[:idx]
+        error_data = self.results_error[:idx]
+        gain_data = self.results_gain[:idx]
+        measured_data = self.results_measured[:idx]
 
         if unit == "dBV":
             # Convert X (Input Level dBFS) to dBV
@@ -532,8 +536,8 @@ class LinearityAnalyzerWidget(QWidget):
         self.gain_curve.setData(x_plot, y_plot_2)
 
         # Update Noise Region
-        if hasattr(self, 'results_snr') and self.results_snr:
-            snr_data = np.array(self.results_snr)
+        if hasattr(self, 'results_snr') and self.current_step_index > 0:
+            snr_data = self.results_snr[:self.current_step_index]
             threshold = self.module.snr_threshold
 
             # Find Noise Limit (Highest Input Level where SNR < Threshold)
@@ -566,17 +570,22 @@ class LinearityAnalyzerWidget(QWidget):
                 self.noise_label.setVisible(False)
 
     def update_stats(self):
-        if not self.results_gain:
+        if self.current_step_index == 0:
             return
+
+        idx = self.current_step_index
+        inputs = self.results_x[:idx]
+        gains = self.results_gain[:idx]
+        errors = self.results_error[:idx]
+        snr_data = self.results_snr[:idx]
 
         # 1. Ref Gain (Gain at highest input level)
         # Assuming sorted high-to-low or low-to-high, find max input
-        max_input_idx = np.argmax(self.results_x)
-        ref_gain = self.results_gain[max_input_idx]
+        max_input_idx = np.argmax(inputs)
+        ref_gain = gains[max_input_idx]
         self.stat_ref_gain.setText(f"{ref_gain:.3f} dB")
 
         # 2. Max Deviation (Max absolute linearity error)
-        errors = np.array(self.results_error)
         max_dev = np.max(np.abs(errors))
         self.stat_max_error.setText(f"{max_dev:.3f} dB")
 
@@ -586,9 +595,7 @@ class LinearityAnalyzerWidget(QWidget):
         # Here we just calculate slope of Gain vs Input? No, Gain should be flat (slope 0).
         # OR Measured Level vs Input Level (slope 1).
         # Let's do Gain Slope (should be 0).
-        if len(self.results_x) > 1:
-            inputs = np.array(self.results_x)
-            gains = np.array(self.results_gain)
+        if len(inputs) > 1:
             # Filter for valid range? E.g. exclude noise floor bottom
             # For now use all points
             slope, _ = np.polyfit(inputs, gains, 1)
@@ -599,11 +606,10 @@ class LinearityAnalyzerWidget(QWidget):
 
         # Calculate SNR Limit
         snr_threshold = self.module.snr_threshold
-        snr_data = np.array(self.results_snr)
 
         # Sort everything by Input Level
-        sorted_indices = np.argsort(self.results_x)[::-1] # High to Low
-        inputs_sorted = np.array(self.results_x)[sorted_indices]
+        sorted_indices = np.argsort(inputs)[::-1] # High to Low
+        inputs_sorted = inputs[sorted_indices]
         errors_sorted = errors[sorted_indices]
         snr_sorted = snr_data[sorted_indices]
 
