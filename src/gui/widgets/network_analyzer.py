@@ -59,9 +59,6 @@ class PlayRecSession:
         return self.completion_event.wait(timeout)
 
     def _callback(self, indata, outdata, frames, time, status):
-        if status:
-            print(f"Stream status: {status}")
-
         with self.lock:
             if self.is_complete:
                 outdata.fill(0)

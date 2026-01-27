@@ -253,9 +253,6 @@ class DistortionAnalyzer(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             nonlocal phase
-            if status:
-                print(status)
-
             # Generate Signal
             outdata.fill(0)
             if self.output_enabled:
