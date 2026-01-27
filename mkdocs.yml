@@ -91,6 +91,7 @@ nav:
   - Hrtf Player: widgets/hrtf_player.md
   - Impedance Analyzer: widgets/impedance_analyzer.md
   - Inverse Filter: widgets/inverse_filter.md
+  - Linearity Analyzer: widgets/linearity_analyzer.md
   - Lock In Amplifier: widgets/lock_in_amplifier.md
   - Lock In Frequency Counter: widgets/lock_in_frequency_counter.md
   - Lockin Thd Analyzer: widgets/lockin_thd_analyzer.md
