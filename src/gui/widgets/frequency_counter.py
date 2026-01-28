@@ -107,6 +107,35 @@ class AllanWorker(QRunnable):
             self.signals.result.emit([], [])
 
 
+class FrequencyWorkerSignals(QObject):
+    """Signals for the FrequencyWorker."""
+    result = pyqtSignal(object, float)  # freq (float or None), amp_db
+
+
+class FrequencyWorker(QRunnable):
+    """
+    Worker thread for calculating frequency precision.
+    """
+    def __init__(self, data, sr, gate_threshold_db, calibration_factor):
+        super().__init__()
+        self.data = data
+        self.sr = sr
+        self.gate_threshold_db = gate_threshold_db
+        self.calibration_factor = calibration_factor
+        self.signals = FrequencyWorkerSignals()
+
+    def run(self):
+        try:
+            freq, db = FrequencyCounter.calculate_metrics(
+                self.data, self.sr, self.gate_threshold_db, self.calibration_factor
+            )
+            self.signals.result.emit(freq, db)
+        except Exception as e:
+            # On error, we should probably emit something safe or just log
+            print(f"Freq worker error: {e}")
+            self.signals.result.emit(None, -140.0)
+
+
 class FrequencyCounter(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -253,23 +282,14 @@ class FrequencyCounter(MeasurementModule):
         if was_running:
             self.start_analysis()
 
-    def process(self):
-        if not self.is_running:
-            return None
-
-        # Ensure buffer is full enough for the requested interval?
-        # With ring buffer, it's always "full" with something (zeros initially).
-
-        data = self.input_buffer.copy()
-        sr = getattr(self.audio_engine, "sample_rate", 48000)
-
+    @classmethod
+    def calculate_metrics(cls, data, sr, gate_threshold_db, calibration_factor=1.0):
         # 1. Check Amplitude (Gate)
         rms = np.sqrt(np.mean(data**2))
         db = 20 * np.log10(rms + 1e-12)
-        self.current_amp_db = db
 
-        if db < self.gate_threshold_db:
-            return None # Signal too low
+        if db < gate_threshold_db:
+            return None, db
 
         # 2. Coarse Estimate (FFT)
         window = np.hamming(len(data))
@@ -285,28 +305,42 @@ class FrequencyCounter(MeasurementModule):
 
         # 4. Precision Estimate (Sine Fit)
         # Only run if we have a reasonable signal
-        if coarse_freq > 10: # Avoid DC/VLF noise
+        if coarse_freq > 10:  # Avoid DC/VLF noise
             try:
                 precise_freq = AudioCalc.optimize_frequency(data, sr, coarse_freq)
-
-                # Apply Calibration
-                cal_factor = 1.0
-                calibration = getattr(self.audio_engine, "calibration", None)
-                if calibration is not None:
-                    cal_factor = getattr(calibration, "frequency_calibration", 1.0)
-                try:
-                    cal_factor = float(cal_factor)
-                except Exception:
-                    cal_factor = 1.0
-
-                precise_freq = float(precise_freq) * cal_factor
-
-                self.current_freq = precise_freq
-                return precise_freq
+                precise_freq = float(precise_freq) * calibration_factor
+                return precise_freq, db
             except:
-                return coarse_freq
+                return coarse_freq, db
         else:
-            return coarse_freq
+            return coarse_freq, db
+
+    def process(self):
+        if not self.is_running:
+            return None
+
+        # Ensure buffer is full enough for the requested interval?
+        # With ring buffer, it's always "full" with something (zeros initially).
+
+        data = self.input_buffer.copy()
+        sr = getattr(self.audio_engine, "sample_rate", 48000)
+
+        cal_factor = 1.0
+        calibration = getattr(self.audio_engine, "calibration", None)
+        if calibration is not None:
+            cal_factor = getattr(calibration, "frequency_calibration", 1.0)
+        try:
+            cal_factor = float(cal_factor)
+        except Exception:
+            cal_factor = 1.0
+
+        freq, db = self.calculate_metrics(data, sr, self.gate_threshold_db, cal_factor)
+
+        self.current_amp_db = db
+        if freq is not None:
+            self.current_freq = freq
+
+        return freq
 
     def record_frequency_measurement(self, freq_hz: float, now_t: float | None = None) -> bool:
         """Record a valid measurement into history.
@@ -530,6 +564,7 @@ class FrequencyCounterWidget(QWidget):
         # Async Allan Calculation
         self.threadpool = QThreadPool()
         self.is_allan_calculating = False
+        self.is_calculating_freq = False
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -1048,8 +1083,11 @@ class FrequencyCounterWidget(QWidget):
         else:
             self.allan_curve.setData([], [])
 
-    def update_display(self):
-        freq = self.module.process()
+    def on_freq_calculation_result(self, freq, amp_db):
+        self.is_calculating_freq = False
+        self.module.current_amp_db = amp_db
+        if freq is not None:
+            self.module.current_freq = freq
 
         # Update Amp
         self.amp_label.setText(tr("{0:.1f} dBFS").format(self.module.current_amp_db))
@@ -1082,7 +1120,7 @@ class FrequencyCounterWidget(QWidget):
             # Update Plots based on visibility
             current_tab = self.tab_widget.currentIndex()
 
-            if current_tab == 0: # Frequency Drift
+            if current_tab == 0:  # Frequency Drift
                 if self.display_mode == 'period':
                     freq_data = np.array(self.module.freq_history, dtype=float)
                     freq_data = np.where(freq_data > 0, freq_data, np.nan)
@@ -1091,7 +1129,7 @@ class FrequencyCounterWidget(QWidget):
                 else:
                     self.curve.setData(list(self.module.time_history), list(self.module.freq_history))
 
-            elif current_tab == 1: # Allan Deviation
+            elif current_tab == 1:  # Allan Deviation
                 # Update Allan Plot (Async)
                 # Throttle updates to ~1Hz (every 1000ms) to reduce CPU load on worker
                 now_t = time.time()
@@ -1162,3 +1200,28 @@ class FrequencyCounterWidget(QWidget):
                 self.jitter_n_label.setText(tr("N: --"))
                 self.jitter_hist_item.setOpts(x=[0.0], height=[0.0], width=1.0)
                 self.jitter_pdf_curve.setData([], [])
+
+    def update_display(self):
+        if self.is_calculating_freq:
+            return
+
+        if not self.module.is_running:
+            return
+
+        # Prepare parameters for worker
+        data = self.module.input_buffer.copy()
+        sr = getattr(self.module.audio_engine, "sample_rate", 48000)
+
+        cal_factor = 1.0
+        calibration = getattr(self.module.audio_engine, "calibration", None)
+        if calibration is not None:
+            cal_factor = getattr(calibration, "frequency_calibration", 1.0)
+        try:
+            cal_factor = float(cal_factor)
+        except Exception:
+            cal_factor = 1.0
+
+        self.is_calculating_freq = True
+        worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor)
+        worker.signals.result.connect(self.on_freq_calculation_result)
+        self.threadpool.start(worker)
