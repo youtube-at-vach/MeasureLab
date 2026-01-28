@@ -99,16 +99,11 @@ class SpectrumAnalyzer(MeasurementModule):
             if status:
                 print(status)
 
-            # Shift buffer and append new data
-            # We always capture 2 channels now if available
-            if indata.shape[1] >= 2:
-                new_data = indata[:, :2]
-            else:
-                # If mono, duplicate to stereo for simplicity or handle gracefully
-                new_data = np.column_stack((indata[:, 0], indata[:, 0]))
+            # Determine available data length
+            n_frames = len(indata)
 
+            # --- Slow / Snapshot Mode ---
             if self.buffer_size >= LARGE_BUFFER_THRESHOLD:
-                # --- Slow / Snapshot Mode ---
                 # Fill buffer linearly, then stop accepting data until processed (write_head reset)
 
                 # If buffer is already "full" (waiting for processing), do nothing
@@ -118,20 +113,60 @@ class SpectrumAnalyzer(MeasurementModule):
 
                 # Calculate how much space is left
                 space_left = self.buffer_size - self.write_head
-                to_write = min(len(new_data), space_left)
+                to_write = min(n_frames, space_left)
 
                 if to_write > 0:
-                    self.input_data[self.write_head : self.write_head + to_write] = new_data[:to_write]
+                    start_idx = self.write_head
+                    end_idx = start_idx + to_write
+
+                    if indata.shape[1] >= 2:
+                        self.input_data[start_idx:end_idx] = indata[:to_write, :2]
+                    else:
+                        # Mono: Duplicate
+                        self.input_data[start_idx:end_idx, 0] = indata[:to_write, 0]
+                        self.input_data[start_idx:end_idx, 1] = indata[:to_write, 0]
+
                     self.write_head += to_write
 
+            # --- Normal Ring Buffer Mode ---
             else:
-                # --- Normal Rolling Mode ---
-                # Efficient ring buffer or just roll
-                if len(new_data) > self.buffer_size:
-                    self.input_data[:] = new_data[-self.buffer_size :]
+                # If incoming data is larger than buffer, just take the last chunk
+                if n_frames >= self.buffer_size:
+                    # Write last buffer_size samples
+                    offset = n_frames - self.buffer_size
+                    if indata.shape[1] >= 2:
+                        self.input_data[:] = indata[offset:, :2]
+                    else:
+                        self.input_data[:, 0] = indata[offset:, 0]
+                        self.input_data[:, 1] = indata[offset:, 0]
+                    self.write_head = 0  # Reset head to 0 (effectively full/aligned)
                 else:
-                    self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                    self.input_data[-len(new_data) :] = new_data
+                    # Wrapped write
+                    idx = self.write_head
+                    end_idx = idx + n_frames
+
+                    if end_idx <= self.buffer_size:
+                        # No wrap
+                        if indata.shape[1] >= 2:
+                            self.input_data[idx:end_idx] = indata[:, :2]
+                        else:
+                            self.input_data[idx:end_idx, 0] = indata[:, 0]
+                            self.input_data[idx:end_idx, 1] = indata[:, 0]
+                    else:
+                        # Wrap around
+                        part1_len = self.buffer_size - idx
+
+                        if indata.shape[1] >= 2:
+                            self.input_data[idx:] = indata[:part1_len, :2]
+                            self.input_data[: n_frames - part1_len] = indata[part1_len:, :2]
+                        else:
+                            self.input_data[idx:, 0] = indata[:part1_len, 0]
+                            self.input_data[idx:, 1] = indata[:part1_len, 0]
+
+                            self.input_data[: n_frames - part1_len, 0] = indata[part1_len:, 0]
+                            self.input_data[: n_frames - part1_len, 1] = indata[part1_len:, 0]
+
+                    self.write_head = (idx + n_frames) % self.buffer_size
 
             outdata.fill(0)
 
@@ -626,7 +661,8 @@ class SpectrumAnalyzerWidget(QWidget):
             self.module.write_head = 0
         else:
             # Normal Rolling Mode
-            data = self.module.input_data
+            # Unroll ring buffer
+            data = np.roll(self.module.input_data, -self.module.write_head, axis=0)
 
         # Calculate Overall RMS (dBFS) - Raw Time Domain (Unweighted)
         # This is calculated for reference, but we will overwrite it with weighted value later

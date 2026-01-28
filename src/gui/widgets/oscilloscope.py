@@ -113,28 +113,42 @@ class Oscilloscope(MeasurementModule):
             if status:
                 pass
 
-            if indata.shape[1] >= 2:
-                new_data = indata[:, :2]
-            else:
-                new_data = np.column_stack((indata[:, 0], indata[:, 0]))
+            n_frames = len(indata)
 
             # Ring buffer write (zero allocation)
-            n_frames = len(new_data)
             if n_frames > self.buffer_size:
                 # Just take the last part
-                self.input_data[:] = new_data[-self.buffer_size :]
+                offset = n_frames - self.buffer_size
+                if indata.shape[1] >= 2:
+                    self.input_data[:] = indata[offset:, :2]
+                else:
+                    self.input_data[:, 0] = indata[offset:, 0]
+                    self.input_data[:, 1] = indata[offset:, 0]
                 self.write_index = 0
             else:
                 # Wrapped write
                 idx = self.write_index
                 end_idx = idx + n_frames
                 if end_idx <= self.buffer_size:
-                    self.input_data[idx:end_idx] = new_data
+                    # No wrap
+                    if indata.shape[1] >= 2:
+                        self.input_data[idx:end_idx] = indata[:, :2]
+                    else:
+                        self.input_data[idx:end_idx, 0] = indata[:, 0]
+                        self.input_data[idx:end_idx, 1] = indata[:, 0]
                 else:
                     # Split
                     part1_len = self.buffer_size - idx
-                    self.input_data[idx:] = new_data[:part1_len]
-                    self.input_data[: n_frames - part1_len] = new_data[part1_len:]
+
+                    if indata.shape[1] >= 2:
+                        self.input_data[idx:] = indata[:part1_len, :2]
+                        self.input_data[: n_frames - part1_len] = indata[part1_len:, :2]
+                    else:
+                        self.input_data[idx:, 0] = indata[:part1_len, 0]
+                        self.input_data[idx:, 1] = indata[:part1_len, 0]
+
+                        self.input_data[: n_frames - part1_len, 0] = indata[part1_len:, 0]
+                        self.input_data[: n_frames - part1_len, 1] = indata[part1_len:, 0]
 
                 self.write_index = (idx + n_frames) % self.buffer_size
 
