@@ -373,7 +373,6 @@ class LTCDecoder:
                     frame_decoded = True
                 self.last_bit_is_one = False
             else:
-                s = self.last_bit_is_one
                 self.last_bit_is_one = True
 
             self.pulse_avg = 0.95 * self.pulse_avg + 0.05 * d
@@ -1072,7 +1071,7 @@ class TimecodeMonitor(MeasurementModule):
             return None
 
         diffs = [int(s[1]) for s in samples]
-        in_lat = [float(s[2]) for s in samples]
+        [float(s[2]) for s in samples]
         out_lat = [float(s[3]) for s in samples]
 
         diffs.sort()

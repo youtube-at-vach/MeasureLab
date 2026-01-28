@@ -1,5 +1,4 @@
 
-import pytest
 import numpy as np
 from unittest.mock import MagicMock
 from src.gui.widgets.sound_level_meter import SoundLevelMeter

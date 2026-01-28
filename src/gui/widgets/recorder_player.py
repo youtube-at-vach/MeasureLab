@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-import scipy.signal
 import soundfile as sf
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (

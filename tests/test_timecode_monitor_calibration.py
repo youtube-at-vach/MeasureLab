@@ -1,8 +1,5 @@
-import pytest
 from collections import deque
-import threading
 from unittest.mock import MagicMock, patch
-import time
 
 def test_calibration_poll_optimization():
     # Ensure sys.path includes src
@@ -45,7 +42,7 @@ def test_calibration_poll_optimization():
 
     # Verify result calculation
     # We expect diffs to be the last 30 items: 70..99
-    diffs = list(range(70, 100))
+    list(range(70, 100))
     # Median calculation in code:
     # diffs.sort()
     # mid = len(diffs) // 2

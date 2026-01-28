@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.signal import get_window
 
 from src.core.audio_engine import AudioEngine
 from src.core.analysis import get_cached_window

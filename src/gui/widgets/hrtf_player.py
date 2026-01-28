@@ -1,7 +1,6 @@
 
 import argparse
 import logging
-import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -20,7 +19,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
-    QRadioButton,
     QVBoxLayout,
     QWidget,
 )

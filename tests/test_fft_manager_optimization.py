@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from src.core.fft_manager import fft_manager
 

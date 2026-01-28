@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import MagicMock
 import numpy as np
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QThreadPool
 import sys
 
 from src.gui.widgets.frequency_counter import AllanWorker

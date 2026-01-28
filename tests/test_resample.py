@@ -1,7 +1,6 @@
 
 import unittest
 import numpy as np
-import scipy.signal
 from src.core.analysis import AudioCalc
 
 class TestResample(unittest.TestCase):

@@ -196,10 +196,9 @@ class SoundLevelMeter(MeasurementModule):
         f3 = 737.86223
         f4 = 12194.217
 
-        np.poly([0, 0, 0, 0])
-        denom = np.convolve(np.poly([-2*np.pi*f4, -2*np.pi*f4]),
-                             np.convolve(np.poly([-2*np.pi*f1, -2*np.pi*f1]),
-                                         np.poly([-2*np.pi*f2, -2*np.pi*f3])))
+        np.convolve(np.poly([-2*np.pi*f4, -2*np.pi*f4]),
+                     np.convolve(np.poly([-2*np.pi*f1, -2*np.pi*f1]),
+                                 np.poly([-2*np.pi*f2, -2*np.pi*f3])))
 
         # Gain at 1 kHz should be 0 dB.
         # Analog generic formulation. Converting to digital SOS.

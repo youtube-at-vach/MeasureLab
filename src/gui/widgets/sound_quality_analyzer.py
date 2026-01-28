@@ -235,7 +235,6 @@ class AnalysisWorker(QThread):
         # Bark center frequencies (approx)
         # We integrate power in each bark band
 
-        sharpness_series = []
 
         # Bark conversion function
         # z = 13*atan(0.00076*f) + 3.5*atan((f/7500)^2)
@@ -315,7 +314,6 @@ class AnalysisWorker(QThread):
         # Center freqs for Barks 3, 7, 11, 15, 19 (~ 300, 840, 1480, 2500, 4800 Hz)
 
         c_freqs = [300, 840, 1480, 2500, 4800, 9500]
-        roughness_acc = 0.0
 
         # Process chunks to save memory, but we need filter state.
         # To avoid complexity, process whole file if < 1 min, or chunk stream.
@@ -331,12 +329,6 @@ class AnalysisWorker(QThread):
 
         # Calculate envelope and modulation for each band
         # Sum of specific roughnesses.
-
-        n_samples = len(audio)
-        # Downsample envelope extraction?
-        ds_factor = 4 # 48k -> 12k for envelope is fine for 70Hz mod.
-
-        total_roughness = 0
 
         # Time weighting:
         # Modulation filter: Bandpass 20-150Hz.

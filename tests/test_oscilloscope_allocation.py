@@ -7,7 +7,6 @@ if 'sounddevice' not in sys.modules:
     sys.modules['sounddevice'] = MagicMock()
 
 import numpy as np
-import pytest
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))

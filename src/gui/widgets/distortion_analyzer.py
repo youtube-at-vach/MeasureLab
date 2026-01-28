@@ -432,9 +432,7 @@ class DistortionAnalyzerWidget(QWidget):
         mode_group = QGroupBox(tr("Mode"))
         mode_layout = QVBoxLayout()
         self.mode_combo = QComboBox()
-        self.mode_combo = QComboBox()
         self.mode_combo.addItems([tr("Real-time"), tr("Frequency Sweep"), tr("Amplitude Sweep")])
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         mode_layout.addWidget(self.mode_combo)
         mode_group.setLayout(mode_layout)
@@ -494,7 +492,6 @@ class DistortionAnalyzerWidget(QWidget):
         self.imd_ratio_spin.valueChanged.connect(lambda v: setattr(self.module, 'imd_ratio', v))
         imd_gen_layout.addRow(tr("Ratio (F1:F2):"), self.imd_ratio_spin)
 
-        imd_gen_widget.setLayout(imd_gen_layout)
         imd_gen_widget.setLayout(imd_gen_layout)
         self.gen_stack.addWidget(imd_gen_widget)
 
@@ -577,9 +574,6 @@ class DistortionAnalyzerWidget(QWidget):
         self.action_btn = QPushButton(tr("Start Measurement"))
         self.action_btn.setCheckable(True)
         self.action_btn.clicked.connect(self.on_action)
-        self.action_btn.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
-        btn_layout.addWidget(self.action_btn)
-
         self.action_btn.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         btn_layout.addWidget(self.action_btn)
 
@@ -1089,7 +1083,6 @@ class DistortionAnalyzerWidget(QWidget):
             # ENOB is only valid near full scale (strict check).
             # We'll use a threshold of -1.0 dBFS.
             sinad = results['sinad_db']
-            enob_val = "--"
             input_level = results['basic_wave']['amplitude_dbfs']
 
             if input_level >= -1.0:

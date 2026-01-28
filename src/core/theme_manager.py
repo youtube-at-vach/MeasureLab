@@ -9,7 +9,6 @@ Provides theme detection and switching functionality with support for:
 
 import logging
 import platform
-import sys
 from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal

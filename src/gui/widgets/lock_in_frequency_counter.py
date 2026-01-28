@@ -404,7 +404,6 @@ class LockInFrequencyCounterWidget(QWidget):
             has_signal = bool(getattr(self.module, 'signal_present', False))
             self.lbl_signal_status.setVisible(not has_signal)
 
-            delta_f = self.module.current_freq_dev
             delta_f_smooth = self.module.smoothed_freq_dev
 
             t_data = list(self.module.time_axis)

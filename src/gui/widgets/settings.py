@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.signal
-import math
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,

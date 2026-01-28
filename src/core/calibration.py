@@ -21,7 +21,6 @@ class CalibrationManager:
         # SPL calibration: maps measured (C-weighted) dBFS to SPL.
         # Stored as an offset: SPL[dB] = dBFS_C + spl_offset_db.
         self.spl_offset_db = None
-        self.spl_offset_db = None
         self.profiles = {}
         self.load()
 
@@ -138,8 +137,6 @@ class CalibrationManager:
         self.frequency_calibration = factor
         self.save()
 
-        self.lockin_gain_offset = offset_db
-        self.save()
 
     # --- Profile Management ---
 

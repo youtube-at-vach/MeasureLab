@@ -1,6 +1,5 @@
 
 import numpy as np
-import pytest
 from src.core.analysis import AudioCalc
 
 def test_thdn_sine_fit_small_n():

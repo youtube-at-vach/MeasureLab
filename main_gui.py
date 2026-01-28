@@ -11,12 +11,11 @@ _existing_rules = os.environ.get("QT_LOGGING_RULES")
 if not _existing_rules:
     os.environ["QT_LOGGING_RULES"] = _qt_rule
 
-from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, QRect
-from PyQt6.QtGui import QPixmap, QPainter, QColor
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
+from PyQt6.QtGui import QPixmap, QPainter
 from PyQt6.QtWidgets import QApplication, QSplashScreen, QWidget
 
 from src.core.config_manager import ConfigManager
-from src.core.localization import get_manager, tr
 from src.core.localization import get_manager, tr
 from src.core.utils import resource_path
 from src.core.fft_manager import fft_manager

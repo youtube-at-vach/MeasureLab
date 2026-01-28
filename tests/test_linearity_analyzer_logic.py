@@ -2,11 +2,10 @@
 import sys
 import numpy as np
 from unittest.mock import MagicMock
-import pytest
 
 # Ensure sounddevice is mocked if not present
 try:
-    import sounddevice
+    import sounddevice # noqa: F401
 except ImportError:
     sys.modules["sounddevice"] = MagicMock()
 

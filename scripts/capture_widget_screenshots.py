@@ -1,12 +1,9 @@
 
 import sys
 import os
-import glob
 import importlib.util
 import inspect
-import logging
-from PyQt6.QtWidgets import QApplication, QWidget, QScrollArea
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QApplication, QWidget
 
 # Add project root to path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))

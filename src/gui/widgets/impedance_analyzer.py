@@ -58,8 +58,6 @@ class ImpedanceAnalyzer(MeasurementModule):
         self.current_channel = 1 # 0: Left, 1: Right
         self.shunt_resistance = 100.0
 
-        # Calibration Data (Freq -> Complex Z)
-        # Calibration Data (Freq -> Complex Z)
         self.cal_open = {}
         self.cal_short = {}
         self.cal_load = {}
@@ -398,14 +396,6 @@ class ImpedanceAnalyzer(MeasurementModule):
         else:
             self.meas_z_complex = z_raw
 
-    def apply_calibration(self, z_meas, freq):
-        """
-        Apply Open/Short/Load (OSL) calibration.
-        Formula:
-        Z_dut = Z_std * ((Z_open - Z_load) * (Z_meas - Z_short)) / ((Z_open - Z_meas) * (Z_load - Z_short))
-        Fallback to Open/Short (OS) if Load not available:
-        Z_dut = (Z_meas - Z_short) / (1 - (Z_meas - Z_short) * Y_open)
-        """
     def apply_calibration(self, z_meas, freq):
         """
         Apply Open/Short/Load (OSL) calibration.

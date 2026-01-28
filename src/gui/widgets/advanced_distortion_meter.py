@@ -18,8 +18,6 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.audio_engine import AudioEngine
-from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 
