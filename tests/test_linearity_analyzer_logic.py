@@ -1,27 +1,23 @@
 
 import sys
-import os
-import unittest
-from unittest.mock import MagicMock
 import numpy as np
+from unittest.mock import MagicMock
 import pytest
 
-# Set offscreen
-os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+# Ensure sounddevice is mocked if not present
+try:
+    import sounddevice
+except ImportError:
+    sys.modules["sounddevice"] = MagicMock()
 
-# Add repo root to sys.path
-_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
-
-# Mock sounddevice BEFORE importing any module that uses it
-if 'sounddevice' not in sys.modules:
-    mock_sd = MagicMock()
-    sys.modules['sounddevice'] = mock_sd
-
+import os
+import unittest
 from PyQt6.QtWidgets import QApplication
 from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
 from src.core.audio_engine import AudioEngine
+
+# Set offscreen
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 def test_linearity_analyzer_mono_input():
     """Verifies that mono input is correctly duplicated to stereo in the input buffer."""
@@ -181,6 +177,3 @@ class TestLinearityAnalyzerLogic(unittest.TestCase):
         else:
             # If we switch to array based, we check index
             pass
-
-if __name__ == '__main__':
-    unittest.main()
