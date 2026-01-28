@@ -1014,5 +1014,6 @@
     "Poor Linearity": "直線性が不十分です",
     "Ref Gain:": "基準ゲイン:",
     "SNR Limit:": "SNR制限:",
-    "Start Level:": "開始レベル:"
+    "Start Level:": "開始レベル:",
+    "Sweep failed:\n{0}": "スイープに失敗しました：\n{0}"
 }

@@ -1015,5 +1015,6 @@
     "Poor Linearity": "Linéarité médiocre",
     "Ref Gain:": "Gain de réf :",
     "SNR Limit:": "Limite SNR :",
-    "Start Level:": "Niveau initial :"
+    "Start Level:": "Niveau initial :",
+    "Sweep failed:\n{0}": "Balayage échoué :\n{0}"
 }
