@@ -102,7 +102,9 @@ class WrappingSplashScreen(QSplashScreen):
         # Call super to trigger repaint, but we'll override drawContents
         super().showMessage(message, alignment, color)
 
-    def drawContents(self, painter: QPainter):
+    def drawContents(self, painter: QPainter | None):
+        if painter is None:
+            return
         painter.setPen(self._color)
         # Add padding around the edges
         margin = 20
