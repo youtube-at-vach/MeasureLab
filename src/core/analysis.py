@@ -190,7 +190,7 @@ class AudioCalc:
         # Use 50ms or 1/8th of buffer, whichever is smaller.
         trim_samples = int(sampling_rate * 0.05)
         trim = min(trim_samples, N // 8)
-        
+
         if trim > 0 and N > 2*trim:
             nd_rms = np.sqrt(np.mean(residual[trim:-trim]**2))
             fund_rms = np.sqrt(np.mean(fitted_fund[trim:-trim]**2))
