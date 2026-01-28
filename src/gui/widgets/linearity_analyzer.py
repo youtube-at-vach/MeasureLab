@@ -13,9 +13,9 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSpinBox,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
+    QMessageBox,
     QTabWidget,
 )
 
@@ -637,5 +637,5 @@ class LinearityAnalyzerWidget(QWidget):
 
     def on_error(self, msg):
         self.on_finished()
-        # TODO show message box
+        QMessageBox.critical(self, tr("Error"), tr("Sweep failed:\n{0}").format(msg))
         print(f"Error: {msg}")
