@@ -295,27 +295,36 @@ class LinearityAnalyzerWidget(QWidget):
         form = QFormLayout()
 
         self.freq_spin = QDoubleSpinBox()
-        self.freq_spin.setRange(20, 20000); self.freq_spin.setValue(1000); self.freq_spin.setSuffix(" Hz")
+        self.freq_spin.setRange(20, 20000)
+        self.freq_spin.setValue(1000)
+        self.freq_spin.setSuffix(" Hz")
         self.freq_spin.valueChanged.connect(lambda v: setattr(self.module, 'test_frequency', v))
         form.addRow(tr("Frequency:"), self.freq_spin)
 
         self.start_spin = QDoubleSpinBox()
-        self.start_spin.setRange(-140, 0); self.start_spin.setValue(-5); self.start_spin.setSuffix(" dBFS")
+        self.start_spin.setRange(-140, 0)
+        self.start_spin.setValue(-5)
+        self.start_spin.setSuffix(" dBFS")
         self.start_spin.valueChanged.connect(lambda v: setattr(self.module, 'start_level', v))
         form.addRow(tr("Start Level:"), self.start_spin)
 
         self.end_spin = QDoubleSpinBox()
-        self.end_spin.setRange(-140, 0); self.end_spin.setValue(-120); self.end_spin.setSuffix(" dBFS")
+        self.end_spin.setRange(-140, 0)
+        self.end_spin.setValue(-120)
+        self.end_spin.setSuffix(" dBFS")
         self.end_spin.valueChanged.connect(lambda v: setattr(self.module, 'end_level', v))
         form.addRow(tr("End Level:"), self.end_spin)
 
         self.steps_spin = QSpinBox()
-        self.steps_spin.setRange(2, 200); self.steps_spin.setValue(30)
+        self.steps_spin.setRange(2, 200)
+        self.steps_spin.setValue(30)
         self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, 'steps', v))
         form.addRow(tr("Steps:"), self.steps_spin)
 
         self.snr_spin = QDoubleSpinBox()
-        self.snr_spin.setRange(0, 100); self.snr_spin.setValue(10); self.snr_spin.setSuffix(" dB")
+        self.snr_spin.setRange(0, 100)
+        self.snr_spin.setValue(10)
+        self.snr_spin.setSuffix(" dB")
         self.snr_spin.valueChanged.connect(lambda v: setattr(self.module, 'snr_threshold', v))
         form.addRow(tr("SNR Limit:"), self.snr_spin)
 
@@ -497,7 +506,7 @@ class LinearityAnalyzerWidget(QWidget):
             # So dBV = dBFS + 20*log10(v_per_fs)
             try:
                 out_gain_db = 20 * np.log10(cal.output_gain)
-            except:
+            except Exception:
                 out_gain_db = 0
 
             x_plot = x_data + out_gain_db
@@ -507,7 +516,7 @@ class LinearityAnalyzerWidget(QWidget):
             # Measured dBFS to dBV using Input Sensitivity
             try:
                 in_sens_db = 20 * np.log10(cal.input_sensitivity)
-            except:
+            except Exception:
                 in_sens_db = 0
 
             y_plot_2 = measured_data + in_sens_db

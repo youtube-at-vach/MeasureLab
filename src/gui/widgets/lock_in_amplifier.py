@@ -504,7 +504,7 @@ class LockInAmplifierWidget(QWidget):
             if places < 0: places = 0
             if places > max_places: places = max_places
             return places
-        except:
+        except Exception:
             return default
 
     def init_ui(self):
@@ -743,23 +743,31 @@ class LockInAmplifierWidget(QWidget):
 
         self.fra_start_spin = QDoubleSpinBox()
         # Range is set dynamically up to Nyquist (sample_rate/2).
-        self.fra_start_spin.setRange(20, 20000); self.fra_start_spin.setValue(20); self.fra_start_spin.setSuffix(" Hz")
+        self.fra_start_spin.setRange(20, 20000)
+        self.fra_start_spin.setValue(20)
+        self.fra_start_spin.setSuffix(" Hz")
         fra_form.addRow(tr("Start Freq:"), self.fra_start_spin)
 
         self.fra_end_spin = QDoubleSpinBox()
         # Range is set dynamically up to Nyquist (sample_rate/2).
-        self.fra_end_spin.setRange(20, 20000); self.fra_end_spin.setValue(20000); self.fra_end_spin.setSuffix(" Hz")
+        self.fra_end_spin.setRange(20, 20000)
+        self.fra_end_spin.setValue(20000)
+        self.fra_end_spin.setSuffix(" Hz")
         fra_form.addRow(tr("End Freq:"), self.fra_end_spin)
 
         self.fra_steps_spin = QSpinBox()
-        self.fra_steps_spin.setRange(10, 1000); self.fra_steps_spin.setValue(50)
+        self.fra_steps_spin.setRange(10, 1000)
+        self.fra_steps_spin.setValue(50)
         fra_form.addRow(tr("Steps:"), self.fra_steps_spin)
 
-        self.fra_log_check = QCheckBox(tr("Log Sweep")); self.fra_log_check.setChecked(True)
+        self.fra_log_check = QCheckBox(tr("Log Sweep"))
+        self.fra_log_check.setChecked(True)
         fra_form.addRow(self.fra_log_check)
 
         self.fra_settle_spin = QDoubleSpinBox()
-        self.fra_settle_spin.setRange(0.1, 5.0); self.fra_settle_spin.setValue(0.5); self.fra_settle_spin.setSuffix(" s")
+        self.fra_settle_spin.setRange(0.1, 5.0)
+        self.fra_settle_spin.setValue(0.5)
+        self.fra_settle_spin.setSuffix(" s")
         fra_form.addRow(tr("Settling Time:"), self.fra_settle_spin)
 
         # Plot Unit Selector
@@ -822,20 +830,27 @@ class LockInAmplifierWidget(QWidget):
 
         self.cal_start_spin = QDoubleSpinBox()
         # Range is set dynamically up to Nyquist (sample_rate/2).
-        self.cal_start_spin.setRange(20, 20000); self.cal_start_spin.setValue(20); self.cal_start_spin.setSuffix(" Hz")
+        self.cal_start_spin.setRange(20, 20000)
+        self.cal_start_spin.setValue(20)
+        self.cal_start_spin.setSuffix(" Hz")
         cal_form.addRow(tr("Start Freq:"), self.cal_start_spin)
 
         self.cal_end_spin = QDoubleSpinBox()
         # Range is set dynamically up to Nyquist (sample_rate/2).
-        self.cal_end_spin.setRange(20, 20000); self.cal_end_spin.setValue(20000); self.cal_end_spin.setSuffix(" Hz")
+        self.cal_end_spin.setRange(20, 20000)
+        self.cal_end_spin.setValue(20000)
+        self.cal_end_spin.setSuffix(" Hz")
         cal_form.addRow(tr("End Freq:"), self.cal_end_spin)
 
         self.cal_steps_spin = QSpinBox()
-        self.cal_steps_spin.setRange(10, 5000); self.cal_steps_spin.setValue(100)
+        self.cal_steps_spin.setRange(10, 5000)
+        self.cal_steps_spin.setValue(100)
         cal_form.addRow(tr("Steps:"), self.cal_steps_spin)
 
         self.cal_settle_spin = QDoubleSpinBox()
-        self.cal_settle_spin.setRange(0.1, 5.0); self.cal_settle_spin.setValue(0.5); self.cal_settle_spin.setSuffix(" s")
+        self.cal_settle_spin.setRange(0.1, 5.0)
+        self.cal_settle_spin.setValue(0.5)
+        self.cal_settle_spin.setSuffix(" s")
         cal_form.addRow(tr("Settling Time:"), self.cal_settle_spin)
 
         self.cal_start_btn = QPushButton(tr("Run Relative Map Sweep"))

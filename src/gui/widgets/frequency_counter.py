@@ -310,7 +310,7 @@ class FrequencyCounter(MeasurementModule):
                 precise_freq = AudioCalc.optimize_frequency(data, sr, coarse_freq)
                 precise_freq = float(precise_freq) * calibration_factor
                 return precise_freq, db
-            except:
+            except Exception:
                 return coarse_freq, db
         else:
             return coarse_freq, db

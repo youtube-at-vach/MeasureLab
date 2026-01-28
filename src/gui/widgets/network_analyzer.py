@@ -583,12 +583,14 @@ class NetworkAnalyzerWidget(QWidget):
 
         # Freqs
         self.start_spin = QDoubleSpinBox(controls_group)
-        self.start_spin.setRange(10, 20000); self.start_spin.setValue(20)
+        self.start_spin.setRange(10, 20000)
+        self.start_spin.setValue(20)
         self.start_spin.valueChanged.connect(lambda v: setattr(self.module, 'start_freq', v))
         form.addRow(tr("Start Freq:"), self.start_spin)
 
         self.end_spin = QDoubleSpinBox(controls_group)
-        self.end_spin.setRange(10, 24000); self.end_spin.setValue(20000)
+        self.end_spin.setRange(10, 24000)
+        self.end_spin.setValue(20000)
         self.end_spin.valueChanged.connect(lambda v: setattr(self.module, 'end_freq', v))
         form.addRow(tr("End Freq:"), self.end_spin)
 
@@ -597,23 +599,28 @@ class NetworkAnalyzerWidget(QWidget):
         # transient top-level window (startup flash).
         self.steps_spin = QDoubleSpinBox(controls_group)
         self.steps_spin.setDecimals(0)
-        self.steps_spin.setRange(1, 48); self.steps_spin.setValue(12)
+        self.steps_spin.setRange(1, 48)
+        self.steps_spin.setValue(12)
         self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, 'steps_per_octave', int(v)))
         self.steps_label = QLabel(tr("Steps/Octave:"), controls_group)
         form.addRow(self.steps_label, self.steps_spin)
 
         self.duration_spin = QDoubleSpinBox(controls_group)
-        self.duration_spin.setRange(0.1, 60.0); self.duration_spin.setValue(1.0)
+        self.duration_spin.setRange(0.1, 60.0)
+        self.duration_spin.setValue(1.0)
         self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, 'chirp_duration', v))
         self.duration_label = QLabel(tr("Duration (s):"), controls_group)
         form.addRow(self.duration_label, self.duration_spin)
-        self.duration_label.hide(); self.duration_spin.hide()
+        self.duration_label.hide()
+        self.duration_spin.hide()
 
         # Apply initial visibility/state after controls exist
         self.on_mode_changed(self.mode_combo.currentIndex())
 
         self.amp_spin = QDoubleSpinBox()
-        self.amp_spin.setRange(0, 1); self.amp_spin.setValue(0.5); self.amp_spin.setSingleStep(0.1)
+        self.amp_spin.setRange(0, 1)
+        self.amp_spin.setValue(0.5)
+        self.amp_spin.setSingleStep(0.1)
         self.amp_spin.valueChanged.connect(self.on_amp_spin_changed)
 
         self.gen_unit_combo = QComboBox()
@@ -627,7 +634,8 @@ class NetworkAnalyzerWidget(QWidget):
 
         self.avg_spin = QDoubleSpinBox()
         self.avg_spin.setDecimals(0)
-        self.avg_spin.setRange(1, 10); self.avg_spin.setValue(1)
+        self.avg_spin.setRange(1, 10)
+        self.avg_spin.setValue(1)
         self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, 'num_averages', int(v)))
         form.addRow(tr("Averages:"), self.avg_spin)
 
@@ -648,7 +656,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.limit_check = QCheckBox(tr("Limit Max"))
         self.limit_check.toggled.connect(self.refresh_plots)
         self.limit_spin = QDoubleSpinBox()
-        self.limit_spin.setRange(10, 24000); self.limit_spin.setValue(20000)
+        self.limit_spin.setRange(10, 24000)
+        self.limit_spin.setValue(20000)
         self.limit_spin.valueChanged.connect(self.refresh_plots)
 
         limit_layout = QHBoxLayout()
@@ -660,7 +669,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.min_limit_check = QCheckBox(tr("Limit Min"))
         self.min_limit_check.toggled.connect(self.refresh_plots)
         self.min_limit_spin = QDoubleSpinBox()
-        self.min_limit_spin.setRange(10, 24000); self.min_limit_spin.setValue(20)
+        self.min_limit_spin.setRange(10, 24000)
+        self.min_limit_spin.setValue(20)
         self.min_limit_spin.valueChanged.connect(self.refresh_plots)
 
         min_limit_layout = QHBoxLayout()
@@ -785,11 +795,15 @@ class NetworkAnalyzerWidget(QWidget):
         mode = self.mode_combo.itemData(index)
         self.module.sweep_mode = mode
         if mode == "Stepped Sine":
-            self.steps_label.show(); self.steps_spin.show()
-            self.duration_label.hide(); self.duration_spin.hide()
+            self.steps_label.show()
+            self.steps_spin.show()
+            self.duration_label.hide()
+            self.duration_spin.hide()
         else:
-            self.steps_label.hide(); self.steps_spin.hide()
-            self.duration_label.show(); self.duration_spin.show()
+            self.steps_label.hide()
+            self.steps_spin.hide()
+            self.duration_label.show()
+            self.duration_spin.show()
 
     def on_routing_changed(self, index):
         self.module.input_mode = self.in_combo.currentData()
@@ -857,7 +871,7 @@ class NetworkAnalyzerWidget(QWidget):
         unit = self.gen_unit_combo.currentText()
         try:
             gain = self.module.audio_engine.calibration.output_gain
-        except:
+        except Exception:
             gain = 1.0
 
         self.amp_spin.blockSignals(True)
@@ -909,7 +923,7 @@ class NetworkAnalyzerWidget(QWidget):
         unit = self.gen_unit_combo.currentText()
         try:
             gain = self.module.audio_engine.calibration.output_gain
-        except:
+        except Exception:
             gain = 1.0
 
         amp_0_1 = 0.0
@@ -1063,7 +1077,7 @@ class NetworkAnalyzerWidget(QWidget):
             mags_linear = 10 ** (mags_to_plot / 20)
             try:
                 input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
-            except:
+            except Exception:
                 input_sensitivity = 1.0
 
             if unit == "dBFS":

@@ -555,11 +555,13 @@ class OutputCalibrationDialog(QDialog):
         layout.addWidget(QLabel(f"<b>{tr('Step 2:')}</b> {tr('Set Test Tone.')}"))
         form = QFormLayout()
         self.freq_spin = QDoubleSpinBox()
-        self.freq_spin.setRange(20, 20000); self.freq_spin.setValue(1000)
+        self.freq_spin.setRange(20, 20000)
+        self.freq_spin.setValue(1000)
         form.addRow(f"{tr('Frequency (Hz):')}", self.freq_spin)
 
         self.level_spin = QDoubleSpinBox()
-        self.level_spin.setRange(-60, 0); self.level_spin.setValue(-12)
+        self.level_spin.setRange(-60, 0)
+        self.level_spin.setValue(-12)
         form.addRow(f"{tr('Level (dBFS):')}", self.level_spin)
         layout.addLayout(form)
 
@@ -574,7 +576,8 @@ class OutputCalibrationDialog(QDialog):
         layout.addWidget(QLabel(f"<b>{tr('Step 4:')}</b> {tr('Enter measured voltage.')}"))
         meas_layout = QHBoxLayout()
         self.meas_spin = QDoubleSpinBox()
-        self.meas_spin.setRange(-200, 1000); self.meas_spin.setDecimals(4)
+        self.meas_spin.setRange(-200, 1000)
+        self.meas_spin.setDecimals(4)
         meas_layout.addWidget(self.meas_spin)
 
         self.unit_combo = QComboBox()
@@ -700,7 +703,8 @@ class InputCalibrationDialog(QDialog):
         layout.addWidget(QLabel(f"<b>{tr('Step 3:')}</b> {tr('Enter known source voltage.')}"))
         meas_layout = QHBoxLayout()
         self.meas_spin = QDoubleSpinBox()
-        self.meas_spin.setRange(-200, 1000); self.meas_spin.setDecimals(4)
+        self.meas_spin.setRange(-200, 1000)
+        self.meas_spin.setDecimals(4)
         meas_layout.addWidget(self.meas_spin)
 
         self.unit_combo = QComboBox()

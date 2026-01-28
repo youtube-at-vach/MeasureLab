@@ -227,7 +227,7 @@ class SignalGenerator(MeasurementModule):
             seq, state = scipy.signal.max_len_seq(order)
             signal = seq.astype(float) * 2 - 1
             return signal
-        except:
+        except Exception:
             print("scipy.signal.max_len_seq not found/failed, using slow fallback")
             tap_indices = [x - 1 for x in taps[order]]
             N = 2**order - 1
@@ -811,7 +811,9 @@ class SignalGeneratorWidget(QWidget):
         self.multitone_widget = QWidget()
         mt_form = QFormLayout(self.multitone_widget)
         self.mt_count_spin = QDoubleSpinBox()
-        self.mt_count_spin.setDecimals(0); self.mt_count_spin.setRange(2, 1000); self.mt_count_spin.setValue(10)
+        self.mt_count_spin.setDecimals(0)
+        self.mt_count_spin.setRange(2, 1000)
+        self.mt_count_spin.setValue(10)
         self.mt_count_spin.valueChanged.connect(lambda v: self.update_param('multitone_count', int(v)))
         mt_form.addRow(tr("Tone Count:"), self.mt_count_spin)
 
@@ -828,11 +830,15 @@ class SignalGeneratorWidget(QWidget):
         self.burst_widget = QWidget()
         burst_form = QFormLayout(self.burst_widget)
         self.burst_on_spin = QDoubleSpinBox()
-        self.burst_on_spin.setDecimals(0); self.burst_on_spin.setRange(1, 1000); self.burst_on_spin.setValue(10)
+        self.burst_on_spin.setDecimals(0)
+        self.burst_on_spin.setRange(1, 1000)
+        self.burst_on_spin.setValue(10)
         self.burst_on_spin.valueChanged.connect(lambda v: self.update_param('burst_on_cycles', int(v)))
         burst_form.addRow(tr("On Cycles:"), self.burst_on_spin)
         self.burst_off_spin = QDoubleSpinBox()
-        self.burst_off_spin.setDecimals(0); self.burst_off_spin.setRange(1, 10000); self.burst_off_spin.setValue(90)
+        self.burst_off_spin.setDecimals(0)
+        self.burst_off_spin.setRange(1, 10000)
+        self.burst_off_spin.setValue(90)
         self.burst_off_spin.valueChanged.connect(lambda v: self.update_param('burst_off_cycles', int(v)))
         burst_form.addRow(tr("Off Cycles:"), self.burst_off_spin)
 

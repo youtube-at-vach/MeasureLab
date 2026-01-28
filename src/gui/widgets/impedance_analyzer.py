@@ -536,7 +536,7 @@ class ImpedanceAnalyzer(MeasurementModule):
                 f = float(f_str)
                 z = complex(z_list[0], z_list[1])
                 new_cal[f] = z
-            except:
+            except Exception:
                 pass
         return new_cal
 
@@ -747,55 +747,74 @@ class ImpedanceResultsWidget(QWidget):
         # Group 1: Series
         box_s = QGroupBox(tr("Series Equivalent"))
         lay_s = QFormLayout()
-        self.val_rs = QLabel("-"); lay_s.addRow(tr("Rs:"), self.val_rs)
-        self.val_xs = QLabel("-"); lay_s.addRow(tr("Xs:"), self.val_xs)
-        self.val_ls = QLabel("-"); lay_s.addRow(tr("Ls:"), self.val_ls)
-        self.val_cs = QLabel("-"); lay_s.addRow(tr("Cs:"), self.val_cs)
+        self.val_rs = QLabel("-")
+        lay_s.addRow(tr("Rs:"), self.val_rs)
+        self.val_xs = QLabel("-")
+        lay_s.addRow(tr("Xs:"), self.val_xs)
+        self.val_ls = QLabel("-")
+        lay_s.addRow(tr("Ls:"), self.val_ls)
+        self.val_cs = QLabel("-")
+        lay_s.addRow(tr("Cs:"), self.val_cs)
         box_s.setLayout(lay_s)
         detail_layout.addWidget(box_s, 0, 0)
 
         # Group 2: Parallel
         box_p = QGroupBox(tr("Parallel Equivalent"))
         lay_p = QFormLayout()
-        self.val_rp = QLabel("-"); lay_p.addRow(tr("Rp:"), self.val_rp)
-        self.val_xp = QLabel("-"); lay_p.addRow(tr("Xp:"), self.val_xp)
-        self.val_lp = QLabel("-"); lay_p.addRow(tr("Lp:"), self.val_lp)
-        self.val_cp = QLabel("-"); lay_p.addRow(tr("Cp:"), self.val_cp)
+        self.val_rp = QLabel("-")
+        lay_p.addRow(tr("Rp:"), self.val_rp)
+        self.val_xp = QLabel("-")
+        lay_p.addRow(tr("Xp:"), self.val_xp)
+        self.val_lp = QLabel("-")
+        lay_p.addRow(tr("Lp:"), self.val_lp)
+        self.val_cp = QLabel("-")
+        lay_p.addRow(tr("Cp:"), self.val_cp)
         box_p.setLayout(lay_p)
         detail_layout.addWidget(box_p, 0, 1)
 
         # Group 3: Admittance
         box_y = QGroupBox(tr("Admittance (Y)"))
         lay_y = QFormLayout()
-        self.val_y_mag = QLabel("-"); lay_y.addRow(tr("|Y|:"), self.val_y_mag)
-        self.val_g = QLabel("-"); lay_y.addRow(tr("G (Cond):"), self.val_g)
-        self.val_b = QLabel("-"); lay_y.addRow(tr("B (Susc):"), self.val_b)
+        self.val_y_mag = QLabel("-")
+        lay_y.addRow(tr("|Y|:"), self.val_y_mag)
+        self.val_g = QLabel("-")
+        lay_y.addRow(tr("G (Cond):"), self.val_g)
+        self.val_b = QLabel("-")
+        lay_y.addRow(tr("B (Susc):"), self.val_b)
         box_y.setLayout(lay_y)
         detail_layout.addWidget(box_y, 1, 0)
 
         # Group 4: Quality / Loss
         box_q = QGroupBox(tr("Quality / Loss"))
         lay_q = QFormLayout()
-        self.val_q = QLabel("-"); lay_q.addRow(tr("Q Factor:"), self.val_q)
-        self.val_d = QLabel("-"); lay_q.addRow(tr("D (Loss):"), self.val_d)
-        self.val_esr = QLabel("-"); lay_q.addRow(tr("ESR:"), self.val_esr) # Same as Rs usually
+        self.val_q = QLabel("-")
+        lay_q.addRow(tr("Q Factor:"), self.val_q)
+        self.val_d = QLabel("-")
+        lay_q.addRow(tr("D (Loss):"), self.val_d)
+        self.val_esr = QLabel("-")
+        lay_q.addRow(tr("ESR:"), self.val_esr) # Same as Rs usually
         box_q.setLayout(lay_q)
         detail_layout.addWidget(box_q, 1, 1)
 
         # Group 5: Raw Signals (V / I)
         box_raw = QGroupBox(tr("Raw Signals (V / I)"))
         lay_raw = QFormLayout()
-        self.val_v = QLabel("-"); lay_raw.addRow(tr("Voltage:"), self.val_v)
-        self.val_i = QLabel("-"); lay_raw.addRow(tr("Current:"), self.val_i)
-        self.val_v_phase = QLabel("-"); lay_raw.addRow(tr("V Phase:"), self.val_v_phase)
-        self.val_i_phase = QLabel("-"); lay_raw.addRow(tr("I Phase:"), self.val_i_phase)
+        self.val_v = QLabel("-")
+        lay_raw.addRow(tr("Voltage:"), self.val_v)
+        self.val_i = QLabel("-")
+        lay_raw.addRow(tr("Current:"), self.val_i)
+        self.val_v_phase = QLabel("-")
+        lay_raw.addRow(tr("V Phase:"), self.val_v_phase)
+        self.val_i_phase = QLabel("-")
+        lay_raw.addRow(tr("I Phase:"), self.val_i_phase)
         box_raw.setLayout(lay_raw)
         detail_layout.addWidget(box_raw, 2, 0)
 
         # Group 6: Buffer (shown as a separate framed column to the right of V/I)
         box_buf = QGroupBox(tr("Buffer"))
         lay_buf = QFormLayout()
-        self.val_buffer = QLabel("-"); lay_buf.addRow(tr("Size:"), self.val_buffer)
+        self.val_buffer = QLabel("-")
+        lay_buf.addRow(tr("Size:"), self.val_buffer)
         box_buf.setLayout(lay_buf)
         detail_layout.addWidget(box_buf, 2, 1)
 
@@ -871,7 +890,13 @@ class ImpedanceResultsWidget(QWidget):
             lp = -1.0 / (w * b) if (w > 0 and abs(b) > 1e-12) else float('inf')
             cp = b / w if w > 0 else 0
         else:
-            y = 0j; g=0; b=0; rp=0; xp=0; lp=0; cp=0
+            y = 0j
+            g = 0
+            b = 0
+            rp = 0
+            xp = 0
+            lp = 0
+            cp = 0
 
         # Q / D
         q = abs(xs) / abs(rs) if abs(rs) > 1e-12 else float('inf')
@@ -995,17 +1020,22 @@ class ImpedanceAnalyzerWidget(QWidget):
         lay_meas.addRow(self.toggle_btn)
 
         self.freq_spin = QDoubleSpinBox()
-        self.freq_spin.setRange(20, nyquist_freq); self.freq_spin.setValue(1000); self.freq_spin.setSuffix(" Hz")
+        self.freq_spin.setRange(20, nyquist_freq)
+        self.freq_spin.setValue(1000)
+        self.freq_spin.setSuffix(" Hz")
         self.freq_spin.valueChanged.connect(lambda v: setattr(self.module, 'gen_frequency', v))
         lay_meas.addRow(tr("Frequency:"), self.freq_spin)
 
         self.amp_spin = QDoubleSpinBox()
-        self.amp_spin.setRange(0, 1.0); self.amp_spin.setValue(0.5); self.amp_spin.setSingleStep(0.1)
+        self.amp_spin.setRange(0, 1.0)
+        self.amp_spin.setValue(0.5)
+        self.amp_spin.setSingleStep(0.1)
         self.amp_spin.valueChanged.connect(lambda v: setattr(self.module, 'gen_amplitude', v))
         lay_meas.addRow(tr("Amplitude:"), self.amp_spin)
 
         self.avg_spin = QSpinBox()
-        self.avg_spin.setRange(1, 100); self.avg_spin.setValue(self.module.averaging_count)
+        self.avg_spin.setRange(1, 100)
+        self.avg_spin.setValue(self.module.averaging_count)
         self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, 'averaging_count', v))
         lay_meas.addRow(tr("Averages:"), self.avg_spin)
 
@@ -1044,12 +1074,16 @@ class ImpedanceAnalyzerWidget(QWidget):
         lay_conf = QFormLayout()
 
         self.shunt_spin = QDoubleSpinBox()
-        self.shunt_spin.setRange(0.1, 1000000); self.shunt_spin.setValue(100.0); self.shunt_spin.setSuffix(" Ω")
+        self.shunt_spin.setRange(0.1, 1000000)
+        self.shunt_spin.setValue(100.0)
+        self.shunt_spin.setSuffix(" Ω")
         self.shunt_spin.valueChanged.connect(lambda v: setattr(self.module, 'shunt_resistance', v))
         lay_conf.addRow(tr("Shunt R:"), self.shunt_spin)
 
         self.load_std_spin = QDoubleSpinBox()
-        self.load_std_spin.setRange(0.1, 1000000); self.load_std_spin.setValue(100.0); self.load_std_spin.setSuffix(" Ω")
+        self.load_std_spin.setRange(0.1, 1000000)
+        self.load_std_spin.setValue(100.0)
+        self.load_std_spin.setSuffix(" Ω")
         self.load_std_spin.valueChanged.connect(lambda v: setattr(self.module, 'load_standard_real', v))
         lay_conf.addRow(tr("Load Std R:"), self.load_std_spin)
 
@@ -1071,13 +1105,20 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.cal_check.toggled.connect(lambda c: setattr(self.module, 'use_calibration', c))
         lay_sweep.addRow(self.cal_check)
 
-        self.sw_start = QDoubleSpinBox(); self.sw_start.setRange(20, nyquist_freq); self.sw_start.setValue(20)
+        self.sw_start = QDoubleSpinBox()
+        self.sw_start.setRange(20, nyquist_freq)
+        self.sw_start.setValue(20)
         lay_sweep.addRow(tr("Start:"), self.sw_start)
-        self.sw_end = QDoubleSpinBox(); self.sw_end.setRange(20, nyquist_freq); self.sw_end.setValue(min(20000, nyquist_freq))
+        self.sw_end = QDoubleSpinBox()
+        self.sw_end.setRange(20, nyquist_freq)
+        self.sw_end.setValue(min(20000, nyquist_freq))
         lay_sweep.addRow(tr("End:"), self.sw_end)
-        self.sw_steps = QSpinBox(); self.sw_steps.setRange(10, 1000); self.sw_steps.setValue(50)
+        self.sw_steps = QSpinBox()
+        self.sw_steps.setRange(10, 1000)
+        self.sw_steps.setValue(50)
         lay_sweep.addRow(tr("Steps:"), self.sw_steps)
-        self.sw_log = QCheckBox(tr("Log Sweep")); self.sw_log.setChecked(True)
+        self.sw_log = QCheckBox(tr("Log Sweep"))
+        self.sw_log.setChecked(True)
         lay_sweep.addRow(self.sw_log)
 
         self.chk_resonance = QCheckBox(tr("Find Resonance"))

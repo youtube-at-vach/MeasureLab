@@ -14,7 +14,8 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.engine.logger = MagicMock()
 
     def test_register_unregister(self):
-        cb = lambda *args: None
+        def cb(*args):
+            pass
 
         # Test Register
         cid = self.engine.register_callback(cb)
