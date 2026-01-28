@@ -1015,5 +1015,6 @@
     "Poor Linearity": "선형성 불량",
     "Ref Gain:": "참조 게인:",
     "SNR Limit:": "SNR 제한:",
-    "Start Level:": "시작 레벨:"
+    "Start Level:": "시작 레벨:",
+    "Sweep failed:\n{0}": "스윕 실패:\n{0}"
 }
