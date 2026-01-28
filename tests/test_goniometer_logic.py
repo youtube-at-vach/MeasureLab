@@ -23,9 +23,9 @@ def test_goniometer():
 
     # 1. Mono (In-Phase)
     frames = 1024
-    l = np.sin(np.linspace(0, 100, frames))
-    r = l.copy()
-    data = np.column_stack((l, r))
+    left = np.sin(np.linspace(0, 100, frames))
+    right = left.copy()
+    data = np.column_stack((left, right))
 
     # Call callback manually
     outdata = np.zeros_like(data)
@@ -35,16 +35,16 @@ def test_goniometer():
     assert np.isclose(gonio.correlation, 1.0, atol=0.01)
 
     # 2. Inverted (Anti-Phase)
-    r = -l
-    data = np.column_stack((l, r))
+    right = -left
+    data = np.column_stack((left, right))
     gonio._callback(data, outdata, frames, 0, None)
 
     print(f"Inverted Correlation: {gonio.correlation:.4f} (Expected -1.0)")
     assert np.isclose(gonio.correlation, -1.0, atol=0.01)
 
     # 3. Left Only
-    r = np.zeros_like(l)
-    data = np.column_stack((l, r))
+    right = np.zeros_like(left)
+    data = np.column_stack((left, right))
     gonio._callback(data, outdata, frames, 0, None)
 
     print(f"Left Only Correlation: {gonio.correlation:.4f} (Expected 0.0)")
@@ -53,9 +53,9 @@ def test_goniometer():
     # 4. Stereo (Random)
     # Random noise should be close to 0 correlation on average
     np.random.seed(42)
-    l = np.random.randn(frames)
-    r = np.random.randn(frames)
-    data = np.column_stack((l, r))
+    left = np.random.randn(frames)
+    right = np.random.randn(frames)
+    data = np.column_stack((left, right))
     gonio._callback(data, outdata, frames, 0, None)
 
     print(f"Random Stereo Correlation: {gonio.correlation:.4f} (Expected ~0.0)")

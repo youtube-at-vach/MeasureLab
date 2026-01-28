@@ -100,12 +100,12 @@ def test_phase_control_real():
 
     callback(None, outdata, frames, 0, None)
 
-    l = outdata[:, 0]
-    r = outdata[:, 1]
+    left = outdata[:, 0]
+    right = outdata[:, 1]
 
     # Check correlation
     # Sine and Cosine (90 deg shift) should have 0 correlation
-    corr = np.sum(l * r) / (np.sqrt(np.sum(l**2)) * np.sqrt(np.sum(r**2)))
+    corr = np.sum(left * right) / (np.sqrt(np.sum(left**2)) * np.sqrt(np.sum(right**2)))
     print(f"Correlation (0 vs 90): {corr:.4f} (Expected 0.0)")
     assert abs(corr) < 0.01
 
@@ -115,10 +115,10 @@ def test_phase_control_real():
     gen.params_L._phase = 0
 
     callback(None, outdata, frames, 0, None)
-    l = outdata[:, 0]
-    r = outdata[:, 1]
+    left = outdata[:, 0]
+    right = outdata[:, 1]
 
-    corr = np.sum(l * r) / (np.sqrt(np.sum(l**2)) * np.sqrt(np.sum(r**2)))
+    corr = np.sum(left * right) / (np.sqrt(np.sum(left**2)) * np.sqrt(np.sum(right**2)))
     print(f"Correlation (0 vs 180): {corr:.4f} (Expected -1.0)")
     assert np.isclose(corr, -1.0, atol=0.01)
 

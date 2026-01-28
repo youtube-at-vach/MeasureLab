@@ -101,12 +101,12 @@ class Goniometer(MeasurementModule):
             self.audio_buffer[-frames:] = new_data
 
         # Calculate Correlation (Instantaneous for this block)
-        l = new_data[:, 0]
-        r = new_data[:, 1]
+        left = new_data[:, 0]
+        right = new_data[:, 1]
 
-        dot = np.sum(l * r)
-        mag_l = np.sum(l**2)
-        mag_r = np.sum(r**2)
+        dot = np.sum(left * right)
+        mag_l = np.sum(left**2)
+        mag_r = np.sum(right**2)
 
         if mag_l > 1e-9 and mag_r > 1e-9:
             self.correlation = dot / np.sqrt(mag_l * mag_r)
@@ -334,16 +334,16 @@ class GoniometerWidget(QWidget):
             self.ref_line_a.setAngle(90)
             self.ref_line_b.setAngle(0)
 
-    def _compute_xy(self, l: np.ndarray, r: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def _compute_xy(self, left: np.ndarray, right: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         if self.module.mapping_mode == 'lr':
-            x = l
-            y = r
+            x = left
+            y = right
         else:
             # Transform to M/S (Rotated 45 deg)
             # X = (R - L) * 0.707 (Side, L on left)
             # Y = (L + R) * 0.707 (Mid)
-            y = (l + r) * 0.707
-            x = (r - l) * 0.707
+            y = (left + right) * 0.707
+            x = (right - left) * 0.707
 
         if self.module.invert_x:
             x = -x
@@ -478,8 +478,8 @@ class GoniometerWidget(QWidget):
 
         # Get data
         data = self.module.audio_buffer
-        l = data[:, 0]
-        r = data[:, 1]
+        left = data[:, 0]
+        right = data[:, 1]
 
         # Apply Gain
         if self.module.auto_gain:
@@ -488,10 +488,10 @@ class GoniometerWidget(QWidget):
                 gain = 0.8 / peak # Target 0.8 peak
                 self.module.gain = self.module.gain * 0.9 + gain * 0.1
 
-        l = l * self.module.gain
-        r = r * self.module.gain
+        left = left * self.module.gain
+        right = right * self.module.gain
 
-        x, y = self._compute_xy(l, r)
+        x, y = self._compute_xy(left, right)
 
         if self.module.display_mode == 'Line':
             self.trace.setData(x, y)

@@ -1135,7 +1135,7 @@ class DistortionAnalyzerWidget(QWidget):
             # Update Bar Graph
             if orders:
                 floor_db = -140
-                heights = [l - floor_db for l in levels]
+                heights = [level - floor_db for level in levels]
                 self.harmonics_bar_item.setOpts(x=orders, height=heights, y0=floor_db)
                 # Ensure x-axis shows integer ticks for orders
                 # We can just set the range to cover all orders

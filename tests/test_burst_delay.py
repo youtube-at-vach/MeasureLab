@@ -40,11 +40,11 @@ def test_burst_delay_ms_integer_samples_aligns_channels():
 
     callback(None, outdata, frames, None, None)
 
-    l = outdata[:, 0]
-    r = outdata[:, 1]
+    left = outdata[:, 0]
+    right = outdata[:, 1]
 
     shift = 48
 
-    # Right is delayed: r[n] ~= l[n-shift] (for n>=shift)
-    # So r[shift:] should match l[:-shift].
-    assert np.allclose(r[shift:], l[:-shift], atol=1e-4)
+    # Right is delayed: r[n] ~= left[n-shift] (for n>=shift)
+    # So r[shift:] should match left[:-shift].
+    assert np.allclose(right[shift:], left[:-shift], atol=1e-4)

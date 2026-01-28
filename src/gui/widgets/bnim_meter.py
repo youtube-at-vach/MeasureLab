@@ -201,12 +201,12 @@ class BNIMMeter(MeasurementModule):
         # For a right-side source, left ear arrives later (left delayed).
         if itd_ms_c >= 0:
             # Positive ITD: left ear delayed
-            l = self._fractional_delay_zero_padded(x, delay_samples)
-            r = x
+            left = self._fractional_delay_zero_padded(x, delay_samples)
+            right = x
         else:
             # Negative ITD: right ear delayed
-            l = x
-            r = self._fractional_delay_zero_padded(x, delay_samples)
+            left = x
+            right = self._fractional_delay_zero_padded(x, delay_samples)
 
         # Playback ILD rule:
         # - Determine which ear was delayed by ITD.
@@ -227,7 +227,7 @@ class BNIMMeter(MeasurementModule):
                 g_l = 1.0
                 g_r = g_att
 
-        y = np.column_stack((l * g_l, r * g_r)).astype(np.float32, copy=False)
+        y = np.column_stack((left * g_l, right * g_r)).astype(np.float32, copy=False)
         return y
 
     def trigger_click_test_playback(self, *, freq_hz: float, itd_ms: float, on_cycles: int, off_cycles: int, ild_atten_db: float):

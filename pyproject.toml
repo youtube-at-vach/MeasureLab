@@ -39,7 +39,7 @@ target-version = "py310"
 # the whitespace issue (W293) that currently breaks CI. Broaden later as we
 # pay down existing style debt.
 select = ["E9", "F", "E7", "W292", "W293"]
-ignore = ["E701", "E741"]
+ignore = ["E701"]
 
 [tool.mypy]
 python_version = "3.10"

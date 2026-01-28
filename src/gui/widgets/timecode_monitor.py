@@ -1000,25 +1000,25 @@ class TimecodeMonitor(MeasurementModule):
         self.is_running = False
 
     def process(self):
-        l = self.channels["L"]
-        r = self.channels["R"]
+        left = self.channels["L"]
+        right = self.channels["R"]
         return {
-            "fps": float(l.fps),
+            "fps": float(left.fps),
             "L": {
-                "fps": float(l.fps),
-                "fps_est": float(l.estimated_fps),
-                "tc": self._get_display_timecode(l.decoded_tc, l.input_offset_frames, key="L"),
-                "tc_raw": l.decoded_tc,
-                "locked": bool(l.locked),
-                "level": float(l.input_level_db),
+                "fps": float(left.fps),
+                "fps_est": float(left.estimated_fps),
+                "tc": self._get_display_timecode(left.decoded_tc, left.input_offset_frames, key="L"),
+                "tc_raw": left.decoded_tc,
+                "locked": bool(left.locked),
+                "level": float(left.input_level_db),
             },
             "R": {
-                "fps": float(r.fps),
-                "fps_est": float(r.estimated_fps),
-                "tc": self._get_display_timecode(r.decoded_tc, r.input_offset_frames, key="R"),
-                "tc_raw": r.decoded_tc,
-                "locked": bool(r.locked),
-                "level": float(r.input_level_db),
+                "fps": float(right.fps),
+                "fps_est": float(right.estimated_fps),
+                "tc": self._get_display_timecode(right.decoded_tc, right.input_offset_frames, key="R"),
+                "tc_raw": right.decoded_tc,
+                "locked": bool(right.locked),
+                "level": float(right.input_level_db),
             },
         }
 
@@ -1711,27 +1711,27 @@ class TimecodeMonitorWidget(QWidget):
 
     def update_ui(self):
         data = self.module.process()
-        l = data.get("L", {})
-        r = data.get("R", {})
+        left = data.get("L", {})
+        right = data.get("R", {})
 
-        self.tc_label_L.setText(l.get("tc", "--:--:--:--"))
-        self.tc_label_R.setText(r.get("tc", "--:--:--:--"))
+        self.tc_label_L.setText(left.get("tc", "--:--:--:--"))
+        self.tc_label_R.setText(right.get("tc", "--:--:--:--"))
 
-        if l.get("locked", False):
+        if left.get("locked", False):
             self.sync_led_L.setStyleSheet("color: #0f0; font-weight: bold; border: 1px solid #0f0; background-color: #003300; padding: 2px 5px; border-radius:4px;")
         else:
             self.sync_led_L.setStyleSheet("color: #555; font-weight: normal; border: 1px solid #555; padding: 2px 5px; border-radius:4px;")
 
-        if r.get("locked", False):
+        if right.get("locked", False):
             self.sync_led_R.setStyleSheet("color: #0f0; font-weight: bold; border: 1px solid #0f0; background-color: #003300; padding: 2px 5px; border-radius:4px;")
         else:
             self.sync_led_R.setStyleSheet("color: #555; font-weight: normal; border: 1px solid #555; padding: 2px 5px; border-radius:4px;")
 
-        self.level_label_L.setText(tr("{0} dB").format(f"{float(l.get('level', -100.0)):.1f}"))
-        self.level_label_R.setText(tr("{0} dB").format(f"{float(r.get('level', -100.0)):.1f}"))
+        self.level_label_L.setText(tr("{0} dB").format(f"{float(left.get('level', -100.0)):.1f}"))
+        self.level_label_R.setText(tr("{0} dB").format(f"{float(right.get('level', -100.0)):.1f}"))
 
-        fpsl = float(l.get("fps_est", 0.0))
-        fpsr = float(r.get("fps_est", 0.0))
+        fpsl = float(left.get("fps_est", 0.0))
+        fpsr = float(right.get("fps_est", 0.0))
         self.fps_est_label_L.setText(tr("FPS: {0}").format(self._format_fps_est("L", fpsl)))
         self.fps_est_label_R.setText(tr("FPS: {0}").format(self._format_fps_est("R", fpsr)))
 
@@ -1870,14 +1870,14 @@ class TimecodeMonitorWidget(QWidget):
         if getattr(self, "ltc_offset_label", None) is None:
             return
 
-        l = self.module.channels.get("L")
-        r = self.module.channels.get("R")
-        if l is None or r is None:
+        left = self.module.channels.get("L")
+        right = self.module.channels.get("R")
+        if left is None or right is None:
             self.ltc_offset_label.setText(tr("CH Δ (R-L): --"))
             return
 
-        fps_l = float(getattr(l, "fps", 0.0) or 0.0)
-        fps_r = float(getattr(r, "fps", 0.0) or 0.0)
+        fps_l = float(getattr(left, "fps", 0.0) or 0.0)
+        fps_r = float(getattr(right, "fps", 0.0) or 0.0)
         nominal_l = int(round(fps_l)) if fps_l > 0 else 0
         nominal_r = int(round(fps_r)) if fps_r > 0 else 0
 
@@ -1889,20 +1889,20 @@ class TimecodeMonitorWidget(QWidget):
         lf = None
         rf = None
         try:
-            if l.jam_history:
-                lf = int(l.jam_history[-1][1])
+            if left.jam_history:
+                lf = int(left.jam_history[-1][1])
         except Exception:
             lf = None
         try:
-            if r.jam_history:
-                rf = int(r.jam_history[-1][1])
+            if right.jam_history:
+                rf = int(right.jam_history[-1][1])
         except Exception:
             rf = None
 
         if lf is None or rf is None:
             # Fallback: parse decoded TC strings.
-            pl = self.module._parse_tc(getattr(l, "decoded_tc", ""))
-            pr = self.module._parse_tc(getattr(r, "decoded_tc", ""))
+            pl = self.module._parse_tc(getattr(left, "decoded_tc", ""))
+            pr = self.module._parse_tc(getattr(right, "decoded_tc", ""))
             if pl is None or pr is None:
                 self.ltc_offset_label.setText(tr("CH Δ (R-L): --"))
                 return
