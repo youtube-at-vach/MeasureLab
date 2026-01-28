@@ -30,19 +30,19 @@ class Goniometer(MeasurementModule):
         self.is_running = False
 
         # Settings
-        self.buffer_size = 4096 # Increased for better density in phosphor mode
+        self.buffer_size = 4096  # Increased for better density in phosphor mode
         self.gain = 1.0
         self.auto_gain = False
-        self.decay = 0.90 # Persistence factor (0-1)
-        self.display_mode = 'Line' # 'Line', 'Phosphor'
-        self.color_palette = 'Green' # 'Green', 'Fire', 'Ice', 'Rainbow'
+        self.decay = 0.90  # Persistence factor (0-1)
+        self.display_mode = "Line"  # 'Line', 'Phosphor'
+        self.color_palette = "Green"  # 'Green', 'Fire', 'Ice', 'Rainbow'
         self.smooth_lines = False
         self.glow_amount = 0.0
 
         # Plot mapping / orientation
         # - 'ms': Mid/Side mapping (mono = vertical)
         # - 'lr': Left/Right mapping (oscilloscope XY style)
-        self.mapping_mode = 'ms'
+        self.mapping_mode = "ms"
         self.invert_x = False
         self.invert_y = False
 
@@ -70,7 +70,8 @@ class Goniometer(MeasurementModule):
         return GoniometerWidget(self)
 
     def start_analysis(self):
-        if self.is_running: return
+        if self.is_running:
+            return
         self.is_running = True
         self.audio_buffer = np.zeros((self.buffer_size, 2))
         self.heatmap = np.zeros((self.heatmap_size, self.heatmap_size))
@@ -84,7 +85,8 @@ class Goniometer(MeasurementModule):
             self.is_running = False
 
     def _callback(self, indata, outdata, frames, time, status):
-        if status: print(status)
+        if status:
+            print(status)
 
         # Get stereo data
         if indata.shape[1] >= 2:
@@ -95,7 +97,7 @@ class Goniometer(MeasurementModule):
 
         # Update buffer (Roll)
         if frames >= self.buffer_size:
-            self.audio_buffer[:] = new_data[-self.buffer_size:]
+            self.audio_buffer[:] = new_data[-self.buffer_size :]
         else:
             self.audio_buffer = np.roll(self.audio_buffer, -frames, axis=0)
             self.audio_buffer[-frames:] = new_data
@@ -111,11 +113,12 @@ class Goniometer(MeasurementModule):
         if mag_l > 1e-9 and mag_r > 1e-9:
             self.correlation = dot / np.sqrt(mag_l * mag_r)
         elif mag_l < 1e-9 and mag_r < 1e-9:
-            self.correlation = 0.0 # Silence
+            self.correlation = 0.0  # Silence
         else:
             self.correlation = 0.0
 
         outdata.fill(0)
+
 
 class GoniometerWidget(QWidget):
     def __init__(self, module: Goniometer):
@@ -125,7 +128,7 @@ class GoniometerWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
-        self.timer.setInterval(30) # 30 FPS
+        self.timer.setInterval(30)  # 30 FPS
 
         self.update_palette()
 
@@ -140,14 +143,14 @@ class GoniometerWidget(QWidget):
         self.plot_widget.setAspectLocked(True)
         self.plot_widget.setXRange(-1.1, 1.1)
         self.plot_widget.setYRange(-1.1, 1.1)
-        self.plot_widget.hideAxis('bottom')
-        self.plot_widget.hideAxis('left')
+        self.plot_widget.hideAxis("bottom")
+        self.plot_widget.hideAxis("left")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_widget.setBackground('#111')
+        self.plot_widget.setBackground("#111")
 
         # Add background reference lines (updated based on mapping/inversion)
-        self.ref_line_a = pg.InfiniteLine(pos=(0, 0), angle=45, pen=pg.mkPen('#444', style=Qt.PenStyle.DashLine))
-        self.ref_line_b = pg.InfiniteLine(pos=(0, 0), angle=-45, pen=pg.mkPen('#444', style=Qt.PenStyle.DashLine))
+        self.ref_line_a = pg.InfiniteLine(pos=(0, 0), angle=45, pen=pg.mkPen("#444", style=Qt.PenStyle.DashLine))
+        self.ref_line_b = pg.InfiniteLine(pos=(0, 0), angle=-45, pen=pg.mkPen("#444", style=Qt.PenStyle.DashLine))
         self.plot_widget.addItem(self.ref_line_a)
         self.plot_widget.addItem(self.ref_line_b)
 
@@ -157,10 +160,10 @@ class GoniometerWidget(QWidget):
 
         # Phosphor Image
         self.img_item = pg.ImageItem()
-        self.img_item.setImage(self.module.heatmap.T, autoLevels=False, levels=[0, 50]) # Set initial data and levels
+        self.img_item.setImage(self.module.heatmap.T, autoLevels=False, levels=[0, 50])  # Set initial data and levels
         self.img_item.setRect(pg.QtCore.QRectF(-1.1, -1.1, 2.2, 2.2))
         self.plot_widget.addItem(self.img_item)
-        self.img_item.setZValue(-1) # Behind grid? Or in front?
+        self.img_item.setZValue(-1)  # Behind grid? Or in front?
 
         display_layout.addWidget(self.plot_widget, stretch=1)
 
@@ -169,7 +172,7 @@ class GoniometerWidget(QWidget):
         corr_layout.addWidget(QLabel("-1"))
 
         self.corr_bar = QProgressBar()
-        self.corr_bar.setRange(-100, 100) # Map -1.0..1.0 to -100..100
+        self.corr_bar.setRange(-100, 100)  # Map -1.0..1.0 to -100..100
         self.corr_bar.setTextVisible(True)
         self.corr_bar.setFormat("%v")
         self.corr_bar.setFixedHeight(20)
@@ -191,19 +194,21 @@ class GoniometerWidget(QWidget):
 
         # Theme handling
         self.app = QApplication.instance()
-        if hasattr(self.app, 'theme_manager'):
+        if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
         else:
-            self.toggle_btn.setStyleSheet("QPushButton { background-color: #ccffcc; } QPushButton:checked { background-color: #ffcccc; }")
+            self.toggle_btn.setStyleSheet(
+                "QPushButton { background-color: #ccffcc; } QPushButton:checked { background-color: #ffcccc; }"
+            )
 
         controls_layout.addWidget(self.toggle_btn)
 
         # Display Mode
         controls_layout.addWidget(QLabel(tr("Display Mode:")))
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem(tr("Line"), 'Line')
-        self.mode_combo.addItem(tr("Phosphor"), 'Phosphor')
+        self.mode_combo.addItem(tr("Line"), "Line")
+        self.mode_combo.addItem(tr("Phosphor"), "Phosphor")
         mode_index = self.mode_combo.findData(self.module.display_mode)
         self.mode_combo.setCurrentIndex(mode_index if mode_index >= 0 else 0)
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
@@ -212,19 +217,19 @@ class GoniometerWidget(QWidget):
         # Mapping / orientation
         controls_layout.addWidget(QLabel(tr("Mapping:")))
         self.mapping_combo = QComboBox()
-        self.mapping_combo.addItem(tr("Mid/Side (M/S)"), 'ms')
-        self.mapping_combo.addItem(tr("Left/Right (L/R)"), 'lr')
-        self.mapping_combo.setCurrentIndex(0 if self.module.mapping_mode == 'ms' else 1)
+        self.mapping_combo.addItem(tr("Mid/Side (M/S)"), "ms")
+        self.mapping_combo.addItem(tr("Left/Right (L/R)"), "lr")
+        self.mapping_combo.setCurrentIndex(0 if self.module.mapping_mode == "ms" else 1)
         self.mapping_combo.currentIndexChanged.connect(self.on_mapping_changed)
         controls_layout.addWidget(self.mapping_combo)
 
         # Color Palette
         controls_layout.addWidget(QLabel(tr("Color Palette:")))
         self.palette_combo = QComboBox()
-        self.palette_combo.addItem(tr("Green"), 'Green')
-        self.palette_combo.addItem(tr("Fire"), 'Fire')
-        self.palette_combo.addItem(tr("Ice"), 'Ice')
-        self.palette_combo.addItem(tr("Rainbow"), 'Rainbow')
+        self.palette_combo.addItem(tr("Green"), "Green")
+        self.palette_combo.addItem(tr("Fire"), "Fire")
+        self.palette_combo.addItem(tr("Ice"), "Ice")
+        self.palette_combo.addItem(tr("Rainbow"), "Rainbow")
         palette_index = self.palette_combo.findData(self.module.color_palette)
         if palette_index >= 0:
             self.palette_combo.setCurrentIndex(palette_index)
@@ -234,7 +239,7 @@ class GoniometerWidget(QWidget):
         # Persistence (Decay)
         controls_layout.addWidget(QLabel(tr("Persistence:")))
         self.decay_slider = QSlider(Qt.Orientation.Horizontal)
-        self.decay_slider.setRange(0, 99) # 0.0 to 0.99
+        self.decay_slider.setRange(0, 99)  # 0.0 to 0.99
         self.decay_slider.setValue(int(self.module.decay * 100))
         self.decay_slider.valueChanged.connect(self.on_decay_changed)
         controls_layout.addWidget(self.decay_slider)
@@ -242,7 +247,7 @@ class GoniometerWidget(QWidget):
         # Glow
         controls_layout.addWidget(QLabel(tr("Glow:")))
         self.glow_slider = QSlider(Qt.Orientation.Horizontal)
-        self.glow_slider.setRange(0, 50) # 0.0 to 5.0 sigma
+        self.glow_slider.setRange(0, 50)  # 0.0 to 5.0 sigma
         self.glow_slider.setValue(int(self.module.glow_amount * 10))
         self.glow_slider.valueChanged.connect(self.on_glow_changed)
         controls_layout.addWidget(self.glow_slider)
@@ -256,8 +261,8 @@ class GoniometerWidget(QWidget):
         # Gain
         controls_layout.addWidget(QLabel(tr("Gain:")))
         self.gain_slider = QSlider(Qt.Orientation.Horizontal)
-        self.gain_slider.setRange(1, 100) # 0.1x to 10.0x
-        self.gain_slider.setValue(10) # 1.0x
+        self.gain_slider.setRange(1, 100)  # 0.1x to 10.0x
+        self.gain_slider.setValue(10)  # 1.0x
         self.gain_slider.valueChanged.connect(self.on_gain_changed)
         controls_layout.addWidget(self.gain_slider)
 
@@ -266,7 +271,7 @@ class GoniometerWidget(QWidget):
 
         # Auto Gain
         self.auto_gain_chk = QCheckBox(tr("Auto Gain"))
-        self.auto_gain_chk.toggled.connect(lambda x: setattr(self.module, 'auto_gain', x))
+        self.auto_gain_chk.toggled.connect(lambda x: setattr(self.module, "auto_gain", x))
         controls_layout.addWidget(self.auto_gain_chk)
 
         # Axis inversion (useful for oscilloscope XY alignment)
@@ -293,8 +298,8 @@ class GoniometerWidget(QWidget):
 
     def on_mapping_changed(self, _index: int):
         mode = self.mapping_combo.currentData()
-        if mode not in ('ms', 'lr'):
-            mode = 'ms'
+        if mode not in ("ms", "lr"):
+            mode = "ms"
         if self.module.mapping_mode != mode:
             self.module.mapping_mode = mode
             # Reset phosphor history to avoid mixing coordinate systems
@@ -321,7 +326,7 @@ class GoniometerWidget(QWidget):
         - In L/R mode: show mono (L=R) and anti-phase (L=-R) diagonals.
         - In M/S mode: show mono (Side=0) vertical and anti-phase (Mid=0) horizontal.
         """
-        if self.module.mapping_mode == 'lr':
+        if self.module.mapping_mode == "lr":
             sx = -1 if self.module.invert_x else 1
             sy = -1 if self.module.invert_y else 1
             # Mono line: y = (sy/sx) * x
@@ -335,7 +340,7 @@ class GoniometerWidget(QWidget):
             self.ref_line_b.setAngle(0)
 
     def _compute_xy(self, left: np.ndarray, right: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        if self.module.mapping_mode == 'lr':
+        if self.module.mapping_mode == "lr":
             x = left
             y = right
         else:
@@ -368,10 +373,10 @@ class GoniometerWidget(QWidget):
 
     def on_mode_changed(self, _index):
         mode = self.mode_combo.currentData()
-        if mode not in ('Line', 'Phosphor'):
-            mode = 'Line'
+        if mode not in ("Line", "Phosphor"):
+            mode = "Line"
         self.module.display_mode = mode
-        if mode == 'Line':
+        if mode == "Line":
             self.trace.setVisible(True)
             self.img_item.setVisible(False)
         else:
@@ -380,8 +385,8 @@ class GoniometerWidget(QWidget):
 
     def on_palette_changed(self, _index):
         palette = self.palette_combo.currentData()
-        if palette not in ('Green', 'Fire', 'Ice', 'Rainbow'):
-            palette = 'Green'
+        if palette not in ("Green", "Fire", "Ice", "Rainbow"):
+            palette = "Green"
         self.module.color_palette = palette
         self.update_palette()
 
@@ -402,7 +407,7 @@ class GoniometerWidget(QWidget):
 
         name = self.module.color_palette
 
-        if name == 'Green':
+        if name == "Green":
             # Black -> Green -> White
             # 0.0 -> (0,0,0)
             # 0.8 -> (0,255,0)
@@ -414,9 +419,9 @@ class GoniometerWidget(QWidget):
                     colors[i] = [0, g, 0, 255]
                 else:
                     rem = (val - 0.8) / 0.2
-                    colors[i] = [int(rem*255), 255, int(rem*255), 255]
+                    colors[i] = [int(rem * 255), 255, int(rem * 255), 255]
 
-        elif name == 'Fire':
+        elif name == "Fire":
             # Black -> Red -> Yellow -> White
             for i in range(256):
                 val = i / 255.0
@@ -430,7 +435,7 @@ class GoniometerWidget(QWidget):
                     b = int(((val - 0.66) / 0.34) * 255)
                     colors[i] = [255, 255, b, 255]
 
-        elif name == 'Ice':
+        elif name == "Ice":
             # Black -> Blue -> Cyan -> White
             for i in range(256):
                 val = i / 255.0
@@ -441,9 +446,10 @@ class GoniometerWidget(QWidget):
                     g = int(((val - 0.5) / 0.5) * 255)
                     colors[i] = [0, g, 255, 255]
 
-        elif name == 'Rainbow':
+        elif name == "Rainbow":
             # HSL rainbow
             import colorsys
+
             for i in range(256):
                 val = i / 255.0
                 # Hue goes 0..1, Sat 1, Val 1
@@ -451,11 +457,11 @@ class GoniometerWidget(QWidget):
                 # Usually rainbow maps value to hue.
                 # Let's map low intensity to blue, high to red?
                 # Or just standard heatmap: Blue -> Cyan -> Green -> Yellow -> Red
-                h = (1.0 - val) * 0.66 # Blue(0.66) to Red(0)
+                h = (1.0 - val) * 0.66  # Blue(0.66) to Red(0)
                 r, g, b = colorsys.hsv_to_rgb(h, 1.0, 1.0)
                 # Apply intensity fade for low values
                 alpha = min(1.0, val * 2)
-                colors[i] = [int(r*255*alpha), int(g*255*alpha), int(b*255*alpha), 255]
+                colors[i] = [int(r * 255 * alpha), int(g * 255 * alpha), int(b * 255 * alpha), 255]
 
         # Apply to ImageItem
         # pyqtgraph colormap
@@ -464,17 +470,18 @@ class GoniometerWidget(QWidget):
 
         # Also update line trace color if in line mode?
         # Maybe just keep line trace simple.
-        if name == 'Green':
+        if name == "Green":
             self.trace.setPen(pg.mkPen(color=(0, 255, 0, 200), width=1))
-        elif name == 'Fire':
+        elif name == "Fire":
             self.trace.setPen(pg.mkPen(color=(255, 100, 0, 200), width=1))
-        elif name == 'Ice':
+        elif name == "Ice":
             self.trace.setPen(pg.mkPen(color=(0, 200, 255, 200), width=1))
-        elif name == 'Rainbow':
+        elif name == "Rainbow":
             self.trace.setPen(pg.mkPen(color=(200, 0, 255, 200), width=1))
 
     def update_display(self):
-        if not self.module.is_running: return
+        if not self.module.is_running:
+            return
 
         # Get data
         data = self.module.audio_buffer
@@ -485,7 +492,7 @@ class GoniometerWidget(QWidget):
         if self.module.auto_gain:
             peak = np.max(np.abs(data))
             if peak > 1e-6:
-                gain = 0.8 / peak # Target 0.8 peak
+                gain = 0.8 / peak  # Target 0.8 peak
                 self.module.gain = self.module.gain * 0.9 + gain * 0.1
 
         left = left * self.module.gain
@@ -493,7 +500,7 @@ class GoniometerWidget(QWidget):
 
         x, y = self._compute_xy(left, right)
 
-        if self.module.display_mode == 'Line':
+        if self.module.display_mode == "Line":
             self.trace.setData(x, y)
         else:
             # Phosphor Mode
@@ -509,7 +516,7 @@ class GoniometerWidget(QWidget):
                 # Linear interpolation to fill gaps
                 # 4x oversampling is usually enough for typical audio buffers
                 t = np.arange(len(x))
-                t_new = np.linspace(0, len(x)-1, len(x)*4)
+                t_new = np.linspace(0, len(x) - 1, len(x) * 4)
                 x = np.interp(t_new, t, x)
                 y = np.interp(t_new, t, y)
 
@@ -520,7 +527,7 @@ class GoniometerWidget(QWidget):
             # Log compression for better dynamic range?
             # h = np.log1p(h)
 
-            self.module.heatmap += h * 0.5 # Scale factor
+            self.module.heatmap += h * 0.5  # Scale factor
 
             # Display
             display_data = self.module.heatmap.T
@@ -531,8 +538,7 @@ class GoniometerWidget(QWidget):
                 display_data = gaussian_filter(display_data, sigma=self.module.glow_amount)
 
             self.img_item.setImage(display_data, autoLevels=False)
-            self.img_item.setLevels([0, 50]) # Adjust max level for sensitivity
-
+            self.img_item.setLevels([0, 50])  # Adjust max level for sensitivity
 
         # Update Correlation
         corr = self.module.correlation
@@ -548,10 +554,10 @@ class GoniometerWidget(QWidget):
         self.corr_bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
 
     def apply_theme(self, theme_name):
-        if theme_name == 'system' and hasattr(self.app, 'theme_manager'):
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == 'dark':
+        if theme_name == "dark":
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
                 "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"

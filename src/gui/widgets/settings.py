@@ -28,6 +28,7 @@ from src.core.fft_manager import fft_manager
 from PyQt6.QtWidgets import QProgressDialog
 from PyQt6.QtCore import Qt
 
+
 def _design_c_weighting(sr: float):
     """Design digital C-weighting filter (IEC 61672) for sample rate sr."""
     sr = float(sr)
@@ -45,7 +46,7 @@ def _design_c_weighting(sr: float):
 
     # Normalize to 0 dB at 1 kHz
     s = 1j * 2 * np.pi * 1000.0
-    h = gain * (s**2) / ((s + w1)**2 * (s + w2)**2)
+    h = gain * (s**2) / ((s + w1) ** 2 * (s + w2) ** 2)
     gain = 1.0 / np.abs(h)
 
     z, p, k = scipy.signal.bilinear_zpk(zeros, poles, gain, fs=sr)
@@ -228,10 +229,10 @@ class SplCalibrationDialog(QDialog):
         self.level_unit_combo.clear()
         self.level_unit_combo.addItem("dBFS")
 
-        cal = getattr(self.audio_engine, 'calibration', None)
+        cal = getattr(self.audio_engine, "calibration", None)
         has_output_cal = False
         try:
-            has_output_cal = bool(getattr(cal, 'output_gain_is_calibrated', False))
+            has_output_cal = bool(getattr(cal, "output_gain_is_calibrated", False))
         except Exception:
             has_output_cal = False
 
@@ -319,7 +320,7 @@ class SplCalibrationDialog(QDialog):
         if not (0 < low_norm < high_norm < 1):
             raise ValueError(tr("Measurement bandwidth is outside the valid range for this sample rate."))
 
-        sos = scipy.signal.butter(4, [low_norm, high_norm], btype='bandpass', output='sos')
+        sos = scipy.signal.butter(4, [low_norm, high_norm], btype="bandpass", output="sos")
         zi = np.zeros((sos.shape[0], 2), dtype=np.float64)
         return sos, zi
 
@@ -333,7 +334,7 @@ class SplCalibrationDialog(QDialog):
 
         # Voltage-based units require output calibration
         cal = self.audio_engine.calibration
-        out_gain = float(getattr(cal, 'output_gain', 0.0) or 0.0)
+        out_gain = float(getattr(cal, "output_gain", 0.0) or 0.0)
         if out_gain <= 0 or not np.isfinite(out_gain):
             raise ValueError(tr("Output calibration is required for voltage units."))
 
@@ -370,7 +371,7 @@ class SplCalibrationDialog(QDialog):
             raise ValueError("Invalid bandpass settings")
 
         # Use SOS for numerical stability, especially at very low normalized frequencies.
-        bpf_sos = scipy.signal.butter(4, [low, high], btype='bandpass', output='sos')
+        bpf_sos = scipy.signal.butter(4, [low, high], btype="bandpass", output="sos")
         self._bpf_sos = bpf_sos
         # Streaming state for sosfilt: shape (n_sections, 2)
         self._bpf_zi = np.zeros((bpf_sos.shape[0], 2), dtype=np.float64)
@@ -494,9 +495,7 @@ class SplCalibrationDialog(QDialog):
             self.avg_spin.setEnabled(True)
 
     def update_level(self):
-        self.level_label.setText(
-            tr("Input Level (C-weighted): {0:.1f} dBFS").format(self.current_dbfs_c)
-        )
+        self.level_label.setText(tr("Input Level (C-weighted): {0:.1f} dBFS").format(self.current_dbfs_c))
 
     def on_save(self):
         try:
@@ -519,7 +518,9 @@ class SplCalibrationDialog(QDialog):
             QMessageBox.information(
                 self,
                 tr("Success"),
-                tr("SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)").format(off if off is not None else 0.0),
+                tr("SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)").format(
+                    off if off is not None else 0.0
+                ),
             )
 
             # Stop test signal immediately after saving.
@@ -534,6 +535,7 @@ class SplCalibrationDialog(QDialog):
     def closeEvent(self, event):
         self.stop_measurement()
         super().closeEvent(event)
+
 
 class OutputCalibrationDialog(QDialog):
     def __init__(self, audio_engine: AudioEngine, parent=None):
@@ -604,7 +606,7 @@ class OutputCalibrationDialog(QDialog):
     def start_tone(self):
         freq = self.freq_spin.value()
         dbfs = self.level_spin.value()
-        amp = 10**(dbfs/20)
+        amp = 10 ** (dbfs / 20)
         sr = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
@@ -642,16 +644,16 @@ class OutputCalibrationDialog(QDialog):
             elif unit == "mVrms":
                 v_peak = (val / 1000.0) * np.sqrt(2)
             elif unit == "dBV":
-                v_rms = 10**(val/20)
+                v_rms = 10 ** (val / 20)
                 v_peak = v_rms * np.sqrt(2)
             elif unit == "dBu":
-                v_rms = 10**((val - 2.218)/20) # 0dBu = 0.7746V
+                v_rms = 10 ** ((val - 2.218) / 20)  # 0dBu = 0.7746V
                 v_peak = v_rms * np.sqrt(2)
 
             # Calculate Gain (V/FS)
             # V_out_peak = Gain * 10^(dBFS/20)
             # Gain = V_out_peak / 10^(dBFS/20)
-            gain = v_peak / (10**(dbfs/20))
+            gain = v_peak / (10 ** (dbfs / 20))
 
             self.audio_engine.calibration.set_output_gain(gain)
             QMessageBox.information(
@@ -667,6 +669,7 @@ class OutputCalibrationDialog(QDialog):
     def closeEvent(self, event):
         self.stop_tone()
         super().closeEvent(event)
+
 
 class InputCalibrationDialog(QDialog):
     def __init__(self, audio_engine: AudioEngine, parent=None):
@@ -734,7 +737,7 @@ class InputCalibrationDialog(QDialog):
         def callback(indata, outdata, frames, time, status):
             # Calculate RMS of first channel
             if indata.shape[1] > 0:
-                rms = np.sqrt(np.mean(indata[:, 0]**2))
+                rms = np.sqrt(np.mean(indata[:, 0] ** 2))
                 db = 20 * np.log10(rms + 1e-12)
                 self.current_rms_dbfs = db
             outdata.fill(0)
@@ -767,16 +770,16 @@ class InputCalibrationDialog(QDialog):
             elif unit == "mVrms":
                 v_peak = (val / 1000.0) * np.sqrt(2)
             elif unit == "dBV":
-                v_rms = 10**(val/20)
+                v_rms = 10 ** (val / 20)
                 v_peak = v_rms * np.sqrt(2)
             elif unit == "dBu":
-                v_rms = 10**((val - 2.218)/20)
+                v_rms = 10 ** ((val - 2.218) / 20)
                 v_peak = v_rms * np.sqrt(2)
 
             # Calculate Sensitivity (V/FS)
             # Measured_FS_Peak = 10^(measured_dbfs/20) * sqrt(2)
 
-            measured_fs_peak = (10**(measured_dbfs/20)) * np.sqrt(2)
+            measured_fs_peak = (10 ** (measured_dbfs / 20)) * np.sqrt(2)
 
             # Sensitivity = Volts / FS
             # We want Measured_FS_Peak * Sensitivity = V_peak
@@ -797,16 +800,13 @@ class InputCalibrationDialog(QDialog):
         self.stop_measurement()
         super().closeEvent(event)
 
-LEVELS_192K = {
-    "FAST": 4096,
-    "MINIMUM": 8192,
-    "STABLE": 16384,
-    "LOW_FREQ": 32768,
-    "ULTRA": 65536
-}
+
+LEVELS_192K = {"FAST": 4096, "MINIMUM": 8192, "STABLE": 16384, "LOW_FREQ": 32768, "ULTRA": 65536}
+
 
 def next_power_of_two(n):
-    if n <= 0: return 256
+    if n <= 0:
+        return 256
     return 1 << (int(n) - 1).bit_length()
 
 
@@ -825,7 +825,7 @@ class SettingsWidget(QWidget):
         info to help users pick the right one.
         """
         base = f"{device_index}: {dev.get('name', '')}"
-        hostapi_name = dev.get('hostapi_name')
+        hostapi_name = dev.get("hostapi_name")
         if hostapi_name:
             return f"{base} ({hostapi_name})"
         return base
@@ -837,7 +837,7 @@ class SettingsWidget(QWidget):
                 devices = self.audio_engine.list_devices()
                 idx = int(device_index)
                 if 0 <= idx < len(devices):
-                    name = devices[idx].get('name')
+                    name = devices[idx].get("name")
                     if name:
                         return str(name)
         except Exception:
@@ -849,8 +849,8 @@ class SettingsWidget(QWidget):
         except Exception:
             raw = fallback_text
         raw = str(raw).strip()
-        if raw.endswith(')') and ' (' in raw:
-            raw = raw.rsplit(' (', 1)[0]
+        if raw.endswith(")") and " (" in raw:
+            raw = raw.rsplit(" (", 1)[0]
         return raw
 
     def init_ui(self):
@@ -878,9 +878,9 @@ class SettingsWidget(QWidget):
         manager = get_manager()
         # Sort: en first, then others
         langs = sorted(manager.available_languages.keys())
-        if 'en' in langs:
-            langs.remove('en')
-            langs.insert(0, 'en')
+        if "en" in langs:
+            langs.remove("en")
+            langs.insert(0, "en")
 
         for lang in langs:
             self.lang_combo.addItem(lang, lang)
@@ -941,7 +941,11 @@ class SettingsWidget(QWidget):
         # --- FFT Optimization ---
         fft_group = QGroupBox(tr("FFT Optimization"))
         fft_layout = QVBoxLayout()
-        fft_desc = QLabel(tr("Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M)."))
+        fft_desc = QLabel(
+            tr(
+                "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M)."
+            )
+        )
         fft_desc.setWordWrap(True)
         fft_layout.addWidget(fft_desc)
 
@@ -1000,7 +1004,7 @@ class SettingsWidget(QWidget):
 
         # Sample Rate
         self.sr_combo = QComboBox()
-        self.sr_combo.addItems(['44100', '48000', '88200', '96000', '192000'])
+        self.sr_combo.addItems(["44100", "48000", "88200", "96000", "192000"])
         self.sr_combo.setCurrentText(str(self.audio_engine.sample_rate))
         self.sr_combo.currentTextChanged.connect(self.on_sr_changed)
         conf_layout.addRow(tr("Sample Rate:"), self.sr_combo)
@@ -1022,7 +1026,7 @@ class SettingsWidget(QWidget):
 
         self.bs_combo = QComboBox()
         # Include larger buffers for stability testing; host/driver will reject unsupported sizes.
-        self.bs_combo.addItems(['256', '512', '1024', '2048', '4096', '8192', '16384', '32768', '65536'])
+        self.bs_combo.addItems(["256", "512", "1024", "2048", "4096", "8192", "16384", "32768", "65536"])
         self.bs_combo.setCurrentText(str(self.audio_engine.block_size))
         self.bs_combo.currentTextChanged.connect(self.on_bs_changed)
 
@@ -1033,19 +1037,19 @@ class SettingsWidget(QWidget):
         bs_layout.setContentsMargins(0, 0, 0, 0)
         bs_layout.addWidget(self.bs_combo)
         bs_layout.addWidget(self.bs_duration_label)
-        bs_layout.addStretch() # Keep it to the left
+        bs_layout.addStretch()  # Keep it to the left
         conf_layout.addRow(tr("Buffer Size:"), bs_layout)
 
         # Input Channels
         self.in_ch_combo = QComboBox()
-        self.in_ch_combo.addItems([tr('Stereo'), tr('Left'), tr('Right')])
+        self.in_ch_combo.addItems([tr("Stereo"), tr("Left"), tr("Right")])
         self.in_ch_combo.setCurrentText(self.audio_engine.input_channel_mode.capitalize())
         self.in_ch_combo.currentTextChanged.connect(self.on_ch_mode_changed)
         conf_layout.addRow(tr("Input Channels:"), self.in_ch_combo)
 
         # Output Channels
         self.out_ch_combo = QComboBox()
-        self.out_ch_combo.addItems([tr('Stereo'), tr('Left'), tr('Right')])
+        self.out_ch_combo.addItems([tr("Stereo"), tr("Left"), tr("Right")])
         self.out_ch_combo.setCurrentText(self.audio_engine.output_channel_mode.capitalize())
         self.out_ch_combo.currentTextChanged.connect(self.on_ch_mode_changed)
         conf_layout.addRow(tr("Output Channels:"), self.out_ch_combo)
@@ -1214,7 +1218,9 @@ class SettingsWidget(QWidget):
             # Only save if changed
             if lang != self.config_manager.get_language():
                 self.config_manager.set_language(lang)
-                QMessageBox.information(self, tr("Restart Required"), tr("Please restart the application to apply language changes."))
+                QMessageBox.information(
+                    self, tr("Restart Required"), tr("Please restart the application to apply language changes.")
+                )
 
     def on_theme_changed(self):
         theme = self.theme_combo.currentData()
@@ -1224,8 +1230,9 @@ class SettingsWidget(QWidget):
                 self.config_manager.set_theme(theme)
                 # Apply theme immediately if ThemeManager is available
                 from PyQt6.QtWidgets import QApplication
+
                 app = QApplication.instance()
-                if hasattr(app, 'theme_manager'):
+                if hasattr(app, "theme_manager"):
                     app.theme_manager.set_theme(theme)
 
     def on_screenshot_dir_changed(self):
@@ -1244,7 +1251,6 @@ class SettingsWidget(QWidget):
             return
         self.screenshot_dir_edit.setText(selected)
         self.config_manager.set_screenshot_output_dir(selected)
-
 
     def open_input_calibration(self):
         dlg = InputCalibrationDialog(self.audio_engine, self)
@@ -1300,9 +1306,9 @@ class SettingsWidget(QWidget):
 
         for i, dev in enumerate(devices):
             name = self._format_device_label(i, dev)
-            if dev['max_input_channels'] > 0:
+            if dev["max_input_channels"] > 0:
                 self.input_combo.addItem(name, i)
-            if dev['max_output_channels'] > 0:
+            if dev["max_output_channels"] > 0:
                 self.output_combo.addItem(name, i)
 
         # Restore selection if possible
@@ -1323,7 +1329,7 @@ class SettingsWidget(QWidget):
             self.input_combo.currentIndexChanged.disconnect()
             self.output_combo.currentIndexChanged.disconnect()
         except TypeError:
-            pass # Not connected yet
+            pass  # Not connected yet
 
         self.input_combo.currentIndexChanged.connect(self.on_device_changed)
         self.output_combo.currentIndexChanged.connect(self.on_device_changed)
@@ -1348,10 +1354,12 @@ class SettingsWidget(QWidget):
                     self.audio_engine.sample_rate,
                     self.audio_engine.block_size,
                     self.audio_engine.input_channel_mode,
-                    self.audio_engine.output_channel_mode
+                    self.audio_engine.output_channel_mode,
                 )
 
-                QMessageBox.information(self, tr("Success"), f"{tr('Devices set to Input:')} {input_idx}, {tr('Output:')} {output_idx}")
+                QMessageBox.information(
+                    self, tr("Success"), f"{tr('Devices set to Input:')} {input_idx}, {tr('Output:')} {output_idx}"
+                )
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to set devices:')} {e}")
 
@@ -1377,7 +1385,7 @@ class SettingsWidget(QWidget):
                 # This will trigger on_bs_changed which syncs config
                 self.bs_combo.setCurrentText(str(target_bs))
             else:
-                 self._sync_buffer_level_from_size(self.audio_engine.block_size, rate)
+                self._sync_buffer_level_from_size(self.audio_engine.block_size, rate)
 
             # Save config
             if self.input_combo.currentIndex() >= 0:
@@ -1386,10 +1394,12 @@ class SettingsWidget(QWidget):
                 in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
                 self.config_manager.set_audio_config(
-                    in_name, out_name, rate,
+                    in_name,
+                    out_name,
+                    rate,
                     self.audio_engine.block_size,
                     self.audio_engine.input_channel_mode,
-                    self.audio_engine.output_channel_mode
+                    self.audio_engine.output_channel_mode,
                 )
         except ValueError:
             pass
@@ -1410,11 +1420,12 @@ class SettingsWidget(QWidget):
                 in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
                 self.config_manager.set_audio_config(
-                    in_name, out_name,
+                    in_name,
+                    out_name,
                     self.audio_engine.sample_rate,
                     size,
                     self.audio_engine.input_channel_mode,
-                    self.audio_engine.output_channel_mode
+                    self.audio_engine.output_channel_mode,
                 )
         except ValueError:
             pass
@@ -1471,12 +1482,8 @@ class SettingsWidget(QWidget):
             in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
             out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
             self.config_manager.set_audio_config(
-                in_name, out_name,
-                self.audio_engine.sample_rate,
-                self.audio_engine.block_size,
-                in_mode, out_mode
+                in_name, out_name, self.audio_engine.sample_rate, self.audio_engine.block_size, in_mode, out_mode
             )
-
 
     def on_regenerate_fft(self):
         # Create a modal progress dialog
@@ -1535,7 +1542,7 @@ class SettingsWidget(QWidget):
         name = self.cal_profile_combo.currentText()
         profiles = self.audio_engine.calibration.get_profiles()
         if name in profiles:
-            dev_name = profiles[name].get('device_name', '')
+            dev_name = profiles[name].get("device_name", "")
             self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
             self.load_prof_btn.setEnabled(True)
             self.del_prof_btn.setEnabled(True)
@@ -1557,14 +1564,17 @@ class SettingsWidget(QWidget):
             in_dev_id = self.audio_engine.input_device
             dev_name = "Unknown"
             if in_dev_id is not None and 0 <= int(in_dev_id) < len(devices):
-                dev_name = devices[int(in_dev_id)].get('name', 'Unknown')
+                dev_name = devices[int(in_dev_id)].get("name", "Unknown")
         except Exception:
             dev_name = "Unknown"
 
         if name in self.audio_engine.calibration.get_profiles():
-            ret = QMessageBox.question(self, tr("Confirm Overwrite"), 
-                                       tr("Profile '{0}' already exists. Overwrite?").format(name),
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            ret = QMessageBox.question(
+                self,
+                tr("Confirm Overwrite"),
+                tr("Profile '{0}' already exists. Overwrite?").format(name),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
             if ret != QMessageBox.StandardButton.Yes:
                 return
 
@@ -1600,9 +1610,12 @@ class SettingsWidget(QWidget):
         if not name:
             return
 
-        ret = QMessageBox.question(self, tr("Confirm Delete"), 
-                                   tr("Delete profile '{0}'?").format(name),
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        ret = QMessageBox.question(
+            self,
+            tr("Confirm Delete"),
+            tr("Delete profile '{0}'?").format(name),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if ret == QMessageBox.StandardButton.Yes:
             try:
                 self.audio_engine.calibration.delete_profile(name)

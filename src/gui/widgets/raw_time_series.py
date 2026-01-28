@@ -1,4 +1,3 @@
-
 import argparse
 import threading
 
@@ -100,10 +99,10 @@ class RawTimeSeries(MeasurementModule):
 
                     end = self._write_pos + n
                     if end <= buf_len:
-                        self._buf[self._write_pos:end, :] = dec
+                        self._buf[self._write_pos : end, :] = dec
                     else:
                         first = buf_len - self._write_pos
-                        self._buf[self._write_pos:buf_len, :] = dec[:first]
+                        self._buf[self._write_pos : buf_len, :] = dec[:first]
                         self._buf[0 : (n - first), :] = dec[first:]
 
                     self._write_pos = (self._write_pos + n) % buf_len
@@ -156,7 +155,7 @@ class RawTimeSeries(MeasurementModule):
             return None
 
         # Time axis aligned to "now" at t=0
-        t = (np.arange(-len(data) + 1, 1, dtype=np.float32) / float(self.storage_rate_hz))
+        t = np.arange(-len(data) + 1, 1, dtype=np.float32) / float(self.storage_rate_hz)
         return t, data
 
 
@@ -197,9 +196,7 @@ class RawTimeSeriesWidget(QWidget):
 
         # Make CH1/CH2 plot areas visually equal.
         # CH2 has a bottom axis label, which otherwise shrinks its viewbox.
-        bottom_axis_h = int(
-            self.plot_ch2.getAxis("bottom").sizeHint(Qt.SizeHint.PreferredSize).height()
-        )
+        bottom_axis_h = int(self.plot_ch2.getAxis("bottom").sizeHint(Qt.SizeHint.PreferredSize).height())
         self.plot_ch1.getAxis("bottom").setHeight(bottom_axis_h)
         self.plot_ch2.getAxis("bottom").setHeight(bottom_axis_h)
         # Keep CH1 clean while reserving the same axis space.
@@ -237,7 +234,7 @@ class RawTimeSeriesWidget(QWidget):
 
         # Time span
         span_row = QHBoxLayout()
-        span_row.addWidget(QLabel(tr("Time Span:") ))
+        span_row.addWidget(QLabel(tr("Time Span:")))
         self.combo_span = QComboBox()
         self._span_options = {
             "10 s": 10.0,

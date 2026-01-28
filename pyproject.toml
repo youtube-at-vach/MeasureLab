@@ -42,7 +42,7 @@ select = ["E9", "F", "E7", "W292", "W293"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
-"src/**" = ["E701"]
+
 
 [tool.mypy]
 python_version = "3.10"

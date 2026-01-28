@@ -1,4 +1,3 @@
-
 from collections import deque
 
 import numpy as np
@@ -30,7 +29,7 @@ class LockInTHDAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.buffer_size = 8192 # Good compromise for latency vs precision
+        self.buffer_size = 8192  # Good compromise for latency vs precision
         self.input_data = np.zeros(self.buffer_size)
         self.residual_data = np.zeros(self.buffer_size)
 
@@ -42,7 +41,7 @@ class LockInTHDAnalyzer(MeasurementModule):
         self.output_enabled = True
 
         # Analysis State
-        self.target_freq = 1000.0 # Typically same as gen_freq for internal mode
+        self.target_freq = 1000.0  # Typically same as gen_freq for internal mode
         self.harmonic_count = 10
         self.bw_low = 20.0
         self.bw_high = 20000.0
@@ -82,7 +81,8 @@ class LockInTHDAnalyzer(MeasurementModule):
         return LockInTHDWidget(self)
 
     def start_analysis(self):
-        if self.is_running: return
+        if self.is_running:
+            return
         self.is_running = True
 
         sample_rate = self.audio_engine.sample_rate
@@ -106,8 +106,9 @@ class LockInTHDAnalyzer(MeasurementModule):
                 self._phase_gen += frames
                 sig = self.gen_amplitude * np.sin(2 * np.pi * self.gen_frequency * t)
 
-                if self.output_channel == 2: # Stereo
-                    if outdata.shape[1] >= 2: outdata[:, :2] = sig[:, np.newaxis]
+                if self.output_channel == 2:  # Stereo
+                    if outdata.shape[1] >= 2:
+                        outdata[:, :2] = sig[:, np.newaxis]
                 elif outdata.shape[1] > self.output_channel:
                     outdata[:, self.output_channel] = sig
 
@@ -119,22 +120,23 @@ class LockInTHDAnalyzer(MeasurementModule):
 
             # Update Ring Buffer
             if len(in_sig) > self.buffer_size:
-                self.input_data[:] = in_sig[-self.buffer_size:]
+                self.input_data[:] = in_sig[-self.buffer_size :]
             else:
                 self.input_data = np.roll(self.input_data, -len(in_sig))
-                self.input_data[-len(in_sig):] = in_sig
+                self.input_data[-len(in_sig) :] = in_sig
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
     def stop_analysis(self):
         if self.is_running:
-            self.is_running = False # Flag first
+            self.is_running = False  # Flag first
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
 
     def process(self):
-        if not self.is_running: return
+        if not self.is_running:
+            return
 
         # Snapshot of buffer
         data_full = self.input_data.copy()
@@ -144,7 +146,8 @@ class LockInTHDAnalyzer(MeasurementModule):
         # This is crucial for Lock-in detection to avoid spectral leakage
         # when the buffer size is not an integer multiple of the signal period.
         f0 = self.gen_frequency
-        if f0 <= 0: return
+        if f0 <= 0:
+            return
 
         samples_per_cycle = fs / f0
         n_cycles = int(len(data_full) / samples_per_cycle)
@@ -190,7 +193,7 @@ class LockInTHDAnalyzer(MeasurementModule):
 
         self.fund_amp = amp
         self.fund_phase = phase
-        self.measured_freq = f0 # For display
+        self.measured_freq = f0  # For display
 
         # Reconstruction
         # s_est = amp * cos(2*pi*f0*t + phase)
@@ -207,11 +210,11 @@ class LockInTHDAnalyzer(MeasurementModule):
         high = min(nyquist - 1, self.bw_high)
 
         if low > 0 and low < high:
-            sos_hp = butter(4, low, 'hp', fs=fs, output='sos')
+            sos_hp = butter(4, low, "hp", fs=fs, output="sos")
             residual = sosfiltfilt(sos_hp, residual)
 
         if high < nyquist:
-            sos_lp = butter(4, high, 'lp', fs=fs, output='sos')
+            sos_lp = butter(4, high, "lp", fs=fs, output="sos")
             residual = sosfiltfilt(sos_lp, residual)
 
         self.residual_data = residual
@@ -222,7 +225,7 @@ class LockInTHDAnalyzer(MeasurementModule):
         # Calculate RMS
         # Remove edges to avoid filter artifacts ?
         trim = 100
-        if len(residual) > 2*trim:
+        if len(residual) > 2 * trim:
             res_valid = residual[trim:-trim]
         else:
             res_valid = residual
@@ -262,7 +265,7 @@ class LockInTHDWidget(QWidget):
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
-        self.timer.setInterval(100) # 10 Hz
+        self.timer.setInterval(100)  # 10 Hz
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -284,7 +287,7 @@ class LockInTHDWidget(QWidget):
         # Set initial index based on module state (0=Left, 1=Right)
         initial_idx = 0 if self.module.input_channel == 0 else 1
         self.combo_input_ch.setCurrentIndex(initial_idx)
-        self.combo_input_ch.currentIndexChanged.connect(lambda v: setattr(self.module, 'input_channel', v))
+        self.combo_input_ch.currentIndexChanged.connect(lambda v: setattr(self.module, "input_channel", v))
         form.addRow(tr("Input Channel:"), self.combo_input_ch)
 
         # Output Channel
@@ -309,7 +312,7 @@ class LockInTHDWidget(QWidget):
         self.amp_spin.valueChanged.connect(self.on_amp_changed)
 
         self.amp_unit_combo = QComboBox()
-        self.amp_unit_combo.addItems(['dBFS', 'dBV', 'dBu', 'Vrms'])
+        self.amp_unit_combo.addItems(["dBFS", "dBV", "dBu", "Vrms"])
         self.amp_unit_combo.currentTextChanged.connect(self.on_amp_unit_changed)
 
         amp_layout = QHBoxLayout()
@@ -320,20 +323,20 @@ class LockInTHDWidget(QWidget):
         self.bw_low_spin = QDoubleSpinBox()
         self.bw_low_spin.setRange(0, 1000)
         self.bw_low_spin.setValue(20)
-        self.bw_low_spin.valueChanged.connect(lambda v: setattr(self.module, 'bw_low', v))
+        self.bw_low_spin.valueChanged.connect(lambda v: setattr(self.module, "bw_low", v))
         form.addRow(tr("HPF (Hz):"), self.bw_low_spin)
 
         self.bw_high_spin = QDoubleSpinBox()
         self.bw_high_spin.setRange(1000, 48000)
         self.bw_high_spin.setValue(20000)
-        self.bw_high_spin.valueChanged.connect(lambda v: setattr(self.module, 'bw_high', v))
+        self.bw_high_spin.valueChanged.connect(lambda v: setattr(self.module, "bw_high", v))
         form.addRow(tr("LPF (Hz):"), self.bw_high_spin)
 
         # Averaging
         self.spin_avg = QSpinBox()
         self.spin_avg.setRange(1, 100)
         self.spin_avg.setValue(1)
-        self.spin_avg.valueChanged.connect(lambda v: setattr(self.module, 'average_count', v))
+        self.spin_avg.valueChanged.connect(lambda v: setattr(self.module, "average_count", v))
         form.addRow(tr("Averages:"), self.spin_avg)
 
         settings_group.setLayout(form)
@@ -398,24 +401,24 @@ class LockInTHDWidget(QWidget):
         pwc_layout.addWidget(self.plot_time)
         plot_widget_container.setLayout(pwc_layout)
 
-        self.curve_input = self.plot_time.plot(pen='c', name="Input")
-        self.curve_resid = self.plot_time.plot(pen='r', name="Residual (x10)")
+        self.curve_input = self.plot_time.plot(pen="c", name="Input")
+        self.curve_resid = self.plot_time.plot(pen="r", name="Residual (x10)")
         self.tabs.addTab(plot_widget_container, "Waveform")
 
         # Plot 2: Residual-only Time Domain
         self.plot_res_time = pg.PlotWidget(title="Residual Only")
         self.plot_res_time.addLegend()
-        self.curve_res_time = self.plot_res_time.plot(pen='m', name="Residual")
-        self.curve_res_time_avg = self.plot_res_time.plot(pen='y', name="Moving Avg")
+        self.curve_res_time = self.plot_res_time.plot(pen="m", name="Residual")
+        self.curve_res_time_avg = self.plot_res_time.plot(pen="y", name="Moving Avg")
         self.tabs.addTab(self.plot_res_time, "Residual")
 
         # Plot 3: Spectrum (Residual)
         self.plot_spec = pg.PlotWidget(title="Residual Spectrum")
         self.plot_spec.setLogMode(x=True, y=False)
-        self.plot_spec.setLabel('bottom', 'Frequency', units='Hz')
-        self.plot_spec.setLabel('left', 'Magnitude', units='dB')
+        self.plot_spec.setLabel("bottom", "Frequency", units="Hz")
+        self.plot_spec.setLabel("left", "Magnitude", units="dB")
         self.plot_spec.showGrid(x=True, y=True)
-        self.curve_spec = self.plot_spec.plot(pen='y')
+        self.curve_spec = self.plot_spec.plot(pen="y")
         self.tabs.addTab(self.plot_spec, "Spectrum")
 
         right_panel.addWidget(self.tabs)
@@ -431,18 +434,9 @@ class LockInTHDWidget(QWidget):
             return f"0 {unit}"
         exponent = int(np.floor(np.log10(abs(value)) / 3) * 3)
         exponent = max(min(exponent, 9), -12)
-        prefixes = {
-            -12: 'p',
-            -9: 'n',
-            -6: 'u',
-            -3: 'm',
-            0: '',
-            3: 'k',
-            6: 'M',
-            9: 'G'
-        }
-        scaled = value / (10 ** exponent)
-        prefix = prefixes.get(exponent, '')
+        prefixes = {-12: "p", -9: "n", -6: "u", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
+        scaled = value / (10**exponent)
+        prefix = prefixes.get(exponent, "")
         return f"{scaled:.3g} {prefix}{unit}"
 
     def on_toggle(self, checked):
@@ -461,23 +455,23 @@ class LockInTHDWidget(QWidget):
         gain = self.module.audio_engine.calibration.output_gain
 
         self.amp_spin.blockSignals(True)
-        if unit == 'dBFS':
+        if unit == "dBFS":
             val = 20 * np.log10(amp_linear + 1e-12)
             self.amp_spin.setRange(-120, 6)
             self.amp_spin.setSingleStep(1.0)
-        elif unit == 'dBV':
+        elif unit == "dBV":
             v_peak = amp_linear * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(0.5)
-        elif unit == 'dBu':
+        elif unit == "dBu":
             v_peak = amp_linear * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(0.5)
-        else: # Vrms
+        else:  # Vrms
             v_peak = amp_linear * gain
             val = v_peak / np.sqrt(2)
             self.amp_spin.setRange(0, 100)
@@ -490,17 +484,17 @@ class LockInTHDWidget(QWidget):
         unit = self.amp_unit_combo.currentText()
         gain = self.module.audio_engine.calibration.output_gain
 
-        if unit == 'dBFS':
-            amp_linear = 10**(val/20)
-        elif unit == 'dBV':
-            v_rms = 10**(val/20)
+        if unit == "dBFS":
+            amp_linear = 10 ** (val / 20)
+        elif unit == "dBV":
+            v_rms = 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_linear = v_peak / gain
-        elif unit == 'dBu':
-            v_rms = 0.7746 * 10**(val/20)
+        elif unit == "dBu":
+            v_rms = 0.7746 * 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_linear = v_peak / gain
-        else: # Vrms
+        else:  # Vrms
             v_peak = val * np.sqrt(2)
             amp_linear = v_peak / gain
 
@@ -521,7 +515,8 @@ class LockInTHDWidget(QWidget):
             self.curve_input.setVisible(False)
 
     def update_ui(self):
-        if not self.module.is_running: return
+        if not self.module.is_running:
+            return
 
         # Trigger processing
         self.module.process()
@@ -551,7 +546,7 @@ class LockInTHDWidget(QWidget):
             fund_str = f"{fund_dbv:.2f} dBV ( {self._format_si(fund_rms_v, 'V')} rms )"
             res_str = f"{res_dbv:.2f} dBV ( {self._format_si(res_rms_v, 'V')} rms )"
 
-        else: # dBFS
+        else:  # dBFS
             fund_dbfs = 20 * np.log10(fund_peak_fs + 1e-12)
             res_dbfs = 20 * np.log10(res_rms_fs + 1e-12)
             fund_str = f"{fund_dbfs:.2f} dBFS"
@@ -579,11 +574,11 @@ class LockInTHDWidget(QWidget):
             x_hist = np.arange(len(res_hist)) / fs
             self.curve_res_time.setData(x_hist, res_hist)
             # Moving average to show slow drift / integration
-            win = max(10, min(len(res_hist)//20, 2000))
+            win = max(10, min(len(res_hist) // 20, 2000))
             if win < len(res_hist):
                 kernel = np.ones(win) / win
-                ma = np.convolve(res_hist, kernel, mode='valid')
-                x_ma = x_hist[win-1:]
+                ma = np.convolve(res_hist, kernel, mode="valid")
+                x_ma = x_hist[win - 1 :]
                 self.curve_res_time_avg.setData(x_ma, ma)
             else:
                 self.curve_res_time_avg.setData([], [])
@@ -597,7 +592,7 @@ class LockInTHDWidget(QWidget):
             window = np.hanning(len(res))
             fft_res = fft_manager.rfft(res * window)
             mag = 20 * np.log10(np.abs(fft_res) / len(res) * 2 + 1e-12)
-            freqs = fft_manager.rfftfreq(len(res), 1/self.module.audio_engine.sample_rate)
+            freqs = fft_manager.rfftfreq(len(res), 1 / self.module.audio_engine.sample_rate)
 
             # Skip DC
             self.curve_spec.setData(freqs[1:], mag[1:])

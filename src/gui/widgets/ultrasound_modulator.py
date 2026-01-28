@@ -41,9 +41,9 @@ class UltrasoundModulator(MeasurementModule):
         self.input_gain = 1.0
         self.enable_predistortion = False
         self.bypass = False
-        self.input_mode = 'L' # L, R, Stereo
-        self.output_mode = 'R' # L, R, Stereo
-        self.modulation_mode = 'DSB' # DSB, USB, LSB
+        self.input_mode = "L"  # L, R, Stereo
+        self.output_mode = "R"  # L, R, Stereo
+        self.modulation_mode = "DSB"  # DSB, USB, LSB
 
         # Internal State
         self._phase = 0.0
@@ -78,14 +78,14 @@ class UltrasoundModulator(MeasurementModule):
                 self._filter_sos = None
                 self._filter_zi = None
             else:
-                self._filter_sos = scipy.signal.butter(4, self.lpf_cutoff, fs=fs, output='sos')
+                self._filter_sos = scipy.signal.butter(4, self.lpf_cutoff, fs=fs, output="sos")
                 self._filter_zi = scipy.signal.sosfilt_zi(self._filter_sos)
                 # If we had multiple channels, we would need independent zi for each channel
-                # For now, we'll handle stereo by duplicating state if strictly needed, 
+                # For now, we'll handle stereo by duplicating state if strictly needed,
                 # or just filtering channels independently with new zi if it resets.
                 # To avoid clicks on param change, we ideally keep state, but zi shape depends on order.
                 # Simple approach: reset filter on param change.
-                self._filter_zi = np.zeros((self._filter_sos.shape[0], 2)) # Stereo state
+                self._filter_zi = np.zeros((self._filter_sos.shape[0], 2))  # Stereo state
 
             self._prev_fs = fs
             self._prev_cutoff = self.lpf_cutoff
@@ -98,9 +98,9 @@ class UltrasoundModulator(MeasurementModule):
                 # Note: 100Hz width requires ~500 taps. 800Hz width allows -40dB with 65 taps.
                 numtaps = 65
                 width = 800.0
-                bands = [width, fs/2 - width]
+                bands = [width, fs / 2 - width]
                 try:
-                    self._hilbert_coeffs = scipy.signal.remez(numtaps, bands, [1], type='hilbert', fs=fs)
+                    self._hilbert_coeffs = scipy.signal.remez(numtaps, bands, [1], type="hilbert", fs=fs)
                 except Exception as e:
                     print(f"Error designing Hilbert filter: {e}. Fallback to basic.")
                     # Fallback or strict error. For now, try to proceed or use zeros.
@@ -143,23 +143,23 @@ class UltrasoundModulator(MeasurementModule):
                 # We need to map Input Ch -> Output Ch.
 
                 # Fetch Source(s)
-                if self.input_mode == 'L':
+                if self.input_mode == "L":
                     # Mono source from L
-                    src = indata[:, 0] # (frames,)
-                elif self.input_mode == 'R':
+                    src = indata[:, 0]  # (frames,)
+                elif self.input_mode == "R":
                     # Mono source from R
                     if indata.shape[1] >= 2:
                         src = indata[:, 1]
                     else:
                         src = np.zeros(frames)
-                else: # Stereo
+                else:  # Stereo
                     if indata.shape[1] >= 2:
-                        src = indata[:, :2] # (frames, 2)
+                        src = indata[:, :2]  # (frames, 2)
                     else:
                         # Fallback if mono input device in stereo mode?
                         # Just replicate? Or padded? audio_engine usually handles HW mapping.
                         # Assuming logical_in is (frames, 2) usually if stereo requested.
-                        # But logical_in depends on engine config. 
+                        # But logical_in depends on engine config.
                         # Let's assume indata has at least 1 channel.
                         if indata.shape[1] == 1:
                             src = np.column_stack((indata[:, 0], indata[:, 0]))
@@ -173,19 +173,19 @@ class UltrasoundModulator(MeasurementModule):
                 src = src * self.output_gain
 
                 # Map to Output
-                if self.output_mode == 'L':
+                if self.output_mode == "L":
                     if src.ndim == 1:
                         outdata[:, 0] = src
-                    else: # src is stereo
-                        outdata[:, 0] = src[:, 0] # L -> L
-                elif self.output_mode == 'R':
+                    else:  # src is stereo
+                        outdata[:, 0] = src[:, 0]  # L -> L
+                elif self.output_mode == "R":
                     if src.ndim == 1:
                         if outdata.shape[1] >= 2:
                             outdata[:, 1] = src
                     else:
                         if outdata.shape[1] >= 2:
-                            outdata[:, 1] = src[:, 1] # R -> R
-                else: # Stereo
+                            outdata[:, 1] = src[:, 1]  # R -> R
+                else:  # Stereo
                     if src.ndim == 1:
                         # Mono source -> L+R
                         outdata[:, 0] = src
@@ -204,36 +204,35 @@ class UltrasoundModulator(MeasurementModule):
 
             signal_in = None
 
-            if self.input_mode == 'L':
+            if self.input_mode == "L":
                 signal_in = indata[:, 0]
-            elif self.input_mode == 'R':
+            elif self.input_mode == "R":
                 if indata.shape[1] >= 2:
                     signal_in = indata[:, 1]
                 else:
                     signal_in = np.zeros(frames)
-            else: # Stereo
+            else:  # Stereo
                 # "Both" means L->L, R->R. We act as stereo processor.
                 if indata.shape[1] >= 2:
                     signal_in = indata[:, :2]
                 elif indata.shape[1] == 1:
-                     # Mono input expanded to stereo?
-                     signal_in = np.column_stack((indata[:, 0], indata[:, 0]))
+                    # Mono input expanded to stereo?
+                    signal_in = np.column_stack((indata[:, 0], indata[:, 0]))
                 else:
-                     signal_in = indata[:, :2]
+                    signal_in = indata[:, :2]
 
             # Apply input gain
             signal_in = signal_in * self.input_gain
 
             # Measure Input Level (Max RMS across channels)
-            if signal_in.ndim == 2: # Stereo
-                rms_in = np.sqrt(np.mean(np.mean(signal_in**2, axis=1))) # Average power of L/R? Or Max? 
+            if signal_in.ndim == 2:  # Stereo
+                rms_in = np.sqrt(np.mean(np.mean(signal_in**2, axis=1)))  # Average power of L/R? Or Max?
                 # Let's take global RMS
                 rms_in = np.sqrt(np.mean(signal_in**2))
             else:
                 rms_in = np.sqrt(np.mean(signal_in**2))
 
             self.input_level = self.input_level * 0.8 + rms_in * 0.2
-
 
             # 3. LPF
             m = signal_in
@@ -245,10 +244,12 @@ class UltrasoundModulator(MeasurementModule):
                 channels = 1 if m.ndim == 1 else m.shape[1]
 
                 # Check zi shape
-                target_shape = (self._filter_sos.shape[0], 2) if channels == 1 else (self._filter_sos.shape[0], 2, channels)
+                target_shape = (
+                    (self._filter_sos.shape[0], 2) if channels == 1 else (self._filter_sos.shape[0], 2, channels)
+                )
 
                 if self._filter_zi is None or self._filter_zi.shape != target_shape:
-                     self._filter_zi = np.zeros(target_shape)
+                    self._filter_zi = np.zeros(target_shape)
 
                 # Execute filter
                 # axis=-1 is default.
@@ -256,9 +257,9 @@ class UltrasoundModulator(MeasurementModule):
                 # If m is (frames, 2), axis=-1 is channels. We want to filter along frames (axis 0).
 
                 if channels == 1:
-                     m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
+                    m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
                 else:
-                     m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
+                    m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
 
             # 4. Carrier
             # Same carrier for both channels usually.
@@ -277,163 +278,165 @@ class UltrasoundModulator(MeasurementModule):
             k = self.modulation_depth
 
             # Prepare modulation signal 'm' for SSB if needed
-            if self.modulation_mode == 'DSB':
-                 if self.enable_predistortion:
-                     # sqrt(1 + k*m)
-                     val = 1.0 + k * m
-                     val = np.maximum(val, 0.0)
-                     envelope = np.sqrt(val)
-                 else:
-                     envelope = (1.0 + k * m)
+            if self.modulation_mode == "DSB":
+                if self.enable_predistortion:
+                    # sqrt(1 + k*m)
+                    val = 1.0 + k * m
+                    val = np.maximum(val, 0.0)
+                    envelope = np.sqrt(val)
+                else:
+                    envelope = 1.0 + k * m
 
-                 modulated = envelope * carrier
+                modulated = envelope * carrier
 
-            else: # LSB or USB
+            else:  # LSB or USB
                 # For SSB, we need Analytic Signal: m_a = m_i + j*m_q
                 # m_q is Hilbert Transform of m
                 # m_i is m delayed by group delay of Hilbert filter
 
                 if self._hilbert_coeffs is None:
-                     # Should have been initialized
-                     modulated = np.zeros_like(carrier)
+                    # Should have been initialized
+                    modulated = np.zeros_like(carrier)
                 else:
-                     # Hilbert Filtering
-                     # Need to handle dimensions carefully.
-                     # m: (frames,) or (frames, 2)
+                    # Hilbert Filtering
+                    # Need to handle dimensions carefully.
+                    # m: (frames,) or (frames, 2)
 
-                     channels_ssb = 1 if m.ndim == 1 else m.shape[1]
-                     # Hilbert coeffs are (taps,).
-                     # zi shape: (taps-1, channels)
+                    channels_ssb = 1 if m.ndim == 1 else m.shape[1]
+                    # Hilbert coeffs are (taps,).
+                    # zi shape: (taps-1, channels)
 
-                     if channels_ssb == 1:
-                         target_h_zi_shape = (len(self._hilbert_coeffs)-1,)
-                     else:
-                         target_h_zi_shape = (len(self._hilbert_coeffs)-1, channels_ssb)
+                    if channels_ssb == 1:
+                        target_h_zi_shape = (len(self._hilbert_coeffs) - 1,)
+                    else:
+                        target_h_zi_shape = (len(self._hilbert_coeffs) - 1, channels_ssb)
 
-                     if self._hilbert_zi is None or self._hilbert_zi.shape != target_h_zi_shape:
-                          self._hilbert_zi = np.zeros(target_h_zi_shape)
+                    if self._hilbert_zi is None or self._hilbert_zi.shape != target_h_zi_shape:
+                        self._hilbert_zi = np.zeros(target_h_zi_shape)
 
-                     # Filter for Image (Quadrature) component
-                     m_q, self._hilbert_zi = scipy.signal.lfilter(self._hilbert_coeffs, 1.0, m, axis=0, zi=self._hilbert_zi)
-                     # If mono, m_q is 1D. If stereo, 2D.
+                    # Filter for Image (Quadrature) component
+                    m_q, self._hilbert_zi = scipy.signal.lfilter(
+                        self._hilbert_coeffs, 1.0, m, axis=0, zi=self._hilbert_zi
+                    )
+                    # If mono, m_q is 1D. If stereo, 2D.
 
-                     # Delay for Real (In-phase) component
-                     # Group delay is (N-1)/2
-                     delay_samples = (len(self._hilbert_coeffs) - 1) // 2
+                    # Delay for Real (In-phase) component
+                    # Group delay is (N-1)/2
+                    delay_samples = (len(self._hilbert_coeffs) - 1) // 2
 
-                     # Construct delay filter (impulse at delay_samples)
-                     b_delay = np.zeros(delay_samples + 1)
-                     b_delay[-1] = 1.0
+                    # Construct delay filter (impulse at delay_samples)
+                    b_delay = np.zeros(delay_samples + 1)
+                    b_delay[-1] = 1.0
 
-                     if channels_ssb == 1:
-                         target_d_zi_shape = (len(b_delay)-1,)
-                     else:
-                         target_d_zi_shape = (len(b_delay)-1, channels_ssb)
+                    if channels_ssb == 1:
+                        target_d_zi_shape = (len(b_delay) - 1,)
+                    else:
+                        target_d_zi_shape = (len(b_delay) - 1, channels_ssb)
 
-                     if self._delay_zi is None or self._delay_zi.shape != target_d_zi_shape:
-                         self._delay_zi = np.zeros(target_d_zi_shape)
+                    if self._delay_zi is None or self._delay_zi.shape != target_d_zi_shape:
+                        self._delay_zi = np.zeros(target_d_zi_shape)
 
-                     m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
+                    m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
 
-                     # Carrier generation for SSB
-                     # We have carrier = cos(wt). We need sin(wt).
-                     # sin(wt) = cos(wt - pi/2). 
-                     # But we generated phase. sin(phase) is cleaner.
-                     # Recompute sin_carrier from phase. 
-                     # Note: phase was updated at step 4. Ideally needs to be synchronous.
-                     # The 'phase' variable in step 4 is buffer-aligned.
-                     # Recalculate full buffer valid phase for sin and cos
+                    # Carrier generation for SSB
+                    # We have carrier = cos(wt). We need sin(wt).
+                    # sin(wt) = cos(wt - pi/2).
+                    # But we generated phase. sin(phase) is cleaner.
+                    # Recompute sin_carrier from phase.
+                    # Note: phase was updated at step 4. Ideally needs to be synchronous.
+                    # The 'phase' variable in step 4 is buffer-aligned.
+                    # Recalculate full buffer valid phase for sin and cos
 
-                     # Recalculate carrier phases to be safe or reuse 'carrier'
-                     # carrier = cos(phase).
-                     # sin_carrier = sin(phase).
-                     # Need to reconstruct local 'phase' array from step 4 or just use sin(phase)
-                     # In step 4:
-                     # t_chunk = np.arange(frames) / fs
-                     # phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
-                     # But self._phase was incremented AFTER usage in step 4? 
-                     # Wait, Step 4 code:
-                     # phase = self._phase + ...
-                     # self._phase += ...
-                     # carrier = np.cos(phase)
-                     # So 'phase' variable here holds the correct instantaneous phase for this block.
+                    # Recalculate carrier phases to be safe or reuse 'carrier'
+                    # carrier = cos(phase).
+                    # sin_carrier = sin(phase).
+                    # Need to reconstruct local 'phase' array from step 4 or just use sin(phase)
+                    # In step 4:
+                    # t_chunk = np.arange(frames) / fs
+                    # phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
+                    # But self._phase was incremented AFTER usage in step 4?
+                    # Wait, Step 4 code:
+                    # phase = self._phase + ...
+                    # self._phase += ...
+                    # carrier = np.cos(phase)
+                    # So 'phase' variable here holds the correct instantaneous phase for this block.
 
-                     sin_carrier = np.sin(phase)
-                     if m.ndim == 2:
-                         sin_carrier = sin_carrier[:, np.newaxis]
+                    sin_carrier = np.sin(phase)
+                    if m.ndim == 2:
+                        sin_carrier = sin_carrier[:, np.newaxis]
 
-                     # SSB Logic
-                     # USB: I * cos - Q * sin
-                     # LSB: I * cos + Q * sin
-                     # (Assuming analytic signal convention. Sign might need flip if Q is inverted etc, but this is standard)
+                    # SSB Logic
+                    # USB: I * cos - Q * sin
+                    # LSB: I * cos + Q * sin
+                    # (Assuming analytic signal convention. Sign might need flip if Q is inverted etc, but this is standard)
 
-                     term1 = m_i * carrier
-                     term2 = m_q * sin_carrier
+                    term1 = m_i * carrier
+                    term2 = m_q * sin_carrier
 
-                     if self.modulation_mode == 'USB':
-                         sb = term1 - term2
-                     else: # LSB
-                         sb = term1 + term2
+                    if self.modulation_mode == "USB":
+                        sb = term1 - term2
+                    else:  # LSB
+                        sb = term1 + term2
 
-                     # Carrier re-insertion?
-                     # SSB-SC (Suppressed Carrier) or SSB-LC (Large Carrier/AM-compatible)?
-                     # Request says "New Carrier Mode... SSB".
-                     # Usually for Ultrasound output, we might want the carrier component if it's acting as a parametric array,
-                     # but pure SSB is usually SC.
-                     # However, for Parametric Audio (audio spotlight), DSB-LC (standard AM) is common.
-                     # SSB-LC is often used to reduce bandwidth or distortion.
-                     # If we just output SSB-SC, it might not demodulate well in air non-linearity without a strong carrier?
-                     # Actually parametric array self-demodulation works on envelopes. 
-                     # SSB envelope is sqrt(I^2 + Q^2) -> not the audio signal directly?
-                     # Wait. E(t)^2 demodulation.
-                     # DSB-AM: (1+m)cos -> E = 1+m -> E^2 ~ 1 + 2m + m^2.
-                     # SSB: m_i cos - m_q sin. E = sqrt(m_i^2 + m_q^2) = Hilbert Envelope |m|.
-                     # This gives |m|^2 upon demodulation. Distorted.
-                     # SSB + Carrier (SSB-WC): C cos + m_i cos - m_q sin = (C+m_i)cos - m_q sin.
-                     # E = sqrt( (C+m_i)^2 + m_q^2 ) = sqrt( C^2 + 2Cm_i + m_i^2 + m_q^2 ).
-                     # Approx C + m_i for C >> m.
-                     # So for "SSB Mode" in parametric speakers, we usually mean SSB with Carrier.
-                     # Let's add the carrier.
+                    # Carrier re-insertion?
+                    # SSB-SC (Suppressed Carrier) or SSB-LC (Large Carrier/AM-compatible)?
+                    # Request says "New Carrier Mode... SSB".
+                    # Usually for Ultrasound output, we might want the carrier component if it's acting as a parametric array,
+                    # but pure SSB is usually SC.
+                    # However, for Parametric Audio (audio spotlight), DSB-LC (standard AM) is common.
+                    # SSB-LC is often used to reduce bandwidth or distortion.
+                    # If we just output SSB-SC, it might not demodulate well in air non-linearity without a strong carrier?
+                    # Actually parametric array self-demodulation works on envelopes.
+                    # SSB envelope is sqrt(I^2 + Q^2) -> not the audio signal directly?
+                    # Wait. E(t)^2 demodulation.
+                    # DSB-AM: (1+m)cos -> E = 1+m -> E^2 ~ 1 + 2m + m^2.
+                    # SSB: m_i cos - m_q sin. E = sqrt(m_i^2 + m_q^2) = Hilbert Envelope |m|.
+                    # This gives |m|^2 upon demodulation. Distorted.
+                    # SSB + Carrier (SSB-WC): C cos + m_i cos - m_q sin = (C+m_i)cos - m_q sin.
+                    # E = sqrt( (C+m_i)^2 + m_q^2 ) = sqrt( C^2 + 2Cm_i + m_i^2 + m_q^2 ).
+                    # Approx C + m_i for C >> m.
+                    # So for "SSB Mode" in parametric speakers, we usually mean SSB with Carrier.
+                    # Let's add the carrier.
 
-                     # Apply depth k to the sideband part?
-                     # AM: (1 + km) cos = cos + k m cos.
-                     # SSB equivalent: cos + k * (m_i cos -/+ m_q sin).
+                    # Apply depth k to the sideband part?
+                    # AM: (1 + km) cos = cos + k m cos.
+                    # SSB equivalent: cos + k * (m_i cos -/+ m_q sin).
 
-                     modulated = carrier + k * sb
+                    modulated = carrier + k * sb
 
             # 6. Gain & Limit
             output_sig = modulated * self.output_gain
             output_sig = np.clip(output_sig, -1.0, 1.0)
 
             # 7. Route Output
-            if self.output_mode == 'L':
-                 # Output to L only
-                 if output_sig.ndim == 2:
-                     # If we processed stereo but want L out? 
-                     # Usually means "Mix down" or "Take L".
-                     # User requirement is vague on "In Stereo -> Out L".
-                     # Assuming "Take L". 
-                     outdata[:, 0] = output_sig[:, 0]
-                 else:
-                     outdata[:, 0] = output_sig
-            elif self.output_mode == 'R':
-                 # Output to R only
-                 if outdata.shape[1] >= 2:
-                     if output_sig.ndim == 2:
-                         outdata[:, 1] = output_sig[:, 1]
-                     else:
-                         outdata[:, 1] = output_sig
-            else: # Stereo
-                 if output_sig.ndim == 2:
-                     # Stereo Result -> Stereo Out
-                     outdata[:, 0] = output_sig[:, 0]
-                     if outdata.shape[1] >= 2:
-                         outdata[:, 1] = output_sig[:, 1]
-                 else:
-                     # Mono Result -> Stereo Out (Dual Mono)
-                     outdata[:, 0] = output_sig
-                     if outdata.shape[1] >= 2:
-                         outdata[:, 1] = output_sig
+            if self.output_mode == "L":
+                # Output to L only
+                if output_sig.ndim == 2:
+                    # If we processed stereo but want L out?
+                    # Usually means "Mix down" or "Take L".
+                    # User requirement is vague on "In Stereo -> Out L".
+                    # Assuming "Take L".
+                    outdata[:, 0] = output_sig[:, 0]
+                else:
+                    outdata[:, 0] = output_sig
+            elif self.output_mode == "R":
+                # Output to R only
+                if outdata.shape[1] >= 2:
+                    if output_sig.ndim == 2:
+                        outdata[:, 1] = output_sig[:, 1]
+                    else:
+                        outdata[:, 1] = output_sig
+            else:  # Stereo
+                if output_sig.ndim == 2:
+                    # Stereo Result -> Stereo Out
+                    outdata[:, 0] = output_sig[:, 0]
+                    if outdata.shape[1] >= 2:
+                        outdata[:, 1] = output_sig[:, 1]
+                else:
+                    # Mono Result -> Stereo Out (Dual Mono)
+                    outdata[:, 0] = output_sig
+                    if outdata.shape[1] >= 2:
+                        outdata[:, 1] = output_sig
 
             # Measure Output Level
             if output_sig.ndim == 2:
@@ -450,6 +453,7 @@ class UltrasoundModulator(MeasurementModule):
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
             self.is_running = False
+
 
 class UltrasoundModulatorWidget(QWidget):
     def __init__(self, module: UltrasoundModulator):
@@ -503,7 +507,7 @@ class UltrasoundModulatorWidget(QWidget):
         self.in_gain_spin.valueChanged.connect(self.on_in_gain_changed)
 
         self.in_gain_slider = QSlider(Qt.Orientation.Horizontal)
-        self.in_gain_slider.setRange(-600, 260) # -60.0 to +26.0 dB
+        self.in_gain_slider.setRange(-600, 260)  # -60.0 to +26.0 dB
         self.in_gain_slider.setValue(int(self._lin2db(self.module.input_gain) * 10))
         self.in_gain_slider.valueChanged.connect(self.on_in_gain_slider_changed)
 
@@ -565,14 +569,14 @@ class UltrasoundModulatorWidget(QWidget):
         # Output Gain
         gain_layout = QHBoxLayout()
         self.gain_spin = QDoubleSpinBox()
-        self.gain_spin.setRange(-60.0, 6.0) # Approx 0.001x to 2.0x
+        self.gain_spin.setRange(-60.0, 6.0)  # Approx 0.001x to 2.0x
         self.gain_spin.setSingleStep(0.5)
         self.gain_spin.setSuffix(tr(" dB"))
         self.gain_spin.setValue(self._lin2db(self.module.output_gain))
         self.gain_spin.valueChanged.connect(self.on_gain_changed)
 
         self.gain_slider = QSlider(Qt.Orientation.Horizontal)
-        self.gain_slider.setRange(-600, 60) # -60.0 to +6.0 dB
+        self.gain_slider.setRange(-600, 60)  # -60.0 to +6.0 dB
         self.gain_slider.setValue(int(self._lin2db(self.module.output_gain) * 10))
         self.gain_slider.valueChanged.connect(self.on_gain_slider_changed)
 
@@ -603,7 +607,7 @@ class UltrasoundModulatorWidget(QWidget):
 
         # Input/Output Routing
         routing_group = QGroupBox(tr("Routing"))
-        routing_layout = QHBoxLayout() 
+        routing_layout = QHBoxLayout()
 
         # Input Group
         in_grp = QGroupBox(tr("Input Channel"))
@@ -656,7 +660,6 @@ class UltrasoundModulatorWidget(QWidget):
         tab2_layout.addStretch()
         self.tabs.addTab(tab2, tr("Settings"))
 
-
         # Main Toggle
         self.start_btn = QPushButton(tr("Start Modulation"))
         self.start_btn.setCheckable(True)
@@ -667,12 +670,12 @@ class UltrasoundModulatorWidget(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
-        # Meters - Add to bottom (outside tabs) but above button? 
+        # Meters - Add to bottom (outside tabs) but above button?
         # User requested shorter height. Meters at bottom might be good.
-        # But earlier implementation had meters inside layout. 
+        # But earlier implementation had meters inside layout.
         # Let's put meters ABOVE the Start Button.
 
-        # NOTE: In previous code, Meters were added before Start Button. 
+        # NOTE: In previous code, Meters were added before Start Button.
         # My replacement block removed them (lines 480-503 in existing file were not included in my specific replacement block, but I am rewriting the file).
         # Wait, I need to look at lines 480-503 again.
         # Check Step 222. Lines 480-503 are creating meter_group and adding to layout.
@@ -711,24 +714,24 @@ class UltrasoundModulatorWidget(QWidget):
 
         layout.insertWidget(layout.indexOf(self.start_btn), meter_group)
 
-
     def on_in_mode_changed(self, btn):
         self.module.input_mode = btn.text()
 
     def _lin2db(self, val):
-        if val <= 0: return -60.0 # Floor
+        if val <= 0:
+            return -60.0  # Floor
         return 20.0 * np.log10(val)
 
     def _db2lin(self, val):
         return 10.0 ** (val / 20.0)
 
-    def on_in_gain_changed(self, val): # val is dB
+    def on_in_gain_changed(self, val):  # val is dB
         self.module.input_gain = self._db2lin(val)
         self.in_gain_slider.blockSignals(True)
         self.in_gain_slider.setValue(int(val * 10))
         self.in_gain_slider.blockSignals(False)
 
-    def on_in_gain_slider_changed(self, val): # val is int(dB*10)
+    def on_in_gain_slider_changed(self, val):  # val is int(dB*10)
         gain_db = val / 10.0
         self.module.input_gain = self._db2lin(gain_db)
         self.in_gain_spin.blockSignals(True)
@@ -784,14 +787,14 @@ class UltrasoundModulatorWidget(QWidget):
     def on_out_mode_changed(self, btn):
         self.module.output_mode = btn.text()
 
-    def on_gain_changed(self, val): # val is dB
+    def on_gain_changed(self, val):  # val is dB
         self.module.output_gain = self._db2lin(val)
         self.gain_slider.blockSignals(True)
         self.gain_slider.setValue(int(val * 10))
         self.gain_slider.blockSignals(False)
         self.update_safety_status()
 
-    def on_gain_slider_changed(self, val): # val is int(dB*10)
+    def on_gain_slider_changed(self, val):  # val is int(dB*10)
         gain_db = val / 10.0
         self.module.output_gain = self._db2lin(gain_db)
         self.gain_spin.blockSignals(True)
@@ -805,10 +808,14 @@ class UltrasoundModulatorWidget(QWidget):
         # But we didn't store mapping.
         # Let's infer from text.
         text = btn.text()
-        if "DSB" in text: mode = 'DSB'
-        elif "USB" in text: mode = 'USB'
-        elif "LSB" in text: mode = 'LSB'
-        else: mode = 'DSB'
+        if "DSB" in text:
+            mode = "DSB"
+        elif "USB" in text:
+            mode = "USB"
+        elif "LSB" in text:
+            mode = "LSB"
+        else:
+            mode = "DSB"
         self.module.modulation_mode = mode
 
     def update_safety_status(self):
@@ -819,8 +826,8 @@ class UltrasoundModulatorWidget(QWidget):
             return
 
         # Check Output Gain (dB)
-        # We need the current dB value. 
-        # Since we store linear in module, convert back or use spinbox value? 
+        # We need the current dB value.
+        # Since we store linear in module, convert back or use spinbox value?
         # Safest is module value.
         gain_lin = self.module.output_gain
         gain_db = self._lin2db(gain_lin)
@@ -852,7 +859,11 @@ class UltrasoundModulatorWidget(QWidget):
             # Safety Confirmation
             dlg = QMessageBox(self)
             dlg.setWindowTitle(tr("Safety Warning"))
-            dlg.setText(tr("High intensity ultrasound can be dangerous to hearing (even if inaudible) and pets.\n\nAre you sure you want to start emission?"))
+            dlg.setText(
+                tr(
+                    "High intensity ultrasound can be dangerous to hearing (even if inaudible) and pets.\n\nAre you sure you want to start emission?"
+                )
+            )
             dlg.setIcon(QMessageBox.Icon.Warning)
             dlg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             dlg.setDefaultButton(QMessageBox.StandardButton.No)

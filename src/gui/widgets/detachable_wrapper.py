@@ -21,11 +21,13 @@ try:
 except Exception:  # pragma: no cover
     ConfigManager = None
 
+
 class IndependentWindow(QMainWindow):
     """
     A separate window to hold the detached widget.
     Emits a signal when closed so the widget can be reclaimed.
     """
+
     closed = pyqtSignal()
 
     def __init__(self, title, widget, parent=None):
@@ -45,10 +47,12 @@ class IndependentWindow(QMainWindow):
         # or we rely on the wrapper to reparent it immediately.
         event.accept()
 
+
 class DetachableWidgetWrapper(QWidget):
     """
     Wraps a widget to allow it to be detached into a separate window.
     """
+
     def __init__(self, widget: QWidget, title: str, config_manager=None):
         super().__init__()
         self.content_widget = widget
@@ -197,7 +201,7 @@ class DetachableWidgetWrapper(QWidget):
         self.content_container.hide()
         self.placeholder_widget.show()
         self.detach_btn.setText(tr("Reattach"))
-        self.detach_btn.setEnabled(False) # Use the big reattach button in placeholder or window close
+        self.detach_btn.setEnabled(False)  # Use the big reattach button in placeholder or window close
         self.is_detached = True
 
     def reattach(self):
@@ -210,7 +214,7 @@ class DetachableWidgetWrapper(QWidget):
             try:
                 self.independent_window.closed.disconnect(self.reattach)
             except TypeError:
-                pass # Already disconnected
+                pass  # Already disconnected
 
             # If the window is still visible, close it
             if self.independent_window.isVisible():

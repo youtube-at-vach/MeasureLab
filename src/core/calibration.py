@@ -9,15 +9,16 @@ class CalibrationManager:
     Manages audio calibration data (sensitivity, gain) and conversions.
     Stores data in a JSON file.
     """
+
     def __init__(self, config_path="calibration.json"):
         self.config_path = config_path
-        self.input_sensitivity = 1.0 # Volts per Full Scale (V/FS) (Peak)
-        self.output_gain = 1.0 # Volts per Full Scale (V/FS) (Peak)
+        self.input_sensitivity = 1.0  # Volts per Full Scale (V/FS) (Peak)
+        self.output_gain = 1.0  # Volts per Full Scale (V/FS) (Peak)
         # Whether the output gain was explicitly calibrated by the user.
         # Used to decide when to offer voltage-based UI controls.
         self.output_gain_is_calibrated = False
-        self.frequency_calibration = 1.0 # Multiplier for frequency correction
-        self.lockin_gain_offset = 0.0 # dB offset for Lock-in Amplifier
+        self.frequency_calibration = 1.0  # Multiplier for frequency correction
+        self.lockin_gain_offset = 0.0  # dB offset for Lock-in Amplifier
         # SPL calibration: maps measured (C-weighted) dBFS to SPL.
         # Stored as an offset: SPL[dB] = dBFS_C + spl_offset_db.
         self.spl_offset_db = None
@@ -27,62 +28,62 @@ class CalibrationManager:
     def load(self):
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path, "r") as f:
                     data = json.load(f)
-                    self.input_sensitivity = data.get('input_sensitivity', 1.0)
-                    self.output_gain = data.get('output_gain', 1.0)
+                    self.input_sensitivity = data.get("input_sensitivity", 1.0)
+                    self.output_gain = data.get("output_gain", 1.0)
                     # New flag (backward compatible)
-                    if 'output_gain_is_calibrated' in data:
-                        self.output_gain_is_calibrated = bool(data.get('output_gain_is_calibrated'))
+                    if "output_gain_is_calibrated" in data:
+                        self.output_gain_is_calibrated = bool(data.get("output_gain_is_calibrated"))
                     else:
                         # Heuristic for older files: treat non-default values as calibrated.
                         try:
                             self.output_gain_is_calibrated = abs(float(self.output_gain) - 1.0) > 1e-12
                         except Exception:
                             self.output_gain_is_calibrated = False
-                    self.frequency_calibration = data.get('frequency_calibration', 1.0)
-                    self.lockin_gain_offset = data.get('lockin_gain_offset', 0.0)
+                    self.frequency_calibration = data.get("frequency_calibration", 1.0)
+                    self.lockin_gain_offset = data.get("lockin_gain_offset", 0.0)
 
                     # New format
-                    if 'spl_offset_db' in data:
+                    if "spl_offset_db" in data:
                         try:
-                            self.spl_offset_db = float(data.get('spl_offset_db'))
+                            self.spl_offset_db = float(data.get("spl_offset_db"))
                         except Exception:
                             self.spl_offset_db = None
 
                     # Backward compatibility (older dict-based format)
                     if self.spl_offset_db is None:
-                        legacy = data.get('spl_calibration', None)
+                        legacy = data.get("spl_calibration", None)
                         if isinstance(legacy, dict) and legacy:
-                            entry = legacy.get('speaker') or legacy.get('subwoofer')
+                            entry = legacy.get("speaker") or legacy.get("subwoofer")
                             if entry is None:
                                 try:
                                     entry = next(iter(legacy.values()))
                                 except Exception:
                                     entry = None
-                            if isinstance(entry, dict) and 'offset_db' in entry:
+                            if isinstance(entry, dict) and "offset_db" in entry:
                                 try:
-                                    self.spl_offset_db = float(entry.get('offset_db'))
+                                    self.spl_offset_db = float(entry.get("offset_db"))
                                 except Exception:
                                     self.spl_offset_db = None
 
-                    self.profiles = data.get('profiles', {})
+                    self.profiles = data.get("profiles", {})
             except Exception as e:
                 print(f"Failed to load calibration: {e}")
 
     def save(self):
         data = {
-            'input_sensitivity': self.input_sensitivity,
-            'output_gain': self.output_gain,
-            'output_gain_is_calibrated': bool(self.output_gain_is_calibrated),
-            'frequency_calibration': self.frequency_calibration,
-            'lockin_gain_offset': self.lockin_gain_offset,
+            "input_sensitivity": self.input_sensitivity,
+            "output_gain": self.output_gain,
+            "output_gain_is_calibrated": bool(self.output_gain_is_calibrated),
+            "frequency_calibration": self.frequency_calibration,
+            "lockin_gain_offset": self.lockin_gain_offset,
             # Keep a single SPL calibration value.
-            'spl_offset_db': self.spl_offset_db,
-            'profiles': getattr(self, 'profiles', {}),
+            "spl_offset_db": self.spl_offset_db,
+            "profiles": getattr(self, "profiles", {}),
         }
         try:
-            with open(self.config_path, 'w') as f:
+            with open(self.config_path, "w") as f:
                 json.dump(data, f, indent=4)
         except Exception as e:
             print(f"Failed to save calibration: {e}")
@@ -137,48 +138,47 @@ class CalibrationManager:
         self.frequency_calibration = factor
         self.save()
 
-
     # --- Profile Management ---
 
     def save_profile(self, name, device_name):
         """Saves current settings as a named profile."""
-        if not hasattr(self, 'profiles'):
+        if not hasattr(self, "profiles"):
             self.profiles = {}
 
         self.profiles[name] = {
-            'device_name': device_name,
-            'input_sensitivity': self.input_sensitivity,
-            'output_gain': self.output_gain,
-            'output_gain_is_calibrated': self.output_gain_is_calibrated,
-            'frequency_calibration': self.frequency_calibration,
-            'lockin_gain_offset': self.lockin_gain_offset,
-            'spl_offset_db': self.spl_offset_db
+            "device_name": device_name,
+            "input_sensitivity": self.input_sensitivity,
+            "output_gain": self.output_gain,
+            "output_gain_is_calibrated": self.output_gain_is_calibrated,
+            "frequency_calibration": self.frequency_calibration,
+            "lockin_gain_offset": self.lockin_gain_offset,
+            "spl_offset_db": self.spl_offset_db,
         }
         self.save()
 
     def load_profile(self, name):
         """Loads settings from a named profile."""
-        if not hasattr(self, 'profiles') or name not in self.profiles:
+        if not hasattr(self, "profiles") or name not in self.profiles:
             raise ValueError(f"Profile '{name}' not found")
 
         p = self.profiles[name]
-        self.input_sensitivity = p.get('input_sensitivity', 1.0)
-        self.output_gain = p.get('output_gain', 1.0)
-        self.output_gain_is_calibrated = p.get('output_gain_is_calibrated', False)
-        self.frequency_calibration = p.get('frequency_calibration', 1.0)
-        self.lockin_gain_offset = p.get('lockin_gain_offset', 0.0)
-        self.spl_offset_db = p.get('spl_offset_db')
-        self.save() # Persist as current
+        self.input_sensitivity = p.get("input_sensitivity", 1.0)
+        self.output_gain = p.get("output_gain", 1.0)
+        self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", False)
+        self.frequency_calibration = p.get("frequency_calibration", 1.0)
+        self.lockin_gain_offset = p.get("lockin_gain_offset", 0.0)
+        self.spl_offset_db = p.get("spl_offset_db")
+        self.save()  # Persist as current
 
     def delete_profile(self, name):
         """Deletes a named profile."""
-        if hasattr(self, 'profiles') and name in self.profiles:
+        if hasattr(self, "profiles") and name in self.profiles:
             del self.profiles[name]
             self.save()
 
     def get_profiles(self):
         """Returns the dictionary of profiles."""
-        if not hasattr(self, 'profiles'):
+        if not hasattr(self, "profiles"):
             self.profiles = {}
         return self.profiles
 
@@ -194,7 +194,7 @@ class CalibrationManager:
 
     def dbfs_to_volts(self, dbfs):
         """Converts dBFS to Volts (Peak)."""
-        return (10**(dbfs/20)) * self.input_sensitivity
+        return (10 ** (dbfs / 20)) * self.input_sensitivity
 
     def get_input_offset_db(self):
         """Returns the dB offset to add to dBFS to get dBV."""
@@ -212,7 +212,7 @@ class CalibrationManager:
             return False
 
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 data = json.load(f)
                 # Sort by frequency just in case
                 self.frequency_map = sorted(data, key=lambda x: x[0])
@@ -228,7 +228,7 @@ class CalibrationManager:
         data: list of [freq, mag_db, phase_deg]
         """
         try:
-            with open(path, 'w') as f:
+            with open(path, "w") as f:
                 json.dump(data, f, indent=4)
             self.frequency_map = sorted(data, key=lambda x: x[0])
             print(f"Saved calibration map to {path}")
@@ -243,7 +243,7 @@ class CalibrationManager:
         Uses linear interpolation.
         Returns (0.0, 0.0) if no map is loaded.
         """
-        if not hasattr(self, 'frequency_map') or not self.frequency_map:
+        if not hasattr(self, "frequency_map") or not self.frequency_map:
             return 0.0, 0.0
 
         # If out of range, clamp to nearest
@@ -266,7 +266,7 @@ class CalibrationManager:
         # Let's use numpy for interpolation, it's robust.
         # We can cache the numpy arrays if this is called often (it is).
 
-        if not hasattr(self, '_map_freqs'):
+        if not hasattr(self, "_map_freqs"):
             self._update_map_cache()
 
         mag_corr = np.interp(freq, self._map_freqs, self._map_mags)
@@ -275,7 +275,7 @@ class CalibrationManager:
         return mag_corr, phase_corr
 
     def _update_map_cache(self):
-        if not hasattr(self, 'frequency_map') or not self.frequency_map:
+        if not hasattr(self, "frequency_map") or not self.frequency_map:
             self._map_freqs = np.array([])
             self._map_mags = np.array([])
             self._map_phases = np.array([])
@@ -285,4 +285,3 @@ class CalibrationManager:
         self._map_freqs = data[:, 0]
         self._map_mags = data[:, 1]
         self._map_phases = data[:, 2]
-

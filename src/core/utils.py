@@ -47,7 +47,7 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
     exp3 = int(math.floor(math.log10(ax) / 3.0) * 3)
     exp3 = max(min(exp3, 24), -24)
 
-    scale = 10.0 ** exp3
+    scale = 10.0**exp3
     scaled = x / scale
 
     # Handle rounding spillover (e.g., 999.95 m -> 1.000 k).
@@ -65,8 +65,9 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
 
     return f"{number}{space}{prefix}{unit}".rstrip()
 
+
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
@@ -86,7 +87,7 @@ def resource_path(relative_path):
 
         if not os.path.exists(os.path.join(base_path, relative_path)):
             # Try looking in src if not found in root
-            if os.path.exists(os.path.join(base_path, 'src', relative_path)):
-                return os.path.join(base_path, 'src', relative_path)
+            if os.path.exists(os.path.join(base_path, "src", relative_path)):
+                return os.path.join(base_path, "src", relative_path)
 
     return os.path.join(base_path, relative_path)

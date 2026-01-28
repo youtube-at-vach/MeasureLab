@@ -34,21 +34,21 @@ class LockInAmplifier(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.buffer_size = 4096 # Adjust for integration time
+        self.buffer_size = 4096  # Adjust for integration time
         self.input_data = np.zeros((self.buffer_size, 2))
 
         # Settings
         self.gen_frequency = 1000.0
-        self.gen_amplitude = 0.5 # Linear 0-1
-        self.gen_amplitude = 0.5 # Linear 0-1
-        self.output_channel = 0 # 0: Left, 1: Right
+        self.gen_amplitude = 0.5  # Linear 0-1
+        self.gen_amplitude = 0.5  # Linear 0-1
+        self.output_channel = 0  # 0: Left, 1: Right
         self.external_mode = False
 
         self._harmonic_order = 1
         self.apply_calibration = False
 
-        self.signal_channel = 0 # 0: Left, 1: Right
-        self.ref_channel = 1    # 0: Left, 1: Right
+        self.signal_channel = 0  # 0: Left, 1: Right
+        self.ref_channel = 1  # 0: Left, 1: Right
 
         # Results
         self.current_magnitude = 0.0
@@ -81,12 +81,12 @@ class LockInAmplifier(MeasurementModule):
 
     @property
     def harmonic_order(self) -> int:
-        return int(getattr(self, '_harmonic_order', 1) or 1)
+        return int(getattr(self, "_harmonic_order", 1) or 1)
 
     @harmonic_order.setter
     def harmonic_order(self, value: int):
         new_value = max(int(value or 1), 1)
-        old_value = int(getattr(self, '_harmonic_order', 1) or 1)
+        old_value = int(getattr(self, "_harmonic_order", 1) or 1)
         self._harmonic_order = new_value
 
         # Changing the harmonic changes the demodulation frequency and phase reference.
@@ -143,10 +143,10 @@ class LockInAmplifier(MeasurementModule):
 
             # Roll buffer
             if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
+                self.input_data[:] = new_data[-self.buffer_size :]
             else:
                 self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data):] = new_data
+                self.input_data[-len(new_data) :] = new_data
 
             # --- Output Generation ---
             # Generate Sine Wave
@@ -159,9 +159,11 @@ class LockInAmplifier(MeasurementModule):
             outdata.fill(0)
 
             if not self.external_mode:
-                if self.output_channel == 2: # Stereo
-                    if outdata.shape[1] >= 1: outdata[:, 0] = signal
-                    if outdata.shape[1] >= 2: outdata[:, 1] = signal
+                if self.output_channel == 2:  # Stereo
+                    if outdata.shape[1] >= 1:
+                        outdata[:, 0] = signal
+                    if outdata.shape[1] >= 2:
+                        outdata[:, 1] = signal
                 elif outdata.shape[1] > self.output_channel:
                     outdata[:, self.output_channel] = signal
 
@@ -188,7 +190,7 @@ class LockInAmplifier(MeasurementModule):
         ref_rms = np.sqrt(np.mean(ref**2))
         self.ref_level = 20 * np.log10(ref_rms + 1e-12)
 
-        if ref_rms < 0.001: # -60dB threshold
+        if ref_rms < 0.001:  # -60dB threshold
             self.current_magnitude = 0.0
             self.current_phase = 0.0
             self.current_x = 0.0
@@ -203,7 +205,8 @@ class LockInAmplifier(MeasurementModule):
         # Trim edges to remove Hilbert artifacts (e.g., 5% from each side)
         trim_percent = 0.05
         trim_len = int(len(ref) * trim_percent)
-        if trim_len < 10: trim_len = 0 # Don't trim if too short (shouldn't happen with 4096)
+        if trim_len < 10:
+            trim_len = 0  # Don't trim if too short (shouldn't happen with 4096)
 
         if trim_len > 0:
             ref_analytic_trimmed = ref_analytic[trim_len:-trim_len]
@@ -234,7 +237,8 @@ class LockInAmplifier(MeasurementModule):
 
         if ref_peak_val > 1e-9:
             self.ref_coherence = ref_component / ref_peak_val
-            if self.ref_coherence > 1.0: self.ref_coherence = 1.0
+            if self.ref_coherence > 1.0:
+                self.ref_coherence = 1.0
         else:
             self.ref_coherence = 0.0
 
@@ -255,7 +259,7 @@ class LockInAmplifier(MeasurementModule):
             self.current_y = 0.0
             return
 
-        harmonic_order = max(int(getattr(self, 'harmonic_order', 1) or 1), 1)
+        harmonic_order = max(int(getattr(self, "harmonic_order", 1) or 1), 1)
         demod_freq = ref_freq * harmonic_order
         n = len(sig)
         t = np.arange(n) / self.audio_engine.sample_rate
@@ -273,7 +277,7 @@ class LockInAmplifier(MeasurementModule):
         osc_ref = np.exp(-1j * 2 * np.pi * ref_freq * t)
         ref_c_fund = 2 * np.mean(ref * w * osc_ref) / w_mean
         ref_unit = ref_c_fund / (np.abs(ref_c_fund) + 1e-12)  # unit phasor
-        ref_unit_h = ref_unit ** harmonic_order
+        ref_unit_h = ref_unit**harmonic_order
 
         # Complex signal amplitude (peak) at the DEMOD frequency (fundamental or harmonic)
         osc_demod = np.exp(-1j * 2 * np.pi * demod_freq * t)
@@ -296,19 +300,21 @@ class LockInAmplifier(MeasurementModule):
         # 2.5. Post-mix IIR LPF (optional)
         # This is applied to the complex baseband result to improve out-of-band rejection
         # (dynamic reserve) without changing the demodulation scheme.
-        order = int(getattr(self, 'postmix_lpf_order', 0) or 0)
+        order = int(getattr(self, "postmix_lpf_order", 0) or 0)
         if order > 0:
             order = min(max(order, 1), 8)
             dt = self.buffer_size / self.audio_engine.sample_rate
 
-            tau = float(getattr(self, 'postmix_lpf_tau_s', 0.0) or 0.0)
+            tau = float(getattr(self, "postmix_lpf_tau_s", 0.0) or 0.0)
             if tau <= 0.0:
                 # Default behavior: couple to integration time.
                 tau = dt
             tau = max(tau, 1e-6)
             alpha = dt / (tau + dt)
-            if alpha < 0.0: alpha = 0.0
-            if alpha > 1.0: alpha = 1.0
+            if alpha < 0.0:
+                alpha = 0.0
+            if alpha > 1.0:
+                alpha = 1.0
 
             # Initialize to the first value after a reset to avoid a long transient
             # when using higher-order cascades (important since default order can be >0).
@@ -389,10 +395,9 @@ class LockInAmplifier(MeasurementModule):
         self.current_y = self.current_magnitude * np.sin(rad_phase)
 
 
-
 class FRASweepWorker(QThread):
     progress = pyqtSignal(int)
-    result = pyqtSignal(float, float, float) # freq, mag, phase
+    result = pyqtSignal(float, float, float)  # freq, mag, phase
     finished_sweep = pyqtSignal()
 
     def __init__(self, module: LockInAmplifier, start_f, end_f, steps, log_sweep, settle_time):
@@ -414,10 +419,11 @@ class FRASweepWorker(QThread):
         # Ensure module is running
         if not self.module.is_running:
             self.module.start_analysis()
-            time.sleep(0.5) # Wait for start
+            time.sleep(0.5)  # Wait for start
 
         for i, f in enumerate(freqs):
-            if self.is_cancelled: break
+            if self.is_cancelled:
+                break
 
             self.module.gen_frequency = f
             self.module.reset_postmix_lpf()
@@ -446,7 +452,8 @@ class FRASweepWorker(QThread):
             time.sleep(wait_time)
 
             for _ in range(self.module.averaging_count):
-                if self.is_cancelled: break
+                if self.is_cancelled:
+                    break
 
                 # Wait for next buffer update
                 # Since we don't have precise synchronization with callback here,
@@ -461,12 +468,13 @@ class FRASweepWorker(QThread):
             phase = self.module.current_phase
 
             self.result.emit(f, mag, phase)
-            self.progress.emit(int((i+1)/self.steps * 100))
+            self.progress.emit(int((i + 1) / self.steps * 100))
 
         self.finished_sweep.emit()
 
     def cancel(self):
         self.is_cancelled = True
+
 
 class LockInAmplifierWidget(QWidget):
     def __init__(self, module: LockInAmplifier):
@@ -477,22 +485,25 @@ class LockInAmplifierWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
-        self.timer.setInterval(100) # 10Hz update
+        self.timer.setInterval(100)  # 10Hz update
         # Keep a lightweight UI refresh running even when measurement is stopped,
         # so frequency limits track sample rate changes.
         self.timer.start()
 
     def get_decimal_places(self, val_std, val_abs=None, is_db=False, default=3, max_places=6):
-        if val_std <= 0: return default
+        if val_std <= 0:
+            return default
         try:
             if is_db:
-                if val_abs is None or val_abs <= 1e-12: return default
+                if val_abs is None or val_abs <= 1e-12:
+                    return default
                 # 8.686 * (std / abs)
                 std_to_use = 8.686 * (val_std / val_abs)
             else:
                 std_to_use = val_std
 
-            if std_to_use <= 1e-9: return max_places
+            if std_to_use <= 1e-9:
+                return max_places
             places = -int(np.floor(np.log10(std_to_use)))
 
             # Adjust strategy:
@@ -501,8 +512,10 @@ class LockInAmplifierWidget(QWidget):
             # User wants "Display optimal". Usually means showing the stable digits + 1 noise digit.
             # So places is correct.
 
-            if places < 0: places = 0
-            if places > max_places: places = max_places
+            if places < 0:
+                places = 0
+            if places > max_places:
+                places = max_places
             return places
         except Exception:
             return default
@@ -526,7 +539,9 @@ class LockInAmplifierWidget(QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
 
-        self.toggle_btn.setStyleSheet("QPushButton { background-color: #ccffcc; font-weight: bold; padding: 10px; color: black; } QPushButton:checked { background-color: #ffcccc; }")
+        self.toggle_btn.setStyleSheet(
+            "QPushButton { background-color: #ccffcc; font-weight: bold; padding: 10px; color: black; } QPushButton:checked { background-color: #ffcccc; }"
+        )
 
         settings_layout.addRow(self.toggle_btn)
 
@@ -554,8 +569,8 @@ class LockInAmplifierWidget(QWidget):
         self.amp_spin.valueChanged.connect(self.on_amp_spin_changed)
 
         self.gen_unit_combo = QComboBox()
-        self.gen_unit_combo.addItems(['Linear (0-1)', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'])
-        self.gen_unit_combo.setCurrentText('dBFS')
+        self.gen_unit_combo.addItems(["Linear (0-1)", "dBFS", "dBV", "dBu", "Vrms", "Vpeak"])
+        self.gen_unit_combo.setCurrentText("dBFS")
         self.gen_unit_combo.currentTextChanged.connect(self.on_gen_unit_changed)
 
         amp_layout = QHBoxLayout()
@@ -572,24 +587,26 @@ class LockInAmplifierWidget(QWidget):
 
         self.sig_ch_combo = QComboBox()
         self.sig_ch_combo.addItems([tr("Left (Ch 1)"), tr("Right (Ch 2)")])
-        self.sig_ch_combo.setCurrentIndex(0) # Default Signal L
+        self.sig_ch_combo.setCurrentIndex(0)  # Default Signal L
         self.sig_ch_combo.currentIndexChanged.connect(self.on_sig_ch_changed)
         settings_layout.addRow(tr("Signal Input:"), self.sig_ch_combo)
 
         self.ref_ch_combo = QComboBox()
         self.ref_ch_combo.addItems([tr("Left (Ch 1)"), tr("Right (Ch 2)")])
-        self.ref_ch_combo.setCurrentIndex(1) # Default Ref R
+        self.ref_ch_combo.setCurrentIndex(1)  # Default Ref R
         self.ref_ch_combo.currentIndexChanged.connect(self.on_ref_ch_changed)
         settings_layout.addRow(tr("Reference Input:"), self.ref_ch_combo)
 
         # Integration Time (Buffer Size)
         self.time_combo = QComboBox()
-        self.time_combo.addItems([
-            tr("Fast (2048 samples)"),
-            tr("Medium (4096 samples)"),
-            tr("Slow (16384 samples)"),
-            tr("Very Slow (65536 samples)"),
-        ])
+        self.time_combo.addItems(
+            [
+                tr("Fast (2048 samples)"),
+                tr("Medium (4096 samples)"),
+                tr("Slow (16384 samples)"),
+                tr("Very Slow (65536 samples)"),
+            ]
+        )
         self.time_combo.setCurrentIndex(1)
         self.time_combo.currentIndexChanged.connect(self.on_time_changed)
         settings_layout.addRow(tr("Integration:"), self.time_combo)
@@ -597,23 +614,25 @@ class LockInAmplifierWidget(QWidget):
         self.avg_spin = QSpinBox()
         self.avg_spin.setRange(1, 300)
         self.avg_spin.setValue(1)
-        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, 'averaging_count', v))
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averaging_count", v))
         settings_layout.addRow(tr("Averaging:"), self.avg_spin)
 
         # Post-mix IIR LPF order (dynamic reserve)
         self.postmix_lpf_combo = QComboBox()
-        self.postmix_lpf_combo.addItems([
-            tr("Off"),
-            tr("1-pole"),
-            tr("2-pole"),
-            tr("3-pole"),
-            tr("4-pole"),
-            tr("5-pole"),
-            tr("6-pole"),
-            tr("7-pole"),
-            tr("8-pole"),
-        ])
-        self.postmix_lpf_combo.setCurrentIndex(int(getattr(self.module, 'postmix_lpf_order', 0) or 0))
+        self.postmix_lpf_combo.addItems(
+            [
+                tr("Off"),
+                tr("1-pole"),
+                tr("2-pole"),
+                tr("3-pole"),
+                tr("4-pole"),
+                tr("5-pole"),
+                tr("6-pole"),
+                tr("7-pole"),
+                tr("8-pole"),
+            ]
+        )
+        self.postmix_lpf_combo.setCurrentIndex(int(getattr(self.module, "postmix_lpf_order", 0) or 0))
         self.postmix_lpf_combo.currentIndexChanged.connect(self.on_postmix_lpf_changed)
         settings_layout.addRow(tr("Post-mix LPF:"), self.postmix_lpf_combo)
 
@@ -632,7 +651,7 @@ class LockInAmplifierWidget(QWidget):
             (tr("30 s"), 30.0),
         ]
 
-        tau_current = float(getattr(self.module, 'postmix_lpf_tau_s', 0.0) or 0.0)
+        tau_current = float(getattr(self.module, "postmix_lpf_tau_s", 0.0) or 0.0)
         # Preserve an existing non-preset value as a "Custom" entry.
         if tau_current > 0.0:
             is_preset = any(abs(tau_current - v) <= 1e-12 for _, v in self._postmix_lpf_tau_options)
@@ -655,7 +674,7 @@ class LockInAmplifierWidget(QWidget):
         self.harmonic_spin = QSpinBox()
         self.harmonic_spin.setRange(1, 10)
         self.harmonic_spin.setValue(1)
-        self.harmonic_spin.valueChanged.connect(lambda v: setattr(self.module, 'harmonic_order', v))
+        self.harmonic_spin.valueChanged.connect(lambda v: setattr(self.module, "harmonic_order", v))
         settings_layout.addRow(tr("Harmonic:"), self.harmonic_spin)
 
         settings_group.setLayout(settings_layout)
@@ -672,7 +691,7 @@ class LockInAmplifierWidget(QWidget):
         self.unit_combo = QComboBox()
         self.unit_combo.addItems(["dBFS", "dBV", "dBu", "V", "mV"])
         self.unit_combo.setCurrentText("dBFS")
-        self.unit_combo.currentIndexChanged.connect(self.update_ui) # Update immediately
+        self.unit_combo.currentIndexChanged.connect(self.update_ui)  # Update immediately
         meters_layout.addWidget(self.unit_combo)
 
         self.mag_label = QLabel(tr("0.000 V"))
@@ -772,8 +791,8 @@ class LockInAmplifierWidget(QWidget):
 
         # Plot Unit Selector
         self.fra_plot_unit_combo = QComboBox()
-        self.fra_plot_unit_combo.addItems(['dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'])
-        self.fra_plot_unit_combo.setCurrentText('dBFS')
+        self.fra_plot_unit_combo.addItems(["dBFS", "dBV", "dBu", "Vrms", "Vpeak"])
+        self.fra_plot_unit_combo.setCurrentText("dBFS")
         self.fra_plot_unit_combo.currentTextChanged.connect(self.update_fra_plot)
         fra_form.addRow(tr("Plot Unit:"), self.fra_plot_unit_combo)
 
@@ -789,31 +808,32 @@ class LockInAmplifierWidget(QWidget):
 
         # FRA Plot
         self.fra_plot = pg.PlotWidget(title=tr("Bode Plot"))
-        self.fra_plot.setLabel('bottom', tr("Frequency"), units='Hz')
-        self.fra_plot.setLabel('left', tr("Magnitude"), units='dB')
+        self.fra_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.fra_plot.setLabel("left", tr("Magnitude"), units="dB")
         self.fra_plot.showGrid(x=True, y=True, alpha=0.3)
         self.fra_plot.addLegend()
 
         # Custom Axis for Log Frequency
-        axis = self.fra_plot.getPlotItem().getAxis('bottom')
-        axis.setLogMode(False) # We will handle log data manually
+        axis = self.fra_plot.getPlotItem().getAxis("bottom")
+        axis.setLogMode(False)  # We will handle log data manually
 
         # Dual Axis for Phase
         self.fra_plot_p = pg.ViewBox()
         self.fra_plot.scene().addItem(self.fra_plot_p)
-        self.fra_plot.getPlotItem().showAxis('right')
-        self.fra_plot.getPlotItem().getAxis('right').linkToView(self.fra_plot_p)
+        self.fra_plot.getPlotItem().showAxis("right")
+        self.fra_plot.getPlotItem().getAxis("right").linkToView(self.fra_plot_p)
         self.fra_plot_p.setXLink(self.fra_plot.getPlotItem())
-        self.fra_plot.getPlotItem().getAxis('right').setLabel(tr('Phase'), units='deg')
+        self.fra_plot.getPlotItem().getAxis("right").setLabel(tr("Phase"), units="deg")
 
         # Handle resizing
         def update_views():
             self.fra_plot_p.setGeometry(self.fra_plot.getPlotItem().vb.sceneBoundingRect())
             self.fra_plot_p.linkedViewChanged(self.fra_plot.getPlotItem().vb, self.fra_plot_p.XAxis)
+
         self.fra_plot.getPlotItem().vb.sigResized.connect(update_views)
 
-        self.fra_curve_mag = self.fra_plot.plot(pen='g', name=tr('Magnitude (dB)'))
-        self.fra_curve_phase = pg.PlotCurveItem(pen='c', name=tr('Phase (deg)'))
+        self.fra_curve_mag = self.fra_plot.plot(pen="g", name=tr("Magnitude (dB)"))
+        self.fra_curve_phase = pg.PlotCurveItem(pen="c", name=tr("Phase (deg)"))
         self.fra_plot_p.addItem(self.fra_curve_phase)
 
         fra_layout.addWidget(self.fra_plot, stretch=3)
@@ -875,12 +895,12 @@ class LockInAmplifierWidget(QWidget):
 
         self.abs_cal_target_spin = QDoubleSpinBox()
         self.abs_cal_target_spin.setRange(-200, 200)
-        self.abs_cal_target_spin.setValue(1.0) # Default 1.0 V
+        self.abs_cal_target_spin.setValue(1.0)  # Default 1.0 V
         self.abs_cal_target_spin.setDecimals(6)
 
         self.abs_cal_unit_combo = QComboBox()
-        self.abs_cal_unit_combo.addItems(['Vrms', 'dBV', 'dBu', 'dBFS'])
-        self.abs_cal_unit_combo.setCurrentText('Vrms')
+        self.abs_cal_unit_combo.addItems(["Vrms", "dBV", "dBu", "dBFS"])
+        self.abs_cal_unit_combo.setCurrentText("Vrms")
 
         abs_target_layout = QHBoxLayout()
         abs_target_layout.addWidget(self.abs_cal_target_spin)
@@ -891,7 +911,9 @@ class LockInAmplifierWidget(QWidget):
         self.abs_cal_btn.clicked.connect(self.on_abs_cal_click)
         cal_form.addRow(self.abs_cal_btn)
 
-        self.abs_cal_status = QLabel(tr("Current Offset: {0:.3f} dB").format(self.module.audio_engine.calibration.lockin_gain_offset))
+        self.abs_cal_status = QLabel(
+            tr("Current Offset: {0:.3f} dB").format(self.module.audio_engine.calibration.lockin_gain_offset)
+        )
         cal_form.addRow(self.abs_cal_status)
 
         self.cal_progress = QProgressBar()
@@ -902,22 +924,22 @@ class LockInAmplifierWidget(QWidget):
 
         # Plot
         self.cal_plot = pg.PlotWidget(title=tr("Calibration Map"))
-        self.cal_plot.setLabel('bottom', tr("Frequency"), units='Hz')
-        self.cal_plot.setLabel('left', tr("Correction"), units='dB')
+        self.cal_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.cal_plot.setLabel("left", tr("Correction"), units="dB")
         self.cal_plot.showGrid(x=True, y=True, alpha=0.3)
         self.cal_plot.addLegend()
-        self.cal_plot.getPlotItem().getAxis('bottom').setLogMode(True)
+        self.cal_plot.getPlotItem().getAxis("bottom").setLogMode(True)
 
-        self.cal_curve_mag = self.cal_plot.plot(pen='y', name=tr('Mag Correction (dB)'))
-        self.cal_curve_phase = pg.PlotCurveItem(pen='c', name=tr('Phase Correction (deg)'))
+        self.cal_curve_mag = self.cal_plot.plot(pen="y", name=tr("Mag Correction (dB)"))
+        self.cal_curve_phase = pg.PlotCurveItem(pen="c", name=tr("Phase Correction (deg)"))
 
         # Dual Axis for Phase
         self.cal_plot_p = pg.ViewBox()
         self.cal_plot.scene().addItem(self.cal_plot_p)
-        self.cal_plot.getPlotItem().showAxis('right')
-        self.cal_plot.getPlotItem().getAxis('right').linkToView(self.cal_plot_p)
+        self.cal_plot.getPlotItem().showAxis("right")
+        self.cal_plot.getPlotItem().getAxis("right").linkToView(self.cal_plot_p)
         self.cal_plot_p.setXLink(self.cal_plot.getPlotItem())
-        self.cal_plot.getPlotItem().getAxis('right').setLabel(tr('Phase'), units='deg')
+        self.cal_plot.getPlotItem().getAxis("right").setLabel(tr("Phase"), units="deg")
 
         self.cal_plot_p.addItem(self.cal_curve_phase)
 
@@ -928,6 +950,7 @@ class LockInAmplifierWidget(QWidget):
         def update_cal_views():
             self.cal_plot_p.setGeometry(self.cal_plot.getPlotItem().vb.sceneBoundingRect())
             self.cal_plot_p.linkedViewChanged(self.cal_plot.getPlotItem().vb, self.cal_plot_p.XAxis)
+
         self.cal_plot.getPlotItem().vb.sigResized.connect(update_cal_views)
 
         cal_layout.addWidget(self.cal_plot, stretch=3)
@@ -940,12 +963,12 @@ class LockInAmplifierWidget(QWidget):
         # Data storage for FRA
         self.fra_freqs = []
         self.fra_log_freqs = []
-        self.fra_raw_mags = [] # Linear (0-1)
+        self.fra_raw_mags = []  # Linear (0-1)
         self.fra_phases = []
         self.fra_worker = None
 
         # Data storage for Calibration
-        self.cal_data = [] # List of [freq, mag_db, phase_deg]
+        self.cal_data = []  # List of [freq, mag_db, phase_deg]
         self.cal_worker = None
 
     def on_toggle(self, checked):
@@ -964,29 +987,31 @@ class LockInAmplifierWidget(QWidget):
         gain = self.module.audio_engine.calibration.output_gain
         amp_linear = 0.0
 
-        if unit == 'Linear (0-1)':
+        if unit == "Linear (0-1)":
             amp_linear = val
-        elif unit == 'dBFS':
-            amp_linear = 10**(val/20)
-        elif unit == 'dBV':
+        elif unit == "dBFS":
+            amp_linear = 10 ** (val / 20)
+        elif unit == "dBV":
             # val = 20 * log10(Vrms)
-            v_rms = 10**(val/20)
+            v_rms = 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_linear = v_peak / gain
-        elif unit == 'dBu':
+        elif unit == "dBu":
             # val = 20 * log10(Vrms / 0.7746)
-            v_rms = 0.7746 * 10**(val/20)
+            v_rms = 0.7746 * 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_linear = v_peak / gain
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = val * np.sqrt(2)
             amp_linear = v_peak / gain
-        elif unit == 'Vpeak':
+        elif unit == "Vpeak":
             amp_linear = val / gain
 
         # Clamp
-        if amp_linear > 1.0: amp_linear = 1.0
-        elif amp_linear < 0.0: amp_linear = 0.0
+        if amp_linear > 1.0:
+            amp_linear = 1.0
+        elif amp_linear < 0.0:
+            amp_linear = 0.0
 
         return amp_linear
 
@@ -1004,36 +1029,36 @@ class LockInAmplifierWidget(QWidget):
 
         self.amp_spin.blockSignals(True)
 
-        if unit == 'Linear (0-1)':
+        if unit == "Linear (0-1)":
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setValue(amp_0_1)
-        elif unit == 'dBFS':
+        elif unit == "dBFS":
             self.amp_spin.setRange(-120, 0)
             self.amp_spin.setSingleStep(1.0)
             val = 20 * np.log10(amp_0_1 + 1e-12)
             self.amp_spin.setValue(val)
-        elif unit == 'dBV':
+        elif unit == "dBV":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setValue(val)
-        elif unit == 'dBu':
+        elif unit == "dBu":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setValue(val)
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / np.sqrt(2)
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setValue(v_rms)
-        elif unit == 'Vpeak':
+        elif unit == "Vpeak":
             v_peak = amp_0_1 * gain
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
@@ -1064,10 +1089,14 @@ class LockInAmplifierWidget(QWidget):
         self.out_ch_combo.setEnabled(not checked)
 
     def on_time_changed(self, idx):
-        if idx == 0: self.module.buffer_size = 2048
-        elif idx == 1: self.module.buffer_size = 4096
-        elif idx == 2: self.module.buffer_size = 16384
-        elif idx == 3: self.module.buffer_size = 65536
+        if idx == 0:
+            self.module.buffer_size = 2048
+        elif idx == 1:
+            self.module.buffer_size = 4096
+        elif idx == 2:
+            self.module.buffer_size = 16384
+        elif idx == 3:
+            self.module.buffer_size = 65536
 
         # Re-allocate buffer
         self.module.input_data = np.zeros((self.module.buffer_size, 2))
@@ -1113,14 +1142,15 @@ class LockInAmplifierWidget(QWidget):
 
             # For XY, use linear mag precision (approx)
             prec_xy = prec_mag + 1
-            if prec_xy > 6: prec_xy = 6
+            if prec_xy > 6:
+                prec_xy = 6
 
         # Update Meters
         mag_fs = self.module.current_magnitude
         phase = self.module.current_phase
 
         # Calculate Voltage
-        sensitivity = self.module.audio_engine.calibration.input_sensitivity # Vpeak at 0dBFS
+        sensitivity = self.module.audio_engine.calibration.input_sensitivity  # Vpeak at 0dBFS
         v_peak = mag_fs * sensitivity
         v_rms = v_peak / np.sqrt(2)
 
@@ -1133,7 +1163,7 @@ class LockInAmplifierWidget(QWidget):
                 self.mag_label.setText(tr("{0} dBFS").format(val_str))
             else:
                 self.mag_label.setText(tr("-inf dBFS"))
-            self.mag_db_label.setText("") # Clear secondary
+            self.mag_db_label.setText("")  # Clear secondary
 
         elif unit == "dBV":
             if v_rms > 0:
@@ -1194,8 +1224,8 @@ class LockInAmplifierWidget(QWidget):
         x_fs = self.module.current_x
         y_fs = self.module.current_y
 
-        x_v = x_fs * sensitivity / np.sqrt(2) # RMS
-        y_v = y_fs * sensitivity / np.sqrt(2) # RMS
+        x_v = x_fs * sensitivity / np.sqrt(2)  # RMS
+        y_v = y_fs * sensitivity / np.sqrt(2)  # RMS
 
         if unit == "dBFS":
             # For X/Y in FS, use prec_xy
@@ -1204,7 +1234,7 @@ class LockInAmplifierWidget(QWidget):
             self.x_label.setText(tr("{0} FS").format(val_x))
             self.y_label.setText(tr("{0} FS").format(val_y))
         elif unit == "mV":
-             # Use prec_mv from above logic or similar
+            # Use prec_mv from above logic or similar
             decimals = 3
             if self.module.averaging_count > 1:
                 std_mv = self.module.current_magnitude_std * sensitivity / np.sqrt(2) * 1000
@@ -1214,7 +1244,7 @@ class LockInAmplifierWidget(QWidget):
             val_y = ("{0:." + str(decimals) + "f}").format(y_v * 1000)
             self.x_label.setText(tr("{0} mV").format(val_x))
             self.y_label.setText(tr("{0} mV").format(val_y))
-        else: # V, dBV, dBu -> Show V
+        else:  # V, dBV, dBu -> Show V
             # Use prec_v
             decimals = 6
             if self.module.averaging_count > 1:
@@ -1281,9 +1311,9 @@ class LockInAmplifierWidget(QWidget):
 
         # Setup Axis Ticks
         if log:
-            axis = self.fra_plot.getPlotItem().getAxis('bottom')
+            axis = self.fra_plot.getPlotItem().getAxis("bottom")
             # Generate ticks
-            nyquist_freq = float(getattr(self.module.audio_engine, 'sample_rate', 48000) or 48000) / 2.0
+            nyquist_freq = float(getattr(self.module.audio_engine, "sample_rate", 48000) or 48000) / 2.0
             ticks_base = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000]
             ticks = [t for t in ticks_base if t <= nyquist_freq]
             if ticks:
@@ -1292,10 +1322,10 @@ class LockInAmplifierWidget(QWidget):
                     ticks.append(int(round(nyquist_freq)))
             else:
                 ticks = [int(round(nyquist_freq))]
-            ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t/1000:.0f}k") for t in ticks]
+            ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
             axis.setTicks([ticks_log])
         else:
-            self.fra_plot.getPlotItem().getAxis('bottom').setTicks(None) # Auto
+            self.fra_plot.getPlotItem().getAxis("bottom").setTicks(None)  # Auto
 
         self.fra_worker = FRASweepWorker(self.module, start, end, steps, log, settle)
         self.fra_worker.progress.connect(self.fra_progress.setValue)
@@ -1308,13 +1338,17 @@ class LockInAmplifierWidget(QWidget):
     def _refresh_frequency_limits(self, force: bool = False):
         """Update frequency spin box ranges up to Nyquist (sample_rate/2)."""
         try:
-            sample_rate = float(getattr(self.module.audio_engine, 'sample_rate', 48000) or 48000)
+            sample_rate = float(getattr(self.module.audio_engine, "sample_rate", 48000) or 48000)
         except Exception:
             sample_rate = 48000.0
 
         nyquist_freq = max(1.0, sample_rate / 2.0)
 
-        if (not force) and (self._last_nyquist_freq is not None) and (abs(nyquist_freq - self._last_nyquist_freq) <= 1e-9):
+        if (
+            (not force)
+            and (self._last_nyquist_freq is not None)
+            and (abs(nyquist_freq - self._last_nyquist_freq) <= 1e-9)
+        ):
             return
 
         self._last_nyquist_freq = nyquist_freq
@@ -1322,19 +1356,19 @@ class LockInAmplifierWidget(QWidget):
         max_freq = nyquist_freq
 
         # Manual
-        if hasattr(self, 'freq_spin'):
+        if hasattr(self, "freq_spin"):
             self.freq_spin.setRange(min_freq, max_freq)
 
         # FRA
-        if hasattr(self, 'fra_start_spin'):
+        if hasattr(self, "fra_start_spin"):
             self.fra_start_spin.setRange(min_freq, max_freq)
-        if hasattr(self, 'fra_end_spin'):
+        if hasattr(self, "fra_end_spin"):
             self.fra_end_spin.setRange(min_freq, max_freq)
 
         # Calibration
-        if hasattr(self, 'cal_start_spin'):
+        if hasattr(self, "cal_start_spin"):
             self.cal_start_spin.setRange(min_freq, max_freq)
-        if hasattr(self, 'cal_end_spin'):
+        if hasattr(self, "cal_end_spin"):
             self.cal_end_spin.setRange(min_freq, max_freq)
 
     def on_fra_result(self, f, mag, phase):
@@ -1366,29 +1400,34 @@ class LockInAmplifierWidget(QWidget):
 
         for mag in self.fra_raw_mags:
             y_val = 0.0
-            if unit == 'dBFS':
+            if unit == "dBFS":
                 y_val = 20 * np.log10(mag + 1e-12)
-            elif unit == 'dBV':
+            elif unit == "dBV":
                 v_peak = mag * sensitivity
                 v_rms = v_peak / np.sqrt(2)
                 y_val = 20 * np.log10(v_rms + 1e-12)
-            elif unit == 'dBu':
+            elif unit == "dBu":
                 v_peak = mag * sensitivity
                 v_rms = v_peak / np.sqrt(2)
                 y_val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
-            elif unit == 'Vrms':
+            elif unit == "Vrms":
                 v_peak = mag * sensitivity
                 y_val = v_peak / np.sqrt(2)
-            elif unit == 'Vpeak':
+            elif unit == "Vpeak":
                 y_val = mag * sensitivity
             plot_mags.append(y_val)
 
         # Update Axis Label
-        if unit == 'dBFS': self.fra_plot.setLabel('left', tr("Magnitude"), units='dBFS')
-        elif unit == 'dBV': self.fra_plot.setLabel('left', tr("Magnitude"), units='dBV')
-        elif unit == 'dBu': self.fra_plot.setLabel('left', tr("Magnitude"), units='dBu')
-        elif unit == 'Vrms': self.fra_plot.setLabel('left', tr("Magnitude"), units='V')
-        elif unit == 'Vpeak': self.fra_plot.setLabel('left', tr("Magnitude"), units='V')
+        if unit == "dBFS":
+            self.fra_plot.setLabel("left", tr("Magnitude"), units="dBFS")
+        elif unit == "dBV":
+            self.fra_plot.setLabel("left", tr("Magnitude"), units="dBV")
+        elif unit == "dBu":
+            self.fra_plot.setLabel("left", tr("Magnitude"), units="dBu")
+        elif unit == "Vrms":
+            self.fra_plot.setLabel("left", tr("Magnitude"), units="V")
+        elif unit == "Vpeak":
+            self.fra_plot.setLabel("left", tr("Magnitude"), units="V")
 
         self.fra_curve_mag.setData(self.fra_log_freqs, plot_mags)
         self.fra_curve_phase.setData(self.fra_log_freqs, self.fra_phases)
@@ -1396,7 +1435,7 @@ class LockInAmplifierWidget(QWidget):
     def on_fra_finished(self):
         self.fra_start_btn.setText(tr("Start Sweep"))
         self.fra_start_btn.setEnabled(True)
-        self.module.stop_analysis() # Stop generator
+        self.module.stop_analysis()  # Stop generator
 
     # --- Calibration Methods ---
 
@@ -1431,7 +1470,7 @@ class LockInAmplifierWidget(QWidget):
         # Disable Calibration Application during calibration sweep!
         self.cal_apply_check.setChecked(False)
 
-        self.cal_worker = FRASweepWorker(self.module, start, end, steps, True, settle) # Always log sweep for cal?
+        self.cal_worker = FRASweepWorker(self.module, start, end, steps, True, settle)  # Always log sweep for cal?
         self.cal_worker.progress.connect(self.cal_progress.setValue)
         self.cal_worker.result.connect(self.on_cal_result)
         self.cal_worker.finished_sweep.connect(self.on_cal_finished)
@@ -1466,7 +1505,8 @@ class LockInAmplifierWidget(QWidget):
 
         # Normalize Map to 1kHz (or nearest)
         # Find 1kHz index
-        if not self.cal_data: return
+        if not self.cal_data:
+            return
 
         freqs = [x[0] for x in self.cal_data]
         mags = [x[1] for x in self.cal_data]
@@ -1475,12 +1515,12 @@ class LockInAmplifierWidget(QWidget):
         # Find nearest to 1000Hz
         idx = (np.abs(np.array(freqs) - 1000)).argmin()
         ref_mag = mags[idx]
-        ref_phase = phases[idx] # Optional: Normalize phase too? Usually yes for relative map.
+        ref_phase = phases[idx]  # Optional: Normalize phase too? Usually yes for relative map.
 
         # Normalize
         norm_data = []
         for f, m, p in self.cal_data:
-            norm_data.append([f, m - ref_mag, p - ref_phase]) # Relative to 1kHz
+            norm_data.append([f, m - ref_mag, p - ref_phase])  # Relative to 1kHz
 
         self.cal_data = norm_data
 
@@ -1492,10 +1532,15 @@ class LockInAmplifierWidget(QWidget):
         self.cal_curve_mag.setData(log_freqs, norm_mags)
         self.cal_curve_phase.setData(log_freqs, norm_phases)
 
-        QMessageBox.information(self, tr("Calibration Complete"),
-                              tr("Sweep completed.\nMap normalized to 1kHz (Ref: {0:.2f} dB, {1:.2f} deg).\n"
-                              "This map captures RELATIVE frequency response.\n"
-                              "Use 'Absolute Gain Calibration' to fix the absolute level.").format(ref_mag, ref_phase))
+        QMessageBox.information(
+            self,
+            tr("Calibration Complete"),
+            tr(
+                "Sweep completed.\nMap normalized to 1kHz (Ref: {0:.2f} dB, {1:.2f} deg).\n"
+                "This map captures RELATIVE frequency response.\n"
+                "Use 'Absolute Gain Calibration' to fix the absolute level."
+            ).format(ref_mag, ref_phase),
+        )
 
     def on_abs_cal_click(self):
         if not self.module.is_running:
@@ -1547,21 +1592,21 @@ class LockInAmplifierWidget(QWidget):
         sensitivity = self.module.audio_engine.calibration.input_sensitivity
 
         target_dbfs = 0.0
-        if target_unit == 'dBFS':
+        if target_unit == "dBFS":
             target_dbfs = target_val
-        elif target_unit == 'dBV':
+        elif target_unit == "dBV":
             # val = 20log(Vrms)
             # Vrms = 10^(val/20)
             # Vpeak = Vrms * sqrt(2)
             # dBFS = 20log(Vpeak / sensitivity)
-            v_rms = 10**(target_val/20)
+            v_rms = 10 ** (target_val / 20)
             v_peak = v_rms * np.sqrt(2)
             target_dbfs = 20 * np.log10(v_peak / sensitivity)
-        elif target_unit == 'dBu':
-            v_rms = 0.7746 * 10**(target_val/20)
+        elif target_unit == "dBu":
+            v_rms = 0.7746 * 10 ** (target_val / 20)
             v_peak = v_rms * np.sqrt(2)
             target_dbfs = 20 * np.log10(v_peak / sensitivity)
-        elif target_unit == 'Vrms':
+        elif target_unit == "Vrms":
             v_peak = target_val * np.sqrt(2)
             target_dbfs = 20 * np.log10(v_peak / sensitivity)
 
@@ -1610,9 +1655,14 @@ class LockInAmplifierWidget(QWidget):
         # We need the Map value at current frequency.
 
         if not self.module.apply_calibration:
-            ret = QMessageBox.question(self, tr("Enable Calibration?"),
-                                     tr("Calibration is currently disabled. To calibrate absolute gain correctly with the frequency map, we should enable calibration first.\n\nEnable and proceed?"),
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            ret = QMessageBox.question(
+                self,
+                tr("Enable Calibration?"),
+                tr(
+                    "Calibration is currently disabled. To calibrate absolute gain correctly with the frequency map, we should enable calibration first.\n\nEnable and proceed?"
+                ),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
             if ret == QMessageBox.StandardButton.Yes:
                 self.cal_apply_check.setChecked(True)
                 # Wait for one cycle? No, just proceed with logic,
@@ -1623,7 +1673,7 @@ class LockInAmplifierWidget(QWidget):
                 # So we use Case 2 logic but set Old_Offset to what is in calibration (which is not applied yet).
 
                 # Actually, simpler: Just force enable, wait a bit (or manually trigger process), then read.
-                self.module.process_data() # Force process with new setting
+                self.module.process_data()  # Force process with new setting
                 current_mag_linear = self.module.current_magnitude
                 current_mag_dbfs = 20 * np.log10(current_mag_linear + 1e-12)
                 old_offset = self.module.audio_engine.calibration.lockin_gain_offset
@@ -1637,7 +1687,13 @@ class LockInAmplifierWidget(QWidget):
         self.module.audio_engine.calibration.set_lockin_gain_offset(new_offset)
         self.abs_cal_status.setText(tr("Current Offset: {0:.3f} dB").format(new_offset))
 
-        QMessageBox.information(self, tr("Success"), tr("Absolute Gain Calibrated.\nOffset adjusted by {0:+.3f} dB.\nNew Offset: {1:.3f} dB").format(diff, new_offset))
+        QMessageBox.information(
+            self,
+            tr("Success"),
+            tr("Absolute Gain Calibrated.\nOffset adjusted by {0:+.3f} dB.\nNew Offset: {1:.3f} dB").format(
+                diff, new_offset
+            ),
+        )
 
     def on_cal_save(self):
         if not self.cal_data:
@@ -1669,12 +1725,11 @@ class LockInAmplifierWidget(QWidget):
     def on_cal_apply_toggled(self, checked):
         self.module.apply_calibration = checked
 
-
     def apply_theme(self, theme_name):
-        if theme_name == 'system' and hasattr(self.app, 'theme_manager'):
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == 'dark':
+        if theme_name == "dark":
             # Dark Theme
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; font-weight: bold; }"
@@ -1710,6 +1765,6 @@ class LockInAmplifierWidget(QWidget):
 
         # Theme handling
         self.app = QApplication.instance()
-        if hasattr(self.app, 'theme_manager'):
+        if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())

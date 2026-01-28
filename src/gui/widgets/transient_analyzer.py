@@ -31,13 +31,13 @@ class TransientAnalyzer(MeasurementModule):
 
         # State
         self.is_recording = False
-        self.recorded_data = [] # List of chunks
-        self.final_data = None # Numpy array (1D) after stop
+        self.recorded_data = []  # List of chunks
+        self.final_data = None  # Numpy array (1D) after stop
         self.fs = 48000
 
         # Settings
-        self.input_channel = 'Left'
-        self.wavelet_name = 'cmor1.5-1.0'
+        self.input_channel = "Left"
+        self.wavelet_name = "cmor1.5-1.0"
         self.scale_min = 1
         self.scale_max = 128
         self.scale_step = 1
@@ -47,8 +47,8 @@ class TransientAnalyzer(MeasurementModule):
 
         # Trigger (oscilloscope-like)
         self.trigger_enabled = False
-        self.trigger_source = 'Left'  # 'Left' or 'Right'
-        self.trigger_slope = 'Rising'  # 'Rising' or 'Falling'
+        self.trigger_source = "Left"  # 'Left' or 'Right'
+        self.trigger_slope = "Rising"  # 'Rising' or 'Falling'
         self.trigger_level = 0.0
 
         # Recording limit (enforced in audio callback for accuracy)
@@ -87,7 +87,7 @@ class TransientAnalyzer(MeasurementModule):
         if duration_s > 3.0:
             duration_s = 3.0
         self._target_samples = int(max(1, round(duration_s * self.fs)))
-        self._triggered = (not self.trigger_enabled)
+        self._triggered = not self.trigger_enabled
         self._prev_trigger_sample = None
         self.callback_id = self.audio_engine.register_callback(self._audio_callback)
 
@@ -106,14 +106,14 @@ class TransientAnalyzer(MeasurementModule):
             full_raw = np.concatenate(self.recorded_data, axis=0)
 
             # Select channel
-            if self.input_channel == 'Left':
+            if self.input_channel == "Left":
                 self.final_data = full_raw[:, 0]
-            elif self.input_channel == 'Right':
+            elif self.input_channel == "Right":
                 if full_raw.shape[1] > 1:
                     self.final_data = full_raw[:, 1]
                 else:
                     self.final_data = full_raw[:, 0]
-            else: # Average
+            else:  # Average
                 self.final_data = np.mean(full_raw, axis=1)
         else:
             self.final_data = None
@@ -126,9 +126,9 @@ class TransientAnalyzer(MeasurementModule):
         if indata.ndim == 1:
             return np.asarray(indata, dtype=float)
 
-        if self.trigger_source == 'Left':
+        if self.trigger_source == "Left":
             return np.asarray(indata[:, 0], dtype=float)
-        if self.trigger_source == 'Right':
+        if self.trigger_source == "Right":
             if indata.shape[1] > 1:
                 return np.asarray(indata[:, 1], dtype=float)
             return np.asarray(indata[:, 0], dtype=float)
@@ -144,7 +144,7 @@ class TransientAnalyzer(MeasurementModule):
         prev = self._prev_trigger_sample
 
         if prev is not None:
-            if self.trigger_slope == 'Rising':
+            if self.trigger_slope == "Rising":
                 if prev <= level and sig[0] > level:
                     return 0
             else:
@@ -154,7 +154,7 @@ class TransientAnalyzer(MeasurementModule):
         if sig.size < 2:
             return None
 
-        if self.trigger_slope == 'Rising':
+        if self.trigger_slope == "Rising":
             crossings = np.where((sig[:-1] <= level) & (sig[1:] > level))[0]
         else:
             crossings = np.where((sig[:-1] >= level) & (sig[1:] < level))[0]
@@ -186,7 +186,7 @@ class TransientAnalyzer(MeasurementModule):
 
                 remaining = target - self._recorded_samples
                 if remaining > 0:
-                    chunk = indata[start:start + remaining].copy()
+                    chunk = indata[start : start + remaining].copy()
                     if chunk.size > 0:
                         self.recorded_data.append(chunk)
                         self._recorded_samples += chunk.shape[0]
@@ -212,8 +212,10 @@ class TransientAnalyzer(MeasurementModule):
             max_freq = self.fs / 2
 
         # Check integrity
-        if min_freq <= 0: min_freq = 1
-        if min_freq >= max_freq: min_freq = max_freq - 10
+        if min_freq <= 0:
+            min_freq = 1
+        if min_freq >= max_freq:
+            min_freq = max_freq - 10
 
         # Linear space for frequencies to match linear Y-axis of plot
         freqs = np.linspace(min_freq, max_freq, num_scales)
@@ -226,7 +228,7 @@ class TransientAnalyzer(MeasurementModule):
         scales = np.array(scales)
 
         # Run CWT
-        cwtmatr, frequencies = pywt.cwt(self.final_data, scales, self.wavelet_name, sampling_period=1.0/self.fs)
+        cwtmatr, frequencies = pywt.cwt(self.final_data, scales, self.wavelet_name, sampling_period=1.0 / self.fs)
 
         # Calculate Magnitude
         mag = np.abs(cwtmatr)
@@ -268,7 +270,7 @@ class TransientAnalyzerWidget(QWidget):
         ctrl_layout.addWidget(QLabel(tr("Wavelet:")))
         self.wavelet_combo = QComboBox()
         # Common continuous wavelets
-        self.wavelet_combo.addItems(['cmor1.5-1.0', 'mexh', 'morl', 'cgau1', 'gaus1'])
+        self.wavelet_combo.addItems(["cmor1.5-1.0", "mexh", "morl", "cgau1", "gaus1"])
         self.wavelet_combo.setEditable(True)
         self.wavelet_combo.currentTextChanged.connect(self.on_wavelet_changed)
         ctrl_layout.addWidget(self.wavelet_combo)
@@ -314,7 +316,9 @@ class TransientAnalyzerWidget(QWidget):
         self.analyze_btn = QPushButton(tr("Analyze"))
         self.analyze_btn.clicked.connect(self.on_analyze)
         self.analyze_btn.setEnabled(False)
-        self.analyze_btn.setToolTip(tr("Warning: Analysis can be slow for long recordings.\nComplexity ~ O(N * Scales)."))
+        self.analyze_btn.setToolTip(
+            tr("Warning: Analysis can be slow for long recordings.\nComplexity ~ O(N * Scales).")
+        )
         ctrl_layout.addWidget(self.analyze_btn)
 
         ctrl_group.setLayout(ctrl_layout)
@@ -371,16 +375,16 @@ class TransientAnalyzerWidget(QWidget):
 
         # 1. Waveform Plot
         self.wave_plot = pg.PlotWidget(title=tr("Transient Waveform"))
-        self.wave_plot.setLabel('left', tr("Amplitude"))
-        self.wave_plot.setLabel('bottom', tr("Time"), units='s')
+        self.wave_plot.setLabel("left", tr("Amplitude"))
+        self.wave_plot.setLabel("bottom", tr("Time"), units="s")
         self.wave_plot.showGrid(x=True, y=True)
         splitter.addWidget(self.wave_plot)
 
         # 2. Scalogram (Image)
         self.scalo_win = pg.GraphicsLayoutWidget()
         self.scalo_plot = self.scalo_win.addPlot(title=tr("Wavelet Scalogram"))
-        self.scalo_plot.setLabel('left', tr("Frequency"), units='Hz')
-        self.scalo_plot.setLabel('bottom', tr("Time"), units='s')
+        self.scalo_plot.setLabel("left", tr("Frequency"), units="Hz")
+        self.scalo_plot.setLabel("bottom", tr("Time"), units="s")
 
         self.img_item = pg.ImageItem()
         self.scalo_plot.addItem(self.img_item)
@@ -388,7 +392,7 @@ class TransientAnalyzerWidget(QWidget):
         # Histogram
         self.hist = pg.HistogramLUTItem()
         self.hist.setImageItem(self.img_item)
-        self.hist.gradient.loadPreset('viridis')
+        self.hist.gradient.loadPreset("viridis")
         self.scalo_win.addItem(self.hist)
 
         splitter.addWidget(self.scalo_win)
@@ -424,7 +428,7 @@ class TransientAnalyzerWidget(QWidget):
         minor = []
         for exp in range(exp_min, exp_max + 1):
             for mult in (1.0, 2.0, 5.0):
-                f = mult * (10.0 ** exp)
+                f = mult * (10.0**exp)
                 if f < lo or f > hi:
                     continue
                 pos = float(np.log10(f))
@@ -433,7 +437,7 @@ class TransientAnalyzerWidget(QWidget):
                 else:
                     minor.append((pos, ""))
 
-        self.scalo_plot.getAxis('left').setTicks([major, minor])
+        self.scalo_plot.getAxis("left").setTicks([major, minor])
 
     def on_channel_changed(self, _index):
         value = self.chan_combo.currentData()
@@ -494,14 +498,16 @@ class TransientAnalyzerWidget(QWidget):
             self._stop_recording_ui()
 
     def update_waveform_plot(self):
-        if self.module.final_data is None: return
+        if self.module.final_data is None:
+            return
 
         t = np.arange(len(self.module.final_data)) / self.module.fs
         self.wave_plot.clear()
-        self.wave_plot.plot(t, self.module.final_data, pen='y')
+        self.wave_plot.plot(t, self.module.final_data, pen="y")
 
     def on_analyze(self):
-        if self.module.final_data is None: return
+        if self.module.final_data is None:
+            return
 
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setText(tr("Analyzing..."))
@@ -536,4 +542,3 @@ class TransientAnalyzerWidget(QWidget):
         finally:
             self.analyze_btn.setEnabled(True)
             self.analyze_btn.setText(tr("Analyze"))
-

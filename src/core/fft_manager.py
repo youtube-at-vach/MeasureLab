@@ -1,4 +1,3 @@
-
 import numpy as np
 import multiprocessing
 import logging
@@ -11,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import pyfftw
+
     HAS_PYFFTW = True
 except ImportError:
     HAS_PYFFTW = False
@@ -27,25 +27,25 @@ HUGE_SIZES = [1048576, 2097152, 4194304]
 EXTENDED_SIZES = MEDIUM_SIZES + HUGE_SIZES
 
 
-
 class FFTManager:
     """
     Manages FFTW plans to optimize FFT performance.
     """
+
     def __init__(self):
         self._plans = {}
         self.threads = multiprocessing.cpu_count()
         if HAS_PYFFTW:
-             pyfftw.config.NUM_THREADS = self.threads
+            pyfftw.config.NUM_THREADS = self.threads
 
         # Store wisdom in XDG compliant user data directory
         # This fixes the issue where wisdom cannot be saved in read-only AppImage environments
-        xdg_data_home = os.environ.get('XDG_DATA_HOME')
+        xdg_data_home = os.environ.get("XDG_DATA_HOME")
         if not xdg_data_home:
-            xdg_data_home = os.path.join(os.path.expanduser('~'), '.local', 'share')
+            xdg_data_home = os.path.join(os.path.expanduser("~"), ".local", "share")
 
-        self.wisdom_dir = Path(xdg_data_home) / 'MeasureLab' / 'wisdom'
-        self.wisdom_path = self.wisdom_dir / 'pyfftw_wisdom'
+        self.wisdom_dir = Path(xdg_data_home) / "MeasureLab" / "wisdom"
+        self.wisdom_path = self.wisdom_dir / "pyfftw_wisdom"
 
         # Create directory if it doesn't exist
         try:
@@ -81,7 +81,7 @@ class FFTManager:
         except Exception as e:
             logger.error(f"Failed to save wisdom: {e}")
 
-    def get_plan(self, size, dtype='float64', flags=('FFTW_ESTIMATE',), direction='FFTW_FORWARD'):
+    def get_plan(self, size, dtype="float64", flags=("FFTW_ESTIMATE",), direction="FFTW_FORWARD"):
         """
         Get or create an FFT plan for the given size.
         flags: tuple of strategies, e.g. ('FFTW_ESTIMATE',) or ('FFTW_MEASURE',)
@@ -92,13 +92,13 @@ class FFTManager:
         # Check if plan exists
         if key in self._plans:
             existing_plan = self._plans[key]
-            existing_flags = existing_plan.get('flags', ('FFTW_MEASURE',)) # Default to measure if unknown (legacy)
+            existing_flags = existing_plan.get("flags", ("FFTW_MEASURE",))  # Default to measure if unknown (legacy)
 
             # If we requested MEASURE but have ESTIMATE, we should upgrade (re-create)
-            if 'FFTW_MEASURE' in flags and 'FFTW_MEASURE' not in existing_flags:
+            if "FFTW_MEASURE" in flags and "FFTW_MEASURE" not in existing_flags:
                 logger.info(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
                 self._create_plan(size, dtype, flags, direction)
-            # Otherwise, use existing (ESTIMATE is fine if we requested MEASURE or ESTIMATE and have MEASURE, 
+            # Otherwise, use existing (ESTIMATE is fine if we requested MEASURE or ESTIMATE and have MEASURE,
             # and MEASURE is fine if we requested ESTIMATE and have MEASURE)
         else:
             self._create_plan(size, dtype, flags, direction)
@@ -111,41 +111,35 @@ class FFTManager:
 
         try:
             # We focus on rfft (Real input -> Complex output) and irfft (Complex input -> Real output)
-            if direction == 'FFTW_FORWARD':
-                if dtype_str == 'float32':
-                    input_array = pyfftw.empty_aligned(size, dtype='float32')
-                    output_array = pyfftw.empty_aligned(size // 2 + 1, dtype='complex64')
+            if direction == "FFTW_FORWARD":
+                if dtype_str == "float32":
+                    input_array = pyfftw.empty_aligned(size, dtype="float32")
+                    output_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex64")
                 else:
-                    input_array = pyfftw.empty_aligned(size, dtype='float64')
-                    output_array = pyfftw.empty_aligned(size // 2 + 1, dtype='complex128')
-            else: # FFTW_BACKWARD (irfft)
-                if dtype_str == 'float32':
-                    input_array = pyfftw.empty_aligned(size // 2 + 1, dtype='complex64')
-                    output_array = pyfftw.empty_aligned(size, dtype='float32')
+                    input_array = pyfftw.empty_aligned(size, dtype="float64")
+                    output_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex128")
+            else:  # FFTW_BACKWARD (irfft)
+                if dtype_str == "float32":
+                    input_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex64")
+                    output_array = pyfftw.empty_aligned(size, dtype="float32")
                 else:
-                    input_array = pyfftw.empty_aligned(size // 2 + 1, dtype='complex128')
-                    output_array = pyfftw.empty_aligned(size, dtype='float64')
+                    input_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex128")
+                    output_array = pyfftw.empty_aligned(size, dtype="float64")
 
             # Use provided flags (ESTIMATE vs MEASURE)
-            fft_object = pyfftw.FFTW(
-                input_array, 
-                output_array, 
-                direction=direction, 
-                flags=flags, 
-                threads=self.threads
-            )
+            fft_object = pyfftw.FFTW(input_array, output_array, direction=direction, flags=flags, threads=self.threads)
 
-            # Save wisdom only if we did a measurement (MEASURE or PATIENT etc), 
+            # Save wisdom only if we did a measurement (MEASURE or PATIENT etc),
             # though ESTIMATE doesn't generate wisdom worth saving usually, saving doesn't hurt.
             # But typically we only care about saving after costly optimizations.
-            if 'FFTW_MEASURE' in flags:
+            if "FFTW_MEASURE" in flags:
                 self.save_wisdom()
 
             self._plans[(size, dtype_str, direction)] = {
-                'object': fft_object,
-                'input': input_array,
-                'output': output_array,
-                'flags': flags
+                "object": fft_object,
+                "input": input_array,
+                "output": output_array,
+                "flags": flags,
             }
             logger.info(f"Created pyfftw plan for size {size} ({dtype_str}, {direction}) with flags {flags}")
 
@@ -159,18 +153,18 @@ class FFTManager:
         size = len(data)
         # Determine dtype
         if data.dtype == np.float32:
-            dtype_str = 'float32'
+            dtype_str = "float32"
         else:
-            dtype_str = 'float64' # Default for generic types
+            dtype_str = "float64"  # Default for generic types
 
         if HAS_PYFFTW:
             # fast default: ESTIMATE
-            plan_entry = self.get_plan(size, dtype_str, flags=('FFTW_ESTIMATE',), direction='FFTW_FORWARD')
+            plan_entry = self.get_plan(size, dtype_str, flags=("FFTW_ESTIMATE",), direction="FFTW_FORWARD")
             if plan_entry:
-                fft_obj = plan_entry['object']
-                input_arr = plan_entry['input']
+                fft_obj = plan_entry["object"]
+                input_arr = plan_entry["input"]
 
-                # Copy data 
+                # Copy data
                 input_arr[:] = data
 
                 # Execute
@@ -178,10 +172,10 @@ class FFTManager:
 
                 # Return copy of result (to avoid buffer reuse issues by caller)
                 if out is not None:
-                    out[:] = plan_entry['output']
+                    out[:] = plan_entry["output"]
                     return out
                 else:
-                    return plan_entry['output'].copy()
+                    return plan_entry["output"].copy()
 
         # Fallback
         result = np.fft.rfft(data)
@@ -199,37 +193,37 @@ class FFTManager:
 
         # Check dtype compatibility
         if data.dtype == np.complex64:
-             dtype_str = 'float32'
+            dtype_str = "float32"
         else:
-             dtype_str = 'float64'
+            dtype_str = "float64"
 
         if HAS_PYFFTW:
-             plan_entry = self.get_plan(n, dtype_str, flags=('FFTW_ESTIMATE',), direction='FFTW_BACKWARD')
-             if plan_entry:
-                  fft_obj = plan_entry['object']
-                  input_arr = plan_entry['input']
+            plan_entry = self.get_plan(n, dtype_str, flags=("FFTW_ESTIMATE",), direction="FFTW_BACKWARD")
+            if plan_entry:
+                fft_obj = plan_entry["object"]
+                input_arr = plan_entry["input"]
 
-                  # Safety check for input length
-                  # PyFFTW input buffer expects n//2 + 1 complex numbers
-                  expected_len = len(input_arr)
-                  if len(data) != expected_len:
-                      result = np.fft.irfft(data, n=n)
-                      if out is not None:
-                          out[:] = result
-                          return out
-                      return result
+                # Safety check for input length
+                # PyFFTW input buffer expects n//2 + 1 complex numbers
+                expected_len = len(input_arr)
+                if len(data) != expected_len:
+                    result = np.fft.irfft(data, n=n)
+                    if out is not None:
+                        out[:] = result
+                        return out
+                    return result
 
-                  input_arr[:] = data
-                  fft_obj()
+                input_arr[:] = data
+                fft_obj()
 
-                  # FFTW is unnormalized, numpy.fft.irfft includes 1/n scaling
-                  if out is not None:
-                      np.divide(plan_entry['output'], n, out=out)
-                      return out
-                  else:
-                      result = plan_entry['output'].copy()
-                      result /= n
-                      return result
+                # FFTW is unnormalized, numpy.fft.irfft includes 1/n scaling
+                if out is not None:
+                    np.divide(plan_entry["output"], n, out=out)
+                    return out
+                else:
+                    result = plan_entry["output"].copy()
+                    result /= n
+                    return result
 
         result = np.fft.irfft(data, n=n)
         if out is not None:
@@ -276,7 +270,7 @@ class FFTManager:
                 callback(tr("Optimizing FFT... (Size {0})").format(size))
 
             # Use MEASURE for warmup to ensure peak performance
-            self.get_plan(size, 'float64', flags=('FFTW_MEASURE',))
+            self.get_plan(size, "float64", flags=("FFTW_MEASURE",))
 
         # Save wisdom at the end of warmup to capture any new measurements
         if callback:
@@ -285,7 +279,6 @@ class FFTManager:
 
         if callback:
             callback(tr("Done {0}/{1}").format(total + 1, total + 1))
-
 
 
 # Global instance for easy access

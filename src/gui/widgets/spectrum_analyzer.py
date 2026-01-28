@@ -33,23 +33,23 @@ class SpectrumAnalyzer(MeasurementModule):
         self.write_head = 0
 
         # Analysis parameters
-        self.window_type = 'hanning'
-        self.averaging = 0.0 # 0.0 to 0.95
+        self.window_type = "hanning"
+        self.averaging = 0.0  # 0.0 to 0.95
         self.peak_hold = False
-        self.octave_smoothing = 'None' # None, 1/1, 1/3, 1/6, 1/12, 1/24
-        self.analysis_mode = 'Spectrum' # 'Spectrum', 'Cross Spectrum'
-        self.channel_mode = 'Average' # 'Left', 'Right', 'Average', 'Dual'
+        self.octave_smoothing = "None"  # None, 1/1, 1/3, 1/6, 1/12, 1/24
+        self.analysis_mode = "Spectrum"  # 'Spectrum', 'Cross Spectrum'
+        self.channel_mode = "Average"  # 'Left', 'Right', 'Average', 'Dual'
         self.multitaper_enabled = False
-        self.display_unit = 'dBFS' # 'dBFS', 'dBV', 'dB SPL'
-        self.weighting = 'Z' # 'Z', 'A', 'C'
+        self.display_unit = "dBFS"  # 'dBFS', 'dBV', 'dB SPL'
+        self.weighting = "Z"  # 'Z', 'A', 'C'
 
         # Multitaper cache
         self._dpss_windows = None
-        self._dpss_cache_key = None # (N, NW, K)
+        self._dpss_cache_key = None  # (N, NW, K)
 
         # State
         self._avg_magnitude = None
-        self._avg_cross_spectrum = None # Complex average for Cross Spectrum
+        self._avg_cross_spectrum = None  # Complex average for Cross Spectrum
         self._peak_magnitude = None
         self.overall_rms = 0.0
 
@@ -113,8 +113,8 @@ class SpectrumAnalyzer(MeasurementModule):
 
                 # If buffer is already "full" (waiting for processing), do nothing
                 if self.write_head >= self.buffer_size:
-                     outdata.fill(0)
-                     return
+                    outdata.fill(0)
+                    return
 
                 # Calculate how much space is left
                 space_left = self.buffer_size - self.write_head
@@ -128,10 +128,10 @@ class SpectrumAnalyzer(MeasurementModule):
                 # --- Normal Rolling Mode ---
                 # Efficient ring buffer or just roll
                 if len(new_data) > self.buffer_size:
-                    self.input_data[:] = new_data[-self.buffer_size:]
+                    self.input_data[:] = new_data[-self.buffer_size :]
                 else:
                     self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                    self.input_data[-len(new_data):] = new_data
+                    self.input_data[-len(new_data) :] = new_data
 
             outdata.fill(0)
 
@@ -164,7 +164,7 @@ class SpectrumAnalyzer(MeasurementModule):
         """
         Compute weighting gain in dB for given frequencies.
         """
-        if weighting_type == 'Z':
+        if weighting_type == "Z":
             return np.zeros_like(freqs)
 
         f = freqs.copy()
@@ -173,7 +173,7 @@ class SpectrumAnalyzer(MeasurementModule):
 
         f2 = f**2
 
-        if weighting_type == 'A':
+        if weighting_type == "A":
             # A-weighting
             # RA(f) = (12194^2 * f^4) / ((f^2 + 20.6^2) * sqrt((f^2 + 107.7^2)(f^2 + 737.9^2)) * (f^2 + 12194^2))
             # Gain = 20*log10(RA(f)) + 2.00
@@ -184,7 +184,7 @@ class SpectrumAnalyzer(MeasurementModule):
             gain = 20 * np.log10(R_A) + 2.00
             return gain
 
-        elif weighting_type == 'C':
+        elif weighting_type == "C":
             # C-weighting
             # RC(f) = (12194^2 * f^2) / ((f^2 + 20.6^2) * (f^2 + 12194^2))
             # Gain = 20*log10(RC(f)) + 0.06
@@ -196,6 +196,7 @@ class SpectrumAnalyzer(MeasurementModule):
             return gain
 
         return np.zeros_like(freqs)
+
 
 class SpectrumAnalyzerWidget(QWidget):
     def __init__(self, module: SpectrumAnalyzer):
@@ -222,16 +223,18 @@ class SpectrumAnalyzerWidget(QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
 
-        self.toggle_btn.setStyleSheet("QPushButton { background-color: #ccffcc; color: black; } QPushButton:checked { background-color: #ffcccc; color: black; }")
+        self.toggle_btn.setStyleSheet(
+            "QPushButton { background-color: #ccffcc; color: black; } QPushButton:checked { background-color: #ffcccc; color: black; }"
+        )
 
         row1_layout.addWidget(self.toggle_btn)
 
         # Mode Selection
         row1_layout.addWidget(QLabel(tr("Mode:")))
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem(tr('Spectrum'), 'Spectrum')
-        self.mode_combo.addItem(tr('PSD'), 'PSD')
-        self.mode_combo.addItem(tr('Cross Spectrum'), 'Cross Spectrum')
+        self.mode_combo.addItem(tr("Spectrum"), "Spectrum")
+        self.mode_combo.addItem(tr("PSD"), "PSD")
+        self.mode_combo.addItem(tr("Cross Spectrum"), "Cross Spectrum")
 
         # Set initial selection
         index = self.mode_combo.findData(self.module.analysis_mode)
@@ -244,7 +247,7 @@ class SpectrumAnalyzerWidget(QWidget):
         # Channel Selection
         row1_layout.addWidget(QLabel(tr("Channel:")))
         self.channel_combo = QComboBox()
-        self.channel_combo.addItems(['Left', 'Right', 'Average', 'Dual'])
+        self.channel_combo.addItems(["Left", "Right", "Average", "Dual"])
         self.channel_combo.setCurrentText(self.module.channel_mode)
         self.channel_combo.currentTextChanged.connect(self.on_channel_changed)
         row1_layout.addWidget(self.channel_combo)
@@ -252,7 +255,22 @@ class SpectrumAnalyzerWidget(QWidget):
         # FFT Size
         row1_layout.addWidget(QLabel(tr("FFT Size:")))
         self.fft_combo = QComboBox()
-        self.fft_combo.addItems(['1024', '2048', '4096', '8192', '16384', '32768', '65536', '131072', '262144', '1M (Slow)', '2M (Slow)', '4M (Slow)'])
+        self.fft_combo.addItems(
+            [
+                "1024",
+                "2048",
+                "4096",
+                "8192",
+                "16384",
+                "32768",
+                "65536",
+                "131072",
+                "262144",
+                "1M (Slow)",
+                "2M (Slow)",
+                "4M (Slow)",
+            ]
+        )
         self.fft_combo.setCurrentText(str(self.module.buffer_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_size_changed)
         row1_layout.addWidget(self.fft_combo)
@@ -260,21 +278,21 @@ class SpectrumAnalyzerWidget(QWidget):
         # Window Selection
         row1_layout.addWidget(QLabel(tr("Window:")))
         self.window_combo = QComboBox()
-        self.window_combo.addItems(['hanning', 'hamming', 'blackman', 'bartlett', 'rect'])
+        self.window_combo.addItems(["hanning", "hamming", "blackman", "bartlett", "rect"])
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         row1_layout.addWidget(self.window_combo)
 
         # Weighting Selection
         row1_layout.addWidget(QLabel(tr("Weighting:")))
         self.weighting_combo = QComboBox()
-        self.weighting_combo.addItems(['Z', 'A', 'C'])
+        self.weighting_combo.addItems(["Z", "A", "C"])
         self.weighting_combo.currentTextChanged.connect(self.on_weighting_changed)
         row1_layout.addWidget(self.weighting_combo)
 
         # Unit Selection (Replaces Physical Units Checkbox)
         row1_layout.addWidget(QLabel(tr("Unit:")))
         self.unit_combo = QComboBox()
-        self.unit_combo.addItems(['dBFS', 'dBV', 'dB SPL'])
+        self.unit_combo.addItems(["dBFS", "dBV", "dB SPL"])
         self.unit_combo.setCurrentText(self.module.display_unit)
         self.unit_combo.currentTextChanged.connect(self.on_unit_changed)
         row1_layout.addWidget(self.unit_combo)
@@ -287,12 +305,12 @@ class SpectrumAnalyzerWidget(QWidget):
         # Smoothing
         row2_layout.addWidget(QLabel(tr("Smoothing:")))
         self.smooth_combo = QComboBox()
-        self.smooth_combo.addItem(tr('None'), 'None')
-        self.smooth_combo.addItem(tr('1/1 Octave'), '1/1 Octave')
-        self.smooth_combo.addItem(tr('1/3 Octave'), '1/3 Octave')
-        self.smooth_combo.addItem(tr('1/6 Octave'), '1/6 Octave')
-        self.smooth_combo.addItem(tr('1/12 Octave'), '1/12 Octave')
-        self.smooth_combo.addItem(tr('1/24 Octave'), '1/24 Octave')
+        self.smooth_combo.addItem(tr("None"), "None")
+        self.smooth_combo.addItem(tr("1/1 Octave"), "1/1 Octave")
+        self.smooth_combo.addItem(tr("1/3 Octave"), "1/3 Octave")
+        self.smooth_combo.addItem(tr("1/6 Octave"), "1/6 Octave")
+        self.smooth_combo.addItem(tr("1/12 Octave"), "1/12 Octave")
+        self.smooth_combo.addItem(tr("1/24 Octave"), "1/24 Octave")
 
         index = self.smooth_combo.findData(self.module.octave_smoothing)
         if index >= 0:
@@ -305,7 +323,7 @@ class SpectrumAnalyzerWidget(QWidget):
         self.avg_label = QLabel(tr("Avg: 0%"))
         row2_layout.addWidget(self.avg_label)
         self.avg_slider = QSlider(Qt.Orientation.Horizontal)
-        self.avg_slider.setRange(0, 99) # Allow up to 99% for heavy averaging
+        self.avg_slider.setRange(0, 99)  # Allow up to 99% for heavy averaging
         self.avg_slider.setValue(0)
         self.avg_slider.setFixedWidth(100)
         self.avg_slider.valueChanged.connect(self.on_avg_changed)
@@ -354,18 +372,18 @@ class SpectrumAnalyzerWidget(QWidget):
 
         # --- Plot ---
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setLabel('left', tr('Magnitude'), units='dB')
-        self.plot_widget.setLabel('bottom', tr('Frequency'), units='Hz')
+        self.plot_widget.setLabel("left", tr("Magnitude"), units="dB")
+        self.plot_widget.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot_widget.setLogMode(x=True, y=False)
         self.plot_widget.setYRange(-120, 0)
         self.plot_widget.showGrid(x=True, y=True)
 
         # Custom Axis Ticks
-        axis = self.plot_widget.getPlotItem().getAxis('bottom')
+        axis = self.plot_widget.getPlotItem().getAxis("bottom")
         ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
         # Since setLogMode(x=True) is used, the view coordinates are log10(freq).
         # We need to specify ticks at log positions.
-        ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t/1000:.0f}k") for t in ticks]
+        ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
         axis.setTicks([ticks_log])
 
         # Set Range (log domain)
@@ -381,9 +399,11 @@ class SpectrumAnalyzerWidget(QWidget):
         self.proxy = pg.SignalProxy(self.plot_widget.scene().sigMouseMoved, rateLimit=60, slot=self.mouse_moved)
 
         # Curves
-        self.peak_curve = self.plot_widget.plot(pen=pg.mkPen('r', width=1, style=Qt.PenStyle.DashLine))
-        self.plot_curve = self.plot_widget.plot(pen='y', name='Main')
-        self.plot_curve_2 = self.plot_widget.plot(pen='g', name='Secondary') # For Dual mode (Left=Green, Right=Red usually, but let's stick to standard)
+        self.peak_curve = self.plot_widget.plot(pen=pg.mkPen("r", width=1, style=Qt.PenStyle.DashLine))
+        self.plot_curve = self.plot_widget.plot(pen="y", name="Main")
+        self.plot_curve_2 = self.plot_widget.plot(
+            pen="g", name="Secondary"
+        )  # For Dual mode (Left=Green, Right=Red usually, but let's stick to standard)
         # Let's use: Main (Yellow) for single/avg.
         # For Dual: Left (Green), Right (Red).
         # So we might need to change pen colors dynamically.
@@ -400,12 +420,9 @@ class SpectrumAnalyzerWidget(QWidget):
 
         scaled_value = value / (10**exponent)
 
-        prefixes = {
-            -15: 'f', -12: 'p', -9: 'n', -6: 'µ', -3: 'm',
-            0: '', 3: 'k', 6: 'M', 9: 'G'
-        }
+        prefixes = {-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
 
-        prefix = prefixes.get(exponent, '')
+        prefix = prefixes.get(exponent, "")
         return f"{scaled_value:.3g} {prefix}{unit}"
 
     def mouse_moved(self, evt):
@@ -425,30 +442,30 @@ class SpectrumAnalyzerWidget(QWidget):
             unit_db = self.module.display_unit
             unit_linear = ""
 
-            if self.module.display_unit == 'dBV':
-                 unit_linear = "V"
-            elif self.module.display_unit == 'dB SPL':
-                 unit_linear = "Pa"
+            if self.module.display_unit == "dBV":
+                unit_linear = "V"
+            elif self.module.display_unit == "dB SPL":
+                unit_linear = "Pa"
 
-            if self.module.analysis_mode == 'PSD':
+            if self.module.analysis_mode == "PSD":
                 unit_db += "/√Hz"
                 if unit_linear:
                     unit_linear += "/√Hz"
 
             # Calculate linear value
-            linear_val = 10**(y/20)
+            linear_val = 10 ** (y / 20)
 
             # Format linear value
-            if self.module.display_unit == 'dB SPL':
-                 # For SPL, y is dB SPL. Linear is 10^(y/20) * 20uPa.
-                 val_pa = (10**(y/20)) * 20e-6
-                 linear_str = self.format_si(val_pa, "Pa")
-                 cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_str})"
-            elif self.module.display_unit == 'dBV':
-                 linear_str = self.format_si(linear_val, unit_linear)
-                 cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_str})"
-            else: # dBFS
-                 cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_val:.4g})"
+            if self.module.display_unit == "dB SPL":
+                # For SPL, y is dB SPL. Linear is 10^(y/20) * 20uPa.
+                val_pa = (10 ** (y / 20)) * 20e-6
+                linear_str = self.format_si(val_pa, "Pa")
+                cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_str})"
+            elif self.module.display_unit == "dBV":
+                linear_str = self.format_si(linear_val, unit_linear)
+                cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_str})"
+            else:  # dBFS
+                cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_val:.4g})"
 
             self.cursor_label.setText(cursor_text)
             self.v_line.setPos(x)
@@ -477,28 +494,28 @@ class SpectrumAnalyzerWidget(QWidget):
 
         # Disable channel selection in Cross Spectrum mode?
         # Cross Spectrum inherently uses L and R.
-        if val == 'Cross Spectrum':
+        if val == "Cross Spectrum":
             self.channel_combo.setEnabled(False)
         else:
             self.channel_combo.setEnabled(True)
 
         # Update Y-axis label
         unit = self.module.display_unit
-        if val == 'PSD':
+        if val == "PSD":
             unit += "/√Hz"
-        self.plot_widget.setLabel('left', 'Magnitude', units=unit)
+        self.plot_widget.setLabel("left", "Magnitude", units=unit)
 
     def on_channel_changed(self, val):
         self.module.channel_mode = val
-        self.module._avg_magnitude = None # Reset average
+        self.module._avg_magnitude = None  # Reset average
         self.peak_curve.setData([], [])
 
     def on_fft_size_changed(self, val):
-        if '1M' in val:
+        if "1M" in val:
             size = 1048576
-        elif '2M' in val:
+        elif "2M" in val:
             size = 2097152
-        elif '4M' in val:
+        elif "4M" in val:
             size = 4194304
         else:
             size = int(val)
@@ -541,9 +558,9 @@ class SpectrumAnalyzerWidget(QWidget):
     def on_unit_changed(self, val):
         self.module.display_unit = val
         unit = val
-        if self.module.analysis_mode == 'PSD':
+        if self.module.analysis_mode == "PSD":
             unit += "/√Hz"
-        self.plot_widget.setLabel('left', 'Magnitude', units=unit)
+        self.plot_widget.setLabel("left", "Magnitude", units=unit)
         # Reset peak to avoid mixing units
         self.module._peak_magnitude = None
         self.peak_curve.setData([], [])
@@ -565,18 +582,18 @@ class SpectrumAnalyzerWidget(QWidget):
         smoothed_mags = []
 
         current_f = f_min
-        factor = 2**(1/(2*fraction))
-        step_factor = 2**(1/fraction)
+        factor = 2 ** (1 / (2 * fraction))
+        step_factor = 2 ** (1 / fraction)
 
         while current_f < f_max:
             lower = current_f / factor
             upper = current_f * factor
 
-            idx_start = np.searchsorted(freqs, lower, side='left')
-            idx_end = np.searchsorted(freqs, upper, side='left')
+            idx_start = np.searchsorted(freqs, lower, side="left")
+            idx_end = np.searchsorted(freqs, upper, side="left")
 
             if idx_end > idx_start:
-                linear_mags = 10**(magnitude[idx_start:idx_end]/20)
+                linear_mags = 10 ** (magnitude[idx_start:idx_end] / 20)
                 # Use axis=0 to preserve channel dimension if present (Dual mode)
                 avg_linear = np.mean(linear_mags, axis=0)
                 avg_db = 20 * np.log10(avg_linear + 1e-12)
@@ -603,7 +620,7 @@ class SpectrumAnalyzerWidget(QWidget):
 
             # Buffer full, take snapshot and reset
             # IMPORTANT: Copy data to avoid race condition if we were to allow filling immediately (though we blocked it in callback)
-            data = self.module.input_data.copy() 
+            data = self.module.input_data.copy()
 
             # Reset write head to start new capture
             self.module.write_head = 0
@@ -611,37 +628,36 @@ class SpectrumAnalyzerWidget(QWidget):
             # Normal Rolling Mode
             data = self.module.input_data
 
-
         # Calculate Overall RMS (dBFS) - Raw Time Domain (Unweighted)
         # This is calculated for reference, but we will overwrite it with weighted value later
         rms = np.sqrt(np.mean(data**2))
         overall_db = 20 * np.log10(rms + 1e-12)
 
-        if self.module.display_unit == 'dBV':
+        if self.module.display_unit == "dBV":
             # Convert to dBV
             offset = self.module.audio_engine.calibration.get_input_offset_db()
             overall_db += offset
-        elif self.module.display_unit == 'dB SPL':
-             # Convert to SPL
-             # We need to use the method from calibration that includes offset
-             # But here we have the "Unweighted" raw dBFS.
-             # Ideally "Overall" for SPL should be C-weighted or whatever the user calibrated with?
-             # Usually Sound Level Meters show A-weighted or C-weighted overall.
-             # The user calibrated "dBFS_C" -> "SPL".
-             # If we just add offset to unweighted dBFS, it's "Unweighted SPL" (Linear).
-             # That's probably fine for "Overall" if we qualify it.
-             # Or we should apply C-weighting to overall?
-             # Let's stick to adding offset for now.
+        elif self.module.display_unit == "dB SPL":
+            # Convert to SPL
+            # We need to use the method from calibration that includes offset
+            # But here we have the "Unweighted" raw dBFS.
+            # Ideally "Overall" for SPL should be C-weighted or whatever the user calibrated with?
+            # Usually Sound Level Meters show A-weighted or C-weighted overall.
+            # The user calibrated "dBFS_C" -> "SPL".
+            # If we just add offset to unweighted dBFS, it's "Unweighted SPL" (Linear).
+            # That's probably fine for "Overall" if we qualify it.
+            # Or we should apply C-weighting to overall?
+            # Let's stick to adding offset for now.
 
-             spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
-             if spl_offset is not None:
-                 overall_db += spl_offset
+            spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
+            if spl_offset is not None:
+                overall_db += spl_offset
         else:
             pass
 
         # Frequency axis
         sample_rate = self.module.audio_engine.sample_rate
-        freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
+        freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
 
         # Calculate Weighting Curve
         weighting_db = self.module.compute_weighting(freqs, self.module.weighting)
@@ -651,10 +667,10 @@ class SpectrumAnalyzerWidget(QWidget):
         if self.module.multitaper_enabled:
             # --- Multitaper Method ---
             # Get DPSS windows
-            windows = self.module._get_dpss_windows(len(data)) # (K, N)
+            windows = self.module._get_dpss_windows(len(data))  # (K, N)
             K = windows.shape[0]
 
-            if self.module.analysis_mode == 'Spectrum' or self.module.analysis_mode == 'PSD':
+            if self.module.analysis_mode == "Spectrum" or self.module.analysis_mode == "PSD":
                 # --- Spectrum or PSD Mode ---
                 # Calculate PSD for each channel and each window
                 # psd = |FFT(x*w)|^2
@@ -667,27 +683,27 @@ class SpectrumAnalyzerWidget(QWidget):
 
                     # Channel 0
                     fft_0 = fft_manager.rfft(data[:, 0] * w)
-                    psd_accum_0 += np.abs(fft_0)**2
+                    psd_accum_0 += np.abs(fft_0) ** 2
 
                     # Channel 1
                     fft_1 = fft_manager.rfft(data[:, 1] * w)
-                    psd_accum_1 += np.abs(fft_1)**2
+                    psd_accum_1 += np.abs(fft_1) ** 2
 
                 # Average over K windows
                 psd_0 = psd_accum_0 / K
                 psd_1 = psd_accum_1 / K
 
                 # Apply Channel Selection
-                if self.module.channel_mode == 'Left':
+                if self.module.channel_mode == "Left":
                     psd_target = psd_0
                     psd_second = None
-                elif self.module.channel_mode == 'Right':
+                elif self.module.channel_mode == "Right":
                     psd_target = psd_1
                     psd_second = None
-                elif self.module.channel_mode == 'Average':
+                elif self.module.channel_mode == "Average":
                     psd_target = (psd_0 + psd_1) / 2
                     psd_second = None
-                elif self.module.channel_mode == 'Dual':
+                elif self.module.channel_mode == "Dual":
                     psd_target = psd_0
                     psd_second = psd_1
                 else:
@@ -695,7 +711,7 @@ class SpectrumAnalyzerWidget(QWidget):
                     psd_second = None
 
                 # Convert to Magnitude (Linear)
-                if self.module.analysis_mode == 'PSD':
+                if self.module.analysis_mode == "PSD":
                     # PSD (V/rtHz)
                     # mag = sqrt(PSD * 2 / fs)
                     # Note: PSD here is Power per Bin (approx A^2*N)
@@ -726,7 +742,7 @@ class SpectrumAnalyzerWidget(QWidget):
 
                 # Peak -> RMS conversion if Physical Units or SPL
                 # For PSD, we already handle it differently.
-                if self.module.analysis_mode == 'Spectrum' and self.module.display_unit in ['dBV', 'dB SPL']:
+                if self.module.analysis_mode == "Spectrum" and self.module.display_unit in ["dBV", "dB SPL"]:
                     mag_linear /= np.sqrt(2)
 
                 # Temporal Averaging
@@ -739,15 +755,15 @@ class SpectrumAnalyzerWidget(QWidget):
                 magnitude = 20 * np.log10(self.module._avg_magnitude + 1e-12)
 
                 # Apply API/SPL adjustments
-                if self.module.display_unit == 'dBV':
+                if self.module.display_unit == "dBV":
                     offset = self.module.audio_engine.calibration.get_input_offset_db()
                     magnitude += offset
-                elif self.module.display_unit == 'dB SPL':
+                elif self.module.display_unit == "dB SPL":
                     spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
                     if spl_offset is not None:
-                         magnitude += spl_offset
+                        magnitude += spl_offset
 
-            elif self.module.analysis_mode == 'Cross Spectrum':
+            elif self.module.analysis_mode == "Cross Spectrum":
                 # Average Cross Spectrum over K windows
                 cs_accum = np.zeros(len(freqs), dtype=complex)
 
@@ -771,24 +787,24 @@ class SpectrumAnalyzerWidget(QWidget):
                 # Normalize and Magnitude
                 mag_linear = np.sqrt(np.abs(avg_cs)) / np.sqrt(len(data))
 
-                if self.module.display_unit in ['dBV', 'dB SPL']:
+                if self.module.display_unit in ["dBV", "dB SPL"]:
                     mag_linear /= np.sqrt(2)
 
                 magnitude = 20 * np.log10(mag_linear + 1e-12)
 
                 # Apply API/SPL adjustments
-                if self.module.display_unit == 'dBV':
-                     offset = self.module.audio_engine.calibration.get_input_offset_db()
-                     magnitude += offset
-                elif self.module.display_unit == 'dB SPL':
-                     spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
-                     if spl_offset is not None:
-                         magnitude += spl_offset
+                if self.module.display_unit == "dBV":
+                    offset = self.module.audio_engine.calibration.get_input_offset_db()
+                    magnitude += offset
+                elif self.module.display_unit == "dB SPL":
+                    spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
+                    if spl_offset is not None:
+                        magnitude += spl_offset
 
         else:
             # --- Standard Method ---
             # Apply window
-            if self.module.window_type == 'rect':
+            if self.module.window_type == "rect":
                 window = np.ones(len(data))
             else:
                 window = getattr(np, self.module.window_type)(len(data))
@@ -813,23 +829,23 @@ class SpectrumAnalyzerWidget(QWidget):
             # * window_correction
             norm_factor = (2.0 / len(data)) * window_correction
 
-            if self.module.analysis_mode == 'Spectrum':
+            if self.module.analysis_mode == "Spectrum":
                 # Standard Spectrum
                 mag_stereo = np.abs(fft_data)
 
                 # Channel Selection Logic
-                if self.module.channel_mode == 'Left':
+                if self.module.channel_mode == "Left":
                     mag_mono = mag_stereo[:, 0]
                     mag_second = None
-                elif self.module.channel_mode == 'Right':
+                elif self.module.channel_mode == "Right":
                     mag_mono = mag_stereo[:, 1]
                     mag_second = None
-                elif self.module.channel_mode == 'Average':
+                elif self.module.channel_mode == "Average":
                     mag_mono = np.mean(mag_stereo, axis=1)
                     mag_second = None
-                elif self.module.channel_mode == 'Dual':
-                    mag_mono = mag_stereo[:, 0] # Left
-                    mag_second = mag_stereo[:, 1] # Right
+                elif self.module.channel_mode == "Dual":
+                    mag_mono = mag_stereo[:, 0]  # Left
+                    mag_second = mag_stereo[:, 1]  # Right
                 else:
                     mag_mono = np.mean(mag_stereo, axis=1)
                     mag_second = None
@@ -842,7 +858,7 @@ class SpectrumAnalyzerWidget(QWidget):
                 # If Physical Units (dBV) or SPL are used, we want RMS reading for sine waves
                 # to match the "Overall" RMS reading.
                 # Peak to RMS for sine is 1/sqrt(2)
-                if self.module.display_unit in ['dBV', 'dB SPL']:
+                if self.module.display_unit in ["dBV", "dB SPL"]:
                     mag_mono /= np.sqrt(2)
                     if mag_second is not None:
                         mag_second /= np.sqrt(2)
@@ -871,15 +887,15 @@ class SpectrumAnalyzerWidget(QWidget):
                 magnitude = 20 * np.log10(magnitude_linear + 1e-12)
 
                 # Apply dBV / SPL offsets
-                if self.module.display_unit == 'dBV':
+                if self.module.display_unit == "dBV":
                     offset = self.module.audio_engine.calibration.get_input_offset_db()
                     magnitude += offset
-                elif self.module.display_unit == 'dB SPL':
-                     spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
-                     if spl_offset is not None:
-                         magnitude += spl_offset
+                elif self.module.display_unit == "dB SPL":
+                    spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
+                    if spl_offset is not None:
+                        magnitude += spl_offset
 
-            elif self.module.analysis_mode == 'PSD':
+            elif self.module.analysis_mode == "PSD":
                 # Power Spectral Density (Voltage Noise Density)
                 # We want V/rtHz.
                 # Currently mag_mono is Peak Amplitude (V_peak).
@@ -919,17 +935,17 @@ class SpectrumAnalyzerWidget(QWidget):
                 mag_stereo = mag_stereo * psd_factor
 
                 # Channel Selection
-                if self.module.channel_mode == 'Left':
+                if self.module.channel_mode == "Left":
                     mag_mono = mag_stereo[:, 0]
-                elif self.module.channel_mode == 'Right':
+                elif self.module.channel_mode == "Right":
                     mag_mono = mag_stereo[:, 1]
-                elif self.module.channel_mode == 'Average':
+                elif self.module.channel_mode == "Average":
                     # Average the Power (V^2/Hz), then sqrt
                     # mag_stereo is V/rtHz. Square to get V^2/Hz.
                     pow_stereo = mag_stereo**2
                     avg_pow = np.mean(pow_stereo, axis=1)
                     mag_mono = np.sqrt(avg_pow)
-                elif self.module.channel_mode == 'Dual':
+                elif self.module.channel_mode == "Dual":
                     mag_mono = mag_stereo
                 else:
                     mag_mono = mag_stereo[:, 0]
@@ -945,15 +961,15 @@ class SpectrumAnalyzerWidget(QWidget):
                 magnitude = 20 * np.log10(magnitude_linear + 1e-12)
 
                 # Apply API/SPL adjustments
-                if self.module.display_unit == 'dBV':
-                     offset = self.module.audio_engine.calibration.get_input_offset_db()
-                     magnitude += offset
-                elif self.module.display_unit == 'dB SPL':
-                     spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
-                     if spl_offset is not None:
-                         magnitude += spl_offset
+                if self.module.display_unit == "dBV":
+                    offset = self.module.audio_engine.calibration.get_input_offset_db()
+                    magnitude += offset
+                elif self.module.display_unit == "dB SPL":
+                    spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
+                    if spl_offset is not None:
+                        magnitude += spl_offset
 
-            elif self.module.analysis_mode == 'Cross Spectrum':
+            elif self.module.analysis_mode == "Cross Spectrum":
                 # Cross Spectrum
                 F1 = fft_data[:, 0]
                 F2 = fft_data[:, 1]
@@ -983,19 +999,19 @@ class SpectrumAnalyzerWidget(QWidget):
                 avg_Sxy = self.module._avg_cross_spectrum
                 magnitude_linear = np.sqrt(np.abs(avg_Sxy))
 
-                if self.module.display_unit in ['dBV', 'dB SPL']:
+                if self.module.display_unit in ["dBV", "dB SPL"]:
                     magnitude_linear /= np.sqrt(2)
 
                 magnitude = 20 * np.log10(magnitude_linear + 1e-12)
 
                 # Apply API/SPL adjustments
-                if self.module.display_unit == 'dBV':
-                     offset = self.module.audio_engine.calibration.get_input_offset_db()
-                     magnitude += offset
-                elif self.module.display_unit == 'dB SPL':
-                     spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
-                     if spl_offset is not None:
-                         magnitude += spl_offset
+                if self.module.display_unit == "dBV":
+                    offset = self.module.audio_engine.calibration.get_input_offset_db()
+                    magnitude += offset
+                elif self.module.display_unit == "dB SPL":
+                    spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
+                    if spl_offset is not None:
+                        magnitude += spl_offset
 
         # Calibration is already applied in the blocks above.
         # Removing redundant/crashing block.
@@ -1022,16 +1038,16 @@ class SpectrumAnalyzerWidget(QWidget):
         # Let's use it to estimate the Overall Weighted RMS.
 
         # Convert dB to Linear Amplitude
-        mag_linear_for_rms = 10**(magnitude/20)
+        mag_linear_for_rms = 10 ** (magnitude / 20)
 
         # If we are in Physical Units, mag_linear is already RMS (we divided by sqrt(2)).
         # If not, it's Peak.
 
-        if self.module.display_unit in ['dBV', 'dB SPL']:
+        if self.module.display_unit in ["dBV", "dB SPL"]:
             power_spectrum = mag_linear_for_rms**2
         else:
             # Convert Peak to RMS
-            power_spectrum = (mag_linear_for_rms / np.sqrt(2))**2
+            power_spectrum = (mag_linear_for_rms / np.sqrt(2)) ** 2
 
         # Sum power
         # We need to be careful about the window correction factor which was applied to amplitude.
@@ -1073,14 +1089,17 @@ class SpectrumAnalyzerWidget(QWidget):
             overall_weighted_db = -120
 
         unit_suffix = ""
-        if self.module.weighting == 'A': unit_suffix = "A"
-        elif self.module.weighting == 'C': unit_suffix = "C"
-        elif self.module.weighting == 'Z': unit_suffix = "Z"
+        if self.module.weighting == "A":
+            unit_suffix = "A"
+        elif self.module.weighting == "C":
+            unit_suffix = "C"
+        elif self.module.weighting == "Z":
+            unit_suffix = "Z"
 
-        if self.module.display_unit == 'dB SPL':
-             unit_display = f"dB SPL({unit_suffix})"
-        elif self.module.display_unit == 'dBV':
-             unit_display = f"dBV({unit_suffix})"
+        if self.module.display_unit == "dB SPL":
+            unit_display = f"dB SPL({unit_suffix})"
+        elif self.module.display_unit == "dBV":
+            unit_display = f"dBV({unit_suffix})"
         else:
             unit_display = f"dBFS({unit_suffix})"
 
@@ -1094,13 +1113,7 @@ class SpectrumAnalyzerWidget(QWidget):
                 self.module._peak_magnitude = np.maximum(self.module._peak_magnitude, magnitude)
 
         # Smoothing
-        fraction_map = {
-            '1/1 Octave': 1,
-            '1/3 Octave': 3,
-            '1/6 Octave': 6,
-            '1/12 Octave': 12,
-            '1/24 Octave': 24
-        }
+        fraction_map = {"1/1 Octave": 1, "1/3 Octave": 3, "1/6 Octave": 6, "1/12 Octave": 12, "1/24 Octave": 24}
         fraction = fraction_map.get(self.module.octave_smoothing)
 
         if fraction:
@@ -1122,27 +1135,27 @@ class SpectrumAnalyzerWidget(QWidget):
         # pyqtgraph handles the log conversion.
         # We should exclude 0Hz to avoid log(0) issues inside pyqtgraph.
 
-        plot_freqs_linear = plot_freqs + 1e-12 # Avoid exact 0
+        plot_freqs_linear = plot_freqs + 1e-12  # Avoid exact 0
 
         # Handle Dual Mode Plotting
-        if self.module.analysis_mode in ['Spectrum', 'PSD'] and self.module.channel_mode == 'Dual':
+        if self.module.analysis_mode in ["Spectrum", "PSD"] and self.module.channel_mode == "Dual":
             # plot_mags should be (N, 2)
             if plot_mags.ndim == 2 and plot_mags.shape[1] >= 2:
                 # Curve 1 (Left) - Green
-                self.plot_curve.setData(plot_freqs_linear, plot_mags[:, 0], pen='g')
+                self.plot_curve.setData(plot_freqs_linear, plot_mags[:, 0], pen="g")
                 # Curve 2 (Right) - Red
-                self.plot_curve_2.setData(plot_freqs_linear, plot_mags[:, 1], pen='r')
+                self.plot_curve_2.setData(plot_freqs_linear, plot_mags[:, 1], pen="r")
             else:
                 # Fallback
-                self.plot_curve.setData(plot_freqs_linear, plot_mags, pen='y')
+                self.plot_curve.setData(plot_freqs_linear, plot_mags, pen="y")
                 self.plot_curve_2.setData([], [])
         else:
             # Single Curve
             # Ensure 1D
             if plot_mags.ndim == 2:
-                plot_mags = plot_mags[:, 0] # Should not happen if logic above is correct for non-Dual
+                plot_mags = plot_mags[:, 0]  # Should not happen if logic above is correct for non-Dual
 
-            self.plot_curve.setData(plot_freqs_linear, plot_mags, pen='y')
+            self.plot_curve.setData(plot_freqs_linear, plot_mags, pen="y")
             self.plot_curve_2.setData([], [])
 
         if peak_mags is not None:
@@ -1157,10 +1170,10 @@ class SpectrumAnalyzerWidget(QWidget):
 
     def apply_theme(self, theme_name):
         # If theme_name is 'system', resolve it
-        if theme_name == 'system' and hasattr(self.app, 'theme_manager'):
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == 'dark':
+        if theme_name == "dark":
             # Dark Theme: Darker colors, White text
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
@@ -1183,6 +1196,6 @@ class SpectrumAnalyzerWidget(QWidget):
 
         # Theme handling
         self.app = QApplication.instance()
-        if hasattr(self.app, 'theme_manager'):
+        if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())

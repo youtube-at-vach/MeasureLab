@@ -35,10 +35,10 @@ class LockInFrequencyCounter(MeasurementModule):
         self.signal_present = False
 
         # Settings
-        self.gen_frequency = 1000.0 # NCO Frequency
-        self.signal_channel = 0 # 0: Ch1 (L), 1: Ch2 (R)
+        self.gen_frequency = 1000.0  # NCO Frequency
+        self.signal_channel = 0  # 0: Ch1 (L), 1: Ch2 (R)
         self.ref_channel = 1
-        self.ref_mode = "internal" # internal, loopback
+        self.ref_mode = "internal"  # internal, loopback
         # Display is ~1000 points @ 10 Hz = ~100 s window. A ~2 s EMA time constant
         # provides stable readout without feeling laggy.
         self.smoothing_tau = 2.0
@@ -56,11 +56,11 @@ class LockInFrequencyCounter(MeasurementModule):
         self._estimates_discarded = 0
 
         # Plot Data Buffers
-        self.max_history = 1000 # points on plot
+        self.max_history = 1000  # points on plot
         self.time_axis = deque(maxlen=self.max_history)
         self.freq_dev_history = deque(maxlen=self.max_history)
         self.phase_history = deque(maxlen=self.max_history)
-        self.iq_history_i = deque(maxlen=self.max_history) # For I-Q plot
+        self.iq_history_i = deque(maxlen=self.max_history)  # For I-Q plot
         self.iq_history_q = deque(maxlen=self.max_history)
 
         self.start_time = 0
@@ -126,10 +126,10 @@ class LockInFrequencyCounter(MeasurementModule):
 
             # Roll buffer
             if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
+                self.input_data[:] = new_data[-self.buffer_size :]
             else:
                 self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data):] = new_data
+                self.input_data[-len(new_data) :] = new_data
 
             self._samples_received += frames
 
@@ -176,7 +176,7 @@ class LockInFrequencyCounter(MeasurementModule):
         # 1) Signal detect (RMS gate)
         rms = float(np.sqrt(np.mean(sig.astype(np.float64) ** 2)))
         self.current_amp_db = float(20.0 * np.log10(rms + 1e-12))
-        if self.current_amp_db < float(getattr(self, 'gate_threshold_db', -60.0)):
+        if self.current_amp_db < float(getattr(self, "gate_threshold_db", -60.0)):
             self.signal_present = False
             return
 
@@ -205,11 +205,11 @@ class LockInFrequencyCounter(MeasurementModule):
 
             if np.abs(avg) < 1e-9:
                 self.signal_present = False
-                return # Noise
+                return  # Noise
 
             phi = np.angle(avg)
             seg_phases.append(phi)
-            seg_centers.append(start + seg_len/2)
+            seg_centers.append(start + seg_len / 2)
 
         # Unwrap phases across segments
         seg_phases_unwrapped = np.unwrap(seg_phases)
@@ -219,7 +219,7 @@ class LockInFrequencyCounter(MeasurementModule):
 
         if len(t_centers) > 1:
             slope, intercept = np.polyfit(t_centers, seg_phases_unwrapped, 1)
-            delta_f = slope / (2*np.pi)
+            delta_f = slope / (2 * np.pi)
 
             if self._estimates_discarded < self._discard_initial_estimates:
                 self._estimates_discarded += 1
@@ -238,25 +238,26 @@ class LockInFrequencyCounter(MeasurementModule):
             self.current_freq_dev = delta_f
 
             # Smoothing (EMA)
-            dt = n_samples / sr # approx time per buffer
+            dt = n_samples / sr  # approx time per buffer
             tau = self.smoothing_tau
             if tau > 0:
                 alpha = dt / (tau + dt)
                 # Initialize smoothed value if first valid
                 if self.start_time == 0:
-                     self.smoothed_freq_dev = delta_f
+                    self.smoothed_freq_dev = delta_f
                 else:
-                     self.smoothed_freq_dev = self.smoothed_freq_dev + alpha * (delta_f - self.smoothed_freq_dev)
+                    self.smoothed_freq_dev = self.smoothed_freq_dev + alpha * (delta_f - self.smoothed_freq_dev)
             else:
                 self.smoothed_freq_dev = delta_f
 
             import time
+
             now = time.time()
             if self.start_time == 0:
                 self.start_time = now
 
             # Integrate Phase using RAW Delta F for physical correctness
-            self.current_phase_deg += (delta_f * 360.0 * 0.1)
+            self.current_phase_deg += delta_f * 360.0 * 0.1
 
             self.freq_dev_history.append(delta_f)
             self.phase_history.append(self.current_phase_deg)
@@ -270,7 +271,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
-        self.timer.start(100) # 10Hz
+        self.timer.start(100)  # 10Hz
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -297,7 +298,7 @@ class LockInFrequencyCounterWidget(QWidget):
         # Input Channel (L/R)
         self.input_ch_combo = QComboBox()
         self.input_ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
-        self.input_ch_combo.setCurrentIndex(int(getattr(self.module, 'signal_channel', 0)))
+        self.input_ch_combo.setCurrentIndex(int(getattr(self.module, "signal_channel", 0)))
         self.input_ch_combo.currentIndexChanged.connect(self.on_input_channel_changed)
         controls_layout.addRow(tr("Channel:"), self.input_ch_combo)
 
@@ -306,7 +307,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.gate_spin.setRange(-120.0, 0.0)
         self.gate_spin.setDecimals(1)
         self.gate_spin.setSingleStep(1.0)
-        self.gate_spin.setValue(float(getattr(self.module, 'gate_threshold_db', -60.0)))
+        self.gate_spin.setValue(float(getattr(self.module, "gate_threshold_db", -60.0)))
         self.gate_spin.setSuffix(" dB")
         self.gate_spin.valueChanged.connect(self.on_gate_changed)
         controls_layout.addRow(tr("Gate (dB):"), self.gate_spin)
@@ -330,13 +331,13 @@ class LockInFrequencyCounterWidget(QWidget):
         # Frequency Deviation Data
         self.plot_freq = pg.PlotWidget(title=tr("Frequency Deviation Δf (Hz)"))
         self.plot_freq.showGrid(x=True, y=True)
-        self.curve_freq = self.plot_freq.plot(pen='g')
+        self.curve_freq = self.plot_freq.plot(pen="g")
         left_layout.addWidget(self.plot_freq)
 
         # Phase Data
         self.plot_phase = pg.PlotWidget(title=tr("Integrated Phase φ (deg)"))
         self.plot_phase.showGrid(x=True, y=True)
-        self.curve_phase = self.plot_phase.plot(pen='c')
+        self.curve_phase = self.plot_phase.plot(pen="c")
 
         left_layout.addWidget(self.plot_phase)
 
@@ -348,7 +349,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.plot_iq.showGrid(x=True, y=True)
         self.plot_iq.setXRange(-1, 1)
         self.plot_iq.setYRange(-1, 1)
-        self.scatter_iq = pg.ScatterPlotItem(pen=None, brush='y', size=5)
+        self.scatter_iq = pg.ScatterPlotItem(pen=None, brush="y", size=5)
         self.plot_iq.addItem(self.scatter_iq)
         splitter.addWidget(self.plot_iq)
 
@@ -401,7 +402,7 @@ class LockInFrequencyCounterWidget(QWidget):
             self.module.process_data()
 
             # Signal present indicator
-            has_signal = bool(getattr(self.module, 'signal_present', False))
+            has_signal = bool(getattr(self.module, "signal_present", False))
             self.lbl_signal_status.setVisible(not has_signal)
 
             delta_f_smooth = self.module.smoothed_freq_dev
@@ -426,4 +427,3 @@ class LockInFrequencyCounterWidget(QWidget):
             # Meters (Smoothed for consistency)
             self.lbl_delta_f.setText(tr("Δf: {0:.6f} Hz").format(delta_f_smooth))
             self.lbl_phase.setText(tr("φ: {0:.2f}°").format(self.module.current_phase_deg))
-

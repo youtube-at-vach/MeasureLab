@@ -1,4 +1,3 @@
-
 import time
 
 import numpy as np
@@ -30,13 +29,13 @@ class SoundLevelMeter(MeasurementModule):
         self.is_running = False
 
         # Measurement parameters
-        self.freq_weighting = 'A'  # A, C, Z
-        self.time_weighting = 'FAST'  # FAST, SLOW, IMPULSE, 10ms
-        self.channel = 0 # 0 for Left, 1 for Right
-        self.target_duration = None # None means continuous
-        self.sampling_period = 0.1 # seconds
+        self.freq_weighting = "A"  # A, C, Z
+        self.time_weighting = "FAST"  # FAST, SLOW, IMPULSE, 10ms
+        self.channel = 0  # 0 for Left, 1 for Right
+        self.target_duration = None  # None means continuous
+        self.sampling_period = 0.1  # seconds
         self.start_time = None
-        self.bandwidth_mode = '20Hz - 20kHz (Wide)' # Default
+        self.bandwidth_mode = "20Hz - 20kHz (Wide)"  # Default
 
         # State variables
         self.leq_integrator = 0.0
@@ -48,7 +47,7 @@ class SoundLevelMeter(MeasurementModule):
         # LN Statistics
         self.ln_history = []
         self.last_sample_time = 0.0
-        self.LN_SAMPLING_PERIOD = 0.1 # Fixed 0.1s for statistics as requested
+        self.LN_SAMPLING_PERIOD = 0.1  # Fixed 0.1s for statistics as requested
 
         self.callback_id = None
 
@@ -60,10 +59,10 @@ class SoundLevelMeter(MeasurementModule):
 
         # Time weighting constants (tau)
         self.TIME_CONSTANTS = {
-            'FAST': 0.125,
-            'SLOW': 1.0,
-            'IMPULSE': 0.035, # Rise time. Fall is different, see logic below
-            '10ms': 0.010
+            "FAST": 0.125,
+            "SLOW": 1.0,
+            "IMPULSE": 0.035,  # Rise time. Fall is different, see logic below
+            "10ms": 0.010,
         }
         self.IMPULSE_FALL_TAU = 1.5
 
@@ -72,13 +71,13 @@ class SoundLevelMeter(MeasurementModule):
 
         # Results (thread-safe access needed ideally, but Python GIL helps basic reads)
         self.results = {
-            'Lp': -np.inf,
-            'Leq': -np.inf,
-            'LE': -np.inf,
-            'Lmax': -np.inf,
-            'Lmin': -np.inf,
-            'Lpeak': -np.inf,
-            'LN': {} # L5, L10, L50, L90, L95, Lhigh, Llow, Lave
+            "Lp": -np.inf,
+            "Leq": -np.inf,
+            "LE": -np.inf,
+            "Lmax": -np.inf,
+            "Lmin": -np.inf,
+            "Lpeak": -np.inf,
+            "LN": {},  # L5, L10, L50, L90, L95, Lhigh, Llow, Lave
         }
 
     @property
@@ -109,11 +108,11 @@ class SoundLevelMeter(MeasurementModule):
         self.reset_measurements()
 
     def set_target_duration(self, duration_str):
-        if duration_str == 'Continuous':
+        if duration_str == "Continuous":
             self.target_duration = None
         else:
             # Parse "1s", "1min"
-            val = int(duration_str[:-1]) if duration_str[-1] == 's' else int(duration_str[:-3]) * 60
+            val = int(duration_str[:-1]) if duration_str[-1] == "s" else int(duration_str[:-3]) * 60
             self.target_duration = float(val)
         # Don't reset immediately, applies to next start? Or reset if running?
         # Usually settings apply to next run.
@@ -139,13 +138,13 @@ class SoundLevelMeter(MeasurementModule):
 
         # Reset Results
         self.results = {
-            'Lp': -np.inf,
-            'Leq': -np.inf,
-            'LE': -np.inf,
-            'Lmax': -np.inf,
-            'Lmin': -np.inf,
-            'Lpeak': -np.inf,
-            'LN': {}
+            "Lp": -np.inf,
+            "Leq": -np.inf,
+            "LE": -np.inf,
+            "Lmax": -np.inf,
+            "Lmin": -np.inf,
+            "Lpeak": -np.inf,
+            "LN": {},
         }
 
     def _update_filters(self):
@@ -157,34 +156,34 @@ class SoundLevelMeter(MeasurementModule):
         # 20Hz is common lower bound.
         # Upper: 12.5k, 20k, 8k
         upper_freq = 20000
-        if '12.5kHz' in self.bandwidth_mode:
+        if "12.5kHz" in self.bandwidth_mode:
             upper_freq = 12500
-        elif '8kHz' in self.bandwidth_mode:
+        elif "8kHz" in self.bandwidth_mode:
             upper_freq = 8000
-        elif '20kHz' in self.bandwidth_mode:
+        elif "20kHz" in self.bandwidth_mode:
             upper_freq = 20000
 
         # Ensure upper freq is below Nyquist
         nyquist = sr / 2.0
         if upper_freq >= nyquist * 0.95:
             # Just Highpass 20Hz
-            self.bw_filter = scipy.signal.butter(4, 20, btype='highpass', fs=sr, output='sos')
+            self.bw_filter = scipy.signal.butter(4, 20, btype="highpass", fs=sr, output="sos")
         else:
             # Bandpass 20 - upper
-            self.bw_filter = scipy.signal.butter(4, [20, upper_freq], btype='bandpass', fs=sr, output='sos')
+            self.bw_filter = scipy.signal.butter(4, [20, upper_freq], btype="bandpass", fs=sr, output="sos")
 
         self.bw_filter_state = np.zeros((self.bw_filter.shape[0], 2))
 
-        if self.freq_weighting == 'Z':
+        if self.freq_weighting == "Z":
             self.sos_filter = None
             self.filter_state = None
-        elif self.freq_weighting == 'A':
+        elif self.freq_weighting == "A":
             # A-weighting design (approximate) via bilinear transform or standard library if available.
             # Using scipy.signal.bilinear_zpk or similar if we had analog poles/zeros.
             # Using a standard approximation function here.
             self.sos_filter = self._design_a_weighting(sr)
             self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
-        elif self.freq_weighting == 'C':
+        elif self.freq_weighting == "C":
             self.sos_filter = self._design_c_weighting(sr)
             self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
 
@@ -196,9 +195,10 @@ class SoundLevelMeter(MeasurementModule):
         f3 = 737.86223
         f4 = 12194.217
 
-        np.convolve(np.poly([-2*np.pi*f4, -2*np.pi*f4]),
-                     np.convolve(np.poly([-2*np.pi*f1, -2*np.pi*f1]),
-                                 np.poly([-2*np.pi*f2, -2*np.pi*f3])))
+        np.convolve(
+            np.poly([-2 * np.pi * f4, -2 * np.pi * f4]),
+            np.convolve(np.poly([-2 * np.pi * f1, -2 * np.pi * f1]), np.poly([-2 * np.pi * f2, -2 * np.pi * f3])),
+        )
 
         # Gain at 1 kHz should be 0 dB.
         # Analog generic formulation. Converting to digital SOS.
@@ -212,13 +212,8 @@ class SoundLevelMeter(MeasurementModule):
 
         pi = np.pi
         z = [0, 0, 0, 0]
-        p = [
-            -2*pi*f1, -2*pi*f1,
-            -2*pi*f2,
-            -2*pi*f3,
-            -2*pi*f4, -2*pi*f4
-        ]
-        k = 1.0 # normalize later
+        p = [-2 * pi * f1, -2 * pi * f1, -2 * pi * f2, -2 * pi * f3, -2 * pi * f4, -2 * pi * f4]
+        k = 1.0  # normalize later
 
         # Normalize to 0dB at 1000Hz
         # Filter response H(s). |H(j*2*pi*1000)| = 1 (0dB) ideally?
@@ -231,7 +226,7 @@ class SoundLevelMeter(MeasurementModule):
         # Frequency response check at 1kHz
         w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
         gain_1k = np.abs(h[0])
-        sos[0, :3] /= gain_1k # Normalization
+        sos[0, :3] /= gain_1k  # Normalization
 
         return sos
 
@@ -242,10 +237,7 @@ class SoundLevelMeter(MeasurementModule):
 
         pi = np.pi
         z = [0, 0]
-        p = [
-            -2*pi*f1, -2*pi*f1,
-            -2*pi*f4, -2*pi*f4
-        ]
+        p = [-2 * pi * f1, -2 * pi * f1, -2 * pi * f4, -2 * pi * f4]
         k = 1.0
 
         zd, pd, kd = scipy.signal.bilinear_zpk(z, p, k, fs)
@@ -263,12 +255,12 @@ class SoundLevelMeter(MeasurementModule):
         Apply Impulse time weighting using a downsampled approximation to improve performance.
         Impulse: Rise 35ms, Fall 1500ms.
         """
-        factor = 8 # Processing 1/8th of samples gives ~8x speedup with good accuracy
+        factor = 8  # Processing 1/8th of samples gives ~8x speedup with good accuracy
 
         # 1. Adjust time constants for lower sample rate
         sr_low = sr / factor
 
-        tau_rise = self.TIME_CONSTANTS.get('IMPULSE', 0.035)
+        tau_rise = self.TIME_CONSTANTS.get("IMPULSE", 0.035)
         tau_fall = self.IMPULSE_FALL_TAU
 
         alpha_rise = 1.0 - np.exp(-1.0 / (sr_low * tau_rise))
@@ -281,7 +273,7 @@ class SoundLevelMeter(MeasurementModule):
         if rem != 0:
             pad_width = factor - rem
             # Pad with 0 (silence) to avoid extending loud signals artificially
-            sig_padded = np.pad(sq_sig, (0, pad_width), mode='constant', constant_values=0)
+            sig_padded = np.pad(sq_sig, (0, pad_width), mode="constant", constant_values=0)
         else:
             sig_padded = sq_sig
 
@@ -333,8 +325,8 @@ class SoundLevelMeter(MeasurementModule):
             return
         self.is_running = False
         if self.callback_id is not None:
-             self.audio_engine.unregister_callback(self.callback_id)
-             self.callback_id = None
+            self.audio_engine.unregister_callback(self.callback_id)
+            self.callback_id = None
 
     def callback(self, indata, outdata, frames, time_info, status):
         if not self.is_running:
@@ -376,7 +368,7 @@ class SoundLevelMeter(MeasurementModule):
 
         # Apply Frequency Weighting
         if self.sos_filter is not None and self.filter_state is not None:
-             sig, self.filter_state = scipy.signal.sosfilt(self.sos_filter, sig, zi=self.filter_state)
+            sig, self.filter_state = scipy.signal.sosfilt(self.sos_filter, sig, zi=self.filter_state)
 
         # Square signal for power
         sq_sig = sig**2
@@ -392,7 +384,7 @@ class SoundLevelMeter(MeasurementModule):
 
         alpha = 1.0 - np.exp(-1.0 / (sr * tau))
 
-        if self.time_weighting != 'IMPULSE':
+        if self.time_weighting != "IMPULSE":
             # Exponential moving average filter
             # y = lfilter([alpha], [1, -(1-alpha)], x)
             # We need to maintain state.
@@ -400,7 +392,7 @@ class SoundLevelMeter(MeasurementModule):
             # initial state
             zi = [self.current_sq_val * (1 - alpha)]
 
-            filtered_sq, zf = scipy.signal.lfilter([alpha], [1, -(1-alpha)], sq_sig, zi=zi)
+            filtered_sq, zf = scipy.signal.lfilter([alpha], [1, -(1 - alpha)], sq_sig, zi=zi)
 
             self.current_sq_val = filtered_sq[-1]
             block_vals = filtered_sq
@@ -420,8 +412,9 @@ class SoundLevelMeter(MeasurementModule):
         blk_max = np.max(block_vals)
         blk_min = np.min(block_vals)
 
-        if blk_max > 1e-12: # avoid log of zero issues implicitly later
-            if blk_max > self.current_sq_val: pass # logic check
+        if blk_max > 1e-12:  # avoid log of zero issues implicitly later
+            if blk_max > self.current_sq_val:
+                pass  # logic check
 
         # Update state Lmax (store in linear power to avoid log calls in callback, convert later)
         # Actually usually stored in dB, but linear is safer for aggregation.
@@ -444,7 +437,6 @@ class SoundLevelMeter(MeasurementModule):
         peak_curr = np.max(sq_sig)
         self.lpeak = max(self.lpeak, peak_curr)
 
-
         # LN Data Collection (0.1s interval)
         current_time = time.time()
         if current_time - self.last_sample_time >= self.LN_SAMPLING_PERIOD:
@@ -460,18 +452,18 @@ class SoundLevelMeter(MeasurementModule):
             self.last_sample_time = current_time
 
         # Store for display (Atomic update preferred)
-        self.results['Lp'] = 10 * np.log10(lp_inst + 1e-12)
-        self.results['Leq'] = 10 * np.log10((self.leq_integrator / (self.leq_samples + 1e-12)) + 1e-12)
+        self.results["Lp"] = 10 * np.log10(lp_inst + 1e-12)
+        self.results["Leq"] = 10 * np.log10((self.leq_integrator / (self.leq_samples + 1e-12)) + 1e-12)
 
         # LE: 10 log10 ( Integral(p^2) dt ). dt = 1/sr.
         # LE = 10 log10 ( sum(sq_sig) / sr ).
         # self.leq_integrator tracks sum(p^2).
         le_val = (self.leq_integrator / sr) + 1e-12
-        self.results['LE'] = 10 * np.log10(le_val)
+        self.results["LE"] = 10 * np.log10(le_val)
 
-        self.results['Lmax'] = 10 * np.log10(self.lmax + 1e-12)
-        self.results['Lmin'] = 10 * np.log10(self.lmin + 1e-12)
-        self.results['Lpeak'] = 10 * np.log10(self.lpeak + 1e-12)
+        self.results["Lmax"] = 10 * np.log10(self.lmax + 1e-12)
+        self.results["Lmin"] = 10 * np.log10(self.lmin + 1e-12)
+        self.results["Lpeak"] = 10 * np.log10(self.lpeak + 1e-12)
 
         # Calculate/Update Statistics periodically (or on demand)
         # Since this is the audio callback, we should NOT sort a potentially large array here.
@@ -506,16 +498,7 @@ class SoundLevelMeter(MeasurementModule):
         # Since we have the linear history, we can calc Leq of the history.
         lave = 10 * np.log10(np.mean(data_linear) + 1e-12)
 
-        return {
-            'L5': l5,
-            'L10': l10,
-            'L50': l50,
-            'L90': l90,
-            'L95': l95,
-            'Lhigh': lhigh,
-            'Llow': llow,
-            'Lave': lave
-        }
+        return {"L5": l5, "L10": l10, "L50": l50, "L90": l90, "L95": l95, "Lhigh": lhigh, "Llow": llow, "Lave": lave}
 
     def get_ln_histogram(self, bin_size=0.5):
         """
@@ -525,7 +508,7 @@ class SoundLevelMeter(MeasurementModule):
         Returns:
             tuple: (bins, probabilities)
                    bins: Center frequencies of bins
-                   probabilities: Normalized count (pdf) or absolute count? 
+                   probabilities: Normalized count (pdf) or absolute count?
                                   Let's return normalized probability (sum=100% or 1.0)
         """
         if not self.ln_history:
@@ -572,7 +555,7 @@ class SoundLevelMeterWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
-        self.timer.start(50) # 20Hz refresh
+        self.timer.start(50)  # 20Hz refresh
 
     def init_ui(self):
         # Main Layout: Sidebar (Left) + Content (Right)
@@ -610,35 +593,37 @@ class SoundLevelMeterWidget(QWidget):
         # Channel
         settings_layout.addWidget(QLabel(tr("Channel:")))
         self.combo_channel = QComboBox()
-        self.combo_channel.addItems(['L', 'R'])
+        self.combo_channel.addItems(["L", "R"])
         self.combo_channel.currentIndexChanged.connect(self.module.set_channel)
         settings_layout.addWidget(self.combo_channel)
 
         # Freq Weight
         settings_layout.addWidget(QLabel(tr("Freq Weight:")))
         self.combo_freq = QComboBox()
-        self.combo_freq.addItems(['A', 'C', 'Z'])
+        self.combo_freq.addItems(["A", "C", "Z"])
         self.combo_freq.currentTextChanged.connect(self.module.set_freq_weighting)
         settings_layout.addWidget(self.combo_freq)
 
         # Time Weight
         settings_layout.addWidget(QLabel(tr("Time Weight:")))
         self.combo_time = QComboBox()
-        self.combo_time.addItems(['FAST', 'SLOW', 'IMPULSE', '10ms'])
+        self.combo_time.addItems(["FAST", "SLOW", "IMPULSE", "10ms"])
         self.combo_time.currentTextChanged.connect(self.module.set_time_weighting)
         settings_layout.addWidget(self.combo_time)
 
         # Bandwidth
         settings_layout.addWidget(QLabel(tr("Bandwidth:")))
         self.combo_bw = QComboBox()
-        self.combo_bw.addItems(['20Hz - 20kHz', '20Hz - 12.5kHz', '20Hz - 8kHz'])
+        self.combo_bw.addItems(["20Hz - 20kHz", "20Hz - 12.5kHz", "20Hz - 8kHz"])
         self.combo_bw.currentTextChanged.connect(self.module.set_bandwidth_mode)
         settings_layout.addWidget(self.combo_bw)
 
         # Duration
         settings_layout.addWidget(QLabel(tr("Duration:")))
         self.combo_duration = QComboBox()
-        self.combo_duration.addItems(['Continuous', '1s', '3s', '5s', '10s', '20s', '30s', '1min', '2min', '5min', '10min', '15min', '30min'])
+        self.combo_duration.addItems(
+            ["Continuous", "1s", "3s", "5s", "10s", "20s", "30s", "1min", "2min", "5min", "10min", "15min", "30min"]
+        )
         self.combo_duration.currentTextChanged.connect(self.module.set_target_duration)
         settings_layout.addWidget(self.combo_duration)
 
@@ -670,11 +655,11 @@ class SoundLevelMeterWidget(QWidget):
 
         # Lp Display
         self.disp_lp = self._create_big_display(tr("Instantaneous (Lp)"), "#00ff00")
-        display_layout.addWidget(self.disp_lp['container'])
+        display_layout.addWidget(self.disp_lp["container"])
 
         # Leq Display
         self.disp_leq = self._create_big_display(tr("Equivalent (Leq)"), "#00ccff")
-        display_layout.addWidget(self.disp_leq['container'])
+        display_layout.addWidget(self.disp_leq["container"])
 
         display_frame.setLayout(display_layout)
         content_layout.addWidget(display_frame)
@@ -687,12 +672,12 @@ class SoundLevelMeterWidget(QWidget):
         hist_layout = QVBoxLayout()
 
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground('#111')
+        self.plot_widget.setBackground("#111")
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.setLabel('bottom', "Level", units='dB')
-        self.plot_widget.setLabel('left', "Probability", units='%')
+        self.plot_widget.setLabel("bottom", "Level", units="dB")
+        self.plot_widget.setLabel("left", "Probability", units="%")
 
-        self.hist_item = pg.BarGraphItem(x=[0], height=[0], width=0.4, brush='g')
+        self.hist_item = pg.BarGraphItem(x=[0], height=[0], width=0.4, brush="g")
         self.plot_widget.addItem(self.hist_item)
 
         hist_layout.addWidget(self.plot_widget)
@@ -705,8 +690,14 @@ class SoundLevelMeterWidget(QWidget):
         ln_grid = QGridLayout()
         self.ln_labels = {}
         ln_metrics = [
-            ('L5', 'L5', 0, 0), ('L10', 'L10', 0, 1), ('L50', 'L50', 0, 2), ('L90', 'L90', 0, 3),
-            ('L95', 'L95', 1, 0), ('Lhigh', 'Lhigh', 1, 1), ('Llow', 'Llow', 1, 2), ('Lave', 'Lave', 1, 3)
+            ("L5", "L5", 0, 0),
+            ("L10", "L10", 0, 1),
+            ("L50", "L50", 0, 2),
+            ("L90", "L90", 0, 3),
+            ("L95", "L95", 1, 0),
+            ("Lhigh", "Lhigh", 1, 1),
+            ("Llow", "Llow", 1, 2),
+            ("Lave", "Lave", 1, 3),
         ]
         ln_font_style = "font-size: 24px; font-weight: bold; color: #00ffff;"
 
@@ -737,10 +728,10 @@ class SoundLevelMeterWidget(QWidget):
         m_grid = QGridLayout()
         self.metric_labels = {}
         metrics_list = [
-            ('Lmax', tr("Maximum Level"), 0, 0),
-            ('Lmin', tr("Minimum Level"), 0, 1),
-            ('Lpeak', tr("Peak Level"), 1, 0),
-            ('LE', tr("Sound Exposure Level"), 1, 1)
+            ("Lmax", tr("Maximum Level"), 0, 0),
+            ("Lmin", tr("Minimum Level"), 0, 1),
+            ("Lpeak", tr("Peak Level"), 1, 0),
+            ("LE", tr("Sound Exposure Level"), 1, 1),
         ]
 
         for key, desc, r, c in metrics_list:
@@ -799,7 +790,7 @@ class SoundLevelMeterWidget(QWidget):
         layout.addWidget(lbl_val)
         layout.addWidget(lbl_unit)
         container.setLayout(layout)
-        return {'container': container, 'label': lbl_val}
+        return {"container": container, "label": lbl_val}
 
     def on_start_toggle(self, checked):
         if checked:
@@ -822,10 +813,10 @@ class SoundLevelMeterWidget(QWidget):
 
         # Get calibration offset
         cal_db = 0.0
-        if hasattr(self.module.audio_engine, 'calibration'):
-             cal_ptr = self.module.audio_engine.calibration
-             if hasattr(cal_ptr, 'get_spl_offset_db'):
-                 cal_db = cal_ptr.get_spl_offset_db() or 0.0
+        if hasattr(self.module.audio_engine, "calibration"):
+            cal_ptr = self.module.audio_engine.calibration
+            if hasattr(cal_ptr, "get_spl_offset_db"):
+                cal_db = cal_ptr.get_spl_offset_db() or 0.0
 
         vals = self.module.results
 
@@ -834,8 +825,8 @@ class SoundLevelMeterWidget(QWidget):
             return f"{v + cal_db:.1f}" if not np.isinf(v) and not np.isnan(v) else "--.-"
 
         # Update Big Displays
-        self.disp_lp['label'].setText(fmt(vals.get('Lp', -np.inf)))
-        self.disp_leq['label'].setText(fmt(vals.get('Leq', -np.inf)))
+        self.disp_lp["label"].setText(fmt(vals.get("Lp", -np.inf)))
+        self.disp_leq["label"].setText(fmt(vals.get("Leq", -np.inf)))
 
         # Update Details
         for key, lbl in self.metric_labels.items():
@@ -847,8 +838,8 @@ class SoundLevelMeterWidget(QWidget):
         # Only calculate if tab is visible?
         # Optimization: Only calculate if current tab is Histogram or Stats
         current_idx = self.tabs.currentIndex()
-        is_hist_tab = (self.tabs.widget(current_idx) == self.tab_hist)
-        is_stats_tab = (self.tabs.widget(current_idx) == self.tab_stats)
+        is_hist_tab = self.tabs.widget(current_idx) == self.tab_hist
+        is_stats_tab = self.tabs.widget(current_idx) == self.tab_stats
 
         if (is_hist_tab or is_stats_tab) and self.module.ln_history:
             # We can optimize by not calculating every GUI frame (50ms), maybe every 250ms?
@@ -871,4 +862,3 @@ class SoundLevelMeterWidget(QWidget):
 
                     # Auto range y?
                     # self.plot_widget.setYRange(0, np.max(probs)*1.1)
-

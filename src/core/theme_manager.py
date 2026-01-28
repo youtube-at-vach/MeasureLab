@@ -37,7 +37,7 @@ class ThemeManager(QObject):
 
         # Check if Qt supports colorScheme (Qt 6.5+)
         style_hints = self.app.styleHints()
-        self.supports_color_scheme = style_hints is not None and hasattr(style_hints, 'colorScheme')
+        self.supports_color_scheme = style_hints is not None and hasattr(style_hints, "colorScheme")
 
         if self.supports_color_scheme and style_hints is not None:
             # Connect to system theme changes
@@ -54,18 +54,18 @@ class ThemeManager(QObject):
         Args:
             theme_name: One of 'system', 'light', 'dark'
         """
-        if theme_name not in ['system', 'light', 'dark']:
+        if theme_name not in ["system", "light", "dark"]:
             self.logger.error(f"Invalid theme name: {theme_name}")
             return
 
         self.current_theme = theme_name
         self.logger.info(f"Setting theme to: {theme_name}")
 
-        if theme_name == 'system':
+        if theme_name == "system":
             self._apply_system_theme()
-        elif theme_name == 'light':
+        elif theme_name == "light":
             self._apply_light_theme()
-        elif theme_name == 'dark':
+        elif theme_name == "dark":
             self._apply_dark_theme()
 
         self.theme_changed.emit(theme_name)
@@ -79,13 +79,13 @@ class ThemeManager(QObject):
         Returns the effective theme ('light' or 'dark').
         If current_theme is 'system', detects the system theme.
         """
-        if self.current_theme == 'system':
+        if self.current_theme == "system":
             return self._detect_system_theme()
         return self.current_theme
 
     def _on_system_theme_changed(self, scheme):
         """Handle system theme change (Qt 6.5+ only)."""
-        if self.current_theme == 'system':
+        if self.current_theme == "system":
             self.logger.info(f"System theme changed to: {scheme}")
             self._apply_system_theme()
 
@@ -100,14 +100,15 @@ class ThemeManager(QObject):
         if self.supports_color_scheme and style_hints is not None:
             try:
                 from PyQt6.QtCore import Qt
+
                 scheme = style_hints.colorScheme()
 
                 # Qt.ColorScheme.Dark = 2, Qt.ColorScheme.Light = 1
-                if hasattr(Qt, 'ColorScheme'):
+                if hasattr(Qt, "ColorScheme"):
                     if scheme == Qt.ColorScheme.Dark:
-                        return 'dark'
+                        return "dark"
                     elif scheme == Qt.ColorScheme.Light:
-                        return 'light'
+                        return "light"
                 else:
                     # Fallback for different Qt 6.5 versions
                     raw_scheme: Any = scheme
@@ -115,9 +116,9 @@ class ThemeManager(QObject):
                     scheme_val = scheme_val_obj if isinstance(scheme_val_obj, int) else -1
 
                     if scheme_val == 2:
-                        return 'dark'
+                        return "dark"
                     elif scheme_val == 1:
-                        return 'light'
+                        return "light"
             except Exception as e:
                 self.logger.warning(f"Failed to detect system theme: {e}")
 
@@ -125,14 +126,14 @@ class ThemeManager(QObject):
         palette = self.app.palette()
         bg_color = palette.color(QPalette.ColorRole.Window)
         # If background is dark (low lightness), assume dark theme
-        return 'dark' if bg_color.lightness() < 128 else 'light'
+        return "dark" if bg_color.lightness() < 128 else "light"
 
     def _apply_system_theme(self):
         """Apply system theme."""
         detected = self._detect_system_theme()
         self.logger.info(f"Applying system theme (detected: {detected})")
 
-        if detected == 'dark':
+        if detected == "dark":
             self._apply_dark_theme()
         else:
             self._apply_light_theme()

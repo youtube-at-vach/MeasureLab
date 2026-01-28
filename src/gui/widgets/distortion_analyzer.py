@@ -34,26 +34,26 @@ class DistortionAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.buffer_size = 16384 # Larger buffer for better frequency resolution
+        self.buffer_size = 16384  # Larger buffer for better frequency resolution
         self.input_data = np.zeros(self.buffer_size)
 
         # Generator Settings
         self.gen_frequency = 1000.0
         self.gen_frequency = 1000.0
-        self._gen_amplitude = 0.5 # Linear 0-1
-        self.output_channel = 0 # 0: Left, 1: Right
-        self.input_channel = 0 # 0: Left, 1: Right
+        self._gen_amplitude = 0.5  # Linear 0-1
+        self.output_channel = 0  # 0: Left, 1: Right
+        self.input_channel = 0  # 0: Left, 1: Right
         self.output_enabled = True
 
         # Analysis Settings
-        self.window_type = 'blackmanharris' # Good for distortion
+        self.window_type = "blackmanharris"  # Good for distortion
         self.averaging = 0.0
 
         # IMD Settings
-        self.imd_standard = 'smpte' # 'smpte' or 'ccif'
+        self.imd_standard = "smpte"  # 'smpte' or 'ccif'
         self.imd_f1 = 60.0
         self.imd_f2 = 7000.0
-        self.imd_ratio = 4.0 # 4:1 for SMPTE
+        self.imd_ratio = 4.0  # 4:1 for SMPTE
 
         # Playback state
         self._phase_f1 = 0.0
@@ -61,8 +61,8 @@ class DistortionAnalyzer(MeasurementModule):
         self._phase_f2 = 0.0
 
         # Mode
-        self.mode = 'Real-time'
-        self.signal_type = 'sine' # 'sine', 'smpte', 'ccif'
+        self.mode = "Real-time"
+        self.signal_type = "sine"  # 'sine', 'smpte', 'ccif'
 
         # State
         self.current_result = None
@@ -97,40 +97,40 @@ class DistortionAnalyzer(MeasurementModule):
             self.reset_averaging_state()
             return results
 
-        raw_fund_rms = float(results.get('raw_fund_rms', 0.0))
-        raw_res_rms = float(results.get('raw_res_rms', 0.0))
-        raw_fund_amp = float(results.get('raw_fund_amp', 0.0))
-        raw_freq = float(results.get('basic_wave', {}).get('frequency', self.gen_frequency))
-        raw_amp_dbfs = float(results.get('basic_wave', {}).get('amplitude_dbfs', -140.0))
-        raw_harmonics = np.array(results.get('raw_harmonics', []), dtype=float)
+        raw_fund_rms = float(results.get("raw_fund_rms", 0.0))
+        raw_res_rms = float(results.get("raw_res_rms", 0.0))
+        raw_fund_amp = float(results.get("raw_fund_amp", 0.0))
+        raw_freq = float(results.get("basic_wave", {}).get("frequency", self.gen_frequency))
+        raw_amp_dbfs = float(results.get("basic_wave", {}).get("amplitude_dbfs", -140.0))
+        raw_harmonics = np.array(results.get("raw_harmonics", []), dtype=float)
 
         # Initialize or update state
-        if self._avg_state is None or self._avg_state['harmonics'].shape != raw_harmonics.shape:
+        if self._avg_state is None or self._avg_state["harmonics"].shape != raw_harmonics.shape:
             self._avg_state = {
-                'fund_rms': raw_fund_rms,
-                'res_rms': raw_res_rms,
-                'fund_amp': raw_fund_amp,
-                'frequency': raw_freq,
-                'amplitude_dbfs': raw_amp_dbfs,
-                'harmonics': raw_harmonics,
+                "fund_rms": raw_fund_rms,
+                "res_rms": raw_res_rms,
+                "fund_amp": raw_fund_amp,
+                "frequency": raw_freq,
+                "amplitude_dbfs": raw_amp_dbfs,
+                "harmonics": raw_harmonics,
             }
         else:
-            self._avg_state['fund_rms'] = alpha * self._avg_state['fund_rms'] + (1 - alpha) * raw_fund_rms
-            self._avg_state['res_rms'] = alpha * self._avg_state['res_rms'] + (1 - alpha) * raw_res_rms
-            self._avg_state['fund_amp'] = alpha * self._avg_state['fund_amp'] + (1 - alpha) * raw_fund_amp
-            self._avg_state['frequency'] = alpha * self._avg_state['frequency'] + (1 - alpha) * raw_freq
-            self._avg_state['amplitude_dbfs'] = alpha * self._avg_state['amplitude_dbfs'] + (1 - alpha) * raw_amp_dbfs
-            self._avg_state['harmonics'] = alpha * self._avg_state['harmonics'] + (1 - alpha) * raw_harmonics
+            self._avg_state["fund_rms"] = alpha * self._avg_state["fund_rms"] + (1 - alpha) * raw_fund_rms
+            self._avg_state["res_rms"] = alpha * self._avg_state["res_rms"] + (1 - alpha) * raw_res_rms
+            self._avg_state["fund_amp"] = alpha * self._avg_state["fund_amp"] + (1 - alpha) * raw_fund_amp
+            self._avg_state["frequency"] = alpha * self._avg_state["frequency"] + (1 - alpha) * raw_freq
+            self._avg_state["amplitude_dbfs"] = alpha * self._avg_state["amplitude_dbfs"] + (1 - alpha) * raw_amp_dbfs
+            self._avg_state["harmonics"] = alpha * self._avg_state["harmonics"] + (1 - alpha) * raw_harmonics
 
         state = self._avg_state
 
-        fund_amp = max(state['fund_amp'], 1e-12)
-        fund_rms = max(state['fund_rms'], 1e-12)
-        res_rms = max(state['res_rms'], 0.0)
+        fund_amp = max(state["fund_amp"], 1e-12)
+        fund_rms = max(state["fund_rms"], 1e-12)
+        res_rms = max(state["res_rms"], 0.0)
 
         thd_linear = 0.0
-        if fund_amp > 0 and state['harmonics'].size:
-            thd_linear = np.sqrt(np.sum(state['harmonics']**2)) / fund_amp
+        if fund_amp > 0 and state["harmonics"].size:
+            thd_linear = np.sqrt(np.sum(state["harmonics"] ** 2)) / fund_amp
 
         thd_percent = thd_linear * 100
         thd_db = 20 * np.log10(thd_linear + 1e-12)
@@ -142,35 +142,37 @@ class DistortionAnalyzer(MeasurementModule):
 
         # Rebuild harmonics list using averaged fundamentals for relative levels
         harmonics = []
-        base_freq = state['frequency']
-        for idx, amp in enumerate(state['harmonics']):
+        base_freq = state["frequency"]
+        for idx, amp in enumerate(state["harmonics"]):
             order = idx + 2
             rel_amp = amp / fund_amp if fund_amp > 0 else 0.0
-            harmonics.append({
-                'order': order,
-                'frequency': base_freq * order,
-                'amplitude_dbr': 20 * np.log10(rel_amp + 1e-12),
-                'amplitude_linear': float(amp)
-            })
+            harmonics.append(
+                {
+                    "order": order,
+                    "frequency": base_freq * order,
+                    "amplitude_dbr": 20 * np.log10(rel_amp + 1e-12),
+                    "amplitude_linear": float(amp),
+                }
+            )
 
         averaged = {
-            'basic_wave': {
-                'frequency': state['frequency'],
-                'amplitude_dbfs': state['amplitude_dbfs'],
-                'max_amplitude': state['fund_amp']
+            "basic_wave": {
+                "frequency": state["frequency"],
+                "amplitude_dbfs": state["amplitude_dbfs"],
+                "max_amplitude": state["fund_amp"],
             },
-            'harmonics': harmonics,
-            'thd_percent': thd_percent,
-            'thd_db': thd_db,
-            'thdn_percent': thdn_percent,
-            'thdn_db': thdn_db,
-            'sinad_db': sinad_db,
+            "harmonics": harmonics,
+            "thd_percent": thd_percent,
+            "thd_db": thd_db,
+            "thdn_percent": thdn_percent,
+            "thdn_db": thdn_db,
+            "sinad_db": sinad_db,
             # Preserve averaged raw components for downstream use/inspection
-            'raw_fund_rms': state['fund_rms'],
-            'raw_res_rms': state['res_rms'],
-            'raw_harmonics': state['harmonics'],
-            'raw_fund_amp': state['fund_amp'],
-            'fft_data': results.get('fft_data')
+            "raw_fund_rms": state["fund_rms"],
+            "raw_res_rms": state["res_rms"],
+            "raw_harmonics": state["harmonics"],
+            "raw_fund_amp": state["fund_amp"],
+            "fft_data": results.get("fft_data"),
         }
 
         return averaged
@@ -182,7 +184,7 @@ class DistortionAnalyzer(MeasurementModule):
             self._avg_imd_ratio = None
             return imd_result
 
-        raw_ratio = max(float(imd_result.get('imd', 0.0)) / 100.0, 0.0)
+        raw_ratio = max(float(imd_result.get("imd", 0.0)) / 100.0, 0.0)
         if self._avg_imd_ratio is None:
             self._avg_imd_ratio = raw_ratio
         else:
@@ -192,11 +194,7 @@ class DistortionAnalyzer(MeasurementModule):
         imd_percent = ratio * 100.0
         imd_db = 20 * np.log10(ratio) if ratio > 1e-12 else -100.0
 
-        return {
-            'imd': imd_percent,
-            'imd_db': imd_db,
-            'raw_imd_ratio': ratio
-        }
+        return {"imd": imd_percent, "imd_db": imd_db, "raw_imd_ratio": ratio}
 
     def apply_spectrum_averaging(self, mag_linear: np.ndarray) -> np.ndarray:
         """Smooth spectrum magnitude with exponential averaging (linear domain)."""
@@ -258,7 +256,7 @@ class DistortionAnalyzer(MeasurementModule):
             outdata.fill(0)
             if self.output_enabled:
                 # Check signal type
-                if self.signal_type == 'smpte' or self.signal_type == 'ccif':
+                if self.signal_type == "smpte" or self.signal_type == "ccif":
                     sine_wave = self._generate_dual_tone(frames, sample_rate)
                 else:
                     t = (np.arange(frames) + phase) / sample_rate
@@ -283,10 +281,10 @@ class DistortionAnalyzer(MeasurementModule):
 
             # Ring buffer update
             if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size:]
+                self.input_data[:] = new_data[-self.buffer_size :]
             else:
                 self.input_data = np.roll(self.input_data, -len(new_data))
-                self.input_data[-len(new_data):] = new_data
+                self.input_data[-len(new_data) :] = new_data
 
             # Handle Capture Request (Thread-safe copy)
             if self.capture_requested:
@@ -300,12 +298,12 @@ class DistortionAnalyzer(MeasurementModule):
         # Calculate amplitudes based on ratio
         # Total amplitude should not exceed self.gen_amplitude
 
-        if self.imd_standard == 'smpte':
+        if self.imd_standard == "smpte":
             # ratio = amp_f1 / amp_f2
             # amp_f2 * (ratio + 1) = self.gen_amplitude
             amp_f2 = self.gen_amplitude / (self.imd_ratio + 1)
             amp_f1 = amp_f2 * self.imd_ratio
-        else: # CCIF
+        else:  # CCIF
             # 1:1 ratio usually
             amp_f1 = self.gen_amplitude / 2
             amp_f2 = self.gen_amplitude / 2
@@ -337,6 +335,7 @@ class DistortionAnalyzer(MeasurementModule):
         self.capture_ready = False
         self.capture_requested = True
 
+
 class SweepWorker(QThread):
     result_ready = pyqtSignal(dict)
     finished = pyqtSignal()
@@ -345,7 +344,7 @@ class SweepWorker(QThread):
     def __init__(self, module, sweep_type, start, end, steps, duration_ms=1000):
         super().__init__()
         self.module = module
-        self.sweep_type = sweep_type # 'frequency' or 'amplitude'
+        self.sweep_type = sweep_type  # 'frequency' or 'amplitude'
         self.start_val = start
         self.end_val = end
         self.steps = steps
@@ -354,7 +353,7 @@ class SweepWorker(QThread):
 
     def run(self):
         # Generate steps
-        if self.sweep_type == 'frequency':
+        if self.sweep_type == "frequency":
             # Logarithmic sweep for frequency
             values = np.logspace(np.log10(self.start_val), np.log10(self.end_val), self.steps)
         else:
@@ -366,11 +365,11 @@ class SweepWorker(QThread):
                 break
 
             # Set Generator
-            if self.sweep_type == 'frequency':
+            if self.sweep_type == "frequency":
                 self.module.gen_frequency = val
             else:
                 # val is dBFS, convert to linear
-                self.module.gen_amplitude = 10**(val/20)
+                self.module.gen_amplitude = 10 ** (val / 20)
 
             # Wait for settling (Generator update + Audio Buffer Latency)
             # Ensure at least 300ms wait
@@ -381,26 +380,21 @@ class SweepWorker(QThread):
             self.module.request_capture()
             # Wait for capture
             timeout = 0
-            while not self.module.capture_ready and timeout < 50: # 500ms timeout
+            while not self.module.capture_ready and timeout < 50:  # 500ms timeout
                 self.msleep(10)
                 timeout += 1
 
             if self.module.capture_ready:
                 data = self.module.captured_buffer
             else:
-                data = self.module.input_data.copy() # Fallback
+                data = self.module.input_data.copy()  # Fallback
 
             sample_rate = self.module.audio_engine.sample_rate
 
-            results = AudioCalc.analyze_harmonics(
-                data,
-                self.module.gen_frequency,
-                self.module.window_type,
-                sample_rate
-            )
+            results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
 
             # Add sweep parameter to results
-            results['sweep_param'] = val
+            results["sweep_param"] = val
             self.result_ready.emit(results)
             self.progress.emit(i + 1, self.steps)
 
@@ -419,7 +413,7 @@ class DistortionAnalyzerWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_realtime_analysis)
-        self.timer.setInterval(100) # 10Hz update
+        self.timer.setInterval(100)  # 10Hz update
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -457,7 +451,7 @@ class DistortionAnalyzerWidget(QWidget):
         # 1. Sine Settings
         sine_widget = QWidget()
         sine_layout = QFormLayout()
-        sine_layout.setContentsMargins(0,0,0,0)
+        sine_layout.setContentsMargins(0, 0, 0, 0)
 
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(20, 20000)
@@ -472,24 +466,24 @@ class DistortionAnalyzerWidget(QWidget):
         # 2. IMD Settings
         imd_gen_widget = QWidget()
         imd_gen_layout = QFormLayout()
-        imd_gen_layout.setContentsMargins(0,0,0,0)
+        imd_gen_layout.setContentsMargins(0, 0, 0, 0)
 
         self.imd_f1_spin = QDoubleSpinBox()
         self.imd_f1_spin.setRange(10, 20000)
         self.imd_f1_spin.setValue(self.module.imd_f1)
-        self.imd_f1_spin.valueChanged.connect(lambda v: setattr(self.module, 'imd_f1', v))
+        self.imd_f1_spin.valueChanged.connect(lambda v: setattr(self.module, "imd_f1", v))
         imd_gen_layout.addRow(tr("Freq 1 (Hz):"), self.imd_f1_spin)
 
         self.imd_f2_spin = QDoubleSpinBox()
         self.imd_f2_spin.setRange(10, 24000)
         self.imd_f2_spin.setValue(self.module.imd_f2)
-        self.imd_f2_spin.valueChanged.connect(lambda v: setattr(self.module, 'imd_f2', v))
+        self.imd_f2_spin.valueChanged.connect(lambda v: setattr(self.module, "imd_f2", v))
         imd_gen_layout.addRow(tr("Freq 2 (Hz):"), self.imd_f2_spin)
 
         self.imd_ratio_spin = QDoubleSpinBox()
         self.imd_ratio_spin.setRange(1, 10)
         self.imd_ratio_spin.setValue(self.module.imd_ratio)
-        self.imd_ratio_spin.valueChanged.connect(lambda v: setattr(self.module, 'imd_ratio', v))
+        self.imd_ratio_spin.valueChanged.connect(lambda v: setattr(self.module, "imd_ratio", v))
         imd_gen_layout.addRow(tr("Ratio (F1:F2):"), self.imd_ratio_spin)
 
         imd_gen_widget.setLayout(imd_gen_layout)
@@ -500,12 +494,12 @@ class DistortionAnalyzerWidget(QWidget):
         # Amplitude (Shared)
         amp_layout = QHBoxLayout()
         self.amp_spin = QDoubleSpinBox()
-        self.amp_spin.setRange(-120, 20) # Allow positive for dBV/dBu
+        self.amp_spin.setRange(-120, 20)  # Allow positive for dBV/dBu
         self.amp_spin.setValue(-6)
         self.amp_spin.valueChanged.connect(self.on_amp_changed)
 
         self.unit_combo = QComboBox()
-        self.unit_combo.addItems(['dBFS', 'dBV', 'dBu', 'Vrms'])
+        self.unit_combo.addItems(["dBFS", "dBV", "dBu", "Vrms"])
         self.unit_combo.currentTextChanged.connect(self.on_unit_changed)
 
         amp_layout.addWidget(self.amp_spin)
@@ -659,23 +653,23 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Tab 1: Spectrum
         self.spectrum_plot = pg.PlotWidget()
-        self.spectrum_plot.setLabel('left', tr('Amplitude'), units='dBFS')
-        self.spectrum_plot.setLabel('bottom', tr('Frequency'), units='Hz')
+        self.spectrum_plot.setLabel("left", tr("Amplitude"), units="dBFS")
+        self.spectrum_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.spectrum_plot.setLogMode(x=True, y=False)
         self.spectrum_plot.setYRange(-140, 0)
         self.spectrum_plot.setYRange(-140, 0)
         self.spectrum_plot.showGrid(x=True, y=True)
 
         # Custom Axis Ticks for Spectrum
-        axis_spec = self.spectrum_plot.getPlotItem().getAxis('bottom')
+        axis_spec = self.spectrum_plot.getPlotItem().getAxis("bottom")
         ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-        ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t/1000:.0f}k") for t in ticks]
+        ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
         axis_spec.setTicks([ticks_log])
 
         # Set Range (log domain)
         self.spectrum_plot.setXRange(np.log10(20), np.log10(20000))
 
-        self.spectrum_curve = self.spectrum_plot.plot(pen='y')
+        self.spectrum_curve = self.spectrum_plot.plot(pen="y")
         self.tabs.addTab(self.spectrum_plot, tr("Spectrum"))
 
         # Tab 2: Harmonics (Table + Bar Graph)
@@ -684,28 +678,30 @@ class DistortionAnalyzerWidget(QWidget):
 
         self.harmonics_table = QTableWidget()
         self.harmonics_table.setColumnCount(4)
-        self.harmonics_table.setHorizontalHeaderLabels([tr("Order"), tr("Freq (Hz)"), tr("Level (dBr)"), tr("Level (Linear)")])
+        self.harmonics_table.setHorizontalHeaderLabels(
+            [tr("Order"), tr("Freq (Hz)"), tr("Level (dBr)"), tr("Level (Linear)")]
+        )
         self.harmonics_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        harmonics_layout.addWidget(self.harmonics_table, 1) # Stretch factor 1
+        harmonics_layout.addWidget(self.harmonics_table, 1)  # Stretch factor 1
 
         # Harmonics Bar Graph
         self.harmonics_plot = pg.PlotWidget()
-        self.harmonics_plot.setLabel('left', tr('Level'), units='dBr')
-        self.harmonics_plot.setLabel('bottom', tr('Harmonic Order'))
+        self.harmonics_plot.setLabel("left", tr("Level"), units="dBr")
+        self.harmonics_plot.setLabel("bottom", tr("Harmonic Order"))
         self.harmonics_plot.showGrid(x=False, y=True)
         self.harmonics_plot.setYRange(-140, 0)
 
-        self.harmonics_bar_item = pg.BarGraphItem(x=[], height=[], width=0.6, brush='b')
+        self.harmonics_bar_item = pg.BarGraphItem(x=[], height=[], width=0.6, brush="b")
         self.harmonics_plot.addItem(self.harmonics_bar_item)
 
-        harmonics_layout.addWidget(self.harmonics_plot, 1) # Stretch factor 1
+        harmonics_layout.addWidget(self.harmonics_plot, 1)  # Stretch factor 1
 
         self.tabs.addTab(harmonics_widget, tr("Harmonics"))
 
         # Tab 3: Sweep Results
         self.sweep_plot = pg.PlotWidget()
-        self.sweep_plot.setLabel('left', tr('THD+N'), units='dB')
-        self.sweep_plot.setLabel('bottom', tr('Frequency'), units='Hz') # Dynamic label
+        self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
+        self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")  # Dynamic label
         self.sweep_plot.setLogMode(x=True, y=False)
         self.sweep_plot.setLogMode(x=True, y=False)
         self.sweep_plot.showGrid(x=True, y=True)
@@ -714,13 +710,13 @@ class DistortionAnalyzerWidget(QWidget):
         # Note: If mode changes to Amplitude Sweep, we might need to reset this?
         # The user only requested "like Spectrum Analyzer", which implies Frequency domain.
         # We'll set it here, and handle mode changes if necessary.
-        self.sweep_axis = self.sweep_plot.getPlotItem().getAxis('bottom')
+        self.sweep_axis = self.sweep_plot.getPlotItem().getAxis("bottom")
         self.sweep_axis.setTicks([ticks_log])
 
         # Set Range (log domain) for Frequency Sweep default
         self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
 
-        self.sweep_curve = self.sweep_plot.plot(pen='c', symbol='o')
+        self.sweep_curve = self.sweep_plot.plot(pen="c", symbol="o")
         self.tabs.addTab(self.sweep_plot, tr("Sweep Results"))
 
         right_panel.addWidget(self.tabs)
@@ -730,13 +726,13 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Initial update
         self.on_unit_changed(self.unit_combo.currentText())
-        self.out_mode_combo.setCurrentIndex(1) # Default to Sine Wave
+        self.out_mode_combo.setCurrentIndex(1)  # Default to Sine Wave
 
     def sync_module_with_gui(self):
         """Synchronize the measurement module state with current GUI values."""
         # 1. Generator Settings
         self.module.gen_frequency = self.freq_spin.value()
-        self.on_amp_changed(self.amp_spin.value()) # Handles unit conversion and sets module.gen_amplitude
+        self.on_amp_changed(self.amp_spin.value())  # Handles unit conversion and sets module.gen_amplitude
 
         # 2. Signal Type (from out_mode_combo)
         out_idx = self.out_mode_combo.currentIndex()
@@ -745,13 +741,13 @@ class DistortionAnalyzerWidget(QWidget):
         else:
             self.module.output_enabled = True
             if out_idx == 1:
-                self.module.signal_type = 'sine'
+                self.module.signal_type = "sine"
             elif out_idx == 2:
-                self.module.signal_type = 'smpte'
-                self.module.imd_standard = 'smpte'
+                self.module.signal_type = "smpte"
+                self.module.imd_standard = "smpte"
             elif out_idx == 3:
-                self.module.signal_type = 'ccif'
-                self.module.imd_standard = 'ccif'
+                self.module.signal_type = "ccif"
+                self.module.imd_standard = "ccif"
 
         # 3. IMD Settings
         self.module.imd_f1 = self.imd_f1_spin.value()
@@ -773,10 +769,10 @@ class DistortionAnalyzerWidget(QWidget):
         if 0 <= idx < len(modes):
             self.module.mode = modes[idx]
 
-        if idx == 0: # Real-time
+        if idx == 0:  # Real-time
             self.settings_tabs.setCurrentIndex(0)
             self.meters_group.setVisible(True)
-            self.set_meters_mode('thd')
+            self.set_meters_mode("thd")
             self.tabs.setCurrentIndex(0)
             self.sync_module_with_gui()
         else:
@@ -784,52 +780,52 @@ class DistortionAnalyzerWidget(QWidget):
             self.meters_group.setVisible(False)
             self.tabs.setCurrentIndex(2)
 
-            if idx == 1: # Frequency Sweep
+            if idx == 1:  # Frequency Sweep
                 self.sweep_start_spin.setSuffix(" Hz")
                 self.sweep_end_spin.setSuffix(" Hz")
                 self.sweep_start_spin.setValue(20)
                 self.sweep_end_spin.setValue(20000)
-                self.sweep_plot.setLabel('bottom', tr('Frequency'), units='Hz')
+                self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")
                 self.sweep_plot.setLogMode(x=True, y=False)
                 # Restore custom ticks for frequency
                 ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-                ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t/1000:.0f}k") for t in ticks]
+                ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
                 self.sweep_axis.setTicks([ticks_log])
                 self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
-            else: # Amplitude Sweep
+            else:  # Amplitude Sweep
                 self.sweep_start_spin.setSuffix(" dBFS")
                 self.sweep_end_spin.setSuffix(" dBFS")
                 self.sweep_start_spin.setValue(-60)
                 self.sweep_end_spin.setValue(0)
-                self.sweep_plot.setLabel('bottom', tr('Amplitude'), units='dBFS')
+                self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBFS")
                 self.sweep_plot.setLogMode(x=False, y=False)
                 # Reset ticks to auto for amplitude
                 self.sweep_axis.setTicks(None)
 
     def on_out_mode_changed(self, idx):
         # 0: Off, 1: Sine, 2: SMPTE, 3: CCIF
-        if idx == 0: # Off
+        if idx == 0:  # Off
             self.module.output_enabled = False
             self.gen_stack.setVisible(False)
             self.amp_spin.setEnabled(False)
             self.unit_combo.setEnabled(False)
-            self.module.signal_type = 'sine' # Default
+            self.module.signal_type = "sine"  # Default
         else:
             self.module.output_enabled = True
             self.gen_stack.setVisible(True)
             self.amp_spin.setEnabled(True)
             self.unit_combo.setEnabled(True)
 
-            if idx == 1: # Sine
-                self.module.signal_type = 'sine'
+            if idx == 1:  # Sine
+                self.module.signal_type = "sine"
                 self.gen_stack.setCurrentIndex(0)
-                self.set_meters_mode('thd')
+                self.set_meters_mode("thd")
                 self.module.reset_averaging_state()
-            elif idx == 2: # SMPTE
-                self.module.signal_type = 'smpte'
-                self.module.imd_standard = 'smpte'
+            elif idx == 2:  # SMPTE
+                self.module.signal_type = "smpte"
+                self.module.imd_standard = "smpte"
                 self.gen_stack.setCurrentIndex(1)
-                self.set_meters_mode('imd')
+                self.set_meters_mode("imd")
                 # Update IMD params
                 self.module.imd_f1 = 60.0
                 self.module.imd_f2 = 7000.0
@@ -837,11 +833,11 @@ class DistortionAnalyzerWidget(QWidget):
                 self.imd_f2_spin.setValue(7000.0)
                 self.imd_ratio_spin.setEnabled(True)
                 self.module.reset_averaging_state()
-            elif idx == 3: # CCIF
-                self.module.signal_type = 'ccif'
-                self.module.imd_standard = 'ccif'
+            elif idx == 3:  # CCIF
+                self.module.signal_type = "ccif"
+                self.module.imd_standard = "ccif"
                 self.gen_stack.setCurrentIndex(1)
-                self.set_meters_mode('imd')
+                self.set_meters_mode("imd")
                 # Update IMD params
                 self.module.imd_f1 = 19000.0
                 self.module.imd_f2 = 20000.0
@@ -862,17 +858,17 @@ class DistortionAnalyzerWidget(QWidget):
 
         self.amp_spin.blockSignals(True)
 
-        if unit == 'dBFS':
+        if unit == "dBFS":
             val = 20 * np.log10(amp_linear + 1e-12)
-        elif unit == 'dBV':
+        elif unit == "dBV":
             v_peak = amp_linear * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10(v_rms + 1e-12)
-        elif unit == 'dBu':
+        elif unit == "dBu":
             v_peak = amp_linear * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = amp_linear * gain
             val = v_peak / np.sqrt(2)
 
@@ -884,17 +880,17 @@ class DistortionAnalyzerWidget(QWidget):
         gain = self.module.audio_engine.calibration.output_gain
         amp_linear = 0.0
 
-        if unit == 'dBFS':
-            amp_linear = 10**(val/20)
-        elif unit == 'dBV':
-            v_rms = 10**(val/20)
+        if unit == "dBFS":
+            amp_linear = 10 ** (val / 20)
+        elif unit == "dBV":
+            v_rms = 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_linear = v_peak / gain
-        elif unit == 'dBu':
-            v_rms = 0.7746 * 10**(val/20)
+        elif unit == "dBu":
+            v_rms = 0.7746 * 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_linear = v_peak / gain
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = val * np.sqrt(2)
             amp_linear = v_peak / gain
 
@@ -909,7 +905,7 @@ class DistortionAnalyzerWidget(QWidget):
 
     def on_action(self, checked):
         idx = self.mode_combo.currentIndex()
-        if idx == 0: # Real-time
+        if idx == 0:  # Real-time
             self.on_toggle_realtime(checked)
         else:
             if checked:
@@ -929,34 +925,32 @@ class DistortionAnalyzerWidget(QWidget):
             self.action_btn.setText(tr("Start Measurement"))
 
     def set_meters_mode(self, mode):
-        if mode == 'thd':
+        if mode == "thd":
             self.thdn_label.setVisible(True)
             self.thdn_db_label.setVisible(True)
             self.thd_label.setVisible(True)
             self.sinad_label.setVisible(True)
             self.imd_row_widget.setVisible(False)
 
-        else: # imd
+        else:  # imd
             self.thdn_label.setVisible(False)
             self.thdn_db_label.setVisible(False)
             self.thd_label.setVisible(False)
             self.sinad_label.setVisible(False)
             self.imd_row_widget.setVisible(True)
 
-
-
     def start_sweep(self, mode_idx):
-        self.module.start_analysis() # Ensure audio is running
+        self.module.start_analysis()  # Ensure audio is running
         self.action_btn.setText(tr("Stop Sweep"))
         self.module.sweep_results = []
         self.sweep_curve.setData([], [])
 
-        sweep_type = 'frequency' if mode_idx == 1 else 'amplitude'
+        sweep_type = "frequency" if mode_idx == 1 else "amplitude"
         start = self.sweep_start_spin.value()
         end = self.sweep_end_spin.value()
         steps = self.sweep_steps_spin.value()
 
-        if sweep_type == 'frequency':
+        if sweep_type == "frequency":
             if start <= 0 or end <= 0:
                 print("Error: Frequency sweep range must be positive.")
                 self.action_btn.setChecked(False)
@@ -974,7 +968,7 @@ class DistortionAnalyzerWidget(QWidget):
             self.sweep_worker.wait()
             self.sweep_worker = None
         self.module.stop_analysis()
-        self.sync_module_with_gui() # Restore manual settings
+        self.sync_module_with_gui()  # Restore manual settings
         self.action_btn.setText(tr("Start Measurement"))
         self.action_btn.setChecked(False)
 
@@ -990,8 +984,8 @@ class DistortionAnalyzerWidget(QWidget):
         self.module.sweep_results.append(result)
 
         # Update Plot
-        x_data = [r['sweep_param'] for r in self.module.sweep_results]
-        y_data = [r['thdn_db'] for r in self.module.sweep_results]
+        x_data = [r["sweep_param"] for r in self.module.sweep_results]
+        y_data = [r["thdn_db"] for r in self.module.sweep_results]
 
         x_plot = np.array(x_data)
 
@@ -1026,21 +1020,21 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Perform Analysis
         # Check signal type instead of mode
-        if self.module.signal_type in ['smpte', 'ccif']:
+        if self.module.signal_type in ["smpte", "ccif"]:
             window = get_window(self.module.window_type, len(data))
             fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) * (2 / np.sum(window))
-            freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
+            freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
 
-            if self.module.signal_type == 'smpte':
+            if self.module.signal_type == "smpte":
                 res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, self.module.imd_f1, self.module.imd_f2)
             else:
                 res = AudioCalc.calculate_imd_ccif(mag_linear, freqs, self.module.imd_f1, self.module.imd_f2)
 
             res = self.module._apply_imd_averaging(res)
 
-            self.imd_label.setText(tr("{0:.4f} %").format(res['imd']))
-            self.imd_db_label.setText(tr("{0:.2f} dB").format(res['imd_db']))
+            self.imd_label.setText(tr("{0:.4f} %").format(res["imd"]))
+            self.imd_db_label.setText(tr("{0:.2f} dB").format(res["imd_db"]))
 
             # Update Detailed Label for IMD
             window_name = self.module.window_type.capitalize()
@@ -1064,37 +1058,32 @@ class DistortionAnalyzerWidget(QWidget):
             self.spectrum_curve.setData(freqs[1:], mag_db[1:])
 
         else:
-            results = AudioCalc.analyze_harmonics(
-                data,
-                self.module.gen_frequency,
-                self.module.window_type,
-                sample_rate
-            )
+            results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
             results = self.module._apply_result_averaging(results)
             self.module.current_result = results
 
             # Update Meters
-            self.thdn_label.setText(tr("{0:.4f} %").format(results['thdn_percent']))
-            self.thdn_db_label.setText(tr("{0:.2f} dB").format(results['thdn_db']))
-            self.thd_label.setText(tr("{0:.4f} %").format(results['thd_percent']))
-            self.sinad_label.setText(tr("{0:.2f} dB").format(results['sinad_db']))
+            self.thdn_label.setText(tr("{0:.4f} %").format(results["thdn_percent"]))
+            self.thdn_db_label.setText(tr("{0:.2f} dB").format(results["thdn_db"]))
+            self.thd_label.setText(tr("{0:.4f} %").format(results["thd_percent"]))
+            self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
 
             # ENOB Calculation
             # ENOB is only valid near full scale (strict check).
             # We'll use a threshold of -1.0 dBFS.
-            sinad = results['sinad_db']
-            input_level = results['basic_wave']['amplitude_dbfs']
+            sinad = results["sinad_db"]
+            input_level = results["basic_wave"]["amplitude_dbfs"]
 
             if input_level >= -1.0:
-                 enob_calc = (sinad - 1.76) / 6.02
-                 enob_str = f"{enob_calc:>10.1f} bits   ✔"
+                enob_calc = (sinad - 1.76) / 6.02
+                enob_str = f"{enob_calc:>10.1f} bits   ✔"
             else:
-                 enob_str = f"{'--':>10} bits"
+                enob_str = f"{'--':>10} bits"
 
             # Update Detailed Label
             window_name = self.module.window_type.capitalize()
             fft_size = self.module.buffer_size
-            bandwidth = "20 kHz" # Fixed bandwidth in current analysis
+            bandwidth = "20 kHz"  # Fixed bandwidth in current analysis
 
             detailed_text = (
                 f"{tr('Input level:'):<15} {input_level:>10.1f} dBFS   ✔\n"
@@ -1110,17 +1099,17 @@ class DistortionAnalyzerWidget(QWidget):
             self.detailed_label.setText(detailed_text)
 
             # Update Harmonics Table & Bar Graph
-            self.harmonics_table.setRowCount(len(results['harmonics']))
+            self.harmonics_table.setRowCount(len(results["harmonics"]))
 
             orders = []
             levels = []
 
-            for i, h in enumerate(results['harmonics']):
+            for i, h in enumerate(results["harmonics"]):
                 texts = [
-                    str(h['order']),
+                    str(h["order"]),
                     f"{h['frequency']:.1f}",
                     f"{h['amplitude_dbr']:.2f}",
-                    f"{h['amplitude_linear']:.6f}"
+                    f"{h['amplitude_linear']:.6f}",
                 ]
                 for j, text in enumerate(texts):
                     item = self.harmonics_table.item(i, j)
@@ -1129,8 +1118,8 @@ class DistortionAnalyzerWidget(QWidget):
                     else:
                         self.harmonics_table.setItem(i, j, QTableWidgetItem(text))
 
-                orders.append(h['order'])
-                levels.append(h['amplitude_dbr'])
+                orders.append(h["order"])
+                levels.append(h["amplitude_dbr"])
 
             # Update Bar Graph
             if orders:
@@ -1139,13 +1128,13 @@ class DistortionAnalyzerWidget(QWidget):
                 self.harmonics_bar_item.setOpts(x=orders, height=heights, y0=floor_db)
                 # Ensure x-axis shows integer ticks for orders
                 # We can just set the range to cover all orders
-                self.harmonics_plot.setXRange(min(orders)-1, max(orders)+1)
+                self.harmonics_plot.setXRange(min(orders) - 1, max(orders) + 1)
 
             # Update Spectrum Plot
-            fft_data = results['fft_data']
+            fft_data = results["fft_data"]
             mag_linear = np.abs(fft_data) / len(data) * 2
             mag_linear = self.module.apply_spectrum_averaging(mag_linear)
             mag = 20 * np.log10(mag_linear + 1e-12)
-            freqs = fft_manager.rfftfreq(len(data), 1/sample_rate)
+            freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
 
             self.spectrum_curve.setData(freqs[1:], mag[1:])

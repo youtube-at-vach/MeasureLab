@@ -29,10 +29,10 @@ from src.measurement_modules.base import MeasurementModule
 
 @dataclass
 class SignalParameters:
-    waveform: str = 'sine'
+    waveform: str = "sine"
     frequency: float = 1000.0
     amplitude: float = 0.5
-    noise_color: str = 'white'
+    noise_color: str = "white"
 
     # FM parameters (frequency modulation)
     fm_enabled: bool = False
@@ -64,13 +64,13 @@ class SignalParameters:
     burst_windowed: bool = False
 
     # New Parameters
-    pulse_width: float = 50.0 # %
-    sawtooth_type: str = 'Raising'
+    pulse_width: float = 50.0  # %
+    sawtooth_type: str = "Raising"
     noise_amplitude: float = 0.1
-    phase_offset: float = 0.0 # Degrees
+    phase_offset: float = 0.0  # Degrees
 
     # Inter-channel time alignment (positive = delay this channel)
-    delay_ms: float = 0.0 # ms
+    delay_ms: float = 0.0  # ms
 
     # PRBS Parameters
     prbs_order: int = 15
@@ -88,6 +88,7 @@ class SignalParameters:
     _pm_phase_rad: float = 0.0
     _am_phase_rad: float = 0.0
 
+
 class SignalGenerator(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -96,7 +97,7 @@ class SignalGenerator(MeasurementModule):
         self.params_R = SignalParameters()
 
         # Output Routing: 'L', 'R', 'STEREO'
-        self.output_mode = 'STEREO'
+        self.output_mode = "STEREO"
 
         self.is_playing = False
         self.callback_id = None
@@ -122,7 +123,7 @@ class SignalGenerator(MeasurementModule):
         # White noise base
         white = np.random.randn(num_samples)
 
-        if params.noise_color == 'white':
+        if params.noise_color == "white":
             # Normalize
             max_val = np.max(np.abs(white))
             if max_val > 0:
@@ -131,25 +132,25 @@ class SignalGenerator(MeasurementModule):
 
         # FFT filtering
         fft = np.fft.rfft(white)
-        freqs = np.fft.rfftfreq(num_samples, d=1/sample_rate)
+        freqs = np.fft.rfftfreq(num_samples, d=1 / sample_rate)
 
         scaling = np.ones_like(freqs)
 
-        if params.noise_color == 'pink':
+        if params.noise_color == "pink":
             # 1/f^0.5 (-3dB/oct)
             scaling[1:] = 1 / np.sqrt(freqs[1:])
             scaling[0] = 0
-        elif params.noise_color == 'brown':
+        elif params.noise_color == "brown":
             # 1/f (-6dB/oct)
             scaling[1:] = 1 / freqs[1:]
             scaling[0] = 0
-        elif params.noise_color == 'blue':
+        elif params.noise_color == "blue":
             # f^0.5 (+3dB/oct)
             scaling = np.sqrt(freqs)
-        elif params.noise_color == 'violet':
+        elif params.noise_color == "violet":
             # f (+6dB/oct)
             scaling = freqs
-        elif params.noise_color == 'grey':
+        elif params.noise_color == "grey":
             # Simplified inverted A-weighting
             f = freqs
             f**2
@@ -193,11 +194,11 @@ class SignalGenerator(MeasurementModule):
         else:
             freqs = np.logspace(np.log10(params.start_freq), np.log10(params.end_freq), params.multitone_count)
 
-        N = int(sample_rate) # 1 second buffer
+        N = int(sample_rate)  # 1 second buffer
         bin_width = sample_rate / N
         freqs = np.round(freqs / bin_width) * bin_width
 
-        phases = np.pi * (np.arange(len(freqs))**2) / len(freqs)
+        phases = np.pi * (np.arange(len(freqs)) ** 2) / len(freqs)
 
         t = np.arange(N) / sample_rate
         signal = np.zeros(N)
@@ -214,8 +215,15 @@ class SignalGenerator(MeasurementModule):
     def _generate_mls(self, params: SignalParameters, sample_rate):
         """Generates a Maximum Length Sequence (MLS)."""
         taps = {
-            10: [10, 7], 11: [11, 9], 12: [12, 11, 10, 4], 13: [13, 12, 10, 9],
-            14: [14, 13, 12, 2], 15: [15, 14], 16: [16, 15, 13, 4], 17: [17, 14], 18: [18, 11]
+            10: [10, 7],
+            11: [11, 9],
+            12: [12, 11, 10, 4],
+            13: [13, 12, 10, 9],
+            14: [14, 13, 12, 2],
+            15: [15, 14],
+            16: [16, 15, 13, 4],
+            17: [17, 14],
+            18: [18, 11],
         }
 
         order = params.mls_order
@@ -224,6 +232,7 @@ class SignalGenerator(MeasurementModule):
 
         try:
             import scipy.signal
+
             seq, state = scipy.signal.max_len_seq(order)
             signal = seq.astype(float) * 2 - 1
             return signal
@@ -277,11 +286,14 @@ class SignalGenerator(MeasurementModule):
         # The 'seed' controls the initial state.
 
         order = params.prbs_order
-        if order < 2: order = 2
-        if order > 30: order = 30 # Limit for sanity
+        if order < 2:
+            order = 2
+        if order > 30:
+            order = 30  # Limit for sanity
 
         try:
             import scipy.signal
+
             # state must be length 'order'
             # We construct a state from the seed
             if params.prbs_seed == 0:
@@ -308,15 +320,15 @@ class SignalGenerator(MeasurementModule):
             return np.zeros(100)
 
     def _prepare_buffer(self, params: SignalParameters, sample_rate):
-        if params.waveform == 'noise':
+        if params.waveform == "noise":
             params._buffer = self._generate_noise_buffer(params, sample_rate)
-        elif params.waveform == 'multitone':
+        elif params.waveform == "multitone":
             params._buffer = self._generate_multitone(params, sample_rate)
-        elif params.waveform == 'mls':
+        elif params.waveform == "mls":
             params._buffer = self._generate_mls(params, sample_rate)
-        elif params.waveform == 'burst':
+        elif params.waveform == "burst":
             params._buffer = self._generate_burst(params, sample_rate)
-        elif params.waveform == 'prbs':
+        elif params.waveform == "prbs":
             params._buffer = self._generate_prbs(params, sample_rate)
         else:
             params._buffer = None
@@ -386,7 +398,7 @@ class SignalGenerator(MeasurementModule):
             if params._buffer is not None:
                 # For burst, support per-channel fractional delay at readout time.
                 # This avoids rebuilding buffers and lets users adjust delay live.
-                if params.waveform == 'burst' and getattr(params, 'delay_ms', 0.0) != 0.0:
+                if params.waveform == "burst" and getattr(params, "delay_ms", 0.0) != 0.0:
                     buf = params._buffer
                     buf_len = len(buf)
                     if buf_len > 0:
@@ -417,7 +429,9 @@ class SignalGenerator(MeasurementModule):
                     available = buf_len - params._buffer_index
 
                     to_copy = min(remaining, available)
-                    signal[current_idx:current_idx+to_copy] = params._buffer[params._buffer_index:params._buffer_index+to_copy]
+                    signal[current_idx : current_idx + to_copy] = params._buffer[
+                        params._buffer_index : params._buffer_index + to_copy
+                    ]
 
                     params._buffer_index += to_copy
                     current_idx += to_copy
@@ -438,7 +452,11 @@ class SignalGenerator(MeasurementModule):
                     if params.log_sweep:
                         # f(t) = f0 * exp(k t)
                         k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
-                        f_base = params.start_freq * np.exp(k * current_times) if k != 0 else np.full_like(current_times, params.start_freq)
+                        f_base = (
+                            params.start_freq * np.exp(k * current_times)
+                            if k != 0
+                            else np.full_like(current_times, params.start_freq)
+                        )
                     else:
                         # f(t) = f0 + k t
                         k = (params.end_freq - params.start_freq) / params.sweep_duration
@@ -447,7 +465,9 @@ class SignalGenerator(MeasurementModule):
                     # Modulator phase advances continuously across blocks.
                     mod_phase0 = float(params._fm_phase_rad)
                     mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t_global
-                    params._fm_phase_rad = float(np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate), 2.0 * np.pi))
+                    params._fm_phase_rad = float(
+                        np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                    )
 
                     f_inst = f_base + params.fm_deviation * np.sin(mod_phase)
                     phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate)
@@ -456,7 +476,9 @@ class SignalGenerator(MeasurementModule):
                     if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
                         pm_phase0 = float(params._pm_phase_rad)
                         pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global
-                        params._pm_phase_rad = float(np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi))
+                        params._pm_phase_rad = float(
+                            np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                        )
                         beta = float(np.radians(params.pm_deviation_deg))
                         phase = phase + beta * np.sin(pm_phase)
 
@@ -479,7 +501,9 @@ class SignalGenerator(MeasurementModule):
                 if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
                     pm_phase0 = float(params._pm_phase_rad)
                     pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global
-                    params._pm_phase_rad = float(np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi))
+                    params._pm_phase_rad = float(
+                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                    )
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = phase + beta * np.sin(pm_phase)
 
@@ -491,21 +515,29 @@ class SignalGenerator(MeasurementModule):
             offset_rad = np.radians(params.phase_offset)
 
             # Optional ΦM (works for periodic waveforms only)
-            use_pm = bool(params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0 and params.waveform in [
-                'sine', 'square', 'triangle', 'sawtooth', 'pulse', 'tone_noise'
-            ])
+            use_pm = bool(
+                params.pm_enabled
+                and params.pm_frequency > 0
+                and params.pm_deviation_deg != 0
+                and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
+            )
 
             # Optional FM (works for periodic waveforms only)
-            use_fm = bool(params.fm_enabled and params.fm_frequency > 0 and params.fm_deviation != 0 and params.waveform in [
-                'sine', 'square', 'triangle', 'sawtooth', 'pulse', 'tone_noise'
-            ])
+            use_fm = bool(
+                params.fm_enabled
+                and params.fm_frequency > 0
+                and params.fm_deviation != 0
+                and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
+            )
 
             if use_fm:
                 # Modulator phase advances continuously across blocks.
                 t = t_global
                 mod_phase0 = float(params._fm_phase_rad)
                 mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t
-                params._fm_phase_rad = float(np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate), 2.0 * np.pi))
+                params._fm_phase_rad = float(
+                    np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                )
 
                 f_inst = params.frequency + params.fm_deviation * np.sin(mod_phase)
                 phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate)
@@ -513,31 +545,33 @@ class SignalGenerator(MeasurementModule):
                 if use_pm:
                     pm_phase0 = float(params._pm_phase_rad)
                     pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
-                    params._pm_phase_rad = float(np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi))
+                    params._pm_phase_rad = float(
+                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                    )
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = phase + beta * np.sin(pm_phase)
 
-                if params.waveform == 'sine':
+                if params.waveform == "sine":
                     signal = params.amplitude * np.sin(phase + offset_rad)
-                elif params.waveform == 'square':
+                elif params.waveform == "square":
                     signal = params.amplitude * np.sign(np.sin(phase + offset_rad))
                 else:
                     # Use cycle-based definitions for the remaining waves.
                     cycles = phase / (2.0 * np.pi)
                     off_cycles = params.phase_offset / 360.0
 
-                    if params.waveform == 'triangle':
+                    if params.waveform == "triangle":
                         signal = params.amplitude * (2 * np.abs(2 * ((cycles + off_cycles) % 1) - 1) - 1)
-                    elif params.waveform == 'sawtooth':
+                    elif params.waveform == "sawtooth":
                         raw_saw = 2 * ((cycles + off_cycles) % 1) - 1
-                        if params.sawtooth_type == 'Falling':
+                        if params.sawtooth_type == "Falling":
                             raw_saw *= -1
                         signal = params.amplitude * raw_saw
-                    elif params.waveform == 'pulse':
+                    elif params.waveform == "pulse":
                         duty = params.pulse_width / 100.0
                         ramp = (cycles + off_cycles) % 1
                         signal = params.amplitude * np.where(ramp < duty, 1.0, -1.0)
-                    elif params.waveform == 'tone_noise':
+                    elif params.waveform == "tone_noise":
                         signal = params.amplitude * np.sin(phase + offset_rad)
                         noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
                         signal += noise
@@ -551,55 +585,59 @@ class SignalGenerator(MeasurementModule):
                     t = t_global
                     pm_phase0 = float(params._pm_phase_rad)
                     pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
-                    params._pm_phase_rad = float(np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi))
+                    params._pm_phase_rad = float(
+                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                    )
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = 2.0 * np.pi * params.frequency * phase_t + beta * np.sin(pm_phase)
 
-                    if params.waveform == 'sine':
+                    if params.waveform == "sine":
                         signal = params.amplitude * np.sin(phase + offset_rad)
-                    elif params.waveform == 'square':
+                    elif params.waveform == "square":
                         signal = params.amplitude * np.sign(np.sin(phase + offset_rad))
                     else:
                         cycles = phase / (2.0 * np.pi)
                         off_cycles = params.phase_offset / 360.0
 
-                        if params.waveform == 'triangle':
+                        if params.waveform == "triangle":
                             signal = params.amplitude * (2 * np.abs(2 * ((cycles + off_cycles) % 1) - 1) - 1)
-                        elif params.waveform == 'sawtooth':
+                        elif params.waveform == "sawtooth":
                             raw_saw = 2 * ((cycles + off_cycles) % 1) - 1
-                            if params.sawtooth_type == 'Falling':
+                            if params.sawtooth_type == "Falling":
                                 raw_saw *= -1
                             signal = params.amplitude * raw_saw
-                        elif params.waveform == 'pulse':
+                        elif params.waveform == "pulse":
                             duty = params.pulse_width / 100.0
                             ramp = (cycles + off_cycles) % 1
                             signal = params.amplitude * np.where(ramp < duty, 1.0, -1.0)
-                        elif params.waveform == 'tone_noise':
+                        elif params.waveform == "tone_noise":
                             signal = params.amplitude * np.sin(phase + offset_rad)
                             noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
                             signal += noise
 
                     return signal
 
-                if params.waveform == 'sine':
+                if params.waveform == "sine":
                     signal = params.amplitude * np.sin(2 * np.pi * params.frequency * phase_t + offset_rad)
-                elif params.waveform == 'square':
+                elif params.waveform == "square":
                     signal = params.amplitude * np.sign(np.sin(2 * np.pi * params.frequency * phase_t + offset_rad))
-                elif params.waveform == 'triangle':
+                elif params.waveform == "triangle":
                     off_cycles = params.phase_offset / 360.0
-                    signal = params.amplitude * (2 * np.abs(2 * ((phase_t * params.frequency + off_cycles) % 1) - 1) - 1)
-                elif params.waveform == 'sawtooth':
+                    signal = params.amplitude * (
+                        2 * np.abs(2 * ((phase_t * params.frequency + off_cycles) % 1) - 1) - 1
+                    )
+                elif params.waveform == "sawtooth":
                     off_cycles = params.phase_offset / 360.0
                     raw_saw = 2 * ((phase_t * params.frequency + off_cycles) % 1) - 1
-                    if params.sawtooth_type == 'Falling':
+                    if params.sawtooth_type == "Falling":
                         raw_saw *= -1
                     signal = params.amplitude * raw_saw
-                elif params.waveform == 'pulse':
+                elif params.waveform == "pulse":
                     duty = params.pulse_width / 100.0
                     off_cycles = params.phase_offset / 360.0
                     ramp = (phase_t * params.frequency + off_cycles) % 1
                     signal = params.amplitude * np.where(ramp < duty, 1.0, -1.0)
-                elif params.waveform == 'tone_noise':
+                elif params.waveform == "tone_noise":
                     signal = params.amplitude * np.sin(2 * np.pi * params.frequency * phase_t + offset_rad)
                     noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
                     signal += noise
@@ -614,13 +652,13 @@ class SignalGenerator(MeasurementModule):
             outdata.fill(0)
 
             # Left Channel
-            if self.output_mode in ['L', 'STEREO']:
+            if self.output_mode in ["L", "STEREO"]:
                 sig_l = generate_channel_signal(self.params_L, frames, t)
                 if outdata.shape[1] >= 1:
                     outdata[:, 0] = sig_l
 
             # Right Channel
-            if self.output_mode in ['R', 'STEREO']:
+            if self.output_mode in ["R", "STEREO"]:
                 # If we are in STEREO but want to output the SAME signal if linked?
                 # The user requirement says "L and R separate signals".
                 # So we always use params_R for Right channel.
@@ -638,11 +676,12 @@ class SignalGenerator(MeasurementModule):
                 self.callback_id = None
             self.is_playing = False
 
+
 class SignalGeneratorWidget(QWidget):
     def __init__(self, module: SignalGenerator):
         super().__init__()
         self.module = module
-        self.current_target = 'L' # 'L', 'R', 'LINK'
+        self.current_target = "L"  # 'L', 'R', 'LINK'
         self.init_ui()
 
     def _set_wave_combo_key(self, key: str):
@@ -654,13 +693,13 @@ class SignalGeneratorWidget(QWidget):
     def _apply_waveform_key(self, key: str, *, update_params: bool):
         # Map UI selection to internal params
         if update_params:
-            if key == 'burst_windowed':
-                self.update_param('waveform', 'burst')
-                self.update_param('burst_windowed', True)
+            if key == "burst_windowed":
+                self.update_param("waveform", "burst")
+                self.update_param("burst_windowed", True)
             else:
-                self.update_param('waveform', key)
-                if key == 'burst':
-                    self.update_param('burst_windowed', False)
+                self.update_param("waveform", key)
+                if key == "burst":
+                    self.update_param("burst_windowed", False)
 
         # Dynamic widgets
         self.noise_widget.hide()
@@ -674,29 +713,29 @@ class SignalGeneratorWidget(QWidget):
         self.sawtooth_widget.hide()
         self.prbs_widget.hide()
 
-        if key == 'noise':
+        if key == "noise":
             self.noise_widget.show()
-        elif key == 'multitone':
+        elif key == "multitone":
             self.multitone_widget.show()
-        elif key == 'mls':
+        elif key == "mls":
             self.mls_widget.show()
-        elif key in ['burst', 'burst_windowed']:
+        elif key in ["burst", "burst_windowed"]:
             self.burst_widget.show()
-        elif key == 'pulse':
+        elif key == "pulse":
             self.pulse_widget.show()
-        elif key == 'tone_noise':
+        elif key == "tone_noise":
             self.tn_widget.show()
-        elif key == 'sawtooth':
+        elif key == "sawtooth":
             self.sawtooth_widget.show()
-        elif key == 'prbs':
+        elif key == "prbs":
             self.prbs_widget.show()
 
-        use_freq = key not in ['noise', 'mls', 'prbs']
+        use_freq = key not in ["noise", "mls", "prbs"]
         self.freq_spin.setEnabled(use_freq)
         self.freq_slider.setEnabled(use_freq)
 
         # Delay UI is only relevant for burst variants (engine applies delay for burst only).
-        show_delay = key in ['burst', 'burst_windowed']
+        show_delay = key in ["burst", "burst_windowed"]
         self.delay_label.setVisible(show_delay)
         self.delay_spin.setVisible(show_delay)
         self.delay_slider.setVisible(show_delay)
@@ -776,18 +815,18 @@ class SignalGeneratorWidget(QWidget):
         # Waveform
         self.wave_combo = QComboBox()
         waveform_items = [
-            ('sine', 'sine'),
-            ('square', 'square'),
-            ('triangle', 'triangle'),
-            ('sawtooth', 'sawtooth'),
-            ('pulse', 'pulse'),
-            ('tone_noise', 'tone_noise'),
-            ('noise', 'noise'),
-            ('multitone', 'multitone'),
-            ('mls', 'mls'),
-            ('burst', 'burst'),
-            ('burst (windowed)', 'burst_windowed'),
-            ('prbs', 'prbs'),
+            ("sine", "sine"),
+            ("square", "square"),
+            ("triangle", "triangle"),
+            ("sawtooth", "sawtooth"),
+            ("pulse", "pulse"),
+            ("tone_noise", "tone_noise"),
+            ("noise", "noise"),
+            ("multitone", "multitone"),
+            ("mls", "mls"),
+            ("burst", "burst"),
+            ("burst (windowed)", "burst_windowed"),
+            ("prbs", "prbs"),
         ]
         for label, key in waveform_items:
             self.wave_combo.addItem(label, key)
@@ -797,14 +836,14 @@ class SignalGeneratorWidget(QWidget):
         # Dynamic Parameters Stack
         self.param_stack = QWidget()
         self.param_layout = QVBoxLayout(self.param_stack)
-        self.param_layout.setContentsMargins(0,0,0,0)
+        self.param_layout.setContentsMargins(0, 0, 0, 0)
 
         # 1. Noise Params
         self.noise_widget = QWidget()
         noise_form = QFormLayout(self.noise_widget)
         self.noise_combo = QComboBox()
-        self.noise_combo.addItems(['white', 'pink', 'brown', 'blue', 'violet', 'grey'])
-        self.noise_combo.currentTextChanged.connect(lambda v: self.update_param('noise_color', v))
+        self.noise_combo.addItems(["white", "pink", "brown", "blue", "violet", "grey"])
+        self.noise_combo.currentTextChanged.connect(lambda v: self.update_param("noise_color", v))
         noise_form.addRow(tr("Color:"), self.noise_combo)
 
         # 2. Multitone Params
@@ -814,7 +853,7 @@ class SignalGeneratorWidget(QWidget):
         self.mt_count_spin.setDecimals(0)
         self.mt_count_spin.setRange(2, 1000)
         self.mt_count_spin.setValue(10)
-        self.mt_count_spin.valueChanged.connect(lambda v: self.update_param('multitone_count', int(v)))
+        self.mt_count_spin.valueChanged.connect(lambda v: self.update_param("multitone_count", int(v)))
         mt_form.addRow(tr("Tone Count:"), self.mt_count_spin)
 
         # 3. MLS Params
@@ -823,7 +862,7 @@ class SignalGeneratorWidget(QWidget):
         self.mls_order_combo = QComboBox()
         self.mls_order_combo.addItems([str(i) for i in range(10, 19)])
         self.mls_order_combo.setCurrentText("15")
-        self.mls_order_combo.currentTextChanged.connect(lambda v: self.update_param('mls_order', int(v)))
+        self.mls_order_combo.currentTextChanged.connect(lambda v: self.update_param("mls_order", int(v)))
         mls_form.addRow(tr("Order (N):"), self.mls_order_combo)
 
         # 4. Burst Params
@@ -833,13 +872,13 @@ class SignalGeneratorWidget(QWidget):
         self.burst_on_spin.setDecimals(0)
         self.burst_on_spin.setRange(1, 1000)
         self.burst_on_spin.setValue(10)
-        self.burst_on_spin.valueChanged.connect(lambda v: self.update_param('burst_on_cycles', int(v)))
+        self.burst_on_spin.valueChanged.connect(lambda v: self.update_param("burst_on_cycles", int(v)))
         burst_form.addRow(tr("On Cycles:"), self.burst_on_spin)
         self.burst_off_spin = QDoubleSpinBox()
         self.burst_off_spin.setDecimals(0)
         self.burst_off_spin.setRange(1, 10000)
         self.burst_off_spin.setValue(90)
-        self.burst_off_spin.valueChanged.connect(lambda v: self.update_param('burst_off_cycles', int(v)))
+        self.burst_off_spin.valueChanged.connect(lambda v: self.update_param("burst_off_cycles", int(v)))
         burst_form.addRow(tr("Off Cycles:"), self.burst_off_spin)
 
         # 5. Pulse Params
@@ -849,7 +888,7 @@ class SignalGeneratorWidget(QWidget):
         self.pulse_width_spin.setRange(0.1, 99.9)
         self.pulse_width_spin.setValue(50.0)
         self.pulse_width_spin.setSuffix("%")
-        self.pulse_width_spin.valueChanged.connect(lambda v: self.update_param('pulse_width', v))
+        self.pulse_width_spin.valueChanged.connect(lambda v: self.update_param("pulse_width", v))
         pulse_form.addRow(tr("Pulse Width:"), self.pulse_width_spin)
 
         # 6. Tone+Noise Params
@@ -859,15 +898,15 @@ class SignalGeneratorWidget(QWidget):
         self.noise_amp_spin.setRange(0.0, 1.0)
         self.noise_amp_spin.setSingleStep(0.01)
         self.noise_amp_spin.setValue(0.1)
-        self.noise_amp_spin.valueChanged.connect(lambda v: self.update_param('noise_amplitude', v))
+        self.noise_amp_spin.valueChanged.connect(lambda v: self.update_param("noise_amplitude", v))
         tn_form.addRow(tr("Noise Amplitude:"), self.noise_amp_spin)
 
         # 7. Sawtooth Params
         self.sawtooth_widget = QWidget()
         saw_form = QFormLayout(self.sawtooth_widget)
         self.saw_type_combo = QComboBox()
-        self.saw_type_combo.addItems(['Raising', 'Falling'])
-        self.saw_type_combo.currentTextChanged.connect(lambda v: self.update_param('sawtooth_type', v))
+        self.saw_type_combo.addItems(["Raising", "Falling"])
+        self.saw_type_combo.currentTextChanged.connect(lambda v: self.update_param("sawtooth_type", v))
         saw_form.addRow(tr("Type:"), self.saw_type_combo)
 
         # 8. PRBS Params
@@ -878,16 +917,19 @@ class SignalGeneratorWidget(QWidget):
         # Common PRBS orders: 7, 9, 11, 15, 20, 23, 31 (31 might be too large for buffer? 2GB buffer.. let's limit to 20 ~1M samples)
         self.prbs_order_combo.addItems([str(i) for i in [7, 9, 10, 11, 15, 17, 20, 23]])
         self.prbs_order_combo.setCurrentText("15")
-        self.prbs_order_combo.currentTextChanged.connect(lambda v: self.update_param('prbs_order', int(v)))
+        self.prbs_order_combo.currentTextChanged.connect(lambda v: self.update_param("prbs_order", int(v)))
         prbs_form.addRow(tr("Order (N):"), self.prbs_order_combo)
 
-        self.prbs_seed_spin = QDoubleSpinBox() # Using DoubleSpinBox for int as it's often more flexible or just use SpinBox
+        self.prbs_seed_spin = (
+            QDoubleSpinBox()
+        )  # Using DoubleSpinBox for int as it's often more flexible or just use SpinBox
         # Actually QSpinBox is better for ints
         from PyQt6.QtWidgets import QSpinBox
+
         self.prbs_seed_spin = QSpinBox()
         self.prbs_seed_spin.setRange(0, 999999)
         self.prbs_seed_spin.setValue(1)
-        self.prbs_seed_spin.valueChanged.connect(lambda v: self.update_param('prbs_seed', v))
+        self.prbs_seed_spin.valueChanged.connect(lambda v: self.update_param("prbs_seed", v))
         prbs_form.addRow(tr("Seed:"), self.prbs_seed_spin)
 
         self.param_layout.addWidget(self.noise_widget)
@@ -970,7 +1012,7 @@ class SignalGeneratorWidget(QWidget):
         self.amp_spin.valueChanged.connect(self.on_amp_spin_changed)
 
         self.unit_combo = QComboBox()
-        self.unit_combo.addItems(['Linear (0-1)', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'])
+        self.unit_combo.addItems(["Linear (0-1)", "dBFS", "dBV", "dBu", "Vrms", "Vpeak"])
         self.unit_combo.currentTextChanged.connect(self.on_unit_changed)
 
         self.amp_slider = QSlider(Qt.Orientation.Horizontal)
@@ -992,28 +1034,28 @@ class SignalGeneratorWidget(QWidget):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
         sweep_group.setCheckable(True)
         sweep_group.setChecked(False)
-        sweep_group.toggled.connect(lambda v: self.update_param('sweep_enabled', v))
+        sweep_group.toggled.connect(lambda v: self.update_param("sweep_enabled", v))
         self.sweep_group = sweep_group
 
         sweep_layout = QFormLayout()
 
         self.start_freq_spin = QDoubleSpinBox()
         self.start_freq_spin.setRange(20, 20000)
-        self.start_freq_spin.valueChanged.connect(lambda v: self.update_param('start_freq', v))
+        self.start_freq_spin.valueChanged.connect(lambda v: self.update_param("start_freq", v))
         sweep_layout.addRow(tr("Start Freq:"), self.start_freq_spin)
 
         self.end_freq_spin = QDoubleSpinBox()
         self.end_freq_spin.setRange(20, 20000)
-        self.end_freq_spin.valueChanged.connect(lambda v: self.update_param('end_freq', v))
+        self.end_freq_spin.valueChanged.connect(lambda v: self.update_param("end_freq", v))
         sweep_layout.addRow(tr("End Freq:"), self.end_freq_spin)
 
         self.duration_spin = QDoubleSpinBox()
         self.duration_spin.setRange(0.1, 60.0)
-        self.duration_spin.valueChanged.connect(lambda v: self.update_param('sweep_duration', v))
+        self.duration_spin.valueChanged.connect(lambda v: self.update_param("sweep_duration", v))
         sweep_layout.addRow(tr("Duration (s):"), self.duration_spin)
 
         self.log_check = QCheckBox(tr("Logarithmic Sweep"))
-        self.log_check.toggled.connect(lambda v: self.update_param('log_sweep', v))
+        self.log_check.toggled.connect(lambda v: self.update_param("log_sweep", v))
         sweep_layout.addRow(self.log_check)
 
         sweep_group.setLayout(sweep_layout)
@@ -1023,7 +1065,7 @@ class SignalGeneratorWidget(QWidget):
         am_group = QGroupBox(tr("AM (Amplitude Modulation)"))
         am_group.setCheckable(True)
         am_group.setChecked(False)
-        am_group.toggled.connect(lambda v: self.update_param('am_enabled', v))
+        am_group.toggled.connect(lambda v: self.update_param("am_enabled", v))
         self.am_group = am_group
 
         am_layout = QFormLayout()
@@ -1032,7 +1074,7 @@ class SignalGeneratorWidget(QWidget):
         self.am_freq_spin.setRange(0.01, 20000.0)
         self.am_freq_spin.setDecimals(3)
         self.am_freq_spin.setValue(5.0)
-        self.am_freq_spin.valueChanged.connect(lambda v: self.update_param('am_frequency', v))
+        self.am_freq_spin.valueChanged.connect(lambda v: self.update_param("am_frequency", v))
         am_layout.addRow(tr("Mod Freq (Hz):"), self.am_freq_spin)
 
         self.am_depth_spin = QDoubleSpinBox()
@@ -1041,7 +1083,7 @@ class SignalGeneratorWidget(QWidget):
         self.am_depth_spin.setSingleStep(1.0)
         self.am_depth_spin.setValue(50.0)
         self.am_depth_spin.setSuffix("%")
-        self.am_depth_spin.valueChanged.connect(lambda v: self.update_param('am_depth', v))
+        self.am_depth_spin.valueChanged.connect(lambda v: self.update_param("am_depth", v))
         am_layout.addRow(tr("Depth (m):"), self.am_depth_spin)
 
         am_group.setLayout(am_layout)
@@ -1051,7 +1093,7 @@ class SignalGeneratorWidget(QWidget):
         fm_group = QGroupBox(tr("FM (Frequency Modulation)"))
         fm_group.setCheckable(True)
         fm_group.setChecked(False)
-        fm_group.toggled.connect(lambda v: self.update_param('fm_enabled', v))
+        fm_group.toggled.connect(lambda v: self.update_param("fm_enabled", v))
         self.fm_group = fm_group
 
         fm_layout = QFormLayout()
@@ -1060,14 +1102,14 @@ class SignalGeneratorWidget(QWidget):
         self.fm_freq_spin.setRange(0.01, 20000.0)
         self.fm_freq_spin.setDecimals(3)
         self.fm_freq_spin.setValue(5.0)
-        self.fm_freq_spin.valueChanged.connect(lambda v: self.update_param('fm_frequency', v))
+        self.fm_freq_spin.valueChanged.connect(lambda v: self.update_param("fm_frequency", v))
         fm_layout.addRow(tr("Mod Freq (Hz):"), self.fm_freq_spin)
 
         self.fm_dev_spin = QDoubleSpinBox()
         self.fm_dev_spin.setRange(0.0, 20000.0)
         self.fm_dev_spin.setDecimals(3)
         self.fm_dev_spin.setValue(100.0)
-        self.fm_dev_spin.valueChanged.connect(lambda v: self.update_param('fm_deviation', v))
+        self.fm_dev_spin.valueChanged.connect(lambda v: self.update_param("fm_deviation", v))
         fm_layout.addRow(tr("Deviation Δf (Hz):"), self.fm_dev_spin)
 
         fm_group.setLayout(fm_layout)
@@ -1077,7 +1119,7 @@ class SignalGeneratorWidget(QWidget):
         pm_group = QGroupBox(tr("ΦM (Phase Modulation)"))
         pm_group.setCheckable(True)
         pm_group.setChecked(False)
-        pm_group.toggled.connect(lambda v: self.update_param('pm_enabled', v))
+        pm_group.toggled.connect(lambda v: self.update_param("pm_enabled", v))
         self.pm_group = pm_group
 
         pm_layout = QFormLayout()
@@ -1086,14 +1128,14 @@ class SignalGeneratorWidget(QWidget):
         self.pm_freq_spin.setRange(0.01, 20000.0)
         self.pm_freq_spin.setDecimals(3)
         self.pm_freq_spin.setValue(5.0)
-        self.pm_freq_spin.valueChanged.connect(lambda v: self.update_param('pm_frequency', v))
+        self.pm_freq_spin.valueChanged.connect(lambda v: self.update_param("pm_frequency", v))
         pm_layout.addRow(tr("Mod Freq (Hz):"), self.pm_freq_spin)
 
         self.pm_dev_spin = QDoubleSpinBox()
         self.pm_dev_spin.setRange(0.0, 180.0)
         self.pm_dev_spin.setDecimals(3)
         self.pm_dev_spin.setValue(30.0)
-        self.pm_dev_spin.valueChanged.connect(lambda v: self.update_param('pm_deviation_deg', v))
+        self.pm_dev_spin.valueChanged.connect(lambda v: self.update_param("pm_deviation_deg", v))
         pm_layout.addRow(tr("Deviation Δφ (deg):"), self.pm_dev_spin)
 
         pm_group.setLayout(pm_layout)
@@ -1108,11 +1150,11 @@ class SignalGeneratorWidget(QWidget):
         self.load_params_to_ui(self.module.params_L)
 
     def get_active_params_list(self):
-        if self.current_target == 'L':
+        if self.current_target == "L":
             return [self.module.params_L]
-        elif self.current_target == 'R':
+        elif self.current_target == "R":
             return [self.module.params_R]
-        elif self.current_target == 'LINK':
+        elif self.current_target == "LINK":
             return [self.module.params_L, self.module.params_R]
         return []
 
@@ -1128,8 +1170,8 @@ class SignalGeneratorWidget(QWidget):
         self.block_all_signals(True)
 
         waveform_key = params.waveform
-        if params.waveform == 'burst' and bool(getattr(params, 'burst_windowed', False)):
-            waveform_key = 'burst_windowed'
+        if params.waveform == "burst" and bool(getattr(params, "burst_windowed", False)):
+            waveform_key = "burst_windowed"
         self._set_wave_combo_key(waveform_key)
         self.noise_combo.setCurrentText(params.noise_color)
         self.mt_count_spin.setValue(params.multitone_count)
@@ -1140,7 +1182,8 @@ class SignalGeneratorWidget(QWidget):
         self.saw_type_combo.setCurrentText(params.sawtooth_type)
         self.noise_amp_spin.setValue(params.noise_amplitude)
         self.prbs_order_combo.setCurrentText(str(params.prbs_order))
-        if hasattr(self, 'prbs_seed_spin'): self.prbs_seed_spin.setValue(params.prbs_seed)
+        if hasattr(self, "prbs_seed_spin"):
+            self.prbs_seed_spin.setValue(params.prbs_seed)
 
         self.freq_spin.setValue(params.frequency)
         self.freq_slider.setValue(self._freq_to_slider(params.frequency))
@@ -1148,8 +1191,8 @@ class SignalGeneratorWidget(QWidget):
         self.phase_spin.setValue(params.phase_offset)
         self.phase_slider.setValue(int(params.phase_offset))
 
-        self.delay_spin.setValue(float(getattr(params, 'delay_ms', 0.0)))
-        self.delay_slider.setValue(int(round(float(getattr(params, 'delay_ms', 0.0)) * 1000.0)))
+        self.delay_spin.setValue(float(getattr(params, "delay_ms", 0.0)))
+        self.delay_slider.setValue(int(round(float(getattr(params, "delay_ms", 0.0)) * 1000.0)))
 
         self.update_amp_display_value(params.amplitude)
 
@@ -1159,9 +1202,9 @@ class SignalGeneratorWidget(QWidget):
         self.duration_spin.setValue(params.sweep_duration)
         self.log_check.setChecked(params.log_sweep)
 
-        self.am_group.setChecked(getattr(params, 'am_enabled', False))
-        self.am_freq_spin.setValue(getattr(params, 'am_frequency', 5.0))
-        self.am_depth_spin.setValue(getattr(params, 'am_depth', 50.0))
+        self.am_group.setChecked(getattr(params, "am_enabled", False))
+        self.am_freq_spin.setValue(getattr(params, "am_frequency", 5.0))
+        self.am_depth_spin.setValue(getattr(params, "am_depth", 50.0))
 
         self.fm_group.setChecked(params.fm_enabled)
         self.fm_freq_spin.setValue(params.fm_frequency)
@@ -1171,34 +1214,58 @@ class SignalGeneratorWidget(QWidget):
         self.pm_freq_spin.setValue(params.pm_frequency)
         self.pm_dev_spin.setValue(params.pm_deviation_deg)
 
-        self._apply_waveform_key(waveform_key, update_params=False) # Update visibility
+        self._apply_waveform_key(waveform_key, update_params=False)  # Update visibility
 
         self.block_all_signals(False)
 
     def block_all_signals(self, block):
         widgets = [
-            self.wave_combo, self.noise_combo, self.mt_count_spin, self.mls_order_combo,
-            self.burst_on_spin, self.burst_off_spin, self.pulse_width_spin, self.saw_type_combo, self.noise_amp_spin,
-            self.prbs_order_combo, self.prbs_seed_spin,
-            self.freq_spin, self.freq_slider, self.phase_spin, self.phase_slider, self.delay_spin, self.delay_slider,
-            self.amp_spin, self.amp_slider, self.sweep_group, self.start_freq_spin,
-            self.end_freq_spin, self.duration_spin, self.log_check,
-            self.am_group, self.am_freq_spin, self.am_depth_spin,
-            self.fm_group, self.fm_freq_spin, self.fm_dev_spin,
-            self.pm_group, self.pm_freq_spin, self.pm_dev_spin
+            self.wave_combo,
+            self.noise_combo,
+            self.mt_count_spin,
+            self.mls_order_combo,
+            self.burst_on_spin,
+            self.burst_off_spin,
+            self.pulse_width_spin,
+            self.saw_type_combo,
+            self.noise_amp_spin,
+            self.prbs_order_combo,
+            self.prbs_seed_spin,
+            self.freq_spin,
+            self.freq_slider,
+            self.phase_spin,
+            self.phase_slider,
+            self.delay_spin,
+            self.delay_slider,
+            self.amp_spin,
+            self.amp_slider,
+            self.sweep_group,
+            self.start_freq_spin,
+            self.end_freq_spin,
+            self.duration_spin,
+            self.log_check,
+            self.am_group,
+            self.am_freq_spin,
+            self.am_depth_spin,
+            self.fm_group,
+            self.fm_freq_spin,
+            self.fm_dev_spin,
+            self.pm_group,
+            self.pm_freq_spin,
+            self.pm_dev_spin,
         ]
         for w in widgets:
             w.blockSignals(block)
 
     def on_target_changed(self, btn):
         if self.target_l.isChecked():
-            self.current_target = 'L'
+            self.current_target = "L"
             self.load_params_to_ui(self.module.params_L)
         elif self.target_r.isChecked():
-            self.current_target = 'R'
+            self.current_target = "R"
             self.load_params_to_ui(self.module.params_R)
         elif self.target_link.isChecked():
-            self.current_target = 'LINK'
+            self.current_target = "LINK"
             # When switching to link, copy L to R (or vice versa, let's say L is master)
             # Or just load L to UI, and next edit updates both.
             # Let's copy L to R immediately to ensure consistency
@@ -1239,11 +1306,11 @@ class SignalGeneratorWidget(QWidget):
 
     def on_route_changed(self, btn):
         if self.route_l.isChecked():
-            self.module.output_mode = 'L'
+            self.module.output_mode = "L"
         elif self.route_r.isChecked():
-            self.module.output_mode = 'R'
+            self.module.output_mode = "R"
         elif self.route_stereo.isChecked():
-            self.module.output_mode = 'STEREO'
+            self.module.output_mode = "STEREO"
 
     def on_wave_changed(self, _index):
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
@@ -1251,8 +1318,8 @@ class SignalGeneratorWidget(QWidget):
 
         # Refix RMS if unit is maintaining RMS
         unit = self.unit_combo.currentText()
-        if unit in ['Vrms', 'dBu', 'dBV']:
-            # Value in spinner is the desired RMS. 
+        if unit in ["Vrms", "dBu", "dBV"]:
+            # Value in spinner is the desired RMS.
             # We must update peak amplitude to match this RMS with new crest factor.
             self.on_amp_spin_changed(self.amp_spin.value())
 
@@ -1265,39 +1332,39 @@ class SignalGeneratorWidget(QWidget):
         return 10**log_freq
 
     def on_freq_spin_changed(self, val):
-        self.update_param('frequency', val)
+        self.update_param("frequency", val)
         self.freq_slider.blockSignals(True)
         self.freq_slider.setValue(self._freq_to_slider(val))
         self.freq_slider.blockSignals(False)
 
     def on_freq_slider_changed(self, val):
         freq = self._slider_to_freq(val)
-        self.update_param('frequency', freq)
+        self.update_param("frequency", freq)
         self.freq_spin.blockSignals(True)
         self.freq_spin.setValue(freq)
         self.freq_spin.blockSignals(False)
 
     def on_phase_spin_changed(self, val):
-        self.update_param('phase_offset', val)
+        self.update_param("phase_offset", val)
         self.phase_slider.blockSignals(True)
         self.phase_slider.setValue(int(val))
         self.phase_slider.blockSignals(False)
 
     def on_phase_slider_changed(self, val):
-        self.update_param('phase_offset', float(val))
+        self.update_param("phase_offset", float(val))
         self.phase_spin.blockSignals(True)
         self.phase_spin.setValue(float(val))
         self.phase_spin.blockSignals(False)
 
     def on_delay_spin_changed(self, val):
-        self.update_param('delay_ms', float(val))
+        self.update_param("delay_ms", float(val))
         self.delay_slider.blockSignals(True)
         self.delay_slider.setValue(int(round(float(val) * 1000.0)))
         self.delay_slider.blockSignals(False)
 
     def on_delay_slider_changed(self, val):
         ms = float(val) / 1000.0
-        self.update_param('delay_ms', ms)
+        self.update_param("delay_ms", ms)
         self.delay_spin.blockSignals(True)
         self.delay_spin.setValue(ms)
         self.delay_spin.blockSignals(False)
@@ -1318,36 +1385,36 @@ class SignalGeneratorWidget(QWidget):
 
         cf = self._get_current_crest_factor()
 
-        if unit == 'Linear (0-1)':
+        if unit == "Linear (0-1)":
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setValue(amp_0_1)
-        elif unit == 'dBFS':
+        elif unit == "dBFS":
             self.amp_spin.setRange(-120, 0)
             self.amp_spin.setSingleStep(1.0)
             val = 20 * np.log10(amp_0_1 + 1e-12)
             self.amp_spin.setValue(val)
-        elif unit == 'dBV':
+        elif unit == "dBV":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / cf
             val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setValue(val)
-        elif unit == 'dBu':
+        elif unit == "dBu":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / cf
             val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setValue(val)
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / cf
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setValue(v_rms)
-        elif unit == 'Vpeak':
+        elif unit == "Vpeak":
             v_peak = amp_0_1 * gain
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
@@ -1364,28 +1431,30 @@ class SignalGeneratorWidget(QWidget):
         gain = self.module.audio_engine.calibration.output_gain
         amp_0_1 = 0.0
 
-        if unit == 'Linear (0-1)':
+        if unit == "Linear (0-1)":
             amp_0_1 = val
-        elif unit == 'dBFS':
-            amp_0_1 = 10**(val/20)
-        elif unit == 'dBV':
-            v_rms = 10**(val/20)
+        elif unit == "dBFS":
+            amp_0_1 = 10 ** (val / 20)
+        elif unit == "dBV":
+            v_rms = 10 ** (val / 20)
             v_peak = v_rms * self._get_current_crest_factor()
             amp_0_1 = v_peak / gain
-        elif unit == 'dBu':
-            v_rms = 0.7746 * 10**(val/20)
+        elif unit == "dBu":
+            v_rms = 0.7746 * 10 ** (val / 20)
             v_peak = v_rms * self._get_current_crest_factor()
             amp_0_1 = v_peak / gain
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = val * self._get_current_crest_factor()
             amp_0_1 = v_peak / gain
-        elif unit == 'Vpeak':
+        elif unit == "Vpeak":
             amp_0_1 = val / gain
 
-        if amp_0_1 > 1.0: amp_0_1 = 1.0
-        elif amp_0_1 < 0.0: amp_0_1 = 0.0
+        if amp_0_1 > 1.0:
+            amp_0_1 = 1.0
+        elif amp_0_1 < 0.0:
+            amp_0_1 = 0.0
 
-        self.update_param('amplitude', amp_0_1)
+        self.update_param("amplitude", amp_0_1)
 
         self.amp_slider.blockSignals(True)
         self.amp_slider.setValue(int(amp_0_1 * 100))
@@ -1393,7 +1462,7 @@ class SignalGeneratorWidget(QWidget):
 
     def on_amp_slider_changed(self, val):
         amp = val / 100.0
-        self.update_param('amplitude', amp)
+        self.update_param("amplitude", amp)
         self.update_amp_display_value(amp)
 
     def on_toggle(self, checked):
@@ -1408,13 +1477,15 @@ class SignalGeneratorWidget(QWidget):
         """Returns the Crest Factor (Peak / RMS) for the current waveform."""
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
         # Square, Pulse, MLS, PRBS (if full-swing -1..1) have Signal Power = Peak Power => CF=1
-        if key in ['square', 'pulse', 'mls', 'prbs']:
+        if key in ["square", "pulse", "mls", "prbs"]:
             return 1.0
         # Triangle, Sawtooth have CF = sqrt(3)
-        if key in ['triangle', 'sawtooth']:
+        if key in ["triangle", "sawtooth"]:
             import numpy as np
+
             return np.sqrt(3.0)
 
         # Sine, Noise (approx), etc. default to standard sine convention (sqrt(2))
         import numpy as np
+
         return np.sqrt(2.0)

@@ -1,4 +1,3 @@
-
 import argparse
 import logging
 from dataclasses import dataclass
@@ -42,19 +41,20 @@ class HRTFData:
     itd: np.ndarray  # (M,) Microseconds
     ild: np.ndarray  # (M,) dB (overall RMS difference)
     energy_high: np.ndarray  # (M, 2) dB (8-16kHz energy L/R avg or diff?) -> Let's do Avg Energy
-    group_delay_peak: np.ndarray # (M, 2) samples or ms
+    group_delay_peak: np.ndarray  # (M, 2) samples or ms
+
 
 class SOFALoader:
     @staticmethod
     def load(file_path: str) -> Optional[HRTFData]:
         try:
-            ds = nc.Dataset(file_path, 'r')
+            ds = nc.Dataset(file_path, "r")
 
             # Read Source Position
             # Coordinate system handling can be complex in SOFA.
             # Assuming standard 'spherical' coordinates in SourcePosition variable
             # Dimensions: (M, C) where C=3
-            sp_var = ds.variables.get('SourcePosition')
+            sp_var = ds.variables.get("SourcePosition")
             if sp_var is None:
                 raise ValueError("SourcePosition not found")
 
@@ -73,18 +73,18 @@ class SOFALoader:
 
             # Read IR Data
             # Variable 'Data.IR'
-            ir_var = ds.variables.get('Data.IR')
+            ir_var = ds.variables.get("Data.IR")
             if ir_var is None:
-                 raise ValueError("Data.IR not found")
+                raise ValueError("Data.IR not found")
 
-            ir_data = np.array(ir_var[:]) 
+            ir_data = np.array(ir_var[:])
             # Dimensions usually (M, R, N). R=2 for HRTF.
 
             # Read Sample Rate
             # Variable 'Data.SamplingRate'
-            sr_var = ds.variables.get('Data.SamplingRate')
+            sr_var = ds.variables.get("Data.SamplingRate")
             if sr_var is None:
-                sampling_rate = 44100.0 # Fallback? Or 48000
+                sampling_rate = 44100.0  # Fallback? Or 48000
             else:
                 sampling_rate = float(np.array(sr_var[:])[0])
 
@@ -99,31 +99,31 @@ class SOFALoader:
             for i in range(M):
                 l_ch = ir_data[i, 0, :]
                 r_ch = ir_data[i, 1, :]
-                corr = np.correlate(l_ch, r_ch, mode='full')
+                corr = np.correlate(l_ch, r_ch, mode="full")
                 lag = np.argmax(corr) - (N - 1)
-                itds[i] = (lag / sampling_rate) * 1e6 # Microseconds
+                itds[i] = (lag / sampling_rate) * 1e6  # Microseconds
 
             # 2. ILD (Interaural Level Difference)
             # RMS dB difference
             ilds = np.zeros(M)
             for i in range(M):
-                rms_l = np.sqrt(np.mean(ir_data[i, 0, :]**2)) + 1e-12
-                rms_r = np.sqrt(np.mean(ir_data[i, 1, :]**2)) + 1e-12
-                ilds[i] = 20 * np.log10(rms_r / rms_l) # Right/Left ratio in dB
+                rms_l = np.sqrt(np.mean(ir_data[i, 0, :] ** 2)) + 1e-12
+                rms_r = np.sqrt(np.mean(ir_data[i, 1, :] ** 2)) + 1e-12
+                ilds[i] = 20 * np.log10(rms_r / rms_l)  # Right/Left ratio in dB
 
             # 3. High-band Energy (8-16kHz)
             # Use simple FFT based energy
             energy_high = np.zeros(M)
             # Create mask for 8-16kHz
-            freqs = fft_manager.rfftfreq(N, 1/sampling_rate)
+            freqs = fft_manager.rfftfreq(N, 1 / sampling_rate)
             mask = (freqs >= 8000) & (freqs <= 16000)
 
             for i in range(M):
                 # Avg of L and R high band energy
                 spec_l = np.abs(fft_manager.rfft(ir_data[i, 0, :]))
                 spec_r = np.abs(fft_manager.rfft(ir_data[i, 1, :]))
-                e_l = np.sum(spec_l[mask]**2)
-                e_r = np.sum(spec_r[mask]**2)
+                e_l = np.sum(spec_l[mask] ** 2)
+                e_r = np.sum(spec_r[mask] ** 2)
                 avg_e = (e_l + e_r) / 2
                 energy_high[i] = 10 * np.log10(avg_e + 1e-12)
 
@@ -133,8 +133,8 @@ class SOFALoader:
             # Let's use Index of Max Amplitude as a proxy for "Delay" visualization if simpler
             # Or actually calculate Group Delay for one bin?
             # Let's stick to simpler "Envelope Peak Time" for now as a robust "Delay" metric
-            # or maybe Low Freq ITD. 
-            # Re-reading: "Group Delay Peak" -> likely peak value of group delay in ms? 
+            # or maybe Low Freq ITD.
+            # Re-reading: "Group Delay Peak" -> likely peak value of group delay in ms?
             # Or frequency where GD is peak?
             # Let's assume Mean Delay for now or Peak of Envelope.
             # Let's implement Peak Envelope Time
@@ -143,7 +143,7 @@ class SOFALoader:
                 # Avg L/R peak time
                 idx_l = np.argmax(np.abs(ir_data[i, 0, :]))
                 idx_r = np.argmax(np.abs(ir_data[i, 1, :]))
-                gd_peak[i] = ((idx_l + idx_r) / 2) / sampling_rate * 1000.0 # ms
+                gd_peak[i] = ((idx_l + idx_r) / 2) / sampling_rate * 1000.0  # ms
 
             return HRTFData(
                 source_positions=source_pos_fixed,
@@ -152,12 +152,13 @@ class SOFALoader:
                 itd=itds,
                 ild=ilds,
                 energy_high=energy_high,
-                group_delay_peak=gd_peak
+                group_delay_peak=gd_peak,
             )
 
         except Exception as e:
             logging.error(f"Failed to load SOFA file: {e}")
             return None
+
 
 class HRTFPlayer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -170,18 +171,18 @@ class HRTFPlayer(MeasurementModule):
         self.playback_cursor = 0
         self.is_playing = False
 
-        self.sound_type = 'click' # 'click', 'white', 'band'
-        self.click_duration = 0.05 # 50ms for noise
+        self.sound_type = "click"  # 'click', 'white', 'band'
+        self.click_duration = 0.05  # 50ms for noise
         self.swap_channels = False
 
         # Rotation / Music Mode State
-        self.music_buffer: Optional[np.ndarray] = None # (N, 2)
+        self.music_buffer: Optional[np.ndarray] = None  # (N, 2)
         self.music_sr = 48000
         self.music_cursor = 0
 
         self.rotation_active = False
-        self.rotation_mode = 'Horizontal' # 'Horizontal', 'Vertical'
-        self.rotation_speed = 10.0 # deg/sec
+        self.rotation_mode = "Horizontal"  # 'Horizontal', 'Vertical'
+        self.rotation_speed = 10.0  # deg/sec
         self.current_az = 0.0
         self.current_el = 0.0
 
@@ -189,7 +190,7 @@ class HRTFPlayer(MeasurementModule):
         # Overlap buffer for overlap-add method
         # HRIR length is typically small (< 1024), block size ~1024
         # We need to store the tail of the convolution
-        self.overlap_buffer: Optional[np.ndarray] = None # (TailLen, 2)
+        self.overlap_buffer: Optional[np.ndarray] = None  # (TailLen, 2)
 
     @property
     def name(self) -> str:
@@ -212,7 +213,7 @@ class HRTFPlayer(MeasurementModule):
     def load_music(self, path):
         try:
             data, sr = sf.read(path, always_2d=True)
-            # Resample? For now assume close enough or user handles it. 
+            # Resample? For now assume close enough or user handles it.
             # Ideally we should resample if diff is large.
             # Let's do a quick resample calc if needed, similar to RecorderPlayer
             target_sr = self.audio_engine.sample_rate
@@ -236,7 +237,7 @@ class HRTFPlayer(MeasurementModule):
         self.rotation_mode = mode
         self.rotation_speed = speed
         self.rotation_active = True
-        self.overlap_buffer = None # Reset overlap
+        self.overlap_buffer = None  # Reset overlap
 
         # Start if not already
         if self.callback_id is None:
@@ -252,7 +253,8 @@ class HRTFPlayer(MeasurementModule):
         self.current_el = el
 
     def trigger_sound(self, azimuth, elevation):
-        if self.hrtf_data is None: return
+        if self.hrtf_data is None:
+            return
 
         # Update current position state
         self.set_source_position(azimuth, elevation)
@@ -261,7 +263,7 @@ class HRTFPlayer(MeasurementModule):
         # Simple Euclidean distance in Az/El plane (approximation)
         # Better: Great Circle distance, but for UI clicking, flat 2D dist is often fine enough for selection
         pos = self.hrtf_data.source_positions
-        dists = np.sqrt((pos[:, 0] - azimuth)**2 + (pos[:, 1] - elevation)**2)
+        dists = np.sqrt((pos[:, 0] - azimuth) ** 2 + (pos[:, 1] - elevation) ** 2)
         nearest_idx = np.argmin(dists)
 
         # Get HRIR
@@ -273,8 +275,8 @@ class HRTFPlayer(MeasurementModule):
             hrir_r = self.hrtf_data.ir_data[nearest_idx, 1, :]
 
         # Generate Source Signal
-        sr = self.audio_engine.sample_rate # Target playing rate
-        # Resample HRIR if needed? 
+        sr = self.audio_engine.sample_rate  # Target playing rate
+        # Resample HRIR if needed?
         # For simplicity, assume close enough or ignore. Real system needs resampling if SOFA SR != Engine SR.
         # Let's do simple linear interp if needed, but for now just use as is or zero pad.
 
@@ -282,37 +284,38 @@ class HRTFPlayer(MeasurementModule):
         len_samples = int(self.click_duration * sr)
         source_sig = np.zeros(len_samples)
 
-        if self.sound_type == 'click':
+        if self.sound_type == "click":
             # 1 sample click? Or short impulse?
             # 1 sample can be too quiet. Let's do a very short burst or just [1, 0, 0...]
             source_sig[0] = 1.0
-        elif self.sound_type == 'white':
+        elif self.sound_type == "white":
             source_sig = np.random.uniform(-0.5, 0.5, size=len_samples)
-        elif self.sound_type == 'band':
+        elif self.sound_type == "band":
             # 8-16k Noise
             white = np.random.uniform(-0.5, 0.5, size=len_samples)
             # Simple filtered
             fft = fft_manager.rfft(white)
-            freqs = fft_manager.rfftfreq(len_samples, d=1/sr)
+            freqs = fft_manager.rfftfreq(len_samples, d=1 / sr)
             mask = (freqs >= 8000) & (freqs <= 16000)
             fft[~mask] = 0
             source_sig = fft_manager.irfft(fft)
             # Normalize
             mx = np.max(np.abs(source_sig))
-            if mx > 0: source_sig /= mx
+            if mx > 0:
+                source_sig /= mx
             source_sig *= 0.5
 
         # Convolve
         # HRIR is usually short (e.g. 512 samples)
         # Using scipy convolve
-        out_l = convolve(source_sig, hrir_l, mode='full')
-        out_r = convolve(source_sig, hrir_r, mode='full')
+        out_l = convolve(source_sig, hrir_l, mode="full")
+        out_r = convolve(source_sig, hrir_r, mode="full")
 
         # Interleave to stereo
         max_len = max(len(out_l), len(out_r))
         stereo_out = np.zeros((max_len, 2))
-        stereo_out[:len(out_l), 0] = out_l
-        stereo_out[:len(out_r), 1] = out_r
+        stereo_out[: len(out_l), 0] = out_l
+        stereo_out[: len(out_r), 1] = out_r
 
         # Normalize to prevent clips
         peak = np.max(np.abs(stereo_out))
@@ -336,22 +339,26 @@ class HRTFPlayer(MeasurementModule):
             dt = frames / self.audio_engine.sample_rate
             angle_delta = self.rotation_speed * dt
 
-            if self.rotation_mode == 'Horizontal':
+            if self.rotation_mode == "Horizontal":
                 self.current_az += angle_delta
                 # Wrap -180..180
-                if self.current_az > 180: self.current_az -= 360
-                if self.current_az < -180: self.current_az += 360
-            elif self.rotation_mode == 'Vertical':
+                if self.current_az > 180:
+                    self.current_az -= 360
+                if self.current_az < -180:
+                    self.current_az += 360
+            elif self.rotation_mode == "Vertical":
                 self.current_el += angle_delta
-                if self.current_el > 90: self.current_el = -90
-                if self.current_el < -90: self.current_el = 90
-            elif self.rotation_mode == 'Manual':
-                pass # No auto movement
+                if self.current_el > 90:
+                    self.current_el = -90
+                if self.current_el < -90:
+                    self.current_el = 90
+            elif self.rotation_mode == "Manual":
+                pass  # No auto movement
 
             # 2. Get HRIR
             # Find nearest
             pos = self.hrtf_data.source_positions
-            dists = np.sqrt((pos[:, 0] - self.current_az)**2 + (pos[:, 1] - self.current_el)**2)
+            dists = np.sqrt((pos[:, 0] - self.current_az) ** 2 + (pos[:, 1] - self.current_el) ** 2)
             nearest_idx = np.argmin(dists)
 
             if self.swap_channels:
@@ -373,32 +380,32 @@ class HRTFPlayer(MeasurementModule):
             needed = frames
             fetched = 0
             while fetched < needed:
-                 can_take = min(needed - fetched, mus_len - self.music_cursor)
+                can_take = min(needed - fetched, mus_len - self.music_cursor)
 
-                 # Mono or Stereo music?
-                 mus_chunk = self.music_buffer[self.music_cursor : self.music_cursor + can_take]
+                # Mono or Stereo music?
+                mus_chunk = self.music_buffer[self.music_cursor : self.music_cursor + can_take]
 
-                 # Mix to mono for convolution source if source is "spatialized" 
-                 # Usually we treat source as mono point source.
-                 if mus_chunk.shape[1] > 1:
-                     mono = np.mean(mus_chunk, axis=1)
-                 else:
-                     mono = mus_chunk[:, 0]
+                # Mix to mono for convolution source if source is "spatialized"
+                # Usually we treat source as mono point source.
+                if mus_chunk.shape[1] > 1:
+                    mono = np.mean(mus_chunk, axis=1)
+                else:
+                    mono = mus_chunk[:, 0]
 
-                 chunk_l[fetched:fetched+can_take] = mono
-                 chunk_r[fetched:fetched+can_take] = mono # Same source for both ears calc
+                chunk_l[fetched : fetched + can_take] = mono
+                chunk_r[fetched : fetched + can_take] = mono  # Same source for both ears calc
 
-                 self.music_cursor += can_take
-                 if self.music_cursor >= mus_len:
-                     self.music_cursor = 0
+                self.music_cursor += can_take
+                if self.music_cursor >= mus_len:
+                    self.music_cursor = 0
 
-                 fetched += can_take
+                fetched += can_take
 
             # 4. Convolve
             # Using overlap-add block convolution
             # convolve returns len(chunk) + len(hrir) - 1
-            conv_l = convolve(chunk_l, hrir_l, mode='full')
-            conv_r = convolve(chunk_r, hrir_r, mode='full')
+            conv_l = convolve(chunk_l, hrir_l, mode="full")
+            conv_r = convolve(chunk_r, hrir_r, mode="full")
 
             # Add overlap from prev
             if self.overlap_buffer is not None:
@@ -406,7 +413,7 @@ class HRTFPlayer(MeasurementModule):
                 # Add to start of conv
                 ov_len = self.overlap_buffer.shape[0]
                 # Ensure sizes match
-                # It is possible HRIR length changed if SOFA implies variable length? 
+                # It is possible HRIR length changed if SOFA implies variable length?
                 # Assume constant N mostly.
                 # conv len >= overlap len usually if frames is consistent
 
@@ -437,8 +444,8 @@ class HRTFPlayer(MeasurementModule):
             # Stack
             max_tail = max(len(tail_l), len(tail_r))
             new_ov = np.zeros((max_tail, 2), dtype=np.float32)
-            new_ov[:len(tail_l), 0] = tail_l
-            new_ov[:len(tail_r), 1] = tail_r
+            new_ov[: len(tail_l), 0] = tail_l
+            new_ov[: len(tail_r), 1] = tail_r
             self.overlap_buffer = new_ov
 
             return
@@ -496,9 +503,7 @@ class HRTFPlayerWidget(QWidget):
         # Display Mode
         top_layout.addWidget(QLabel(tr("Metric:")))
         self.metric_combo = QComboBox()
-        self.metric_combo.addItems([
-            "ITD (µs)", "ILD (dB)", "High-band Energy (8-16kHz)", "Envelope Peak (ms)"
-        ])
+        self.metric_combo.addItems(["ITD (µs)", "ILD (dB)", "High-band Energy (8-16kHz)", "Envelope Peak (ms)"])
         self.metric_combo.currentIndexChanged.connect(self.update_plot)
         top_layout.addWidget(self.metric_combo)
 
@@ -554,40 +559,38 @@ class HRTFPlayerWidget(QWidget):
         # Update Timer for position visualization
         self.vis_timer = QTimer()
         self.vis_timer.timeout.connect(self.update_visualization)
-        self.vis_timer.start(50) # 20fps
+        self.vis_timer.start(50)  # 20fps
 
         # --- Plot ---
         self.win = pg.GraphicsLayoutWidget()
         layout.addWidget(self.win)
 
         self.plot = self.win.addPlot(title=tr("HRTF Source Positions"))
-        self.plot.setLabel('bottom', "Azimuth", units='deg')
-        self.plot.setLabel('left', "Elevation", units='deg')
+        self.plot.setLabel("bottom", "Azimuth", units="deg")
+        self.plot.setLabel("left", "Elevation", units="deg")
         self.plot.setXRange(-180, 180)
         self.plot.setYRange(-90, 90)
 
         # Add Reference Lines
-        self.plot.addLine(x=0, pen=pg.mkPen('w', width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
-        self.plot.addLine(y=0, pen=pg.mkPen('w', width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
+        self.plot.addLine(x=0, pen=pg.mkPen("w", width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
+        self.plot.addLine(y=0, pen=pg.mkPen("w", width=1, style=pg.QtCore.Qt.PenStyle.DashLine))
 
         # Disable Mouse Panning/Zooming (Lock View)
         self.plot.setMouseEnabled(x=False, y=False)
-        self.plot.setMenuEnabled(False) # Disable right-click menu
+        self.plot.setMenuEnabled(False)  # Disable right-click menu
 
         # Image Item (Heatmap)
         self.img = pg.ImageItem()
         self.plot.addItem(self.img)
 
         # Keep Scatter for actual points (optional, maybe make them small/subtle or hide)
-        # User asked for "Heatmap-like", usually implies continuous. 
+        # User asked for "Heatmap-like", usually implies continuous.
         # But seeing the actual source positions is useful. Let's make them small black dots to overlap?
-        # Or just hide them. Let's hide them for now to look like a pure heatmap, 
-        # but maybe show them if the user requests. 
-        # Actually, let's keep scatter on top but very subtle (small, slightly transparent black/white) 
+        # Or just hide them. Let's hide them for now to look like a pure heatmap,
+        # but maybe show them if the user requests.
+        # Actually, let's keep scatter on top but very subtle (small, slightly transparent black/white)
         # to indicate where data "really" is vs interpolated.
-        self.scatter = pg.ScatterPlotItem(
-            size=5, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 50)
-        )
+        self.scatter = pg.ScatterPlotItem(size=5, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 50))
         self.plot.addItem(self.scatter)
 
         # Click handling - We need to catch clicks on the Plot/ViewBox since ImageItem consumes clicks differently?
@@ -603,7 +606,7 @@ class HRTFPlayerWidget(QWidget):
         self.win.addItem(self.hist)
 
         # Set Colormap
-        self.hist.gradient.loadPreset('viridis')
+        self.hist.gradient.loadPreset("viridis")
 
         self.setLayout(layout)
 
@@ -613,7 +616,7 @@ class HRTFPlayerWidget(QWidget):
         )
         if fname:
             if self.module.load_file(fname):
-                self.file_label.setText(fname.split('/')[-1])
+                self.file_label.setText(fname.split("/")[-1])
                 self.update_plot()
             else:
                 QMessageBox.warning(self, tr("Error"), tr("Failed to load SOFA file."))
@@ -623,18 +626,19 @@ class HRTFPlayerWidget(QWidget):
 
     def on_swap_toggled(self, checked):
         self.module.swap_channels = checked
-        self.update_plot() # Now we should update plot because maybe we want to color code L/R diffs differently? 
+        self.update_plot()  # Now we should update plot because maybe we want to color code L/R diffs differently?
         # Actually, if we swap, the metrics (ITD/ILD) computed at load time are NOT swapped in the data structure.
-        # But we are visualizing static metrics from the file. 
+        # But we are visualizing static metrics from the file.
         # If the user swaps L/R for *playback*, they might assume metrics are also wrong.
         # Ideally we recalculate metrics. But that's expensive without storing raw IRs nicely or re-running loading logic.
-        # For now, let's just re-trigger playback is handled by flag. 
+        # For now, let's just re-trigger playback is handled by flag.
         # Update plot is valid if we were dynamically calc'ing metrics, but we aren't.
         # Just pass.
 
     def update_plot(self):
         data = self.module.hrtf_data
-        if data is None: return
+        if data is None:
+            return
 
         metric_idx = self.metric_combo.currentIndex()
         if metric_idx == 0:
@@ -658,7 +662,7 @@ class HRTFPlayerWidget(QWidget):
         # Resolution: 2 degree seems fine? 360/2 = 180, 180/2 = 90
         grid_x, grid_y = np.mgrid[-180:180:180j, -90:90:90j]
 
-        points = data.source_positions[:, :2] # Az, El
+        points = data.source_positions[:, :2]  # Az, El
         values = vals
 
         # griddata
@@ -667,7 +671,7 @@ class HRTFPlayerWidget(QWidget):
         # HRTF usually covers sphere but maybe not full.
         # Let's use 'cubic' for smooth look, fill_value=nan (transparent)
         try:
-            grid_z = griddata(points, values, (grid_x, grid_y), method='linear', fill_value=np.nan)
+            grid_z = griddata(points, values, (grid_x, grid_y), method="linear", fill_value=np.nan)
         except Exception as e:
             logging.error(f"Interpolation failed: {e}")
             return
@@ -676,26 +680,19 @@ class HRTFPlayerWidget(QWidget):
         # grid_z is (180, 90) corresponding to meshgrid.
 
         self.img.setImage(grid_z)
-        self.img.setRect(pg.QtCore.QRectF(-180, -90, 360, 180)) # Set coordinate system
+        self.img.setRect(pg.QtCore.QRectF(-180, -90, 360, 180))  # Set coordinate system
 
-        # Handle NaN transparency? 
-        # pyqtgraph handles NaNs by making them transparent usually if connect='finite' in plot, 
+        # Handle NaN transparency?
+        # pyqtgraph handles NaNs by making them transparent usually if connect='finite' in plot,
         # but for ImageItem? It might just show black or 0.
         # We can construct a LUT.
 
         # Also update scatter to show where real points are
-        self.scatter.setData(
-            x=points[:, 0],
-            y=points[:, 1],
-            size=3,
-            brush=pg.mkBrush(200, 200, 200, 150)
-        )
+        self.scatter.setData(x=points[:, 0], y=points[:, 1], size=3, brush=pg.mkBrush(200, 200, 200, 150))
 
         # Update Position Indicator
-        if not hasattr(self, 'pos_indicator'):
-            self.pos_indicator = pg.ScatterPlotItem(
-                size=12, pen=pg.mkPen('r', width=2), brush=pg.mkBrush('r')
-            )
+        if not hasattr(self, "pos_indicator"):
+            self.pos_indicator = pg.ScatterPlotItem(size=12, pen=pg.mkPen("r", width=2), brush=pg.mkBrush("r"))
             self.plot.addItem(self.pos_indicator)
 
         self.pos_indicator.setData(x=[self.module.current_az], y=[self.module.current_el])
@@ -718,17 +715,17 @@ class HRTFPlayerWidget(QWidget):
 
         # Bounds check
         if -180 <= az <= 180 and -90 <= el <= 90:
-             # Always update model position (for Manual or Rotation mode jumps)
-             self.module.set_source_position(az, el)
+            # Always update model position (for Manual or Rotation mode jumps)
+            self.module.set_source_position(az, el)
 
-             # If Rotation Active -> Position updated, music continues from there.
-             # If NOT Rotation Active -> Trigger One-shot sound at new position
-             if not self.module.rotation_active:
-                 self.module.trigger_sound(az, el)
+            # If Rotation Active -> Position updated, music continues from there.
+            # If NOT Rotation Active -> Trigger One-shot sound at new position
+            if not self.module.rotation_active:
+                self.module.trigger_sound(az, el)
 
-             # Update visual
-             if hasattr(self, 'pos_indicator'):
-                 self.pos_indicator.setData(x=[az], y=[el])
+            # Update visual
+            if hasattr(self, "pos_indicator"):
+                self.pos_indicator.setData(x=[az], y=[el])
 
     def on_point_clicked(self, plot, points):
         # Legacy/Scatter click
@@ -753,14 +750,13 @@ class HRTFPlayerWidget(QWidget):
             # Disable non-compat controls?
             pass
         else:
-             QMessageBox.warning(self, "Error", "Failed to start rotation. Is music loaded?")
+            QMessageBox.warning(self, "Error", "Failed to start rotation. Is music loaded?")
 
     def on_stop_rotation(self):
         self.module.stop_rotation()
 
     def update_visualization(self):
         if self.module.rotation_active:
-             # Update marker
-             if hasattr(self, 'pos_indicator'):
-                 self.pos_indicator.setData(x=[self.module.current_az], y=[self.module.current_el])
-
+            # Update marker
+            if hasattr(self, "pos_indicator"):
+                self.pos_indicator.setData(x=[self.module.current_az], y=[self.module.current_el])
