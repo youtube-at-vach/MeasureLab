@@ -33,6 +33,14 @@ A function to stop (stabilize) the waveform for easier observation.
     * **Single**: Captures the waveform only once when the trigger conditions are met and then automatically stops (useful for observing one-time signals).
 * **Level**: Sets the voltage level at which the trigger occurs.
 
+## Persistence Settings
+
+A feature to display an "afterimage" similar to an analog oscilloscope. It is useful for visually capturing noise distribution and waveform fluctuations (jitter).
+
+* **Enable Persistence**: Enables the persistence display.
+* **Decay**: Adjusts the time until the afterimage disappears (decay rate). Moving it to the right makes it last longer.
+* **Intensity**: Adjusts the brightness and density of the afterimage.
+
 ## Tools and Measurements
 
 ### Measurements
