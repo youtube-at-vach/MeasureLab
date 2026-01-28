@@ -309,7 +309,7 @@ class MainWindow(QMainWindow):
 
         # Add module pages (Index 2+) - lazy loaded per selection
         self._module_containers = []
-        for key in self._module_keys:
+        for _key in self._module_keys:
             container = QWidget()
             v = QVBoxLayout(container)
             v.setContentsMargins(12, 12, 12, 12)

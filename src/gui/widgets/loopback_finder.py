@@ -99,7 +99,7 @@ class LoopbackFinder(MeasurementModule):
                     output_signal, samplerate=sample_rate, channels=max_in, device=device_id, blocking=True
                 )
             except Exception as e:
-                raise Exception(f"Error during playback/recording: {str(e)}")
+                raise Exception(f"Error during playback/recording: {str(e)}") from e
 
             # Analyze inputs
             for in_ch in range(max_in):

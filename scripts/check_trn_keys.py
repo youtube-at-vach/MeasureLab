@@ -40,7 +40,7 @@ def find_duplicate_keys(path):
     pattern = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:')
 
     with open(path, 'r', encoding='utf-8') as f:
-        for line_num, line in enumerate(f, 1):
+        for _line_num, line in enumerate(f, 1):
             match = pattern.search(line)
             if match:
                 key = match.group(1)

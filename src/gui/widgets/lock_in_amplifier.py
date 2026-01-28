@@ -1257,7 +1257,7 @@ class LockInAmplifierWidget(QWidget):
             self.y_label.setText(tr("{0} V").format(val_y))
 
         # Update Ref Status
-        self.module.ref_level
+        # self.module.ref_level
         ref_freq = self.module.ref_freq
         coherence = self.module.ref_coherence
 

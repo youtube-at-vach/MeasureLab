@@ -664,7 +664,7 @@ class AudioCalc:
         mask_1f = (freqs >= 1.0) & (freqs <= f_max_fit)
 
         # Exclude hum
-        for h_freq, h_amp in hum_components:
+        for h_freq, _h_amp in hum_components:
             f_start = h_freq - 5.0
             f_end = h_freq + 5.0
             idx_start = np.searchsorted(freqs, f_start, side="left")

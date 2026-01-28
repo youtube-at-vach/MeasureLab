@@ -96,7 +96,7 @@ class CalibrationManager:
             measured_dbfs_c = float(measured_dbfs_c)
             measured_spl_db = float(measured_spl_db)
         except Exception:
-            raise ValueError("Invalid SPL calibration values")
+            raise ValueError("Invalid SPL calibration values") from None
 
         offset_db = measured_spl_db - measured_dbfs_c
         self.spl_offset_db = float(offset_db)
@@ -125,7 +125,7 @@ class CalibrationManager:
         try:
             v_per_fs = float(v_per_fs)
         except Exception:
-            raise ValueError("Invalid output gain")
+            raise ValueError("Invalid output gain") from None
         if not np.isfinite(v_per_fs) or v_per_fs <= 0:
             raise ValueError("Invalid output gain")
 

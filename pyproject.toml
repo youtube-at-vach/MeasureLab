@@ -38,7 +38,7 @@ target-version = "py310"
 # Start with a narrow, low-noise rule set focused on correctness and
 # the whitespace issue (W293) that currently breaks CI. Broaden later as we
 # pay down existing style debt.
-select = ["E9", "F", "E7", "E4", "W292", "W293"]
+select = ["E9", "F", "E7", "E4", "W292", "W293", "B"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]

@@ -23,7 +23,7 @@ def benchmark():
         input_data = np.random.rand(N).astype(np.float64)
 
         # 1. NumPy
-        t_numpy = timeit.timeit(lambda: np.fft.rfft(input_data), number=ITERATIONS)
+        t_numpy = timeit.timeit(lambda input_data=input_data: np.fft.rfft(input_data), number=ITERATIONS)
         avg_numpy = (t_numpy / ITERATIONS) * 1000
 
         # 2. pyfftw interfaces (drop-in)
@@ -32,14 +32,14 @@ def benchmark():
         pyfftw.interfaces.cache.enable()
         # We need to turn it on
 
-        t_pyfftw_iface = timeit.timeit(lambda: pyfftw.interfaces.numpy_fft.rfft(input_data, threads=n_threads), number=ITERATIONS)
+        t_pyfftw_iface = timeit.timeit(lambda input_data=input_data: pyfftw.interfaces.numpy_fft.rfft(input_data, threads=n_threads), number=ITERATIONS)
         avg_pyfftw_iface = (t_pyfftw_iface / ITERATIONS) * 1000
 
         # 3. pyfftw builder (easier than object, optimized)
         # This creates an FFTW object
         # We pay the planning cost once, then execute
         fft_object_builder = pyfftw.builders.rfft(input_data, threads=n_threads)
-        t_pyfftw_builder = timeit.timeit(lambda: fft_object_builder(), number=ITERATIONS)
+        t_pyfftw_builder = timeit.timeit(lambda fft_object_builder=fft_object_builder: fft_object_builder(), number=ITERATIONS)
         avg_pyfftw_builder = (t_pyfftw_builder / ITERATIONS) * 1000
 
         # 4. pyfftw object manual (most control)
@@ -51,12 +51,13 @@ def benchmark():
         fft_object = pyfftw.FFTW(aligned_in, aligned_out, direction='FFTW_FORWARD', flags=('FFTW_MEASURE',), threads=n_threads)
 
         # Copy data in (simulating the update loop)
-        def run_manual():
+        def run_manual(aligned_in=aligned_in, input_data=input_data, fft_object=fft_object, aligned_out=aligned_out):
             aligned_in[:] = input_data # Copy takes time too, include it? 
             # In real app we might write directly to aligned buffer or copy.
             # Usually we have `input_data` coming from audio stream (numpy array).
             # So copy is necessary.
             fft_object()
+
             return aligned_out
 
         t_pyfftw_obj = timeit.timeit(run_manual, number=ITERATIONS)

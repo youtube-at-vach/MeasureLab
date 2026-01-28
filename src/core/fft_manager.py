@@ -264,7 +264,7 @@ class FFTManager:
                 sizes_to_optimize += HUGE_SIZES
 
         total = len(sizes_to_optimize)
-        for i, size in enumerate(sizes_to_optimize):
+        for _i, size in enumerate(sizes_to_optimize):
             if callback:
                 # Progress ranges from 0 to total-1 during optimization
                 callback(tr("Optimizing FFT... (Size {0})").format(size))

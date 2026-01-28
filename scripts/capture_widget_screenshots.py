@@ -74,7 +74,7 @@ def find_widget_pair(module):
     widget_class = None
 
     # 1. Find Module
-    for name, obj in inspect.getmembers(module):
+    for _name, obj in inspect.getmembers(module):
         if inspect.isclass(obj) and issubclass(obj, MeasurementModule) and obj is not MeasurementModule:
             module_class = obj
             break
