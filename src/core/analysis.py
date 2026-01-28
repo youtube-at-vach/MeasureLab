@@ -30,6 +30,16 @@ def _compute_a_weighting_curve(n_bins, step):
     f = np.arange(n_bins) * step
     return _calculate_ra_raw(f)
 
+@functools.lru_cache(maxsize=32)
+def _get_time_array(N, sampling_rate):
+    """
+    Cached time array generation.
+    Returns read-only array to prevent modification.
+    """
+    t = np.arange(N) / sampling_rate
+    t.flags.writeable = False
+    return t
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
@@ -97,7 +107,7 @@ class AudioCalc:
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
         """
         N = len(signal)
-        t = np.arange(N) / sampling_rate
+        t = _get_time_array(N, sampling_rate)
 
         # Pre-allocate arrays to avoid repeated allocation in loop
         M = np.empty((N, 3), dtype=t.dtype)
