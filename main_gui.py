@@ -11,15 +11,15 @@ _existing_rules = os.environ.get("QT_LOGGING_RULES")
 if not _existing_rules:
     os.environ["QT_LOGGING_RULES"] = _qt_rule
 
-from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
-from PyQt6.QtGui import QPixmap, QPainter
-from PyQt6.QtWidgets import QApplication, QSplashScreen, QWidget
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer  # noqa: E402
+from PyQt6.QtGui import QPixmap, QPainter  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QSplashScreen, QWidget  # noqa: E402
 
-from src.core.config_manager import ConfigManager
-from src.core.localization import get_manager, tr
-from src.core.utils import resource_path
-from src.core.fft_manager import fft_manager
-from src.gui.main_window import MainWindow
+from src.core.config_manager import ConfigManager  # noqa: E402
+from src.core.localization import get_manager, tr  # noqa: E402
+from src.core.utils import resource_path  # noqa: E402
+from src.core.fft_manager import fft_manager  # noqa: E402
+from src.gui.main_window import MainWindow  # noqa: E402
 
 
 class _TopLevelWindowLogger(QObject):

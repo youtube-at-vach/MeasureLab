@@ -5,7 +5,7 @@ import sys
 # Mock sounddevice before importing AudioEngine
 sys.modules['sounddevice'] = MagicMock()
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine  # noqa: E402
 
 class TestAudioEngineLogic(unittest.TestCase):
     def setUp(self):

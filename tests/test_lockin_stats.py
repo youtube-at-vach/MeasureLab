@@ -27,7 +27,7 @@ class MockAudioEngine:
         pass
 
 # Import module
-from src.gui.widgets.lock_in_amplifier import LockInAmplifier, LockInAmplifierWidget
+from src.gui.widgets.lock_in_amplifier import LockInAmplifier, LockInAmplifierWidget  # noqa: E402
 
 
 class TestLockInStats(unittest.TestCase):

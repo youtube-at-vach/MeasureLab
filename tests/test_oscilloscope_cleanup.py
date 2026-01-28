@@ -13,9 +13,9 @@ sys.modules['sounddevice'] = mock_sd
 # Add src to path
 sys.path.insert(0, os.getcwd())
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QCloseEvent
-from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget
+from PyQt6.QtWidgets import QApplication  # noqa: E402
+from PyQt6.QtGui import QCloseEvent  # noqa: E402
+from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget  # noqa: E402
 
 class TestOscilloscopeCleanup(unittest.TestCase):
     def setUp(self):

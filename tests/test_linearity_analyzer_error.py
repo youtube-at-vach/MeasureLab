@@ -12,12 +12,12 @@ if 'sounddevice' in sys.modules:
 mock_sd = MagicMock()
 sys.modules['sounddevice'] = mock_sd
 
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 # Ensure src is in path
 sys.path.insert(0, os.getcwd())
 
-from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
+from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget  # noqa: E402
 
 class TestLinearityAnalyzerError(unittest.TestCase):
     def setUp(self):
