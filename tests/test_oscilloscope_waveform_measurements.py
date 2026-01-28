@@ -66,3 +66,29 @@ def test_estimate_rise_fall_times_ramp_has_expected_10_90_time():
 
     assert abs(rise_s - 20e-6) < 2e-6
     assert abs(fall_s - 20e-6) < 2e-6
+
+def test_frequency_estimation_edge_cases():
+    # Insufficient data
+    t = np.array([0, 1, 2])
+    y = np.array([0, 1, 0])
+    assert Oscilloscope.estimate_frequency_hz(t, y) is None
+
+    assert Oscilloscope.estimate_frequency_hz(None, None) is None
+
+    # No crossings
+    sample_rate = 1000
+    t = np.arange(100) / sample_rate
+    y = np.ones(100)
+    assert Oscilloscope.estimate_frequency_hz(t, y) is None
+
+    # Exact zero crossings (< 2)
+    t = np.array([0, 1, 2, 3, 4], dtype=float)
+    y = np.array([-1, 0, 1, 0, -1], dtype=float)
+    assert Oscilloscope.estimate_frequency_hz(t, y) is None
+
+    # Exact zero crossings (>= 2)
+    t = np.arange(10, dtype=float)
+    y = np.array([-1, 1, -1, 1, -1, 1, -1, 1, -1, 1], dtype=float)
+    est = Oscilloscope.estimate_frequency_hz(t, y)
+    assert est is not None
+    assert abs(est - 0.5) < 1e-6
