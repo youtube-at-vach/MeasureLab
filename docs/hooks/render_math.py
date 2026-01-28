@@ -30,7 +30,7 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
         ctx.eval(js_content)
 
     def replace_math(match):
-        tag = match.group(1) # span or div
+        match.group(1) # span or div
         content = match.group(2) # content inside tags including delimiters
 
         # Arithmatex generic output wraps content in \(...\) or \[...\]

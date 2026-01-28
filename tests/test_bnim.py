@@ -90,7 +90,6 @@ def test_bnim_symmetry():
 
     # Generate random stereo noise
     np.random.seed(42)
-    fs = 48000
     noise_L = np.random.randn(bnim.fft_size).astype(np.float32)
     noise_R = np.random.randn(bnim.fft_size).astype(np.float32) * 0.5 # Make R quieter to have ILD
 

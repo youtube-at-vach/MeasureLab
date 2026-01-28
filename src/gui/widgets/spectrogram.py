@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.signal import get_window
 
 from src.core.audio_engine import AudioEngine
 from src.core.analysis import get_cached_window
@@ -32,15 +31,15 @@ class Spectrogram(MeasurementModule):
         # Parameters
         self.fft_size = 2048
         self.overlap = 0.5
-        self.window_type = 'hann'
-        self.channel_mode = 'Left' # 'Left', 'Right', 'Average'
-        self.history_length = 500 # Number of time steps to keep
-        self.sweep_speed_index = 0 # 0: Fast, 1: Medium, 2: Slow, 3: Meteor
+        self.window_type = "hann"
+        self.channel_mode = "Left"  # 'Left', 'Right', 'Average'
+        self.history_length = 500  # Number of time steps to keep
+        self.sweep_speed_index = 0  # 0: Fast, 1: Medium, 2: Slow, 3: Meteor
         self.min_freq = 0
-        self.max_freq = 20000 # Default, will be updated by UI or sample rate
+        self.max_freq = 20000  # Default, will be updated by UI or sample rate
 
         # State
-        self.input_buffer = np.zeros(self.fft_size) # For overlap processing
+        self.input_buffer = np.zeros(self.fft_size)  # For overlap processing
         self.spectrogram_data = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
         self.callback_id = None
 
@@ -49,7 +48,7 @@ class Spectrogram(MeasurementModule):
         self.acc_count = 0
 
         # Ring buffer for incoming audio
-        self.audio_buffer = np.zeros((self.fft_size * 2, 2)) # Keep enough for overlap
+        self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
         self.audio_buffer_pos = 0
 
     @property
@@ -78,7 +77,8 @@ class Spectrogram(MeasurementModule):
         self.acc_count = 0
 
     def start_analysis(self):
-        if self.is_running: return
+        if self.is_running:
+            return
         self.is_running = True
         self.reset_buffers()
         self.callback_id = self.audio_engine.register_callback(self._callback)
@@ -99,7 +99,7 @@ class Spectrogram(MeasurementModule):
             # If incoming data exceeds buffer, just take the latest part that fits
             # This handles cases like block_size=8192 vs fft_size=512 (buffer=1024)
             nb_to_copy = len(self.audio_buffer)
-            self.audio_buffer[:] = 0 # Optional, but good practice
+            self.audio_buffer[:] = 0  # Optional, but good practice
 
             if indata.shape[1] >= 2:
                 self.audio_buffer[:] = indata[-nb_to_copy:, :2]
@@ -116,6 +116,7 @@ class Spectrogram(MeasurementModule):
 
         outdata.fill(0)
 
+
 class SpectrogramWidget(QWidget):
     def __init__(self, module: Spectrogram):
         super().__init__()
@@ -124,7 +125,7 @@ class SpectrogramWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_spectrogram)
-        self.timer.setInterval(30) # ~30 FPS
+        self.timer.setInterval(30)  # ~30 FPS
 
     def closeEvent(self, event: QCloseEvent):
         self.timer.stop()
@@ -145,25 +146,27 @@ class SpectrogramWidget(QWidget):
 
         # Theme handling
         self.app = QApplication.instance()
-        if hasattr(self.app, 'theme_manager'):
+        if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
         else:
-            self.toggle_btn.setStyleSheet("QPushButton { background-color: #ccffcc; } QPushButton:checked { background-color: #ffcccc; }")
+            self.toggle_btn.setStyleSheet(
+                "QPushButton { background-color: #ccffcc; } QPushButton:checked { background-color: #ffcccc; }"
+            )
 
         controls_layout.addWidget(self.toggle_btn)
 
         # Channel
         controls_layout.addWidget(QLabel(tr("Channel:")))
         self.channel_combo = QComboBox()
-        self.channel_combo.addItems(['Left', 'Right', 'Average'])
+        self.channel_combo.addItems(["Left", "Right", "Average"])
         self.channel_combo.currentTextChanged.connect(self.on_channel_changed)
         controls_layout.addWidget(self.channel_combo)
 
         # FFT Size
         controls_layout.addWidget(QLabel(tr("FFT Size:")))
         self.fft_combo = QComboBox()
-        self.fft_combo.addItems(['512', '1024', '2048', '4096', '8192'])
+        self.fft_combo.addItems(["512", "1024", "2048", "4096", "8192"])
         self.fft_combo.setCurrentText(str(self.module.fft_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_changed)
         controls_layout.addWidget(self.fft_combo)
@@ -171,14 +174,14 @@ class SpectrogramWidget(QWidget):
         # Window
         controls_layout.addWidget(QLabel(tr("Window:")))
         self.window_combo = QComboBox()
-        self.window_combo.addItems(['hann', 'hamming', 'blackman', 'bartlett', 'boxcar'])
+        self.window_combo.addItems(["hann", "hamming", "blackman", "bartlett", "boxcar"])
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         controls_layout.addWidget(self.window_combo)
 
         # Colormap
         controls_layout.addWidget(QLabel(tr("Colormap:")))
         self.cmap_combo = QComboBox()
-        self.cmap_combo.addItems(['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'turbo'])
+        self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "cividis", "turbo"])
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
         controls_layout.addWidget(self.cmap_combo)
@@ -186,7 +189,7 @@ class SpectrogramWidget(QWidget):
         # Sweep Speed
         controls_layout.addWidget(QLabel(tr("Speed:")))
         self.speed_combo = QComboBox()
-        self.speed_combo.addItems([tr('Fast (Realtime)'), tr('Medium (1m)'), tr('Slow (5m)'), tr('Meteor (10m)')])
+        self.speed_combo.addItems([tr("Fast (Realtime)"), tr("Medium (1m)"), tr("Slow (5m)"), tr("Meteor (10m)")])
         self.speed_combo.currentIndexChanged.connect(self.on_speed_changed)
         controls_layout.addWidget(self.speed_combo)
 
@@ -218,8 +221,8 @@ class SpectrogramWidget(QWidget):
 
         # Plot Item
         self.plot = self.win.addPlot(title=tr("Spectrogram"))
-        self.plot.setLabel('left', tr('Frequency'), units='Hz')
-        self.plot.setLabel('bottom', tr('Time'), units='frames')
+        self.plot.setLabel("left", tr("Frequency"), units="Hz")
+        self.plot.setLabel("bottom", tr("Time"), units="frames")
 
         # Image Item
         self.img = pg.ImageItem()
@@ -231,8 +234,8 @@ class SpectrogramWidget(QWidget):
         self.win.addItem(self.hist)
 
         # Set default colormap
-        self.hist.gradient.loadPreset('viridis')
-        self.hist.setLevels(-120, 0) # Default dB range
+        self.hist.gradient.loadPreset("viridis")
+        self.hist.setLevels(-120, 0)  # Default dB range
 
         self.setLayout(layout)
 
@@ -272,16 +275,17 @@ class SpectrogramWidget(QWidget):
         self.plot.setYRange(self.module.min_freq, self.module.max_freq)
 
     def update_spectrogram(self):
-        if not self.module.is_running: return
+        if not self.module.is_running:
+            return
 
         # Get latest data from buffer
         # We take the last fft_size samples
-        raw_data = self.module.audio_buffer[-self.module.fft_size:]
+        raw_data = self.module.audio_buffer[-self.module.fft_size :]
 
         # Select Channel
-        if self.module.channel_mode == 'Left':
+        if self.module.channel_mode == "Left":
             sig = raw_data[:, 0]
-        elif self.module.channel_mode == 'Right':
+        elif self.module.channel_mode == "Right":
             sig = raw_data[:, 1]
         else:
             sig = np.mean(raw_data, axis=1)
@@ -298,10 +302,10 @@ class SpectrogramWidget(QWidget):
         mag = np.abs(fft_res)
 
         # Normalize
-        mag = mag / len(sig) * 2 * win_correction # Peak Amplitude
+        mag = mag / len(sig) * 2 * win_correction  # Peak Amplitude
 
         # Convert to dB
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide="ignore"):
             mag_db = 20 * np.log10(mag + 1e-12)
 
         # --- Accumulation Logic ---
@@ -321,16 +325,19 @@ class SpectrogramWidget(QWidget):
         # Meteor: 10 min = 600s. 1.2s/pixel. 30ms -> 40 frames.
 
         target_frames = 1
-        if self.module.sweep_speed_index == 1: target_frames = 4
-        elif self.module.sweep_speed_index == 2: target_frames = 20
-        elif self.module.sweep_speed_index == 3: target_frames = 40
+        if self.module.sweep_speed_index == 1:
+            target_frames = 4
+        elif self.module.sweep_speed_index == 2:
+            target_frames = 20
+        elif self.module.sweep_speed_index == 3:
+            target_frames = 40
 
         if self.module.acc_count < target_frames:
-            return # Wait for more data
+            return  # Wait for more data
 
         # Push to Spectrogram
         final_mag_db = self.module.accumulator
-        self.module.accumulator = None # Reset
+        self.module.accumulator = None  # Reset
         self.module.acc_count = 0
 
         # Update Spectrogram Data
@@ -366,10 +373,10 @@ class SpectrogramWidget(QWidget):
         self.plot.setYRange(self.module.min_freq, self.module.max_freq)
 
     def apply_theme(self, theme_name):
-        if theme_name == 'system' and hasattr(self.app, 'theme_manager'):
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == 'dark':
+        if theme_name == "dark":
             # Dark Theme
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"

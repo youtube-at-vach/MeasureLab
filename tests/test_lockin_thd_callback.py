@@ -13,7 +13,7 @@ from src.gui.widgets.lockin_thd_analyzer import LockInTHDAnalyzer
 # We rely on conftest.py or the environment to handle sounddevice.
 # But if we want to be safe in isolation:
 try:
-    import sounddevice
+    import sounddevice # noqa: F401
 except (OSError, ImportError):
     # This block might be redundant if conftest.py ran, but harmless
     pass

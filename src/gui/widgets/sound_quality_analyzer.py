@@ -25,6 +25,7 @@ from src.measurement_modules.base import MeasurementModule
 
 # --- Analysis Worker ---
 
+
 class AnalysisWorker(QThread):
     progress_update = pyqtSignal(int, str)
     results_ready = pyqtSignal(object)
@@ -53,7 +54,7 @@ class AnalysisWorker(QThread):
                 data_playback = data
 
             # 2. Prepare Analysis Data (at 48kHz)
-            # The filters (Loudness K-weighting) and psychoacoustic approximations 
+            # The filters (Loudness K-weighting) and psychoacoustic approximations
             # are tuned for 48kHz.
             analysis_sr = 48000
             if self.target_sr == analysis_sr:
@@ -74,42 +75,50 @@ class AnalysisWorker(QThread):
                 channels = [data_analysis[:, 0], data_analysis[:, 1]]
                 ch_names = ["Left", "Right"]
 
-            results = {
-                "samplerate": self.target_sr,
-                "duration": len(data_playback) / self.target_sr,
-                "channels": []
-            }
+            results = {"samplerate": self.target_sr, "duration": len(data_playback) / self.target_sr, "channels": []}
 
-            total_steps = len(channels) * 4 
+            total_steps = len(channels) * 4
             current_step = 0
 
             for i, audio in enumerate(channels):
                 ch_res = {"name": ch_names[i]}
 
                 # 1. Loudness
-                if self._is_cancelled: return
-                self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Loudness ({})...").format(ch_names[i]))
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Loudness ({})...").format(ch_names[i])
+                )
                 l_res = self._calc_loudness(audio, analysis_sr)
                 ch_res.update(l_res)
                 current_step += 1
 
                 # 2. Sharpness
-                if self._is_cancelled: return
-                self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Sharpness ({})...").format(ch_names[i]))
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Sharpness ({})...").format(ch_names[i])
+                )
                 s_res = self._calc_sharpness(audio, analysis_sr)
                 ch_res.update(s_res)
                 current_step += 1
 
                 # 3. Roughness
-                if self._is_cancelled: return
-                self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Roughness ({})...").format(ch_names[i]))
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Roughness ({})...").format(ch_names[i])
+                )
                 r_res = self._calc_roughness(audio, analysis_sr)
                 ch_res.update(r_res)
                 current_step += 1
 
                 # 4. Tonality
-                if self._is_cancelled: return
-                self.progress_update.emit(int((current_step / total_steps) * 100), tr("Calculating Tonality ({})...").format(ch_names[i]))
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Tonality ({})...").format(ch_names[i])
+                )
                 t_res = self._calc_tonality(audio, analysis_sr)
                 ch_res.update(t_res)
                 current_step += 1
@@ -119,12 +128,13 @@ class AnalysisWorker(QThread):
             # Add raw audio for playback
             # Store as float32 for audio engine
             results["audio_data"] = data_playback.astype(np.float32)
-            results["samplerate"] = self.target_sr # Engine rate
+            results["samplerate"] = self.target_sr  # Engine rate
 
             self.results_ready.emit(results)
 
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             self.error_occurred.emit(str(e))
 
@@ -140,6 +150,7 @@ class AnalysisWorker(QThread):
         # e.g. 44100 -> 48000 : up=160, down=147
         # e.g. 48000 -> 44100 : up=147, down=160
         import math
+
         g = math.gcd(target_sr, src_sr)
         up = target_sr // g
         down = src_sr // g
@@ -162,8 +173,8 @@ class AnalysisWorker(QThread):
         # K-weighting filters (BS.1770) - Designed for 48kHz
         # Since we adhere to Resampling before analysis, sr IS 48000.
         if abs(sr - 48000) > 10:
-             # Fallback warning or attempt to design filter
-             pass
+            # Fallback warning or attempt to design filter
+            pass
 
         # Stage 1: Shelf
         b1 = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285])
@@ -183,7 +194,7 @@ class AnalysisWorker(QThread):
         step_size = int(step_sec * sr)
 
         kernel = np.ones(block_size) / block_size
-        p_smoothed = signal.fftconvolve(p, kernel, mode='valid')
+        p_smoothed = signal.fftconvolve(p, kernel, mode="valid")
 
         # Downsample to step size
         p_blocks = p_smoothed[::step_size]
@@ -207,39 +218,33 @@ class AnalysisWorker(QThread):
         g2 = p_blocks[m_lufs > rel_gate]
 
         if len(g2) == 0:
-             return {"integrated_lufs": -100.0, "lufs_series": m_lufs, "lufs_step": step_sec}
+            return {"integrated_lufs": -100.0, "lufs_series": m_lufs, "lufs_step": step_sec}
 
         z_avg_final = np.mean(g2)
         integrated = -0.691 + 10 * np.log10(z_avg_final)
 
-        return {
-            "integrated_lufs": integrated,
-            "lufs_series": m_lufs,
-            "lufs_step": step_sec
-        }
+        return {"integrated_lufs": integrated, "lufs_series": m_lufs, "lufs_step": step_sec}
 
     def _calc_sharpness(self, audio, sr):
         # Zwicker Sharpness
         # S = 0.11 * Integral(N' * g(z) * z * dz) / Integral(N' * dz)
 
-        window_sec = 0.4 # Consistent with others
+        window_sec = 0.4  # Consistent with others
         step_sec = 0.1
         nperseg = int(window_sec * sr)
         noverlap = int(nperseg - (step_sec * sr))
 
         # STFT
-        f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
-        mag_sq = np.abs(Zxx)**2
+        f, t, Zxx = signal.stft(audio, fs=sr, window="hann", nperseg=nperseg, noverlap=noverlap)
+        mag_sq = np.abs(Zxx) ** 2
 
         # 24 Critical Bands (Bark scale)
         # Bark center frequencies (approx)
         # We integrate power in each bark band
 
-        sharpness_series = []
-
         # Bark conversion function
         # z = 13*atan(0.00076*f) + 3.5*atan((f/7500)^2)
-        barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500)**2)
+        barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500) ** 2)
 
         # Divide into 0.5 Bark steps? Or 1.0 Bark integer bands?
         # Zwicker usually uses 24 bands.
@@ -254,13 +259,13 @@ class AnalysisWorker(QThread):
 
         for b in range(n_bands):
             # Sum power for all freq bins in this bark band
-            mask = (bark_indices == b)
+            mask = bark_indices == b
             if np.any(mask):
                 band_power[b, :] = np.sum(mag_sq[mask, :], axis=0)
 
         # Specific Loudness N' approx: E^0.23
         # Ideally should spread excitation, but this is simplified "core" loudness
-        specific_loudness = band_power ** 0.23
+        specific_loudness = band_power**0.23
 
         # Total Loudness N = Sum(N') * dz (dz=1 Bark)
         total_loudness = np.sum(specific_loudness, axis=0)
@@ -285,16 +290,12 @@ class AnalysisWorker(QThread):
         valid = total_loudness > 1e-9
         S[valid] = 0.11 * weighted_moment[valid] / total_loudness[valid]
 
-        return {
-            "mean_sharpness": np.mean(S),
-            "sharpness_series": S,
-            "sharpness_step": step_sec
-        }
+        return {"mean_sharpness": np.mean(S), "sharpness_series": S, "sharpness_step": step_sec}
 
     def _calc_roughness(self, audio, sr):
         # Multi-band Roughness (Simplified Daniel & Weber)
         # 1. Split into critical bands (simulated by processing STFT bins or simple bandpass? STFT is easier here for Python)
-        #    Actually, for modulation extraction, we need time-domain envelopes. 
+        #    Actually, for modulation extraction, we need time-domain envelopes.
         #    STFT frames are too slow/aliased for <70Hz modulation resolution if hop is large.
         #    Bandpass Filters + Hilbert is better.
 
@@ -315,7 +316,6 @@ class AnalysisWorker(QThread):
         # Center freqs for Barks 3, 7, 11, 15, 19 (~ 300, 840, 1480, 2500, 4800 Hz)
 
         c_freqs = [300, 840, 1480, 2500, 4800, 9500]
-        roughness_acc = 0.0
 
         # Process chunks to save memory, but we need filter state.
         # To avoid complexity, process whole file if < 1 min, or chunk stream.
@@ -325,22 +325,16 @@ class AnalysisWorker(QThread):
         sos_list = []
         for fc in c_freqs:
             # Q factor ~ 2 (Wide enough to overlap Barks roughly)
-            if fc < sr/2:
-                sos = signal.butter(2, [fc*0.7, fc*1.4], btype='bandpass', fs=sr, output='sos')
+            if fc < sr / 2:
+                sos = signal.butter(2, [fc * 0.7, fc * 1.4], btype="bandpass", fs=sr, output="sos")
                 sos_list.append(sos)
 
         # Calculate envelope and modulation for each band
         # Sum of specific roughnesses.
 
-        n_samples = len(audio)
-        # Downsample envelope extraction?
-        ds_factor = 4 # 48k -> 12k for envelope is fine for 70Hz mod.
-
-        total_roughness = 0
-
         # Time weighting:
         # Modulation filter: Bandpass 20-150Hz.
-        mod_sos = signal.butter(2, [20, 150], btype='bandpass', fs=sr, output='sos')
+        mod_sos = signal.butter(2, [20, 150], btype="bandpass", fs=sr, output="sos")
 
         # We need time series output, so we compute R(t)
         # This is getting heavy.
@@ -356,7 +350,7 @@ class AnalysisWorker(QThread):
 
         # 1. Hilbert Envelope of full signal (or filtered to 200Hz-15kHz)
         # Remove DC/Sub-bass which dominates envelope but doesn't cause roughness.
-        sos_pre = signal.butter(1, 200, btype='highpass', fs=sr, output='sos')
+        sos_pre = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
         filtered = signal.sosfilt(sos_pre, audio)
 
         env = np.abs(signal.hilbert(filtered))
@@ -377,37 +371,33 @@ class AnalysisWorker(QThread):
 
         # Pre-calc squared for RMS
         mod_sq = mod_signal**2
-        car_sq = filtered**2 # Carrier power reference
+        car_sq = filtered**2  # Carrier power reference
 
         kernel = np.ones(block_size) / block_size
-        mod_rms = np.sqrt(signal.fftconvolve(mod_sq, kernel, mode='valid'))
-        car_rms = np.sqrt(signal.fftconvolve(car_sq, kernel, mode='valid'))
+        mod_rms = np.sqrt(signal.fftconvolve(mod_sq, kernel, mode="valid"))
+        car_rms = np.sqrt(signal.fftconvolve(car_sq, kernel, mode="valid"))
 
         # Downsample
         mod_rms = mod_rms[::step_size]
         car_rms = car_rms[::step_size]
 
         # Modulation Index m = mod / car
-        # Roughness ~ m (referenced to 100% mod at 1kHz. 
+        # Roughness ~ m (referenced to 100% mod at 1kHz.
         # Our logic gives m=1 for 100% mod.
         # So R ~ m (approx).
 
         # Avoid div zero
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             m = mod_rms / (car_rms + 1e-9)
             m[car_rms < 1e-4] = 0
 
         # Calibration (Approximation)
-        # 1 asper ~ 100% mod at 1kHz. 
+        # 1 asper ~ 100% mod at 1kHz.
         # Our logic gives m=1 for 100% mod.
         # So R ~ m (approx).
         r_series = m
 
-        return {
-            "mean_roughness": np.mean(r_series),
-            "roughness_series": r_series,
-            "roughness_step": step_sec
-        }
+        return {"mean_roughness": np.mean(r_series), "roughness_series": r_series, "roughness_step": step_sec}
 
     def _calc_tonality(self, audio, sr):
         # Tonality via Spectral Flatness Measure (SFM)
@@ -418,13 +408,13 @@ class AnalysisWorker(QThread):
         noverlap = int(nperseg // 2)
 
         # STFT
-        f, t, Zxx = signal.stft(audio, fs=sr, window='hann', nperseg=nperseg, noverlap=noverlap)
-        mag_sq = np.abs(Zxx)**2 + 1e-12 # Power
+        f, t, Zxx = signal.stft(audio, fs=sr, window="hann", nperseg=nperseg, noverlap=noverlap)
+        mag_sq = np.abs(Zxx) ** 2 + 1e-12  # Power
 
         # Define Critical Bands (Bark scale approx)
         # Using a simplified 24-band mapping
         # Bark = 13*atan(0.00076*f) + 3.5*atan((f/7500)^2)
-        barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500)**2)
+        barks_f = 13 * np.arctan(0.00076 * f) + 3.5 * np.arctan((f / 7500) ** 2)
         bark_indices = np.floor(barks_f).astype(int)
 
         n_bands = 24
@@ -435,7 +425,7 @@ class AnalysisWorker(QThread):
 
         for b in range(n_bands):
             # Find bins in this band
-            mask = (bark_indices == b)
+            mask = bark_indices == b
             if not np.any(mask):
                 continue
 
@@ -483,14 +473,11 @@ class AnalysisWorker(QThread):
 
         step = (nperseg - noverlap) / sr
 
-        return {
-            "mean_tonality": np.mean(global_tonality),
-            "tonality_series": global_tonality,
-            "tonality_step": step
-        }
+        return {"mean_tonality": np.mean(global_tonality), "tonality_series": global_tonality, "tonality_step": step}
 
 
 # --- Widget ---
+
 
 class SoundQualityAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -521,18 +508,15 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.samplerate = 48000
         # Playback State
         self.is_playing = False
-        self.playback_position = 0 # In samples
+        self.playback_position = 0  # In samples
         self.callback_id = None
         self.playback_timer = QTimer()
-        self.playback_timer.setInterval(50) # 20 fps update
+        self.playback_timer.setInterval(50)  # 20 fps update
         self.playback_timer.timeout.connect(self.update_playback_cursor)
 
-        self.cursors = [] # List of InfiniteLines
+        self.cursors = []  # List of InfiniteLines
 
         self.init_ui()
-
-
-
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -648,7 +632,8 @@ class SoundQualityAnalyzerWidget(QWidget):
                 while layout.count():
                     item = layout.takeAt(0)
                     w = item.widget()
-                    if w: w.deleteLater()
+                    if w:
+                        w.deleteLater()
 
         # Reset references
         self.p1 = None
@@ -658,7 +643,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.cursors = []
 
     def start_analysis(self):
-        if not hasattr(self, 'current_file'):
+        if not hasattr(self, "current_file"):
             return
 
         self.analyze_btn.setEnabled(False)
@@ -669,7 +654,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.clear_plots()
 
         # Stop playback if running
-        if hasattr(self, 'stop_playback'):
+        if hasattr(self, "stop_playback"):
             self.stop_playback()
 
         if self.worker is not None and self.worker.isRunning():
@@ -692,7 +677,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Store for playback
         if "audio_data" in results:
-            self.audio_data = results["audio_data"] # (samples, ch) or (samples,)
+            self.audio_data = results["audio_data"]  # (samples, ch) or (samples,)
             self.samplerate = results["samplerate"]
             self.playback_position = 0
             self.is_playing = False
@@ -717,10 +702,11 @@ class SoundQualityAnalyzerWidget(QWidget):
         # Clear grid
         # Note: Removing widgets from layout is tedious in Qt.
         # Let's just hide or delete properly.
-        while self.summary_grid.count() > 5: # Keep headers
+        while self.summary_grid.count() > 5:  # Keep headers
             item = self.summary_grid.takeAt(5)
             w = item.widget()
-            if w: w.deleteLater()
+            if w:
+                w.deleteLater()
 
         row = 1
         for ch in results["channels"]:
@@ -742,56 +728,56 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Loudness Plot (Tab 1)
         p1 = pg.PlotWidget(title=tr("Loudness (Momentary)"))
-        p1.setLabel('left', 'LUFS')
-        p1.setLabel('bottom', 'Time', units='s')
+        p1.setLabel("left", "LUFS")
+        p1.setLabel("bottom", "Time", units="s")
         p1.showGrid(y=True)
         p1.addLegend()
 
         # Sharpness Plot (Tab 2)
         p2 = pg.PlotWidget(title=tr("Sharpness (Zwicker)"))
-        p2.setLabel('left', 'acum')
-        p2.setLabel('bottom', 'Time', units='s')
+        p2.setLabel("left", "acum")
+        p2.setLabel("bottom", "Time", units="s")
         p2.showGrid(y=True)
         p2.addLegend()
         p2.setXLink(p1)
 
         # Roughness Plot (Tab 3)
         p3 = pg.PlotWidget(title=tr("Roughness"))
-        p3.setLabel('left', 'asper')
-        p3.setLabel('bottom', 'Time', units='s')
+        p3.setLabel("left", "asper")
+        p3.setLabel("bottom", "Time", units="s")
         p3.showGrid(y=True)
         p3.addLegend()
         p3.setXLink(p1)
 
         # Tonality Plot (Tab 4)
         p4 = pg.PlotWidget(title=tr("Tonality"))
-        p4.setLabel('left', 'SFM inv')
-        p4.setLabel('bottom', 'Time', units='s')
+        p4.setLabel("left", "SFM inv")
+        p4.setLabel("bottom", "Time", units="s")
         p4.showGrid(y=True)
         p4.addLegend()
         p4.setXLink(p1)
 
-        colors = ['c', 'm', 'g', 'y']
+        colors = ["c", "m", "g", "y"]
 
         for i, ch in enumerate(results["channels"]):
-             c = colors[i % len(colors)]
-             name = ch["name"]
+            c = colors[i % len(colors)]
+            name = ch["name"]
 
-             # Loudness
-             t_l = np.arange(len(ch["lufs_series"])) * ch["lufs_step"]
-             p1.plot(t_l, ch["lufs_series"], pen=c, name=name)
+            # Loudness
+            t_l = np.arange(len(ch["lufs_series"])) * ch["lufs_step"]
+            p1.plot(t_l, ch["lufs_series"], pen=c, name=name)
 
-             # Sharpness
-             t_s = np.arange(len(ch["sharpness_series"])) * ch["sharpness_step"]
-             p2.plot(t_s, ch["sharpness_series"], pen=c, name=name)
+            # Sharpness
+            t_s = np.arange(len(ch["sharpness_series"])) * ch["sharpness_step"]
+            p2.plot(t_s, ch["sharpness_series"], pen=c, name=name)
 
-             # Roughness
-             t_r = np.arange(len(ch["roughness_series"])) * ch["roughness_step"]
-             p3.plot(t_r, ch["roughness_series"], pen=c, name=name)
+            # Roughness
+            t_r = np.arange(len(ch["roughness_series"])) * ch["roughness_step"]
+            p3.plot(t_r, ch["roughness_series"], pen=c, name=name)
 
-             # Tonality
-             t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
-             p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
+            # Tonality
+            t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
+            p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
 
         self.p1 = p1
         self.p2 = p2
@@ -806,19 +792,20 @@ class SoundQualityAnalyzerWidget(QWidget):
         # Add cursors
         self.cursors = []
         for p in [self.p1, self.p2, self.p3, self.p4]:
-            if p is None: continue
+            if p is None:
+                continue
             # Click event
             p.scene().sigMouseClicked.connect(self.on_plot_clicked)
 
             # Add cursor
-            line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen('y', width=2))
+            line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen("y", width=2))
             p.addItem(line)
             self.cursors.append(line)
 
     # --- Playback Logic ---
 
     def toggle_playback(self):
-        if not hasattr(self, 'audio_data') or self.audio_data is None:
+        if not hasattr(self, "audio_data") or self.audio_data is None:
             return
 
         if self.is_playing:
@@ -844,8 +831,8 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.is_playing = False
         self.play_btn.setText("▶")
         if self.callback_id is not None:
-             self.module.audio_engine.unregister_callback(self.callback_id)
-             self.callback_id = None
+            self.module.audio_engine.unregister_callback(self.callback_id)
+            self.callback_id = None
         self.playback_timer.stop()
         self.playback_position = 0
         self.update_playback_cursor()
@@ -890,17 +877,18 @@ class SoundQualityAnalyzerWidget(QWidget):
                 outdata[:n, in_ch:] = 0
 
         if n < frames:
-             outdata[n:, :] = 0
+            outdata[n:, :] = 0
 
         self.playback_position += n
 
     def update_playback_cursor(self):
-        if self.audio_data is None: return
+        if self.audio_data is None:
+            return
 
         # Check if finished
         if self.playback_position >= len(self.audio_data):
-             self.stop_playback()
-             return
+            self.stop_playback()
+            return
 
         t = self.playback_position / self.samplerate
 
@@ -912,22 +900,23 @@ class SoundQualityAnalyzerWidget(QWidget):
         if self.chk_follow.isChecked() and self.is_playing and self.p1:
             # Check if cursor is visible in the first plot (all are linked)
             vb = self.p1.plotItem.vb
-            view_range = vb.viewRange()[0] # x range (min, max)
+            view_range = vb.viewRange()[0]  # x range (min, max)
 
             # Define margin (e.g. 5%)
             width = view_range[1] - view_range[0]
             margin = width * 0.05
 
             if t > view_range[1] - margin:
-                 # Shift view
-                 vb.setXRange(t - margin, t + width - margin, padding=0)
+                # Shift view
+                vb.setXRange(t - margin, t + width - margin, padding=0)
 
             elif t < view_range[0]:
-                 # Should not happen on playback, but maybe seeked back
-                 vb.setXRange(t - margin, t + width - margin, padding=0)
+                # Should not happen on playback, but maybe seeked back
+                vb.setXRange(t - margin, t + width - margin, padding=0)
 
     def on_plot_clicked(self, event):
-        if self.audio_data is None: return
+        if self.audio_data is None:
+            return
 
         # Determine which plot was clicked
         target_plot = None
@@ -945,9 +934,11 @@ class SoundQualityAnalyzerWidget(QWidget):
         pos = target_plot.plotItem.vb.mapSceneToView(event.scenePos())
         t = pos.x()
 
-        if t < 0: t = 0
+        if t < 0:
+            t = 0
         max_t = len(self.audio_data) / self.samplerate
-        if t > max_t: t = max_t
+        if t > max_t:
+            t = max_t
 
         self.playback_position = int(t * self.samplerate)
         self.update_playback_cursor()
@@ -959,5 +950,3 @@ class SoundQualityAnalyzerWidget(QWidget):
             self.worker.cancel()
             self.worker.wait()
         super().closeEvent(event)
-
-

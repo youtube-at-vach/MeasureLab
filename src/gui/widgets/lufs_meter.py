@@ -28,7 +28,7 @@ class LufsMeter(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.sample_rate = 48000 # Default, updated on start
+        self.sample_rate = 48000  # Default, updated on start
 
         # Use a deep floor so very low-noise devices don't collapse to -INF.
         # This affects only dBFS-related meters (RMS/Peak and C-weighted variants).
@@ -47,8 +47,8 @@ class LufsMeter(MeasurementModule):
         self.c_zi_r = None
 
         # Buffers / windows
-        self.momentary_window = 0.4 # 400ms
-        self.short_term_window = 3.0 # 3s
+        self.momentary_window = 0.4  # 400ms
+        self.short_term_window = 3.0  # 3s
         self.buffer_size_m = 0
         self.buffer_size_s = 0
 
@@ -252,12 +252,12 @@ class LufsMeter(MeasurementModule):
             else:
                 first = n - pos
                 old1 = ring[pos:]
-                old2 = ring[:(end - n)]
+                old2 = ring[: (end - n)]
                 sum_p -= float(np.sum(old1, dtype=np.float64))
                 sum_p -= float(np.sum(old2, dtype=np.float64))
 
                 ring[pos:] = p_chunk[:first]
-                ring[:(end - n)] = p_chunk[first:]
+                ring[: (end - n)] = p_chunk[first:]
                 sum_p += float(np.sum(p_chunk[:first], dtype=np.float64))
                 sum_p += float(np.sum(p_chunk[first:], dtype=np.float64))
 
@@ -275,7 +275,7 @@ class LufsMeter(MeasurementModule):
                 r_channel = indata[:, 1]
             elif num_channels == 1:
                 l_channel = indata[:, 0]
-                r_channel = indata[:, 0] # Duplicate mono
+                r_channel = indata[:, 0]  # Duplicate mono
             else:
                 # Should not happen if stream is active
                 l_channel = np.zeros(frames)
@@ -413,6 +413,7 @@ class LufsMeter(MeasurementModule):
             return 0.0
         return self._i_sample_count / float(self.sample_rate)
 
+
 class LufsMeterWidget(QWidget):
     def __init__(self, module: LufsMeter):
         super().__init__()
@@ -422,7 +423,7 @@ class LufsMeterWidget(QWidget):
         self._show_spl = False
 
         # History for plotting
-        self.history_size = 400 # 20s at 50ms interval
+        self.history_size = 400  # 20s at 50ms interval
         self.m_history = np.full(self.history_size, -100.0)
         self.s_history = np.full(self.history_size, -100.0)
 
@@ -433,7 +434,7 @@ class LufsMeterWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
-        self.timer.setInterval(50) # 20 FPS
+        self.timer.setInterval(50)  # 20 FPS
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -468,7 +469,7 @@ class LufsMeterWidget(QWidget):
         # Left
         grid.addWidget(QLabel(tr("L")), 0, 0)
         self.l_bar = QProgressBar()
-        self.l_bar.setRange(-120, 0) # Extended range for low-noise devices
+        self.l_bar.setRange(-120, 0)  # Extended range for low-noise devices
         self.l_bar.setTextVisible(False)
         self.l_bar.setOrientation(Qt.Orientation.Vertical)
         self.l_bar.setFixedSize(30, 200)
@@ -588,19 +589,19 @@ class LufsMeterWidget(QWidget):
 
         # --- Time Series Plot ---
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setLabel('left', tr('LUFS'), units='dB')
-        self.plot_widget.setLabel('bottom', tr('Time'), units='s')
+        self.plot_widget.setLabel("left", tr("LUFS"), units="dB")
+        self.plot_widget.setLabel("bottom", tr("Time"), units="s")
         self.plot_widget.setYRange(-60, 0)
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.setBackground('k')
+        self.plot_widget.setBackground("k")
         self.plot_widget.setFixedHeight(200)
 
         # Curves
-        self.m_curve = self.plot_widget.plot(pen=pg.mkPen('c', width=1), name=tr('Momentary')) # Cyan
-        self.s_curve = self.plot_widget.plot(pen=pg.mkPen('y', width=2), name=tr('Short-Term')) # Yellow
+        self.m_curve = self.plot_widget.plot(pen=pg.mkPen("c", width=1), name=tr("Momentary"))  # Cyan
+        self.s_curve = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name=tr("Short-Term"))  # Yellow
 
         # Target Line
-        self.target_line = pg.InfiniteLine(angle=0, pos=-23, pen=pg.mkPen('g', style=Qt.PenStyle.DashLine))
+        self.target_line = pg.InfiniteLine(angle=0, pos=-23, pen=pg.mkPen("g", style=Qt.PenStyle.DashLine))
         self.plot_widget.addItem(self.target_line)
 
         # Target band (-23 LUFS ±2) for quick visual alignment
@@ -822,9 +823,9 @@ class LufsMeterWidget(QWidget):
         if val > -3:
             color = "red"
         elif val > -12:
-            color = "#aaaa00" # Yellow
+            color = "#aaaa00"  # Yellow
         else:
-            color = "#00ff00" # Green
+            color = "#00ff00"  # Green
         bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
 
     def _set_lufs_bar_color(self, bar, lufs):
@@ -832,7 +833,7 @@ class LufsMeterWidget(QWidget):
         if lufs > -21:
             color = "red"
         elif lufs > -25:
-            color = "#00ff00" # Green (Target)
+            color = "#00ff00"  # Green (Target)
         else:
-            color = "#aaaa00" # Yellow/Orange
+            color = "#aaaa00"  # Yellow/Orange
         bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")

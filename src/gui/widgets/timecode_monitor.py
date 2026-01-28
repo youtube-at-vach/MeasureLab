@@ -37,10 +37,11 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 # Constants
-SYNC_WORD = 0xBFFC # 1011 1111 1111 1100 (Reverse of 0011 1111 1111 1101 ?)
+SYNC_WORD = 0xBFFC  # 1011 1111 1111 1100 (Reverse of 0011 1111 1111 1101 ?)
 # SMPTE 12M sync word is 0011 1111 1111 1101 (forward) -> 0x3FFD
 # When read simply from bit stream it might appear differently depending on shift direction.
 # We will check patterns dynamically.
+
 
 @dataclass
 class _LTCGenState:
@@ -56,6 +57,7 @@ class _LTCGenState:
     jam_base_total_frames: Optional[int] = None
     jam_base_fps: Optional[float] = None
 
+
 @dataclass
 class _JamMemory:
     valid: bool = False
@@ -63,6 +65,7 @@ class _JamMemory:
     captured_at: float = 0.0
     fps: float = 30.0
     total_frames: int = 0
+
 
 @dataclass
 class _TimecodeChannelState:
@@ -91,14 +94,16 @@ class _TimecodeChannelState:
     last_input_latency_sec: float = 0.0
     last_output_latency_sec: float = 0.0
 
+
 class LTCEncoder:
     """Generates LTC audio samples."""
+
     def __init__(self, sample_rate: int, fps: float):
         self.sample_rate = sample_rate
         self.fps = fps
         self.samples_per_frame = sample_rate / fps
         self.current_frame_samples = 0
-        self.phase = 1.0 # -1.0 or 1.0
+        self.phase = 1.0  # -1.0 or 1.0
 
         # State
         self.total_frames = 0
@@ -162,7 +167,7 @@ class LTCEncoder:
         set_b(57, hh_t & 2)
 
         # Sync Word (Bits 64-79): 0011 1111 1111 1101
-        sync_pattern = [0,0,1,1, 1,1,1,1, 1,1,1,1, 1,1,0,1]
+        sync_pattern = [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1]
         for i, b in enumerate(sync_pattern):
             bits[64 + i] = b
 
@@ -173,7 +178,7 @@ class LTCEncoder:
         # Calculate samples per bit (80 bits total)
         # Note: Samples per bit is not integer usually. We need sub-sample precision or just accumulate phase.
 
-        samples = np.zeros(int(self.samples_per_frame) + 2, dtype=np.float32) # Over allocate slightly
+        samples = np.zeros(int(self.samples_per_frame) + 2, dtype=np.float32)  # Over allocate slightly
 
         samples_per_bit = self.samples_per_frame / 80.0
 
@@ -181,7 +186,7 @@ class LTCEncoder:
         # Ideally, we should treat time as continuous to avoid jitter accumulation over frames.
         # But for snippet generation, let's keep it simple.
 
-        t = 0.0 # Time in bits
+        t = 0.0  # Time in bits
         out_idx = 0
 
         current_level = self.phase
@@ -218,7 +223,7 @@ class LTCEncoder:
                     samples[out_idx : out_idx + count1] = current_level
                     out_idx += count1
 
-                current_level = -current_level # Mid transition
+                current_level = -current_level  # Mid transition
 
                 count2 = end_sample - mid_sample
                 if count2 > 0:
@@ -232,8 +237,10 @@ class LTCEncoder:
 
         return samples[:out_idx]
 
+
 class LTCDecoder:
     """Decodes audio samples to Timecode."""
+
     def __init__(self, sample_rate: float, fps: float):
         self.sample_rate = sample_rate
         self.fps = fps
@@ -346,7 +353,8 @@ class LTCDecoder:
         # Long pulse ~ 2 * Short pulse
 
         # Initial guess or update
-        if self.pulse_avg == 0: self.pulse_avg = d
+        if self.pulse_avg == 0:
+            self.pulse_avg = d
 
         # Use simple IIR for average tracking
         # We assume we track the Short pulse duration
@@ -373,7 +381,6 @@ class LTCDecoder:
                     frame_decoded = True
                 self.last_bit_is_one = False
             else:
-                s = self.last_bit_is_one
                 self.last_bit_is_one = True
 
             self.pulse_avg = 0.95 * self.pulse_avg + 0.05 * d
@@ -383,7 +390,7 @@ class LTCDecoder:
     def _push_bit(self, bit: int):
         self.decoded_bits.append(bit)
         if len(self.decoded_bits) > 160:
-             self.decoded_bits.pop(0)
+            self.decoded_bits.pop(0)
         self.sync_val = ((self.sync_val << 1) | bit) & 0xFFFF
 
     def _check_sync(self) -> bool:
@@ -406,7 +413,7 @@ class LTCDecoder:
             v = 0
             for i in range(vid_len):
                 if bits[start + i]:
-                    v |= (1 << i)
+                    v |= 1 << i
             return v
 
         ff_ones = val(0, 4)
@@ -427,6 +434,7 @@ class LTCDecoder:
 
         self.decoded_tc = f"{hh:02}:{mm:02}:{ss:02}:{ff:02}"
         self.locked = True
+
 
 class TimecodeMonitor(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -661,7 +669,9 @@ class TimecodeMonitor(MeasurementModule):
                 except Exception:
                     output_dac_epoch = None
 
-            self._last_stream_epoch = float(output_dac_epoch) if output_dac_epoch is not None else float(current_t_epoch)
+            self._last_stream_epoch = (
+                float(output_dac_epoch) if output_dac_epoch is not None else float(current_t_epoch)
+            )
 
             for ch in self.channels.values():
                 if indata is not None and getattr(indata, "shape", None) is not None:
@@ -747,7 +757,14 @@ class TimecodeMonitor(MeasurementModule):
                                             diff = int(exp_total) - int(dec_total)
 
                                         with self._cal_lock:
-                                            self._cal_samples.append((float(ref_t), int(diff), float(getattr(ch, "last_input_latency_sec", 0.0)), float(getattr(ch, "last_output_latency_sec", 0.0))))
+                                            self._cal_samples.append(
+                                                (
+                                                    float(ref_t),
+                                                    int(diff),
+                                                    float(getattr(ch, "last_input_latency_sec", 0.0)),
+                                                    float(getattr(ch, "last_output_latency_sec", 0.0)),
+                                                )
+                                            )
                                             while len(self._cal_samples) > 256:
                                                 self._cal_samples.popleft()
 
@@ -857,14 +874,14 @@ class TimecodeMonitor(MeasurementModule):
             to_copy = remaining_out if remaining_out < remaining_in else remaining_in
 
             if to_copy > 0:
-                out[out_pos:out_pos + to_copy] = ch.gen.gen_current[ch.gen.gen_pos:ch.gen.gen_pos + to_copy]
+                out[out_pos : out_pos + to_copy] = ch.gen.gen_current[ch.gen.gen_pos : ch.gen.gen_pos + to_copy]
                 out_pos += to_copy
                 ch.gen.gen_pos += to_copy
 
         return out
 
     def _generate_next_frame(self, ch: _TimecodeChannelState):
-        if ch.generator_mode == 'jam':
+        if ch.generator_mode == "jam":
             fps = float(ch.fps) if ch.fps else 30.0
             if fps <= 0:
                 fps = 30.0
@@ -921,7 +938,7 @@ class TimecodeMonitor(MeasurementModule):
 
             ch.gen.frames_generated += 1
 
-        elif ch.generator_mode == 'free':
+        elif ch.generator_mode == "free":
             # Relative to start
             if ch.gen.free_run_start_time == 0:
                 ch.gen.free_run_start_time = time.time()
@@ -1001,25 +1018,25 @@ class TimecodeMonitor(MeasurementModule):
         self.is_running = False
 
     def process(self):
-        l = self.channels["L"]
-        r = self.channels["R"]
+        left = self.channels["L"]
+        right = self.channels["R"]
         return {
-            "fps": float(l.fps),
+            "fps": float(left.fps),
             "L": {
-                "fps": float(l.fps),
-                "fps_est": float(l.estimated_fps),
-                "tc": self._get_display_timecode(l.decoded_tc, l.input_offset_frames, key="L"),
-                "tc_raw": l.decoded_tc,
-                "locked": bool(l.locked),
-                "level": float(l.input_level_db),
+                "fps": float(left.fps),
+                "fps_est": float(left.estimated_fps),
+                "tc": self._get_display_timecode(left.decoded_tc, left.input_offset_frames, key="L"),
+                "tc_raw": left.decoded_tc,
+                "locked": bool(left.locked),
+                "level": float(left.input_level_db),
             },
             "R": {
-                "fps": float(r.fps),
-                "fps_est": float(r.estimated_fps),
-                "tc": self._get_display_timecode(r.decoded_tc, r.input_offset_frames, key="R"),
-                "tc_raw": r.decoded_tc,
-                "locked": bool(r.locked),
-                "level": float(r.input_level_db),
+                "fps": float(right.fps),
+                "fps_est": float(right.estimated_fps),
+                "tc": self._get_display_timecode(right.decoded_tc, right.input_offset_frames, key="R"),
+                "tc_raw": right.decoded_tc,
+                "locked": bool(right.locked),
+                "level": float(right.input_level_db),
             },
         }
 
@@ -1072,12 +1089,14 @@ class TimecodeMonitor(MeasurementModule):
             return None
 
         diffs = [int(s[1]) for s in samples]
-        in_lat = [float(s[2]) for s in samples]
+        [float(s[2]) for s in samples]
         out_lat = [float(s[3]) for s in samples]
 
         diffs.sort()
         mid = len(diffs) // 2
-        total_delay_frames = int(diffs[mid]) if (len(diffs) % 2 == 1) else int(round((diffs[mid - 1] + diffs[mid]) / 2.0))
+        total_delay_frames = (
+            int(diffs[mid]) if (len(diffs) % 2 == 1) else int(round((diffs[mid - 1] + diffs[mid]) / 2.0))
+        )
 
         out_lat.sort()
         mid2 = len(out_lat) // 2
@@ -1196,7 +1215,7 @@ class TimecodeMonitor(MeasurementModule):
 
         samples = [(t, f) for (t, f) in list(ch.jam_history) if (float(now) - float(t)) <= window]
         if len(samples) < int(min_samples):
-            samples = list(ch.jam_history)[-max(int(min_samples), 1):]
+            samples = list(ch.jam_history)[-max(int(min_samples), 1) :]
         if len(samples) < int(min_samples):
             return False
 
@@ -1228,12 +1247,16 @@ class TimecodeMonitor(MeasurementModule):
         abs_dev = [abs(o - med) for o in offsets]
         abs_dev.sort()
         mad_mid = len(abs_dev) // 2
-        mad = float(abs_dev[mad_mid]) if (len(abs_dev) % 2 == 1) else float((abs_dev[mad_mid - 1] + abs_dev[mad_mid]) / 2.0)
+        mad = (
+            float(abs_dev[mad_mid])
+            if (len(abs_dev) % 2 == 1)
+            else float((abs_dev[mad_mid - 1] + abs_dev[mad_mid]) / 2.0)
+        )
         if mad <= 1e-9:
             mad = 0.0
 
         keep: list[tuple[float, int]] = []
-        for (t, f) in unwrapped:
+        for t, f in unwrapped:
             o = float(f) - (float(fps) * float(t))
             if mad == 0.0:
                 keep.append((float(t), int(f)))
@@ -1356,7 +1379,9 @@ class TimecodeMonitor(MeasurementModule):
             ff = nominal_fps - 1
         return f"{hh:02}:{mm:02}:{ss:02}:{ff:02}"
 
-    def _get_display_timecode(self, tc: Optional[str] = None, input_offset_ms: Optional[float] = None, key: str = "L") -> str:
+    def _get_display_timecode(
+        self, tc: Optional[str] = None, input_offset_ms: Optional[float] = None, key: str = "L"
+    ) -> str:
         """Return display timecode string.
 
         Applies optional input delay compensation and optional timezone display conversion.
@@ -1390,7 +1415,7 @@ class TimecodeMonitor(MeasurementModule):
             if nominal_fps <= 0:
                 nominal_fps = 30
 
-            offset_seconds = (float(input_offset_ms) / float(fps))
+            offset_seconds = float(input_offset_ms) / float(fps)
 
             # Seconds-of-day from decoded LTC.
             total_seconds = (hh * 3600.0) + (mm * 60.0) + float(min(ss, 59)) + (float(ff) / fps)
@@ -1521,6 +1546,7 @@ class TimecodeMonitor(MeasurementModule):
     def display_tz_name(self, v: str):
         self.channels["L"].display_tz_name = str(v)
 
+
 class TimecodeMonitorWidget(QWidget):
     def __init__(self, module: TimecodeMonitor):
         super().__init__()
@@ -1557,7 +1583,9 @@ class TimecodeMonitorWidget(QWidget):
         self.level_label_L = QLabel("-- dB")
         self.level_label_R = QLabel("-- dB")
 
-        def build_display_frame(title: str, key: str, tc_label: QLabel, sync_led: QLabel, fps_label: QLabel, level_label: QLabel):
+        def build_display_frame(
+            title: str, key: str, tc_label: QLabel, sync_led: QLabel, fps_label: QLabel, level_label: QLabel
+        ):
             frame = QFrame()
             frame.setStyleSheet("background-color: #111; border: 2px solid #555; border-radius: 8px;")
             v = QVBoxLayout(frame)
@@ -1590,7 +1618,9 @@ class TimecodeMonitorWidget(QWidget):
             self._jam_capture_msg[key] = jam_msg
 
             status = QHBoxLayout()
-            sync_led.setStyleSheet("color: #333; font-weight: bold; border: 1px solid #333; padding: 2px 5px; border-radius:4px;")
+            sync_led.setStyleSheet(
+                "color: #333; font-weight: bold; border: 1px solid #333; padding: 2px 5px; border-radius:4px;"
+            )
             status.addWidget(sync_led)
 
             fps_label.setStyleSheet("color: #888;")
@@ -1602,8 +1632,16 @@ class TimecodeMonitorWidget(QWidget):
             return frame
 
         self._jam_capture_msg = {}
-        display_row.addWidget(build_display_frame(tr("Left"), "L", self.tc_label_L, self.sync_led_L, self.fps_est_label_L, self.level_label_L))
-        display_row.addWidget(build_display_frame(tr("Right"), "R", self.tc_label_R, self.sync_led_R, self.fps_est_label_R, self.level_label_R))
+        display_row.addWidget(
+            build_display_frame(
+                tr("Left"), "L", self.tc_label_L, self.sync_led_L, self.fps_est_label_L, self.level_label_L
+            )
+        )
+        display_row.addWidget(
+            build_display_frame(
+                tr("Right"), "R", self.tc_label_R, self.sync_led_R, self.fps_est_label_R, self.level_label_R
+            )
+        )
         layout.addLayout(display_row)
 
         # Monitor start/stop (ALSA/standard modes can benefit from explicitly stopping).
@@ -1712,27 +1750,35 @@ class TimecodeMonitorWidget(QWidget):
 
     def update_ui(self):
         data = self.module.process()
-        l = data.get("L", {})
-        r = data.get("R", {})
+        left = data.get("L", {})
+        right = data.get("R", {})
 
-        self.tc_label_L.setText(l.get("tc", "--:--:--:--"))
-        self.tc_label_R.setText(r.get("tc", "--:--:--:--"))
+        self.tc_label_L.setText(left.get("tc", "--:--:--:--"))
+        self.tc_label_R.setText(right.get("tc", "--:--:--:--"))
 
-        if l.get("locked", False):
-            self.sync_led_L.setStyleSheet("color: #0f0; font-weight: bold; border: 1px solid #0f0; background-color: #003300; padding: 2px 5px; border-radius:4px;")
+        if left.get("locked", False):
+            self.sync_led_L.setStyleSheet(
+                "color: #0f0; font-weight: bold; border: 1px solid #0f0; background-color: #003300; padding: 2px 5px; border-radius:4px;"
+            )
         else:
-            self.sync_led_L.setStyleSheet("color: #555; font-weight: normal; border: 1px solid #555; padding: 2px 5px; border-radius:4px;")
+            self.sync_led_L.setStyleSheet(
+                "color: #555; font-weight: normal; border: 1px solid #555; padding: 2px 5px; border-radius:4px;"
+            )
 
-        if r.get("locked", False):
-            self.sync_led_R.setStyleSheet("color: #0f0; font-weight: bold; border: 1px solid #0f0; background-color: #003300; padding: 2px 5px; border-radius:4px;")
+        if right.get("locked", False):
+            self.sync_led_R.setStyleSheet(
+                "color: #0f0; font-weight: bold; border: 1px solid #0f0; background-color: #003300; padding: 2px 5px; border-radius:4px;"
+            )
         else:
-            self.sync_led_R.setStyleSheet("color: #555; font-weight: normal; border: 1px solid #555; padding: 2px 5px; border-radius:4px;")
+            self.sync_led_R.setStyleSheet(
+                "color: #555; font-weight: normal; border: 1px solid #555; padding: 2px 5px; border-radius:4px;"
+            )
 
-        self.level_label_L.setText(tr("{0} dB").format(f"{float(l.get('level', -100.0)):.1f}"))
-        self.level_label_R.setText(tr("{0} dB").format(f"{float(r.get('level', -100.0)):.1f}"))
+        self.level_label_L.setText(tr("{0} dB").format(f"{float(left.get('level', -100.0)):.1f}"))
+        self.level_label_R.setText(tr("{0} dB").format(f"{float(right.get('level', -100.0)):.1f}"))
 
-        fpsl = float(l.get("fps_est", 0.0))
-        fpsr = float(r.get("fps_est", 0.0))
+        fpsl = float(left.get("fps_est", 0.0))
+        fpsr = float(right.get("fps_est", 0.0))
         self.fps_est_label_L.setText(tr("FPS: {0}").format(self._format_fps_est("L", fpsl)))
         self.fps_est_label_R.setText(tr("FPS: {0}").format(self._format_fps_est("R", fpsr)))
 
@@ -1871,14 +1917,14 @@ class TimecodeMonitorWidget(QWidget):
         if getattr(self, "ltc_offset_label", None) is None:
             return
 
-        l = self.module.channels.get("L")
-        r = self.module.channels.get("R")
-        if l is None or r is None:
+        left = self.module.channels.get("L")
+        right = self.module.channels.get("R")
+        if left is None or right is None:
             self.ltc_offset_label.setText(tr("CH Δ (R-L): --"))
             return
 
-        fps_l = float(getattr(l, "fps", 0.0) or 0.0)
-        fps_r = float(getattr(r, "fps", 0.0) or 0.0)
+        fps_l = float(getattr(left, "fps", 0.0) or 0.0)
+        fps_r = float(getattr(right, "fps", 0.0) or 0.0)
         nominal_l = int(round(fps_l)) if fps_l > 0 else 0
         nominal_r = int(round(fps_r)) if fps_r > 0 else 0
 
@@ -1890,20 +1936,20 @@ class TimecodeMonitorWidget(QWidget):
         lf = None
         rf = None
         try:
-            if l.jam_history:
-                lf = int(l.jam_history[-1][1])
+            if left.jam_history:
+                lf = int(left.jam_history[-1][1])
         except Exception:
             lf = None
         try:
-            if r.jam_history:
-                rf = int(r.jam_history[-1][1])
+            if right.jam_history:
+                rf = int(right.jam_history[-1][1])
         except Exception:
             rf = None
 
         if lf is None or rf is None:
             # Fallback: parse decoded TC strings.
-            pl = self.module._parse_tc(getattr(l, "decoded_tc", ""))
-            pr = self.module._parse_tc(getattr(r, "decoded_tc", ""))
+            pl = self.module._parse_tc(getattr(left, "decoded_tc", ""))
+            pr = self.module._parse_tc(getattr(right, "decoded_tc", ""))
             if pl is None or pr is None:
                 self.ltc_offset_label.setText(tr("CH Δ (R-L): --"))
                 return
@@ -1970,7 +2016,9 @@ class TimecodeMonitorWidget(QWidget):
             tz_combo.addItem(current_value, current_value)
             idx = tz_combo.findData(current_value)
         tz_combo.setCurrentIndex(idx if idx >= 0 else 0)
-        tz_combo.currentTextChanged.connect(lambda text="", k=key, c=tz_combo: self._on_tz_changed(k, text, c.currentData()))
+        tz_combo.currentTextChanged.connect(
+            lambda text="", k=key, c=tz_combo: self._on_tz_changed(k, text, c.currentData())
+        )
         tz_combo.setEnabled(bool(ch.display_tz_enabled))
         sl.addWidget(tz_combo, 1, 3)
         self._tz_combos[key] = tz_combo
@@ -1992,7 +2040,9 @@ class TimecodeMonitorWidget(QWidget):
             mode_combo.setCurrentIndex(1)
         else:
             mode_combo.setCurrentIndex(2)
-        mode_combo.currentIndexChanged.connect(lambda _=0, k=key, c=mode_combo: self._on_mode_changed(k, c.currentData()))
+        mode_combo.currentIndexChanged.connect(
+            lambda _=0, k=key, c=mode_combo: self._on_mode_changed(k, c.currentData())
+        )
         gl.addWidget(mode_combo, 0, 1)
         self._mode_combos[key] = mode_combo
 

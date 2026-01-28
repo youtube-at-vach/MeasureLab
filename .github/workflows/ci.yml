@@ -106,11 +106,11 @@ jobs:
 
       - name: Lint (ruff)
         run: |
-          ruff check src scripts tests
+          ruff check .
 
       - name: Type check (mypy)
         run: |
-          mypy src
+          mypy src main_gui.py
 
       - name: Check Translation Keys
         continue-on-error: true

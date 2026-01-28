@@ -27,11 +27,12 @@ from src.measurement_modules.base import MeasurementModule
 
 
 class NetworkAnalyzerSignals(QObject):
-    update_plot = pyqtSignal(float, float, float) # freq, mag_db, phase_deg
+    update_plot = pyqtSignal(float, float, float)  # freq, mag_db, phase_deg
     sweep_finished = pyqtSignal()
     progress = pyqtSignal(int)
     latency_result = pyqtSignal(float)
     error = pyqtSignal(str)
+
 
 class PlayRecSession:
     def __init__(self, audio_engine, output_data, input_channels=1):
@@ -68,7 +69,7 @@ class PlayRecSession:
             chunk = min(frames, remaining)
 
             # Output
-            outdata[:chunk, :] = self.output_data[self.current_frame:self.current_frame+chunk, :]
+            outdata[:chunk, :] = self.output_data[self.current_frame : self.current_frame + chunk, :]
             if chunk < frames:
                 outdata[chunk:, :] = 0
 
@@ -76,13 +77,16 @@ class PlayRecSession:
             if indata.shape[1] > 0:
                 # Capture requested number of channels
                 ch_to_copy = min(self.input_channels, indata.shape[1])
-                self.input_data[self.current_frame:self.current_frame+chunk, :ch_to_copy] = indata[:chunk, :ch_to_copy]
+                self.input_data[self.current_frame : self.current_frame + chunk, :ch_to_copy] = indata[
+                    :chunk, :ch_to_copy
+                ]
 
             self.current_frame += chunk
 
             if self.current_frame >= self.total_frames:
                 self.is_complete = True
                 self.completion_event.set()
+
 
 class SweepWorker(QThread):
     def __init__(self, analyzer):
@@ -101,6 +105,7 @@ class SweepWorker(QThread):
     def stop(self):
         self.is_running = False
 
+
 class CalibrationWorker(QThread):
     def __init__(self, analyzer):
         super().__init__()
@@ -108,6 +113,7 @@ class CalibrationWorker(QThread):
 
     def run(self):
         self.analyzer.calibrate_latency()
+
 
 class FastSweepWorker(QThread):
     def __init__(self, analyzer):
@@ -126,6 +132,7 @@ class FastSweepWorker(QThread):
     def stop(self):
         self.is_running = False
 
+
 class NetworkAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -137,19 +144,19 @@ class NetworkAnalyzer(MeasurementModule):
         self.steps_per_octave = 12
         self.steps_per_octave = 12
         self.amplitude = 0.5
-        self.gen_unit = 'Amplitude' # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
+        self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
         self.duration_per_step = 0.5
         self.latency_sec = 0.0
         self.num_averages = 1
 
         # Routing
-        self.output_channel = 'STEREO' # 'L', 'R', 'STEREO'
-        self.input_mode = 'L' # 'L', 'R', 'XFER', 'XTALK_LR', 'XTALK_RL'
+        self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
+        self.input_mode = "L"  # 'L', 'R', 'XFER', 'XTALK_LR', 'XTALK_RL'
         self.ref_channel_index = 0
         self.meas_channel_index = 1
 
         # Fast Sweep Parameters
-        self.sweep_mode = "Fast Chirp" # or "Stepped Sine"
+        self.sweep_mode = "Fast Chirp"  # or "Stepped Sine"
         self.chirp_duration = 1.0
 
         self.worker = None
@@ -194,9 +201,9 @@ class NetworkAnalyzer(MeasurementModule):
         duration = 0.5
 
         t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method='logarithmic')
+        chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method="logarithmic")
         t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method='logarithmic')
+        chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method="logarithmic")
         chirp *= self.get_output_amplitude()
 
         try:
@@ -210,8 +217,8 @@ class NetworkAnalyzer(MeasurementModule):
             rec_data = self.run_play_rec(out_data, input_channels=1)
             recorded = rec_data[:, 0]
 
-            correlation = scipy.signal.correlate(recorded, chirp, mode='full')
-            lags = scipy.signal.correlation_lags(len(recorded), len(chirp), mode='full')
+            correlation = scipy.signal.correlate(recorded, chirp, mode="full")
+            lags = scipy.signal.correlation_lags(len(recorded), len(chirp), mode="full")
             lag = lags[np.argmax(correlation)]
 
             latency_samples = lag
@@ -221,7 +228,7 @@ class NetworkAnalyzer(MeasurementModule):
                 self.latency_sec = 0
 
             self.signals.latency_result.emit(self.latency_sec)
-            print(f"Measured Latency: {self.latency_sec*1000:.2f} ms")
+            print(f"Measured Latency: {self.latency_sec * 1000:.2f} ms")
 
         except Exception as e:
             self.signals.error.emit(f"Calibration failed: {e}")
@@ -249,9 +256,9 @@ class NetworkAnalyzer(MeasurementModule):
     def _prepare_output_buffer(self, signal):
         """Prepares stereo output buffer based on routing."""
         out_data = np.zeros((len(signal), 2), dtype=np.float32)
-        if self.output_channel in ['L', 'STEREO']:
+        if self.output_channel in ["L", "STEREO"]:
             out_data[:, 0] = signal
-        if self.output_channel in ['R', 'STEREO']:
+        if self.output_channel in ["R", "STEREO"]:
             out_data[:, 1] = signal
         return out_data
 
@@ -267,7 +274,6 @@ class NetworkAnalyzer(MeasurementModule):
         T = self.chirp_duration
         L = np.log(self.end_freq / self.start_freq)
 
-
         phase = (w1 * T / L) * (np.exp(t * L / T) - 1)
         chirp = self.get_output_amplitude() * np.sin(phase)
 
@@ -280,7 +286,7 @@ class NetworkAnalyzer(MeasurementModule):
         inv_filter *= window
         inv_filter = np.flip(inv_filter)
 
-        test_conv = scipy.signal.fftconvolve(chirp, inv_filter, mode='full')
+        test_conv = scipy.signal.fftconvolve(chirp, inv_filter, mode="full")
         norm_factor = np.max(np.abs(test_conv))
         if norm_factor > 1e-9:
             inv_filter /= norm_factor
@@ -294,21 +300,23 @@ class NetworkAnalyzer(MeasurementModule):
         out_data = self._prepare_output_buffer(out_signal)
 
         self.signals.progress.emit(10)
-        if not worker.is_running: return
+        if not worker.is_running:
+            return
 
         # Determine input channels
-        input_ch_count = 2 # Always capture stereo to avoid channel mapping issues
+        input_ch_count = 2  # Always capture stereo to avoid channel mapping issues
 
         rec_data = self.run_play_rec(out_data, input_channels=input_ch_count)
 
         self.signals.progress.emit(50)
-        if not worker.is_running: return
+        if not worker.is_running:
+            return
 
         # 4. Process
         def get_ir(signal):
-            return scipy.signal.fftconvolve(signal, inv_filter, mode='full')
+            return scipy.signal.fftconvolve(signal, inv_filter, mode="full")
 
-        if self.input_mode in ['XFER', 'XTALK_LR', 'XTALK_RL', 'XFER_REV']:
+        if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
             # XFER Mode: Ref = Ch0, Meas = Ch1 (Default) or Custom for Crosstalk
             # We assume Ch0 is Reference (e.g. Source Loopback) and Ch1 is Measurement (DUT)
             # Or user can physically patch it.
@@ -333,15 +341,15 @@ class NetworkAnalyzer(MeasurementModule):
             len_win = end - start
 
             win_ref = ir_ref[start:end]
-            win_meas = ir_meas[start:end] # Use same window for Meas
+            win_meas = ir_meas[start:end]  # Use same window for Meas
 
             H_ref = fft_manager.rfft(win_ref)
             H_meas = fft_manager.rfft(win_meas)
-            freqs = fft_manager.rfftfreq(len_win, d=1/sample_rate)
+            freqs = fft_manager.rfftfreq(len_win, d=1 / sample_rate)
 
             # Transfer Function
             # Avoid div by zero
-            with np.errstate(divide='ignore', invalid='ignore'):
+            with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = H_meas / H_ref
                 H_xfer = np.nan_to_num(H_xfer)
 
@@ -359,7 +367,7 @@ class NetworkAnalyzer(MeasurementModule):
         else:
             # Single Channel Mode
             ch_idx = 0
-            if self.input_mode == 'R':
+            if self.input_mode == "R":
                 ch_idx = 1
 
             # If we recorded 1 channel, it's at index 0
@@ -378,7 +386,7 @@ class NetworkAnalyzer(MeasurementModule):
 
             ir_win = ir[start:end]
             H = fft_manager.rfft(ir_win)
-            freqs = fft_manager.rfftfreq(len(ir_win), d=1/sample_rate)
+            freqs = fft_manager.rfftfreq(len(ir_win), d=1 / sample_rate)
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
@@ -387,7 +395,7 @@ class NetworkAnalyzer(MeasurementModule):
             mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
 
             # If not XFER, adjust for output amplitude to show Absolute Level
-            if self.input_mode != 'XFER':
+            if self.input_mode != "XFER":
                 mag_db += 20 * np.log10(self.get_output_amplitude() + 1e-12)
             phase_rad = np.angle(valid_H)
             phase_rad = np.unwrap(phase_rad)
@@ -402,7 +410,8 @@ class NetworkAnalyzer(MeasurementModule):
         # Emit
         step = max(1, len(valid_freqs) // 500)
         for i in range(0, len(valid_freqs), step):
-            if not worker.is_running: break
+            if not worker.is_running:
+                break
             self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i])
 
         self.signals.progress.emit(100)
@@ -412,16 +421,18 @@ class NetworkAnalyzer(MeasurementModule):
         freqs = self._generate_log_freqs(self.start_freq, self.end_freq, self.steps_per_octave)
         total_steps = len(freqs)
 
-        input_ch_count = 2 # Always capture stereo
+        input_ch_count = 2  # Always capture stereo
 
         for i, freq in enumerate(freqs):
-            if not worker.is_running: break
+            if not worker.is_running:
+                break
 
             avg_mag = 0.0
             avg_phase = 0.0 + 0.0j
 
             for _ in range(self.num_averages):
-                if not worker.is_running: break
+                if not worker.is_running:
+                    break
 
                 num_samples = int(sample_rate * self.duration_per_step)
                 num_samples = int(sample_rate * self.duration_per_step)
@@ -436,13 +447,14 @@ class NetworkAnalyzer(MeasurementModule):
 
                 start_idx = int(self.latency_sec * sample_rate)
                 end_idx = start_idx + len(tone)
-                if end_idx > len(rec_data): end_idx = len(rec_data)
+                if end_idx > len(rec_data):
+                    end_idx = len(rec_data)
 
-                if self.input_mode in ['XFER', 'XTALK_LR', 'XTALK_RL', 'XFER_REV']:
+                if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
                     # XFER Analysis
                     ref_seg = rec_data[start_idx:end_idx, self.ref_channel_index]
                     meas_seg = rec_data[start_idx:end_idx, self.meas_channel_index]
-                    tone_seg = tone[:len(ref_seg)]
+                    tone_seg = tone[: len(ref_seg)]
 
                     mag_ref, phase_ref = self._analyze_tone(ref_seg, tone_seg, freq, sample_rate, comp_latency=False)
                     mag_meas, phase_meas = self._analyze_tone(meas_seg, tone_seg, freq, sample_rate, comp_latency=False)
@@ -457,12 +469,13 @@ class NetworkAnalyzer(MeasurementModule):
                 else:
                     # Single Channel
                     ch_idx = 0
-                    if self.input_mode == 'R':
+                    if self.input_mode == "R":
                         ch_idx = 1
-                    if rec_data.shape[1] == 1: ch_idx = 0
+                    if rec_data.shape[1] == 1:
+                        ch_idx = 0
 
                     seg = rec_data[start_idx:end_idx, ch_idx]
-                    tone_seg = tone[:len(seg)]
+                    tone_seg = tone[: len(seg)]
 
                     mag, phase = self._analyze_tone(seg, tone_seg, freq, sample_rate, comp_latency=True)
 
@@ -510,6 +523,7 @@ class NetworkAnalyzer(MeasurementModule):
 
         phase_sys_rad = (phase_sys_rad + np.pi) % (2 * np.pi) - np.pi
         return mag_linear, np.degrees(phase_sys_rad)
+
 
 class NetworkAnalyzerWidget(QWidget):
     def __init__(self, module: NetworkAnalyzer):
@@ -583,13 +597,15 @@ class NetworkAnalyzerWidget(QWidget):
 
         # Freqs
         self.start_spin = QDoubleSpinBox(controls_group)
-        self.start_spin.setRange(10, 20000); self.start_spin.setValue(20)
-        self.start_spin.valueChanged.connect(lambda v: setattr(self.module, 'start_freq', v))
+        self.start_spin.setRange(10, 20000)
+        self.start_spin.setValue(20)
+        self.start_spin.valueChanged.connect(lambda v: setattr(self.module, "start_freq", v))
         form.addRow(tr("Start Freq:"), self.start_spin)
 
         self.end_spin = QDoubleSpinBox(controls_group)
-        self.end_spin.setRange(10, 24000); self.end_spin.setValue(20000)
-        self.end_spin.valueChanged.connect(lambda v: setattr(self.module, 'end_freq', v))
+        self.end_spin.setRange(10, 24000)
+        self.end_spin.setValue(20000)
+        self.end_spin.valueChanged.connect(lambda v: setattr(self.module, "end_freq", v))
         form.addRow(tr("End Freq:"), self.end_spin)
 
         # NOTE: These widgets are shown/hidden immediately in on_mode_changed().
@@ -597,27 +613,32 @@ class NetworkAnalyzerWidget(QWidget):
         # transient top-level window (startup flash).
         self.steps_spin = QDoubleSpinBox(controls_group)
         self.steps_spin.setDecimals(0)
-        self.steps_spin.setRange(1, 48); self.steps_spin.setValue(12)
-        self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, 'steps_per_octave', int(v)))
+        self.steps_spin.setRange(1, 48)
+        self.steps_spin.setValue(12)
+        self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, "steps_per_octave", int(v)))
         self.steps_label = QLabel(tr("Steps/Octave:"), controls_group)
         form.addRow(self.steps_label, self.steps_spin)
 
         self.duration_spin = QDoubleSpinBox(controls_group)
-        self.duration_spin.setRange(0.1, 60.0); self.duration_spin.setValue(1.0)
-        self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, 'chirp_duration', v))
+        self.duration_spin.setRange(0.1, 60.0)
+        self.duration_spin.setValue(1.0)
+        self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, "chirp_duration", v))
         self.duration_label = QLabel(tr("Duration (s):"), controls_group)
         form.addRow(self.duration_label, self.duration_spin)
-        self.duration_label.hide(); self.duration_spin.hide()
+        self.duration_label.hide()
+        self.duration_spin.hide()
 
         # Apply initial visibility/state after controls exist
         self.on_mode_changed(self.mode_combo.currentIndex())
 
         self.amp_spin = QDoubleSpinBox()
-        self.amp_spin.setRange(0, 1); self.amp_spin.setValue(0.5); self.amp_spin.setSingleStep(0.1)
+        self.amp_spin.setRange(0, 1)
+        self.amp_spin.setValue(0.5)
+        self.amp_spin.setSingleStep(0.1)
         self.amp_spin.valueChanged.connect(self.on_amp_spin_changed)
 
         self.gen_unit_combo = QComboBox()
-        self.gen_unit_combo.addItems(['Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'])
+        self.gen_unit_combo.addItems(["Amplitude", "dBFS", "dBV", "dBu", "Vrms", "Vpeak"])
         self.gen_unit_combo.currentTextChanged.connect(self.on_gen_unit_changed)
 
         amp_layout = QHBoxLayout()
@@ -627,8 +648,9 @@ class NetworkAnalyzerWidget(QWidget):
 
         self.avg_spin = QDoubleSpinBox()
         self.avg_spin.setDecimals(0)
-        self.avg_spin.setRange(1, 10); self.avg_spin.setValue(1)
-        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, 'num_averages', int(v)))
+        self.avg_spin.setRange(1, 10)
+        self.avg_spin.setValue(1)
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "num_averages", int(v)))
         form.addRow(tr("Averages:"), self.avg_spin)
 
         controls_group.setLayout(form)
@@ -648,7 +670,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.limit_check = QCheckBox(tr("Limit Max"))
         self.limit_check.toggled.connect(self.refresh_plots)
         self.limit_spin = QDoubleSpinBox()
-        self.limit_spin.setRange(10, 24000); self.limit_spin.setValue(20000)
+        self.limit_spin.setRange(10, 24000)
+        self.limit_spin.setValue(20000)
         self.limit_spin.valueChanged.connect(self.refresh_plots)
 
         limit_layout = QHBoxLayout()
@@ -660,7 +683,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.min_limit_check = QCheckBox(tr("Limit Min"))
         self.min_limit_check.toggled.connect(self.refresh_plots)
         self.min_limit_spin = QDoubleSpinBox()
-        self.min_limit_spin.setRange(10, 24000); self.min_limit_spin.setValue(20)
+        self.min_limit_spin.setRange(10, 24000)
+        self.min_limit_spin.setValue(20)
         self.min_limit_spin.valueChanged.connect(self.refresh_plots)
 
         min_limit_layout = QHBoxLayout()
@@ -743,23 +767,23 @@ class NetworkAnalyzerWidget(QWidget):
         # Plots
         plot_layout = QVBoxLayout()
         self.mag_plot = pg.PlotWidget(title=tr("Magnitude Response"))
-        self.mag_plot.setLabel('left', tr('Magnitude'), units='dB')
-        self.mag_plot.setLabel('bottom', tr('Frequency'), units='Hz')
+        self.mag_plot.setLabel("left", tr("Magnitude"), units="dB")
+        self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(x=True, y=False)
         self.mag_plot.showGrid(x=True, y=True)
-        self.mag_curve = self.mag_plot.plot(pen='g')
+        self.mag_curve = self.mag_plot.plot(pen="g")
         plot_layout.addWidget(self.mag_plot)
 
         self.phase_plot = pg.PlotWidget(title=tr("Phase Response"))
-        self.phase_plot.setLabel('left', tr('Phase'), units='deg')
-        self.phase_plot.setLabel('bottom', tr('Frequency'), units='Hz')
+        self.phase_plot.setLabel("left", tr("Phase"), units="deg")
+        self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(x=True, y=False)
         self.phase_plot.showGrid(x=True, y=True)
-        self.phase_curve = self.phase_plot.plot(pen='y')
+        self.phase_curve = self.phase_plot.plot(pen="y")
 
         # Group Delay Axis (Right)
-        self.gd_axis = pg.AxisItem('right')
-        self.gd_axis.setLabel(tr('Group Delay'), units='s')
+        self.gd_axis = pg.AxisItem("right")
+        self.gd_axis.setLabel(tr("Group Delay"), units="s")
         self.phase_plot.plotItem.layout.addItem(self.gd_axis, 2, 3)
 
         self.gd_view = pg.ViewBox()
@@ -770,7 +794,7 @@ class NetworkAnalyzerWidget(QWidget):
         # Disable log mode for the overlay view (we will manually log the data)
         self.gd_view.setLogMode(False, False)
 
-        self.gd_curve = pg.PlotCurveItem(pen='r')
+        self.gd_curve = pg.PlotCurveItem(pen="r")
         self.gd_view.addItem(self.gd_curve)
 
         # 同期処理
@@ -785,46 +809,52 @@ class NetworkAnalyzerWidget(QWidget):
         mode = self.mode_combo.itemData(index)
         self.module.sweep_mode = mode
         if mode == "Stepped Sine":
-            self.steps_label.show(); self.steps_spin.show()
-            self.duration_label.hide(); self.duration_spin.hide()
+            self.steps_label.show()
+            self.steps_spin.show()
+            self.duration_label.hide()
+            self.duration_spin.hide()
         else:
-            self.steps_label.hide(); self.steps_spin.hide()
-            self.duration_label.show(); self.duration_spin.show()
+            self.steps_label.hide()
+            self.steps_spin.hide()
+            self.duration_label.show()
+            self.duration_spin.show()
 
     def on_routing_changed(self, index):
         self.module.input_mode = self.in_combo.currentData()
 
         # Handle Crosstalk Macros
-        if self.module.input_mode == 'XTALK_LR':
+        if self.module.input_mode == "XTALK_LR":
             # Drive L, Meas R (Ref=L)
-            self.module.output_channel = 'L'
+            self.module.output_channel = "L"
             self.module.ref_channel_index = 0
             self.module.meas_channel_index = 1
 
             # Lock Output Combo
-            idx = self.out_combo.findData('L')
-            if idx != -1: self.out_combo.setCurrentIndex(idx)
+            idx = self.out_combo.findData("L")
+            if idx != -1:
+                self.out_combo.setCurrentIndex(idx)
             self.out_combo.setEnabled(False)
 
-        elif self.module.input_mode == 'XTALK_RL':
+        elif self.module.input_mode == "XTALK_RL":
             # Drive R, Meas L (Ref=R)
-            self.module.output_channel = 'R'
+            self.module.output_channel = "R"
             self.module.ref_channel_index = 1
             self.module.meas_channel_index = 0
 
             # Lock Output Combo
-            idx = self.out_combo.findData('R')
-            if idx != -1: self.out_combo.setCurrentIndex(idx)
+            idx = self.out_combo.findData("R")
+            if idx != -1:
+                self.out_combo.setCurrentIndex(idx)
             self.out_combo.setEnabled(False)
 
-        elif self.module.input_mode == 'XFER':
+        elif self.module.input_mode == "XFER":
             # Standard XFER
             self.module.ref_channel_index = 0
             self.module.meas_channel_index = 1
             self.out_combo.setEnabled(True)
             self.module.output_channel = self.out_combo.currentData()
 
-        elif self.module.input_mode == 'XFER_REV':
+        elif self.module.input_mode == "XFER_REV":
             # Reverse XFER (Ref=R, Meas=L)
             self.module.ref_channel_index = 1
             self.module.meas_channel_index = 0
@@ -838,12 +868,12 @@ class NetworkAnalyzerWidget(QWidget):
             self.module.output_channel = self.out_combo.currentData()
 
         # Update UI hints
-        if self.module.input_mode in ['XFER', 'XTALK_LR', 'XTALK_RL', 'XFER_REV']:
-            if 'XTALK' in self.module.input_mode:
+        if self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+            if "XTALK" in self.module.input_mode:
                 self.mag_plot.setTitle(tr("Crosstalk (Meas / Ref)"))
             else:
                 self.mag_plot.setTitle(tr("Transfer Function (Meas / Ref)"))
-            self.unit_combo.setEnabled(False) # XFER is always relative dB
+            self.unit_combo.setEnabled(False)  # XFER is always relative dB
         else:
             self.mag_plot.setTitle(tr("Magnitude Response"))
             self.unit_combo.setEnabled(True)
@@ -857,23 +887,23 @@ class NetworkAnalyzerWidget(QWidget):
         unit = self.gen_unit_combo.currentText()
         try:
             gain = self.module.audio_engine.calibration.output_gain
-        except:
+        except Exception:
             gain = 1.0
 
         self.amp_spin.blockSignals(True)
 
-        if unit == 'Amplitude':
+        if unit == "Amplitude":
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setSuffix("")
             self.amp_spin.setValue(amp_0_1)
-        elif unit == 'dBFS':
+        elif unit == "dBFS":
             self.amp_spin.setRange(-120, 0)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setSuffix(" dB")
             val = 20 * np.log10(amp_0_1 + 1e-12)
             self.amp_spin.setValue(val)
-        elif unit == 'dBV':
+        elif unit == "dBV":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10(v_rms + 1e-12)
@@ -881,7 +911,7 @@ class NetworkAnalyzerWidget(QWidget):
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setSuffix(" dB")
             self.amp_spin.setValue(val)
-        elif unit == 'dBu':
+        elif unit == "dBu":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / np.sqrt(2)
             val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
@@ -889,14 +919,14 @@ class NetworkAnalyzerWidget(QWidget):
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setSuffix(" dB")
             self.amp_spin.setValue(val)
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = amp_0_1 * gain
             v_rms = v_peak / np.sqrt(2)
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setSuffix(" V")
             self.amp_spin.setValue(v_rms)
-        elif unit == 'Vpeak':
+        elif unit == "Vpeak":
             v_peak = amp_0_1 * gain
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
@@ -909,31 +939,33 @@ class NetworkAnalyzerWidget(QWidget):
         unit = self.gen_unit_combo.currentText()
         try:
             gain = self.module.audio_engine.calibration.output_gain
-        except:
+        except Exception:
             gain = 1.0
 
         amp_0_1 = 0.0
 
-        if unit == 'Amplitude':
+        if unit == "Amplitude":
             amp_0_1 = val
-        elif unit == 'dBFS':
-            amp_0_1 = 10**(val/20)
-        elif unit == 'dBV':
-            v_rms = 10**(val/20)
+        elif unit == "dBFS":
+            amp_0_1 = 10 ** (val / 20)
+        elif unit == "dBV":
+            v_rms = 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_0_1 = v_peak / gain
-        elif unit == 'dBu':
-            v_rms = 0.7746 * 10**(val/20)
+        elif unit == "dBu":
+            v_rms = 0.7746 * 10 ** (val / 20)
             v_peak = v_rms * np.sqrt(2)
             amp_0_1 = v_peak / gain
-        elif unit == 'Vrms':
+        elif unit == "Vrms":
             v_peak = val * np.sqrt(2)
             amp_0_1 = v_peak / gain
-        elif unit == 'Vpeak':
+        elif unit == "Vpeak":
             amp_0_1 = val / gain
 
-        if amp_0_1 > 1.0: amp_0_1 = 1.0
-        elif amp_0_1 < 0.0: amp_0_1 = 0.0
+        if amp_0_1 > 1.0:
+            amp_0_1 = 1.0
+        elif amp_0_1 < 0.0:
+            amp_0_1 = 0.0
 
         self.module.amplitude = amp_0_1
 
@@ -943,7 +975,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.module.start_calibration()
 
     def on_latency_result(self, lat):
-        self.lat_label.setText(tr("Latency: {0:.2f} ms").format(lat*1000))
+        self.lat_label.setText(tr("Latency: {0:.2f} ms").format(lat * 1000))
         self.lat_btn.setEnabled(True)
 
     def on_error(self, msg):
@@ -952,11 +984,12 @@ class NetworkAnalyzerWidget(QWidget):
         self.start_btn.setText(tr("Start Sweep"))
 
     def on_store_reference(self):
-        if not self.freqs: return
+        if not self.freqs:
+            return
         self.module.reference_trace = {
-            'freqs': np.array(self.freqs),
-            'mags': np.array(self.mags),
-            'phases': np.array(self.phases)
+            "freqs": np.array(self.freqs),
+            "mags": np.array(self.mags),
+            "phases": np.array(self.phases),
         }
         print("Reference trace stored.")
 
@@ -1027,7 +1060,8 @@ class NetworkAnalyzerWidget(QWidget):
         return mags_smooth, phase_smooth
 
     def refresh_plots(self):
-        if not self.freqs: return
+        if not self.freqs:
+            return
 
         smooth_mode = self.smooth_combo.currentData()
         unit = self.unit_combo.currentText()
@@ -1042,61 +1076,62 @@ class NetworkAnalyzerWidget(QWidget):
 
         if self.limit_check.isChecked():
             limit = self.limit_spin.value()
-            mask &= (freqs_arr <= limit)
+            mask &= freqs_arr <= limit
 
         if self.min_limit_check.isChecked():
             min_limit = self.min_limit_spin.value()
-            mask &= (freqs_arr >= min_limit)
+            mask &= freqs_arr >= min_limit
 
         freqs_to_plot = freqs_arr[mask]
         mags_to_plot = mags_arr[mask]
         phases_to_plot = phases_arr[mask]
 
-        if len(freqs_to_plot) == 0: return
+        if len(freqs_to_plot) == 0:
+            return
 
-        if self.module.input_mode == 'XFER':
+        if self.module.input_mode == "XFER":
             # XFER is already in dB relative
             y_values = mags_to_plot
-            self.mag_plot.setLabel('left', tr('Gain'), units='dB')
+            self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         else:
             # Standard conversion logic (same as before)
             mags_linear = 10 ** (mags_to_plot / 20)
             try:
                 input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
-            except:
+            except Exception:
                 input_sensitivity = 1.0
 
             if unit == "dBFS":
                 y_values = mags_to_plot
-                self.mag_plot.setLabel('left', tr('Magnitude'), units='dBFS')
+                self.mag_plot.setLabel("left", tr("Magnitude"), units="dBFS")
             elif unit == "dBV":
                 v_peak = mags_linear * input_sensitivity
                 v_rms = v_peak / np.sqrt(2)
                 y_values = 20 * np.log10(v_rms + 1e-12)
-                self.mag_plot.setLabel('left', tr('Magnitude'), units='dBV')
+                self.mag_plot.setLabel("left", tr("Magnitude"), units="dBV")
             elif unit == "dBu":
                 v_peak = mags_linear * input_sensitivity
                 v_rms = v_peak / np.sqrt(2)
                 y_values = 20 * np.log10((v_rms + 1e-12) / 0.7746)
-                self.mag_plot.setLabel('left', tr('Magnitude'), units='dBu')
+                self.mag_plot.setLabel("left", tr("Magnitude"), units="dBu")
             elif unit == "Vrms":
                 v_peak = mags_linear * input_sensitivity
                 y_values = v_peak / np.sqrt(2)
-                self.mag_plot.setLabel('left', tr('Magnitude'), units='V')
+                self.mag_plot.setLabel("left", tr("Magnitude"), units="V")
             elif unit == "Vpeak":
                 y_values = mags_linear * input_sensitivity
-                self.mag_plot.setLabel('left', tr('Magnitude'), units='V')
+                self.mag_plot.setLabel("left", tr("Magnitude"), units="V")
             else:
                 y_values = mags_to_plot
 
         # Apply Reference
         if self.apply_ref_check.isChecked() and self.module.reference_trace is not None:
             ref = self.module.reference_trace
-            if len(ref['freqs']) > 1:
-                interp_mags = np.interp(freqs_to_plot, ref['freqs'], ref['mags'])
+            if len(ref["freqs"]) > 1:
+                interp_mags = np.interp(freqs_to_plot, ref["freqs"], ref["mags"])
 
                 # If XFER, just subtract dB
-                if self.module.input_mode == 'XFER':
+                if self.module.input_mode == "XFER":
                     y_values -= interp_mags
                 else:
                     # If not XFER, we need to handle units carefully
@@ -1119,11 +1154,11 @@ class NetworkAnalyzerWidget(QWidget):
                         # This is unitless.
                         # So we display Ratio? Or normalized V?
                         # Standard practice: Normalized Magnitude (Unitless or %)
-                        y_values /= (ref_linear + 1e-12)
+                        y_values /= ref_linear + 1e-12
 
             # Phase Subtraction
-            if len(ref['phases']) > 1:
-                interp_phases = np.interp(freqs_to_plot, ref['freqs'], ref['phases'])
+            if len(ref["phases"]) > 1:
+                interp_phases = np.interp(freqs_to_plot, ref["freqs"], ref["phases"])
                 phases_to_plot -= interp_phases
                 # Wrap to [-180, 180]
                 phases_to_plot = (phases_to_plot + 180) % 360 - 180
@@ -1176,7 +1211,7 @@ class NetworkAnalyzerWidget(QWidget):
             # Avoid div by zero
             d_freq[d_freq == 0] = 1e-12
 
-            group_delay_sec = - d_phi / (2 * np.pi * d_freq)
+            group_delay_sec = -d_phi / (2 * np.pi * d_freq)
 
             # Plot against mid-points of freqs
             freq_mids = (freqs_to_plot[:-1] + freqs_to_plot[1:]) / 2

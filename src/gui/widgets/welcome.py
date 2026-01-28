@@ -22,12 +22,14 @@ class WelcomeWidget(QWidget):
         image_label = QLabel()
         # Load image from assets
         # We assume 'src/assets/welcome.png' relative to the bundle root or source root
-        assets_path = resource_path('src/assets/welcome.png')
+        assets_path = resource_path("src/assets/welcome.png")
 
         # Fallback for dev environment if running from inside src or similar
         if not os.path.exists(assets_path):
-             # Try relative to this file
-             assets_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'assets', 'welcome.png')
+            # Try relative to this file
+            assets_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "welcome.png"
+            )
 
         if os.path.exists(assets_path):
             pixmap = QPixmap(assets_path)
@@ -36,7 +38,7 @@ class WelcomeWidget(QWidget):
             scaled_pixmap = pixmap.scaledToHeight(400, Qt.TransformationMode.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
             image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            image_label.setStyleSheet("background-color: #1e1e1e;") # Match dark theme
+            image_label.setStyleSheet("background-color: #1e1e1e;")  # Match dark theme
         else:
             image_label.setText(tr("Welcome Image Not Found"))
             image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -58,7 +60,9 @@ class WelcomeWidget(QWidget):
 
         # Description
         desc = QLabel(
-            tr("A comprehensive set of tools for precision audio analysis and measurement.\nSelect a module from the sidebar to begin.")
+            tr(
+                "A comprehensive set of tools for precision audio analysis and measurement.\nSelect a module from the sidebar to begin."
+            )
         )
         desc.setFont(QFont("Arial", 12))
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -69,10 +73,14 @@ class WelcomeWidget(QWidget):
         features_layout.setSpacing(20)
 
         features = [
-            tr("Signal Generator"), tr("Spectrum Analyzer"),
-            tr("Distortion Analyzer"), tr("Network Analyzer"),
-            tr("Oscilloscope"), tr("Lock-in Amplifier"),
-            tr("Frequency Counter"), tr("Spectrogram")
+            tr("Signal Generator"),
+            tr("Spectrum Analyzer"),
+            tr("Distortion Analyzer"),
+            tr("Network Analyzer"),
+            tr("Oscilloscope"),
+            tr("Lock-in Amplifier"),
+            tr("Frequency Counter"),
+            tr("Spectrogram"),
         ]
 
         for feat in features:

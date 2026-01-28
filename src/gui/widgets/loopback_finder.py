@@ -36,10 +36,7 @@ class LoopbackWorker(QThread):
     def run(self):
         try:
             self.module.perform_scan(
-                self.device_id,
-                self.sample_rate,
-                progress_callback=self.report_progress,
-                check_stop=self.check_stop
+                self.device_id, self.sample_rate, progress_callback=self.report_progress, check_stop=self.check_stop
             )
             self.finished_testing.emit()
         except Exception as e:
@@ -53,6 +50,7 @@ class LoopbackWorker(QThread):
 
     def stop(self):
         self.is_running = False
+
 
 class LoopbackFinder(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -69,8 +67,8 @@ class LoopbackFinder(MeasurementModule):
 
     def perform_scan(self, device_id, sample_rate, progress_callback=None, check_stop=None):
         device_info = sd.query_devices(device_id)
-        max_out = device_info['max_output_channels']
-        max_in = device_info['max_input_channels']
+        max_out = device_info["max_output_channels"]
+        max_in = device_info["max_input_channels"]
 
         if max_out == 0 or max_in == 0:
             raise Exception(f"Device {device_id} does not support both input and output.")
@@ -78,10 +76,10 @@ class LoopbackFinder(MeasurementModule):
         found_paths = []
         test_freq = 440
         duration = 0.1
-        threshold = 0.01 # -40dBFS approx
+        threshold = 0.01  # -40dBFS approx
 
         t = np.linspace(0, duration, int(sample_rate * duration), False, dtype=np.float32)
-        test_signal = 0.5 * np.sin(2 * np.pi * test_freq * t) # -6dBFS
+        test_signal = 0.5 * np.sin(2 * np.pi * test_freq * t)  # -6dBFS
 
         for out_ch in range(max_out):
             if check_stop and check_stop():
@@ -97,17 +95,18 @@ class LoopbackFinder(MeasurementModule):
             # Play and Record
             # We record all input channels
             try:
-                recorded_signal = sd.playrec(output_signal, samplerate=sample_rate,
-                                           channels=max_in, device=device_id, blocking=True)
+                recorded_signal = sd.playrec(
+                    output_signal, samplerate=sample_rate, channels=max_in, device=device_id, blocking=True
+                )
             except Exception as e:
-                raise Exception(f"Error during playback/recording: {str(e)}")
+                raise Exception(f"Error during playback/recording: {str(e)}") from e
 
             # Analyze inputs
             for in_ch in range(max_in):
                 # Simple RMS check or FFT? FFT is more robust against noise.
                 # Using FFT as in legacy code
                 input_fft = fft_manager.rfft(recorded_signal[:, in_ch])
-                freqs = fft_manager.rfftfreq(len(recorded_signal), 1/sample_rate)
+                freqs = fft_manager.rfftfreq(len(recorded_signal), 1 / sample_rate)
 
                 target_bin = np.argmin(np.abs(freqs - test_freq))
                 magnitude = np.abs(input_fft[target_bin]) / len(recorded_signal) * 2
@@ -130,18 +129,18 @@ class LoopbackFinder(MeasurementModule):
         # Let's assume audio_engine is available.
 
         # TODO: Parse device ID from args if provided
-        device_id = self.audio_engine.output_device # Use current
+        device_id = self.audio_engine.output_device  # Use current
         sample_rate = self.audio_engine.sample_rate
 
-        results = self.perform_scan(device_id, sample_rate,
-                                    progress_callback=lambda p, m: print(f"{p}%: {m}"))
+        results = self.perform_scan(device_id, sample_rate, progress_callback=lambda p, m: print(f"{p}%: {m}"))
 
         print("Found Paths:")
         for p in results:
-            print(f"Out: {p[0]}, In: {p[1]}, Mag: {20*np.log10(p[2]):.1f} dB")
+            print(f"Out: {p[0]}, In: {p[1]}, Mag: {20 * np.log10(p[2]):.1f} dB")
 
     def get_widget(self):
         return LoopbackFinderWidget(self)
+
 
 class LoopbackFinderWidget(QWidget):
     def __init__(self, module: LoopbackFinder):
@@ -154,7 +153,11 @@ class LoopbackFinderWidget(QWidget):
         layout = QVBoxLayout()
 
         # Instructions
-        layout.addWidget(QLabel(tr("This tool plays a test tone on each output channel and checks all input channels for the signal.")))
+        layout.addWidget(
+            QLabel(
+                tr("This tool plays a test tone on each output channel and checks all input channels for the signal.")
+            )
+        )
         layout.addWidget(QLabel(f"<b>{tr('Note:')}</b> {tr('This will stop the main audio engine temporarily.')}"))
 
         # Controls
@@ -197,7 +200,9 @@ class LoopbackFinderWidget(QWidget):
             self.stop_btn.setEnabled(False)
             self.progress_bar.setValue(0)
             self.status_label.setText(
-                tr("Loopback Finder is not available in PipeWire/JACK mode. Disable 'PipeWire / JACK Mode (Resident)' in Settings to use this tool.")
+                tr(
+                    "Loopback Finder is not available in PipeWire/JACK mode. Disable 'PipeWire / JACK Mode (Resident)' in Settings to use this tool."
+                )
             )
         else:
             self.start_btn.setEnabled(True)
@@ -208,7 +213,9 @@ class LoopbackFinderWidget(QWidget):
             QMessageBox.warning(
                 self,
                 tr("Unavailable"),
-                tr("Loopback Finder is not available in PipeWire/JACK mode. Please disable 'PipeWire / JACK Mode (Resident)' in Settings."),
+                tr(
+                    "Loopback Finder is not available in PipeWire/JACK mode. Please disable 'PipeWire / JACK Mode (Resident)' in Settings."
+                ),
             )
             return
 
@@ -257,7 +264,7 @@ class LoopbackFinderWidget(QWidget):
         for i, (out_ch, in_ch, mag) in enumerate(paths):
             self.results_table.setItem(i, 0, QTableWidgetItem(str(out_ch)))
             self.results_table.setItem(i, 1, QTableWidgetItem(str(in_ch)))
-            self.results_table.setItem(i, 2, QTableWidgetItem(f"{20*np.log10(mag):.1f} dB"))
+            self.results_table.setItem(i, 2, QTableWidgetItem(f"{20 * np.log10(mag):.1f} dB"))
 
         if not paths:
             self.status_label.setText(tr("No loopback paths found."))

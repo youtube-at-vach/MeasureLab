@@ -33,10 +33,10 @@ class BNIMMeter(MeasurementModule):
         # Settings
         self.fft_size = 2048
         self.overlap = 0.5
-        self.max_itd_ms = 0.8 # Max Interaural Time Difference in ms (human range is ~0.7ms)
+        self.max_itd_ms = 0.8  # Max Interaural Time Difference in ms (human range is ~0.7ms)
         self.num_itd_bins = 256
         self.freq_min = 20
-        self.freq_max = 5000 # Primary localization range
+        self.freq_max = 5000  # Primary localization range
         self.decay = 0.85
         self.gain = 1.0
         self.glow_sigma = 1.0
@@ -96,7 +96,8 @@ class BNIMMeter(MeasurementModule):
         return BNIMMeterWidget(self)
 
     def start_analysis(self):
-        if self.is_running: return
+        if self.is_running:
+            return
         self.is_running = True
         self.sample_rate = self.audio_engine.sample_rate
 
@@ -110,7 +111,7 @@ class BNIMMeter(MeasurementModule):
         self._itd_axis_norm = (self.itd_axis / max(1e-9, float(self.max_itd_ms))).astype(np.float32, copy=False)
 
         # Frequency bins for RFFT
-        freqs = fft_manager.rfftfreq(self.fft_size, 1/self.sample_rate)
+        freqs = fft_manager.rfftfreq(self.fft_size, 1 / self.sample_rate)
         # Select indices within range
         self.freq_indices = np.where((freqs >= self.freq_min) & (freqs <= self.freq_max))[0]
         self.frequencies = freqs[self.freq_indices]
@@ -120,7 +121,9 @@ class BNIMMeter(MeasurementModule):
 
         # Precompute ITD phase model: (freq, itd)
         delays_s = (self.itd_axis / 1000.0).astype(np.float32, copy=False)
-        self._phase_diff_model = (-2.0 * np.pi * self.frequencies[:, None].astype(np.float32, copy=False) * delays_s[None, :]).astype(np.float32, copy=False)
+        self._phase_diff_model = (
+            -2.0 * np.pi * self.frequencies[:, None].astype(np.float32, copy=False) * delays_s[None, :]
+        ).astype(np.float32, copy=False)
 
         self.callback_id = self.audio_engine.register_callback(self._callback)
 
@@ -163,7 +166,9 @@ class BNIMMeter(MeasurementModule):
         y[valid] = (1.0 - fv) * xv0 + fv * xv1
         return y
 
-    def build_click_test_burst(self, *, freq_hz: float, itd_ms: float, on_cycles: int, off_cycles: int, ild_atten_db: float) -> np.ndarray:
+    def build_click_test_burst(
+        self, *, freq_hz: float, itd_ms: float, on_cycles: int, off_cycles: int, ild_atten_db: float
+    ) -> np.ndarray:
         """Build a stereo tone burst using (frequency, ITD, ILD attenuation). Returns float32 array (N,2)."""
         sr = float(self.sample_rate)
         f = float(np.clip(freq_hz, 1.0, sr / 2.0))
@@ -178,7 +183,7 @@ class BNIMMeter(MeasurementModule):
         # ON segment length in samples
         n_on = int(np.clip(int(np.round((float(on_cycles_i) / f) * sr)), 0, n_base))
 
-        t = (np.arange(n_base, dtype=np.float64) / sr)
+        t = np.arange(n_base, dtype=np.float64) / sr
         tone = np.sin(2.0 * np.pi * f * t).astype(np.float32, copy=False)
 
         env = np.zeros(n_base, dtype=np.float32)
@@ -201,12 +206,12 @@ class BNIMMeter(MeasurementModule):
         # For a right-side source, left ear arrives later (left delayed).
         if itd_ms_c >= 0:
             # Positive ITD: left ear delayed
-            l = self._fractional_delay_zero_padded(x, delay_samples)
-            r = x
+            left = self._fractional_delay_zero_padded(x, delay_samples)
+            right = x
         else:
             # Negative ITD: right ear delayed
-            l = x
-            r = self._fractional_delay_zero_padded(x, delay_samples)
+            left = x
+            right = self._fractional_delay_zero_padded(x, delay_samples)
 
         # Playback ILD rule:
         # - Determine which ear was delayed by ITD.
@@ -227,10 +232,12 @@ class BNIMMeter(MeasurementModule):
                 g_l = 1.0
                 g_r = g_att
 
-        y = np.column_stack((l * g_l, r * g_r)).astype(np.float32, copy=False)
+        y = np.column_stack((left * g_l, right * g_r)).astype(np.float32, copy=False)
         return y
 
-    def trigger_click_test_playback(self, *, freq_hz: float, itd_ms: float, on_cycles: int, off_cycles: int, ild_atten_db: float):
+    def trigger_click_test_playback(
+        self, *, freq_hz: float, itd_ms: float, on_cycles: int, off_cycles: int, ild_atten_db: float
+    ):
         """Arm a one-shot playback buffer. Output occurs inside the audio callback."""
         if not self.is_running:
             return
@@ -288,7 +295,7 @@ class BNIMMeter(MeasurementModule):
 
         with self._buffer_lock:
             if frames >= len(self.audio_buffer):
-                self.audio_buffer[:] = src[-len(self.audio_buffer):, :].astype(np.float32, copy=False)
+                self.audio_buffer[:] = src[-len(self.audio_buffer) :, :].astype(np.float32, copy=False)
             else:
                 self.audio_buffer = np.roll(self.audio_buffer, -frames, axis=0)
                 self.audio_buffer[-frames:] = src.astype(np.float32, copy=False)
@@ -334,10 +341,10 @@ class BNIMMeter(MeasurementModule):
                     break
 
                 if outdata.shape[1] >= 2:
-                    outdata[written:written + n, 0] = chunk[:, 0]
-                    outdata[written:written + n, 1] = chunk[:, 1]
+                    outdata[written : written + n, 0] = chunk[:, 0]
+                    outdata[written : written + n, 1] = chunk[:, 1]
                 elif outdata.shape[1] == 1:
-                    outdata[written:written + n, 0] = chunk[:, 0]
+                    outdata[written : written + n, 0] = chunk[:, 0]
 
                 written += n
                 idx = end
@@ -356,7 +363,8 @@ class BNIMMeter(MeasurementModule):
 
     def process_buffer(self):
         """Perform the 'neural' processing: ITD/ILD extraction per frequency."""
-        if not self.is_running: return
+        if not self.is_running:
+            return
 
         # Extract last window
         with self._buffer_lock:
@@ -365,7 +373,7 @@ class BNIMMeter(MeasurementModule):
             if self._buffer_seq == self._last_processed_seq and self._last_processed_seq != -1:
                 return
             self._last_processed_seq = self._buffer_seq
-            window_data = self.audio_buffer[-self.fft_size:].copy()
+            window_data = self.audio_buffer[-self.fft_size :].copy()
         L = window_data[:, 0]
         R = window_data[:, 1]
 
@@ -422,11 +430,14 @@ class BNIMMeter(MeasurementModule):
             # Map ITD axis to [-1,1]; negative is left.
             itd_norm = self._itd_axis_norm
             # If ild_sign>0 (left louder), boost negative ITD (itd_norm<0) via (-itd_norm).
-            lateral = (1.0 + (self.ild_strength * ild_band_weight)[:, None] * (-itd_norm[None, :]) * ild_sign[:, None]).astype(np.float32, copy=False)
+            lateral = (
+                1.0 + (self.ild_strength * ild_band_weight)[:, None] * (-itd_norm[None, :]) * ild_sign[:, None]
+            ).astype(np.float32, copy=False)
             coincidence *= np.clip(lateral, 0.0, 5.0)
 
         # Update neural map with persistence
         self.neural_map = (self.neural_map * self.decay) + (coincidence * (1.0 - self.decay))
+
 
 class BNIMMeterWidget(QWidget):
     def __init__(self, module: BNIMMeter):
@@ -446,7 +457,7 @@ class BNIMMeterWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
-        self.timer.setInterval(40) # 25 FPS is usually enough for this kind of "neural" look
+        self.timer.setInterval(40)  # 25 FPS is usually enough for this kind of "neural" look
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -455,9 +466,9 @@ class BNIMMeterWidget(QWidget):
         display_layout = QVBoxLayout()
 
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground('#050505')
-        self.plot_widget.hideAxis('bottom')
-        self.plot_widget.hideAxis('left')
+        self.plot_widget.setBackground("#050505")
+        self.plot_widget.hideAxis("bottom")
+        self.plot_widget.hideAxis("left")
 
         # Label axes
         self.label_itd = QLabel(tr("ITD (Left <-> Right)"))
@@ -469,7 +480,10 @@ class BNIMMeterWidget(QWidget):
         self.img_item = pg.ImageItem()
         # Custom colormap: Black -> Dark Blue -> Green -> Yellow -> White
         pos = np.array([0.0, 0.2, 0.5, 0.8, 1.0])
-        color = np.array([[0,0,0,255], [0,0,100,255], [0,255,0,255], [255,255,0,255], [255,255,255,255]], dtype=np.ubyte)
+        color = np.array(
+            [[0, 0, 0, 255], [0, 0, 100, 255], [0, 255, 0, 255], [255, 255, 0, 255], [255, 255, 255, 255]],
+            dtype=np.ubyte,
+        )
         cmap = pg.ColorMap(pos, color)
         lut = cmap.getLookupTable(0.0, 1.0, 256)
         self.img_item.setLookupTable(lut)
@@ -608,9 +622,11 @@ class BNIMMeterWidget(QWidget):
 
     def on_freq_changed(self, text):
         was_running = self.module.is_running
-        if was_running: self.module.stop_analysis()
+        if was_running:
+            self.module.stop_analysis()
         self.module.freq_max = int(text)
-        if was_running: self.module.start_analysis()
+        if was_running:
+            self.module.start_analysis()
 
     def on_play_click_enabled_changed(self, state):
         self.module.play_enable_click = bool(state)
@@ -718,12 +734,14 @@ class BNIMMeterWidget(QWidget):
         return super().eventFilter(obj, event)
 
     def update_display(self):
-        if not self.module.is_running: return
+        if not self.module.is_running:
+            return
 
         self.module.process_buffer()
 
         data = self.module.neural_map
-        if data is None: return
+        if data is None:
+            return
 
         # Apply Glow
         if self.module.glow_sigma > 0:
@@ -746,6 +764,6 @@ class BNIMMeterWidget(QWidget):
         itd = self.module.max_itd_ms
         fmin = float(self.module.freq_min)
         fmax = float(self.module.freq_max)
-        self.img_item.setRect(pg.QtCore.QRectF(-itd, fmin, 2*itd, max(1.0, fmax - fmin)))
+        self.img_item.setRect(pg.QtCore.QRectF(-itd, fmin, 2 * itd, max(1.0, fmax - fmin)))
         self.plot_widget.setXRange(-itd, itd)
         self.plot_widget.setYRange(fmin, fmax)

@@ -40,11 +40,11 @@ def test_bnim_click_play_build_and_callback_delay():
     assert np.any(np.abs(outdata) > 1e-6)
 
     # Left should start later than right by ~0.8ms (~38.4 samples)
-    l = outdata[:, 0]
-    r = outdata[:, 1]
+    left = outdata[:, 0]
+    right = outdata[:, 1]
 
-    i_l = _first_idx_above(l, 1e-3)
-    i_r = _first_idx_above(r, 1e-3)
+    i_l = _first_idx_above(left, 1e-3)
+    i_r = _first_idx_above(right, 1e-3)
 
     assert i_l >= 0 and i_r >= 0
 
@@ -69,11 +69,11 @@ def test_bnim_click_play_ild_ratio():
     delay_samples = int(np.round(0.8e-3 * 48000))
     start = delay_samples + 20
     end = start + 200
-    l = buf[start:end, 0]
-    r = buf[start:end, 1]
+    left = buf[start:end, 0]
+    right = buf[start:end, 1]
 
-    l_rms = float(np.sqrt(np.mean(l * l)))
-    r_rms = float(np.sqrt(np.mean(r * r)))
+    l_rms = float(np.sqrt(np.mean(left * left)))
+    r_rms = float(np.sqrt(np.mean(right * right)))
 
     assert l_rms > 0
     assert r_rms > 0

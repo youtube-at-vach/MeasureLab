@@ -27,16 +27,16 @@ class BoxcarAverager(MeasurementModule):
         self.is_running = False
 
         # Parameters
-        self.mode = 'Internal Pulse' # 'Internal Pulse', 'Internal Step', 'External Rising', 'External Falling'
-        self.period_samples = 4800 # 100ms at 48k
-        self.pulse_width_samples = 48 # 1ms
+        self.mode = "Internal Pulse"  # 'Internal Pulse', 'Internal Step', 'External Rising', 'External Falling'
+        self.period_samples = 4800  # 100ms at 48k
+        self.pulse_width_samples = 48  # 1ms
         self.trigger_level = 0.0
-        self.trigger_channel = 0 # 0: Left, 1: Right
-        self.input_channel = 'Stereo' # 'Left', 'Right', 'Stereo'
+        self.trigger_channel = 0  # 0: Left, 1: Right
+        self.input_channel = "Stereo"  # 'Left', 'Right', 'Stereo'
 
         # External Sync Parameters
-        self.ref_channel = 1 # 0: Left, 1: Right
-        self.trigger_edge = 'Rising' # 'Rising', 'Falling'
+        self.ref_channel = 1  # 0: Left, 1: Right
+        self.trigger_edge = "Rising"  # 'Rising', 'Falling'
 
         # Internal Pulse gate (reduces noise/compute by integrating only within window)
         # Gate coordinates are in samples within the period, relative to window_origin_sample.
@@ -52,7 +52,7 @@ class BoxcarAverager(MeasurementModule):
         # State
         self.accumulator = None
         self.count = 0
-        self.max_averages = 0 # 0 = Infinite
+        self.max_averages = 0  # 0 = Infinite
 
         # Buffers
         self.input_ring_buffer = None
@@ -92,7 +92,8 @@ class BoxcarAverager(MeasurementModule):
         return BoxcarAveragerWidget(self)
 
     def start_analysis(self):
-        if self.is_running: return
+        if self.is_running:
+            return
         self.is_running = True
 
         # Ring buffers for raw input + absolute sample indices.
@@ -169,7 +170,8 @@ class BoxcarAverager(MeasurementModule):
         return seq
 
     def _callback(self, indata, outdata, frames, time, status):
-        if status: print(status)
+        if status:
+            print(status)
 
         abs_start = int(self.global_sample_counter)
 
@@ -180,12 +182,14 @@ class BoxcarAverager(MeasurementModule):
 
         if write_idx + frames <= buf_len:
             if indata.shape[1] >= 2:
-                self.input_ring_buffer[write_idx:write_idx+frames] = indata[:, :2]
+                self.input_ring_buffer[write_idx : write_idx + frames] = indata[:, :2]
             else:
-                self.input_ring_buffer[write_idx:write_idx+frames, 0] = indata[:, 0]
-                self.input_ring_buffer[write_idx:write_idx+frames, 1] = indata[:, 0]
+                self.input_ring_buffer[write_idx : write_idx + frames, 0] = indata[:, 0]
+                self.input_ring_buffer[write_idx : write_idx + frames, 1] = indata[:, 0]
 
-            self.sample_index_ring[write_idx:write_idx+frames] = np.arange(abs_start, abs_start + frames, dtype=np.int64)
+            self.sample_index_ring[write_idx : write_idx + frames] = np.arange(
+                abs_start, abs_start + frames, dtype=np.int64
+            )
         else:
             # Wrap around
             first_part = buf_len - write_idx
@@ -208,7 +212,7 @@ class BoxcarAverager(MeasurementModule):
 
         # 2. Generate Output (Internal Mode)
         outdata.fill(0)
-        if 'Internal' in self.mode:
+        if "Internal" in self.mode:
             # Generate Pulse/Step
             # Use absolute coordinates so resets / timer jitter don't shift the phase.
             t = (np.arange(frames, dtype=np.int64) + abs_start) - int(self.window_origin_sample)
@@ -216,31 +220,32 @@ class BoxcarAverager(MeasurementModule):
 
             signal = np.zeros(frames)
 
-            if self.mode == 'Internal Pulse':
+            if self.mode == "Internal Pulse":
                 # High for pulse_width
                 signal = np.where(t_mod < self.pulse_width_samples, 1.0, 0.0)
-            elif self.mode == 'Internal Step':
+            elif self.mode == "Internal Step":
                 # High for half period
                 signal = np.where(t_mod < (self.period_samples // 2), 1.0, -1.0)
-            elif self.mode == 'Internal Impulse':
+            elif self.mode == "Internal Impulse":
                 # One-sample impulse at t_mod == 0
                 signal = np.where(t_mod == 0, 1.0, 0.0)
-            elif self.mode == 'Internal PRBS/MLS':
+            elif self.mode == "Internal PRBS/MLS":
                 mls = self._ensure_mls_cache(int(self.period_samples))
                 signal = mls[t_mod.astype(np.intp, copy=False)]
 
             # Output to both channels? Or just Left? Let's do Left.
             # Output to selected channel(s)
-            if outdata.shape[1] >= 1 and self.input_channel in ['Left', 'Stereo']:
-                outdata[:, 0] = signal * 0.5 # -6dB
-            if outdata.shape[1] >= 2 and self.input_channel in ['Right', 'Stereo']:
+            if outdata.shape[1] >= 1 and self.input_channel in ["Left", "Stereo"]:
+                outdata[:, 0] = signal * 0.5  # -6dB
+            if outdata.shape[1] >= 2 and self.input_channel in ["Right", "Stereo"]:
                 outdata[:, 1] = signal * 0.5
 
     def process(self):
         """
         Called periodically to process input buffer and update average.
         """
-        if not self.is_running: return
+        if not self.is_running:
+            return
 
         # Determine available data
         buf_len = len(self.input_ring_buffer)
@@ -252,7 +257,8 @@ class BoxcarAverager(MeasurementModule):
         else:
             available = buf_len - read_pos + write_pos
 
-        if available == 0: return
+        if available == 0:
+            return
 
         # Extract data + absolute indices (linearized)
         if write_pos >= read_pos:
@@ -269,7 +275,7 @@ class BoxcarAverager(MeasurementModule):
 
         # Optional reset alignment: restart accumulation on a stable window boundary.
         # This keeps the integration window position consistent in absolute coordinates.
-        if self.reset_pending and 'Internal' in self.mode:
+        if self.reset_pending and "Internal" in self.mode:
             origin = int(self.window_origin_sample)
             period = int(self.period_samples)
             start_mod = int((int(idxs[0]) - origin) % period)
@@ -284,7 +290,7 @@ class BoxcarAverager(MeasurementModule):
             self.reset_pending = False
 
         # Process Data
-        if 'Internal' in self.mode:
+        if "Internal" in self.mode:
             # Synchronous folding based on absolute sample indices.
             origin = int(self.window_origin_sample)
             period = int(self.period_samples)
@@ -330,7 +336,8 @@ class BoxcarAverager(MeasurementModule):
             # We scan the reference channel for edge crossings.
 
             ref_idx = self.ref_channel
-            if data.shape[1] <= ref_idx: return # Safety
+            if data.shape[1] <= ref_idx:
+                return  # Safety
 
             ref_sig = data[:, ref_idx]
 
@@ -353,7 +360,7 @@ class BoxcarAverager(MeasurementModule):
             # Falling: prev > level >= curr
             level = self.trigger_level
 
-            if self.trigger_edge == 'Rising':
+            if self.trigger_edge == "Rising":
                 triggers = (extended_ref[:-1] < level) & (extended_ref[1:] >= level)
             else:
                 triggers = (extended_ref[:-1] > level) & (extended_ref[1:] <= level)
@@ -380,7 +387,7 @@ class BoxcarAverager(MeasurementModule):
             def _next_trigger(at_or_after: int):
                 if trigger_samples_abs.size == 0:
                     return None
-                pos = np.searchsorted(trigger_samples_abs, at_or_after, side='left')
+                pos = np.searchsorted(trigger_samples_abs, at_or_after, side="left")
                 if pos >= trigger_samples_abs.size:
                     return None
                 return int(trigger_samples_abs[pos])
@@ -410,6 +417,7 @@ class BoxcarAverager(MeasurementModule):
                     self.capture_idx = 0
                     abs_ptr = next_trig
 
+
 class BoxcarAveragerWidget(QWidget):
     def __init__(self, module: BoxcarAverager):
         super().__init__()
@@ -418,7 +426,7 @@ class BoxcarAveragerWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.setInterval(50) # 20 FPS
+        self.timer.setInterval(50)  # 20 FPS
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -456,7 +464,7 @@ class BoxcarAveragerWidget(QWidget):
 
         # Period
         self.period_spin = QDoubleSpinBox()
-        self.period_spin.setRange(1, 1000) # ms
+        self.period_spin.setRange(1, 1000)  # ms
         self.period_spin.setValue(100)
         self.period_spin.setSuffix(" ms")
         self.period_spin.valueChanged.connect(self.on_period_changed)
@@ -480,7 +488,7 @@ class BoxcarAveragerWidget(QWidget):
         # transient top-level window (startup flash during module preload).
         self.gate_group = QWidget(controls_group)
         gate_layout = QHBoxLayout(self.gate_group)
-        gate_layout.setContentsMargins(0,0,0,0)
+        gate_layout.setContentsMargins(0, 0, 0, 0)
 
         self.gate_enable_chk = QCheckBox(tr("Gate"))
         self.gate_enable_chk.setChecked(bool(self.module.gate_enabled))
@@ -492,7 +500,9 @@ class BoxcarAveragerWidget(QWidget):
         self.gate_start_spin.setDecimals(2)
         self.gate_start_spin.setSingleStep(0.1)
         self.gate_start_spin.setSuffix(" ms")
-        self.gate_start_spin.setValue(float(self.module.gate_start_samples) / float(self.module.audio_engine.sample_rate) * 1000.0)
+        self.gate_start_spin.setValue(
+            float(self.module.gate_start_samples) / float(self.module.audio_engine.sample_rate) * 1000.0
+        )
         self.gate_start_spin.valueChanged.connect(self.on_gate_start_changed)
         gate_layout.addWidget(QLabel(tr("Start:")))
         gate_layout.addWidget(self.gate_start_spin)
@@ -502,7 +512,9 @@ class BoxcarAveragerWidget(QWidget):
         self.gate_width_spin.setDecimals(2)
         self.gate_width_spin.setSingleStep(0.1)
         self.gate_width_spin.setSuffix(" ms")
-        self.gate_width_spin.setValue(float(self.module.gate_length_samples) / float(self.module.audio_engine.sample_rate) * 1000.0)
+        self.gate_width_spin.setValue(
+            float(self.module.gate_length_samples) / float(self.module.audio_engine.sample_rate) * 1000.0
+        )
         self.gate_width_spin.valueChanged.connect(self.on_gate_width_changed)
         gate_layout.addWidget(QLabel(tr("Width:")))
         gate_layout.addWidget(self.gate_width_spin)
@@ -514,11 +526,11 @@ class BoxcarAveragerWidget(QWidget):
         # Same reasoning as gate_group: ensure a parent exists before hide/show.
         self.ext_group = QWidget(controls_group)
         ext_layout = QHBoxLayout(self.ext_group)
-        ext_layout.setContentsMargins(0,0,0,0)
+        ext_layout.setContentsMargins(0, 0, 0, 0)
 
         self.ref_combo = QComboBox()
         self.ref_combo.addItems([tr("Left"), tr("Right")])
-        self.ref_combo.setCurrentIndex(1) # Default Right
+        self.ref_combo.setCurrentIndex(1)  # Default Right
         self.ref_combo.currentIndexChanged.connect(self.on_ref_changed)
         ext_layout.addWidget(QLabel(tr("Ref:")))
         ext_layout.addWidget(self.ref_combo)
@@ -557,11 +569,11 @@ class BoxcarAveragerWidget(QWidget):
 
         # Plot
         self.plot = pg.PlotWidget(title=tr("Averaged Signal"))
-        self.plot.setLabel('left', tr("Amplitude"))
-        self.plot.setLabel('bottom', tr("Time"), units='s')
+        self.plot.setLabel("left", tr("Amplitude"))
+        self.plot.setLabel("bottom", tr("Time"), units="s")
         self.plot.showGrid(x=True, y=True)
-        self.curve_l = self.plot.plot(pen='g', name=tr("Left"))
-        self.curve_r = self.plot.plot(pen='r', name=tr("Right"))
+        self.curve_l = self.plot.plot(pen="g", name=tr("Left"))
+        self.curve_r = self.plot.plot(pen="r", name=tr("Right"))
 
         layout.addWidget(self.plot)
         self.setLayout(layout)
@@ -586,7 +598,7 @@ class BoxcarAveragerWidget(QWidget):
         self.module.mode = val
         self.module.reset_average()
 
-        if val == 'External Reference':
+        if val == "External Reference":
             self.ext_group.show()
         else:
             self.ext_group.hide()
@@ -636,7 +648,8 @@ class BoxcarAveragerWidget(QWidget):
         self.module.reset_average()
 
     def update_plot(self):
-        if not self.module.is_running: return
+        if not self.module.is_running:
+            return
 
         self.module.process()
 
@@ -646,7 +659,7 @@ class BoxcarAveragerWidget(QWidget):
             period = int(self.module.period_samples)
 
             # If gate is enabled in Internal mode, show only the gated window.
-            if 'Internal' in self.module.mode and self.module.gate_enabled:
+            if "Internal" in self.module.mode and self.module.gate_enabled:
                 gate_len = int(self.module.gate_length_samples)
                 if 0 < gate_len < period:
                     gate_start = int(self.module.gate_start_samples)
@@ -657,7 +670,7 @@ class BoxcarAveragerWidget(QWidget):
                         avg = avg_full[start_mod:end_mod]
                     else:
                         tail = avg_full[start_mod:]
-                        head = avg_full[:(end_mod - period)]
+                        head = avg_full[: (end_mod - period)]
                         avg = np.vstack([tail, head])
 
                     t0 = gate_start / sr
@@ -674,10 +687,10 @@ class BoxcarAveragerWidget(QWidget):
 
             # Visibility
             ch = self.module.input_channel
-            if ch == 'Left':
+            if ch == "Left":
                 self.curve_l.setVisible(True)
                 self.curve_r.setVisible(False)
-            elif ch == 'Right':
+            elif ch == "Right":
                 self.curve_l.setVisible(False)
                 self.curve_r.setVisible(True)
             else:

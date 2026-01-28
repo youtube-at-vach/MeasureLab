@@ -1,5 +1,4 @@
 import timeit
-import numpy as np
 from scipy.signal import get_window
 import sys
 import os

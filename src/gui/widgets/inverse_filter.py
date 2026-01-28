@@ -57,7 +57,7 @@ class InverseFilter(MeasurementModule):
 
 class ProcessingWorker(QThread):
     progress = pyqtSignal(int)
-    finished = pyqtSignal(bool, str) # success, message
+    finished = pyqtSignal(bool, str)  # success, message
 
     def __init__(self, input_path, output_path, calibration_map, max_gain_db, taps, smoothing, normalize_rms):
         super().__init__()
@@ -90,7 +90,7 @@ class ProcessingWorker(QThread):
             # Create Inverse Filter Response
             # Target Frequencies for FIR (0 to sr/2, taps//2 + 1 points)
             num_freqs = self.taps // 2 + 1
-            target_freqs = np.linspace(0, sr/2, num_freqs)
+            target_freqs = np.linspace(0, sr / 2, num_freqs)
 
             # Extract Map Data
             map_data = np.array(self.calibration_map)
@@ -103,8 +103,12 @@ class ProcessingWorker(QThread):
 
             # Interpolate
             # Use linear interpolation. Fill_value behavior: clamp
-            interp_mag = interp1d(map_freqs, map_mags, kind='linear', fill_value=(map_mags[0], map_mags[-1]), bounds_error=False)
-            interp_phase = interp1d(map_freqs, map_phases, kind='linear', fill_value=(map_phases[0], map_phases[-1]), bounds_error=False)
+            interp_mag = interp1d(
+                map_freqs, map_mags, kind="linear", fill_value=(map_mags[0], map_mags[-1]), bounds_error=False
+            )
+            interp_phase = interp1d(
+                map_freqs, map_phases, kind="linear", fill_value=(map_phases[0], map_phases[-1]), bounds_error=False
+            )
 
             interp_mags_db = interp_mag(target_freqs)
             interp_phases_deg = interp_phase(target_freqs)
@@ -112,7 +116,7 @@ class ProcessingWorker(QThread):
             # Apply Smoothing (Optional)
             if self.smoothing > 0:
                 # Simple moving average on dB magnitude
-                window_len = int(self.smoothing * num_freqs / 100) | 1 # Odd
+                window_len = int(self.smoothing * num_freqs / 100) | 1  # Odd
                 if window_len > 3:
                     interp_mags_db = signal.savgol_filter(interp_mags_db, window_len, 2)
 
@@ -127,7 +131,7 @@ class ProcessingWorker(QThread):
             inv_phases_rad = np.radians(-interp_phases_deg)
 
             # Construct Complex Response
-            inv_mags_lin = 10**(inv_mags_db / 20)
+            inv_mags_lin = 10 ** (inv_mags_db / 20)
             H_inv = inv_mags_lin * np.exp(1j * inv_phases_rad)
 
             # Create FIR Kernel via IFFT
@@ -156,8 +160,7 @@ class ProcessingWorker(QThread):
             # Block processing
 
             with sf.SoundFile(self.input_path) as infile:
-                with sf.SoundFile(self.output_path, 'w', samplerate=sr, channels=infile.channels) as outfile:
-
+                with sf.SoundFile(self.output_path, "w", samplerate=sr, channels=infile.channels) as outfile:
                     # Pre-fill for convolution tail if needed?
                     # scipy.signal.convolve handles it, but for streaming we need Overlap-Add.
                     # Simpler: Use scipy.signal.fftconvolve on the whole file if it fits in memory?
@@ -167,9 +170,9 @@ class ProcessingWorker(QThread):
                     # oaconvolve is efficient.
 
                     # Check file size
-                    if info.frames < 10 * 60 * sr: # < 10 mins
-                         # Load all
-                        data = infile.read(dtype='float32')
+                    if info.frames < 10 * 60 * sr:  # < 10 mins
+                        # Load all
+                        data = infile.read(dtype="float32")
                         self.progress.emit(25)
 
                         processed_channels = []
@@ -178,7 +181,7 @@ class ProcessingWorker(QThread):
                         if data.ndim == 1:
                             # Mono
                             input_rms = float(np.sqrt(np.mean(np.square(data))))
-                            out_data = signal.oaconvolve(data, kernel, mode='same')
+                            out_data = signal.oaconvolve(data, kernel, mode="same")
 
                             if self.normalize_rms:
                                 processed_rms = float(np.sqrt(np.mean(np.square(out_data))))
@@ -192,7 +195,7 @@ class ProcessingWorker(QThread):
                             for ch in range(channel_count):
                                 ch_data = data[:, ch]
                                 input_rms = float(np.sqrt(np.mean(np.square(ch_data))))
-                                out_data = signal.oaconvolve(ch_data, kernel, mode='same')
+                                out_data = signal.oaconvolve(ch_data, kernel, mode="same")
 
                                 if self.normalize_rms:
                                     processed_rms = float(np.sqrt(np.mean(np.square(out_data))))
@@ -232,6 +235,7 @@ class ProcessingWorker(QThread):
 
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             self.finished.emit(False, str(e))
 
@@ -299,15 +303,17 @@ class InverseFilterWidget(QWidget):
 
         # Plot
         self.plot = pg.PlotWidget(title=tr("Filter Response"))
-        self.plot.setLabel('bottom', "Frequency", units='Hz')
-        self.plot.setLabel('left', "Magnitude", units='dB')
+        self.plot.setLabel("bottom", "Frequency", units="Hz")
+        self.plot.setLabel("left", "Magnitude", units="dB")
         self.plot.showGrid(x=True, y=True, alpha=0.3)
         self.plot.addLegend()
-        self.plot.getPlotItem().getAxis('bottom').setLogMode(True)
+        self.plot.getPlotItem().getAxis("bottom").setLogMode(True)
 
-        self.curve_sys = self.plot.plot(pen='r', name=tr("System (Measured)"))
-        self.curve_inv_raw = self.plot.plot(pen=pg.mkPen(color=(0, 100, 0), style=Qt.PenStyle.DotLine), name=tr("Inverse (Raw)"))
-        self.curve_inv = self.plot.plot(pen='g', name=tr("Inverse (Final)"))
+        self.curve_sys = self.plot.plot(pen="r", name=tr("System (Measured)"))
+        self.curve_inv_raw = self.plot.plot(
+            pen=pg.mkPen(color=(0, 100, 0), style=Qt.PenStyle.DotLine), name=tr("Inverse (Raw)")
+        )
+        self.curve_inv = self.plot.plot(pen="g", name=tr("Inverse (Final)"))
 
         filter_layout.addWidget(self.plot)
         filter_group.setLayout(filter_layout)
@@ -328,7 +334,7 @@ class InverseFilterWidget(QWidget):
 
         # Output
         out_layout = QHBoxLayout()
-        self.out_path_edit = QLabel(tr("No output file")) # Will auto-generate
+        self.out_path_edit = QLabel(tr("No output file"))  # Will auto-generate
         out_btn = QPushButton(tr("Select Output Wav..."))
         out_btn.clicked.connect(self.select_output_file)
         out_layout.addWidget(self.out_path_edit, stretch=1)
@@ -357,7 +363,7 @@ class InverseFilterWidget(QWidget):
 
     def load_calibration(self):
         cal = self.module.audio_engine.calibration
-        if hasattr(cal, 'frequency_map') and cal.frequency_map:
+        if hasattr(cal, "frequency_map") and cal.frequency_map:
             self.cal_loaded = True
             self.cal_status_label.setText(tr("Status: Calibration Loaded ({0} points)").format(len(cal.frequency_map)))
             self.cal_status_label.setStyleSheet("color: green;")
@@ -371,14 +377,14 @@ class InverseFilterWidget(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, tr("Load Calibration Map"), "", tr("JSON Files (*.json)"))
         if path:
             if self.module.audio_engine.calibration.load_frequency_map(path):
-                self.load_calibration() # Update UI
+                self.load_calibration()  # Update UI
                 QMessageBox.information(self, tr("Success"), tr("Calibration loaded successfully."))
             else:
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load calibration file."))
 
     def update_plot(self):
         cal = self.module.audio_engine.calibration
-        if not hasattr(cal, 'frequency_map') or not cal.frequency_map:
+        if not hasattr(cal, "frequency_map") or not cal.frequency_map:
             return
 
         data = np.array(cal.frequency_map)
@@ -399,13 +405,14 @@ class InverseFilterWidget(QWidget):
 
         # Assume 48kHz for preview or max freq in map * 2
         sr = 48000
-        if freqs[-1] > 24000: sr = freqs[-1] * 2
+        if freqs[-1] > 24000:
+            sr = freqs[-1] * 2
 
         num_freqs = taps // 2 + 1
-        target_freqs = np.linspace(0, sr/2, num_freqs)
+        target_freqs = np.linspace(0, sr / 2, num_freqs)
 
         # Interpolate System Response to Linear Grid
-        interp_func = interp1d(freqs, mags, kind='linear', fill_value=(mags[0], mags[-1]), bounds_error=False)
+        interp_func = interp1d(freqs, mags, kind="linear", fill_value=(mags[0], mags[-1]), bounds_error=False)
         sys_mags_lin = interp_func(target_freqs)
 
         # Raw Inverse
@@ -444,16 +451,16 @@ class InverseFilterWidget(QWidget):
             self.out_path_edit.setText(base + "_inverted" + ext)
 
     def select_output_file(self):
-        path, _ = QFileDialog.getSaveFileName(self, tr("Save Wav File"), self.out_path_edit.text(), tr("Wav Files (*.wav)"))
+        path, _ = QFileDialog.getSaveFileName(
+            self, tr("Save Wav File"), self.out_path_edit.text(), tr("Wav Files (*.wav)")
+        )
         if path:
             self.out_path_edit.setText(path)
             self._update_process_btn()
 
     def _update_process_btn(self):
         self.process_btn.setEnabled(
-            os.path.exists(self.in_path_edit.text()) and
-            self.out_path_edit.text() != "" and
-            self.cal_loaded
+            os.path.exists(self.in_path_edit.text()) and self.out_path_edit.text() != "" and self.cal_loaded
         )
 
     def start_processing(self):

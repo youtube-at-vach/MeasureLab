@@ -2,6 +2,7 @@ class SessionManager:
     """
     Manages the current measurement session state.
     """
+
     def __init__(self):
         self.current_module = None
         self.is_running = False

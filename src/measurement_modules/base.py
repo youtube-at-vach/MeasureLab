@@ -9,6 +9,7 @@ class MeasurementModule(ABC):
     Provides interfaces for both GUI (get_widget) and CLI (run).
     Note: CLI functionality (run method) is currently suspended/frozen.
     """
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -35,4 +36,3 @@ class MeasurementModule(ABC):
         Override this method to provide a custom GUI for the module.
         """
         return None
-

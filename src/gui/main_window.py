@@ -154,6 +154,7 @@ def _load_welcome_widget_class():
 
     return WelcomeWidget
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -171,6 +172,7 @@ class MainWindow(QMainWindow):
 
         # Initialize Theme Manager
         from src.core.theme_manager import ThemeManager
+
         self.theme_manager = ThemeManager(QApplication.instance())
         # Make it accessible from app instance for SettingsWidget
         QApplication.instance().theme_manager = self.theme_manager
@@ -179,14 +181,13 @@ class MainWindow(QMainWindow):
         saved_theme = self.config_manager.get_theme()
         self.theme_manager.set_theme(saved_theme)
 
-
         # Load saved config
         audio_cfg = self.config_manager.get_audio_config()
-        last_in = audio_cfg.get('input_device')
-        last_out = audio_cfg.get('output_device')
+        last_in = audio_cfg.get("input_device")
+        last_out = audio_cfg.get("output_device")
 
         # Default IDs
-        in_id, out_id = 3, 3 # Fallback
+        in_id, out_id = 3, 3  # Fallback
 
         if last_in or last_out:
             # Find IDs by name
@@ -195,10 +196,10 @@ class MainWindow(QMainWindow):
             found_out = False
 
             for i, dev in enumerate(devices):
-                if last_in and dev['name'] == last_in and dev['max_input_channels'] > 0:
+                if last_in and dev["name"] == last_in and dev["max_input_channels"] > 0:
                     in_id = i
                     found_in = True
-                if last_out and dev['name'] == last_out and dev['max_output_channels'] > 0:
+                if last_out and dev["name"] == last_out and dev["max_output_channels"] > 0:
                     out_id = i
                     found_out = True
 
@@ -211,14 +212,14 @@ class MainWindow(QMainWindow):
             self.audio_engine.set_devices(in_id, out_id)
 
             # Apply other settings
-            sr = audio_cfg.get('sample_rate', 48000)
+            sr = audio_cfg.get("sample_rate", 48000)
             self.audio_engine.set_sample_rate(sr)
 
-            bs = audio_cfg.get('block_size', 1024)
+            bs = audio_cfg.get("block_size", 1024)
             self.audio_engine.set_block_size(bs)
 
-            in_ch = audio_cfg.get('input_channels', 'stereo')
-            out_ch = audio_cfg.get('output_channels', 'stereo')
+            in_ch = audio_cfg.get("input_channels", "stereo")
+            out_ch = audio_cfg.get("output_channels", "stereo")
             self.audio_engine.set_channel_mode(in_ch, out_ch)
 
             # Apply PipeWire/JACK resident mode after devices + format are configured.
@@ -281,7 +282,7 @@ class MainWindow(QMainWindow):
         self.sidebar = QListWidget()
         self.sidebar.setFixedWidth(200)
         self.sidebar.addItem(tr("Welcome"))
-        self.sidebar.addItem(tr("Settings")) # Add Settings item
+        self.sidebar.addItem(tr("Settings"))  # Add Settings item
 
         for key in self._module_keys:
             self.sidebar.addItem(tr(key))
@@ -308,7 +309,7 @@ class MainWindow(QMainWindow):
 
         # Add module pages (Index 2+) - lazy loaded per selection
         self._module_containers = []
-        for key in self._module_keys:
+        for _key in self._module_keys:
             container = QWidget()
             v = QVBoxLayout(container)
             v.setContentsMargins(12, 12, 12, 12)
@@ -346,7 +347,7 @@ class MainWindow(QMainWindow):
         # Timer for status update
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_status)
-        self.status_timer.start(500) # 500ms update rate
+        self.status_timer.start(500)  # 500ms update rate
 
         # Sync output destination control with engine state on startup
         self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
@@ -451,7 +452,7 @@ class MainWindow(QMainWindow):
         self._sync_output_destination_ui(current_mode, propagate=True)
 
         # Active State
-        if status['active']:
+        if status["active"]:
             self.status_label.setText(tr("ACTIVE"))
             self.status_label.setStyleSheet("color: green; font-weight: bold;")
         else:
@@ -459,16 +460,16 @@ class MainWindow(QMainWindow):
             self.status_label.setStyleSheet("color: gray;")
 
         # I/O Mode
-        in_mode = status['input_channels'].capitalize()
-        out_mode = status['output_channels'].capitalize()
+        in_mode = status["input_channels"].capitalize()
+        out_mode = status["output_channels"].capitalize()
         self.io_label.setText(tr("In: {0} | Out: {1}").format(in_mode, out_mode))
 
         # Sample Rate
-        self.sr_label.setText(tr("SR: {0}").format(status['sample_rate']))
+        self.sr_label.setText(tr("SR: {0}").format(status["sample_rate"]))
 
         # CPU Load
-        cpu = status['cpu_load'] * 100
-        flags = status.get('status_flags')
+        cpu = status["cpu_load"] * 100
+        flags = status.get("status_flags")
 
         if flags:
             self.cpu_label.setText(tr("CPU: {0:.1f}% [{1}]").format(cpu, flags))
@@ -480,7 +481,7 @@ class MainWindow(QMainWindow):
             self.cpu_label.setToolTip(tr("CPU Load of Audio Thread"))
 
         # Clients
-        self.clients_label.setText(tr("Clients: {0}").format(status['active_clients']))
+        self.clients_label.setText(tr("Clients: {0}").format(status["active_clients"]))
 
     def _get_engine_output_destination(self):
         if self.audio_engine.loopback:
@@ -504,7 +505,7 @@ class MainWindow(QMainWindow):
                 # If wrapped, get the inner content
                 target = widget.content_widget if isinstance(widget, DetachableWidgetWrapper) else widget
 
-                if hasattr(target, 'set_output_destination'):
+                if hasattr(target, "set_output_destination"):
                     try:
                         target.set_output_destination(mode)
                     except Exception as e:

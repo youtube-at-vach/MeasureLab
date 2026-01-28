@@ -27,9 +27,9 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 
-
 class AllanWorkerSignals(QObject):
     """Signals for the AllanWorker."""
+
     result = pyqtSignal(list, list)  # taus, devs
 
 
@@ -37,6 +37,7 @@ class AllanWorker(QRunnable):
     """
     Worker thread for calculating Allan Deviation.
     """
+
     def __init__(self, freq_history, update_interval_ms, display_mode):
         super().__init__()
         self.freq_history = freq_history  # Should be a copy/list
@@ -55,7 +56,7 @@ class AllanWorker(QRunnable):
             # Prepare data based on mode
             data = np.asarray(self.freq_history, dtype=float)
 
-            if self.display_mode == 'period':
+            if self.display_mode == "period":
                 # Filter valid
                 valid_mask = (np.isfinite(data)) & (data > 0)
                 data = data[valid_mask]
@@ -109,6 +110,7 @@ class AllanWorker(QRunnable):
 
 class FrequencyWorkerSignals(QObject):
     """Signals for the FrequencyWorker."""
+
     result = pyqtSignal(object, float)  # freq (float or None), amp_db
 
 
@@ -116,6 +118,7 @@ class FrequencyWorker(QRunnable):
     """
     Worker thread for calculating frequency precision.
     """
+
     def __init__(self, data, sr, gate_threshold_db, calibration_factor):
         super().__init__()
         self.data = data
@@ -144,10 +147,10 @@ class FrequencyCounter(MeasurementModule):
 
         # Settings
         self.gate_threshold_db = -60.0
-        self.update_interval_ms = 100 # Fast: 100ms, Slow: 500ms
+        self.update_interval_ms = 100  # Fast: 100ms, Slow: 500ms
         self.max_update_interval_ms = 500  # Cap long measurements
-        self.buffer_size = 8192 # Good resolution
-        self.selected_channel = 0 # 0: Ch1, 1: Ch2
+        self.buffer_size = 8192  # Good resolution
+        self.selected_channel = 0  # 0: Ch1, 1: Ch2
 
         # Some devices/hosts produce unstable measurements immediately after start
         # (buffer still contains zeros / settling). Discard the first few *valid*
@@ -157,7 +160,7 @@ class FrequencyCounter(MeasurementModule):
 
         # State
         self.input_buffer = np.zeros(self.buffer_size)
-        self.history_len = 360000 # Increased for long-term Allan Plot (~10h at 10Hz)
+        self.history_len = 360000  # Increased for long-term Allan Plot (~10h at 10Hz)
         self.freq_history = deque(maxlen=self.history_len)
         self.time_history = deque(maxlen=self.history_len)
         self.start_time = 0
@@ -204,7 +207,7 @@ class FrequencyCounter(MeasurementModule):
                     # We are behind schedule, reset the tick to now to avoid burst of catch-ups
                     # or keep it if we want to catch up (but usually for UI/CLI we skip)
                     # For audio meas, maybe we just reset.
-                    if sleep_time < -interval: # severely behind
+                    if sleep_time < -interval:  # severely behind
                         next_tick = now
 
         except KeyboardInterrupt:
@@ -222,7 +225,7 @@ class FrequencyCounter(MeasurementModule):
         self.freq_history.clear()
         self.time_history.clear()
         self.start_time = time.time()
-        self._warmup_remaining = int(max(0, getattr(self, 'warmup_discard_points', 0)))
+        self._warmup_remaining = int(max(0, getattr(self, "warmup_discard_points", 0)))
 
         def callback(indata, outdata, frames, time, status):
             # REMOVED blocking print(status) to prevent buffer overflows
@@ -233,17 +236,17 @@ class FrequencyCounter(MeasurementModule):
             if indata.shape[1] > self.selected_channel:
                 new_data = indata[:, self.selected_channel]
             elif indata.shape[1] > 0:
-                 # Fallback to Ch 0 if selected not available
+                # Fallback to Ch 0 if selected not available
                 new_data = indata[:, 0]
             else:
                 new_data = np.zeros(frames)
 
             # Ring buffer
             if len(new_data) >= self.buffer_size:
-                self.input_buffer[:] = new_data[-self.buffer_size:]
+                self.input_buffer[:] = new_data[-self.buffer_size :]
             else:
                 self.input_buffer = np.roll(self.input_buffer, -len(new_data))
-                self.input_buffer[-len(new_data):] = new_data
+                self.input_buffer[-len(new_data) :] = new_data
 
             outdata.fill(0)
 
@@ -271,7 +274,8 @@ class FrequencyCounter(MeasurementModule):
         # Let's aim for exactly the interval length, or slightly more.
         # We need to know sample rate. If not running, guess 48000 or use current engine rate.
         sr = self.audio_engine.sample_rate
-        if sr < 1000: sr = 48000 # Fallback
+        if sr < 1000:
+            sr = 48000  # Fallback
 
         # Calculate needed samples
         needed_samples = int(sr * interval_ms / 1000)
@@ -294,7 +298,7 @@ class FrequencyCounter(MeasurementModule):
         # 2. Coarse Estimate (FFT)
         window = np.hamming(len(data))
         fft_res = fft_manager.rfft(data * window)
-        freqs = fft_manager.rfftfreq(len(data), 1/sr)
+        freqs = fft_manager.rfftfreq(len(data), 1 / sr)
 
         idx = np.argmax(np.abs(fft_res))
         coarse_freq = freqs[idx]
@@ -310,7 +314,7 @@ class FrequencyCounter(MeasurementModule):
                 precise_freq = AudioCalc.optimize_frequency(data, sr, coarse_freq)
                 precise_freq = float(precise_freq) * calibration_factor
                 return precise_freq, db
-            except:
+            except Exception:
                 return coarse_freq, db
         else:
             return coarse_freq, db
@@ -360,10 +364,10 @@ class FrequencyCounter(MeasurementModule):
 
         now = time.time() if now_t is None else float(now_t)
 
-        if not getattr(self, 'start_time', 0):
+        if not getattr(self, "start_time", 0):
             self.start_time = now
 
-        warmup_remaining = int(getattr(self, '_warmup_remaining', 0))
+        warmup_remaining = int(getattr(self, "_warmup_remaining", 0))
         if warmup_remaining > 0:
             self._warmup_remaining = warmup_remaining - 1
             return False
@@ -441,6 +445,7 @@ class FrequencyCounter(MeasurementModule):
 
         return taus, devs
 
+
 class FrequencyCalibrationDialog(QDialog):
     def __init__(self, module: FrequencyCounter, parent=None):
         super().__init__(parent)
@@ -454,7 +459,7 @@ class FrequencyCalibrationDialog(QDialog):
         self.is_measuring = False
         self.timer = QTimer()
         self.timer.timeout.connect(self.on_measure_tick)
-        self.target_samples = 10 # Average over 10 samples
+        self.target_samples = 10  # Average over 10 samples
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -507,12 +512,14 @@ class FrequencyCalibrationDialog(QDialog):
         current_factor = self.module.audio_engine.calibration.frequency_calibration
 
         if calibrated_freq <= 0:
-            return # Wait for valid signal
+            return  # Wait for valid signal
 
         raw_freq = calibrated_freq / current_factor
         self.measurements.append(raw_freq)
 
-        self.status_label.setText(tr("Status: Measuring... ({0}/{1})").format(len(self.measurements), self.target_samples))
+        self.status_label.setText(
+            tr("Status: Measuring... ({0}/{1})").format(len(self.measurements), self.target_samples)
+        )
 
         if len(self.measurements) >= self.target_samples:
             self.finish_calibration()
@@ -531,9 +538,14 @@ class FrequencyCalibrationDialog(QDialog):
 
         new_factor = target / avg_raw
 
-        ret = QMessageBox.question(self, tr("Confirm Calibration"),
-                                   tr("Average Raw Freq: {0:.6f} Hz\nTarget Freq: {1:.6f} Hz\nNew Factor: {2:.8f}\n\nApply this calibration?").format(avg_raw, target, new_factor),
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        ret = QMessageBox.question(
+            self,
+            tr("Confirm Calibration"),
+            tr(
+                "Average Raw Freq: {0:.6f} Hz\nTarget Freq: {1:.6f} Hz\nNew Factor: {2:.8f}\n\nApply this calibration?"
+            ).format(avg_raw, target, new_factor),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
 
         if ret == QMessageBox.StandardButton.Yes:
             self.module.audio_engine.calibration.set_frequency_calibration(new_factor)
@@ -542,13 +554,14 @@ class FrequencyCalibrationDialog(QDialog):
         else:
             self.status_label.setText(tr("Status: Cancelled"))
 
+
 class FrequencyCounterWidget(QWidget):
     def __init__(self, module: FrequencyCounter):
         super().__init__()
         self.module = module
 
         # Display mode: 'frequency' or 'period'
-        self.display_mode = 'frequency'
+        self.display_mode = "frequency"
         self.init_ui()
 
         self.timer = QTimer()
@@ -580,7 +593,7 @@ class FrequencyCounterWidget(QWidget):
         font = QFont("Courier New", 72, QFont.Weight.Bold)
         font.setStyleHint(QFont.StyleHint.Monospace)
         self.freq_label.setFont(font)
-        self.freq_label.setStyleSheet("color: #00ff00;") # Green LED style
+        self.freq_label.setStyleSheet("color: #00ff00;")  # Green LED style
         display_layout.addWidget(self.freq_label)
 
         self.amp_label = QLabel(tr("-- dBFS"))
@@ -613,7 +626,7 @@ class FrequencyCounterWidget(QWidget):
         self.gate_spin = QDoubleSpinBox()
         self.gate_spin.setRange(-120, 0)
         self.gate_spin.setValue(self.module.gate_threshold_db)
-        self.gate_spin.valueChanged.connect(lambda v: setattr(self.module, 'gate_threshold_db', v))
+        self.gate_spin.valueChanged.connect(lambda v: setattr(self.module, "gate_threshold_db", v))
         gate_layout.addWidget(self.gate_spin)
         controls_layout.addLayout(gate_layout)
 
@@ -622,7 +635,7 @@ class FrequencyCounterWidget(QWidget):
         ch_layout.addWidget(QLabel(tr("Channel:")))
         self.ch_combo = QComboBox()
         self.ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
-        self.ch_combo.currentIndexChanged.connect(lambda idx: setattr(self.module, 'selected_channel', idx))
+        self.ch_combo.currentIndexChanged.connect(lambda idx: setattr(self.module, "selected_channel", idx))
         ch_layout.addWidget(self.ch_combo)
         controls_layout.addLayout(ch_layout)
 
@@ -640,8 +653,8 @@ class FrequencyCounterWidget(QWidget):
         display_layout = QHBoxLayout()
         display_layout.addWidget(QLabel(tr("Display:")))
         self.display_combo = QComboBox()
-        self.display_combo.addItem(tr("Frequency"), 'frequency')
-        self.display_combo.addItem(tr("Period"), 'period')
+        self.display_combo.addItem(tr("Frequency"), "frequency")
+        self.display_combo.addItem(tr("Period"), "period")
         self.display_combo.currentIndexChanged.connect(self.on_display_mode_changed)
         display_layout.addWidget(self.display_combo)
         controls_layout.addLayout(display_layout)
@@ -666,19 +679,19 @@ class FrequencyCounterWidget(QWidget):
 
         # Tab 1: Frequency Drift
         self.plot_widget = pg.PlotWidget(title=tr("Frequency Drift"))
-        self.plot_widget.setLabel('left', tr('Frequency'), units='Hz')
-        self.plot_widget.setLabel('bottom', tr('Time'), units='s')
+        self.plot_widget.setLabel("left", tr("Frequency"), units="Hz")
+        self.plot_widget.setLabel("bottom", tr("Time"), units="s")
         self.plot_widget.showGrid(x=True, y=True)
-        self.curve = self.plot_widget.plot(pen='y')
+        self.curve = self.plot_widget.plot(pen="y")
         self.tab_widget.addTab(self.plot_widget, tr("Frequency Drift"))
 
         # Tab 2: Allan Deviation
         self.allan_plot = pg.PlotWidget(title=tr("Allan Deviation"))
-        self.allan_plot.setLabel('left', tr('Sigma_y(tau)'))
-        self.allan_plot.setLabel('bottom', tr('Tau'), units='s')
+        self.allan_plot.setLabel("left", tr("Sigma_y(tau)"))
+        self.allan_plot.setLabel("bottom", tr("Tau"), units="s")
         self.allan_plot.showGrid(x=True, y=True)
         self.allan_plot.setLogMode(x=True, y=True)
-        self.allan_curve = self.allan_plot.plot(pen='c', symbol='o', symbolSize=5)
+        self.allan_curve = self.allan_plot.plot(pen="c", symbol="o", symbolSize=5)
         self.tab_widget.addTab(self.allan_plot, tr("Allan Deviation"))
 
         # Tab 3: Modulation Domain (Jitter Histogram)
@@ -688,8 +701,8 @@ class FrequencyCounterWidget(QWidget):
         jitter_controls_layout = QHBoxLayout()
         jitter_controls_layout.addWidget(QLabel(tr("Baseline:")))
         self.jitter_baseline_combo = QComboBox()
-        self.jitter_baseline_combo.addItem(tr("Mean"), 'mean')
-        self.jitter_baseline_combo.addItem(tr("Reference"), 'reference')
+        self.jitter_baseline_combo.addItem(tr("Mean"), "mean")
+        self.jitter_baseline_combo.addItem(tr("Reference"), "reference")
         jitter_controls_layout.addWidget(self.jitter_baseline_combo)
 
         jitter_controls_layout.addWidget(QLabel(tr("Ref (Hz):")))
@@ -702,8 +715,8 @@ class FrequencyCounterWidget(QWidget):
 
         jitter_controls_layout.addWidget(QLabel(tr("X-axis:")))
         self.jitter_units_combo = QComboBox()
-        self.jitter_units_combo.addItem(tr("Native"), 'native')
-        self.jitter_units_combo.addItem(tr("ppm"), 'ppm')
+        self.jitter_units_combo.addItem(tr("Native"), "native")
+        self.jitter_units_combo.addItem(tr("ppm"), "ppm")
         jitter_controls_layout.addWidget(self.jitter_units_combo)
 
         jitter_controls_layout.addStretch()
@@ -735,12 +748,12 @@ class FrequencyCounterWidget(QWidget):
 
         self.jitter_plot = pg.PlotWidget(title=tr("Jitter Histogram (Modulation Domain)"))
         self.jitter_plot.showGrid(x=True, y=True)
-        self.jitter_plot.setLabel('left', tr('Probability'), units='%')
-        self.jitter_hist_item = pg.BarGraphItem(x=[0.0], height=[0.0], width=1.0, brush='m')
+        self.jitter_plot.setLabel("left", tr("Probability"), units="%")
+        self.jitter_hist_item = pg.BarGraphItem(x=[0.0], height=[0.0], width=1.0, brush="m")
         self.jitter_plot.addItem(self.jitter_hist_item)
 
         # Optional: Normal distribution overlay as a probability-per-bin curve
-        self.jitter_pdf_curve = self.jitter_plot.plot(pen=pg.mkPen('w', width=2))
+        self.jitter_pdf_curve = self.jitter_plot.plot(pen=pg.mkPen("w", width=2))
 
         jitter_layout.addWidget(self.jitter_plot)
         self.jitter_tab.setLayout(jitter_layout)
@@ -768,13 +781,13 @@ class FrequencyCounterWidget(QWidget):
 
         # Choose a human-friendly unit
         if period_s >= 1.0:
-            value, unit = period_s, 's'
+            value, unit = period_s, "s"
         elif period_s >= 1e-3:
-            value, unit = period_s * 1e3, 'ms'
+            value, unit = period_s * 1e3, "ms"
         elif period_s >= 1e-6:
-            value, unit = period_s * 1e6, 'µs'
+            value, unit = period_s * 1e6, "µs"
         else:
-            value, unit = period_s * 1e9, 'ns'
+            value, unit = period_s * 1e9, "ns"
 
         return f"{value:.5f} {unit}"
 
@@ -783,54 +796,54 @@ class FrequencyCounterWidget(QWidget):
             return "--"
 
         if seconds >= 1.0:
-            value, unit = seconds, 's'
+            value, unit = seconds, "s"
         elif seconds >= 1e-3:
-            value, unit = seconds * 1e3, 'ms'
+            value, unit = seconds * 1e3, "ms"
         elif seconds >= 1e-6:
-            value, unit = seconds * 1e6, 'µs'
+            value, unit = seconds * 1e6, "µs"
         else:
-            value, unit = seconds * 1e9, 'ns'
+            value, unit = seconds * 1e9, "ns"
 
         return f"{value:.{decimals}f} {unit}"
 
     def _placeholder_main_text(self) -> str:
-        if self.display_mode == 'period':
+        if self.display_mode == "period":
             return tr("---.----- s")
         return tr("---.----- Hz")
 
     def _update_plot_labels_for_display_mode(self):
-        if self.display_mode == 'period':
+        if self.display_mode == "period":
             self.plot_widget.setTitle(tr("Period Drift"))
-            self.plot_widget.setLabel('left', tr('Period'), units='s')
+            self.plot_widget.setLabel("left", tr("Period"), units="s")
             self.tab_widget.setTabText(0, tr("Period Drift"))
         else:
             self.plot_widget.setTitle(tr("Frequency Drift"))
-            self.plot_widget.setLabel('left', tr('Frequency'), units='Hz')
+            self.plot_widget.setLabel("left", tr("Frequency"), units="Hz")
             self.tab_widget.setTabText(0, tr("Frequency Drift"))
 
         self._update_jitter_plot_labels_for_display_mode()
 
     def _update_jitter_plot_labels_for_display_mode(self):
-        if not hasattr(self, 'jitter_plot'):
+        if not hasattr(self, "jitter_plot"):
             return
 
-        units_mode = getattr(self, 'jitter_units_combo', None)
-        units_mode = units_mode.currentData() if units_mode is not None else 'native'
+        units_mode = getattr(self, "jitter_units_combo", None)
+        units_mode = units_mode.currentData() if units_mode is not None else "native"
 
-        if units_mode == 'ppm':
-            self.jitter_plot.setLabel('bottom', tr('Jitter (fractional)'), units='ppm')
+        if units_mode == "ppm":
+            self.jitter_plot.setLabel("bottom", tr("Jitter (fractional)"), units="ppm")
         else:
-            if self.display_mode == 'period':
-                self.jitter_plot.setLabel('bottom', tr('Jitter (ΔT)'), units='s')
+            if self.display_mode == "period":
+                self.jitter_plot.setLabel("bottom", tr("Jitter (ΔT)"), units="s")
             else:
-                self.jitter_plot.setLabel('bottom', tr('Jitter (Δf)'), units='Hz')
+                self.jitter_plot.setLabel("bottom", tr("Jitter (Δf)"), units="Hz")
 
     def _on_jitter_settings_changed(self):
         # Enable ref input only when it matters.
-        baseline_mode = getattr(self, 'jitter_baseline_combo', None)
-        baseline_mode = baseline_mode.currentData() if baseline_mode is not None else 'mean'
-        if hasattr(self, 'jitter_ref_spin'):
-            self.jitter_ref_spin.setEnabled(baseline_mode == 'reference')
+        baseline_mode = getattr(self, "jitter_baseline_combo", None)
+        baseline_mode = baseline_mode.currentData() if baseline_mode is not None else "mean"
+        if hasattr(self, "jitter_ref_spin"):
+            self.jitter_ref_spin.setEnabled(baseline_mode == "reference")
 
         self._update_jitter_plot_labels_for_display_mode()
         # Force next histogram refresh.
@@ -850,26 +863,26 @@ class FrequencyCounterWidget(QWidget):
         if len(data) < 2:
             return None, 0, None, None, None, None, None
 
-        baseline_mode = getattr(self, 'jitter_baseline_combo', None)
-        baseline_mode = baseline_mode.currentData() if baseline_mode is not None else 'mean'
-        units_mode = getattr(self, 'jitter_units_combo', None)
-        units_mode = units_mode.currentData() if units_mode is not None else 'native'
-        ref_hz = float(getattr(self, 'jitter_ref_spin', None).value()) if hasattr(self, 'jitter_ref_spin') else 0.0
+        baseline_mode = getattr(self, "jitter_baseline_combo", None)
+        baseline_mode = baseline_mode.currentData() if baseline_mode is not None else "mean"
+        units_mode = getattr(self, "jitter_units_combo", None)
+        units_mode = units_mode.currentData() if units_mode is not None else "native"
+        ref_hz = float(getattr(self, "jitter_ref_spin", None).value()) if hasattr(self, "jitter_ref_spin") else 0.0
 
-        if self.display_mode == 'period':
+        if self.display_mode == "period":
             series = 1.0 / data
             mean_val = float(np.mean(series))
-            if baseline_mode == 'reference' and ref_hz > 0:
+            if baseline_mode == "reference" and ref_hz > 0:
                 baseline_val = 1.0 / ref_hz
                 baseline_text = tr("Baseline: Ref {0:.6f} Hz").format(ref_hz)
             else:
                 baseline_val = mean_val
-                baseline_text = tr("Baseline: Mean") if baseline_mode == 'mean' else tr("Baseline: Ref -- (using mean)")
+                baseline_text = tr("Baseline: Mean") if baseline_mode == "mean" else tr("Baseline: Ref -- (using mean)")
 
             jitter_native = series - baseline_val
             sigma_native = float(np.std(jitter_native, ddof=1)) if len(jitter_native) >= 2 else 0.0
 
-            if units_mode == 'ppm' and np.isfinite(baseline_val) and baseline_val > 0:
+            if units_mode == "ppm" and np.isfinite(baseline_val) and baseline_val > 0:
                 jitter_display = jitter_native / baseline_val * 1e6
                 offset_display = (mean_val - baseline_val) / baseline_val * 1e6
                 sigma_display = float(np.std(jitter_display, ddof=1)) if len(jitter_display) >= 2 else 0.0
@@ -885,17 +898,17 @@ class FrequencyCounterWidget(QWidget):
             mean_text = tr("Mean: {0}").format(self._format_seconds_value(mean_val, decimals=6))
         else:
             mean_val = float(np.mean(data))
-            if baseline_mode == 'reference' and ref_hz > 0:
+            if baseline_mode == "reference" and ref_hz > 0:
                 baseline_val = ref_hz
                 baseline_text = tr("Baseline: Ref {0:.6f} Hz").format(ref_hz)
             else:
                 baseline_val = mean_val
-                baseline_text = tr("Baseline: Mean") if baseline_mode == 'mean' else tr("Baseline: Ref -- (using mean)")
+                baseline_text = tr("Baseline: Mean") if baseline_mode == "mean" else tr("Baseline: Ref -- (using mean)")
 
             jitter_native = data - baseline_val
             sigma_native = float(np.std(jitter_native, ddof=1)) if len(jitter_native) >= 2 else 0.0
 
-            if units_mode == 'ppm' and np.isfinite(baseline_val) and baseline_val > 0:
+            if units_mode == "ppm" and np.isfinite(baseline_val) and baseline_val > 0:
                 jitter_display = jitter_native / baseline_val * 1e6
                 offset_display = (mean_val - baseline_val) / baseline_val * 1e6
                 sigma_display = float(np.std(jitter_display, ddof=1)) if len(jitter_display) >= 2 else 0.0
@@ -1042,15 +1055,15 @@ class FrequencyCounterWidget(QWidget):
 
     def on_display_mode_changed(self, idx):
         mode = self.display_combo.currentData()
-        if mode not in ('frequency', 'period'):
-            mode = 'frequency'
+        if mode not in ("frequency", "period"):
+            mode = "frequency"
 
         self.display_mode = mode
         self._update_plot_labels_for_display_mode()
         # Update placeholders immediately
         if not self.module.is_running:
             self.freq_label.setText(self._placeholder_main_text())
-            if self.display_mode == 'period':
+            if self.display_mode == "period":
                 self.std_label.setText(tr("Std Dev: --"))
                 self.allan_label.setText(tr("Allan Dev: --"))
             else:
@@ -1075,7 +1088,7 @@ class FrequencyCounterWidget(QWidget):
         if len(taus) > 0:
             taus = np.array(taus, dtype=float)
             devs = np.array(devs, dtype=float)
-            mask = (devs > 1e-20)
+            mask = devs > 1e-20
             if np.any(mask):
                 self.allan_curve.setData(taus[mask], devs[mask])
             else:
@@ -1094,7 +1107,7 @@ class FrequencyCounterWidget(QWidget):
 
         if freq is not None:
             # Update Label
-            if self.display_mode == 'period':
+            if self.display_mode == "period":
                 self.freq_label.setText(self._format_period_text(freq))
             else:
                 self.freq_label.setText(self._format_frequency_text(freq))
@@ -1105,7 +1118,7 @@ class FrequencyCounterWidget(QWidget):
 
             # Update Stats
             self.module.calculate_stats()
-            if self.display_mode == 'period':
+            if self.display_mode == "period":
                 std_s, allan_s = self._calculate_period_stats_from_freq_history()
                 if std_s is None or allan_s is None:
                     self.std_label.setText(tr("Std Dev: --"))
@@ -1121,7 +1134,7 @@ class FrequencyCounterWidget(QWidget):
             current_tab = self.tab_widget.currentIndex()
 
             if current_tab == 0:  # Frequency Drift
-                if self.display_mode == 'period':
+                if self.display_mode == "period":
                     freq_data = np.array(self.module.freq_history, dtype=float)
                     freq_data = np.where(freq_data > 0, freq_data, np.nan)
                     period_data = (1.0 / freq_data).tolist()
@@ -1152,7 +1165,9 @@ class FrequencyCounterWidget(QWidget):
                 if (now_t - self._last_hist_update_t) >= 0.25:
                     self._last_hist_update_t = now_t
 
-                    jitter_display, n, baseline_text, offset_text, mean_text, sigma_text, _baseline_for_ppm = self._get_distribution_series()
+                    jitter_display, n, baseline_text, offset_text, mean_text, sigma_text, _baseline_for_ppm = (
+                        self._get_distribution_series()
+                    )
                     if jitter_display is None or n < 2:
                         self.jitter_baseline_label.setText(tr("Baseline: --"))
                         self.jitter_offset_label.setText(tr("Offset: --"))
@@ -1184,7 +1199,7 @@ class FrequencyCounterWidget(QWidget):
                             self.jitter_pdf_curve.setData([], [])
         else:
             self.freq_label.setText(self._placeholder_main_text())
-            if self.display_mode == 'period':
+            if self.display_mode == "period":
                 self.std_label.setText(tr("Std Dev: --"))
                 self.allan_label.setText(tr("Allan Dev: --"))
             else:
@@ -1192,7 +1207,7 @@ class FrequencyCounterWidget(QWidget):
                 self.allan_label.setText(tr("Allan Dev: -- Hz"))
 
             # Clear distribution view if the user is currently on that tab.
-            if self.tab_widget.currentIndex() == 2 and hasattr(self, 'jitter_hist_item'):
+            if self.tab_widget.currentIndex() == 2 and hasattr(self, "jitter_hist_item"):
                 self.jitter_baseline_label.setText(tr("Baseline: --"))
                 self.jitter_offset_label.setText(tr("Offset: --"))
                 self.jitter_mean_label.setText(tr("Mean: --"))

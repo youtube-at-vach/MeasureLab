@@ -1,9 +1,6 @@
 
-import pytest
 from unittest.mock import MagicMock, patch
-import platform
 from src.core.theme_manager import ThemeManager
-from PyQt6.QtWidgets import QStyleFactory
 
 def test_theme_manager_caches_styles():
     mock_app = MagicMock()

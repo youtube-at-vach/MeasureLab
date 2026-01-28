@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.signal
 
 
 class MockAudio:
@@ -80,4 +81,4 @@ class MockAudio:
 
         return indata
 
-import scipy.signal
+

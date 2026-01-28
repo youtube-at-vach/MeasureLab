@@ -1,12 +1,11 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import sys
-import threading
 
 # Mock sounddevice before importing AudioEngine
 sys.modules['sounddevice'] = MagicMock()
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine  # noqa: E402
 
 class TestAudioEngineLogic(unittest.TestCase):
     def setUp(self):
@@ -15,7 +14,8 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.engine.logger = MagicMock()
 
     def test_register_unregister(self):
-        cb = lambda *args: None
+        def cb(*args):
+            pass
 
         # Test Register
         cid = self.engine.register_callback(cb)

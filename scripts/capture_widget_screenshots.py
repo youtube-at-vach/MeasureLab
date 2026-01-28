@@ -1,18 +1,15 @@
 
 import sys
 import os
-import glob
 import importlib.util
 import inspect
-import logging
-from PyQt6.QtWidgets import QApplication, QWidget, QScrollArea
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QApplication, QWidget
 
 # Add project root to path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, PROJECT_ROOT)
 
-from src.measurement_modules.base import MeasurementModule
+from src.measurement_modules.base import MeasurementModule  # noqa: E402
 
 # --- Mocks ---
 
@@ -77,7 +74,7 @@ def find_widget_pair(module):
     widget_class = None
 
     # 1. Find Module
-    for name, obj in inspect.getmembers(module):
+    for _name, obj in inspect.getmembers(module):
         if inspect.isclass(obj) and issubclass(obj, MeasurementModule) and obj is not MeasurementModule:
             module_class = obj
             break
@@ -96,8 +93,10 @@ def find_widget_pair(module):
         for name, obj in inspect.getmembers(module):
             if inspect.isclass(obj) and issubclass(obj, QWidget):
                 # Skip common utility widgets if they exist (unlikely in these files but good practice)
-                if name.startswith("Q"): continue 
-                if obj is module_class: continue # Just in case
+                if name.startswith("Q"):
+                    continue
+                if obj is module_class:
+                    continue # Just in case
 
                 # Check init signature for 'module' arg?
                 sig = inspect.signature(obj.__init__)

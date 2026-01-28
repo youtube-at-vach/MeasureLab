@@ -81,7 +81,7 @@ def test_ltc_issues():
 
     # Check against UTC and Local
     now_utc = datetime.now(timezone.utc)
-    now_local = datetime.now() # System local
+    datetime.now() # System local
 
     def tc_to_dt(tc, ref_dt):
         try:

@@ -12,6 +12,7 @@ class AudioEngine:
     Handles audio I/O operations using sounddevice.
     Implements a mixer to support multiple simultaneous clients.
     """
+
     def __init__(self):
         self.input_device = None
         self.output_device = None
@@ -29,12 +30,12 @@ class AudioEngine:
 
         # Channel Configuration
         # 'stereo', 'left', 'right'
-        self.input_channel_mode = 'stereo'
-        self.output_channel_mode = 'stereo'
+        self.input_channel_mode = "stereo"
+        self.output_channel_mode = "stereo"
 
         # Mixer State
-        self.callbacks = {} # id -> callback
-        self._cached_callbacks = [] # Cached list of values(self.callbacks)
+        self.callbacks = {}  # id -> callback
+        self._cached_callbacks = []  # Cached list of values(self.callbacks)
         self.next_callback_id = 0
         self.lock = threading.Lock()
 
@@ -97,14 +98,14 @@ class AudioEngine:
             hostapi_name = None
             if hostapis is not None:
                 try:
-                    hostapi_idx = d.get('hostapi')
+                    hostapi_idx = d.get("hostapi")
                     if hostapi_idx is not None and 0 <= int(hostapi_idx) < len(hostapis):
-                        hostapi_name = hostapis[int(hostapi_idx)].get('name')
+                        hostapi_name = hostapis[int(hostapi_idx)].get("name")
                 except Exception:
                     hostapi_name = None
 
             if hostapi_name:
-                d['hostapi_name'] = str(hostapi_name)
+                d["hostapi_name"] = str(hostapi_name)
 
             enriched.append(d)
 
@@ -187,8 +188,8 @@ class AudioEngine:
         in_mode = self.input_channel_mode
         out_mode = self.output_channel_mode
 
-        hw_in_ch = 2 if in_mode in ['right', 'stereo'] else 1
-        hw_out_ch = 2 if out_mode in ['right', 'stereo'] else 1
+        hw_in_ch = 2 if in_mode in ["right", "stereo"] else 1
+        hw_out_ch = 2 if out_mode in ["right", "stereo"] else 1
 
         # Reset loopback buffer
         self.last_output_buffer = None
@@ -214,10 +215,9 @@ class AudioEngine:
 
                 lb_src = self.last_output_buffer
                 # Reuse logical input buffer if possible to avoid allocation
-                if (self._logical_in_buffer is None or
-                        self._logical_in_buffer.shape != (frames, 2)):
+                if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
                     # Allocate new buffer (zeros is safer than empty for initial state)
-                    self._logical_in_buffer = np.zeros((frames, 2), dtype='float32')
+                    self._logical_in_buffer = np.zeros((frames, 2), dtype="float32")
 
                 logical_in = self._logical_in_buffer
 
@@ -231,18 +231,18 @@ class AudioEngine:
                     logical_in.fill(0)
             else:
                 # Standard Hardware Input Mapping
-                if in_mode == 'left':
+                if in_mode == "left":
                     logical_in = indata[:, 0:1]
-                elif in_mode == 'right':
+                elif in_mode == "right":
                     if indata.shape[1] >= 2:
                         logical_in = indata[:, 1:2]
                     else:
                         logical_in = np.zeros((frames, 1))
-                else: # stereo
+                else:  # stereo
                     logical_in = indata[:, 0:2]
 
             # Create a temp output buffer for clients
-            logical_out_ch = 2 if out_mode == 'stereo' else 1
+            logical_out_ch = 2 if out_mode == "stereo" else 1
 
             # Use cached callbacks (atomic read)
             active_callbacks = self._cached_callbacks
@@ -251,24 +251,22 @@ class AudioEngine:
                 # Even if no callbacks, we might need to update last_output_buffer (silence)
                 if self.loopback:
                     if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
-                         self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype='float32')
+                        self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
                     else:
-                         self.last_output_buffer.fill(0)
+                        self.last_output_buffer.fill(0)
                 return
 
             # Mix buffer
-            if (self._mix_buffer is not None and
-                self._mix_buffer.shape == (frames, logical_out_ch)):
+            if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch):
                 mix_buffer = self._mix_buffer
                 mix_buffer.fill(0)
             else:
-                mix_buffer = np.zeros((frames, logical_out_ch), dtype='float32')
+                mix_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
                 self._mix_buffer = mix_buffer
 
             for cb in active_callbacks:
                 # Temp buffer for this client
-                if (self._client_buffer is not None and
-                    self._client_buffer.shape == (frames, logical_out_ch)):
+                if self._client_buffer is not None and self._client_buffer.shape == (frames, logical_out_ch):
                     client_out = self._client_buffer
                     client_out.fill(0)
                 else:
@@ -286,20 +284,19 @@ class AudioEngine:
 
             # Store for next loopback cycle
             if self.loopback:
-                if (self.last_output_buffer is None or
-                        self.last_output_buffer.shape != mix_buffer.shape):
+                if self.last_output_buffer is None or self.last_output_buffer.shape != mix_buffer.shape:
                     self.last_output_buffer = np.empty_like(mix_buffer)
                 np.copyto(self.last_output_buffer, mix_buffer)
 
             # Map Logical Output -> Hardware Output
             if not self.mute_output:
-                if out_mode == 'stereo':
+                if out_mode == "stereo":
                     outdata[:, 0:2] = mix_buffer
-                elif out_mode == 'left':
+                elif out_mode == "left":
                     outdata[:, 0:1] = mix_buffer
                     if outdata.shape[1] > 1:
                         outdata[:, 1:] = 0
-                elif out_mode == 'right':
+                elif out_mode == "right":
                     if outdata.shape[1] >= 2:
                         outdata[:, 1:2] = mix_buffer
                         outdata[:, 0] = 0
@@ -315,10 +312,10 @@ class AudioEngine:
                     # Fallback to default output device.
                     dev_id = sd.default.device[1]
                 if dev_id is not None and dev_id != -1:
-                    hostapi_idx = sd.query_devices(dev_id).get('hostapi')
+                    hostapi_idx = sd.query_devices(dev_id).get("hostapi")
                     if hostapi_idx is not None:
-                        hostapi_name = sd.query_hostapis(hostapi_idx).get('name')
-                if hostapi_name and 'jack' in str(hostapi_name).lower():
+                        hostapi_name = sd.query_hostapis(hostapi_idx).get("name")
+                if hostapi_name and "jack" in str(hostapi_name).lower():
                     extra_settings = sd.JackSettings(client_name=self.jack_client_name)
             except Exception:
                 extra_settings = None
@@ -329,9 +326,9 @@ class AudioEngine:
                 blocksize=self.block_size,
                 callback=master_callback,
                 channels=(hw_in_ch, hw_out_ch),
-                dtype='float32',
-                latency='high',
-                extra_settings=extra_settings
+                dtype="float32",
+                latency="high",
+                extra_settings=extra_settings,
             )
             self.stream.start()
             self.logger.info(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
@@ -380,7 +377,7 @@ class AudioEngine:
             "active_clients": client_count,
             "input_device": self.input_device,
             "output_device": self.output_device,
-            "status_flags": current_status_flags
+            "status_flags": current_status_flags,
         }
 
     # Legacy method support (deprecated but kept for compatibility during transition if needed)

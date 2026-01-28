@@ -53,17 +53,15 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Settings
         self._gen_frequency = 1000.0
         self.gen_amplitude = 0.5
-        self.output_channel = 0 # 0: Left, 1: Right, 2: Stereo
-        self.voltage_channel = 0 # 0: Left, 1: Right
-        self.current_channel = 1 # 0: Left, 1: Right
+        self.output_channel = 0  # 0: Left, 1: Right, 2: Stereo
+        self.voltage_channel = 0  # 0: Left, 1: Right
+        self.current_channel = 1  # 0: Left, 1: Right
         self.shunt_resistance = 100.0
 
-        # Calibration Data (Freq -> Complex Z)
-        # Calibration Data (Freq -> Complex Z)
         self.cal_open = {}
         self.cal_short = {}
         self.cal_load = {}
-        self.load_standard_real = 100.0 # Ohm
+        self.load_standard_real = 100.0  # Ohm
         self.use_calibration = False
         self.use_cal_interpolation = True
 
@@ -109,7 +107,7 @@ class ImpedanceAnalyzer(MeasurementModule):
 
     @property
     def gen_frequency(self) -> float:
-        return float(getattr(self, '_gen_frequency', 0.0) or 0.0)
+        return float(getattr(self, "_gen_frequency", 0.0) or 0.0)
 
     @gen_frequency.setter
     def gen_frequency(self, value: float):
@@ -129,10 +127,10 @@ class ImpedanceAnalyzer(MeasurementModule):
             pass
 
     def _desired_buffer_multiplier(self, freq_hz: float) -> int:
-        base = int(getattr(self, 'base_buffer_size', 4096) or 4096)
-        max_mul = int(getattr(self, 'max_buffer_multiplier', 8) or 8)
-        threshold = float(getattr(self, 'dynamic_buffer_threshold_hz', 100.0) or 100.0)
-        min_cycles = float(getattr(self, 'dynamic_buffer_min_cycles', 8.0) or 8.0)
+        base = int(getattr(self, "base_buffer_size", 4096) or 4096)
+        max_mul = int(getattr(self, "max_buffer_multiplier", 8) or 8)
+        threshold = float(getattr(self, "dynamic_buffer_threshold_hz", 100.0) or 100.0)
+        min_cycles = float(getattr(self, "dynamic_buffer_min_cycles", 8.0) or 8.0)
         sr = float(self.audio_engine.sample_rate)
 
         if base <= 0 or max_mul <= 0 or sr <= 0:
@@ -152,7 +150,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         new_size = int(new_size)
         if new_size <= 0:
             return
-        if new_size == int(getattr(self, 'buffer_size', 0) or 0):
+        if new_size == int(getattr(self, "buffer_size", 0) or 0):
             return
 
         # Reset state that depends on integration time/buffer.
@@ -171,11 +169,11 @@ class ImpedanceAnalyzer(MeasurementModule):
             self.input_data = np.zeros((self.buffer_size, 2))
 
     def _apply_dynamic_buffering(self, freq_hz: float):
-        base = int(getattr(self, 'base_buffer_size', 4096) or 4096)
+        base = int(getattr(self, "base_buffer_size", 4096) or 4096)
         mul = self._desired_buffer_multiplier(freq_hz)
         target = base * mul
         # Cap at max_multiplier by design.
-        max_mul = int(getattr(self, 'max_buffer_multiplier', 16) or 16)
+        max_mul = int(getattr(self, "max_buffer_multiplier", 16) or 16)
         target = min(target, base * max_mul)
         self._set_buffer_size(target)
 
@@ -230,7 +228,7 @@ class ImpedanceAnalyzer(MeasurementModule):
                     self.input_data[:] = new_data[-bs:]
                 else:
                     self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                    self.input_data[-len(new_data):] = new_data
+                    self.input_data[-len(new_data) :] = new_data
 
             # --- Output Generation ---
             t = (np.arange(frames) + self._phase) / sample_rate
@@ -239,9 +237,11 @@ class ImpedanceAnalyzer(MeasurementModule):
             signal = self.gen_amplitude * np.cos(2 * np.pi * self.gen_frequency * t)
 
             outdata.fill(0)
-            if self.output_channel == 2: # Stereo
-                if outdata.shape[1] >= 1: outdata[:, 0] = signal
-                if outdata.shape[1] >= 2: outdata[:, 1] = signal
+            if self.output_channel == 2:  # Stereo
+                if outdata.shape[1] >= 1:
+                    outdata[:, 0] = signal
+                if outdata.shape[1] >= 2:
+                    outdata[:, 1] = signal
             elif outdata.shape[1] > self.output_channel:
                 outdata[:, self.output_channel] = signal
 
@@ -274,7 +274,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         f0 = float(self.gen_frequency)
 
         # If the demodulation frequency changes, reset stateful filters/averaging to avoid mixing data.
-        last_f = getattr(self, '_last_demod_freq', None)
+        last_f = getattr(self, "_last_demod_freq", None)
         if last_f is None or abs(float(last_f) - f0) > 1e-9:
             try:
                 self.reset_postmix_lpf()
@@ -288,7 +288,7 @@ class ImpedanceAnalyzer(MeasurementModule):
             self._last_demod_freq = f0
 
         # Reference present check (avoid unstable division)
-        v_rms = float(np.sqrt(np.mean(sig_v ** 2)))
+        v_rms = float(np.sqrt(np.mean(sig_v**2)))
         if v_rms < 0.001:
             self.meas_v_complex = 0j
             self.meas_i_complex = 0j
@@ -324,12 +324,12 @@ class ImpedanceAnalyzer(MeasurementModule):
         i_rot = i_corr * np.conj(v_ref)
 
         # Post-mix IIR LPF (dynamic reserve) on complex baseband (V and I separately)
-        order = int(getattr(self, 'postmix_lpf_order', 0) or 0)
+        order = int(getattr(self, "postmix_lpf_order", 0) or 0)
         if order > 0:
             order = min(max(order, 1), 8)
             dt = self.buffer_size / self.audio_engine.sample_rate
 
-            tau = float(getattr(self, 'postmix_lpf_tau_s', 0.0) or 0.0)
+            tau = float(getattr(self, "postmix_lpf_tau_s", 0.0) or 0.0)
             if tau <= 0.0:
                 tau = dt
             tau = max(tau, 1e-6)
@@ -386,7 +386,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Z = V / I_actual = V / (- I_measured / R_shunt) = - V * R_shunt / I_measured
 
         if abs(avg_i) > 1e-12:
-            z_raw = - (avg_v * self.shunt_resistance) / avg_i
+            z_raw = -(avg_v * self.shunt_resistance) / avg_i
         else:
             z_raw = 0j
 
@@ -406,23 +406,15 @@ class ImpedanceAnalyzer(MeasurementModule):
         Fallback to Open/Short (OS) if Load not available:
         Z_dut = (Z_meas - Z_short) / (1 - (Z_meas - Z_short) * Y_open)
         """
-    def apply_calibration(self, z_meas, freq):
-        """
-        Apply Open/Short/Load (OSL) calibration.
-        Formula:
-        Z_dut = Z_std * ((Z_open - Z_load) * (Z_meas - Z_short)) / ((Z_open - Z_meas) * (Z_load - Z_short))
-        Fallback to Open/Short (OS) if Load not available:
-        Z_dut = (Z_meas - Z_short) / (1 - (Z_meas - Z_short) * Y_open)
-        """
         if not self.cal_short or not self.cal_open:
             return z_meas
 
         # Get Calibration Data (Always Interpolate)
         # Pass cache keys to enable safe caching of sorted keys.
-        z_short = self._get_interpolated_cal_value(self.cal_short, freq, cache_key='short')
-        z_open = self._get_interpolated_cal_value(self.cal_open, freq, cache_key='open')
+        z_short = self._get_interpolated_cal_value(self.cal_short, freq, cache_key="short")
+        z_open = self._get_interpolated_cal_value(self.cal_open, freq, cache_key="open")
         if self.cal_load:
-            z_load = self._get_interpolated_cal_value(self.cal_load, freq, cache_key='load')
+            z_load = self._get_interpolated_cal_value(self.cal_load, freq, cache_key="load")
         else:
             z_load = None
 
@@ -442,7 +434,8 @@ class ImpedanceAnalyzer(MeasurementModule):
             return numerator / denominator
 
         # OS Calibration (Fallback)
-        if z_open == 0: return z_meas
+        if z_open == 0:
+            return z_meas
         y_open = 1.0 / z_open
 
         numerator = z_meas - z_short
@@ -500,7 +493,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Now sorted_freqs[i] <= freq < sorted_freqs[i+1]
 
         f_low = sorted_freqs[i]
-        f_high = sorted_freqs[i+1]
+        f_high = sorted_freqs[i + 1]
 
         t = (freq - f_low) / (f_high - f_low)
         z_low = cal_dict[f_low]
@@ -516,14 +509,14 @@ class ImpedanceAnalyzer(MeasurementModule):
             "cal_open": self._serialize_cal(self.cal_open),
             "cal_short": self._serialize_cal(self.cal_short),
             "cal_load": self._serialize_cal(self.cal_load),
-            "load_std_real": self.load_standard_real
+            "load_std_real": self.load_standard_real,
         }
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             json.dump(data, f, indent=4)
 
     def load_calibration(self, filename):
         try:
-            with open(filename, 'r') as f:
+            with open(filename, "r") as f:
                 data = json.load(f)
 
             self.cal_open = self._deserialize_cal(data.get("cal_open", {}))
@@ -546,14 +539,14 @@ class ImpedanceAnalyzer(MeasurementModule):
                 f = float(f_str)
                 z = complex(z_list[0], z_list[1])
                 new_cal[f] = z
-            except:
+            except Exception:
                 pass
         return new_cal
 
 
 class ImpedanceSweepWorker(QThread):
     progress = pyqtSignal(int)
-    result = pyqtSignal(float, complex) # freq, z_complex
+    result = pyqtSignal(float, complex)  # freq, z_complex
     finished_sweep = pyqtSignal()
 
     def __init__(self, module: ImpedanceAnalyzer, start_f, end_f, steps, log_sweep, settle_time, cal_mode=None):
@@ -589,11 +582,13 @@ class ImpedanceSweepWorker(QThread):
             self._sleep_interruptible(0.5)
 
         for i, f in enumerate(freqs):
-            if self.is_cancelled: break
+            if self.is_cancelled:
+                break
 
             self.module.gen_frequency = f
             self._sleep_interruptible(self.settle_time)
-            if self.is_cancelled: break
+            if self.is_cancelled:
+                break
 
             # Clear history to avoid averaging with old freq data
             self.module.history_v.clear()
@@ -604,23 +599,26 @@ class ImpedanceSweepWorker(QThread):
             buffer_duration = self.module.buffer_size / sample_rate
             wait_time = max(0.05, buffer_duration)
 
-            self._sleep_interruptible(wait_time) # Wait for settling in buffer
-            if self.is_cancelled: break
+            self._sleep_interruptible(wait_time)  # Wait for settling in buffer
+            if self.is_cancelled:
+                break
 
             # Average
             for _ in range(self.module.averaging_count):
-                if self.is_cancelled: break
+                if self.is_cancelled:
+                    break
                 self._sleep_interruptible(wait_time)
-                if self.is_cancelled: break
-                self.module.process_data(ignore_calibration=self.cal_mode in ('open', 'short', 'load'))
+                if self.is_cancelled:
+                    break
+                self.module.process_data(ignore_calibration=self.cal_mode in ("open", "short", "load"))
 
             # During calibration capture, always store the uncalibrated impedance.
-            if self.cal_mode in ('open', 'short', 'load'):
+            if self.cal_mode in ("open", "short", "load"):
                 z = self.module.meas_z_raw
             else:
                 z = self.module.meas_z_complex
             self.result.emit(f, z)
-            self.progress.emit(int((i+1)/self.steps * 100))
+            self.progress.emit(int((i + 1) / self.steps * 100))
 
         self.finished_sweep.emit()
 
@@ -632,7 +630,7 @@ class ImpedanceResultsWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.is_detailed = False
-        self.circuit_mode = tr("Series") # "Series" or "Parallel"
+        self.circuit_mode = tr("Series")  # "Series" or "Parallel"
         self.init_ui()
 
         # Display precision defaults
@@ -640,7 +638,9 @@ class ImpedanceResultsWidget(QWidget):
         self._default_z_sig_figs = 5
         self._default_phase_places = 2
 
-    def _sig_figs_from_std(self, val_std: float | None, val_abs: float | None, default: int, max_figs: int = 7, min_figs: int = 3) -> int:
+    def _sig_figs_from_std(
+        self, val_std: float | None, val_abs: float | None, default: int, max_figs: int = 7, min_figs: int = 3
+    ) -> int:
         """Choose significant figures based on measurement dispersion.
 
         Strategy: show stable digits + ~1 noise digit.
@@ -715,9 +715,9 @@ class ImpedanceResultsWidget(QWidget):
 
         # Primary Z
         self.lbl_z_mag = QLabel("0.00 Ω")
-        self.lbl_z_mag.setStyleSheet("font-size: 28px; font-weight: bold; color: #4caf50;") # Green
+        self.lbl_z_mag.setStyleSheet("font-size: 28px; font-weight: bold; color: #4caf50;")  # Green
         self.lbl_z_phase = QLabel("0.00°")
-        self.lbl_z_phase.setStyleSheet("font-size: 20px; font-weight: bold; color: #2196f3;") # Blue
+        self.lbl_z_phase.setStyleSheet("font-size: 20px; font-weight: bold; color: #2196f3;")  # Blue
 
         simple_layout.addWidget(QLabel(tr("|Z|:")), 0, 0)
         simple_layout.addWidget(self.lbl_z_mag, 0, 1)
@@ -727,11 +727,11 @@ class ImpedanceResultsWidget(QWidget):
         # Secondary (R/X or G/B based on mode)
         self.lbl_p1_name = QLabel(tr("Rs:"))
         self.lbl_p1_val = QLabel("0.00 Ω")
-        self.lbl_p1_val.setStyleSheet("font-size: 18px; color: #ffeb3b;") # Yellow
+        self.lbl_p1_val.setStyleSheet("font-size: 18px; color: #ffeb3b;")  # Yellow
 
         self.lbl_p2_name = QLabel(tr("Xs:"))
         self.lbl_p2_val = QLabel("0.00 Ω")
-        self.lbl_p2_val.setStyleSheet("font-size: 18px; color: #e91e63;") # Pink
+        self.lbl_p2_val.setStyleSheet("font-size: 18px; color: #e91e63;")  # Pink
 
         simple_layout.addWidget(self.lbl_p1_name, 1, 0)
         simple_layout.addWidget(self.lbl_p1_val, 1, 1)
@@ -757,55 +757,74 @@ class ImpedanceResultsWidget(QWidget):
         # Group 1: Series
         box_s = QGroupBox(tr("Series Equivalent"))
         lay_s = QFormLayout()
-        self.val_rs = QLabel("-"); lay_s.addRow(tr("Rs:"), self.val_rs)
-        self.val_xs = QLabel("-"); lay_s.addRow(tr("Xs:"), self.val_xs)
-        self.val_ls = QLabel("-"); lay_s.addRow(tr("Ls:"), self.val_ls)
-        self.val_cs = QLabel("-"); lay_s.addRow(tr("Cs:"), self.val_cs)
+        self.val_rs = QLabel("-")
+        lay_s.addRow(tr("Rs:"), self.val_rs)
+        self.val_xs = QLabel("-")
+        lay_s.addRow(tr("Xs:"), self.val_xs)
+        self.val_ls = QLabel("-")
+        lay_s.addRow(tr("Ls:"), self.val_ls)
+        self.val_cs = QLabel("-")
+        lay_s.addRow(tr("Cs:"), self.val_cs)
         box_s.setLayout(lay_s)
         detail_layout.addWidget(box_s, 0, 0)
 
         # Group 2: Parallel
         box_p = QGroupBox(tr("Parallel Equivalent"))
         lay_p = QFormLayout()
-        self.val_rp = QLabel("-"); lay_p.addRow(tr("Rp:"), self.val_rp)
-        self.val_xp = QLabel("-"); lay_p.addRow(tr("Xp:"), self.val_xp)
-        self.val_lp = QLabel("-"); lay_p.addRow(tr("Lp:"), self.val_lp)
-        self.val_cp = QLabel("-"); lay_p.addRow(tr("Cp:"), self.val_cp)
+        self.val_rp = QLabel("-")
+        lay_p.addRow(tr("Rp:"), self.val_rp)
+        self.val_xp = QLabel("-")
+        lay_p.addRow(tr("Xp:"), self.val_xp)
+        self.val_lp = QLabel("-")
+        lay_p.addRow(tr("Lp:"), self.val_lp)
+        self.val_cp = QLabel("-")
+        lay_p.addRow(tr("Cp:"), self.val_cp)
         box_p.setLayout(lay_p)
         detail_layout.addWidget(box_p, 0, 1)
 
         # Group 3: Admittance
         box_y = QGroupBox(tr("Admittance (Y)"))
         lay_y = QFormLayout()
-        self.val_y_mag = QLabel("-"); lay_y.addRow(tr("|Y|:"), self.val_y_mag)
-        self.val_g = QLabel("-"); lay_y.addRow(tr("G (Cond):"), self.val_g)
-        self.val_b = QLabel("-"); lay_y.addRow(tr("B (Susc):"), self.val_b)
+        self.val_y_mag = QLabel("-")
+        lay_y.addRow(tr("|Y|:"), self.val_y_mag)
+        self.val_g = QLabel("-")
+        lay_y.addRow(tr("G (Cond):"), self.val_g)
+        self.val_b = QLabel("-")
+        lay_y.addRow(tr("B (Susc):"), self.val_b)
         box_y.setLayout(lay_y)
         detail_layout.addWidget(box_y, 1, 0)
 
         # Group 4: Quality / Loss
         box_q = QGroupBox(tr("Quality / Loss"))
         lay_q = QFormLayout()
-        self.val_q = QLabel("-"); lay_q.addRow(tr("Q Factor:"), self.val_q)
-        self.val_d = QLabel("-"); lay_q.addRow(tr("D (Loss):"), self.val_d)
-        self.val_esr = QLabel("-"); lay_q.addRow(tr("ESR:"), self.val_esr) # Same as Rs usually
+        self.val_q = QLabel("-")
+        lay_q.addRow(tr("Q Factor:"), self.val_q)
+        self.val_d = QLabel("-")
+        lay_q.addRow(tr("D (Loss):"), self.val_d)
+        self.val_esr = QLabel("-")
+        lay_q.addRow(tr("ESR:"), self.val_esr)  # Same as Rs usually
         box_q.setLayout(lay_q)
         detail_layout.addWidget(box_q, 1, 1)
 
         # Group 5: Raw Signals (V / I)
         box_raw = QGroupBox(tr("Raw Signals (V / I)"))
         lay_raw = QFormLayout()
-        self.val_v = QLabel("-"); lay_raw.addRow(tr("Voltage:"), self.val_v)
-        self.val_i = QLabel("-"); lay_raw.addRow(tr("Current:"), self.val_i)
-        self.val_v_phase = QLabel("-"); lay_raw.addRow(tr("V Phase:"), self.val_v_phase)
-        self.val_i_phase = QLabel("-"); lay_raw.addRow(tr("I Phase:"), self.val_i_phase)
+        self.val_v = QLabel("-")
+        lay_raw.addRow(tr("Voltage:"), self.val_v)
+        self.val_i = QLabel("-")
+        lay_raw.addRow(tr("Current:"), self.val_i)
+        self.val_v_phase = QLabel("-")
+        lay_raw.addRow(tr("V Phase:"), self.val_v_phase)
+        self.val_i_phase = QLabel("-")
+        lay_raw.addRow(tr("I Phase:"), self.val_i_phase)
         box_raw.setLayout(lay_raw)
         detail_layout.addWidget(box_raw, 2, 0)
 
         # Group 6: Buffer (shown as a separate framed column to the right of V/I)
         box_buf = QGroupBox(tr("Buffer"))
         lay_buf = QFormLayout()
-        self.val_buffer = QLabel("-"); lay_buf.addRow(tr("Size:"), self.val_buffer)
+        self.val_buffer = QLabel("-")
+        lay_buf.addRow(tr("Size:"), self.val_buffer)
         box_buf.setLayout(lay_buf)
         detail_layout.addWidget(box_buf, 2, 1)
 
@@ -828,7 +847,8 @@ class ImpedanceResultsWidget(QWidget):
         z_mag_std: float | None = None,
         z_phase_std_deg: float | None = None,
     ):
-        if freq <= 0: return
+        if freq <= 0:
+            return
         w = 2 * np.pi * freq
         # Buffer display (shown in the Details panel)
         try:
@@ -849,13 +869,13 @@ class ImpedanceResultsWidget(QWidget):
         z_sig_figs = self._sig_figs_from_std(
             z_mag_std,
             z_mag,
-            default=int(getattr(self, '_default_z_sig_figs', 5) or 5),
+            default=int(getattr(self, "_default_z_sig_figs", 5) or 5),
             max_figs=7,
             min_figs=3,
         )
         phase_places = self._phase_places_from_std(
             z_phase_std_deg,
-            default=int(getattr(self, '_default_phase_places', 2) or 2),
+            default=int(getattr(self, "_default_phase_places", 2) or 2),
             max_places=4,
         )
 
@@ -866,7 +886,7 @@ class ImpedanceResultsWidget(QWidget):
         rs = z.real
         xs = z.imag
         ls = xs / w if w > 0 else 0
-        cs = -1 / (w * xs) if (w > 0 and abs(xs) > 1e-12) else float('inf')
+        cs = -1 / (w * xs) if (w > 0 and abs(xs) > 1e-12) else float("inf")
 
         # Parallel
         # Y = 1/Z = G + jB
@@ -875,17 +895,23 @@ class ImpedanceResultsWidget(QWidget):
             g = y.real
             b = y.imag
 
-            rp = 1.0 / g if abs(g) > 1e-12 else float('inf')
-            xp = -1.0 / b if abs(b) > 1e-12 else float('inf')
+            rp = 1.0 / g if abs(g) > 1e-12 else float("inf")
+            xp = -1.0 / b if abs(b) > 1e-12 else float("inf")
 
-            lp = -1.0 / (w * b) if (w > 0 and abs(b) > 1e-12) else float('inf')
+            lp = -1.0 / (w * b) if (w > 0 and abs(b) > 1e-12) else float("inf")
             cp = b / w if w > 0 else 0
         else:
-            y = 0j; g=0; b=0; rp=0; xp=0; lp=0; cp=0
+            y = 0j
+            g = 0
+            b = 0
+            rp = 0
+            xp = 0
+            lp = 0
+            cp = 0
 
         # Q / D
-        q = abs(xs) / abs(rs) if abs(rs) > 1e-12 else float('inf')
-        d = 1.0 / q if q > 1e-12 else float('inf')
+        q = abs(xs) / abs(rs) if abs(rs) > 1e-12 else float("inf")
+        d = 1.0 / q if q > 1e-12 else float("inf")
 
         # --- Update Detailed View ---
         self.val_rs.setText(format_si(rs, "Ω", sig_figs=z_sig_figs))
@@ -910,7 +936,7 @@ class ImpedanceResultsWidget(QWidget):
 
         # Raw signals are shown primarily for debugging; keep their previous style.
         self.val_v.setText(f"{abs(v):.4g} V")
-        self.val_i.setText(f"{abs(i)*1000:.4g} mA")
+        self.val_i.setText(f"{abs(i) * 1000:.4g} mA")
         self.val_v_phase.setText(f"{np.degrees(np.angle(v)):.2f}°")
         self.val_i_phase.setText(f"{np.degrees(np.angle(i)):.2f}°")
 
@@ -923,23 +949,23 @@ class ImpedanceResultsWidget(QWidget):
             self.lbl_p2_name.setText(tr("Xs:"))
             self.lbl_p2_val.setText(format_si(xs, "Ω", sig_figs=z_sig_figs))
 
-            if xs > 0: # Inductive
+            if xs > 0:  # Inductive
                 self.lbl_lc_name.setText(tr("Ls:"))
                 self.lbl_lc_val.setText(format_si(ls, "H", sig_figs=z_sig_figs))
-            else: # Capacitive
+            else:  # Capacitive
                 self.lbl_lc_name.setText(tr("Cs:"))
                 self.lbl_lc_val.setText(format_si(cs, "F", sig_figs=z_sig_figs))
 
-        else: # Parallel
+        else:  # Parallel
             self.lbl_p1_name.setText(tr("Rp:"))
             self.lbl_p1_val.setText(format_si(rp, "Ω", sig_figs=z_sig_figs))
             self.lbl_p2_name.setText(tr("Xp:"))
             self.lbl_p2_val.setText(format_si(xp, "Ω", sig_figs=z_sig_figs))
 
-            if b < 0: # Inductive (B is negative for Inductor in Admittance? Y = 1/jwL = -j/wL -> B < 0)
+            if b < 0:  # Inductive (B is negative for Inductor in Admittance? Y = 1/jwL = -j/wL -> B < 0)
                 self.lbl_lc_name.setText(tr("Lp:"))
                 self.lbl_lc_val.setText(format_si(lp, "H", sig_figs=z_sig_figs))
-            else: # Capacitive (Y = jwC -> B > 0)
+            else:  # Capacitive (Y = jwC -> B > 0)
                 self.lbl_lc_name.setText(tr("Cp:"))
                 self.lbl_lc_val.setText(format_si(cp, "F", sig_figs=z_sig_figs))
 
@@ -953,7 +979,7 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         # Sweep Data
         self.sweep_freqs = []
-        self.sweep_z_complex = [] # Store full complex data
+        self.sweep_z_complex = []  # Store full complex data
         self.sweep_z_mags = []
         self.sweep_z_phases = []
 
@@ -961,9 +987,9 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.resonance_line = None
 
         # Manual time-series capture (used when running manual measurement)
-        self.manual_ts_t = deque(maxlen=2000)           # seconds since start of capture
-        self.manual_ts_f = deque(maxlen=2000)           # Hz (for derived quantities)
-        self.manual_ts_z = deque(maxlen=2000)           # complex Z samples
+        self.manual_ts_t = deque(maxlen=2000)  # seconds since start of capture
+        self.manual_ts_f = deque(maxlen=2000)  # Hz (for derived quantities)
+        self.manual_ts_z = deque(maxlen=2000)  # complex Z samples
         self._manual_ts_t0 = None
         self._manual_ts_warmup_until = None
         self._manual_ts_next_capture_at = None
@@ -975,7 +1001,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.timer.setInterval(100)
 
         self.sweep_worker = None
-        self.cal_mode = None # 'open', 'short', or None (DUT)
+        self.cal_mode = None  # 'open', 'short', or None (DUT)
 
     def init_ui(self):
         nyquist_freq = self.module.audio_engine.sample_rate / 2.0
@@ -1001,29 +1027,36 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.toggle_btn = QPushButton(tr("Start Measurement"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
-        self.toggle_btn.setStyleSheet("QPushButton { background-color: #ccffcc; color: black; font-weight: bold; padding: 10px; } QPushButton:checked { background-color: #ffcccc; }")
+        self.toggle_btn.setStyleSheet(
+            "QPushButton { background-color: #ccffcc; color: black; font-weight: bold; padding: 10px; } QPushButton:checked { background-color: #ffcccc; }"
+        )
         lay_meas.addRow(self.toggle_btn)
 
         self.freq_spin = QDoubleSpinBox()
-        self.freq_spin.setRange(20, nyquist_freq); self.freq_spin.setValue(1000); self.freq_spin.setSuffix(" Hz")
-        self.freq_spin.valueChanged.connect(lambda v: setattr(self.module, 'gen_frequency', v))
+        self.freq_spin.setRange(20, nyquist_freq)
+        self.freq_spin.setValue(1000)
+        self.freq_spin.setSuffix(" Hz")
+        self.freq_spin.valueChanged.connect(lambda v: setattr(self.module, "gen_frequency", v))
         lay_meas.addRow(tr("Frequency:"), self.freq_spin)
 
         self.amp_spin = QDoubleSpinBox()
-        self.amp_spin.setRange(0, 1.0); self.amp_spin.setValue(0.5); self.amp_spin.setSingleStep(0.1)
-        self.amp_spin.valueChanged.connect(lambda v: setattr(self.module, 'gen_amplitude', v))
+        self.amp_spin.setRange(0, 1.0)
+        self.amp_spin.setValue(0.5)
+        self.amp_spin.setSingleStep(0.1)
+        self.amp_spin.valueChanged.connect(lambda v: setattr(self.module, "gen_amplitude", v))
         lay_meas.addRow(tr("Amplitude:"), self.amp_spin)
 
         self.avg_spin = QSpinBox()
-        self.avg_spin.setRange(1, 100); self.avg_spin.setValue(self.module.averaging_count)
-        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, 'averaging_count', v))
+        self.avg_spin.setRange(1, 100)
+        self.avg_spin.setValue(self.module.averaging_count)
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averaging_count", v))
         lay_meas.addRow(tr("Averages:"), self.avg_spin)
 
         # Default buffer size (base integration window)
         self.base_buffer_combo = QComboBox()
         self.base_buffer_combo.addItems(["4096", "8192", "16384"])
         try:
-            current_base = int(getattr(self.module, 'base_buffer_size', 4096) or 4096)
+            current_base = int(getattr(self.module, "base_buffer_size", 4096) or 4096)
         except Exception:
             current_base = 4096
         if current_base in (4096, 8192, 16384):
@@ -1054,13 +1087,17 @@ class ImpedanceAnalyzerWidget(QWidget):
         lay_conf = QFormLayout()
 
         self.shunt_spin = QDoubleSpinBox()
-        self.shunt_spin.setRange(0.1, 1000000); self.shunt_spin.setValue(100.0); self.shunt_spin.setSuffix(" Ω")
-        self.shunt_spin.valueChanged.connect(lambda v: setattr(self.module, 'shunt_resistance', v))
+        self.shunt_spin.setRange(0.1, 1000000)
+        self.shunt_spin.setValue(100.0)
+        self.shunt_spin.setSuffix(" Ω")
+        self.shunt_spin.valueChanged.connect(lambda v: setattr(self.module, "shunt_resistance", v))
         lay_conf.addRow(tr("Shunt R:"), self.shunt_spin)
 
         self.load_std_spin = QDoubleSpinBox()
-        self.load_std_spin.setRange(0.1, 1000000); self.load_std_spin.setValue(100.0); self.load_std_spin.setSuffix(" Ω")
-        self.load_std_spin.valueChanged.connect(lambda v: setattr(self.module, 'load_standard_real', v))
+        self.load_std_spin.setRange(0.1, 1000000)
+        self.load_std_spin.setValue(100.0)
+        self.load_std_spin.setSuffix(" Ω")
+        self.load_std_spin.valueChanged.connect(lambda v: setattr(self.module, "load_standard_real", v))
         lay_conf.addRow(tr("Load Std R:"), self.load_std_spin)
 
         grp_conf.setLayout(lay_conf)
@@ -1078,16 +1115,23 @@ class ImpedanceAnalyzerWidget(QWidget):
         lay_sweep = QFormLayout()
 
         self.cal_check = QCheckBox(tr("Apply Calibration"))
-        self.cal_check.toggled.connect(lambda c: setattr(self.module, 'use_calibration', c))
+        self.cal_check.toggled.connect(lambda c: setattr(self.module, "use_calibration", c))
         lay_sweep.addRow(self.cal_check)
 
-        self.sw_start = QDoubleSpinBox(); self.sw_start.setRange(20, nyquist_freq); self.sw_start.setValue(20)
+        self.sw_start = QDoubleSpinBox()
+        self.sw_start.setRange(20, nyquist_freq)
+        self.sw_start.setValue(20)
         lay_sweep.addRow(tr("Start:"), self.sw_start)
-        self.sw_end = QDoubleSpinBox(); self.sw_end.setRange(20, nyquist_freq); self.sw_end.setValue(min(20000, nyquist_freq))
+        self.sw_end = QDoubleSpinBox()
+        self.sw_end.setRange(20, nyquist_freq)
+        self.sw_end.setValue(min(20000, nyquist_freq))
         lay_sweep.addRow(tr("End:"), self.sw_end)
-        self.sw_steps = QSpinBox(); self.sw_steps.setRange(10, 1000); self.sw_steps.setValue(50)
+        self.sw_steps = QSpinBox()
+        self.sw_steps.setRange(10, 1000)
+        self.sw_steps.setValue(50)
         lay_sweep.addRow(tr("Steps:"), self.sw_steps)
-        self.sw_log = QCheckBox(tr("Log Sweep")); self.sw_log.setChecked(True)
+        self.sw_log = QCheckBox(tr("Log Sweep"))
+        self.sw_log.setChecked(True)
         lay_sweep.addRow(self.sw_log)
 
         self.chk_resonance = QCheckBox(tr("Find Resonance"))
@@ -1104,11 +1148,11 @@ class ImpedanceAnalyzerWidget(QWidget):
         # Buttons Grid
         btn_grid = QGridLayout()
         self.btn_open = QPushButton(tr("Open Cal"))
-        self.btn_open.clicked.connect(lambda: self.start_sweep('open'))
+        self.btn_open.clicked.connect(lambda: self.start_sweep("open"))
         self.btn_short = QPushButton(tr("Short Cal"))
-        self.btn_short.clicked.connect(lambda: self.start_sweep('short'))
+        self.btn_short.clicked.connect(lambda: self.start_sweep("short"))
         self.btn_load = QPushButton(tr("Load Cal"))
-        self.btn_load.clicked.connect(lambda: self.start_sweep('load'))
+        self.btn_load.clicked.connect(lambda: self.start_sweep("load"))
         self.btn_dut = QPushButton(tr("Sweep DUT"))
         self.btn_dut.clicked.connect(lambda: self.start_sweep(None))
         self.btn_dut.setStyleSheet("font-weight: bold; background-color: #ccccff; color: black;")
@@ -1121,8 +1165,8 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.btn_stop = QPushButton(tr("Stop Sweep"))
         self.btn_stop.clicked.connect(self.stop_sweep)
         self.btn_stop.setStyleSheet("font-weight: bold; background-color: #ffcccc; color: black;")
-        self.btn_stop.setEnabled(False) # Default disabled
-        btn_grid.addWidget(self.btn_stop, 2, 0, 1, 2) # Span 2 columns
+        self.btn_stop.setEnabled(False)  # Default disabled
+        btn_grid.addWidget(self.btn_stop, 2, 0, 1, 2)  # Span 2 columns
 
         self.btn_save_cal_file = QPushButton(tr("Save Cal File"))
         self.btn_save_cal_file.clicked.connect(self.on_save_cal)
@@ -1156,27 +1200,27 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         # 1. Plot
         self.plot_widget = pg.PlotWidget(title=tr("Impedance Z(f)"))
-        self.plot_widget.setLabel('bottom', tr("Frequency"), units='Hz')
-        self.plot_widget.setLabel('left', tr("|Z|"), units='Ohm')
+        self.plot_widget.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_widget.setLabel("left", tr("|Z|"), units="Ohm")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.plot_widget.addLegend()
         self.plot_widget.getPlotItem().setLogMode(x=True, y=True)
 
-        self.curve_primary = pg.PlotCurveItem(pen='g', name=tr('|Z|'))
+        self.curve_primary = pg.PlotCurveItem(pen="g", name=tr("|Z|"))
         self.plot_widget.addItem(self.curve_primary)
-        self.curve_secondary = pg.PlotCurveItem(pen='y', name=tr('Secondary'))
+        self.curve_secondary = pg.PlotCurveItem(pen="y", name=tr("Secondary"))
         self.plot_widget.addItem(self.curve_secondary)
         self.curve_secondary.setVisible(False)
 
         # Secondary Axis
         self.plot_right = pg.ViewBox()
         self.plot_widget.scene().addItem(self.plot_right)
-        self.plot_widget.getPlotItem().showAxis('right')
-        self.plot_widget.getPlotItem().getAxis('right').linkToView(self.plot_right)
+        self.plot_widget.getPlotItem().showAxis("right")
+        self.plot_widget.getPlotItem().getAxis("right").linkToView(self.plot_right)
         self.plot_right.setXLink(self.plot_widget.getPlotItem())
-        self.plot_widget.getPlotItem().getAxis('right').setLabel(tr('Phase'), units='deg')
+        self.plot_widget.getPlotItem().getAxis("right").setLabel(tr("Phase"), units="deg")
 
-        self.curve_right = pg.PlotCurveItem(pen='c', name=tr('Phase'))
+        self.curve_right = pg.PlotCurveItem(pen="c", name=tr("Phase"))
         self.plot_right.addItem(self.curve_right)
 
         self.legend = self.plot_widget.addLegend()
@@ -1184,6 +1228,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         def update_views():
             self.plot_right.setGeometry(self.plot_widget.getPlotItem().vb.sceneBoundingRect())
             self.plot_right.linkedViewChanged(self.plot_widget.getPlotItem().vb, self.plot_right.XAxis)
+
         self.plot_widget.getPlotItem().vb.sigResized.connect(update_views)
 
         right_layout.addWidget(self.plot_widget, stretch=2)
@@ -1192,7 +1237,9 @@ class ImpedanceAnalyzerWidget(QWidget):
         pm_layout = QHBoxLayout()
         pm_layout.addWidget(QLabel(tr("Plot Mode:")))
         self.plot_mode_combo = QComboBox()
-        self.plot_mode_combo.addItems([tr("|Z| & Phase"), tr("R & X (ESR/ESL)"), tr("D (Tan δ)"), tr("C / L"), tr("Nyquist Plot")])
+        self.plot_mode_combo.addItems(
+            [tr("|Z| & Phase"), tr("R & X (ESR/ESL)"), tr("D (Tan δ)"), tr("C / L"), tr("Nyquist Plot")]
+        )
         self.plot_mode_combo.currentIndexChanged.connect(self.update_plot_mode)
         pm_layout.addWidget(self.plot_mode_combo)
 
@@ -1218,9 +1265,9 @@ class ImpedanceAnalyzerWidget(QWidget):
 
     def _manual_ts_active(self) -> bool:
         try:
-            if not (hasattr(self, 'manual_ts_check') and self.manual_ts_check.isChecked()):
+            if not (hasattr(self, "manual_ts_check") and self.manual_ts_check.isChecked()):
                 return False
-            if not bool(getattr(self.module, 'is_running', False)):
+            if not bool(getattr(self.module, "is_running", False)):
                 return False
             if not bool(self.timer.isActive()):
                 return False
@@ -1242,7 +1289,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             try:
                 sr = float(self.module.audio_engine.sample_rate)
                 buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
-                avg = int(getattr(self.module, 'averaging_count', 1) or 1)
+                avg = int(getattr(self.module, "averaging_count", 1) or 1)
                 warmup_s = max(0.25, buf_s * max(1, avg))
             except Exception:
                 warmup_s = 1.0
@@ -1269,7 +1316,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 pass
 
             # If time-series view is enabled, reset capture at start.
-            if hasattr(self, 'manual_ts_check') and self.manual_ts_check.isChecked():
+            if hasattr(self, "manual_ts_check") and self.manual_ts_check.isChecked():
                 self.manual_ts_t.clear()
                 self.manual_ts_f.clear()
                 self.manual_ts_z.clear()
@@ -1278,7 +1325,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 try:
                     sr = float(self.module.audio_engine.sample_rate)
                     buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
-                    avg = int(getattr(self.module, 'averaging_count', 1) or 1)
+                    avg = int(getattr(self.module, "averaging_count", 1) or 1)
                     warmup_s = max(0.25, buf_s * max(1, avg))
                 except Exception:
                     warmup_s = 1.0
@@ -1321,7 +1368,8 @@ class ImpedanceAnalyzerWidget(QWidget):
             )
 
     def update_ui(self):
-        if not self.module.is_running: return
+        if not self.module.is_running:
+            return
 
         self.module.process_data()
 
@@ -1329,17 +1377,21 @@ class ImpedanceAnalyzerWidget(QWidget):
         z_mag_std = None
         z_phase_std_deg = None
         try:
-            if int(getattr(self.module, 'averaging_count', 1) or 1) >= 2:
-                hv = list(getattr(self.module, 'history_v', []) or [])
-                hi = list(getattr(self.module, 'history_i', []) or [])
+            if int(getattr(self.module, "averaging_count", 1) or 1) >= 2:
+                hv = list(getattr(self.module, "history_v", []) or [])
+                hi = list(getattr(self.module, "history_i", []) or [])
                 if len(hv) >= 2 and len(hi) == len(hv):
                     hv_arr = np.asarray(hv, dtype=np.complex128)
                     hi_arr = np.asarray(hi, dtype=np.complex128)
                     mask = np.abs(hi_arr) > 1e-12
                     z_raw = np.full_like(hv_arr, np.nan + 1j * np.nan)
-                    z_raw[mask] = - (hv_arr[mask] * float(self.module.shunt_resistance)) / hi_arr[mask]
+                    z_raw[mask] = -(hv_arr[mask] * float(self.module.shunt_resistance)) / hi_arr[mask]
 
-                    if bool(getattr(self.module, 'use_calibration', False)) and bool(getattr(self.module, 'cal_short', {})) and bool(getattr(self.module, 'cal_open', {})):
+                    if (
+                        bool(getattr(self.module, "use_calibration", False))
+                        and bool(getattr(self.module, "cal_short", {}))
+                        and bool(getattr(self.module, "cal_open", {}))
+                    ):
                         z_samp = []
                         for zr in z_raw:
                             if not np.isfinite(zr.real) or not np.isfinite(zr.imag):
@@ -1386,7 +1438,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 try:
                     sr = float(self.module.audio_engine.sample_rate)
                     buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
-                    avg = int(getattr(self.module, 'averaging_count', 1) or 1)
+                    avg = int(getattr(self.module, "averaging_count", 1) or 1)
                     min_interval_s = max(1.0, buf_s * max(1, avg))
                 except Exception:
                     min_interval_s = 1.0
@@ -1453,11 +1505,11 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.cal_mode = mode
 
         # If starting a calibration sweep, clear the corresponding dict so we don't mix old/new points.
-        if mode == 'open':
+        if mode == "open":
             self.module.cal_open = {}
-        elif mode == 'short':
+        elif mode == "short":
             self.module.cal_short = {}
-        elif mode == 'load':
+        elif mode == "load":
             self.module.cal_load = {}
         self.sweep_freqs = []
         self.sweep_z_complex = []
@@ -1537,16 +1589,18 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         # Fallback path logic
         if not os.path.exists(img_path):
-             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-             alt_path = os.path.join(project_root, "src/assets/speaker_impedance_wiring.png")
-             if os.path.exists(alt_path):
-                 img_path = alt_path
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+            alt_path = os.path.join(project_root, "src/assets/speaker_impedance_wiring.png")
+            if os.path.exists(alt_path):
+                img_path = alt_path
 
         if os.path.exists(img_path):
             img_label = QLabel()
             pixmap = QPixmap(img_path)
             # Scale if too large, e.g. fit within dialog
-            scaled_pixmap = pixmap.scaled(750, 550, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            scaled_pixmap = pixmap.scaled(
+                750, 550, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
             img_label.setPixmap(scaled_pixmap)
             img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(img_label)
@@ -1557,7 +1611,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         btn_close = QPushButton(tr("Close"))
         btn_close.clicked.connect(dialog.accept)
         # Reset stylesheet for button so it doesn't look weird on white bg if global styles interfere
-        # But usually standard buttons are fine. 
+        # But usually standard buttons are fine.
         layout.addWidget(btn_close)
 
         dialog.exec()
@@ -1565,7 +1619,7 @@ class ImpedanceAnalyzerWidget(QWidget):
     def update_plot_mode(self):
         mode = self.plot_mode_combo.currentText()
         pi = self.plot_widget.getPlotItem()
-        ax_right = pi.getAxis('right')
+        ax_right = pi.getAxis("right")
 
         # Default Visibility
         self.curve_secondary.setVisible(False)
@@ -1574,11 +1628,11 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         # X-Axis Log Mode
         manual_ts_plot = self._manual_ts_active()
-        is_log_x = (self.sw_log.isChecked() and (not manual_ts_plot))
-        pi.setLogMode(x=is_log_x, y=False) # Reset Y log first
+        is_log_x = self.sw_log.isChecked() and (not manual_ts_plot)
+        pi.setLogMode(x=is_log_x, y=False)  # Reset Y log first
 
         # Clear Legend (Robust)
-        if hasattr(self.legend, 'items'):
+        if hasattr(self.legend, "items"):
             labels_to_remove = [label.text for sample, label in self.legend.items]
             for label_text in labels_to_remove:
                 self.legend.removeItem(label_text)
@@ -1588,88 +1642,88 @@ class ImpedanceAnalyzerWidget(QWidget):
         # Title + bottom axis label depend on x-axis mode.
         if manual_ts_plot:
             self.plot_widget.setTitle(tr("Impedance Z(t)"))
-            pi.setLabel('bottom', tr("Time"), units='s')
+            pi.setLabel("bottom", tr("Time"), units="s")
         else:
             self.plot_widget.setTitle(tr("Impedance Z(f)"))
-            pi.setLabel('bottom', tr("Frequency"), units='Hz')
+            pi.setLabel("bottom", tr("Frequency"), units="Hz")
 
         if mode == tr("|Z| & Phase"):
-            pi.setLabel('left', tr("|Z|"), units='Ohm')
-            pi.setLogMode(y=True) # Z is Log Y
+            pi.setLabel("left", tr("|Z|"), units="Ohm")
+            pi.setLogMode(y=True)  # Z is Log Y
 
-            self.curve_primary.setData(name=tr('|Z|'), pen='g')
-            self.legend.addItem(self.curve_primary, tr('|Z|'))
+            self.curve_primary.setData(name=tr("|Z|"), pen="g")
+            self.legend.addItem(self.curve_primary, tr("|Z|"))
 
-            ax_right.setLabel(tr('Phase'), units='deg')
+            ax_right.setLabel(tr("Phase"), units="deg")
             ax_right.setLogMode(False)
-            self.curve_right.setData(name=tr('Phase'), pen='c')
-            self.legend.addItem(self.curve_right, tr('Phase'))
+            self.curve_right.setData(name=tr("Phase"), pen="c")
+            self.legend.addItem(self.curve_right, tr("Phase"))
 
         elif mode == tr("R & X (ESR/ESL)"):
-            pi.setLabel('left', tr("Resistance (R) / Reactance (X)"), units='Ohm')
-            pi.setLogMode(y=True) # R/X often span large ranges
+            pi.setLabel("left", tr("Resistance (R) / Reactance (X)"), units="Ohm")
+            pi.setLogMode(y=True)  # R/X often span large ranges
 
-            self.curve_primary.setData(name=tr('Resistance (R)'), pen='y')
-            self.legend.addItem(self.curve_primary, tr('Resistance (R)'))
+            self.curve_primary.setData(name=tr("Resistance (R)"), pen="y")
+            self.legend.addItem(self.curve_primary, tr("Resistance (R)"))
 
             self.curve_secondary.setVisible(True)
-            self.curve_secondary.setData(name=tr('Reactance (X)'), pen='m')
-            self.legend.addItem(self.curve_secondary, tr('Reactance (X)'))
+            self.curve_secondary.setData(name=tr("Reactance (X)"), pen="m")
+            self.legend.addItem(self.curve_secondary, tr("Reactance (X)"))
 
             self.curve_right.setVisible(False)
             ax_right.setStyle(showValues=False)
-            ax_right.setLabel('')
+            ax_right.setLabel("")
 
         elif mode == tr("D (Tan δ)"):
-            pi.setLabel('left', tr("D (Tan δ)"))
+            pi.setLabel("left", tr("D (Tan δ)"))
             pi.setLogMode(y=False)
 
-            self.curve_primary.setData(name=tr('D'), pen='r')
-            self.legend.addItem(self.curve_primary, tr('D'))
+            self.curve_primary.setData(name=tr("D"), pen="r")
+            self.legend.addItem(self.curve_primary, tr("D"))
 
             self.curve_right.setVisible(False)
             ax_right.setStyle(showValues=False)
-            ax_right.setLabel('')
+            ax_right.setLabel("")
 
         elif mode == tr("C / L"):
-            pi.setLabel('left', tr("Capacitance"), units='F')
+            pi.setLabel("left", tr("Capacitance"), units="F")
             pi.setLogMode(y=True)
 
-            self.curve_primary.setData(name=tr('Capacitance'), pen='b')
-            self.legend.addItem(self.curve_primary, tr('Capacitance'))
+            self.curve_primary.setData(name=tr("Capacitance"), pen="b")
+            self.legend.addItem(self.curve_primary, tr("Capacitance"))
 
-            ax_right.setLabel(tr('Inductance'), units='H')
-            ax_right.setLogMode(True) # L is Log Y
+            ax_right.setLabel(tr("Inductance"), units="H")
+            ax_right.setLogMode(True)  # L is Log Y
 
-            self.curve_right.setData(name=tr('Inductance'), pen='r')
-            self.legend.addItem(self.curve_right, tr('Inductance'))
+            self.curve_right.setData(name=tr("Inductance"), pen="r")
+            self.legend.addItem(self.curve_right, tr("Inductance"))
 
         elif mode == tr("Nyquist Plot"):
             if manual_ts_plot:
                 # In time-series mode, use Nyquist selection to show Re(Z) and -Im(Z) versus time.
-                pi.setLabel('left', tr("Real (Z)"), units='Ohm')
+                pi.setLabel("left", tr("Real (Z)"), units="Ohm")
                 pi.setLogMode(x=False, y=False)
 
-                self.curve_primary.setData(name=tr('Real (Z)'), pen='w')
-                self.legend.addItem(self.curve_primary, tr('Real (Z)'))
+                self.curve_primary.setData(name=tr("Real (Z)"), pen="w")
+                self.legend.addItem(self.curve_primary, tr("Real (Z)"))
 
                 self.curve_secondary.setVisible(True)
-                self.curve_secondary.setData(name=tr('-Imag (Z)'), pen='c')
-                self.legend.addItem(self.curve_secondary, tr('-Imag (Z)'))
+                self.curve_secondary.setData(name=tr("-Imag (Z)"), pen="c")
+                self.legend.addItem(self.curve_secondary, tr("-Imag (Z)"))
 
                 self.curve_right.setVisible(False)
-                ax_right.setLabel('')
+                ax_right.setLabel("")
                 ax_right.setStyle(showValues=False)
             else:
-                pi.setLabel('left', tr("-Imag (Z)"), units='Ohm')
-                pi.setLabel('bottom', tr("Real (Z)"), units='Ohm')
-                pi.setLogMode(x=False, y=False) # Linear for Nyquist
+                pi.setLabel("left", tr("-Imag (Z)"), units="Ohm")
+                pi.setLabel("bottom", tr("Real (Z)"), units="Ohm")
+                pi.setLogMode(x=False, y=False)  # Linear for Nyquist
 
-                self.curve_primary.setData(name=tr('Nyquist'), pen='w', symbol='o', symbolSize=5)
-                self.legend.addItem(self.curve_primary, tr('Nyquist'))
+                self.curve_primary.setData(name=tr("Nyquist"), pen="w", symbol="o", symbolSize=5)
+                self.legend.addItem(self.curve_primary, tr("Nyquist"))
 
                 self.curve_right.setVisible(False)
-                ax_right.setLabel('')
+                ax_right.setLabel("")
                 ax_right.setStyle(showValues=False)
 
         # Re-plot data if available
@@ -1694,7 +1748,7 @@ class ImpedanceAnalyzerWidget(QWidget):
 
             if mode == tr("|Z| & Phase"):
                 y_data = np.abs(zs)
-                if self.plot_widget.getPlotItem().getAxis('left').logMode:
+                if self.plot_widget.getPlotItem().getAxis("left").logMode:
                     y_data = np.log10(y_data + 1e-24)
                 self.curve_primary.setData(x_data, y_data)
                 self.curve_right.setData(x_data, np.degrees(np.angle(zs)))
@@ -1703,7 +1757,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             if mode == tr("R & X (ESR/ESL)"):
                 r_data = np.abs(zs.real)
                 x_react = np.abs(zs.imag)
-                if self.plot_widget.getPlotItem().getAxis('left').logMode:
+                if self.plot_widget.getPlotItem().getAxis("left").logMode:
                     r_data = np.log10(r_data + 1e-12)
                     x_react = np.log10(x_react + 1e-12)
                 self.curve_primary.setData(x_data, r_data)
@@ -1714,7 +1768,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 rs = zs.real
                 xs = zs.imag
                 ds = np.zeros_like(rs, dtype=float)
-                mask = (np.abs(xs) > 1e-12)
+                mask = np.abs(xs) > 1e-12
                 ds[mask] = np.abs(rs[mask]) / np.abs(xs[mask])
                 self.curve_primary.setData(x_data, ds)
                 return
@@ -1723,13 +1777,13 @@ class ImpedanceAnalyzerWidget(QWidget):
                 w = 2 * np.pi * np.maximum(freqs, 1e-12)
                 xs = zs.imag
                 cs = np.full_like(xs, np.nan, dtype=float)
-                mask_c = (xs < -1e-12)
+                mask_c = xs < -1e-12
                 cs[mask_c] = -1.0 / (w[mask_c] * xs[mask_c])
                 ls = np.full_like(xs, np.nan, dtype=float)
-                mask_l = (xs > 1e-12)
+                mask_l = xs > 1e-12
                 ls[mask_l] = xs[mask_l] / w[mask_l]
 
-                if self.plot_widget.getPlotItem().getAxis('left').logMode:
+                if self.plot_widget.getPlotItem().getAxis("left").logMode:
                     valid_c = np.isfinite(cs) & (cs > 0)
                     cs_plot = np.full_like(cs, np.nan, dtype=float)
                     cs_plot[valid_c] = np.log10(cs[valid_c])
@@ -1737,7 +1791,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 else:
                     self.curve_primary.setData(x_data, cs)
 
-                if self.plot_widget.getPlotItem().getAxis('right').logMode:
+                if self.plot_widget.getPlotItem().getAxis("right").logMode:
                     valid_l = np.isfinite(ls) & (ls > 0)
                     ls_plot = np.full_like(ls, np.nan, dtype=float)
                     ls_plot[valid_l] = np.log10(ls[valid_l])
@@ -1762,7 +1816,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         zs = np.array(self.sweep_z_complex)
 
         # X-Axis Data (Manual Log)
-        is_log_x = self.plot_widget.getPlotItem().getAxis('bottom').logMode
+        is_log_x = self.plot_widget.getPlotItem().getAxis("bottom").logMode
         if is_log_x and mode != tr("Nyquist Plot"):
             x_data = np.log10(freqs)
         else:
@@ -1771,7 +1825,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         if mode == tr("|Z| & Phase"):
             # |Z| (Log Y)
             y_data = np.abs(zs)
-            if self.plot_widget.getPlotItem().getAxis('left').logMode:
+            if self.plot_widget.getPlotItem().getAxis("left").logMode:
                 y_data = np.log10(y_data)
             self.curve_primary.setData(x_data, y_data)
 
@@ -1783,7 +1837,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             r_data = np.abs(zs.real)
             x_data_val = np.abs(zs.imag)
 
-            if self.plot_widget.getPlotItem().getAxis('left').logMode:
+            if self.plot_widget.getPlotItem().getAxis("left").logMode:
                 # Avoid log(0)
                 r_data = np.log10(r_data + 1e-12)
                 x_data_val = np.log10(x_data_val + 1e-12)
@@ -1796,7 +1850,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             rs = zs.real
             xs = zs.imag
             ds = np.zeros_like(rs)
-            mask = (np.abs(xs) > 1e-12)
+            mask = np.abs(xs) > 1e-12
             ds[mask] = np.abs(rs[mask]) / np.abs(xs[mask])
 
             self.curve_primary.setData(x_data, ds)
@@ -1809,33 +1863,33 @@ class ImpedanceAnalyzerWidget(QWidget):
 
             # Capacitance (valid where X < 0)
             cs = np.full_like(xs, np.nan)
-            mask_c = (xs < -1e-12)
+            mask_c = xs < -1e-12
             cs[mask_c] = -1.0 / (w[mask_c] * xs[mask_c])
 
             # Inductance (valid where X > 0)
             ls = np.full_like(xs, np.nan)
-            mask_l = (xs > 1e-12)
+            mask_l = xs > 1e-12
             ls[mask_l] = xs[mask_l] / w[mask_l]
 
             # Log Y for both
             # Left Axis (C)
-            if self.plot_widget.getPlotItem().getAxis('left').logMode:
-                 # Handle NaNs and log
-                 valid_c = ~np.isnan(cs)
-                 cs_plot = np.full_like(cs, np.nan)
-                 cs_plot[valid_c] = np.log10(cs[valid_c])
-                 self.curve_primary.setData(x_data, cs_plot)
+            if self.plot_widget.getPlotItem().getAxis("left").logMode:
+                # Handle NaNs and log
+                valid_c = ~np.isnan(cs)
+                cs_plot = np.full_like(cs, np.nan)
+                cs_plot[valid_c] = np.log10(cs[valid_c])
+                self.curve_primary.setData(x_data, cs_plot)
             else:
-                 self.curve_primary.setData(x_data, cs)
+                self.curve_primary.setData(x_data, cs)
 
             # Right Axis (L)
-            if self.plot_widget.getPlotItem().getAxis('right').logMode:
-                 valid_l = ~np.isnan(ls)
-                 ls_plot = np.full_like(ls, np.nan)
-                 ls_plot[valid_l] = np.log10(ls[valid_l])
-                 self.curve_right.setData(x_data, ls_plot)
+            if self.plot_widget.getPlotItem().getAxis("right").logMode:
+                valid_l = ~np.isnan(ls)
+                ls_plot = np.full_like(ls, np.nan)
+                ls_plot[valid_l] = np.log10(ls[valid_l])
+                self.curve_right.setData(x_data, ls_plot)
             else:
-                 self.curve_right.setData(x_data, ls)
+                self.curve_right.setData(x_data, ls)
 
         elif mode == tr("Nyquist Plot"):
             # Nyquist: X = Real(Z), Y = -Imag(Z)
@@ -1846,11 +1900,11 @@ class ImpedanceAnalyzerWidget(QWidget):
             self.curve_primary.setData(x_nyquist, y_nyquist)
 
     def on_sweep_result(self, f, z):
-        if self.cal_mode == 'open':
+        if self.cal_mode == "open":
             self.module.cal_open[f] = z
-        elif self.cal_mode == 'short':
+        elif self.cal_mode == "short":
             self.module.cal_short[f] = z
-        elif self.cal_mode == 'load':
+        elif self.cal_mode == "load":
             self.module.cal_load[f] = z
         else:
             # DUT Measurement
@@ -1876,11 +1930,11 @@ class ImpedanceAnalyzerWidget(QWidget):
                 pass
 
     def on_sweep_finished(self):
-        if self.cal_mode == 'open':
+        if self.cal_mode == "open":
             QMessageBox.information(self, tr("Calibration"), tr("Open Calibration Completed"))
-        elif self.cal_mode == 'short':
+        elif self.cal_mode == "short":
             QMessageBox.information(self, tr("Calibration"), tr("Short Calibration Completed"))
-        elif self.cal_mode == 'load':
+        elif self.cal_mode == "load":
             QMessageBox.information(self, tr("Calibration"), tr("Load Calibration Completed"))
 
         # Restore UI state
@@ -1913,12 +1967,12 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         for i in range(len(xs) - 1):
             x1 = xs[i]
-            x2 = xs[i+1]
+            x2 = xs[i + 1]
 
             if (x1 <= 0 and x2 >= 0) or (x1 >= 0 and x2 <= 0):
                 # Found crossing
                 f1 = freqs[i]
-                f2 = freqs[i+1]
+                f2 = freqs[i + 1]
 
                 # Linear Interpolation for X=0
                 # 0 = x1 + slope * (t) -> t = -x1 / (x2 - x1)
@@ -1930,8 +1984,8 @@ class ImpedanceAnalyzerWidget(QWidget):
 
                     # Interpolate Z magnitude at this frequency as well
                     z1 = zs[i]
-                    z2 = zs[i+1]
-                    res_z_complex = z1 + t * (z2 - z1) # Linear interp of complex
+                    z2 = zs[i + 1]
+                    res_z_complex = z1 + t * (z2 - z1)  # Linear interp of complex
                     res_z_mag = abs(res_z_complex)
 
                     zero_crossings.append((res_freq, res_z_mag))
@@ -1964,19 +2018,19 @@ class ImpedanceAnalyzerWidget(QWidget):
         is_log_x = self.sw_log.isChecked()
         x_val = np.log10(res_freq) if is_log_x else res_freq
 
-        self.resonance_line = pg.InfiniteLine(pos=x_val, angle=90, pen=pg.mkPen('r', width=2, style=Qt.PenStyle.DashLine))
+        self.resonance_line = pg.InfiniteLine(
+            pos=x_val, angle=90, pen=pg.mkPen("r", width=2, style=Qt.PenStyle.DashLine)
+        )
         self.plot_widget.addItem(self.resonance_line)
 
         # Optional: Add label to the line
         # self.resonance_line.label = pg.InfLineLabel(f"{res_freq:.1f}Hz", position=0.8, rotateAxis=(1,0), anchor=(1, 1))
 
-
-
     def apply_theme(self, theme_name):
-        if theme_name == 'system' and hasattr(self.app, 'theme_manager'):
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == 'dark':
+        if theme_name == "dark":
             # Dark Theme
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; font-weight: bold; }"
@@ -1997,6 +2051,6 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         # Theme handling
         self.app = QApplication.instance()
-        if hasattr(self.app, 'theme_manager'):
+        if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())

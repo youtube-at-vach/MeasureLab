@@ -1,5 +1,4 @@
 import time
-import collections
 import itertools
 from collections import deque
 
@@ -18,7 +17,7 @@ def benchmark():
     for _ in range(iterations):
         samples = list(cal_samples)
         if len(samples) >= need:
-             subset = samples[-need:]
+             samples[-need:]
     end_time = time.perf_counter()
     baseline_duration = end_time - start_time
     print(f"Baseline (full copy + slice): {baseline_duration:.6f} seconds")
@@ -26,10 +25,10 @@ def benchmark():
     # Optimization 1: islice from start (skipping N-need)
     start_time = time.perf_counter()
     for _ in range(iterations):
-        l = len(cal_samples)
-        if l >= need:
-            start_index = l - need
-            subset = list(itertools.islice(cal_samples, start_index, l))
+        length = len(cal_samples)
+        if length >= need:
+            start_index = length - need
+            list(itertools.islice(cal_samples, start_index, length))
     end_time = time.perf_counter()
     opt1_duration = end_time - start_time
     print(f"Optimization 1 (islice forward): {opt1_duration:.6f} seconds")
@@ -42,7 +41,7 @@ def benchmark():
             # islice takes first 'need' items (which are last 'need' items in reverse)
             rev_subset = list(itertools.islice(reversed(cal_samples), need))
             # Reverse back
-            subset = rev_subset[::-1]
+            rev_subset[::-1]
     end_time = time.perf_counter()
     opt4_duration = end_time - start_time
     print(f"Optimization 4 (reversed+islice): {opt4_duration:.6f} seconds")

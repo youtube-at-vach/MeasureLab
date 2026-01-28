@@ -24,6 +24,7 @@ DEFAULT_CONFIG = {
     },
 }
 
+
 class ConfigManager:
     def __init__(self, config_path="config.json"):
         self.config_path = config_path
@@ -47,7 +48,7 @@ class ConfigManager:
             return config
 
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path, "r") as f:
                 loaded = json.load(f)
             config = self._merge_with_defaults(loaded)
             self._ensure_screenshot_dir(config)
@@ -61,7 +62,7 @@ class ConfigManager:
     def save_config(self):
         """Saves current configuration to JSON file."""
         try:
-            with open(self.config_path, 'w') as f:
+            with open(self.config_path, "w") as f:
                 json.dump(self.config, f, indent=4)
             self.logger.info("Config saved.")
         except Exception as e:
@@ -210,12 +211,12 @@ class ConfigManager:
             if not loc or not loc[0]:
                 return None
 
-            lang_code = loc[0].split('_')[0]  # e.g., 'ja' from 'ja_JP'
+            lang_code = loc[0].split("_")[0]  # e.g., 'ja' from 'ja_JP'
 
             # Check if this language is supported
             # We check if src/assets/lang/{lang_code}.json exists
             # We need to be careful about the path. Using resource_path helper.
-            lang_file = resource_path(f'src/assets/lang/{lang_code}.json')
+            lang_file = resource_path(f"src/assets/lang/{lang_code}.json")
             if os.path.exists(lang_file):
                 return lang_code
 
@@ -223,4 +224,3 @@ class ConfigManager:
         except Exception as e:
             self.logger.warning(f"Failed to detect system language: {e}")
             return None
-

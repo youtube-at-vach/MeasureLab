@@ -8,13 +8,16 @@ from scipy.signal import butter, get_window, sosfiltfilt
 
 from src.core.fft_manager import fft_manager
 
+
 @functools.lru_cache(maxsize=16)
 def get_cached_window(window_name, nx, dtype=np.float64):
     return get_window(window_name, nx).astype(dtype)
 
+
 @functools.lru_cache(maxsize=128)
 def _get_butter_sos(order, Wn, btype, fs=None):
-    return butter(order, Wn, btype=btype, fs=fs, output='sos')
+    return butter(order, Wn, btype=btype, fs=fs, output="sos")
+
 
 def _calculate_ra_raw(f):
     f2 = f**2
@@ -25,10 +28,12 @@ def _calculate_ra_raw(f):
     Ra = const / denom
     return Ra
 
+
 @functools.lru_cache(maxsize=32)
 def _compute_a_weighting_curve(n_bins, step):
     f = np.arange(n_bins) * step
     return _calculate_ra_raw(f)
+
 
 @functools.lru_cache(maxsize=32)
 def _get_time_array(N, sampling_rate):
@@ -40,10 +45,12 @@ def _get_time_array(N, sampling_rate):
     t.flags.writeable = False
     return t
 
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
     """
+
     @staticmethod
     def resample(data, source_sr, target_sr):
         """
@@ -73,21 +80,21 @@ class AudioCalc:
 
         # Wn must be a tuple to be hashable for lru_cache
         Wn = (lowcut / nyquist, highcut / nyquist)
-        sos = _get_butter_sos(8, Wn, 'bandpass')
+        sos = _get_butter_sos(8, Wn, "bandpass")
         return sosfiltfilt(sos, signal)
 
     @staticmethod
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = _get_butter_sos(8, cutoff / nyquist, 'lowpass')
+        sos = _get_butter_sos(8, cutoff / nyquist, "lowpass")
         return sosfiltfilt(sos, signal)
 
     @staticmethod
     def highpass_filter(signal, sampling_rate, cutoff=20.0):
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = _get_butter_sos(8, cutoff / nyquist, 'highpass')
+        sos = _get_butter_sos(8, cutoff / nyquist, "highpass")
         return sosfiltfilt(sos, signal)
 
     @staticmethod
@@ -97,8 +104,8 @@ class AudioCalc:
         bandwidth = w0 / quality_factor
 
         # Wn must be a tuple to be hashable for lru_cache
-        Wn = (w0 - bandwidth/2, w0 + bandwidth/2)
-        sos = _get_butter_sos(2, Wn, 'bandstop')
+        Wn = (w0 - bandwidth / 2, w0 + bandwidth / 2)
+        sos = _get_butter_sos(2, Wn, "bandstop")
         return sosfiltfilt(sos, signal)
 
     @staticmethod
@@ -138,7 +145,7 @@ class AudioCalc:
         # The objective function has local minima spaced by approx sampling_rate/N.
         # We need to constrain the search to the main lobe, roughly +/- sampling_rate/N.
         bin_width = sampling_rate / N
-        search_width = 1.5 * bin_width # Slightly more than 1 bin width to be safe
+        search_width = 1.5 * bin_width  # Slightly more than 1 bin width to be safe
 
         if not np.isfinite(freq_guess):
             if return_full:
@@ -146,7 +153,7 @@ class AudioCalc:
             return freq_guess
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
-        res = minimize_scalar(get_residual_rms, bounds=bounds, method='bounded')
+        res = minimize_scalar(get_residual_rms, bounds=bounds, method="bounded")
         best_freq = res.x
 
         if return_full:
@@ -186,12 +193,12 @@ class AudioCalc:
         # Only filter if we have enough samples to support padding (padlen > 15)
         if N > 18:
             if sampling_rate > 40:
-                sos_hp = _get_butter_sos(4, 20, 'hp', fs=sampling_rate)
+                sos_hp = _get_butter_sos(4, 20, "hp", fs=sampling_rate)
                 residual = sosfiltfilt(sos_hp, residual)
 
             # Lowpass 20kHz
             if sampling_rate > 44100:
-                sos_lp = _get_butter_sos(4, 20000, 'lp', fs=sampling_rate)
+                sos_lp = _get_butter_sos(4, 20000, "lp", fs=sampling_rate)
                 residual = sosfiltfilt(sos_lp, residual)
 
         # 4. Calculate RMS
@@ -201,9 +208,9 @@ class AudioCalc:
         trim_samples = int(sampling_rate * 0.05)
         trim = min(trim_samples, N // 8)
 
-        if trim > 0 and N > 2*trim:
-            nd_rms = np.sqrt(np.mean(residual[trim:-trim]**2))
-            fund_rms = np.sqrt(np.mean(fitted_fund[trim:-trim]**2))
+        if trim > 0 and N > 2 * trim:
+            nd_rms = np.sqrt(np.mean(residual[trim:-trim] ** 2))
+            fund_rms = np.sqrt(np.mean(fitted_fund[trim:-trim] ** 2))
         else:
             nd_rms = np.sqrt(np.mean(residual**2))
             fund_rms = np.sqrt(np.mean(fitted_fund**2))
@@ -221,7 +228,7 @@ class AudioCalc:
         window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
         windowed_data = audio_data * window
         fft_result = fft_manager.rfft(windowed_data)
-        freqs = fft_manager.rfftfreq(len(audio_data), 1/sampling_rate)
+        freqs = fft_manager.rfftfreq(len(audio_data), 1 / sampling_rate)
 
         # Coherent gain correction
         coherent_gain = np.sum(window) / len(window)
@@ -232,7 +239,7 @@ class AudioCalc:
 
         # Find Fundamental Peak
         # Search near expected frequency
-        search_window = 0.1 * fundamental_freq # +/- 10%
+        search_window = 0.1 * fundamental_freq  # +/- 10%
         idx_min = np.searchsorted(freqs, fundamental_freq - search_window)
         idx_max = np.searchsorted(freqs, fundamental_freq + search_window)
         if idx_max <= idx_min:
@@ -254,11 +261,11 @@ class AudioCalc:
 
         # Refine Frequency using Parabolic Interpolation
         if 0 < peak_idx < len(amplitude_spectrum) - 1:
-            alpha = amplitude_spectrum[peak_idx-1]
+            alpha = amplitude_spectrum[peak_idx - 1]
             beta = amplitude_spectrum[peak_idx]
-            gamma = amplitude_spectrum[peak_idx+1]
+            gamma = amplitude_spectrum[peak_idx + 1]
 
-            denom = alpha - 2*beta + gamma
+            denom = alpha - 2 * beta + gamma
             if denom != 0:
                 p = 0.5 * (alpha - gamma) / denom
                 max_freq = freqs[peak_idx] + p * (freqs[1] - freqs[0])
@@ -267,11 +274,7 @@ class AudioCalc:
 
         amp_dbfs = 20 * np.log10(max_amplitude + 1e-12)
 
-        result = {
-            'frequency': max_freq,
-            'amplitude_dbfs': amp_dbfs,
-            'max_amplitude': max_amplitude
-        }
+        result = {"frequency": max_freq, "amplitude_dbfs": amp_dbfs, "max_amplitude": max_amplitude}
 
         # Harmonics
         harmonic_results = []
@@ -298,20 +301,14 @@ class AudioCalc:
                 relative_amp = h_amp / max_amplitude if max_amplitude > 0 else 0
                 amp_db = 20 * np.log10(relative_amp + 1e-12)
 
-                harmonic_results.append({
-                    'order': i,
-                    'frequency': h_freq,
-                    'amplitude_dbr': amp_db,
-                    'amplitude_linear': h_amp
-                })
+                harmonic_results.append(
+                    {"order": i, "frequency": h_freq, "amplitude_dbr": amp_db, "amplitude_linear": h_amp}
+                )
                 harmonic_amplitudes_linear.append(h_amp)
             else:
-                 harmonic_results.append({
-                    'order': i,
-                    'frequency': harmonic_freq,
-                    'amplitude_dbr': min_db,
-                    'amplitude_linear': 0
-                })
+                harmonic_results.append(
+                    {"order": i, "frequency": harmonic_freq, "amplitude_dbr": min_db, "amplitude_linear": 0}
+                )
 
         # THD Calculation
         # THD = sqrt(sum(harmonics^2)) / fundamental
@@ -329,25 +326,25 @@ class AudioCalc:
         # THD+N Calculation (Sine Fit)
         # Use raw audio_data (no window applied yet)
         thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(audio_data, sampling_rate, max_freq)
-        thdn_linear = 10**(thdn_db/20)
+        thdn_linear = 10 ** (thdn_db / 20)
 
         thdn_percent = thdn_linear * 100
         sinad_db = -thdn_db
 
         return {
-            'basic_wave': result,
-            'harmonics': harmonic_results,
-            'thd_percent': thd_percent,
-            'thd_db': thd_db,
-            'thdn_percent': thdn_percent,
-            'thdn_db': thdn_db,
-            'sinad_db': sinad_db,
+            "basic_wave": result,
+            "harmonics": harmonic_results,
+            "thd_percent": thd_percent,
+            "thd_db": thd_db,
+            "thdn_percent": thdn_percent,
+            "thdn_db": thdn_db,
+            "sinad_db": sinad_db,
             # Raw components for averaging
-            'raw_fund_rms': fund_rms,
-            'raw_res_rms': res_rms,
-            'raw_harmonics': harmonic_amplitudes_linear,
-            'raw_fund_amp': max_amplitude,
-            'fft_data': fft_result
+            "raw_fund_rms": fund_rms,
+            "raw_res_rms": res_rms,
+            "raw_harmonics": harmonic_amplitudes_linear,
+            "raw_fund_amp": max_amplitude,
+            "fft_data": fft_result,
         }
 
     @staticmethod
@@ -356,8 +353,8 @@ class AudioCalc:
         f_start = target_freq - width
         f_end = target_freq + width
 
-        idx_start = np.searchsorted(freqs, f_start, side='left')
-        idx_end = np.searchsorted(freqs, f_end, side='right')
+        idx_start = np.searchsorted(freqs, f_start, side="left")
+        idx_end = np.searchsorted(freqs, f_end, side="right")
 
         if idx_start >= idx_end:
             return 0.0
@@ -367,10 +364,10 @@ class AudioCalc:
     @staticmethod
     def calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands=3):
         # SMPTE: f1 (low), f2 (high). IMD products at f2 +/- n*f1
-        amp_f2 = AudioCalc._find_peak(mag, freqs, f2, width=max(50.0, f1*0.1))
+        amp_f2 = AudioCalc._find_peak(mag, freqs, f2, width=max(50.0, f1 * 0.1))
 
         if amp_f2 < 1e-6:
-            return {'imd': 0.0, 'imd_db': -100.0}
+            return {"imd": 0.0, "imd_db": -100.0}
 
         sum_sq_sidebands = 0.0
         for n in range(1, num_sidebands + 1):
@@ -383,10 +380,7 @@ class AudioCalc:
             sum_sq_sidebands += amp_upper**2 + amp_lower**2
 
         imd = np.sqrt(sum_sq_sidebands) / amp_f2
-        return {
-            'imd': imd * 100,
-            'imd_db': 20 * np.log10(imd) if imd > 1e-9 else -100.0
-        }
+        return {"imd": imd * 100, "imd_db": 20 * np.log10(imd) if imd > 1e-9 else -100.0}
 
     @staticmethod
     def calculate_imd_ccif(mag, freqs, f1, f2):
@@ -399,25 +393,22 @@ class AudioCalc:
         total_amp = amp_f1 + amp_f2
 
         if total_amp < 1e-6:
-            return {'imd': 0.0, 'imd_db': -100.0}
+            return {"imd": 0.0, "imd_db": -100.0}
 
         # d2
         d2_freq = abs(f2 - f1)
         amp_d2 = AudioCalc._find_peak(mag, freqs, d2_freq)
 
         # d3
-        d3_low = 2*f1 - f2
-        d3_high = 2*f2 - f1
+        d3_low = 2 * f1 - f2
+        d3_high = 2 * f2 - f1
         amp_d3_low = AudioCalc._find_peak(mag, freqs, d3_low) if d3_low > 0 else 0
         amp_d3_high = AudioCalc._find_peak(mag, freqs, d3_high)
 
         distortion_sum_sq = amp_d2**2 + amp_d3_low**2 + amp_d3_high**2
         imd = np.sqrt(distortion_sum_sq) / total_amp
 
-        return {
-            'imd': imd * 100,
-            'imd_db': 20 * np.log10(imd) if imd > 1e-9 else -100.0
-        }
+        return {"imd": imd * 100, "imd_db": 20 * np.log10(imd) if imd > 1e-9 else -100.0}
 
     @staticmethod
     def calculate_multitone_tdn(mag, freqs, tone_freqs, window_width_pct=0.05):
@@ -437,8 +428,8 @@ class AudioCalc:
         start_freqs = tone_freqs_arr - widths
         end_freqs = tone_freqs_arr + widths
 
-        idx_mins = np.searchsorted(freqs, start_freqs, side='left')
-        idx_maxs = np.searchsorted(freqs, end_freqs, side='right')
+        idx_mins = np.searchsorted(freqs, start_freqs, side="left")
+        idx_maxs = np.searchsorted(freqs, end_freqs, side="right")
 
         for i in range(len(tone_freqs_arr)):
             idx_min = idx_mins[i]
@@ -458,24 +449,21 @@ class AudioCalc:
 
         # Calculate Energies
         # We can sum squares directly
-        tone_energy = np.sum(mag[is_tone_bin]**2)
-        noise_energy = np.sum(mag[~is_tone_bin]**2)
+        tone_energy = np.sum(mag[is_tone_bin] ** 2)
+        noise_energy = np.sum(mag[~is_tone_bin] ** 2)
 
         if tone_energy <= 1e-12:
-            return {'tdn': 0.0, 'tdn_db': -100.0}
+            return {"tdn": 0.0, "tdn_db": -100.0}
 
         tdn = np.sqrt(noise_energy / tone_energy)
 
-        return {
-            'tdn': tdn * 100,
-            'tdn_db': 20 * np.log10(tdn) if tdn > 1e-9 else -100.0
-        }
+        return {"tdn": tdn * 100, "tdn_db": 20 * np.log10(tdn) if tdn > 1e-9 else -100.0}
 
     @staticmethod
     def calculate_spdr(mag, freqs, fundamental_freq, window_width_pct=0.1):
         """
         Calculates Spurious-Free Dynamic Range (SPDR).
-        SPDR is the ratio of the fundamental signal power to the power of the 
+        SPDR is the ratio of the fundamental signal power to the power of the
         largest spurious signal (harmonic or non-harmonic).
         """
         # Find Fundamental Peak
@@ -483,19 +471,19 @@ class AudioCalc:
         fund_mask = (freqs >= fundamental_freq - width) & (freqs <= fundamental_freq + width)
 
         if not np.any(fund_mask):
-            return {'spdr_db': 0.0, 'max_spur_freq': 0.0, 'max_spur_amp': 0.0}
+            return {"spdr_db": 0.0, "max_spur_freq": 0.0, "max_spur_amp": 0.0}
 
         fund_amp = np.max(mag[fund_mask])
 
         if fund_amp < 1e-9:
-             return {'spdr_db': 0.0, 'max_spur_freq': 0.0, 'max_spur_amp': 0.0}
+            return {"spdr_db": 0.0, "max_spur_freq": 0.0, "max_spur_amp": 0.0}
 
         # Mask out fundamental for spur search
         # We also typically mask out DC
         search_mask = (freqs > 20.0) & ~fund_mask
 
         if not np.any(search_mask):
-             return {'spdr_db': 100.0, 'max_spur_freq': 0.0, 'max_spur_amp': 0.0}
+            return {"spdr_db": 100.0, "max_spur_freq": 0.0, "max_spur_amp": 0.0}
 
         # Find max spur
         spur_idx_rel = np.argmax(mag[search_mask])
@@ -506,15 +494,11 @@ class AudioCalc:
         spur_freq = freqs[spur_idx]
 
         if spur_amp < 1e-12:
-            spdr_db = 140.0 # High dynamic range
+            spdr_db = 140.0  # High dynamic range
         else:
             spdr_db = 20 * np.log10(fund_amp / spur_amp)
 
-        return {
-            'spdr_db': spdr_db,
-            'max_spur_freq': spur_freq,
-            'max_spur_amp': spur_amp
-        }
+        return {"spdr_db": spdr_db, "max_spur_freq": spur_freq, "max_spur_amp": spur_amp}
 
     @staticmethod
     def calculate_pim(mag, freqs, f1, f2, order=3):
@@ -531,10 +515,10 @@ class AudioCalc:
         # Find carrier amplitudes
         amp_f1 = AudioCalc._find_peak(mag, freqs, f1)
         amp_f2 = AudioCalc._find_peak(mag, freqs, f2)
-        carrier_amp = (amp_f1 + amp_f2) / 2 # Average carrier power
+        carrier_amp = (amp_f1 + amp_f2) / 2  # Average carrier power
 
         if carrier_amp < 1e-6:
-            return {'pim_db': -100.0, 'products': []}
+            return {"pim_db": -100.0, "products": []}
 
         products = []
         sum_sq_pim = 0.0
@@ -561,13 +545,9 @@ class AudioCalc:
 
             sum_sq_pim += amp_low**2 + amp_high**2
 
-            products.append({
-                'order': n,
-                'freq_low': im_low,
-                'amp_low': amp_low,
-                'freq_high': im_high,
-                'amp_high': amp_high
-            })
+            products.append(
+                {"order": n, "freq_low": im_low, "amp_low": amp_low, "freq_high": im_high, "amp_high": amp_high}
+            )
 
         pim_rms = np.sqrt(sum_sq_pim)
 
@@ -577,10 +557,7 @@ class AudioCalc:
             # PIM is often relative to carrier power (dBc)
             pim_db = 20 * np.log10(pim_rms / carrier_amp)
 
-        return {
-            'pim_db': pim_db,
-            'products': products
-        }
+        return {"pim_db": pim_db, "products": products}
 
     @staticmethod
     def calculate_noise_profile(mag, freqs, sampling_rate):
@@ -597,8 +574,8 @@ class AudioCalc:
             f_start = f_center - width
             f_end = f_center + width
 
-            idx_start = np.searchsorted(freqs, f_start, side='left')
-            idx_end = np.searchsorted(freqs, f_end, side='right')
+            idx_start = np.searchsorted(freqs, f_start, side="left")
+            idx_end = np.searchsorted(freqs, f_end, side="right")
 
             if idx_start >= idx_end:
                 return 0.0
@@ -607,19 +584,19 @@ class AudioCalc:
             # mag is V/rtHz. mag^2 is V^2/Hz.
             # bin_width = fs / N = freqs[1] - freqs[0]
             bin_width = freqs[1] - freqs[0] if len(freqs) > 1 else 1.0
-            power = np.sum(mag[idx_start:idx_end]**2) * bin_width
+            power = np.sum(mag[idx_start:idx_end] ** 2) * bin_width
             return power
 
         p50 = get_power_in_band(50.0)
         p60 = get_power_in_band(60.0)
 
         base_freq = 50.0 if p50 > p60 else 60.0
-        results['hum_freq'] = base_freq
+        results["hum_freq"] = base_freq
 
         # Sum harmonics
         hum_power = 0.0
         hum_components = []
-        for i in range(1, 11): # Fundamental + 9 harmonics
+        for i in range(1, 11):  # Fundamental + 9 harmonics
             f_h = base_freq * i
             if f_h > sampling_rate / 2:
                 break
@@ -627,8 +604,8 @@ class AudioCalc:
             hum_power += p_h
             hum_components.append((f_h, np.sqrt(p_h)))
 
-        results['hum_rms'] = np.sqrt(hum_power)
-        results['hum_components'] = hum_components
+        results["hum_rms"] = np.sqrt(hum_power)
+        results["hum_components"] = hum_components
 
         # 2. 1/f Noise Analysis
         # Fit log(PSD) vs log(f) in 1Hz - 100Hz
@@ -638,28 +615,28 @@ class AudioCalc:
         for f_h, _ in hum_components:
             f_start = f_h - 5.0
             f_end = f_h + 5.0
-            idx_start = np.searchsorted(freqs, f_start, side='left')
-            idx_end = np.searchsorted(freqs, f_end, side='right')
+            idx_start = np.searchsorted(freqs, f_start, side="left")
+            idx_end = np.searchsorted(freqs, f_end, side="right")
             fit_mask[idx_start:idx_end] = False
 
         # Estimate White Noise (Median of 1k-20k)
-        i_white_start = np.searchsorted(freqs, 1000.0, side='left')
-        i_white_end = np.searchsorted(freqs, 20000.0, side='right')
+        i_white_start = np.searchsorted(freqs, 1000.0, side="left")
+        i_white_end = np.searchsorted(freqs, 20000.0, side="right")
 
         if i_white_start < i_white_end:
             # Median is robust to peaks, but under-estimates RMS of Gaussian noise (Rayleigh magnitude)
             # Factor: RMS / Median = 1 / sqrt(ln(2)) ~= 1.2011
             white_density = np.median(mag[i_white_start:i_white_end]) * 1.2011
         else:
-            white_density = 1e-9 # Fallback
+            white_density = 1e-9  # Fallback
 
-        results['white_density'] = white_density # V/rtHz
+        results["white_density"] = white_density  # V/rtHz
 
         # Determine Fit Upper Bound
         # Find first frequency where mag < white_density * 1.5 (approx 3.5dB margin)
         # Search in 1Hz - 1kHz range
-        i_search_start = np.searchsorted(freqs, 1.0, side='left')
-        i_search_end = np.searchsorted(freqs, 1000.0, side='right')
+        i_search_start = np.searchsorted(freqs, 1.0, side="left")
+        i_search_end = np.searchsorted(freqs, 1000.0, side="right")
 
         search_freqs = freqs[i_search_start:i_search_end]
         search_mags = mag[i_search_start:i_search_end]
@@ -667,7 +644,7 @@ class AudioCalc:
         # Smooth magnitudes slightly to avoid triggering on dips
         # Simple moving average of 3 bins
         if len(search_mags) > 3:
-            search_mags_smooth = np.convolve(search_mags, np.ones(3)/3, mode='same')
+            search_mags_smooth = np.convolve(search_mags, np.ones(3) / 3, mode="same")
         else:
             search_mags_smooth = search_mags
 
@@ -676,10 +653,10 @@ class AudioCalc:
         if len(knee_indices) > 0:
             f_knee = search_freqs[knee_indices[0]]
         else:
-            f_knee = 100.0 # Default if never drops
+            f_knee = 100.0  # Default if never drops
 
         # Clamp knee
-        f_max_fit = np.clip(f_knee, 5.0, 400.0) # Minimum 5Hz range, max 400Hz
+        f_max_fit = np.clip(f_knee, 5.0, 400.0)  # Minimum 5Hz range, max 400Hz
 
         # Fit 1/f
         # Range: 1Hz to f_max_fit
@@ -687,11 +664,11 @@ class AudioCalc:
         mask_1f = (freqs >= 1.0) & (freqs <= f_max_fit)
 
         # Exclude hum
-        for h_freq, h_amp in hum_components:
+        for h_freq, _h_amp in hum_components:
             f_start = h_freq - 5.0
             f_end = h_freq + 5.0
-            idx_start = np.searchsorted(freqs, f_start, side='left')
-            idx_end = np.searchsorted(freqs, f_end, side='right')
+            idx_start = np.searchsorted(freqs, f_start, side="left")
+            idx_end = np.searchsorted(freqs, f_end, side="right")
             mask_1f[idx_start:idx_end] = False
 
         if np.sum(mask_1f) > 5:
@@ -700,25 +677,25 @@ class AudioCalc:
 
             # Linear regression: m_log = slope * f_log + intercept
             slope, intercept = np.polyfit(f_log, m_log, 1)
-            results['flicker_slope'] = slope
-            results['flicker_intercept'] = intercept
+            results["flicker_slope"] = slope
+            results["flicker_intercept"] = intercept
         else:
-            results['flicker_slope'] = 0.0
-            results['flicker_intercept'] = 0.0
+            results["flicker_slope"] = 0.0
+            results["flicker_intercept"] = 0.0
 
         # Calculate Corner Frequency
-        if results['flicker_slope'] != 0:
+        if results["flicker_slope"] != 0:
             log_white = np.log10(white_density + 1e-15)
-            x_c = (log_white - results['flicker_intercept']) / results['flicker_slope']
+            x_c = (log_white - results["flicker_intercept"]) / results["flicker_slope"]
 
             if x_c > 9:
-                results['corner_freq'] = 1e9
+                results["corner_freq"] = 1e9
             elif x_c < -9:
-                results['corner_freq'] = 1e-9
+                results["corner_freq"] = 1e-9
             else:
-                results['corner_freq'] = 10**x_c
+                results["corner_freq"] = 10**x_c
         else:
-            results['corner_freq'] = 0.0
+            results["corner_freq"] = 0.0
 
         # Explicit 1/f Power Calculation
         # Integrate the fitted 1/f curve from 20Hz to 20kHz (or Corner Freq)
@@ -726,15 +703,15 @@ class AudioCalc:
         # P(f) = 10^(2*intercept) * f^(2*slope)
         # Integral P(f) df = C * [ f^(2*slope + 1) / (2*slope + 1) ]
 
-        if results['flicker_slope'] != 0:
+        if results["flicker_slope"] != 0:
             # We integrate 1/f component over the full audio bandwidth (20Hz-20kHz)
             # because physically 1/f noise exists at all frequencies, even if buried under white noise.
             f_start = 20.0
             f_end = 20000.0
 
             if f_end > f_start:
-                A = 10**(results['flicker_intercept'])
-                alpha = results['flicker_slope']
+                A = 10 ** (results["flicker_intercept"])
+                alpha = results["flicker_slope"]
                 # Density V(f) = A * f^alpha
                 # Power Density S(f) = V(f)^2 = A^2 * f^(2*alpha)
 
@@ -742,35 +719,35 @@ class AudioCalc:
                 k = 2 * alpha
                 C = A**2
 
-                if abs(k + 1) < 1e-9: # 1/f case (slope -0.5 -> k=-1)
+                if abs(k + 1) < 1e-9:  # 1/f case (slope -0.5 -> k=-1)
                     # Integral is ln(f)
                     power_flicker = C * (np.log(f_end) - np.log(f_start))
                 else:
-                    power_flicker = C * ((f_end**(k+1)) - (f_start**(k+1))) / (k+1)
+                    power_flicker = C * ((f_end ** (k + 1)) - (f_start ** (k + 1))) / (k + 1)
 
-                results['flicker_rms'] = np.sqrt(max(0, power_flicker))
+                results["flicker_rms"] = np.sqrt(max(0, power_flicker))
             else:
-                results['flicker_rms'] = 0.0
+                results["flicker_rms"] = 0.0
         else:
-            results['flicker_rms'] = 0.0
+            results["flicker_rms"] = 0.0
 
         # 4. Integrated Noise in Bands
         def integrate_band(f_start, f_end):
-            idx_start = np.searchsorted(freqs, f_start, side='left')
-            idx_end = np.searchsorted(freqs, f_end, side='left')
+            idx_start = np.searchsorted(freqs, f_start, side="left")
+            idx_end = np.searchsorted(freqs, f_end, side="left")
 
             if idx_start >= idx_end:
                 return 0.0
             bin_width = freqs[1] - freqs[0]
-            return np.sqrt(np.sum(mag[idx_start:idx_end]**2) * bin_width)
+            return np.sqrt(np.sum(mag[idx_start:idx_end] ** 2) * bin_width)
 
-        results['noise_rms_20k'] = integrate_band(20, 20000)
-        results['noise_rms_100k'] = integrate_band(20, 100000)
+        results["noise_rms_20k"] = integrate_band(20, 20000)
+        results["noise_rms_100k"] = integrate_band(20, 100000)
 
         # Peak Detection
         # Find peak in 20Hz-20kHz
-        i_peak_start = np.searchsorted(freqs, 20.0, side='left')
-        i_peak_end = np.searchsorted(freqs, 20000.0, side='right')
+        i_peak_start = np.searchsorted(freqs, 20.0, side="left")
+        i_peak_end = np.searchsorted(freqs, 20000.0, side="right")
 
         # Exclude Hum regions from peak search (optional, but requested to find "Other" noise)
         # If we want the absolute peak, we shouldn't exclude hum.
@@ -780,11 +757,11 @@ class AudioCalc:
             peak_mags_slice = mag[i_peak_start:i_peak_end]
             peak_idx_rel = np.argmax(peak_mags_slice)
 
-            results['peak_freq'] = freqs[i_peak_start + peak_idx_rel]
-            results['peak_amp'] = peak_mags_slice[peak_idx_rel]
+            results["peak_freq"] = freqs[i_peak_start + peak_idx_rel]
+            results["peak_amp"] = peak_mags_slice[peak_idx_rel]
         else:
-            results['peak_freq'] = 0.0
-            results['peak_amp'] = 0.0
+            results["peak_freq"] = 0.0
+            results["peak_amp"] = 0.0
 
         # A-weighting Integration
         # Ra(f) = (12194^2 * f^4) / ((f^2 + 20.6^2) * sqrt((f^2 + 107.7^2)(f^2 + 737.9^2)) * (f^2 + 12194^2))
@@ -809,20 +786,20 @@ class AudioCalc:
         mag_a = mag * weighting_linear
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
-        i_a_start = np.searchsorted(freqs, 20.0, side='left')
-        i_a_end = np.searchsorted(freqs, 20000.0, side='right')
+        i_a_start = np.searchsorted(freqs, 20.0, side="left")
+        i_a_end = np.searchsorted(freqs, 20000.0, side="right")
 
         # Integration
         # Power = sum(PSD^2 * bin_width)
         bin_width = freqs[1] - freqs[0] if len(freqs) > 1 else 1.0
-        power_a = np.sum(mag_a[i_a_start:i_a_end]**2) * bin_width
+        power_a = np.sum(mag_a[i_a_start:i_a_end] ** 2) * bin_width
 
-        results['noise_rms_a_weighted'] = np.sqrt(power_a)
+        results["noise_rms_a_weighted"] = np.sqrt(power_a)
 
         return results
 
     @staticmethod
-    def calculate_lockin_measurement(signal, frequency, sampling_rate, phase_ref=0.0, window_name='hann'):
+    def calculate_lockin_measurement(signal, frequency, sampling_rate, phase_ref=0.0, window_name="hann"):
         """
         Performs a single-point Lock-in detection (Coherent Demodulation).
         Returns: magnitude, phase (degrees)

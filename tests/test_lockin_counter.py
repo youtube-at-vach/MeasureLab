@@ -22,7 +22,7 @@ def test_frequency_calculation():
 
     # Create a signal at 1001.0 Hz (Delta = +1.0 Hz)
     sr = 48000
-    duration = 4096 / sr
+    4096 / sr
     t = np.arange(4096) / sr
     sig = np.cos(2 * np.pi * 1001.0 * t) # 1001 Hz
 

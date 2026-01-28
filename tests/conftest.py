@@ -12,7 +12,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 # Mock sounddevice if not available or fails to initialize (no PortAudio)
 try:
-    import sounddevice
+    import sounddevice # noqa: F401
 except (OSError, ImportError):
     sd = MagicMock()
     sd.query_devices.return_value = []
