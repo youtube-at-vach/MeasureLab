@@ -185,8 +185,12 @@ class AudioCalc:
                 residual = sosfiltfilt(sos_lp, residual)
 
         # 4. Calculate RMS
-        # Trim edges slightly to avoid filter transients from bandwidth limit
-        trim = min(100, N//8)
+        # Trim edges to avoid filter transients from bandwidth limit (especially 20Hz HPF)
+        # 20Hz period is 50ms. We should trim at least that much.
+        # Use 50ms or 1/8th of buffer, whichever is smaller.
+        trim_samples = int(sampling_rate * 0.05)
+        trim = min(trim_samples, N // 8)
+        
         if trim > 0 and N > 2*trim:
             nd_rms = np.sqrt(np.mean(residual[trim:-trim]**2))
             fund_rms = np.sqrt(np.mean(fitted_fund[trim:-trim]**2))
@@ -264,20 +268,14 @@ class AudioCalc:
         harmonic_amplitudes_linear = []
 
         # Up to 10th harmonic
-        if len(freqs) > 1:
-            bin_width = freqs[1]
-        else:
-            bin_width = sampling_rate / len(audio_data)
-        freqs_len = len(freqs)
-
         for i in range(2, 11):
             harmonic_freq = max_freq * i
             if harmonic_freq >= sampling_rate / 2:
                 break
 
             # Search near harmonic
-            h_idx_min = max(0, min(freqs_len, int(math.ceil((harmonic_freq - search_window) / bin_width))))
-            h_idx_max = max(0, min(freqs_len, int(math.ceil((harmonic_freq + search_window) / bin_width))))
+            h_idx_min = np.searchsorted(freqs, harmonic_freq - search_window)
+            h_idx_max = np.searchsorted(freqs, harmonic_freq + search_window)
 
             if h_idx_max < len(amplitude_spectrum) and h_idx_max > h_idx_min:
                 subset = amplitude_spectrum[h_idx_min:h_idx_max]
