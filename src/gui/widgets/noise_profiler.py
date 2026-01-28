@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.core.analysis import AudioCalc
+from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
@@ -387,7 +387,7 @@ class NoiseProfilerWidget(QWidget):
 
             # 1. Compute PSD (V/rtHz)
             # Use Hanning window
-            window = np.hanning(len(data))
+            window = get_cached_window("hann", len(data))
 
             fs = self.module.audio_engine.sample_rate
             sum_w2 = np.sum(window**2)
