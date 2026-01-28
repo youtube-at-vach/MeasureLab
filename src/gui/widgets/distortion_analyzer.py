@@ -169,7 +169,8 @@ class DistortionAnalyzer(MeasurementModule):
             'raw_fund_rms': state['fund_rms'],
             'raw_res_rms': state['res_rms'],
             'raw_harmonics': state['harmonics'],
-            'raw_fund_amp': state['fund_amp']
+            'raw_fund_amp': state['fund_amp'],
+            'fft_data': results.get('fft_data')
         }
 
         return averaged
