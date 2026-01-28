@@ -80,7 +80,8 @@ class TestNetworkAnalyzer(unittest.TestCase):
         self.assertAlmostEqual(gain, 0.0, delta=0.1)
         # Phase might be -90 or 270
         diff = (phase - (-90)) % 360
-        if diff > 180: diff -= 360
+        if diff > 180:
+            diff -= 360
         self.assertAlmostEqual(diff, 0.0, delta=1.0)
 
 if __name__ == '__main__':

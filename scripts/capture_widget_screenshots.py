@@ -93,8 +93,10 @@ def find_widget_pair(module):
         for name, obj in inspect.getmembers(module):
             if inspect.isclass(obj) and issubclass(obj, QWidget):
                 # Skip common utility widgets if they exist (unlikely in these files but good practice)
-                if name.startswith("Q"): continue 
-                if obj is module_class: continue # Just in case
+                if name.startswith("Q"):
+                    continue
+                if obj is module_class:
+                    continue # Just in case
 
                 # Check init signature for 'module' arg?
                 sig = inspect.signature(obj.__init__)
