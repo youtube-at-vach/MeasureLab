@@ -96,7 +96,7 @@ Measures transmission characteristics, impedance, etc., of electronic circuits a
     * Tracks minute frequency deviations or phase fluctuations relative to a reference signal.
 
 * **[Loopback Finder](widgets/loopback_finder.md)**
-    * Measures input/output delay (latency) of audio interfaces.
+    * Detects loopback paths of audio interfaces.
 
 ---
 

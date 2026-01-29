@@ -1,4 +1,4 @@
-# Loopback Finder (レイテンシー・遅延測定)
+# Loopback Finder (ループバック検出)
 
 ![Loopback Finder](../assets/widgets/loopback_finder.png)
 
