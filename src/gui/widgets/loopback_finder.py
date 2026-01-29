@@ -128,11 +128,15 @@ class LoopbackFinder(MeasurementModule):
         # But run(args) implies we might not have audio_engine initialized fully or we use it.
         # Let's assume audio_engine is available.
 
-        # TODO: Parse device ID from args if provided
-        device_id = self.audio_engine.output_device  # Use current
+        # Parse device ID from args if provided
+        device_id = getattr(args, "device_id", None)
+        if device_id is None:
+            device_id = self.audio_engine.output_device  # Use current
         sample_rate = self.audio_engine.sample_rate
 
-        results = self.perform_scan(device_id, sample_rate, progress_callback=lambda p, m: print(f"{p}%: {m}"))
+        results = self.perform_scan(
+            device_id, sample_rate, progress_callback=lambda p, m: print(f"{p}%: {m}")
+        )
 
         print("Found Paths:")
         for p in results:
