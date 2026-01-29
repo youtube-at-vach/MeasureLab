@@ -1,5 +1,29 @@
 # Changelog
 
+## [v0.4.0] - 2026-01-29
+
+### Added
+
+* UI: `Linearity Analyzer` ウィジェットを追加。SNR 測定、ノイズフロアの可視化、ゲイン精度や線形範囲の統計表示に対応
+* Core: `Ultrasound Modulator` にヒルベルト変換を用いた単側波帯 (SSB) 変調モードを追加
+* Docs: オシロスコープの英語マニュアルに残光表示 (Persistence) 設定の詳細を追加
+
+### Changed
+
+* Perf: `Noise Profiler` のウィンドウ生成および周波数検索を最適化
+* Perf: `Oscilloscope.estimate_frequency_hz` をベクトル化により高速化
+* Perf: `AudioCalc.optimize_frequency` の時間軸生成をキャッシュ化
+* Perf: `calculate_lockin_measurement` をドット演算により高速化
+* Core: `Frequency Counter` のサインフィッティング処理をワーカースレッドへ移行
+
+### Fixed
+
+* Fix: `drawContents` メソッドにおける `None` ペインターのハンドリングを改善
+* Fix: オーディオコールバック内のブロッキングな `print` 文を削除
+* I18n: 「Carrier Mode」などの欠落していた翻訳キーを追加
+* Refactor: 変数名の改善 (単一文字 `l`, `r` から `left`, `right` へ)
+* CI: `ruff` によるリンティング対象を全リポジトリに拡大し、`main_gui.py` を `mypy` チェック対象に追加
+
 ## [v0.3.9] - 2026-01-26
 
 ### Added
