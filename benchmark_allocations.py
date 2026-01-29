@@ -77,7 +77,7 @@ def run_bench():
     t_old_stereo = timeit.timeit(old_callback_stereo, number=ITERATIONS)
     t_new_stereo = timeit.timeit(rb.callback_stereo, number=ITERATIONS)
 
-    print(f"\nStereo Input:")
+    print("\nStereo Input:")
     print(f"Old (Allocating): {t_old_stereo:.4f} sec ({ITERATIONS/t_old_stereo:.0f} ops/sec)")
     print(f"New (In-Place):   {t_new_stereo:.4f} sec ({ITERATIONS/t_new_stereo:.0f} ops/sec)")
     print(f"Speedup:          {t_old_stereo / t_new_stereo:.2f}x")
@@ -86,7 +86,7 @@ def run_bench():
     t_old_mono = timeit.timeit(old_callback_mono, number=ITERATIONS)
     t_new_mono = timeit.timeit(rb.callback_mono, number=ITERATIONS)
 
-    print(f"\nMono Input:")
+    print("\nMono Input:")
     print(f"Old (Allocating): {t_old_mono:.4f} sec ({ITERATIONS/t_old_mono:.0f} ops/sec)")
     print(f"New (In-Place):   {t_new_mono:.4f} sec ({ITERATIONS/t_new_mono:.0f} ops/sec)")
     print(f"Speedup:          {t_old_mono / t_new_mono:.2f}x")
