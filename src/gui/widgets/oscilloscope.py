@@ -287,18 +287,18 @@ class Oscilloscope(MeasurementModule):
         if len(crossings) < 2:
             return None
 
-        times = []
-        for i in crossings:
-            y0 = float(yy[i])
-            y1 = float(yy[i + 1])
-            t0 = float(tt[i])
-            t1 = float(tt[i + 1])
-            denom = y1 - y0
-            if denom == 0:
-                continue
-            frac = (-y0) / denom
-            if 0.0 <= frac <= 1.0:
-                times.append(t0 + frac * (t1 - t0))
+        # Vectorized interpolation
+        # Since crossings are defined as y[i] < 0 and y[i+1] >= 0,
+        # denom = y[i+1] - y[i] is strictly positive.
+        idx = crossings
+        y0 = yy[idx]
+        y1 = yy[idx + 1]
+        t0 = tt[idx]
+        t1 = tt[idx + 1]
+
+        denom = y1 - y0
+        frac = -y0 / denom
+        times = t0 + frac * (t1 - t0)
 
         if len(times) < 2:
             return None
