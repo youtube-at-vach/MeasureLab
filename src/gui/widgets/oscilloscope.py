@@ -1,4 +1,5 @@
 import argparse
+import queue
 
 import numpy as np
 import pyqtgraph as pg
@@ -72,6 +73,7 @@ class Oscilloscope(MeasurementModule):
         self.heatmap_r = None
         self.heatmap_size = (600, 400)  # Width, Height (pixels/bins)
 
+        self._data_queue = None
         self.callback_id = None
 
     @property
@@ -100,6 +102,7 @@ class Oscilloscope(MeasurementModule):
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_index = 0
+        self._data_queue = queue.Queue()
 
         # Reset heatmaps
         if self.persistence_mode:
@@ -113,44 +116,11 @@ class Oscilloscope(MeasurementModule):
             if status:
                 pass
 
-            n_frames = len(indata)
-
-            # Ring buffer write (zero allocation)
-            if n_frames > self.buffer_size:
-                # Just take the last part
-                offset = n_frames - self.buffer_size
-                if indata.shape[1] >= 2:
-                    self.input_data[:] = indata[offset:, :2]
-                else:
-                    self.input_data[:, 0] = indata[offset:, 0]
-                    self.input_data[:, 1] = indata[offset:, 0]
-                self.write_index = 0
-            else:
-                # Wrapped write
-                idx = self.write_index
-                end_idx = idx + n_frames
-                if end_idx <= self.buffer_size:
-                    # No wrap
-                    if indata.shape[1] >= 2:
-                        self.input_data[idx:end_idx] = indata[:, :2]
-                    else:
-                        self.input_data[idx:end_idx, 0] = indata[:, 0]
-                        self.input_data[idx:end_idx, 1] = indata[:, 0]
-                else:
-                    # Split
-                    part1_len = self.buffer_size - idx
-
-                    if indata.shape[1] >= 2:
-                        self.input_data[idx:] = indata[:part1_len, :2]
-                        self.input_data[: n_frames - part1_len] = indata[part1_len:, :2]
-                    else:
-                        self.input_data[idx:, 0] = indata[:part1_len, 0]
-                        self.input_data[idx:, 1] = indata[:part1_len, 0]
-
-                        self.input_data[: n_frames - part1_len, 0] = indata[part1_len:, 0]
-                        self.input_data[: n_frames - part1_len, 1] = indata[part1_len:, 0]
-
-                self.write_index = (idx + n_frames) % self.buffer_size
+            # Queue data for GUI processing (Thread Safe)
+            try:
+                self._data_queue.put(indata.copy(), block=False)
+            except queue.Full:
+                pass
 
             outdata.fill(0)
 
@@ -1124,6 +1094,52 @@ class OscilloscopeWidget(QWidget):
     def update_plot(self):
         if not self.module.is_running:
             return
+
+        # Consume queue and update buffer
+        while not self.module._data_queue.empty():
+            try:
+                indata = self.module._data_queue.get_nowait()
+            except queue.Empty:
+                break
+
+            n_frames = len(indata)
+
+            # Ring buffer write (zero allocation)
+            if n_frames > self.module.buffer_size:
+                # Just take the last part
+                offset = n_frames - self.module.buffer_size
+                if indata.shape[1] >= 2:
+                    self.module.input_data[:] = indata[offset:, :2]
+                else:
+                    self.module.input_data[:, 0] = indata[offset:, 0]
+                    self.module.input_data[:, 1] = indata[offset:, 0]
+                self.module.write_index = 0
+            else:
+                # Wrapped write
+                idx = self.module.write_index
+                end_idx = idx + n_frames
+                if end_idx <= self.module.buffer_size:
+                    # No wrap
+                    if indata.shape[1] >= 2:
+                        self.module.input_data[idx:end_idx] = indata[:, :2]
+                    else:
+                        self.module.input_data[idx:end_idx, 0] = indata[:, 0]
+                        self.module.input_data[idx:end_idx, 1] = indata[:, 0]
+                else:
+                    # Split
+                    part1_len = self.module.buffer_size - idx
+
+                    if indata.shape[1] >= 2:
+                        self.module.input_data[idx:] = indata[:part1_len, :2]
+                        self.module.input_data[: n_frames - part1_len] = indata[part1_len:, :2]
+                    else:
+                        self.module.input_data[idx:, 0] = indata[:part1_len, 0]
+                        self.module.input_data[idx:, 1] = indata[:part1_len, 0]
+
+                        self.module.input_data[: n_frames - part1_len, 0] = indata[part1_len:, 0]
+                        self.module.input_data[: n_frames - part1_len, 1] = indata[part1_len:, 0]
+
+                self.module.write_index = (idx + n_frames) % self.module.buffer_size
 
         window_duration = self.module.timebase
         data = self.module.get_display_data(window_duration)

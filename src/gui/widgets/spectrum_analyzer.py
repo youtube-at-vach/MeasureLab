@@ -1,4 +1,5 @@
 import argparse
+import queue
 
 import numpy as np
 import pyqtgraph as pg
@@ -53,6 +54,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self._peak_magnitude = None
         self.overall_rms = 0.0
 
+        self._data_queue = None
         self.callback_id = None
 
     @property
@@ -73,6 +75,13 @@ class SpectrumAnalyzer(MeasurementModule):
         self.buffer_size = size
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
+        if self._data_queue is not None:
+            # Clear queue when buffer size changes to avoid stale data mismatch
+            while not self._data_queue.empty():
+                try:
+                    self._data_queue.get_nowait()
+                except queue.Empty:
+                    break
         self._avg_magnitude = None
         self._avg_cross_spectrum = None
         self._peak_magnitude = None
@@ -91,82 +100,22 @@ class SpectrumAnalyzer(MeasurementModule):
         self.overall_rms = 0.0
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
-
-        # Threshold for switching to "Snapshot / Slow" mode
-        LARGE_BUFFER_THRESHOLD = 500000
+        self._data_queue = queue.Queue()
 
         def callback(indata, outdata, frames, time, status):
             if status:
                 print(status)
 
-            # Determine available data length
-            n_frames = len(indata)
-
-            # --- Slow / Snapshot Mode ---
-            if self.buffer_size >= LARGE_BUFFER_THRESHOLD:
-                # Fill buffer linearly, then stop accepting data until processed (write_head reset)
-
-                # If buffer is already "full" (waiting for processing), do nothing
-                if self.write_head >= self.buffer_size:
-                    outdata.fill(0)
-                    return
-
-                # Calculate how much space is left
-                space_left = self.buffer_size - self.write_head
-                to_write = min(n_frames, space_left)
-
-                if to_write > 0:
-                    start_idx = self.write_head
-                    end_idx = start_idx + to_write
-
-                    if indata.shape[1] >= 2:
-                        self.input_data[start_idx:end_idx] = indata[:to_write, :2]
-                    else:
-                        # Mono: Duplicate
-                        self.input_data[start_idx:end_idx, 0] = indata[:to_write, 0]
-                        self.input_data[start_idx:end_idx, 1] = indata[:to_write, 0]
-
-                    self.write_head += to_write
-
-            # --- Normal Ring Buffer Mode ---
-            else:
-                # If incoming data is larger than buffer, just take the last chunk
-                if n_frames >= self.buffer_size:
-                    # Write last buffer_size samples
-                    offset = n_frames - self.buffer_size
-                    if indata.shape[1] >= 2:
-                        self.input_data[:] = indata[offset:, :2]
-                    else:
-                        self.input_data[:, 0] = indata[offset:, 0]
-                        self.input_data[:, 1] = indata[offset:, 0]
-                    self.write_head = 0  # Reset head to 0 (effectively full/aligned)
-                else:
-                    # Wrapped write
-                    idx = self.write_head
-                    end_idx = idx + n_frames
-
-                    if end_idx <= self.buffer_size:
-                        # No wrap
-                        if indata.shape[1] >= 2:
-                            self.input_data[idx:end_idx] = indata[:, :2]
-                        else:
-                            self.input_data[idx:end_idx, 0] = indata[:, 0]
-                            self.input_data[idx:end_idx, 1] = indata[:, 0]
-                    else:
-                        # Wrap around
-                        part1_len = self.buffer_size - idx
-
-                        if indata.shape[1] >= 2:
-                            self.input_data[idx:] = indata[:part1_len, :2]
-                            self.input_data[: n_frames - part1_len] = indata[part1_len:, :2]
-                        else:
-                            self.input_data[idx:, 0] = indata[:part1_len, 0]
-                            self.input_data[idx:, 1] = indata[:part1_len, 0]
-
-                            self.input_data[: n_frames - part1_len, 0] = indata[part1_len:, 0]
-                            self.input_data[: n_frames - part1_len, 1] = indata[part1_len:, 0]
-
-                    self.write_head = (idx + n_frames) % self.buffer_size
+            # We assume indata is transient, so we must copy it.
+            # Convert mono to stereo if needed efficiently?
+            # Actually, to minimize allocation in callback, we should just queue the raw data
+            # and let the consumer handle reshaping.
+            # indata is (frames, channels).
+            # We copy it to own the data.
+            try:
+                self._data_queue.put(indata.copy(), block=False)
+            except queue.Full:
+                pass
 
             outdata.fill(0)
 
@@ -647,18 +596,96 @@ class SpectrumAnalyzerWidget(QWidget):
         # Threshold for switching to "Snapshot / Slow" mode (Must match module)
         LARGE_BUFFER_THRESHOLD = 500000
 
+        # --- Consume Queue and Update Buffer ---
+        while not self.module._data_queue.empty():
+            try:
+                indata = self.module._data_queue.get_nowait()
+            except queue.Empty:
+                break
+
+            n_frames = len(indata)
+
+            # --- Slow / Snapshot Mode ---
+            if self.module.buffer_size >= LARGE_BUFFER_THRESHOLD:
+                # If buffer is already "full" (waiting for processing), we ignore new data
+                if self.module.write_head >= self.module.buffer_size:
+                    continue
+
+                # Calculate how much space is left
+                space_left = self.module.buffer_size - self.module.write_head
+                to_write = min(n_frames, space_left)
+
+                if to_write > 0:
+                    start_idx = self.module.write_head
+                    end_idx = start_idx + to_write
+
+                    if indata.shape[1] >= 2:
+                        self.module.input_data[start_idx:end_idx] = indata[:to_write, :2]
+                    else:
+                        # Mono: Duplicate
+                        self.module.input_data[start_idx:end_idx, 0] = indata[:to_write, 0]
+                        self.module.input_data[start_idx:end_idx, 1] = indata[:to_write, 0]
+
+                    self.module.write_head += to_write
+
+            # --- Normal Ring Buffer Mode ---
+            else:
+                # If incoming data is larger than buffer, just take the last chunk
+                if n_frames >= self.module.buffer_size:
+                    offset = n_frames - self.module.buffer_size
+                    if indata.shape[1] >= 2:
+                        self.module.input_data[:] = indata[offset:, :2]
+                    else:
+                        self.module.input_data[:, 0] = indata[offset:, 0]
+                        self.module.input_data[:, 1] = indata[offset:, 0]
+                    self.module.write_head = 0
+                else:
+                    # Wrapped write
+                    idx = self.module.write_head
+                    end_idx = idx + n_frames
+
+                    if end_idx <= self.module.buffer_size:
+                        # No wrap
+                        if indata.shape[1] >= 2:
+                            self.module.input_data[idx:end_idx] = indata[:, :2]
+                        else:
+                            self.module.input_data[idx:end_idx, 0] = indata[:, 0]
+                            self.module.input_data[idx:end_idx, 1] = indata[:, 0]
+                    else:
+                        # Wrap around
+                        part1_len = self.module.buffer_size - idx
+
+                        if indata.shape[1] >= 2:
+                            self.module.input_data[idx:] = indata[:part1_len, :2]
+                            self.module.input_data[: n_frames - part1_len] = indata[part1_len:, :2]
+                        else:
+                            self.module.input_data[idx:, 0] = indata[:part1_len, 0]
+                            self.module.input_data[idx:, 1] = indata[:part1_len, 0]
+
+                            self.module.input_data[: n_frames - part1_len, 0] = indata[part1_len:, 0]
+                            self.module.input_data[: n_frames - part1_len, 1] = indata[part1_len:, 0]
+
+                    self.module.write_head = (idx + n_frames) % self.module.buffer_size
+
+        # --- Prepare Data for Analysis ---
         if self.module.buffer_size >= LARGE_BUFFER_THRESHOLD:
             # Snapshot Mode Logic
             if self.module.write_head < self.module.buffer_size:
                 # Buffer not full yet, wait
                 return
 
-            # Buffer full, take snapshot and reset
-            # IMPORTANT: Copy data to avoid race condition if we were to allow filling immediately (though we blocked it in callback)
-            data = self.module.input_data.copy()
+            # Buffer full, take snapshot
+            data = self.module.input_data
 
             # Reset write head to start new capture
             self.module.write_head = 0
+
+            # Clear any pending queue items to ensure fresh start for next snapshot
+            while not self.module._data_queue.empty():
+                try:
+                    self.module._data_queue.get_nowait()
+                except queue.Empty:
+                    break
         else:
             # Normal Rolling Mode
             # Unroll ring buffer
