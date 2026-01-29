@@ -20,6 +20,7 @@ from scipy.signal.windows import dpss
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
+from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -411,20 +412,6 @@ class SpectrumAnalyzerWidget(QWidget):
         layout.addWidget(self.plot_widget)
         self.setLayout(layout)
 
-    def format_si(self, value, unit):
-        if value == 0:
-            return f"0.0 {unit}"
-
-        exponent = int(np.floor(np.log10(abs(value)) / 3) * 3)
-        exponent = max(min(exponent, 9), -15)
-
-        scaled_value = value / (10**exponent)
-
-        prefixes = {-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
-
-        prefix = prefixes.get(exponent, "")
-        return f"{scaled_value:.3g} {prefix}{unit}"
-
     def mouse_moved(self, evt):
         pos = evt[0]
         if self.plot_widget.sceneBoundingRect().contains(pos):
@@ -459,10 +446,10 @@ class SpectrumAnalyzerWidget(QWidget):
             if self.module.display_unit == "dB SPL":
                 # For SPL, y is dB SPL. Linear is 10^(y/20) * 20uPa.
                 val_pa = (10 ** (y / 20)) * 20e-6
-                linear_str = self.format_si(val_pa, "Pa")
+                linear_str = format_si(val_pa, "Pa", sig_figs=3)
                 cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_str})"
             elif self.module.display_unit == "dBV":
-                linear_str = self.format_si(linear_val, unit_linear)
+                linear_str = format_si(linear_val, unit_linear, sig_figs=3)
                 cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_str})"
             else:  # dBFS
                 cursor_text = f"Cursor: {freq:.1f} Hz, {y:.1f} {unit_db} ({linear_val:.4g})"

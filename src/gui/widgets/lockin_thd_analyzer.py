@@ -22,6 +22,7 @@ from scipy.signal import butter, sosfiltfilt
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
+from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -429,16 +430,6 @@ class LockInTHDWidget(QWidget):
         # Initialize amplitude display to current module state
         self.on_amp_unit_changed(self.amp_unit_combo.currentText())
 
-    def _format_si(self, value, unit):
-        if value == 0:
-            return f"0 {unit}"
-        exponent = int(np.floor(np.log10(abs(value)) / 3) * 3)
-        exponent = max(min(exponent, 9), -12)
-        prefixes = {-12: "p", -9: "n", -6: "u", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
-        scaled = value / (10**exponent)
-        prefix = prefixes.get(exponent, "")
-        return f"{scaled:.3g} {prefix}{unit}"
-
     def on_toggle(self, checked):
         if checked:
             self.module.start_analysis()
@@ -543,8 +534,8 @@ class LockInTHDWidget(QWidget):
             fund_rms_v = fund_rms_fs * sensitivity
             res_rms_v = res_rms_fs * sensitivity
 
-            fund_str = f"{fund_dbv:.2f} dBV ( {self._format_si(fund_rms_v, 'V')} rms )"
-            res_str = f"{res_dbv:.2f} dBV ( {self._format_si(res_rms_v, 'V')} rms )"
+            fund_str = f"{fund_dbv:.2f} dBV ( {format_si(fund_rms_v, 'V', sig_figs=3)} rms )"
+            res_str = f"{res_dbv:.2f} dBV ( {format_si(res_rms_v, 'V', sig_figs=3)} rms )"
 
         else:  # dBFS
             fund_dbfs = 20 * np.log10(fund_peak_fs + 1e-12)

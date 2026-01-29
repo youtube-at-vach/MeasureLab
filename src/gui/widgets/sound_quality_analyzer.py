@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -49,7 +50,7 @@ class AnalysisWorker(QThread):
             # This ensures playback speed is correct for the Audio Engine
             if samplerate != self.target_sr:
                 self.progress_update.emit(5, tr("Resampling to {}Hz (Playback)...").format(self.target_sr))
-                data_playback = self._resample(data, samplerate, self.target_sr)
+                data_playback = AudioCalc.resample(data, samplerate, self.target_sr)
             else:
                 data_playback = data
 
@@ -61,7 +62,7 @@ class AnalysisWorker(QThread):
                 data_analysis = data_playback
             else:
                 self.progress_update.emit(10, tr("Resampling to {}Hz (Analysis)...").format(analysis_sr))
-                data_analysis = self._resample(data_playback, self.target_sr, analysis_sr)
+                data_analysis = AudioCalc.resample(data_playback, self.target_sr, analysis_sr)
 
             if self._is_cancelled:
                 return
@@ -137,32 +138,6 @@ class AnalysisWorker(QThread):
 
             traceback.print_exc()
             self.error_occurred.emit(str(e))
-
-    def _resample(self, data, src_sr, target_sr):
-        """
-        High-quality resampling using polyphase filtering (scipy.signal.resample_poly).
-        """
-        if src_sr == target_sr:
-            return data
-
-        # Calculate greatest common divisor to find rational approximate
-        # But resample_poly takes up/down.
-        # e.g. 44100 -> 48000 : up=160, down=147
-        # e.g. 48000 -> 44100 : up=147, down=160
-        import math
-
-        g = math.gcd(target_sr, src_sr)
-        up = target_sr // g
-        down = src_sr // g
-
-        # If factors are too large, fallback to FFT resampling or similar?
-        # resample_poly is efficient but large factors can be slow.
-        # Limit window size if needed, but usually fine for standard rates.
-
-        if data.ndim == 1:
-            return signal.resample_poly(data, up, down)
-        else:
-            return signal.resample_poly(data, up, down, axis=0)
 
     def _calc_loudness(self, audio, sr):
         # Time-series (Momentary)

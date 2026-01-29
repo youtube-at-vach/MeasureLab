@@ -98,17 +98,6 @@ class AudioCalc:
         return sosfiltfilt(sos, signal)
 
     @staticmethod
-    def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
-        nyquist = 0.5 * sampling_rate
-        w0 = target_frequency / nyquist
-        bandwidth = w0 / quality_factor
-
-        # Wn must be a tuple to be hashable for lru_cache
-        Wn = (w0 - bandwidth / 2, w0 + bandwidth / 2)
-        sos = _get_butter_sos(2, Wn, "bandstop")
-        return sosfiltfilt(sos, signal)
-
-    @staticmethod
     def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
         """
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
