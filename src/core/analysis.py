@@ -46,6 +46,21 @@ def _get_time_array(N, sampling_rate):
     return t
 
 
+@functools.lru_cache(maxsize=32)
+def _get_reference_signals(N, sampling_rate, frequency):
+    """
+    Cached reference sine and cosine waves generation.
+    Returns read-only arrays to prevent modification.
+    """
+    t = _get_time_array(N, sampling_rate)
+    theta = 2 * np.pi * frequency * t
+    sin_ref = np.sin(theta)
+    cos_ref = np.cos(theta)
+    sin_ref.flags.writeable = False
+    cos_ref.flags.writeable = False
+    return sin_ref, cos_ref
+
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
@@ -825,14 +840,23 @@ class AudioCalc:
         Returns: magnitude, phase (degrees)
         """
         N = len(signal)
-        t = np.arange(N) / sampling_rate
 
         # Generate Reference Sine/Cosine (Quadrature)
         # We need two orthogonal references to recover Phase and Magnitude independent of alignment
-        # Optimization: Pre-calculate theta to avoid redundant ops
-        theta = 2 * np.pi * frequency * t + phase_ref
-        ref_sin = np.sin(theta)
-        ref_cos = np.cos(theta)
+        # Optimization: Use cached reference signals and apply phase rotation
+        sin_ref, cos_ref = _get_reference_signals(N, sampling_rate, frequency)
+
+        if phase_ref != 0.0:
+            sin_phi = np.sin(phase_ref)
+            cos_phi = np.cos(phase_ref)
+            # sin(theta + phi) = sin(theta)cos(phi) + cos(theta)sin(phi)
+            ref_sin = sin_ref * cos_phi + cos_ref * sin_phi
+            # cos(theta + phi) = cos(theta)cos(phi) - sin(theta)sin(phi)
+            ref_cos = cos_ref * cos_phi - sin_ref * sin_phi
+        else:
+            # Return copies to ensure consistency (writable) and safety
+            ref_sin = sin_ref.copy()
+            ref_cos = cos_ref.copy()
 
         # Windowing
         # Important if N is not integer number of cycles
