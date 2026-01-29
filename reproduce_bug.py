@@ -15,7 +15,7 @@ sys.modules["pyqtgraph"] = MagicMock()
 
 # Now we can import
 # We need to make sure AudioEngine can be imported without crashing
-from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
+from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer  # noqa: E402
 # We don't need real AudioEngine, just a mock object is enough
 # but SpectrumAnalyzer type hints might want it.
 
