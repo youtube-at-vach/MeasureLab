@@ -854,8 +854,9 @@ class AudioCalc:
             # cos(theta + phi) = cos(theta)cos(phi) - sin(theta)sin(phi)
             ref_cos = cos_ref * cos_phi - sin_ref * sin_phi
         else:
-            ref_sin = sin_ref
-            ref_cos = cos_ref
+            # Return copies to ensure consistency (writable) and safety
+            ref_sin = sin_ref.copy()
+            ref_cos = cos_ref.copy()
 
         # Windowing
         # Important if N is not integer number of cycles
