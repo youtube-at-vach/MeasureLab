@@ -12,9 +12,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
-MISSING_EN_KEYS = [
-    "Sweep failed:\n{0}"
-]
+MISSING_EN_KEYS = []
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
 MISSING_OTHER_KEYS = MISSING_EN_KEYS
