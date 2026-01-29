@@ -1,4 +1,5 @@
 import argparse
+import queue
 
 import numpy as np
 import pyqtgraph as pg
@@ -72,6 +73,7 @@ class Oscilloscope(MeasurementModule):
         self.heatmap_r = None
         self.heatmap_size = (600, 400)  # Width, Height (pixels/bins)
 
+        self.audio_queue = queue.Queue()
         self.callback_id = None
 
     @property
@@ -101,6 +103,13 @@ class Oscilloscope(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_index = 0
 
+        # Clear queue
+        while not self.audio_queue.empty():
+            try:
+                self.audio_queue.get_nowait()
+            except queue.Empty:
+                break
+
         # Reset heatmaps
         if self.persistence_mode:
             self.reset_persistence()
@@ -114,11 +123,22 @@ class Oscilloscope(MeasurementModule):
                 pass
 
             if indata.shape[1] >= 2:
-                new_data = indata[:, :2]
+                new_data = indata[:, :2].copy()
             else:
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
-            # Ring buffer write (zero allocation)
+            self.audio_queue.put(new_data)
+            outdata.fill(0)
+
+        self.callback_id = self.audio_engine.register_callback(callback)
+
+    def process_queue(self):
+        while not self.audio_queue.empty():
+            try:
+                new_data = self.audio_queue.get_nowait()
+            except queue.Empty:
+                break
+
             n_frames = len(new_data)
             if n_frames > self.buffer_size:
                 # Just take the last part
@@ -137,10 +157,6 @@ class Oscilloscope(MeasurementModule):
                     self.input_data[: n_frames - part1_len] = new_data[part1_len:]
 
                 self.write_index = (idx + n_frames) % self.buffer_size
-
-            outdata.fill(0)
-
-        self.callback_id = self.audio_engine.register_callback(callback)
 
     def get_measurements(self, data):
         """
@@ -1110,6 +1126,9 @@ class OscilloscopeWidget(QWidget):
     def update_plot(self):
         if not self.module.is_running:
             return
+
+        # Process audio queue first
+        self.module.process_queue()
 
         window_duration = self.module.timebase
         data = self.module.get_display_data(window_duration)
