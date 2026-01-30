@@ -28,7 +28,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 3. **Spectrum Analyzer**: 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定に対応。
 4. **Sound Level Meter**: A/C/Z 周波数重み付け、FAST/SLOW/IMPULSE/10ms 時間重み付け、20Hz–20k/12.5k/8k 帯域選択に対応した高機能騒音計。Lp/Leq/LE/Lmax/Lmin/Lpeak表示、キャリブレーションオフセット適用に対応。
 5. **LUFS Meter**: ラウドネス (LUFS/LKFS) のリアルタイム測定。クレストファクター、ダイナミックレンジ表示。
-6. **Loopback Finder**: オーディオインターフェースのレイテンシー(遅延)測定ツール。
+6. **Loopback Finder**: オーディオインターフェースのループバック経路を検出するツール。
 7. **Distortion Analyzer**: THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ハーモニクスバーグラフ、平均化機能搭載。
 8. **Linearity Analyzer**: 信号レベルに対するゲインの直線性（AES17 Linearity Deviation）を測定。DACの微小信号再現性やビット精度、ダイナミックレンジの検証に対応。
 9. **Advanced Distortion Meter**: MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。
