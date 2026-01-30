@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) [![Docs](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/deploy_docs.yml/badge.svg)](https://youtube-at-vach.github.io/MeasureLab/) [オンライン・マニュアル](https://youtube-at-vach.github.io/MeasureLab/)
 
-![MeasureLab Banner](docs/assets/banner.png)
+[![MeasureLab Demo](docs/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
 
 A collection of DIY audio measurement and analysis tools, grown organically as needed. This software is compatible with standard audio devices.
 「必要に応じて作り足しながら育ててきた DIY のオーディオ測定・解析ツール集」です。
