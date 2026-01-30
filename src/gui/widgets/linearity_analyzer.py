@@ -292,6 +292,23 @@ class LinearityAnalyzerWidget(QWidget):
     def __init__(self, module: LinearityAnalyzer):
         super().__init__()
         self.module = module
+
+        self.zoom_options = {
+            "Auto": None,
+            "20.0 dB": 20.0,
+            "10.0 dB": 10.0,
+            "5.0 dB": 5.0,
+            "2.0 dB": 2.0,
+            "1.0 dB": 1.0,
+            "0.5 dB": 0.5,
+            "0.2 dB": 0.2,
+            "0.1 dB": 0.1,
+            "0.05 dB": 0.05,
+            "0.02 dB": 0.02,
+            "0.01 dB": 0.01,
+        }
+        self.current_zoom = 5.0 # Default matches old fixed value
+
         self.init_ui()
 
         self.results_x = []
@@ -411,6 +428,21 @@ class LinearityAnalyzerWidget(QWidget):
         stats_group.setLayout(stats_layout)
         results_layout.addWidget(stats_group)
 
+        # Plot Controls
+        plot_ctrl_group = QGroupBox(tr("Plot Controls"))
+        plot_ctrl_layout = QFormLayout()
+
+        self.zoom_combo = QComboBox()
+        self.zoom_keys = list(self.zoom_options.keys())
+        self.zoom_combo.addItems(self.zoom_keys)
+        self.zoom_combo.setCurrentText("5.0 dB")
+        self.zoom_combo.currentTextChanged.connect(self.on_zoom_changed)
+        plot_ctrl_layout.addRow(tr("Y-Axis Zoom:"), self.zoom_combo)
+
+        plot_ctrl_group.setLayout(plot_ctrl_layout)
+        results_layout.addWidget(plot_ctrl_group)
+
+
         results_layout.addStretch()
         self.tabs.addTab(results_tab, tr("Results"))
 
@@ -435,7 +467,6 @@ class LinearityAnalyzerWidget(QWidget):
         self.error_plot.setLabel("left", tr("Error"), units="dB")
         self.error_plot.setLabel("bottom", tr("Input Level"), units="dBFS")
         self.error_plot.showGrid(x=True, y=True)
-        self.error_plot.setYRange(-5, 5)  # Typical range focus
         self.error_plot.setYRange(-5, 5)  # Typical range focus
         self.error_curve = self.error_plot.plot(pen=pg.mkPen("r", width=3), symbol="o")
 
@@ -500,6 +531,11 @@ class LinearityAnalyzerWidget(QWidget):
         else:
             self.module.stop_sweep()
             self.start_btn.setText(tr("Start Sweep"))
+
+    def on_zoom_changed(self, text):
+        val = self.zoom_options.get(text)
+        self.current_zoom = val
+        self.update_plots()
 
     def on_result(self, res):
         self.results_x.append(res["input_level"])
@@ -602,6 +638,20 @@ class LinearityAnalyzerWidget(QWidget):
             else:
                 self.noise_region.setVisible(False)
                 self.noise_label.setVisible(False)
+
+        # Update Y-Ranges based on Zoom
+        if self.current_zoom is not None:
+            # Error Plot is always centered at 0
+            self.error_plot.setYRange(-self.current_zoom, self.current_zoom)
+            self.error_plot.enableAutoRange(y=False)
+
+            # Gain Plot - User requested Auto always
+            self.gain_plot.enableAutoRange(y=True)
+
+        else:
+            # Auto
+            self.error_plot.enableAutoRange(y=True)
+            self.gain_plot.enableAutoRange(y=True)
 
     def update_stats(self):
         if not self.results_gain:

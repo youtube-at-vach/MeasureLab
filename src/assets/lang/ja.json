@@ -1015,5 +1015,7 @@
     "Ref Gain:": "基準ゲイン:",
     "SNR Limit:": "SNR制限:",
     "Start Level:": "開始レベル:",
-    "Sweep failed:\n{0}": "スイープに失敗しました：\n{0}"
+    "Sweep failed:\n{0}": "スイープに失敗しました：\n{0}",
+    "Plot Controls": "プロットコントロール",
+    "Y-Axis Zoom:": "Y軸ズーム:"
 }

@@ -1016,5 +1016,7 @@
     "Ref Gain:": "Ganancia de ref:",
     "SNR Limit:": "Límite SNR:",
     "Start Level:": "Nivel inicial:",
-    "Sweep failed:\n{0}": "Barrido fallido:\n{0}"
+    "Sweep failed:\n{0}": "Barrido fallido:\n{0}",
+    "Plot Controls": "Controles de gráfico",
+    "Y-Axis Zoom:": "Zoom del eje Y:"
 }

@@ -1016,5 +1016,7 @@
     "Ref Gain:": "Gain de réf :",
     "SNR Limit:": "Limite SNR :",
     "Start Level:": "Niveau initial :",
-    "Sweep failed:\n{0}": "Balayage échoué :\n{0}"
+    "Sweep failed:\n{0}": "Balayage échoué :\n{0}",
+    "Plot Controls": "Commandes de tracé",
+    "Y-Axis Zoom:": "Zoom de l'axe Y :"
 }

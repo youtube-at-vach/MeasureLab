@@ -1016,5 +1016,7 @@
     "Ref Gain:": "Ref-Verstärkung:",
     "SNR Limit:": "SNR-Grenze:",
     "Start Level:": "Startpegel:",
-    "Sweep failed:\n{0}": "Sweep fehlgeschlagen:\n{0}"
+    "Sweep failed:\n{0}": "Sweep fehlgeschlagen:\n{0}",
+    "Plot Controls": "Plot-Steuerung",
+    "Y-Axis Zoom:": "Y-Achsen-Zoom:"
 }
