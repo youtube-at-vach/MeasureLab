@@ -1,4 +1,5 @@
 import argparse
+import queue
 
 import numpy as np
 import pyqtgraph as pg
@@ -31,6 +32,7 @@ class SpectrumAnalyzer(MeasurementModule):
         # Store stereo data: (frames, 2)
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
+        self.audio_queue = queue.Queue()
 
         # Analysis parameters
         self.window_type = "hanning"
@@ -92,8 +94,12 @@ class SpectrumAnalyzer(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
 
-        # Threshold for switching to "Snapshot / Slow" mode
-        LARGE_BUFFER_THRESHOLD = 500000
+        # Clear queue
+        while not self.audio_queue.empty():
+            try:
+                self.audio_queue.get_nowait()
+            except queue.Empty:
+                break
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -102,10 +108,25 @@ class SpectrumAnalyzer(MeasurementModule):
             # Shift buffer and append new data
             # We always capture 2 channels now if available
             if indata.shape[1] >= 2:
-                new_data = indata[:, :2]
+                new_data = indata[:, :2].copy()
             else:
                 # If mono, duplicate to stereo for simplicity or handle gracefully
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
+
+            self.audio_queue.put(new_data)
+            outdata.fill(0)
+
+        self.callback_id = self.audio_engine.register_callback(callback)
+
+    def process_queue(self):
+        # Threshold for switching to "Snapshot / Slow" mode
+        LARGE_BUFFER_THRESHOLD = 500000
+
+        while not self.audio_queue.empty():
+            try:
+                new_data = self.audio_queue.get_nowait()
+            except queue.Empty:
+                break
 
             if self.buffer_size >= LARGE_BUFFER_THRESHOLD:
                 # --- Slow / Snapshot Mode ---
@@ -113,8 +134,7 @@ class SpectrumAnalyzer(MeasurementModule):
 
                 # If buffer is already "full" (waiting for processing), do nothing
                 if self.write_head >= self.buffer_size:
-                    outdata.fill(0)
-                    return
+                    continue
 
                 # Calculate how much space is left
                 space_left = self.buffer_size - self.write_head
@@ -123,19 +143,27 @@ class SpectrumAnalyzer(MeasurementModule):
                 if to_write > 0:
                     self.input_data[self.write_head : self.write_head + to_write] = new_data[:to_write]
                     self.write_head += to_write
-
             else:
                 # --- Normal Rolling Mode ---
-                # Efficient ring buffer or just roll
-                if len(new_data) > self.buffer_size:
+                # Efficient ring buffer logic (like Oscilloscope)
+                n_frames = len(new_data)
+                if n_frames > self.buffer_size:
+                    # Just take the last part
                     self.input_data[:] = new_data[-self.buffer_size :]
+                    self.write_head = 0
                 else:
-                    self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                    self.input_data[-len(new_data) :] = new_data
+                    # Wrapped write
+                    idx = self.write_head
+                    end_idx = idx + n_frames
+                    if end_idx <= self.buffer_size:
+                        self.input_data[idx:end_idx] = new_data
+                    else:
+                        # Split
+                        part1_len = self.buffer_size - idx
+                        self.input_data[idx:] = new_data[:part1_len]
+                        self.input_data[: n_frames - part1_len] = new_data[part1_len:]
 
-            outdata.fill(0)
-
-        self.callback_id = self.audio_engine.register_callback(callback)
+                    self.write_head = (idx + n_frames) % self.buffer_size
 
     def stop_analysis(self):
         if self.is_running:
@@ -609,6 +637,9 @@ class SpectrumAnalyzerWidget(QWidget):
         if not self.module.is_running:
             return
 
+        # Process audio queue
+        self.module.process_queue()
+
         # Threshold for switching to "Snapshot / Slow" mode (Must match module)
         LARGE_BUFFER_THRESHOLD = 500000
 
@@ -626,7 +657,8 @@ class SpectrumAnalyzerWidget(QWidget):
             self.module.write_head = 0
         else:
             # Normal Rolling Mode
-            data = self.module.input_data
+            # Unroll ring buffer for display/analysis
+            data = np.roll(self.module.input_data, -self.module.write_head, axis=0)
 
         # Calculate Overall RMS (dBFS) - Raw Time Domain (Unweighted)
         # This is calculated for reference, but we will overwrite it with weighted value later
