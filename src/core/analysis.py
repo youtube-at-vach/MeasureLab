@@ -67,6 +67,14 @@ class AudioCalc:
     """
 
     @staticmethod
+    def get_time_array(N, sampling_rate):
+        """
+        Returns a cached time array from 0 to (N-1)/sampling_rate.
+        Array is read-only.
+        """
+        return _get_time_array(N, sampling_rate)
+
+    @staticmethod
     def resample(data, source_sr, target_sr):
         """
         Resamples audio data from source_sr to target_sr using polyphase filtering.

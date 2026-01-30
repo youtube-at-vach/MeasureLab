@@ -155,6 +155,10 @@ class LinearityAnalyzer(MeasurementModule):
         self.output_channel = 0  # 0=L, 1=R
         self.input_channel = 0
 
+        # Optimization buffers
+        self._phase_rad = 0.0
+        self._angle_buffer = None
+
         # Sweep Params
         self.start_level = -5.0
         self.end_level = -120.0
@@ -192,7 +196,8 @@ class LinearityAnalyzer(MeasurementModule):
         self.is_running = True
 
         # Reset generator phase
-        self._phase = 0.0
+        self._phase_rad = 0.0
+        self._angle_buffer = None
         sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
@@ -216,10 +221,28 @@ class LinearityAnalyzer(MeasurementModule):
                     self.input_data[-new_frames:] = new_data
 
             # Output
-            t = (np.arange(frames) + self._phase) / sample_rate
-            self._phase += frames
+            # Get cached time array (read-only)
+            t_cached = AudioCalc.get_time_array(frames, sample_rate)
 
-            sig = self.gen_amplitude * np.sin(2 * np.pi * self.test_frequency * t)
+            # Ensure buffers
+            if self._angle_buffer is None or len(self._angle_buffer) != frames:
+                self._angle_buffer = np.zeros(frames, dtype=np.float64)
+
+            # Calculate Omega
+            omega = 2 * np.pi * self.test_frequency
+
+            # Compute angles in-place: t * omega + phase
+            np.multiply(t_cached, omega, out=self._angle_buffer)
+            np.add(self._angle_buffer, self._phase_rad, out=self._angle_buffer)
+
+            # Compute sine in-place
+            np.sin(self._angle_buffer, out=self._angle_buffer)
+            np.multiply(self._angle_buffer, self.gen_amplitude, out=self._angle_buffer)
+            sig = self._angle_buffer
+
+            # Update phase
+            phase_increment = omega * (frames / sample_rate)
+            self._phase_rad = (self._phase_rad + phase_increment) % (2 * np.pi)
 
             outdata.fill(0)
             if self.output_channel == 0:
