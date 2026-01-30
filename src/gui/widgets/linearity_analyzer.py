@@ -647,7 +647,7 @@ class LinearityAnalyzerWidget(QWidget):
 
             # Gain Plot - User requested Auto always
             self.gain_plot.enableAutoRange(y=True)
-        
+
         else:
             # Auto
             self.error_plot.enableAutoRange(y=True)
