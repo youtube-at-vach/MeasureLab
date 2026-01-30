@@ -94,38 +94,41 @@ class SOFALoader:
             M, R, N = ir_data.shape
 
             # 1. ITD (Interaural Time Difference)
-            # Cross-correlation between L and R
-            itds = np.zeros(M)
-            for i in range(M):
-                l_ch = ir_data[i, 0, :]
-                r_ch = ir_data[i, 1, :]
-                corr = np.correlate(l_ch, r_ch, mode="full")
-                lag = np.argmax(corr) - (N - 1)
-                itds[i] = (lag / sampling_rate) * 1e6  # Microseconds
+            # Cross-correlation between L and R (Vectorized using FFT)
+            # Pad to 2N to avoid circular correlation wrapping issues
+            n_fft = 2 * N
+            # FFT along axis 1 (N samples) of the sliced array
+            L_fft = np.fft.rfft(ir_data[:, 0, :], n=n_fft, axis=1)
+            R_fft = np.fft.rfft(ir_data[:, 1, :], n=n_fft, axis=1)
+            # Cross-correlation in frequency domain
+            cc = np.fft.irfft(L_fft * np.conj(R_fft), n=n_fft, axis=1)
+            idx = np.argmax(cc, axis=1)
+            # Adjust lags: indices 0..N correspond to lags 0..N
+            # indices > N correspond to negative lags (wrapped)
+            lags = np.where(idx < n_fft / 2, idx, idx - n_fft)
+            itds = (lags / sampling_rate) * 1e6  # Microseconds
 
             # 2. ILD (Interaural Level Difference)
-            # RMS dB difference
-            ilds = np.zeros(M)
-            for i in range(M):
-                rms_l = np.sqrt(np.mean(ir_data[i, 0, :] ** 2)) + 1e-12
-                rms_r = np.sqrt(np.mean(ir_data[i, 1, :] ** 2)) + 1e-12
-                ilds[i] = 20 * np.log10(rms_r / rms_l)  # Right/Left ratio in dB
+            # RMS dB difference (Vectorized)
+            # Mean square along the sample axis (axis 2)
+            ms = np.mean(ir_data ** 2, axis=2)  # (M, 2)
+            rms = np.sqrt(ms) + 1e-12
+            # Right/Left ratio in dB
+            ilds = 20 * np.log10(rms[:, 1] / rms[:, 0])
 
             # 3. High-band Energy (8-16kHz)
-            # Use simple FFT based energy
-            energy_high = np.zeros(M)
-            # Create mask for 8-16kHz
-            freqs = fft_manager.rfftfreq(N, 1 / sampling_rate)
+            # Use simple FFT based energy (Vectorized)
+            freqs = np.fft.rfftfreq(N, 1 / sampling_rate)
             mask = (freqs >= 8000) & (freqs <= 16000)
 
-            for i in range(M):
-                # Avg of L and R high band energy
-                spec_l = np.abs(fft_manager.rfft(ir_data[i, 0, :]))
-                spec_r = np.abs(fft_manager.rfft(ir_data[i, 1, :]))
-                e_l = np.sum(spec_l[mask] ** 2)
-                e_r = np.sum(spec_r[mask] ** 2)
-                avg_e = (e_l + e_r) / 2
-                energy_high[i] = 10 * np.log10(avg_e + 1e-12)
+            # Batched FFT along axis 2 (N samples)
+            spectra = np.abs(np.fft.rfft(ir_data, axis=2))
+
+            # Masking and summing
+            masked_spectra = spectra[:, :, mask]
+            energies = np.sum(masked_spectra ** 2, axis=2)  # (M, 2)
+            avg_e = np.mean(energies, axis=1)  # (M,)
+            energy_high = 10 * np.log10(avg_e + 1e-12)
 
             # 4. Group Delay Peak (Simplify to onset? Or Mean Group Delay?)
             # The request says "Group Delay Peak".
@@ -137,13 +140,10 @@ class SOFALoader:
             # Re-reading: "Group Delay Peak" -> likely peak value of group delay in ms?
             # Or frequency where GD is peak?
             # Let's assume Mean Delay for now or Peak of Envelope.
-            # Let's implement Peak Envelope Time
-            gd_peak = np.zeros(M)
-            for i in range(M):
-                # Avg L/R peak time
-                idx_l = np.argmax(np.abs(ir_data[i, 0, :]))
-                idx_r = np.argmax(np.abs(ir_data[i, 1, :]))
-                gd_peak[i] = ((idx_l + idx_r) / 2) / sampling_rate * 1000.0  # ms
+            # Let's implement Peak Envelope Time (Vectorized)
+            indices = np.argmax(np.abs(ir_data), axis=2)  # (M, 2)
+            avg_idx = np.mean(indices, axis=1)  # (M,)
+            gd_peak = (avg_idx / sampling_rate) * 1000.0  # ms
 
             return HRTFData(
                 source_positions=source_pos_fixed,
