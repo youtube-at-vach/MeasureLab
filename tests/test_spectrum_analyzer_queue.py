@@ -1,7 +1,6 @@
 import sys
 import os
 import numpy as np
-import queue
 from unittest.mock import MagicMock
 import pytest
 
