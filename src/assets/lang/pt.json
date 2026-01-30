@@ -1016,5 +1016,7 @@
     "Ref Gain:": "Ganho de ref:",
     "SNR Limit:": "Limite SNR:",
     "Start Level:": "Nível inicial:",
-    "Sweep failed:\n{0}": "Varredura falhou:\n{0}"
+    "Sweep failed:\n{0}": "Varredura falhou:\n{0}",
+    "Plot Controls": "Controles do gráfico",
+    "Y-Axis Zoom:": "Zoom do eixo Y:"
 }

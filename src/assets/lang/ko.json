@@ -1016,5 +1016,7 @@
     "Ref Gain:": "참조 게인:",
     "SNR Limit:": "SNR 제한:",
     "Start Level:": "시작 레벨:",
-    "Sweep failed:\n{0}": "스윕 실패:\n{0}"
+    "Sweep failed:\n{0}": "스윕 실패:\n{0}",
+    "Plot Controls": "플롯 제어",
+    "Y-Axis Zoom:": "Y축 줌:"
 }
