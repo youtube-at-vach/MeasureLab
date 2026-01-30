@@ -80,7 +80,7 @@ class LinearitySweepWorker(QThread):
                 # Snapshot average of recent buffers?
                 # For now, just take the current buffer.
                 # Lock-in is robust.
-                data = self.module.input_data.copy()
+                data = self.module.get_latest_buffer()
 
                 # Process
                 if self.module.input_channel == 0:  # Left
@@ -147,6 +147,7 @@ class LinearityAnalyzer(MeasurementModule):
         self.audio_engine = audio_engine
         self.buffer_size = 65536  # Increased buffer size for safety
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.input_index = 0
         self.is_running = False
 
         # Generator
@@ -175,6 +176,15 @@ class LinearityAnalyzer(MeasurementModule):
     def run(self, args: argparse.Namespace):
         print("CLI not implemented")
 
+    def get_latest_buffer(self) -> np.ndarray:
+        """Returns the current buffer contents ordered chronologically."""
+        # Capture current state
+        idx = self.input_index
+        data = self.input_data.copy()
+
+        # Reconstruct ordered buffer: Oldest data (from idx to end) + Newest data (from 0 to idx)
+        return np.concatenate((data[idx:], data[:idx]))
+
     def get_widget(self):
         return LinearityAnalyzerWidget(self)
 
@@ -193,6 +203,7 @@ class LinearityAnalyzer(MeasurementModule):
 
         # Reset generator phase
         self._phase = 0.0
+        self.input_index = 0
         sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
@@ -210,10 +221,23 @@ class LinearityAnalyzer(MeasurementModule):
                 if new_frames >= self.buffer_size:
                     # If incoming data handles the entire buffer or more, just take the last part
                     self.input_data[:] = new_data[-self.buffer_size :]
+                    self.input_index = 0
                 else:
-                    # Otherwise roll and append
-                    self.input_data[:] = np.roll(self.input_data, -new_frames, axis=0)
-                    self.input_data[-new_frames:] = new_data
+                    # Ring buffer write
+                    remaining = self.buffer_size - self.input_index
+                    if new_frames <= remaining:
+                        self.input_data[self.input_index : self.input_index + new_frames] = new_data
+                        self.input_index += new_frames
+                    else:
+                        # Wrap around
+                        part1_len = remaining
+                        part2_len = new_frames - remaining
+                        self.input_data[self.input_index :] = new_data[:part1_len]
+                        self.input_data[:part2_len] = new_data[part1_len:]
+                        self.input_index = part2_len
+
+                    if self.input_index >= self.buffer_size:
+                        self.input_index = 0
 
             # Output
             t = (np.arange(frames) + self._phase) / sample_rate
