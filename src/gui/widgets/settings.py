@@ -1334,6 +1334,17 @@ class SettingsWidget(QWidget):
         self.input_combo.currentIndexChanged.connect(self.on_device_changed)
         self.output_combo.currentIndexChanged.connect(self.on_device_changed)
 
+    def _get_selected_device_hostapi(self, device_index):
+        try:
+            if device_index is not None and int(device_index) >= 0:
+                devices = self.audio_engine.list_devices()
+                idx = int(device_index)
+                if 0 <= idx < len(devices):
+                    return devices[idx].get("hostapi_name")
+        except Exception:
+            pass
+        return None
+
     def on_device_changed(self):
         input_idx = self.input_combo.currentData()
         output_idx = self.output_combo.currentData()
@@ -1347,6 +1358,8 @@ class SettingsWidget(QWidget):
                 # Save to config
                 in_name = self._get_device_name_for_config(input_idx, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(output_idx, self.output_combo.currentText())
+                in_hostapi = self._get_selected_device_hostapi(input_idx)
+                out_hostapi = self._get_selected_device_hostapi(output_idx)
 
                 self.config_manager.set_audio_config(
                     in_name,
@@ -1355,6 +1368,8 @@ class SettingsWidget(QWidget):
                     self.audio_engine.block_size,
                     self.audio_engine.input_channel_mode,
                     self.audio_engine.output_channel_mode,
+                    input_hostapi=in_hostapi,
+                    output_hostapi=out_hostapi,
                 )
 
                 QMessageBox.information(
@@ -1393,6 +1408,9 @@ class SettingsWidget(QWidget):
                 out_id = self.output_combo.currentData()
                 in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
+                in_hostapi = self._get_selected_device_hostapi(in_id)
+                out_hostapi = self._get_selected_device_hostapi(out_id)
+
                 self.config_manager.set_audio_config(
                     in_name,
                     out_name,
@@ -1400,6 +1418,8 @@ class SettingsWidget(QWidget):
                     self.audio_engine.block_size,
                     self.audio_engine.input_channel_mode,
                     self.audio_engine.output_channel_mode,
+                    input_hostapi=in_hostapi,
+                    output_hostapi=out_hostapi,
                 )
         except ValueError:
             pass
@@ -1419,6 +1439,9 @@ class SettingsWidget(QWidget):
                 out_id = self.output_combo.currentData()
                 in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
+                in_hostapi = self._get_selected_device_hostapi(in_id)
+                out_hostapi = self._get_selected_device_hostapi(out_id)
+
                 self.config_manager.set_audio_config(
                     in_name,
                     out_name,
@@ -1426,6 +1449,8 @@ class SettingsWidget(QWidget):
                     size,
                     self.audio_engine.input_channel_mode,
                     self.audio_engine.output_channel_mode,
+                    input_hostapi=in_hostapi,
+                    output_hostapi=out_hostapi,
                 )
         except ValueError:
             pass
