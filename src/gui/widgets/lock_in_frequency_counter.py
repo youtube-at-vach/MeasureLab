@@ -363,6 +363,24 @@ class LockInFrequencyCounterWidget(QWidget):
 
 
 
+    def get_decimal_places(self, val_std, default=5, max_places=6):
+        if val_std <= 0:
+            return default
+        try:
+            std_to_use = val_std
+
+            if std_to_use <= 1e-9:
+                return max_places
+            places = -int(np.floor(np.log10(std_to_use)))
+
+            if places < 0:
+                places = 0
+            if places > max_places:
+                places = max_places
+            return places
+        except Exception:
+            return default
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
@@ -673,6 +691,15 @@ class LockInFrequencyCounterWidget(QWidget):
             if self.module.locked:
                 # Block signals to prevent on_freq_changed loop
                 self.freq_spin.blockSignals(True)
+
+                # Dynamic Precision Logic
+                # Only apply dynamic precision if averaging is actually enabled (>= 2 samples)
+                if self.module.nco_avg_count >= 2:
+                    decimals = self.get_decimal_places(self.module.nco_std, default=5, max_places=6)
+                    self.freq_spin.setDecimals(decimals)
+                else:
+                    self.freq_spin.setDecimals(5)
+
                 # Display MEAN value if we have history, else current
                 if len(self.module.nco_history) > 0:
                      self.freq_spin.setValue(self.module.nco_mean)
