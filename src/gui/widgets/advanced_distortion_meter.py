@@ -57,6 +57,8 @@ class AdvancedDistortionMeter(MeasurementModule):
         # PIM Settings
         self.pim_f1 = 1800.0
         self.pim_f2 = 2100.0
+        self._pim_f1_actual = None
+        self._pim_f2_actual = None
         self.pim_amp_ratio = 1.0  # Equal amplitude
 
         # Mode
@@ -231,13 +233,9 @@ class AdvancedDistortionMeter(MeasurementModule):
         f1 = np.round(self.pim_f1 / bin_width) * bin_width
         f2 = np.round(self.pim_f2 / bin_width) * bin_width
 
-        # Update displayed freqs matches?
-        # We might want to update the UI variables or keep them as "Requested".
-        # For calculation we must use snapped values.
-        # Let's temporarily store snapped values if needed, but AudioCalc uses passed args.
-        # Actually AudioCalc uses passed args. We should probably pass the actual snapped freq.
-        # But _generate_pim doesn't update self.pim_f1.
-        # We'll rely on the search window of AudioCalc (good enough).
+        # Store snapped values for calculation
+        self._pim_f1_actual = f1
+        self._pim_f2_actual = f2
 
         amp = self.gen_amplitude / 2
         t = np.arange(frames) / sample_rate
@@ -545,7 +543,9 @@ class AdvancedDistortionMeterWidget(QWidget):
             )
 
         elif self.module.mode == "PIM":
-            res = AudioCalc.calculate_pim(mag, freqs, self.module.pim_f1, self.module.pim_f2)
+            f1 = self.module._pim_f1_actual if self.module._pim_f1_actual is not None else self.module.pim_f1
+            f2 = self.module._pim_f2_actual if self.module._pim_f2_actual is not None else self.module.pim_f2
+            res = AudioCalc.calculate_pim(mag, freqs, f1, f2)
             self.main_metric_label.setText(f"PIM: {res['pim_db']:.1f} dBc")
             products_str = ", ".join([f"{p['order']}th" for p in res["products"]])
             self.sub_metric_label.setText(f"Orders: {products_str}")
