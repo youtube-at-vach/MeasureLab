@@ -183,6 +183,7 @@ pip install -c constraints.txt -e .[dev]
 
 ### 🧑‍💻 支援者 (Humans)
 
+- [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
 - [バーチャ農ちゃんねる](https://www.youtube.com/@va-ch)
 
 ### 🤖 AI パートナー (AI Models)
