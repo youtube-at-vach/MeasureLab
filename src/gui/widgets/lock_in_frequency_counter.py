@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSlider,
+    QSpinBox,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -421,13 +423,30 @@ class LockInFrequencyCounterWidget(QWidget):
         self.plot_freq = pg.PlotWidget(title=tr("Frequency Deviation Δf (Hz)"))
         self.plot_freq.showGrid(x=True, y=True)
         self.curve_freq = self.plot_freq.plot(pen="g")
-        left_layout.addWidget(self.plot_freq)
 
         # Phase Data
         self.plot_phase = pg.PlotWidget(title=tr("Integrated Phase φ (deg)"))
         self.plot_phase.showGrid(x=True, y=True)
         self.curve_phase = self.plot_phase.plot(pen="c")
-
+        
+        # Smoothing Controls
+        smoothing_layout = QHBoxLayout()
+        smoothing_layout.setContentsMargins(5, 0, 5, 0)
+        lbl_smooth = QLabel(tr("Plot Smoothing:"))
+        self.slider_smooth = QSlider(Qt.Orientation.Horizontal)
+        self.slider_smooth.setRange(1, 50)
+        self.slider_smooth.setValue(1)
+        self.slider_smooth.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.slider_smooth.setTickInterval(5)
+        self.lbl_smooth_val = QLabel("1")
+        self.slider_smooth.valueChanged.connect(lambda v: self.lbl_smooth_val.setText(str(v)))
+        
+        smoothing_layout.addWidget(lbl_smooth)
+        smoothing_layout.addWidget(self.slider_smooth)
+        smoothing_layout.addWidget(self.lbl_smooth_val)
+        
+        left_layout.addLayout(smoothing_layout)
+        left_layout.addWidget(self.plot_freq)
         left_layout.addWidget(self.plot_phase)
 
         splitter.addWidget(left_widget)
@@ -486,7 +505,6 @@ class LockInFrequencyCounterWidget(QWidget):
         form_stats = QFormLayout(group_stats)
 
         # NCO Averaging Settings
-        from PyQt6.QtWidgets import QSpinBox
         self.avg_spin = QSpinBox()
         self.avg_spin.setRange(1, 1000)
         self.avg_spin.setValue(self.module.nco_avg_count)
@@ -611,11 +629,33 @@ class LockInFrequencyCounterWidget(QWidget):
             t_data = list(self.module.time_axis)
             f_data = list(self.module.freq_dev_history)
             p_data = list(self.module.phase_history)
+            
+            # --- Smoothing Logic ---
+            smoothing_window = self.slider_smooth.value()
+            
+            # Apply smoothing only if window > 1 and we have enough data
+            if smoothing_window > 1 and len(f_data) >= smoothing_window:
+                # Use a simple moving average convolution
+                kernel = np.ones(smoothing_window) / smoothing_window
+                
+                f_smoothed = np.convolve(f_data, kernel, mode='valid')
+                p_smoothed = np.convolve(p_data, kernel, mode='valid')
+                
+                # The 'valid' mode reduces the output size by window-1.
+                # We need to slice the time axis to match the end of the smoothed data
+                # (which corresponds to the latest times).
+                # t_data should be sliced from [window-1:]
+                t_plot = t_data[smoothing_window - 1:]
+                
+                self.curve_freq.setData(t_plot, f_smoothed)
+                self.curve_phase.setData(t_plot, p_smoothed)
+            else:
+                # Raw Plot
+                if len(t_data) > 0:
+                    self.curve_freq.setData(t_data, f_data)
+                    self.curve_phase.setData(t_data, p_data)
 
             if len(t_data) > 0:
-                self.curve_freq.setData(t_data, f_data)
-                self.curve_phase.setData(t_data, p_data)
-
                 i_data = list(self.module.iq_history_i)
                 q_data = list(self.module.iq_history_q)
 
@@ -629,7 +669,6 @@ class LockInFrequencyCounterWidget(QWidget):
             self.lbl_delta_f.setText(tr("Δf: {0:.6f} Hz").format(delta_f_smooth))
             self.lbl_phase.setText(tr("φ: {0:.2f}°").format(self.module.current_phase_deg))
 
-            # Update NCO display if locked (and changed)
             # Update NCO display if locked (and changed)
             if self.module.locked:
                 # Block signals to prevent on_freq_changed loop
