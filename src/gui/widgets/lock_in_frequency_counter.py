@@ -42,6 +42,12 @@ class LockInFrequencyCounter(MeasurementModule):
         # Display is ~1000 points @ 10 Hz = ~100 s window. A ~2 s EMA time constant
         # provides stable readout without feeling laggy.
         self.smoothing_tau = 2.0
+        self.locked = False
+        self.feedback_gain = 0.5
+        
+        # Stability Stats
+        self.nco_history = deque(maxlen=100) # Last 10 seconds @ 10Hz
+        self.nco_std = 0.0
 
         # Internal State
         self._nco_phase = 0.0
@@ -250,6 +256,7 @@ class LockInFrequencyCounter(MeasurementModule):
             else:
                 self.smoothed_freq_dev = delta_f
 
+
             import time
 
             now = time.time()
@@ -263,6 +270,27 @@ class LockInFrequencyCounter(MeasurementModule):
             self.phase_history.append(self.current_phase_deg)
             self.time_axis.append(now - self.start_time)
 
+            # --- FLL / Lock Logic ---
+            if self.locked:
+                # Use smoothed deviation to avoid noise jitter, but maybe
+                # current_freq_dev is faster? A mix is usually good.
+                # Here we use smoothed (approx 2s tau) which makes the loop slow but stable.
+                # If we want faster lock, we reduce tau or use current_freq_dev.
+                # Let's use smoothed for stability as requested ("integration value").
+                
+                # Feedback controller: F_nco_new = F_nco_old + Gain * Error
+                # Error is delta_f (difference between Signal and NCO).
+                # If Delta F is positive, Signal > NCO. We need to INCREASE NCO.
+                
+                correction = self.smoothed_freq_dev * self.feedback_gain
+                
+                new_freq = self.gen_frequency + correction
+                
+                # Safety Clamp
+                new_freq = max(20.0, min(new_freq, 20000.0))
+                
+                self.gen_frequency = new_freq
+
 
 class LockInFrequencyCounterWidget(QWidget):
     def __init__(self, module: LockInFrequencyCounter):
@@ -272,6 +300,26 @@ class LockInFrequencyCounterWidget(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)  # 10Hz
+
+    def get_decimal_places(self, val_std, default=6, max_places=6):
+        """
+        Determine optimal decimal places based on standard deviation.
+        Clamped to max_places (default 6) to avoid excessive digits.
+        """
+        if val_std <= 1e-12:
+            return default
+            
+        try:
+            places = -int(np.floor(np.log10(val_std)))
+            
+            # Clamp to reasonable range for Frequency (e.g. 2 to max)
+            if places < 2:
+                places = 2
+            if places > max_places:
+                places = max_places
+            return places
+        except Exception:
+            return default
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -311,6 +359,12 @@ class LockInFrequencyCounterWidget(QWidget):
         self.gate_spin.setSuffix(" dB")
         self.gate_spin.valueChanged.connect(self.on_gate_changed)
         controls_layout.addRow(tr("Gate (dB):"), self.gate_spin)
+
+        # Lock / FLL
+        from PyQt6.QtWidgets import QCheckBox
+        self.lock_check = QCheckBox(tr("Lock NCO to Signal (FLL)"))
+        self.lock_check.toggled.connect(self.on_lock_toggled)
+        controls_layout.addRow("", self.lock_check)
 
         # Start/Stop
         self.btn_run = QPushButton(tr("Start"))
@@ -387,6 +441,12 @@ class LockInFrequencyCounterWidget(QWidget):
     def on_gate_changed(self, val):
         self.module.gate_threshold_db = float(val)
 
+    def on_lock_toggled(self, checked):
+        self.module.locked = checked
+        # When locking is enabled, disable manual editing logic temporarily if needed
+        # but here we just update module state.
+        self.freq_spin.setReadOnly(checked) # Prevent manual fight
+
     def on_run_clicked(self, checked):
         if checked:
             self.module.start_analysis()
@@ -427,3 +487,16 @@ class LockInFrequencyCounterWidget(QWidget):
             # Meters (Smoothed for consistency)
             self.lbl_delta_f.setText(tr("Δf: {0:.6f} Hz").format(delta_f_smooth))
             self.lbl_phase.setText(tr("φ: {0:.2f}°").format(self.module.current_phase_deg))
+
+            # Update NCO display if locked (and changed)
+            if self.module.locked:
+                # Dynamic Precision
+                decimals = self.get_decimal_places(self.module.nco_std, default=6)
+                
+                # Block signals to prevent on_freq_changed loop
+                self.freq_spin.blockSignals(True)
+                self.freq_spin.setDecimals(decimals)
+                self.freq_spin.setValue(self.module.gen_frequency)
+                self.freq_spin.blockSignals(False)
+            else:
+                self.freq_spin.setDecimals(4) # Default manual precision
