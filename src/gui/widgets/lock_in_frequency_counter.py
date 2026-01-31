@@ -241,15 +241,34 @@ class LockInFrequencyCounter(MeasurementModule):
         z = sig * osc
 
         # Split into segments to find slope
+        # We need to be careful with windowing. If the segment length is not an integer multiple
+        # of the ripple period (1/(2f) for mixing products), we get spectral leakage that manifests
+        # as a periodic error in the phase estimate, creating variance.
+        # We calculate the optimal segment length to contain integer number of half-cycles.
+        
         n_segments = 4
-        seg_len = n_samples // n_segments
+        stride = n_samples // n_segments
+        
+        # Ripple period (samples) = sr / (2 * freq) because mix product is basically at 2*f
+        # (Assuming locked or close to lock)
+        period_2f = sr / (2.0 * self.gen_frequency)
+        
+        # How many full cycles fit in the available stride?
+        num_cycles = max(1, int(stride / period_2f))
+        
+        # Optimal length
+        seg_len = int(round(num_cycles * period_2f))
+        
+        # Clamp to stride (though round might push it over by 0.5 sample, safe for slicing usually but let's be strict)
+        if seg_len > stride:
+             seg_len = stride
 
         # Calculate Phase for each segment
         seg_phases = []
         seg_centers = []
 
         for i in range(n_segments):
-            start = i * seg_len
+            start = i * stride
             end = start + seg_len
             segment = z[start:end]
             win = np.blackman(len(segment))
@@ -261,7 +280,8 @@ class LockInFrequencyCounter(MeasurementModule):
 
             phi = np.angle(avg)
             seg_phases.append(phi)
-            seg_centers.append(start + seg_len / 2)
+            # Center of the ACTUAL window used
+            seg_centers.append(start + seg_len / 2.0)
 
         # Unwrap phases across segments
         seg_phases_unwrapped = np.unwrap(seg_phases)
