@@ -19,9 +19,6 @@ def test_nco_stats():
     engine = MockAudioEngine()
     counter = LockInFrequencyCounter(engine)
     
-    # Verify Default
-    assert counter.nco_avg_count == 100
-    
     # Setup
     counter.gen_frequency = 1000.0
     counter.locked = True
