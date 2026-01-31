@@ -27,6 +27,24 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 
+# Precomputed Hilbert coefficients for fallback (approx 48kHz, width=800, 65 taps)
+_FALLBACK_HILBERT_COEFFS = [
+    -0.0000316474, 0.0105268582, 0.0000140129, 0.0064320416, -0.0000026942,
+    0.0083717445, -0.0000005448, 0.0107013535, 0.0000004666, 0.0134939067,
+    -0.0000005078, 0.0168371142, -0.0000028906, 0.0208555232, -0.0000030355,
+    0.0257464826, -0.0000002995, 0.0318132853, 0.0000007285, 0.0395192771,
+    -0.0000018136, 0.0496883805, 0.0000014406, 0.063920532, -0.0000002686,
+    0.0855646504, 0.0000006833, 0.1234425048, -0.0000003739, 0.2098599827,
+    -0.000001463, 0.6358343337, 0.0, -0.6358343337, 0.000001463,
+    -0.2098599827, 0.0000003739, -0.1234425048, -0.0000006833, -0.0855646504,
+    0.0000002686, -0.063920532, -0.0000014406, -0.0496883805, 0.0000018136,
+    -0.0395192771, -0.0000007285, -0.0318132853, 0.0000002995, -0.0257464826,
+    0.0000030355, -0.0208555232, 0.0000028906, -0.0168371142, 0.0000005078,
+    -0.0134939067, -0.0000004666, -0.0107013535, 0.0000005448, -0.0083717445,
+    0.0000026942, -0.0064320416, -0.0000140129, -0.0105268582, 0.0000316474
+]
+
+
 class UltrasoundModulator(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -103,9 +121,8 @@ class UltrasoundModulator(MeasurementModule):
                     self._hilbert_coeffs = scipy.signal.remez(numtaps, bands, [1], type="hilbert", fs=fs)
                 except Exception as e:
                     print(f"Error designing Hilbert filter: {e}. Fallback to basic.")
-                    # Fallback or strict error. For now, try to proceed or use zeros.
-                    # Ideally we might want a precomputed set or a simpler design if remez fails.
-                    self._hilbert_coeffs = np.zeros(numtaps)
+                    # Fallback to precomputed coefficients
+                    self._hilbert_coeffs = np.array(_FALLBACK_HILBERT_COEFFS)
 
                 # Reset ZI when filter changes
                 self._hilbert_zi = None
