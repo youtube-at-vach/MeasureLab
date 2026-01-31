@@ -207,8 +207,7 @@ class FrequencyCounter(MeasurementModule):
                     # We are behind schedule, reset the tick to now to avoid burst of catch-ups
                     # or keep it if we want to catch up (but usually for UI/CLI we skip)
                     # For audio meas, maybe we just reset.
-                    if sleep_time < -interval:  # severely behind
-                        next_tick = now
+                    next_tick = now
 
         except KeyboardInterrupt:
             self.stop_analysis()
@@ -216,16 +215,19 @@ class FrequencyCounter(MeasurementModule):
     def get_widget(self):
         return FrequencyCounterWidget(self)
 
-    def start_analysis(self):
-        if self.is_running:
-            return
-
-        self.is_running = True
+    def reset_state(self):
         self.input_buffer = np.zeros(self.buffer_size)
         self.freq_history.clear()
         self.time_history.clear()
         self.start_time = time.time()
         self._warmup_remaining = int(max(0, getattr(self, "warmup_discard_points", 0)))
+
+    def start_analysis(self):
+        if self.is_running:
+            return
+
+        self.is_running = True
+        self.reset_state()
 
         def callback(indata, outdata, frames, time, status):
             # REMOVED blocking print(status) to prevent buffer overflows
@@ -635,7 +637,7 @@ class FrequencyCounterWidget(QWidget):
         ch_layout.addWidget(QLabel(tr("Channel:")))
         self.ch_combo = QComboBox()
         self.ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
-        self.ch_combo.currentIndexChanged.connect(lambda idx: setattr(self.module, "selected_channel", idx))
+        self.ch_combo.currentIndexChanged.connect(self.on_channel_changed)
         ch_layout.addWidget(self.ch_combo)
         controls_layout.addLayout(ch_layout)
 
@@ -1044,6 +1046,11 @@ class FrequencyCounterWidget(QWidget):
 
         dlg = FrequencyCalibrationDialog(self.module, self)
         dlg.exec()
+
+    def on_channel_changed(self, idx):
+        self.module.selected_channel = idx
+        if self.module.is_running:
+            self.module.reset_state()
 
     def on_speed_changed(self, idx):
         interval_ms = self.speed_combo.currentData()
