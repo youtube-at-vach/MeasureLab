@@ -25,6 +25,22 @@ DEFAULT_CONFIG = {
 }
 
 
+
+# Mapping of Windows-specific language names to ISO 639-1 codes
+# Windows getlocale() often returns full English names like "Japanese_Japan"
+WINDOWS_LOCALE_MAP = {
+    "japanese": "ja",
+    "english": "en",
+    "french": "fr",
+    "german": "de",
+    "spanish": "es",
+    "chinese": "zh",
+    "korean": "ko",
+    "portuguese": "pt",
+    "russian": "ru",
+    # Add more as needed
+}
+
 class ConfigManager:
     def __init__(self, config_path="config.json"):
         self.config_path = config_path
@@ -211,14 +227,27 @@ class ConfigManager:
             if not loc or not loc[0]:
                 return None
 
-            lang_code = loc[0].split("_")[0]  # e.g., 'ja' from 'ja_JP'
+            lang_str = loc[0]
 
-            # Check if this language is supported
+            # 1. Check explicit Windows mapping first
+            # "Japanese_Japan" -> "Japanese" -> "ja"
+            base_lang = lang_str.split("_")[0].lower()
+            if base_lang in WINDOWS_LOCALE_MAP:
+                lang_code = WINDOWS_LOCALE_MAP[base_lang]
+            else:
+                lang_code = base_lang
+
+            # Checks if this language is supported
             # We check if src/assets/lang/{lang_code}.json exists
-            # We need to be careful about the path. Using resource_path helper.
             lang_file = resource_path(f"src/assets/lang/{lang_code}.json")
             if os.path.exists(lang_file):
                 return lang_code
+
+            # Fallback for standard locales if not in map but file exists (e.g. ja_JP -> ja -> check file)
+            # Already covered by else block above roughly, but let's be safe for cases like "en_US"
+            # Split and try again if the map check failed or returned something invalid
+
+            # If lang_code is still "Japanese" (because it wasn't in map for some reason) it fails check above.
 
             return None
         except Exception as e:
