@@ -7,14 +7,29 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 ## 🚀 Active / High Priority (Signal Focus)
 
+### 🆕 New Proposals
+
+* **Multimeter (AC Voltmeter):**
+    * **Concept:** A dedicated widget acting as a Digital Multimeter (DMM) for audio.
+    * **Features:** Large, high-visibility readout of Vrms, Vpeak, Crest Factor, and Frequency.
+    * **Why:** Existing widgets (Scope/SpecAn) are too complex for simple level checks. A simple "Meter" mode is essential for gain staging and quick diagnostics.
+
+* **Network Analyzer Extensions:**
+    * **Coherence Function:** Add a Coherence plot (0.0 - 1.0) to the Transfer Function mode.
+    * **Why:** To evaluate measurement confidence and linearity/SNR, especially in noisy environments or when measuring non-linear devices.
+
+* **Spectrum Analyzer Extensions:**
+    * **Cepstrum Analysis:** Add "Cepstrum" (Power Cepstrum) mode (Quefrency domain).
+    * **Why:** Useful for analyzing harmonic structures, pitch detection, and separating source/filter characteristics (echo/reflection analysis).
+
 ---
 
 ## ✅ Already Implemented
 
-* **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer` as a dedicated mode (L->R and R->L). Includes automated routing and "Crosstalk (dB)" plotting.
-* **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter` (supports MIM/Multitone TD+N).
-* **Oscilloscope Persistence / Eye Pattern:** Implemented "Infinite Persistence" / "Eye Pattern" mode in `Oscilloscope`.
-* **Linearity Analyzer:** Implemented as a dedicated widget (`LinearityAnalyzer`). Measures linearity error (AES17), gain accuracy, and noise floor by sweeping input amplitude.
+* **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer` (supports L->R / R->L).
+* **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter`.
+* **Oscilloscope Persistence / Eye Pattern:** Implemented in `Oscilloscope`.
+* **Linearity Analyzer:** Implemented as a dedicated widget (`LinearityAnalyzer`).
 
 ---
 
