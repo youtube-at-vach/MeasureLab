@@ -228,7 +228,7 @@ class ConfigManager:
                 return None
 
             lang_str = loc[0]
-            
+
             # 1. Check explicit Windows mapping first
             # "Japanese_Japan" -> "Japanese" -> "ja"
             base_lang = lang_str.split("_")[0].lower()
@@ -246,9 +246,9 @@ class ConfigManager:
             # Fallback for standard locales if not in map but file exists (e.g. ja_JP -> ja -> check file)
             # Already covered by else block above roughly, but let's be safe for cases like "en_US"
             # Split and try again if the map check failed or returned something invalid
-             
+
             # If lang_code is still "Japanese" (because it wasn't in map for some reason) it fails check above.
-            
+
             return None
         except Exception as e:
             self.logger.warning(f"Failed to detect system language: {e}")
