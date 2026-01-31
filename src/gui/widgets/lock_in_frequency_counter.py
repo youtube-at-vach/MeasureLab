@@ -252,7 +252,7 @@ class LockInFrequencyCounter(MeasurementModule):
             start = i * seg_len
             end = start + seg_len
             segment = z[start:end]
-            win = np.hanning(len(segment))
+            win = np.blackman(len(segment))
             avg = np.mean(segment * win)
 
             if np.abs(avg) < 1e-9:
