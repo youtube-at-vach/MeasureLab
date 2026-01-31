@@ -1018,5 +1018,21 @@
     "Start Level:": "开始电平:",
     "Sweep failed:\n{0}": "扫描失败：\n{0}",
     "Plot Controls": "绘图控制",
-    "Y-Axis Zoom:": "Y轴缩放:"
+    "Y-Axis Zoom:": "Y轴缩放:",
+    "Derivative Gain (Kd):": "微分增益 (Kd):",
+    "Gate Threshold:": "门限阈值:",
+    "Smoothing": "平滑",
+    "Average Count:": "平均次数:",
+    "Input": "输入",
+    "Main": "主界面",
+    "FLL Averages: {0}": "FLL 平均次数: {0}",
+    "Auto-Precision: ON": "自动精度: 开启",
+    "NCO Statistics": "NCO 统计",
+    "Average: {0:.6f} Hz": "平均值: {0:.6f} Hz",
+    "Std Dev: {0:.6e} Hz": "标准差: {0:.6e} Hz",
+    "FLL Parameters": "FLL 参数",
+    "PID Control Loop": "PID Control Loop",
+    "Plot Smoothing:": "Plot Smoothing:",
+    "Proportional (Kp):": "Proportional (Kp):",
+    "Statistics & Averaging": "Statistics & Averaging"
 }

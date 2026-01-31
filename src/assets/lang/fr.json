@@ -1018,5 +1018,21 @@
     "Start Level:": "Niveau initial :",
     "Sweep failed:\n{0}": "Balayage échoué :\n{0}",
     "Plot Controls": "Commandes de tracé",
-    "Y-Axis Zoom:": "Zoom de l'axe Y :"
+    "Y-Axis Zoom:": "Zoom de l'axe Y :",
+    "Derivative Gain (Kd):": "Gain dérivé (Kd) :",
+    "Gate Threshold:": "Seuil de porte :",
+    "Smoothing": "Lissage",
+    "Average Count:": "Nombre de moyennes :",
+    "Input": "Entrée",
+    "Main": "Principal",
+    "FLL Averages: {0}": "Moyennes FLL : {0}",
+    "Auto-Precision: ON": "Auto-Précision : ACTIVÉ",
+    "NCO Statistics": "Statistiques NCO",
+    "Average: {0:.6f} Hz": "Moyenne : {0:.6f} Hz",
+    "Std Dev: {0:.6e} Hz": "Écart-type : {0:.6e} Hz",
+    "FLL Parameters": "Paramètres FLL",
+    "PID Control Loop": "PID Control Loop",
+    "Plot Smoothing:": "Plot Smoothing:",
+    "Proportional (Kp):": "Proportional (Kp):",
+    "Statistics & Averaging": "Statistics & Averaging"
 }

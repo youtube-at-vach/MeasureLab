@@ -245,20 +245,20 @@ class LockInFrequencyCounter(MeasurementModule):
         # of the ripple period (1/(2f) for mixing products), we get spectral leakage that manifests
         # as a periodic error in the phase estimate, creating variance.
         # We calculate the optimal segment length to contain integer number of half-cycles.
-        
+
         n_segments = 4
         stride = n_samples // n_segments
-        
+
         # Ripple period (samples) = sr / (2 * freq) because mix product is basically at 2*f
         # (Assuming locked or close to lock)
         period_2f = sr / (2.0 * self.gen_frequency)
-        
+
         # How many full cycles fit in the available stride?
         num_cycles = max(1, int(stride / period_2f))
-        
+
         # Optimal length
         seg_len = int(round(num_cycles * period_2f))
-        
+
         # Clamp to stride (though round might push it over by 0.5 sample, safe for slicing usually but let's be strict)
         if seg_len > stride:
              seg_len = stride
@@ -360,7 +360,7 @@ class LockInFrequencyCounter(MeasurementModule):
                      # For simplicity, we just rely on maxlen if it was fixed, but here user can change it.
                      # So we'll manually slice if needed or re-create deque in setter.
                      pass
-                
+
                 # Calculate Stats
                 data = list(self.nco_history)
                 if len(data) > 0:
@@ -426,7 +426,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.freq_spin.setSuffix(" Hz")
         self.freq_spin.setDecimals(5)
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
-        
+
         controls_layout.addWidget(lbl_freq)
         controls_layout.addWidget(self.freq_spin)
 
@@ -466,7 +466,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.plot_phase = pg.PlotWidget(title=tr("Integrated Phase φ (deg)"))
         self.plot_phase.showGrid(x=True, y=True)
         self.curve_phase = self.plot_phase.plot(pen="c")
-        
+
         # Smoothing Controls
         smoothing_layout = QHBoxLayout()
         smoothing_layout.setContentsMargins(5, 0, 5, 0)
@@ -478,11 +478,11 @@ class LockInFrequencyCounterWidget(QWidget):
         self.slider_smooth.setTickInterval(5)
         self.lbl_smooth_val = QLabel("1")
         self.slider_smooth.valueChanged.connect(lambda v: self.lbl_smooth_val.setText(str(v)))
-        
+
         smoothing_layout.addWidget(lbl_smooth)
         smoothing_layout.addWidget(self.slider_smooth)
         smoothing_layout.addWidget(self.lbl_smooth_val)
-        
+
         left_layout.addLayout(smoothing_layout)
         left_layout.addWidget(self.plot_freq)
         left_layout.addWidget(self.plot_phase)
@@ -637,7 +637,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.module.pid.kp = self.kp_spin.value()
         self.module.pid.ki = self.ki_spin.value()
         self.module.pid.kd = self.kd_spin.value()
-        
+
     def on_avg_changed(self, val):
         self.module.nco_avg_count = int(val)
         # Resize deque
@@ -667,24 +667,24 @@ class LockInFrequencyCounterWidget(QWidget):
             t_data = list(self.module.time_axis)
             f_data = list(self.module.freq_dev_history)
             p_data = list(self.module.phase_history)
-            
+
             # --- Smoothing Logic ---
             smoothing_window = self.slider_smooth.value()
-            
+
             # Apply smoothing only if window > 1 and we have enough data
             if smoothing_window > 1 and len(f_data) >= smoothing_window:
                 # Use a simple moving average convolution
                 kernel = np.ones(smoothing_window) / smoothing_window
-                
+
                 f_smoothed = np.convolve(f_data, kernel, mode='valid')
                 p_smoothed = np.convolve(p_data, kernel, mode='valid')
-                
+
                 # The 'valid' mode reduces the output size by window-1.
                 # We need to slice the time axis to match the end of the smoothed data
                 # (which corresponds to the latest times).
                 # t_data should be sliced from [window-1:]
                 t_plot = t_data[smoothing_window - 1:]
-                
+
                 self.curve_freq.setData(t_plot, f_smoothed)
                 self.curve_phase.setData(t_plot, p_smoothed)
             else:
@@ -726,7 +726,7 @@ class LockInFrequencyCounterWidget(QWidget):
                 else:
                      self.freq_spin.setValue(self.module.gen_frequency)
                 self.freq_spin.blockSignals(False)
-                
+
             # Update Variance Label
             self.lbl_nco_var.setText(f"σ: {self.module.nco_std:.4e} Hz")
 
