@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -20,6 +21,38 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+
+class PIDController:
+    def __init__(self, kp=0.5, ki=0.2, kd=0.0):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.prev_error = 0.0
+        self.integral = 0.0
+
+    def reset(self):
+        self.prev_error = 0.0
+        self.integral = 0.0
+
+    def update(self, error, dt):
+        if dt <= 0:
+            return 0.0
+
+        # Proportional
+        p_term = self.kp * error
+
+        # Integral
+        self.integral += error * dt
+        i_term = self.ki * self.integral
+
+        # Derivative
+        derivative = (error - self.prev_error) / dt
+        d_term = self.kd * derivative
+
+        self.prev_error = error
+
+        return p_term + i_term + d_term
 
 
 class LockInFrequencyCounter(MeasurementModule):
@@ -43,7 +76,15 @@ class LockInFrequencyCounter(MeasurementModule):
         # provides stable readout without feeling laggy.
         self.smoothing_tau = 2.0
         self.locked = False
-        self.feedback_gain = 0.5
+        self.feedback_gain = 0.5  # Deprecated in favor of PID, kept for compat if needed, but not used in new logic
+
+        self.pid = PIDController(kp=0.5, ki=0.2, kd=0.0)
+
+        # NCO Statistics
+        self.nco_history = deque(maxlen=10)
+        self.nco_avg_count = 10
+        self.nco_mean = 1000.0
+        self.nco_std = 0.0
 
         # Stability Stats
 
@@ -109,6 +150,10 @@ class LockInFrequencyCounter(MeasurementModule):
 
         self.current_amp_db = -120.0
         self.signal_present = False
+        self.pid.reset()
+        self.nco_history.clear()
+        self.nco_mean = self.gen_frequency
+        self.nco_std = 0.0
 
         self._samples_received = 0
         self._discard_initial_estimates = 3
@@ -271,17 +316,13 @@ class LockInFrequencyCounter(MeasurementModule):
 
             # --- FLL / Lock Logic ---
             if self.locked:
-                # Use smoothed deviation to avoid noise jitter, but maybe
-                # current_freq_dev is faster? A mix is usually good.
-                # Here we use smoothed (approx 2s tau) which makes the loop slow but stable.
-                # If we want faster lock, we reduce tau or use current_freq_dev.
-                # Let's use smoothed for stability as requested ("integration value").
+                # PID Controller
+                # Error = Delta F (Signal - NCO)
+                # If Delta F is positive, Signal > NCO, so we need to increase NCO freq.
+                # correction = PID(error)
 
-                # Feedback controller: F_nco_new = F_nco_old + Gain * Error
-                # Error is delta_f (difference between Signal and NCO).
-                # If Delta F is positive, Signal > NCO. We need to INCREASE NCO.
-
-                correction = self.smoothed_freq_dev * self.feedback_gain
+                dt_process = n_samples / sr
+                correction = self.pid.update(delta_f, dt_process)
 
                 new_freq = self.gen_frequency + correction
 
@@ -289,6 +330,24 @@ class LockInFrequencyCounter(MeasurementModule):
                 new_freq = max(20.0, min(new_freq, 20000.0))
 
                 self.gen_frequency = new_freq
+
+                # Statistics
+                self.nco_history.append(new_freq)
+                if len(self.nco_history) > self.nco_avg_count:
+                     # Resize if needed (deque handles appending but maxlen might need update if changed at runtime)
+                     # For simplicity, we just rely on maxlen if it was fixed, but here user can change it.
+                     # So we'll manually slice if needed or re-create deque in setter.
+                     pass
+                
+                # Calculate Stats
+                data = list(self.nco_history)
+                if len(data) > 0:
+                    self.nco_mean = float(np.mean(data))
+                    self.nco_std = float(np.std(data))
+                else:
+                    self.nco_mean = new_freq
+                    self.nco_std = 0.0
+
 
 
 class LockInFrequencyCounterWidget(QWidget):
@@ -305,9 +364,13 @@ class LockInFrequencyCounterWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
-        # -- Controls --
-        controls_group = QGroupBox(tr("Settings"))
-        controls_layout = QFormLayout()
+        # -- Controls via Tabs --
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+
+        # Tab 1: General
+        self.tab_general = QWidget()
+        general_layout = QFormLayout(self.tab_general)
 
         # NCO Freq
         self.freq_spin = QDoubleSpinBox()
@@ -316,20 +379,20 @@ class LockInFrequencyCounterWidget(QWidget):
         self.freq_spin.setSuffix(" Hz")
         self.freq_spin.setDecimals(5)
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
-        controls_layout.addRow(tr("NCO Frequency:"), self.freq_spin)
+        general_layout.addRow(tr("NCO Frequency:"), self.freq_spin)
 
         # Ref Mode
         self.ref_combo = QComboBox()
         self.ref_combo.addItems([tr("Internal (NCO)"), tr("Loopback (Ref Out)")])
         self.ref_combo.currentIndexChanged.connect(self.on_ref_mode_changed)
-        controls_layout.addRow(tr("Reference Mode:"), self.ref_combo)
+        general_layout.addRow(tr("Reference Mode:"), self.ref_combo)
 
         # Input Channel (L/R)
         self.input_ch_combo = QComboBox()
         self.input_ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
         self.input_ch_combo.setCurrentIndex(int(getattr(self.module, "signal_channel", 0)))
         self.input_ch_combo.currentIndexChanged.connect(self.on_input_channel_changed)
-        controls_layout.addRow(tr("Channel:"), self.input_ch_combo)
+        general_layout.addRow(tr("Channel:"), self.input_ch_combo)
 
         # Signal gate
         self.gate_spin = QDoubleSpinBox()
@@ -339,22 +402,61 @@ class LockInFrequencyCounterWidget(QWidget):
         self.gate_spin.setValue(float(getattr(self.module, "gate_threshold_db", -60.0)))
         self.gate_spin.setSuffix(" dB")
         self.gate_spin.valueChanged.connect(self.on_gate_changed)
-        controls_layout.addRow(tr("Gate (dB):"), self.gate_spin)
+        general_layout.addRow(tr("Gate (dB):"), self.gate_spin)
 
         # Lock / FLL
         from PyQt6.QtWidgets import QCheckBox
         self.lock_check = QCheckBox(tr("Lock NCO to Signal (FLL)"))
         self.lock_check.toggled.connect(self.on_lock_toggled)
-        controls_layout.addRow("", self.lock_check)
+        general_layout.addRow("", self.lock_check)
 
         # Start/Stop
         self.btn_run = QPushButton(tr("Start"))
         self.btn_run.setCheckable(True)
         self.btn_run.clicked.connect(self.on_run_clicked)
-        controls_layout.addRow(self.btn_run)
+        general_layout.addRow(self.btn_run)
+        
+        # NCO Averaging Settings
+        from PyQt6.QtWidgets import QSpinBox
+        self.avg_spin = QSpinBox()
+        self.avg_spin.setRange(1, 1000)
+        self.avg_spin.setValue(self.module.nco_avg_count)
+        self.avg_spin.valueChanged.connect(self.on_avg_changed)
+        general_layout.addRow(tr("NCO Avg Count:"), self.avg_spin)
 
-        controls_group.setLayout(controls_layout)
-        layout.addWidget(controls_group)
+        # Variance Display
+        self.lbl_nco_var = QLabel("σ: 0.00 Hz")
+        general_layout.addRow(tr("NCO Std Dev:"), self.lbl_nco_var)
+
+        self.tabs.addTab(self.tab_general, tr("General"))
+
+        # Tab 2: PID Settings
+        self.tab_pid = QWidget()
+        pid_layout = QFormLayout(self.tab_pid)
+
+        self.kp_spin = QDoubleSpinBox()
+        self.kp_spin.setRange(0.0, 100.0)
+        self.kp_spin.setSingleStep(0.1)
+        self.kp_spin.setValue(self.module.pid.kp)
+        self.kp_spin.valueChanged.connect(self.on_pid_changed)
+        pid_layout.addRow(tr("Proportional (Kp):"), self.kp_spin)
+
+        self.ki_spin = QDoubleSpinBox()
+        self.ki_spin.setRange(0.0, 100.0)
+        self.ki_spin.setSingleStep(0.1)
+        self.ki_spin.setValue(self.module.pid.ki)
+        self.ki_spin.valueChanged.connect(self.on_pid_changed)
+        pid_layout.addRow(tr("Integral (Ki):"), self.ki_spin)
+
+        self.kd_spin = QDoubleSpinBox()
+        self.kd_spin.setRange(0.0, 100.0)
+        self.kd_spin.setSingleStep(0.001)
+        self.kd_spin.setDecimals(4)
+        self.kd_spin.setValue(self.module.pid.kd)
+        self.kd_spin.valueChanged.connect(self.on_pid_changed)
+        pid_layout.addRow(tr("Derivative (Kd):"), self.kd_spin)
+
+        self.tabs.addTab(self.tab_pid, tr("PID Control"))
 
         # -- Plots --
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -437,6 +539,17 @@ class LockInFrequencyCounterWidget(QWidget):
         # but here we just update module state.
         self.freq_spin.setReadOnly(checked) # Prevent manual fight
 
+    def on_pid_changed(self):
+        self.module.pid.kp = self.kp_spin.value()
+        self.module.pid.ki = self.ki_spin.value()
+        self.module.pid.kd = self.kd_spin.value()
+        
+    def on_avg_changed(self, val):
+        self.module.nco_avg_count = int(val)
+        # Resize deque
+        current_data = list(self.module.nco_history)
+        self.module.nco_history = deque(current_data, maxlen=self.module.nco_avg_count)
+
     def on_run_clicked(self, checked):
         if checked:
             self.module.start_analysis()
@@ -483,5 +596,13 @@ class LockInFrequencyCounterWidget(QWidget):
             if self.module.locked:
                 # Block signals to prevent on_freq_changed loop
                 self.freq_spin.blockSignals(True)
-                self.freq_spin.setValue(self.module.gen_frequency)
+                # Display MEAN value if we have history, else current
+                if len(self.module.nco_history) > 0:
+                     self.freq_spin.setValue(self.module.nco_mean)
+                else:
+                     self.freq_spin.setValue(self.module.gen_frequency)
                 self.freq_spin.blockSignals(False)
+                
+            # Update Variance Label
+            self.lbl_nco_var.setText(f"σ: {self.module.nco_std:.4e} Hz")
+
