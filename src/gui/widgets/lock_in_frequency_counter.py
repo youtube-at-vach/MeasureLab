@@ -434,6 +434,15 @@ class LockInFrequencyCounterWidget(QWidget):
     def on_ref_mode_changed(self, idx):
         modes = ["internal", "loopback"]
         self.module.ref_mode = modes[idx]
+        
+        # Disable Lock (FLL) if in Loopback/Ref Out mode
+        # Index 1 is Loopback
+        is_loopback = (idx == 1)
+        if is_loopback:
+            self.lock_check.setChecked(False)
+            self.lock_check.setEnabled(False)
+        else:
+            self.lock_check.setEnabled(True)
 
     def on_input_channel_changed(self, idx):
         self.module.signal_channel = int(idx)
