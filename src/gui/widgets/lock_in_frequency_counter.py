@@ -491,7 +491,10 @@ class LockInFrequencyCounterWidget(QWidget):
             # Update NCO display if locked (and changed)
             if self.module.locked:
                 # Dynamic Precision
-                decimals = self.get_decimal_places(self.module.nco_std, default=6)
+                # User prefers around 6 digits. Let's clamp between 4 and 6 for stability.
+                decimals = self.get_decimal_places(self.module.nco_std, default=6, max_places=6)
+                if decimals < 4: 
+                     decimals = 4 # Minimum 4 digits
                 
                 # Block signals to prevent on_freq_changed loop
                 self.freq_spin.blockSignals(True)
