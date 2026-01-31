@@ -10,7 +10,9 @@ from src.core.utils import resource_path
 DEFAULT_CONFIG = {
     "audio": {
         "input_device": None,
+        "input_hostapi": None,
         "output_device": None,
+        "output_hostapi": None,
         "sample_rate": 48000,
         "block_size": 1024,
         "input_channels": "stereo",
@@ -126,7 +128,7 @@ class ConfigManager:
         audio = self.get_audio_config()
         return audio.get("input_device"), audio.get("output_device")
 
-    def set_last_devices(self, input_name, output_name):
+    def set_last_devices(self, input_name, output_name, input_hostapi=None, output_hostapi=None):
         audio = self.get_audio_config()
         self.set_audio_config(
             input_name=input_name,
@@ -135,15 +137,29 @@ class ConfigManager:
             block_size=audio.get("block_size", 1024),
             in_ch=audio.get("input_channels", "stereo"),
             out_ch=audio.get("output_channels", "stereo"),
+            input_hostapi=input_hostapi,
+            output_hostapi=output_hostapi,
         )
 
-    def set_audio_config(self, input_name, output_name, sample_rate, block_size, in_ch, out_ch):
+    def set_audio_config(
+        self,
+        input_name,
+        output_name,
+        sample_rate,
+        block_size,
+        in_ch,
+        out_ch,
+        input_hostapi=None,
+        output_hostapi=None,
+    ):
         """Updates the audio configuration."""
         if "audio" not in self.config:
             self.config["audio"] = {}
 
         self.config["audio"]["input_device"] = input_name
+        self.config["audio"]["input_hostapi"] = input_hostapi
         self.config["audio"]["output_device"] = output_name
+        self.config["audio"]["output_hostapi"] = output_hostapi
         self.config["audio"]["sample_rate"] = sample_rate
         self.config["audio"]["block_size"] = block_size
         self.config["audio"]["input_channels"] = in_ch

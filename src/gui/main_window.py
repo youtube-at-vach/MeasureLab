@@ -184,7 +184,9 @@ class MainWindow(QMainWindow):
         # Load saved config
         audio_cfg = self.config_manager.get_audio_config()
         last_in = audio_cfg.get("input_device")
+        last_in_hostapi = audio_cfg.get("input_hostapi")
         last_out = audio_cfg.get("output_device")
+        last_out_hostapi = audio_cfg.get("output_hostapi")
 
         # Default IDs
         in_id, out_id = 3, 3  # Fallback
@@ -196,12 +198,36 @@ class MainWindow(QMainWindow):
             found_out = False
 
             for i, dev in enumerate(devices):
-                if last_in and dev["name"] == last_in and dev["max_input_channels"] > 0:
+                if not found_in and last_in and dev["name"] == last_in and dev["max_input_channels"] > 0:
+                    # Check HostAPI if available
+                    if last_in_hostapi:
+                        if dev.get("hostapi_name") != last_in_hostapi:
+                            continue
                     in_id = i
                     found_in = True
-                if last_out and dev["name"] == last_out and dev["max_output_channels"] > 0:
+
+                if not found_out and last_out and dev["name"] == last_out and dev["max_output_channels"] > 0:
+                    # Check HostAPI if available
+                    if last_out_hostapi:
+                        if dev.get("hostapi_name") != last_out_hostapi:
+                            continue
                     out_id = i
                     found_out = True
+
+            # Fallback: If strict match failed but we have a name, try loose match (name only)
+            if last_in and not found_in:
+                for i, dev in enumerate(devices):
+                     if dev["name"] == last_in and dev["max_input_channels"] > 0:
+                        in_id = i
+                        found_in = True
+                        break
+
+            if last_out and not found_out:
+                for i, dev in enumerate(devices):
+                     if dev["name"] == last_out and dev["max_output_channels"] > 0:
+                        out_id = i
+                        found_out = True
+                        break
 
             if not found_in and last_in:
                 print(f"Saved input device '{last_in}' not found, using default.")
