@@ -159,8 +159,8 @@ class SpectrogramWidget(QWidget):
         # Channel
         controls_layout.addWidget(QLabel(tr("Channel:")))
         self.channel_combo = QComboBox()
-        self.channel_combo.addItems(["Left", "Right", "Average"])
-        self.channel_combo.currentTextChanged.connect(self.on_channel_changed)
+        self.channel_combo.addItems([tr("Left"), tr("Right"), tr("Average")])
+        self.channel_combo.currentIndexChanged.connect(self.on_channel_changed)
         controls_layout.addWidget(self.channel_combo)
 
         # FFT Size
@@ -249,8 +249,10 @@ class SpectrogramWidget(QWidget):
             self.timer.stop()
             self.toggle_btn.setText(tr("Start"))
 
-    def on_channel_changed(self, val):
-        self.module.channel_mode = val
+    def on_channel_changed(self, idx):
+        modes = ["Left", "Right", "Average"]
+        if 0 <= idx < len(modes):
+            self.module.channel_mode = modes[idx]
 
     def on_fft_changed(self, val):
         self.module.set_fft_size(int(val))

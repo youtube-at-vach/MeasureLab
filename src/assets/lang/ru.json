@@ -1018,5 +1018,8 @@
     "Start Level:": "Начальный уровень:",
     "Sweep failed:\n{0}": "Развертка не удалась:\n{0}",
     "Plot Controls": "Управление графиком",
-    "Y-Axis Zoom:": "Масштаб по оси Y:"
+    "Y-Axis Zoom:": "Масштаб по оси Y:",
+    "Fundamental (Lock-in):": "Основная гармоника (Lock-in):",
+    "MeasureLab": "MeasureLab",
+    "Residual RMS:": "Остаточное RMS:"
 }

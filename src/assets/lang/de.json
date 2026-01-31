@@ -1018,5 +1018,8 @@
     "Start Level:": "Startpegel:",
     "Sweep failed:\n{0}": "Sweep fehlgeschlagen:\n{0}",
     "Plot Controls": "Plot-Steuerung",
-    "Y-Axis Zoom:": "Y-Achsen-Zoom:"
+    "Y-Axis Zoom:": "Y-Achsen-Zoom:",
+    "Fundamental (Lock-in):": "Grundwelle (Lock-in):",
+    "MeasureLab": "MeasureLab",
+    "Residual RMS:": "Restsignal RMS:"
 }

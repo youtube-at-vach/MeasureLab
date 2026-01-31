@@ -1017,5 +1017,8 @@
     "Start Level:": "開始レベル:",
     "Sweep failed:\n{0}": "スイープに失敗しました：\n{0}",
     "Plot Controls": "プロットコントロール",
-    "Y-Axis Zoom:": "Y軸ズーム:"
+    "Y-Axis Zoom:": "Y軸ズーム:",
+    "Fundamental (Lock-in):": "基本波 (ロックイン):",
+    "MeasureLab": "MeasureLab",
+    "Residual RMS:": "残留成分 RMS:"
 }

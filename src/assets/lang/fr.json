@@ -1018,5 +1018,8 @@
     "Start Level:": "Niveau initial :",
     "Sweep failed:\n{0}": "Balayage échoué :\n{0}",
     "Plot Controls": "Commandes de tracé",
-    "Y-Axis Zoom:": "Zoom de l'axe Y :"
+    "Y-Axis Zoom:": "Zoom de l'axe Y :",
+    "Fundamental (Lock-in):": "Fondamentale (Lock-in) :",
+    "MeasureLab": "MeasureLab",
+    "Residual RMS:": "RMS Résiduel :"
 }

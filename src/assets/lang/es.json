@@ -1018,5 +1018,8 @@
     "Start Level:": "Nivel inicial:",
     "Sweep failed:\n{0}": "Barrido fallido:\n{0}",
     "Plot Controls": "Controles de gráfico",
-    "Y-Axis Zoom:": "Zoom del eje Y:"
+    "Y-Axis Zoom:": "Zoom del eje Y:",
+    "Fundamental (Lock-in):": "Fundamental (Lock-in):",
+    "MeasureLab": "MeasureLab",
+    "Residual RMS:": "RMS Residual:"
 }

@@ -1018,5 +1018,8 @@
     "Start Level:": "시작 레벨:",
     "Sweep failed:\n{0}": "스윕 실패:\n{0}",
     "Plot Controls": "플롯 제어",
-    "Y-Axis Zoom:": "Y축 줌:"
+    "Y-Axis Zoom:": "Y축 줌:",
+    "Fundamental (Lock-in):": "기본파 (Lock-in):",
+    "MeasureLab": "MeasureLab",
+    "Residual RMS:": "잔류 RMS:"
 }

@@ -358,7 +358,7 @@ class LockInTHDWidget(QWidget):
         self.lbl_thdn = QLabel("--")
         self.lbl_thdn.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
         self.lbl_thdn_db = QLabel("-- dB")
-        meters_layout.addWidget(QLabel("THD+N:"))
+        meters_layout.addWidget(QLabel(tr("THD+N:")))
         meters_layout.addWidget(self.lbl_thdn)
         meters_layout.addWidget(self.lbl_thdn_db)
 
@@ -366,11 +366,11 @@ class LockInTHDWidget(QWidget):
 
         self.lbl_fund = QLabel("-- V")
         self.lbl_fund.setStyleSheet("font-size: 18px; color: #55ff55;")
-        meters_layout.addWidget(QLabel("Fundamental (Lock-in):"))
+        meters_layout.addWidget(QLabel(tr("Fundamental (Lock-in):")))
         meters_layout.addWidget(self.lbl_fund)
 
         self.lbl_res = QLabel("-- V")
-        meters_layout.addWidget(QLabel("Residual RMS:"))
+        meters_layout.addWidget(QLabel(tr("Residual RMS:")))
         meters_layout.addWidget(self.lbl_res)
 
         meters_group.setLayout(meters_layout)
