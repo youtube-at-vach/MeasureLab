@@ -107,7 +107,7 @@ class LinearitySweepWorker(QThread):
 
                 if noise_mag < 1e-15:
                     noise_mag = 1e-15
-                snr_db = 20 * np.log10(mag / noise_mag)
+                snr_db = 20 * np.log10((mag + 1e-15) / noise_mag)
 
                 # Calculate Gain & Linearity Error
                 # Gain = Measured - Input
