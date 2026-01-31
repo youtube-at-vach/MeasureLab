@@ -1,33 +1,39 @@
 ---
 description: Instructions for running development tools (pytest, ruff, mypy)
 ---
-# Tool Locations
+
+# Tool Usage Guide
 
 ## Virtual Environment Tools
+
 For most development tools, you MUST use the executables located in `.venv/bin/`.
 This is critical for ensuring the correct versions and configuration are used.
 
-**Tools in `.venv/bin/` include:**
-- `pytest` -> `.venv/bin/pytest`
-- `ruff`   -> `.venv/bin/ruff`
+- `pytest` -> `.venv/bin/pytest` (run tests)
+- `ruff`   -> `.venv/bin/ruff` (linter/formatter)
+- `mypy`   -> `.venv/bin/mypy` (type checker)
 
 ## System/Global Tools
-**Mypy** is NOT located in the virtual environment. Use the system default or globally installed version.
-- `mypy`   -> `mypy` (do not look in `.venv/bin/mypy`)
 
-# Usage Examples
+- `git`    -> `git` (version control)
+- `mypy`   -> `mypy` (do not use system mypy, use venv one)
 
-## Run Tests
+## Usage Examples
+
+### Run Tests
+
 ```bash
-.venv/bin/pytest tests/
+/slash-command test
 ```
 
-## Run Linter
+### Run Linter
+
 ```bash
-.venv/bin/ruff check .
+/slash-command lint
 ```
 
-## Run Type Checker
+### Run Type Checker
+
 ```bash
-mypy src/
+/slash-command typecheck
 ```
