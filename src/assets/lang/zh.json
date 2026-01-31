@@ -1034,5 +1034,11 @@
     "PID Control Loop": "PID Control Loop",
     "Plot Smoothing:": "Plot Smoothing:",
     "Proportional (Kp):": "Proportional (Kp):",
-    "Statistics & Averaging": "Statistics & Averaging"
+    "Statistics & Averaging": "Statistics & Averaging",
+    "Derivative (Kd):": "微分 (Kd):",
+    "Input & Signal Detection": "输入与信号检测",
+    "Integral (Ki):": "积分 (Ki):",
+    "Lock NCO to Signal (FLL)": "锁定 NCO 到信号 (FLL)",
+    "NCO Avg Count:": "NCO 平均计数:",
+    "NCO Std Dev:": "NCO 标准差:"
 }

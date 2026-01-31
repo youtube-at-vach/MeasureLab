@@ -1034,5 +1034,11 @@
     "PID Control Loop": "PID Control Loop",
     "Plot Smoothing:": "Plot Smoothing:",
     "Proportional (Kp):": "Proportional (Kp):",
-    "Statistics & Averaging": "Statistics & Averaging"
+    "Statistics & Averaging": "Statistics & Averaging",
+    "Derivative (Kd):": "Dérivée (Kd) :",
+    "Input & Signal Detection": "Détection d'entrée et de signal",
+    "Integral (Ki):": "Intégrale (Ki) :",
+    "Lock NCO to Signal (FLL)": "Verrouiller NCO sur le signal (FLL)",
+    "NCO Avg Count:": "Nombre de moyennes NCO :",
+    "NCO Std Dev:": "Écart-type NCO :"
 }
