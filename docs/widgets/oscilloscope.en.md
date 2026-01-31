@@ -67,6 +67,7 @@ Displays the results of calculations performed on two channels or signals as a "
 * **A + B**: Left + Right.
 * **A - B**: Left - Right.
 * **A * B**: Left × Right (product).
+* **A / B**: Left / Right (quotient).
 * **Derivative**: Differentiated waveform of the Left channel.
 * **Integral**: Integrated waveform of the Left channel.
 

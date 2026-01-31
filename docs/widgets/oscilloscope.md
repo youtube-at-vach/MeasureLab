@@ -67,6 +67,7 @@ Oscilloscope（オシロスコープ）は、入力信号の波形をリアル�
 * **A + B**: Left + Right。
 * **A - B**: Left - Right。
 * **A * B**: Left × Right（積）。
+* **A / B**: Left / Right（商）。
 * **Derivative**: Leftチャンネルの微分波形。
 * **Integral**: Leftチャンネルの積分波形。
 
