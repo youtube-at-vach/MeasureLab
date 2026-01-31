@@ -36,6 +36,7 @@ A function to stop (stabilize) the waveform for easier observation.
 ## Persistence Settings
 
 A feature to display an "afterimage" similar to an analog oscilloscope. It is useful for visually capturing noise distribution and waveform fluctuations (jitter).
+By overlaying repeated waveforms, it can also be used as an "Eye Pattern" for evaluating the quality of digital signals.
 
 * **Enable Persistence**: Enables the persistence display.
 * **Decay**: Adjusts the time until the afterimage disappears (decay rate). Moving it to the right makes it last longer.
