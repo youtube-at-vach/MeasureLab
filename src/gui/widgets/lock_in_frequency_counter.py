@@ -368,102 +368,54 @@ class LockInFrequencyCounterWidget(QWidget):
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
-        # Tab 1: General
-        self.tab_general = QWidget()
-        general_layout = QFormLayout(self.tab_general)
+        # =======================
+        # Tab 1: Main (Controls + Plots)
+        # =======================
+        self.tab_main = QWidget()
+        main_layout = QVBoxLayout(self.tab_main)
+
+        # -- Top Row: Controls --
+        controls_layout = QHBoxLayout()
 
         # NCO Freq
+        # Using a small form layout or just label+spinbox
+        lbl_freq = QLabel(tr("NCO Frequency:"))
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(20, 20000)
         self.freq_spin.setValue(1000.0)
         self.freq_spin.setSuffix(" Hz")
         self.freq_spin.setDecimals(5)
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
-        general_layout.addRow(tr("NCO Frequency:"), self.freq_spin)
-
-        # Ref Mode
-        self.ref_combo = QComboBox()
-        self.ref_combo.addItems([tr("Internal (NCO)"), tr("Loopback (Ref Out)")])
-        self.ref_combo.currentIndexChanged.connect(self.on_ref_mode_changed)
-        general_layout.addRow(tr("Reference Mode:"), self.ref_combo)
-
-        # Input Channel (L/R)
-        self.input_ch_combo = QComboBox()
-        self.input_ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
-        self.input_ch_combo.setCurrentIndex(int(getattr(self.module, "signal_channel", 0)))
-        self.input_ch_combo.currentIndexChanged.connect(self.on_input_channel_changed)
-        general_layout.addRow(tr("Channel:"), self.input_ch_combo)
-
-        # Signal gate
-        self.gate_spin = QDoubleSpinBox()
-        self.gate_spin.setRange(-120.0, 0.0)
-        self.gate_spin.setDecimals(1)
-        self.gate_spin.setSingleStep(1.0)
-        self.gate_spin.setValue(float(getattr(self.module, "gate_threshold_db", -60.0)))
-        self.gate_spin.setSuffix(" dB")
-        self.gate_spin.valueChanged.connect(self.on_gate_changed)
-        general_layout.addRow(tr("Gate (dB):"), self.gate_spin)
+        
+        controls_layout.addWidget(lbl_freq)
+        controls_layout.addWidget(self.freq_spin)
 
         # Lock / FLL
         from PyQt6.QtWidgets import QCheckBox
         self.lock_check = QCheckBox(tr("Lock NCO to Signal (FLL)"))
         self.lock_check.toggled.connect(self.on_lock_toggled)
-        general_layout.addRow("", self.lock_check)
+        controls_layout.addWidget(self.lock_check)
+
+        # Spacer to push Start button to the right or keep it near? 
+        # Let's keep it compact.
+        controls_layout.addStretch()
 
         # Start/Stop
         self.btn_run = QPushButton(tr("Start"))
         self.btn_run.setCheckable(True)
         self.btn_run.clicked.connect(self.on_run_clicked)
-        general_layout.addRow(self.btn_run)
-        
-        # NCO Averaging Settings
-        from PyQt6.QtWidgets import QSpinBox
-        self.avg_spin = QSpinBox()
-        self.avg_spin.setRange(1, 1000)
-        self.avg_spin.setValue(self.module.nco_avg_count)
-        self.avg_spin.valueChanged.connect(self.on_avg_changed)
-        general_layout.addRow(tr("NCO Avg Count:"), self.avg_spin)
+        controls_layout.addWidget(self.btn_run)
 
-        # Variance Display
-        self.lbl_nco_var = QLabel("σ: 0.00 Hz")
-        general_layout.addRow(tr("NCO Std Dev:"), self.lbl_nco_var)
+        main_layout.addLayout(controls_layout)
 
-        self.tabs.addTab(self.tab_general, tr("General"))
-
-        # Tab 2: PID Settings
-        self.tab_pid = QWidget()
-        pid_layout = QFormLayout(self.tab_pid)
-
-        self.kp_spin = QDoubleSpinBox()
-        self.kp_spin.setRange(0.0, 100.0)
-        self.kp_spin.setSingleStep(0.1)
-        self.kp_spin.setValue(self.module.pid.kp)
-        self.kp_spin.valueChanged.connect(self.on_pid_changed)
-        pid_layout.addRow(tr("Proportional (Kp):"), self.kp_spin)
-
-        self.ki_spin = QDoubleSpinBox()
-        self.ki_spin.setRange(0.0, 100.0)
-        self.ki_spin.setSingleStep(0.1)
-        self.ki_spin.setValue(self.module.pid.ki)
-        self.ki_spin.valueChanged.connect(self.on_pid_changed)
-        pid_layout.addRow(tr("Integral (Ki):"), self.ki_spin)
-
-        self.kd_spin = QDoubleSpinBox()
-        self.kd_spin.setRange(0.0, 100.0)
-        self.kd_spin.setSingleStep(0.001)
-        self.kd_spin.setDecimals(4)
-        self.kd_spin.setValue(self.module.pid.kd)
-        self.kd_spin.valueChanged.connect(self.on_pid_changed)
-        pid_layout.addRow(tr("Derivative (Kd):"), self.kd_spin)
-
-        self.tabs.addTab(self.tab_pid, tr("PID Control"))
-
-        # -- Plots --
+        # -- Plots (Splitter) --
+        # We move the splitter INSIDE the Main tab so it takes up the rest of the space
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        layout.addWidget(splitter)
+        main_layout.addWidget(splitter)
 
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
 
         # Frequency Deviation Data
         self.plot_freq = pg.PlotWidget(title=tr("Frequency Deviation Δf (Hz)"))
@@ -490,6 +442,94 @@ class LockInFrequencyCounterWidget(QWidget):
         self.plot_iq.addItem(self.scatter_iq)
         splitter.addWidget(self.plot_iq)
 
+        splitter.setSizes([600, 300])
+
+        self.tabs.addTab(self.tab_main, tr("Main"))
+
+        # =======================
+        # Tab 2: Settings (PID, Input, Stats)
+        # =======================
+        self.tab_settings = QWidget()
+        settings_layout = QVBoxLayout(self.tab_settings)
+
+        # -- Group 1: Input & Gate --
+        group_input = QGroupBox(tr("Input & Signal Detection"))
+        form_input = QFormLayout(group_input)
+
+        # Ref Mode
+        self.ref_combo = QComboBox()
+        self.ref_combo.addItems([tr("Internal (NCO)"), tr("Loopback (Ref Out)")])
+        self.ref_combo.currentIndexChanged.connect(self.on_ref_mode_changed)
+        form_input.addRow(tr("Reference Mode:"), self.ref_combo)
+
+        # Input Channel (L/R)
+        self.input_ch_combo = QComboBox()
+        self.input_ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
+        self.input_ch_combo.setCurrentIndex(int(getattr(self.module, "signal_channel", 0)))
+        self.input_ch_combo.currentIndexChanged.connect(self.on_input_channel_changed)
+        form_input.addRow(tr("Channel:"), self.input_ch_combo)
+
+        # Signal gate
+        self.gate_spin = QDoubleSpinBox()
+        self.gate_spin.setRange(-120.0, 0.0)
+        self.gate_spin.setDecimals(1)
+        self.gate_spin.setSingleStep(1.0)
+        self.gate_spin.setValue(float(getattr(self.module, "gate_threshold_db", -60.0)))
+        self.gate_spin.setSuffix(" dB")
+        self.gate_spin.valueChanged.connect(self.on_gate_changed)
+        form_input.addRow(tr("Gate Threshold:"), self.gate_spin)
+
+        settings_layout.addWidget(group_input)
+
+        # -- Group 2: Statistics / Display --
+        group_stats = QGroupBox(tr("Statistics & Averaging"))
+        form_stats = QFormLayout(group_stats)
+
+        # NCO Averaging Settings
+        from PyQt6.QtWidgets import QSpinBox
+        self.avg_spin = QSpinBox()
+        self.avg_spin.setRange(1, 1000)
+        self.avg_spin.setValue(self.module.nco_avg_count)
+        self.avg_spin.valueChanged.connect(self.on_avg_changed)
+        form_stats.addRow(tr("NCO Avg Count:"), self.avg_spin)
+
+        # Variance Display
+        self.lbl_nco_var = QLabel("σ: 0.00 Hz")
+        form_stats.addRow(tr("NCO Std Dev:"), self.lbl_nco_var)
+
+        settings_layout.addWidget(group_stats)
+
+        # -- Group 3: PID Parameters --
+        group_pid = QGroupBox(tr("PID Control Loop"))
+        form_pid = QFormLayout(group_pid)
+
+        self.kp_spin = QDoubleSpinBox()
+        self.kp_spin.setRange(0.0, 100.0)
+        self.kp_spin.setSingleStep(0.1)
+        self.kp_spin.setValue(self.module.pid.kp)
+        self.kp_spin.valueChanged.connect(self.on_pid_changed)
+        form_pid.addRow(tr("Proportional (Kp):"), self.kp_spin)
+
+        self.ki_spin = QDoubleSpinBox()
+        self.kp_spin.setRange(0.0, 100.0)
+        self.ki_spin.setSingleStep(0.1)
+        self.ki_spin.setValue(self.module.pid.ki)
+        self.ki_spin.valueChanged.connect(self.on_pid_changed)
+        form_pid.addRow(tr("Integral (Ki):"), self.ki_spin)
+
+        self.kd_spin = QDoubleSpinBox()
+        self.kd_spin.setRange(0.0, 100.0)
+        self.kd_spin.setSingleStep(0.001)
+        self.kd_spin.setDecimals(4)
+        self.kd_spin.setValue(self.module.pid.kd)
+        self.kd_spin.valueChanged.connect(self.on_pid_changed)
+        form_pid.addRow(tr("Derivative (Kd):"), self.kd_spin)
+
+        settings_layout.addWidget(group_pid)
+        settings_layout.addStretch() # Push everything up
+
+        self.tabs.addTab(self.tab_settings, tr("Settings"))
+
         # -- Meters --
         meters_layout = QHBoxLayout()
 
@@ -508,8 +548,6 @@ class LockInFrequencyCounterWidget(QWidget):
         meters_layout.addWidget(self.lbl_phase)
 
         layout.addLayout(meters_layout)
-
-        splitter.setSizes([600, 300])
 
     def on_freq_changed(self, val):
         self.module.gen_frequency = val
