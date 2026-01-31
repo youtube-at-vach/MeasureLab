@@ -2,7 +2,6 @@ import sys
 import os
 import unittest
 from unittest.mock import MagicMock
-import numpy as np
 
 # Set environment for headless testing
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
