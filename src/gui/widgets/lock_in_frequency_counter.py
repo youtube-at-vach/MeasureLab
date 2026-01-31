@@ -44,10 +44,9 @@ class LockInFrequencyCounter(MeasurementModule):
         self.smoothing_tau = 2.0
         self.locked = False
         self.feedback_gain = 0.5
-        
+
         # Stability Stats
-        self.nco_history = deque(maxlen=100) # Last 10 seconds @ 10Hz
-        self.nco_std = 0.0
+
 
         # Internal State
         self._nco_phase = 0.0
@@ -277,18 +276,18 @@ class LockInFrequencyCounter(MeasurementModule):
                 # Here we use smoothed (approx 2s tau) which makes the loop slow but stable.
                 # If we want faster lock, we reduce tau or use current_freq_dev.
                 # Let's use smoothed for stability as requested ("integration value").
-                
+
                 # Feedback controller: F_nco_new = F_nco_old + Gain * Error
                 # Error is delta_f (difference between Signal and NCO).
                 # If Delta F is positive, Signal > NCO. We need to INCREASE NCO.
-                
+
                 correction = self.smoothed_freq_dev * self.feedback_gain
-                
+
                 new_freq = self.gen_frequency + correction
-                
+
                 # Safety Clamp
                 new_freq = max(20.0, min(new_freq, 20000.0))
-                
+
                 self.gen_frequency = new_freq
 
 
@@ -301,25 +300,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)  # 10Hz
 
-    def get_decimal_places(self, val_std, default=6, max_places=6):
-        """
-        Determine optimal decimal places based on standard deviation.
-        Clamped to max_places (default 6) to avoid excessive digits.
-        """
-        if val_std <= 1e-12:
-            return default
-            
-        try:
-            places = -int(np.floor(np.log10(val_std)))
-            
-            # Clamp to reasonable range for Frequency (e.g. 2 to max)
-            if places < 2:
-                places = 2
-            if places > max_places:
-                places = max_places
-            return places
-        except Exception:
-            return default
+
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -333,7 +314,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.freq_spin.setRange(20, 20000)
         self.freq_spin.setValue(1000.0)
         self.freq_spin.setSuffix(" Hz")
-        self.freq_spin.setDecimals(4)
+        self.freq_spin.setDecimals(5)
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
         controls_layout.addRow(tr("NCO Frequency:"), self.freq_spin)
 
@@ -434,7 +415,7 @@ class LockInFrequencyCounterWidget(QWidget):
     def on_ref_mode_changed(self, idx):
         modes = ["internal", "loopback"]
         self.module.ref_mode = modes[idx]
-        
+
         # Disable Lock (FLL) if in Loopback/Ref Out mode
         # Index 1 is Loopback
         is_loopback = (idx == 1)
@@ -498,17 +479,9 @@ class LockInFrequencyCounterWidget(QWidget):
             self.lbl_phase.setText(tr("φ: {0:.2f}°").format(self.module.current_phase_deg))
 
             # Update NCO display if locked (and changed)
+            # Update NCO display if locked (and changed)
             if self.module.locked:
-                # Dynamic Precision
-                # User prefers around 6 digits. Let's clamp between 4 and 6 for stability.
-                decimals = self.get_decimal_places(self.module.nco_std, default=6, max_places=6)
-                if decimals < 4: 
-                     decimals = 4 # Minimum 4 digits
-                
                 # Block signals to prevent on_freq_changed loop
                 self.freq_spin.blockSignals(True)
-                self.freq_spin.setDecimals(decimals)
                 self.freq_spin.setValue(self.module.gen_frequency)
                 self.freq_spin.blockSignals(False)
-            else:
-                self.freq_spin.setDecimals(4) # Default manual precision
