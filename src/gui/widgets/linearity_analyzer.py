@@ -485,7 +485,15 @@ class LinearityAnalyzerWidget(QWidget):
         self.error_plot.addItem(self.noise_label)
         self.noise_label.setVisible(False)
 
-        # Add tolerance lines? +/- 1dB maybe?
+        # Tolerance lines (+/- 1dB)
+        self.tol_line_plus = pg.InfiniteLine(
+            angle=0, pos=1.0, pen=pg.mkPen((0, 200, 0), width=1, style=Qt.PenStyle.DashLine)
+        )
+        self.tol_line_minus = pg.InfiniteLine(
+            angle=0, pos=-1.0, pen=pg.mkPen((0, 200, 0), width=1, style=Qt.PenStyle.DashLine)
+        )
+        self.error_plot.addItem(self.tol_line_plus)
+        self.error_plot.addItem(self.tol_line_minus)
 
         plot_layout.addWidget(self.error_plot)
 
