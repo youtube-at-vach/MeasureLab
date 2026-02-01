@@ -1,0 +1,22 @@
+name: 💡 Feature Request / 機能提案
+description: こんな機能が欲しい、というアイデアはこちら
+title: "[Feature] "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🇯🇵 日本語でどうぞ。
+        思いついたままでOKです。
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: どんな機能ですか？
+      placeholder: |
+        例：
+        ・AC 電圧を大きく表示するメーターが欲しい
+        ・コヒーレンス表示が見たい
+    validations:
+      required: true
