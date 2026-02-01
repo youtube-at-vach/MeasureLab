@@ -6,7 +6,7 @@ import pytest
 from PyQt6.QtWidgets import QApplication
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.core.audio_engine import AudioEngine
 from src.gui.widgets.distortion_analyzer import DistortionAnalyzer

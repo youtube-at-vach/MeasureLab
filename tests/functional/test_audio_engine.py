@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.core.audio_engine import AudioEngine
 

@@ -9,7 +9,7 @@ sys.modules['sounddevice'] = MagicMock()
 import numpy as np  # noqa: E402
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.gui.widgets.signal_generator import SignalGenerator  # noqa: E402
 
