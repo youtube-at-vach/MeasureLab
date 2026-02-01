@@ -1040,5 +1040,8 @@
     "Integral (Ki):": "积分 (Ki):",
     "Lock NCO to Signal (FLL)": "锁定 NCO 到信号 (FLL)",
     "NCO Avg Count:": "NCO 平均计数:",
-    "NCO Std Dev:": "NCO 标准差:"
+    "NCO Std Dev:": "NCO 标准差:",
+    "DSB (AM)": "DSB (AM)",
+    "LSB": "LSB",
+    "USB": "USB"
 }

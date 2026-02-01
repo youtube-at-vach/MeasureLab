@@ -1040,5 +1040,8 @@
     "Integral (Ki):": "Intégrale (Ki) :",
     "Lock NCO to Signal (FLL)": "Verrouiller NCO sur le signal (FLL)",
     "NCO Avg Count:": "Nombre de moyennes NCO :",
-    "NCO Std Dev:": "Écart-type NCO :"
+    "NCO Std Dev:": "Écart-type NCO :",
+    "DSB (AM)": "DSB (AM)",
+    "LSB": "LSB",
+    "USB": "USB"
 }

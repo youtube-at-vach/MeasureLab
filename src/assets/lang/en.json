@@ -1029,5 +1029,8 @@
     "Start Level:": "Start Level:",
     "Sweep failed:\n{0}": "Sweep failed:\n{0}",
     "Plot Controls": "Plot Controls",
-    "Y-Axis Zoom:": "Y-Axis Zoom:"
+    "Y-Axis Zoom:": "Y-Axis Zoom:",
+    "DSB (AM)": "DSB (AM)",
+    "LSB": "LSB",
+    "USB": "USB"
 }
