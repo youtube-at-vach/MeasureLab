@@ -4,6 +4,7 @@ This directory contains tests that verify the basic implementation of features.
 These tests act as "smoke tests" or "integration integrity checks".
 
 **Purpose:**
+
 - Ensure components (Widgets, Classes) initialize and run correctly.
 - Verify state transitions (e.g. valid -> invalid, run -> stop).
 - Check for crashes or obvious errors (e.g. NoneType exceptions).
