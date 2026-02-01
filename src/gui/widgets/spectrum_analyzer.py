@@ -663,32 +663,8 @@ class SpectrumAnalyzerWidget(QWidget):
             # Unroll ring buffer for display/analysis
             data = np.roll(self.module.input_data, -self.module.write_head, axis=0)
 
-        # Calculate Overall RMS (dBFS) - Raw Time Domain (Unweighted)
-        # This is calculated for reference, but we will overwrite it with weighted value later
-        rms = np.sqrt(np.mean(data**2))
-        overall_db = 20 * np.log10(rms + 1e-12)
-
-        if self.module.display_unit == "dBV":
-            # Convert to dBV
-            offset = self.module.audio_engine.calibration.get_input_offset_db()
-            overall_db += offset
-        elif self.module.display_unit == "dB SPL":
-            # Convert to SPL
-            # We need to use the method from calibration that includes offset
-            # But here we have the "Unweighted" raw dBFS.
-            # Ideally "Overall" for SPL should be C-weighted or whatever the user calibrated with?
-            # Usually Sound Level Meters show A-weighted or C-weighted overall.
-            # The user calibrated "dBFS_C" -> "SPL".
-            # If we just add offset to unweighted dBFS, it's "Unweighted SPL" (Linear).
-            # That's probably fine for "Overall" if we qualify it.
-            # Or we should apply C-weighting to overall?
-            # Let's stick to adding offset for now.
-
-            spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
-            if spl_offset is not None:
-                overall_db += spl_offset
-        else:
-            pass
+        # Overall RMS is calculated later from the power spectrum (see overall_weighted_db)
+        # to correctly apply weighting (A/C/Z) and calibration.
 
         # Frequency axis
         sample_rate = self.module.audio_engine.sample_rate
