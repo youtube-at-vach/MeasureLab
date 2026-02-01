@@ -30,9 +30,10 @@ def _calculate_ra_raw(f):
 
 
 @functools.lru_cache(maxsize=32)
-def _compute_a_weighting_curve(n_bins, step):
+def _compute_a_weighting_sq_curve(n_bins, step):
     f = np.arange(n_bins) * step
-    return _calculate_ra_raw(f)
+    ra = _calculate_ra_raw(f)
+    return (ra * 1.2589) ** 2
 
 
 @functools.lru_cache(maxsize=32)
@@ -592,6 +593,10 @@ class AudioCalc:
             if abs(freqs[-1] - freq_step * (len(freqs) - 1)) < 1e-4:
                 is_linear_freqs = True
 
+        # Pre-calculate squared magnitude and bin width
+        mag_sq = mag**2
+        bin_width = freq_step if is_linear_freqs else (freqs[1] - freqs[0] if len(freqs) > 1 else 1.0)
+
         def get_index(f, side="left"):
             if is_linear_freqs:
                 val = f / freq_step
@@ -615,11 +620,9 @@ class AudioCalc:
             if idx_start >= idx_end:
                 return 0.0
 
-            # Integration: Power = sum(PSD^2 * bin_width)
-            # mag is V/rtHz. mag^2 is V^2/Hz.
-            # bin_width = fs / N = freqs[1] - freqs[0]
-            bin_width = freq_step if is_linear_freqs else (freqs[1] - freqs[0] if len(freqs) > 1 else 1.0)
-            power = np.sum(mag[idx_start:idx_end] ** 2) * bin_width
+            # Integration: Power = sum(PSD * bin_width)
+            # mag is V/rtHz. mag_sq is V^2/Hz (PSD).
+            power = np.sum(mag_sq[idx_start:idx_end]) * bin_width
             return power
 
         p50 = get_power_in_band(50.0)
@@ -773,8 +776,8 @@ class AudioCalc:
 
             if idx_start >= idx_end:
                 return 0.0
-            bin_width = freq_step if is_linear_freqs else (freqs[1] - freqs[0] if len(freqs) > 1 else 1.0)
-            return np.sqrt(np.sum(mag[idx_start:idx_end] ** 2) * bin_width)
+            # bin_width is pre-calculated
+            return np.sqrt(np.sum(mag_sq[idx_start:idx_end]) * bin_width)
 
         results["noise_rms_20k"] = integrate_band(20, 20000)
         results["noise_rms_100k"] = integrate_band(20, 100000)
@@ -809,25 +812,22 @@ class AudioCalc:
             step = freqs[1]
             # Check linearity (approximate) to safely use cache
             if abs(freqs[-1] - step * (len(freqs) - 1)) < 1e-5:
-                Ra = _compute_a_weighting_curve(len(freqs), step)
+                weighting_sq = _compute_a_weighting_sq_curve(len(freqs), step)
                 use_cached = True
 
         if not use_cached:
             Ra = _calculate_ra_raw(freqs)
-
-        weighting_linear = Ra * 1.2589
-
-        # Apply weighting to magnitude (V/rtHz)
-        mag_a = mag * weighting_linear
+            weighting_sq = (Ra * 1.2589) ** 2
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
         i_a_start = get_index(20.0, side="left")
         i_a_end = get_index(20000.0, side="right")
 
         # Integration
-        # Power = sum(PSD^2 * bin_width)
-        bin_width = freq_step if is_linear_freqs else (freqs[1] - freqs[0] if len(freqs) > 1 else 1.0)
-        power_a = np.sum(mag_a[i_a_start:i_a_end] ** 2) * bin_width
+        # Power = sum(PSD * Weight^2 * bin_width)
+        # Avoid allocating full weighted magnitude array
+        weighted_power_slice = mag_sq[i_a_start:i_a_end] * weighting_sq[i_a_start:i_a_end]
+        power_a = np.sum(weighted_power_slice) * bin_width
 
         results["noise_rms_a_weighted"] = np.sqrt(power_a)
 
