@@ -14,10 +14,42 @@
 > * **Unverified**: We do not verify this build as we do not own Mac hardware.
 > * **Unsigned**: This application is not signed with an Apple Developer ID. You may need to bypass Gatekeeper to run it.
 
+### Added
+
+* UI: `Linearity Analyzer` に Y 軸ズーム設定（+/- 1dB 許容線表示など）を追加
+* UI: `Lock-in Frequency Counter` に PID 制御、FLL (Frequency Locked Loop)、および統計表示機能を追加
+* UI: `Lock-in Frequency Counter` にプロット平滑化（Smoothing）機能を追加
+* Core: `Ultrasound Modulator` のヒルベルトフィルタ設計にフォールバック処理を追加
+* Core: `Frequency Counter` にセグメント長の自動最適化およびブラックマン窓を導入し、精度を向上
+* Core: `Audio Engine` において、Audio Host API (WASAPI/ASIO等) 情報を保存・利用し、デバイス特定精度を向上
+* Tool: Pytest 実行用のエージェントワークフローおよび `tool_usage.md` を追加
+
 ### Changed
 
-* Docs: README およびコントリビューター情報を更新
+* Perf: `HRTF` 指標計算（ITD/ILD/Energy/GD）をベクトル化により高速化
+* Perf: `Linearity Analyzer` のコールバックバッファを最適化
+* Perf: `SoundLevelMeter` の統計およびヒストグラムの GUI 更新レートを最適化
+* Perf: `Lock-in` 計算において、参照信号のキャッシュ化と配列の書き込み可能性を確保し最適化
+* Core: `Linearity Analyzer` のループバック参照時に FLL ロックを無効化するよう改善
+* Core: `Frequency Counter` の表示精度（小数点以下桁数）を標準偏差に基づき動的に調整
+* Core: システム言語の自動検出ロジックを向上（Windows ロケールマッピングの追加）
+* UI: `Lock-in Frequency Counter` の UI をタブ構成に整理し、操作性を改善
+* Docs: `README.md` およびプロジェクト紹介動画、コントリビューター情報を更新
 * Docs: ロックイン周波数カウンターの NCO 周波数に関する注記を追加
+* Docs: `PROPOSED_FEATURES.md` に新規提案を追加
+* Docs: オシロスコープのマニュアルに A/B 数学モードの記述を追加
+* Docs: `tool_usage.md` を追加し、テスト・リンターの実行手順を整備
+
+### Fixed
+
+* Fix: `Oscilloscope` および `Spectrum Analyzer` のオーディオコールバックにおけるレースコンディションを `queue` の導入により修正
+* Fix: `Linearity Analyzer` において無音信号時の SNR 計算が不安定になる不具合を修正
+* Fix: `Advanced Distortion Meter` の PIM 解析でビンにスナップした周波数を使用するよう修正
+* Fix: `Frequency Counter` のモード切替時のリセット処理およびタイミングループを修正
+* Fix: `Ultrasound Modulator` および `Linearity Analyzer` における翻訳キーの漏れ（Translation leaks）を修正
+* Fix: `ConfigManager` における不要な空行の削除
+* CI: `test_frequency_counter_reset.py` におけるリンターエラーを修正
+* Build: `pyqt6-qt6` 等の依存関係をアップデート
 * Refactor: テストコードの構成を `functional`, `logic_verification`, `benchmarks` に再編し可読性を向上
 * CI/CD: Mac 版ビルドワークフロー (試験的) を追加
 
