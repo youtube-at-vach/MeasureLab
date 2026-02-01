@@ -5,6 +5,7 @@
 ## Overview
 
 This tool measures and displays the frequency of input signals with high precision.
+It achieves extremely high measurement accuracy through the adoption of the Blackman window function and automatic optimization of segment length.
 In addition to simply showing the "current frequency," it allows for detailed analysis of frequency fluctuations (jitter) and variations over time (drift).
 It can be used for measuring the stability of crystal oscillators, instrument tuning, rotation speed measurement, and more.
 

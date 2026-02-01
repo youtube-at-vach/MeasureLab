@@ -60,6 +60,13 @@ Sets the range and resolution of the measurement.
     * **dBFS**: Digital Full Scale reference.
     * **dBV**: Voltage reference (valid when calibration settings are active).
 
+### Plot Controls
+
+* **Y-Axis Zoom**: Changes the vertical axis zoom level of the graph (Linearity Error).
+    * **Auto**: Automatically adjusts to fit the data.
+    * **0.1 dB - 20.0 dB**: Fixes the view to the specified range (±).
+    * **Tolerance Lines**: Green dashed lines indicating a tolerance of ±1.0 dB are displayed on the graph.
+
 ## Usage Examples
 
 ### Checking DAC Low-Level Reproduction Capability
