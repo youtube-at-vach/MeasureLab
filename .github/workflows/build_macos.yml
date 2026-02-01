@@ -73,6 +73,11 @@ jobs:
           --target-architecture arm64 \
           main_gui.py
 
+    - name: Verify macOS Application (Self-Test)
+      run: |
+        echo "Testing dist/MeasureLab.app/Contents/MacOS/MeasureLab with --self-test..."
+        ./dist/MeasureLab.app/Contents/MacOS/MeasureLab --self-test
+
     - name: Create DMG
       run: |
         # Create DMG using create-dmg
