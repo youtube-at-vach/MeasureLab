@@ -1,5 +1,5 @@
 name: 🐞 Bug Report / バグ報告
-description: 不具合の報告はこちら（日本語OK）
+description: Create a report to help us improve / 不具合の報告はこちら
 title: "[Bug] "
 labels: ["bug"]
 
@@ -11,11 +11,15 @@ body:
         英語が苦手でも問題ありません。
         短くても大丈夫です 👍
 
+        🇺🇸 **English is also welcome.**
+        Feel free to write in English if you prefer.
+        Short descriptions are fine too 👍
+
   - type: input
     id: version
     attributes:
-      label: MeasureLab のバージョン
-      description: 例）v0.13.0
+      label: Version / MeasureLab のバージョン
+      description: e.g. v0.13.0 / 例）v0.13.0
       placeholder: "v0.xx.x"
     validations:
       required: true
@@ -28,33 +32,52 @@ body:
         - Windows
         - Linux
         - macOS
-        - その他
+        - Other / その他
     validations:
       required: true
 
   - type: dropdown
     id: audio
     attributes:
-      label: オーディオ環境
+      label: Audio Backend / オーディオ環境
       options:
-        - 内蔵サウンド
-        - USB オーディオIF
+        - Built-in Sound / 内蔵サウンド
+        - USB Audio Interface / USB オーディオIF
         - ASIO
         - WASAPI
-        - 不明
+        - Unknown / 不明
     validations:
       required: true
 
   - type: textarea
     id: what_happened
     attributes:
-      label: 何が起きましたか？
+      label: What happened? / 何が起きましたか？
       description: |
-        操作手順と、起きたことを書いてください。
-        箇条書きでOKです。
+        Please describe the steps to reproduce the issue and what happened. Bullet points are fine.
+        操作手順と、起きたことを書いてください。箇条書きでOKです。
       placeholder: |
-        1. ○○をクリック
-        2. △△を設定
-        3. エラーが出た
+        1. Clicked XX / ○○をクリック
+        2. Set YY / △△を設定
+        3. Error occurred / エラーが出た
     validations:
       required: true
+
+  - type: checkboxes
+    id: credit
+    attributes:
+      label: Credit / クレジット表記について
+      description: |
+        If this Issue helps improve the project, may we list your name in the README or Release Notes? (Optional)
+        この Issue の内容がプロジェクト改善に役立った場合、README や Release Notes にお名前を載せてもよいですか？（任意）
+      options:
+        - label: Yes, I agree to be listed as a contributor / はい、コントリビューターとして名前を載せてもOKです
+
+  - type: input
+    id: credit_name
+    attributes:
+      label: Name to be listed (Optional) / 掲載する名前（任意）
+      description: |
+        GitHub ID, handle, nickname, etc. Anything is fine. Leaving it blank is also OK.
+        GitHub ID、ハンドルネーム、ニックネームなど、何でも構いません。空欄でもOKです。
+      placeholder: "e.g. @username / Taro / anonymous / 例）@username / Taro / anonymous"
