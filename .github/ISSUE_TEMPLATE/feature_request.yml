@@ -1,5 +1,5 @@
 name: 💡 Feature Request / 機能提案
-description: こんな機能が欲しい、というアイデアはこちら
+description: Suggest an idea for this project / こんな機能が欲しい、というアイデアはこちら
 title: "[Feature] "
 labels: ["enhancement"]
 
@@ -10,13 +10,35 @@ body:
         🇯🇵 日本語でどうぞ。
         思いついたままでOKです。
 
+        🇺🇸 English comments are welcome.
+        Feel free to share your ideas.
+
   - type: textarea
     id: idea
     attributes:
-      label: どんな機能ですか？
+      label: What kind of feature? / どんな機能ですか？
       placeholder: |
-        例：
-        ・AC 電圧を大きく表示するメーターが欲しい
-        ・コヒーレンス表示が見たい
+        Example:
+        - I want a meter that displays AC voltage in large text / AC 電圧を大きく表示するメーターが欲しい
+        - I want to see coherence display / コヒーレンス表示が見たい
     validations:
       required: true
+
+  - type: checkboxes
+    id: credit
+    attributes:
+      label: Credit / クレジット表記について
+      description: |
+        If this Issue helps improve the project, may we list your name in the README or Release Notes? (Optional)
+        この Issue の内容がプロジェクト改善に役立った場合、README や Release Notes にお名前を載せてもよいですか？（任意）
+      options:
+        - label: Yes, I agree to be listed as a contributor / はい、コントリビューターとして名前を載せてもOKです
+
+  - type: input
+    id: credit_name
+    attributes:
+      label: Name to be listed (Optional) / 掲載する名前（任意）
+      description: |
+        GitHub ID, handle, nickname, etc. Anything is fine. Leaving it blank is also OK.
+        GitHub ID、ハンドルネーム、ニックネームなど、何でも構いません。空欄でもOKです。
+      placeholder: "e.g. @username / Taro / anonymous / 例）@username / Taro / anonymous"
