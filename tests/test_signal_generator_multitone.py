@@ -109,11 +109,26 @@ def test_multitone_dc_nyquist_handling():
     print(f"Max Diff (Nyquist test): {max_diff}")
 
 
+def test_multitone_zero_count():
+    """Test that zero tone count results in silence and no crash."""
+    mock_engine = MagicMock()
+    mock_engine.sample_rate = 48000
+    sg = SignalGenerator(mock_engine)
+
+    sg.params_L.multitone_count = 0
+    sg.params_L.start_freq = 20.0
+    sg.params_L.end_freq = 20000.0
+
+    signal = sg._generate_multitone(sg.params_L, 48000)
+    assert np.all(signal == 0), "Zero count should produce silence"
+
+
 if __name__ == "__main__":
     try:
         test_multitone_correctness()
         test_multitone_high_count()
         test_multitone_dc_nyquist_handling()
+        test_multitone_zero_count()
         print("All multitone tests passed!")
     except AssertionError as e:
         print(f"Test FAILED: {e}")

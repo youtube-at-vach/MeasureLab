@@ -198,10 +198,13 @@ class SignalGenerator(MeasurementModule):
         bin_width = sample_rate / N
         freqs = np.round(freqs / bin_width) * bin_width
 
-        phases = np.pi * (np.arange(len(freqs)) ** 2) / len(freqs)
-
         # Optimize using IFFT (sum of sines -> Inverse Fourier Transform)
         # 100x-1000x faster than loop for large tone counts
+        if len(freqs) == 0:
+            return np.zeros(N)
+
+        phases = np.pi * (np.arange(len(freqs)) ** 2) / len(freqs)
+
         indices = np.round(freqs / bin_width).astype(int)
         spectrum = np.zeros(N // 2 + 1, dtype=np.complex128)
 
@@ -214,12 +217,10 @@ class SignalGenerator(MeasurementModule):
         np.add.at(spectrum, indices, coeffs)
 
         # Correction for DC (index 0) and Nyquist (index N/2)
-        if indices.min() == 0:
-            spectrum[0] *= 2
-
-        if N % 2 == 0 and indices.max() >= N // 2:
-            if N // 2 in indices:
-                spectrum[N // 2] *= 2
+        # Unconditionally apply factor 2. If bin is 0, it remains 0.
+        spectrum[0] *= 2
+        if N % 2 == 0:
+            spectrum[N // 2] *= 2
 
         signal = np.fft.irfft(spectrum, n=N)
 
