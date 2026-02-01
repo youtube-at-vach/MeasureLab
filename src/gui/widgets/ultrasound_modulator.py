@@ -605,13 +605,17 @@ class UltrasoundModulatorWidget(QWidget):
         mode_label = QLabel(tr("Carrier Mode:"))
         mode_layout = QHBoxLayout()
         self.mode_bg = QButtonGroup()
-        for label, val in [("DSB (AM)", "DSB"), ("USB", "USB"), ("LSB", "LSB")]:
+
+        # ID: 0=DSB, 1=USB, 2=LSB
+        modes = [(tr("DSB (AM)"), "DSB"), (tr("USB"), "USB"), (tr("LSB"), "LSB")]
+
+        for i, (label, val) in enumerate(modes):
             rb = QRadioButton(label)
             if val == self.module.modulation_mode:
                 rb.setChecked(True)
-            self.mode_bg.addButton(rb)
+            self.mode_bg.addButton(rb, i)
             mode_layout.addWidget(rb)
-        self.mode_bg.buttonClicked.connect(self.on_mode_rb_clicked)
+        self.mode_bg.idClicked.connect(self.on_mode_rb_id_clicked)
         form_layout.addRow(mode_label, mode_layout)
 
         tab1_layout.addLayout(form_layout)
@@ -630,13 +634,17 @@ class UltrasoundModulatorWidget(QWidget):
         in_grp = QGroupBox(tr("Input Channel"))
         in_layout = QHBoxLayout()
         self.in_bg = QButtonGroup()
-        for label, val in [(tr("L"), "L"), (tr("R"), "R"), (tr("Stereo"), "Stereo")]:
+
+        # ID: 0=L, 1=R, 2=Stereo
+        in_modes = [(tr("L"), "L"), (tr("R"), "R"), (tr("Stereo"), "Stereo")]
+
+        for i, (label, val) in enumerate(in_modes):
             rb = QRadioButton(label)
             if val == self.module.input_mode:
                 rb.setChecked(True)
-            self.in_bg.addButton(rb)
+            self.in_bg.addButton(rb, i)
             in_layout.addWidget(rb)
-        self.in_bg.buttonClicked.connect(self.on_in_mode_changed)
+        self.in_bg.idClicked.connect(self.on_in_mode_id_clicked)
         in_grp.setLayout(in_layout)
         routing_layout.addWidget(in_grp)
 
@@ -644,13 +652,17 @@ class UltrasoundModulatorWidget(QWidget):
         out_grp = QGroupBox(tr("Output Channel"))
         out_layout = QHBoxLayout()
         self.out_bg = QButtonGroup()
-        for label, val in [(tr("L"), "L"), (tr("R"), "R"), (tr("Stereo"), "Stereo")]:
+
+        # ID: 0=L, 1=R, 2=Stereo
+        out_modes = [(tr("L"), "L"), (tr("R"), "R"), (tr("Stereo"), "Stereo")]
+
+        for i, (label, val) in enumerate(out_modes):
             rb = QRadioButton(label)
             if val == self.module.output_mode:
                 rb.setChecked(True)
-            self.out_bg.addButton(rb)
+            self.out_bg.addButton(rb, i)
             out_layout.addWidget(rb)
-        self.out_bg.buttonClicked.connect(self.on_out_mode_changed)
+        self.out_bg.idClicked.connect(self.on_out_mode_id_clicked)
         out_grp.setLayout(out_layout)
         routing_layout.addWidget(out_grp)
 
@@ -688,22 +700,6 @@ class UltrasoundModulatorWidget(QWidget):
         self.setLayout(layout)
 
         # Meters - Add to bottom (outside tabs) but above button?
-        # User requested shorter height. Meters at bottom might be good.
-        # But earlier implementation had meters inside layout.
-        # Let's put meters ABOVE the Start Button.
-
-        # NOTE: In previous code, Meters were added before Start Button.
-        # My replacement block removed them (lines 480-503 in existing file were not included in my specific replacement block, but I am rewriting the file).
-        # Wait, I need to look at lines 480-503 again.
-        # Check Step 222. Lines 480-503 are creating meter_group and adding to layout.
-        # My replacement block REPLACED Controls Group and Switchs. It stopped before Meters?
-        # NO. Step 222 shows Meters starts at 480.
-        # My replacement block target ended at line 515.
-        # Start of replacement was line 350.
-        # So I DELETED Meters in the replacement block logic above?
-        # Yes.
-        # So I need to add Meters back.
-
         meter_group = QGroupBox(tr("Signal Levels"))
         meter_layout = QVBoxLayout()
         in_label = QLabel(tr("Input Level"))
@@ -724,15 +720,19 @@ class UltrasoundModulatorWidget(QWidget):
 
         meter_group.setLayout(meter_layout)
 
-        # Where to put meters? Global at bottom.
-        # Before start button?
-        # layout is VBox.
-        # widgets: Header, Safety, Tabs, Meters, StartBtn.
-
         layout.insertWidget(layout.indexOf(self.start_btn), meter_group)
 
-    def on_in_mode_changed(self, btn):
-        self.module.input_mode = btn.text()
+    def on_in_mode_id_clicked(self, id):
+        modes = {0: "L", 1: "R", 2: "Stereo"}
+        self.module.input_mode = modes.get(id, "L")
+
+    def on_out_mode_id_clicked(self, id):
+        modes = {0: "L", 1: "R", 2: "Stereo"}
+        self.module.output_mode = modes.get(id, "R")
+
+    def on_mode_rb_id_clicked(self, id):
+        modes = {0: "DSB", 1: "USB", 2: "LSB"}
+        self.module.modulation_mode = modes.get(id, "DSB")
 
     def _lin2db(self, val):
         if val <= 0:
@@ -801,9 +801,6 @@ class UltrasoundModulatorWidget(QWidget):
         self.depth_spin.setValue(depth)
         self.depth_spin.blockSignals(False)
 
-    def on_out_mode_changed(self, btn):
-        self.module.output_mode = btn.text()
-
     def on_gain_changed(self, val):  # val is dB
         self.module.output_gain = self._db2lin(val)
         self.gain_slider.blockSignals(True)
@@ -818,22 +815,6 @@ class UltrasoundModulatorWidget(QWidget):
         self.gain_spin.setValue(gain_db)
         self.gain_spin.blockSignals(False)
         self.update_safety_status()
-
-    def on_mode_rb_clicked(self, btn):
-        # Map label to value if needed, but we stored vals in loop?
-        # QButtonGroup buttonClicked sends the button. We need to find which one.
-        # But we didn't store mapping.
-        # Let's infer from text.
-        text = btn.text()
-        if "DSB" in text:
-            mode = "DSB"
-        elif "USB" in text:
-            mode = "USB"
-        elif "LSB" in text:
-            mode = "LSB"
-        else:
-            mode = "DSB"
-        self.module.modulation_mode = mode
 
     def update_safety_status(self):
         if not self.module.is_running:

@@ -1040,5 +1040,8 @@
     "Statistics & Averaging": "Statistics & Averaging",
     "Lock NCO to Signal (FLL)": "Bloquear NCO ao Sinal (FLL)",
     "NCO Avg Count:": "Contagem de Médias NCO:",
-    "NCO Std Dev:": "Desvio Padrão NCO:"
+    "NCO Std Dev:": "Desvio Padrão NCO:",
+    "DSB (AM)": "DSB (AM)",
+    "LSB": "LSB",
+    "USB": "USB"
 }

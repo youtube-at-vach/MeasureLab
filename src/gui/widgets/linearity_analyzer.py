@@ -294,7 +294,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.module = module
 
         self.zoom_options = {
-            "Auto": None,
+            tr("Auto"): None,
             "20.0 dB": 20.0,
             "10.0 dB": 10.0,
             "5.0 dB": 5.0,

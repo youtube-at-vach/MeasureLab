@@ -1040,5 +1040,8 @@
     "PID Control Loop": "PID Control Loop",
     "Plot Smoothing:": "Plot Smoothing:",
     "Proportional (Kp):": "Proportional (Kp):",
-    "Statistics & Averaging": "Statistics & Averaging"
+    "Statistics & Averaging": "Statistics & Averaging",
+    "DSB (AM)": "DSB (AM)",
+    "LSB": "LSB",
+    "USB": "USB"
 }
