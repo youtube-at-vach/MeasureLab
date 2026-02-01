@@ -181,7 +181,7 @@ pip install -c constraints.txt -e .[dev]
 
 ## 👥 コントリビューター (Contributors)
 
-### 🧑‍💻 支援者 (Humans)
+### 🧑‍💻 サポートしてくれた皆さん (Thanks to everyone who helped improve this software)
 
 - [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
 - [バーチャ農ちゃんねる](https://www.youtube.com/@va-ch)
