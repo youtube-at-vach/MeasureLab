@@ -43,6 +43,18 @@ class HRTFData:
     energy_high: np.ndarray  # (M, 2) dB (8-16kHz energy L/R avg or diff?) -> Let's do Avg Energy
     group_delay_peak: np.ndarray  # (M, 2) samples or ms
 
+    def get_itd(self, swap_channels: bool) -> np.ndarray:
+        return -self.itd if swap_channels else self.itd
+
+    def get_ild(self, swap_channels: bool) -> np.ndarray:
+        return -self.ild if swap_channels else self.ild
+
+    def get_energy_high(self, swap_channels: bool) -> np.ndarray:
+        return self.energy_high
+
+    def get_group_delay_peak(self, swap_channels: bool) -> np.ndarray:
+        return self.group_delay_peak
+
 
 class SOFALoader:
     @staticmethod
@@ -626,32 +638,26 @@ class HRTFPlayerWidget(QWidget):
 
     def on_swap_toggled(self, checked):
         self.module.swap_channels = checked
-        self.update_plot()  # Now we should update plot because maybe we want to color code L/R diffs differently?
-        # Actually, if we swap, the metrics (ITD/ILD) computed at load time are NOT swapped in the data structure.
-        # But we are visualizing static metrics from the file.
-        # If the user swaps L/R for *playback*, they might assume metrics are also wrong.
-        # Ideally we recalculate metrics. But that's expensive without storing raw IRs nicely or re-running loading logic.
-        # For now, let's just re-trigger playback is handled by flag.
-        # Update plot is valid if we were dynamically calc'ing metrics, but we aren't.
-        # Just pass.
+        self.update_plot()
 
     def update_plot(self):
         data = self.module.hrtf_data
         if data is None:
             return
 
+        swap = self.module.swap_channels
         metric_idx = self.metric_combo.currentIndex()
         if metric_idx == 0:
-            vals = data.itd
+            vals = data.get_itd(swap)
             name = "ITD"
         elif metric_idx == 1:
-            vals = data.ild
+            vals = data.get_ild(swap)
             name = "ILD"
         elif metric_idx == 2:
-            vals = data.energy_high
+            vals = data.get_energy_high(swap)
             name = "Energy"
         else:
-            vals = data.group_delay_peak
+            vals = data.get_group_delay_peak(swap)
             name = "Delay Peak"
 
         # Update Title
