@@ -553,6 +553,7 @@ class SoundLevelMeterWidget(QWidget):
         self.module = module
         self.init_ui()
 
+        self.last_ln_update_time = 0.0
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
         self.timer.start(50)  # 20Hz refresh
@@ -843,22 +844,23 @@ class SoundLevelMeterWidget(QWidget):
 
         if (is_hist_tab or is_stats_tab) and self.module.ln_history:
             # We can optimize by not calculating every GUI frame (50ms), maybe every 250ms?
-            # But let's try direct first.
+            if time.monotonic() - self.last_ln_update_time >= 0.25:
+                self.last_ln_update_time = time.monotonic()
 
-            # For Stats tab
-            if is_stats_tab:
-                ln_stats = self.module.calculate_ln_statistics()
-                for key, lbl in self.ln_labels.items():
-                    val = ln_stats.get(key, -np.inf)
-                    lbl.setText(fmt(val) + " dB")
+                # For Stats tab
+                if is_stats_tab:
+                    ln_stats = self.module.calculate_ln_statistics()
+                    for key, lbl in self.ln_labels.items():
+                        val = ln_stats.get(key, -np.inf)
+                        lbl.setText(fmt(val) + " dB")
 
-            # For Histogram tab
-            if is_hist_tab:
-                centers, probs = self.module.get_ln_histogram(bin_size=0.5)
-                if len(centers) > 0:
-                    # Update bar graph
-                    # BarGraphItem needs x, height, width
-                    self.hist_item.setOpts(x=centers, height=probs, width=0.4)
+                # For Histogram tab
+                if is_hist_tab:
+                    centers, probs = self.module.get_ln_histogram(bin_size=0.5)
+                    if len(centers) > 0:
+                        # Update bar graph
+                        # BarGraphItem needs x, height, width
+                        self.hist_item.setOpts(x=centers, height=probs, width=0.4)
 
-                    # Auto range y?
-                    # self.plot_widget.setYRange(0, np.max(probs)*1.1)
+                        # Auto range y?
+                        # self.plot_widget.setYRange(0, np.max(probs)*1.1)
