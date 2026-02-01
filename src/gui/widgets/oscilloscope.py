@@ -268,12 +268,14 @@ class Oscilloscope(MeasurementModule):
         if t is None or y is None or len(t) < 2:
             return None
         if direction == "rising":
-            idxs = np.where((y[:-1] < level) & (y[1:] >= level))[0]
+            mask = (y[:-1] < level) & (y[1:] >= level)
         else:
-            idxs = np.where((y[:-1] > level) & (y[1:] <= level))[0]
-        if len(idxs) == 0:
+            mask = (y[:-1] > level) & (y[1:] <= level)
+
+        idx = np.argmax(mask)
+        if not mask[idx]:
             return None
-        i = int(idxs[0])
+        i = int(idx)
         y0 = float(y[i])
         y1 = float(y[i + 1])
         t0 = float(t[i])
