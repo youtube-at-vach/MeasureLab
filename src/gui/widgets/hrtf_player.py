@@ -192,6 +192,10 @@ class HRTFPlayer(MeasurementModule):
         # We need to store the tail of the convolution
         self.overlap_buffer: Optional[np.ndarray] = None  # (TailLen, 2)
 
+        # Resampling cache for rotation mode
+        self._rot_cache_idx = -1
+        self._rot_cache_data: Optional[np.ndarray] = None
+
     @property
     def name(self) -> str:
         return "HRTF Player"
@@ -238,6 +242,8 @@ class HRTFPlayer(MeasurementModule):
         self.rotation_speed = speed
         self.rotation_active = True
         self.overlap_buffer = None  # Reset overlap
+        self._rot_cache_idx = -1
+        self._rot_cache_data = None
 
         # Start if not already
         if self.callback_id is None:
@@ -247,6 +253,24 @@ class HRTFPlayer(MeasurementModule):
     def stop_rotation(self):
         self.rotation_active = False
         self.overlap_buffer = None
+
+    def _get_resampled_pair(self, index: int) -> np.ndarray:
+        """
+        Retrieves the HRIR pair for the given index, resampled to the audio engine's sample rate.
+        Returns a (N, 2) array where [:, 0] is Left and [:, 1] is Right (before swapping).
+        """
+        if self.hrtf_data is None:
+            return np.zeros((1, 2), dtype=np.float32)
+
+        # Original data is (M, R, N). ir_data[index] is (2, N).
+        # We need (N, 2) for resample/processing.
+        raw_pair = self.hrtf_data.ir_data[index].T  # (N, 2)
+
+        source_sr = self.hrtf_data.sampling_rate
+        target_sr = self.audio_engine.sample_rate
+
+        # AudioCalc.resample handles equality check efficiently
+        return AudioCalc.resample(raw_pair, source_sr, target_sr)
 
     def set_source_position(self, az, el):
         self.current_az = az
@@ -266,19 +290,18 @@ class HRTFPlayer(MeasurementModule):
         dists = np.sqrt((pos[:, 0] - azimuth) ** 2 + (pos[:, 1] - elevation) ** 2)
         nearest_idx = np.argmin(dists)
 
-        # Get HRIR
+        # Get HRIR (Resampled)
+        pair = self._get_resampled_pair(nearest_idx)
+
         if self.swap_channels:
-            hrir_l = self.hrtf_data.ir_data[nearest_idx, 1, :]
-            hrir_r = self.hrtf_data.ir_data[nearest_idx, 0, :]
+            hrir_l = pair[:, 1]
+            hrir_r = pair[:, 0]
         else:
-            hrir_l = self.hrtf_data.ir_data[nearest_idx, 0, :]
-            hrir_r = self.hrtf_data.ir_data[nearest_idx, 1, :]
+            hrir_l = pair[:, 0]
+            hrir_r = pair[:, 1]
 
         # Generate Source Signal
         sr = self.audio_engine.sample_rate  # Target playing rate
-        # Resample HRIR if needed?
-        # For simplicity, assume close enough or ignore. Real system needs resampling if SOFA SR != Engine SR.
-        # Let's do simple linear interp if needed, but for now just use as is or zero pad.
 
         # Source Gen
         len_samples = int(self.click_duration * sr)
@@ -361,12 +384,20 @@ class HRTFPlayer(MeasurementModule):
             dists = np.sqrt((pos[:, 0] - self.current_az) ** 2 + (pos[:, 1] - self.current_el) ** 2)
             nearest_idx = np.argmin(dists)
 
-            if self.swap_channels:
-                hrir_l = self.hrtf_data.ir_data[nearest_idx, 1, :]
-                hrir_r = self.hrtf_data.ir_data[nearest_idx, 0, :]
+            # Check cache
+            if nearest_idx == self._rot_cache_idx and self._rot_cache_data is not None:
+                pair = self._rot_cache_data
             else:
-                hrir_l = self.hrtf_data.ir_data[nearest_idx, 0, :]
-                hrir_r = self.hrtf_data.ir_data[nearest_idx, 1, :]
+                pair = self._get_resampled_pair(nearest_idx)
+                self._rot_cache_idx = nearest_idx
+                self._rot_cache_data = pair
+
+            if self.swap_channels:
+                hrir_l = pair[:, 1]
+                hrir_r = pair[:, 0]
+            else:
+                hrir_l = pair[:, 0]
+                hrir_r = pair[:, 1]
 
             # 3. Get Audio Chunk
             # Loop music
