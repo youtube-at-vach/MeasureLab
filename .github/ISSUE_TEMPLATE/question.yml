@@ -1,0 +1,22 @@
+name: ❓ Question / 質問
+description: 使い方が分からない時はこちら
+title: "[Question] "
+labels: ["question"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🇯🇵 日本語でOKです。
+        「これ合ってますか？」レベルでも歓迎します。
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 質問内容
+      placeholder: |
+        例：
+        ・この測定結果の見方が分かりません
+        ・この設定で合っていますか？
+    validations:
+      required: true

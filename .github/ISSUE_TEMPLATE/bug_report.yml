@@ -1,0 +1,60 @@
+name: 🐞 Bug Report / バグ報告
+description: 不具合の報告はこちら（日本語OK）
+title: "[Bug] "
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🇯🇵 **日本語で書いてOKです。**
+        英語が苦手でも問題ありません。
+        短くても大丈夫です 👍
+
+  - type: input
+    id: version
+    attributes:
+      label: MeasureLab のバージョン
+      description: 例）v0.13.0
+      placeholder: "v0.xx.x"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - その他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audio
+    attributes:
+      label: オーディオ環境
+      options:
+        - 内蔵サウンド
+        - USB オーディオIF
+        - ASIO
+        - WASAPI
+        - 不明
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: 何が起きましたか？
+      description: |
+        操作手順と、起きたことを書いてください。
+        箇条書きでOKです。
+      placeholder: |
+        1. ○○をクリック
+        2. △△を設定
+        3. エラーが出た
+    validations:
+      required: true
