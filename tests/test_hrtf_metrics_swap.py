@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from src.gui.widgets.hrtf_player import HRTFData
 
 def test_hrtf_data_swap_metrics():
