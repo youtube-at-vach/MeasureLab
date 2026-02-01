@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.core.analysis import AudioCalc, _compute_a_weighting_curve
+from src.core.analysis import AudioCalc, _compute_a_weighting_sq_curve
 
 class TestAWeightingCache(unittest.TestCase):
     def test_a_weighting_standard_fft(self):
@@ -59,7 +59,7 @@ class TestAWeightingCache(unittest.TestCase):
 
     def test_cache_hit(self):
         # Verify that the cache info updates
-        _compute_a_weighting_curve.cache_clear()
+        _compute_a_weighting_sq_curve.cache_clear()
 
         sampling_rate = 48000.0
         n_bins = 500
@@ -68,11 +68,11 @@ class TestAWeightingCache(unittest.TestCase):
 
         # First call
         AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
-        info1 = _compute_a_weighting_curve.cache_info()
+        info1 = _compute_a_weighting_sq_curve.cache_info()
 
         # Second call
         AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
-        info2 = _compute_a_weighting_curve.cache_info()
+        info2 = _compute_a_weighting_sq_curve.cache_info()
 
         self.assertEqual(info2.hits, info1.hits + 1)
 
