@@ -280,9 +280,12 @@ class UltrasoundModulator(MeasurementModule):
 
             # 4. Carrier
             # Same carrier for both channels usually.
+            # Capture frequency to ensure phase continuity even if param changes during callback
+            current_carrier_freq = self.carrier_freq
+
             t_chunk = np.arange(frames) / fs
-            phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
-            self._phase += 2 * np.pi * self.carrier_freq * (frames / fs)
+            phase = self._phase + 2 * np.pi * current_carrier_freq * t_chunk
+            self._phase += 2 * np.pi * current_carrier_freq * (frames / fs)
             self._phase %= 2 * np.pi
 
             carrier = np.cos(phase)
@@ -358,25 +361,7 @@ class UltrasoundModulator(MeasurementModule):
                     # Carrier generation for SSB
                     # We have carrier = cos(wt). We need sin(wt).
                     # sin(wt) = cos(wt - pi/2).
-                    # But we generated phase. sin(phase) is cleaner.
-                    # Recompute sin_carrier from phase.
-                    # Note: phase was updated at step 4. Ideally needs to be synchronous.
-                    # The 'phase' variable in step 4 is buffer-aligned.
-                    # Recalculate full buffer valid phase for sin and cos
-
-                    # Recalculate carrier phases to be safe or reuse 'carrier'
-                    # carrier = cos(phase).
-                    # sin_carrier = sin(phase).
-                    # Need to reconstruct local 'phase' array from step 4 or just use sin(phase)
-                    # In step 4:
-                    # t_chunk = np.arange(frames) / fs
-                    # phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
-                    # But self._phase was incremented AFTER usage in step 4?
-                    # Wait, Step 4 code:
-                    # phase = self._phase + ...
-                    # self._phase += ...
-                    # carrier = np.cos(phase)
-                    # So 'phase' variable here holds the correct instantaneous phase for this block.
+                    # 'phase' variable from step 4 is buffer-aligned and synchronous with carrier.
 
                     sin_carrier = np.sin(phase)
                     if m.ndim == 2:
