@@ -9,7 +9,7 @@ if 'sounddevice' not in sys.modules:
 import numpy as np
 
 # Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
 from src.gui.widgets.oscilloscope import Oscilloscope
 

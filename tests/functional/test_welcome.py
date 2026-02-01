@@ -5,7 +5,7 @@ import pytest
 from PyQt6.QtWidgets import QApplication
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.gui.main_window import MainWindow
 
