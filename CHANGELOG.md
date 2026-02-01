@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.4.1] - 2026-02-01
+
+> [!WARNING]
+> **Mac版の試験リリースについて / About Mac Experimental Release**
+>
+> * 今回のリリースには macOS 版 (Universal Binary) の試験的なビルドが含まれています。
+> * **動作保証はありません (No operation guarantee)**: 開発チームは Mac 実機を所持していないため、動作確認は行われていません。
+> * **未署名です (Unsigned)**: Apple の開発者署名は行われていません。実行するには Gatekeeper の設定変更や「右クリックして開く」等の操作が必要になる場合があります。
+> * 不具合報告は歓迎しますが、対応できない場合があります。ご了承ください。
+>
+> * This release includes an experimental build for macOS (Universal Binary).
+> * **Unverified**: We do not verify this build as we do not own Mac hardware.
+> * **Unsigned**: This application is not signed with an Apple Developer ID. You may need to bypass Gatekeeper to run it.
+
+### Changed
+
+* Docs: README およびコントリビューター情報を更新
+* Docs: ロックイン周波数カウンターの NCO 周波数に関する注記を追加
+* Refactor: テストコードの構成を `functional`, `logic_verification`, `benchmarks` に再編し可読性を向上
+* CI/CD: Mac 版ビルドワークフロー (試験的) を追加
+
 ## [v0.4.0] - 2026-01-29
 
 ### Added
