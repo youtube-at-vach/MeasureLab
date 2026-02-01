@@ -1558,14 +1558,14 @@ class SettingsWidget(QWidget):
             self.cal_profile_combo.addItem(name)
 
         self.cal_profile_combo.blockSignals(False)
-        
+
         # Auto-restore last profile
         last = self.audio_engine.calibration.last_profile
         if last and last in profiles:
             idx = self.cal_profile_combo.findText(last)
             if idx >= 0:
                 self.cal_profile_combo.setCurrentIndex(idx)
-        
+
         self.on_profile_selected()
 
     def on_profile_selected(self):
@@ -1579,7 +1579,7 @@ class SettingsWidget(QWidget):
             else:
                 self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
             self.del_prof_btn.setEnabled(True)
-            
+
             # Instant Apply
             try:
                 self.audio_engine.calibration.load_profile(name)
@@ -1590,7 +1590,7 @@ class SettingsWidget(QWidget):
                 self.update_spl_display()
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load profile: {0}").format(e))
-                
+
         else:
             self.cal_profile_device_label.setText("")
             self.del_prof_btn.setEnabled(False)
