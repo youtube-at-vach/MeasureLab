@@ -215,15 +215,15 @@ class SignalGenerator(MeasurementModule):
     def _generate_mls(self, params: SignalParameters, sample_rate):
         """Generates a Maximum Length Sequence (MLS)."""
         taps = {
-            10: [10, 7],
-            11: [11, 9],
-            12: [12, 11, 10, 4],
-            13: [13, 12, 10, 9],
-            14: [14, 13, 12, 2],
-            15: [15, 14],
-            16: [16, 15, 13, 4],
-            17: [17, 14],
-            18: [18, 11],
+            10: [10, 3],
+            11: [11, 2],
+            12: [12, 8, 2, 1],
+            13: [13, 5, 2, 1],
+            14: [14, 12, 2, 1],
+            15: [15, 1],
+            16: [16, 12, 3, 1],
+            17: [17, 3],
+            18: [18, 7],
         }
 
         order = params.mls_order
@@ -237,19 +237,28 @@ class SignalGenerator(MeasurementModule):
             signal = seq.astype(float) * 2 - 1
             return signal
         except Exception:
-            print("scipy.signal.max_len_seq not found/failed, using slow fallback")
+            print("scipy.signal.max_len_seq not found/failed, using optimized fallback")
             tap_indices = [x - 1 for x in taps[order]]
             N = 2**order - 1
-            state = np.ones(order, dtype=int)
-            signal = np.zeros(N)
+
+            # Optimized bitwise implementation
+            reg = (1 << order) - 1
+            mask = (1 << order) - 1
+            output_idx = order - 1
+
+            raw_output = [0] * N
+
             for i in range(N):
                 feedback = 0
                 for tap in tap_indices:
-                    feedback ^= state[tap]
-                output = state[-1]
-                signal[i] = float(output * 2 - 1)
-                state = np.roll(state, 1)
-                state[0] = feedback
+                    feedback ^= (reg >> tap) & 1
+
+                output = (reg >> output_idx) & 1
+                raw_output[i] = output
+
+                reg = ((reg << 1) & mask) | feedback
+
+            signal = np.array(raw_output, dtype=float) * 2 - 1
             return signal
 
     def _generate_burst(self, params: SignalParameters, sample_rate):
