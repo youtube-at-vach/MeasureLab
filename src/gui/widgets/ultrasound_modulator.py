@@ -356,44 +356,26 @@ class UltrasoundModulator(MeasurementModule):
                     m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
 
                     # Carrier generation for SSB
-                    # We have carrier = cos(wt). We need sin(wt).
-                    # sin(wt) = cos(wt - pi/2).
-                    # But we generated phase. sin(phase) is cleaner.
-                    # Recompute sin_carrier from phase.
-                    # Note: phase was updated at step 4. Ideally needs to be synchronous.
-                    # The 'phase' variable in step 4 is buffer-aligned.
-                    # Recalculate full buffer valid phase for sin and cos
-
-                    # Recalculate carrier phases to be safe or reuse 'carrier'
-                    # carrier = cos(phase).
-                    # sin_carrier = sin(phase).
-                    # Need to reconstruct local 'phase' array from step 4 or just use sin(phase)
-                    # In step 4:
-                    # t_chunk = np.arange(frames) / fs
-                    # phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
-                    # But self._phase was incremented AFTER usage in step 4?
-                    # Wait, Step 4 code:
-                    # phase = self._phase + ...
-                    # self._phase += ...
-                    # carrier = np.cos(phase)
-                    # So 'phase' variable here holds the correct instantaneous phase for this block.
-
+                    # We need sin(wt) which is synchronous with cos(wt) used for carrier.
+                    # Use the local 'phase' array from Step 4 which is perfectly aligned.
                     sin_carrier = np.sin(phase)
                     if m.ndim == 2:
                         sin_carrier = sin_carrier[:, np.newaxis]
 
                     # SSB Logic
+                    # Standard SSB:
                     # USB: I * cos - Q * sin
                     # LSB: I * cos + Q * sin
-                    # (Assuming analytic signal convention. Sign might need flip if Q is inverted etc, but this is standard)
+                    # Note: Our Hilbert filter implementation seems to produce inverted Q (-sin),
+                    # so the signs are flipped relative to standard formula to get correct sideband.
 
                     term1 = m_i * carrier
                     term2 = m_q * sin_carrier
 
                     if self.modulation_mode == "USB":
-                        sb = term1 - term2
-                    else:  # LSB
                         sb = term1 + term2
+                    else:  # LSB
+                        sb = term1 - term2
 
                     # Carrier re-insertion?
                     # SSB-SC (Suppressed Carrier) or SSB-LC (Large Carrier/AM-compatible)?
