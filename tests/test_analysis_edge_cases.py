@@ -1,6 +1,5 @@
 
 import numpy as np
-import pytest
 from src.core.analysis import AudioCalc
 
 def test_optimize_frequency_empty_signal():
