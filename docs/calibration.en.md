@@ -77,7 +77,7 @@ Enables microphone input to be displayed as Sound Pressure Level (dB SPL).
 7. Press **[Calculate & Save]**. This records the difference (offset) between the input voltage level and the actual sound pressure.
 
 ## Calibration Profiles
- 
+
 Calibration settings (Input Sensitivity, Output Gain, SPL Offset) can be saved as named **profiles**.
 This allows you to switch settings for different combinations of microphones and audio interfaces.
 
