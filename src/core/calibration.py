@@ -148,13 +148,14 @@ class CalibrationManager:
 
     # --- Profile Management ---
 
-    def save_profile(self, name, device_name):
+    def save_profile(self, name, device_name, host_api=None):
         """Saves current settings as a named profile."""
         if not hasattr(self, "profiles"):
             self.profiles = {}
 
         self.profiles[name] = {
             "device_name": device_name,
+            "host_api": host_api,
             "input_sensitivity": self.input_sensitivity,
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": self.output_gain_is_calibrated,

@@ -1573,7 +1573,11 @@ class SettingsWidget(QWidget):
         profiles = self.audio_engine.calibration.get_profiles()
         if name in profiles:
             dev_name = profiles[name].get("device_name", "")
-            self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
+            host_api = profiles[name].get("host_api", "")
+            if host_api:
+                self.cal_profile_device_label.setText(tr("Device: {0} ({1})").format(dev_name, host_api))
+            else:
+                self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
             self.del_prof_btn.setEnabled(True)
             
             # Instant Apply
@@ -1604,9 +1608,16 @@ class SettingsWidget(QWidget):
             in_dev_id = self.audio_engine.input_device
             dev_name = "Unknown"
             if in_dev_id is not None and 0 <= int(in_dev_id) < len(devices):
-                dev_name = devices[int(in_dev_id)].get("name", "Unknown")
+                dev_info = devices[int(in_dev_id)]
+                dev_name = dev_info.get("name", "Unknown")
+                # Prioritize human-readable name populated by AudioEngine.list_devices()
+                host_api = dev_info.get("hostapi_name", "")
+                if not host_api:
+                    # Fallback to index if name missing (shouldn't happen usually)
+                    host_api = str(dev_info.get("hostapi", ""))
         except Exception:
             dev_name = "Unknown"
+            host_api = ""
 
         if name in self.audio_engine.calibration.get_profiles():
             ret = QMessageBox.question(
@@ -1619,7 +1630,7 @@ class SettingsWidget(QWidget):
                 return
 
         try:
-            self.audio_engine.calibration.save_profile(name, dev_name)
+            self.audio_engine.calibration.save_profile(name, dev_name, host_api)
             self.refresh_cal_profiles()
             # Select the saved profile
             idx = self.cal_profile_combo.findText(name)
