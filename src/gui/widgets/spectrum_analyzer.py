@@ -53,6 +53,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self._avg_magnitude = None
         self._avg_cross_spectrum = None  # Complex average for Cross Spectrum
         self._peak_magnitude = None
+        self._avg_weighted_power = None
         self.overall_rms = 0.0
 
         self.callback_id = None
@@ -78,6 +79,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self._avg_magnitude = None
         self._avg_cross_spectrum = None
         self._peak_magnitude = None
+        self._avg_weighted_power = None
         # Reset DPSS cache as N changed
         self._dpss_windows = None
         self._dpss_cache_key = None
@@ -90,6 +92,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self._avg_magnitude = None
         self._avg_cross_spectrum = None
         self._peak_magnitude = None
+        self._avg_weighted_power = None
         self.overall_rms = 0.0
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
@@ -696,6 +699,10 @@ class SpectrumAnalyzerWidget(QWidget):
 
         magnitude = None
 
+        # Variables for Overall RMS calculation (Linear Power Spectrum)
+        rms_power_spectrum = None
+        energy_norm_factor = 1.0
+
         if self.module.multitaper_enabled:
             # --- Multitaper Method ---
             # Get DPSS windows
@@ -741,6 +748,16 @@ class SpectrumAnalyzerWidget(QWidget):
                 else:
                     psd_target = (psd_0 + psd_1) / 2
                     psd_second = None
+
+                # Capture raw power spectrum for Overall RMS
+                # psd_target is already |FFT|^2 (averaged).
+                if psd_second is not None:
+                    rms_power_spectrum = np.column_stack((psd_target, psd_second))
+                else:
+                    rms_power_spectrum = psd_target
+
+                # Energy normalization for Multitaper (sum(w^2)=1)
+                energy_norm_factor = 1.0 / len(data)
 
                 # Convert to Magnitude (Linear)
                 if self.module.analysis_mode == "PSD":
@@ -860,6 +877,27 @@ class SpectrumAnalyzerWidget(QWidget):
             # 2/N for one-sided spectrum (DC and Nyquist need special handling but usually ignored for general audio display)
             # * window_correction
             norm_factor = (2.0 / len(data)) * window_correction
+
+            # --- Overall RMS Logic (Standard) ---
+            # Calculate S2 (Energy correction factor denominator)
+            # S2 = sum(w^2)
+            S2 = np.sum(window**2)
+            energy_norm_factor = 1.0 / (len(data) * S2)
+
+            # Raw Power Spectrum for RMS (|FFT|^2)
+            raw_sq = np.abs(fft_data)**2
+            if self.module.channel_mode == "Left":
+                rms_power_spectrum = raw_sq[:, 0]
+            elif self.module.channel_mode == "Right":
+                rms_power_spectrum = raw_sq[:, 1]
+            elif self.module.channel_mode == "Average":
+                # For "Average" channel mode, we average the POWER of L and R
+                rms_power_spectrum = np.mean(raw_sq, axis=1)
+            elif self.module.channel_mode == "Dual":
+                rms_power_spectrum = raw_sq
+            else:
+                rms_power_spectrum = np.mean(raw_sq, axis=1)
+            # -----------------------------------
 
             if self.module.analysis_mode == "Spectrum":
                 # Standard Spectrum
@@ -1053,72 +1091,69 @@ class SpectrumAnalyzerWidget(QWidget):
         else:
             magnitude += weighting_db
 
-        # Calculate Weighted RMS from Spectrum
-        # We need to sum the power in frequency domain.
-        # Magnitude is in dB (Peak or RMS depending on units/mode).
-        # Let's convert back to linear power.
+        # Calculate Accurate Overall Weighted RMS
+        # We use the raw power spectrum (before window amplitude correction) and apply
+        # energy normalization to get accurate RMS sum (Parseval's theorem logic).
+        overall_weighted_db = -120.0
 
-        # If magnitude is dB Peak: Power ~ (10^(mag/20))^2 / 2  (for sine)
-        # If magnitude is dB RMS: Power ~ (10^(mag/20))^2
+        if rms_power_spectrum is not None:
+            # Convert weighting to Linear Squared (Power Gain)
+            w_lin_sq = 10 ** (weighting_db / 10.0)
 
-        # Note: 'magnitude' array here is already processed (averaged, normalized).
-        # To get accurate Overall RMS, we should ideally sum the raw power spectrum * weighting^2.
-        # But for display purposes, summing the processed spectrum is usually "good enough"
-        # provided we handle the window correction and normalization correctly.
+            # Apply weighting to raw power spectrum
+            # Handle broadcasting if rms_power_spectrum is stereo (Dual)
+            if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1:
+                p_weighted = rms_power_spectrum * w_lin_sq[:, np.newaxis]
+            else:
+                p_weighted = rms_power_spectrum * w_lin_sq
 
-        # However, we have 'magnitude' which is the displayed curve.
-        # Let's use it to estimate the Overall Weighted RMS.
+            # Sum bins in range 20Hz - 20kHz
+            mask = (freqs >= 20) & (freqs <= 20000)
 
-        # Convert dB to Linear Amplitude
-        mag_linear_for_rms = 10 ** (magnitude / 20)
+            if np.any(mask):
+                # Sum power in mask
+                # Factor of 2 accounts for one-sided spectrum (excluding DC/Nyquist if present in mask).
+                # Since mask excludes 0Hz (DC), and usually excludes Nyquist (unless fs=40k),
+                # applying 2x to all bins in range is a very good approximation.
 
-        # If we are in Physical Units, mag_linear is already RMS (we divided by sqrt(2)).
-        # If not, it's Peak.
+                if p_weighted.ndim == 2:
+                    # Dual channel: sum all power from both channels?
+                    # Or sum per channel and take max? Or average?
+                    # "Overall" usually implies the total power or power of the active channel.
+                    # Since "rms_power_spectrum" for Average/Left/Right is already mono,
+                    # this is only for Dual.
+                    # Let's calculate total power sum of both channels.
+                    sum_p = 2 * np.sum(p_weighted[mask])
+                else:
+                    sum_p = 2 * np.sum(p_weighted[mask])
 
-        if self.module.display_unit in ["dBV", "dB SPL"]:
-            power_spectrum = mag_linear_for_rms**2
-        else:
-            # Convert Peak to RMS
-            power_spectrum = (mag_linear_for_rms / np.sqrt(2)) ** 2
+                # Apply Energy Normalization (1 / (N * S2)) or (1/N)
+                current_frame_power = sum_p * energy_norm_factor
 
-        # Sum power
-        # We need to be careful about the window correction factor which was applied to amplitude.
-        # The sum of bin powers should equal total time-domain power (Parseval's theorem),
-        # but windowing and zero-padding affect this.
-        # For a simple estimate consistent with the plot:
+                # Temporal Averaging of Power (Exponential Smoothing)
+                # We use the same averaging coefficient as the plot
+                if self.module._avg_weighted_power is None:
+                    self.module._avg_weighted_power = current_frame_power
+                else:
+                    alpha = self.module.averaging
+                    # If buffer size changed, reset handled by set_buffer_size, but check safety
+                    if np.isscalar(current_frame_power) and np.isscalar(self.module._avg_weighted_power):
+                        self.module._avg_weighted_power = alpha * self.module._avg_weighted_power + (1 - alpha) * current_frame_power
+                    else:
+                        self.module._avg_weighted_power = current_frame_power
 
-        # We normalized by 2/N * window_correction.
-        # This normalization makes a sine wave peak at 1.0 (0dB).
-        # The sum of squares of bins will not directly equal time domain power without un-normalizing.
+                # Calculate RMS
+                overall_rms_linear = np.sqrt(self.module._avg_weighted_power)
+                overall_weighted_db = 20 * np.log10(overall_rms_linear + 1e-12)
 
-        # Easier approach:
-        # 1. Calculate weighting in linear domain: W_lin = 10^(weighting_db/20)
-        # 2. Apply W_lin to the FFT of the raw windowed data.
-        # 3. Compute RMS from that.
-
-        # But we want to use the already computed 'magnitude' to reflect what is shown.
-        # Let's just sum the power of the displayed bins.
-        # This is an approximation but aligns with "what you see is what you get".
-
-        # Only consider 20Hz - 20kHz for Overall Weighted calculation as requested
-        mask = (freqs >= 20) & (freqs <= 20000)
-        if np.any(mask):
-            total_power = np.sum(power_spectrum[mask])
-            # We need to account for the fact that we are summing bins.
-            # If we have a pure sine, it might be split across bins (leakage).
-            # Summing power preserves energy.
-
-            # However, we applied a window correction factor for AMPLITUDE (coherent gain).
-            # For POWER summation (incoherent gain), the correction factor is different (S2 = sum(w^2)).
-            # Since we scaled by 1/mean(w), we boosted noise power.
-            # This is a known trade-off. For "Overall" reading, time-domain is best.
-            # But for "Weighted Overall", we must use frequency domain.
-
-            # Let's stick to the sum of the displayed spectrum power for consistency.
-            overall_weighted_rms = np.sqrt(total_power)
-            overall_weighted_db = 20 * np.log10(overall_weighted_rms + 1e-12)
-        else:
-            overall_weighted_db = -120
+                # Apply Calibration Offsets to final dB value
+                if self.module.display_unit == "dBV":
+                    offset = self.module.audio_engine.calibration.get_input_offset_db()
+                    overall_weighted_db += offset
+                elif self.module.display_unit == "dB SPL":
+                    spl_offset = self.module.audio_engine.calibration.get_spl_offset_db()
+                    if spl_offset is not None:
+                        overall_weighted_db += spl_offset
 
         unit_suffix = ""
         if self.module.weighting == "A":
