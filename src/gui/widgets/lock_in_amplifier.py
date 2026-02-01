@@ -481,7 +481,14 @@ class LockInAmplifierWidget(QWidget):
         super().__init__()
         self.module = module
         self._last_nyquist_freq = None
+        self._is_dark_theme = False
         self.init_ui()
+
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
@@ -1261,15 +1268,25 @@ class LockInAmplifierWidget(QWidget):
         ref_freq = self.module.ref_freq
         coherence = self.module.ref_coherence
 
+        # Colors based on theme
+        if self._is_dark_theme:
+            c_locked = "#00ff00"
+            c_unstable = "#ffff00"
+            c_unlocked = "#ff0000"
+        else:
+            c_locked = "#008800"
+            c_unstable = "#888800"
+            c_unlocked = "#cc0000"
+
         if coherence >= 0.95:
             self.ref_status_label.setText(tr("Locked ({0:.1f} Hz, Coh: {1:.2f})").format(ref_freq, coherence))
-            self.ref_status_label.setStyleSheet("font-weight: bold; color: #00ff00;")
+            self.ref_status_label.setStyleSheet(f"font-weight: bold; color: {c_locked};")
         elif coherence >= 0.8:
             self.ref_status_label.setText(tr("Unstable ({0:.1f} Hz, Coh: {1:.2f})").format(ref_freq, coherence))
-            self.ref_status_label.setStyleSheet("font-weight: bold; color: #ffff00;")
+            self.ref_status_label.setStyleSheet(f"font-weight: bold; color: {c_unstable};")
         else:
             self.ref_status_label.setText(tr("Unlocked ({0:.1f} Hz, Coh: {1:.2f})").format(ref_freq, coherence))
-            self.ref_status_label.setStyleSheet("font-weight: bold; color: #ff0000;")
+            self.ref_status_label.setStyleSheet(f"font-weight: bold; color: {c_unlocked};")
 
     def on_fra_start(self):
         if self.fra_worker is not None and self.fra_worker.isRunning():
@@ -1729,7 +1746,9 @@ class LockInAmplifierWidget(QWidget):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == "dark":
+        self._is_dark_theme = (theme_name == "dark")
+
+        if self._is_dark_theme:
             # Dark Theme
             self.toggle_btn.setStyleSheet(
                 "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; font-weight: bold; }"
@@ -1742,12 +1761,6 @@ class LockInAmplifierWidget(QWidget):
             self.phase_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #00ffff;")
             self.x_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ffff00;")
             self.y_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff00ff;")
-
-            # Ref status depends on state, but we set base style here or update in update_ui
-            # update_ui sets color explicitly, so we might need to update that logic too.
-            # Ideally apply_theme just sets the current state's color if we track it,
-            # or we let update_ui handle it and just use theme-aware colors there.
-            # But update_ui runs on timer.
 
         else:
             # Light Theme
@@ -1762,9 +1775,3 @@ class LockInAmplifierWidget(QWidget):
             self.phase_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #008888;")
             self.x_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #888800;")
             self.y_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #880088;")
-
-        # Theme handling
-        self.app = QApplication.instance()
-        if hasattr(self.app, "theme_manager"):
-            self.app.theme_manager.theme_changed.connect(self.apply_theme)
-            self.apply_theme(self.app.theme_manager.get_current_theme())
