@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-import scipy.signal
 from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
 
 class MockAudioEngine:
