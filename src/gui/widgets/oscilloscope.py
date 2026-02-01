@@ -205,7 +205,7 @@ class Oscilloscope(MeasurementModule):
             required_samples = self.buffer_size
 
         # Unroll buffer to linear time (allocation here on GUI thread is fine)
-        data = np.roll(self.input_data, -self.write_index, axis=0)
+        data = np.concatenate((self.input_data[self.write_index:], self.input_data[:self.write_index]), axis=0)
 
         if self.trigger_mode == "Single" and not self.single_shot_armed:
             return None
