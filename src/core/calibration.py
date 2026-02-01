@@ -23,6 +23,7 @@ class CalibrationManager:
         # Stored as an offset: SPL[dB] = dBFS_C + spl_offset_db.
         self.spl_offset_db = None
         self.profiles = {}
+        self.last_profile = None
         self.load()
 
     def load(self):
@@ -68,6 +69,7 @@ class CalibrationManager:
                                     self.spl_offset_db = None
 
                     self.profiles = data.get("profiles", {})
+                    self.last_profile = data.get("last_profile")
             except Exception as e:
                 print(f"Failed to load calibration: {e}")
 
@@ -81,6 +83,7 @@ class CalibrationManager:
             # Keep a single SPL calibration value.
             "spl_offset_db": self.spl_offset_db,
             "profiles": getattr(self, "profiles", {}),
+            "last_profile": self.last_profile,
         }
         try:
             with open(self.config_path, "w") as f:
@@ -138,15 +141,21 @@ class CalibrationManager:
         self.frequency_calibration = factor
         self.save()
 
+    def set_last_profile(self, name):
+        """Sets the last selected profile name."""
+        self.last_profile = name
+        self.save()
+
     # --- Profile Management ---
 
-    def save_profile(self, name, device_name):
+    def save_profile(self, name, device_name, host_api=None):
         """Saves current settings as a named profile."""
         if not hasattr(self, "profiles"):
             self.profiles = {}
 
         self.profiles[name] = {
             "device_name": device_name,
+            "host_api": host_api,
             "input_sensitivity": self.input_sensitivity,
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": self.output_gain_is_calibrated,
