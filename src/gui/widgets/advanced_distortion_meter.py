@@ -208,6 +208,9 @@ class AdvancedDistortionMeter(MeasurementModule):
         self._mim_freqs = np.round(raw_freqs / bin_width) * bin_width
 
         # 4. Generate Signal
+        if self.mim_tone_count == 0 or len(self._mim_freqs) == 0:
+            return np.zeros(frames)
+
         # Random phase optimized for crest factor?
         # Newman phases: phi_n = pi * n^2 / N (quadratic phase) helps Crest Factor.
         # But random is also okay. Let's stick to random but fixed for the buffer.
@@ -215,15 +218,22 @@ class AdvancedDistortionMeter(MeasurementModule):
 
         amp_per_tone = self.gen_amplitude / np.sqrt(self.mim_tone_count)
 
-        signal = np.zeros(frames)
-        t = np.arange(frames) / sample_rate
+        # Optimize using IFFT
+        indices = np.round(self._mim_freqs / bin_width).astype(int)
+        spectrum = np.zeros(frames // 2 + 1, dtype=np.complex128)
 
-        for i, f in enumerate(self._mim_freqs):
-            # Because f is exactly k * (sample_rate / frames),
-            # f * t = k/frames * n.
-            # 2*pi*f*t = 2*pi*k*n/frames.
-            # At n=frames, 2*pi*k -> 0 mod 2pi. Perfectly periodic.
-            signal += amp_per_tone * np.sin(2 * np.pi * f * t + phases[i])
+        # Coefficient: (N/2) * amp * exp(j*(p - pi/2))
+        coeffs = (frames / 2) * amp_per_tone * np.exp(1j * (phases - np.pi / 2))
+
+        np.add.at(spectrum, indices, coeffs)
+
+        # Correction for DC (index 0) and Nyquist (index N/2)
+        # Unconditionally apply factor 2. If bin is 0, it remains 0.
+        spectrum[0] *= 2
+        if frames % 2 == 0:
+            spectrum[frames // 2] *= 2
+
+        signal = np.fft.irfft(spectrum, n=frames)
 
         return signal
 
