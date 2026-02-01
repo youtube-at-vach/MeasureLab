@@ -1084,11 +1084,8 @@ class SettingsWidget(QWidget):
 
         # Row 2: Actions
         prof_act_layout = QHBoxLayout()
-        self.load_prof_btn = QPushButton(tr("Load"))
-        self.load_prof_btn.clicked.connect(self.on_load_profile)
         self.del_prof_btn = QPushButton(tr("Delete"))
         self.del_prof_btn.clicked.connect(self.on_delete_profile)
-        prof_act_layout.addWidget(self.load_prof_btn)
         prof_act_layout.addWidget(self.del_prof_btn)
         prof_layout.addLayout(prof_act_layout)
 
@@ -1561,6 +1558,14 @@ class SettingsWidget(QWidget):
             self.cal_profile_combo.addItem(name)
 
         self.cal_profile_combo.blockSignals(False)
+        
+        # Auto-restore last profile
+        last = self.audio_engine.calibration.last_profile
+        if last and last in profiles:
+            idx = self.cal_profile_combo.findText(last)
+            if idx >= 0:
+                self.cal_profile_combo.setCurrentIndex(idx)
+        
         self.on_profile_selected()
 
     def on_profile_selected(self):
@@ -1569,11 +1574,21 @@ class SettingsWidget(QWidget):
         if name in profiles:
             dev_name = profiles[name].get("device_name", "")
             self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
-            self.load_prof_btn.setEnabled(True)
             self.del_prof_btn.setEnabled(True)
+            
+            # Instant Apply
+            try:
+                self.audio_engine.calibration.load_profile(name)
+                self.audio_engine.calibration.set_last_profile(name)
+                # Refresh displays
+                self.update_in_sens_display()
+                self.update_out_gain_display()
+                self.update_spl_display()
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), tr("Failed to load profile: {0}").format(e))
+                
         else:
             self.cal_profile_device_label.setText("")
-            self.load_prof_btn.setEnabled(False)
             self.del_prof_btn.setEnabled(False)
 
     def on_save_profile(self):
@@ -1615,20 +1630,7 @@ class SettingsWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), str(e))
 
-    def on_load_profile(self):
-        name = self.cal_profile_combo.currentText()
-        if not name:
-            return
 
-        try:
-            self.audio_engine.calibration.load_profile(name)
-            # Update UI to reflect loaded values
-            self.update_in_sens_display()
-            self.update_out_gain_display()
-            self.update_spl_display()
-            QMessageBox.information(self, tr("Success"), tr("Profile loaded."))
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), str(e))
 
     def on_delete_profile(self):
         name = self.cal_profile_combo.currentText()
