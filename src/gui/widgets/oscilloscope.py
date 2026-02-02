@@ -193,6 +193,22 @@ class Oscilloscope(MeasurementModule):
                 self.callback_id = None
             self.is_running = False
 
+    def _get_data_slice(self, start_offset, length):
+        """Returns a contiguous array of length samples starting at logical offset start_offset (0 = oldest)."""
+        if length <= 0:
+            return np.empty((0, 2))
+
+        idx = (self.write_index + start_offset) % self.buffer_size
+        end_idx = idx + length
+
+        if end_idx <= self.buffer_size:
+            return self.input_data[idx:end_idx].copy()
+        else:
+            # Wrapped
+            part1_len = self.buffer_size - idx
+            part2_len = length - part1_len
+            return np.concatenate((self.input_data[idx:], self.input_data[:part2_len]), axis=0)
+
     def get_display_data(self, window_duration):
         """
         Get triggered data for display.
@@ -204,12 +220,8 @@ class Oscilloscope(MeasurementModule):
         if required_samples > self.buffer_size:
             required_samples = self.buffer_size
 
-        # Unroll buffer to linear time (allocation here on GUI thread is fine)
-        data = np.concatenate((self.input_data[self.write_index:], self.input_data[:self.write_index]), axis=0)
-
         if self.trigger_mode == "Single" and not self.single_shot_armed:
             return None
-        trigger_channel = data[:, self.trigger_source]
 
         # Simple Trigger Search
         # Look for crossing of trigger_level with correct slope
@@ -217,8 +229,9 @@ class Oscilloscope(MeasurementModule):
 
         search_end = self.buffer_size - required_samples
         if search_end <= 0:
-            # Buffer too small for requested window, just return what we have
-            return data[-required_samples:]
+            # Buffer too small for requested window, just return what we have (the last required_samples)
+            start_offset = max(0, self.buffer_size - required_samples)
+            return self._get_data_slice(start_offset, required_samples)
 
         # Limit search to recent history to be responsive (e.g. last 50% of possible range)
         # But we need enough pre-trigger data?
@@ -230,7 +243,10 @@ class Oscilloscope(MeasurementModule):
         search_window = 2048  # Limit search to avoid high CPU
         start_idx = max(0, search_end - search_window)
 
-        subset = trigger_channel[start_idx:search_end]
+        # Extract only the search window subset
+        search_length = search_end - start_idx
+        subset_data = self._get_data_slice(start_idx, search_length)
+        subset = subset_data[:, self.trigger_source]
 
         # Find crossings
         # Rising: previous < level <= current
@@ -243,18 +259,21 @@ class Oscilloscope(MeasurementModule):
 
         if len(crossings) > 0:
             # Pick the last one for most recent update
-            trigger_idx = start_idx + crossings[-1] + 1  # +1 because crossing is between i and i+1
+            trigger_offset_in_subset = crossings[-1] + 1  # +1 because crossing is between i and i+1
+            trigger_idx = start_idx + trigger_offset_in_subset
 
             if self.trigger_mode == "Single":
                 self.single_shot_fired = True
                 self.single_shot_armed = False
 
-            return data[trigger_idx : trigger_idx + required_samples]
+            return self._get_data_slice(trigger_idx, required_samples)
         else:
             # No trigger found
             if self.trigger_mode == "Auto":
                 # Return latest data
-                return data[-required_samples:]
+                # Corresponds to last required_samples
+                start_offset = self.buffer_size - required_samples
+                return self._get_data_slice(start_offset, required_samples)
             else:
                 # Normal mode: return None (keep last frame)
                 return None
