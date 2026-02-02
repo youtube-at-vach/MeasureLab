@@ -96,14 +96,20 @@ class UltrasoundModulator(MeasurementModule):
                 self._filter_sos = None
                 self._filter_zi = None
             else:
-                self._filter_sos = scipy.signal.butter(4, self.lpf_cutoff, fs=fs, output="sos")
-                self._filter_zi = scipy.signal.sosfilt_zi(self._filter_sos)
-                # If we had multiple channels, we would need independent zi for each channel
-                # For now, we'll handle stereo by duplicating state if strictly needed,
-                # or just filtering channels independently with new zi if it resets.
-                # To avoid clicks on param change, we ideally keep state, but zi shape depends on order.
-                # Simple approach: reset filter on param change.
-                self._filter_zi = np.zeros((self._filter_sos.shape[0], 2))  # Stereo state
+                new_sos = scipy.signal.butter(4, self.lpf_cutoff, fs=fs, output="sos")
+
+                # Try to preserve state to avoid clicks
+                preserve_state = False
+                if self._filter_sos is not None and self._filter_zi is not None:
+                    # Check if shape is compatible (same order => same number of sections)
+                    if self._filter_sos.shape == new_sos.shape:
+                        if self._filter_zi.shape[0] == new_sos.shape[0]:
+                            preserve_state = True
+
+                self._filter_sos = new_sos
+
+                if not preserve_state:
+                    self._filter_zi = np.zeros((self._filter_sos.shape[0], 2))  # Reset state
 
             self._prev_fs = fs
             self._prev_cutoff = self.lpf_cutoff
