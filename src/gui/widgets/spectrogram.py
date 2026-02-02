@@ -314,7 +314,7 @@ class SpectrogramWidget(QWidget):
             self.module.acc_count = 1
         else:
             # Max Hold Accumulation
-            self.module.accumulator = np.maximum(self.module.accumulator, mag_db)
+            np.maximum(self.module.accumulator, mag_db, out=self.module.accumulator)
             self.module.acc_count += 1
 
         # Determine Target Frames based on Speed
