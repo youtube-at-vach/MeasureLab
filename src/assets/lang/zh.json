@@ -955,11 +955,9 @@
     "Delete": "删除",
     "Delete profile '{0}'?": "删除配置文件 '{0}'？",
     "Device: {0}": "设备：{0}",
-    "Load": "加载",
     "New Profile Name": "新配置文件名称",
     "Please enter a profile name.": "请输入配置文件名称。",
     "Profile '{0}' already exists. Overwrite?": "配置文件 '{0}' 已存在。是否覆盖？",
-    "Profile loaded.": "配置文件已加载。",
     "Profile saved.": "配置文件已保存。",
     "Save As...": "另存为...",
     "Saving recording...": "正在保存录音...",
@@ -1043,5 +1041,7 @@
     "NCO Std Dev:": "NCO 标准差:",
     "DSB (AM)": "DSB (AM)",
     "LSB": "LSB",
-    "USB": "USB"
+    "USB": "USB",
+    "Device: {0} ({1})": "设备：{0} ({1})",
+    "Failed to load profile: {0}": "无法加载配置文件：{0}"
 }

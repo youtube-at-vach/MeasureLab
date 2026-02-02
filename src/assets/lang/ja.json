@@ -966,11 +966,9 @@
     "Delete": "削除",
     "Delete profile '{0}'?": "プロファイル '{0}' を削除しますか？",
     "Device: {0}": "デバイス: {0}",
-    "Load": "ロード",
     "New Profile Name": "新規プロファイル名",
     "Please enter a profile name.": "プロファイル名を入力してください。",
     "Profile '{0}' already exists. Overwrite?": "プロファイル '{0}' は既に存在します。上書きしますか？",
-    "Profile loaded.": "プロファイルがロードされました。",
     "Profile saved.": "プロファイルが保存されました。",
     "Save As...": "別名で保存...",
     "Saving recording...": "録音を保存中...",
@@ -1032,5 +1030,7 @@
     "Y-Axis Zoom:": "Y軸ズーム:",
     "DSB (AM)": "DSB (AM)",
     "LSB": "LSB",
-    "USB": "USB"
+    "USB": "USB",
+    "Device: {0} ({1})": "デバイス: {0} ({1})",
+    "Failed to load profile: {0}": "プロファイルの読み込みに失敗しました: {0}"
 }
