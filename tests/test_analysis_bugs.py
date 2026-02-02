@@ -1,5 +1,4 @@
 
-import pytest
 import numpy as np
 from src.core.analysis import AudioCalc
 
