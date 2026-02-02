@@ -302,11 +302,16 @@ class SpectrogramWidget(QWidget):
         mag = np.abs(fft_res)
 
         # Normalize
-        mag = mag / len(sig) * 2 * win_correction  # Peak Amplitude
+        # Optimized in-place normalization
+        mag *= (2.0 * win_correction) / len(sig)
 
         # Convert to dB
+        # In-place optimization to save memory bandwidth
         with np.errstate(divide="ignore"):
-            mag_db = 20 * np.log10(mag + 1e-12)
+            np.add(mag, 1e-12, out=mag)
+            np.log10(mag, out=mag)
+            np.multiply(mag, 20, out=mag)
+            mag_db = mag
 
         # --- Accumulation Logic ---
         if self.module.accumulator is None or self.module.accumulator.shape != mag_db.shape:
