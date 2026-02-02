@@ -17,7 +17,7 @@ def run_benchmark():
         for _ in range(iterations):
             mag = source_mag.copy()
             with np.errstate(divide="ignore"):
-                mag_db = 20 * np.log10(mag + 1e-12)
+                _ = 20 * np.log10(mag + 1e-12)
         duration_original = time.perf_counter() - start
         print(f"Original: {duration_original:.4f} seconds")
 
@@ -29,7 +29,7 @@ def run_benchmark():
                 np.add(mag, 1e-12, out=mag)
                 np.log10(mag, out=mag)
                 np.multiply(mag, 20, out=mag)
-                mag_db = mag
+                # In-place result is in 'mag'
         duration_optimized = time.perf_counter() - start
         print(f"Optimized: {duration_optimized:.4f} seconds")
 
