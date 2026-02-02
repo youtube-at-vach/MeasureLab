@@ -816,11 +816,22 @@ class LockInAmplifierWidget(QWidget):
         # FRA Plot Layout (Right Side)
         fra_right_layout = QVBoxLayout()
 
-        # Cursor Label
-        self.fra_cursor_label = QLabel(tr("Cursor: -"))
-        self.fra_cursor_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #ccffcc;")
+        # Cursor Controls
+        # Use separate widgets in the VBox to allow the label full width
+        self.fra_cursor_check = QCheckBox(tr("Cursors"))
+        self.fra_cursor_check.toggled.connect(self.on_fra_cursor_toggled)
+        fra_right_layout.addWidget(self.fra_cursor_check)
+
+        self.fra_cursor_label = QLabel(tr("-"))
+        self.fra_cursor_label.setStyleSheet("font-size: 13px; color: #ccffcc;")
         self.fra_cursor_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        # Allow multi-line
+        self.fra_cursor_label.setWordWrap(True) 
         fra_right_layout.addWidget(self.fra_cursor_label)
+        
+        # Add a small spacer/stretch if needed, relying on plot stretch 
+        # But putting stretch in VBox might push things too far apart if not careful.
+        # Just Plot below is fine.
 
         # FRA Plot
         self.fra_plot = pg.PlotWidget(title=tr("Bode Plot"))
@@ -829,11 +840,18 @@ class LockInAmplifierWidget(QWidget):
         self.fra_plot.showGrid(x=True, y=True, alpha=0.3)
         self.fra_plot.addLegend()
 
-        # Cursor
-        self.fra_cursor = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen("y", width=1, style=Qt.PenStyle.DashLine))
-        self.fra_cursor.setHoverPen(pg.mkPen("y", width=2))
-        self.fra_cursor.sigPositionChanged.connect(self.update_fra_cursor)
-        self.fra_plot.addItem(self.fra_cursor)
+        # Cursors (Hidden by default)
+        self.fra_cursor_1 = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen("y", width=1, style=Qt.PenStyle.DashLine), label="1", labelOpts={'position':0.9, 'color': (255,255,0), 'movable': True})
+        self.fra_cursor_1.setHoverPen(pg.mkPen("y", width=2))
+        self.fra_cursor_1.sigPositionChanged.connect(self.update_fra_cursors)
+        self.fra_cursor_1.setVisible(False)
+        self.fra_plot.addItem(self.fra_cursor_1)
+
+        self.fra_cursor_2 = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen("m", width=1, style=Qt.PenStyle.DashLine), label="2", labelOpts={'position':0.9, 'color': (255,0,255), 'movable': True})
+        self.fra_cursor_2.setHoverPen(pg.mkPen("m", width=2))
+        self.fra_cursor_2.sigPositionChanged.connect(self.update_fra_cursors)
+        self.fra_cursor_2.setVisible(False)
+        self.fra_plot.addItem(self.fra_cursor_2)
 
         # Custom Axis for Log Frequency
         axis = self.fra_plot.getPlotItem().getAxis("bottom")
@@ -1422,64 +1440,128 @@ class LockInAmplifierWidget(QWidget):
         # Auto-scale Phase View
         self.fra_plot_p.autoRange()
 
-    def update_fra_cursor(self):
-        if not self.fra_freqs:
-            self.fra_cursor_label.setText(tr("Cursor: No Data"))
-            return
+    def on_fra_cursor_toggled(self, checked):
+        """Toggle cursors and initialize positions to visible area."""
+        self.fra_cursor_1.setVisible(checked)
+        self.fra_cursor_2.setVisible(checked)
+        
+        if checked:
+            # Initialize positions within current view
+            view_range = self.fra_plot.viewRange()[0]
+            min_x, max_x = view_range
+            
+            # Handle log scale visualization logic if needed, 
+            # but InfiniteLine works on the axis values. 
+            # If the axis is log-mapped manually (which it is: setLogMode(False) but data is logged),
+            # we need to check if we are in log mode or linear mode for the plot.
+            # However, looking at on_fra_result, `fra_log_freqs` stores X values.
+            # If `log` is checked, X is log10(f). If not, X is f.
+            # The viewRange will correspond to these values.
+            
+            span = max_x - min_x
+            if span == 0:
+                span = 1
+                
+            c1_pos = min_x + span * 0.33
+            c2_pos = min_x + span * 0.66
+            
+            self.fra_cursor_1.setValue(c1_pos)
+            self.fra_cursor_2.setValue(c2_pos)
+            
+            self.update_fra_cursors()
+        else:
+            self.fra_cursor_label.setText("-")
 
-        x_val = self.fra_cursor.value()
-        
-        # We search in self.fra_log_freqs which matches the plot X axis regardless of log/linear mode setting
-        # because on_fra_result populates fra_log_freqs based on the mode.
-        
+    def _get_cursor_data(self, cursor_val):
+        """Helper to get (freq, mag_db, phase) from cursor X value."""
         if not self.fra_log_freqs:
-             return
+            return None
 
         x_data = np.array(self.fra_log_freqs)
-        idx = (np.abs(x_data - x_val)).argmin()
-
-        # Retrieve values
+        idx = (np.abs(x_data - cursor_val)).argmin()
+        
         freq = self.fra_freqs[idx]
         mag = self.fra_raw_mags[idx]
         phase = self.fra_phases[idx]
-        
-        # Format Magnitude
-        # We need to respect the Plot Unit
-        unit = self.fra_plot_unit_combo.currentText()
-        if unit.startswith("dB"):
-            # mag is linear (0-1)
-            # Convert to dB
-            mag_val_db = 20 * np.log10(mag + 1e-12)
-            
-            # Adjust for unit if needed (dBV, dBu)
-            sensitivity = self.module.audio_engine.calibration.input_sensitivity
-            v_peak = mag * sensitivity
-            v_rms = v_peak / np.sqrt(2)
-            
-            if unit == "dBV":
-                 mag_val_db = 20 * np.log10(v_rms + 1e-12)
-            elif unit == "dBu":
-                 mag_val_db = 20 * np.log10((v_rms + 1e-12) / 0.7746)
-                 
-            mag_str = f"{mag_val_db:.3f} {unit}"
-        else:
-             # Vrms, Vpeak
-             sensitivity = self.module.audio_engine.calibration.input_sensitivity
-             if unit == "Vrms":
-                 val = mag * sensitivity / np.sqrt(2)
-                 unit_s = "Vrms"
-             else: # Vpeak
-                 val = mag * sensitivity
-                 unit_s = "Vpk"
-             
-             if val < 0.001:
-                 mag_str = f"{val*1000:.3f} m{unit_s}"
-             else:
-                 mag_str = f"{val:.4f} {unit_s}"
 
-        self.fra_cursor_label.setText(
-            tr("Cursor: {0:.1f} Hz | {1} | {2:.3f} deg").format(freq, mag_str, phase)
+        # Calculate Mag in dB for Delta calculation
+        mag_db = 20 * np.log10(mag + 1e-12)
+        
+        return freq, mag, phase, mag_db
+
+    def update_fra_cursors(self):
+        if not self.fra_cursor_check.isChecked() or not self.fra_freqs:
+            self.fra_cursor_label.setText("-")
+            return
+
+        c1_val = self.fra_cursor_1.value()
+        c2_val = self.fra_cursor_2.value()
+        
+        data1 = self._get_cursor_data(c1_val)
+        data2 = self._get_cursor_data(c2_val)
+        
+        if not data1 or not data2:
+            return
+            
+        f1, m1, p1, m1_db = data1
+        f2, m2, p2, m2_db = data2
+        
+        # Calculate Deltas
+        d_f = abs(f2 - f1)
+        d_m_db = abs(m2_db - m1_db) # User requested Delta Amplitude (dB). Usually magnitude difference.
+        d_p = abs(p2 - p1)
+        # Unwrap phase delta if needed? Usually just difference is fine. 
+        # If wrapped, 350 and 10 might be 20 deg diff or 340. 
+        # Standard subtract is simplest unless requested otherwise.
+        
+        # Format Freq
+        if d_f >= 1000:
+            d_f_str = f"{d_f/1000:.3f} kHz"
+        else:
+            d_f_str = f"{d_f:.1f} Hz"
+            
+        # Format Text
+        # Cursor 1: ...
+        # Cursor 2: ...
+        # Delta: ...
+        
+        # To make it compact but readable:
+        # C1: ...
+        # C2: ...
+        # Δ: ...
+        
+        def fmt_cur_html(f, m_db, p):
+            if f >= 1000:
+                f_s = f"{f/1000:.3f} kHz"
+            else:
+                f_s = f"{f:.3f} Hz"
+            return f"<b>{f_s}</b>, {m_db:.4f} dB, {p:.3f} deg"
+
+        c1_str = fmt_cur_html(f1, m1_db, p1)
+        c2_str = fmt_cur_html(f2, m2_db, p2)
+        
+        # HTML Table for alignment (3 Rows)
+        # C1: Yellow (#ffff00)
+        # C2: Magenta (#ff00ff)
+        # Delta: White (#ffffff)
+        
+        html = (
+            f"<table cellspacing='0' cellpadding='0' style='color:#ccffcc;'>"
+            f"<tr>"
+            f"<td style='color:#ffff00;'>C1: {c1_str}</td>"
+            f"</tr>"
+            f"<tr>"
+            f"<td style='color:#ff00ff;'>C2: {c2_str}</td>"
+            f"</tr>"
+            f"<tr>"
+            f"<td style='color:#ffffff; padding-top:2px;'>"
+            f"<b>Δ:</b> {d_f_str}, {d_m_db:.4f} dB, {d_p:.3f} deg"
+            f"</td>"
+            f"</tr>"
+            f"</table>"
         )
+        
+        self.fra_cursor_label.setText(html)
 
     def update_fra_plot(self):
         if not self.fra_raw_mags:
@@ -1531,8 +1613,7 @@ class LockInAmplifierWidget(QWidget):
         
         # Set cursor to max frequency initially or just update
         if self.fra_log_freqs:
-             self.fra_cursor.setValue(self.fra_log_freqs[-1])
-             self.update_fra_cursor()
+             self.update_fra_cursors()
 
     # --- Calibration Methods ---
 
