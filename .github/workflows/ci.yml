@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   lint-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       QT_QPA_PLATFORM: offscreen
       AUDIO_TOOLS_ENABLE_HARDWARE_TESTS: "0"
