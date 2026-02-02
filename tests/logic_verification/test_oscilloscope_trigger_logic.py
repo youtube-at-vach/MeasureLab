@@ -1,6 +1,4 @@
 import numpy as np
-import pytest
-from unittest.mock import MagicMock
 from src.gui.widgets.oscilloscope import Oscilloscope
 
 class MockCalibration:
