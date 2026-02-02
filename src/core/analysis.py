@@ -42,6 +42,8 @@ def _get_time_array(N, sampling_rate):
     Cached time array generation.
     Returns read-only array to prevent modification.
     """
+    if sampling_rate <= 0:
+        raise ValueError("sampling_rate must be > 0")
     t = np.arange(N) / sampling_rate
     t.flags.writeable = False
     return t
@@ -73,6 +75,9 @@ class AudioCalc:
         Resamples audio data from source_sr to target_sr using polyphase filtering.
         This is more efficient than Fourier method for large arrays.
         """
+        if source_sr <= 0 or target_sr <= 0:
+            return data
+
         if source_sr == target_sr:
             return data
 
@@ -130,6 +135,11 @@ class AudioCalc:
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
         """
         N = len(signal)
+        if N == 0 or sampling_rate <= 0:
+            if return_full:
+                return freq_guess, None, None
+            return freq_guess
+
         t = _get_time_array(N, sampling_rate)
 
         # Pre-allocate arrays to avoid repeated allocation in loop
@@ -197,7 +207,7 @@ class AudioCalc:
         # 1. Optimize Frequency
         best_freq, coeffs, M = AudioCalc.optimize_frequency(signal, sampling_rate, freq_guess, return_full=True)
 
-        if not np.isfinite(best_freq):
+        if not np.isfinite(best_freq) or M is None or coeffs is None:
             return -140.0, 0.0, 0.0
 
         # 2. Get Final Residual
