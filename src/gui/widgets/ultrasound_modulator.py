@@ -280,9 +280,12 @@ class UltrasoundModulator(MeasurementModule):
 
             # 4. Carrier
             # Same carrier for both channels usually.
+            # Capture frequency to ensure phase continuity even if param changes during callback
+            current_carrier_freq = self.carrier_freq
+
             t_chunk = np.arange(frames) / fs
-            phase = self._phase + 2 * np.pi * self.carrier_freq * t_chunk
-            self._phase += 2 * np.pi * self.carrier_freq * (frames / fs)
+            phase = self._phase + 2 * np.pi * current_carrier_freq * t_chunk
+            self._phase += 2 * np.pi * current_carrier_freq * (frames / fs)
             self._phase %= 2 * np.pi
 
             carrier = np.cos(phase)
@@ -356,8 +359,10 @@ class UltrasoundModulator(MeasurementModule):
                     m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
 
                     # Carrier generation for SSB
-                    # We need sin(wt) which is synchronous with cos(wt) used for carrier.
-                    # Use the local 'phase' array from Step 4 which is perfectly aligned.
+                    # We have carrier = cos(wt). We need sin(wt).
+                    # sin(wt) = cos(wt - pi/2).
+                    # 'phase' variable from step 4 is buffer-aligned and synchronous with carrier.
+
                     sin_carrier = np.sin(phase)
                     if m.ndim == 2:
                         sin_carrier = sin_carrier[:, np.newaxis]
