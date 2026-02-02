@@ -90,29 +90,62 @@ class Spectrogram(MeasurementModule):
                 self.callback_id = None
             self.is_running = False
 
-    def _callback(self, indata, outdata, frames, time, status):
-        # Append to ring buffer
-        # We need to handle the case where frames > buffer space, but usually frames is small (e.g. 1024)
-        # For simplicity, let's just roll and append.
+    def get_latest_samples(self, n_samples):
+        """Returns the latest n_samples from the ring buffer."""
+        buffer_len = len(self.audio_buffer)
+        if n_samples > buffer_len:
+            n_samples = buffer_len
 
-        if frames > len(self.audio_buffer):
-            # If incoming data exceeds buffer, just take the latest part that fits
-            # This handles cases like block_size=8192 vs fft_size=512 (buffer=1024)
-            nb_to_copy = len(self.audio_buffer)
-            self.audio_buffer[:] = 0  # Optional, but good practice
+        end_pos = self.audio_buffer_pos
+        start_pos = end_pos - n_samples
 
-            if indata.shape[1] >= 2:
-                self.audio_buffer[:] = indata[-nb_to_copy:, :2]
-            else:
-                self.audio_buffer[:, 0] = indata[-nb_to_copy:, 0]
-                self.audio_buffer[:, 1] = indata[-nb_to_copy:, 0]
+        if start_pos >= 0:
+            return self.audio_buffer[start_pos:end_pos]
         else:
-            self.audio_buffer = np.roll(self.audio_buffer, -frames, axis=0)
+            # Wrap around
+            p1 = self.audio_buffer[start_pos:]
+            p2 = self.audio_buffer[:end_pos]
+            return np.concatenate((p1, p2))
+
+    def _callback(self, indata, outdata, frames, time, status):
+        # Write to ring buffer
+        # audio_buffer_pos points to the next write index
+
+        buffer_len = len(self.audio_buffer)
+
+        if frames >= buffer_len:
+            # Just overwrite the whole buffer with the last part of indata
             if indata.shape[1] >= 2:
-                self.audio_buffer[-frames:] = indata[:, :2]
+                self.audio_buffer[:] = indata[-buffer_len:, :2]
             else:
-                self.audio_buffer[-frames:, 0] = indata[:, 0]
-                self.audio_buffer[-frames:, 1] = indata[:, 0]
+                self.audio_buffer[:, 0] = indata[-buffer_len:, 0]
+                self.audio_buffer[:, 1] = indata[-buffer_len:, 0]
+            self.audio_buffer_pos = 0
+        else:
+            end_pos = self.audio_buffer_pos + frames
+            if end_pos <= buffer_len:
+                # No wrap
+                if indata.shape[1] >= 2:
+                    self.audio_buffer[self.audio_buffer_pos:end_pos] = indata[:, :2]
+                else:
+                    self.audio_buffer[self.audio_buffer_pos:end_pos, 0] = indata[:, 0]
+                    self.audio_buffer[self.audio_buffer_pos:end_pos, 1] = indata[:, 0]
+            else:
+                # Wrap around
+                first_chunk = buffer_len - self.audio_buffer_pos
+                second_chunk = frames - first_chunk
+
+                if indata.shape[1] >= 2:
+                    self.audio_buffer[self.audio_buffer_pos:] = indata[:first_chunk, :2]
+                    self.audio_buffer[:second_chunk] = indata[first_chunk:, :2]
+                else:
+                    self.audio_buffer[self.audio_buffer_pos:, 0] = indata[:first_chunk, 0]
+                    self.audio_buffer[self.audio_buffer_pos:, 1] = indata[:first_chunk, 0]
+
+                    self.audio_buffer[:second_chunk, 0] = indata[first_chunk:, 0]
+                    self.audio_buffer[:second_chunk, 1] = indata[first_chunk:, 0]
+
+            self.audio_buffer_pos = (self.audio_buffer_pos + frames) % buffer_len
 
         outdata.fill(0)
 
@@ -280,7 +313,7 @@ class SpectrogramWidget(QWidget):
 
         # Get latest data from buffer
         # We take the last fft_size samples
-        raw_data = self.module.audio_buffer[-self.module.fft_size :]
+        raw_data = self.module.get_latest_samples(self.module.fft_size)
 
         # Select Channel
         if self.module.channel_mode == "Left":
