@@ -813,12 +813,27 @@ class LockInAmplifierWidget(QWidget):
         fra_settings_group.setLayout(fra_form)
         fra_layout.addWidget(fra_settings_group, stretch=1)
 
+        # FRA Plot Layout (Right Side)
+        fra_right_layout = QVBoxLayout()
+
+        # Cursor Label
+        self.fra_cursor_label = QLabel(tr("Cursor: -"))
+        self.fra_cursor_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #ccffcc;")
+        self.fra_cursor_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        fra_right_layout.addWidget(self.fra_cursor_label)
+
         # FRA Plot
         self.fra_plot = pg.PlotWidget(title=tr("Bode Plot"))
         self.fra_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.fra_plot.setLabel("left", tr("Magnitude"), units="dB")
         self.fra_plot.showGrid(x=True, y=True, alpha=0.3)
         self.fra_plot.addLegend()
+
+        # Cursor
+        self.fra_cursor = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen("y", width=1, style=Qt.PenStyle.DashLine))
+        self.fra_cursor.setHoverPen(pg.mkPen("y", width=2))
+        self.fra_cursor.sigPositionChanged.connect(self.update_fra_cursor)
+        self.fra_plot.addItem(self.fra_cursor)
 
         # Custom Axis for Log Frequency
         axis = self.fra_plot.getPlotItem().getAxis("bottom")
@@ -843,7 +858,8 @@ class LockInAmplifierWidget(QWidget):
         self.fra_curve_phase = pg.PlotCurveItem(pen="c", name=tr("Phase (deg)"))
         self.fra_plot_p.addItem(self.fra_curve_phase)
 
-        fra_layout.addWidget(self.fra_plot, stretch=3)
+        fra_right_layout.addWidget(self.fra_plot)
+        fra_layout.addLayout(fra_right_layout, stretch=3)
 
         self.tabs.addTab(fra_widget, tr("Frequency Response"))
 
@@ -1406,6 +1422,65 @@ class LockInAmplifierWidget(QWidget):
         # Auto-scale Phase View
         self.fra_plot_p.autoRange()
 
+    def update_fra_cursor(self):
+        if not self.fra_freqs:
+            self.fra_cursor_label.setText(tr("Cursor: No Data"))
+            return
+
+        x_val = self.fra_cursor.value()
+        
+        # We search in self.fra_log_freqs which matches the plot X axis regardless of log/linear mode setting
+        # because on_fra_result populates fra_log_freqs based on the mode.
+        
+        if not self.fra_log_freqs:
+             return
+
+        x_data = np.array(self.fra_log_freqs)
+        idx = (np.abs(x_data - x_val)).argmin()
+
+        # Retrieve values
+        freq = self.fra_freqs[idx]
+        mag = self.fra_raw_mags[idx]
+        phase = self.fra_phases[idx]
+        
+        # Format Magnitude
+        # We need to respect the Plot Unit
+        unit = self.fra_plot_unit_combo.currentText()
+        if unit.startswith("dB"):
+            # mag is linear (0-1)
+            # Convert to dB
+            mag_val_db = 20 * np.log10(mag + 1e-12)
+            
+            # Adjust for unit if needed (dBV, dBu)
+            sensitivity = self.module.audio_engine.calibration.input_sensitivity
+            v_peak = mag * sensitivity
+            v_rms = v_peak / np.sqrt(2)
+            
+            if unit == "dBV":
+                 mag_val_db = 20 * np.log10(v_rms + 1e-12)
+            elif unit == "dBu":
+                 mag_val_db = 20 * np.log10((v_rms + 1e-12) / 0.7746)
+                 
+            mag_str = f"{mag_val_db:.3f} {unit}"
+        else:
+             # Vrms, Vpeak
+             sensitivity = self.module.audio_engine.calibration.input_sensitivity
+             if unit == "Vrms":
+                 val = mag * sensitivity / np.sqrt(2)
+                 unit_s = "Vrms"
+             else: # Vpeak
+                 val = mag * sensitivity
+                 unit_s = "Vpk"
+             
+             if val < 0.001:
+                 mag_str = f"{val*1000:.3f} m{unit_s}"
+             else:
+                 mag_str = f"{val:.4f} {unit_s}"
+
+        self.fra_cursor_label.setText(
+            tr("Cursor: {0:.1f} Hz | {1} | {2:.3f} deg").format(freq, mag_str, phase)
+        )
+
     def update_fra_plot(self):
         if not self.fra_raw_mags:
             return
@@ -1453,6 +1528,11 @@ class LockInAmplifierWidget(QWidget):
         self.fra_start_btn.setText(tr("Start Sweep"))
         self.fra_start_btn.setEnabled(True)
         self.module.stop_analysis()  # Stop generator
+        
+        # Set cursor to max frequency initially or just update
+        if self.fra_log_freqs:
+             self.fra_cursor.setValue(self.fra_log_freqs[-1])
+             self.update_fra_cursor()
 
     # --- Calibration Methods ---
 
