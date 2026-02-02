@@ -955,11 +955,9 @@
     "Delete": "Löschen",
     "Delete profile '{0}'?": "Profil '{0}' löschen?",
     "Device: {0}": "Gerät: {0}",
-    "Load": "Laden",
     "New Profile Name": "Neuer Profilname",
     "Please enter a profile name.": "Bitte geben Sie einen Profilnamen ein.",
     "Profile '{0}' already exists. Overwrite?": "Profil '{0}' existiert bereits. Überschreiben?",
-    "Profile loaded.": "Profil geladen.",
     "Profile saved.": "Profil gespeichert.",
     "Save As...": "Speichern unter...",
     "Saving recording...": "Aufnahme wird gespeichert...",
@@ -1043,5 +1041,7 @@
     "NCO Std Dev:": "NCO-Std.-Abw.:",
     "DSB (AM)": "DSB (AM)",
     "LSB": "LSB",
-    "USB": "USB"
+    "USB": "USB",
+    "Device: {0} ({1})": "Gerät: {0} ({1})",
+    "Failed to load profile: {0}": "Profil konnte nicht geladen werden: {0}"
 }

@@ -955,11 +955,9 @@
     "Delete": "Excluir",
     "Delete profile '{0}'?": "Excluir perfil '{0}'?",
     "Device: {0}": "Dispositivo: {0}",
-    "Load": "Carregar",
     "New Profile Name": "Nome do novo perfil",
     "Please enter a profile name.": "Por favor, insira um nome de perfil.",
     "Profile '{0}' already exists. Overwrite?": "O perfil '{0}' já existe. Substituir?",
-    "Profile loaded.": "Perfil carregado.",
     "Profile saved.": "Perfil salvo.",
     "Save As...": "Salvar como...",
     "Saving recording...": "Salvando gravação...",
@@ -1043,5 +1041,7 @@
     "NCO Std Dev:": "Desvio Padrão NCO:",
     "DSB (AM)": "DSB (AM)",
     "LSB": "LSB",
-    "USB": "USB"
+    "USB": "USB",
+    "Device: {0} ({1})": "Dispositivo: {0} ({1})",
+    "Failed to load profile: {0}": "Falha ao carregar perfil: {0}"
 }

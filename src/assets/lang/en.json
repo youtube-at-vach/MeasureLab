@@ -966,11 +966,9 @@
     "Delete": "Delete",
     "Delete profile '{0}'?": "Delete profile '{0}'?",
     "Device: {0}": "Device: {0}",
-    "Load": "Load",
     "New Profile Name": "New Profile Name",
     "Please enter a profile name.": "Please enter a profile name.",
     "Profile '{0}' already exists. Overwrite?": "Profile '{0}' already exists. Overwrite?",
-    "Profile loaded.": "Profile loaded.",
     "Profile saved.": "Profile saved.",
     "Save As...": "Save As...",
     "Saving recording...": "Saving recording...",
@@ -1032,5 +1030,7 @@
     "Y-Axis Zoom:": "Y-Axis Zoom:",
     "DSB (AM)": "DSB (AM)",
     "LSB": "LSB",
-    "USB": "USB"
+    "USB": "USB",
+    "Device: {0} ({1})": "Device: {0} ({1})",
+    "Failed to load profile: {0}": "Failed to load profile: {0}"
 }
