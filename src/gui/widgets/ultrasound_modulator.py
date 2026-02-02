@@ -368,17 +368,19 @@ class UltrasoundModulator(MeasurementModule):
                         sin_carrier = sin_carrier[:, np.newaxis]
 
                     # SSB Logic
+                    # Standard SSB:
                     # USB: I * cos - Q * sin
                     # LSB: I * cos + Q * sin
-                    # (Assuming analytic signal convention. Sign might need flip if Q is inverted etc, but this is standard)
+                    # Note: Our Hilbert filter implementation seems to produce inverted Q (-sin),
+                    # so the signs are flipped relative to standard formula to get correct sideband.
 
                     term1 = m_i * carrier
                     term2 = m_q * sin_carrier
 
                     if self.modulation_mode == "USB":
-                        sb = term1 - term2
-                    else:  # LSB
                         sb = term1 + term2
+                    else:  # LSB
+                        sb = term1 - term2
 
                     # Carrier re-insertion?
                     # SSB-SC (Suppressed Carrier) or SSB-LC (Large Carrier/AM-compatible)?
