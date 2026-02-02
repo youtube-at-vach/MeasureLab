@@ -251,6 +251,26 @@ class AudioCalc:
 
     @staticmethod
     def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
+        if len(audio_data) == 0:
+            return {
+                "basic_wave": {
+                    "frequency": 0.0,
+                    "amplitude_dbfs": min_db,
+                    "max_amplitude": 0.0,
+                },
+                "harmonics": [],
+                "thd_percent": 0.0,
+                "thd_db": min_db,
+                "thdn_percent": 0.0,
+                "thdn_db": min_db,
+                "sinad_db": -min_db,
+                "raw_fund_rms": 0.0,
+                "raw_res_rms": 0.0,
+                "raw_harmonics": [],
+                "raw_fund_amp": 0.0,
+                "fft_data": np.array([]),
+            }
+
         window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
         windowed_data = audio_data * window
         fft_result = fft_manager.rfft(windowed_data)
@@ -850,6 +870,8 @@ class AudioCalc:
         Returns: magnitude, phase (degrees)
         """
         N = len(signal)
+        if N == 0:
+            return 0.0, 0.0
 
         # Generate Reference Sine/Cosine (Quadrature)
         # We need two orthogonal references to recover Phase and Magnitude independent of alignment
