@@ -856,18 +856,6 @@ class AudioCalc:
         # Optimization: Use cached reference signals and apply phase rotation
         sin_ref, cos_ref = _get_reference_signals(N, sampling_rate, frequency)
 
-        if phase_ref != 0.0:
-            sin_phi = np.sin(phase_ref)
-            cos_phi = np.cos(phase_ref)
-            # sin(theta + phi) = sin(theta)cos(phi) + cos(theta)sin(phi)
-            ref_sin = sin_ref * cos_phi + cos_ref * sin_phi
-            # cos(theta + phi) = cos(theta)cos(phi) - sin(theta)sin(phi)
-            ref_cos = cos_ref * cos_phi - sin_ref * sin_phi
-        else:
-            # Return copies to ensure consistency (writable) and safety
-            ref_sin = sin_ref.copy()
-            ref_cos = cos_ref.copy()
-
         # Windowing
         # Important if N is not integer number of cycles
         w = get_cached_window(window_name, N)
@@ -882,8 +870,26 @@ class AudioCalc:
         sig_w = signal * w
         scaling = 2.0 / (N * w_mean)
 
-        val_x = np.dot(sig_w, ref_sin) * scaling
-        val_y = np.dot(sig_w, ref_cos) * scaling
+        # Compute dot products with raw reference signals
+        # This avoids allocating new mixed reference arrays (ref_sin, ref_cos)
+        raw_x = np.dot(sig_w, sin_ref)
+        raw_y = np.dot(sig_w, cos_ref)
+
+        if phase_ref != 0.0:
+            sin_phi = np.sin(phase_ref)
+            cos_phi = np.cos(phase_ref)
+
+            # Apply phase rotation to the scalar results
+            # sin(theta + phi) = sin(theta)cos(phi) + cos(theta)sin(phi)
+            # val_x corresponds to dot(sig_w, ref_sin)
+            val_x = (raw_x * cos_phi + raw_y * sin_phi) * scaling
+
+            # cos(theta + phi) = cos(theta)cos(phi) - sin(theta)sin(phi)
+            # val_y corresponds to dot(sig_w, ref_cos)
+            val_y = (raw_y * cos_phi - raw_x * sin_phi) * scaling
+        else:
+            val_x = raw_x * scaling
+            val_y = raw_y * scaling
 
         magnitude = np.sqrt(val_x**2 + val_y**2)
         phase = np.arctan2(val_y, val_x)
