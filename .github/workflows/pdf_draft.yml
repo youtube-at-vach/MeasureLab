@@ -11,14 +11,14 @@ jobs:
   build-pdf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       
       - name: Configure Git Credentials
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.x
           cache: 'pip'
@@ -43,7 +43,7 @@ jobs:
           mv site/en/pdf/operation_manual.pdf site/en/pdf/operation_manual_en.pdf
 
       - name: Upload PDF Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: manual-pdf
           path: |
