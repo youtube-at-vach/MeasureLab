@@ -19,6 +19,8 @@ This tool measures the following values:
     * The lower this value (e.g., -120dBFS), the more capable the equipment is of accurately reproducing minute sounds.
 * **Slope**
     * Ideally 0 (flat), but changes if compression or similar effects are present.
+* **Hysteresis Width**
+    * The difference in measurement values between the forward path (decreasing level) and the reverse path (increasing level). In electronic equipment, a value closer to 0 is better. If there is a significant difference, it may indicate thermal effects or delayed response due to the internal state of the device.
 
 ## Operation
 
@@ -27,6 +29,7 @@ This tool measures the following values:
 1. Determine the measurement conditions in **Sweep Settings**.
 2. Press the **Start Sweep** button to begin measurement.
 3. The tool automatically sweeps the specified range (e.g., -5dBFS to -120dBFS) and plots the results on the graph.
+    * If **Enable Hysteresis Sweep** is enabled, it performs forward (large to small) and reverse (small to large) measurements sequentially.
 
 ### Interpreting Results
 
@@ -35,7 +38,7 @@ This tool measures the following values:
     * The closer the line sticks to **"0dB" in the center, the better**.
     * The graph will start to fluctuate as it moves to the left (lower level region), which is due to the influence of noise.
 * **Noise Floor Region (Gray Area)**
-    * Indicates the region where the SNR (Signal-to-Noise Ratio) is poor and the measured values are unreliable.
+    * Indicates the region where the SNR (Signal-To-Noise Ratio) is poor and the measured values are unreliable.
 
 ## Settings
 
@@ -48,11 +51,13 @@ Sets the range and resolution of the measurement.
 * **End Level**: End level of the sweep (quiet sound). Set to the limit value you want to verify (e.g., `-120 dBFS`).
 * **Steps**: Number of measurement points. More steps mean more detail but take longer.
 * **SNR Limit**: Threshold for noise floor detection. If the signal is not louder than the noise by at least this value (e.g., 10dB), the data is considered "unreliable."
+* **Averaging**: The number of measurements per point. Increasing the count reduces the influence of noise and stabilizes measurements at low levels, but increases the total measurement time.
 
 ### I/O Routing
 
 * **Output**: Channel to output the measurement signal.
 * **Input**: Channel to receive the measurement signal.
+* **Enable Hysteresis Sweep**: When checked, the tool automatically performs a reverse sweep (small to large) after the forward sweep (large to small) to verify the difference between the two directions.
 
 ### Display
 
