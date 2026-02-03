@@ -40,7 +40,8 @@ class Spectrogram(MeasurementModule):
 
         # State
         self.input_buffer = np.zeros(self.fft_size)  # For overlap processing
-        self.spectrogram_data = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+        self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+        self.spectrogram_ptr = 0
         self.callback_id = None
 
         # Accumulator for Sweep Speed
@@ -70,7 +71,8 @@ class Spectrogram(MeasurementModule):
         self.reset_buffers()
 
     def reset_buffers(self):
-        self.spectrogram_data = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+        self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+        self.spectrogram_ptr = 0
         self.audio_buffer = np.zeros((self.fft_size * 2, 2))
         self.audio_buffer_pos = 0
         self.accumulator = None
@@ -106,6 +108,12 @@ class Spectrogram(MeasurementModule):
             p1 = self.audio_buffer[start_pos:]
             p2 = self.audio_buffer[:end_pos]
             return np.concatenate((p1, p2))
+
+    def add_spectrum(self, mag_db):
+        """Adds a new spectrum frame to the circular buffer."""
+        # Ensure shape match if possible, but for performance assume caller is correct or numpy will raise
+        self.spectrogram_buffer[self.spectrogram_ptr] = mag_db
+        self.spectrogram_ptr = (self.spectrogram_ptr + 1) % self.history_length
 
     def _callback(self, indata, outdata, frames, time, status):
         # Write to ring buffer
@@ -258,13 +266,20 @@ class SpectrogramWidget(QWidget):
         self.plot.setLabel("bottom", tr("Time"), units="frames")
 
         # Image Item
-        self.img = pg.ImageItem()
-        self.plot.addItem(self.img)
+        # We use two images to render the circular buffer without copying
+        self.img_old = pg.ImageItem()  # Older data (right side of pointer in buffer)
+        self.img_new = pg.ImageItem()  # Newer data (left side of pointer in buffer)
+        self.plot.addItem(self.img_old)
+        self.plot.addItem(self.img_new)
 
         # Histogram (Colormap Control)
         self.hist = pg.HistogramLUTItem()
-        self.hist.setImageItem(self.img)
+        self.hist.setImageItem(self.img_old)  # Control the first image
         self.win.addItem(self.hist)
+
+        # Sync second image
+        self.hist.sigLevelsChanged.connect(lambda: self.img_new.setLevels(self.hist.getLevels()))
+        self.hist.sigLookupTableChanged.connect(lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512)))
 
         # Set default colormap
         self.hist.gradient.loadPreset("viridis")
@@ -379,20 +394,26 @@ class SpectrogramWidget(QWidget):
         self.module.acc_count = 0
 
         # Update Spectrogram Data
-        # Roll history
-        self.module.spectrogram_data = np.roll(self.module.spectrogram_data, -1, axis=0)
-        self.module.spectrogram_data[-1] = final_mag_db
+        self.module.add_spectrum(final_mag_db)
 
-        # Update Image
-        # ImageItem expects (width, height) where width is x-axis.
-        # We want Time on X, Freq on Y? Or Time on Y?
-        # Standard Spectrogram: Time on X, Freq on Y.
-        # But scrolling waterfall is often Time on Y (scrolling down).
-        # Let's do Time on X (scrolling left).
+        # Update Image (Circular Buffer Visualization)
+        # buffer: [ 0 1 2 ... ptr-1 | ptr ... N ]
+        # Time order: ptr (Oldest) -> ... -> N -> 0 -> ... -> ptr-1 (Newest)
+        # We render [ptr:] at X=0 (Oldest part)
+        # We render [:ptr] at X=len(ptr:) (Newer part)
 
-        # Data shape: (History, FreqBins) -> (Time, Freq)
-        # So we can pass it directly.
-        self.img.setImage(self.module.spectrogram_data, autoLevels=False)
+        ptr = self.module.spectrogram_ptr
+        buffer = self.module.spectrogram_buffer
+
+        # Part 1: Oldest data (buffer[ptr:])
+        part1 = buffer[ptr:]
+        self.img_old.setImage(part1, autoLevels=False)
+        self.img_old.setPos(0, 0)
+
+        # Part 2: Newer data (buffer[:ptr])
+        part2 = buffer[:ptr]
+        self.img_new.setImage(part2, autoLevels=False)
+        self.img_new.setPos(len(part1), 0)
 
         # Set Scale
         # X axis: Time (0 to History)
@@ -403,10 +424,12 @@ class SpectrogramWidget(QWidget):
         # Scale Y to match Frequency
         # Image height is fft_size // 2 + 1
         # We want it to span 0 to Nyquist
-        y_scale = nyquist / (self.module.spectrogram_data.shape[1])
+        y_scale = nyquist / (buffer.shape[1])
 
-        self.img.resetTransform()
-        self.img.setTransform(QTransform().scale(1, y_scale))
+        transform = QTransform().scale(1, y_scale)
+        self.img_old.setTransform(transform)
+        self.img_new.setTransform(transform)
+
         self.plot.setLimits(yMin=0, yMax=nyquist)
         self.plot.setYRange(self.module.min_freq, self.module.max_freq)
 
