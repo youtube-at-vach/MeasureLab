@@ -1,4 +1,5 @@
 import argparse
+import threading
 
 import numpy as np
 import pyqtgraph as pg
@@ -50,6 +51,7 @@ class Spectrogram(MeasurementModule):
         # Ring buffer for incoming audio
         self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
         self.audio_buffer_pos = 0
+        self.buffer_lock = threading.Lock()
 
     @property
     def name(self) -> str:
@@ -70,11 +72,12 @@ class Spectrogram(MeasurementModule):
         self.reset_buffers()
 
     def reset_buffers(self):
-        self.spectrogram_data = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
-        self.audio_buffer = np.zeros((self.fft_size * 2, 2))
-        self.audio_buffer_pos = 0
-        self.accumulator = None
-        self.acc_count = 0
+        with self.buffer_lock:
+            self.spectrogram_data = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+            self.audio_buffer = np.zeros((self.fft_size * 2, 2))
+            self.audio_buffer_pos = 0
+            self.accumulator = None
+            self.acc_count = 0
 
     def start_analysis(self):
         if self.is_running:
@@ -92,60 +95,62 @@ class Spectrogram(MeasurementModule):
 
     def get_latest_samples(self, n_samples):
         """Returns the latest n_samples from the ring buffer."""
-        buffer_len = len(self.audio_buffer)
-        if n_samples > buffer_len:
-            n_samples = buffer_len
+        with self.buffer_lock:
+            buffer_len = len(self.audio_buffer)
+            if n_samples > buffer_len:
+                n_samples = buffer_len
 
-        end_pos = self.audio_buffer_pos
-        start_pos = end_pos - n_samples
+            end_pos = self.audio_buffer_pos
+            start_pos = end_pos - n_samples
 
-        if start_pos >= 0:
-            return self.audio_buffer[start_pos:end_pos]
-        else:
-            # Wrap around
-            p1 = self.audio_buffer[start_pos:]
-            p2 = self.audio_buffer[:end_pos]
-            return np.concatenate((p1, p2))
+            if start_pos >= 0:
+                return self.audio_buffer[start_pos:end_pos].copy()
+            else:
+                # Wrap around
+                p1 = self.audio_buffer[start_pos:]
+                p2 = self.audio_buffer[:end_pos]
+                return np.concatenate((p1, p2))
 
     def _callback(self, indata, outdata, frames, time, status):
         # Write to ring buffer
         # audio_buffer_pos points to the next write index
 
-        buffer_len = len(self.audio_buffer)
+        with self.buffer_lock:
+            buffer_len = len(self.audio_buffer)
 
-        if frames >= buffer_len:
-            # Just overwrite the whole buffer with the last part of indata
-            if indata.shape[1] >= 2:
-                self.audio_buffer[:] = indata[-buffer_len:, :2]
-            else:
-                self.audio_buffer[:, 0] = indata[-buffer_len:, 0]
-                self.audio_buffer[:, 1] = indata[-buffer_len:, 0]
-            self.audio_buffer_pos = 0
-        else:
-            end_pos = self.audio_buffer_pos + frames
-            if end_pos <= buffer_len:
-                # No wrap
+            if frames >= buffer_len:
+                # Just overwrite the whole buffer with the last part of indata
                 if indata.shape[1] >= 2:
-                    self.audio_buffer[self.audio_buffer_pos:end_pos] = indata[:, :2]
+                    self.audio_buffer[:] = indata[-buffer_len:, :2]
                 else:
-                    self.audio_buffer[self.audio_buffer_pos:end_pos, 0] = indata[:, 0]
-                    self.audio_buffer[self.audio_buffer_pos:end_pos, 1] = indata[:, 0]
+                    self.audio_buffer[:, 0] = indata[-buffer_len:, 0]
+                    self.audio_buffer[:, 1] = indata[-buffer_len:, 0]
+                self.audio_buffer_pos = 0
             else:
-                # Wrap around
-                first_chunk = buffer_len - self.audio_buffer_pos
-                second_chunk = frames - first_chunk
-
-                if indata.shape[1] >= 2:
-                    self.audio_buffer[self.audio_buffer_pos:] = indata[:first_chunk, :2]
-                    self.audio_buffer[:second_chunk] = indata[first_chunk:, :2]
+                end_pos = self.audio_buffer_pos + frames
+                if end_pos <= buffer_len:
+                    # No wrap
+                    if indata.shape[1] >= 2:
+                        self.audio_buffer[self.audio_buffer_pos:end_pos] = indata[:, :2]
+                    else:
+                        self.audio_buffer[self.audio_buffer_pos:end_pos, 0] = indata[:, 0]
+                        self.audio_buffer[self.audio_buffer_pos:end_pos, 1] = indata[:, 0]
                 else:
-                    self.audio_buffer[self.audio_buffer_pos:, 0] = indata[:first_chunk, 0]
-                    self.audio_buffer[self.audio_buffer_pos:, 1] = indata[:first_chunk, 0]
+                    # Wrap around
+                    first_chunk = buffer_len - self.audio_buffer_pos
+                    second_chunk = frames - first_chunk
 
-                    self.audio_buffer[:second_chunk, 0] = indata[first_chunk:, 0]
-                    self.audio_buffer[:second_chunk, 1] = indata[first_chunk:, 0]
+                    if indata.shape[1] >= 2:
+                        self.audio_buffer[self.audio_buffer_pos:] = indata[:first_chunk, :2]
+                        self.audio_buffer[:second_chunk] = indata[first_chunk:, :2]
+                    else:
+                        self.audio_buffer[self.audio_buffer_pos:, 0] = indata[:first_chunk, 0]
+                        self.audio_buffer[self.audio_buffer_pos:, 1] = indata[:first_chunk, 0]
 
-            self.audio_buffer_pos = (self.audio_buffer_pos + frames) % buffer_len
+                        self.audio_buffer[:second_chunk, 0] = indata[first_chunk:, 0]
+                        self.audio_buffer[:second_chunk, 1] = indata[first_chunk:, 0]
+
+                self.audio_buffer_pos = (self.audio_buffer_pos + frames) % buffer_len
 
         outdata.fill(0)
 
