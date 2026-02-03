@@ -23,8 +23,6 @@ def _calculate_ra_raw(f):
     f2 = f**2
     const = 12194**2 * f**4
     denom = (f2 + 20.6**2) * np.sqrt((f2 + 107.7**2) * (f2 + 737.9**2)) * (f2 + 12194**2)
-    # Avoid division by zero
-    denom[denom == 0] = 1.0
     Ra = const / denom
     return Ra
 
