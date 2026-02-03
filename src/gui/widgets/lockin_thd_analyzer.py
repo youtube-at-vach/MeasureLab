@@ -74,8 +74,73 @@ class LockInTHDAnalyzer(MeasurementModule):
         return "High-precision THD+N measurement using lock-in fundamental removal."
 
     def run(self, args):
-        # CLI entry not implemented
-        pass
+        """
+        Execute measurement from CLI.
+        Expected args:
+            frequency (float): Generator frequency (Hz)
+            amplitude (float): Generator amplitude (0.0-1.0)
+            duration (float): Measurement duration (seconds)
+            input_channel (int): Input channel index
+            output_channel (int): Output channel index
+        """
+        import time
+
+        # 1. Parse Arguments
+        freq = getattr(args, "frequency", 1000.0)
+        amp = getattr(args, "amplitude", 0.5)
+        duration = getattr(args, "duration", 5.0)
+        in_ch = getattr(args, "input_channel", 0)
+        out_ch = getattr(args, "output_channel", 0)
+
+        print(f"[{self.name}] Starting measurement...")
+        print(f"  Frequency: {freq} Hz")
+        print(f"  Amplitude: {amp:.3f}")
+        print(f"  Duration:  {duration} s")
+
+        # 2. Configure Module
+        self.gen_frequency = freq
+        self.gen_amplitude = amp
+        self.target_freq = freq
+        self.input_channel = in_ch
+        self.output_channel = out_ch
+
+        # 3. Start Analysis
+        self.start_analysis()
+
+        # 4. Main Loop
+        try:
+            start_time = time.time()
+            interval = 0.1
+
+            while time.time() - start_time < duration:
+                self.process()
+
+                status = (
+                    f"\r  measuring... "
+                    f"Freq: {self.measured_freq:7.1f} Hz | "
+                    f"THD+N: {self.thdn_value:6.4f} % ({self.thdn_db:6.2f} dB)"
+                )
+                print(status, end="", flush=True)
+
+                time.sleep(interval)
+
+            print()  # End status line
+
+        except KeyboardInterrupt:
+            print("\n  Interrupted by user.")
+
+        finally:
+            self.stop_analysis()
+
+        # 5. Final Report
+        print("-" * 40)
+        print("Measurement Result:")
+        print(f"  Fundamental Freq: {self.measured_freq:.2f} Hz")
+        print(f"  Fundamental Amp:  {self.fund_amp:.4f} (Peak)")
+        print(f"  Residual RMS:     {self.residual_rms:.6f}")
+        print(f"  THD+N Ratio:      {self.thdn_value:.4f} %")
+        print(f"  THD+N Level:      {self.thdn_db:.2f} dB")
+        print("-" * 40)
 
     def get_widget(self):
         return LockInTHDWidget(self)
