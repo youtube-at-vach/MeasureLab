@@ -66,48 +66,84 @@ class LinearitySweepWorker(QThread):
                 amp_linear = 10 ** (level_db / 20)
                 self.module.gen_amplitude = amp_linear
 
-                # Wait for system to settle
-                time.sleep(min_wait)
+                # Averaging Loop
+                mag_sum = 0.0
+                noise_sum_sq = 0.0
 
-                # Capture
-                # We need fresh data.
-                # The module's input_data is a ring buffer updated by callback.
-                # We need to ensure we capture *new* data generated at this amplitude.
-                # Simplest way: Wait for buffer_duration * 2
+                # Determine wait time for buffer refresh
+                # We need fresh data for each average.
                 buffer_duration = self.module.buffer_size / sample_rate
+                wait_for_new_data = max(0.05, buffer_duration * 1.1)
+
+                # Initial wait for settling at this level
+                time.sleep(min_wait)
+                
+                # First capture (wait for buffer fill)
                 time.sleep(buffer_duration * 1.5)
 
-                # Snapshot average of recent buffers?
-                # For now, just take the current buffer.
-                # Lock-in is robust.
-                data = self.module.get_latest_buffer()
+                for avg_idx in range(self.module.averaging_count):
+                    if not self.is_running:
+                        break
+                    
+                    if avg_idx > 0:
+                        # Wait for fresh buffer
+                        time.sleep(wait_for_new_data)
 
-                # Process
-                if self.module.input_channel == 0:  # Left
-                    sig = data[:, 0]
-                else:  # Right
-                    if data.shape[1] > 1:
-                        sig = data[:, 1]
-                    else:
+                    data = self.module.get_latest_buffer()
+
+                    # Process
+                    if self.module.input_channel == 0:  # Left
                         sig = data[:, 0]
+                    else:  # Right
+                        if data.shape[1] > 1:
+                            sig = data[:, 1]
+                        else:
+                            sig = data[:, 0]
 
-                # Lock-in measurement
-                mag, phase = AudioCalc.calculate_lockin_measurement(
-                    sig, freq, sample_rate, phase_ref=0, window_name="blackmanharris"
-                )
+                    # Lock-in measurement (Signal)
+                    mag, phase = AudioCalc.calculate_lockin_measurement(
+                        sig, freq, sample_rate, phase_ref=0, window_name="blackmanharris"
+                    )
+                    
+                    # Convert to complex for vector averaging (reduces noise floor)
+                    # Note: Phase is relative to start of buffer, which is arbitrary unless synced?
+                    # AudioCalc.calculate_lockin_measurement usually returns phase relative to specific ref?
+                    # The implementation in AudioCalc likely uses a generated ref sine starting at 0 phase for the buffer.
+                    # Since our generator runs continuously, the phase of the signal in the buffer drifts relative to the buffer start.
+                    # HOWEVER, Linearity is Amplitude-only (Scalar) usually.
+                    # Vector averaging requires phase coherence between averages.
+                    # Our `get_latest_buffer` is just a ring buffer snapshot. It is NOT triggered.
+                    # So the phase will be random for each capture relative to the buffer window.
+                    # THUS: We cannot do Vector Averaging (complex sum) unless we have a trigger or phase sync.
+                    # We MUST do Magnitude Averaging (Scalar Averaging).
+                    # This reduces variance but doesn't lower the noise floor as much as vector averaging.
+                    # Given the request is to "reduce deviation" (variance), scalar averaging is correct here.
+                    
+                    # Wait, if we use LockInAmplifier logic, it tracks phase.
+                    # But here in LinearityAnalyzer, we just call static AudioCalc method.
+                    # Let's stick to Magnitude Averaging for safety.
+                    
+                    mag_sum += mag # Treating as scalar magnitude accumulation
+                    
+                    # Sideband Noise Measurement
+                    noise_freq = freq * 1.15
+                    noise_mag, _ = AudioCalc.calculate_lockin_measurement(
+                        sig, noise_freq, sample_rate, phase_ref=0, window_name="blackmanharris"
+                    )
+                    noise_sum_sq += noise_mag ** 2
 
-                # Sideband Noise Measurement (to detect noise floor)
-                # Use a frequency offset that is unlikely to be a harmonic
-                noise_freq = freq * 1.15
-                noise_mag, _ = AudioCalc.calculate_lockin_measurement(
-                    sig, noise_freq, sample_rate, phase_ref=0, window_name="blackmanharris"
-                )
+                if not self.is_running:
+                    break
 
-                meas_db = 20 * np.log10(mag + 1e-15)
+                # Compute Averages
+                avg_mag = mag_sum / self.module.averaging_count
+                avg_noise = np.sqrt(noise_sum_sq / self.module.averaging_count)
 
-                if noise_mag < 1e-15:
-                    noise_mag = 1e-15
-                snr_db = 20 * np.log10((mag + 1e-15) / noise_mag)
+                meas_db = 20 * np.log10(avg_mag + 1e-15)
+
+                if avg_noise < 1e-15:
+                    avg_noise = 1e-15
+                snr_db = 20 * np.log10((avg_mag + 1e-15) / avg_noise)
 
                 # Calculate Gain & Linearity Error
                 # Gain = Measured - Input
@@ -126,7 +162,7 @@ class LinearitySweepWorker(QThread):
                     "measured_level": meas_db,
                     "gain": current_gain,
                     "linearity_error": lin_error,
-                    "phase": phase,
+                    "phase": 0, # Phase meaningless with scalar averaging
                     "snr": snr_db,
                 }
 
@@ -160,7 +196,11 @@ class LinearityAnalyzer(MeasurementModule):
         self.start_level = -5.0
         self.end_level = -120.0
         self.steps = 30
+        self.start_level = -5.0
+        self.end_level = -120.0
+        self.steps = 30
         self.snr_threshold = 10.0
+        self.averaging_count = 1
 
         self.callback_id = None
         self.worker = None
@@ -371,6 +411,12 @@ class LinearityAnalyzerWidget(QWidget):
         self.snr_spin.setSuffix(" dB")
         self.snr_spin.valueChanged.connect(lambda v: setattr(self.module, "snr_threshold", v))
         form.addRow(tr("SNR Limit:"), self.snr_spin)
+
+        self.avg_spin = QSpinBox()
+        self.avg_spin.setRange(1, 100)
+        self.avg_spin.setValue(1)
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averaging_count", v))
+        form.addRow(tr("Averaging:"), self.avg_spin)
 
         group.setLayout(form)
         config_layout.addWidget(group)
