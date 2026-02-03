@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 # Mock sounddevice before importing anything that uses it
 sys.modules['sounddevice'] = MagicMock()
 
-import numpy as np
-from src.gui.widgets.lock_in_amplifier import LockInAmplifier
+import numpy as np  # noqa: E402
+from src.gui.widgets.lock_in_amplifier import LockInAmplifier  # noqa: E402
 
 class MockCalibration:
     def __init__(self):
