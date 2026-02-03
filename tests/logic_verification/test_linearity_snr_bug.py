@@ -27,6 +27,8 @@ class TestLinearitySnrBug(unittest.TestCase):
         mock_module.test_frequency = 1000
         mock_module.input_channel = 0
         mock_module.buffer_size = 1024
+        mock_module.averaging_count = 1
+        mock_module.hysteresis_mode = False
 
         # Mock get_latest_buffer to return zeros
         mock_module.get_latest_buffer.return_value = np.zeros((1024, 2))
