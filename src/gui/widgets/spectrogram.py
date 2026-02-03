@@ -51,6 +51,7 @@ class Spectrogram(MeasurementModule):
         # Ring buffer for incoming audio
         self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
         self.audio_buffer_pos = 0
+        self.output_buffer = None
 
     @property
     def name(self) -> str:
@@ -77,6 +78,7 @@ class Spectrogram(MeasurementModule):
         self.audio_buffer_pos = 0
         self.accumulator = None
         self.acc_count = 0
+        self.output_buffer = None
 
     def start_analysis(self):
         if self.is_running:
@@ -105,9 +107,15 @@ class Spectrogram(MeasurementModule):
             return self.audio_buffer[start_pos:end_pos]
         else:
             # Wrap around
+            if self.output_buffer is None or self.output_buffer.shape[0] != n_samples:
+                self.output_buffer = np.zeros((n_samples, 2))
+
             p1 = self.audio_buffer[start_pos:]
             p2 = self.audio_buffer[:end_pos]
-            return np.concatenate((p1, p2))
+
+            self.output_buffer[: len(p1)] = p1
+            self.output_buffer[len(p1) :] = p2
+            return self.output_buffer
 
     def add_spectrum(self, mag_db):
         """Adds a new spectrum frame to the circular buffer."""
