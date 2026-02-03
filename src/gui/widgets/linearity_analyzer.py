@@ -186,6 +186,8 @@ class LinearitySweepWorker(QThread):
 
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            self.module.stop_analysis()
 
     def stop(self):
         self.is_running = False
