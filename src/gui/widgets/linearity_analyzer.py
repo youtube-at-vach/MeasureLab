@@ -47,6 +47,18 @@ class LinearitySweepWorker(QThread):
             # Linear space for dB means... linspace in dB domain
             levels_db = np.linspace(start_db, end_db, steps)
 
+            if self.module.hysteresis_mode:
+                # Add reverse sweep (End -> Start)
+                levels_rev = levels_db[::-1]
+                full_levels = np.concatenate((levels_db, levels_rev))
+                # Create direction tags
+                directions = ["fwd"] * len(levels_db) + ["rev"] * len(levels_rev)
+            else:
+                full_levels = levels_db
+                directions = ["fwd"] * len(levels_db)
+            
+            total_steps = len(full_levels)
+
             freq = self.module.test_frequency
             sample_rate = self.module.audio_engine.sample_rate
 
@@ -57,7 +69,7 @@ class LinearitySweepWorker(QThread):
             # 100ms settling time is usually enough for electronics, plus buffer latency
             min_wait = 0.2
 
-            for i, level_db in enumerate(levels_db):
+            for i, (level_db, direction) in enumerate(zip(full_levels, directions)):
                 if not self.is_running:
                     break
 
@@ -164,10 +176,11 @@ class LinearitySweepWorker(QThread):
                     "linearity_error": lin_error,
                     "phase": 0, # Phase meaningless with scalar averaging
                     "snr": snr_db,
+                    "direction": direction,
                 }
 
                 self.result_ready.emit(result)
-                self.progress.emit(int((i + 1) / steps * 100))
+                self.progress.emit(int((i + 1) / total_steps * 100))
 
             self.finished_sweep.emit()
 
@@ -201,6 +214,7 @@ class LinearityAnalyzer(MeasurementModule):
         self.steps = 30
         self.snr_threshold = 10.0
         self.averaging_count = 1
+        self.hysteresis_mode = False
 
         self.callback_id = None
         self.worker = None
@@ -421,6 +435,8 @@ class LinearityAnalyzerWidget(QWidget):
         group.setLayout(form)
         config_layout.addWidget(group)
 
+        config_layout.addWidget(group)
+
         # IO
         io_group = QGroupBox(tr("I/O Routing"))
         io_form = QFormLayout()
@@ -434,6 +450,12 @@ class LinearityAnalyzerWidget(QWidget):
         self.in_combo.addItems([tr("Left"), tr("Right")])
         self.in_combo.currentIndexChanged.connect(lambda v: setattr(self.module, "input_channel", v))
         io_form.addRow(tr("Input:"), self.in_combo)
+
+        # Hysteresis Toggle
+        from PyQt6.QtWidgets import QCheckBox
+        self.hyst_check = QCheckBox(tr("Enable Hysteresis Sweep"))
+        self.hyst_check.toggled.connect(lambda v: setattr(self.module, "hysteresis_mode", v))
+        io_form.addRow("", self.hyst_check)
 
         io_group.setLayout(io_form)
         config_layout.addWidget(io_group)
@@ -465,11 +487,13 @@ class LinearityAnalyzerWidget(QWidget):
         self.stat_max_error = QLabel("-- dB")
         self.stat_linear_range = QLabel("-- dB")
         self.stat_slope = QLabel("--")
+        self.stat_hysteresis = QLabel("--")
 
         stats_layout.addRow(tr("Ref Gain:"), self.stat_ref_gain)
         stats_layout.addRow(tr("Max Deviation:"), self.stat_max_error)
         stats_layout.addRow(tr("Linear Range (<0.5dB):"), self.stat_linear_range)  # Using 0.5dB as standard
         stats_layout.addRow(tr("Slope:"), self.stat_slope)
+        stats_layout.addRow(tr("Hysteresis Width:"), self.stat_hysteresis)
 
         stats_group.setLayout(stats_layout)
         results_layout.addWidget(stats_group)
@@ -564,6 +588,7 @@ class LinearityAnalyzerWidget(QWidget):
             self.results_gain = []
             self.results_measured = []
             self.results_snr = []
+            self.results_direction = []
             self.error_curve.setData([], [])
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
@@ -573,6 +598,7 @@ class LinearityAnalyzerWidget(QWidget):
             self.stat_max_error.setText("-- dB")
             self.stat_linear_range.setText("-- dB")
             self.stat_slope.setText("--")
+            self.stat_hysteresis.setText("--")
 
             worker = self.module.start_sweep()
             worker.progress.connect(self.progress.setValue)
@@ -597,6 +623,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_gain.append(res["gain"])
         self.results_measured.append(res["measured_level"])
         self.results_snr.append(res["snr"])
+        self.results_direction.append(res.get("direction", "fwd"))
 
         self.update_plots()
         self.update_stats()
@@ -768,6 +795,42 @@ class LinearityAnalyzerWidget(QWidget):
         else:
             min_good = np.min(self.results_x)
             self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
+
+        # 5. Hysteresis
+        if self.module.hysteresis_mode and len(self.results_direction) > 0:
+            dirs = np.array(self.results_direction)
+            if "rev" in dirs:
+                # Separate fwd and rev
+                fwd_mask = dirs == "fwd"
+                rev_mask = dirs == "rev"
+                
+                # We need to map inputs to gains for both
+                # Assuming inputs are floats, exact match might be tricky if not careful,
+                # but we generated them using linspace in reverse order, so they should match exactly.
+                # However, float rounding can be annoying.
+                
+                x_fwd = np.array(self.results_x)[fwd_mask]
+                g_fwd = np.array(self.results_gain)[fwd_mask]
+                
+                x_rev = np.array(self.results_x)[rev_mask]
+                g_rev = np.array(self.results_gain)[rev_mask]
+                
+                # Create dicts for easy lookup
+                fwd_dict = {round(x, 6): g for x, g in zip(x_fwd, g_fwd)}
+                max_hyst = 0.0
+                
+                for x, g_r in zip(x_rev, g_rev):
+                    xr = round(x, 6)
+                    if xr in fwd_dict:
+                        diff = abs(g_r - fwd_dict[xr])
+                        if diff > max_hyst:
+                            max_hyst = diff
+                            
+                self.stat_hysteresis.setText(f"{max_hyst:.3f} dB")
+            else:
+                self.stat_hysteresis.setText("--")
+        else:
+            self.stat_hysteresis.setText(tr("N/A"))
 
     def on_finished(self):
         self.start_btn.setChecked(False)
