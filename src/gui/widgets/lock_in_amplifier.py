@@ -1,4 +1,5 @@
 import argparse
+import threading
 import time
 from collections import deque
 
@@ -37,6 +38,7 @@ class LockInAmplifier(MeasurementModule):
         self.buffer_size = 4096  # Adjust for integration time
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
+        self.buffer_lock = threading.Lock()
 
         # Settings
         self.gen_frequency = 1000.0
@@ -124,16 +126,21 @@ class LockInAmplifier(MeasurementModule):
         if self.buffer_size == size:
             return
         self.buffer_size = size
-        self.input_data = np.zeros((self.buffer_size, 2))
-        self.input_buffer_pos = 0
+        with self.buffer_lock:
+            self.input_data = np.zeros((self.buffer_size, 2))
+            self.input_buffer_pos = 0
         self.reset_postmix_lpf()
 
     def get_ordered_input_data(self):
         """Returns a time-ordered copy of the ring buffer."""
-        if self.input_buffer_pos == 0:
-            return self.input_data.copy()
+        with self.buffer_lock:
+            data = self.input_data.copy()
+            pos = self.input_buffer_pos
+
+        if pos == 0:
+            return data
         # Roll so that pos (oldest sample) moves to 0
-        return np.roll(self.input_data, -self.input_buffer_pos, axis=0)
+        return np.roll(data, -pos, axis=0)
 
     def start_analysis(self):
         if self.is_running:
@@ -159,25 +166,31 @@ class LockInAmplifier(MeasurementModule):
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
             # Ring buffer logic
-            n = len(new_data)
-            if n > self.buffer_size:
-                # If new data is larger than buffer, just take the end
-                self.input_data[:] = new_data[-self.buffer_size :]
-                self.input_buffer_pos = 0
-            else:
-                # Write to ring buffer
-                p = self.input_buffer_pos
-                if p + n <= self.buffer_size:
-                    # No wrap
-                    self.input_data[p : p + n] = new_data
-                    self.input_buffer_pos = (p + n) % self.buffer_size
+            with self.buffer_lock:
+                current_buffer_len = len(self.input_data)
+                n = len(new_data)
+
+                if n > current_buffer_len:
+                    # If new data is larger than buffer, just take the end
+                    self.input_data[:] = new_data[-current_buffer_len:]
+                    self.input_buffer_pos = 0
                 else:
-                    # Wrap around
-                    chunk1 = self.buffer_size - p
-                    chunk2 = n - chunk1
-                    self.input_data[p:] = new_data[:chunk1]
-                    self.input_data[:chunk2] = new_data[chunk1:]
-                    self.input_buffer_pos = chunk2
+                    # Ensure pos is within bounds (robustness against resize race)
+                    if self.input_buffer_pos >= current_buffer_len:
+                        self.input_buffer_pos = 0
+
+                    p = self.input_buffer_pos
+                    if p + n <= current_buffer_len:
+                        # No wrap
+                        self.input_data[p : p + n] = new_data
+                        self.input_buffer_pos = (p + n) % current_buffer_len
+                    else:
+                        # Wrap around
+                        chunk1 = current_buffer_len - p
+                        chunk2 = n - chunk1
+                        self.input_data[p:] = new_data[:chunk1]
+                        self.input_data[:chunk2] = new_data[chunk1:]
+                        self.input_buffer_pos = chunk2
 
             # --- Output Generation ---
             # Generate Sine Wave
