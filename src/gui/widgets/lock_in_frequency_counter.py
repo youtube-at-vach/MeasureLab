@@ -88,10 +88,10 @@ class KalmanFilter1D:
             k = 0
         else:
             k = p_pred / (p_pred + self.r)
-        
+
         # x_k = x_pred + K * (z_k - x_pred)
         self.x = self.x + k * (measurement - self.x)
-        
+
         # P_k = (1 - K) * P_pred
         self.p = (1.0 - k) * p_pred
 
@@ -130,15 +130,15 @@ class LockInFrequencyCounter(MeasurementModule):
         # nco_avg_count now controls the Process Noise Q (Smoothness/Stiffness) AND Display Averaging
         self.nco_avg_count = 10 
         self.kf = KalmanFilter1D(process_noise=1e-10, measurement_noise=1e-6)
-        
+
         # Buffer to estimate Measurement Noise R adaptively
         self.r_history = deque(maxlen=20)
 
         # Display Averaging Buffer (Post-Kalman)
         self.nco_history = deque(maxlen=self.nco_avg_count)
-        
+
         self.update_kalman_params()
-        
+
         self.nco_mean = 1000.0 # Instant KF estimate
         self.nco_std = 0.0     # KF Uncertainty
 
@@ -217,7 +217,7 @@ class LockInFrequencyCounter(MeasurementModule):
         self.current_amp_db = -120.0
         self.signal_present = False
         self.pid.reset()
-        
+
         # Reset Kalman and R estimation
         self.kf.reset()
         self.r_history.clear()
@@ -312,7 +312,7 @@ class LockInFrequencyCounter(MeasurementModule):
         z = sig * osc
 
         # Split into segments to find slope
-        
+
         n_segments = 4
         stride = n_samples // n_segments
 
@@ -412,20 +412,20 @@ class LockInFrequencyCounter(MeasurementModule):
                 # Use Adaptive R based on recent NCO variation
                 # This assumes the PID jitter represents the "Measurement Noise" for the KF
                 self.r_history.append(new_freq)
-                
+
                 # Update R if we have enough history
                 if len(self.r_history) >= 2:
                     var_est = np.var(self.r_history)
                     # Add small floor to avoid div by zero or over-confidence
                     self.kf.r = var_est + 1e-12
-                    
+
                 # Update Kalman Filter
                 self.nco_mean = self.kf.update(new_freq)
                 self.nco_std = self.kf.get_std_uncertainty()
 
                 # --- Post-Kalman Averaging for Stability ---
                 self.nco_history.append(self.nco_mean)
-                
+
                 if len(self.nco_history) > 0:
                     self.nco_display_mean = np.mean(self.nco_history)
                     # Use std of the filtered history as a stability metric for display
