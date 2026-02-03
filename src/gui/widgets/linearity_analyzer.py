@@ -36,6 +36,17 @@ class LinearitySweepWorker(QThread):
         self.module = module
         self.is_running = True
 
+    def wait_interruptible(self, duration: float, interval: float = 0.05):
+        """Waits for `duration` seconds in `interval` chunks, checking `is_running`."""
+        elapsed = 0.0
+        while elapsed < duration:
+            if not self.is_running:
+                return
+            remaining = duration - elapsed
+            sleep_time = min(remaining, interval)
+            time.sleep(sleep_time)
+            elapsed += sleep_time
+
     def run(self):
         try:
             # 1. Generate Levels (High to Low usually, or Low to High)
@@ -88,10 +99,10 @@ class LinearitySweepWorker(QThread):
                 wait_for_new_data = max(0.05, buffer_duration * 1.1)
 
                 # Initial wait for settling at this level
-                time.sleep(min_wait)
+                self.wait_interruptible(min_wait)
 
                 # First capture (wait for buffer fill)
-                time.sleep(buffer_duration * 1.5)
+                self.wait_interruptible(buffer_duration * 1.5)
 
                 for avg_idx in range(self.module.averaging_count):
                     if not self.is_running:
@@ -99,7 +110,7 @@ class LinearitySweepWorker(QThread):
 
                     if avg_idx > 0:
                         # Wait for fresh buffer
-                        time.sleep(wait_for_new_data)
+                        self.wait_interruptible(wait_for_new_data)
 
                     data = self.module.get_latest_buffer()
 
