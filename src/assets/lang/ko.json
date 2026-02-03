@@ -1048,5 +1048,7 @@
     "Device: {0} ({1})": "장치: {0} ({1})",
     "Failed to load profile: {0}": "프로필을 로드하지 못했습니다: {0}",
     "-": "-",
-    "Cursors": "커서"
+    "Cursors": "커서",
+    "Avg Count (KF-Q & Display):": "평균 횟수 (KF-Q & 표시):",
+    "Display Uncertainty:": "표시 불확도:"
 }

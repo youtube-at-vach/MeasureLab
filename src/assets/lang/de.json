@@ -1048,5 +1048,7 @@
     "Device: {0} ({1})": "Gerät: {0} ({1})",
     "Failed to load profile: {0}": "Profil konnte nicht geladen werden: {0}",
     "-": "-",
-    "Cursors": "Cursor"
+    "Cursors": "Cursor",
+    "Avg Count (KF-Q & Display):": "Mittelungsanzahl (KF-Q & Anzeige):",
+    "Display Uncertainty:": "Anzeigeunsicherheit:"
 }

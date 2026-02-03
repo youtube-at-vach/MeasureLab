@@ -1048,5 +1048,7 @@
     "Device: {0} ({1})": "设备：{0} ({1})",
     "Failed to load profile: {0}": "无法加载配置文件：{0}",
     "-": "-",
-    "Cursors": "光标"
+    "Cursors": "光标",
+    "Avg Count (KF-Q & Display):": "平均次数 (KF-Q & 显示):",
+    "Display Uncertainty:": "显示不确定度:"
 }
