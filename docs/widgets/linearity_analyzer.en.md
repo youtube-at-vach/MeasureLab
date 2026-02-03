@@ -83,3 +83,13 @@ Investigate whether your audio interface or DAC has 16-bit precision (approx. -9
 3. Check the graph to see how far it keeps 0dB error.
     * If it fluctuates around -90dB, it is 16-bit class performance.
     * If it holds up to -110dB to -120dB, it is very high performance.
+
+### Observing Hysteresis in Dual ADC Range Switching
+
+Some recent recorders and high-end interfaces that support 32-bit float recording are equipped with two ADCs, and they achieve a vast dynamic range by internally switching gain depending on the input level. To prevent frequent clicking noises, this switching point is sometimes provided with "hysteresis" (processing that changes the threshold for switching between the forward and reverse paths).
+
+1. **Start Level**: `-3 dBFS` (Start here in this example).
+2. **End Level**: `-9 dBFS` (Lower to here).
+3. Check **Enable Hysteresis Sweep**.
+4. When the measurement is executed, a "gap" may appear in the gain or linearity error graph between the forward path (-3 -> -9) and the reverse path (-9 -> -3).
+    * If this is observed, it means the device is performing gain switching in the analog or digital stage, and you have successfully visualized that behavior.
