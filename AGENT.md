@@ -68,7 +68,7 @@ VS Code から `pytest (venv)` タスクを利用可能です。
 
 最小スモーク（この環境で実行して 5 tests pass を確認）:
 
-- `./.venv/bin/python -m pytest -q tests/test_config.py tests/test_si_formatting.py`
+- `./.venv/bin/python -m pytest -q tests/functional/test_config.py tests/functional/test_si_formatting.py`
 
 全体:
 
@@ -130,5 +130,10 @@ README にもある通り、Linux では PortAudio バックエンドのまま�
 - **その他**:
     - URL は `<https://example.com>` のように `<>` で囲む (MD034)
     - Admonitions (`!!! note` 等) は許可されています（コードブロック判定の誤検知を防ぐため MD046 は無効化済）
+
+### リンター・型チェック
+
+- `./.venv/bin/ruff check .`
+- `./.venv/bin/mypy .`
 
 編集後は `npx markdownlint-cli2 "**/*.md" "#node_modules"` でチェック可能です。
