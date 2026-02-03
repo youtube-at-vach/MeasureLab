@@ -36,6 +36,7 @@ class LockInAmplifier(MeasurementModule):
         self.is_running = False
         self.buffer_size = 4096  # Adjust for integration time
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.input_buffer_pos = 0
 
         # Settings
         self.gen_frequency = 1000.0
@@ -119,12 +120,28 @@ class LockInAmplifier(MeasurementModule):
     def get_widget(self):
         return LockInAmplifierWidget(self)
 
+    def set_buffer_size(self, size: int):
+        if self.buffer_size == size:
+            return
+        self.buffer_size = size
+        self.input_data = np.zeros((self.buffer_size, 2))
+        self.input_buffer_pos = 0
+        self.reset_postmix_lpf()
+
+    def get_ordered_input_data(self):
+        """Returns a time-ordered copy of the ring buffer."""
+        if self.input_buffer_pos == 0:
+            return self.input_data.copy()
+        # Roll so that pos (oldest sample) moves to 0
+        return np.roll(self.input_data, -self.input_buffer_pos, axis=0)
+
     def start_analysis(self):
         if self.is_running:
             return
 
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.input_buffer_pos = 0
         self.reset_postmix_lpf()
 
         # Generator State
@@ -141,12 +158,26 @@ class LockInAmplifier(MeasurementModule):
             else:
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
-            # Roll buffer
-            if len(new_data) > self.buffer_size:
+            # Ring buffer logic
+            n = len(new_data)
+            if n > self.buffer_size:
+                # If new data is larger than buffer, just take the end
                 self.input_data[:] = new_data[-self.buffer_size :]
+                self.input_buffer_pos = 0
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data) :] = new_data
+                # Write to ring buffer
+                p = self.input_buffer_pos
+                if p + n <= self.buffer_size:
+                    # No wrap
+                    self.input_data[p : p + n] = new_data
+                    self.input_buffer_pos = (p + n) % self.buffer_size
+                else:
+                    # Wrap around
+                    chunk1 = self.buffer_size - p
+                    chunk2 = n - chunk1
+                    self.input_data[p:] = new_data[:chunk1]
+                    self.input_data[:chunk2] = new_data[chunk1:]
+                    self.input_buffer_pos = chunk2
 
             # --- Output Generation ---
             # Generate Sine Wave
@@ -181,7 +212,7 @@ class LockInAmplifier(MeasurementModule):
         """
         Perform Lock-in calculation on the current buffer.
         """
-        data = self.input_data
+        data = self.get_ordered_input_data()
         sig = data[:, self.signal_channel]
         ref = data[:, self.ref_channel]
 
@@ -1130,18 +1161,17 @@ class LockInAmplifierWidget(QWidget):
         self.out_ch_combo.setEnabled(not checked)
 
     def on_time_changed(self, idx):
+        size = 4096
         if idx == 0:
-            self.module.buffer_size = 2048
+            size = 2048
         elif idx == 1:
-            self.module.buffer_size = 4096
+            size = 4096
         elif idx == 2:
-            self.module.buffer_size = 16384
+            size = 16384
         elif idx == 3:
-            self.module.buffer_size = 65536
+            size = 65536
 
-        # Re-allocate buffer
-        self.module.input_data = np.zeros((self.module.buffer_size, 2))
-        self.module.reset_postmix_lpf()
+        self.module.set_buffer_size(size)
 
     def on_postmix_lpf_changed(self, idx):
         # idx: 0=Off, 1..8 => order
