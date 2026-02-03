@@ -7,8 +7,6 @@ import os
 # Add repo root to path to import src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from src.core.analysis import _get_time_array
-
 def benchmark():
     N = 10_000_000
     sr = 44100.0
