@@ -190,57 +190,66 @@ class LockInAmplifier(MeasurementModule):
         ref_rms = np.sqrt(np.mean(ref**2))
         self.ref_level = 20 * np.log10(ref_rms + 1e-12)
 
+        use_virtual_ref = False
         if ref_rms < 0.001:  # -60dB threshold
-            self.current_magnitude = 0.0
-            self.current_phase = 0.0
-            self.current_x = 0.0
-            self.current_y = 0.0
-            self.ref_freq = 0.0
-            return
+            if self.external_mode:
+                self.current_magnitude = 0.0
+                self.current_phase = 0.0
+                self.current_x = 0.0
+                self.current_y = 0.0
+                self.ref_freq = 0.0
+                return
+            else:
+                # Internal Mode with no reference input: Use Virtual Reference (Generator Phase)
+                # Note: Phase will be relative to buffer start (random/rolling),
+                # but Magnitude will be correct.
+                use_virtual_ref = True
+                self.ref_freq = self.gen_frequency
 
         # Estimate Ref Frequency and Coherence
-        # Use Hilbert Transform to get analytic signal
-        ref_analytic = hilbert(ref)
+        if not use_virtual_ref:
+            # Use Hilbert Transform to get analytic signal
+            ref_analytic = hilbert(ref)
 
-        # Trim edges to remove Hilbert artifacts (e.g., 5% from each side)
-        trim_percent = 0.05
-        trim_len = int(len(ref) * trim_percent)
-        if trim_len < 10:
-            trim_len = 0  # Don't trim if too short (shouldn't happen with 4096)
+            # Trim edges to remove Hilbert artifacts (e.g., 5% from each side)
+            trim_percent = 0.05
+            trim_len = int(len(ref) * trim_percent)
+            if trim_len < 10:
+                trim_len = 0  # Don't trim if too short (shouldn't happen with 4096)
 
-        if trim_len > 0:
-            ref_analytic_trimmed = ref_analytic[trim_len:-trim_len]
-            ref_trimmed = ref[trim_len:-trim_len]
-        else:
-            ref_analytic_trimmed = ref_analytic
-            ref_trimmed = ref
+            if trim_len > 0:
+                ref_analytic_trimmed = ref_analytic[trim_len:-trim_len]
+                ref_trimmed = ref[trim_len:-trim_len]
+            else:
+                ref_analytic_trimmed = ref_analytic
+                ref_trimmed = ref
 
-        if len(ref_analytic_trimmed) > 10:
-            # Linear Regression on Phase
-            ref_inst_phase = np.unwrap(np.angle(ref_analytic_trimmed))
-            t_trimmed = np.arange(len(ref_inst_phase)) / self.audio_engine.sample_rate
+            if len(ref_analytic_trimmed) > 10:
+                # Linear Regression on Phase
+                ref_inst_phase = np.unwrap(np.angle(ref_analytic_trimmed))
+                t_trimmed = np.arange(len(ref_inst_phase)) / self.audio_engine.sample_rate
 
-            # Polyfit degree 1 (Linear) -> slope is angular frequency (rad/s)
-            slope, intercept = np.polyfit(t_trimmed, ref_inst_phase, 1)
-            self.ref_freq = slope / (2.0 * np.pi)
-        else:
-            self.ref_freq = 0.0
+                # Polyfit degree 1 (Linear) -> slope is angular frequency (rad/s)
+                slope, intercept = np.polyfit(t_trimmed, ref_inst_phase, 1)
+                self.ref_freq = slope / (2.0 * np.pi)
+            else:
+                self.ref_freq = 0.0
 
-        # Calculate Coherence (Spectral Purity)
-        # Coherence = magnitude of component at ref_freq / total peak level
-        # Use the same coherent projection used by the lock-in detector.
-        t_coh = np.arange(len(ref_trimmed)) / self.audio_engine.sample_rate
-        osc_coh = np.exp(-1j * 2 * np.pi * self.ref_freq * t_coh)
-        ref_component = np.abs(2 * np.mean(ref_trimmed * osc_coh))
-        ref_rms_val = np.sqrt(np.mean(ref_trimmed**2))
-        ref_peak_val = ref_rms_val * np.sqrt(2)
+            # Calculate Coherence (Spectral Purity)
+            # Coherence = magnitude of component at ref_freq / total peak level
+            # Use the same coherent projection used by the lock-in detector.
+            t_coh = np.arange(len(ref_trimmed)) / self.audio_engine.sample_rate
+            osc_coh = np.exp(-1j * 2 * np.pi * self.ref_freq * t_coh)
+            ref_component = np.abs(2 * np.mean(ref_trimmed * osc_coh))
+            ref_rms_val = np.sqrt(np.mean(ref_trimmed**2))
+            ref_peak_val = ref_rms_val * np.sqrt(2)
 
-        if ref_peak_val > 1e-9:
-            self.ref_coherence = ref_component / ref_peak_val
-            if self.ref_coherence > 1.0:
-                self.ref_coherence = 1.0
-        else:
-            self.ref_coherence = 0.0
+            if ref_peak_val > 1e-9:
+                self.ref_coherence = ref_component / ref_peak_val
+                if self.ref_coherence > 1.0:
+                    self.ref_coherence = 1.0
+            else:
+                self.ref_coherence = 0.0
 
         # Force Internal Mode stats
         if not self.external_mode:
@@ -270,14 +279,19 @@ class LockInAmplifier(MeasurementModule):
         if not np.isfinite(w_mean) or w_mean <= 0.0:
             w_mean = 1.0
 
-        # Build a reference phasor from the FUNDAMENTAL component of the reference channel.
-        # For harmonic measurements, the reference channel often contains only the fundamental.
-        # Using the reference projection at the harmonic frequency would therefore be ~0 and
-        # destabilize both phase removal and any amplitude correction.
-        osc_ref = np.exp(-1j * 2 * np.pi * ref_freq * t)
-        ref_c_fund = 2 * np.mean(ref * w * osc_ref) / w_mean
-        ref_unit = ref_c_fund / (np.abs(ref_c_fund) + 1e-12)  # unit phasor
-        ref_unit_h = ref_unit**harmonic_order
+        if use_virtual_ref:
+            # Virtual Reference: Assume 0 phase relative to buffer (so we just demodulate signal)
+            ref_unit_h = 1.0 + 0j
+            correction = 1.0
+        else:
+            # Build a reference phasor from the FUNDAMENTAL component of the reference channel.
+            # For harmonic measurements, the reference channel often contains only the fundamental.
+            # Using the reference projection at the harmonic frequency would therefore be ~0 and
+            # destabilize both phase removal and any amplitude correction.
+            osc_ref = np.exp(-1j * 2 * np.pi * ref_freq * t)
+            ref_c_fund = 2 * np.mean(ref * w * osc_ref) / w_mean
+            ref_unit = ref_c_fund / (np.abs(ref_c_fund) + 1e-12)  # unit phasor
+            ref_unit_h = ref_unit**harmonic_order
 
         # Complex signal amplitude (peak) at the DEMOD frequency (fundamental or harmonic)
         osc_demod = np.exp(-1j * 2 * np.pi * demod_freq * t)
@@ -287,12 +301,13 @@ class LockInAmplifier(MeasurementModule):
         # For harmonic_order>1, we deliberately do NOT attempt a scalloping correction based on
         # the reference channel, since it does not generally contain that harmonic.
         correction = 1.0
-        if harmonic_order == 1:
-            # Correct scalloping loss using the reference channel's time-domain peak estimate.
-            # For a near-sinusoidal reference, ref_rms*sqrt(2) ≈ A_ref (peak), while |ref_c_fund| = A_ref*|H|.
-            ref_amp_est = ref_rms * np.sqrt(2)
-            ref_proj_mag = np.abs(ref_c_fund)
-            correction = ref_amp_est / (ref_proj_mag + 1e-12)
+        if not use_virtual_ref:
+            if harmonic_order == 1:
+                # Correct scalloping loss using the reference channel's time-domain peak estimate.
+                # For a near-sinusoidal reference, ref_rms*sqrt(2) ≈ A_ref (peak), while |ref_c_fund| = A_ref*|H|.
+                ref_amp_est = ref_rms * np.sqrt(2)
+                ref_proj_mag = np.abs(ref_c_fund)
+                correction = ref_amp_est / (ref_proj_mag + 1e-12)
 
         # rel = A_sig * exp(j*(phi_sig - harmonic_order*phi_ref))
         result = sig_c * np.conj(ref_unit_h) * correction
