@@ -50,6 +50,8 @@ jobs:
         # タグ名を取得（refs/tags/... から取り除く）
         $tag = $env:GITHUB_REF -replace 'refs/tags/',''
         if (-not $tag) { $tag = 'untagged' }
+        # ファイル名に使えない文字を置換
+        $tag = $tag -replace '[\\/*?:"<>|]', '-'
 
         $outDir = "dist/release"
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
@@ -70,7 +72,7 @@ jobs:
 
     - name: Release Windows
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         files: dist/release/*.zip
@@ -130,6 +132,7 @@ jobs:
       run: |
         set -euo pipefail
         tag="${GITHUB_REF#refs/tags/}"
+        tag="${tag//\//-}"
         mkdir -p dist/release
         shopt -s nullglob
         candidates=(MeasureLab*.AppImage)
@@ -150,7 +153,7 @@ jobs:
 
     - name: Release Linux
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         files: |
@@ -249,6 +252,7 @@ jobs:
       run: |
         mkdir -p dist/release
         tag="${GITHUB_REF#refs/tags/}"
+        tag="${tag//\//-}"
         cp dist/MeasureLab.dmg "dist/release/MeasureLab-${tag}-macos-arm64.dmg"
 
     - name: Extract CHANGELOG for version
@@ -262,7 +266,7 @@ jobs:
 
     - name: Release macOS
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
         files: dist/release/*.dmg
