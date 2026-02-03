@@ -56,7 +56,7 @@ class LinearitySweepWorker(QThread):
             else:
                 full_levels = levels_db
                 directions = ["fwd"] * len(levels_db)
-            
+
             total_steps = len(full_levels)
 
             freq = self.module.test_frequency
@@ -69,7 +69,7 @@ class LinearitySweepWorker(QThread):
             # 100ms settling time is usually enough for electronics, plus buffer latency
             min_wait = 0.2
 
-            for i, (level_db, direction) in enumerate(zip(full_levels, directions)):
+            for i, (level_db, direction) in enumerate(zip(full_levels, directions, strict=False)):
                 if not self.is_running:
                     break
 
@@ -89,14 +89,14 @@ class LinearitySweepWorker(QThread):
 
                 # Initial wait for settling at this level
                 time.sleep(min_wait)
-                
+
                 # First capture (wait for buffer fill)
                 time.sleep(buffer_duration * 1.5)
 
                 for avg_idx in range(self.module.averaging_count):
                     if not self.is_running:
                         break
-                    
+
                     if avg_idx > 0:
                         # Wait for fresh buffer
                         time.sleep(wait_for_new_data)
@@ -116,7 +116,7 @@ class LinearitySweepWorker(QThread):
                     mag, phase = AudioCalc.calculate_lockin_measurement(
                         sig, freq, sample_rate, phase_ref=0, window_name="blackmanharris"
                     )
-                    
+
                     # Convert to complex for vector averaging (reduces noise floor)
                     # Note: Phase is relative to start of buffer, which is arbitrary unless synced?
                     # AudioCalc.calculate_lockin_measurement usually returns phase relative to specific ref?
@@ -130,13 +130,13 @@ class LinearitySweepWorker(QThread):
                     # We MUST do Magnitude Averaging (Scalar Averaging).
                     # This reduces variance but doesn't lower the noise floor as much as vector averaging.
                     # Given the request is to "reduce deviation" (variance), scalar averaging is correct here.
-                    
+
                     # Wait, if we use LockInAmplifier logic, it tracks phase.
                     # But here in LinearityAnalyzer, we just call static AudioCalc method.
                     # Let's stick to Magnitude Averaging for safety.
-                    
+
                     mag_sum += mag # Treating as scalar magnitude accumulation
-                    
+
                     # Sideband Noise Measurement
                     noise_freq = freq * 1.15
                     noise_mag, _ = AudioCalc.calculate_lockin_measurement(
@@ -805,29 +805,29 @@ class LinearityAnalyzerWidget(QWidget):
                 # Separate fwd and rev
                 fwd_mask = dirs == "fwd"
                 rev_mask = dirs == "rev"
-                
+
                 # We need to map inputs to gains for both
                 # Assuming inputs are floats, exact match might be tricky if not careful,
                 # but we generated them using linspace in reverse order, so they should match exactly.
                 # However, float rounding can be annoying.
-                
+
                 x_fwd = np.array(self.results_x)[fwd_mask]
                 g_fwd = np.array(self.results_gain)[fwd_mask]
-                
+
                 x_rev = np.array(self.results_x)[rev_mask]
                 g_rev = np.array(self.results_gain)[rev_mask]
-                
+
                 # Create dicts for easy lookup
-                fwd_dict = {round(x, 6): g for x, g in zip(x_fwd, g_fwd)}
+                fwd_dict = {round(x, 6): g for x, g in zip(x_fwd, g_fwd, strict=False)}
                 max_hyst = 0.0
-                
-                for x, g_r in zip(x_rev, g_rev):
+
+                for x, g_r in zip(x_rev, g_rev, strict=False):
                     xr = round(x, 6)
                     if xr in fwd_dict:
                         diff = abs(g_r - fwd_dict[xr])
                         if diff > max_hyst:
                             max_hyst = diff
-                            
+
                 self.stat_hysteresis.setText(f"{max_hyst:.3f} dB")
             else:
                 self.stat_hysteresis.setText("--")
