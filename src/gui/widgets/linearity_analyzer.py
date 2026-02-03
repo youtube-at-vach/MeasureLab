@@ -47,6 +47,18 @@ class LinearitySweepWorker(QThread):
             # Linear space for dB means... linspace in dB domain
             levels_db = np.linspace(start_db, end_db, steps)
 
+            if self.module.hysteresis_mode:
+                # Add reverse sweep (End -> Start)
+                levels_rev = levels_db[::-1]
+                full_levels = np.concatenate((levels_db, levels_rev))
+                # Create direction tags
+                directions = ["fwd"] * len(levels_db) + ["rev"] * len(levels_rev)
+            else:
+                full_levels = levels_db
+                directions = ["fwd"] * len(levels_db)
+
+            total_steps = len(full_levels)
+
             freq = self.module.test_frequency
             sample_rate = self.module.audio_engine.sample_rate
 
@@ -57,7 +69,7 @@ class LinearitySweepWorker(QThread):
             # 100ms settling time is usually enough for electronics, plus buffer latency
             min_wait = 0.2
 
-            for i, level_db in enumerate(levels_db):
+            for i, (level_db, direction) in enumerate(zip(full_levels, directions, strict=False)):
                 if not self.is_running:
                     break
 
@@ -66,48 +78,84 @@ class LinearitySweepWorker(QThread):
                 amp_linear = 10 ** (level_db / 20)
                 self.module.gen_amplitude = amp_linear
 
-                # Wait for system to settle
+                # Averaging Loop
+                mag_sum = 0.0
+                noise_sum_sq = 0.0
+
+                # Determine wait time for buffer refresh
+                # We need fresh data for each average.
+                buffer_duration = self.module.buffer_size / sample_rate
+                wait_for_new_data = max(0.05, buffer_duration * 1.1)
+
+                # Initial wait for settling at this level
                 time.sleep(min_wait)
 
-                # Capture
-                # We need fresh data.
-                # The module's input_data is a ring buffer updated by callback.
-                # We need to ensure we capture *new* data generated at this amplitude.
-                # Simplest way: Wait for buffer_duration * 2
-                buffer_duration = self.module.buffer_size / sample_rate
+                # First capture (wait for buffer fill)
                 time.sleep(buffer_duration * 1.5)
 
-                # Snapshot average of recent buffers?
-                # For now, just take the current buffer.
-                # Lock-in is robust.
-                data = self.module.get_latest_buffer()
+                for avg_idx in range(self.module.averaging_count):
+                    if not self.is_running:
+                        break
 
-                # Process
-                if self.module.input_channel == 0:  # Left
-                    sig = data[:, 0]
-                else:  # Right
-                    if data.shape[1] > 1:
-                        sig = data[:, 1]
-                    else:
+                    if avg_idx > 0:
+                        # Wait for fresh buffer
+                        time.sleep(wait_for_new_data)
+
+                    data = self.module.get_latest_buffer()
+
+                    # Process
+                    if self.module.input_channel == 0:  # Left
                         sig = data[:, 0]
+                    else:  # Right
+                        if data.shape[1] > 1:
+                            sig = data[:, 1]
+                        else:
+                            sig = data[:, 0]
 
-                # Lock-in measurement
-                mag, phase = AudioCalc.calculate_lockin_measurement(
-                    sig, freq, sample_rate, phase_ref=0, window_name="blackmanharris"
-                )
+                    # Lock-in measurement (Signal)
+                    mag, phase = AudioCalc.calculate_lockin_measurement(
+                        sig, freq, sample_rate, phase_ref=0, window_name="blackmanharris"
+                    )
 
-                # Sideband Noise Measurement (to detect noise floor)
-                # Use a frequency offset that is unlikely to be a harmonic
-                noise_freq = freq * 1.15
-                noise_mag, _ = AudioCalc.calculate_lockin_measurement(
-                    sig, noise_freq, sample_rate, phase_ref=0, window_name="blackmanharris"
-                )
+                    # Convert to complex for vector averaging (reduces noise floor)
+                    # Note: Phase is relative to start of buffer, which is arbitrary unless synced?
+                    # AudioCalc.calculate_lockin_measurement usually returns phase relative to specific ref?
+                    # The implementation in AudioCalc likely uses a generated ref sine starting at 0 phase for the buffer.
+                    # Since our generator runs continuously, the phase of the signal in the buffer drifts relative to the buffer start.
+                    # HOWEVER, Linearity is Amplitude-only (Scalar) usually.
+                    # Vector averaging requires phase coherence between averages.
+                    # Our `get_latest_buffer` is just a ring buffer snapshot. It is NOT triggered.
+                    # So the phase will be random for each capture relative to the buffer window.
+                    # THUS: We cannot do Vector Averaging (complex sum) unless we have a trigger or phase sync.
+                    # We MUST do Magnitude Averaging (Scalar Averaging).
+                    # This reduces variance but doesn't lower the noise floor as much as vector averaging.
+                    # Given the request is to "reduce deviation" (variance), scalar averaging is correct here.
 
-                meas_db = 20 * np.log10(mag + 1e-15)
+                    # Wait, if we use LockInAmplifier logic, it tracks phase.
+                    # But here in LinearityAnalyzer, we just call static AudioCalc method.
+                    # Let's stick to Magnitude Averaging for safety.
 
-                if noise_mag < 1e-15:
-                    noise_mag = 1e-15
-                snr_db = 20 * np.log10((mag + 1e-15) / noise_mag)
+                    mag_sum += mag # Treating as scalar magnitude accumulation
+
+                    # Sideband Noise Measurement
+                    noise_freq = freq * 1.15
+                    noise_mag, _ = AudioCalc.calculate_lockin_measurement(
+                        sig, noise_freq, sample_rate, phase_ref=0, window_name="blackmanharris"
+                    )
+                    noise_sum_sq += noise_mag ** 2
+
+                if not self.is_running:
+                    break
+
+                # Compute Averages
+                avg_mag = mag_sum / self.module.averaging_count
+                avg_noise = np.sqrt(noise_sum_sq / self.module.averaging_count)
+
+                meas_db = 20 * np.log10(avg_mag + 1e-15)
+
+                if avg_noise < 1e-15:
+                    avg_noise = 1e-15
+                snr_db = 20 * np.log10((avg_mag + 1e-15) / avg_noise)
 
                 # Calculate Gain & Linearity Error
                 # Gain = Measured - Input
@@ -126,17 +174,20 @@ class LinearitySweepWorker(QThread):
                     "measured_level": meas_db,
                     "gain": current_gain,
                     "linearity_error": lin_error,
-                    "phase": phase,
+                    "phase": 0, # Phase meaningless with scalar averaging
                     "snr": snr_db,
+                    "direction": direction,
                 }
 
                 self.result_ready.emit(result)
-                self.progress.emit(int((i + 1) / steps * 100))
+                self.progress.emit(int((i + 1) / total_steps * 100))
 
             self.finished_sweep.emit()
 
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            self.module.stop_analysis()
 
     def stop(self):
         self.is_running = False
@@ -160,7 +211,12 @@ class LinearityAnalyzer(MeasurementModule):
         self.start_level = -5.0
         self.end_level = -120.0
         self.steps = 30
+        self.start_level = -5.0
+        self.end_level = -120.0
+        self.steps = 30
         self.snr_threshold = 10.0
+        self.averaging_count = 1
+        self.hysteresis_mode = False
 
         self.callback_id = None
         self.worker = None
@@ -372,7 +428,15 @@ class LinearityAnalyzerWidget(QWidget):
         self.snr_spin.valueChanged.connect(lambda v: setattr(self.module, "snr_threshold", v))
         form.addRow(tr("SNR Limit:"), self.snr_spin)
 
+        self.avg_spin = QSpinBox()
+        self.avg_spin.setRange(1, 100)
+        self.avg_spin.setValue(1)
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averaging_count", v))
+        form.addRow(tr("Averaging:"), self.avg_spin)
+
         group.setLayout(form)
+        config_layout.addWidget(group)
+
         config_layout.addWidget(group)
 
         # IO
@@ -388,6 +452,12 @@ class LinearityAnalyzerWidget(QWidget):
         self.in_combo.addItems([tr("Left"), tr("Right")])
         self.in_combo.currentIndexChanged.connect(lambda v: setattr(self.module, "input_channel", v))
         io_form.addRow(tr("Input:"), self.in_combo)
+
+        # Hysteresis Toggle
+        from PyQt6.QtWidgets import QCheckBox
+        self.hyst_check = QCheckBox(tr("Enable Hysteresis Sweep"))
+        self.hyst_check.toggled.connect(lambda v: setattr(self.module, "hysteresis_mode", v))
+        io_form.addRow("", self.hyst_check)
 
         io_group.setLayout(io_form)
         config_layout.addWidget(io_group)
@@ -419,11 +489,13 @@ class LinearityAnalyzerWidget(QWidget):
         self.stat_max_error = QLabel("-- dB")
         self.stat_linear_range = QLabel("-- dB")
         self.stat_slope = QLabel("--")
+        self.stat_hysteresis = QLabel("--")
 
         stats_layout.addRow(tr("Ref Gain:"), self.stat_ref_gain)
         stats_layout.addRow(tr("Max Deviation:"), self.stat_max_error)
         stats_layout.addRow(tr("Linear Range (<0.5dB):"), self.stat_linear_range)  # Using 0.5dB as standard
         stats_layout.addRow(tr("Slope:"), self.stat_slope)
+        stats_layout.addRow(tr("Hysteresis Width:"), self.stat_hysteresis)
 
         stats_group.setLayout(stats_layout)
         results_layout.addWidget(stats_group)
@@ -478,7 +550,7 @@ class LinearityAnalyzerWidget(QWidget):
         for line in self.noise_region.lines:
             line.setPen(pg.mkPen((150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
         self.noise_region.setRegion([-140, -140])  # Hidden initially
-        self.error_plot.addItem(self.noise_region)
+        self.error_plot.addItem(self.noise_region, ignoreBounds=True)
 
         # Label for noise region
         self.noise_label = pg.TextItem(text=tr("Below Noise Floor"), color=(150, 150, 150), anchor=(0, 1))
@@ -518,6 +590,7 @@ class LinearityAnalyzerWidget(QWidget):
             self.results_gain = []
             self.results_measured = []
             self.results_snr = []
+            self.results_direction = []
             self.error_curve.setData([], [])
             self.error_curve.setData([], [])
             self.gain_curve.setData([], [])
@@ -527,6 +600,7 @@ class LinearityAnalyzerWidget(QWidget):
             self.stat_max_error.setText("-- dB")
             self.stat_linear_range.setText("-- dB")
             self.stat_slope.setText("--")
+            self.stat_hysteresis.setText("--")
 
             worker = self.module.start_sweep()
             worker.progress.connect(self.progress.setValue)
@@ -551,6 +625,7 @@ class LinearityAnalyzerWidget(QWidget):
         self.results_gain.append(res["gain"])
         self.results_measured.append(res["measured_level"])
         self.results_snr.append(res["snr"])
+        self.results_direction.append(res.get("direction", "fwd"))
 
         self.update_plots()
         self.update_stats()
@@ -722,6 +797,42 @@ class LinearityAnalyzerWidget(QWidget):
         else:
             min_good = np.min(self.results_x)
             self.stat_linear_range.setText(f"> {min_good:.1f} dBFS")
+
+        # 5. Hysteresis
+        if self.module.hysteresis_mode and len(self.results_direction) > 0:
+            dirs = np.array(self.results_direction)
+            if "rev" in dirs:
+                # Separate fwd and rev
+                fwd_mask = dirs == "fwd"
+                rev_mask = dirs == "rev"
+
+                # We need to map inputs to gains for both
+                # Assuming inputs are floats, exact match might be tricky if not careful,
+                # but we generated them using linspace in reverse order, so they should match exactly.
+                # However, float rounding can be annoying.
+
+                x_fwd = np.array(self.results_x)[fwd_mask]
+                g_fwd = np.array(self.results_gain)[fwd_mask]
+
+                x_rev = np.array(self.results_x)[rev_mask]
+                g_rev = np.array(self.results_gain)[rev_mask]
+
+                # Create dicts for easy lookup
+                fwd_dict = {round(x, 6): g for x, g in zip(x_fwd, g_fwd, strict=False)}
+                max_hyst = 0.0
+
+                for x, g_r in zip(x_rev, g_rev, strict=False):
+                    xr = round(x, 6)
+                    if xr in fwd_dict:
+                        diff = abs(g_r - fwd_dict[xr])
+                        if diff > max_hyst:
+                            max_hyst = diff
+
+                self.stat_hysteresis.setText(f"{max_hyst:.3f} dB")
+            else:
+                self.stat_hysteresis.setText("--")
+        else:
+            self.stat_hysteresis.setText(tr("N/A"))
 
     def on_finished(self):
         self.start_btn.setChecked(False)

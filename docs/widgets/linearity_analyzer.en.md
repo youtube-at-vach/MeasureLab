@@ -19,6 +19,8 @@ This tool measures the following values:
     * The lower this value (e.g., -120dBFS), the more capable the equipment is of accurately reproducing minute sounds.
 * **Slope**
     * Ideally 0 (flat), but changes if compression or similar effects are present.
+* **Hysteresis Width**
+    * The difference in measurement values between the forward path (decreasing level) and the reverse path (increasing level). In electronic equipment, a value closer to 0 is better. If there is a significant difference, it may indicate thermal effects or delayed response due to the internal state of the device.
 
 ## Operation
 
@@ -27,6 +29,7 @@ This tool measures the following values:
 1. Determine the measurement conditions in **Sweep Settings**.
 2. Press the **Start Sweep** button to begin measurement.
 3. The tool automatically sweeps the specified range (e.g., -5dBFS to -120dBFS) and plots the results on the graph.
+    * If **Enable Hysteresis Sweep** is enabled, it performs forward (large to small) and reverse (small to large) measurements sequentially.
 
 ### Interpreting Results
 
@@ -35,7 +38,7 @@ This tool measures the following values:
     * The closer the line sticks to **"0dB" in the center, the better**.
     * The graph will start to fluctuate as it moves to the left (lower level region), which is due to the influence of noise.
 * **Noise Floor Region (Gray Area)**
-    * Indicates the region where the SNR (Signal-to-Noise Ratio) is poor and the measured values are unreliable.
+    * Indicates the region where the SNR (Signal-To-Noise Ratio) is poor and the measured values are unreliable.
 
 ## Settings
 
@@ -48,11 +51,13 @@ Sets the range and resolution of the measurement.
 * **End Level**: End level of the sweep (quiet sound). Set to the limit value you want to verify (e.g., `-120 dBFS`).
 * **Steps**: Number of measurement points. More steps mean more detail but take longer.
 * **SNR Limit**: Threshold for noise floor detection. If the signal is not louder than the noise by at least this value (e.g., 10dB), the data is considered "unreliable."
+* **Averaging**: The number of measurements per point. Increasing the count reduces the influence of noise and stabilizes measurements at low levels, but increases the total measurement time.
 
 ### I/O Routing
 
 * **Output**: Channel to output the measurement signal.
 * **Input**: Channel to receive the measurement signal.
+* **Enable Hysteresis Sweep**: When checked, the tool automatically performs a reverse sweep (small to large) after the forward sweep (large to small) to verify the difference between the two directions.
 
 ### Display
 
@@ -78,3 +83,13 @@ Investigate whether your audio interface or DAC has 16-bit precision (approx. -9
 3. Check the graph to see how far it keeps 0dB error.
     * If it fluctuates around -90dB, it is 16-bit class performance.
     * If it holds up to -110dB to -120dB, it is very high performance.
+
+### Observing Hysteresis in Dual ADC Range Switching
+
+Some recent recorders and high-end interfaces that support 32-bit float recording are equipped with two ADCs, and they achieve a vast dynamic range by internally switching gain depending on the input level. To prevent frequent clicking noises, this switching point is sometimes provided with "hysteresis" (processing that changes the threshold for switching between the forward and reverse paths).
+
+1. **Start Level**: `-3 dBFS` (Start here in this example).
+2. **End Level**: `-9 dBFS` (Lower to here).
+3. Check **Enable Hysteresis Sweep**.
+4. When the measurement is executed, a "gap" may appear in the gain or linearity error graph between the forward path (-3 -> -9) and the reverse path (-9 -> -3).
+    * If this is observed, it means the device is performing gain switching in the analog or digital stage, and you have successfully visualized that behavior.
