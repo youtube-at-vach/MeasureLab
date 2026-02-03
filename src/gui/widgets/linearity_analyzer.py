@@ -550,7 +550,7 @@ class LinearityAnalyzerWidget(QWidget):
         for line in self.noise_region.lines:
             line.setPen(pg.mkPen((150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
         self.noise_region.setRegion([-140, -140])  # Hidden initially
-        self.error_plot.addItem(self.noise_region)
+        self.error_plot.addItem(self.noise_region, ignoreBounds=True)
 
         # Label for noise region
         self.noise_label = pg.TextItem(text=tr("Below Noise Floor"), color=(150, 150, 150), anchor=(0, 1))
