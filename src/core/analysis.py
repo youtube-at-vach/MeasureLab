@@ -305,35 +305,50 @@ class AudioCalc:
         harmonic_results = []
         harmonic_amplitudes_linear = []
 
-        # Up to 10th harmonic
-        for i in range(2, 11):
-            harmonic_freq = max_freq * i
-            if harmonic_freq >= sampling_rate / 2:
-                break
+        # Vectorized harmonic search
+        orders = np.arange(2, 11)
+        harmonic_freqs = max_freq * orders
 
-            # Search near harmonic
-            h_idx_min = np.searchsorted(freqs, harmonic_freq - search_window)
-            h_idx_max = np.searchsorted(freqs, harmonic_freq + search_window)
+        # Filter valid harmonics (below Nyquist)
+        valid_mask = harmonic_freqs < (sampling_rate / 2)
+        valid_orders = orders[valid_mask]
+        valid_freqs = harmonic_freqs[valid_mask]
 
-            if h_idx_max < len(amplitude_spectrum) and h_idx_max > h_idx_min:
-                subset = amplitude_spectrum[h_idx_min:h_idx_max]
-                local_max_h = np.argmax(subset)
-                h_peak_idx = h_idx_min + local_max_h
+        if len(valid_freqs) > 0:
+            # Batch searchsorted
+            h_starts = valid_freqs - search_window
+            h_ends = valid_freqs + search_window
 
-                h_amp = amplitude_spectrum[h_peak_idx]
-                h_freq = freqs[h_peak_idx]
+            # Vectorized binary search for start and end indices
+            idx_mins = np.searchsorted(freqs, h_starts)
+            idx_maxs = np.searchsorted(freqs, h_ends)
 
-                relative_amp = h_amp / max_amplitude if max_amplitude > 0 else 0
-                amp_db = 20 * np.log10(relative_amp + 1e-12)
+            # Iterate through results to find peaks
+            # This is unavoidable as argmax cannot be easily vectorized over variable slice sizes
+            # but we saved the repeated binary search overhead.
+            for k, order in enumerate(valid_orders):
+                h_idx_min = idx_mins[k]
+                h_idx_max = idx_maxs[k]
 
-                harmonic_results.append(
-                    {"order": i, "frequency": h_freq, "amplitude_dbr": amp_db, "amplitude_linear": h_amp}
-                )
-                harmonic_amplitudes_linear.append(h_amp)
-            else:
-                harmonic_results.append(
-                    {"order": i, "frequency": harmonic_freq, "amplitude_dbr": min_db, "amplitude_linear": 0}
-                )
+                if h_idx_max < len(amplitude_spectrum) and h_idx_max > h_idx_min:
+                    subset = amplitude_spectrum[h_idx_min:h_idx_max]
+                    local_max_h = np.argmax(subset)
+                    h_peak_idx = h_idx_min + local_max_h
+
+                    h_amp = amplitude_spectrum[h_peak_idx]
+                    h_freq = freqs[h_peak_idx]
+
+                    relative_amp = h_amp / max_amplitude if max_amplitude > 0 else 0
+                    amp_db = 20 * np.log10(relative_amp + 1e-12)
+
+                    harmonic_results.append(
+                        {"order": int(order), "frequency": h_freq, "amplitude_dbr": amp_db, "amplitude_linear": h_amp}
+                    )
+                    harmonic_amplitudes_linear.append(h_amp)
+                else:
+                    harmonic_results.append(
+                        {"order": int(order), "frequency": valid_freqs[k], "amplitude_dbr": min_db, "amplitude_linear": 0}
+                    )
 
         # THD Calculation
         # THD = sqrt(sum(harmonics^2)) / fundamental
