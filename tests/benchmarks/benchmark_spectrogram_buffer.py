@@ -1,18 +1,16 @@
-
 import sys
 import os
+import time
 from unittest.mock import MagicMock
+import numpy as np
 
 # Mock sounddevice before importing anything else that might import it
 sys.modules['sounddevice'] = MagicMock()
 
-import time
-import numpy as np
-
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from src.gui.widgets.spectrogram import Spectrogram
+from src.gui.widgets.spectrogram import Spectrogram  # noqa: E402
 
 class MockAudioEngine:
     def __init__(self):
