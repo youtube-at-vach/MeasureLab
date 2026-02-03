@@ -1,5 +1,6 @@
 import argparse
 from collections import deque
+import time
 
 import numpy as np
 import pyqtgraph as pg
@@ -57,6 +58,49 @@ class PIDController:
         return p_term + i_term + d_term
 
 
+class KalmanFilter1D:
+    def __init__(self, process_noise=1e-10, measurement_noise=1e-6):
+        self.q = process_noise  # Process noise covariance (Q)
+        self.r = measurement_noise  # Measurement noise covariance (R)
+        self.x = 0.0  # State estimate
+        self.p = 1.0  # Estimation error covariance
+        self._first_run = True
+
+    def reset(self):
+        self._first_run = True
+        self.p = 1.0
+
+    def update(self, measurement):
+        if self._first_run:
+            self.x = measurement
+            self.p = self.r
+            self._first_run = False
+            return self.x
+
+        # Prediction Step
+        # x_k|k-1 = x_k-1|k-1 (Constant value model)
+        # P_k|k-1 = P_k-1|k-1 + Q
+        p_pred = self.p + self.q
+
+        # Update Step
+        # K = P_pred / (P_pred + R)
+        if (p_pred + self.r) == 0:
+            k = 0
+        else:
+            k = p_pred / (p_pred + self.r)
+        
+        # x_k = x_pred + K * (z_k - x_pred)
+        self.x = self.x + k * (measurement - self.x)
+        
+        # P_k = (1 - K) * P_pred
+        self.p = (1.0 - k) * p_pred
+
+        return self.x
+
+    def get_std_uncertainty(self):
+        return float(np.sqrt(self.p))
+
+
 class LockInFrequencyCounter(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -82,11 +126,24 @@ class LockInFrequencyCounter(MeasurementModule):
 
         self.pid = PIDController(kp=0.5, ki=0.2, kd=0.0)
 
-        # NCO Statistics
-        self.nco_history = deque(maxlen=10)
-        self.nco_avg_count = 10
-        self.nco_mean = 1000.0
-        self.nco_std = 0.0
+        # NCO Statistics / Kalman Filter
+        # nco_avg_count now controls the Process Noise Q (Smoothness/Stiffness) AND Display Averaging
+        self.nco_avg_count = 10 
+        self.kf = KalmanFilter1D(process_noise=1e-10, measurement_noise=1e-6)
+        
+        # Buffer to estimate Measurement Noise R adaptively
+        self.r_history = deque(maxlen=20)
+
+        # Display Averaging Buffer (Post-Kalman)
+        self.nco_history = deque(maxlen=self.nco_avg_count)
+        
+        self.update_kalman_params()
+        
+        self.nco_mean = 1000.0 # Instant KF estimate
+        self.nco_std = 0.0     # KF Uncertainty
+
+        self.nco_display_mean = 1000.0 # Averaged KF estimate for UI
+        self.nco_display_std = 0.0     # Std Dev of the averaging window
 
         # Stability Stats
 
@@ -135,6 +192,13 @@ class LockInFrequencyCounter(MeasurementModule):
     def get_widget(self):
         return LockInFrequencyCounterWidget(self)
 
+    def update_kalman_params(self):
+        # Map nco_avg_count to Process Noise Q.
+        # Larger count = Expect more stability = Lower Q = More smoothing.
+        # Q = Base / (Count^2)
+        # Count 10 -> Q=1e-8. Count 100 -> Q=1e-10.
+        self.kf.q = 1e-6 / (float(self.nco_avg_count) ** 2)
+
     def start_analysis(self):
         if self.is_running:
             return
@@ -153,9 +217,16 @@ class LockInFrequencyCounter(MeasurementModule):
         self.current_amp_db = -120.0
         self.signal_present = False
         self.pid.reset()
+        
+        # Reset Kalman and R estimation
+        self.kf.reset()
+        self.r_history.clear()
         self.nco_history.clear()
+        self.update_kalman_params()
         self.nco_mean = self.gen_frequency
         self.nco_std = 0.0
+        self.nco_display_mean = self.gen_frequency
+        self.nco_display_std = 0.0
 
         self._samples_received = 0
         self._discard_initial_estimates = 3
@@ -241,11 +312,7 @@ class LockInFrequencyCounter(MeasurementModule):
         z = sig * osc
 
         # Split into segments to find slope
-        # We need to be careful with windowing. If the segment length is not an integer multiple
-        # of the ripple period (1/(2f) for mixing products), we get spectral leakage that manifests
-        # as a periodic error in the phase estimate, creating variance.
-        # We calculate the optimal segment length to contain integer number of half-cycles.
-
+        
         n_segments = 4
         stride = n_samples // n_segments
 
@@ -259,7 +326,6 @@ class LockInFrequencyCounter(MeasurementModule):
         # Optimal length
         seg_len = int(round(num_cycles * period_2f))
 
-        # Clamp to stride (though round might push it over by 0.5 sample, safe for slicing usually but let's be strict)
         if seg_len > stride:
              seg_len = stride
 
@@ -280,7 +346,6 @@ class LockInFrequencyCounter(MeasurementModule):
 
             phi = np.angle(avg)
             seg_phases.append(phi)
-            # Center of the ACTUAL window used
             seg_centers.append(start + seg_len / 2.0)
 
         # Unwrap phases across segments
@@ -295,7 +360,6 @@ class LockInFrequencyCounter(MeasurementModule):
 
             if self._estimates_discarded < self._discard_initial_estimates:
                 self._estimates_discarded += 1
-                # Keep the UI stable at start: don't integrate or append history yet.
                 self.current_freq_dev = 0.0
                 self.smoothed_freq_dev = 0.0
                 return
@@ -314,16 +378,12 @@ class LockInFrequencyCounter(MeasurementModule):
             tau = self.smoothing_tau
             if tau > 0:
                 alpha = dt / (tau + dt)
-                # Initialize smoothed value if first valid
                 if self.start_time == 0:
                     self.smoothed_freq_dev = delta_f
                 else:
                     self.smoothed_freq_dev = self.smoothed_freq_dev + alpha * (delta_f - self.smoothed_freq_dev)
             else:
                 self.smoothed_freq_dev = delta_f
-
-
-            import time
 
             now = time.time()
             if self.start_time == 0:
@@ -339,10 +399,6 @@ class LockInFrequencyCounter(MeasurementModule):
             # --- FLL / Lock Logic ---
             if self.locked:
                 # PID Controller
-                # Error = Delta F (Signal - NCO)
-                # If Delta F is positive, Signal > NCO, so we need to increase NCO freq.
-                # correction = PID(error)
-
                 dt_process = n_samples / sr
                 correction = self.pid.update(delta_f, dt_process)
 
@@ -353,23 +409,36 @@ class LockInFrequencyCounter(MeasurementModule):
 
                 self.gen_frequency = new_freq
 
-                # Statistics
-                self.nco_history.append(new_freq)
-                if len(self.nco_history) > self.nco_avg_count:
-                     # Resize if needed (deque handles appending but maxlen might need update if changed at runtime)
-                     # For simplicity, we just rely on maxlen if it was fixed, but here user can change it.
-                     # So we'll manually slice if needed or re-create deque in setter.
-                     pass
+                # Use Adaptive R based on recent NCO variation
+                # This assumes the PID jitter represents the "Measurement Noise" for the KF
+                self.r_history.append(new_freq)
+                
+                # Update R if we have enough history
+                if len(self.r_history) >= 2:
+                    var_est = np.var(self.r_history)
+                    # Add small floor to avoid div by zero or over-confidence
+                    self.kf.r = var_est + 1e-12
+                    
+                # Update Kalman Filter
+                self.nco_mean = self.kf.update(new_freq)
+                self.nco_std = self.kf.get_std_uncertainty()
 
-                # Calculate Stats
-                data = list(self.nco_history)
-                if len(data) > 0:
-                    self.nco_mean = float(np.mean(data))
-                    self.nco_std = float(np.std(data))
+                # --- Post-Kalman Averaging for Stability ---
+                self.nco_history.append(self.nco_mean)
+                
+                if len(self.nco_history) > 0:
+                    self.nco_display_mean = np.mean(self.nco_history)
+                    # Use std of the filtered history as a stability metric for display
+                    self.nco_display_std = np.std(self.nco_history)
                 else:
-                    self.nco_mean = new_freq
-                    self.nco_std = 0.0
+                    self.nco_display_mean = self.nco_mean
+                    self.nco_display_std = self.nco_std
 
+            else:
+                self.nco_mean = self.gen_frequency
+                self.nco_std = 0.0
+                self.nco_display_mean = self.gen_frequency
+                self.nco_display_std = 0.0
 
 
 class LockInFrequencyCounterWidget(QWidget):
@@ -381,15 +450,13 @@ class LockInFrequencyCounterWidget(QWidget):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)  # 10Hz
 
-
-
-    def get_decimal_places(self, val_std, default=5, max_places=6):
+    def get_decimal_places(self, val_std, default=5, max_places=8):
         if val_std <= 0:
             return default
         try:
             std_to_use = val_std
 
-            if std_to_use <= 1e-9:
+            if std_to_use <= 1e-12:
                 return max_places
             places = -int(np.floor(np.log10(std_to_use)))
 
@@ -418,7 +485,6 @@ class LockInFrequencyCounterWidget(QWidget):
         controls_layout = QHBoxLayout()
 
         # NCO Freq
-        # Using a small form layout or just label+spinbox
         lbl_freq = QLabel(tr("NCO Frequency:"))
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(20, 20000)
@@ -436,8 +502,6 @@ class LockInFrequencyCounterWidget(QWidget):
         self.lock_check.toggled.connect(self.on_lock_toggled)
         controls_layout.addWidget(self.lock_check)
 
-        # Spacer to push Start button to the right or keep it near? 
-        # Let's keep it compact.
         controls_layout.addStretch()
 
         # Start/Stop
@@ -449,7 +513,6 @@ class LockInFrequencyCounterWidget(QWidget):
         main_layout.addLayout(controls_layout)
 
         # -- Plots (Splitter) --
-        # We move the splitter INSIDE the Main tab so it takes up the rest of the space
         splitter = QSplitter(Qt.Orientation.Horizontal)
         main_layout.addWidget(splitter)
 
@@ -547,11 +610,11 @@ class LockInFrequencyCounterWidget(QWidget):
         self.avg_spin.setRange(1, 1000)
         self.avg_spin.setValue(self.module.nco_avg_count)
         self.avg_spin.valueChanged.connect(self.on_avg_changed)
-        form_stats.addRow(tr("NCO Avg Count:"), self.avg_spin)
+        form_stats.addRow(tr("Avg Count (KF-Q & Display):"), self.avg_spin)
 
         # Variance Display
         self.lbl_nco_var = QLabel("σ: 0.00 Hz")
-        form_stats.addRow(tr("NCO Std Dev:"), self.lbl_nco_var)
+        form_stats.addRow(tr("Display Uncertainty:"), self.lbl_nco_var)
 
         settings_layout.addWidget(group_stats)
 
@@ -629,9 +692,7 @@ class LockInFrequencyCounterWidget(QWidget):
 
     def on_lock_toggled(self, checked):
         self.module.locked = checked
-        # When locking is enabled, disable manual editing logic temporarily if needed
-        # but here we just update module state.
-        self.freq_spin.setReadOnly(checked) # Prevent manual fight
+        self.freq_spin.setReadOnly(checked)
 
     def on_pid_changed(self):
         self.module.pid.kp = self.kp_spin.value()
@@ -640,7 +701,8 @@ class LockInFrequencyCounterWidget(QWidget):
 
     def on_avg_changed(self, val):
         self.module.nco_avg_count = int(val)
-        # Resize deque
+        self.module.update_kalman_params()
+        # Resize deque for display averaging
         current_data = list(self.module.nco_history)
         self.module.nco_history = deque(current_data, maxlen=self.module.nco_avg_count)
 
@@ -709,24 +771,14 @@ class LockInFrequencyCounterWidget(QWidget):
 
             # Update NCO display if locked (and changed)
             if self.module.locked:
-                # Block signals to prevent on_freq_changed loop
                 self.freq_spin.blockSignals(True)
 
-                # Dynamic Precision Logic
-                # Only apply dynamic precision if averaging is actually enabled (>= 2 samples)
-                if self.module.nco_avg_count >= 2:
-                    decimals = self.get_decimal_places(self.module.nco_std, default=5, max_places=6)
-                    self.freq_spin.setDecimals(decimals)
-                else:
-                    self.freq_spin.setDecimals(5)
+                # Use Display Stats (Averaged) for UI
+                decimals = self.get_decimal_places(self.module.nco_display_std, default=5, max_places=8)
+                self.freq_spin.setDecimals(decimals)
 
-                # Display MEAN value if we have history, else current
-                if len(self.module.nco_history) > 0:
-                     self.freq_spin.setValue(self.module.nco_mean)
-                else:
-                     self.freq_spin.setValue(self.module.gen_frequency)
+                self.freq_spin.setValue(self.module.nco_display_mean)
                 self.freq_spin.blockSignals(False)
 
             # Update Variance Label
-            self.lbl_nco_var.setText(f"σ: {self.module.nco_std:.4e} Hz")
-
+            self.lbl_nco_var.setText(f"σ: {self.module.nco_display_std:.4e} Hz")
