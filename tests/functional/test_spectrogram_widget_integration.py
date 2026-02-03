@@ -51,7 +51,8 @@ def test_spectrogram_widget_update():
     # Check if spectrogram_data was updated
     # Initial is -120.0
     # After update with sine wave, it should be higher
-    last_spectrum = module.spectrogram_data[-1]
+    last_idx = (module.spectrogram_ptr - 1) % module.history_length
+    last_spectrum = module.spectrogram_buffer[last_idx]
     peak_val = np.max(last_spectrum)
 
     print(f"Peak Value: {peak_val}")

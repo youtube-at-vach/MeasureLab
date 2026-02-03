@@ -2,6 +2,9 @@ import os
 import sys
 from unittest.mock import MagicMock
 
+# Mock sounddevice before importing anything that uses it
+sys.modules['sounddevice'] = MagicMock()
+
 import numpy as np
 
 # Add src to path
@@ -30,11 +33,9 @@ def test_spectrogram_processing():
     spec._callback(indata, outdata, 1024, None, None)
 
     # Check if buffer updated
-    # The buffer should have the new data at the end
-    # audio_buffer size is fft_size * 2 = 2048
-    # We rolled by -1024, so the last 1024 samples should be our sine
+    # Use get_latest_samples to handle ring buffer logic correctly
+    last_samples = spec.get_latest_samples(1024)[:, 0]
 
-    last_samples = spec.audio_buffer[-1024:, 0]
     if np.allclose(last_samples, sine):
         print("Buffer Update: PASS")
     else:
@@ -45,7 +46,7 @@ def test_spectrogram_processing():
     # but we can test the logic inside update_spectrogram if we extract it or simulate it.
 
     # Let's manually run the processing logic
-    raw_data = spec.audio_buffer[-spec.fft_size:]
+    raw_data = spec.get_latest_samples(spec.fft_size)
     sig = raw_data[:, 0]
     window = np.hanning(len(sig))
     sig_win = sig * window
@@ -71,11 +72,12 @@ def test_spectrogram_processing():
         print(f"Frequency Analysis: FAIL (Expected 1000, Got {peak_freq})")
 
     # Update Spectrogram Data
-    spec.spectrogram_data = np.roll(spec.spectrogram_data, -1, axis=0)
-    spec.spectrogram_data[-1] = mag_db
+    spec.add_spectrum(mag_db)
 
     # Check peak amplitude
-    peak_amp = spec.spectrogram_data[-1].max()
+    # Retrieve latest written data (at ptr - 1)
+    last_idx = (spec.spectrogram_ptr - 1) % spec.history_length
+    peak_amp = spec.spectrogram_buffer[last_idx].max()
     print(f"Peak Amplitude: {peak_amp:.2f} dB")
 
     if peak_amp > -10:
