@@ -1043,5 +1043,7 @@
     "LSB": "LSB",
     "USB": "USB",
     "Device: {0} ({1})": "Appareil : {0} ({1})",
-    "Failed to load profile: {0}": "Échec du chargement du profil : {0}"
+    "Failed to load profile: {0}": "Échec du chargement du profil : {0}",
+    "-": "-",
+    "Cursors": "Curseurs"
 }
