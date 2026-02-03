@@ -145,6 +145,9 @@ class AudioCalc:
         M = np.empty((N, 3), dtype=t.dtype)
         M[:, 2] = 1.0  # The 'ones' column is constant
 
+        # Pre-calculate constant terms
+        sum_signal = np.sum(signal)
+
         def get_residual_rms(f):
             w = 2 * np.pi * f
 
@@ -154,10 +157,28 @@ class AudioCalc:
             np.cos(w * t, out=M[:, 1])
 
             # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
-            # This avoids SVD used by lstsq and is much faster for this 3x3 system.
+            # Optimization: Construct linear system manually to avoid full matrix ops
+            # and reuse pre-calculated sum_signal.
+
+            # Dot products for LHS matrix elements (symmetric)
+            s = np.sum(M[:, 0])
+            c = np.sum(M[:, 1])
+            ss = np.dot(M[:, 0], M[:, 0])
+            cc = np.dot(M[:, 1], M[:, 1])
+            sc = np.dot(M[:, 0], M[:, 1])
+
+            # Dot products for RHS vector elements
+            ds = np.dot(M[:, 0], signal)
+            dc = np.dot(M[:, 1], signal)
+
+            # LHS: [[ss, sc, s], [sc, cc, c], [s, c, N]]
+            lhs = np.array([[ss, sc, s], [sc, cc, c], [s, c, N]])
+
+            # RHS: [ds, dc, sum_signal]
+            rhs = np.array([ds, dc, sum_signal])
+
             try:
-                MT = M.T
-                coeffs = np.linalg.solve(MT @ M, MT @ signal)
+                coeffs = np.linalg.solve(lhs, rhs)
             except np.linalg.LinAlgError:
                 # Fallback to lstsq if matrix is singular (unlikely unless w=0)
                 coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
