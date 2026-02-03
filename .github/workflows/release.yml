@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -74,6 +75,7 @@ jobs:
         token: ${{ secrets.RELEASE_TOKEN }}
         files: dist/release/*.zip
         body_path: release_notes.md
+        draft: ${{ github.event_name == 'workflow_dispatch' }}
 
   build-linux:
     permissions:
@@ -155,6 +157,7 @@ jobs:
           dist/release/*.AppImage
           dist/release/*.pdf
         body_path: release_notes.md
+        draft: ${{ github.event_name == 'workflow_dispatch' }}
 
   build-macos:
     permissions:
@@ -264,3 +267,4 @@ jobs:
         token: ${{ secrets.RELEASE_TOKEN }}
         files: dist/release/*.dmg
         body_path: release_notes.md
+        draft: ${{ github.event_name == 'workflow_dispatch' }}
