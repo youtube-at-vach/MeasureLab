@@ -1048,5 +1048,7 @@
     "Device: {0} ({1})": "Dispositivo: {0} ({1})",
     "Failed to load profile: {0}": "Error al cargar el perfil: {0}",
     "-": "-",
-    "Cursors": "Cursores"
+    "Cursors": "Cursores",
+    "Avg Count (KF-Q & Display):": "Número de promedios (KF-Q & visualización):",
+    "Display Uncertainty:": "Incertumbre de visualización:"
 }

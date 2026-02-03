@@ -1037,5 +1037,7 @@
     "Device: {0} ({1})": "デバイス: {0} ({1})",
     "Failed to load profile: {0}": "プロファイルの読み込みに失敗しました: {0}",
     "-": "-",
-    "Cursors": "カーソル"
+    "Cursors": "カーソル",
+    "Avg Count (KF-Q & Display):": "平均回数 (KF-Q & 表示):",
+    "Display Uncertainty:": "不確かさを表示:"
 }
