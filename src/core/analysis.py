@@ -44,7 +44,8 @@ def _get_time_array(N, sampling_rate):
     """
     if sampling_rate <= 0:
         raise ValueError("sampling_rate must be > 0")
-    t = np.arange(N) / sampling_rate
+    t = np.arange(N, dtype=np.float64)
+    t /= sampling_rate
     t.flags.writeable = False
     return t
 
