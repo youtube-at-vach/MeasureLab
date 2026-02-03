@@ -27,8 +27,8 @@ Checklist to find the best tool for "what you want to do" quickly.
 Tools for outputting signals or generating reference signals.
 
 * **[Signal Generator](widgets/signal_generator.md)**
-
     * Generates sine waves, noise, sweep signals, etc. It is the basic signal source for measurements.
+
 * **[Timecode Monitor & Generator](widgets/timecode_monitor.md)**
     * Generates and monitors LTC (Linear Timecode). Used for checking synchronization with video equipment.
 
