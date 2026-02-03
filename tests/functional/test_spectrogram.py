@@ -5,12 +5,12 @@ from unittest.mock import MagicMock
 # Mock sounddevice before importing anything that uses it
 sys.modules['sounddevice'] = MagicMock()
 
-import numpy as np
+import numpy as np  # noqa: E402
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.spectrogram import Spectrogram
+from src.gui.widgets.spectrogram import Spectrogram  # noqa: E402
 
 
 def test_spectrogram_processing():
