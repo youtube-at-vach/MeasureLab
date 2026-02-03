@@ -1043,5 +1043,7 @@
     "LSB": "LSB",
     "USB": "USB",
     "Device: {0} ({1})": "设备：{0} ({1})",
-    "Failed to load profile: {0}": "无法加载配置文件：{0}"
+    "Failed to load profile: {0}": "无法加载配置文件：{0}",
+    "-": "-",
+    "Cursors": "光标"
 }

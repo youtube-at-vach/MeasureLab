@@ -1032,5 +1032,7 @@
     "LSB": "LSB",
     "USB": "USB",
     "Device: {0} ({1})": "Device: {0} ({1})",
-    "Failed to load profile: {0}": "Failed to load profile: {0}"
+    "Failed to load profile: {0}": "Failed to load profile: {0}",
+    "-": "-",
+    "Cursors": "Cursors"
 }
