@@ -1,6 +1,6 @@
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QRunnable, QThreadPool, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -258,10 +258,63 @@ class AdvancedDistortionMeter(MeasurementModule):
         return self.gen_amplitude * np.sin(2 * np.pi * f * t)
 
 
+class AnalysisSignals(QObject):
+    result_ready = pyqtSignal(dict)
+
+
+class AnalysisWorker(QRunnable):
+    def __init__(self, data, sr, mode, params):
+        super().__init__()
+        self.data = data
+        self.sr = sr
+        self.mode = mode
+        self.params = params
+        self.signals = AnalysisSignals()
+
+    def run(self):
+        # Perform FFT
+        # Coherent sampling allows Rectangular window (no windowing) for max resolution.
+        fft_res = fft_manager.rfft(self.data)
+        freqs = fft_manager.rfftfreq(len(self.data), 1 / self.sr)
+
+        # Magnitude in V (Linear)
+        # Normalize: |FFT| * 2 / N
+        mag = np.abs(fft_res) * 2 / len(self.data)
+        mag_db = 20 * np.log10(mag + 1e-12)
+
+        metrics = {}
+
+        # Calculate Metrics
+        if self.mode == "MIM":
+            # Need expected tone freqs (snapped)
+            mim_freqs = self.params.get('mim_freqs')
+            if mim_freqs is not None:
+                metrics['mim'] = AudioCalc.calculate_multitone_tdn(mag, freqs, mim_freqs)
+
+        elif self.mode == "SPDR":
+            # Assume 1kHz fundamental (snapped check?)
+            metrics['spdr'] = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
+
+        elif self.mode == "PIM":
+            f1 = self.params.get('f1')
+            f2 = self.params.get('f2')
+            metrics['pim'] = AudioCalc.calculate_pim(mag, freqs, f1, f2)
+
+        result = {
+            'freqs': freqs,
+            'mag_db': mag_db,
+            'metrics': metrics,
+            'mode': self.mode
+        }
+        self.signals.result_ready.emit(result)
+
+
 class AdvancedDistortionMeterWidget(QWidget):
     def __init__(self, module: AdvancedDistortionMeter):
         super().__init__()
         self.module = module
+        self.threadpool = QThreadPool()
+        self.is_analyzing = False
         self.init_ui()
 
         self.timer = QTimer()
@@ -517,48 +570,57 @@ class AdvancedDistortionMeterWidget(QWidget):
         if self.module.state != self.module.STATE_DONE:
             return
 
-        data = self.module.recording_buffer
+        if self.is_analyzing:
+            return
+
+        self.is_analyzing = True
+        data = self.module.recording_buffer.copy()
         sr = self.module.audio_engine.sample_rate
+        mode = self.module.mode
 
-        # Perform FFT
-        # Coherent sampling allows Rectangular window (no windowing) for max resolution.
-        # Ensure 'fft_manager' is used.
-        fft_res = fft_manager.rfft(data)
-        freqs = fft_manager.rfftfreq(len(data), 1 / sr)
+        # Collect params
+        params = {}
+        if mode == "MIM":
+            params['mim_freqs'] = self.module._mim_freqs
+        elif mode == "PIM":
+            params['f1'] = self.module._pim_f1_actual if self.module._pim_f1_actual is not None else self.module.pim_f1
+            params['f2'] = self.module._pim_f2_actual if self.module._pim_f2_actual is not None else self.module.pim_f2
 
-        # Magnitude in V (Linear)
-        # Normalize: |FFT| * 2 / N
-        mag = np.abs(fft_res) * 2 / len(data)
-        mag_db = 20 * np.log10(mag + 1e-12)
+        worker = AnalysisWorker(data, sr, mode, params)
+        worker.signals.result_ready.connect(self.on_analysis_result)
+        self.threadpool.start(worker)
+
+    def on_analysis_result(self, result):
+        freqs = result['freqs']
+        mag_db = result['mag_db']
+        metrics = result['metrics']
+        mode = result['mode']
 
         # Update Plot
         self.plot_curve.setData(freqs, mag_db)
 
         # Calculate Metrics
-        if self.module.mode == "MIM":
-            # Need expected tone freqs (snapped)
-            if self.module._mim_freqs is not None:
-                res = AudioCalc.calculate_multitone_tdn(mag, freqs, self.module._mim_freqs)
+        if mode == "MIM":
+            if 'mim' in metrics:
+                res = metrics['mim']
                 self.main_metric_label.setText(f"TD+N: {res['tdn_db']:.1f} dB")
                 self.sub_metric_label.setText(f"{res['tdn']:.4f} %")
 
-        elif self.module.mode == "SPDR":
-            # Assume 1kHz fundamental (snapped check?)
-            # Since we didn't store the exact snapped freq on module for SPDR,
-            # AudioCalc search will find it near 1000.
-            res = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
-            self.main_metric_label.setText(f"SPDR: {res['spdr_db']:.1f} dB")
-            self.sub_metric_label.setText(
-                f"Max Spur: {res['max_spur_freq']:.0f} Hz ({20 * np.log10(res['max_spur_amp'] + 1e-12):.1f} dB)"
-            )
+        elif mode == "SPDR":
+            if 'spdr' in metrics:
+                res = metrics['spdr']
+                self.main_metric_label.setText(f"SPDR: {res['spdr_db']:.1f} dB")
+                self.sub_metric_label.setText(
+                    f"Max Spur: {res['max_spur_freq']:.0f} Hz ({20 * np.log10(res['max_spur_amp'] + 1e-12):.1f} dB)"
+                )
 
-        elif self.module.mode == "PIM":
-            f1 = self.module._pim_f1_actual if self.module._pim_f1_actual is not None else self.module.pim_f1
-            f2 = self.module._pim_f2_actual if self.module._pim_f2_actual is not None else self.module.pim_f2
-            res = AudioCalc.calculate_pim(mag, freqs, f1, f2)
-            self.main_metric_label.setText(f"PIM: {res['pim_db']:.1f} dBc")
-            products_str = ", ".join([f"{p['order']}th" for p in res["products"]])
-            self.sub_metric_label.setText(f"Orders: {products_str}")
+        elif mode == "PIM":
+            if 'pim' in metrics:
+                res = metrics['pim']
+                self.main_metric_label.setText(f"PIM: {res['pim_db']:.1f} dBc")
+                products_str = ", ".join([f"{p['order']}th" for p in res["products"]])
+                self.sub_metric_label.setText(f"Orders: {products_str}")
 
+        self.is_analyzing = False
         # Restart Measurement for next batch
         self.module.reset_measurement()
