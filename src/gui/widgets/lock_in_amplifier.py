@@ -81,6 +81,7 @@ class LockInAmplifier(MeasurementModule):
         self._postmix_lpf_initialized = False
 
         self.callback_id = None
+        self._last_process_time = 0.0
 
     @property
     def harmonic_order(self) -> int:
@@ -225,6 +226,22 @@ class LockInAmplifier(MeasurementModule):
         """
         Perform Lock-in calculation on the current buffer.
         """
+        # Time Delta Calculation for LPF
+        now = time.time()
+        if self._last_process_time == 0.0:
+            dt = self.buffer_size / self.audio_engine.sample_rate
+        else:
+            dt = now - self._last_process_time
+
+        # Clamp dt to reasonable bounds to avoid glitches (e.g. paused for a long time)
+        # If dt > 1.0 (e.g. resume after pause), limit it to avoid huge jumps if logic depends on small dt
+        if dt > 2.0:
+            dt = self.buffer_size / self.audio_engine.sample_rate
+        elif dt < 0.0001:
+            dt = 0.001
+
+        self._last_process_time = now
+
         data = self.get_ordered_input_data()
         sig = data[:, self.signal_channel]
         ref = data[:, self.ref_channel]
@@ -240,6 +257,10 @@ class LockInAmplifier(MeasurementModule):
             self.current_x = 0.0
             self.current_y = 0.0
             self.ref_freq = 0.0
+            self.ref_freq = 0.0
+            # Clear history if reference is lost to prevent stale averaging
+            if self.history:
+                self.history.clear()
             return
 
         # Estimate Ref Frequency and Coherence
@@ -301,6 +322,9 @@ class LockInAmplifier(MeasurementModule):
             self.current_phase = 0.0
             self.current_x = 0.0
             self.current_y = 0.0
+            self.current_y = 0.0
+            if self.history:
+                self.history.clear()
             return
 
         harmonic_order = max(int(getattr(self, "harmonic_order", 1) or 1), 1)
@@ -347,12 +371,13 @@ class LockInAmplifier(MeasurementModule):
         order = int(getattr(self, "postmix_lpf_order", 0) or 0)
         if order > 0:
             order = min(max(order, 1), 8)
-            dt = self.buffer_size / self.audio_engine.sample_rate
+            # dt is now calculated at the start of process_data based on real clock time
 
             tau = float(getattr(self, "postmix_lpf_tau_s", 0.0) or 0.0)
             if tau <= 0.0:
-                # Default behavior: couple to integration time.
-                tau = dt
+                # Default behavior: couple to integration time (approximate buffer duration)
+                # We use the nominal buffer duration here as a fallback 'auto' setting
+                tau = self.buffer_size / self.audio_engine.sample_rate
             tau = max(tau, 1e-6)
             alpha = dt / (tau + dt)
             if alpha < 0.0:
@@ -656,6 +681,7 @@ class LockInAmplifierWidget(QWidget):
                 tr("Medium (4096 samples)"),
                 tr("Slow (16384 samples)"),
                 tr("Very Slow (65536 samples)"),
+                tr("Very Slow 2x (131072 samples)"),
             ]
         )
         self.time_combo.setCurrentIndex(1)
@@ -1183,6 +1209,8 @@ class LockInAmplifierWidget(QWidget):
             size = 16384
         elif idx == 3:
             size = 65536
+        elif idx == 4:
+            size = 131072
 
         self.module.set_buffer_size(size)
 
