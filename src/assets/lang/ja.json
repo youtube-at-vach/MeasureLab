@@ -1039,5 +1039,6 @@
     "-": "-",
     "Cursors": "カーソル",
     "Avg Count (KF-Q & Display):": "平均回数 (KF-Q & 表示):",
-    "Display Uncertainty:": "不確かさを表示:"
+    "Display Uncertainty:": "不確かさを表示:",
+    "Very Slow 2x (131072 samples)": "超低速 2x (131072サンプル)"
 }

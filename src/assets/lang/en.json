@@ -450,6 +450,7 @@
     "Medium (4096 samples)": "Medium (4096 samples)",
     "Slow (16384 samples)": "Slow (16384 samples)",
     "Very Slow (65536 samples)": "Very Slow (65536 samples)",
+    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)",
     "Averaging:": "Averaging:",
     "Post-mix LPF:": "Post-mix LPF:",
     "1-pole": "1-pole",

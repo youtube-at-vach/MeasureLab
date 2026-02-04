@@ -1050,5 +1050,6 @@
     "-": "-",
     "Cursors": "커서",
     "Avg Count (KF-Q & Display):": "평균 횟수 (KF-Q & 표시):",
-    "Display Uncertainty:": "표시 불확도:"
+    "Display Uncertainty:": "표시 불확도:",
+    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)"
 }
