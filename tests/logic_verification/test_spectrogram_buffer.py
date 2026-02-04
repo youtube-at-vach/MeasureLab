@@ -1,4 +1,9 @@
 import unittest
+import sys
+from unittest.mock import MagicMock
+
+sys.modules["sounddevice"] = MagicMock()
+
 import numpy as np
 from src.gui.widgets.spectrogram import Spectrogram
 
