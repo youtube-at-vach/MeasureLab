@@ -32,6 +32,10 @@ def test_config_persistence():
         print(f"FAILED: In-memory update failed. Got {in_dev}, {out_dev}")
         return
 
+    # Flush pending writes
+    print("Flushing config...")
+    cm.shutdown()
+
     print("Verifying file persistence...")
     # Create new instance to load from file
     cm2 = ConfigManager(config_path)
