@@ -18,126 +18,216 @@ from src.core.localization import get_manager, tr
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
+def _load_signal_generator():
+    from src.gui.widgets.signal_generator import SignalGenerator
+
+    return SignalGenerator
+
+
+def _load_spectrum_analyzer():
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
+
+    return SpectrumAnalyzer
+
+
+def _load_sound_level_meter():
+    from src.gui.widgets.sound_level_meter import SoundLevelMeter
+
+    return SoundLevelMeter
+
+
+def _load_lufs_meter():
+    from src.gui.widgets.lufs_meter import LufsMeter
+
+    return LufsMeter
+
+
+def _load_loopback_finder():
+    from src.gui.widgets.loopback_finder import LoopbackFinder
+
+    return LoopbackFinder
+
+
+def _load_distortion_analyzer():
+    from src.gui.widgets.distortion_analyzer import DistortionAnalyzer
+
+    return DistortionAnalyzer
+
+
+def _load_advanced_distortion_meter():
+    from src.gui.widgets.advanced_distortion_meter import AdvancedDistortionMeter
+
+    return AdvancedDistortionMeter
+
+
+def _load_network_analyzer():
+    from src.gui.widgets.network_analyzer import NetworkAnalyzer
+
+    return NetworkAnalyzer
+
+
+def _load_oscilloscope():
+    from src.gui.widgets.oscilloscope import Oscilloscope
+
+    return Oscilloscope
+
+
+def _load_raw_time_series():
+    from src.gui.widgets.raw_time_series import RawTimeSeries
+
+    return RawTimeSeries
+
+
+def _load_lock_in_amplifier():
+    from src.gui.widgets.lock_in_amplifier import LockInAmplifier
+
+    return LockInAmplifier
+
+
+def _load_lockin_thd_analyzer():
+    from src.gui.widgets.lockin_thd_analyzer import LockInTHDAnalyzer
+
+    return LockInTHDAnalyzer
+
+
+def _load_frequency_counter():
+    from src.gui.widgets.frequency_counter import FrequencyCounter
+
+    return FrequencyCounter
+
+
+def _load_lock_in_frequency_counter():
+    from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
+
+    return LockInFrequencyCounter
+
+
+def _load_spectrogram():
+    from src.gui.widgets.spectrogram import Spectrogram
+
+    return Spectrogram
+
+
+def _load_boxcar_averager():
+    from src.gui.widgets.boxcar_averager import BoxcarAverager
+
+    return BoxcarAverager
+
+
+def _load_goniometer():
+    from src.gui.widgets.goniometer import Goniometer
+
+    return Goniometer
+
+
+def _load_impedance_analyzer():
+    from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
+
+    return ImpedanceAnalyzer
+
+
+def _load_noise_profiler():
+    from src.gui.widgets.noise_profiler import NoiseProfiler
+
+    return NoiseProfiler
+
+
+def _load_recorder_player():
+    from src.gui.widgets.recorder_player import RecorderPlayer
+
+    return RecorderPlayer
+
+
+def _load_inverse_filter():
+    from src.gui.widgets.inverse_filter import InverseFilter
+
+    return InverseFilter
+
+
+def _load_transient_analyzer():
+    from src.gui.widgets.transient_analyzer import TransientAnalyzer
+
+    return TransientAnalyzer
+
+
+def _load_sound_quality_analyzer():
+    from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzer
+
+    return SoundQualityAnalyzer
+
+
+def _load_timecode_monitor():
+    from src.gui.widgets.timecode_monitor import TimecodeMonitor
+
+    return TimecodeMonitor
+
+
+def _load_bnim_meter():
+    from src.gui.widgets.bnim_meter import BNIMMeter
+
+    return BNIMMeter
+
+
+def _load_hrtf_player():
+    from src.gui.widgets.hrtf_player import HRTFPlayer
+
+    return HRTFPlayer
+
+
+def _load_ultrasound_modulator():
+    from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
+
+    return UltrasoundModulator
+
+
+def _load_linearity_analyzer():
+    from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
+
+    return LinearityAnalyzer
+
+
+_MODULE_LOADERS = {
+    "Signal Generator": _load_signal_generator,
+    "Spectrum Analyzer": _load_spectrum_analyzer,
+    "Sound Level Meter": _load_sound_level_meter,
+    "LUFS Meter": _load_lufs_meter,
+    "Loopback Finder": _load_loopback_finder,
+    "Distortion Analyzer": _load_distortion_analyzer,
+    "Advanced Distortion Meter": _load_advanced_distortion_meter,
+    "Network Analyzer": _load_network_analyzer,
+    "Oscilloscope": _load_oscilloscope,
+    "Raw Time Series": _load_raw_time_series,
+    "Lock-in Amplifier": _load_lock_in_amplifier,
+    "Lock-in THD Analyzer": _load_lockin_thd_analyzer,
+    "Frequency Counter": _load_frequency_counter,
+    "Lock-in Frequency Counter": _load_lock_in_frequency_counter,
+    "Spectrogram": _load_spectrogram,
+    "Boxcar Averager": _load_boxcar_averager,
+    "Goniometer": _load_goniometer,
+    "Impedance Analyzer": _load_impedance_analyzer,
+    "Noise Profiler": _load_noise_profiler,
+    "Recorder / Player": _load_recorder_player,
+    "Inverse Filter": _load_inverse_filter,
+    "Transient Analyzer": _load_transient_analyzer,
+    "Sound Quality Analyzer": _load_sound_quality_analyzer,
+    "Timecode Monitor & Generator": _load_timecode_monitor,
+    "BNIM Meter": _load_bnim_meter,
+    "HRTF Player": _load_hrtf_player,
+    "Ultrasound AM Modulator": _load_ultrasound_modulator,
+    "Linearity Analyzer": _load_linearity_analyzer,
+}
+
+
 def _load_module_class(module_key: str):
     """Return MeasurementModule class by key.
 
-    Imports are intentionally inside this function to avoid importing all
-    heavy GUI modules (pyqtgraph/scipy, etc.) at application startup.
+    Imports are intentionally delayed (via helper functions) to avoid importing
+    all heavy GUI modules (pyqtgraph/scipy, etc.) at application startup.
     These imports remain explicit so PyInstaller can still discover them.
     """
-
-    if module_key == "Signal Generator":
-        from src.gui.widgets.signal_generator import SignalGenerator
-
-        return SignalGenerator
-    if module_key == "Spectrum Analyzer":
-        from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
-
-        return SpectrumAnalyzer
-    if module_key == "Sound Level Meter":
-        from src.gui.widgets.sound_level_meter import SoundLevelMeter
-
-        return SoundLevelMeter
-    if module_key == "LUFS Meter":
-        from src.gui.widgets.lufs_meter import LufsMeter
-
-        return LufsMeter
-    if module_key == "Loopback Finder":
-        from src.gui.widgets.loopback_finder import LoopbackFinder
-
-        return LoopbackFinder
-    if module_key == "Distortion Analyzer":
-        from src.gui.widgets.distortion_analyzer import DistortionAnalyzer
-
-        return DistortionAnalyzer
-    if module_key == "Advanced Distortion Meter":
-        from src.gui.widgets.advanced_distortion_meter import AdvancedDistortionMeter
-
-        return AdvancedDistortionMeter
-    if module_key == "Network Analyzer":
-        from src.gui.widgets.network_analyzer import NetworkAnalyzer
-
-        return NetworkAnalyzer
-    if module_key == "Oscilloscope":
-        from src.gui.widgets.oscilloscope import Oscilloscope
-
-        return Oscilloscope
-    if module_key == "Raw Time Series":
-        from src.gui.widgets.raw_time_series import RawTimeSeries
-
-        return RawTimeSeries
-    if module_key == "Lock-in Amplifier":
-        from src.gui.widgets.lock_in_amplifier import LockInAmplifier
-
-        return LockInAmplifier
-    if module_key == "Lock-in THD Analyzer":
-        from src.gui.widgets.lockin_thd_analyzer import LockInTHDAnalyzer
-
-        return LockInTHDAnalyzer
-    if module_key == "Frequency Counter":
-        from src.gui.widgets.frequency_counter import FrequencyCounter
-
-        return FrequencyCounter
-    if module_key == "Lock-in Frequency Counter":
-        from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
-
-        return LockInFrequencyCounter
-    if module_key == "Spectrogram":
-        from src.gui.widgets.spectrogram import Spectrogram
-
-        return Spectrogram
-    if module_key == "Boxcar Averager":
-        from src.gui.widgets.boxcar_averager import BoxcarAverager
-
-        return BoxcarAverager
-    if module_key == "Goniometer":
-        from src.gui.widgets.goniometer import Goniometer
-
-        return Goniometer
-    if module_key == "Impedance Analyzer":
-        from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
-
-        return ImpedanceAnalyzer
-    if module_key == "Noise Profiler":
-        from src.gui.widgets.noise_profiler import NoiseProfiler
-
-        return NoiseProfiler
-    if module_key == "Recorder / Player":
-        from src.gui.widgets.recorder_player import RecorderPlayer
-
-        return RecorderPlayer
-    if module_key == "Inverse Filter":
-        from src.gui.widgets.inverse_filter import InverseFilter
-
-        return InverseFilter
-    if module_key == "Transient Analyzer":
-        from src.gui.widgets.transient_analyzer import TransientAnalyzer
-
-        return TransientAnalyzer
-    if module_key == "Sound Quality Analyzer":
-        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzer
-
-        return SoundQualityAnalyzer
-    if module_key == "Timecode Monitor & Generator":
-        from src.gui.widgets.timecode_monitor import TimecodeMonitor
-
-        return TimecodeMonitor
-    if module_key == "BNIM Meter":
-        from src.gui.widgets.bnim_meter import BNIMMeter
-
-        return BNIMMeter
-    if module_key == "HRTF Player":
-        from src.gui.widgets.hrtf_player import HRTFPlayer
-
-        return HRTFPlayer
-    if module_key == "Ultrasound AM Modulator":
-        from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
-
-        return UltrasoundModulator
-    if module_key == "Linearity Analyzer":
-        from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
-
-        return LinearityAnalyzer
+    loader = _MODULE_LOADERS.get(module_key)
+    if loader:
+        return loader()
 
     raise KeyError(f"Unknown module key: {module_key}")
 
