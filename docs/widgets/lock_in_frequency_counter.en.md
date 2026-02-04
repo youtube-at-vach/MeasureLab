@@ -37,7 +37,7 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 ### Statistics & Averaging
 
 * **Avg Count (KF-Q & Display)**: Sets the process noise (Q) for the Kalman Filter used in NCO frequency estimation, as well as the display averaging count. Increasing this value results in stronger smoothing (lower Q) and a more stable display.
-* **Display Uncertainty (σ)**: Displays the uncertainty (standard deviation) of the current frequency estimate. This indicates the confidence interval estimated by the Kalman Filter.
+* **Display Uncertainty (σ)**: Displays the uncertainty (standard deviation) of the current frequency estimate. This indicates the confidence interval estimated by the Kalman Filter. Additionally, the decimal precision of the NCO Frequency setting automatically adjusts based on measurement stability (uncertainty), displaying up to 8 decimal places.
 
 ### PID Control Loop
 
