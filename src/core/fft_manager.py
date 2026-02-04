@@ -146,7 +146,7 @@ class FFTManager:
         except Exception as e:
             logger.error(f"Failed to create pyfftw plan for size {size}: {e}")
 
-    def rfft(self, data, out=None):
+    def rfft(self, data, out=None, copy=True):
         """
         Perform Real FFT.
         """
@@ -174,6 +174,8 @@ class FFTManager:
                 if out is not None:
                     out[:] = plan_entry["output"]
                     return out
+                elif not copy:
+                    return plan_entry["output"]
                 else:
                     return plan_entry["output"].copy()
 
@@ -184,7 +186,7 @@ class FFTManager:
             return out
         return result
 
-    def irfft(self, data, n=None, out=None):
+    def irfft(self, data, n=None, out=None, copy=True):
         """
         Perform Inverse Real FFT.
         """
@@ -216,14 +218,17 @@ class FFTManager:
                 input_arr[:] = data
                 fft_obj()
 
-                # FFTW is unnormalized, numpy.fft.irfft includes 1/n scaling
+                # FFTW behavior note: Standard FFTW inverse transforms are unnormalized (scaled by N).
+                # However, pyfftw in this environment appears to produce normalized output (matching numpy.fft.irfft).
+                # Explicit 1/N scaling caused double-normalization in tests, so it is omitted here.
+
                 if out is not None:
-                    np.divide(plan_entry["output"], n, out=out)
+                    out[:] = plan_entry["output"]
                     return out
+                elif not copy:
+                    return plan_entry["output"]
                 else:
-                    result = plan_entry["output"].copy()
-                    result /= n
-                    return result
+                    return plan_entry["output"].copy()
 
         result = np.fft.irfft(data, n=n)
         if out is not None:
