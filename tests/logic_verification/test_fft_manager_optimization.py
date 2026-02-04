@@ -1,6 +1,5 @@
 import numpy as np
 from src.core.fft_manager import fft_manager, HAS_PYFFTW
-import pytest
 
 def test_rfft_out_param():
     N = 1024
