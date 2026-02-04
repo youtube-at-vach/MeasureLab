@@ -47,7 +47,7 @@ WINDOWS_LOCALE_MAP = {
 }
 
 class ConfigManager:
-    _instances = weakref.WeakSet()
+    _instances: weakref.WeakSet["ConfigManager"] = weakref.WeakSet()
     _atexit_registered = False
 
     def __init__(self, config_path="config.json"):
