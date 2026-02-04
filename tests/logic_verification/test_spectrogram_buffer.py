@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 sys.modules["sounddevice"] = MagicMock()
 
-import numpy as np
-from src.gui.widgets.spectrogram import Spectrogram
+import numpy as np  # noqa: E402
+from src.gui.widgets.spectrogram import Spectrogram  # noqa: E402
 
 # Mock AudioEngine
 class MockAudioEngine:
