@@ -2,6 +2,9 @@ import locale
 import json
 import logging
 import os
+import threading
+import atexit
+import weakref
 from copy import deepcopy
 
 from src.core.utils import resource_path
@@ -44,11 +47,30 @@ WINDOWS_LOCALE_MAP = {
 }
 
 class ConfigManager:
+    _instances = weakref.WeakSet()
+    _atexit_registered = False
+
     def __init__(self, config_path="config.json"):
         self.config_path = config_path
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config_dir = os.path.dirname(os.path.abspath(self.config_path)) or os.getcwd()
         self.config = self.load_config()
+        self._save_timer = None
+        self._save_lock = threading.Lock()
+
+        self._instances.add(self)
+        if not ConfigManager._atexit_registered:
+            atexit.register(ConfigManager._flush_all)
+            ConfigManager._atexit_registered = True
+
+    @classmethod
+    def _flush_all(cls):
+        """Flushes all active ConfigManager instances."""
+        for instance in cls._instances:
+            try:
+                instance.shutdown()
+            except Exception:
+                pass
 
     def load_config(self):
         """Loads configuration from JSON file."""
@@ -77,14 +99,38 @@ class ConfigManager:
             self._ensure_screenshot_dir(config)
             return config
 
-    def save_config(self):
-        """Saves current configuration to JSON file."""
-        try:
-            with open(self.config_path, "w") as f:
-                json.dump(self.config, f, indent=4)
-            self.logger.info("Config saved.")
-        except Exception as e:
-            self.logger.error(f"Failed to save config: {e}")
+    def _flush_config(self):
+        """Internal method to immediately write config to disk."""
+        with self._save_lock:
+            try:
+                with open(self.config_path, "w") as f:
+                    json.dump(self.config, f, indent=4)
+                self.logger.info("Config saved.")
+                self._save_timer = None
+            except Exception as e:
+                self.logger.error(f"Failed to save config: {e}")
+
+    def shutdown(self):
+        """Cancels pending saves and writes immediately."""
+        if self._save_timer:
+            self._save_timer.cancel()
+        self._flush_config()
+
+    def save_config(self, force_sync=False):
+        """Saves current configuration to JSON file.
+
+        Args:
+            force_sync (bool): If True, write immediately. If False, debounces write.
+        """
+        if force_sync:
+            self.shutdown()
+            return
+
+        if self._save_timer:
+            self._save_timer.cancel()
+
+        self._save_timer = threading.Timer(1.0, self._flush_config)
+        self._save_timer.start()
 
     def _default_config(self):
         return deepcopy(DEFAULT_CONFIG)
