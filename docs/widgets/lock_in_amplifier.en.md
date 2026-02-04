@@ -59,6 +59,7 @@ Switching between tabs allows you to choose between fixed-point measurement and 
 * **Frequency Response Analyzer (FRA)**
     * Measures while automatically changing the frequency from `Start` to `End` (frequency sweep).
     * The results are displayed as a **Bode Plot** (Magnitude and Phase characteristics).
+    * **Dual Cursors**: Checking `Show Cursors` displays two cursors (C1, C2). The difference ($\Delta$) between them shows the frequency difference, gain difference (dB), and phase difference, which is useful for detailed analysis of bandwidth and resonance points.
     * Ideal for measuring the bandwidth of filter circuits and amplifiers.
 
 ## Key Parameter Descriptions
@@ -73,6 +74,7 @@ The performance of a lock-in amplifier is determined by the "strength of the fil
     * The length of data used for a single measurement.
     * `Fast (2048)`: Fast response, but lower accuracy for low-frequency measurements.
     * `Slow / Very Slow`: Slower response, but higher noise rejection capability.
+    * `Very Slow 2x (131072)`: Uses an even longer integration time (approx. 0.5s+ depending on sample rate) for extremely high measurement precision.
 
 2. **Post-mix LPF (Time Constant $\tau$)**:
     * A filter that further smooths the signal after detection. Corresponds to the "Time Constant" of analog lock-in amplifiers.

@@ -1050,5 +1050,6 @@
     "-": "-",
     "Cursors": "光标",
     "Avg Count (KF-Q & Display):": "平均次数 (KF-Q & 显示):",
-    "Display Uncertainty:": "显示不确定度:"
+    "Display Uncertainty:": "显示不确定度:",
+    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)"
 }
