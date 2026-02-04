@@ -198,6 +198,10 @@ class LockInAmplifier(MeasurementModule):
                 self.current_x = 0.0
                 self.current_y = 0.0
                 self.ref_freq = 0.0
+                # Ensure is_virtual_ref attribute exists
+                if not hasattr(self, "is_virtual_ref"):
+                    self.is_virtual_ref = False
+                self.is_virtual_ref = False
                 return
             else:
                 # Internal Mode with no reference input: Use Virtual Reference (Generator Phase)
@@ -205,6 +209,11 @@ class LockInAmplifier(MeasurementModule):
                 # but Magnitude will be correct.
                 use_virtual_ref = True
                 self.ref_freq = self.gen_frequency
+
+        # Expose state for UI
+        if not hasattr(self, "is_virtual_ref"):
+            self.is_virtual_ref = False
+        self.is_virtual_ref = use_virtual_ref
 
         # Estimate Ref Frequency and Coherence
         if not use_virtual_ref:
@@ -1316,18 +1325,24 @@ class LockInAmplifierWidget(QWidget):
         # self.module.ref_level
         ref_freq = self.module.ref_freq
         coherence = self.module.ref_coherence
+        is_virtual = getattr(self.module, "is_virtual_ref", False)
 
         # Colors based on theme
         if self._is_dark_theme:
             c_locked = "#00ff00"
+            c_virtual = "#00ffff"  # Cyan for Virtual
             c_unstable = "#ffff00"
             c_unlocked = "#ff0000"
         else:
             c_locked = "#008800"
+            c_virtual = "#008888"
             c_unstable = "#888800"
             c_unlocked = "#cc0000"
 
-        if coherence >= 0.95:
+        if is_virtual:
+            self.ref_status_label.setText(tr("Virtual Ref (Internal {0:.1f} Hz)").format(ref_freq))
+            self.ref_status_label.setStyleSheet(f"font-weight: bold; color: {c_virtual};")
+        elif coherence >= 0.95:
             self.ref_status_label.setText(tr("Locked ({0:.1f} Hz, Coh: {1:.2f})").format(ref_freq, coherence))
             self.ref_status_label.setStyleSheet(f"font-weight: bold; color: {c_locked};")
         elif coherence >= 0.8:
