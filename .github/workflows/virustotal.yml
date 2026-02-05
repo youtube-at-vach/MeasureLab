@@ -133,11 +133,19 @@ jobs:
           import requests
           import sys
           import glob
+          import hashlib
 
           API_KEY = os.environ.get("VT_API_KEY")
           if not API_KEY:
               print("::error::VT_API_KEY not set")
               sys.exit(1)
+          
+          def calc_sha256(filepath):
+              sha256_hash = hashlib.sha256()
+              with open(filepath, "rb") as f:
+                  for byte_block in iter(lambda: f.read(4096), b""):
+                      sha256_hash.update(byte_block)
+              return sha256_hash.hexdigest()
 
           URL_SCAN = "https://www.virustotal.com/api/v3/files"
           HEADERS = {"x-apikey": API_KEY}
@@ -201,27 +209,22 @@ jobs:
                       results.append((filename, f"Error: {str(e)}"))
                       continue
 
+              sha256 = calc_sha256(file_path)
+              print(f"  -> Calculated SHA256: {sha256}")
+
               try:
                   with open(file_path, "rb") as f:
                       files = {"file": (filename, f)}
                       response = requests.post(upload_url, headers=HEADERS, files=files)
                   
                   if response.status_code == 200:
-                      json_resp = response.json()
-                      analysis_id = json_resp.get("data", {}).get("id", "")
-                      # For large files, the ID returned might be the analysis ID directly.
-                      # We want the SHA256 for the permanent link.
-                      # Usually analysis ID matches sha256-timestamp on VT.
+                      # We ignore the ID from response and use our calculated SHA256
+                      # The response ID is an analysis ID, not file ID.
+                      # Creating a link to the file hash is safer and persistent.
                       
-                      sha256 = analysis_id.split("-")[0] if "-" in analysis_id else analysis_id
-                      
-                      if sha256:
-                          link = f"https://www.virustotal.com/gui/file/{sha256}"
-                          results.append((filename, link))
-                          print(f"  -> Uploaded. Link: {link}")
-                      else:
-                          print(f"  -> Error parsing ID: {analysis_id}")
-                          results.append((filename, "Error parsing response"))
+                      link = f"https://www.virustotal.com/gui/file/{sha256}"
+                      results.append((filename, link))
+                      print(f"  -> Uploaded. Link: {link}")
 
                   else:
                       print(f"  -> Upload failed: {response.status_code} {response.text}")
