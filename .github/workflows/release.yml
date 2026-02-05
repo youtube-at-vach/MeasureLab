@@ -73,14 +73,30 @@ jobs:
       shell: pwsh
       run: |
         $content = ""
-        if ('${{ steps.vt.outputs.json }}' -ne '') {
-            $json = '${{ steps.vt.outputs.json }}' | ConvertFrom-Json
-            foreach ($item in $json) {
+        $json = '${{ steps.vt.outputs.json }}'
+        $analysis = '${{ steps.vt.outputs.analysis }}'
+
+        if ($json -ne '') {
+            $data = $json | ConvertFrom-Json
+            foreach ($item in $data) {
                 $baseName = Split-Path $item.filename -Leaf
                 $content += "- [$baseName]($($item.url))`n"
             }
+        } elseif ($analysis -ne '') {
+            $lines = $analysis -split "[\r\n]+"
+            foreach ($line in $lines) {
+                if ($line -match "=(https?://.*)") {
+                    $url = $matches[1]
+                    $pathPart = $line.Substring(0, $line.Length - $url.Length - 1)
+                    $baseName = Split-Path $pathPart -Leaf
+                    $content += "- [$baseName]($url)`n"
+                }
+            }
         }
+        
         $content | Out-File -FilePath vt_url_windows.txt -Encoding utf8
+        Write-Host "Generated VT URL content:"
+        Get-Content vt_url_windows.txt
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
@@ -167,11 +183,27 @@ jobs:
     - name: Generate VT Report Lines
       shell: bash
       run: |
-        if [ -n "${{ steps.vt.outputs.json }}" ]; then
-          echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_linux.txt
+        json='${{ steps.vt.outputs.json }}'
+        analysis='${{ steps.vt.outputs.analysis }}'
+        
+        if [ -n "$json" ]; then
+          echo "$json" | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_linux.txt
+        elif [ -n "$analysis" ]; then
+          # Handle analysis output: file=url (possibly multiple lines)
+          while IFS= read -r line; do
+            if [[ "$line" == *=http* ]]; then
+               url="${line##*=}"
+               path="${line%=*}"
+               name=$(basename "$path")
+               echo "- [$name]($url)" >> vt_url_linux.txt
+            fi
+          done <<< "$analysis"
         else
           touch vt_url_linux.txt
         fi
+        
+        echo "Generated VT URL content:"
+        cat vt_url_linux.txt
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
@@ -275,11 +307,26 @@ jobs:
     - name: Generate VT Report Lines
       shell: bash
       run: |
-        if [ -n "${{ steps.vt.outputs.json }}" ]; then
-          echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_macos.txt
+        json='${{ steps.vt.outputs.json }}'
+        analysis='${{ steps.vt.outputs.analysis }}'
+        
+        if [ -n "$json" ]; then
+          echo "$json" | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_macos.txt
+        elif [ -n "$analysis" ]; then
+          while IFS= read -r line; do
+            if [[ "$line" == *=http* ]]; then
+               url="${line##*=}"
+               path="${line%=*}"
+               name=$(basename "$path")
+               echo "- [$name]($url)" >> vt_url_macos.txt
+            fi
+          done <<< "$analysis"
         else
           touch vt_url_macos.txt
         fi
+        
+        echo "Generated VT URL content:"
+        cat vt_url_macos.txt
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
