@@ -39,19 +39,8 @@ class Spectrogram(MeasurementModule):
         self.max_freq = 20000  # Default, will be updated by UI or sample rate
 
         # State
-        self.input_buffer = np.zeros(self.fft_size)  # For overlap processing
-        self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
-        self.spectrogram_ptr = 0
         self.callback_id = None
-
-        # Accumulator for Sweep Speed
-        self.accumulator = None
-        self.acc_count = 0
-
-        # Ring buffer for incoming audio
-        self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
-        self.audio_buffer_pos = 0
-        self.output_buffer = None
+        self.reset_buffers()
 
     @property
     def name(self) -> str:
@@ -79,6 +68,11 @@ class Spectrogram(MeasurementModule):
         self.accumulator = None
         self.acc_count = 0
         self.output_buffer = None
+
+        # Performance buffers
+        self.work_buffer = np.zeros(self.fft_size, dtype=np.float64)
+        self.fft_out_buffer = np.zeros(self.fft_size // 2 + 1, dtype=np.complex128)
+        self.mag_buffer = np.zeros(self.fft_size // 2 + 1, dtype=np.float64)
 
     def start_analysis(self):
         if self.is_running:
@@ -338,36 +332,52 @@ class SpectrogramWidget(QWidget):
         # We take the last fft_size samples
         raw_data = self.module.get_latest_samples(self.module.fft_size)
 
-        # Select Channel
+        # Use pre-allocated buffers
+        work_buffer = self.module.work_buffer
+        fft_out_buffer = self.module.fft_out_buffer
+        mag_buffer = self.module.mag_buffer
+
+        # Ensure work buffer size matches (it should if reset_buffers called correctly)
+        if len(work_buffer) != len(raw_data):
+            work_buffer = np.zeros(len(raw_data), dtype=np.float64)
+            fft_out_buffer = np.zeros(len(raw_data) // 2 + 1, dtype=np.complex128)
+            mag_buffer = np.zeros(len(raw_data) // 2 + 1, dtype=np.float64)
+
+        # Populate Work Buffer
         if self.module.channel_mode == "Left":
-            sig = raw_data[:, 0]
+            work_buffer[:] = raw_data[:, 0]
         elif self.module.channel_mode == "Right":
-            sig = raw_data[:, 1]
+            work_buffer[:] = raw_data[:, 1]
         else:
-            sig = np.mean(raw_data, axis=1)
+            # Average: optimize to avoid 'np.mean' allocation
+            np.add(raw_data[:, 0], raw_data[:, 1], out=work_buffer)
+            work_buffer *= 0.5
 
         # Windowing
-        window = get_cached_window(self.module.window_type, len(sig))
-        sig_win = sig * window
+        window = get_cached_window(self.module.window_type, len(work_buffer))
+        work_buffer *= window
 
         # Window Correction Factor (Coherent Gain)
         win_correction = 1.0 / np.mean(window)
 
         # FFT
-        fft_res = fft_manager.rfft(sig_win)
-        mag = np.abs(fft_res)
+        fft_manager.rfft(work_buffer, out=fft_out_buffer)
+
+        # Magnitude (Abs)
+        np.abs(fft_out_buffer, out=mag_buffer)
 
         # Normalize
         # Optimized in-place normalization
-        mag *= (2.0 * win_correction) / len(sig)
+        mag_buffer *= (2.0 * win_correction) / len(work_buffer)
 
         # Convert to dB
         # In-place optimization to save memory bandwidth
         with np.errstate(divide="ignore"):
-            np.add(mag, 1e-12, out=mag)
-            np.log10(mag, out=mag)
-            np.multiply(mag, 20, out=mag)
-            mag_db = mag
+            np.add(mag_buffer, 1e-12, out=mag_buffer)
+            np.log10(mag_buffer, out=mag_buffer)
+            np.multiply(mag_buffer, 20, out=mag_buffer)
+
+        mag_db = mag_buffer
 
         # --- Accumulation Logic ---
         if self.module.accumulator is None or self.module.accumulator.shape != mag_db.shape:
