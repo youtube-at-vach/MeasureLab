@@ -193,7 +193,7 @@ class Oscilloscope(MeasurementModule):
                 self.callback_id = None
             self.is_running = False
 
-    def _get_data_slice(self, start_offset, length):
+    def _get_data_slice(self, start_offset, length, copy=True):
         """Returns a contiguous array of length samples starting at logical offset start_offset (0 = oldest)."""
         if length <= 0:
             return np.empty((0, 2))
@@ -202,14 +202,17 @@ class Oscilloscope(MeasurementModule):
         end_idx = idx + length
 
         if end_idx <= self.buffer_size:
-            return self.input_data[idx:end_idx].copy()
+            if copy:
+                return self.input_data[idx:end_idx].copy()
+            else:
+                return self.input_data[idx:end_idx]
         else:
             # Wrapped
             part1_len = self.buffer_size - idx
             part2_len = length - part1_len
             return np.concatenate((self.input_data[idx:], self.input_data[:part2_len]), axis=0)
 
-    def get_display_data(self, window_duration):
+    def get_display_data(self, window_duration, copy=True):
         """
         Get triggered data for display.
         window_duration: float, seconds of data to display
@@ -231,7 +234,7 @@ class Oscilloscope(MeasurementModule):
         if search_end <= 0:
             # Buffer too small for requested window, just return what we have (the last required_samples)
             start_offset = max(0, self.buffer_size - required_samples)
-            return self._get_data_slice(start_offset, required_samples)
+            return self._get_data_slice(start_offset, required_samples, copy=copy)
 
         # Limit search to recent history to be responsive (e.g. last 50% of possible range)
         # But we need enough pre-trigger data?
@@ -245,7 +248,8 @@ class Oscilloscope(MeasurementModule):
 
         # Extract only the search window subset
         search_length = search_end - start_idx
-        subset_data = self._get_data_slice(start_idx, search_length)
+        # Use copy=False here because we only read from subset_data for trigger detection
+        subset_data = self._get_data_slice(start_idx, search_length, copy=False)
         subset = subset_data[:, self.trigger_source]
 
         # Find crossings
@@ -266,14 +270,14 @@ class Oscilloscope(MeasurementModule):
                 self.single_shot_fired = True
                 self.single_shot_armed = False
 
-            return self._get_data_slice(trigger_idx, required_samples)
+            return self._get_data_slice(trigger_idx, required_samples, copy=copy)
         else:
             # No trigger found
             if self.trigger_mode == "Auto":
                 # Return latest data
                 # Corresponds to last required_samples
                 start_offset = self.buffer_size - required_samples
-                return self._get_data_slice(start_offset, required_samples)
+                return self._get_data_slice(start_offset, required_samples, copy=copy)
             else:
                 # Normal mode: return None (keep last frame)
                 return None
@@ -1152,7 +1156,8 @@ class OscilloscopeWidget(QWidget):
         self.module.process_queue()
 
         window_duration = self.module.timebase
-        data = self.module.get_display_data(window_duration)
+        # Try to get a view (no copy) if possible for performance
+        data = self.module.get_display_data(window_duration, copy=False)
 
         if data is not None:
             # Create time axis
@@ -1161,6 +1166,12 @@ class OscilloscopeWidget(QWidget):
             # Apply Filter if enabled
             sr = self.module.audio_engine.sample_rate
             if self.module.filter_type != "None":
+                # We need to modify data, so we must copy it if it's a view
+                # or just copy to be safe since we are modifying in place.
+                # get_display_data(copy=False) might return a view OR a copy (if wrapped).
+                # To be safe for in-place modification, we force a copy here.
+                data = data.copy()
+
                 if self.module.filter_type == "LPF":
                     data[:, 0] = AudioCalc.lowpass_filter(data[:, 0], sr, self.module.filter_cutoff)
                     data[:, 1] = AudioCalc.lowpass_filter(data[:, 1], sr, self.module.filter_cutoff)
