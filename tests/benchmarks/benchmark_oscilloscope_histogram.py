@@ -1,7 +1,6 @@
 
 import time
 import numpy as np
-import pytest
 
 def benchmark_histogram_original(t, y, bins, rng, intensity, heatmap):
     hist, _, _ = np.histogram2d(t, y, bins=bins, range=rng)
