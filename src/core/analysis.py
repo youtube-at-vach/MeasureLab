@@ -107,7 +107,7 @@ class AudioCalc:
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = _get_butter_sos(8, cutoff / nyquist, "lowpass")
+        sos = _get_butter_sos(8, cutoff, "lowpass", fs=sampling_rate)
         return sosfiltfilt(sos, signal)
 
     @staticmethod
