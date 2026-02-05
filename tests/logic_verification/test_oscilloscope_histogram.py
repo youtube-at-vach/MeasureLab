@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from src.gui.widgets.oscilloscope import fast_histogram2d
 
 def test_fast_histogram2d_basic():

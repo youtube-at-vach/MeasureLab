@@ -9,7 +9,7 @@ sys.modules['sounddevice'] = MagicMock()
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from src.gui.widgets.oscilloscope import fast_histogram2d
+from src.gui.widgets.oscilloscope import fast_histogram2d  # noqa: E402
 
 def benchmark_histogram():
     # Setup
@@ -39,7 +39,7 @@ def benchmark_histogram():
     # Optimization: fast_histogram2d
     start_time = time.perf_counter()
     for _ in range(iterations):
-        hist_new = fast_histogram2d(t, y, bins=[w, h], range=rng)
+        _ = fast_histogram2d(t, y, bins=[w, h], range=rng)
 
     end_time = time.perf_counter()
     avg_time_opt = (end_time - start_time) / iterations
