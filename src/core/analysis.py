@@ -129,7 +129,7 @@ class AudioCalc:
         return sosfiltfilt(sos, signal)
 
     @staticmethod
-    def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
+    def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False, m_buffer=None):
         """
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
         """
@@ -142,7 +142,11 @@ class AudioCalc:
         t = _get_time_array(N, sampling_rate)
 
         # Pre-allocate arrays to avoid repeated allocation in loop
-        M = np.empty((N, 3), dtype=t.dtype)
+        if m_buffer is not None and m_buffer.shape == (N, 3) and m_buffer.dtype == t.dtype:
+            M = m_buffer
+        else:
+            M = np.empty((N, 3), dtype=t.dtype)
+
         M[:, 2] = 1.0  # The 'ones' column is constant
 
         def get_residual_rms(f):

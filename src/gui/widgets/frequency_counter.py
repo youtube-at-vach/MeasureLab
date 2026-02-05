@@ -119,18 +119,19 @@ class FrequencyWorker(QRunnable):
     Worker thread for calculating frequency precision.
     """
 
-    def __init__(self, data, sr, gate_threshold_db, calibration_factor):
+    def __init__(self, data, sr, gate_threshold_db, calibration_factor, m_buffer=None):
         super().__init__()
         self.data = data
         self.sr = sr
         self.gate_threshold_db = gate_threshold_db
         self.calibration_factor = calibration_factor
+        self.m_buffer = m_buffer
         self.signals = FrequencyWorkerSignals()
 
     def run(self):
         try:
             freq, db = FrequencyCounter.calculate_metrics(
-                self.data, self.sr, self.gate_threshold_db, self.calibration_factor
+                self.data, self.sr, self.gate_threshold_db, self.calibration_factor, self.m_buffer
             )
             self.signals.result.emit(freq, db)
         except Exception as e:
@@ -144,6 +145,7 @@ class FrequencyCounter(MeasurementModule):
         self.audio_engine = audio_engine
         self.is_running = False
         self.callback_id = None
+        self.m_buffer = None
 
         # Settings
         self.gate_threshold_db = -60.0
@@ -289,7 +291,7 @@ class FrequencyCounter(MeasurementModule):
             self.start_analysis()
 
     @classmethod
-    def calculate_metrics(cls, data, sr, gate_threshold_db, calibration_factor=1.0):
+    def calculate_metrics(cls, data, sr, gate_threshold_db, calibration_factor=1.0, m_buffer=None):
         # 1. Check Amplitude (Gate)
         rms = np.sqrt(np.mean(data**2))
         db = 20 * np.log10(rms + 1e-12)
@@ -313,7 +315,7 @@ class FrequencyCounter(MeasurementModule):
         # Only run if we have a reasonable signal
         if coarse_freq > 10:  # Avoid DC/VLF noise
             try:
-                precise_freq = AudioCalc.optimize_frequency(data, sr, coarse_freq)
+                precise_freq = AudioCalc.optimize_frequency(data, sr, coarse_freq, m_buffer=m_buffer)
                 precise_freq = float(precise_freq) * calibration_factor
                 return precise_freq, db
             except Exception:
@@ -340,7 +342,11 @@ class FrequencyCounter(MeasurementModule):
         except Exception:
             cal_factor = 1.0
 
-        freq, db = self.calculate_metrics(data, sr, self.gate_threshold_db, cal_factor)
+        N = len(data)
+        if self.m_buffer is None or self.m_buffer.shape != (N, 3):
+            self.m_buffer = np.empty((N, 3), dtype=np.float64)
+
+        freq, db = self.calculate_metrics(data, sr, self.gate_threshold_db, cal_factor, self.m_buffer)
 
         self.current_amp_db = db
         if freq is not None:
@@ -561,6 +567,7 @@ class FrequencyCounterWidget(QWidget):
     def __init__(self, module: FrequencyCounter):
         super().__init__()
         self.module = module
+        self.ui_buffer = None
 
         # Display mode: 'frequency' or 'period'
         self.display_mode = "frequency"
@@ -1244,6 +1251,13 @@ class FrequencyCounterWidget(QWidget):
             cal_factor = 1.0
 
         self.is_calculating_freq = True
-        worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor)
+
+        # Ensure buffer reuse
+        N = len(data)
+        if self.ui_buffer is None or self.ui_buffer.shape != (N, 3):
+            # Ensure correct dtype matching AudioCalc internals (usually float64)
+            self.ui_buffer = np.empty((N, 3), dtype=np.float64)
+
+        worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor, self.ui_buffer)
         worker.signals.result.connect(self.on_freq_calculation_result)
         self.threadpool.start(worker)
