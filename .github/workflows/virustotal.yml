@@ -174,37 +174,45 @@ jobs:
 
           results = []
 
-          print("Starting VirusTotal Scan...")
+          print("Starting VirusTotal Scan (Large File Support)...")
           for i, file_path in enumerate(files_to_scan):
               filename = os.path.basename(file_path)
-              print(f"[{i+1}/{len(files_to_scan)}] Uploading {filename}...")
+              filesize = os.path.getsize(file_path)
+              filesize_mb = filesize / (1024 * 1024)
+              print(f"[{i+1}/{len(files_to_scan)}] Processing {filename} ({filesize_mb:.2f} MB)...")
               
+              upload_url = URL_SCAN
+              
+              # If file is larger than 32MB, get a special upload URL
+              if filesize > 32 * 1024 * 1024:
+                  try:
+                      print("  -> File > 32MB, requesting large file upload URL...")
+                      url_resp = requests.get(URL_SCAN + "/upload_url", headers=HEADERS)
+                      if url_resp.status_code == 200:
+                          upload_url = url_resp.json().get("data")
+                          print(f"  -> Got upload URL: {upload_url}")
+                      else:
+                          print(f"  -> Failed to get upload URL: {url_resp.status_code} {url_resp.text}")
+                          # Try standard upload anyway as fallback? No, it will fail.
+                          results.append((filename, f"Upload URL Failed ({url_resp.status_code})"))
+                          continue
+                  except Exception as e:
+                      print(f"  -> Exception getting upload URL: {e}")
+                      results.append((filename, f"Error: {str(e)}"))
+                      continue
+
               try:
                   with open(file_path, "rb") as f:
                       files = {"file": (filename, f)}
-                      response = requests.post(URL_SCAN, headers=HEADERS, files=files)
+                      response = requests.post(upload_url, headers=HEADERS, files=files)
                   
                   if response.status_code == 200:
                       json_resp = response.json()
-                      # The response to uploading a file contains an analysis ID, but usually also directly valid links if we look at "data.id"
-                      # Actually, POST /files returns data inside specific structure.
-                      # We want the file report URL (GUI link).
-                      # The response gives "data": { "type": "analysis", "id": "..." }
-                      # The GUI URL is usually https://www.virustotal.com/gui/file/<sha256>
-                      # OR https://www.virustotal.com/gui/file-analysis/<id>
-                      # But better to get the sha256 to form a permanent link.
-                      
-                      # Wait, the upload response might NOT contain the SHA256 immediately if it's new?
-                      # It does contain "id" which usually starts with sha256.
-                      
-                      # However, reliable way is to calc sha256 locally or just use the analysis link.
-                      # User requested "https://www.virustotal.com/..."
-                      
-                      # Let's use the 'id' from response.
-                      # ID format for analysis: <sha256>-<timestamp>
-                      # If we take the first part, that's the SHA256.
-                      
                       analysis_id = json_resp.get("data", {}).get("id", "")
+                      # For large files, the ID returned might be the analysis ID directly.
+                      # We want the SHA256 for the permanent link.
+                      # Usually analysis ID matches sha256-timestamp on VT.
+                      
                       sha256 = analysis_id.split("-")[0] if "-" in analysis_id else analysis_id
                       
                       if sha256:
