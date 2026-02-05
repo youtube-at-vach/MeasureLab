@@ -79,13 +79,13 @@ jobs:
             $baseName = Split-Path $item.filename -Leaf
             $content += "- [$baseName]($($item.url))`n"
         }
-        $content | Out-File -FilePath vt_url.txt -Encoding utf8
+        + $content | Out-File -FilePath vt_url_windows.txt -Encoding utf8
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
       with:
         name: vt-url-windows
-        path: vt_url.txt
+        path: vt_url_windows.txt
         if-no-files-found: ignore
 
     - name: Upload Release Assets
@@ -168,13 +168,13 @@ jobs:
       if: steps.vt.outputs.json != ''
       shell: bash
       run: |
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url.txt
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_linux.txt
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
       with:
         name: vt-url-linux
-        path: vt_url.txt
+        path: vt_url_linux.txt
         if-no-files-found: ignore
 
     - name: Upload Release Assets
@@ -274,13 +274,13 @@ jobs:
       if: steps.vt.outputs.json != ''
       shell: bash
       run: |
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url.txt
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_macos.txt
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
       with:
         name: vt-url-macos
-        path: vt_url.txt
+        path: vt_url_macos.txt
         if-no-files-found: ignore
 
     - name: Upload Release Assets
@@ -338,9 +338,9 @@ jobs:
         fi
 
         # Append VirusTotal URLs if they exist
-        if ls vt_urls/vt_url*.txt 1> /dev/null 2>&1; then
+        if ls vt_urls/*.txt 1> /dev/null 2>&1; then
           echo -e "\n### VirusTotal Analysis" >> release_notes.md
-          cat vt_urls/vt_url*.txt >> release_notes.md
+          cat vt_urls/*.txt >> release_notes.md
         fi
 
     - name: Create Release
