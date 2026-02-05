@@ -70,23 +70,23 @@ jobs:
           dist/release/*.zip
 
     - name: Generate VT Report Lines
-      if: steps.vt.outputs.json != ''
       shell: pwsh
       run: |
-        $json = '${{ steps.vt.outputs.json }}' | ConvertFrom-Json
         $content = ""
-        foreach ($item in $json) {
-            $baseName = Split-Path $item.filename -Leaf
-            $content += "- [$baseName]($($item.url))`n"
+        if ('${{ steps.vt.outputs.json }}' -ne '') {
+            $json = '${{ steps.vt.outputs.json }}' | ConvertFrom-Json
+            foreach ($item in $json) {
+                $baseName = Split-Path $item.filename -Leaf
+                $content += "- [$baseName]($($item.url))`n"
+            }
         }
-        + $content | Out-File -FilePath vt_url_windows.txt -Encoding utf8
+        $content | Out-File -FilePath vt_url_windows.txt -Encoding utf8
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
       with:
         name: vt-url-windows
         path: vt_url_windows.txt
-        if-no-files-found: ignore
 
     - name: Upload Release Assets
       uses: actions/upload-artifact@v4
@@ -165,17 +165,19 @@ jobs:
         files: dist/release/*.AppImage
 
     - name: Generate VT Report Lines
-      if: steps.vt.outputs.json != ''
       shell: bash
       run: |
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_linux.txt
+        if [ -n "${{ steps.vt.outputs.json }}" ]; then
+          echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_linux.txt
+        else
+          touch vt_url_linux.txt
+        fi
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
       with:
         name: vt-url-linux
         path: vt_url_linux.txt
-        if-no-files-found: ignore
 
     - name: Upload Release Assets
       uses: actions/upload-artifact@v4
@@ -271,17 +273,19 @@ jobs:
         files: dist/release/*.dmg
 
     - name: Generate VT Report Lines
-      if: steps.vt.outputs.json != ''
       shell: bash
       run: |
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_macos.txt
+        if [ -n "${{ steps.vt.outputs.json }}" ]; then
+          echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url_macos.txt
+        else
+          touch vt_url_macos.txt
+        fi
 
     - name: Upload VT URL
       uses: actions/upload-artifact@v4
       with:
         name: vt-url-macos
         path: vt_url_macos.txt
-        if-no-files-found: ignore
 
     - name: Upload Release Assets
       uses: actions/upload-artifact@v4
@@ -337,9 +341,12 @@ jobs:
         fi
 
         # Append VirusTotal URLs if they exist
-        if ls vt_urls/*.txt 1> /dev/null 2>&1; then
-          echo -e "\n### VirusTotal Analysis" >> release_notes.md
-          cat vt_urls/*.txt >> release_notes.md
+        if [ -d vt_urls ]; then
+          shopt -s nullglob
+          if ls vt_urls/*.txt >/dev/null 2>&1; then
+            echo -e "\n### VirusTotal Analysis" >> release_notes.md
+            cat vt_urls/*.txt >> release_notes.md
+          fi
         fi
 
     - name: Create Release
