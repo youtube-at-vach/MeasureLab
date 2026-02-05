@@ -60,22 +60,14 @@ jobs:
         Copy-Item -Path "dist/onefile/MeasureLab.exe" -Destination "$outDir/$base.exe"
         Compress-Archive -Path "dist/onedir/MeasureLab" -DestinationPath "$outDir/$base-onedir.zip" -Force
 
-    - name: Generate Release Notes
+    - name: Extract CHANGELOG for version
       id: changelog
       shell: bash
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-           echo "### Draft Release (Manual Build)" > release_notes.md
-           echo "" >> release_notes.md
-           echo "- Branch/Ref: ${{ github.ref_name }}" >> release_notes.md
-           echo "- Commit: ${{ github.sha }}" >> release_notes.md
-           echo "- Date: $(date -u)" >> release_notes.md
-        else
-           python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-           # If empty, use a default message
-           if [ ! -s release_notes.md ]; then
-             echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-           fi
+        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        # If empty, use a default message
+        if [ ! -s release_notes.md ]; then
+          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
         fi
     - name: VirusTotal Scan
       id: vt
@@ -86,17 +78,17 @@ jobs:
           dist/release/*.exe
           dist/release/*.zip
 
-    - name: Save VT results to file
+    - name: Add VT link to release notes
       if: steps.vt.outputs.json != ''
       shell: pwsh
       run: |
         $json = '${{ steps.vt.outputs.json }}' | ConvertFrom-Json
-        $content = "### VirusTotal Analysis (Windows)`n"
+        $content = "`n### VirusTotal Analysis`n"
         foreach ($item in $json) {
             $baseName = Split-Path $item.filename -Leaf
             $content += "- [$baseName]($($item.url))`n"
         }
-        Set-Content -Path vt_scan_results_windows.md -Value $content
+        Add-Content -Path release_notes.md -Value $content
 
     - name: Release Windows
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
@@ -106,7 +98,6 @@ jobs:
         files: |
           dist/release/*.exe
           dist/release/*.zip
-          vt_scan_results_windows.md
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
 
@@ -173,21 +164,13 @@ jobs:
         fi
         mv "${candidates[0]}" "dist/release/MeasureLab-${tag}-linux-x86_64.AppImage"
 
-    - name: Generate Release Notes
+    - name: Extract CHANGELOG for version
       id: changelog
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-           echo "### Draft Release (Manual Build)" > release_notes.md
-           echo "" >> release_notes.md
-           echo "- Branch/Ref: ${{ github.ref_name }}" >> release_notes.md
-           echo "- Commit: ${{ github.sha }}" >> release_notes.md
-           echo "- Date: $(date -u)" >> release_notes.md
-        else
-           python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-           # If empty, use a default message
-           if [ ! -s release_notes.md ]; then
-             echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-           fi
+        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        # If empty, use a default message
+        if [ ! -s release_notes.md ]; then
+          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
         fi
 
     - name: VirusTotal Scan
@@ -197,11 +180,12 @@ jobs:
         vt_api_key: ${{ secrets.VT_API_KEY }}
         files: dist/release/*.AppImage
 
-    - name: Save VT results to file
+    - name: Add VT link to release notes
       if: steps.vt.outputs.json != ''
       run: |
-        echo "### VirusTotal Analysis (Linux)" > vt_scan_results_linux.md
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> vt_scan_results_linux.md
+        echo "" >> release_notes.md
+        echo "### VirusTotal Analysis" >> release_notes.md
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> release_notes.md
 
     - name: Release Linux
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
@@ -211,7 +195,6 @@ jobs:
         files: |
           dist/release/*.AppImage
           dist/release/*.pdf
-          vt_scan_results_linux.md
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
 
@@ -308,21 +291,13 @@ jobs:
         tag="${tag//\//-}"
         cp dist/MeasureLab.dmg "dist/release/MeasureLab-${tag}-macos-arm64.dmg"
 
-    - name: Generate Release Notes
+    - name: Extract CHANGELOG for version
       id: changelog
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-           echo "### Draft Release (Manual Build)" > release_notes.md
-           echo "" >> release_notes.md
-           echo "- Branch/Ref: ${{ github.ref_name }}" >> release_notes.md
-           echo "- Commit: ${{ github.sha }}" >> release_notes.md
-           echo "- Date: $(date -u)" >> release_notes.md
-        else
-           python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-           # If empty, use a default message
-           if [ ! -s release_notes.md ]; then
-             echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-           fi
+        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        # If empty, use a default message
+        if [ ! -s release_notes.md ]; then
+          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
         fi
 
     - name: VirusTotal Scan
@@ -332,19 +307,18 @@ jobs:
         vt_api_key: ${{ secrets.VT_API_KEY }}
         files: dist/release/*.dmg
 
-    - name: Save VT results to file
+    - name: Add VT link to release notes
       if: steps.vt.outputs.json != ''
       run: |
-        echo "### VirusTotal Analysis (macOS)" > vt_scan_results_macos.md
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> vt_scan_results_macos.md
+        echo "" >> release_notes.md
+        echo "### VirusTotal Analysis" >> release_notes.md
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> release_notes.md
 
     - name: Release macOS
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
       if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: |
-          dist/release/*.dmg
-          vt_scan_results_macos.md
+        files: dist/release/*.dmg
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
