@@ -28,6 +28,53 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 
+def fast_histogram2d(x, y, bins, range):
+    """
+    Optimized version of np.histogram2d for uniform bins using np.bincount.
+
+    x: sample x coordinates (1D array)
+    y: sample y coordinates (1D array)
+    bins: [nx, ny] number of bins
+    range: [[xmin, xmax], [ymin, ymax]]
+    """
+    nx, ny = bins
+    (xmin, xmax), (ymin, ymax) = range
+
+    # Calculate indices
+    # We use float32 for speed if precision allows, but keeping input dtype is safer.
+    # We assume x and y are numpy arrays.
+
+    # Avoid division by zero
+    x_range = xmax - xmin
+    y_range = ymax - ymin
+    if x_range == 0 or y_range == 0:
+        return np.zeros((nx, ny))
+
+    # Filter valid data within range [min, max]
+    # np.histogram2d includes the right edge in the last bin.
+    mask = (x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax)
+    x_valid = x[mask]
+    y_valid = y[mask]
+
+    # Calculate bin indices
+    ix = ((x_valid - xmin) / x_range * nx).astype(np.int32)
+    iy = ((y_valid - ymin) / y_range * ny).astype(np.int32)
+
+    # Handle the right edge case (value == max maps to index nx)
+    # We clip to ensure indices are within [0, n-1]
+    # Since we already filtered out-of-bounds values, clipping only affects the upper bound equality.
+    ix = np.clip(ix, 0, nx - 1)
+    iy = np.clip(iy, 0, ny - 1)
+
+    # Flat index
+    flat_indices = ix * ny + iy
+
+    # Count
+    hist_flat = np.bincount(flat_indices, minlength=nx * ny)
+
+    return hist_flat.reshape(nx, ny)
+
+
 class Oscilloscope(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -1258,11 +1305,11 @@ class OscilloscopeWidget(QWidget):
                 rng = [[0, window_duration], [-1.1, 1.1]]
 
                 if self.module.show_left:
-                    hist_l, _, _ = np.histogram2d(t, scaled_l, bins=[w, h], range=rng)
+                    hist_l = fast_histogram2d(t, scaled_l, bins=[w, h], range=rng)
                     self.module.heatmap_l += hist_l * intensity * 100
 
                 if self.module.show_right:
-                    hist_r, _, _ = np.histogram2d(t, scaled_r, bins=[w, h], range=rng)
+                    hist_r = fast_histogram2d(t, scaled_r, bins=[w, h], range=rng)
                     self.module.heatmap_r += hist_r * intensity * 100
 
                 # Compose Image
