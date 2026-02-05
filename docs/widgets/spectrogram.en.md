@@ -51,13 +51,13 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 
 - **Colormap**
     - Changes the color scheme of the graph.
-    - **viridis / plasma / inferno / magma**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
+    - **viridis / plasma / inferno / magma / cividis**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
     - **turbo**: A colorful rainbow-like scheme suitable for distinguishing fine level differences.
 
 - **Speed (Flow Rate)**
     - Adjusts the speed at which the graph scrolls.
     - **Fast (Realtime)**: Flows in real-time. Suitable for viewing short-term changes.
-    - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen).
+    - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen). Note that these slow modes use a "Max Hold" mechanism to capture transient peaks within the time interval.
 
 - **Min Freq / Max Freq**
     - Narrows down the display range of the vertical axis (frequency).
