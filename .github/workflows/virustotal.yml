@@ -151,15 +151,8 @@ jobs:
           HEADERS = {"x-apikey": API_KEY}
           
           # Target files
-          # assets/ folder contains downloaded/extracted files
           assets_dir = "assets"
           files_to_scan = []
-          
-          # Logic:
-          # - Windows onedir zip: *onedir.zip
-          # - Windows onefile exe: *onefile.exe (we renamed it in prev step)
-          # - Linux: *.AppImage
-          # - macOS: *.dmg
           
           patterns = [
               os.path.join(assets_dir, "*onedir.zip"),
@@ -171,9 +164,7 @@ jobs:
           for p in patterns:
               files_to_scan.extend(glob.glob(p))
           
-          # Sort for consistent order
           files_to_scan.sort()
-          
           files_to_scan = [f for f in files_to_scan if os.path.isfile(f)]
           
           if not files_to_scan:
@@ -182,62 +173,83 @@ jobs:
 
           results = []
 
-          print("Starting VirusTotal Scan (Large File Support)...")
+          print("Starting VirusTotal Scan (Smart Mode)...")
           for i, file_path in enumerate(files_to_scan):
               filename = os.path.basename(file_path)
               filesize = os.path.getsize(file_path)
               filesize_mb = filesize / (1024 * 1024)
               print(f"[{i+1}/{len(files_to_scan)}] Processing {filename} ({filesize_mb:.2f} MB)...")
               
-              upload_url = URL_SCAN
-              
-              # If file is larger than 32MB, get a special upload URL
-              if filesize > 32 * 1024 * 1024:
-                  try:
-                      print("  -> File > 32MB, requesting large file upload URL...")
-                      url_resp = requests.get(URL_SCAN + "/upload_url", headers=HEADERS)
-                      if url_resp.status_code == 200:
-                          upload_url = url_resp.json().get("data")
-                          print(f"  -> Got upload URL: {upload_url}")
-                      else:
-                          print(f"  -> Failed to get upload URL: {url_resp.status_code} {url_resp.text}")
-                          # Try standard upload anyway as fallback? No, it will fail.
-                          results.append((filename, f"Upload URL Failed ({url_resp.status_code})"))
-                          continue
-                  except Exception as e:
-                      print(f"  -> Exception getting upload URL: {e}")
-                      results.append((filename, f"Error: {str(e)}"))
-                      continue
-
+              # 1. Calculate Hash first
+              print("  -> Calculating SHA256...")
               sha256 = calc_sha256(file_path)
-              print(f"  -> Calculated SHA256: {sha256}")
+              print(f"  -> SHA256: {sha256}")
 
+              # 2. Check if already exists in VT
+              file_url = f"{URL_SCAN}/{sha256}"
               try:
-                  with open(file_path, "rb") as f:
-                      files = {"file": (filename, f)}
-                      response = requests.post(upload_url, headers=HEADERS, files=files)
-                  
-                  if response.status_code == 200:
-                      # We ignore the ID from response and use our calculated SHA256
-                      # The response ID is an analysis ID, not file ID.
-                      # Creating a link to the file hash is safer and persistent.
-                      
+                  check_resp = requests.get(file_url, headers=HEADERS)
+                  if check_resp.status_code == 200:
+                      print("  -> File already exists in VirusTotal. Skipping upload.")
                       link = f"https://www.virustotal.com/gui/file/{sha256}"
                       results.append((filename, link))
-                      print(f"  -> Uploaded. Link: {link}")
-
+                      continue
+                  elif check_resp.status_code == 404:
+                      print("  -> File not found in VirusTotal. Proceeding to upload.")
                   else:
-                      print(f"  -> Upload failed: {response.status_code} {response.text}")
-                      results.append((filename, f"Upload Failed ({response.status_code})"))
-
+                      print(f"  -> Check status: {check_resp.status_code}. Proceeding to upload.")
               except Exception as e:
-                  print(f"  -> Exception: {e}")
-                  results.append((filename, f"Error: {str(e)}"))
+                  print(f"  -> Error checking existence: {e}. Proceeding to upload.")
+
+              # 3. Upload with Resize & Retry
+              success = False
+              retries = 3
               
+              for attempt in range(retries):
+                  try:
+                      if attempt > 0:
+                          print(f"  -> Retry attempt {attempt+1}/{retries}...")
+                          time.sleep(10 * attempt) # Backoff
+
+                      upload_url = URL_SCAN
+                      # Get large file URL if needed
+                      if filesize > 32 * 1024 * 1024:
+                          print("  -> Requesting large file upload URL...")
+                          url_resp = requests.get(URL_SCAN + "/upload_url", headers=HEADERS)
+                          if url_resp.status_code == 200:
+                              upload_url = url_resp.json().get("data")
+                              print(f"  -> Got upload URL.")
+                          else:
+                              print(f"  -> Failed to get upload URL: {url_resp.status_code}")
+                              continue # Try next attempt
+
+                      print("  -> Uploading...")
+                      with open(file_path, "rb") as f:
+                          files = {"file": (filename, f)}
+                          response = requests.post(upload_url, headers=HEADERS, files=files)
+                      
+                      if response.status_code == 200:
+                          link = f"https://www.virustotal.com/gui/file/{sha256}"
+                          results.append((filename, link))
+                          print(f"  -> Uploaded successfully. Link: {link}")
+                          success = True
+                          break
+                      elif response.status_code == 409:
+                          print(f"  -> Upload conflict/timeout (409).") 
+                      else:
+                          print(f"  -> Upload failed: {response.status_code} {response.text}")
+
+                  except Exception as e:
+                      print(f"  -> Exception during upload: {e}")
+              
+              if not success:
+                  print("  -> Failed to upload file after retries.")
+                  results.append((filename, "Upload Failed (All Retries)"))
+
               # Rate limit sleep (except after last file)
               if i < len(files_to_scan) - 1:
-                  print("  -> Sleeping 20s for rate limit...")
-                  time.sleep(20)
+                  print("  -> Sleeping 15s for rate limit...")
+                  time.sleep(15)
 
           # Generate Markdown Output
           if results:
