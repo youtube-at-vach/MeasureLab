@@ -57,7 +57,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
         $base = "MeasureLab-$tag-windows-x64"
-        Compress-Archive -Path "dist/onefile/MeasureLab.exe" -DestinationPath "$outDir/$base-onefile.zip" -Force
+        Copy-Item -Path "dist/onefile/MeasureLab.exe" -Destination "$outDir/$base.exe"
         Compress-Archive -Path "dist/onedir/MeasureLab" -DestinationPath "$outDir/$base-onedir.zip" -Force
 
     - name: Extract CHANGELOG for version
@@ -69,13 +69,35 @@ jobs:
         if [ ! -s release_notes.md ]; then
           echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
         fi
+    - name: VirusTotal Scan
+      id: vt
+      uses: crazy-max/ghaction-virustotal@v4
+      with:
+        vt_api_key: ${{ secrets.VT_API_KEY }}
+        files: |
+          dist/release/*.exe
+          dist/release/*.zip
+
+    - name: Add VT link to release notes
+      if: steps.vt.outputs.json != ''
+      shell: pwsh
+      run: |
+        $json = '${{ steps.vt.outputs.json }}' | ConvertFrom-Json
+        $content = "`n### VirusTotal Analysis`n"
+        foreach ($item in $json) {
+            $baseName = Split-Path $item.filename -Leaf
+            $content += "- [$baseName]($($item.url))`n"
+        }
+        Add-Content -Path release_notes.md -Value $content
 
     - name: Release Windows
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
       if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: dist/release/*.zip
+        files: |
+          dist/release/*.exe
+          dist/release/*.zip
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
 
@@ -150,6 +172,20 @@ jobs:
         if [ ! -s release_notes.md ]; then
           echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
         fi
+
+    - name: VirusTotal Scan
+      id: vt
+      uses: crazy-max/ghaction-virustotal@v4
+      with:
+        vt_api_key: ${{ secrets.VT_API_KEY }}
+        files: dist/release/*.AppImage
+
+    - name: Add VT link to release notes
+      if: steps.vt.outputs.json != ''
+      run: |
+        echo "" >> release_notes.md
+        echo "### VirusTotal Analysis" >> release_notes.md
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> release_notes.md
 
     - name: Release Linux
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
@@ -263,6 +299,20 @@ jobs:
         if [ ! -s release_notes.md ]; then
           echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
         fi
+
+    - name: VirusTotal Scan
+      id: vt
+      uses: crazy-max/ghaction-virustotal@v4
+      with:
+        vt_api_key: ${{ secrets.VT_API_KEY }}
+        files: dist/release/*.dmg
+
+    - name: Add VT link to release notes
+      if: steps.vt.outputs.json != ''
+      run: |
+        echo "" >> release_notes.md
+        echo "### VirusTotal Analysis" >> release_notes.md
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> release_notes.md
 
     - name: Release macOS
       uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
