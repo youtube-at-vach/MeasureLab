@@ -75,6 +75,23 @@ jobs:
         Compress-Archive -Path "dist/onefile/MeasureLab.exe" -DestinationPath "$outDir/$base-onefile.zip" -Force
         Compress-Archive -Path "dist/onedir/MeasureLab" -DestinationPath "$outDir/$base-onedir.zip" -Force
 
+    - name: Generate Checksums
+      shell: pwsh
+      run: |
+        $files = Get-ChildItem dist/release/*
+        foreach ($file in $files) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+            $name = $file.Name
+            "$hash  $name" | Out-File -FilePath dist/release/checksums_windows.txt -Append -Encoding ascii
+        }
+
+    - name: Upload Checksums Fragment
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums-windows
+        path: dist/release/checksums_windows.txt
+        retention-days: 1
+
     - name: Extract CHANGELOG for version
       id: changelog
       shell: bash
@@ -156,6 +173,18 @@ jobs:
           exit 1
         fi
         mv "${candidates[0]}" "dist/release/MeasureLab-${tag}-linux-x86_64.AppImage"
+
+    - name: Generate Checksums
+      run: |
+        cd dist/release
+        sha256sum * > checksums_linux.txt
+
+    - name: Upload Checksums Fragment
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums-linux
+        path: dist/release/checksums_linux.txt
+        retention-days: 1
 
     - name: Extract CHANGELOG for version
       id: changelog
@@ -270,6 +299,17 @@ jobs:
         tag="${tag//\//-}"
         cp dist/MeasureLab.dmg "dist/release/MeasureLab-${tag}-macos-arm64.dmg"
 
+    - name: Generate Checksums
+      run: |
+        cd dist/release
+        shasum -a 256 * > checksums_macos.txt
+
+    - name: Upload Checksums Fragment
+      uses: actions/upload-artifact@v4
+      with:
+        name: checksums-macos
+        path: dist/release/checksums_macos.txt
+        retention-days: 1
     - name: Extract CHANGELOG for version
       id: changelog
       run: |
@@ -287,3 +327,30 @@ jobs:
         files: dist/release/*.dmg
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
+
+  release-checksums:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download Checksums
+        uses: actions/download-artifact@v4
+        with:
+          pattern: checksums-*
+          merge-multiple: true
+
+      - name: Merge Checksums
+        run: |
+          cat checksums_windows.txt checksums_linux.txt checksums_macos.txt > CHECKSUMS.txt
+          sort -k 2 -o CHECKSUMS.txt CHECKSUMS.txt
+          echo "Checksums generated:"
+          cat CHECKSUMS.txt
+
+      - name: Release Checksums
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          files: CHECKSUMS.txt
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
