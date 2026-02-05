@@ -690,6 +690,14 @@ class SpectrumAnalyzerWidget(QWidget):
                 # Calculate PSD for each channel and each window
                 # psd = |FFT(x*w)|^2
 
+                # Pre-allocate buffers for optimization
+                # We determine complex type based on input data type
+                c_dtype = np.complex128 if data.dtype == np.float64 else np.complex64
+
+                windowed_buffer = np.empty(len(data), dtype=data.dtype)
+                fft_out = np.empty(len(freqs), dtype=c_dtype)
+                temp_psd = np.empty(len(freqs), dtype=data.dtype)
+
                 psd_accum_0 = np.zeros(len(freqs))
                 psd_accum_1 = np.zeros(len(freqs))
 
@@ -697,12 +705,24 @@ class SpectrumAnalyzerWidget(QWidget):
                     w = windows[k]
 
                     # Channel 0
-                    fft_0 = fft_manager.rfft(data[:, 0] * w)
-                    psd_accum_0 += np.abs(fft_0) ** 2
+                    np.multiply(data[:, 0], w, out=windowed_buffer)
+                    fft_manager.rfft(windowed_buffer, out=fft_out)
+
+                    # Optimized accumulation: |z|^2 = real^2 + imag^2
+                    # Avoids allocation of intermediate abs() array and squaring it
+                    np.square(fft_out.real, out=temp_psd)
+                    psd_accum_0 += temp_psd
+                    np.square(fft_out.imag, out=temp_psd)
+                    psd_accum_0 += temp_psd
 
                     # Channel 1
-                    fft_1 = fft_manager.rfft(data[:, 1] * w)
-                    psd_accum_1 += np.abs(fft_1) ** 2
+                    np.multiply(data[:, 1], w, out=windowed_buffer)
+                    fft_manager.rfft(windowed_buffer, out=fft_out)
+
+                    np.square(fft_out.real, out=temp_psd)
+                    psd_accum_1 += temp_psd
+                    np.square(fft_out.imag, out=temp_psd)
+                    psd_accum_1 += temp_psd
 
                 # Average over K windows
                 psd_0 = psd_accum_0 / K
