@@ -36,13 +36,28 @@ jobs:
       run: |
         magick app_icon.png -define icon:auto-resize=256,128,64,48,32,16 app_icon.ico
 
+    - name: Prepare System ICU DLLs
+      id: prepare-icu
+      run: |
+        mkdir libs
+        copy C:\Windows\System32\icu.dll libs\
+        copy C:\Windows\System32\icuuc.dll libs\
+        copy C:\Windows\System32\icuin.dll libs\
+        echo "ICU DLLs copied to libs/"
+        ls libs
+
     - name: Build (onefile) with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --collect-all backports --collect-all pyfftw --hidden-import pyfftw --distpath dist/onefile --workpath build/onefile main_gui.py
+        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onefile --workpath build/onefile main_gui.py
+
+    - name: Verify Windows Executable (GUI Self-Test)
+      run: |
+        echo "Testing dist/onefile/MeasureLab.exe with --self-test..."
+        ./dist/onefile/MeasureLab.exe --self-test
 
     - name: Build (onedir) with PyInstaller
       run: |
-        pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --collect-all backports --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
+        pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
 
     - name: Package Windows release assets
       shell: pwsh
