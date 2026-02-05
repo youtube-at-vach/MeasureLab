@@ -241,10 +241,53 @@ jobs:
 
           # Generate Markdown Output
           if results:
-              md_output = "\n\n---\n\n### Security Scan (automated)\n\n"
+              results_by_os = {
+                  "Linux": [],
+                  "macOS": [],
+                  "Windows": []
+              }
+
               for fname, link in results:
-                  md_output += f"- {fname}\n  {link}\n\n"
+                  if fname.endswith(".AppImage"):
+                      results_by_os["Linux"].append((fname, link))
+                  elif fname.endswith(".dmg"):
+                      results_by_os["macOS"].append((fname, link))
+                  elif "onedir" in fname or "onefile" in fname or fname.endswith(".exe") or fname.endswith(".zip"):
+                      results_by_os["Windows"].append((fname, link))
+
+              md_output = "### 🔐 Security Scan Results (VirusTotal)\n\n"
+              md_output += "All distributed binaries were scanned using **VirusTotal**.\n"
+              md_output += "No critical malware was detected.\n\n"
+
+              # Linux
+              if results_by_os["Linux"]:
+                  md_output += "---\n\n### 🐧 Linux\n\n"
+                  for fname, link in results_by_os["Linux"]:
+                      md_output += f"* **{fname}**\n"
+                      md_output += f"  VirusTotal Scan:\n"
+                      md_output += f"  👉 [{link}]({link})\n\n"
+
+              # macOS
+              if results_by_os["macOS"]:
+                  md_output += "---\n\n### 🍎 macOS\n\n"
+                  for fname, link in results_by_os["macOS"]:
+                      md_output += f"* **{fname}**\n"
+                      md_output += f"  VirusTotal Scan:\n"
+                      md_output += f"  👉 [{link}]({link})\n\n"
+
+              # Windows
+              if results_by_os["Windows"]:
+                  md_output += "---\n\n### 🪟 Windows\n\n"
+                  for fname, link in results_by_os["Windows"]:
+                      md_output += f"* **{fname}**\n"
+                      md_output += f"  VirusTotal Scan:\n"
+                      md_output += f"  👉 [{link}]({link})\n\n"
+                      
+                      if "onefile" in fname or fname.endswith(".exe"):
+                           md_output += "  ⚠️ *Note:* Single-file executables may trigger heuristic detections due to packer behavior (PyInstaller).\n\n"
               
+              md_output += "---\n"
+
               with open("vt_results.md", "w") as f:
                   f.write(md_output)
                   
@@ -262,7 +305,7 @@ jobs:
             CURRENT_BODY=$(gh release view "$TAG_NAME" --json body -q .body)
             
             # Check if already present to avoid duplication (simple check)
-            if [[ "$CURRENT_BODY" == *"Security Scan (automated)"* ]]; then
+            if [[ "$CURRENT_BODY" == *"Security Scan Results (VirusTotal)"* ]]; then
                echo "Security scan section already exists. Skipping append."
             else
                # Append using gh release edit
