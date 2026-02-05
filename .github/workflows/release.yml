@@ -12,15 +12,15 @@ permissions:
 jobs:
   build-windows:
     permissions:
-      contents: write
+      contents: read
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    - uses: actions/checkout@v4
       with:
         persist-credentials: false
 
     - name: Set up Python 3.10
-      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
@@ -60,15 +60,6 @@ jobs:
         Copy-Item -Path "dist/onefile/MeasureLab.exe" -Destination "$outDir/$base.exe"
         Compress-Archive -Path "dist/onedir/MeasureLab" -DestinationPath "$outDir/$base-onedir.zip" -Force
 
-    - name: Extract CHANGELOG for version
-      id: changelog
-      shell: bash
-      run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-        fi
     - name: VirusTotal Scan
       id: vt
       uses: crazy-max/ghaction-virustotal@v4
@@ -78,40 +69,42 @@ jobs:
           dist/release/*.exe
           dist/release/*.zip
 
-    - name: Add VT link to release notes
+    - name: Generate VT Report Lines
       if: steps.vt.outputs.json != ''
       shell: pwsh
       run: |
         $json = '${{ steps.vt.outputs.json }}' | ConvertFrom-Json
-        $content = "`n### VirusTotal Analysis`n"
+        $content = ""
         foreach ($item in $json) {
             $baseName = Split-Path $item.filename -Leaf
             $content += "- [$baseName]($($item.url))`n"
         }
-        Add-Content -Path release_notes.md -Value $content
+        $content | Out-File -FilePath vt_url.txt -Encoding utf8
 
-    - name: Release Windows
-      uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    - name: Upload VT URL
+      uses: actions/upload-artifact@v4
       with:
-        token: ${{ secrets.RELEASE_TOKEN }}
-        files: |
-          dist/release/*.exe
-          dist/release/*.zip
-        body_path: release_notes.md
-        draft: ${{ github.event_name == 'workflow_dispatch' }}
+        name: vt-url-windows
+        path: vt_url.txt
+        if-no-files-found: ignore
+
+    - name: Upload Release Assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: assets-windows
+        path: dist/release/*
 
   build-linux:
     permissions:
-      contents: write
+      contents: read
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    - uses: actions/checkout@v4
       with:
         persist-credentials: false
 
     - name: Set up Python 3.10
-      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
@@ -164,15 +157,6 @@ jobs:
         fi
         mv "${candidates[0]}" "dist/release/MeasureLab-${tag}-linux-x86_64.AppImage"
 
-    - name: Extract CHANGELOG for version
-      id: changelog
-      run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-        fi
-
     - name: VirusTotal Scan
       id: vt
       uses: crazy-max/ghaction-virustotal@v4
@@ -180,35 +164,36 @@ jobs:
         vt_api_key: ${{ secrets.VT_API_KEY }}
         files: dist/release/*.AppImage
 
-    - name: Add VT link to release notes
+    - name: Generate VT Report Lines
       if: steps.vt.outputs.json != ''
+      shell: bash
       run: |
-        echo "" >> release_notes.md
-        echo "### VirusTotal Analysis" >> release_notes.md
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> release_notes.md
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url.txt
 
-    - name: Release Linux
-      uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    - name: Upload VT URL
+      uses: actions/upload-artifact@v4
       with:
-        token: ${{ secrets.RELEASE_TOKEN }}
-        files: |
-          dist/release/*.AppImage
-          dist/release/*.pdf
-        body_path: release_notes.md
-        draft: ${{ github.event_name == 'workflow_dispatch' }}
+        name: vt-url-linux
+        path: vt_url.txt
+        if-no-files-found: ignore
+
+    - name: Upload Release Assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: assets-linux
+        path: dist/release/*
 
   build-macos:
     permissions:
-      contents: write
+      contents: read
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+    - uses: actions/checkout@v4
       with:
         persist-credentials: false
 
     - name: Set up Python 3.10
-      uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
@@ -224,33 +209,22 @@ jobs:
 
     - name: Create App Icon
       run: |
-        # Create iconset directory
         mkdir MeasureLab.iconset
-        
-        # Resize images using sips
-        # 16x16
         sips -z 16 16     app_icon.png --out MeasureLab.iconset/icon_16x16.png
         sips -z 32 32     app_icon.png --out MeasureLab.iconset/icon_16x16@2x.png
-        # 32x32
         sips -z 32 32     app_icon.png --out MeasureLab.iconset/icon_32x32.png
         sips -z 64 64     app_icon.png --out MeasureLab.iconset/icon_32x32@2x.png
-        # 128x128
         sips -z 128 128   app_icon.png --out MeasureLab.iconset/icon_128x128.png
         sips -z 256 256   app_icon.png --out MeasureLab.iconset/icon_128x128@2x.png
-        # 256x256
         sips -z 256 256   app_icon.png --out MeasureLab.iconset/icon_256x256.png
         sips -z 512 512   app_icon.png --out MeasureLab.iconset/icon_256x256@2x.png
-        # 512x512
         sips -z 512 512   app_icon.png --out MeasureLab.iconset/icon_512x512.png
         sips -z 1024 1024 app_icon.png --out MeasureLab.iconset/icon_512x512@2x.png
-
-        # Convert iconset to icns
         iconutil -c icns MeasureLab.iconset
         rm -rf MeasureLab.iconset
 
     - name: Build with PyInstaller
       run: |
-        # Note: Separator is ':' for mac
         pyinstaller --windowed --noconfirm --name MeasureLab --icon=MeasureLab.icns \
           --add-data "src:src" \
           --exclude-module matplotlib \
@@ -265,12 +239,10 @@ jobs:
 
     - name: Verify macOS Application (Self-Test)
       run: |
-        echo "Testing dist/MeasureLab.app/Contents/MacOS/MeasureLab with --self-test..."
         ./dist/MeasureLab.app/Contents/MacOS/MeasureLab --self-test
 
     - name: Create DMG
       run: |
-        # Create DMG using create-dmg
         test -f dist/MeasureLab.dmg && rm dist/MeasureLab.dmg
         create-dmg \
           --volname "MeasureLab Installer" \
@@ -291,15 +263,6 @@ jobs:
         tag="${tag//\//-}"
         cp dist/MeasureLab.dmg "dist/release/MeasureLab-${tag}-macos-arm64.dmg"
 
-    - name: Extract CHANGELOG for version
-      id: changelog
-      run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-        fi
-
     - name: VirusTotal Scan
       id: vt
       uses: crazy-max/ghaction-virustotal@v4
@@ -307,18 +270,83 @@ jobs:
         vt_api_key: ${{ secrets.VT_API_KEY }}
         files: dist/release/*.dmg
 
-    - name: Add VT link to release notes
+    - name: Generate VT Report Lines
       if: steps.vt.outputs.json != ''
+      shell: bash
       run: |
-        echo "" >> release_notes.md
-        echo "### VirusTotal Analysis" >> release_notes.md
-        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' >> release_notes.md
+        echo '${{ steps.vt.outputs.json }}' | jq -r '.[] | "- [\(.filename | split("/") | last)](\(.url))"' > vt_url.txt
 
-    - name: Release macOS
-      uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    - name: Upload VT URL
+      uses: actions/upload-artifact@v4
+      with:
+        name: vt-url-macos
+        path: vt_url.txt
+        if-no-files-found: ignore
+
+    - name: Upload Release Assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: assets-macos
+        path: dist/release/*
+
+  release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+
+    - name: Download Windows Assets
+      uses: actions/download-artifact@v4
+      with:
+        name: assets-windows
+        path: dist/release
+
+    - name: Download Linux Assets
+      uses: actions/download-artifact@v4
+      with:
+        name: assets-linux
+        path: dist/release
+
+    - name: Download macOS Assets
+      uses: actions/download-artifact@v4
+      with:
+        name: assets-macos
+        path: dist/release
+
+    - name: Download VT URLs
+      uses: actions/download-artifact@v4
+      with:
+        pattern: vt-url-*
+        path: vt_urls
+        merge-multiple: true
+
+    - name: Generate Release Notes
+      id: notes
+      shell: bash
+      run: |
+        # Generate changelog
+        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        
+        # If empty, use a default message
+        if [ ! -s release_notes.md ]; then
+          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+        fi
+
+        # Append VirusTotal URLs if they exist
+        if ls vt_urls/vt_url*.txt 1> /dev/null 2>&1; then
+          echo -e "\n### VirusTotal Analysis" >> release_notes.md
+          cat vt_urls/vt_url*.txt >> release_notes.md
+        fi
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
       with:
         token: ${{ secrets.RELEASE_TOKEN }}
-        files: dist/release/*.dmg
+        files: dist/release/*
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
