@@ -1,0 +1,274 @@
+name: VirusTotal Audit
+
+on:
+  release:
+    types: [created, published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  virustotal-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Determine Release Target
+        id: target
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If triggered by release event, use that tag
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            echo "Targeting event release: $TAG_NAME"
+          else
+            # For workflow_dispatch, find the "latest possible" release to act on
+            # 1. Look for latest draft
+            # 2. Look for latest published
+            
+            # Listing releases, sorted by creation date descending, taking the top 1
+            # We want to prioritize drafts if possible, but 'gh release list' usually shows published.
+            # We can list all and grep.
+            
+            # NOTE: GitHub Actions GITHUB_TOKEN might not see drafts unless they are created by the action or specific permissions?
+            # Actually, standard GITHUB_TOKEN can usually see repo releases.
+            
+            echo "Searching for latest draft..."
+            # Get latest 5 releases, including drafts, check creation time
+            # gh release list doesn't explicitly sort by "draftness".
+            # We'll use the API for more precision if needed, but 'gh release view' works well.
+            
+            # Try to get the latest draft first
+            # We can't easily filter "latest draft" via CLI simply.
+            # Strategy: List top 10 releases, pick the first one marked as Draft.
+            # If no Draft, pick the first one marked as Latest/Pre-release.
+            
+            TAG_NAME=$(gh release list --limit 10 --json tagName,isDraft --template '{{range .}}{{if .isDraft}}{{.tagName}}{{"\n"}}{{end}}{{end}}' | head -n1)
+            
+            if [[ -z "$TAG_NAME" ]]; then
+                echo "No draft found, looking for latest published..."
+                TAG_NAME=$(gh release list --limit 1 --json tagName --template '{{range .}}{{.tagName}}{{end}}')
+            fi
+            
+            echo "Targeting discovered release: $TAG_NAME"
+          fi
+          
+          if [[ -z "$TAG_NAME" ]]; then
+            echo "::error::No release found to scan."
+            exit 1
+          fi
+          
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Download Release Assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.target.outputs.tag_name }}
+        run: |
+          mkdir assets
+          echo "Downloading assets for $TAG_NAME..."
+          
+          # Match patterns: *windows-x64-onefile.zip, *windows-x64-onedir.zip, *.AppImage, *.dmg
+          # gh release download supports -p pattern
+          
+          cd assets
+          gh release download "$TAG_NAME" -p "*windows-x64-onefile.zip" || echo "No onefile zip found"
+          gh release download "$TAG_NAME" -p "*windows-x64-onedir.zip" || echo "No onedir zip found"
+          gh release download "$TAG_NAME" -p "*.AppImage" || echo "No AppImage found"
+          gh release download "$TAG_NAME" -p "*.dmg" || echo "No dmg found"
+          
+          ls -R
+
+      - name: Prepare Assets (Unzip Windows Onefile)
+        run: |
+          cd assets
+          # Find the onefile zip
+          ZIP_FILE=$(find . -name "*windows-x64-onefile.zip" | head -n1)
+          if [[ -n "$ZIP_FILE" ]]; then
+            echo "Extracting $ZIP_FILE..."
+            unzip "$ZIP_FILE"
+            # It should extract MeasureLab.exe
+            if [[ -f "MeasureLab.exe" ]]; then
+               # Rename it to include the base name for clarity in report (e.g. MeasureLab-v1.0.0-onefile.exe)
+               # We can grab the base name from zip
+               BASE_NAME=$(basename "$ZIP_FILE" .zip)
+               mv MeasureLab.exe "${BASE_NAME}.exe"
+               echo "Extracted and renamed to ${BASE_NAME}.exe"
+            fi
+            # We keep the original zip for scanning?
+            # User requirement: "onefile のみ：.exe"
+            # So for onefile, we scan the .exe INSTEAD of the zip, or BOTH?
+            # Result format example: "MeasureLab-…-onefile.exe"
+            # This implies we scan the exe.
+            # But what about the zip? User says "Windows 通常版：.zip" (which usually means onedir?)
+            # Wait, "Windows 通常版：.zip / onefile のみ：.exe"
+            
+            # Let's clarify:
+            # - onedir (.zip) -> Scan the zip
+            # - onefile (.zip) -> Extract and scan the .exe
+            
+            # So we DELETE the onefile zip from the scan list (or just ignore it in the script)
+            rm "$ZIP_FILE"
+          fi
+
+      - name: VirusTotal Scan & Report
+        id: vt_scan
+        env:
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+        run: |
+          python3 - <<EOF
+          import os
+          import time
+          import requests
+          import sys
+          import glob
+
+          API_KEY = os.environ.get("VT_API_KEY")
+          if not API_KEY:
+              print("::error::VT_API_KEY not set")
+              sys.exit(1)
+
+          URL_SCAN = "https://www.virustotal.com/api/v3/files"
+          HEADERS = {"x-apikey": API_KEY}
+          
+          # Target files
+          # assets/ folder contains downloaded/extracted files
+          assets_dir = "assets"
+          files_to_scan = []
+          
+          # Logic:
+          # - Windows onedir zip: *onedir.zip
+          # - Windows onefile exe: *onefile.exe (we renamed it in prev step)
+          # - Linux: *.AppImage
+          # - macOS: *.dmg
+          
+          patterns = [
+              os.path.join(assets_dir, "*onedir.zip"),
+              os.path.join(assets_dir, "*onefile.exe"),
+              os.path.join(assets_dir, "*.AppImage"),
+              os.path.join(assets_dir, "*.dmg")
+          ]
+          
+          for p in patterns:
+              files_to_scan.extend(glob.glob(p))
+          
+          # Sort for consistent order
+          files_to_scan.sort()
+          
+          files_to_scan = [f for f in files_to_scan if os.path.isfile(f)]
+          
+          if not files_to_scan:
+              print("::warning::No files found to scan")
+              sys.exit(0)
+
+          results = []
+
+          print("Starting VirusTotal Scan...")
+          for i, file_path in enumerate(files_to_scan):
+              filename = os.path.basename(file_path)
+              print(f"[{i+1}/{len(files_to_scan)}] Uploading {filename}...")
+              
+              try:
+                  with open(file_path, "rb") as f:
+                      files = {"file": (filename, f)}
+                      response = requests.post(URL_SCAN, headers=HEADERS, files=files)
+                  
+                  if response.status_code == 200:
+                      json_resp = response.json()
+                      # The response to uploading a file contains an analysis ID, but usually also directly valid links if we look at "data.id"
+                      # Actually, POST /files returns data inside specific structure.
+                      # We want the file report URL (GUI link).
+                      # The response gives "data": { "type": "analysis", "id": "..." }
+                      # The GUI URL is usually https://www.virustotal.com/gui/file/<sha256>
+                      # OR https://www.virustotal.com/gui/file-analysis/<id>
+                      # But better to get the sha256 to form a permanent link.
+                      
+                      # Wait, the upload response might NOT contain the SHA256 immediately if it's new?
+                      # It does contain "id" which usually starts with sha256.
+                      
+                      # However, reliable way is to calc sha256 locally or just use the analysis link.
+                      # User requested "https://www.virustotal.com/..."
+                      
+                      # Let's use the 'id' from response.
+                      # ID format for analysis: <sha256>-<timestamp>
+                      # If we take the first part, that's the SHA256.
+                      
+                      analysis_id = json_resp.get("data", {}).get("id", "")
+                      sha256 = analysis_id.split("-")[0] if "-" in analysis_id else analysis_id
+                      
+                      if sha256:
+                          link = f"https://www.virustotal.com/gui/file/{sha256}"
+                          results.append((filename, link))
+                          print(f"  -> Uploaded. Link: {link}")
+                      else:
+                          print(f"  -> Error parsing ID: {analysis_id}")
+                          results.append((filename, "Error parsing response"))
+
+                  else:
+                      print(f"  -> Upload failed: {response.status_code} {response.text}")
+                      results.append((filename, f"Upload Failed ({response.status_code})"))
+
+              except Exception as e:
+                  print(f"  -> Exception: {e}")
+                  results.append((filename, f"Error: {str(e)}"))
+              
+              # Rate limit sleep (except after last file)
+              if i < len(files_to_scan) - 1:
+                  print("  -> Sleeping 20s for rate limit...")
+                  time.sleep(20)
+
+          # Generate Markdown Output
+          if results:
+              md_output = "\n\n---\n\n### Security Scan (automated)\n\n"
+              for fname, link in results:
+                  md_output += f"- {fname}\n  {link}\n\n"
+              
+              with open("vt_results.md", "w") as f:
+                  f.write(md_output)
+                  
+          EOF
+
+      - name: Append to Release Notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.target.outputs.tag_name }}
+        run: |
+          if [[ -f "vt_results.md" ]]; then
+            echo "Appending results to release $TAG_NAME..."
+            
+            # Fetch current body
+            CURRENT_BODY=$(gh release view "$TAG_NAME" --json body -q .body)
+            
+            # Check if already present to avoid duplication (simple check)
+            if [[ "$CURRENT_BODY" == *"Security Scan (automated)"* ]]; then
+               echo "Security scan section already exists. Skipping append."
+            else
+               # Append using gh release edit
+               # Use a temp file to combine
+               cat vt_results.md >> new_notes_segment.md
+               
+               # Append to the release
+               # 'gh release edit' doesn't have an --append-body flag easily.
+               # We must supply the FULL new notes or use --notes-file
+               
+               # Safe approach: Read > Concat > Write
+               echo "$CURRENT_BODY" > full_notes.md
+               cat vt_results.md >> full_notes.md
+               
+               gh release edit "$TAG_NAME" --notes-file full_notes.md
+               echo "Release notes updated."
+            fi
+          else
+            echo "No results file generated."
+          fi
