@@ -60,14 +60,22 @@ jobs:
         Copy-Item -Path "dist/onefile/MeasureLab.exe" -Destination "$outDir/$base.exe"
         Compress-Archive -Path "dist/onedir/MeasureLab" -DestinationPath "$outDir/$base-onedir.zip" -Force
 
-    - name: Extract CHANGELOG for version
+    - name: Generate Release Notes
       id: changelog
       shell: bash
       run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+           echo "### Draft Release (Manual Build)" > release_notes.md
+           echo "" >> release_notes.md
+           echo "- Branch/Ref: ${{ github.ref_name }}" >> release_notes.md
+           echo "- Commit: ${{ github.sha }}" >> release_notes.md
+           echo "- Date: $(date -u)" >> release_notes.md
+        else
+           python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+           # If empty, use a default message
+           if [ ! -s release_notes.md ]; then
+             echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+           fi
         fi
     - name: VirusTotal Scan
       id: vt
@@ -164,13 +172,21 @@ jobs:
         fi
         mv "${candidates[0]}" "dist/release/MeasureLab-${tag}-linux-x86_64.AppImage"
 
-    - name: Extract CHANGELOG for version
+    - name: Generate Release Notes
       id: changelog
       run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+           echo "### Draft Release (Manual Build)" > release_notes.md
+           echo "" >> release_notes.md
+           echo "- Branch/Ref: ${{ github.ref_name }}" >> release_notes.md
+           echo "- Commit: ${{ github.sha }}" >> release_notes.md
+           echo "- Date: $(date -u)" >> release_notes.md
+        else
+           python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+           # If empty, use a default message
+           if [ ! -s release_notes.md ]; then
+             echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+           fi
         fi
 
     - name: VirusTotal Scan
@@ -291,13 +307,21 @@ jobs:
         tag="${tag//\//-}"
         cp dist/MeasureLab.dmg "dist/release/MeasureLab-${tag}-macos-arm64.dmg"
 
-    - name: Extract CHANGELOG for version
+    - name: Generate Release Notes
       id: changelog
       run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+           echo "### Draft Release (Manual Build)" > release_notes.md
+           echo "" >> release_notes.md
+           echo "- Branch/Ref: ${{ github.ref_name }}" >> release_notes.md
+           echo "- Commit: ${{ github.sha }}" >> release_notes.md
+           echo "- Date: $(date -u)" >> release_notes.md
+        else
+           python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+           # If empty, use a default message
+           if [ ! -s release_notes.md ]; then
+             echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
+           fi
         fi
 
     - name: VirusTotal Scan
