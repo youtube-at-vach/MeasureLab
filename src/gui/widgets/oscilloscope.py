@@ -84,6 +84,43 @@ class Oscilloscope(MeasurementModule):
     def description(self) -> str:
         return "Time-domain waveform monitor."
 
+    @staticmethod
+    def _accumulate_heatmap(t, y, heatmap, bins, rng, intensity):
+        """Optimized histogram accumulation for persistence display."""
+        w, h = bins
+        x_min, x_max = rng[0]
+        y_min, y_max = rng[1]
+
+        if x_max <= x_min or y_max <= y_min:
+            return
+
+        # Pre-compute scales
+        x_scale = w / (x_max - x_min)
+        y_scale = h / (y_max - y_min)
+
+        # Filter valid Y data
+        mask = (y >= y_min) & (y <= y_max)
+        if not np.any(mask):
+            return
+
+        y_valid = y[mask]
+        t_valid = t[mask]
+
+        # Map to indices
+        x_idx = ((t_valid - x_min) * x_scale).astype(np.int32)
+        y_idx = ((y_valid - y_min) * y_scale).astype(np.int32)
+
+        # Handle edge cases (values exactly at max map to index N, should be N-1)
+        x_idx[x_idx == w] = w - 1
+        y_idx[y_idx == h] = h - 1
+
+        # Clamp for safety
+        np.clip(x_idx, 0, w - 1, out=x_idx)
+        np.clip(y_idx, 0, h - 1, out=y_idx)
+
+        # Accumulate
+        np.add.at(heatmap, (x_idx, y_idx), intensity * 100)
+
     def run(self, args: argparse.Namespace):
         print("Oscilloscope running from CLI (not fully implemented)")
 
@@ -1258,12 +1295,14 @@ class OscilloscopeWidget(QWidget):
                 rng = [[0, window_duration], [-1.1, 1.1]]
 
                 if self.module.show_left:
-                    hist_l, _, _ = np.histogram2d(t, scaled_l, bins=[w, h], range=rng)
-                    self.module.heatmap_l += hist_l * intensity * 100
+                    self.module._accumulate_heatmap(
+                        t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity
+                    )
 
                 if self.module.show_right:
-                    hist_r, _, _ = np.histogram2d(t, scaled_r, bins=[w, h], range=rng)
-                    self.module.heatmap_r += hist_r * intensity * 100
+                    self.module._accumulate_heatmap(
+                        t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity
+                    )
 
                 # Compose Image
                 # L = Green, R = Red
