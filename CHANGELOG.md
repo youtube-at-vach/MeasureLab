@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.4.2] - 2026-02-05
+
+### Added
+
+* Core: HRTF Player now resamples HRIR data to match the audio engine sample rate
+* Docs: Added GitHub Sponsors funding configuration
+
+### Changed
+
+* Core: Improved Ultrasound Modulator phase synchronization and sideband logic
+
+### Fixed
+
+* Core: Fix crash in `AudioCalc.optimize_frequency` when signal is empty
+* Core: Fix clicks in Ultrasound Modulator when changing LPF parameters
+* UI: Fix theme application logic in LockInAmplifierWidget
+* Core: Fix Overall SPL weighting calculation in Spectrum Analyzer
+
 ## [v0.4.1] - 2026-02-01
 
 > [!WARNING]
