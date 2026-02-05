@@ -1,12 +1,13 @@
 
 import sys
+import time
 from unittest.mock import MagicMock
+
+import numpy as np
 
 # Mock sounddevice before importing anything that uses it
 sys.modules["sounddevice"] = MagicMock()
 
-import time
-import numpy as np
 from src.gui.widgets.oscilloscope import Oscilloscope # noqa: E402
 
 class MockCalibration:
