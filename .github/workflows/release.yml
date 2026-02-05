@@ -335,11 +335,6 @@ jobs:
         else
           echo "Release ${{ github.ref_name }}" > release_notes.md
         fi
-        
-        # If empty, use a default message
-        if [ ! -s release_notes.md ]; then
-          echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
-        fi
 
         # Append VirusTotal URLs if they exist
         if ls vt_urls/*.txt 1> /dev/null 2>&1; then
