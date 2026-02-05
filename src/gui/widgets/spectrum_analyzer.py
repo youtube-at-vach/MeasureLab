@@ -661,7 +661,15 @@ class SpectrumAnalyzerWidget(QWidget):
         else:
             # Normal Rolling Mode
             # Unroll ring buffer for display/analysis
-            data = np.roll(self.module.input_data, -self.module.write_head, axis=0)
+            # Capture write_head locally to avoid race condition with audio thread changing it
+            idx = self.module.write_head
+            if idx == 0:
+                data = self.module.input_data.copy()
+            else:
+                data = np.concatenate(
+                    (self.module.input_data[idx:], self.module.input_data[:idx]),
+                    axis=0,
+                )
 
         # Overall RMS is calculated later from the power spectrum (see overall_weighted_db)
         # to correctly apply weighting (A/C/Z) and calibration.
