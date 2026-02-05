@@ -1,6 +1,6 @@
 ---
 name: PR Reviewer
-description: Pull Requestのレビュー手順を自動化・標準化するスキル
+description: PRのレビュー、整合性検証、リスク評価を行うスキル
 ---
 
 # PR Reviewer Skill
