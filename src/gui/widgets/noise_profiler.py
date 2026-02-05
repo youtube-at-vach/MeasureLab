@@ -57,6 +57,99 @@ class NoiseProfiler(MeasurementModule):
         self.accumulated_magnitude = None
         self._avg_magnitude = None
 
+    def update_average(self, mag_v_rthz):
+        """Updates the running average of the magnitude spectrum."""
+        if self.average_mode:
+            # Cumulative Average Logic
+            if self.current_avg_count < self.target_averages:
+                if self.current_avg_count == 0:
+                    self.accumulated_magnitude = mag_v_rthz.copy()
+                    self.current_avg_count = 1
+                else:
+                    self.accumulated_magnitude += mag_v_rthz
+                    self.current_avg_count += 1
+
+                self._avg_magnitude = self.accumulated_magnitude / self.current_avg_count
+            else:
+                # Target reached, hold result
+                if self._avg_magnitude is None:
+                    self._avg_magnitude = mag_v_rthz
+        else:
+            # Exponential Moving Average
+            if self._avg_magnitude is None:
+                self._avg_magnitude = mag_v_rthz
+            else:
+                alpha = 0.8  # Fixed smoothing
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_v_rthz
+
+        return self._avg_magnitude
+
+    def process_data(self, channel_idx, unit_mode, apply_gain_correction):
+        """
+        Process the current input data buffer to produce noise profile results.
+        Returns (freqs, calibrated_magnitude, results_dict) or None if insufficient data.
+        """
+        data = self.input_data
+        if len(data) < self.buffer_size:
+            return None
+
+        # 1. Compute PSD (V/rtHz)
+        # Use Hanning window
+        window = get_cached_window("hann", len(data))
+
+        fs = self.audio_engine.sample_rate
+        sum_w2 = np.sum(window**2)
+        psd_factor = np.sqrt(2 / (fs * sum_w2))
+
+        # FFT
+        # Select Channel
+        if data.shape[1] > channel_idx:
+            fft_input = data[:, channel_idx]
+        else:
+            fft_input = data[:, 0]
+
+        fft_data = fft_manager.rfft(fft_input * window)
+        mag_v_rthz = np.abs(fft_data) * psd_factor
+
+        freqs = fft_manager.rfftfreq(len(data), 1 / fs)
+
+        # Averaging
+        avg_mag = self.update_average(mag_v_rthz)
+        if avg_mag is None:
+            return None
+
+        # Apply Unit / Calibration Offset
+        # avg_mag is in V_fs/rtHz (Linear, relative to Full Scale 1.0)
+
+        offset_db = 0.0
+
+        if "dBV" in unit_mode or "dBu" in unit_mode:
+            # Apply Calibration Offset
+            offset_db += self.audio_engine.calibration.get_input_offset_db()
+
+        if "dBu" in unit_mode:
+            # 0 dBu = 0.775V = -2.218 dBV
+            # dBu = dBV + 2.218
+            offset_db += 2.2184
+
+        # Apply LNA Gain Offset if requested
+        if apply_gain_correction:
+            # Subtract Gain (Input Referred)
+            # Gain is in dB
+            offset_db -= self.lna_gain_db
+
+        # Apply offset to linear magnitude
+        # magnitude_new = magnitude_old * 10^(offset_db/20)
+        cal_factor = 10 ** (offset_db / 20)
+        avg_mag_cal = avg_mag * cal_factor
+
+        # 2. Analyze Noise (using calibrated magnitude)
+        results = AudioCalc.calculate_noise_profile(avg_mag_cal, freqs, fs)
+
+        self.last_results = results
+
+        return freqs, avg_mag_cal, results
+
     @property
     def name(self) -> str:
         return "Noise Profiler"
@@ -381,89 +474,20 @@ class NoiseProfilerWidget(QWidget):
             return
 
         try:
-            data = self.module.input_data
-            if len(data) < self.module.buffer_size:
+            # Gather parameters
+            channel_idx = self.channel_combo.currentIndex()
+            unit_mode = self.unit_combo.currentText()
+            apply_gain = self.apply_gain_chk.isChecked()
+
+            # Process Data
+            output = self.module.process_data(channel_idx, unit_mode, apply_gain)
+            if output is None:
                 return
 
-            # 1. Compute PSD (V/rtHz)
-            # Use Hanning window
-            window = get_cached_window("hann", len(data))
-
-            fs = self.module.audio_engine.sample_rate
-            sum_w2 = np.sum(window**2)
-            psd_factor = np.sqrt(2 / (fs * sum_w2))
-
-            # FFT
-            # Select Channel
-            ch_idx = self.channel_combo.currentIndex()  # 0=Left, 1=Right
-            if data.shape[1] > ch_idx:
-                fft_input = data[:, ch_idx]
-            else:
-                fft_input = data[:, 0]
-
-            fft_data = fft_manager.rfft(fft_input * window)
-            mag_v_rthz = np.abs(fft_data) * psd_factor
-
-            freqs = fft_manager.rfftfreq(len(data), 1 / fs)
-
-            # Averaging
-            if self.module.average_mode:
-                # Cumulative Average Logic
-                if self.module.current_avg_count < self.module.target_averages:
-                    if self.module.current_avg_count == 0:
-                        self.module.accumulated_magnitude = mag_v_rthz.copy()
-                        self.module.current_avg_count = 1
-                    else:
-                        self.module.accumulated_magnitude += mag_v_rthz
-                        self.module.current_avg_count += 1
-
-                    self.module._avg_magnitude = self.module.accumulated_magnitude / self.module.current_avg_count
-                    self.update_avg_ui()
-                else:
-                    # Target reached, hold result
-                    if self.module._avg_magnitude is None:
-                        self.module._avg_magnitude = mag_v_rthz  # Should not happen if count > 0
-            else:
-                # Exponential Moving Average
-                if self.module._avg_magnitude is None:
-                    self.module._avg_magnitude = mag_v_rthz
-                else:
-                    alpha = 0.8  # Fixed smoothing
-                    self.module._avg_magnitude = alpha * self.module._avg_magnitude + (1 - alpha) * mag_v_rthz
-
+            freqs, avg_mag_cal, results = output
             avg_mag = self.module._avg_magnitude
 
-            # Apply Unit / Calibration Offset
-            # avg_mag is in V_fs/rtHz (Linear, relative to Full Scale 1.0)
-            # We want to convert to the selected unit's linear voltage reference
-
-            unit_mode = self.unit_combo.currentText()
-            offset_db = 0.0
-
-            if "dBV" in unit_mode or "dBu" in unit_mode:
-                # Apply Calibration Offset
-                offset_db += self.module.audio_engine.calibration.get_input_offset_db()
-
-            if "dBu" in unit_mode:
-                # 0 dBu = 0.775V = -2.218 dBV
-                # dBu = dBV + 2.218
-                offset_db += 2.2184
-
-            # Apply LNA Gain Offset if requested
-            if self.apply_gain_chk.isChecked():
-                # Subtract Gain (Input Referred)
-                # Gain is in dB
-                offset_db -= self.module.lna_gain_db
-
-            # Apply offset to linear magnitude
-            # magnitude_new = magnitude_old * 10^(offset_db/20)
-            cal_factor = 10 ** (offset_db / 20)
-            avg_mag_cal = avg_mag * cal_factor
-
-            # 2. Analyze Noise (using calibrated magnitude)
-            results = AudioCalc.calculate_noise_profile(avg_mag_cal, freqs, fs)
-
-            self.module.last_results = results
+            self.update_avg_ui()
 
             # 3. Update Plots
 
