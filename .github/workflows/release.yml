@@ -330,7 +330,11 @@ jobs:
       shell: bash
       run: |
         # Generate changelog
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          python misc/extract_changelog.py "${{ github.ref_name }}" > release_notes.md
+        else
+          echo "Release ${{ github.ref_name }}" > release_notes.md
+        fi
         
         # If empty, use a default message
         if [ ! -s release_notes.md ]; then
