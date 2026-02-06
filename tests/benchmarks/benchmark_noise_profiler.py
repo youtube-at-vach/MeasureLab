@@ -1,7 +1,6 @@
 
 import time
 import numpy as np
-import unittest.mock
 import sys
 import types
 
@@ -14,8 +13,8 @@ mock_sd.check_output_settings = lambda **kwargs: True
 mock_sd.CallbackFlags = lambda: 0
 sys.modules["sounddevice"] = mock_sd
 
-from src.core.audio_engine import AudioEngine
-from src.gui.widgets.noise_profiler import NoiseProfiler
+from src.core.audio_engine import AudioEngine  # noqa: E402
+from src.gui.widgets.noise_profiler import NoiseProfiler  # noqa: E402
 
 def benchmark_process_data():
     # Setup
