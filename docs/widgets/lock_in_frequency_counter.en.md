@@ -20,6 +20,7 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 2. **Reference Mode**:
     * **Internal (NCO)**: Uses an internally generated ideal sine wave as the reference.
     * **Loopback (Ref Out)**: Uses the signal output from the system as the reference (FLL lock is disabled in this mode).
+    * **Ref Output**: Selects the output channel to use in Loopback mode (Ch 1 / Ch 2).
 3. **Input Settings**:
     * **Channel**: Selects the input channel for measurement (Ch 1 / Ch 2).
     * **Gate Threshold**: Stops measurement if the input level falls below this threshold (in dB). Used to prevent operation on noise.
