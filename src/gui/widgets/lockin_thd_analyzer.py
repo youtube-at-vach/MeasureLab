@@ -118,7 +118,7 @@ class LockInTHDAnalyzer(MeasurementModule):
                 status = (
                     f"\r  measuring... "
                     f"Freq: {self.measured_freq:7.1f} Hz | "
-                    f"THD+N: {self.thdn_value:6.4f} % ({self.thdn_db:6.2f} dB)"
+                    f"THD+N: {self.thdn_value:6.5f} % ({self.thdn_db:6.3f} dB)"
                 )
                 print(status, end="", flush=True)
 
@@ -138,8 +138,8 @@ class LockInTHDAnalyzer(MeasurementModule):
         print(f"  Fundamental Freq: {self.measured_freq:.2f} Hz")
         print(f"  Fundamental Amp:  {self.fund_amp:.4f} (Peak)")
         print(f"  Residual RMS:     {self.residual_rms:.6f}")
-        print(f"  THD+N Ratio:      {self.thdn_value:.4f} %")
-        print(f"  THD+N Level:      {self.thdn_db:.2f} dB")
+        print(f"  THD+N Ratio:      {self.thdn_value:.5f} %")
+        print(f"  THD+N Level:      {self.thdn_db:.3f} dB")
         print("-" * 40)
 
     def get_widget(self):
@@ -587,8 +587,8 @@ class LockInTHDWidget(QWidget):
         self.module.process()
 
         # Update Labels
-        self.lbl_thdn.setText(f"{self.module.thdn_value:.4f} %")
-        self.lbl_thdn_db.setText(f"{self.module.thdn_db:.2f} dB")
+        self.lbl_thdn.setText(f"{self.module.thdn_value:.5f} %")
+        self.lbl_thdn_db.setText(f"{self.module.thdn_db:.3f} dB")
 
         # Unit Conversion
         unit = self.combo_unit.currentText()

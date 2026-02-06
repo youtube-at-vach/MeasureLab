@@ -1038,8 +1038,8 @@ class DistortionAnalyzerWidget(QWidget):
 
             res = self.module._apply_imd_averaging(res)
 
-            self.imd_label.setText(tr("{0:.4f} %").format(res["imd"]))
-            self.imd_db_label.setText(tr("{0:.2f} dB").format(res["imd_db"]))
+            self.imd_label.setText(tr("{0:.5f} %").format(res["imd"]))
+            self.imd_db_label.setText(tr("{0:.3f} dB").format(res["imd_db"]))
 
             # Update Detailed Label for IMD
             window_name = self.module.window_type.capitalize()
@@ -1052,7 +1052,7 @@ class DistortionAnalyzerWidget(QWidget):
                 f"{tr('FFT size:'):<15} {fft_size:>10}\n"
                 f"{tr('Bandwidth:'):<15} {'20 kHz':>10}\n"
                 "--------------------------------\n"
-                f"{tr('IMD:'):<15} {res['imd']:>10.4f} %\n"
+                f"{tr('IMD:'):<15} {res['imd']:>10.5f} %\n"
                 f"{tr('IMD (dB):'):<15} {res['imd_db']:>10.1f} dB\n"
                 "--------------------------------"
             )
@@ -1068,9 +1068,9 @@ class DistortionAnalyzerWidget(QWidget):
             self.module.current_result = results
 
             # Update Meters
-            self.thdn_label.setText(tr("{0:.4f} %").format(results["thdn_percent"]))
-            self.thdn_db_label.setText(tr("{0:.2f} dB").format(results["thdn_db"]))
-            self.thd_label.setText(tr("{0:.4f} %").format(results["thd_percent"]))
+            self.thdn_label.setText(tr("{0:.5f} %").format(results["thdn_percent"]))
+            self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
+            self.thd_label.setText(tr("{0:.5f} %").format(results["thd_percent"]))
             self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
 
             # ENOB Calculation

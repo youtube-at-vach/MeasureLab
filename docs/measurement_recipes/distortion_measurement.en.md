@@ -40,7 +40,7 @@ First, perform a "loopback measurement" to measure the distortion of the audio i
 
 Measurement results are displayed in real-time.
 
-* **THD+N**: An indicator of overall distortion.
+* **THD+N**: An indicator of overall distortion. (Displayed up to 5 decimal places)
 * **Harmonics Tab**: The level (ratio to the fundamental wave) for each component, such as the 2nd harmonic (2nd), 3rd harmonic (3rd), etc., can be confirmed in the graph and table.
 
 This numerical value is **"the lower measurement limit of your measurement environment (sound device)."** It is not possible to accurately measure equipment with distortion smaller than this.
