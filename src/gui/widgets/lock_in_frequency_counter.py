@@ -261,8 +261,10 @@ class LockInFrequencyCounter(MeasurementModule):
             if self.ref_mode == "loopback":
                 t = (np.arange(frames) + self._nco_phase) / sample_rate
                 sig = 0.5 * np.cos(2 * np.pi * self.gen_frequency * t)
-                outdata[:, 0] = sig
-                outdata[:, 1] = sig
+                if self.ref_channel == 1:
+                     outdata[:, 1] = sig
+                else:
+                    outdata[:, 0] = sig
 
             self._nco_phase += frames
 
@@ -582,12 +584,22 @@ class LockInFrequencyCounterWidget(QWidget):
         self.ref_combo.currentIndexChanged.connect(self.on_ref_mode_changed)
         form_input.addRow(tr("Reference Mode:"), self.ref_combo)
 
+        # Output Channel (L/R) for Ref Out
+        self.output_ch_combo = QComboBox()
+        self.output_ch_combo.addItems([tr("Ch 1 (L)"), tr("Ch 2 (R)")])
+        self.output_ch_combo.setCurrentIndex(int(getattr(self.module, "ref_channel", 1)))
+        self.output_ch_combo.currentIndexChanged.connect(self.on_output_channel_changed)
+        form_input.addRow(tr("Output Channel:"), self.output_ch_combo)
+
         # Input Channel (L/R)
         self.input_ch_combo = QComboBox()
-        self.input_ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
+        self.input_ch_combo.addItems([tr("Ch 1 (L)"), tr("Ch 2 (R)")])
         self.input_ch_combo.setCurrentIndex(int(getattr(self.module, "signal_channel", 0)))
         self.input_ch_combo.currentIndexChanged.connect(self.on_input_channel_changed)
         form_input.addRow(tr("Channel:"), self.input_ch_combo)
+        
+        # Initialize enabling state
+        self.on_ref_mode_changed(self.ref_combo.currentIndex())
 
         # Signal gate
         self.gate_spin = QDoubleSpinBox()
@@ -674,15 +686,11 @@ class LockInFrequencyCounterWidget(QWidget):
     def on_ref_mode_changed(self, idx):
         modes = ["internal", "loopback"]
         self.module.ref_mode = modes[idx]
-
-        # Disable Lock (FLL) if in Loopback/Ref Out mode
-        # Index 1 is Loopback
         is_loopback = (idx == 1)
-        if is_loopback:
-            self.lock_check.setChecked(False)
-            self.lock_check.setEnabled(False)
-        else:
-            self.lock_check.setEnabled(True)
+        self.output_ch_combo.setEnabled(is_loopback)
+        
+    def on_output_channel_changed(self, idx):
+        self.module.ref_channel = int(idx)
 
     def on_input_channel_changed(self, idx):
         self.module.signal_channel = int(idx)
