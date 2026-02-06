@@ -261,18 +261,18 @@ class LockInFrequencyCounter(MeasurementModule):
             if self.ref_mode == "loopback":
                 # Phase Accumulator for smooth frequency transitions
                 phase_increment = 2 * np.pi * self.gen_frequency / sample_rate
-                
+
                 # Create phase array for this block
                 phases = self._nco_phase_rad + np.arange(frames) * phase_increment
-                
+
                 # Signal Generation
                 sig = 0.5 * np.cos(phases)
-                
+
                 if self.ref_channel == 1:
                      outdata[:, 1] = sig
                 else:
                     outdata[:, 0] = sig
-                
+
                 # Update accumulator for next block, keep bounded [0, 2pi]
                 self._nco_phase_rad = (self._nco_phase_rad + frames * phase_increment) % (2 * np.pi)
 
@@ -605,7 +605,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.input_ch_combo.setCurrentIndex(int(getattr(self.module, "signal_channel", 0)))
         self.input_ch_combo.currentIndexChanged.connect(self.on_input_channel_changed)
         form_input.addRow(tr("Channel:"), self.input_ch_combo)
-        
+
         # Initialize enabling state
         self.on_ref_mode_changed(self.ref_combo.currentIndex())
 
@@ -696,7 +696,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.module.ref_mode = modes[idx]
         is_loopback = (idx == 1)
         self.output_ch_combo.setEnabled(is_loopback)
-        
+
     def on_output_channel_changed(self, idx):
         self.module.ref_channel = int(idx)
 
