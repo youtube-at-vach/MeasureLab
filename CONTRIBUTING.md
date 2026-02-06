@@ -141,6 +141,12 @@ Open a PR on GitHub. In the description, briefly explain:
 
 ---
 
+## 🛡️ Security
+
+For information on how to report security vulnerabilities, please see our [Security Policy](<SECURITY.md>).
+
+---
+
 ## 📜 Coding Standards
 
 - **Style:** We follow PEP 8 and use `ruff` for linting.
