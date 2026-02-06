@@ -1,12 +1,15 @@
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
+import pytest
+from PyQt6.QtCore import QThreadPool
 
 # Mock sounddevice
 sys.modules["sounddevice"] = MagicMock()
 
-import pytest
-from PyQt6.QtCore import QThreadPool
-from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget, NoiseAnalysisWorker, NoiseAnalysisSignals
+# App imports must be after the mock
+from src.gui.widgets.noise_profiler import NoiseAnalysisWorker, NoiseProfiler, NoiseProfilerWidget  # noqa: E402
+
 
 def test_noise_profiler_offloading(qtbot):
     # Mock AudioEngine
@@ -42,6 +45,7 @@ def test_noise_profiler_offloading(qtbot):
     worker_arg = widget.thread_pool.start.call_args[0][0]
     assert isinstance(worker_arg, NoiseAnalysisWorker)
 
+
 def test_worker_error_signal(qtbot):
     # Mock AudioEngine
     audio_engine = MagicMock()
@@ -53,7 +57,7 @@ def test_worker_error_signal(qtbot):
     worker = NoiseAnalysisWorker(module, 0, "dBV", False)
 
     # Check if 'error' signal exists
-    if not hasattr(worker.signals, 'error'):
+    if not hasattr(worker.signals, "error"):
         pytest.fail("NoiseAnalysisSignals has no 'error' signal")
 
     # Mock signal slots
