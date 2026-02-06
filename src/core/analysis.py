@@ -213,11 +213,55 @@ class AudioCalc:
         best_coarse = freq_guess
 
         # Vectorization would be faster but get_residual_mse uses lstsq which is not easily vectorized over freq
+        # Optimization: Use algebraic MSE calculation to avoid residual array computation.
+        # And reuse fitted_buffer for phase calculation to avoid allocation.
+
+        # Precompute signal energy for algebraic MSE
+        yy = np.dot(signal, signal)
+
         for f in grid:
             # Skip negative frequencies
             if f <= 0:
                 continue
-            mse = get_residual_mse(f)
+
+            w = 2 * np.pi * f
+
+            # Use fitted_buffer as temporary storage for phases to avoid allocating N floats
+            np.multiply(t, w, out=fitted_buffer)
+            np.sin(fitted_buffer, out=M[:, 0])
+            np.cos(fitted_buffer, out=M[:, 1])
+
+            # M[:, 2] is already 1.0
+
+            # Normal Equations
+            try:
+                MT = M.T
+                # M.T @ M is (3, 3) - fast
+                mt_m = MT @ M
+                # MT @ signal is (3,) - fast
+                mt_y = MT @ signal
+
+                coeffs = np.linalg.solve(mt_m, mt_y)
+
+                # Algebraic MSE: RSS = yy - coeffs.T @ mt_y
+                rss = yy - np.dot(coeffs, mt_y)
+
+            except np.linalg.LinAlgError:
+                # Fallback to lstsq
+                coeffs, residuals, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+                if residuals.size > 0:
+                    rss = residuals[0]
+                else:
+                    # Should not happen if N > 3
+                    mt_y = M.T @ signal
+                    rss = yy - np.dot(coeffs, mt_y)
+
+            # Numerical noise protection
+            if rss < 0:
+                rss = 0.0
+
+            mse = rss / N
+
             if mse < best_mse:
                 best_mse = mse
                 best_coarse = f
