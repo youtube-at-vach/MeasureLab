@@ -915,6 +915,7 @@ class DistortionAnalyzerWidget(QWidget):
 
     def on_toggle_realtime(self, checked):
         if checked:
+            self.mode_combo.setEnabled(False)
             self.sync_module_with_gui()
             self.module.start_analysis()
             self.timer.start()
@@ -923,6 +924,7 @@ class DistortionAnalyzerWidget(QWidget):
             self.module.stop_analysis()
             self.timer.stop()
             self.action_btn.setText(tr("Start Measurement"))
+            self.mode_combo.setEnabled(True)
 
     def set_meters_mode(self, mode):
         if mode == "thd":
@@ -957,6 +959,7 @@ class DistortionAnalyzerWidget(QWidget):
                 self.action_btn.setText(tr("Start Measurement"))
                 return
 
+        self.mode_combo.setEnabled(False)
         self.sweep_worker = SweepWorker(self.module, sweep_type, start, end, steps)
         self.sweep_worker.result_ready.connect(self.on_sweep_result)
         self.sweep_worker.finished.connect(self.on_sweep_finished)
@@ -971,6 +974,7 @@ class DistortionAnalyzerWidget(QWidget):
         self.sync_module_with_gui()  # Restore manual settings
         self.action_btn.setText(tr("Start Measurement"))
         self.action_btn.setChecked(False)
+        self.mode_combo.setEnabled(True)
 
     def on_toggle_view(self, checked):
         if checked:
