@@ -11,7 +11,8 @@ rm -rf $APP_DIR $APP_NAME*.AppImage
 
 # Download linuxdeploy if not present
 if [ ! -f "$LINUXDEPLOY" ]; then
-    wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+    wget https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage -O "$LINUXDEPLOY"
+    echo "c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0  $LINUXDEPLOY" | sha256sum -c -
     chmod +x $LINUXDEPLOY
 fi
 
