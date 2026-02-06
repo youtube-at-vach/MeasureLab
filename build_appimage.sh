@@ -32,7 +32,8 @@ cp audio-tools.desktop $APP_DIR/usr/share/applications/
 sed -i 's/Exec=main_gui/Exec=MeasureLab/g' $APP_DIR/usr/share/applications/audio-tools.desktop
 
 # Initialize AppDir with linuxdeploy
-./$LINUXDEPLOY --appdir $APP_DIR --output appimage \
+# Use APPIMAGE_EXTRACT_AND_RUN=1 to run linuxdeploy without FUSE (needed for CI/Docker)
+APPIMAGE_EXTRACT_AND_RUN=1 ./$LINUXDEPLOY --appdir $APP_DIR --output appimage \
     --desktop-file $APP_DIR/usr/share/applications/audio-tools.desktop \
     --icon-file $APP_DIR/usr/share/icons/hicolor/256x256/apps/app_icon.png \
     --executable $APP_DIR/usr/bin/MeasureLab
