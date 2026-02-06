@@ -170,9 +170,10 @@ class ConfigManager:
 
     def _resolve_path(self, path_value: str) -> str:
         if os.path.isabs(path_value):
-            return path_value
+            full_path = os.path.abspath(path_value)
+        else:
+            full_path = os.path.abspath(os.path.join(self.config_dir, path_value))
 
-        full_path = os.path.abspath(os.path.join(self.config_dir, path_value))
         base_dir = os.path.abspath(self.config_dir)
 
         try:
