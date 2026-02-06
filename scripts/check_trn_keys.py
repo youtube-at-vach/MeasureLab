@@ -166,16 +166,30 @@ def main():
         if k not in code_keys:
             unused_in_code.append(k)
 
-    # 5. Fix: Remove unused keys if requested
-    if args.fix and unused_in_code:
-        print(f"\n--- Fixing: Removing {len(unused_in_code)} unused keys ---")
+    # 5. Action: Remove unused keys if requested
+    # We also remove orphaned keys (keys in lang files not in en.json)
+    if args.fix:
+        print(f"\n--- Fixing: Cleaning up keys ---")
         json_files = get_json_files()
         for jf in json_files:
+            fname = os.path.basename(jf)
             data = load_json(jf)
             original_len = len(data)
+
+            # 1. Remove keys unused in code
             for k in unused_in_code:
                 if k in data:
                     del data[k]
+
+            # 2. Remove orphaned keys (only for non-en files)
+            if fname != 'en.json':
+                # Orphans are keys present in local file but not in en_keys
+                # Note: en_keys includes keys that might have been unused_in_code,
+                # but those were removed in step 1 above anyway.
+                orphans = [k for k in data if k not in en_keys]
+                for k in orphans:
+                    del data[k]
+
             if len(data) < original_len:
                 save_json(jf, data)
                 print(f"  Updated {os.path.basename(jf)}: removed {original_len - len(data)} keys.")
@@ -188,6 +202,7 @@ def main():
     # 6. Check: Other JSONs have all keys from en.json
     json_files = get_json_files()
     missing_translations = {} # filename -> list of missing keys
+    orphaned_keys = {} # filename -> list of orphan keys
 
     for jf in json_files:
         fname = os.path.basename(jf)
@@ -196,9 +211,16 @@ def main():
 
         data = load_json(jf)
         local_keys = set(data.keys())
+
+        # Missing translations (In en, not in local)
         diff = en_keys - local_keys
         if diff:
             missing_translations[fname] = list(diff)
+
+        # Orphaned keys (In local, not in en)
+        orphans = local_keys - en_keys
+        if orphans:
+            orphaned_keys[fname] = list(orphans)
 
     # 7. Check Duplicates (Warning only)
     duplicates_map = {}
@@ -247,7 +269,21 @@ def main():
     else:
         print("OK")
 
-    print("\n--- Check 4: Duplicate Keys (Warning) ---")
+    print("\n--- Check 4: Orphaned keys in other languages (Not in en.json) ---")
+    if orphaned_keys:
+        # If fix was not run (or run but missed something?), we report errors
+        # Note: If we just ran fix, orphaned_keys should be empty.
+        has_error = True
+        for fname, keys in orphaned_keys.items():
+            print(f"FAIL: {fname} has {len(keys)} orphaned keys (not in en.json):")
+            for k in sorted(keys)[:10]:
+                print(f"  - \"{k}\"")
+            if len(keys) > 10:
+                print(f"  ... and {len(keys)-10} more.")
+    else:
+        print("OK")
+
+    print("\n--- Check 5: Duplicate Keys (Warning) ---")
     if duplicates_map:
         for fname, keys in duplicates_map.items():
             print(f"WARNING: {fname} has duplicate keys:")
