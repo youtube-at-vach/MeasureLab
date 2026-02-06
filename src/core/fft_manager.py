@@ -41,6 +41,7 @@ class FFTManager:
 
         # Store wisdom in XDG compliant user data directory
         # This fixes the issue where wisdom cannot be saved in read-only AppImage environments
+        # We also use JSON with Base64 encoding instead of pickle for security (prevents arbitrary code execution)
         xdg_data_home = os.environ.get("XDG_DATA_HOME")
         if not xdg_data_home:
             xdg_data_home = os.path.join(os.path.expanduser("~"), ".local", "share")
@@ -62,6 +63,7 @@ class FFTManager:
 
         if self.wisdom_path.exists():
             try:
+                # Use JSON + Base64 to safely load wisdom (avoids pickle deserialization vulnerabilities)
                 with open(self.wisdom_path, "r") as f:
                     data = json.load(f)
 
