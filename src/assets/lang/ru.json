@@ -1051,5 +1051,8 @@
     "Cursors": "Курсоры",
     "Avg Count (KF-Q & Display):": "Кол-во усреднений (KF-Q и отображение):",
     "Display Uncertainty:": "Погрешность отображения:",
-    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)"
+    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)",
+    "Ch 1 (L)": "Ch 1 (L)",
+    "Ch 2 (R)": "Ch 2 (R)",
+    "Output Channel:": "Output Channel:"
 }

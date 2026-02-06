@@ -20,6 +20,7 @@
 2. **Reference Mode**:
     * **Internal (NCO)**: 内部で生成した理想的なサイン波を基準にします。
     * **Loopback (Ref Out)**: 出力から出した信号を基準にします（このモードではFLLによるロックは無効になります）。
+    * **Ref Output**: Loopbackモード時に使用する出力チャンネルを選択します (Ch 1 / Ch 2)。
 3. **Input Settings**:
     * **Channel**: 測定対象の入力チャンネルを選択します (Ch 1 / Ch 2)。
     * **Gate Threshold**: これ以下の入力レベル（dB）では測定を停止します。ノイズによる誤動作を防ぐために設定します。

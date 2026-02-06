@@ -1051,5 +1051,8 @@
     "Cursors": "Cursor",
     "Avg Count (KF-Q & Display):": "Mittelungsanzahl (KF-Q & Anzeige):",
     "Display Uncertainty:": "Anzeigeunsicherheit:",
-    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)"
+    "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)",
+    "Ch 1 (L)": "Ch 1 (L)",
+    "Ch 2 (R)": "Ch 2 (R)",
+    "Output Channel:": "Output Channel:"
 }

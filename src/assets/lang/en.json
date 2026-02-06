@@ -1038,5 +1038,8 @@
     "-": "-",
     "Cursors": "Cursors",
     "Avg Count (KF-Q & Display):": "Avg Count (KF-Q & Display):",
-    "Display Uncertainty:": "Display Uncertainty:"
+    "Display Uncertainty:": "Display Uncertainty:",
+    "Ch 1 (L)": "Ch 1 (L)",
+    "Ch 2 (R)": "Ch 2 (R)",
+    "Output Channel:": "Output Channel:"
 }
