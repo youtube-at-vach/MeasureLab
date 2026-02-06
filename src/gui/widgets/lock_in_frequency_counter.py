@@ -149,7 +149,7 @@ class LockInFrequencyCounter(MeasurementModule):
 
 
         # Internal State
-        self._nco_phase = 0.0
+        self._nco_phase_rad = 0.0
         self._last_unwrapped_phase = 0.0
         self._first_run = True
 
@@ -207,7 +207,7 @@ class LockInFrequencyCounter(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
 
         # Reset State
-        self._nco_phase = 0.0
+        self._nco_phase_rad = 0.0
         self._last_unwrapped_phase = 0.0
         self._first_run = True
         self.start_time = 0
@@ -259,14 +259,22 @@ class LockInFrequencyCounter(MeasurementModule):
             # Output Generation
             outdata.fill(0)
             if self.ref_mode == "loopback":
-                t = (np.arange(frames) + self._nco_phase) / sample_rate
-                sig = 0.5 * np.cos(2 * np.pi * self.gen_frequency * t)
+                # Phase Accumulator for smooth frequency transitions
+                phase_increment = 2 * np.pi * self.gen_frequency / sample_rate
+                
+                # Create phase array for this block
+                phases = self._nco_phase_rad + np.arange(frames) * phase_increment
+                
+                # Signal Generation
+                sig = 0.5 * np.cos(phases)
+                
                 if self.ref_channel == 1:
                      outdata[:, 1] = sig
                 else:
                     outdata[:, 0] = sig
-
-            self._nco_phase += frames
+                
+                # Update accumulator for next block, keep bounded [0, 2pi]
+                self._nco_phase_rad = (self._nco_phase_rad + frames * phase_increment) % (2 * np.pi)
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
