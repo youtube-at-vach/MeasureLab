@@ -95,6 +95,12 @@ class DistortionAnalyzer(MeasurementModule):
         alpha = self.averaging
         if alpha <= 0:
             self.reset_averaging_state()
+            # Check for invalid THD even without averaging
+            thdn_pct = results.get("thdn_percent", 0.0)
+            thd_pct = results.get("thd_percent", 0.0)
+            results["thd_valid"] = True
+            if thdn_pct < thd_pct:
+                results["thd_valid"] = False
             return results
 
         raw_fund_rms = float(results.get("raw_fund_rms", 0.0))
@@ -140,6 +146,14 @@ class DistortionAnalyzer(MeasurementModule):
         thdn_db = 20 * np.log10(thdn_linear + 1e-12)
         sinad_db = -thdn_db
 
+        # Check for invalid THD (THD+N must be >= THD)
+        # We allow a small epsilon for floating point jitter if needed, but strictly:
+        # If THD+N < THD, it implies noise is negative, which is impossible.
+        # This usually happens when the noise floor is extremely low and algorithm artifacts dominate.
+        thd_valid = True
+        if thdn_linear < thd_linear:
+            thd_valid = False
+
         # Rebuild harmonics list using averaged fundamentals for relative levels
         harmonics = []
         base_freq = state["frequency"]
@@ -173,6 +187,7 @@ class DistortionAnalyzer(MeasurementModule):
             "raw_harmonics": state["harmonics"],
             "raw_fund_amp": state["fund_amp"],
             "fft_data": results.get("fft_data"),
+            "thd_valid": thd_valid,
         }
 
         return averaged
@@ -1068,9 +1083,15 @@ class DistortionAnalyzerWidget(QWidget):
             self.module.current_result = results
 
             # Update Meters
+            # Update Meters
             self.thdn_label.setText(tr("{0:.5f} %").format(results["thdn_percent"]))
             self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
-            self.thd_label.setText(tr("{0:.5f} %").format(results["thd_percent"]))
+            
+            if results.get("thd_valid", True):
+                self.thd_label.setText(tr("{0:.5f} %").format(results["thd_percent"]))
+            else:
+                self.thd_label.setText(tr("LO"))
+                
             self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
 
             # ENOB Calculation
