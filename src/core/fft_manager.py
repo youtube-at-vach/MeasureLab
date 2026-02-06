@@ -2,7 +2,8 @@ import numpy as np
 import multiprocessing
 import logging
 import os
-import pickle
+import json
+import base64
 from pathlib import Path
 from src.core.localization import tr
 
@@ -61,10 +62,16 @@ class FFTManager:
 
         if self.wisdom_path.exists():
             try:
-                with open(self.wisdom_path, "rb") as f:
-                    wisdom = pickle.load(f)
+                with open(self.wisdom_path, "r") as f:
+                    data = json.load(f)
+
+                # Decode base64 strings back to bytes
+                if isinstance(data, list):
+                    wisdom = tuple(base64.b64decode(item) for item in data)
                     pyfftw.import_wisdom(wisdom)
-                logger.info(f"Loaded pyfftw wisdom from {self.wisdom_path}")
+                    logger.info(f"Loaded pyfftw wisdom from {self.wisdom_path}")
+                else:
+                    logger.warning(f"Invalid wisdom format in {self.wisdom_path}")
             except Exception as e:
                 logger.warning(f"Failed to load wisdom: {e}")
 
@@ -75,8 +82,12 @@ class FFTManager:
         try:
             self.wisdom_path.parent.mkdir(parents=True, exist_ok=True)
             wisdom = pyfftw.export_wisdom()
-            with open(self.wisdom_path, "wb") as f:
-                pickle.dump(wisdom, f)
+
+            # Convert tuple of bytes to list of base64 strings
+            data = [base64.b64encode(item).decode('ascii') for item in wisdom]
+
+            with open(self.wisdom_path, "w") as f:
+                json.dump(data, f)
             logger.info(f"Saved pyfftw wisdom to {self.wisdom_path}")
         except Exception as e:
             logger.error(f"Failed to save wisdom: {e}")
