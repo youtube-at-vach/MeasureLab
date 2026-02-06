@@ -1,6 +1,4 @@
 import numpy as np
-import pytest
-from PyQt6.QtCore import QObject, pyqtSignal
 
 from src.gui.widgets.distortion_analyzer import DistortionAnalysisWorker
 

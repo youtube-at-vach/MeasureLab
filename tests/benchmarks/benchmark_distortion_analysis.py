@@ -1,6 +1,5 @@
 import time
 import numpy as np
-import pytest
 from scipy.signal import get_window
 
 from src.core.analysis import AudioCalc
@@ -28,6 +27,7 @@ def benchmark_distortion_analysis():
 
     thd_duration = (end_time - start_time) * 1000
     print(f"\nTHD+N Analysis Duration: {thd_duration:.2f} ms")
+    print(f"THD: {results['thd_percent']:.4f}%")
 
     # Generate SMPTE Signal
     f1 = 60.0
@@ -50,6 +50,7 @@ def benchmark_distortion_analysis():
 
     imd_duration = (end_time - start_time) * 1000
     print(f"IMD SMPTE Analysis Duration: {imd_duration:.2f} ms")
+    print(f"IMD: {imd_res['imd']:.4f}%")
 
     return thd_duration, imd_duration
 
