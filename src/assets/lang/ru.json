@@ -1054,5 +1054,9 @@
     "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)",
     "Ch 1 (L)": "Канал 1 (L)",
     "Ch 2 (R)": "Канал 2 (R)",
-    "Output Channel:": "Выходной канал:"
+    "Output Channel:": "Выходной канал:",
+    "LO": "LO",
+    "Avg Count:": "Усреднение:",
+    "{0:.3f} dB": "{0:.3f} dB",
+    "{0} %": "{0} %"
 }

@@ -1054,5 +1054,9 @@
     "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)",
     "Ch 1 (L)": "通道 1 (L)",
     "Ch 2 (R)": "通道 2 (R)",
-    "Output Channel:": "输出通道:"
+    "Output Channel:": "输出通道:",
+    "LO": "LO",
+    "Avg Count:": "平均次数:",
+    "{0:.3f} dB": "{0:.3f} dB",
+    "{0} %": "{0} %"
 }

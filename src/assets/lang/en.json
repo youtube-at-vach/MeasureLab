@@ -261,6 +261,7 @@
     "THD+N:": "THD+N:",
     "THD:": "THD:",
     "SINAD:": "SINAD:",
+    "LO": "LO",
     "IMD:": "IMD:",
     "Order": "Order",
     "Freq (Hz)": "Freq (Hz)",
@@ -304,6 +305,7 @@
     "XFER (Ref=L, Meas=R)": "XFER (Ref=L, Meas=R)",
     "Steps/Octave:": "Steps/Octave:",
     "Averages:": "Averages:",
+    "Avg Count:": "Avg Count:",
     "Unit:": "Unit:",
     "Off": "Off",
     "Medium": "Medium",
@@ -765,7 +767,6 @@
     "Audio Buffer Error: {0}": "Audio Buffer Error: {0}",
     "Auto": "Auto",
     "Avg": "Avg",
-    "Avg: {0}%": "Avg: {0}%",
     "BPF": "BPF",
     "CF: {0:.1f}": "CF: {0:.1f}",
     "CPU Load of Audio Thread": "CPU Load of Audio Thread",
@@ -868,7 +869,6 @@
     "{0:.1f}": "{0:.1f}",
     "{0:.1f} s": "{0:.1f} s",
     "{0:.2f} dB": "{0:.2f} dB",
-    "{0:.4f} %": "{0:.4f} %",
     "{0:d} m {1:.0f} s": "{0:d} m {1:.0f} s",
     "{0} dB": "{0} dB",
     "{0} {1}": "{0} {1}",
@@ -1041,5 +1041,7 @@
     "Display Uncertainty:": "Display Uncertainty:",
     "Ch 1 (L)": "Ch 1 (L)",
     "Ch 2 (R)": "Ch 2 (R)",
-    "Output Channel:": "Output Channel:"
+    "Output Channel:": "Output Channel:",
+    "{0:.3f} dB": "{0:.3f} dB",
+    "{0} %": "{0} %"
 }
