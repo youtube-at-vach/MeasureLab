@@ -53,6 +53,10 @@ class AudioEngine:
         self._client_buffer = None
         self._logical_in_buffer = None
 
+        # Error tracking
+        self.last_callback_error = None
+        self.callback_error_count = 0
+
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
         enabled = bool(enabled)
@@ -276,7 +280,8 @@ class AudioEngine:
                 try:
                     cb(logical_in, client_out, frames, time, status)
                 except Exception as e:
-                    print(f"Error in audio callback: {e}")
+                    self.last_callback_error = e
+                    self.callback_error_count += 1
                     continue
 
                 # Sum to mix
@@ -368,6 +373,12 @@ class AudioEngine:
         current_status_flags = self.accumulated_status
         self.accumulated_status = sd.CallbackFlags()
 
+        # Get and reset error stats
+        error_count = self.callback_error_count
+        last_error = str(self.last_callback_error) if self.last_callback_error else None
+        self.callback_error_count = 0
+        self.last_callback_error = None
+
         return {
             "active": active,
             "input_channels": self.input_channel_mode,
@@ -378,6 +389,8 @@ class AudioEngine:
             "input_device": self.input_device,
             "output_device": self.output_device,
             "status_flags": current_status_flags,
+            "error_count": error_count,
+            "last_error": last_error,
         }
 
     # Legacy method support (deprecated but kept for compatibility during transition if needed)
