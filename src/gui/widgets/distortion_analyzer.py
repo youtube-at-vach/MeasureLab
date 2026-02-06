@@ -1,4 +1,5 @@
 import argparse
+from collections import deque
 
 import numpy as np
 import pyqtgraph as pg
@@ -47,7 +48,7 @@ class DistortionAnalyzer(MeasurementModule):
 
         # Analysis Settings
         self.window_type = "blackmanharris"  # Good for distortion
-        self.averaging = 0.0
+        self.average_count = 1
 
         # IMD Settings
         self.imd_standard = "smpte"  # 'smpte' or 'ccif'
@@ -57,8 +58,8 @@ class DistortionAnalyzer(MeasurementModule):
 
         # Playback state
         self._phase_f1 = 0.0
-        self._phase_f1 = 0.0
         self._phase_f2 = 0.0
+        self._phase_accumulator = 0.0
 
         # Mode
         self.mode = "Real-time"
@@ -67,9 +68,9 @@ class DistortionAnalyzer(MeasurementModule):
         # State
         self.current_result = None
         self._avg_thdn = None
-        self._avg_state = None
-        self._avg_spectrum = None
-        self._avg_imd_ratio = None
+        self._result_history = deque()
+        self._imd_history = deque()
+        self._spectrum_history = deque()
 
         # Capture State
         self.capture_requested = False
@@ -85,15 +86,14 @@ class DistortionAnalyzer(MeasurementModule):
 
     def reset_averaging_state(self):
         """Clear cached averaging state when settings change."""
-        self._avg_thdn = None
-        self._avg_state = None
-        self._avg_spectrum = None
-        self._avg_imd_ratio = None
+        self._result_history.clear()
+        self._imd_history.clear()
+        self._spectrum_history.clear()
 
     def _apply_result_averaging(self, results: dict) -> dict:
-        """Apply exponential averaging to harmonic metrics using raw components."""
-        alpha = self.averaging
-        if alpha <= 0:
+        """Apply moving average to harmonic metrics using raw components."""
+        count = self.average_count
+        if count <= 1:
             self.reset_averaging_state()
             # Check for invalid THD even without averaging
             thdn_pct = results.get("thdn_percent", 0.0)
@@ -110,33 +110,54 @@ class DistortionAnalyzer(MeasurementModule):
         raw_amp_dbfs = float(results.get("basic_wave", {}).get("amplitude_dbfs", -140.0))
         raw_harmonics = np.array(results.get("raw_harmonics", []), dtype=float)
 
-        # Initialize or update state
-        if self._avg_state is None or self._avg_state["harmonics"].shape != raw_harmonics.shape:
-            self._avg_state = {
-                "fund_rms": raw_fund_rms,
-                "res_rms": raw_res_rms,
-                "fund_amp": raw_fund_amp,
-                "frequency": raw_freq,
-                "amplitude_dbfs": raw_amp_dbfs,
-                "harmonics": raw_harmonics,
-            }
-        else:
-            self._avg_state["fund_rms"] = alpha * self._avg_state["fund_rms"] + (1 - alpha) * raw_fund_rms
-            self._avg_state["res_rms"] = alpha * self._avg_state["res_rms"] + (1 - alpha) * raw_res_rms
-            self._avg_state["fund_amp"] = alpha * self._avg_state["fund_amp"] + (1 - alpha) * raw_fund_amp
-            self._avg_state["frequency"] = alpha * self._avg_state["frequency"] + (1 - alpha) * raw_freq
-            self._avg_state["amplitude_dbfs"] = alpha * self._avg_state["amplitude_dbfs"] + (1 - alpha) * raw_amp_dbfs
-            self._avg_state["harmonics"] = alpha * self._avg_state["harmonics"] + (1 - alpha) * raw_harmonics
+        # Store current state
+        current_state = {
+            "fund_rms": raw_fund_rms,
+            "res_rms": raw_res_rms,
+            "fund_amp": raw_fund_amp,
+            "frequency": raw_freq,
+            "amplitude_dbfs": raw_amp_dbfs,
+            "harmonics": raw_harmonics,
+        }
 
-        state = self._avg_state
+        self._result_history.append(current_state)
+        while len(self._result_history) > count:
+            self._result_history.popleft()
 
-        fund_amp = max(state["fund_amp"], 1e-12)
-        fund_rms = max(state["fund_rms"], 1e-12)
-        res_rms = max(state["res_rms"], 0.0)
+        # Compute average
+        avg_state = {}
+        history_len = len(self._result_history)
+        
+        # We need to average scalars and arrays
+        # Initialize with zeros
+        avg_state["fund_rms"] = 0.0
+        avg_state["res_rms"] = 0.0
+        avg_state["fund_amp"] = 0.0
+        avg_state["frequency"] = 0.0
+        avg_state["amplitude_dbfs"] = 0.0
+        avg_state["harmonics"] = np.zeros_like(raw_harmonics)
+
+        for state in self._result_history:
+            avg_state["fund_rms"] += state["fund_rms"]
+            avg_state["res_rms"] += state["res_rms"]
+            avg_state["fund_amp"] += state["fund_amp"]
+            avg_state["frequency"] += state["frequency"]
+            avg_state["amplitude_dbfs"] += state["amplitude_dbfs"]
+            # Handle potential shape mismatch (if settings changed mid-stream, though reset should prevent it)
+            if state["harmonics"].shape == avg_state["harmonics"].shape:
+                avg_state["harmonics"] += state["harmonics"]
+
+        # Divide by count
+        for key in avg_state:
+            avg_state[key] /= history_len
+
+        fund_amp = max(avg_state["fund_amp"], 1e-12)
+        fund_rms = max(avg_state["fund_rms"], 1e-12)
+        res_rms = max(avg_state["res_rms"], 0.0)
 
         thd_linear = 0.0
-        if fund_amp > 0 and state["harmonics"].size:
-            thd_linear = np.sqrt(np.sum(state["harmonics"] ** 2)) / fund_amp
+        if fund_amp > 0 and avg_state["harmonics"].size:
+            thd_linear = np.sqrt(np.sum(avg_state["harmonics"] ** 2)) / fund_amp
 
         thd_percent = thd_linear * 100
         thd_db = 20 * np.log10(thd_linear + 1e-12)
@@ -156,8 +177,8 @@ class DistortionAnalyzer(MeasurementModule):
 
         # Rebuild harmonics list using averaged fundamentals for relative levels
         harmonics = []
-        base_freq = state["frequency"]
-        for idx, amp in enumerate(state["harmonics"]):
+        base_freq = avg_state["frequency"]
+        for idx, amp in enumerate(avg_state["harmonics"]):
             order = idx + 2
             rel_amp = amp / fund_amp if fund_amp > 0 else 0.0
             harmonics.append(
@@ -171,9 +192,9 @@ class DistortionAnalyzer(MeasurementModule):
 
         averaged = {
             "basic_wave": {
-                "frequency": state["frequency"],
-                "amplitude_dbfs": state["amplitude_dbfs"],
-                "max_amplitude": state["fund_amp"],
+                "frequency": avg_state["frequency"],
+                "amplitude_dbfs": avg_state["amplitude_dbfs"],
+                "max_amplitude": avg_state["fund_amp"],
             },
             "harmonics": harmonics,
             "thd_percent": thd_percent,
@@ -182,10 +203,10 @@ class DistortionAnalyzer(MeasurementModule):
             "thdn_db": thdn_db,
             "sinad_db": sinad_db,
             # Preserve averaged raw components for downstream use/inspection
-            "raw_fund_rms": state["fund_rms"],
-            "raw_res_rms": state["res_rms"],
-            "raw_harmonics": state["harmonics"],
-            "raw_fund_amp": state["fund_amp"],
+            "raw_fund_rms": avg_state["fund_rms"],
+            "raw_res_rms": avg_state["res_rms"],
+            "raw_harmonics": avg_state["harmonics"],
+            "raw_fund_amp": avg_state["fund_amp"],
             "fft_data": results.get("fft_data"),
             "thd_valid": thd_valid,
         }
@@ -193,37 +214,48 @@ class DistortionAnalyzer(MeasurementModule):
         return averaged
 
     def _apply_imd_averaging(self, imd_result: dict) -> dict:
-        """Apply exponential averaging to IMD results in the linear domain."""
-        alpha = self.averaging
-        if alpha <= 0:
-            self._avg_imd_ratio = None
+        """Apply moving average to IMD results in the linear domain."""
+        count = self.average_count
+        if count <= 1:
+            self._imd_history.clear()
             return imd_result
 
         raw_ratio = max(float(imd_result.get("imd", 0.0)) / 100.0, 0.0)
-        if self._avg_imd_ratio is None:
-            self._avg_imd_ratio = raw_ratio
-        else:
-            self._avg_imd_ratio = alpha * self._avg_imd_ratio + (1 - alpha) * raw_ratio
+        
+        self._imd_history.append(raw_ratio)
+        while len(self._imd_history) > count:
+            self._imd_history.popleft()
 
-        ratio = self._avg_imd_ratio
+        ratio = sum(self._imd_history) / len(self._imd_history)
+        
         imd_percent = ratio * 100.0
         imd_db = 20 * np.log10(ratio) if ratio > 1e-12 else -100.0
 
         return {"imd": imd_percent, "imd_db": imd_db, "raw_imd_ratio": ratio}
 
     def apply_spectrum_averaging(self, mag_linear: np.ndarray) -> np.ndarray:
-        """Smooth spectrum magnitude with exponential averaging (linear domain)."""
-        alpha = self.averaging
-        if alpha <= 0:
-            self._avg_spectrum = None
+        """Smooth spectrum magnitude with moving average (linear domain)."""
+        count = self.average_count
+        if count <= 1:
+            self._spectrum_history.clear()
             return mag_linear
 
-        if self._avg_spectrum is None or self._avg_spectrum.shape != mag_linear.shape:
-            self._avg_spectrum = mag_linear
-        else:
-            self._avg_spectrum = alpha * self._avg_spectrum + (1 - alpha) * mag_linear
+        self._spectrum_history.append(mag_linear)
+        while len(self._spectrum_history) > count:
+            self._spectrum_history.popleft()
 
-        return self._avg_spectrum
+        # Compute average
+        # Ensure all shapes match (should be consistent if buffer size doesn't change)
+        if not self._spectrum_history:
+             return mag_linear
+        
+        # Simple mean
+        # Stack and mean allows for fast computation
+        # But deque contains arrays, so:
+        current_len = len(self._spectrum_history)
+        avg_spectrum = sum(self._spectrum_history) / current_len
+
+        return avg_spectrum
 
     @property
     def gen_amplitude(self):
@@ -263,10 +295,8 @@ class DistortionAnalyzer(MeasurementModule):
         self.current_result = None
 
         sample_rate = self.audio_engine.sample_rate
-        phase = 0
 
         def callback(indata, outdata, frames, time, status):
-            nonlocal phase
             # Generate Signal
             outdata.fill(0)
             if self.output_enabled:
@@ -274,9 +304,12 @@ class DistortionAnalyzer(MeasurementModule):
                 if self.signal_type == "smpte" or self.signal_type == "ccif":
                     sine_wave = self._generate_dual_tone(frames, sample_rate)
                 else:
-                    t = (np.arange(frames) + phase) / sample_rate
-                    phase += frames
-                    sine_wave = self.gen_amplitude * np.sin(2 * np.pi * self.gen_frequency * t)
+                    # Phase Accumulator Logic for continuity
+                    phase_inc = 2 * np.pi * self.gen_frequency / sample_rate
+                    phases = self._phase_accumulator + phase_inc * (np.arange(frames) + 1)
+                    phases %= (2 * np.pi)
+                    self._phase_accumulator = phases[-1]
+                    sine_wave = self.gen_amplitude * np.sin(phases)
 
                 if self.output_channel == 0:
                     outdata[:, 0] = sine_wave
@@ -391,22 +424,34 @@ class SweepWorker(QThread):
             wait_time = max(300, self.duration_ms)
             self.msleep(wait_time)
 
-            # Use safe capture
-            self.module.request_capture()
-            # Wait for capture
-            timeout = 0
-            while not self.module.capture_ready and timeout < 50:  # 500ms timeout
-                self.msleep(10)
-                timeout += 1
+            self.module.reset_averaging_state()
+            avg_count = max(1, self.module.average_count)
+            final_result = None
 
-            if self.module.capture_ready:
-                data = self.module.captured_buffer
-            else:
-                data = self.module.input_data.copy()  # Fallback
+            for _ in range(avg_count):
+                if not self.is_running:
+                    break
 
-            sample_rate = self.module.audio_engine.sample_rate
+                # Use safe capture
+                self.module.request_capture()
+                # Wait for capture
+                timeout = 0
+                while not self.module.capture_ready and timeout < 50:  # 500ms timeout
+                    self.msleep(10)
+                    timeout += 1
 
-            results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
+                if self.module.capture_ready:
+                    data = self.module.captured_buffer
+                else:
+                    data = self.module.input_data.copy()  # Fallback
+
+                sample_rate = self.module.audio_engine.sample_rate
+
+                results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
+                final_result = self.module._apply_result_averaging(results)
+
+            if final_result:
+                results = final_result
 
             # Add sweep parameter to results
             results["sweep_param"] = val
@@ -560,17 +605,17 @@ class DistortionAnalyzerWidget(QWidget):
         self.channel_combo.currentIndexChanged.connect(self.on_channel_changed)
         common_layout.addRow(tr("Output Ch:"), self.channel_combo)
 
-        # Averaging (Exponential)
-        self.avg_label = QLabel(tr("Avg: 0%"))
-        self.avg_slider = QSlider(Qt.Orientation.Horizontal)
-        self.avg_slider.setRange(0, 95)
-        self.avg_slider.setValue(0)
-        self.avg_slider.setFixedWidth(120)
-        self.avg_slider.valueChanged.connect(self.on_avg_changed)
+        # Averaging (Count)
+        self.avg_label = QLabel(tr("Avg Count:"))
+        self.avg_spin = QSpinBox()
+        self.avg_spin.setRange(1, 128)
+        self.avg_spin.setValue(1)
+        self.avg_spin.setFixedWidth(80)
+        self.avg_spin.valueChanged.connect(self.on_avg_changed)
 
         avg_row = QHBoxLayout()
         avg_row.addWidget(self.avg_label)
-        avg_row.addWidget(self.avg_slider)
+        avg_row.addWidget(self.avg_spin)
         common_layout.addRow(tr("Averaging:"), avg_row)
 
         common_widget.setLayout(common_layout)
@@ -774,7 +819,7 @@ class DistortionAnalyzerWidget(QWidget):
         self.module.output_channel = self.channel_combo.currentIndex()
 
         # 5. Averaging
-        self.module.averaging = self.avg_slider.value() / 100.0
+        self.module.average_count = self.avg_spin.value()
 
         self.module.reset_averaging_state()
 
@@ -1027,8 +1072,7 @@ class DistortionAnalyzerWidget(QWidget):
         self.module.reset_averaging_state()
 
     def on_avg_changed(self, val):
-        self.avg_label.setText(tr("Avg: {0}%").format(val))
-        self.module.averaging = val / 100.0
+        self.module.average_count = val
         self.module.reset_averaging_state()
 
     def _format_percent(self, value):
