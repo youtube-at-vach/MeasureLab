@@ -169,7 +169,7 @@ def main():
     # 5. Action: Remove unused keys if requested
     # We also remove orphaned keys (keys in lang files not in en.json)
     if args.fix:
-        print(f"\n--- Fixing: Cleaning up keys ---")
+        print("\n--- Fixing: Cleaning up keys ---")
         json_files = get_json_files()
         for jf in json_files:
             fname = os.path.basename(jf)
