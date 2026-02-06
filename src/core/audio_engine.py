@@ -280,6 +280,7 @@ class AudioEngine:
                 try:
                     cb(logical_in, client_out, frames, time, status)
                 except Exception as e:
+                    # Optimization: Use non-blocking error tracking instead of print to avoid audio dropouts
                     self.last_callback_error = e
                     self.callback_error_count += 1
                     continue
