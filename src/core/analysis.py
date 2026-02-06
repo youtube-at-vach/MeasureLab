@@ -91,6 +91,10 @@ class AudioCalc:
 
     @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
+        # Check signal length to ensure padding works (3 * (2 * 8 + 1) = 51)
+        if len(signal) <= 51:
+            return signal
+
         nyquist = 0.5 * sampling_rate
         # Ensure valid bounds
         lowcut = max(0.1, lowcut)
@@ -105,6 +109,10 @@ class AudioCalc:
 
     @staticmethod
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
+        # Check signal length to ensure padding works (3 * (2 * 4 + 1) = 27)
+        if len(signal) <= 27:
+            return signal
+
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
         sos = _get_butter_sos(8, cutoff, "lowpass", fs=sampling_rate)
@@ -112,6 +120,10 @@ class AudioCalc:
 
     @staticmethod
     def highpass_filter(signal, sampling_rate, cutoff=20.0):
+        # Check signal length to ensure padding works (3 * (2 * 4 + 1) = 27)
+        if len(signal) <= 27:
+            return signal
+
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
         sos = _get_butter_sos(8, cutoff / nyquist, "highpass")
@@ -119,6 +131,10 @@ class AudioCalc:
 
     @staticmethod
     def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
+        # Check signal length to ensure padding works (3 * (2 * 2 + 1) = 15)
+        if len(signal) <= 15:
+            return signal
+
         nyquist = 0.5 * sampling_rate
         w0 = target_frequency / nyquist
         bandwidth = w0 / quality_factor
