@@ -1031,6 +1031,13 @@ class DistortionAnalyzerWidget(QWidget):
         self.module.averaging = val / 100.0
         self.module.reset_averaging_state()
 
+    def _format_percent(self, value):
+        if value == 0:
+            return tr("{0} %").format(f"{value:.5f}")
+        order = np.floor(np.log10(abs(value)))
+        prec = max(5, int(abs(order)))
+        return tr("{0} %").format(f"{value:.{prec}f}")
+
     def update_realtime_analysis(self):
         if not self.module.is_running:
             return
@@ -1053,7 +1060,7 @@ class DistortionAnalyzerWidget(QWidget):
 
             res = self.module._apply_imd_averaging(res)
 
-            self.imd_label.setText(tr("{0:.5f} %").format(res["imd"]))
+            self.imd_label.setText(self._format_percent(res["imd"]))
             self.imd_db_label.setText(tr("{0:.3f} dB").format(res["imd_db"]))
 
             # Update Detailed Label for IMD
@@ -1084,11 +1091,11 @@ class DistortionAnalyzerWidget(QWidget):
 
             # Update Meters
             # Update Meters
-            self.thdn_label.setText(tr("{0:.5f} %").format(results["thdn_percent"]))
+            self.thdn_label.setText(self._format_percent(results["thdn_percent"]))
             self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
             
             if results.get("thd_valid", True):
-                self.thd_label.setText(tr("{0:.5f} %").format(results["thd_percent"]))
+                self.thd_label.setText(self._format_percent(results["thd_percent"]))
             else:
                 self.thd_label.setText(tr("LO"))
                 
