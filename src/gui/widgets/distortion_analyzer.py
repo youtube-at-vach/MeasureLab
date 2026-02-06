@@ -763,7 +763,7 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
         self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")  # Dynamic label
         self.sweep_plot.setLogMode(x=True, y=False)
-        self.sweep_plot.setLogMode(x=True, y=False)
+        self.sweep_plot.setYRange(-140, 0)
         self.sweep_plot.showGrid(x=True, y=True)
 
         # Custom Axis Ticks for Sweep (Frequency Mode)
@@ -829,6 +829,10 @@ class DistortionAnalyzerWidget(QWidget):
         if 0 <= idx < len(modes):
             self.module.mode = modes[idx]
 
+        # Reset sweep data and plot when changing from/to sweep modes
+        self.module.sweep_results = []
+        self.sweep_curve.setData([], [])
+
         if idx == 0:  # Real-time
             self.settings_tabs.setCurrentIndex(0)
             self.meters_group.setVisible(True)
@@ -861,6 +865,9 @@ class DistortionAnalyzerWidget(QWidget):
                 self.sweep_plot.setLogMode(x=False, y=False)
                 # Reset ticks to auto for amplitude
                 self.sweep_axis.setTicks(None)
+                # X-axis matches initial measurement range, fixed Y-axis
+                self.sweep_plot.setXRange(-60, 0)
+                self.sweep_plot.setYRange(-140, 0)
 
     def on_out_mode_changed(self, idx):
         # 0: Off, 1: Sine, 2: SMPTE, 3: CCIF
@@ -1011,6 +1018,14 @@ class DistortionAnalyzerWidget(QWidget):
         start = self.sweep_start_spin.value()
         end = self.sweep_end_spin.value()
         steps = self.sweep_steps_spin.value()
+
+        # Update plot range to match measurement settings
+        if sweep_type == "frequency":
+            if start > 0 and end > 0:
+                self.sweep_plot.setXRange(np.log10(start), np.log10(end))
+        else:
+            self.sweep_plot.setXRange(start, end)
+        self.sweep_plot.setYRange(-140, 0)
 
         if sweep_type == "frequency":
             if start <= 0 or end <= 0:
