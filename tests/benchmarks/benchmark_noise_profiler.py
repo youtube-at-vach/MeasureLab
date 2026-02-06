@@ -1,15 +1,15 @@
-
 import sys
+import time
 from unittest.mock import MagicMock
+
+import numpy as np
 
 # Mock sounddevice before importing anything that uses it
 sys.modules["sounddevice"] = MagicMock()
 
-import time
-import numpy as np
-import pytest
-from src.gui.widgets.noise_profiler import NoiseProfiler
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine  # noqa: E402
+from src.gui.widgets.noise_profiler import NoiseProfiler  # noqa: E402
+
 
 def benchmark_noise_profiler_process_data():
     # Mock AudioEngine
@@ -48,6 +48,7 @@ def benchmark_noise_profiler_process_data():
     avg_time = (end_time - start_time) / iterations
 
     print(f"\nAverage process_data time (buffer={profiler.buffer_size}): {avg_time*1000:.2f} ms")
+
 
 if __name__ == "__main__":
     benchmark_noise_profiler_process_data()
