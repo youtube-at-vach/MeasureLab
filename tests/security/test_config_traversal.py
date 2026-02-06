@@ -2,7 +2,6 @@ import os
 import shutil
 import tempfile
 import json
-import pytest
 from src.core.config_manager import ConfigManager
 
 def test_screenshot_path_traversal():
