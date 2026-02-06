@@ -1,7 +1,6 @@
 
 import time
 import numpy as np
-import functools
 from src.core.analysis import AudioCalc, _calculate_ra_raw
 
 # Mock _compute_a_weighting_sq_curve to ensure we are testing what we think we are testing
@@ -49,7 +48,7 @@ def benchmark_a_weighting():
     start = time.time()
     for _ in range(iterations):
         ra = _calculate_ra_raw(freqs_nonlinear)
-        w = (ra * 1.2589) ** 2
+        _ = (ra * 1.2589) ** 2
     end = time.time()
     print(f"Time per call (Raw Calc): {(end - start)/iterations * 1000:.4f} ms")
 
