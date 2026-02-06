@@ -1,4 +1,5 @@
 import argparse
+import traceback
 
 import numpy as np
 import pyqtgraph as pg
@@ -228,8 +229,6 @@ class NoiseAnalysisWorker(QRunnable):
         except Exception as e:
             # We should probably log this or handle it, but for now we just don't emit
             print(f"Error in NoiseAnalysisWorker: {e}")
-            import traceback
-
             traceback.print_exc()
         finally:
             self.signals.finished.emit()
