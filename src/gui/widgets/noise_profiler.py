@@ -207,6 +207,7 @@ class NoiseProfiler(MeasurementModule):
 class NoiseAnalysisSignals(QObject):
     # freqs, avg_mag_cal, results, raw_avg, unit_mode
     result = pyqtSignal(object, object, object, object, str)
+    error = pyqtSignal(str)
     finished = pyqtSignal()
 
 
@@ -226,11 +227,8 @@ class NoiseAnalysisWorker(QRunnable):
                 # output is (freqs, avg_mag_cal, results, raw_avg)
                 self.signals.result.emit(*output, self.unit_mode)
         except Exception as e:
-            # We should probably log this or handle it, but for now we just don't emit
             print(f"Error in NoiseAnalysisWorker: {e}")
-            import traceback
-
-            traceback.print_exc()
+            self.signals.error.emit(str(e))
         finally:
             self.signals.finished.emit()
 
@@ -518,6 +516,7 @@ class NoiseProfilerWidget(QWidget):
 
             worker = NoiseAnalysisWorker(self.module, channel_idx, unit_mode, apply_gain)
             worker.signals.result.connect(self.on_analysis_result)
+            worker.signals.error.connect(self.on_worker_error)
             worker.signals.finished.connect(self.on_worker_finished)
             self.analysis_active = True
             self.thread_pool.start(worker)
@@ -530,6 +529,9 @@ class NoiseProfilerWidget(QWidget):
 
     def on_worker_finished(self):
         self.analysis_active = False
+
+    def on_worker_error(self, error_msg):
+        self.report_label.setText(f"Error in analysis:\n{error_msg}")
 
     def on_analysis_result(self, freqs, avg_mag_cal, results, avg_mag, unit_mode):
         try:
