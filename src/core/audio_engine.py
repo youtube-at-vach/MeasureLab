@@ -241,7 +241,12 @@ class AudioEngine:
                     if indata.shape[1] >= 2:
                         logical_in = indata[:, 1:2]
                     else:
-                        logical_in = np.zeros((frames, 1))
+                        buf = self._logical_in_buffer
+                        if buf is None or buf.shape != (frames, 1):
+                            buf = np.zeros((frames, 1), dtype="float32")
+                            self._logical_in_buffer = buf
+                        logical_in = buf
+                        logical_in.fill(0)
                 else:  # stereo
                     logical_in = indata[:, 0:2]
 
