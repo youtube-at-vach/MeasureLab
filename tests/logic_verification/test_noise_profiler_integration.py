@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 sys.path.insert(0, os.getcwd())
 
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
-from PyQt6.QtWidgets import QApplication
 
 # Set offscreen to avoid display issues
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
