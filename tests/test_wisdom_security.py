@@ -98,5 +98,26 @@ class TestWisdomSecurity(unittest.TestCase):
         # And verify import_wisdom was NOT called (since it was legacy data)
         self.mock_pyfftw.import_wisdom.assert_not_called()
 
+    def test_malicious_pickle_ignored(self):
+        """Test that a malicious pickle payload is rejected and not executed."""
+        # Create a mock malicious class
+        class Malicious:
+            def __reduce__(self):
+                # This would execute if unpickled
+                return (os.system, ('echo malicious code executed',))
+
+        # Create a malicious pickle file
+        with open(self.manager.wisdom_path, "wb") as f:
+            pickle.dump(Malicious(), f)
+
+        # Ensure load_wisdom doesn't crash on this file
+        try:
+            self.manager.load_wisdom()
+        except Exception as e:
+            self.fail(f"load_wisdom crashed on malicious pickle file: {e}")
+
+        # And verify import_wisdom was NOT called
+        self.mock_pyfftw.import_wisdom.assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()
