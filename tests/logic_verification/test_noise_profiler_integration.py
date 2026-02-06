@@ -8,17 +8,11 @@ from unittest.mock import MagicMock
 sys.path.insert(0, os.getcwd())
 
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
-from PyQt6.QtWidgets import QApplication
 
 # Set offscreen to avoid display issues
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
-def test_noise_profiler_widget_update():
-    # Ensure QApplication exists
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
-
+def test_noise_profiler_widget_update(qtbot):
     # Mock AudioEngine
     mock_engine = MagicMock()
     mock_engine.sample_rate = 48000
@@ -35,6 +29,7 @@ def test_noise_profiler_widget_update():
 
     # Initialize Widget
     widget = NoiseProfilerWidget(module)
+    qtbot.addWidget(widget)
 
     # Run update_analysis
     # This calls get_cached_window internally
@@ -44,6 +39,10 @@ def test_noise_profiler_widget_update():
         import traceback
         traceback.print_exc()
         pytest.fail(f"update_analysis raised exception: {e}")
+
+    # Wait for results (async worker)
+    # last_results is a dict, empty means False. So bool(last_results) works.
+    qtbot.waitUntil(lambda: bool(module.last_results), timeout=2000)
 
     # Check if results were computed
     assert module.last_results, "Results should be computed"
