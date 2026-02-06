@@ -199,7 +199,7 @@ class AudioCalc:
             return freq_guess
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
-        
+
         # Pass 1: Coarse Search (Grid Search)
         # Avoid local minima (side lobes) by evaluating on a grid
         # Main lobe width is approx 2 * bin_width. Step size of bin_width/2 guarantees hitting it.
@@ -284,7 +284,7 @@ class AudioCalc:
         # 4th order filter at 20Hz/48kHz has long settling time.
         # 100ms trim is safer for precision measurements if length permits.
         trim_samples = int(sampling_rate * 0.1)  # 100ms
-        
+
         # Ensure we don't trim more than 25% of the data total (12.5% each side)
         max_trim = N // 8
         trim = min(trim_samples, max_trim)

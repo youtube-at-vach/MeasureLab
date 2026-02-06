@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QLabel,
     QPushButton,
-    QSlider,
     QSpinBox,
     QStackedWidget,
     QTableWidget,
@@ -127,7 +126,7 @@ class DistortionAnalyzer(MeasurementModule):
         # Compute average
         avg_state = {}
         history_len = len(self._result_history)
-        
+
         # We need to average scalars and arrays
         # Initialize with zeros
         avg_state["fund_rms"] = 0.0
@@ -221,13 +220,13 @@ class DistortionAnalyzer(MeasurementModule):
             return imd_result
 
         raw_ratio = max(float(imd_result.get("imd", 0.0)) / 100.0, 0.0)
-        
+
         self._imd_history.append(raw_ratio)
         while len(self._imd_history) > count:
             self._imd_history.popleft()
 
         ratio = sum(self._imd_history) / len(self._imd_history)
-        
+
         imd_percent = ratio * 100.0
         imd_db = 20 * np.log10(ratio) if ratio > 1e-12 else -100.0
 
@@ -248,7 +247,7 @@ class DistortionAnalyzer(MeasurementModule):
         # Ensure all shapes match (should be consistent if buffer size doesn't change)
         if not self._spectrum_history:
              return mag_linear
-        
+
         # Simple mean
         # Stack and mean allows for fast computation
         # But deque contains arrays, so:
@@ -1152,12 +1151,12 @@ class DistortionAnalyzerWidget(QWidget):
             # Update Meters
             self.thdn_label.setText(self._format_percent(results["thdn_percent"]))
             self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
-            
+
             if results.get("thd_valid", True):
                 self.thd_label.setText(self._format_percent(results["thd_percent"]))
             else:
                 self.thd_label.setText(tr("LO"))
-                
+
             self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
 
             # ENOB Calculation
