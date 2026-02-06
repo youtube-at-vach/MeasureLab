@@ -2,7 +2,7 @@ import argparse
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QObject, QRunnable, Qt, QThreadPool, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -148,7 +148,7 @@ class NoiseProfiler(MeasurementModule):
 
         self.last_results = results
 
-        return freqs, avg_mag_cal, results
+        return freqs, avg_mag_cal, results, avg_mag
 
     @property
     def name(self) -> str:
@@ -204,6 +204,37 @@ class NoiseProfiler(MeasurementModule):
             self.is_running = False
 
 
+class NoiseAnalysisSignals(QObject):
+    # freqs, avg_mag_cal, results, raw_avg, unit_mode
+    result = pyqtSignal(object, object, object, object, str)
+    finished = pyqtSignal()
+
+
+class NoiseAnalysisWorker(QRunnable):
+    def __init__(self, module: NoiseProfiler, channel_idx, unit_mode, apply_gain):
+        super().__init__()
+        self.module = module
+        self.channel_idx = channel_idx
+        self.unit_mode = unit_mode
+        self.apply_gain = apply_gain
+        self.signals = NoiseAnalysisSignals()
+
+    def run(self):
+        try:
+            output = self.module.process_data(self.channel_idx, self.unit_mode, self.apply_gain)
+            if output is not None:
+                # output is (freqs, avg_mag_cal, results, raw_avg)
+                self.signals.result.emit(*output, self.unit_mode)
+        except Exception as e:
+            # We should probably log this or handle it, but for now we just don't emit
+            print(f"Error in NoiseAnalysisWorker: {e}")
+            import traceback
+
+            traceback.print_exc()
+        finally:
+            self.signals.finished.emit()
+
+
 class NoiseProfilerWidget(QWidget):
     def __init__(self, module: NoiseProfiler):
         super().__init__()
@@ -213,6 +244,9 @@ class NoiseProfilerWidget(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_analysis)
         self.timer.setInterval(100)  # 10Hz update
+
+        self.thread_pool = QThreadPool()
+        self.analysis_active = False
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -473,20 +507,32 @@ class NoiseProfilerWidget(QWidget):
         if not self.module.is_running:
             return
 
+        if self.analysis_active:
+            return
+
         try:
             # Gather parameters
             channel_idx = self.channel_combo.currentIndex()
             unit_mode = self.unit_combo.currentText()
             apply_gain = self.apply_gain_chk.isChecked()
 
-            # Process Data
-            output = self.module.process_data(channel_idx, unit_mode, apply_gain)
-            if output is None:
-                return
+            worker = NoiseAnalysisWorker(self.module, channel_idx, unit_mode, apply_gain)
+            worker.signals.result.connect(self.on_analysis_result)
+            worker.signals.finished.connect(self.on_worker_finished)
+            self.analysis_active = True
+            self.thread_pool.start(worker)
 
-            freqs, avg_mag_cal, results = output
-            avg_mag = self.module._avg_magnitude
+        except Exception as e:
+            print(f"Error in NoiseProfiler update: {e}")
+            import traceback
 
+            traceback.print_exc()
+
+    def on_worker_finished(self):
+        self.analysis_active = False
+
+    def on_analysis_result(self, freqs, avg_mag_cal, results, avg_mag, unit_mode):
+        try:
             self.update_avg_ui()
 
             # 3. Update Plots

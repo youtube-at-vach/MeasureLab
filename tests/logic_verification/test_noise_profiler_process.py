@@ -25,7 +25,7 @@ class TestNoiseProfilerProcess(unittest.TestCase):
         output = self.profiler.process_data(channel_idx=0, unit_mode="dBV", apply_gain_correction=False)
 
         self.assertIsNotNone(output)
-        freqs, mag, results = output
+        freqs, mag, results, raw_avg = output
 
         self.assertIsNotNone(freqs)
         self.assertIsNotNone(mag)
