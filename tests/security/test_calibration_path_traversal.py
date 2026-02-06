@@ -1,8 +1,8 @@
 import os
 import json
 import tempfile
-import pytest
 from src.core.calibration import CalibrationManager
+
 
 def test_load_frequency_map_traversal():
     """
@@ -12,7 +12,6 @@ def test_load_frequency_map_traversal():
     # 1. safe_dir: acting as the allowed config directory.
     # 2. malicious_dir: acting as an outside directory.
     with tempfile.TemporaryDirectory() as safe_dir, tempfile.TemporaryDirectory() as malicious_dir:
-
         # Initialize CalibrationManager in safe_dir
         config_path = os.path.join(safe_dir, "calibration.json")
         cal = CalibrationManager(config_path=config_path)
