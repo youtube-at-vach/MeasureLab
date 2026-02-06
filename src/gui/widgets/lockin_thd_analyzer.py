@@ -504,6 +504,13 @@ class LockInTHDWidget(QWidget):
         prefix = prefixes.get(exponent, "")
         return f"{scaled:.3g} {prefix}{unit}"
 
+    def _format_percent(self, value):
+        if value == 0:
+            return tr("{0} %").format(f"{value:.5f}")
+        order = np.floor(np.log10(abs(value)))
+        prec = max(5, int(abs(order)))
+        return tr("{0} %").format(f"{value:.{prec}f}")
+
     def on_toggle(self, checked):
         if checked:
             self.module.start_analysis()
@@ -587,7 +594,8 @@ class LockInTHDWidget(QWidget):
         self.module.process()
 
         # Update Labels
-        self.lbl_thdn.setText(f"{self.module.thdn_value:.5f} %")
+        # Update Labels
+        self.lbl_thdn.setText(self._format_percent(self.module.thdn_value))
         self.lbl_thdn_db.setText(f"{self.module.thdn_db:.3f} dB")
 
         # Unit Conversion
