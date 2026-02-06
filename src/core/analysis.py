@@ -167,47 +167,48 @@ class AudioCalc:
         fitted_buffer = np.empty(N, dtype=t.dtype)
         residual_buffer = np.empty(N, dtype=t.dtype)
 
-        def get_residual_rms(f):
+        def get_residual_mse(f):
             w = 2 * np.pi * f
 
             # Fill pre-allocated M columns
-            # Using direct slice assignment is faster than column_stack
             np.sin(w * t, out=M[:, 0])
             np.cos(w * t, out=M[:, 1])
 
-            # Use Normal Equations for speed: (M^T M) coeffs = M^T signal
-            # This avoids SVD used by lstsq and is much faster for this 3x3 system.
+            # Use Normal Equations
             try:
                 MT = M.T
                 coeffs = np.linalg.solve(MT @ M, MT @ signal)
             except np.linalg.LinAlgError:
-                # Fallback to lstsq if matrix is singular (unlikely unless w=0)
                 coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
 
-            # Use out parameter to avoid allocation: fitted = M @ coeffs
             np.matmul(M, coeffs, out=fitted_buffer)
-
-            # Use out parameter to avoid allocation: residual = signal - fitted
             np.subtract(signal, fitted_buffer, out=residual_buffer)
-
-            # Square in-place (safe because residual_buffer is our disposable buffer)
             np.square(residual_buffer, out=residual_buffer)
-            return np.sqrt(np.mean(residual_buffer))
+            return np.mean(residual_buffer)
 
         # Search around guess
         # The objective function has local minima spaced by approx sampling_rate/N.
         # We need to constrain the search to the main lobe, roughly +/- sampling_rate/N.
         bin_width = sampling_rate / N
-        search_width = 1.5 * bin_width  # Slightly more than 1 bin width to be safe
+        search_width = max(5.0 * bin_width, 5.0)
 
         if not np.isfinite(freq_guess):
+             # We can't do full FFT here easily without refactoring, so we rely on caller or return
             if return_full:
                 return freq_guess, None, None
             return freq_guess
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
-        res = minimize_scalar(get_residual_rms, bounds=bounds, method="bounded")
+        
+        # Pass 1: Coarse Search (MSE)
+        res = minimize_scalar(get_residual_mse, bounds=bounds, method="bounded", options={'xatol': 1e-7})
         best_freq = res.x
+
+        # Pass 2: Fine Search (Zoom in)
+        zoom_width = 1e-3 
+        bounds_fine = (best_freq - zoom_width, best_freq + zoom_width)
+        res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={'xatol': 1e-14})
+        best_freq = res_fine.x
 
         if return_full:
             # Re-compute coeffs for the best frequency
@@ -215,10 +216,12 @@ class AudioCalc:
             np.sin(w * t, out=M[:, 0])
             np.cos(w * t, out=M[:, 1])
             try:
+                # Use lstsq for final calculation for maximum stability/precision
+                coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+            except np.linalg.LinAlgError:
+                # Fallback to solve if lstsq fails (unlikely)
                 MT = M.T
                 coeffs = np.linalg.solve(MT @ M, MT @ signal)
-            except np.linalg.LinAlgError:
-                coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
             return best_freq, coeffs, M
 
         return best_freq
@@ -256,10 +259,16 @@ class AudioCalc:
 
         # 4. Calculate RMS
         # Trim edges to avoid filter transients from bandwidth limit (especially 20Hz HPF)
-        # 20Hz period is 50ms. We should trim at least that much.
-        # Use 50ms or 1/8th of buffer, whichever is smaller.
-        trim_samples = int(sampling_rate * 0.05)
-        trim = min(trim_samples, N // 8)
+        # 4. Calculate RMS
+        # Trim edges to avoid filter transients from bandwidth limit
+        # sosfiltfilt (zero-phase) spreads transients to both start and end.
+        # 4th order filter at 20Hz/48kHz has long settling time.
+        # 100ms trim is safer for precision measurements if length permits.
+        trim_samples = int(sampling_rate * 0.1)  # 100ms
+        
+        # Ensure we don't trim more than 25% of the data total (12.5% each side)
+        max_trim = N // 8
+        trim = min(trim_samples, max_trim)
 
         if trim > 0 and N > 2 * trim:
             nd_rms = np.sqrt(np.mean(residual[trim:-trim] ** 2))

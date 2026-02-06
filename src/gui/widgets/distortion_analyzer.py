@@ -716,7 +716,7 @@ class DistortionAnalyzerWidget(QWidget):
         # Set Range (log domain) for Frequency Sweep default
         self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
 
-        self.sweep_curve = self.sweep_plot.plot(pen="c", symbol="o")
+        self.sweep_curve = self.sweep_plot.plot(pen="c")
         self.tabs.addTab(self.sweep_plot, tr("Sweep Results"))
 
         right_panel.addWidget(self.tabs)
@@ -993,6 +993,7 @@ class DistortionAnalyzerWidget(QWidget):
 
         x_plot = np.array(x_data)
 
+        self.sweep_curve.setSymbol("o")
         self.sweep_curve.setData(x_plot, y_data)
 
     def on_sweep_finished(self):
