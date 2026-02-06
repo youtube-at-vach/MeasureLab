@@ -62,6 +62,7 @@ class FFTManager:
 
         if self.wisdom_path.exists():
             try:
+                # Use JSON for secure deserialization (avoids pickle vulnerabilities)
                 with open(self.wisdom_path, "r") as f:
                     data = json.load(f)
 
