@@ -35,6 +35,13 @@ def _compute_a_weighting_sq_curve(n_bins, step):
 
 
 @functools.lru_cache(maxsize=32)
+def _get_a_weighting_curve_from_bytes(data_bytes, dtype_str, shape):
+    freqs = np.frombuffer(data_bytes, dtype=dtype_str).reshape(shape)
+    ra = _calculate_ra_raw(freqs)
+    return (ra * 1.2589) ** 2
+
+
+@functools.lru_cache(maxsize=32)
 def _get_time_array(N, sampling_rate):
     """
     Cached time array generation.
@@ -662,7 +669,7 @@ class AudioCalc:
         if len(freqs) > 1 and freqs[0] == 0:
             freq_step = freqs[1]
             # Check end to confirm approximate linearity
-            if abs(freqs[-1] - freq_step * (len(freqs) - 1)) < 1e-4:
+            if abs(freqs[-1] - freq_step * (len(freqs) - 1)) < 1e-5:
                 is_linear_freqs = True
 
         # Pre-calculate squared magnitude and bin width
@@ -878,18 +885,14 @@ class AudioCalc:
         # Gain = 20*log10(Ra(f)) + 2.00
         # Linear Gain = Ra(f) * 10^(2.0/20) = Ra(f) * 1.2589
 
-        # Optimization: Use cached A-weighting curve if freqs is linear starting at 0
-        use_cached = False
-        if len(freqs) > 1 and freqs[0] == 0:
-            step = freqs[1]
-            # Check linearity (approximate) to safely use cache
-            if abs(freqs[-1] - step * (len(freqs) - 1)) < 1e-5:
-                weighting_sq = _compute_a_weighting_sq_curve(len(freqs), step)
-                use_cached = True
-
-        if not use_cached:
-            Ra = _calculate_ra_raw(freqs)
-            weighting_sq = (Ra * 1.2589) ** 2
+        # Optimization: Use cached A-weighting curve based on frequency array content
+        if is_linear_freqs:
+            weighting_sq = _compute_a_weighting_sq_curve(len(freqs), freq_step)
+        else:
+            # Fallback to content-based caching for arbitrary frequency arrays
+            weighting_sq = _get_a_weighting_curve_from_bytes(
+                freqs.tobytes(), str(freqs.dtype), freqs.shape
+            )
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
         i_a_start = get_index(20.0, side="left")

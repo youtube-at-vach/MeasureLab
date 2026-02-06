@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.core.analysis import AudioCalc, _compute_a_weighting_sq_curve
+from src.core.analysis import AudioCalc, _compute_a_weighting_sq_curve, _get_a_weighting_curve_from_bytes
 
 class TestAWeightingCache(unittest.TestCase):
     def test_a_weighting_standard_fft(self):
@@ -73,6 +73,31 @@ class TestAWeightingCache(unittest.TestCase):
         # Second call
         AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
         info2 = _compute_a_weighting_sq_curve.cache_info()
+
+        self.assertEqual(info2.hits, info1.hits + 1)
+
+    def test_cache_hit_fallback(self):
+        # Verify that the fallback cache updates for non-linear freqs
+        _get_a_weighting_curve_from_bytes.cache_clear()
+
+        sampling_rate = 48000.0
+        n_bins = 500
+        # Start from 20Hz (non-linear with respect to 0-start assumption of primary cache)
+        # Note: actually linspace(20, ...) is linear, but doesn't start at 0.
+        # The primary cache requires freqs[0] == 0.
+        freqs = np.linspace(20, sampling_rate/2, n_bins)
+        mag = np.ones_like(freqs)
+
+        # First call
+        AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
+        info1 = _get_a_weighting_curve_from_bytes.cache_info()
+
+        # Should be a miss (or rather, hits should be 0, total calls 1)
+        # Note: lru_cache logic: hits count incremented on subsequent access.
+
+        # Second call
+        AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
+        info2 = _get_a_weighting_curve_from_bytes.cache_info()
 
         self.assertEqual(info2.hits, info1.hits + 1)
 
