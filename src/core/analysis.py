@@ -163,6 +163,7 @@ class AudioCalc:
 
         # Pre-allocate working buffers for fitting to avoid loop allocations
         # These are reused in every iteration of get_residual_rms
+        # Optimization: These buffers prevent N-sized allocations inside the minimization loop
         fitted_buffer = np.empty(N, dtype=t.dtype)
         residual_buffer = np.empty(N, dtype=t.dtype)
 
