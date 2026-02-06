@@ -145,6 +145,11 @@ class AudioCalc:
         M = np.empty((N, 3), dtype=t.dtype)
         M[:, 2] = 1.0  # The 'ones' column is constant
 
+        # Pre-allocate working buffers for fitting to avoid loop allocations
+        # These are reused in every iteration of get_residual_rms
+        fitted_buffer = np.empty(N, dtype=t.dtype)
+        residual_buffer = np.empty(N, dtype=t.dtype)
+
         def get_residual_rms(f):
             w = 2 * np.pi * f
 
@@ -162,9 +167,15 @@ class AudioCalc:
                 # Fallback to lstsq if matrix is singular (unlikely unless w=0)
                 coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
 
-            fitted = M @ coeffs
-            residual = signal - fitted
-            return np.sqrt(np.mean(residual**2))
+            # Use out parameter to avoid allocation: fitted = M @ coeffs
+            np.matmul(M, coeffs, out=fitted_buffer)
+
+            # Use out parameter to avoid allocation: residual = signal - fitted
+            np.subtract(signal, fitted_buffer, out=residual_buffer)
+
+            # Square in-place (safe because residual_buffer is our disposable buffer)
+            np.square(residual_buffer, out=residual_buffer)
+            return np.sqrt(np.mean(residual_buffer))
 
         # Search around guess
         # The objective function has local minima spaced by approx sampling_rate/N.
