@@ -19,6 +19,7 @@ It is ideal for evaluating the low-noise performance of amplifiers and microphon
 ### Starting and Stopping Measurement
 
 * **Start Profiling / Stop Profiling Button**: Starts and stops noise analysis.
+* **Input Channel**: Selects the input channel (Left / Right) to analyze.
 
 ### How to Read the Screen
 

@@ -19,6 +19,7 @@
 ### 測定の開始と停止
 
 * **Start Profiling / Stop Profiling ボタン**: ノイズの解析を開始・停止します。
+* **Input Channel**: 解析を行う入力チャンネル（Left / Right）を選択します。
 
 ### 画面の見方
 
