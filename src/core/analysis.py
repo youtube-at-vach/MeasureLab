@@ -200,13 +200,32 @@ class AudioCalc:
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
         
-        # Pass 1: Coarse Search (MSE)
-        res = minimize_scalar(get_residual_mse, bounds=bounds, method="bounded", options={'xatol': 1e-7})
-        best_freq = res.x
+        # Pass 1: Coarse Search (Grid Search)
+        # Avoid local minima (side lobes) by evaluating on a grid
+        # Main lobe width is approx 2 * bin_width. Step size of bin_width/2 guarantees hitting it.
+        step = max(bin_width / 2.0, 0.1) # at least 0.1Hz step
+        if bounds[1] > bounds[0]:
+            grid = np.arange(bounds[0], bounds[1] + step, step)
+        else:
+            grid = np.array([freq_guess])
+
+        best_mse = float('inf')
+        best_coarse = freq_guess
+
+        # Vectorization would be faster but get_residual_mse uses lstsq which is not easily vectorized over freq
+        for f in grid:
+            # Skip negative frequencies
+            if f <= 0:
+                continue
+            mse = get_residual_mse(f)
+            if mse < best_mse:
+                best_mse = mse
+                best_coarse = f
 
         # Pass 2: Fine Search (Zoom in)
-        zoom_width = 1e-3 
-        bounds_fine = (best_freq - zoom_width, best_freq + zoom_width)
+        # Use bounded minimization around the best grid point
+        zoom_width = step * 1.5 # Overlap slightly
+        bounds_fine = (max(0.1, best_coarse - zoom_width), best_coarse + zoom_width)
         res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={'xatol': 1e-14})
         best_freq = res_fine.x
 
@@ -301,7 +320,14 @@ class AudioCalc:
 
         # Find Fundamental Peak
         # Search near expected frequency
-        search_window = 0.1 * fundamental_freq  # +/- 10%
+        if len(freqs) > 1:
+            bin_width = freqs[1] - freqs[0]
+        else:
+            bin_width = 1.0
+
+        # Search near expected frequency
+        # Ensure window is wide enough for low freq (at least 5 bins)
+        search_window = max(0.15 * fundamental_freq, 5.0 * bin_width)
         idx_min = np.searchsorted(freqs, fundamental_freq - search_window)
         idx_max = np.searchsorted(freqs, fundamental_freq + search_window)
         if idx_max <= idx_min:
