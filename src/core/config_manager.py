@@ -171,10 +171,25 @@ class ConfigManager:
     def _resolve_path(self, path_value: str) -> str:
         if os.path.isabs(path_value):
             return path_value
-        return os.path.join(self.config_dir, path_value)
+
+        full_path = os.path.abspath(os.path.join(self.config_dir, path_value))
+        base_dir = os.path.abspath(self.config_dir)
+
+        try:
+            if os.path.commonpath([base_dir, full_path]) != base_dir:
+                raise ValueError(f"Path traversal detected: {path_value}")
+        except ValueError as e:
+            raise ValueError(f"Path resolution failed for {path_value}: {e}") from e
+
+        return full_path
 
     def _ensure_screenshot_dir(self, config):
-        out_dir = self._resolve_path(config["screenshot"].get("output_dir", "screenshots"))
+        try:
+            out_dir = self._resolve_path(config["screenshot"].get("output_dir", "screenshots"))
+        except ValueError as e:
+            self.logger.warning(f"{e}. Reverting to default.")
+            out_dir = os.path.join(self.config_dir, "screenshots")
+
         try:
             os.makedirs(out_dir, exist_ok=True)
         except Exception as exc:  # PermissionError, OSError
@@ -266,7 +281,10 @@ class ConfigManager:
         out_dir = screenshot.get("output_dir", "screenshots")
         if not out_dir:
             return "screenshots"
-        return self._resolve_path(str(out_dir))
+        try:
+            return self._resolve_path(str(out_dir))
+        except ValueError:
+            return os.path.join(self.config_dir, "screenshots")
 
     def set_screenshot_output_dir(self, output_dir: str):
         """Updates the screenshot output directory."""
