@@ -1052,7 +1052,7 @@
     "Avg Count (KF-Q & Display):": "평균 횟수 (KF-Q & 표시):",
     "Display Uncertainty:": "표시 불확도:",
     "Very Slow 2x (131072 samples)": "Very Slow 2x (131072 samples)",
-    "Ch 1 (L)": "Ch 1 (L)",
-    "Ch 2 (R)": "Ch 2 (R)",
-    "Output Channel:": "Output Channel:"
+    "Ch 1 (L)": "채널 1 (L)",
+    "Ch 2 (R)": "채널 2 (R)",
+    "Output Channel:": "출력 채널:"
 }
