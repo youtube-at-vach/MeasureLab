@@ -15,6 +15,38 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
+from src.core.module_constants import (
+    ALL_MODULE_KEYS,
+    MODULE_1PPS_MONITOR,
+    MODULE_ADVANCED_DISTORTION_METER,
+    MODULE_BNIM_METER,
+    MODULE_BOXCAR_AVERAGER,
+    MODULE_DISTORTION_ANALYZER,
+    MODULE_FREQUENCY_COUNTER,
+    MODULE_GONIOMETER,
+    MODULE_HRTF_PLAYER,
+    MODULE_IMPEDANCE_ANALYZER,
+    MODULE_INVERSE_FILTER,
+    MODULE_LINEARITY_ANALYZER,
+    MODULE_LOCK_IN_AMPLIFIER,
+    MODULE_LOCK_IN_FREQUENCY_COUNTER,
+    MODULE_LOCK_IN_THD_ANALYZER,
+    MODULE_LOOPBACK_FINDER,
+    MODULE_LUFS_METER,
+    MODULE_NETWORK_ANALYZER,
+    MODULE_NOISE_PROFILER,
+    MODULE_OSCILLOSCOPE,
+    MODULE_RAW_TIME_SERIES,
+    MODULE_RECORDER_PLAYER,
+    MODULE_SIGNAL_GENERATOR,
+    MODULE_SOUND_LEVEL_METER,
+    MODULE_SOUND_QUALITY_ANALYZER,
+    MODULE_SPECTROGRAM,
+    MODULE_SPECTRUM_ANALYZER,
+    MODULE_TIMECODE_MONITOR,
+    MODULE_TRANSIENT_ANALYZER,
+    MODULE_ULTRASOUND_MODULATOR,
+)
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
@@ -26,119 +58,119 @@ def _load_module_class(module_key: str):
     These imports remain explicit so PyInstaller can still discover them.
     """
 
-    if module_key == "Signal Generator":
+    if module_key == MODULE_SIGNAL_GENERATOR:
         from src.gui.widgets.signal_generator import SignalGenerator
 
         return SignalGenerator
-    if module_key == "Spectrum Analyzer":
+    if module_key == MODULE_SPECTRUM_ANALYZER:
         from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
 
         return SpectrumAnalyzer
-    if module_key == "Sound Level Meter":
+    if module_key == MODULE_SOUND_LEVEL_METER:
         from src.gui.widgets.sound_level_meter import SoundLevelMeter
 
         return SoundLevelMeter
-    if module_key == "LUFS Meter":
+    if module_key == MODULE_LUFS_METER:
         from src.gui.widgets.lufs_meter import LufsMeter
 
         return LufsMeter
-    if module_key == "Loopback Finder":
+    if module_key == MODULE_LOOPBACK_FINDER:
         from src.gui.widgets.loopback_finder import LoopbackFinder
 
         return LoopbackFinder
-    if module_key == "Distortion Analyzer":
+    if module_key == MODULE_DISTORTION_ANALYZER:
         from src.gui.widgets.distortion_analyzer import DistortionAnalyzer
 
         return DistortionAnalyzer
-    if module_key == "Advanced Distortion Meter":
+    if module_key == MODULE_ADVANCED_DISTORTION_METER:
         from src.gui.widgets.advanced_distortion_meter import AdvancedDistortionMeter
 
         return AdvancedDistortionMeter
-    if module_key == "Network Analyzer":
+    if module_key == MODULE_NETWORK_ANALYZER:
         from src.gui.widgets.network_analyzer import NetworkAnalyzer
 
         return NetworkAnalyzer
-    if module_key == "Oscilloscope":
+    if module_key == MODULE_OSCILLOSCOPE:
         from src.gui.widgets.oscilloscope import Oscilloscope
 
         return Oscilloscope
-    if module_key == "Raw Time Series":
+    if module_key == MODULE_RAW_TIME_SERIES:
         from src.gui.widgets.raw_time_series import RawTimeSeries
 
         return RawTimeSeries
-    if module_key == "Lock-in Amplifier":
+    if module_key == MODULE_LOCK_IN_AMPLIFIER:
         from src.gui.widgets.lock_in_amplifier import LockInAmplifier
 
         return LockInAmplifier
-    if module_key == "Lock-in THD Analyzer":
+    if module_key == MODULE_LOCK_IN_THD_ANALYZER:
         from src.gui.widgets.lockin_thd_analyzer import LockInTHDAnalyzer
 
         return LockInTHDAnalyzer
-    if module_key == "Frequency Counter":
+    if module_key == MODULE_FREQUENCY_COUNTER:
         from src.gui.widgets.frequency_counter import FrequencyCounter
 
         return FrequencyCounter
-    if module_key == "Lock-in Frequency Counter":
+    if module_key == MODULE_LOCK_IN_FREQUENCY_COUNTER:
         from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
 
         return LockInFrequencyCounter
-    if module_key == "Spectrogram":
+    if module_key == MODULE_SPECTROGRAM:
         from src.gui.widgets.spectrogram import Spectrogram
 
         return Spectrogram
-    if module_key == "Boxcar Averager":
+    if module_key == MODULE_BOXCAR_AVERAGER:
         from src.gui.widgets.boxcar_averager import BoxcarAverager
 
         return BoxcarAverager
-    if module_key == "Goniometer":
+    if module_key == MODULE_GONIOMETER:
         from src.gui.widgets.goniometer import Goniometer
 
         return Goniometer
-    if module_key == "Impedance Analyzer":
+    if module_key == MODULE_IMPEDANCE_ANALYZER:
         from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
 
         return ImpedanceAnalyzer
-    if module_key == "Noise Profiler":
+    if module_key == MODULE_NOISE_PROFILER:
         from src.gui.widgets.noise_profiler import NoiseProfiler
 
         return NoiseProfiler
-    if module_key == "Recorder / Player":
+    if module_key == MODULE_RECORDER_PLAYER:
         from src.gui.widgets.recorder_player import RecorderPlayer
 
         return RecorderPlayer
-    if module_key == "Inverse Filter":
+    if module_key == MODULE_INVERSE_FILTER:
         from src.gui.widgets.inverse_filter import InverseFilter
 
         return InverseFilter
-    if module_key == "Transient Analyzer":
+    if module_key == MODULE_TRANSIENT_ANALYZER:
         from src.gui.widgets.transient_analyzer import TransientAnalyzer
 
         return TransientAnalyzer
-    if module_key == "Sound Quality Analyzer":
+    if module_key == MODULE_SOUND_QUALITY_ANALYZER:
         from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzer
 
         return SoundQualityAnalyzer
-    if module_key == "Timecode Monitor & Generator":
+    if module_key == MODULE_TIMECODE_MONITOR:
         from src.gui.widgets.timecode_monitor import TimecodeMonitor
 
         return TimecodeMonitor
-    if module_key == "BNIM Meter":
+    if module_key == MODULE_BNIM_METER:
         from src.gui.widgets.bnim_meter import BNIMMeter
 
         return BNIMMeter
-    if module_key == "HRTF Player":
+    if module_key == MODULE_HRTF_PLAYER:
         from src.gui.widgets.hrtf_player import HRTFPlayer
 
         return HRTFPlayer
-    if module_key == "Ultrasound AM Modulator":
+    if module_key == MODULE_ULTRASOUND_MODULATOR:
         from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
 
         return UltrasoundModulator
-    if module_key == "Linearity Analyzer":
+    if module_key == MODULE_LINEARITY_ANALYZER:
         from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
 
         return LinearityAnalyzer
-    if module_key == "1PPS Monitor":
+    if module_key == MODULE_1PPS_MONITOR:
         from src.gui.widgets.one_pps_monitor import OnePPSMonitor
 
         return OnePPSMonitor
@@ -270,40 +302,12 @@ class MainWindow(QMainWindow):
                 pass
 
         # Module registry (keep keys identical to module.name strings)
-        self._module_keys = [
-            "Signal Generator",
-            "Spectrum Analyzer",
-            "Sound Level Meter",
-            "LUFS Meter",
-            "Loopback Finder",
-            "Distortion Analyzer",
-            "Advanced Distortion Meter",
-            "Network Analyzer",
-            "Oscilloscope",
-            "Raw Time Series",
-            "Lock-in Amplifier",
-            "Lock-in THD Analyzer",
-            "Frequency Counter",
-            "Lock-in Frequency Counter",
-            "Spectrogram",
-            "Boxcar Averager",
-            "Goniometer",
-            "Impedance Analyzer",
-            "Noise Profiler",
-            "Recorder / Player",
-            "Inverse Filter",
-            "Transient Analyzer",
-            "Sound Quality Analyzer",
-            "Timecode Monitor & Generator",
-            "BNIM Meter",
-            "HRTF Player",
-            "Ultrasound AM Modulator",
-            "Linearity Analyzer",
-        ]
+        self._module_keys = list(ALL_MODULE_KEYS)
 
         import sys
+
         if "--experimental" in sys.argv:
-            self._module_keys.append("1PPS Monitor")
+            self._module_keys.append(MODULE_1PPS_MONITOR)
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
 
