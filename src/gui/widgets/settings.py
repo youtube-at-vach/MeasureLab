@@ -26,7 +26,23 @@ from src.core.localization import get_manager, tr
 
 from src.core.fft_manager import fft_manager
 from PyQt6.QtWidgets import QProgressDialog
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject
+
+class SampleRateWorker(QObject):
+    finished = pyqtSignal(list)
+
+    def __init__(self, audio_engine, input_idx, output_idx):
+        super().__init__()
+        self.audio_engine = audio_engine
+        self.input_idx = input_idx
+        self.output_idx = output_idx
+
+    def run(self):
+        rates = self.audio_engine.get_supported_sample_rates(self.input_idx, self.output_idx)
+        if not rates:
+             # Fallback
+             rates = [44100, 48000, 88200, 96000, 192000, 384000, 768000]
+        self.finished.emit(rates)
 
 
 def _design_c_weighting(sr: float):
@@ -819,16 +835,11 @@ class SettingsWidget(QWidget):
 
     def _format_device_label(self, device_index: int, dev: dict) -> str:
         """Build a human-friendly device label for the combo boxes.
-
-        On Windows especially, the same physical device can appear multiple times
-        under different host APIs (ASIO/WASAPI/DirectSound/etc). We surface that
-        info to help users pick the right one.
         """
-        base = f"{device_index}: {dev.get('name', '')}"
-        hostapi_name = dev.get("hostapi_name")
-        if hostapi_name:
-            return f"{base} ({hostapi_name})"
-        return base
+        # Simplify: just show the name. Host API is now selected separately.
+        # We might want to keep the index if names are duplicate, but usually they are distinct per API.
+        # Let's keep a minimal index for clarity on which ID it is.
+        return f"{device_index}: {dev.get('name', '')}"
 
     def _get_device_name_for_config(self, device_index: int, fallback_text: str) -> str:
         """Return the raw PortAudio device name for config persistence."""
@@ -973,6 +984,11 @@ class SettingsWidget(QWidget):
         dev_group = QGroupBox(tr("Audio Devices"))
         dev_layout = QFormLayout()
 
+        # Audio Host API
+        self.hostapi_combo = QComboBox()
+        self.hostapi_combo.currentIndexChanged.connect(self.on_hostapi_changed)
+        dev_layout.addRow(tr("Host API:"), self.hostapi_combo)
+
         self.input_combo = QComboBox()
         dev_layout.addRow(tr("Input Device:"), self.input_combo)
 
@@ -980,14 +996,8 @@ class SettingsWidget(QWidget):
         dev_layout.addRow(tr("Output Device:"), self.output_combo)
 
         self.refresh_btn = QPushButton(tr("Refresh Devices"))
-        self.refresh_btn.clicked.connect(self.refresh_devices)
+        self.refresh_btn.clicked.connect(self.refresh_devices_full) # Full refresh reloads APIs too
         dev_layout.addRow(self.refresh_btn)
-
-        # Active Device Info
-        self.active_in_label = QLabel(tr("None"))
-        self.active_out_label = QLabel(tr("None"))
-        dev_layout.addRow(tr("Active Input:"), self.active_in_label)
-        dev_layout.addRow(tr("Active Output:"), self.active_out_label)
 
         dev_group.setLayout(dev_layout)
         audio_layout.addWidget(dev_group)
@@ -1176,8 +1186,9 @@ class SettingsWidget(QWidget):
         self.setLayout(main_layout)
 
         # Initialize
-        self.refresh_devices()
-        self.refresh_sample_rates()  # Populate SRs based on initial devices
+        self.refresh_devices_full()
+        # self.refresh_sample_rates() is called inside refresh_devices(), so no need to call it here.
+        # Calling it twice caused the thread variable to be overwritten while running -> crash.
         self.update_buffer_duration()
         self.update_in_sens_display()
         self.update_out_gain_display()
@@ -1297,43 +1308,92 @@ class SettingsWidget(QWidget):
         except ValueError:
             self.update_out_gain_display()
 
+    def refresh_devices_full(self):
+        """Full refresh including Host APIs."""
+        self.hostapi_combo.blockSignals(True)
+        self.hostapi_combo.clear()
+        
+        apis = self.audio_engine.get_host_apis()
+        for i, name in apis:
+            self.hostapi_combo.addItem(name, i)
+            
+        # Try to restore Host API from config or current devices
+        current_api_idx = 0
+        
+        # Heuristic: try to find the host API of the currently active input device
+        try:
+            if self.audio_engine.input_device is not None:
+                devs = self.audio_engine.list_devices()
+                if 0 <= self.audio_engine.input_device < len(devs):
+                    active_api = devs[self.audio_engine.input_device].get("hostapi")
+                    if active_api is not None:
+                        idx = self.hostapi_combo.findData(active_api)
+                        if idx >= 0:
+                            current_api_idx = idx
+        except Exception:
+            pass
+            
+        self.hostapi_combo.setCurrentIndex(current_api_idx)
+        self.hostapi_combo.blockSignals(False)
+        
+        self.refresh_devices()
+
     def refresh_devices(self):
+        """Refreshes device lists based on selected Host API."""
+        selected_api = self.hostapi_combo.currentData()
+        if selected_api is None:
+            # If no API selected (empty list?), just clear
+            self.input_combo.clear()
+            self.output_combo.clear()
+            return
+
         devices = self.audio_engine.list_devices()
+        self.input_combo.blockSignals(True)
+        self.output_combo.blockSignals(True)
         self.input_combo.clear()
         self.output_combo.clear()
 
         default_in = self.audio_engine.input_device
         default_out = self.audio_engine.output_device
-
+        
+        # Filter devices by Host API
+        valid_indices = []
         for i, dev in enumerate(devices):
-            name = self._format_device_label(i, dev)
-            if dev["max_input_channels"] > 0:
-                self.input_combo.addItem(name, i)
-            if dev["max_output_channels"] > 0:
-                self.output_combo.addItem(name, i)
+            if dev.get("hostapi") == selected_api:
+                valid_indices.append(i)
+                name = self._format_device_label(i, dev)
+                if dev["max_input_channels"] > 0:
+                    self.input_combo.addItem(name, i)
+                if dev["max_output_channels"] > 0:
+                    self.output_combo.addItem(name, i)
 
         # Restore selection if possible
         if default_in is not None:
             idx = self.input_combo.findData(default_in)
             if idx >= 0:
                 self.input_combo.setCurrentIndex(idx)
-                self.active_in_label.setText(self.input_combo.itemText(idx))
 
         if default_out is not None:
             idx = self.output_combo.findData(default_out)
             if idx >= 0:
                 self.output_combo.setCurrentIndex(idx)
-                self.active_out_label.setText(self.output_combo.itemText(idx))
 
-        # Connect signals after populating to avoid triggering during setup
+        self.input_combo.blockSignals(False)
+        self.output_combo.blockSignals(False)
+        
+        self.refresh_sample_rates()
+
+        # Connect signals
         try:
             self.input_combo.currentIndexChanged.disconnect()
             self.output_combo.currentIndexChanged.disconnect()
         except TypeError:
-            pass  # Not connected yet
-
+            pass
         self.input_combo.currentIndexChanged.connect(self.on_device_changed)
         self.output_combo.currentIndexChanged.connect(self.on_device_changed)
+
+    def on_hostapi_changed(self):
+        self.refresh_devices()
 
     def _get_selected_device_hostapi(self, device_index):
         try:
@@ -1353,8 +1413,7 @@ class SettingsWidget(QWidget):
         if input_idx is not None and output_idx is not None:
             try:
                 self.audio_engine.set_devices(input_idx, output_idx)
-                self.active_in_label.setText(self.input_combo.currentText())
-                self.active_out_label.setText(self.output_combo.currentText())
+                # Removed redundant label updates
 
                 # Save to config
                 in_name = self._get_device_name_for_config(input_idx, self.input_combo.currentText())
@@ -1373,9 +1432,9 @@ class SettingsWidget(QWidget):
                     output_hostapi=out_hostapi,
                 )
 
-                QMessageBox.information(
-                    self, tr("Success"), f"{tr('Devices set to Input:')} {input_idx}, {tr('Output:')} {output_idx}"
-                )
+                # Optional: Show status in status bar instead/Log it? 
+                # Keeping pure "Smart" UI means we trust the combo box.
+                # If success, do nothing special.
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to set devices:')} {e}")
 
@@ -1386,20 +1445,54 @@ class SettingsWidget(QWidget):
         """
         Updates the sample rate combobox with supported rates for current devices.
         Retains the current selection if supported, otherwise selects the nearest supported rate.
+        Runs asynchronously to avoid blocking UI during device probing.
         """
         input_idx = self.input_combo.currentData()
         output_idx = self.output_combo.currentData()
         
-        # If no devices selected yet (e.g. during init), skip
+        # If no devices selected yet, skip
         if input_idx is None and output_idx is None:
             return
 
-        supported_rates = self.audio_engine.get_supported_sample_rates(input_idx, output_idx)
+        # Disable combo or show loading state if desired, but for now just let it update when ready.
+        # Maybe set current text color to gray?
         
-        if not supported_rates:
-            # If detection fails or no rates supported (unlikely), fallback to defaults
-            supported_rates = [44100, 48000, 88200, 96000, 192000, 384000, 768000]
+        # Check if we already have a worker running?
+        # Ideally we should cancel previous, but Python threads are hard to kill.
+        # We'll just let the latest one win or ignore outdated results.
+        
+        # Check if we already have a worker running?
+        # Ideally we should cancel previous, but Python threads are hard to kill.
+        # We'll just let the latest one win or ignore outdated results.
+        
+        # Prevent overwriting a running thread variable which causes "QThread: Destroyed while thread is still running"
+        if hasattr(self, 'sr_worker_thread') and self.sr_worker_thread is not None:
+            try:
+                # Check if C++ object is still valid and running
+                if self.sr_worker_thread.isRunning():
+                    # Move to active list to prevent GC/Crash until it finishes naturally
+                    if not hasattr(self, '_active_threads'):
+                        self._active_threads = []
+                    self._active_threads.append(self.sr_worker_thread)
+                    
+                    # Clean up finished threads from the list
+                    self._active_threads = [t for t in self._active_threads if hasattr(t, "isRunning") and t.isRunning()]
+            except RuntimeError:
+                # "wrapped C/C++ object of type QThread has been deleted"
+                # This means it finished and deleteLater() fired. Safe to overwrite.
+                pass
+        
+        self.sr_worker_thread = QThread()
+        self.sr_worker = SampleRateWorker(self.audio_engine, input_idx, output_idx)
+        self.sr_worker.moveToThread(self.sr_worker_thread)
+        self.sr_worker_thread.started.connect(self.sr_worker.run)
+        self.sr_worker.finished.connect(self.on_sample_rates_ready)
+        self.sr_worker.finished.connect(self.sr_worker_thread.quit)
+        self.sr_worker.finished.connect(self.sr_worker.deleteLater)
+        self.sr_worker_thread.finished.connect(self.sr_worker_thread.deleteLater)
+        self.sr_worker_thread.start()
 
+    def on_sample_rates_ready(self, supported_rates):
         # Convert to strings for combobox
         items = [str(r) for r in supported_rates]
         

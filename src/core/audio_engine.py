@@ -140,6 +140,23 @@ class AudioEngine:
 
         return enriched
 
+    def get_host_apis(self):
+        """Returns a list of available host APIs as (index, name, type) tuples."""
+        try:
+            apis = sd.query_hostapis()
+            # sd.query_hostapis can return a single dict if only one exists, or a list.
+            if isinstance(apis, dict):
+                apis = [apis]
+            
+            result = []
+            for i, api in enumerate(apis):
+                name = api.get("name", f"HostAPI {i}")
+                # We mainly need index and name
+                result.append((i, name))
+            return result
+        except Exception:
+            return []
+
     def set_devices(self, input_device_id, output_device_id):
         """Sets the input and output devices."""
         self.input_device = input_device_id
