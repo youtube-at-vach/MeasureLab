@@ -50,6 +50,17 @@ class OnePPSMonitor(MeasurementModule):
         self._last_trigger_sample_index = -1
         self._first_trigger_sample_index = -1  # To track cumulative drift
         self._triggered = False
+        
+        # Regression State (Online Least Squares)
+        # y = mx + c
+        # x = Pulse Count (Seconds)
+        # y = Sample Index (Samples from start)
+        # m = Sample Rate (Slope)
+        self._reg_n = 0
+        self._reg_sx = 0.0
+        self._reg_sy = 0.0
+        self._reg_sxx = 0.0
+        self._reg_sxy = 0.0
 
         # Data storage for plotting
         # We store PPM values now
@@ -92,6 +103,12 @@ class OnePPSMonitor(MeasurementModule):
             self._first_trigger_sample_index = -1
             self._triggered = False
             
+            self._reg_n = 0
+            self._reg_sx = 0.0
+            self._reg_sy = 0.0
+            self._reg_sxx = 0.0
+            self._reg_sxy = 0.0
+            
             self.instant_ppm_buffer.fill(np.nan)
             self.cumulative_ppm_buffer.fill(np.nan)
             self.time_buffer.fill(np.nan)
@@ -122,6 +139,13 @@ class OnePPSMonitor(MeasurementModule):
             t_samples = self._total_samples_processed
             nominal = self.nominal_rate
             
+            # Local copies for speed
+            reg_n = self._reg_n
+            reg_sx = self._reg_sx
+            reg_sy = self._reg_sy
+            reg_sxx = self._reg_sxx
+            reg_sxy = self._reg_sxy
+            
             for i in range(frames):
                 s = sig[i]
                 abs_pos = t_samples + i
@@ -135,6 +159,14 @@ class OnePPSMonitor(MeasurementModule):
                         if self._first_trigger_sample_index == -1:
                             self._first_trigger_sample_index = abs_pos
                             self._last_trigger_sample_index = abs_pos
+                            
+                            # Initialize regression with first point (0, 0) relative to start
+                            # x=0, y=0
+                            reg_n = 1
+                            reg_sx = 0.0
+                            reg_sy = 0.0
+                            reg_sxx = 0.0
+                            reg_sxy = 0.0
                             # Cannot calculate delta or cumulative on very first pulse
                         else:
                             # Instantaneous calculation
@@ -151,29 +183,40 @@ class OnePPSMonitor(MeasurementModule):
                                 if abs(delta - med) > thresh_val:
                                     accepted = False
                             
-                            self._filter_window.append(delta)
-                            if len(self._filter_window) > self.filter_window_size:
-                                self._filter_window.pop(0)
-
+                            # CRITICAL FIX: Only update history/filter if accepted!
+                            # If rejected, we effectively ignore this pulse happened? 
+                            # Or do we treat it as a glitch?
+                            # If it's a glitch (noise), we should ignore it.
+                            # If it's a very late pulse, we might miss a beat.
+                            # For robust ppm monitoring, ignoring glitches is safer.
+                            
                             if accepted:
+                                self._filter_window.append(delta)
+                                if len(self._filter_window) > self.filter_window_size:
+                                    self._filter_window.pop(0)
+
                                 # 1. Instantaneous PPM
                                 error_samples = delta - nominal
                                 instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
                                 
-                                # 2. Cumulative PPM
-                                # Total samples elapsed since start
-                                total_delta_samples = abs_pos - self._first_trigger_sample_index
+                                # 2. Regression Update
+                                # x = expected seconds index (approx)
+                                # y = actual sample count relative to first pulse
+                                y_val = abs_pos - self._first_trigger_sample_index
+                                x_val = round(y_val / nominal)
                                 
-                                # Estimate number of seconds elapsed (rounded to nearest integer)
-                                # This assumes the clock drift is < 0.5 seconds over the measurement period
-                                # so we can infer the "true" time index.
-                                # For 1PPS, this is safe.
-                                total_seconds = round(total_delta_samples / nominal)
+                                reg_n += 1
+                                reg_sx += x_val
+                                reg_sy += y_val
+                                reg_sxx += x_val * x_val
+                                reg_sxy += x_val * y_val
                                 
-                                if total_seconds > 0:
-                                    cumulative_rate = total_delta_samples / total_seconds
-                                    cumulative_error = cumulative_rate - nominal
-                                    cumulative_ppm = (cumulative_error / nominal) * 1e6
+                                # Slope Calculation
+                                # m = (N*Sxy - Sx*Sy) / (N*Sxx - Sx*Sx)
+                                denom = (reg_n * reg_sxx - reg_sx * reg_sx)
+                                if denom != 0:
+                                    slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
+                                    cumulative_ppm = ((slope - nominal) / nominal) * 1e6
                                 else:
                                     cumulative_ppm = 0.0
 
@@ -186,12 +229,21 @@ class OnePPSMonitor(MeasurementModule):
                                     
                                     self.history_write_pos = (idx + 1) % self.max_history
                                     self.history_filled = min(self.history_filled + 1, self.max_history)
+                                
+                                # Only update last trigger if accepted!
+                                self._last_trigger_sample_index = abs_pos
                         
-                        self._last_trigger_sample_index = abs_pos
                 else:
                     if s <= th_low:
                         self._triggered = False
             
+            # Save back regression state
+            self._reg_n = reg_n
+            self._reg_sx = reg_sx
+            self._reg_sy = reg_sy
+            self._reg_sxx = reg_sxx
+            self._reg_sxy = reg_sxy
+
             self._total_samples_processed += frames
             outdata.fill(0)
 

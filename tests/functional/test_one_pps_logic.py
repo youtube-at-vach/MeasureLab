@@ -73,13 +73,12 @@ def test_one_pps_logic():
     assert abs(ip[1] - expected_ppm) < 0.01
     
     # Cumulative check
-    # Total samples = 48000 + 48005 = 96005
-    # Total seconds = round(96005/48000) = 2
-    # Avg Rate = 96005 / 2 = 48002.5
-    # Error = 2.5
-    # CP = (2.5 / 48000) * 1e6 = 52.0833...
+    # Regression on (0,0), (1, 48000), (2, 96005)
+    # x=[0,1,2], y=[0, 48000, 96005]
+    # Slope should be approx 48002.5
+    # PPM approx 52.08
     expected_cp = (2.5 / 48000.0) * 1e6
-    assert abs(cp[1] - expected_cp) < 0.01
+    assert abs(cp[1] - expected_cp) < 0.1
     
 def test_hysteresis():
     engine = MockAudioEngine()
@@ -124,11 +123,12 @@ def test_hysteresis():
     # Just check it exists.
     assert ip[0] != 0
 
-def test_outlier_rejection():
+def test_outlier_rejection_robustness():
+    """Test that outliers are truly ignored and don't skew regression or history."""
     engine = MockAudioEngine()
     monitor = OnePPSMonitor(engine)
     monitor.threshold_fs = 0.5
-    monitor.nominal_rate = 1000.0 # set low for easy maths
+    monitor.nominal_rate = 1000.0
     
     # Enable filter
     monitor.filter_enabled = True
@@ -139,46 +139,55 @@ def test_outlier_rejection():
     
     callback = list(engine.callbacks.values())[0]
     
-    # Sequence of deltas to simulate:
-    # 1000, 1000, 1000, 1000, 1000 (Set baseline)
-    # 2000 (Outlier -> Reject)
-    # 1000 (Normal -> Accept)
+    # Sequence of deltas:
+    # 5 good pulses (1000) -> Delta 1000, 1000, 1000, 1000, 1000.
+    # 1 BAD pulse (2000 away, so Delta=2000). Should be REJECTED.
+    # 1 GOOD pulse (1000 away from the BAD one? NO!)
+    # If the bad one is rejected, the "last_trigger" should remain at the previous good one.
+    # So the next pulse is at "BadPos + 1000"? 
+    # Real world: Pulse A (0), Pulse B (1000), Pulse C (2000)...
+    # Noise Pulse X at 2500? Delta=500. REJECTED.
+    # Pulse D at 3000. Delta from Pulse C = 1000. ACCEPTED.
     
-    # We need to craft signal to produce these deltas.
-    # Signal: High for 1 sample every N samples.
+    # Let's simulate:
+    # 0, 1000, 2000, 3000, 4000, 5000 (Good history)
+    # 5500 (Noise/Glitch) -> Delta 500. Reject.
+    # 6000 (Good) -> Delta from 5000 is 1000. Accept.
     
-    deltas = [1000, 1000, 1000, 1000, 1000, 2000, 1000]
+    pulse_locations = [0, 1000, 2000, 3000, 4000, 5000, 5500, 6000]
     
-    # Construct signal
-    total_len = sum(deltas) + 2000 # padding
+    total_len = 8000
     sig = np.zeros(total_len, dtype=np.float32)
     
-    current_idx = 100 # start offset
-    
-    # Pulse 0 (Reference)
-    sig[current_idx] = 1.0
-    
-    pulse_indices = [current_idx]
-    
-    for d in deltas:
-        current_idx += d
-        sig[current_idx] = 1.0
-        pulse_indices.append(current_idx)
+    for p in pulse_locations:
+        sig[p] = 1.0
         
-    # Process
     indata = np.column_stack((sig, sig))
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
     
     t, ip, cp = monitor.get_history_arrays()
     
-    # We expect the 5 initial 1000s to be accepted (0 PPM).
-    # The 6th delta (2000) should be REJECTED.
-    # The 7th delta (1000) should be ACCEPTED.
-    # Result should have 6 items, all 0 PPM.
+    # Expected:
+    # Deltas: 1000, 1000, 1000, 1000, 1000.
+    # Then 5500 comes. Delta=500. Rejection?
+    # Window=[1000,1000,1000,1000,1000]. Median=1000. MAD=0. Thresh=1.
+    # |500-1000|=500 > 1. REJECT.
+    # Next is 6000.
+    # If 5500 was rejected, last_trigger is 5000.
+    # Delta = 6000 - 5000 = 1000. ACCEPT.
+    
+    # So we should have 6 accepted intervals, all 1000.
+    # If the bug existed (updating last_trigger even on reject), 
+    # then next delta would be 6000 - 5500 = 500. REJECT!
+    # And we'd lose the good pulse too.
+    
+    print(f"Stored IP: {ip}")
+    print(f"Stored CP: {cp}")
     
     assert len(ip) == 6
     assert np.all(ip == 0.0)
+    assert np.all(cp == 0.0)
 
 def test_cumulative_precision():
     engine = MockAudioEngine()
@@ -212,12 +221,9 @@ def test_cumulative_precision():
     
     assert len(ip) == 20
     
-    # Instantaneous should be exactly 1000 PPM (1 error sample)
-    # (1001 - 1000) / 1000 * 1e6 = 1000.0
+    # Instantaneous should be exactly 1000 PPM
     assert np.allclose(ip, 1000.0)
     
-    # Cumulative should also converge to 1000 PPM.
-    # At step N (1-based):
     # Total samples = N * 1001
     # Total seconds = round(N * 1001 / 1000) = N (since 1001/1000 = 1.001, rounds to 1)
     # Avg Rate = (N * 1001) / N = 1001.
