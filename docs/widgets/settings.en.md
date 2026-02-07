@@ -42,7 +42,10 @@ Selects the input and output devices to be used.
 ### Audio Configuration
 
 * **PipeWire / JACK Mode (Resident)**: Enable when using PipeWire or JACK in a Linux environment. If checked, the audio engine continues to operate even if all widgets are closed, and the routing connection in an external patchbay (such as Graph) is maintained.
-* **Sample Rate**: Selects the sampling frequency (e.g., 48000Hz, 192000Hz). A sampling rate as high as possible is recommended for high-precision measurement.
+* **Sample Rate**: Selects the sampling frequency.
+    * Supported sample rates for the selected device are automatically listed.
+    * If you want to use an unsupported rate or auto-detection fails, you can manually type a value into the combo box (e.g., 768000).
+    * A sampling rate as high as possible (e.g., 192kHz or higher) is recommended for high-precision measurement.
 * **Buffer Optimization**: Selects the optimization level of the buffer size according to the application.
     * **FAST / MINIMUM**: Reduces latency, but sound may be interrupted under high load.
     * **STABLE**: Recommended setting. Emphasizes stability.
