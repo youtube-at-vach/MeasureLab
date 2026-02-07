@@ -499,11 +499,15 @@ class OnePPSMonitorWidget(QWidget):
                 # PPM to Seconds: PPM * 1e-6
                 scale = 1e-6
                 unit_label = "s"
-                fmt = "{:.3e}"
+                
+                def fmt(v):
+                    return pg.siFormat(v, suffix='s', precision=3)
             else:
                 scale = 1.0
                 unit_label = "ppm"
-                fmt = "{:+.3f}"
+                
+                def fmt(v):
+                    return f"{v:+.3f} ppm"
 
             ip_plot = ip * scale
             cp_plot = cp * scale
@@ -523,15 +527,28 @@ class OnePPSMonitorWidget(QWidget):
             min_val = np.min(vals)
             max_val = np.max(vals)
             
-            self.lbl_inst.setText(f"Inst: {fmt.format(last_ip)}")
-            self.lbl_cumul.setText(f"Cumul: {fmt.format(last_cp)}")
+            self.lbl_inst.setText(f"Inst: {fmt(last_ip)}")
+            self.lbl_cumul.setText(f"Cumul: {fmt(last_cp)}")
             
             # Effective Rate
             nominal = self.module.nominal_rate
-            eff_rate = nominal * (1.0 + last_cp / 1e6)
+            eff_rate = nominal * (1.0 + last_cp / 1e6) # last_cp is in PPM internally? 
+            # WAIT. last_cp derived from cp_plot, which is SCALED. 
+            # Logic error in previous step fixed implicitly here if I check carefully.
+            # NO: get_history_arrays returns PPM arrays.
+            # ip_plot = ip * scale.
+            # If scale=1e-6 (Seconds), ip_plot is in seconds.
+            # then last_cp is in seconds.
+            # Formula was: eff_rate = nominal * (1.0 + last_cp / 1e6) assuming last_cp is PPM.
+            # If last_cp is seconds, formula is wrong.
+            # Let's fix this robustness: use internal buffer for calculation, or unscale.
+            
+            # Better: use the raw buffer values `ip`, `cp` which are always PPM.
+            raw_cp = cp[-1]
+            eff_rate = nominal * (1.0 + raw_cp / 1e6)
             self.lbl_rate.setText(f"Rate: {eff_rate:.4f} Hz")
             
-            self.lbl_mean.setText(f"Mean: {fmt.format(mean_val)}")
-            self.lbl_std.setText(f"Std Dev: {fmt.format(std_val)}")
-            self.lbl_min.setText(f"Min: {fmt.format(min_val)}")
-            self.lbl_max.setText(f"Max: {fmt.format(max_val)}")
+            self.lbl_mean.setText(f"Mean: {fmt(mean_val)}")
+            self.lbl_std.setText(f"Std Dev: {fmt(std_val)}")
+            self.lbl_min.setText(f"Min: {fmt(min_val)}")
+            self.lbl_max.setText(f"Max: {fmt(max_val)}")
