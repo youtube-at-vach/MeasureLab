@@ -97,3 +97,67 @@ def test_gate_filter_massive_glitch():
     
     assert len(ip) == 2
     assert np.allclose(ip, 0.0)
+
+def test_mad_death_spiral():
+    engine = MockAudioEngine()
+    monitor = OnePPSMonitor(engine)
+    monitor.threshold_fs = 0.5
+    monitor.nominal_rate = 1000.0
+    
+    # Enable filter
+    monitor.filter_enabled = True
+    monitor.filter_window_size = 5
+    monitor.filter_tolerance_sigma = 3.0
+    
+    monitor.start_analysis()
+    
+    callback = list(engine.callbacks.values())[0]
+    
+    # Sequence:
+    # 5 good pulses (1000 delta) -> Median 1000. MAD extremely small.
+    # 1 "Bad" pulse (1050 delta). Within Gate (500), but MAD rejects (50 > 3*mad).
+    # Next pulse comes 1000 later. Total delta from PREVIOUS VALID (if not updated) = 2050.
+    # 2050 is > Gate (1500 limit). Gate rejects.
+    # System stops tracking.
+    
+    # Pulse locations:
+    # 0, 1000, 2000, 3000, 4000, 5000 (Good history)
+    # 6050 (Bad pulse, delta 1050).
+    # 7050 (Good relative pulse, delta 1000 from 6050).
+    
+    pulse_locations = [0, 1000, 2000, 3000, 4000, 5000, 6050, 7050]
+    
+    total_len = 8000
+    sig = np.zeros(total_len, dtype=np.float32)
+    for p in pulse_locations:
+        sig[p] = 1.0
+        
+    indata = np.column_stack((sig, sig))
+    outdata = np.zeros_like(indata)
+    callback(indata, outdata, len(sig), None, None)
+    
+    t, ip, cp = monitor.get_history_arrays()
+    
+    # With bug:
+    # 6050 rejected by MAD. Last valid = 5000.
+    # 7050 comes. Delta = 7050 - 5000 = 2050.
+    # Gate threshold = 500. Error = 1050. REJECTED by GATE.
+    # So 7050 is lost.
+    # Total accepted = 5 (0->5000).
+    
+    # With fix:
+    # 6050 rejected by MAD. BUT Last valid updated to 6050.
+    # 7050 comes. Delta = 7050 - 6050 = 1000. Accepted.
+    # Total accepted = 6. (The 1050 one is not in history, but next one is).
+    
+    # Wait, if 6050 is rejected by MAD, do we want it in history? No.
+    # So len(ip) should be 5 + 1 (last one) = 6?
+    # Yes. The 6050 pulse is NOT in history.
+    # But the 7050 pulse IS in history (with delta 1000).
+    
+    # Checking IP values
+    # First 5 are 0.0.
+    # Last one is 0.0.
+    
+    assert len(ip) == 6
+    assert np.allclose(ip, 0.0)

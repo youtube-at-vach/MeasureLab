@@ -235,17 +235,13 @@ class OnePPSMonitor(MeasurementModule):
                                     self.history_write_pos = (idx + 1) % self.max_history
                                     self.history_filled = min(self.history_filled + 1, self.max_history)
                                 
-                                # 4. Update Trigger State (Only if accepted!)
-                                # If we reject, we assume this trigger was noise (glitch)
-                                # and we continue waiting for the "real" next pulse relative to the LAST GOOD one.
-                                # However, if it was a valid pulse but just very jittery, rejecting it means we lose time sync?
-                                # For 1PPS, a glitch is usually an extra edge. Ignoring it keeps us locked to the 1s grid.
+                            # 4. Update Trigger State
+                            # FIX for "Death Spiral":
+                            # Even if rejected by MAD, we MUST update the trigger index if it passed the Gate Filter.
+                            # Because if we don't, the NEXT delta will be double, and will be rejected by everything.
+                            # Passing Gate Filter means it IS the pulse for this second, just maybe jittery.
+                            if not is_gross_outlier:
                                 self._last_trigger_sample_index = abs_pos
-                            else:
-                                # Rejected.
-                                # If it was a gross outlier (e.g. double trigger), ignoring it is correct.
-                                # We do NOT update _last_trigger_sample_index.
-                                pass
                         
                 else:
                     if s <= th_low:
