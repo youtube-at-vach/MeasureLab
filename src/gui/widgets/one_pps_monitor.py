@@ -426,6 +426,11 @@ class OnePPSMonitorWidget(QWidget):
         self.combo_unit.currentIndexChanged.connect(self._update_plot)
         plot_vbox.addWidget(self.combo_unit)
         
+        self.chk_show_inst = QCheckBox(tr("Show Instantaneous"))
+        self.chk_show_inst.setChecked(True)
+        self.chk_show_inst.toggled.connect(self.curve_instant.setVisible)
+        plot_vbox.addWidget(self.chk_show_inst)
+        
         vbox_display.addWidget(plot_group)
         
         # Stats
