@@ -1,4 +1,5 @@
 import argparse
+import logging
 import time
 import numpy as np
 import pyqtgraph as pg
@@ -23,6 +24,8 @@ from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+logger = logging.getLogger(__name__)
 
 
 class LinearitySweepWorker(QThread):
@@ -241,7 +244,7 @@ class LinearityAnalyzer(MeasurementModule):
         return "Measure Linearity Error (Gain Accuracy vs Level)."
 
     def run(self, args: argparse.Namespace):
-        print("CLI not implemented")
+        logger.warning("CLI not implemented")
 
     def get_latest_buffer(self) -> np.ndarray:
         """Returns the current buffer contents ordered chronologically."""
@@ -257,12 +260,12 @@ class LinearityAnalyzer(MeasurementModule):
 
     def start_analysis(self):
         if self.is_running:
-            print(f"LinearityAnalyzer: Already running (callback_id={self.callback_id})")
+            logger.warning(f"Already running (callback_id={self.callback_id})")
             return
 
         # Safety: Ensure we don't leak a callback if state is inconsistent
         if self.callback_id is not None:
-            # print(f"LinearityAnalyzer: Found lingering callback {self.callback_id} during start. Unregistering.")
+            logger.warning(f"Found lingering callback {self.callback_id} during start. Unregistering.")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
 
@@ -325,15 +328,15 @@ class LinearityAnalyzer(MeasurementModule):
 
         cid = self.audio_engine.register_callback(callback)
         self.callback_id = cid
-        # print(f"LinearityAnalyzer: Started analysis. Registered callback {cid}")
+        logger.debug(f"Started analysis. Registered callback {cid}")
 
     def stop_analysis(self):
         if self.callback_id:
-            # print(f"LinearityAnalyzer: Stopping analysis. Unregistering callback {self.callback_id}")
+            logger.debug(f"Stopping analysis. Unregistering callback {self.callback_id}")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
         else:
-            # print("LinearityAnalyzer: Stop requested but no callback ID.")
+            logger.debug("Stop requested but no callback ID.")
             pass
 
         self.is_running = False
@@ -854,4 +857,4 @@ class LinearityAnalyzerWidget(QWidget):
     def on_error(self, msg):
         self.on_finished()
         QMessageBox.critical(self, tr("Error"), tr("Sweep failed:\n{0}").format(msg))
-        print(f"Error: {msg}")
+        logger.error(f"Error: {msg}")
