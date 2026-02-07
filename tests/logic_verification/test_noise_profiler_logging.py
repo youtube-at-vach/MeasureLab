@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import MagicMock, patch
-import logging
 
 # Ensure sounddevice is mocked (handled by conftest.py if running via pytest, but double check)
 # We rely on pytest's conftest.py
