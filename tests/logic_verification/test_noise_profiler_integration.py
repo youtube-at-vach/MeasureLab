@@ -44,11 +44,17 @@ def test_noise_profiler_widget_update(qtbot):
     # last_results is a dict, empty means False. So bool(last_results) works.
     qtbot.waitUntil(lambda: bool(module.last_results), timeout=2000)
 
+    # Wait a bit more for the UI to process the result signal and update the plot
+    def plot_has_data():
+        x, y = widget.plot_curve.getData()
+        return x is not None and len(x) > 0
+
+    qtbot.waitUntil(plot_has_data, timeout=1000)
+
     # Check if results were computed
     assert module.last_results, "Results should be computed"
 
     # Check plot data
-    # widget.plot_curve
     x, y = widget.plot_curve.getData()
     assert x is not None
     assert y is not None

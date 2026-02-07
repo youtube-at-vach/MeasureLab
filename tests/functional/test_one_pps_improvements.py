@@ -1,6 +1,14 @@
+import time
 import numpy as np
 
 from src.gui.widgets.one_pps_monitor import OnePPSMonitor
+
+def wait_for_monitor(monitor, timeout=2.0):
+    start = time.time()
+    while not monitor.data_queue.empty() and (time.time() - start) < timeout:
+        time.sleep(0.01)
+    # Give it a tiny bit more for the last item to be processed
+    time.sleep(0.1)
 
 class MockAudioEngine:
     def __init__(self):
@@ -24,6 +32,7 @@ def test_gate_filter_logic():
     monitor.threshold_fs = 0.5
     monitor.nominal_rate = 1000.0
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -56,6 +65,7 @@ def test_gate_filter_logic():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
 
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     # Should have 2 intervals:
@@ -70,6 +80,7 @@ def test_gate_filter_massive_glitch():
     monitor = OnePPSMonitor(engine)
     monitor.nominal_rate = 48000.0 
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -91,6 +102,7 @@ def test_gate_filter_massive_glitch():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
 
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     assert len(ip) == 2
@@ -108,6 +120,7 @@ def test_mad_death_spiral():
     monitor.filter_tolerance_sigma = 3.0
 
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -133,7 +146,7 @@ def test_mad_death_spiral():
     indata = np.column_stack((sig, sig))
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
-
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     # With bug:

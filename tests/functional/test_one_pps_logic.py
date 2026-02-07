@@ -1,7 +1,14 @@
 
+import time
 import numpy as np
-
 from src.gui.widgets.one_pps_monitor import OnePPSMonitor
+
+def wait_for_monitor(monitor, timeout=2.0):
+    start = time.time()
+    while not monitor.data_queue.empty() and (time.time() - start) < timeout:
+        time.sleep(0.01)
+    # Give it a tiny bit more for the last item to be processed
+    time.sleep(0.1)
 
 class MockAudioEngine:
     def __init__(self):
@@ -27,6 +34,7 @@ def test_one_pps_logic():
     monitor.threshold_fs = 0.5
     monitor.hysteresis_fs = 0.05
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -57,6 +65,7 @@ def test_one_pps_logic():
         callback(indata, outdata, len(chunk), None, None)
 
     # Verify results
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     print(f"Detected IP: {ip}")
@@ -84,6 +93,7 @@ def test_hysteresis():
     monitor.threshold_fs = 0.5
     monitor.hysteresis_fs = 0.1 # High: 0.5, Low: 0.4
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -118,6 +128,7 @@ def test_hysteresis():
     # This gives 1 interval.
     # Pulse 1 at 3. Pulse 2 at 10. Delta = 7.
 
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
     assert len(ip) == 1
 
@@ -138,6 +149,7 @@ def test_outlier_rejection_robustness():
     monitor.filter_tolerance_sigma = 3.0
 
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -152,11 +164,11 @@ def test_outlier_rejection_robustness():
     # Pulse D at 3000. Delta from Pulse C = 1000. ACCEPTED.
 
     # Let's simulate:
-    # 0, 1000, 2000, 3000, 4000, 5000 (Good history)
-    # 5500 (Noise/Glitch) -> Delta 500. Reject.
+    # 5000 (Good history)
+    # 5400 (Noise/Glitch) -> Delta 400. Reject.
     # 6000 (Good) -> Delta from 5000 is 1000. Accept.
 
-    pulse_locations = [0, 1000, 2000, 3000, 4000, 5000, 5500, 6000]
+    pulse_locations = [0, 1000, 2000, 3000, 4000, 5000, 5400, 6000]
 
     total_len = 8000
     sig = np.zeros(total_len, dtype=np.float32)
@@ -168,15 +180,16 @@ def test_outlier_rejection_robustness():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
 
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     # Expected:
     # Deltas: 1000, 1000, 1000, 1000, 1000.
-    # Then 5500 comes. Delta=500. Rejection?
+    # Then 5400 comes. Delta=400. Rejection?
     # Window=[1000,1000,1000,1000,1000]. Median=1000. MAD=0. Thresh=1.
-    # |500-1000|=500 > 1. REJECT.
+    # |400-1000|=600 > 500 (Gate). Gross Outlier!
     # Next is 6000.
-    # If 5500 was rejected, last_trigger is 5000.
+    # Since 5400 was a gross outlier, last_trigger remains at 5000.
     # Delta = 6000 - 5000 = 1000. ACCEPT.
 
     # So we should have 6 accepted intervals, all 1000.
@@ -196,6 +209,7 @@ def test_cumulative_precision():
     monitor = OnePPSMonitor(engine)
     monitor.nominal_rate = 1000.0
     monitor.start_analysis()
+    monitor.warmup_count = 0
 
     callback = list(engine.callbacks.values())[0]
 
@@ -219,6 +233,7 @@ def test_cumulative_precision():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
 
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     assert len(ip) == 20
@@ -239,6 +254,7 @@ def test_cumulative_precision():
 
     monitor.stop_analysis()
     monitor.start_analysis() # Reset
+    monitor.warmup_count = 0
     callback = list(engine.callbacks.values())[0] # The mock engine might reuse ID or we just get the one active one
 
     deltas_jitter = [1002, 998] * 10
@@ -254,6 +270,7 @@ def test_cumulative_precision():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
 
+    wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
     # Instantaneous will bounce:
