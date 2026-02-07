@@ -40,7 +40,10 @@ This tool measures the following values:
 Continues to measure the performance at the current moment.
 
 * **Use Case**: Suitable for adjusting equipment or seeing changes in distortion due to volume position.
-* **Meters**: Numerical values are displayed prominently on the left.
+* **Meters**: Numerical values are displayed prominently on the left. Pressing the **Show Detailed** button displays the following additional information:
+    * **Input level**: Level of the input signal (dBFS).
+    * **Window**: The window function being used (usually Blackman-Harris).
+    * **ENOB (Effective Number of Bits)**: Effective bit depth calculated from SINAD (calculated only when the input level is sufficiently high).
 * **Spectrum**: In the graph tab, you can visually inspect distortion components (peaks at 2x and 3x the fundamental frequency).
 * **Harmonics**: You can check the breakdown of distortion components (whether there is more 2nd-order or 3rd-order distortion) with a bar graph.
 
@@ -69,11 +72,18 @@ Settings for the test signal used for measurement.
     * **Sine Wave**: A basic sine wave. Used for THD measurement.
     * **SMPTE / CCIF**: Special pair signals for IMD measurement.
 * **Frequency**: Frequency of the sine wave. Standard is `1000 Hz`.
-* **Amplitude**: Strength of the signal.
+* **Amplitude**: Strength of the signal. The following units can be selected:
+    * **dBFS**: Relative to digital full scale.
+    * **dBV**: Relative to 1Vrms.
+    * **dBu**: Relative to 0.775Vrms.
+    * **Vrms**: Voltage RMS.
     * When measuring an amplifier, do not set it to maximum volume immediately; raise it gradually from a low value.
 * **Signal Generator Mode**: Select `Off (External Source)` when using an external CD player or similar as the sound source.
 
 ### Settings
+
+* **Input Ch / Output Ch**
+    * Selects the audio channel (Left or Right) to use for measurement.
 
 * **Averaging**
     * Sets how many measurements to average to stabilize the values.
