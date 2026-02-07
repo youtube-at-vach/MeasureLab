@@ -9,17 +9,33 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 ### 🆕 New Proposals
 
+* **Quantization / Bit Depth Analyzer:**
+    * **Concept:** Analyzes the float stream to estimate the effective bit depth and quantization noise floor.
+    * **Features:** Histogram of sample values, LSB activity meter, "Stuck Bit" detection, and ENOB (Effective Number of Bits) calculation.
+    * **Why:** To verify digital signal path integrity (e.g., checking if a 24-bit interface is being truncated to 16-bit by the OS mixer).
+
+* **Offline Null Comparator:**
+    * **Concept:** A file-based tool to compare two audio recordings (Reference vs. DUT).
+    * **Features:** Automatic sub-sample time alignment, gain matching, and inversion to produce a "Difference" (Null) file.
+    * **Why:** The gold standard for verifying "transparency" of codecs, cables, or analog chains.
+
 * **Multimeter (AC Voltmeter):**
     * **Concept:** A dedicated widget acting as a Digital Multimeter (DMM) for audio.
     * **Features:** Large, high-visibility readout of Vrms, Vpeak, Crest Factor, and Frequency.
     * **Why:** Existing widgets (Scope/SpecAn) are too complex for simple level checks. A simple "Meter" mode is essential for gain staging and quick diagnostics.
 
-* **Network Analyzer Extensions:**
-    * **Coherence Function:** Add a Coherence plot (0.0 - 1.0) to the Transfer Function mode.
+### 🛠️ Extensions to Existing Widgets
+
+* **Network Analyzer: Impulse Response View:**
+    * **Extension:** Add a time-domain "Impulse Response" plot tab to the Network Analyzer.
+    * **Why:** The analyzer already calculates IR internally for the frequency response. Visualizing the IR allows diagnosis of time-domain issues (polarity, pre-ringing, reflections) without needing a separate tool.
+
+* **Network Analyzer: Coherence Function:**
+    * **Extension:** Add a Coherence plot (0.0 - 1.0) to the Transfer Function mode.
     * **Why:** To evaluate measurement confidence and linearity/SNR, especially in noisy environments or when measuring non-linear devices.
 
-* **Spectrum Analyzer Extensions:**
-    * **Cepstrum Analysis:** Add "Cepstrum" (Power Cepstrum) mode (Quefrency domain).
+* **Spectrum Analyzer: Cepstrum Analysis:**
+    * **Extension:** Add "Cepstrum" (Power Cepstrum) mode (Quefrency domain).
     * **Why:** Useful for analyzing harmonic structures, pitch detection, and separating source/filter characteristics (echo/reflection analysis).
 
 ---
@@ -37,11 +53,9 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 *Features related to physical acoustics are preserved here for reference but are **not currently planned**.*
 
-* **DC Stability & Drift Logger:** Long-term logging of DC Offset to verify amplifier thermal stability.
-    * **Status:** Impossible (AC Coupled)
-    * **Reason:** Sound devices are AC coupled, making DC measurement impossible without external circuitry. This is not currently planned.
-* **Wow & Flutter Meter:** Measure frequency fluctuation of analog playback devices (IEC 60386). Deferred as current focus is digital/signal.
-* **Room Acoustics (RT60):** Schroeder integration for decay times. (`TransientAnalyzer` uses Wavelets).
-* **Loudspeaker Parameters (T/S):** Derive Thiele/Small parameters from impedance sweeps. (`ImpedanceAnalyzer` measures Z only).
-* **EQ Designer:** Auto-calculate PEQ to match target curves.
-* **Polarity Tester:** Pulse-based polarity detection.
+* **DC Stability & Drift Logger:** Impossible (AC Coupled hardware).
+* **Wow & Flutter Meter:** Deferred (Analog focus).
+* **Room Acoustics (RT60):** Deferred (Acoustic focus).
+* **Loudspeaker Parameters (T/S):** Deferred (Electromechanical focus).
+* **EQ Designer:** Auto-calculate PEQ. Deferred.
+* **Polarity Tester:** Pulse-based detection. Deferred.
