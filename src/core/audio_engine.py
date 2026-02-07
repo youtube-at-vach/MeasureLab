@@ -57,6 +57,31 @@ class AudioEngine:
         self.last_callback_error = None
         self.callback_error_count = 0
 
+    def get_supported_sample_rates(self, input_device_id, output_device_id):
+        """
+        Returns a list of supported sample rates for the specified input and output devices.
+        Checks standard rates: 44100, 48000, 88200, 96000, 192000, 384000, 768000.
+        """
+        standard_rates = [44100, 48000, 88200, 96000, 192000, 384000, 768000]
+        supported_rates = []
+
+        for rate in standard_rates:
+            try:
+                # Check input support if an input device is selected
+                if input_device_id is not None:
+                    sd.check_input_settings(device=input_device_id, samplerate=rate)
+                
+                # Check output support if an output device is selected
+                if output_device_id is not None:
+                    sd.check_output_settings(device=output_device_id, samplerate=rate)
+                
+                supported_rates.append(rate)
+            except Exception:
+                # Rate not supported by one or both devices
+                pass
+        
+        return supported_rates
+
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
         enabled = bool(enabled)

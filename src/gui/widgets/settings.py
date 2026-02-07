@@ -1004,7 +1004,10 @@ class SettingsWidget(QWidget):
 
         # Sample Rate
         self.sr_combo = QComboBox()
-        self.sr_combo.addItems(["44100", "48000", "88200", "96000", "192000"])
+        self.sr_combo.setEditable(True)
+        self.sr_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        # Default fallback list includes higher rates now
+        self.sr_combo.addItems(["44100", "48000", "88200", "96000", "192000", "384000", "768000"])
         self.sr_combo.setCurrentText(str(self.audio_engine.sample_rate))
         self.sr_combo.currentTextChanged.connect(self.on_sr_changed)
         conf_layout.addRow(tr("Sample Rate:"), self.sr_combo)
@@ -1174,6 +1177,7 @@ class SettingsWidget(QWidget):
 
         # Initialize
         self.refresh_devices()
+        self.refresh_sample_rates()  # Populate SRs based on initial devices
         self.update_buffer_duration()
         self.update_in_sens_display()
         self.update_out_gain_display()
@@ -1374,6 +1378,55 @@ class SettingsWidget(QWidget):
                 )
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to set devices:')} {e}")
+
+        # Refresh supported sample rates for the new devices
+        self.refresh_sample_rates()
+
+    def refresh_sample_rates(self):
+        """
+        Updates the sample rate combobox with supported rates for current devices.
+        Retains the current selection if supported, otherwise selects the nearest supported rate.
+        """
+        input_idx = self.input_combo.currentData()
+        output_idx = self.output_combo.currentData()
+        
+        # If no devices selected yet (e.g. during init), skip
+        if input_idx is None and output_idx is None:
+            return
+
+        supported_rates = self.audio_engine.get_supported_sample_rates(input_idx, output_idx)
+        
+        if not supported_rates:
+            # If detection fails or no rates supported (unlikely), fallback to defaults
+            supported_rates = [44100, 48000, 88200, 96000, 192000, 384000, 768000]
+
+        # Convert to strings for combobox
+        items = [str(r) for r in supported_rates]
+        
+        current_rate_text = self.sr_combo.currentText()
+        
+        self.sr_combo.blockSignals(True)
+        self.sr_combo.clear()
+        self.sr_combo.addItems(items)
+        
+        # Try to restore current rate
+        if current_rate_text in items:
+            self.sr_combo.setCurrentText(current_rate_text)
+        elif items:
+            # Fallback to defaults: try 48000, then 44100, then first available
+            if "48000" in items:
+                self.sr_combo.setCurrentText("48000")
+            elif "44100" in items:
+                self.sr_combo.setCurrentText("44100")
+            else:
+                self.sr_combo.setCurrentIndex(0)
+                
+            # If we changed rate, apply it
+            new_rate = self.sr_combo.currentText()
+            if new_rate != current_rate_text:
+                self.on_sr_changed(new_rate)
+                
+        self.sr_combo.blockSignals(False)
 
     def update_buffer_duration(self):
         try:
