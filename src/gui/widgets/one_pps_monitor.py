@@ -53,7 +53,10 @@ class OnePPSMonitor(MeasurementModule):
         self._total_samples_processed = 0
         self._last_trigger_sample_index = -1
         self._first_trigger_sample_index = -1  # To track cumulative drift
+        self._first_trigger_sample_index = -1  # To track cumulative drift
         self._triggered = False
+        self._pulses_detected = 0
+        self.warmup_count = 7
         
         # Regression State (Online Least Squares)
         # y = mx + c
@@ -105,7 +108,10 @@ class OnePPSMonitor(MeasurementModule):
         self._total_samples_processed = 0
         self._last_trigger_sample_index = -1
         self._first_trigger_sample_index = -1
+        self._last_trigger_sample_index = -1
+        self._first_trigger_sample_index = -1
         self._triggered = False
+        self._pulses_detected = 0
         
         self._reg_n = 0
         self._reg_sx = 0.0
@@ -145,6 +151,11 @@ class OnePPSMonitor(MeasurementModule):
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
+
+    def get_pulse_count(self):
+        with self._lock:
+            return self._pulses_detected
+
 
     def stop_analysis(self):
         if not self.is_running:
@@ -213,6 +224,10 @@ class OnePPSMonitor(MeasurementModule):
                                 reg_sy = 0.0
                                 reg_sxx = 0.0
                                 reg_sxy = 0.0
+                                
+                                # Count first pulse (even if not used for interval yet)
+                                self._pulses_detected += 1
+
                             else:
                                 # Instantaneous calculation
                                 delta = abs_pos - self._last_trigger_sample_index
@@ -241,6 +256,7 @@ class OnePPSMonitor(MeasurementModule):
                                         accepted = False
                                 
                                 if accepted:
+                                    self._pulses_detected += 1
                                     self._filter_window.append(delta)
                                     if len(self._filter_window) > self.filter_window_size:
                                         self._filter_window.pop(0)
@@ -277,14 +293,16 @@ class OnePPSMonitor(MeasurementModule):
                                         cumulative_ppm = 0.0
     
                                     # Store result
-                                    with self._lock:
-                                        idx = self.history_write_pos
-                                        self.instant_ppm_buffer[idx] = instant_ppm
-                                        self.cumulative_ppm_buffer[idx] = cumulative_ppm
-                                        self.time_buffer[idx] = time.time() - self._start_time
-                                        
-                                        self.history_write_pos = (idx + 1) % self.max_history
-                                        self.history_filled = min(self.history_filled + 1, self.max_history)
+                                    if self._pulses_detected > self.warmup_count:
+                                        with self._lock:
+                                            idx = self.history_write_pos
+                                            self.instant_ppm_buffer[idx] = instant_ppm
+                                            self.cumulative_ppm_buffer[idx] = cumulative_ppm
+                                            self.time_buffer[idx] = time.time() - self._start_time
+                                            
+                                            self.history_write_pos = (idx + 1) % self.max_history
+                                            self.history_filled = min(self.history_filled + 1, self.max_history)
+
                                     
                                 # 4. Update Trigger State
                                 # FIX for "Death Spiral":
@@ -477,19 +495,25 @@ class OnePPSMonitorWidget(QWidget):
         
         vbox_display.addWidget(plot_group)
         
+        
         # Stats
+        self.lbl_count = QLabel("Count: -")
         self.lbl_inst = QLabel("Inst: -")
         self.lbl_cumul = QLabel("Cumul: -")
         self.lbl_rate = QLabel("Rate: -")
+
         self.lbl_mean = QLabel("Mean: -")
         self.lbl_std = QLabel("Std Dev: -")
         self.lbl_min = QLabel("Min: -")
         self.lbl_max = QLabel("Max: -")
         
+        
         stats_group = QGroupBox(tr("Statistics"))
         stats_vbox = QVBoxLayout(stats_group)
+        stats_vbox.addWidget(self.lbl_count)
         stats_vbox.addWidget(self.lbl_inst)
         stats_vbox.addWidget(self.lbl_cumul)
+
         stats_vbox.addWidget(self.lbl_rate)
         stats_vbox.addWidget(self.lbl_mean)
         stats_vbox.addWidget(self.lbl_std)
@@ -541,7 +565,11 @@ class OnePPSMonitorWidget(QWidget):
 
     def _update_plot(self):
         t, ip, cp = self.module.get_history_arrays()
+        count = self.module.get_pulse_count()
+        self.lbl_count.setText(f"{tr('Count')}: {count}")
+
         if len(t) > 0:
+
             # Unit Conversion
             unit = self.combo_unit.currentText()
             if unit == "Seconds":
@@ -601,3 +629,9 @@ class OnePPSMonitorWidget(QWidget):
             self.lbl_std.setText(f"Std Dev: {fmt(std_val)}")
             self.lbl_min.setText(f"Min: {fmt(min_val)}")
             self.lbl_max.setText(f"Max: {fmt(max_val)}")
+        else:
+            if self.module.is_running:
+                 self.lbl_inst.setText(tr(f"Warming Up... ({count}/{self.module.warmup_count})"))
+                 self.lbl_cumul.setText("-")
+                 self.lbl_rate.setText("-")
+
