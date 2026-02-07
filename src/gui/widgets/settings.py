@@ -1311,14 +1311,14 @@ class SettingsWidget(QWidget):
         """Full refresh including Host APIs."""
         self.hostapi_combo.blockSignals(True)
         self.hostapi_combo.clear()
-        
+
         apis = self.audio_engine.get_host_apis()
         for i, name in apis:
             self.hostapi_combo.addItem(name, i)
-            
+
         # Try to restore Host API from config or current devices
         current_api_idx = 0
-        
+
         # Heuristic: try to find the host API of the currently active input device
         try:
             if self.audio_engine.input_device is not None:
@@ -1331,10 +1331,10 @@ class SettingsWidget(QWidget):
                             current_api_idx = idx
         except Exception:
             pass
-            
+
         self.hostapi_combo.setCurrentIndex(current_api_idx)
         self.hostapi_combo.blockSignals(False)
-        
+
         self.refresh_devices()
 
     def refresh_devices(self):
@@ -1354,7 +1354,7 @@ class SettingsWidget(QWidget):
 
         default_in = self.audio_engine.input_device
         default_out = self.audio_engine.output_device
-        
+
         # Filter devices by Host API
         valid_indices = []
         for i, dev in enumerate(devices):
@@ -1379,7 +1379,7 @@ class SettingsWidget(QWidget):
 
         self.input_combo.blockSignals(False)
         self.output_combo.blockSignals(False)
-        
+
         self.refresh_sample_rates()
 
         # Connect signals
@@ -1448,22 +1448,22 @@ class SettingsWidget(QWidget):
         """
         input_idx = self.input_combo.currentData()
         output_idx = self.output_combo.currentData()
-        
+
         # If no devices selected yet, skip
         if input_idx is None and output_idx is None:
             return
 
         # Disable combo or show loading state if desired, but for now just let it update when ready.
         # Maybe set current text color to gray?
-        
+
         # Check if we already have a worker running?
         # Ideally we should cancel previous, but Python threads are hard to kill.
         # We'll just let the latest one win or ignore outdated results.
-        
+
         # Check if we already have a worker running?
         # Ideally we should cancel previous, but Python threads are hard to kill.
         # We'll just let the latest one win or ignore outdated results.
-        
+
         # Prevent overwriting a running thread variable which causes "QThread: Destroyed while thread is still running"
         if hasattr(self, 'sr_worker_thread') and self.sr_worker_thread is not None:
             try:
@@ -1473,14 +1473,14 @@ class SettingsWidget(QWidget):
                     if not hasattr(self, '_active_threads'):
                         self._active_threads = []
                     self._active_threads.append(self.sr_worker_thread)
-                    
+
                     # Clean up finished threads from the list
                     self._active_threads = [t for t in self._active_threads if hasattr(t, "isRunning") and t.isRunning()]
             except RuntimeError:
                 # "wrapped C/C++ object of type QThread has been deleted"
                 # This means it finished and deleteLater() fired. Safe to overwrite.
                 pass
-        
+
         self.sr_worker_thread = QThread()
         self.sr_worker = SampleRateWorker(self.audio_engine, input_idx, output_idx)
         self.sr_worker.moveToThread(self.sr_worker_thread)
@@ -1494,13 +1494,13 @@ class SettingsWidget(QWidget):
     def on_sample_rates_ready(self, supported_rates):
         # Convert to strings for combobox
         items = [str(r) for r in supported_rates]
-        
+
         current_rate_text = self.sr_combo.currentText()
-        
+
         self.sr_combo.blockSignals(True)
         self.sr_combo.clear()
         self.sr_combo.addItems(items)
-        
+
         # Try to restore current rate
         if current_rate_text in items:
             self.sr_combo.setCurrentText(current_rate_text)
@@ -1512,12 +1512,12 @@ class SettingsWidget(QWidget):
                 self.sr_combo.setCurrentText("44100")
             else:
                 self.sr_combo.setCurrentIndex(0)
-                
+
             # If we changed rate, apply it
             new_rate = self.sr_combo.currentText()
             if new_rate != current_rate_text:
                 self.on_sr_changed(new_rate)
-                
+
         self.sr_combo.blockSignals(False)
 
     def update_buffer_duration(self):

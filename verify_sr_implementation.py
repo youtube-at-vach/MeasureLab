@@ -1,5 +1,4 @@
 import sys
-import threading
 from unittest.mock import MagicMock
 
 # Mock unavailable modules for headless testing
@@ -8,23 +7,22 @@ sys.modules['PyQt6.QtCore'] = MagicMock()
 sys.modules['src.core.calibration'] = MagicMock()
 
 # Now import the class to test
-from src.core.audio_engine import AudioEngine
-import sounddevice as sd
+from src.core.audio_engine import AudioEngine  # noqa: E402
 
 def test_audio_engine_sr_detection():
     print("Initializing AudioEngine...")
     engine = AudioEngine()
-    
+
     # Get valid devices (using the ones we verified earlier)
     # 18: default, 19: system (JACK/PipeWire)
-    
+
     input_dev = 18
     output_dev = 18
-    
+
     print(f"Testing with input={input_dev}, output={output_dev}")
     rates = engine.get_supported_sample_rates(input_dev, output_dev)
     print(f"Supported rates for device pair {input_dev},{output_dev}: {rates}")
-    
+
     if 48000 in rates:
         print("SUCCESS: 48000 is supported as expected.")
     else:
@@ -35,7 +33,7 @@ def test_audio_engine_sr_detection():
     print(f"\nTesting with input={jack_dev}, output={jack_dev}")
     rates_jack = engine.get_supported_sample_rates(jack_dev, jack_dev)
     print(f"Supported rates for device pair {jack_dev},{jack_dev}: {rates_jack}")
-    
+
     if 192000 in rates_jack:
         print("SUCCESS: 192000 is supported on JACK/PipeWire as expected.")
     else:

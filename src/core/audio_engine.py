@@ -70,16 +70,16 @@ class AudioEngine:
                 # Check input support if an input device is selected
                 if input_device_id is not None:
                     sd.check_input_settings(device=input_device_id, samplerate=rate)
-                
+
                 # Check output support if an output device is selected
                 if output_device_id is not None:
                     sd.check_output_settings(device=output_device_id, samplerate=rate)
-                
+
                 supported_rates.append(rate)
             except Exception:
                 # Rate not supported by one or both devices
                 pass
-        
+
         return supported_rates
 
     def set_pipewire_jack_resident(self, enabled: bool):
@@ -147,7 +147,7 @@ class AudioEngine:
             # sd.query_hostapis can return a single dict if only one exists, or a list.
             if isinstance(apis, dict):
                 apis = [apis]
-            
+
             result = []
             for i, api in enumerate(apis):
                 name = api.get("name", f"HostAPI {i}")
