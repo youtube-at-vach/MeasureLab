@@ -1,6 +1,7 @@
 import argparse
 import threading
 import time
+import queue
 
 import numpy as np
 import pyqtgraph as pg
@@ -31,6 +32,9 @@ class OnePPSMonitor(MeasurementModule):
         self.audio_engine = audio_engine
         self.is_running = False
         self._lock = threading.Lock()
+        
+        self.data_queue = queue.Queue()
+        self.process_thread = None
 
         # User settings
         self.threshold_fs = 0.5
@@ -97,164 +101,47 @@ class OnePPSMonitor(MeasurementModule):
         self.is_running = True
         self._start_time = time.time()
         
-        with self._lock:
-            self._total_samples_processed = 0
-            self._last_trigger_sample_index = -1
-            self._first_trigger_sample_index = -1
-            self._triggered = False
-            
-            self._reg_n = 0
-            self._reg_sx = 0.0
-            self._reg_sy = 0.0
-            self._reg_sxx = 0.0
-            self._reg_sxy = 0.0
-            
-            self.instant_ppm_buffer.fill(np.nan)
-            self.cumulative_ppm_buffer.fill(np.nan)
-            self.time_buffer.fill(np.nan)
-            
-            self.history_write_pos = 0
-            self.history_filled = 0
-            self._filter_window = []
+        # Reset State
+        self._total_samples_processed = 0
+        self._last_trigger_sample_index = -1
+        self._first_trigger_sample_index = -1
+        self._triggered = False
+        
+        self._reg_n = 0
+        self._reg_sx = 0.0
+        self._reg_sy = 0.0
+        self._reg_sxx = 0.0
+        self._reg_sxy = 0.0
+        
+        self.instant_ppm_buffer.fill(np.nan)
+        self.cumulative_ppm_buffer.fill(np.nan)
+        self.time_buffer.fill(np.nan)
+        
+        self.history_write_pos = 0
+        self.history_filled = 0
+        self._filter_window = []
+        
+        # Clear queue
+        while not self.data_queue.empty():
+            try:
+                self.data_queue.get_nowait()
+            except queue.Empty:
+                break
+
+        # Start Processing Thread
+        self.process_thread = threading.Thread(target=self._process_loop, daemon=True)
+        self.process_thread.start()
 
         def callback(indata, outdata, frames, time_info, status):
             if indata is None:
                 return
 
             if indata.shape[1] > 0:
-                sig = indata[:, 0]
-            else:
-                return
-
-            # Optimization: If signal is way below threshold everywhere, skip.
-            if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
-                self._total_samples_processed += frames
-                if self._triggered:
-                     self._triggered = False
-                return
-
-            th_high = self.threshold_fs
-            th_low = self.threshold_fs - self.hysteresis_fs
+                # Copy data to avoid buffer issues and push to queue
+                # indata is only valid during the callback
+                sig = indata[:, 0].copy()
+                self.data_queue.put((sig, frames))
             
-            t_samples = self._total_samples_processed
-            nominal = self.nominal_rate
-            
-            # Local copies for speed
-            reg_n = self._reg_n
-            reg_sx = self._reg_sx
-            reg_sy = self._reg_sy
-            reg_sxx = self._reg_sxx
-            reg_sxy = self._reg_sxy
-            
-            for i in range(frames):
-                s = sig[i]
-                abs_pos = t_samples + i
-                
-                if not self._triggered:
-                    if s >= th_high:
-                        self._triggered = True
-                        # Rising edge detected
-                        
-                        # First pulse logic
-                        if self._first_trigger_sample_index == -1:
-                            self._first_trigger_sample_index = abs_pos
-                            self._last_trigger_sample_index = abs_pos
-                            
-                            # Initialize regression
-                            reg_n = 1
-                            reg_sx = 0.0
-                            reg_sy = 0.0
-                            reg_sxx = 0.0
-                            reg_sxy = 0.0
-                        else:
-                            # Instantaneous calculation
-                            delta = abs_pos - self._last_trigger_sample_index
-                            
-                            # 0. Gate Filter (Hard Rejection)
-                            # Reject if deviation is > 50% of nominal (e.g. double trigger or missed trigger)
-                            # This handles the massive glitches seen in 1PPS (e.g. 192kHz -> < 96k or > 288k)
-                            # 50% is safe for 1PPS.
-                            gate_threshold = nominal * 0.5
-                            is_gross_outlier = abs(delta - nominal) > gate_threshold
-                            
-                            accepted = not is_gross_outlier
-
-                            # 1. MAD/Median Filter
-                            if accepted and self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
-                                window = np.array(self._filter_window)
-                                med = np.median(window)
-                                mad = np.median(np.abs(window - med))
-                                # If MAD is 0 (perfect signal), use a tiny epsilon to avoid div by zero logic or too strict
-                                mad = max(mad, 1e-9)
-                                
-                                sigma = 1.4826 * mad
-                                thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0) # at least 1 sample
-                                
-                                if abs(delta - med) > thresh_val:
-                                    accepted = False
-                            
-                            if accepted:
-                                self._filter_window.append(delta)
-                                if len(self._filter_window) > self.filter_window_size:
-                                    self._filter_window.pop(0)
-
-                                # 2. Instantaneous Result
-                                error_samples = delta - nominal
-                                # PPM = (Error / Nominal) * 1e6
-                                # Seconds Error = Error / Nominal_Rate (Sampling Rate ~ Nominal) assuming Nominal is Rate
-                                # We store PPM. UI can convert to Seconds (PPM * 1e-6).
-                                instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
-                                
-                                # 3. Regression Update
-                                # x = Pulse Count (approx seconds)
-                                # y = Actual Sample Position relative to first
-                                y_val = abs_pos - self._first_trigger_sample_index
-                                x_val = round(y_val / nominal)
-                                
-                                reg_n += 1
-                                reg_sx += x_val
-                                reg_sy += y_val
-                                reg_sxx += x_val * x_val
-                                reg_sxy += x_val * y_val
-                                
-                                # Slope Calculation
-                                denom = (reg_n * reg_sxx - reg_sx * reg_sx)
-                                if denom != 0:
-                                    slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
-                                    cumulative_ppm = ((slope - nominal) / nominal) * 1e6
-                                else:
-                                    cumulative_ppm = 0.0
-
-                                # Store result
-                                with self._lock:
-                                    idx = self.history_write_pos
-                                    self.instant_ppm_buffer[idx] = instant_ppm
-                                    self.cumulative_ppm_buffer[idx] = cumulative_ppm
-                                    self.time_buffer[idx] = time.time() - self._start_time
-                                    
-                                    self.history_write_pos = (idx + 1) % self.max_history
-                                    self.history_filled = min(self.history_filled + 1, self.max_history)
-                                
-                            # 4. Update Trigger State
-                            # FIX for "Death Spiral":
-                            # Even if rejected by MAD, we MUST update the trigger index if it passed the Gate Filter.
-                            # Because if we don't, the NEXT delta will be double, and will be rejected by everything.
-                            # Passing Gate Filter means it IS the pulse for this second, just maybe jittery.
-                            if not is_gross_outlier:
-                                self._last_trigger_sample_index = abs_pos
-                        
-                else:
-                    if s <= th_low:
-                        self._triggered = False
-            
-            # Save back regression state
-            self._reg_n = reg_n
-            self._reg_sx = reg_sx
-            self._reg_sy = reg_sy
-            self._reg_sxx = reg_sxx
-            self._reg_sxy = reg_sxy
-
-            self._total_samples_processed += frames
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
@@ -268,6 +155,163 @@ class OnePPSMonitor(MeasurementModule):
             self.callback_id = None
 
         self.is_running = False
+        
+        # Signal thread to stop (using is_running flag or None sentinel)
+        self.data_queue.put(None)
+        
+        if self.process_thread:
+            self.process_thread.join(timeout=1.0)
+            self.process_thread = None
+
+    def _process_loop(self):
+        while self.is_running:
+            try:
+                item = self.data_queue.get(timeout=0.1)
+                if item is None:
+                    break
+                
+                sig, frames = item
+                
+                # Processing Logic
+                # Optimization: If signal is way below threshold everywhere, skip.
+                if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
+                    self._total_samples_processed += frames
+                    if self._triggered:
+                         self._triggered = False
+                    continue
+
+                th_high = self.threshold_fs
+                th_low = self.threshold_fs - self.hysteresis_fs
+                
+                t_samples = self._total_samples_processed
+                nominal = self.nominal_rate
+                
+                # Local copies for speed
+                reg_n = self._reg_n
+                reg_sx = self._reg_sx
+                reg_sy = self._reg_sy
+                reg_sxx = self._reg_sxx
+                reg_sxy = self._reg_sxy
+                
+                for i in range(frames):
+                    s = sig[i]
+                    abs_pos = t_samples + i
+                    
+                    if not self._triggered:
+                        if s >= th_high:
+                            self._triggered = True
+                            # Rising edge detected
+                            
+                            # First pulse logic
+                            if self._first_trigger_sample_index == -1:
+                                self._first_trigger_sample_index = abs_pos
+                                self._last_trigger_sample_index = abs_pos
+                                
+                                # Initialize regression
+                                reg_n = 1
+                                reg_sx = 0.0
+                                reg_sy = 0.0
+                                reg_sxx = 0.0
+                                reg_sxy = 0.0
+                            else:
+                                # Instantaneous calculation
+                                delta = abs_pos - self._last_trigger_sample_index
+                                
+                                # 0. Gate Filter (Hard Rejection)
+                                # Reject if deviation is > 50% of nominal (e.g. double trigger or missed trigger)
+                                # This handles the massive glitches seen in 1PPS (e.g. 192kHz -> < 96k or > 288k)
+                                # 50% is safe for 1PPS.
+                                gate_threshold = nominal * 0.5
+                                is_gross_outlier = abs(delta - nominal) > gate_threshold
+                                
+                                accepted = not is_gross_outlier
+    
+                                # 1. MAD/Median Filter
+                                if accepted and self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
+                                    window = np.array(self._filter_window)
+                                    med = np.median(window)
+                                    mad = np.median(np.abs(window - med))
+                                    # If MAD is 0 (perfect signal), use a tiny epsilon to avoid div by zero logic or too strict
+                                    mad = max(mad, 1e-9)
+                                    
+                                    sigma = 1.4826 * mad
+                                    thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0) # at least 1 sample
+                                    
+                                    if abs(delta - med) > thresh_val:
+                                        accepted = False
+                                
+                                if accepted:
+                                    self._filter_window.append(delta)
+                                    if len(self._filter_window) > self.filter_window_size:
+                                        self._filter_window.pop(0)
+    
+                                    # 2. Instantaneous Result
+                                    error_samples = delta - nominal
+                                    # PPM = (Error / Nominal) * 1e6
+                                    # Seconds Error = Error / Nominal_Rate (Sampling Rate ~ Nominal) assuming Nominal is Rate
+                                    # We store PPM. UI can convert to Seconds (PPM * 1e-6).
+                                    instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
+                                    
+                                    # 3. Regression Update
+                                    # x = Pulse Count (approx seconds)
+                                    # y = Actual Sample Position relative to first
+                                    y_val = abs_pos - self._first_trigger_sample_index
+                                    # x_val = round(y_val / nominal) 
+                                    # Better: x is the index of the pulse.
+                                    # Since we might have missed pulses, let's trust the "nominal" grid?
+                                    # No, existing logic was:
+                                    x_val = round(y_val / nominal)
+                                    
+                                    reg_n += 1
+                                    reg_sx += x_val
+                                    reg_sy += y_val
+                                    reg_sxx += x_val * x_val
+                                    reg_sxy += x_val * y_val
+                                    
+                                    # Slope Calculation
+                                    denom = (reg_n * reg_sxx - reg_sx * reg_sx)
+                                    if denom != 0:
+                                        slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
+                                        cumulative_ppm = ((slope - nominal) / nominal) * 1e6
+                                    else:
+                                        cumulative_ppm = 0.0
+    
+                                    # Store result
+                                    with self._lock:
+                                        idx = self.history_write_pos
+                                        self.instant_ppm_buffer[idx] = instant_ppm
+                                        self.cumulative_ppm_buffer[idx] = cumulative_ppm
+                                        self.time_buffer[idx] = time.time() - self._start_time
+                                        
+                                        self.history_write_pos = (idx + 1) % self.max_history
+                                        self.history_filled = min(self.history_filled + 1, self.max_history)
+                                    
+                                # 4. Update Trigger State
+                                # FIX for "Death Spiral":
+                                # Even if rejected by MAD, we MUST update the trigger index if it passed the Gate Filter.
+                                # Because if we don't, the NEXT delta will be double, and will be rejected by everything.
+                                # Passing Gate Filter means it IS the pulse for this second, just maybe jittery.
+                                if not is_gross_outlier:
+                                    self._last_trigger_sample_index = abs_pos
+                            
+                    else:
+                        if s <= th_low:
+                            self._triggered = False
+                
+                # Save back regression state
+                self._reg_n = reg_n
+                self._reg_sx = reg_sx
+                self._reg_sy = reg_sy
+                self._reg_sxx = reg_sxx
+                self._reg_sxy = reg_sxy
+    
+                self._total_samples_processed += frames
+                
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"OnePPSMonitor Worker Error: {e}")
+
         
     def get_history_arrays(self):
         """Returns (times, instant_ppm, cumulative_ppm) arrays correctly ordered."""
