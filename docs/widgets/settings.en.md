@@ -37,6 +37,7 @@ Selects the input and output devices to be used.
 
 * **Input Device**: Selects the input device with a measurement microphone, etc., connected.
 * **Output Device**: Selects the output device with speakers, etc., connected.
+* **Host API**: Selects the audio backend (API) (e.g., MME, WASAPI, ASIO, ALSA, JACK, etc.). Used to filter the device list to show only devices for the specific API.
 * **Refresh Devices**: Updates the device list.
 
 ### Audio Configuration
@@ -58,7 +59,7 @@ Performs calibration to improve measurement accuracy. Pressing the "Wizard" butt
 
 You can save the current calibration settings (Input Sensitivity, Output Gain, SPL Offset, etc.) as a named profile.
 This is useful for quickly switching settings when using different audio interfaces or microphones.
-The profile also records the device name used at the time of saving.
+The profile also records the device name and Host API used at the time of saving.
 
 * **Select Profile**: Select a saved profile. When selected, the device name associated with that profile is displayed.
 * **Load**: Loads the settings of the selected profile and applies them to the current settings.
