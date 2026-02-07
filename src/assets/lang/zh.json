@@ -1058,5 +1058,18 @@
     "LO": "LO",
     "Avg Count:": "平均次数:",
     "{0:.3f} dB": "{0:.3f} dB",
-    "{0} %": "{0} %"
+    "{0} %": "{0} %",
+    "1PPS Frequency Deviation": "1PPS 频率偏差",
+    "1PPS Monitor": "1PPS 监测器",
+    "Cumulative Avg": "累积平均",
+    "Deviation": "偏差",
+    "Display Options": "显示选项",
+    "Enable Filter (Median/MAD)": "启用滤波器 (Median/MAD)",
+    "Hysteresis (FS):": "滞后 (FS):",
+    "Instantaneous": "瞬时值",
+    "Nominal Rate (Hz):": "标称速率 (Hz):",
+    "Outlier Rejection": "异常值剔除",
+    "Show Instantaneous": "显示瞬时值",
+    "Threshold (FS):": "阈值 (FS):",
+    "Tolerance (Sigma):": "容差 (西格玛):"
 }

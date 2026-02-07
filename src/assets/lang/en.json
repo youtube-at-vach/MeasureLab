@@ -1043,5 +1043,18 @@
     "Ch 2 (R)": "Ch 2 (R)",
     "Output Channel:": "Output Channel:",
     "{0:.3f} dB": "{0:.3f} dB",
-    "{0} %": "{0} %"
+    "{0} %": "{0} %",
+    "1PPS Frequency Deviation": "1PPS Frequency Deviation",
+    "1PPS Monitor": "1PPS Monitor",
+    "Cumulative Avg": "Cumulative Avg",
+    "Deviation": "Deviation",
+    "Display Options": "Display Options",
+    "Enable Filter (Median/MAD)": "Enable Filter (Median/MAD)",
+    "Hysteresis (FS):": "Hysteresis (FS):",
+    "Instantaneous": "Instantaneous",
+    "Nominal Rate (Hz):": "Nominal Rate (Hz):",
+    "Outlier Rejection": "Outlier Rejection",
+    "Show Instantaneous": "Show Instantaneous",
+    "Threshold (FS):": "Threshold (FS):",
+    "Tolerance (Sigma):": "Tolerance (Sigma):"
 }

@@ -1058,5 +1058,18 @@
     "LO": "LO",
     "Avg Count:": "평균 횟수:",
     "{0:.3f} dB": "{0:.3f} dB",
-    "{0} %": "{0} %"
+    "{0} %": "{0} %",
+    "1PPS Frequency Deviation": "1PPS 주파수 편차",
+    "1PPS Monitor": "1PPS 모니터",
+    "Cumulative Avg": "누적 평균",
+    "Deviation": "편차",
+    "Display Options": "디스플레이 옵션",
+    "Enable Filter (Median/MAD)": "필터 활성화 (Median/MAD)",
+    "Hysteresis (FS):": "히스테리시스 (FS):",
+    "Instantaneous": "순시치",
+    "Nominal Rate (Hz):": "공칭 속도 (Hz):",
+    "Outlier Rejection": "이상값 제거",
+    "Show Instantaneous": "순시치 표시",
+    "Threshold (FS):": "임계값 (FS):",
+    "Tolerance (Sigma):": "공차 (시그마):"
 }
