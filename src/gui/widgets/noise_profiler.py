@@ -208,6 +208,7 @@ class NoiseProfiler(MeasurementModule):
 class NoiseAnalysisSignals(QObject):
     # freqs, avg_mag_cal, results, raw_avg, unit_mode
     result = pyqtSignal(object, object, object, object, str)
+    error = pyqtSignal(str)
     finished = pyqtSignal()
 
 
@@ -230,6 +231,7 @@ class NoiseAnalysisWorker(QRunnable):
             # We should probably log this or handle it, but for now we just don't emit
             print(f"Error in NoiseAnalysisWorker: {e}")
             traceback.print_exc()
+            self.signals.error.emit(str(e))
         finally:
             self.signals.finished.emit()
 
