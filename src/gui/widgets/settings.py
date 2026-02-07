@@ -1843,16 +1843,24 @@ class SettingsWidget(QWidget):
         # Clean up list of active threads
         if hasattr(self, '_active_threads'):
             for t in self._active_threads:
-                if t.isRunning():
-                    t.quit()
-                    t.wait()
+                try:
+                    if t.isRunning():
+                        t.quit()
+                        t.wait()
+                except RuntimeError:
+                    # Thread object already deleted
+                    pass
             self._active_threads = []
 
         # Clean up current worker if exists
         if hasattr(self, 'sr_worker_thread') and self.sr_worker_thread is not None:
-             if self.sr_worker_thread.isRunning():
-                 self.sr_worker_thread.quit()
-                 self.sr_worker_thread.wait()
+             try:
+                 if self.sr_worker_thread.isRunning():
+                     self.sr_worker_thread.quit()
+                     self.sr_worker_thread.wait()
+             except RuntimeError:
+                 # Thread object already deleted
+                 pass
              self.sr_worker_thread = None
 
     def closeEvent(self, event):

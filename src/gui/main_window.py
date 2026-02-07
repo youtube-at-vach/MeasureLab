@@ -476,6 +476,15 @@ class MainWindow(QMainWindow):
             self.audio_engine.stop_stream()
         except Exception:
             pass
+
+        # Cleanup settings widget threads (e.g. sample rate worker)
+        if hasattr(self, "settings_widget") and self.settings_widget is not None:
+            try:
+                if hasattr(self.settings_widget, "cleanup_threads"):
+                    self.settings_widget.cleanup_threads()
+            except Exception:
+                pass
+
         super().closeEvent(event)
 
     def update_status(self):
