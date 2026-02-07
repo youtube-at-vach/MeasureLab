@@ -201,8 +201,6 @@ class NetworkAnalyzer(MeasurementModule):
 
         t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
         chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method="logarithmic")
-        t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method="logarithmic")
         chirp *= self.get_output_amplitude()
 
         try:
