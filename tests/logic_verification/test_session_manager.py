@@ -1,4 +1,3 @@
-import pytest
 from src.core.session_manager import SessionManager
 
 def test_initialization():
