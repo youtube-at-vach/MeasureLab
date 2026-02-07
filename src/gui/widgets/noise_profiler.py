@@ -863,7 +863,6 @@ class NoiseProfilerWidget(QWidget):
                 white_volts = results["white_density"] * 10 ** (cal_offset / 20)
 
             white_density_in = white_volts / gain_linear
-        20 * np.log10(white_density_in + 1e-15)
 
         # Report Values (Display Units)
         hum_rms = results["hum_rms"]
