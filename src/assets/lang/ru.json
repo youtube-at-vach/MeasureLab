@@ -1071,5 +1071,7 @@
     "Outlier Rejection": "Отклонение выбросов",
     "Show Instantaneous": "Показывать мгновенное значение",
     "Threshold (FS):": "Порог (ПШ):",
-    "Tolerance (Sigma):": "Допуск (Сигма):"
+    "Tolerance (Sigma):": "Допуск (Сигма):",
+    "Host API:": "Хост-API:",
+    "Count": "Счетчик"
 }

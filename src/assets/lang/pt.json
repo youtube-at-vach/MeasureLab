@@ -1071,5 +1071,7 @@
     "Outlier Rejection": "Rejeição de valores atípicos",
     "Show Instantaneous": "Mostrar instantâneo",
     "Threshold (FS):": "Limiar (FS):",
-    "Tolerance (Sigma):": "Tolerância (Sigma):"
+    "Tolerance (Sigma):": "Tolerância (Sigma):",
+    "Host API:": "API do Host:",
+    "Count": "Contagem"
 }
