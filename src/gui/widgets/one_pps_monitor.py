@@ -48,17 +48,18 @@ class OnePPSMonitor(MeasurementModule):
         # Analysis state
         self._total_samples_processed = 0
         self._last_trigger_sample_index = -1
+        self._first_trigger_sample_index = -1  # To track cumulative drift
         self._triggered = False
 
-        # Data storage for plotting (Delta Samples)
-        # We expect ~1 pulse per second. Storing 3600 points = 1 hour history.
+        # Data storage for plotting
+        # We store PPM values now
         self.max_history = 3600
-        self.history_buffer = np.zeros(self.max_history, dtype=np.float64)
+        self.instant_ppm_buffer = np.zeros(self.max_history, dtype=np.float64)
+        self.cumulative_ppm_buffer = np.zeros(self.max_history, dtype=np.float64)
+        self.time_buffer = np.zeros(self.max_history, dtype=np.float64)
+        
         self.history_write_pos = 0
         self.history_filled = 0
-        
-        # Also store timestamp for X axis (approximate wall clock)
-        self.time_buffer = np.zeros(self.max_history, dtype=np.float64)
         self._start_time = 0.0
 
         self.callback_id = None
@@ -88,9 +89,13 @@ class OnePPSMonitor(MeasurementModule):
         with self._lock:
             self._total_samples_processed = 0
             self._last_trigger_sample_index = -1
+            self._first_trigger_sample_index = -1
             self._triggered = False
-            self.history_buffer.fill(np.nan)
+            
+            self.instant_ppm_buffer.fill(np.nan)
+            self.cumulative_ppm_buffer.fill(np.nan)
             self.time_buffer.fill(np.nan)
+            
             self.history_write_pos = 0
             self.history_filled = 0
             self._filter_window = []
@@ -99,78 +104,23 @@ class OnePPSMonitor(MeasurementModule):
             if indata is None:
                 return
 
-            # Analyze Channel 1 (Left) by default for now
-            # TODO: Make channel selectable
             if indata.shape[1] > 0:
                 sig = indata[:, 0]
             else:
                 return
 
-            # Simple Schmitt Trigger Logic
-            # Find rising edges crossing threshold
-            
-            # We need to process sample by sample or vectorized. 
-            # Vectorized is faster but we need to carry over state.
-            # Given Python, let's try a vectorized approach for finding crossings, 
-            # then refine.
-            
-            # However, for 1PPS, strictly sequential processing is safer to avoiding missing 
-            # or double counting if logic gets complex. 
-            # But loop in python is slow.
-            # Let's try `np.where` logic.
-            
-            # Trigger State:
-            # Low: signal < (threshold - hysteresis)
-            # High: signal > (threshold + hysteresis)
-            # Rising Edge: Low -> High
-            
             # Optimization: If signal is way below threshold everywhere, skip.
             if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
                 self._total_samples_processed += frames
-                # If we were triggered high, we need to check if we fell low to reset?
-                # Actually we just need to detect the moment we cross UP.
-                # But we need to re-arm (go low) before next trigger.
-                
-                # If we were strictly HIGH, and now we are LOW, we are re-armed.
                 if self._triggered:
                      self._triggered = False
                 return
 
-            # Iterate is safest for correct hysteresis state across blocks
-            # To optimize, we can likely find indices where threshold is crossed.
-            
             th_high = self.threshold_fs
             th_low = self.threshold_fs - self.hysteresis_fs
             
-            # Local mutable state
-            current_idx = 0
-            
-            # We assume frames is small enough (e.g. 1024) to iterate if needed, 
-            # but let's try to be smart.
-            
-            # Indices where signal > th_high
-            high_indices = np.where(sig > th_high)[0]
-            
-            # Indices where signal < th_low
-            low_indices = np.where(sig < th_low)[0]
-            
-            # This is still tricky to reconstruct sequential state without iteration 
-            # if multiple pulses could occur (unlikely in 1 block for 1PPS but possible with noise).
-            
-            # Let's just iterate for now. 1k samples at 48k is ~20ms. 
-            # 20ms of python loop might be tight. 
-            # Actually, `1PPS` implies very infrequent events.
-            # We only really care about the transition.
-            
-            # Let's do a stateful scan using Numba if available? No, stick to numpy/python.
-            
-            # Hybrid:
-            # 1. Identify potential regions of interest?
-            # 2. Or just loop. A loop of 1024 float comparisons in pure python is ... acceptable?
-            #    1024 * 10 steps might be 10k ops. 48000 samples/sec -> 48 callbacks/sec.
-            #    Process load: simple loop is fine.
-            
             t_samples = self._total_samples_processed
+            nominal = self.nominal_rate
             
             for i in range(frames):
                 s = sig[i]
@@ -180,53 +130,60 @@ class OnePPSMonitor(MeasurementModule):
                     if s >= th_high:
                         self._triggered = True
                         # Rising edge detected
-                        if self._last_trigger_sample_index != -1:
+                        
+                        # First pulse logic
+                        if self._first_trigger_sample_index == -1:
+                            self._first_trigger_sample_index = abs_pos
+                            self._last_trigger_sample_index = abs_pos
+                            # Cannot calculate delta or cumulative on very first pulse
+                        else:
+                            # Instantaneous calculation
                             delta = abs_pos - self._last_trigger_sample_index
                             
                             # Outlier Rejection Logic
                             accepted = True
                             if self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
-                                # Robust detection using Median and MAD
                                 window = np.array(self._filter_window)
                                 med = np.median(window)
                                 mad = np.median(np.abs(window - med))
-                                
-                                # Estimate sigma (1.4826 * MAD for normal distribution)
                                 sigma = 1.4826 * mad
-                                
-                                # Minimum threshold to allow for perfect clocks (avoid div by zero or strict zero tolerance)
-                                # Allow at least 1 sample of jitter even if history is perfect
                                 thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0)
-                                
                                 if abs(delta - med) > thresh_val:
                                     accepted = False
                             
-                            # Update filter window (Rolling)
-                            # We add the new value to the window ONLY if accepted?
-                            # Or if we want to track step changes, we must eventually accept new values.
-                            # Standard Hampel: Use previous window to test current.
-                            # Then slide window. If rejected, do we put the raw value or the median?
-                            # To be robust against single bit errors but track steps:
-                            # 1. If rejected, maybe substitute with median for the window update?
-                            # 2. Or just don't update window? (Risk: lock up if rate changes)
-                            # 3. Update window with raw value? (Risk: window gets polluted by burst)
-                            
-                            # Hybrid: Update window with raw value, but maybe limit queue size.
-                            # For visualization "Rejection", we usually want to hide it.
-                            
-                            # Let's start with: Update window with RAW value so we adapt to new rates.
-                            # But if the "outlier" is 8000 samples away, a window of 5 will take 3 samples to flip.
-                            # This is acceptable for a "Monitor".
                             self._filter_window.append(delta)
                             if len(self._filter_window) > self.filter_window_size:
                                 self._filter_window.pop(0)
 
                             if accepted:
+                                # 1. Instantaneous PPM
+                                error_samples = delta - nominal
+                                instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
+                                
+                                # 2. Cumulative PPM
+                                # Total samples elapsed since start
+                                total_delta_samples = abs_pos - self._first_trigger_sample_index
+                                
+                                # Estimate number of seconds elapsed (rounded to nearest integer)
+                                # This assumes the clock drift is < 0.5 seconds over the measurement period
+                                # so we can infer the "true" time index.
+                                # For 1PPS, this is safe.
+                                total_seconds = round(total_delta_samples / nominal)
+                                
+                                if total_seconds > 0:
+                                    cumulative_rate = total_delta_samples / total_seconds
+                                    cumulative_error = cumulative_rate - nominal
+                                    cumulative_ppm = (cumulative_error / nominal) * 1e6
+                                else:
+                                    cumulative_ppm = 0.0
+
                                 # Store result
                                 with self._lock:
                                     idx = self.history_write_pos
-                                    self.history_buffer[idx] = delta
+                                    self.instant_ppm_buffer[idx] = instant_ppm
+                                    self.cumulative_ppm_buffer[idx] = cumulative_ppm
                                     self.time_buffer[idx] = time.time() - self._start_time
+                                    
                                     self.history_write_pos = (idx + 1) % self.max_history
                                     self.history_filled = min(self.history_filled + 1, self.max_history)
                         
@@ -236,7 +193,6 @@ class OnePPSMonitor(MeasurementModule):
                         self._triggered = False
             
             self._total_samples_processed += frames
-
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
@@ -252,14 +208,10 @@ class OnePPSMonitor(MeasurementModule):
         self.is_running = False
         
     def get_history_arrays(self):
-        """Returns (times, deltas) arrays correctly ordered."""
+        """Returns (times, instant_ppm, cumulative_ppm) arrays correctly ordered."""
         with self._lock:
             if self.history_filled == 0:
-                return np.array([]), np.array([])
-            
-            # Reconstruct ordered buffer
-            # oldest is at (write_pos - filled) % max
-            # newest is at (write_pos - 1) % max
+                return np.array([]), np.array([]), np.array([])
             
             end = self.history_write_pos
             start = (end - self.history_filled) % self.max_history
@@ -267,13 +219,15 @@ class OnePPSMonitor(MeasurementModule):
             if start < end:
                 # Contiguous
                 t = self.time_buffer[start:end].copy()
-                d = self.history_buffer[start:end].copy()
+                ip = self.instant_ppm_buffer[start:end].copy()
+                cp = self.cumulative_ppm_buffer[start:end].copy()
             else:
                 # Wrapped
                 t = np.concatenate((self.time_buffer[start:], self.time_buffer[:end]))
-                d = np.concatenate((self.history_buffer[start:], self.history_buffer[:end]))
+                ip = np.concatenate((self.instant_ppm_buffer[start:], self.instant_ppm_buffer[:end]))
+                cp = np.concatenate((self.cumulative_ppm_buffer[start:], self.cumulative_ppm_buffer[:end]))
                 
-            return t, d
+            return t, ip, cp
 
 
 class OnePPSMonitorWidget(QWidget):
@@ -284,22 +238,33 @@ class OnePPSMonitorWidget(QWidget):
         
         self.timer = QTimer()
         self.timer.timeout.connect(self._update_plot)
-        self.timer.setInterval(200) # Update GUI 5 times a second is plenty for 1PPS
+        self.timer.setInterval(200) # Update GUI 5 times a second
 
     def _init_ui(self):
         layout = QHBoxLayout(self)
         
         # Left: Plot
         plot_layout = QVBoxLayout()
-        self.plot_widget = pg.PlotWidget(title=tr("1PPS Delta Samples"))
-        self.plot_widget.setLabel("left", tr("Delta (Samples)"))
-        self.plot_widget.setLabel("bottom", tr("Time (s)"))
-        self.plot_widget.showGrid(x=True, y=True)
-        self.curve = self.plot_widget.plot(pen='y', symbol='o', symbolBrush='y', symbolSize=5)
+        self.plot_widget = pg.PlotWidget(title=tr("1PPS Frequency Deviation"))
+        self.plot_widget.setLabel("left", tr("Deviation"), units="ppm")
+        self.plot_widget.setLabel("bottom", tr("Time"), units="s")
+        self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_widget.addLegend()
         
-        # Add a target line for nominal
-        self.nominal_line = pg.InfiniteLine(angle=0, pen=pg.mkPen('g', style=Qt.PenStyle.DashLine))
-        self.plot_widget.addItem(self.nominal_line)
+        # Curves
+        self.curve_instant = self.plot_widget.plot(
+            pen=pg.mkPen('y', width=1, style=Qt.PenStyle.DotLine), 
+            symbol='o', symbolBrush='y', symbolSize=3, 
+            name=tr("Instantaneous")
+        )
+        self.curve_cumulative = self.plot_widget.plot(
+            pen=pg.mkPen('c', width=2), 
+            name=tr("Cumulative Avg")
+        )
+        
+        # Zero line
+        self.zero_line = pg.InfiniteLine(angle=0, pen=pg.mkPen('w', style=Qt.PenStyle.SolidLine, alpha=0.5))
+        self.plot_widget.addItem(self.zero_line)
         
         plot_layout.addWidget(self.plot_widget)
         layout.addLayout(plot_layout, stretch=1)
@@ -319,7 +284,6 @@ class OnePPSMonitorWidget(QWidget):
         self.spin_rate = QDoubleSpinBox()
         self.spin_rate.setRange(1.0, 384000.0)
         
-        # Get current sample rate from engine
         current_sr = float(self.module.audio_engine.sample_rate)
         self.spin_rate.setValue(current_sr)
         
@@ -354,10 +318,9 @@ class OnePPSMonitorWidget(QWidget):
         filter_vbox.addWidget(self.chk_filter)
         
         # Window size
+        from PyQt6.QtWidgets import QSpinBox
         filter_row = QHBoxLayout()
         filter_row.addWidget(QLabel(tr("Window:")))
-        self.spin_window = QDoubleSpinBox() # Using DoubleSpinBox for int for consistency/convenience? No, standard spinbox
-        from PyQt6.QtWidgets import QSpinBox
         self.spin_window = QSpinBox()
         self.spin_window.setRange(3, 50)
         self.spin_window.setValue(5)
@@ -379,15 +342,13 @@ class OnePPSMonitorWidget(QWidget):
         ctrl_vbox.addWidget(filter_group)
         
         # Stats
-        self.lbl_current = QLabel("Last: -")
-        self.lbl_error = QLabel("Error: -")
-        self.lbl_ppm = QLabel("PPM: -")
+        self.lbl_inst = QLabel("Inst PPM: -")
+        self.lbl_cumul = QLabel("Cumul PPM: -")
         
         stats_group = QGroupBox(tr("Statistics"))
         stats_vbox = QVBoxLayout(stats_group)
-        stats_vbox.addWidget(self.lbl_current)
-        stats_vbox.addWidget(self.lbl_error)
-        stats_vbox.addWidget(self.lbl_ppm)
+        stats_vbox.addWidget(self.lbl_inst)
+        stats_vbox.addWidget(self.lbl_cumul)
         
         ctrl_layout.addWidget(ctrl_group)
         ctrl_layout.addWidget(stats_group)
@@ -397,7 +358,6 @@ class OnePPSMonitorWidget(QWidget):
 
         # Initialize
         self.module.nominal_rate = self.spin_rate.value()
-        self.nominal_line.setPos(self.module.nominal_rate)
         self._on_thresh_changed(self.spin_thresh.value())
         self._on_hyst_changed(self.spin_hyst.value())
         self._on_filter_toggled(self.chk_filter.isChecked())
@@ -416,7 +376,6 @@ class OnePPSMonitorWidget(QWidget):
             
     def _on_rate_changed(self, val):
         self.module.nominal_rate = val
-        self.nominal_line.setPos(val)
 
     def _on_thresh_changed(self, val):
         self.module.threshold_fs = val
@@ -434,15 +393,13 @@ class OnePPSMonitorWidget(QWidget):
         self.module.filter_tolerance_sigma = val
 
     def _update_plot(self):
-        t, d = self.module.get_history_arrays()
-        if len(d) > 0:
-            self.curve.setData(t, d)
+        t, ip, cp = self.module.get_history_arrays()
+        if len(t) > 0:
+            self.curve_instant.setData(t, ip)
+            self.curve_cumulative.setData(t, cp)
             
-            last_val = d[-1]
-            nominal = self.module.nominal_rate
-            error = last_val - nominal
-            ppm = (error / nominal) * 1e6 if nominal != 0 else 0
+            last_ip = ip[-1]
+            last_cp = cp[-1]
             
-            self.lbl_current.setText(f"Last: {last_val:.0f}")
-            self.lbl_error.setText(f"Error: {error:+.0f}")
-            self.lbl_ppm.setText(f"PPM: {ppm:+.2f}")
+            self.lbl_inst.setText(f"Inst PPM: {last_ip:+.2f}")
+            self.lbl_cumul.setText(f"Cumul PPM: {last_cp:+.4f}")

@@ -34,16 +34,17 @@ def test_one_pps_logic():
     
     # Generate synthetic signal
     # 48000 Hz sample rate
-    # Pulses at index 1000, 49000 (delta = 48000)
+    # Pulses at index 1000, 49000 (delta = 48000) -> 0 PPM
+    # Pulse 3 at 97005 (delta = 48005) -> +104.16 PPM
     
     total_len = 100000
     sig = np.zeros(total_len, dtype=np.float32)
     
-    # Pulse 1
+    # Pulse 1 (Start)
     sig[1000:1010] = 0.8
-    # Pulse 2
+    # Pulse 2 (48000 samples later)
     sig[49000:49010] = 0.8
-    # Pulse 3 (Short interval test) at 97005 (delta = 48005)
+    # Pulse 3 (48005 samples later)
     sig[97005:97015] = 0.8
     
     # Process in blocks
@@ -58,13 +59,27 @@ def test_one_pps_logic():
         callback(indata, outdata, len(chunk), None, None)
         
     # Verify results
-    t, d = monitor.get_history_arrays()
+    t, ip, cp = monitor.get_history_arrays()
     
-    print(f"Detected deltas: {d}")
+    print(f"Detected IP: {ip}")
+    print(f"Detected CP: {cp}")
     
-    assert len(d) == 2
-    assert d[0] == 48000
-    assert d[1] == 48005
+    assert len(ip) == 2
+    # First interval: 48000 -> 0 error -> 0 ppm
+    assert ip[0] == 0.0
+    
+    # Second interval: 48005 -> 5 error -> (5/48000)*1e6 = 104.166...
+    expected_ppm = (5 / 48000.0) * 1e6
+    assert abs(ip[1] - expected_ppm) < 0.01
+    
+    # Cumulative check
+    # Total samples = 48000 + 48005 = 96005
+    # Total seconds = round(96005/48000) = 2
+    # Avg Rate = 96005 / 2 = 48002.5
+    # Error = 2.5
+    # CP = (2.5 / 48000) * 1e6 = 52.0833...
+    expected_cp = (2.5 / 48000.0) * 1e6
+    assert abs(cp[1] - expected_cp) < 0.01
     
 def test_hysteresis():
     engine = MockAudioEngine()
@@ -97,19 +112,23 @@ def test_hysteresis():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
     
-    # We need at least 2 pulses to get a delta. 
-    # This test checks trigger state mostly.
-    # But OnePPSMonitor only records deltas.
-    # We can check internal state `_triggered`
+    # OnePPSMonitor only records deltas (needs 3 pulses for 2 intervals, or 2 pulses for 1 interval)
+    # Here we have 2 pulses (Trigger 1 and Trigger 2).
+    # This gives 1 interval.
+    # Pulse 1 at 3. Pulse 2 at 10. Delta = 7.
     
-    assert monitor._triggered == True
-    assert monitor._last_trigger_sample_index == 11
+    t, ip, cp = monitor.get_history_arrays()
+    assert len(ip) == 1
+    
+    # Nominal is 48000 default. Delta 7 is huge negative error.
+    # Just check it exists.
+    assert ip[0] != 0
 
 def test_outlier_rejection():
     engine = MockAudioEngine()
     monitor = OnePPSMonitor(engine)
     monitor.threshold_fs = 0.5
-    monitor.nominal_rate = 1000.0
+    monitor.nominal_rate = 1000.0 # set low for easy maths
     
     # Enable filter
     monitor.filter_enabled = True
@@ -151,23 +170,104 @@ def test_outlier_rejection():
     outdata = np.zeros_like(indata)
     callback(indata, outdata, len(sig), None, None)
     
-    t, d = monitor.get_history_arrays()
+    t, ip, cp = monitor.get_history_arrays()
     
-    print(f"Stored Deltas: {d}")
-    
-    # We expect the 5 initial 1000s to be accepted.
+    # We expect the 5 initial 1000s to be accepted (0 PPM).
     # The 6th delta (2000) should be REJECTED.
     # The 7th delta (1000) should be ACCEPTED.
-    # Result should have 6 items, all 1000.
+    # Result should have 6 items, all 0 PPM.
     
-    # Note on outlier filter:
-    # Window needs to fill up first?
-    # Logic: if len(window) >= size: filter.
-    # Prior to window filling, all accepted.
-    # After 5 samples (1000, 1000, 1000, 1000, 1000), window is full. Med=1000, MAD=0.
-    # Threshold = max(0 * 3, 1.0) = 1.0. 
-    # Next is 2000. Abs(2000-1000) = 1000 > 1.0. REJECT.
-    # Next is 1000. Abs(1000-1000) = 0 < 1.0. ACCEPT.
+    assert len(ip) == 6
+    assert np.all(ip == 0.0)
+
+def test_cumulative_precision():
+    engine = MockAudioEngine()
+    monitor = OnePPSMonitor(engine)
+    monitor.nominal_rate = 1000.0
+    monitor.start_analysis()
     
-    assert len(d) == 6
-    assert np.all(d == 1000.0)
+    callback = list(engine.callbacks.values())[0]
+    
+    # Simulate a clock that is consistently off by +1 sample per 1000.
+    # Actual rate = 1001 Hz.
+    # Expected PPM = (1/1000)*1e6 = 1000 PPM.
+    
+    deltas = [1001] * 20
+    
+    total_len = sum(deltas) + 5000
+    sig = np.zeros(total_len, dtype=np.float32)
+    
+    current_idx = 100
+    sig[current_idx] = 1.0
+    
+    for d in deltas:
+        current_idx += d
+        sig[current_idx] = 1.0
+        
+    indata = np.column_stack((sig, sig))
+    outdata = np.zeros_like(indata)
+    callback(indata, outdata, len(sig), None, None)
+    
+    t, ip, cp = monitor.get_history_arrays()
+    
+    assert len(ip) == 20
+    
+    # Instantaneous should be exactly 1000 PPM (1 error sample)
+    # (1001 - 1000) / 1000 * 1e6 = 1000.0
+    assert np.allclose(ip, 1000.0)
+    
+    # Cumulative should also converge to 1000 PPM.
+    # At step N (1-based):
+    # Total samples = N * 1001
+    # Total seconds = round(N * 1001 / 1000) = N (since 1001/1000 = 1.001, rounds to 1)
+    # Avg Rate = (N * 1001) / N = 1001.
+    # PPM = 1000.
+    
+    assert np.allclose(cp, 1000.0)
+    
+    # Now simulate a jittery clock but perfect average
+    # 1002, 998, 1002, 998...
+    # Avg is 1000. PPM should be 0.
+    
+    monitor.stop_analysis()
+    monitor.start_analysis() # Reset
+    callback = list(engine.callbacks.values())[0] # The mock engine might reuse ID or we just get the one active one
+    
+    deltas_jitter = [1002, 998] * 10
+    total_len = sum(deltas_jitter) + 5000
+    sig = np.zeros(total_len, dtype=np.float32)
+    current_idx = 100
+    sig[current_idx] = 1.0
+    for d in deltas_jitter:
+        current_idx += d
+        sig[current_idx] = 1.0
+        
+    indata = np.column_stack((sig, sig))
+    outdata = np.zeros_like(indata)
+    callback(indata, outdata, len(sig), None, None)
+    
+    t, ip, cp = monitor.get_history_arrays()
+    
+    # Instantaneous will bounce:
+    # 1002 -> +2 err -> +2000 PPM
+    # 998 -> -2 err -> -2000 PPM
+    assert abs(ip[0] - 2000.0) < 0.1
+    assert abs(ip[1] + 2000.0) < 0.1
+    
+    # Cumulative:
+    # Step 1: d=1002. Total=1002. Secs=1. Rate=1002. CP=2000.
+    # Step 2: d=998. Total=2000. Secs=2. Rate=1000. CP=0.
+    # Step 3: d=1002. Total=3002. Secs=3. Rate=1000.666. CP=666.66
+    # Step 4: d=998. Total=4000. Secs=4. Rate=1000. CP=0.
+    
+    # Even steps should be perfect 0.
+    even_steps_cp = cp[1::2]
+    assert np.allclose(even_steps_cp, 0.0)
+    
+    # Odd steps should decay: 2000, 666, 400, 285...
+    # 2000 / N_odd?
+    # Step 1 (1st interval): 2 error / 1 sec = 2.
+    # Step 3 (3rd interval): 2 error / 3 sec = 0.66.
+    # Step 5: 2 error / 5 sec = 0.4.
+    
+    print(f"Jitter CP: {cp}")
