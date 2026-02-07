@@ -142,7 +142,6 @@ class NetworkAnalyzer(MeasurementModule):
         self.start_freq = 20.0
         self.end_freq = 20000.0
         self.steps_per_octave = 12
-        self.steps_per_octave = 12
         self.amplitude = 0.5
         self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
         self.duration_per_step = 0.5
