@@ -818,16 +818,10 @@ class SettingsWidget(QWidget):
         self.init_ui()
 
     def _format_device_label(self, device_index: int, dev: dict) -> str:
-        """Build a human-friendly device label for the combo boxes.
-
-        On Windows especially, the same physical device can appear multiple times
-        under different host APIs (ASIO/WASAPI/DirectSound/etc). We surface that
-        info to help users pick the right one.
-        """
+        """Build a human-friendly device label for the combo boxes."""
         base = f"{device_index}: {dev.get('name', '')}"
-        hostapi_name = dev.get("hostapi_name")
-        if hostapi_name:
-            return f"{base} ({hostapi_name})"
+        # Host API is now selected separately, so we don't need to append it to the name
+        # unless we want to distinguish devices with same name in the same API (unlikely)
         return base
 
     def _get_device_name_for_config(self, device_index: int, fallback_text: str) -> str:
@@ -973,21 +967,24 @@ class SettingsWidget(QWidget):
         dev_group = QGroupBox(tr("Audio Devices"))
         dev_layout = QFormLayout()
 
+        # Host API
+        self.hostapi_combo = QComboBox()
+        self.hostapi_combo.currentIndexChanged.connect(self.on_hostapi_changed)
+        dev_layout.addRow(tr("Host API:"), self.hostapi_combo)
+
+        # Input
         self.input_combo = QComboBox()
+        self.input_combo.currentIndexChanged.connect(self.on_device_changed)
         dev_layout.addRow(tr("Input Device:"), self.input_combo)
 
+        # Output
         self.output_combo = QComboBox()
+        self.output_combo.currentIndexChanged.connect(self.on_device_changed)
         dev_layout.addRow(tr("Output Device:"), self.output_combo)
 
         self.refresh_btn = QPushButton(tr("Refresh Devices"))
         self.refresh_btn.clicked.connect(self.refresh_devices)
         dev_layout.addRow(self.refresh_btn)
-
-        # Active Device Info
-        self.active_in_label = QLabel(tr("None"))
-        self.active_out_label = QLabel(tr("None"))
-        dev_layout.addRow(tr("Active Input:"), self.active_in_label)
-        dev_layout.addRow(tr("Active Output:"), self.active_out_label)
 
         dev_group.setLayout(dev_layout)
         audio_layout.addWidget(dev_group)
@@ -1294,86 +1291,167 @@ class SettingsWidget(QWidget):
             self.update_out_gain_display()
 
     def refresh_devices(self):
+        # 1. Fetch Host APIs
+        host_apis = self.audio_engine.get_host_apis()
+        self.hostapi_combo.blockSignals(True)
+        self.hostapi_combo.clear()
+
+        # Populate Host APIs
+        # We need to map API index to name
+        for i, api in enumerate(host_apis):
+            self.hostapi_combo.addItem(api['name'], i)
+
+        # Determine current Host API from config or default
+        current_api_index = self._get_current_host_api_index(host_apis)
+        if current_api_index >= 0 and current_api_index < self.hostapi_combo.count():
+            self.hostapi_combo.setCurrentIndex(current_api_index)
+
+        self.hostapi_combo.blockSignals(False)
+
+        # 2. Populate Devices based on selected Host API
+        self._populate_device_combos()
+
+    def _get_current_host_api_index(self, host_apis):
+        # Try to get from config
+        saved_api_name = self.config_manager.get_audio_config().get("input_hostapi") # active input host api
+        if not saved_api_name:
+             saved_api_name = self.config_manager.get_audio_config().get("output_hostapi")
+
+        if saved_api_name:
+            for i, api in enumerate(host_apis):
+                if api['name'] == saved_api_name:
+                    return i
+
+        # Fallback: Use the default host API
+        try:
+             import sounddevice as sd
+             return sd.default.hostapi
+        except Exception:
+             return 0
+
+    def on_hostapi_changed(self):
+        self._populate_device_combos()
+        # Automatically select valid devices for this API if possible?
+        # For now just let user pick or auto-pick first.
+        # But we probably want to try to restore selection if name matches.
+        self.on_device_changed()
+
+    def _populate_device_combos(self):
+        api_index = self.hostapi_combo.currentData()
+        if api_index is None:
+            return
+
         devices = self.audio_engine.list_devices()
+
+        self.input_combo.blockSignals(True)
+        self.output_combo.blockSignals(True)
         self.input_combo.clear()
         self.output_combo.clear()
 
-        default_in = self.audio_engine.input_device
-        default_out = self.audio_engine.output_device
+        # Get saved device names to restore selection if possible
+        saved_in = self.config_manager.get_audio_config().get("input_device")
+        saved_out = self.config_manager.get_audio_config().get("output_device")
 
+        # Also check current engine active devices if we want to show what is currently running
+        # But here we want to reflect what is available for the *selected* Host API.
+
+        # Filter devices by Host API
+        valid_devices = []
         for i, dev in enumerate(devices):
+            if dev.get("hostapi") == api_index:
+                valid_devices.append((i, dev))
+
+        for i, dev in valid_devices:
             name = self._format_device_label(i, dev)
             if dev["max_input_channels"] > 0:
-                self.input_combo.addItem(name, i)
+                self.input_combo.addItem(name, i) # Store global device index as data
             if dev["max_output_channels"] > 0:
                 self.output_combo.addItem(name, i)
 
-        # Restore selection if possible
-        if default_in is not None:
-            idx = self.input_combo.findData(default_in)
+        # Helper to find item by data (global index)
+        def set_by_data(combo, data):
+            idx = combo.findData(data)
             if idx >= 0:
-                self.input_combo.setCurrentIndex(idx)
-                self.active_in_label.setText(self.input_combo.itemText(idx))
+                combo.setCurrentIndex(idx)
+                return True
+            return False
 
-        if default_out is not None:
-            idx = self.output_combo.findData(default_out)
-            if idx >= 0:
-                self.output_combo.setCurrentIndex(idx)
-                self.active_out_label.setText(self.output_combo.itemText(idx))
+        # Helper to find item by substring name (because label is "Index: Name")
+        def set_by_name(combo, name):
+            if not name:
+                return False
+            for i in range(combo.count()):
+                # label format: "Index: Name"
+                # Check if label ends with ": Name" or just contains Name if loose
+                label = combo.itemText(i)
+                # Strict check first
+                if label.endswith(f": {name}"):
+                     combo.setCurrentIndex(i)
+                     return True
+            return False
 
-        # Connect signals after populating to avoid triggering during setup
-        try:
-            self.input_combo.currentIndexChanged.disconnect()
-            self.output_combo.currentIndexChanged.disconnect()
-        except TypeError:
-            pass  # Not connected yet
+        current_in_id = self.audio_engine.input_device
+        current_out_id = self.audio_engine.output_device
 
-        self.input_combo.currentIndexChanged.connect(self.on_device_changed)
-        self.output_combo.currentIndexChanged.connect(self.on_device_changed)
+        # 1. Try to restore active device (if it belongs to this API)
+        if not set_by_data(self.input_combo, current_in_id):
+            # 2. Try to restore from config name
+            if not set_by_name(self.input_combo, saved_in):
+                # 3. Default to first if available
+                if self.input_combo.count() > 0:
+                    self.input_combo.setCurrentIndex(0)
 
-    def _get_selected_device_hostapi(self, device_index):
-        try:
-            if device_index is not None and int(device_index) >= 0:
-                devices = self.audio_engine.list_devices()
-                idx = int(device_index)
-                if 0 <= idx < len(devices):
-                    return devices[idx].get("hostapi_name")
-        except Exception:
-            pass
-        return None
+        if not set_by_data(self.output_combo, current_out_id):
+            if not set_by_name(self.output_combo, saved_out):
+                if self.output_combo.count() > 0:
+                    self.output_combo.setCurrentIndex(0)
+
+        self.input_combo.blockSignals(False)
+        self.output_combo.blockSignals(False)
+
 
     def on_device_changed(self):
         input_idx = self.input_combo.currentData()
         output_idx = self.output_combo.currentData()
 
-        if input_idx is not None and output_idx is not None:
-            try:
-                self.audio_engine.set_devices(input_idx, output_idx)
-                self.active_in_label.setText(self.input_combo.currentText())
-                self.active_out_label.setText(self.output_combo.currentText())
+        # If selections are empty (e.g. no devices for this API), we can't set much
+        if input_idx is None or output_idx is None:
+            return
 
-                # Save to config
-                in_name = self._get_device_name_for_config(input_idx, self.input_combo.currentText())
-                out_name = self._get_device_name_for_config(output_idx, self.output_combo.currentText())
-                in_hostapi = self._get_selected_device_hostapi(input_idx)
-                out_hostapi = self._get_selected_device_hostapi(output_idx)
+        try:
+            self.audio_engine.set_devices(input_idx, output_idx)
 
-                self.config_manager.set_audio_config(
-                    in_name,
-                    out_name,
-                    self.audio_engine.sample_rate,
-                    self.audio_engine.block_size,
-                    self.audio_engine.input_channel_mode,
-                    self.audio_engine.output_channel_mode,
-                    input_hostapi=in_hostapi,
-                    output_hostapi=out_hostapi,
-                )
+            # Update Active Labels - OH WAIT, we removed them.
+            # self.active_in_label.setText(self.input_combo.currentText())
 
-                QMessageBox.information(
-                    self, tr("Success"), f"{tr('Devices set to Input:')} {input_idx}, {tr('Output:')} {output_idx}"
-                )
-            except Exception as e:
-                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to set devices:')} {e}")
+            # Save to config
+            # We need the naked name for config (without index prefix)
+            # stored in _get_device_name_for_config
+
+            in_text = self.input_combo.currentText()
+            out_text = self.output_combo.currentText()
+
+            in_name = self._get_device_name_for_config(input_idx, in_text)
+            out_name = self._get_device_name_for_config(output_idx, out_text)
+
+            host_api_name = self.hostapi_combo.currentText()
+
+            # We can also get host api name from the device list to be sure
+            # but combo text should be fine.
+
+            self.config_manager.set_audio_config(
+                in_name,
+                out_name,
+                self.audio_engine.sample_rate,
+                self.audio_engine.block_size,
+                self.audio_engine.input_channel_mode,
+                self.audio_engine.output_channel_mode,
+                input_hostapi=host_api_name,
+                output_hostapi=host_api_name,
+            )
+
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to set devices:')} {e}")
 
     def update_buffer_duration(self):
         try:
@@ -1405,8 +1483,8 @@ class SettingsWidget(QWidget):
                 out_id = self.output_combo.currentData()
                 in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
-                in_hostapi = self._get_selected_device_hostapi(in_id)
-                out_hostapi = self._get_selected_device_hostapi(out_id)
+                in_hostapi = self.hostapi_combo.currentText()
+                out_hostapi = self.hostapi_combo.currentText()
 
                 self.config_manager.set_audio_config(
                     in_name,
@@ -1436,8 +1514,8 @@ class SettingsWidget(QWidget):
                 out_id = self.output_combo.currentData()
                 in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
-                in_hostapi = self._get_selected_device_hostapi(in_id)
-                out_hostapi = self._get_selected_device_hostapi(out_id)
+                in_hostapi = self.hostapi_combo.currentText()
+                out_hostapi = self.hostapi_combo.currentText()
 
                 self.config_manager.set_audio_config(
                     in_name,

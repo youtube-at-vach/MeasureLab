@@ -1071,5 +1071,7 @@
     "Outlier Rejection": "异常值剔除",
     "Show Instantaneous": "显示瞬时值",
     "Threshold (FS):": "阈值 (FS):",
-    "Tolerance (Sigma):": "容差 (西格玛):"
+    "Tolerance (Sigma):": "容差 (西格玛):",
+    "Host API:": "主机 API:",
+    "Count": "计数"
 }

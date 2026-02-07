@@ -115,6 +115,13 @@ class AudioEngine:
 
         return enriched
 
+    def get_host_apis(self):
+        """Returns a list of available host APIs."""
+        try:
+            return list(sd.query_hostapis())
+        except Exception:
+            return []
+
     def set_devices(self, input_device_id, output_device_id):
         """Sets the input and output devices."""
         self.input_device = input_device_id

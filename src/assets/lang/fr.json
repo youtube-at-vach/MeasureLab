@@ -1071,5 +1071,7 @@
     "Outlier Rejection": "Rejet des valeurs aberrantes",
     "Show Instantaneous": "Afficher l'instantané",
     "Threshold (FS):": "Seuil (FS):",
-    "Tolerance (Sigma):": "Tolérance (Sigma):"
+    "Tolerance (Sigma):": "Tolérance (Sigma):",
+    "Host API:": "API de l'hôte:",
+    "Count": "Compte"
 }

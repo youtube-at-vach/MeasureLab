@@ -1071,5 +1071,7 @@
     "Outlier Rejection": "이상값 제거",
     "Show Instantaneous": "순시치 표시",
     "Threshold (FS):": "임계값 (FS):",
-    "Tolerance (Sigma):": "공차 (시그마):"
+    "Tolerance (Sigma):": "공차 (시그마):",
+    "Host API:": "호스트 API:",
+    "Count": "횟수"
 }

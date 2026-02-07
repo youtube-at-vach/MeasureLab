@@ -1060,5 +1060,7 @@
     "Outlier Rejection": "外れ値除去",
     "Show Instantaneous": "瞬時値を表示",
     "Threshold (FS):": "閾値 (FS):",
-    "Tolerance (Sigma):": "許容範囲 (シグマ):"
+    "Tolerance (Sigma):": "許容範囲 (シグマ):",
+    "Host API:": "ホストAPI:",
+    "Count": "回数"
 }
