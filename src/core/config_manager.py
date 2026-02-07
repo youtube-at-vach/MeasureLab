@@ -54,9 +54,9 @@ class ConfigManager:
         self.config_path = config_path
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config_dir = os.path.dirname(os.path.abspath(self.config_path)) or os.getcwd()
-        self.config = self.load_config()
         self._save_timer = None
         self._save_lock = threading.Lock()
+        self.config = self.load_config()
 
         self._instances.add(self)
         if not ConfigManager._atexit_registered:
@@ -85,6 +85,9 @@ class ConfigManager:
                 self.logger.info(f"Auto-detected language: {detected_lang}")
 
             self._ensure_screenshot_dir(config)
+            # Force creation of config file
+            self.config = config
+            self.save_config(force_sync=True)
             return config
 
         try:

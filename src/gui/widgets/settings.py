@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.signal
+import sounddevice as sd
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -1321,10 +1322,18 @@ class SettingsWidget(QWidget):
 
         # Heuristic: try to find the host API of the currently active input device
         try:
-            if self.audio_engine.input_device is not None:
+            target_device_idx = self.audio_engine.input_device
+            
+            # If no device selected, try system default input
+            if target_device_idx is None:
+                defaults = sd.default.device
+                if defaults and len(defaults) > 0 and defaults[0] >= 0:
+                    target_device_idx = defaults[0]
+
+            if target_device_idx is not None:
                 devs = self.audio_engine.list_devices()
-                if 0 <= self.audio_engine.input_device < len(devs):
-                    active_api = devs[self.audio_engine.input_device].get("hostapi")
+                if 0 <= target_device_idx < len(devs):
+                    active_api = devs[target_device_idx].get("hostapi")
                     if active_api is not None:
                         idx = self.hostapi_combo.findData(active_api)
                         if idx >= 0:
@@ -1367,13 +1376,31 @@ class SettingsWidget(QWidget):
                     self.output_combo.addItem(name, i)
 
         # Restore selection if possible
-        if default_in is not None:
-            idx = self.input_combo.findData(default_in)
+        target_in = default_in
+        if target_in is None:
+             try:
+                 defaults = sd.default.device
+                 if defaults and len(defaults) > 0:
+                     target_in = defaults[0]
+             except Exception:
+                 pass
+
+        if target_in is not None:
+            idx = self.input_combo.findData(target_in)
             if idx >= 0:
                 self.input_combo.setCurrentIndex(idx)
 
-        if default_out is not None:
-            idx = self.output_combo.findData(default_out)
+        target_out = default_out
+        if target_out is None:
+             try:
+                 defaults = sd.default.device
+                 if defaults and len(defaults) > 1:
+                     target_out = defaults[1]
+             except Exception:
+                 pass
+
+        if target_out is not None:
+            idx = self.output_combo.findData(target_out)
             if idx >= 0:
                 self.output_combo.setCurrentIndex(idx)
 

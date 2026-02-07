@@ -193,7 +193,7 @@ class MainWindow(QMainWindow):
         last_out_hostapi = audio_cfg.get("output_hostapi")
 
         # Default IDs
-        in_id, out_id = 3, 3  # Fallback
+        in_id, out_id = None, None  # Fallback to system default (auto-detect)
 
         if last_in or last_out:
             # Find IDs by name
