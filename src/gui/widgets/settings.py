@@ -1821,22 +1821,40 @@ class SettingsWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), str(e))
 
-
-
     def on_delete_profile(self):
-        name = self.cal_profile_combo.currentText()
-        if not name:
+        current_idx = self.profiles_combo.currentIndex()
+        if current_idx < 1:  # "Default" or invalid
             return
 
-        ret = QMessageBox.question(
+        profile_name = self.profiles_combo.currentText()
+        confirm = QMessageBox.question(
             self,
             tr("Confirm Delete"),
-            tr("Delete profile '{0}'?").format(name),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            f"{tr('Are you sure you want to delete profile')} '{profile_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
-        if ret == QMessageBox.StandardButton.Yes:
-            try:
-                self.audio_engine.calibration.delete_profile(name)
-                self.refresh_cal_profiles()
-            except Exception as e:
-                QMessageBox.critical(self, tr("Error"), str(e))
+
+        if confirm == QMessageBox.StandardButton.Yes:
+            self.config_manager.delete_audio_profile(profile_name)
+            self.refresh_cal_profiles()
+
+    def cleanup_threads(self):
+        """Clean up any active worker threads."""
+        # Clean up list of active threads
+        if hasattr(self, '_active_threads'):
+            for t in self._active_threads:
+                if t.isRunning():
+                    t.quit()
+                    t.wait()
+            self._active_threads = []
+
+        # Clean up current worker if exists
+        if hasattr(self, 'sr_worker_thread') and self.sr_worker_thread is not None:
+             if self.sr_worker_thread.isRunning():
+                 self.sr_worker_thread.quit()
+                 self.sr_worker_thread.wait()
+             self.sr_worker_thread = None
+
+    def closeEvent(self, event):
+        self.cleanup_threads()
+        super().closeEvent(event)
