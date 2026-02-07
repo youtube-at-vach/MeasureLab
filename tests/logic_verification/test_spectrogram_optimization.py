@@ -13,7 +13,7 @@ sys.path.insert(0, os.getcwd())
 # Mock sounddevice at top level as Spectrogram imports it
 sys.modules["sounddevice"] = MagicMock()
 
-from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWidget
+from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWidget  # noqa: E402
 
 # Mock AudioEngine
 class MockAudioEngine:
