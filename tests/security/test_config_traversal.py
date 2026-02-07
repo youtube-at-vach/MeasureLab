@@ -57,14 +57,14 @@ def test_screenshot_path_traversal():
             if os.path.exists(target_path):
                 shutil.rmtree(target_path)
 
-def test_absolute_path_allowed():
+def test_absolute_path_rejected():
     """
-    Verifies that absolute paths are still allowed (as per design decision).
+    Verifies that absolute paths pointing outside the config directory are rejected.
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         config_file = os.path.join(temp_dir, "config.json")
 
-        # Create a safe target directory inside another temp dir
+        # Create a target directory in a separate location
         with tempfile.TemporaryDirectory() as abs_target_dir:
             config_data = {
                 "screenshot": {
@@ -77,6 +77,11 @@ def test_absolute_path_allowed():
 
             cm = ConfigManager(config_path=config_file)
 
-            # Should be allowed
+            # Should default to "screenshots" in config dir because abs_target_dir is outside temp_dir
             actual_dir = cm.get_screenshot_output_dir()
-            assert os.path.abspath(actual_dir) == os.path.abspath(abs_target_dir)
+
+            # The fallback path
+            expected_fallback = os.path.join(temp_dir, "screenshots")
+
+            assert os.path.abspath(actual_dir) == os.path.abspath(expected_fallback)
+            assert os.path.abspath(actual_dir) != os.path.abspath(abs_target_dir)
