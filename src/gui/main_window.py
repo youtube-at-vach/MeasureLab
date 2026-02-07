@@ -140,7 +140,7 @@ def _load_module_class(module_key: str):
         return LinearityAnalyzer
     if module_key == "1PPS Monitor":
         from src.gui.widgets.one_pps_monitor import OnePPSMonitor
-        
+
         return OnePPSMonitor
 
     raise KeyError(f"Unknown module key: {module_key}")
@@ -300,7 +300,7 @@ class MainWindow(QMainWindow):
             "Ultrasound AM Modulator",
             "Linearity Analyzer",
         ]
-        
+
         import sys
         if "--experimental" in sys.argv:
             self._module_keys.append("1PPS Monitor")
