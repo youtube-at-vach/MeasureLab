@@ -230,10 +230,6 @@ class FrequencyCounter(MeasurementModule):
         self.reset_state()
 
         def callback(indata, outdata, frames, time, status):
-            # REMOVED blocking print(status) to prevent buffer overflows
-            # if status:
-            #     print(status)
-
             # Capture Selected Channel
             if indata.shape[1] > self.selected_channel:
                 new_data = indata[:, self.selected_channel]
