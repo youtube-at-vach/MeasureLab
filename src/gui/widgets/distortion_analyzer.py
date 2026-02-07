@@ -21,9 +21,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.signal import get_window
 
-from src.core.analysis import AudioCalc
+from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -1106,7 +1105,7 @@ class DistortionAnalyzerWidget(QWidget):
         # Perform Analysis
         # Check signal type instead of mode
         if self.module.signal_type in ["smpte", "ccif"]:
-            window = get_window(self.module.window_type, len(data))
+            window = get_cached_window(self.module.window_type, len(data), dtype=data.dtype)
             fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) * (2 / np.sum(window))
             freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
