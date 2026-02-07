@@ -1323,7 +1323,7 @@ class SettingsWidget(QWidget):
         # Heuristic: try to find the host API of the currently active input device
         try:
             target_device_idx = self.audio_engine.input_device
-            
+
             # If no device selected, try system default input
             if target_device_idx is None:
                 defaults = sd.default.device
