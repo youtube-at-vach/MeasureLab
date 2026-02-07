@@ -334,58 +334,50 @@ class OnePPSMonitorWidget(QWidget):
         # Right: Controls
         ctrl_layout = QVBoxLayout()
         
-        # --- Plot Options ---
-        plot_group = QGroupBox(tr("Display Options"))
-        plot_vbox = QVBoxLayout(plot_group)
-        
-        plot_vbox.addWidget(QLabel(tr("Unit:")))
-        self.combo_unit = QComboBox()
-        self.combo_unit.addItems(["PPM", "Seconds"])
-        self.combo_unit.currentIndexChanged.connect(self._update_plot)
-        plot_vbox.addWidget(self.combo_unit)
-        
-        ctrl_layout.addWidget(plot_group)
-        
-        # --- Settings ---
-        ctrl_group = QGroupBox(tr("Settings"))
-        ctrl_vbox = QVBoxLayout(ctrl_group)
-        
-        # Controls
+        # Start Button (Always visible)
         self.btn_start = QPushButton(tr("Start"))
         self.btn_start.setCheckable(True)
         self.btn_start.clicked.connect(self._on_start_toggled)
-        ctrl_vbox.addWidget(self.btn_start)
+        ctrl_layout.addWidget(self.btn_start)
         
-        ctrl_vbox.addWidget(QLabel(tr("Nominal Rate (Hz):")))
+        # Tabs
+        from PyQt6.QtWidgets import QTabWidget
+        self.tabs = QTabWidget()
+        ctrl_layout.addWidget(self.tabs)
+        
+        # --- Tab 1: Settings ---
+        tab_settings = QWidget()
+        vbox_settings = QVBoxLayout(tab_settings)
+        
+        # Nominal Rate
+        vbox_settings.addWidget(QLabel(tr("Nominal Rate (Hz):")))
         self.spin_rate = QDoubleSpinBox()
         self.spin_rate.setRange(1.0, 384000.0)
-        
         current_sr = float(self.module.audio_engine.sample_rate)
         self.spin_rate.setValue(current_sr)
-        
         self.spin_rate.setDecimals(1)
         self.spin_rate.valueChanged.connect(self._on_rate_changed)
-        ctrl_vbox.addWidget(self.spin_rate)
+        vbox_settings.addWidget(self.spin_rate)
         
         # Threshold
-        ctrl_vbox.addWidget(QLabel(tr("Threshold (FS):")))
+        vbox_settings.addWidget(QLabel(tr("Threshold (FS):")))
         self.spin_thresh = QDoubleSpinBox()
         self.spin_thresh.setRange(-1.0, 1.0)
         self.spin_thresh.setSingleStep(0.01)
         self.spin_thresh.setValue(0.5)
         self.spin_thresh.valueChanged.connect(self._on_thresh_changed)
-        ctrl_vbox.addWidget(self.spin_thresh)
+        vbox_settings.addWidget(self.spin_thresh)
 
         # Hysteresis
-        ctrl_vbox.addWidget(QLabel(tr("Hysteresis (FS):")))
+        vbox_settings.addWidget(QLabel(tr("Hysteresis (FS):")))
         self.spin_hyst = QDoubleSpinBox()
         self.spin_hyst.setRange(0.0, 0.5)
         self.spin_hyst.setSingleStep(0.01)
         self.spin_hyst.setValue(0.05)
         self.spin_hyst.valueChanged.connect(self._on_hyst_changed)
-        ctrl_vbox.addWidget(self.spin_hyst)
+        vbox_settings.addWidget(self.spin_hyst)
 
-        # Outlier Filter
+        # Outlier Filter Group
         filter_group = QGroupBox(tr("Outlier Rejection"))
         filter_vbox = QVBoxLayout(filter_group)
         
@@ -415,11 +407,31 @@ class OnePPSMonitorWidget(QWidget):
         tol_row.addWidget(self.spin_tol)
         filter_vbox.addLayout(tol_row)
         
-        ctrl_vbox.addWidget(filter_group)
+        vbox_settings.addWidget(filter_group)
+        vbox_settings.addStretch()
+        
+        self.tabs.addTab(tab_settings, tr("Settings"))
+        
+        # --- Tab 2: Display ---
+        tab_display = QWidget()
+        vbox_display = QVBoxLayout(tab_display)
+        
+        # Plot Options
+        plot_group = QGroupBox(tr("Display Options"))
+        plot_vbox = QVBoxLayout(plot_group)
+        
+        plot_vbox.addWidget(QLabel(tr("Unit:")))
+        self.combo_unit = QComboBox()
+        self.combo_unit.addItems(["PPM", "Seconds"])
+        self.combo_unit.currentIndexChanged.connect(self._update_plot)
+        plot_vbox.addWidget(self.combo_unit)
+        
+        vbox_display.addWidget(plot_group)
         
         # Stats
         self.lbl_inst = QLabel("Inst: -")
         self.lbl_cumul = QLabel("Cumul: -")
+        self.lbl_rate = QLabel("Rate: -")
         self.lbl_mean = QLabel("Mean: -")
         self.lbl_std = QLabel("Std Dev: -")
         self.lbl_min = QLabel("Min: -")
@@ -429,15 +441,17 @@ class OnePPSMonitorWidget(QWidget):
         stats_vbox = QVBoxLayout(stats_group)
         stats_vbox.addWidget(self.lbl_inst)
         stats_vbox.addWidget(self.lbl_cumul)
+        stats_vbox.addWidget(self.lbl_rate)
         stats_vbox.addWidget(self.lbl_mean)
         stats_vbox.addWidget(self.lbl_std)
         stats_vbox.addWidget(self.lbl_min)
         stats_vbox.addWidget(self.lbl_max)
         
-        ctrl_layout.addWidget(ctrl_group)
-        ctrl_layout.addWidget(stats_group)
-        ctrl_layout.addStretch()
+        vbox_display.addWidget(stats_group)
+        vbox_display.addStretch()
         
+        self.tabs.addTab(tab_display, tr("Display"))
+
         layout.addLayout(ctrl_layout)
 
         # Initialize
@@ -511,6 +525,11 @@ class OnePPSMonitorWidget(QWidget):
             
             self.lbl_inst.setText(f"Inst: {fmt.format(last_ip)}")
             self.lbl_cumul.setText(f"Cumul: {fmt.format(last_cp)}")
+            
+            # Effective Rate
+            nominal = self.module.nominal_rate
+            eff_rate = nominal * (1.0 + last_cp / 1e6)
+            self.lbl_rate.setText(f"Rate: {eff_rate:.4f} Hz")
             
             self.lbl_mean.setText(f"Mean: {fmt.format(mean_val)}")
             self.lbl_std.setText(f"Std Dev: {fmt.format(std_val)}")
