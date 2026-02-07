@@ -1,15 +1,12 @@
-
 import sys
+import time
 from unittest.mock import MagicMock
 
 # Mock sounddevice before importing anything that uses it
 sys.modules['sounddevice'] = MagicMock()
 
-import time
-import queue
-import threading
-import numpy as np
-from src.gui.widgets.oscilloscope import Oscilloscope
+import numpy as np  # noqa: E402
+from src.gui.widgets.oscilloscope import Oscilloscope  # noqa: E402
 
 class MockAudioEngine:
     def __init__(self):
