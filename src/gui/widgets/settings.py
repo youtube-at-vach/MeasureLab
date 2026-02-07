@@ -1014,8 +1014,7 @@ class SettingsWidget(QWidget):
 
         # Sample Rate
         self.sr_combo = QComboBox()
-        self.sr_combo.setEditable(True)
-        self.sr_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.sr_combo.setEditable(False)
         # Default fallback list includes higher rates now
         self.sr_combo.addItems(["44100", "48000", "88200", "96000", "192000", "384000", "768000"])
         self.sr_combo.setCurrentText(str(self.audio_engine.sample_rate))
