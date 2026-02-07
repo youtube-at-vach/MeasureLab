@@ -48,6 +48,7 @@ class Spectrogram(MeasurementModule):
         # Accumulator for Sweep Speed
         self.accumulator = None
         self.acc_count = 0
+        self.mag_buffer = None
 
         # Ring buffer for incoming audio
         self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
@@ -82,6 +83,7 @@ class Spectrogram(MeasurementModule):
             self.accumulator = None
             self.acc_count = 0
             self.output_buffer = None
+            self.mag_buffer = None
 
     def start_analysis(self):
         if self.is_running:
@@ -353,6 +355,21 @@ class SpectrogramWidget(QWidget):
         else:
             sig = np.mean(raw_data, axis=1)
 
+        # Determine Target Frames based on Speed
+        # Update rate is 30ms.
+        # Fast: Update every frame (1)
+        # Medium: 1 min = 60s. 500 pixels. 0.12s/pixel. 30ms -> 4 frames.
+        # Slow: 5 min = 300s. 0.6s/pixel. 30ms -> 20 frames.
+        # Meteor: 10 min = 600s. 1.2s/pixel. 30ms -> 40 frames.
+
+        target_frames = 1
+        if self.module.sweep_speed_index == 1:
+            target_frames = 4
+        elif self.module.sweep_speed_index == 2:
+            target_frames = 20
+        elif self.module.sweep_speed_index == 3:
+            target_frames = 40
+
         # Windowing
         window = get_cached_window(self.module.window_type, len(sig))
         sig_win = sig * window
@@ -362,7 +379,13 @@ class SpectrogramWidget(QWidget):
 
         # FFT
         fft_res = fft_manager.rfft(sig_win)
-        mag = np.abs(fft_res)
+
+        # Optimized: Use pre-allocated buffer
+        if self.module.mag_buffer is None or self.module.mag_buffer.shape != fft_res.shape:
+            self.module.mag_buffer = np.zeros(fft_res.shape, dtype=fft_res.real.dtype)
+
+        mag = self.module.mag_buffer
+        np.abs(fft_res, out=mag)
 
         # Normalize
         # Optimized in-place normalization
@@ -378,27 +401,15 @@ class SpectrogramWidget(QWidget):
 
         # --- Accumulation Logic ---
         if self.module.accumulator is None or self.module.accumulator.shape != mag_db.shape:
-            self.module.accumulator = mag_db
+            if target_frames > 1:
+                self.module.accumulator = mag_db.copy()
+            else:
+                self.module.accumulator = mag_db
             self.module.acc_count = 1
         else:
             # Max Hold Accumulation
             np.maximum(self.module.accumulator, mag_db, out=self.module.accumulator)
             self.module.acc_count += 1
-
-        # Determine Target Frames based on Speed
-        # Update rate is 30ms.
-        # Fast: Update every frame (1)
-        # Medium: 1 min = 60s. 500 pixels. 0.12s/pixel. 30ms -> 4 frames.
-        # Slow: 5 min = 300s. 0.6s/pixel. 30ms -> 20 frames.
-        # Meteor: 10 min = 600s. 1.2s/pixel. 30ms -> 40 frames.
-
-        target_frames = 1
-        if self.module.sweep_speed_index == 1:
-            target_frames = 4
-        elif self.module.sweep_speed_index == 2:
-            target_frames = 20
-        elif self.module.sweep_speed_index == 3:
-            target_frames = 40
 
         if self.module.acc_count < target_frames:
             return  # Wait for more data
