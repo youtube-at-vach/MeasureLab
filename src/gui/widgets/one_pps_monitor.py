@@ -160,48 +160,54 @@ class OnePPSMonitor(MeasurementModule):
                             self._first_trigger_sample_index = abs_pos
                             self._last_trigger_sample_index = abs_pos
                             
-                            # Initialize regression with first point (0, 0) relative to start
-                            # x=0, y=0
+                            # Initialize regression
                             reg_n = 1
                             reg_sx = 0.0
                             reg_sy = 0.0
                             reg_sxx = 0.0
                             reg_sxy = 0.0
-                            # Cannot calculate delta or cumulative on very first pulse
                         else:
                             # Instantaneous calculation
                             delta = abs_pos - self._last_trigger_sample_index
                             
-                            # Outlier Rejection Logic
-                            accepted = True
-                            if self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
+                            # 0. Gate Filter (Hard Rejection)
+                            # Reject if deviation is > 50% of nominal (e.g. double trigger or missed trigger)
+                            # This handles the massive glitches seen in 1PPS (e.g. 192kHz -> < 96k or > 288k)
+                            # 50% is safe for 1PPS.
+                            gate_threshold = nominal * 0.5
+                            is_gross_outlier = abs(delta - nominal) > gate_threshold
+                            
+                            accepted = not is_gross_outlier
+
+                            # 1. MAD/Median Filter
+                            if accepted and self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
                                 window = np.array(self._filter_window)
                                 med = np.median(window)
                                 mad = np.median(np.abs(window - med))
+                                # If MAD is 0 (perfect signal), use a tiny epsilon to avoid div by zero logic or too strict
+                                mad = max(mad, 1e-9)
+                                
                                 sigma = 1.4826 * mad
-                                thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0)
+                                thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0) # at least 1 sample
+                                
                                 if abs(delta - med) > thresh_val:
                                     accepted = False
-                            
-                            # CRITICAL FIX: Only update history/filter if accepted!
-                            # If rejected, we effectively ignore this pulse happened? 
-                            # Or do we treat it as a glitch?
-                            # If it's a glitch (noise), we should ignore it.
-                            # If it's a very late pulse, we might miss a beat.
-                            # For robust ppm monitoring, ignoring glitches is safer.
                             
                             if accepted:
                                 self._filter_window.append(delta)
                                 if len(self._filter_window) > self.filter_window_size:
                                     self._filter_window.pop(0)
 
-                                # 1. Instantaneous PPM
+                                # 2. Instantaneous Result
                                 error_samples = delta - nominal
+                                # PPM = (Error / Nominal) * 1e6
+                                # Seconds Error = Error / Nominal_Rate (Sampling Rate ~ Nominal) assuming Nominal is Rate
+                                # We store PPM. UI can convert to Seconds (PPM * 1e-6).
                                 instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
                                 
-                                # 2. Regression Update
-                                # x = expected seconds index (approx)
-                                # y = actual sample count relative to first pulse
+                                # 3. Regression Update
+                                # x = Pulse Count (approx seconds)
+                                # y = Actual Sample Position relative to first
                                 y_val = abs_pos - self._first_trigger_sample_index
                                 x_val = round(y_val / nominal)
                                 
@@ -212,7 +218,6 @@ class OnePPSMonitor(MeasurementModule):
                                 reg_sxy += x_val * y_val
                                 
                                 # Slope Calculation
-                                # m = (N*Sxy - Sx*Sy) / (N*Sxx - Sx*Sx)
                                 denom = (reg_n * reg_sxx - reg_sx * reg_sx)
                                 if denom != 0:
                                     slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
@@ -230,8 +235,17 @@ class OnePPSMonitor(MeasurementModule):
                                     self.history_write_pos = (idx + 1) % self.max_history
                                     self.history_filled = min(self.history_filled + 1, self.max_history)
                                 
-                                # Only update last trigger if accepted!
+                                # 4. Update Trigger State (Only if accepted!)
+                                # If we reject, we assume this trigger was noise (glitch)
+                                # and we continue waiting for the "real" next pulse relative to the LAST GOOD one.
+                                # However, if it was a valid pulse but just very jittery, rejecting it means we lose time sync?
+                                # For 1PPS, a glitch is usually an extra edge. Ignoring it keeps us locked to the 1s grid.
                                 self._last_trigger_sample_index = abs_pos
+                            else:
+                                # Rejected.
+                                # If it was a gross outlier (e.g. double trigger), ignoring it is correct.
+                                # We do NOT update _last_trigger_sample_index.
+                                pass
                         
                 else:
                     if s <= th_low:
@@ -323,6 +337,20 @@ class OnePPSMonitorWidget(QWidget):
         
         # Right: Controls
         ctrl_layout = QVBoxLayout()
+        
+        # --- Plot Options ---
+        plot_group = QGroupBox(tr("Display Options"))
+        plot_vbox = QVBoxLayout(plot_group)
+        
+        plot_vbox.addWidget(QLabel(tr("Unit:")))
+        self.combo_unit = QComboBox()
+        self.combo_unit.addItems(["PPM", "Seconds"])
+        self.combo_unit.currentIndexChanged.connect(self._update_plot)
+        plot_vbox.addWidget(self.combo_unit)
+        
+        ctrl_layout.addWidget(plot_group)
+        
+        # --- Settings ---
         ctrl_group = QGroupBox(tr("Settings"))
         ctrl_vbox = QVBoxLayout(ctrl_group)
         
@@ -394,13 +422,21 @@ class OnePPSMonitorWidget(QWidget):
         ctrl_vbox.addWidget(filter_group)
         
         # Stats
-        self.lbl_inst = QLabel("Inst PPM: -")
-        self.lbl_cumul = QLabel("Cumul PPM: -")
+        self.lbl_inst = QLabel("Inst: -")
+        self.lbl_cumul = QLabel("Cumul: -")
+        self.lbl_mean = QLabel("Mean: -")
+        self.lbl_std = QLabel("Std Dev: -")
+        self.lbl_min = QLabel("Min: -")
+        self.lbl_max = QLabel("Max: -")
         
         stats_group = QGroupBox(tr("Statistics"))
         stats_vbox = QVBoxLayout(stats_group)
         stats_vbox.addWidget(self.lbl_inst)
         stats_vbox.addWidget(self.lbl_cumul)
+        stats_vbox.addWidget(self.lbl_mean)
+        stats_vbox.addWidget(self.lbl_std)
+        stats_vbox.addWidget(self.lbl_min)
+        stats_vbox.addWidget(self.lbl_max)
         
         ctrl_layout.addWidget(ctrl_group)
         ctrl_layout.addWidget(stats_group)
@@ -447,11 +483,40 @@ class OnePPSMonitorWidget(QWidget):
     def _update_plot(self):
         t, ip, cp = self.module.get_history_arrays()
         if len(t) > 0:
-            self.curve_instant.setData(t, ip)
-            self.curve_cumulative.setData(t, cp)
+            # Unit Conversion
+            unit = self.combo_unit.currentText()
+            if unit == "Seconds":
+                # PPM to Seconds: PPM * 1e-6
+                scale = 1e-6
+                unit_label = "s"
+                fmt = "{:.3e}"
+            else:
+                scale = 1.0
+                unit_label = "ppm"
+                fmt = "{:+.3f}"
+
+            ip_plot = ip * scale
+            cp_plot = cp * scale
+
+            self.plot_widget.setLabel("left", tr("Deviation"), units=unit_label)
+            self.curve_instant.setData(t, ip_plot)
+            self.curve_cumulative.setData(t, cp_plot)
             
-            last_ip = ip[-1]
-            last_cp = cp[-1]
+            # Stats calculation on visible data (Instantaneous)
+            vals = ip_plot
             
-            self.lbl_inst.setText(f"Inst PPM: {last_ip:+.2f}")
-            self.lbl_cumul.setText(f"Cumul PPM: {last_cp:+.4f}")
+            last_ip = vals[-1]
+            last_cp = cp_plot[-1]
+            
+            mean_val = np.mean(vals)
+            std_val = np.std(vals)
+            min_val = np.min(vals)
+            max_val = np.max(vals)
+            
+            self.lbl_inst.setText(f"Inst: {fmt.format(last_ip)}")
+            self.lbl_cumul.setText(f"Cumul: {fmt.format(last_cp)}")
+            
+            self.lbl_mean.setText(f"Mean: {fmt.format(mean_val)}")
+            self.lbl_std.setText(f"Std Dev: {fmt.format(std_val)}")
+            self.lbl_min.setText(f"Min: {fmt.format(min_val)}")
+            self.lbl_max.setText(f"Max: {fmt.format(max_val)}")

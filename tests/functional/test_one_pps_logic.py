@@ -97,6 +97,10 @@ def test_hysteresis():
     # 5. Drop to 0.35 (Reset)
     # 6. Rise to 0.55 (Trigger 2)
     
+    # Pulse 1 at 3. Pulse 2 at 10. Delta = 7.
+    # Set nominal rate to 7 so Gate Filter accepts it (7 +/- 3.5)
+    monitor.nominal_rate = 7.0
+    
     sig = np.array([
         0.0, 0.45, 0.45,   # No trigger
         0.55, 0.6,         # Trigger 1 (idx 3)
