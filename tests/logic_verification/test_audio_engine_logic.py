@@ -68,5 +68,30 @@ class TestAudioEngineLogic(unittest.TestCase):
 
         self.assertFalse(found_log, "Should not log unregister for non-existent callback")
 
+    def test_set_channel_mode_restarts_stream(self):
+        # Setup: stream is active
+        self.engine.stream.active = True
+
+        # Mock _restart_stream to verify it's called
+        self.engine._restart_stream = MagicMock()
+
+        self.engine.set_channel_mode("left", "right")
+
+        self.engine._restart_stream.assert_called_once()
+        self.assertEqual(self.engine.input_channel_mode, "left")
+        self.assertEqual(self.engine.output_channel_mode, "right")
+
+    def test_set_channel_mode_no_restart_if_inactive(self):
+        # Setup: stream is NOT active
+        self.engine.stream = None
+
+        self.engine._restart_stream = MagicMock()
+
+        self.engine.set_channel_mode("left", "right")
+
+        self.engine._restart_stream.assert_not_called()
+        self.assertEqual(self.engine.input_channel_mode, "left")
+        self.assertEqual(self.engine.output_channel_mode, "right")
+
 if __name__ == '__main__':
     unittest.main()

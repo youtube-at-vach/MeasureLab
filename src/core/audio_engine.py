@@ -149,6 +149,8 @@ class AudioEngine:
         self.logger.info(f"Set channel modes: Input={input_mode}, Output={output_mode}")
         # Note: Changing channel mode might affect active callbacks if they expect specific mapping.
         # For now, we assume global mode applies to the master stream.
+        if self.is_active():
+            self._restart_stream()
 
     def register_callback(self, callback):
         """
