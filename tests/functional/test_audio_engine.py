@@ -67,7 +67,7 @@ class TestAudioEngine(unittest.TestCase):
                 print(f"Callback: Out Max={np.max(np.abs(outdata))}, In Max={np.max(np.abs(indata))}")
 
         # Start stream with 2 channels
-        self.engine.start_stream(callback, channels=2)
+        self.engine.register_callback(callback)
         time.sleep(1.0) # Run for 1 second
         self.engine.stop_stream()
 

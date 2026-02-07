@@ -401,17 +401,3 @@ class AudioEngine:
             "last_error": last_error,
         }
 
-    # Legacy method support (deprecated but kept for compatibility during transition if needed)
-    def start_stream(self, callback, channels=2):
-        """
-        Deprecated: Use register_callback instead.
-        This acts as a wrapper for single-client usage.
-        """
-        self.logger.warning("start_stream is deprecated. Use register_callback.")
-        # Stop any existing stream/callbacks to mimic exclusive behavior
-        self.stop_stream()
-        with self.lock:
-            self.callbacks.clear()
-            self._cached_callbacks = []
-
-        self.register_callback(callback)
