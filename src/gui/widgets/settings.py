@@ -1407,6 +1407,14 @@ class SettingsWidget(QWidget):
         self.input_combo.blockSignals(False)
         self.output_combo.blockSignals(False)
 
+        # If we fell back to system defaults because config was empty/None,
+        # we need to trigger a save so config.json gets populated.
+        # We can detect this if default_in/out was None but we now have a selection.
+        if (default_in is None and self.input_combo.currentIndex() >= 0) or \
+           (default_out is None and self.output_combo.currentIndex() >= 0):
+            # This will save to config
+            self.on_device_changed()
+
         self.refresh_sample_rates()
 
         # Connect signals
