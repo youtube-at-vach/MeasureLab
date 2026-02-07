@@ -1,0 +1,23 @@
+Verification Date: 2024-10-24
+Script: scripts/check_trn_keys.py
+Result: PASS
+
+Output:
+=== Translation Check Script ===
+Loaded 1045 keys from en.json
+Found 1045 unique tr() keys in 44 source files.
+
+--- Check 1: Missing keys in en.json (Used in Code) ---
+OK
+
+--- Check 2: Unused keys in en.json (Not used in Code) ---
+OK
+
+--- Check 3: Missing translations in other languages (Compared to en.json) ---
+OK
+
+--- Check 4: Duplicate Keys (Warning) ---
+OK
+
+=== Result ===
+TEST PASSED
