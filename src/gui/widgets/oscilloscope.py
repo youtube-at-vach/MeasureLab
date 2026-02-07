@@ -1,5 +1,6 @@
 import argparse
 import queue
+import threading
 
 import numpy as np
 import pyqtgraph as pg
@@ -73,7 +74,15 @@ class Oscilloscope(MeasurementModule):
         self.heatmap_r = None
         self.heatmap_size = (600, 400)  # Width, Height (pixels/bins)
 
-        self.audio_queue = queue.Queue()
+        # High-performance transfer buffer (Ring Buffer)
+        # Replaces queue to avoid allocation in audio callback
+        self.transfer_buffer_size = 65536
+        self.transfer_buffer = np.zeros((self.transfer_buffer_size, 2), dtype=np.float32)
+        self.transfer_write_count = 0
+        self.transfer_read_count = 0
+        self.transfer_lock = threading.Lock()
+
+        self.audio_queue = queue.Queue()  # Kept for compatibility if external access exists (unlikely), but unused internally
         self.callback_id = None
 
     @property
@@ -140,12 +149,11 @@ class Oscilloscope(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_index = 0
 
-        # Clear queue
-        while not self.audio_queue.empty():
-            try:
-                self.audio_queue.get_nowait()
-            except queue.Empty:
-                break
+        # Reset transfer buffer
+        with self.transfer_lock:
+            self.transfer_write_count = 0
+            self.transfer_read_count = 0
+            self.transfer_buffer.fill(0)
 
         # Reset heatmaps
         if self.persistence_mode:
@@ -159,41 +167,87 @@ class Oscilloscope(MeasurementModule):
             if status:
                 pass
 
-            if indata.shape[1] >= 2:
-                new_data = indata[:, :2].copy()
-            else:
-                new_data = np.column_stack((indata[:, 0], indata[:, 0]))
+            # Write to transfer buffer with lock, NO allocation
+            with self.transfer_lock:
+                idx = self.transfer_write_count % self.transfer_buffer_size
+                remaining = self.transfer_buffer_size - idx
 
-            self.audio_queue.put(new_data)
+                # Determine how much we can write in first chunk
+                chunk1 = min(frames, remaining)
+                chunk2 = frames - chunk1
+
+                if indata.shape[1] >= 2:
+                    self.transfer_buffer[idx : idx + chunk1] = indata[:chunk1, :2]
+                    if chunk2 > 0:
+                        self.transfer_buffer[:chunk2] = indata[chunk1:, :2]
+                else:
+                    # Mono expansion
+                    self.transfer_buffer[idx : idx + chunk1, 0] = indata[:chunk1, 0]
+                    self.transfer_buffer[idx : idx + chunk1, 1] = indata[:chunk1, 0]
+                    if chunk2 > 0:
+                        self.transfer_buffer[:chunk2, 0] = indata[chunk1:, 0]
+                        self.transfer_buffer[:chunk2, 1] = indata[chunk1:, 0]
+
+                self.transfer_write_count += frames
+
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
     def process_queue(self):
-        while not self.audio_queue.empty():
-            try:
-                new_data = self.audio_queue.get_nowait()
-            except queue.Empty:
-                break
+        # Poll transfer buffer
+        with self.transfer_lock:
+            written = self.transfer_write_count
+            read = self.transfer_read_count
 
-            n_frames = len(new_data)
-            if n_frames > self.buffer_size:
-                # Just take the last part
-                self.input_data[:] = new_data[-self.buffer_size :]
-                self.write_index = 0
+            available = written - read
+            if available <= 0:
+                return
+
+            if available > self.transfer_buffer_size:
+                # Overflow: skip old data
+                read = written - self.transfer_buffer_size
+                available = self.transfer_buffer_size
+
+            # Read data
+            # To avoid holding lock too long or complicating logic,
+            # we copy to a temp buffer here (allocating in UI thread is fine).
+            # This replaces the 'queue.get()' behavior.
+
+            start_idx = read % self.transfer_buffer_size
+            chunk1 = min(available, self.transfer_buffer_size - start_idx)
+            chunk2 = available - chunk1
+
+            if chunk2 == 0:
+                new_data = self.transfer_buffer[start_idx : start_idx + chunk1].copy()
             else:
-                # Wrapped write
-                idx = self.write_index
-                end_idx = idx + n_frames
-                if end_idx <= self.buffer_size:
-                    self.input_data[idx:end_idx] = new_data
-                else:
-                    # Split
-                    part1_len = self.buffer_size - idx
-                    self.input_data[idx:] = new_data[:part1_len]
-                    self.input_data[: n_frames - part1_len] = new_data[part1_len:]
+                # Wrapped read
+                # Allocates new array
+                new_data = np.concatenate(
+                    (self.transfer_buffer[start_idx:], self.transfer_buffer[:chunk2])
+                )
 
-                self.write_index = (idx + n_frames) % self.buffer_size
+            self.transfer_read_count = written  # Mark all as read
+
+        # Now process new_data into input_data (display buffer)
+        n_frames = len(new_data)
+        if n_frames > self.buffer_size:
+            # Just take the last part
+            self.input_data[:] = new_data[-self.buffer_size :]
+            self.write_index = 0
+        else:
+            # Wrapped write
+            idx = self.write_index
+            end_idx = idx + n_frames
+            if end_idx <= self.buffer_size:
+                self.input_data[idx:end_idx] = new_data
+            else:
+                # Split
+                part1_len = self.buffer_size - idx
+                self.input_data[idx:] = new_data[:part1_len]
+                self.input_data[: n_frames - part1_len] = new_data[part1_len:]
+
+            self.write_index = (idx + n_frames) % self.buffer_size
 
     def get_measurements(self, data):
         """

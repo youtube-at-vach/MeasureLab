@@ -1,3 +1,4 @@
+
 import sys
 import os
 import numpy as np
@@ -14,7 +15,7 @@ from src.gui.widgets.oscilloscope import Oscilloscope
 
 def test_oscilloscope_queue_data_flow():
     """
-    Verify that data flows from callback -> queue -> process_queue -> input_data.
+    Verify that data flows from callback -> transfer_buffer -> process_queue -> input_data.
     """
     # Mock AudioEngine
     mock_engine = MagicMock()
@@ -33,8 +34,9 @@ def test_oscilloscope_queue_data_flow():
     osc = Oscilloscope(mock_engine)
     osc.start_analysis()
 
-    # Verify queue is empty
-    assert osc.audio_queue.empty()
+    # Verify buffer is empty/reset
+    assert osc.transfer_write_count == 0
+    assert osc.transfer_read_count == 0
 
     # Get callback
     cb = callbacks[0]
@@ -47,9 +49,11 @@ def test_oscilloscope_queue_data_flow():
     # Call callback
     cb(indata, outdata, frames, 0.0, None)
 
-    # Verify data is in queue
-    assert not osc.audio_queue.empty()
-    assert osc.audio_queue.qsize() == 1
+    # Verify data is in transfer buffer
+    assert osc.transfer_write_count == 100
+    assert osc.transfer_read_count == 0
+    # Check data content in transfer buffer
+    assert np.allclose(osc.transfer_buffer[0:100], 0.5)
 
     # Verify input_data is still zero (before process_queue)
     assert np.all(osc.input_data == 0)
@@ -57,8 +61,8 @@ def test_oscilloscope_queue_data_flow():
     # Call process_queue
     osc.process_queue()
 
-    # Verify queue is empty
-    assert osc.audio_queue.empty()
+    # Verify transfer buffer is read
+    assert osc.transfer_read_count == 100
 
     # Verify input_data has data
     # osc.input_data is ring buffer. write_index should be advanced.
@@ -70,7 +74,7 @@ def test_oscilloscope_queue_data_flow():
     assert np.allclose(osc.input_data[0:100], 0.5)
     assert np.all(osc.input_data[100:] == 0)
 
-    print("Queue data flow test passed.")
+    print("Transfer buffer data flow test passed.")
 
 if __name__ == "__main__":
     try:
