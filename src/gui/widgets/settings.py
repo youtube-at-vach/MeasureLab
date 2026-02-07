@@ -1295,17 +1295,17 @@ class SettingsWidget(QWidget):
         host_apis = self.audio_engine.get_host_apis()
         self.hostapi_combo.blockSignals(True)
         self.hostapi_combo.clear()
-        
+
         # Populate Host APIs
         # We need to map API index to name
         for i, api in enumerate(host_apis):
             self.hostapi_combo.addItem(api['name'], i)
-        
+
         # Determine current Host API from config or default
         current_api_index = self._get_current_host_api_index(host_apis)
         if current_api_index >= 0 and current_api_index < self.hostapi_combo.count():
             self.hostapi_combo.setCurrentIndex(current_api_index)
-        
+
         self.hostapi_combo.blockSignals(False)
 
         # 2. Populate Devices based on selected Host API
@@ -1316,17 +1316,17 @@ class SettingsWidget(QWidget):
         saved_api_name = self.config_manager.get_audio_config().get("input_hostapi") # active input host api
         if not saved_api_name:
              saved_api_name = self.config_manager.get_audio_config().get("output_hostapi")
-        
+
         if saved_api_name:
             for i, api in enumerate(host_apis):
                 if api['name'] == saved_api_name:
                     return i
-        
+
         # Fallback: Use the default host API
         try:
              import sounddevice as sd
              return sd.default.hostapi
-        except:
+        except Exception:
              return 0
 
     def on_hostapi_changed(self):
@@ -1342,7 +1342,7 @@ class SettingsWidget(QWidget):
             return
 
         devices = self.audio_engine.list_devices()
-        
+
         self.input_combo.blockSignals(True)
         self.output_combo.blockSignals(True)
         self.input_combo.clear()
@@ -1351,10 +1351,10 @@ class SettingsWidget(QWidget):
         # Get saved device names to restore selection if possible
         saved_in = self.config_manager.get_audio_config().get("input_device")
         saved_out = self.config_manager.get_audio_config().get("output_device")
-        
+
         # Also check current engine active devices if we want to show what is currently running
         # But here we want to reflect what is available for the *selected* Host API.
-        
+
         # Filter devices by Host API
         valid_devices = []
         for i, dev in enumerate(devices):
@@ -1413,7 +1413,6 @@ class SettingsWidget(QWidget):
     def on_device_changed(self):
         input_idx = self.input_combo.currentData()
         output_idx = self.output_combo.currentData()
-        host_api_idx = self.hostapi_combo.currentData()
 
         # If selections are empty (e.g. no devices for this API), we can't set much
         if input_idx is None or output_idx is None:
@@ -1421,25 +1420,25 @@ class SettingsWidget(QWidget):
 
         try:
             self.audio_engine.set_devices(input_idx, output_idx)
-            
+
             # Update Active Labels - OH WAIT, we removed them.
             # self.active_in_label.setText(self.input_combo.currentText())
-            
+
             # Save to config
             # We need the naked name for config (without index prefix)
             # stored in _get_device_name_for_config
-            
+
             in_text = self.input_combo.currentText()
             out_text = self.output_combo.currentText()
-            
+
             in_name = self._get_device_name_for_config(input_idx, in_text)
             out_name = self._get_device_name_for_config(output_idx, out_text)
-            
+
             host_api_name = self.hostapi_combo.currentText()
-            
+
             # We can also get host api name from the device list to be sure
             # but combo text should be fine.
-            
+
             self.config_manager.set_audio_config(
                 in_name,
                 out_name,
@@ -1486,7 +1485,7 @@ class SettingsWidget(QWidget):
                 out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
                 in_hostapi = self.hostapi_combo.currentText()
                 out_hostapi = self.hostapi_combo.currentText()
-                
+
                 self.config_manager.set_audio_config(
                     in_name,
                     out_name,
