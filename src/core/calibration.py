@@ -211,11 +211,28 @@ class CalibrationManager:
 
     # --- Frequency Correction Map ---
 
+    def _is_path_allowed(self, path):
+        # Allow only files within the directory where the main calibration file resides.
+        if not self.config_path:
+            return False
+
+        config_dir = os.path.dirname(os.path.realpath(self.config_path))
+        target_path = os.path.realpath(path)
+
+        try:
+            return os.path.commonpath([config_dir, target_path]) == config_dir
+        except ValueError:
+            return False
+
     def load_frequency_map(self, path):
         """
         Loads a frequency correction map from a JSON file.
         Format: [[freq, mag_db, phase_deg], ...]
         """
+        if not self._is_path_allowed(path):
+            print(f"Security Warning: Attempted to load calibration map from outside allowed directory: {path}")
+            return False
+
         if not os.path.exists(path):
             print(f"Calibration map not found: {path}")
             return False
