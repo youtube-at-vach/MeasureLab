@@ -1058,5 +1058,18 @@
     "LO": "LO",
     "Avg Count:": "Moyennes :",
     "{0:.3f} dB": "{0:.3f} dB",
-    "{0} %": "{0} %"
+    "{0} %": "{0} %",
+    "1PPS Frequency Deviation": "Déviation de fréquence 1PPS",
+    "1PPS Monitor": "Moniteur 1PPS",
+    "Cumulative Avg": "Moyenne cumulative",
+    "Deviation": "Déviation",
+    "Display Options": "Options d'affichage",
+    "Enable Filter (Median/MAD)": "Activer le filtre (Médiane/MAD)",
+    "Hysteresis (FS):": "Hystérésis (FS):",
+    "Instantaneous": "Instantané",
+    "Nominal Rate (Hz):": "Taux nominal (Hz):",
+    "Outlier Rejection": "Rejet des valeurs aberrantes",
+    "Show Instantaneous": "Afficher l'instantané",
+    "Threshold (FS):": "Seuil (FS):",
+    "Tolerance (Sigma):": "Tolérance (Sigma):"
 }

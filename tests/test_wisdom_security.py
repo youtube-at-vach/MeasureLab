@@ -28,6 +28,7 @@ class TestWisdomSecurity(unittest.TestCase):
 
         # Create a fresh instance
         self.manager = fft_manager.FFTManager()
+        self.mock_pyfftw.import_wisdom.reset_mock()
         self.manager.wisdom_path = Path("test_wisdom_file")
 
     def tearDown(self):

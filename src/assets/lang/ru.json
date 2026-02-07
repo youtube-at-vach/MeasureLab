@@ -1058,5 +1058,18 @@
     "LO": "LO",
     "Avg Count:": "Усреднение:",
     "{0:.3f} dB": "{0:.3f} dB",
-    "{0} %": "{0} %"
+    "{0} %": "{0} %",
+    "1PPS Frequency Deviation": "Отклонение частоты 1PPS",
+    "1PPS Monitor": "Монитор 1PPS",
+    "Cumulative Avg": "Кумулятивное среднее",
+    "Deviation": "Отклонение",
+    "Display Options": "Параметры отображения",
+    "Enable Filter (Median/MAD)": "Включить фильтр (Медиана/MAD)",
+    "Hysteresis (FS):": "Гистерезис (ПШ):",
+    "Instantaneous": "Мгновенное значение",
+    "Nominal Rate (Hz):": "Номинальная частота (Гц):",
+    "Outlier Rejection": "Отклонение выбросов",
+    "Show Instantaneous": "Показывать мгновенное значение",
+    "Threshold (FS):": "Порог (ПШ):",
+    "Tolerance (Sigma):": "Допуск (Сигма):"
 }
