@@ -23,15 +23,21 @@ sys.modules["src.core.fft_manager"] = MagicMock()
 sys.modules["src.core.localization"] = MagicMock()
 sys.modules["src.measurement_modules.base"] = MagicMock()
 
+
 # 3. Setup QRunnable and QObject mocks for inheritance
 class MockQObject:
-    def __init__(self, *args, **kwargs): pass
+    def __init__(self, *args, **kwargs):
+        pass
+
 
 class MockQRunnable:
-    def __init__(self, *args, **kwargs): pass
+    def __init__(self, *args, **kwargs):
+        pass
+
 
 sys.modules["PyQt6.QtCore"].QObject = MockQObject
 sys.modules["PyQt6.QtCore"].QRunnable = MockQRunnable
+
 
 # 4. Mock pyqtSignal
 def MockPyqtSignal(*args):
@@ -40,11 +46,13 @@ def MockPyqtSignal(*args):
     m.emit = MagicMock()
     return m
 
+
 sys.modules["PyQt6.QtCore"].pyqtSignal = MockPyqtSignal
 
 # 5. Mock numpy (The big one)
 # Only if numpy is missing, OR we force it for testing in restricted env.
 # Since we are in a restricted env where numpy is missing, we must mock it.
+
 
 class MockArray:
     def __init__(self, data):
@@ -65,7 +73,8 @@ class MockArray:
             # key.data should be list of booleans
             if len(key.data) != len(self.data):
                 raise IndexError(f"Boolean index has wrong length: {len(key.data)} vs {len(self.data)}")
-            return MockArray([x for x, m in zip(self.data, key.data) if m])
+            # Add strict=False for zip to satisfy Ruff B905
+            return MockArray([x for x, m in zip(self.data, key.data, strict=False) if m])
         if isinstance(key, int):
             return self.data[key]
         raise TypeError(f"Invalid key type: {type(key)}")
@@ -79,7 +88,7 @@ class MockArray:
 
     def __and__(self, other):
         # boolean & boolean
-        return MockArray([a and b for a, b in zip(self.data, other.data)])
+        return MockArray([a and b for a, b in zip(self.data, other.data, strict=False)])
 
     def __rtruediv__(self, other):
         # other / self (element-wise)
@@ -91,7 +100,7 @@ class MockArray:
         return MockArray([x**other for x in self.data])
 
     def __mul__(self, other):
-        return MockArray([x*other for x in self.data])
+        return MockArray([x * other for x in self.data])
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -106,29 +115,34 @@ class MockArray:
         # shape is (-1, m)
         if len(shape) == 2 and shape[0] == -1:
             m = shape[1]
-            if m == 0: return MockArray([])
+            if m == 0:
+                return MockArray([])
             rows = len(self.data) // m
             new_data = []
             for i in range(rows):
-                chunk = self.data[i*m : (i+1)*m]
+                chunk = self.data[i * m : (i + 1) * m]
                 new_data.append(MockArray(chunk))
             return MockArray2D(new_data)
         return self
 
     def mean(self, axis=None):
-        if not self.data: return 0.0
+        if not self.data:
+            return 0.0
         # Flatten if 2D? No, MockArray is 1D.
         return sum(self.data) / len(self.data)
+
 
 class MockArray2D(MockArray):
     def mean(self, axis=None):
         if axis == 1:
             # Mean along rows (each row is a MockArray)
             return MockArray([row.mean() for row in self.data])
-        return super().mean(axis) # Should not happen for 2D in this usage
+        return super().mean(axis)  # Should not happen for 2D in this usage
+
 
 def mock_asarray(a, dtype=None):
     return MockArray(a)
+
 
 def mock_isfinite(a):
     if isinstance(a, MockArray):
@@ -137,7 +151,9 @@ def mock_isfinite(a):
         d = a
     # Check if finite (not inf, not nan)
     import math
+
     return MockArray([math.isfinite(x) for x in d])
+
 
 def mock_diff(a):
     if isinstance(a, MockArray):
@@ -146,16 +162,20 @@ def mock_diff(a):
         d = a
     if len(d) < 2:
         return MockArray([])
-    return MockArray([d[i+1]-d[i] for i in range(len(d)-1)])
+    return MockArray([d[i + 1] - d[i] for i in range(len(d) - 1)])
+
 
 def mock_mean(a):
     if isinstance(a, MockArray):
         return a.mean()
-    if not a: return 0.0
-    return sum(a)/len(a)
+    if not a:
+        return 0.0
+    return sum(a) / len(a)
+
 
 def mock_sqrt(val):
     return val**0.5
+
 
 # Setup numpy mock module
 mock_numpy = MagicMock()
@@ -167,7 +187,8 @@ mock_numpy.sqrt = mock_sqrt
 sys.modules["numpy"] = mock_numpy
 
 # Now import the class under test
-from src.gui.widgets.frequency_counter import AllanWorker
+from src.gui.widgets.frequency_counter import AllanWorker  # noqa: E402
+
 
 class TestAllanWorker(unittest.TestCase):
     def setUp(self):
@@ -182,8 +203,8 @@ class TestAllanWorker(unittest.TestCase):
         self.assertEqual(worker.update_interval_ms, 100)
         self.assertEqual(worker.display_mode, "frequency")
         # Check signals
-        self.assertTrue(hasattr(worker.signals, 'result'))
-        self.assertTrue(hasattr(worker.signals.result, 'emit'))
+        self.assertTrue(hasattr(worker.signals, "result"))
+        self.assertTrue(hasattr(worker.signals.result, "emit"))
 
     def test_run_empty_history(self):
         worker = AllanWorker([], 100, "frequency")
@@ -192,7 +213,7 @@ class TestAllanWorker(unittest.TestCase):
 
     def test_run_short_history(self):
         # < 10 items
-        worker = AllanWorker([1.0]*9, 100, "frequency")
+        worker = AllanWorker([1.0] * 9, 100, "frequency")
         worker.run()
         worker.signals.result.emit.assert_called_with([], [])
 
@@ -239,7 +260,7 @@ class TestAllanWorker(unittest.TestCase):
     def test_run_invalid_data(self):
         # Mix of valid and invalid
         # AllanWorker filters valid: (isfinite) & (data > 0)
-        history = [1000.0] * 15 + [float('nan'), float('inf'), -10.0, 0.0] + [1000.0] * 5
+        history = [1000.0] * 15 + [float("nan"), float("inf"), -10.0, 0.0] + [1000.0] * 5
         # Total 20 valid points
         worker = AllanWorker(history, 100, "frequency")
         worker.run()
@@ -257,7 +278,7 @@ class TestAllanWorker(unittest.TestCase):
         # Diff is constant 1.
         # Mean(diff^2) = 1. Sqrt(0.5 * 1) = 0.707
         history = [float(i) for i in range(20)]
-        worker = AllanWorker(history, 1000, "frequency") # 1 sec interval
+        worker = AllanWorker(history, 1000, "frequency")  # 1 sec interval
         worker.run()
 
         args, _ = worker.signals.result.emit.call_args
@@ -265,21 +286,23 @@ class TestAllanWorker(unittest.TestCase):
 
         # m=1: tau=1. dev=0.707
         self.assertAlmostEqual(taus[0], 1.0)
-        self.assertAlmostEqual(devs[0], (0.5)**0.5)
+        self.assertAlmostEqual(devs[0], (0.5) ** 0.5)
 
     def test_exception_handling(self):
         # Mocking an exception during calculation
         # We can patch mock_asarray to raise exception
-        with patch.object(mock_numpy, 'asarray', side_effect=ValueError("Test Error")):
-            worker = AllanWorker([1.0]*20, 100, "frequency")
+        with patch.object(mock_numpy, "asarray", side_effect=ValueError("Test Error")):
+            worker = AllanWorker([1.0] * 20, 100, "frequency")
 
             # Capture stdout to silence print
             from io import StringIO
-            with patch('sys.stdout', new=StringIO()):
+
+            with patch("sys.stdout", new=StringIO()):
                 worker.run()
 
             # Should emit empty lists
             worker.signals.result.emit.assert_called_with([], [])
+
 
 if __name__ == "__main__":
     unittest.main()
