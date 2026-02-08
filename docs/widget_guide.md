@@ -32,6 +32,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 * **[Timecode Monitor & Generator](widgets/timecode_monitor.md)**
     * LTC (Linear Timecode) の生成と監視を行います。映像機器との同期確認などに使用します。
 
+* **[1PPS Monitor](widgets/one_pps_monitor.md)**
+    * GPSなどからの1PPS信号を監視し、サンプリングレートの偏差(PPM)を測定します。
+
 ---
 
 ## 📊 基本解析
