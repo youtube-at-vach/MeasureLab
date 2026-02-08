@@ -58,6 +58,9 @@ jobs:
     - name: Build (onedir) with PyInstaller
       run: |
         pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
+        copy scripts/enable_asio.bat dist/onedir/MeasureLab/
+        copy scripts/disable_asio.bat dist/onedir/MeasureLab/
+        copy scripts/README_ASIO.txt dist/onedir/MeasureLab/
 
     - name: Package Windows release assets
       shell: pwsh

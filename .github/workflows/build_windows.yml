@@ -59,6 +59,9 @@ jobs:
         # Default PyInstaller mode is onedir (folder-based distribution)
         # Default PyInstaller mode is onedir (folder-based distribution)
         pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
+        copy scripts/enable_asio.bat dist/onedir/MeasureLab/
+        copy scripts/disable_asio.bat dist/onedir/MeasureLab/
+        copy scripts/README_ASIO.txt dist/onedir/MeasureLab/
 
     - name: Upload Artifact (onefile)
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
