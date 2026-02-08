@@ -1,31 +1,49 @@
 import sys
-from unittest.mock import MagicMock
+import pytest
+from unittest.mock import MagicMock, patch
 
-# Mock heavy UI dependencies so tests can import src.gui.main_window in headless environments
-sys.modules["PyQt6"] = MagicMock()
-sys.modules["PyQt6.QtCore"] = MagicMock()
-sys.modules["PyQt6.QtWidgets"] = MagicMock()
-sys.modules["PyQt6.QtGui"] = MagicMock()
-sys.modules["pyqtgraph"] = MagicMock()
-sys.modules["scipy"] = MagicMock()
-sys.modules["scipy.signal"] = MagicMock()
-sys.modules["scipy.ndimage"] = MagicMock()
-sys.modules["scipy.interpolate"] = MagicMock()
-sys.modules["pywt"] = MagicMock()
-sys.modules["netCDF4"] = MagicMock()
-sys.modules["sounddevice"] = MagicMock()
-sys.modules["soundfile"] = MagicMock()
-sys.modules["pyfftw"] = MagicMock()
+# Module constants
+from src.core.module_constants import ALL_MODULE_KEYS, MODULE_SIGNAL_GENERATOR
 
-# Mock internal dependencies imported at top level
-sys.modules["src.core.audio_engine"] = MagicMock()
-sys.modules["src.core.config_manager"] = MagicMock()
-sys.modules["src.core.localization"] = MagicMock()
-sys.modules["src.gui.widgets.detachable_wrapper"] = MagicMock()
+@pytest.fixture
+def mock_heavy_dependencies():
+    """
+    Patches sys.modules to mock heavy dependencies only for the duration of the test.
+    This prevents side effects on other tests that require the real modules.
+    """
+    mock_modules = {
+        "PyQt6": MagicMock(),
+        "PyQt6.QtCore": MagicMock(),
+        "PyQt6.QtWidgets": MagicMock(),
+        "PyQt6.QtGui": MagicMock(),
+        "pyqtgraph": MagicMock(),
+        "scipy": MagicMock(),
+        "scipy.signal": MagicMock(),
+        "scipy.ndimage": MagicMock(),
+        "scipy.interpolate": MagicMock(),
+        "pywt": MagicMock(),
+        "netCDF4": MagicMock(),
+        "sounddevice": MagicMock(),
+        "soundfile": MagicMock(),
+        "pyfftw": MagicMock(),
+        "src.core.audio_engine": MagicMock(),
+        "src.core.config_manager": MagicMock(),
+        "src.core.localization": MagicMock(),
+        "src.gui.widgets.detachable_wrapper": MagicMock(),
+    }
 
-import pytest  # noqa: E402
-from unittest.mock import patch  # noqa: E402
-from src.core.module_constants import ALL_MODULE_KEYS, MODULE_SIGNAL_GENERATOR  # noqa: E402
+    with patch.dict(sys.modules, mock_modules):
+        yield
+
+@pytest.fixture
+def loaded_main_window_module(mock_heavy_dependencies):
+    """
+    Ensures that src.gui.main_window is imported (or reloaded) while the mocks are active.
+    """
+    import importlib
+    import src.gui.main_window
+    importlib.reload(src.gui.main_window)
+    return src.gui.main_window
 
 def test_module_keys_constants():
     # Verify we have keys
@@ -35,17 +53,13 @@ def test_module_keys_constants():
 @patch('src.gui.main_window.ConfigManager')
 @patch('src.gui.main_window.AudioEngine')
 @patch('src.gui.main_window.get_manager')
-def test_load_module_class(mock_get_manager, mock_audio_engine, mock_config_manager):
-    # We don't need to mock ThemeManager as it is imported inside MainWindow.__init__
-
-    # Import inside the test to use the mocks
-    from src.gui.main_window import _load_module_class
+def test_load_module_class(mock_get_manager, mock_audio_engine, mock_config_manager, loaded_main_window_module):
+    # Use the reloaded module
+    _load_module_class = loaded_main_window_module._load_module_class
 
     # Test MODULE_SIGNAL_GENERATOR specifically
     try:
         cls = _load_module_class(MODULE_SIGNAL_GENERATOR)
-        # With mocks, it might return a Mock object or the real class if imports worked (unlikely here)
-        # Since we mocked sys.modules["PyQt6"], imports inside signal_generator probably succeeded returning a Mock class
         assert cls is not None
     except ImportError:
         pass
@@ -56,9 +70,9 @@ def test_load_module_class(mock_get_manager, mock_audio_engine, mock_config_mana
     with pytest.raises(KeyError):
         _load_module_class("Invalid Key")
 
-def test_load_all_modules():
+def test_load_all_modules(loaded_main_window_module):
     """Verify all defined module keys can be loaded without KeyError."""
-    from src.gui.main_window import _load_module_class
+    _load_module_class = loaded_main_window_module._load_module_class
 
     for key in ALL_MODULE_KEYS:
         try:
@@ -66,5 +80,4 @@ def test_load_all_modules():
         except KeyError:
              pytest.fail(f"KeyError for module: {key}")
         except ImportError:
-             # Import errors are expected if dependencies are missing, but logic should be fine
              pass
