@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QApplication,
@@ -362,7 +364,7 @@ class MainWindow(QMainWindow):
         # Sync output destination control with engine state on startup
         self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
 
-    def _find_device_id(self, devices: list, name: str, hostapi: str, is_input: bool) -> int | None:
+    def _find_device_id(self, devices: list, name: str, hostapi: str, is_input: bool) -> Optional[int]:
         """Find device ID by name and hostapi, with fallback to name only."""
         if not name:
             return None
