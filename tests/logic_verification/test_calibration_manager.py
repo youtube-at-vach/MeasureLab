@@ -1,6 +1,5 @@
 import sys
 import unittest
-from unittest.mock import MagicMock
 import tempfile
 import os
 import json
