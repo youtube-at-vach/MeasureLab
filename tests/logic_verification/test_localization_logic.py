@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import patch, mock_open
-import os
 from src.core.localization import LocalizationManager, tr, get_manager
 
 class TestLocalizationManager(unittest.TestCase):
