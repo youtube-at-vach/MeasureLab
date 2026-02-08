@@ -1,0 +1,18 @@
+{
+    "audio": {
+        "input_device": "In",
+        "input_hostapi": null,
+        "output_device": "Out",
+        "output_hostapi": null,
+        "sample_rate": 44100,
+        "block_size": 512,
+        "input_channels": "stereo",
+        "output_channels": "stereo",
+        "pipewire_jack_resident": false
+    },
+    "language": "fr",
+    "theme": "dark",
+    "screenshot": {
+        "output_dir": "screenshots"
+    }
+}
