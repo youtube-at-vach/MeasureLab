@@ -81,6 +81,7 @@ nav:
 - calibration.md
 - widget_guide.md
 - ウィジット:
+  - 1PPS Monitor: widgets/one_pps_monitor.md
   - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
   - Bnim Meter: widgets/bnim_meter.md
   - Boxcar Averager: widgets/boxcar_averager.md
