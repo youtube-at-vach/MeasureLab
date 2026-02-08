@@ -1365,9 +1365,9 @@ class SettingsWidget(QWidget):
         current_api_text = self.hostapi_combo.currentText()
         is_wasapi = "WASAPI" in current_api_text.upper()
         is_coreaudio = "CORE AUDIO" in current_api_text.upper() or "COREAUDIO" in current_api_text.upper()
-        
+
         self.audio_mode_combo.setEnabled(is_wasapi or is_coreaudio)
-        
+
         if is_wasapi:
             self.audio_mode_combo.setToolTip(tr("Select 'Measurement' for bit-perfect exclusive mode."))
         elif is_coreaudio:

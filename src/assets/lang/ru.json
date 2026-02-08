@@ -1073,5 +1073,11 @@
     "Threshold (FS):": "Порог (ПШ):",
     "Tolerance (Sigma):": "Допуск (Сигма):",
     "Host API:": "Хост-API:",
-    "Count": "Счетчик"
+    "Count": "Счетчик",
+    "Audio Mode:": "Аудио режим:",
+    "Compatible (Shared)": "Совместимый (Shared)",
+    "Measurement (Exclusive)": "Измерительный (Exclusive)",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "Измерительный режим доступен только для WASAPI или Core Audio.",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "Выберите 'Измерительный' для побитово точного эксклюзивного режима.",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "Выберите 'Измерительный', чтобы изменить параметры устройства и избежать преобразования."
 }

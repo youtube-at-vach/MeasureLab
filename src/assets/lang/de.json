@@ -1073,5 +1073,11 @@
     "Threshold (FS):": "Schwellenwert (FS):",
     "Tolerance (Sigma):": "Toleranz (Sigma):",
     "Host API:": "Host-API:",
-    "Count": "Anzahl"
+    "Count": "Anzahl",
+    "Audio Mode:": "Audio-Modus:",
+    "Compatible (Shared)": "Kompatibel (Geteilt)",
+    "Measurement (Exclusive)": "Messung (Exklusiv)",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "Der Messmodus ist nur für WASAPI oder Core Audio verfügbar.",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "Wählen Sie 'Messung' für den bit-perfekten Exklusivmodus.",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "Wählen Sie 'Messung', um die Geräteparameter zu ändern und eine Konvertierung zu vermeiden."
 }

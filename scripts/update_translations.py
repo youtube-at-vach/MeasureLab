@@ -12,7 +12,14 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
-MISSING_EN_KEYS = []
+MISSING_EN_KEYS = [
+    "Audio Mode:",
+    "Compatible (Shared)",
+    "Measurement (Exclusive)",
+    "Measurement Mode is available only for WASAPI or Core Audio.",
+    "Select 'Measurement' for bit-perfect exclusive mode.",
+    "Select 'Measurement' to change device parameters and avoid conversion."
+]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
 MISSING_OTHER_KEYS = MISSING_EN_KEYS

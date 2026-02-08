@@ -1055,5 +1055,11 @@
     "Outlier Rejection": "Outlier Rejection",
     "Show Instantaneous": "Show Instantaneous",
     "Threshold (FS):": "Threshold (FS):",
-    "Tolerance (Sigma):": "Tolerance (Sigma):"
+    "Tolerance (Sigma):": "Tolerance (Sigma):",
+    "Audio Mode:": "Audio Mode:",
+    "Compatible (Shared)": "Compatible (Shared)",
+    "Measurement (Exclusive)": "Measurement (Exclusive)",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "Measurement Mode is available only for WASAPI or Core Audio.",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "Select 'Measurement' for bit-perfect exclusive mode.",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "Select 'Measurement' to change device parameters and avoid conversion."
 }

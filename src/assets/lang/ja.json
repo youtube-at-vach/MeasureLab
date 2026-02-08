@@ -1062,5 +1062,11 @@
     "Threshold (FS):": "閾値 (FS):",
     "Tolerance (Sigma):": "許容範囲 (シグマ):",
     "Host API:": "ホストAPI:",
-    "Count": "回数"
+    "Count": "回数",
+    "Audio Mode:": "オーディオモード:",
+    "Compatible (Shared)": "互換モード (共有)",
+    "Measurement (Exclusive)": "計測モード (排他)",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "計測モードは WASAPI または Core Audio でのみ利用可能です。",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "ビットパーフェクトな排他モードを使用するには「計測」を選択してください。",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "デバイスパラメータの変更や変換を回避するには「計測」を選択してください。"
 }

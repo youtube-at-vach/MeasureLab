@@ -1073,5 +1073,11 @@
     "Threshold (FS):": "阈值 (FS):",
     "Tolerance (Sigma):": "容差 (西格玛):",
     "Host API:": "主机 API:",
-    "Count": "计数"
+    "Count": "计数",
+    "Audio Mode:": "音频模式：",
+    "Compatible (Shared)": "兼容（共享）",
+    "Measurement (Exclusive)": "测量（独占）",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "测量模式仅适用于 WASAPI 或 Core Audio。",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "选择“测量”以使用位完美独占模式。",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "选择“测量”以更改设备参数并避免转换。"
 }

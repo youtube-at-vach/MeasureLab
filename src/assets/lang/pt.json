@@ -1073,5 +1073,11 @@
     "Threshold (FS):": "Limiar (FS):",
     "Tolerance (Sigma):": "Tolerância (Sigma):",
     "Host API:": "API do Host:",
-    "Count": "Contagem"
+    "Count": "Contagem",
+    "Audio Mode:": "Modo de áudio:",
+    "Compatible (Shared)": "Compatível (Compartilhado)",
+    "Measurement (Exclusive)": "Medição (Exclusivo)",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "O modo de medição está disponível apenas para WASAPI ou Core Audio.",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "Selecione 'Medição' para o modo exclusivo bit-perfect.",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "Selecione 'Medição' para alterar os parâmetros do dispositivo e evitar a conversão."
 }

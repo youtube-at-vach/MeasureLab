@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 # Mock sounddevice before importing AudioEngine
 sys.modules["sounddevice"] = MagicMock()
-import sounddevice as sd
+import sounddevice as sd  # noqa: E402
 
 # Setup mock for Settings classes
 class MockWasapiSettings:
@@ -20,7 +20,7 @@ sd.WasapiSettings = MockWasapiSettings
 sd.CoreAudioSettings = MockCoreAudioSettings
 sd.CallbackFlags = MagicMock(return_value=0)
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine  # noqa: E402
 
 class TestAudioModeFallback(unittest.TestCase):
     def setUp(self):
@@ -35,7 +35,7 @@ class TestAudioModeFallback(unittest.TestCase):
     def test_wasapi_fallback(self, mock_sd):
         # Setup
         self.engine.audio_mode = "measurement"
-        
+
         # Mock query_devices and query_hostapis to simulate WASAPI
         mock_sd.query_devices.return_value = {"hostapi": 0}
         mock_sd.query_hostapis.return_value = {"name": "Windows WASAPI"}
@@ -64,13 +64,13 @@ class TestAudioModeFallback(unittest.TestCase):
     def test_coreaudio_fallback(self, mock_sd):
         # Setup
         self.engine.audio_mode = "measurement"
-        
+
         # Mock query_devices and query_hostapis to simulate Core Audio
         mock_sd.query_devices.return_value = {"hostapi": 1}
         mock_sd.query_hostapis.return_value = {"name": "Core Audio"}
         mock_sd.default.device = [0, 1]
         mock_sd.CoreAudioSettings = MockCoreAudioSettings
-        
+
         # Ensure WasapiSettings is NOT available or not used here
         # mock_sd.WasapiSettings might exist on mock, but code shouldn't use it for Core Audio
 

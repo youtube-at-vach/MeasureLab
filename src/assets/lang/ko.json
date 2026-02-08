@@ -1073,5 +1073,11 @@
     "Threshold (FS):": "임계값 (FS):",
     "Tolerance (Sigma):": "공차 (시그마):",
     "Host API:": "호스트 API:",
-    "Count": "횟수"
+    "Count": "횟수",
+    "Audio Mode:": "오디오 모드:",
+    "Compatible (Shared)": "호환 (공유)",
+    "Measurement (Exclusive)": "측정 (독점)",
+    "Measurement Mode is available only for WASAPI or Core Audio.": "측정 모드는 WASAPI 또는 Core Audio에서만 사용할 수 있습니다.",
+    "Select 'Measurement' for bit-perfect exclusive mode.": "비트 퍼펙트 독점 모드를 사용하려면 '측정'을 선택하십시오.",
+    "Select 'Measurement' to change device parameters and avoid conversion.": "장치 매개변수를 변경하고 변환을 피하려면 '측정'을 선택하십시오."
 }
