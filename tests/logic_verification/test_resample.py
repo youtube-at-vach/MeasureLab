@@ -1,12 +1,10 @@
 
 import unittest
-import sys
 
 # Try to import heavy dependencies
 try:
     import numpy as np
-    import scipy.signal
-    # Assuming src.core.analysis is available if numpy/scipy are
+    # Assuming src.core.analysis is available if numpy is
     from src.core.analysis import AudioCalc
     HAS_DEPS = True
 except ImportError:
