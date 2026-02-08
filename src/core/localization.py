@@ -37,7 +37,6 @@ class LocalizationManager:
 
     def load_language(self, lang_code):
         if lang_code not in self.available_languages:
-            # print(f"Language {lang_code} not found, falling back to en")
             lang_code = "en"
 
         self.language = lang_code
