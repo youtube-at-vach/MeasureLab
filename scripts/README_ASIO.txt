@@ -1,7 +1,16 @@
 ASIO Support for MeasureLab
 ===========================
 
-The PortAudio library supports ASIO, but it is intentionally not linked by default due to licensing issues. This project also needed to separate it for the same reason. Therefore, if ASIO support is required, please enable it manually using the provided script.
+MeasureLab uses the PortAudio library, which supports ASIO.
+However, **ASIO support is intentionally not enabled by default** due to licensing considerations.
+For the same reason, MeasureLab does **not** redistribute any ASIO drivers or the ASIO SDK.
+
+If you wish to use ASIO with MeasureLab, you can enable it manually using the provided script.
+
+> **Note:**
+> This process does **not** install or redistribute ASIO drivers.
+> A compatible ASIO driver must already be installed on your system.e PortAudio library supports ASIO, but it is intentionally not linked by default due to licensing issues. This project also needed to separate it for the same reason. Therefore, if ASIO support is required, please enable it manually using the provided script.
+
 
 Enabling ASIO
 -------------
