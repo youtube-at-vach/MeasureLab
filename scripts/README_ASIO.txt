@@ -8,7 +8,7 @@ Enabling ASIO
 To enable ASIO support, you must switch the active PortAudio driver to the ASIO-enabled version. We have provided a script to do this automatically.
 
 1.  Close MeasureLab if it is running.
-2.  Navigate to the `scripts` folder in the MeasureLab directory (or the root folder if you are using the installed version where these scripts might be placed).
+2.  Navigate to the main MeasureLab folder (where MeasureLab.exe is located).
 3.  Double-click `enable_asio.bat`.
 4.  The script will backup your current drivers and replace them with the ASIO-enabled versions.
 5.  Restart MeasureLab. You should now see ASIO devices in the device list.
