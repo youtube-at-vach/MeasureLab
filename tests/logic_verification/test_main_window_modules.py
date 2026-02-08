@@ -23,9 +23,9 @@ sys.modules["src.core.config_manager"] = MagicMock()
 sys.modules["src.core.localization"] = MagicMock()
 sys.modules["src.gui.widgets.detachable_wrapper"] = MagicMock()
 
-import pytest
-from unittest.mock import patch
-from src.core.module_constants import ALL_MODULE_KEYS, MODULE_SIGNAL_GENERATOR
+import pytest  # noqa: E402
+from unittest.mock import patch  # noqa: E402
+from src.core.module_constants import ALL_MODULE_KEYS, MODULE_SIGNAL_GENERATOR  # noqa: E402
 
 def test_module_keys_constants():
     # Verify we have keys
