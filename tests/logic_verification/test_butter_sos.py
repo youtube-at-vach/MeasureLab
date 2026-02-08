@@ -46,6 +46,9 @@ except ImportError:
 
 def teardown_module():
     patcher.stop()
+    # Remove the module from sys.modules to prevent pollution of other tests
+    if 'src.core.analysis' in sys.modules:
+        del sys.modules['src.core.analysis']
 
 def test_butter_sos_basic_shape():
     """Test basic functionality and output shape of _get_butter_sos."""
