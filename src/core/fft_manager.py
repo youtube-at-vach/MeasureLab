@@ -1,5 +1,6 @@
 import numpy as np
 import multiprocessing
+import threading
 import logging
 import os
 import json
@@ -35,6 +36,7 @@ class FFTManager:
 
     def __init__(self):
         self._plans = {}
+        self._lock = threading.Lock()
         self.threads = multiprocessing.cpu_count()
         if HAS_PYFFTW:
             pyfftw.config.NUM_THREADS = self.threads
@@ -102,21 +104,22 @@ class FFTManager:
         """
         key = (size, dtype, direction)
 
-        # Check if plan exists
-        if key in self._plans:
-            existing_plan = self._plans[key]
-            existing_flags = existing_plan.get("flags", ("FFTW_MEASURE",))  # Default to measure if unknown (legacy)
+        with self._lock:
+            # Check if plan exists
+            if key in self._plans:
+                existing_plan = self._plans[key]
+                existing_flags = existing_plan.get("flags", ("FFTW_MEASURE",))  # Default to measure if unknown (legacy)
 
-            # If we requested MEASURE but have ESTIMATE, we should upgrade (re-create)
-            if "FFTW_MEASURE" in flags and "FFTW_MEASURE" not in existing_flags:
-                logger.info(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
+                # If we requested MEASURE but have ESTIMATE, we should upgrade (re-create)
+                if "FFTW_MEASURE" in flags and "FFTW_MEASURE" not in existing_flags:
+                    logger.info(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
+                    self._create_plan(size, dtype, flags, direction)
+                # Otherwise, use existing (ESTIMATE is fine if we requested MEASURE or ESTIMATE and have MEASURE,
+                # and MEASURE is fine if we requested ESTIMATE and have MEASURE)
+            else:
                 self._create_plan(size, dtype, flags, direction)
-            # Otherwise, use existing (ESTIMATE is fine if we requested MEASURE or ESTIMATE and have MEASURE,
-            # and MEASURE is fine if we requested ESTIMATE and have MEASURE)
-        else:
-            self._create_plan(size, dtype, flags, direction)
 
-        return self._plans.get(key)
+            return self._plans.get(key)
 
     def _create_plan(self, size, dtype_str, flags, direction):
         if not HAS_PYFFTW:
@@ -153,6 +156,7 @@ class FFTManager:
                 "input": input_array,
                 "output": output_array,
                 "flags": flags,
+                "lock": threading.Lock(),
             }
             logger.info(f"Created pyfftw plan for size {size} ({dtype_str}, {direction}) with flags {flags}")
 
@@ -174,23 +178,24 @@ class FFTManager:
             # fast default: ESTIMATE
             plan_entry = self.get_plan(size, dtype_str, flags=("FFTW_ESTIMATE",), direction="FFTW_FORWARD")
             if plan_entry:
-                fft_obj = plan_entry["object"]
-                input_arr = plan_entry["input"]
+                with plan_entry["lock"]:
+                    fft_obj = plan_entry["object"]
+                    input_arr = plan_entry["input"]
 
-                # Copy data
-                input_arr[:] = data
+                    # Copy data
+                    input_arr[:] = data
 
-                # Execute
-                fft_obj()
+                    # Execute
+                    fft_obj()
 
-                # Return copy of result (to avoid buffer reuse issues by caller)
-                if out is not None:
-                    out[:] = plan_entry["output"]
-                    return out
-                elif not copy:
-                    return plan_entry["output"]
-                else:
-                    return plan_entry["output"].copy()
+                    # Return copy of result (to avoid buffer reuse issues by caller)
+                    if out is not None:
+                        out[:] = plan_entry["output"]
+                        return out
+                    elif not copy:
+                        return plan_entry["output"]
+                    else:
+                        return plan_entry["output"].copy()
 
         # Fallback
         result = np.fft.rfft(data)
@@ -215,33 +220,34 @@ class FFTManager:
         if HAS_PYFFTW:
             plan_entry = self.get_plan(n, dtype_str, flags=("FFTW_ESTIMATE",), direction="FFTW_BACKWARD")
             if plan_entry:
-                fft_obj = plan_entry["object"]
-                input_arr = plan_entry["input"]
+                with plan_entry["lock"]:
+                    fft_obj = plan_entry["object"]
+                    input_arr = plan_entry["input"]
 
-                # Safety check for input length
-                # PyFFTW input buffer expects n//2 + 1 complex numbers
-                expected_len = len(input_arr)
-                if len(data) != expected_len:
-                    result = np.fft.irfft(data, n=n)
+                    # Safety check for input length
+                    # PyFFTW input buffer expects n//2 + 1 complex numbers
+                    expected_len = len(input_arr)
+                    if len(data) != expected_len:
+                        result = np.fft.irfft(data, n=n)
+                        if out is not None:
+                            out[:] = result
+                            return out
+                        return result
+
+                    input_arr[:] = data
+                    fft_obj()
+
+                    # FFTW behavior note: Standard FFTW inverse transforms are unnormalized (scaled by N).
+                    # However, pyfftw in this environment appears to produce normalized output (matching numpy.fft.irfft).
+                    # Explicit 1/N scaling caused double-normalization in tests, so it is omitted here.
+
                     if out is not None:
-                        out[:] = result
+                        out[:] = plan_entry["output"]
                         return out
-                    return result
-
-                input_arr[:] = data
-                fft_obj()
-
-                # FFTW behavior note: Standard FFTW inverse transforms are unnormalized (scaled by N).
-                # However, pyfftw in this environment appears to produce normalized output (matching numpy.fft.irfft).
-                # Explicit 1/N scaling caused double-normalization in tests, so it is omitted here.
-
-                if out is not None:
-                    out[:] = plan_entry["output"]
-                    return out
-                elif not copy:
-                    return plan_entry["output"]
-                else:
-                    return plan_entry["output"].copy()
+                    elif not copy:
+                        return plan_entry["output"]
+                    else:
+                        return plan_entry["output"].copy()
 
         result = np.fft.irfft(data, n=n)
         if out is not None:
@@ -268,7 +274,8 @@ class FFTManager:
 
         if force:
             pyfftw.forget_wisdom()
-            self._plans.clear()
+            with self._lock:
+                self._plans.clear()
             if self.wisdom_path.exists():
                 try:
                     self.wisdom_path.unlink()
