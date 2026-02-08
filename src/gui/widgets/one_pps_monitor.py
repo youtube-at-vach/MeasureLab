@@ -6,7 +6,6 @@ import queue
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QShowEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -431,7 +430,7 @@ class OnePPSMonitorWidget(QWidget):
         self.spin_rate.valueChanged.connect(self._on_rate_changed)
         rate_row.addWidget(self.spin_rate)
         rate_vbox.addLayout(rate_row)
-        
+
         vbox_settings.addWidget(rate_group)
 
         # Threshold
@@ -547,7 +546,7 @@ class OnePPSMonitorWidget(QWidget):
         self._on_filter_toggled(self.chk_filter.isChecked())
         self._on_window_changed(self.spin_window.value())
         self._on_tol_changed(self.spin_tol.value())
-        
+
         # Initial sync state
         self._on_sync_toggled(self.chk_sync_rate.isChecked())
 
@@ -571,7 +570,7 @@ class OnePPSMonitorWidget(QWidget):
             # Re-sync before starting if enabled
             if self.chk_sync_rate.isChecked():
                 self._sync_sample_rate()
-            
+
             self.module.start_analysis()
             self.timer.start()
             self.btn_start.setText(tr("Stop"))
