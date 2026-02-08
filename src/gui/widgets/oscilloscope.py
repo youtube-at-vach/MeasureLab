@@ -1,5 +1,4 @@
 import argparse
-import queue
 import threading
 
 import numpy as np
@@ -82,7 +81,6 @@ class Oscilloscope(MeasurementModule):
         self.transfer_read_count = 0
         self.transfer_lock = threading.Lock()
 
-        self.audio_queue = queue.Queue()  # Kept for compatibility if external access exists (unlikely), but unused internally
         self.callback_id = None
 
     @property
