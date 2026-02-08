@@ -3,7 +3,7 @@ from collections import deque
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal, QObject
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -462,12 +462,64 @@ class SweepWorker(QThread):
         self.is_running = False
 
 
+class RealtimeAnalysisWorker(QObject):
+    result_ready = pyqtSignal(dict)
+
+    def process(self, data, settings):
+        try:
+            signal_type = settings.get("signal_type", "sine")
+            sample_rate = settings.get("sample_rate", 48000)
+            window_type = settings.get("window_type", "blackmanharris")
+
+            if signal_type in ["smpte", "ccif"]:
+                window = get_cached_window(window_type, len(data), dtype=data.dtype)
+                fft_data = fft_manager.rfft(data * window)
+                mag_linear = np.abs(fft_data) * (2 / np.sum(window))
+                freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
+
+                imd_f1 = settings.get("imd_f1", 60.0)
+                imd_f2 = settings.get("imd_f2", 7000.0)
+
+                if signal_type == "smpte":
+                    res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, imd_f1, imd_f2)
+                else:
+                    res = AudioCalc.calculate_imd_ccif(mag_linear, freqs, imd_f1, imd_f2)
+
+                # Add type and data for UI
+                res["type"] = "imd"
+                res["fft_data"] = fft_data
+                res["mag_linear"] = mag_linear  # Pass linear mag for averaging
+                res["input_rms_db"] = 20 * np.log10(np.sqrt(np.mean(data**2)) + 1e-12)
+
+                self.result_ready.emit(res)
+            else:
+                gen_frequency = settings.get("gen_frequency", 1000.0)
+                results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate)
+                results["type"] = "harmonics"
+                self.result_ready.emit(results)
+
+        except Exception as e:
+            print(f"Error in analysis worker: {e}")
+
+
 class DistortionAnalyzerWidget(QWidget):
+    start_analysis_signal = pyqtSignal(np.ndarray, dict)
+
     def __init__(self, module: DistortionAnalyzer):
         super().__init__()
         self.module = module
         self.sweep_worker = None
         self.init_ui()
+
+        # Worker Thread Setup
+        self.analysis_thread = QThread()
+        self.worker = RealtimeAnalysisWorker()
+        self.worker.moveToThread(self.analysis_thread)
+        self.start_analysis_signal.connect(self.worker.process)
+        self.worker.result_ready.connect(self.on_worker_result)
+        self.analysis_thread.start()
+
+        self.analysis_pending = False
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_realtime_analysis)
@@ -1099,31 +1151,52 @@ class DistortionAnalyzerWidget(QWidget):
         if not self.module.is_running:
             return
 
-        data = self.module.input_data
+        if self.analysis_pending:
+            return
+
+        data = self.module.input_data.copy()
         sample_rate = self.module.audio_engine.sample_rate
 
-        # Perform Analysis
-        # Check signal type instead of mode
-        if self.module.signal_type in ["smpte", "ccif"]:
-            window = get_cached_window(self.module.window_type, len(data), dtype=data.dtype)
-            fft_data = fft_manager.rfft(data * window)
-            mag_linear = np.abs(fft_data) * (2 / np.sum(window))
-            freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
+        settings = {
+            "signal_type": self.module.signal_type,
+            "window_type": self.module.window_type,
+            "sample_rate": sample_rate,
+            "gen_frequency": self.module.gen_frequency,
+            "imd_f1": self.module.imd_f1,
+            "imd_f2": self.module.imd_f2,
+        }
 
-            if self.module.signal_type == "smpte":
-                res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, self.module.imd_f1, self.module.imd_f2)
-            else:
-                res = AudioCalc.calculate_imd_ccif(mag_linear, freqs, self.module.imd_f1, self.module.imd_f2)
+        self.analysis_pending = True
+        self.start_analysis_signal.emit(data, settings)
 
-            res = self.module._apply_imd_averaging(res)
+    def on_worker_result(self, results):
+        self.analysis_pending = False
+        if not self.module.is_running:
+            return
+
+        res_type = results.get("type", "harmonics")
+        sample_rate = self.module.audio_engine.sample_rate
+        # Buffer length can be inferred from fft_data or mag_linear if passed, but easiest if consistent
+        # For spectrum freq axis we need length.
+        # fft_data length is N/2+1
+        fft_data = results.get("fft_data")
+        if fft_data is not None:
+             n_fft = (len(fft_data) - 1) * 2
+        elif results.get("mag_linear") is not None:
+             n_fft = (len(results["mag_linear"]) - 1) * 2
+        else:
+             n_fft = self.module.buffer_size # Fallback
+
+        if res_type == "imd":
+            res = self.module._apply_imd_averaging(results)
 
             self.imd_label.setText(self._format_percent(res["imd"]))
             self.imd_db_label.setText(tr("{0:.3f} dB").format(res["imd_db"]))
 
             # Update Detailed Label for IMD
             window_name = self.module.window_type.capitalize()
-            fft_size = self.module.buffer_size
-            input_level = 20 * np.log10(np.sqrt(np.mean(data**2)) + 1e-12)
+            fft_size = n_fft
+            input_level = results.get("input_rms_db", -140.0)
 
             detailed_text = (
                 f"{tr('Input level:'):<15} {input_level:>10.1f} dBFS   ✔\n"
@@ -1137,16 +1210,18 @@ class DistortionAnalyzerWidget(QWidget):
             )
             self.detailed_label.setText(detailed_text)
 
-            mag_linear = self.module.apply_spectrum_averaging(mag_linear)
-            mag_db = 20 * np.log10(mag_linear + 1e-12)
-            self.spectrum_curve.setData(freqs[1:], mag_db[1:])
+            mag_linear = results.get("mag_linear")
+            if mag_linear is not None:
+                mag_linear = self.module.apply_spectrum_averaging(mag_linear)
+                mag_db = 20 * np.log10(mag_linear + 1e-12)
+                freqs = fft_manager.rfftfreq(n_fft, 1 / sample_rate)
+                self.spectrum_curve.setData(freqs[1:], mag_db[1:])
 
         else:
-            results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
+            # Harmonics
             results = self.module._apply_result_averaging(results)
             self.module.current_result = results
 
-            # Update Meters
             # Update Meters
             self.thdn_label.setText(self._format_percent(results["thdn_percent"]))
             self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
@@ -1159,8 +1234,6 @@ class DistortionAnalyzerWidget(QWidget):
             self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
 
             # ENOB Calculation
-            # ENOB is only valid near full scale (strict check).
-            # We'll use a threshold of -1.0 dBFS.
             sinad = results["sinad_db"]
             input_level = results["basic_wave"]["amplitude_dbfs"]
 
@@ -1172,8 +1245,8 @@ class DistortionAnalyzerWidget(QWidget):
 
             # Update Detailed Label
             window_name = self.module.window_type.capitalize()
-            fft_size = self.module.buffer_size
-            bandwidth = "20 kHz"  # Fixed bandwidth in current analysis
+            fft_size = n_fft
+            bandwidth = "20 kHz"
 
             detailed_text = (
                 f"{tr('Input level:'):<15} {input_level:>10.1f} dBFS   ✔\n"
@@ -1216,15 +1289,12 @@ class DistortionAnalyzerWidget(QWidget):
                 floor_db = -140
                 heights = [level - floor_db for level in levels]
                 self.harmonics_bar_item.setOpts(x=orders, height=heights, y0=floor_db)
-                # Ensure x-axis shows integer ticks for orders
-                # We can just set the range to cover all orders
                 self.harmonics_plot.setXRange(min(orders) - 1, max(orders) + 1)
 
             # Update Spectrum Plot
-            fft_data = results["fft_data"]
-            mag_linear = np.abs(fft_data) / len(data) * 2
-            mag_linear = self.module.apply_spectrum_averaging(mag_linear)
-            mag = 20 * np.log10(mag_linear + 1e-12)
-            freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
-
-            self.spectrum_curve.setData(freqs[1:], mag[1:])
+            if fft_data is not None:
+                mag_linear = np.abs(fft_data) / n_fft * 2
+                mag_linear = self.module.apply_spectrum_averaging(mag_linear)
+                mag = 20 * np.log10(mag_linear + 1e-12)
+                freqs = fft_manager.rfftfreq(n_fft, 1 / sample_rate)
+                self.spectrum_curve.setData(freqs[1:], mag[1:])
