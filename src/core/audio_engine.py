@@ -367,6 +367,23 @@ class AudioEngine:
                 except Exception as e:
                     self.logger.warning(f"Failed to check/apply WASAPI settings: {e}")
 
+            # Core Audio Measurement Mode (macOS only)
+            if self.audio_mode == "measurement" and extra_settings is None:
+                 try:
+                    dev_id = self.output_device if self.output_device is not None else sd.default.device[1]
+                    if dev_id is not None and dev_id >= 0:
+                        info = sd.query_devices(dev_id)
+                        hostapi_idx = info.get("hostapi")
+                        if hostapi_idx is not None:
+                            hostapi_info = sd.query_hostapis(hostapi_idx)
+                            if "Core Audio" in hostapi_info.get("name", ""):
+                                CoreAudioSettings = getattr(sd, "CoreAudioSettings", None)
+                                if CoreAudioSettings:
+                                    extra_settings = CoreAudioSettings(change_device_parameters=True, fail_if_conversion_required=True)
+                                    self.logger.info("Enabled Core Audio Measurement Mode settings.")
+                 except Exception as e:
+                     self.logger.warning(f"Failed to check/apply Core Audio settings: {e}")
+
             # Attempt validation/fallback loop
             creation_attempts = 0
             max_attempts = 2 if (extra_settings is not None and self.audio_mode == "measurement") else 1

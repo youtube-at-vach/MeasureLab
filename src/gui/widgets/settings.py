@@ -1364,12 +1364,16 @@ class SettingsWidget(QWidget):
     def _update_audio_mode_state(self):
         current_api_text = self.hostapi_combo.currentText()
         is_wasapi = "WASAPI" in current_api_text.upper()
-        self.audio_mode_combo.setEnabled(is_wasapi)
-        if not is_wasapi:
-            self.audio_mode_combo.setToolTip(tr("Measurement Mode is available only for WASAPI Host API."))
-            # Optional: Visual indication that it's inactive?
-        else:
+        is_coreaudio = "CORE AUDIO" in current_api_text.upper() or "COREAUDIO" in current_api_text.upper()
+        
+        self.audio_mode_combo.setEnabled(is_wasapi or is_coreaudio)
+        
+        if is_wasapi:
             self.audio_mode_combo.setToolTip(tr("Select 'Measurement' for bit-perfect exclusive mode."))
+        elif is_coreaudio:
+            self.audio_mode_combo.setToolTip(tr("Select 'Measurement' to change device parameters and avoid conversion."))
+        else:
+            self.audio_mode_combo.setToolTip(tr("Measurement Mode is available only for WASAPI or Core Audio."))
 
     def on_audio_mode_changed(self):
         mode = self.audio_mode_combo.currentData()
