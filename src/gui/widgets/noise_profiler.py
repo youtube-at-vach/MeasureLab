@@ -1,5 +1,5 @@
 import argparse
-import traceback
+import logging
 
 import numpy as np
 import pyqtgraph as pg
@@ -24,6 +24,8 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+logger = logging.getLogger(__name__)
 
 
 class NoiseProfiler(MeasurementModule):
@@ -160,7 +162,7 @@ class NoiseProfiler(MeasurementModule):
         return tr("Noise characterization and analysis tool.")
 
     def run(self, args: argparse.Namespace):
-        print("Noise Profiler running from CLI (not fully implemented)")
+        logger.info("Noise Profiler running from CLI (not fully implemented)")
 
     def get_widget(self):
         return NoiseProfilerWidget(self)
@@ -180,7 +182,7 @@ class NoiseProfiler(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                logger.warning(f"Audio callback status: {status}")
 
             if indata.shape[1] >= 2:
                 new_data = indata[:, :2]
@@ -228,9 +230,7 @@ class NoiseAnalysisWorker(QRunnable):
                 # output is (freqs, avg_mag_cal, results, raw_avg)
                 self.signals.result.emit(*output, self.unit_mode)
         except Exception as e:
-            # We should probably log this or handle it, but for now we just don't emit
-            print(f"Error in NoiseAnalysisWorker: {e}")
-            traceback.print_exc()
+            logger.error(f"Error in NoiseAnalysisWorker: {e}", exc_info=True)
             self.signals.error.emit(str(e))
         finally:
             self.signals.finished.emit()
@@ -524,10 +524,7 @@ class NoiseProfilerWidget(QWidget):
             self.thread_pool.start(worker)
 
         except Exception as e:
-            print(f"Error in NoiseProfiler update: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error(f"Error in NoiseProfiler update: {e}", exc_info=True)
 
     def on_worker_finished(self):
         self.analysis_active = False
@@ -709,10 +706,7 @@ class NoiseProfilerWidget(QWidget):
             self.update_report(results, unit_mode)
 
         except Exception as e:
-            print(f"Error in NoiseProfiler update: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.error(f"Error in NoiseProfiler update: {e}", exc_info=True)
 
     def update_stack_chart(self, results, unit_mode):
         # Calculate Power Contributions
