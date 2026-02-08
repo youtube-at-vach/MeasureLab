@@ -1,7 +1,7 @@
 ASIO Support for MeasureLab
 ===========================
 
-MeasureLab includes support for ASIO drivers, but it is disabled by default to ensure maximum compatibility with standard Windows audio drivers (WASAPI, MME, DirectSound).
+The PortAudio library supports ASIO, but it is intentionally not linked by default due to licensing issues. This project also needed to separate it for the same reason. Therefore, if ASIO support is required, please enable it manually using the provided script.
 
 Enabling ASIO
 -------------
