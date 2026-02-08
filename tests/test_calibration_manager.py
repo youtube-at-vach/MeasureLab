@@ -46,11 +46,11 @@ mock_np.isclose = lambda a, b, atol=1e-8: abs(a - b) <= atol
 sys.modules["numpy"] = mock_np
 # --------------------------------------------------------
 
-import pytest
-import os
-import json
-from src.core.calibration import CalibrationManager
-import tempfile
+import pytest  # noqa: E402
+import os  # noqa: E402
+import json  # noqa: E402
+from src.core.calibration import CalibrationManager  # noqa: E402
+import tempfile  # noqa: E402
 
 # We use our mocked numpy as np in tests too
 np = mock_np
