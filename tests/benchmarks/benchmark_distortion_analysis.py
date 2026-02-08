@@ -53,8 +53,8 @@ def benchmark_distortion_analysis():
     # Warm up IMD path (FFT part is shared but logic differs)
     window = get_cached_window(window_type, buffer_size)
     fft_data = fft_manager.rfft(signal_imd * window)
-    mag_linear = np.abs(fft_data) * (2 / np.sum(window))
-    freqs = fft_manager.rfftfreq(buffer_size, 1 / sample_rate)
+    _ = np.abs(fft_data) * (2 / np.sum(window))
+    _ = fft_manager.rfftfreq(buffer_size, 1 / sample_rate)
 
     start_time = time.perf_counter()
     for _ in range(iterations):
