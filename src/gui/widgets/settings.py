@@ -1039,16 +1039,26 @@ class SettingsWidget(QWidget):
 
         # Input Channels
         self.in_ch_combo = QComboBox()
-        self.in_ch_combo.addItems([tr("Stereo"), tr("Left"), tr("Right")])
-        self.in_ch_combo.setCurrentText(self.audio_engine.input_channel_mode.capitalize())
-        self.in_ch_combo.currentTextChanged.connect(self.on_ch_mode_changed)
+        self.in_ch_combo.addItem(tr("Stereo"), "stereo")
+        self.in_ch_combo.addItem(tr("Left"), "left")
+        self.in_ch_combo.addItem(tr("Right"), "right")
+        # Find index by data
+        idx = self.in_ch_combo.findData(self.audio_engine.input_channel_mode.lower())
+        if idx >= 0:
+            self.in_ch_combo.setCurrentIndex(idx)
+        self.in_ch_combo.currentIndexChanged.connect(self.on_ch_mode_changed)
         conf_layout.addRow(tr("Input Channels:"), self.in_ch_combo)
 
         # Output Channels
         self.out_ch_combo = QComboBox()
-        self.out_ch_combo.addItems([tr("Stereo"), tr("Left"), tr("Right")])
-        self.out_ch_combo.setCurrentText(self.audio_engine.output_channel_mode.capitalize())
-        self.out_ch_combo.currentTextChanged.connect(self.on_ch_mode_changed)
+        self.out_ch_combo.addItem(tr("Stereo"), "stereo")
+        self.out_ch_combo.addItem(tr("Left"), "left")
+        self.out_ch_combo.addItem(tr("Right"), "right")
+        # Find index by data
+        idx = self.out_ch_combo.findData(self.audio_engine.output_channel_mode.lower())
+        if idx >= 0:
+            self.out_ch_combo.setCurrentIndex(idx)
+        self.out_ch_combo.currentIndexChanged.connect(self.on_ch_mode_changed)
         conf_layout.addRow(tr("Output Channels:"), self.out_ch_combo)
 
         conf_group.setLayout(conf_layout)
@@ -1571,8 +1581,12 @@ class SettingsWidget(QWidget):
         self.buffer_level_combo.blockSignals(False)
 
     def on_ch_mode_changed(self):
-        in_mode = self.in_ch_combo.currentText().lower()
-        out_mode = self.out_ch_combo.currentText().lower()
+        in_mode = self.in_ch_combo.currentData()
+        out_mode = self.out_ch_combo.currentData()
+
+        if not in_mode or not out_mode:
+            return
+
         self.audio_engine.set_channel_mode(in_mode, out_mode)
 
         # Save config
