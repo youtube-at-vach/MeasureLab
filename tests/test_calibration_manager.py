@@ -2,48 +2,49 @@ import sys
 import math
 from unittest.mock import MagicMock
 
-# --- Mock numpy before importing src.core.calibration ---
-# This is necessary because numpy is not available in the test environment.
-# We mock it globally for this module, and will clean it up after.
-ORIGINAL_NUMPY = sys.modules.get("numpy")
+# --- Conditional Mock for numpy ---
+# Only mock numpy if it's not already installed/available.
+# This prevents polluting the test environment when running full CI suites.
+try:
+    import numpy as np
+except ImportError:
+    class MockNumpyArray:
+        def __init__(self, data):
+            self.data = data
 
-class MockNumpyArray:
-    def __init__(self, data):
-        self.data = data
+        def __getitem__(self, key):
+            # Handle [:, i] slicing
+            if isinstance(key, tuple) and len(key) == 2 and key[0] == slice(None):
+                col_idx = key[1]
+                return [row[col_idx] for row in self.data]
+            return []
 
-    def __getitem__(self, key):
-        # Handle [:, i] slicing
-        if isinstance(key, tuple) and len(key) == 2 and key[0] == slice(None):
-            col_idx = key[1]
-            return [row[col_idx] for row in self.data]
-        return []
+    def mock_interp(x, xp, fp):
+        # Simple linear interpolation for lists
+        if not xp or not fp:
+            return 0.0
 
-def mock_interp(x, xp, fp):
-    # Simple linear interpolation for lists
-    # This allows us to verify the logic of get_frequency_correction
-    # without needing the heavy numpy dependency.
-    if not xp or not fp:
+        if x <= xp[0]:
+            return fp[0]
+        if x >= xp[-1]:
+            return fp[-1]
+
+        for i in range(len(xp) - 1):
+            if xp[i] <= x <= xp[i+1]:
+                t = (x - xp[i]) / (xp[i+1] - xp[i])
+                return fp[i] + t * (fp[i+1] - fp[i])
         return 0.0
 
-    if x <= xp[0]:
-        return fp[0]
-    if x >= xp[-1]:
-        return fp[-1]
+    mock_np = MagicMock()
+    mock_np.isfinite = lambda x: True
+    mock_np.log10 = math.log10
+    mock_np.array = lambda x: MockNumpyArray(x)
+    mock_np.interp = mock_interp
+    mock_np.isclose = lambda a, b, atol=1e-8: abs(a - b) <= atol
 
-    for i in range(len(xp) - 1):
-        if xp[i] <= x <= xp[i+1]:
-            t = (x - xp[i]) / (xp[i+1] - xp[i])
-            return fp[i] + t * (fp[i+1] - fp[i])
-    return 0.0
+    sys.modules["numpy"] = mock_np
+    np = mock_np
 
-mock_np = MagicMock()
-mock_np.isfinite = lambda x: True
-mock_np.log10 = math.log10
-mock_np.array = lambda x: MockNumpyArray(x)
-mock_np.interp = mock_interp
-mock_np.isclose = lambda a, b, atol=1e-8: abs(a - b) <= atol
-
-sys.modules["numpy"] = mock_np
 # --------------------------------------------------------
 
 import pytest  # noqa: E402
@@ -51,20 +52,6 @@ import os  # noqa: E402
 import json  # noqa: E402
 from src.core.calibration import CalibrationManager  # noqa: E402
 import tempfile  # noqa: E402
-
-# We use our mocked numpy as np in tests too
-np = mock_np
-
-@pytest.fixture(scope="module", autouse=True)
-def cleanup_numpy_mock():
-    yield
-    # Restore original numpy or remove mock
-    if ORIGINAL_NUMPY:
-        sys.modules["numpy"] = ORIGINAL_NUMPY
-    else:
-        # Only delete if it's still our mock, to avoid deleting something else if things went wild
-        if "numpy" in sys.modules and sys.modules["numpy"] is mock_np:
-            del sys.modules["numpy"]
 
 @pytest.fixture
 def cal_manager(tmp_path):
