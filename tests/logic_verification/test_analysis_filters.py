@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from src.core.analysis import AudioCalc
 
 def test_bandpass_filter_short_signal():
