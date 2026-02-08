@@ -1,10 +1,7 @@
 import unittest
-from unittest.mock import MagicMock, patch, mock_open, ANY
-import json
+from unittest.mock import MagicMock, patch, mock_open
 import os
-import threading
-import sys
-from src.core.config_manager import ConfigManager, DEFAULT_CONFIG
+from src.core.config_manager import ConfigManager
 
 class TestConfigManagerLifecycle(unittest.TestCase):
     def setUp(self):
@@ -189,7 +186,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
             cm.save_config(force_sync=False)
 
             # Shutdown
-            with patch('src.core.config_manager.open', mock_open()) as mock_file:
+            with patch('builtins.open', mock_open()) as mock_file:
                  cm.shutdown()
 
                  # Timer cancelled
