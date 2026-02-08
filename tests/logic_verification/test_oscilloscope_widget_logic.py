@@ -70,7 +70,7 @@ sys.modules["PyQt6.QtGui"] = mock_qt_gui
 sys.modules["PyQt6.QtWidgets"] = mock_qt_widgets
 
 # 2. Import module under test
-from src.gui.widgets.oscilloscope import OscilloscopeWidget, Oscilloscope
+from src.gui.widgets.oscilloscope import OscilloscopeWidget, Oscilloscope  # noqa: E402
 
 def test_slider_sync():
     print("Setting up test...")
