@@ -20,6 +20,7 @@ DEFAULT_CONFIG = {
         "block_size": 1024,
         "input_channels": "stereo",
         "output_channels": "stereo",
+        "audio_mode": "compatible",  # "compatible" or "measurement"
         "pipewire_jack_resident": False,
     },
     "language": "en",
@@ -254,6 +255,21 @@ class ConfigManager:
         if "audio" not in self.config:
             self.config["audio"] = {}
         self.config["audio"]["pipewire_jack_resident"] = bool(enabled)
+        self.save_config()
+
+    def get_audio_mode(self) -> str:
+        """Returns the current audio mode ('compatible' or 'measurement')."""
+        audio = self.get_audio_config()
+        return audio.get("audio_mode", "compatible")
+
+    def set_audio_mode(self, mode: str):
+        """Sets the audio mode."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        if mode not in ["compatible", "measurement"]:
+            self.logger.warning(f"Invalid audio mode '{mode}', defaulting to 'compatible'")
+            mode = "compatible"
+        self.config["audio"]["audio_mode"] = mode
         self.save_config()
 
     def get_language(self):

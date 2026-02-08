@@ -31,7 +31,11 @@ class AudioEngine:
         # Channel Configuration
         # 'stereo', 'left', 'right'
         self.input_channel_mode = "stereo"
+        self.input_channel_mode = "stereo"
         self.output_channel_mode = "stereo"
+
+        # Audio Mode ("compatible" or "measurement")
+        self.audio_mode = "compatible"
 
         # Mixer State
         self.callbacks = {}  # id -> callback
@@ -149,6 +153,13 @@ class AudioEngine:
         self.logger.info(f"Set channel modes: Input={input_mode}, Output={output_mode}")
         # Note: Changing channel mode might affect active callbacks if they expect specific mapping.
         # For now, we assume global mode applies to the master stream.
+        if self.is_active():
+            self._restart_stream()
+
+    def set_audio_mode(self, mode):
+        """Sets the audio mode ('compatible' or 'measurement')."""
+        self.audio_mode = mode
+        self.logger.info(f"Set audio mode: {mode}")
         if self.is_active():
             self._restart_stream()
 
@@ -335,18 +346,57 @@ class AudioEngine:
             except Exception:
                 extra_settings = None
 
-            self.stream = sd.Stream(
-                device=(self.input_device, self.output_device),
-                samplerate=self.sample_rate,
-                blocksize=self.block_size,
-                callback=master_callback,
-                channels=(hw_in_ch, hw_out_ch),
-                dtype="float32",
-                latency="high",
-                extra_settings=extra_settings,
-            )
-            self.stream.start()
-            self.logger.info(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
+
+            # WASAPI Measurement Mode (Windows only)
+            if self.audio_mode == "measurement" and extra_settings is None:
+                # Check if we are using WASAPI
+                try:
+                    # We check the output device's host API. If it's WASAPI, we apply settings.
+                    # Ideally we check both, but usually they share the Host API in a session.
+                    dev_id = self.output_device if self.output_device is not None else sd.default.device[1]
+                    if dev_id is not None and dev_id >= 0:
+                        info = sd.query_devices(dev_id)
+                        hostapi_idx = info.get("hostapi")
+                        if hostapi_idx is not None:
+                            hostapi_info = sd.query_hostapis(hostapi_idx)
+                            if "WASAPI" in hostapi_info.get("name", "").upper():
+                                WasapiSettings = getattr(sd, "WasapiSettings", None)
+                                if WasapiSettings:
+                                    extra_settings = WasapiSettings(exclusive=True, explicit_sample_format=True, auto_convert=False)
+                                    self.logger.info("Enabled WASAPI Exclusive Mode settings.")
+                except Exception as e:
+                    self.logger.warning(f"Failed to check/apply WASAPI settings: {e}")
+
+            # Attempt validation/fallback loop
+            creation_attempts = 0
+            max_attempts = 2 if (extra_settings is not None and self.audio_mode == "measurement") else 1
+
+            while creation_attempts < max_attempts:
+                creation_attempts += 1
+                try:
+                    self.stream = sd.Stream(
+                        device=(self.input_device, self.output_device),
+                        samplerate=self.sample_rate,
+                        blocksize=self.block_size,
+                        callback=master_callback,
+                        channels=(hw_in_ch, hw_out_ch),
+                        dtype="float32",
+                        latency="high",
+                        extra_settings=extra_settings,
+                    )
+                    self.stream.start()
+                    self.logger.info(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
+                    break # Success
+
+                except Exception as e:
+                    # If we failed and were using extra_settings (Measurement Mode), try fallback
+                    if creation_attempts < max_attempts and extra_settings is not None:
+                        self.logger.warning(f"Stream creation failed with extra settings ({e}). Falling back to standard mode.")
+                        extra_settings = None # Clear settings for next attempt
+                        continue
+                    else:
+                        raise e # Re-raise if this was the last attempt or generic failure
+
         except Exception as e:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.

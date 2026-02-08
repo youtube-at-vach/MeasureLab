@@ -972,6 +972,19 @@ class SettingsWidget(QWidget):
         self.hostapi_combo.currentIndexChanged.connect(self.on_hostapi_changed)
         dev_layout.addRow(tr("Host API:"), self.hostapi_combo)
 
+        # Audio Mode
+        self.audio_mode_combo = QComboBox()
+        self.audio_mode_combo.addItem(tr("Compatible (Shared)"), "compatible")
+        self.audio_mode_combo.addItem(tr("Measurement (Exclusive)"), "measurement")
+        current_mode = self.config_manager.get_audio_mode()
+        idx = self.audio_mode_combo.findData(current_mode)
+        if idx >= 0:
+            self.audio_mode_combo.setCurrentIndex(idx)
+        # Ensure engine is synced with config on startup
+        self.audio_engine.audio_mode = current_mode 
+        self.audio_mode_combo.currentIndexChanged.connect(self.on_audio_mode_changed)
+        dev_layout.addRow(tr("Audio Mode:"), self.audio_mode_combo)
+
         # Input
         self.input_combo = QComboBox()
         self.input_combo.currentIndexChanged.connect(self.on_device_changed)
@@ -1320,6 +1333,7 @@ class SettingsWidget(QWidget):
 
         # 2. Populate Devices based on selected Host API
         self._populate_device_combos()
+        self._update_audio_mode_state()
 
     def _get_current_host_api_index(self, host_apis):
         # Try to get from config
@@ -1345,6 +1359,23 @@ class SettingsWidget(QWidget):
         # For now just let user pick or auto-pick first.
         # But we probably want to try to restore selection if name matches.
         self.on_device_changed()
+        self._update_audio_mode_state()
+
+    def _update_audio_mode_state(self):
+        current_api_text = self.hostapi_combo.currentText()
+        is_wasapi = "WASAPI" in current_api_text.upper()
+        self.audio_mode_combo.setEnabled(is_wasapi)
+        if not is_wasapi:
+            self.audio_mode_combo.setToolTip(tr("Measurement Mode is available only for WASAPI Host API."))
+            # Optional: Visual indication that it's inactive?
+        else:
+            self.audio_mode_combo.setToolTip(tr("Select 'Measurement' for bit-perfect exclusive mode."))
+
+    def on_audio_mode_changed(self):
+        mode = self.audio_mode_combo.currentData()
+        if mode:
+            self.config_manager.set_audio_mode(mode)
+            self.audio_engine.set_audio_mode(mode)
 
     def _populate_device_combos(self):
         api_index = self.hostapi_combo.currentData()
