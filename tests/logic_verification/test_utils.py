@@ -1,9 +1,6 @@
-import math
 import os
 import sys
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.core.utils import format_si, resource_path
 
