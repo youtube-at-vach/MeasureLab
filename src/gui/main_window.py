@@ -303,11 +303,6 @@ class MainWindow(QMainWindow):
 
         # Module registry (keep keys identical to module.name strings)
         self._module_keys = list(ALL_MODULE_KEYS)
-
-        import sys
-
-        if "--experimental" in sys.argv:
-            self._module_keys.append(MODULE_1PPS_MONITOR)
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
 
