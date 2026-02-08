@@ -50,14 +50,18 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
     scale = 10.0**exp3
     scaled = x / scale
 
+    # Format first to check if rounding causes spillover
+    number = f"{scaled:.{int(sig_figs)}g}"
+
     # Handle rounding spillover (e.g., 999.95 m -> 1.000 k).
-    if abs(scaled) >= 999.5 and exp3 < 24:
+    # If the formatted number rounds up to 1000 (or -1000), bump to next prefix.
+    if abs(float(number)) >= 1000.0 and exp3 < 24:
         exp3 += 3
         scale *= 1000.0
         scaled = x / scale
+        number = f"{scaled:.{int(sig_figs)}g}"
 
     prefix = _SI_PREFIXES.get(exp3, "")
-    number = f"{scaled:.{int(sig_figs)}g}"
 
     # Avoid displaying '-0' which can happen with rounding.
     if number in ("-0", "-0.0", "-0.00"):
