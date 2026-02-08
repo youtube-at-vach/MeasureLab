@@ -1,38 +1,43 @@
 ASIO Support for MeasureLab
 ===========================
 
-MeasureLab uses the PortAudio library, which supports ASIO.
-However, **ASIO support is intentionally not enabled by default** due to licensing considerations.
-For the same reason, MeasureLab does **not** redistribute any ASIO drivers or the ASIO SDK.
+MeasureLab uses the PortAudio library, which includes optional ASIO support.
+However, **ASIO is disabled by default**.
 
-If you wish to use ASIO with MeasureLab, you can enable it manually using the provided script.
+This is **not a licensing restriction**, but a **stability and reliability decision**.
+In practice, ASIO driver behavior varies widely, and when used through PortAudio,
+it may cause crashes, hangs, or incorrect device reporting.
+
+For this reason, ASIO support is considered **experimental** and must be enabled manually.
 
 > **Note:**
-> This process does **not** install or redistribute ASIO drivers.
+> Enabling ASIO does **not** install or redistribute any ASIO drivers or the ASIO SDK.
+> An ASIO driver must already be installed on your system.
 
 Enabling ASIO
 -------------
-To enable ASIO support, you must switch the active PortAudio driver to the ASIO-enabled version. We have provided a script to do this automatically.
+To enable ASIO support, switch the active PortAudio library to the ASIO-enabled version
+using the provided script.
 
-1.  Close MeasureLab if it is running.
-2.  Navigate to the main MeasureLab folder (where MeasureLab.exe is located).
-3.  Double-click `enable_asio.bat`.
-4.  The script will backup your current drivers and replace them with the ASIO-enabled versions.
-5.  Restart MeasureLab. You should now see ASIO devices in the device list.
+1. Close MeasureLab if it is running.
+2. Open the MeasureLab folder (where `MeasureLab.exe` is located).
+3. Double-click `enable_asio.bat`.
+4. The script will back up the current PortAudio library and replace it with the ASIO-enabled version.
+5. Restart MeasureLab. ASIO devices should now appear in the device list.
 
 Disabling ASIO
 --------------
-If you encounter issues or want to revert to the standard drivers:
+If you experience problems or want to revert to the default configuration:
 
-1.  Close MeasureLab.
-2.  Double-click `disable_asio.bat`.
-3.  The script will restore your original drivers.
-4.  Restart MeasureLab.
+1. Close MeasureLab.
+2. Double-click `disable_asio.bat`.
+3. The original PortAudio library will be restored.
+4. Restart MeasureLab.
 
 Manual Method
 -------------
-If the scripts do not work, you can manually replace the files:
+If the scripts do not work, you can switch the libraries manually:
 
-1.  Go to `_internal/_sounddevice_data/portaudio-binaries/`.
-2.  Rename `libportaudio64bit.dll` to `libportaudio64bit.dll.bak`.
-3.  Copy `libportaudio64bit-asio.dll` and rename the copy to `libportaudio64bit.dll`.
+1. Navigate to `_internal/_sounddevice_data/portaudio-binaries/`.
+2. Rename `libportaudio64bit.dll` to `libportaudio64bit.dll.bak`.
+3. Copy `libportaudio64bit-asio.dll` and rename it to `libportaudio64bit.dll`.
