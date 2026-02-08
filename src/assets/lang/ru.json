@@ -1073,5 +1073,7 @@
     "Threshold (FS):": "Порог (ПШ):",
     "Tolerance (Sigma):": "Допуск (Сигма):",
     "Host API:": "Хост-API:",
-    "Count": "Счетчик"
+    "Count": "Счетчик",
+    "Sample Rate": "Частота дискретизации",
+    "Sync with Audio Engine": "Синхронизация с аудиодвижком"
 }

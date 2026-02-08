@@ -1073,5 +1073,7 @@
     "Threshold (FS):": "Umbral (FS):",
     "Tolerance (Sigma):": "Tolerancia (Sigma):",
     "Host API:": "API del Host:",
-    "Count": "Cuenta"
+    "Count": "Cuenta",
+    "Sample Rate": "Frecuencia de muestreo",
+    "Sync with Audio Engine": "Sincronizar con el motor de audio"
 }

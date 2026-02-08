@@ -1055,5 +1055,7 @@
     "Outlier Rejection": "Outlier Rejection",
     "Show Instantaneous": "Show Instantaneous",
     "Threshold (FS):": "Threshold (FS):",
-    "Tolerance (Sigma):": "Tolerance (Sigma):"
+    "Tolerance (Sigma):": "Tolerance (Sigma):",
+    "Sample Rate": "Sample Rate",
+    "Sync with Audio Engine": "Sync with Audio Engine"
 }

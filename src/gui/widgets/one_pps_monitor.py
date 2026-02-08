@@ -412,14 +412,26 @@ class OnePPSMonitorWidget(QWidget):
         vbox_settings = QVBoxLayout(tab_settings)
 
         # Nominal Rate
-        vbox_settings.addWidget(QLabel(tr("Nominal Rate (Hz):")))
+        rate_group = QGroupBox(tr("Sample Rate"))
+        rate_vbox = QVBoxLayout(rate_group)
+
+        self.chk_sync_rate = QCheckBox(tr("Sync with Audio Engine"))
+        self.chk_sync_rate.setChecked(True) # Default to True
+        self.chk_sync_rate.toggled.connect(self._on_sync_toggled)
+        rate_vbox.addWidget(self.chk_sync_rate)
+
+        rate_row = QHBoxLayout()
+        rate_row.addWidget(QLabel(tr("Nominal Rate (Hz):")))
         self.spin_rate = QDoubleSpinBox()
         self.spin_rate.setRange(1.0, 384000.0)
         current_sr = float(self.module.audio_engine.sample_rate)
         self.spin_rate.setValue(current_sr)
         self.spin_rate.setDecimals(1)
         self.spin_rate.valueChanged.connect(self._on_rate_changed)
-        vbox_settings.addWidget(self.spin_rate)
+        rate_row.addWidget(self.spin_rate)
+        rate_vbox.addLayout(rate_row)
+
+        vbox_settings.addWidget(rate_group)
 
         # Threshold
         vbox_settings.addWidget(QLabel(tr("Threshold (FS):")))
@@ -535,8 +547,30 @@ class OnePPSMonitorWidget(QWidget):
         self._on_window_changed(self.spin_window.value())
         self._on_tol_changed(self.spin_tol.value())
 
+        # Initial sync state
+        self._on_sync_toggled(self.chk_sync_rate.isChecked())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self.chk_sync_rate.isChecked():
+            self._sync_sample_rate()
+
+    def _sync_sample_rate(self):
+        engine_sr = float(self.module.audio_engine.sample_rate)
+        if abs(self.spin_rate.value() - engine_sr) > 0.1:
+            self.spin_rate.setValue(engine_sr)
+
+    def _on_sync_toggled(self, checked):
+        self.spin_rate.setEnabled(not checked)
+        if checked:
+            self._sync_sample_rate()
+
     def _on_start_toggled(self, checked):
         if checked:
+            # Re-sync before starting if enabled
+            if self.chk_sync_rate.isChecked():
+                self._sync_sample_rate()
+
             self.module.start_analysis()
             self.timer.start()
             self.btn_start.setText(tr("Stop"))
@@ -564,6 +598,10 @@ class OnePPSMonitorWidget(QWidget):
         self.module.filter_tolerance_sigma = val
 
     def _update_plot(self):
+        # Poll for sample rate changes if sync is enabled
+        if self.chk_sync_rate.isChecked():
+             self._sync_sample_rate()
+
         t, ip, cp = self.module.get_history_arrays()
         count = self.module.get_pulse_count()
         self.lbl_count.setText(f"{tr('Count')}: {count}")

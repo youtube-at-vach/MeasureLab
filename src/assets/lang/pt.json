@@ -1073,5 +1073,7 @@
     "Threshold (FS):": "Limiar (FS):",
     "Tolerance (Sigma):": "Tolerância (Sigma):",
     "Host API:": "API do Host:",
-    "Count": "Contagem"
+    "Count": "Contagem",
+    "Sample Rate": "Taxa de amostragem",
+    "Sync with Audio Engine": "Sincronizar com o motor de áudio"
 }

@@ -1073,5 +1073,7 @@
     "Threshold (FS):": "Schwellenwert (FS):",
     "Tolerance (Sigma):": "Toleranz (Sigma):",
     "Host API:": "Host-API:",
-    "Count": "Anzahl"
+    "Count": "Anzahl",
+    "Sample Rate": "Abtastrate",
+    "Sync with Audio Engine": "Mit Audio-Engine synchronisieren"
 }
