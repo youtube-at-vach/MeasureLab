@@ -230,45 +230,22 @@ class MainWindow(QMainWindow):
         if last_in or last_out:
             # Find IDs by name
             devices = self.audio_engine.list_devices()
-            found_in = False
-            found_out = False
 
-            for i, dev in enumerate(devices):
-                if not found_in and last_in and dev["name"] == last_in and dev["max_input_channels"] > 0:
-                    # Check HostAPI if available
-                    if last_in_hostapi:
-                        if dev.get("hostapi_name") != last_in_hostapi:
-                            continue
-                    in_id = i
-                    found_in = True
+            # Find Input Device
+            if last_in:
+                found_in_id = self._find_device_id(devices, last_in, last_in_hostapi, is_input=True)
+                if found_in_id is not None:
+                    in_id = found_in_id
+                else:
+                    print(f"Saved input device '{last_in}' not found, using default.")
 
-                if not found_out and last_out and dev["name"] == last_out and dev["max_output_channels"] > 0:
-                    # Check HostAPI if available
-                    if last_out_hostapi:
-                        if dev.get("hostapi_name") != last_out_hostapi:
-                            continue
-                    out_id = i
-                    found_out = True
-
-            # Fallback: If strict match failed but we have a name, try loose match (name only)
-            if last_in and not found_in:
-                for i, dev in enumerate(devices):
-                     if dev["name"] == last_in and dev["max_input_channels"] > 0:
-                        in_id = i
-                        found_in = True
-                        break
-
-            if last_out and not found_out:
-                for i, dev in enumerate(devices):
-                     if dev["name"] == last_out and dev["max_output_channels"] > 0:
-                        out_id = i
-                        found_out = True
-                        break
-
-            if not found_in and last_in:
-                print(f"Saved input device '{last_in}' not found, using default.")
-            if not found_out and last_out:
-                print(f"Saved output device '{last_out}' not found, using default.")
+            # Find Output Device
+            if last_out:
+                found_out_id = self._find_device_id(devices, last_out, last_out_hostapi, is_input=False)
+                if found_out_id is not None:
+                    out_id = found_out_id
+                else:
+                    print(f"Saved output device '{last_out}' not found, using default.")
 
         try:
             self.audio_engine.set_devices(in_id, out_id)
@@ -384,6 +361,41 @@ class MainWindow(QMainWindow):
 
         # Sync output destination control with engine state on startup
         self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
+
+    def _find_device_id(self, devices: list, name: str, hostapi: str, is_input: bool) -> int | None:
+        """Find device ID by name and hostapi, with fallback to name only."""
+        if not name:
+            return None
+
+        # 1. Strict match (Name + HostAPI)
+        for i, dev in enumerate(devices):
+            # Check capabilities
+            if is_input and dev["max_input_channels"] <= 0:
+                continue
+            if not is_input and dev["max_output_channels"] <= 0:
+                continue
+
+            if dev["name"] == name:
+                # If hostapi is specified, strict match is required.
+                if hostapi:
+                    if dev.get("hostapi_name") == hostapi:
+                        return i
+                else:
+                    # If hostapi is not specified, just match name
+                    return i
+
+        # 2. Loose match (Name only) - only needed if hostapi was specified
+        if hostapi:
+            for i, dev in enumerate(devices):
+                if is_input and dev["max_input_channels"] <= 0:
+                    continue
+                if not is_input and dev["max_output_channels"] <= 0:
+                    continue
+
+                if dev["name"] == name:
+                    return i
+
+        return None
 
     def _replace_container_contents(self, container: QWidget, widget: QWidget):
         layout = container.layout()
