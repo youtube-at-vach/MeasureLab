@@ -1099,7 +1099,16 @@ class DistortionAnalyzerWidget(QWidget):
         if not self.module.is_running:
             return
 
-        data = self.module.input_data
+        # Thread-safe data capture
+        if self.module.capture_ready:
+            data = self.module.captured_buffer
+            self.module.request_capture()  # Request next frame
+        elif not self.module.capture_requested:
+            self.module.request_capture()
+            return
+        else:
+            return
+
         sample_rate = self.module.audio_engine.sample_rate
 
         # Perform Analysis
