@@ -1,6 +1,6 @@
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import numpy as np
 
 # --- Mocks for Dependencies ---
@@ -68,7 +68,7 @@ mock_pyqt6.QtWidgets.QSpinBox.return_value.value.return_value = 1
 # Since we are in tests/logic_verification/, and src/ is at root.
 # We need to make sure src is in path. It usually is in pytest.
 
-from src.gui.widgets.distortion_analyzer import DistortionAnalyzerWidget, DistortionAnalyzer
+from src.gui.widgets.distortion_analyzer import DistortionAnalyzerWidget, DistortionAnalyzer  # noqa: E402
 
 class TestDistortionAnalyzerLogic(unittest.TestCase):
     def setUp(self):
