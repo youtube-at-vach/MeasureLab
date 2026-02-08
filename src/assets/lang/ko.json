@@ -1073,5 +1073,7 @@
     "Threshold (FS):": "임계값 (FS):",
     "Tolerance (Sigma):": "공차 (시그마):",
     "Host API:": "호스트 API:",
-    "Count": "횟수"
+    "Count": "횟수",
+    "Sample Rate": "샘플 속도",
+    "Sync with Audio Engine": "오디오 엔진과 동기화"
 }

@@ -1073,5 +1073,7 @@
     "Threshold (FS):": "阈值 (FS):",
     "Tolerance (Sigma):": "容差 (西格玛):",
     "Host API:": "主机 API:",
-    "Count": "计数"
+    "Count": "计数",
+    "Sample Rate": "采样率",
+    "Sync with Audio Engine": "与音频引擎同步"
 }

@@ -1062,5 +1062,7 @@
     "Threshold (FS):": "閾値 (FS):",
     "Tolerance (Sigma):": "許容範囲 (シグマ):",
     "Host API:": "ホストAPI:",
-    "Count": "回数"
+    "Count": "回数",
+    "Sample Rate": "サンプリングレート",
+    "Sync with Audio Engine": "オーディオエンジンと同期"
 }
