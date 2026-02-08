@@ -25,6 +25,7 @@ def test_slider_sync():
     mock_qt_core = MagicMock()
     mock_qt_core.Qt.Orientation.Horizontal = 1
     mock_qt_core.Qt.PenStyle.DotLine = 2
+    mock_qt_core.QTimer = MagicMock()
 
     mock_qt_widgets = MagicMock()
     mock_qt_widgets.QWidget = MockQWidget
@@ -63,7 +64,12 @@ def test_slider_sync():
 
     # Patch modules only within this test scope
     with patch.dict(sys.modules, mock_modules):
-        # Local import to use mocked modules
+        # Force a fresh import of the module under test to ensure it uses the mocks
+        # even if it was previously loaded by other tests.
+        # patch.dict will restore the original module (if any) upon exit.
+        if "src.gui.widgets.oscilloscope" in sys.modules:
+            del sys.modules["src.gui.widgets.oscilloscope"]
+
         from src.gui.widgets.oscilloscope import OscilloscopeWidget, Oscilloscope  # noqa: E402
 
         print("Setting up test...")
