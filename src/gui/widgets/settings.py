@@ -17,7 +17,9 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTabWidget,
     QVBoxLayout,
+    QVBoxLayout,
     QWidget,
+    QSpinBox,
 )
 
 from src.core.audio_engine import AudioEngine
@@ -989,6 +991,26 @@ class SettingsWidget(QWidget):
         dev_group.setLayout(dev_layout)
         audio_layout.addWidget(dev_group)
 
+        # Offline Mode Group
+        iso_group = QGroupBox(tr("Virtual / Offline Mode"))
+        iso_layout = QFormLayout()
+
+        self.offline_check = QCheckBox(tr("Virtual Audio (No Hardware)"))
+        is_offline = self.config_manager.is_offline_mode()
+        self.offline_check.setChecked(is_offline)
+        self.offline_check.toggled.connect(self.on_offline_toggled)
+        iso_layout.addRow(self.offline_check)
+
+        self.offline_rate_spin = QSpinBox()
+        self.offline_rate_spin.setRange(1000, 384000)
+        self.offline_rate_spin.setValue(self.config_manager.get_offline_sample_rate())
+        self.offline_rate_spin.setSuffix(" Hz")
+        self.offline_rate_spin.valueChanged.connect(self.on_offline_rate_changed)
+        iso_layout.addRow(tr("Simulation Rate:"), self.offline_rate_spin)
+
+        iso_group.setLayout(iso_layout)
+        audio_layout.addWidget(iso_group)
+
         # Audio Configuration Group
         conf_group = QGroupBox(tr("Audio Configuration"))
         conf_layout = QFormLayout()
@@ -1187,6 +1209,43 @@ class SettingsWidget(QWidget):
 
         self.update_spl_display()
         self.refresh_cal_profiles()
+        self._update_offline_ui_state()
+
+    def _update_offline_ui_state(self):
+        is_offline = self.offline_check.isChecked()
+        
+        # Disable hardware controls when offline
+        self.hostapi_combo.setEnabled(not is_offline)
+        self.input_combo.setEnabled(not is_offline)
+        self.output_combo.setEnabled(not is_offline)
+        self.refresh_btn.setEnabled(not is_offline)
+        
+        # Enable simulation controls when offline
+        self.offline_rate_spin.setEnabled(is_offline)
+        
+        # Sample Rate Combo is for Hardware
+        self.sr_combo.setEnabled(not is_offline)
+
+    def on_offline_toggled(self, checked: bool):
+        self.config_manager.set_offline_mode(checked)
+        self._update_offline_ui_state()
+        
+        if checked:
+            rate = self.offline_rate_spin.value()
+            self.audio_engine.set_offline_mode(True)
+            self.audio_engine.set_sample_rate(rate)
+        else:
+            self.audio_engine.set_offline_mode(False)
+            # Restore hardware rate from config
+            hw_rate = self.config_manager.get_audio_config().get("sample_rate", 48000)
+            self.audio_engine.set_sample_rate(hw_rate)
+            self.sr_combo.setCurrentText(str(hw_rate))
+            self.refresh_devices()
+
+    def on_offline_rate_changed(self, val: int):
+        self.config_manager.set_offline_sample_rate(val)
+        if self.offline_check.isChecked():
+            self.audio_engine.set_sample_rate(val)
 
     def on_pipewire_jack_resident_toggled(self, checked: bool):
         self.config_manager.set_pipewire_jack_resident(bool(checked))

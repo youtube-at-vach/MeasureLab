@@ -21,6 +21,8 @@ DEFAULT_CONFIG = {
         "input_channels": "stereo",
         "output_channels": "stereo",
         "pipewire_jack_resident": False,
+        "offline_mode": False,
+        "offline_sample_rate": 48000,
     },
     "language": "en",
     "theme": "system",
@@ -254,6 +256,30 @@ class ConfigManager:
         if "audio" not in self.config:
             self.config["audio"] = {}
         self.config["audio"]["pipewire_jack_resident"] = bool(enabled)
+        self.save_config()
+
+    def is_offline_mode(self) -> bool:
+        """Returns whether offline (virtual) mode is enabled."""
+        audio = self.get_audio_config()
+        return bool(audio.get("offline_mode", False))
+
+    def set_offline_mode(self, enabled: bool):
+        """Enables/disables offline mode."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["offline_mode"] = bool(enabled)
+        self.save_config()
+
+    def get_offline_sample_rate(self) -> int:
+        """Returns the offline simulation sample rate."""
+        audio = self.get_audio_config()
+        return int(audio.get("offline_sample_rate", 48000))
+
+    def set_offline_sample_rate(self, rate: int):
+        """Sets the offline simulation sample rate."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["offline_sample_rate"] = int(rate)
         self.save_config()
 
     def get_language(self):
