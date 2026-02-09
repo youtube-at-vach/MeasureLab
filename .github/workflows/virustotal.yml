@@ -1,5 +1,6 @@
 name: VirusTotal Audit
 
+on:
   workflow_run:
     workflows: ["Release"]
     types:
