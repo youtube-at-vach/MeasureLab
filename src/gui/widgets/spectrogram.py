@@ -22,6 +22,7 @@ from src.core.analysis import get_cached_window
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
+from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
 
 class Spectrogram(MeasurementModule):
@@ -208,9 +209,7 @@ class SpectrogramWidget(QWidget):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
         else:
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; } QPushButton:checked { background-color: #ffcccc; }"
-            )
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
 
         controls_layout.addWidget(self.toggle_btn)
 
@@ -465,17 +464,7 @@ class SpectrogramWidget(QWidget):
 
         if theme_name == "dark":
             # Dark Theme
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
-                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
-                "QPushButton:hover { background-color: #388e3c; }"
-                "QPushButton:checked:hover { background-color: #d32f2f; }"
-            )
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_DARK)
         else:
             # Light Theme
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }"
-                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }"
-                "QPushButton:hover { background-color: #bbfebb; }"
-                "QPushButton:checked:hover { background-color: #ffbbbb; }"
-            )
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)

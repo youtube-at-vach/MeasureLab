@@ -26,6 +26,16 @@ from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.styles import (
+    STYLE_TOGGLE_BTN_DARK,
+    STYLE_TOGGLE_BTN_LIGHT,
+    STYLE_LABEL_LEFT_CH_DARK,
+    STYLE_LABEL_RIGHT_CH_DARK,
+    STYLE_LABEL_CURSOR_DARK,
+    STYLE_LABEL_LEFT_CH_LIGHT,
+    STYLE_LABEL_RIGHT_CH_LIGHT,
+    STYLE_LABEL_CURSOR_LIGHT,
+)
 
 
 class Oscilloscope(MeasurementModule):
@@ -582,22 +592,22 @@ class OscilloscopeWidget(QWidget):
 
         meas_row_1 = QHBoxLayout()
         self.meas_l_label = QLabel(tr("L: Vrms: 0.000 V  Vpp: 0.000 V"))
-        self.meas_l_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #00ff00;")
+        self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
         meas_row_1.addWidget(self.meas_l_label)
 
         self.meas_r_label = QLabel(tr("R: Vrms: 0.000 V  Vpp: 0.000 V"))
-        self.meas_r_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #ff0000;")
+        self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
         meas_row_1.addWidget(self.meas_r_label)
         meas_row_1.addStretch()
         meas_layout.addLayout(meas_row_1)
 
         self.meas_l_auto_label = QLabel(tr("Freq") + ": --  " + tr("Rise") + ": --  " + tr("Fall") + ": --")
-        self.meas_l_auto_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #00ff00;")
+        self.meas_l_auto_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
         self.meas_l_auto_label.setVisible(False)
         meas_layout.addWidget(self.meas_l_auto_label)
 
         self.meas_r_auto_label = QLabel(tr("Freq") + ": --  " + tr("Rise") + ": --  " + tr("Fall") + ": --")
-        self.meas_r_auto_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #ff0000;")
+        self.meas_r_auto_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
         self.meas_r_auto_label.setVisible(False)
         meas_layout.addWidget(self.meas_r_auto_label)
 
@@ -606,7 +616,7 @@ class OscilloscopeWidget(QWidget):
 
         # Cursor Info
         self.cursor_info_label = QLabel(tr("Cursors: Off"))
-        self.cursor_info_label.setStyleSheet("font-family: monospace; font-weight: bold; color: yellow;")
+        self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_DARK)
         left_layout.addWidget(self.cursor_info_label)
 
         # Plot
@@ -718,9 +728,7 @@ class OscilloscopeWidget(QWidget):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
         else:
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; } QPushButton:checked { background-color: #ffcccc; }"
-            )
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
 
         gen_layout.addWidget(self.toggle_btn)
 
@@ -1464,31 +1472,21 @@ class OscilloscopeWidget(QWidget):
 
         if theme_name == "dark":
             # Dark Theme
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
-                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
-                "QPushButton:hover { background-color: #388e3c; }"
-                "QPushButton:checked:hover { background-color: #d32f2f; }"
-            )
-            self.meas_l_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #00ff00;")
-            self.meas_r_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #ff0000;")
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_DARK)
+            self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
+            self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
             if hasattr(self, "meas_l_auto_label"):
-                self.meas_l_auto_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #00ff00;")
+                self.meas_l_auto_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
             if hasattr(self, "meas_r_auto_label"):
-                self.meas_r_auto_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #ff0000;")
-            self.cursor_info_label.setStyleSheet("font-family: monospace; font-weight: bold; color: yellow;")
+                self.meas_r_auto_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
+            self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_DARK)
         else:
             # Light Theme
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }"
-                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }"
-                "QPushButton:hover { background-color: #bbfebb; }"
-                "QPushButton:checked:hover { background-color: #ffbbbb; }"
-            )
-            self.meas_l_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #008800;")
-            self.meas_r_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #cc0000;")
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
+            self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_LIGHT)
+            self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_LIGHT)
             if hasattr(self, "meas_l_auto_label"):
-                self.meas_l_auto_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #008800;")
+                self.meas_l_auto_label.setStyleSheet(STYLE_LABEL_LEFT_CH_LIGHT)
             if hasattr(self, "meas_r_auto_label"):
-                self.meas_r_auto_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #cc0000;")
-            self.cursor_info_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #888800;")
+                self.meas_r_auto_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_LIGHT)
+            self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_LIGHT)
