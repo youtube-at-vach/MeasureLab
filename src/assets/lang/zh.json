@@ -1081,5 +1081,12 @@
     "Virtual Audio (No Hardware)": "虚拟音频（无硬件）",
     "Virtual Loopback (Always On)": "虚拟回送 (始终开启)",
     "In Virtual Mode, audio is always looped back.": "在虚拟模式下，音频始终回送。",
-    "Device refresh is disabled when JACK is active for safety.": "为了安全起见，当 JACK 处于活动状态时，设备刷新将被禁用。"
+    "Device refresh is disabled when JACK is active for safety.": "为了安全起见，当 JACK 处于活动状态时，设备刷新将被禁用。",
+    "Actual Freq:": "实际频率:",
+    "Bin Center": "Bin中心",
+    "Bin Snap:": "Bin吸附:",
+    "Snap to Bin Center": "吸附到Bin中心",
+    "Snap to Bin:": "吸附到Bin:",
+    "Target Freq:": "目标频率:",
+    "Window Width:": "窗口宽度:"
 }

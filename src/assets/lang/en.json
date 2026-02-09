@@ -1063,5 +1063,12 @@
     "Simulation Rate:": "Simulation Rate:",
     "Virtual / Offline Mode": "Virtual / Offline Mode",
     "Virtual Audio (No Hardware)": "Virtual Audio (No Hardware)",
-    "Device refresh is disabled when JACK is active for safety.": "Device refresh is disabled when JACK is active for safety."
+    "Device refresh is disabled when JACK is active for safety.": "Device refresh is disabled when JACK is active for safety.",
+    "Actual Freq:": "Actual Freq:",
+    "Bin Center": "Bin Center",
+    "Bin Snap:": "Bin Snap:",
+    "Snap to Bin Center": "Snap to Bin Center",
+    "Snap to Bin:": "Snap to Bin:",
+    "Target Freq:": "Target Freq:",
+    "Window Width:": "Window Width:"
 }

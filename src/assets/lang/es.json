@@ -1081,5 +1081,12 @@
     "Virtual Audio (No Hardware)": "Audio Virtual (Sin Hardware)",
     "Virtual Loopback (Always On)": "Loopback virtual (Siempre activo)",
     "In Virtual Mode, audio is always looped back.": "En el modo virtual, el audio siempre se retroalimenta (loopback).",
-    "Device refresh is disabled when JACK is active for safety.": "La actualización de dispositivos está deshabilitada cuando JACK está activo por seguridad."
+    "Device refresh is disabled when JACK is active for safety.": "La actualización de dispositivos está deshabilitada cuando JACK está activo por seguridad.",
+    "Actual Freq:": "Frec. real:",
+    "Bin Center": "Centro de bin",
+    "Bin Snap:": "Ajuste a bin:",
+    "Snap to Bin Center": "Ajustar al centro de bin",
+    "Snap to Bin:": "Ajustar a bin:",
+    "Target Freq:": "Frec. objetivo:",
+    "Window Width:": "Ancho de ventana:"
 }
