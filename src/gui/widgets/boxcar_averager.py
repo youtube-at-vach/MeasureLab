@@ -332,17 +332,22 @@ class BoxcarAverager(MeasurementModule):
                         inter_end = min(chunk_end, seg_end)
                         if inter_end <= inter_start:
                             continue
+
+                        # Calculate offsets into the 'data' chunk corresponding to this intersection
+                        data_off0 = current_idx + (inter_start - fold_idx)
+                        data_off1 = current_idx + (inter_end - fold_idx)
+
                         if self.use_int64:
                             # Scale to utilize int64 dynamic range (2^31)
                             # Input is float32 (-1.0 to 1.0)
                             # We use 2^31 to allow ~2 billion accumulations before overflow if close to 1.0
                             # Realistically signal is much lower, so headroom is massive.
                             # Sanitize input to avoid ValueError on NaN/Inf
-                            clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            clean_data = np.nan_to_num(data[data_off0:data_off1], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
                             chunk_data = (clean_data * 2147483648.0).astype(np.int64)
                             self.accumulator[inter_start:inter_end] += chunk_data
                         else:
-                            self.accumulator[inter_start:inter_end] += data[current_idx : current_idx + chunk_size]
+                            self.accumulator[inter_start:inter_end] += data[data_off0:data_off1]
                 else:
                     if self.use_int64:
                         clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
