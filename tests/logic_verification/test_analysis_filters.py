@@ -290,6 +290,6 @@ def test_notch_filter_edge_cases():
 
     # Case: target > nyquist
     try:
-        filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate)
+        AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate)
     except ValueError:
         pass
