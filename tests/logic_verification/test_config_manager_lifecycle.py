@@ -92,21 +92,32 @@ class TestConfigManagerLifecycle(unittest.TestCase):
 
     @patch('src.core.config_manager.os.path.exists', return_value=False)
     @patch('src.core.config_manager.os.makedirs')
-    @patch('builtins.open', new_callable=mock_open)
-    def test_save_config_force_sync(self, mock_file, mock_makedirs, mock_exists):
+    @patch('src.core.config_manager.os.open')
+    @patch('src.core.config_manager.os.fdopen')
+    @patch('src.core.config_manager.os.chmod')
+    def test_save_config_force_sync(self, mock_chmod, mock_fdopen, mock_open, mock_makedirs, mock_exists):
         """Test that force_sync writes immediately."""
+        # Setup mocks
+        mock_open.return_value = 123
+        mock_file_handle = MagicMock()
+        mock_fdopen.return_value.__enter__.return_value = mock_file_handle
+
         cm = ConfigManager(self.config_path)
 
         cm.config['audio']['sample_rate'] = 88200
         cm.save_config(force_sync=True)
 
-        # Verify file write occurred
-        mock_file.assert_called_with(self.config_path, 'w')
-        # Check that json was written
-        handle = mock_file()
-        # We can't easily check the full JSON string unless we mock json.dump,
-        # but we can check write calls.
-        self.assertTrue(handle.write.called)
+        # Verify os.open called with correct flags and mode
+        # 0o600 = 384
+        expected_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        mock_open.assert_called_with(self.config_path, expected_flags, 0o600)
+
+        # Verify os.fdopen called
+        mock_fdopen.assert_called_with(123, 'w')
+
+        # Verify chmod called
+        mock_chmod.assert_called_with(self.config_path, 0o600)
+
         cm.shutdown()
 
     @patch('src.core.config_manager.os.path.exists', return_value=False)
@@ -186,13 +197,19 @@ class TestConfigManagerLifecycle(unittest.TestCase):
             cm.save_config(force_sync=False)
 
             # Shutdown
-            with patch('builtins.open', mock_open()) as mock_file:
+            with patch('src.core.config_manager.os.open') as mock_open, \
+                 patch('src.core.config_manager.os.fdopen') as mock_fdopen, \
+                 patch('src.core.config_manager.os.chmod') as mock_chmod:
+
+                 mock_open.return_value = 123
+
                  cm.shutdown()
 
                  # Timer cancelled
                  mock_timer.cancel.assert_called()
                  # File written
-                 mock_file.assert_called()
+                 mock_open.assert_called()
+                 mock_fdopen.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
