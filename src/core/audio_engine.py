@@ -53,7 +53,7 @@ class VirtualStream:
         # Pre-allocate buffers
         indata = np.zeros((self.blocksize, self.channels[0]), dtype="float32")
         outdata = np.zeros((self.blocksize, self.channels[1]), dtype="float32")
-        
+
         next_call_time = time.time()
 
         while self.active and not self._stop_event.is_set():
@@ -61,18 +61,18 @@ class VirtualStream:
             # Drift correction: if we are falling behind, catch up just a bit, but don't spiral
             if t > next_call_time + 0.1:
                 next_call_time = t
-            
+
             # Sleep until next Tick
             to_sleep = next_call_time - t
             if to_sleep > 0:
                 time.sleep(to_sleep)
-            
+
             next_call_time += interval
 
             # Call callback
             try:
                 # status=0 for all good
-                c_time = getattr(sd, "CallbackTime", lambda: 0)() # Dummy or approximation
+                getattr(sd, "CallbackTime", lambda: 0)()  # Dummy or approximation
                 # We need a proper CData struct for time if we strictly follow sd type, 
                 # but usually python callbacks just access attributes. 
                 # Let's mock a simple object if needed, or just pass an object.
@@ -82,16 +82,16 @@ class VirtualStream:
                 # AudioEngine uses `time`? Checking... `cb(logical_in, client_out, frames, time, status)`
                 # The callback in AudioEngine is `master_callback`. It passes `time` through to clients.
                 # Let's pass a dummy object.
-                
+
                 class DummyTime:
                     inputBufferAdcTime = t
                     outputBufferDacTime = t + interval
                     currentTime = t
 
                 status = sd.CallbackFlags()
-                
+
                 self.callback(indata, outdata, self.blocksize, DummyTime(), status)
-                
+
                 # In Virtual Mode, `indata` is usually zeros, UNLESS the callback filled it?
                 # master_callback expects indata from "Hardware". 
                 # In our loopback logic enforced in master_callback:
@@ -126,7 +126,7 @@ class AudioEngine:
         # PipeWire/JACK resident mode: keep PortAudio stream open for the app lifetime.
         self.pipewire_jack_resident = False
         self.jack_client_name = "MeasureLab"
-        
+
         # Offline / Virtual Mode
         self.offline_mode = False
 
@@ -178,15 +178,15 @@ class AudioEngine:
             has_clients = bool(self.callbacks)
         if not has_clients:
             self.stop_stream()
-            
+
     def set_offline_mode(self, enabled: bool):
         """Enable/disable offline (virtual) mode."""
         if self.offline_mode == enabled:
             return
-            
+
         self.offline_mode = enabled
         self.logger.info(f"Set offline mode: {enabled}")
-        
+
         # Restart stream if active to switch backend
         if self.is_active():
             self._restart_stream()
@@ -210,7 +210,7 @@ class AudioEngine:
         # So we can keep this standard for when not in offline mode, 
         # or return a specific virtual device list if needed.
         # For now, let's keep standard behavior so user can see hardware even if offline is checked (though controls disabled).
-        
+
         devices = sd.query_devices()
 
         # Try to attach host API names; fall back to raw device dicts on error.

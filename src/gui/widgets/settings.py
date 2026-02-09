@@ -17,7 +17,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTabWidget,
     QVBoxLayout,
-    QVBoxLayout,
     QWidget,
     QSpinBox,
 )
@@ -1213,23 +1212,23 @@ class SettingsWidget(QWidget):
 
     def _update_offline_ui_state(self):
         is_offline = self.offline_check.isChecked()
-        
+
         # Disable hardware controls when offline
         self.hostapi_combo.setEnabled(not is_offline)
         self.input_combo.setEnabled(not is_offline)
         self.output_combo.setEnabled(not is_offline)
         self.refresh_btn.setEnabled(not is_offline)
-        
+
         # Enable simulation controls when offline
         self.offline_rate_spin.setEnabled(is_offline)
-        
+
         # Sample Rate Combo is for Hardware
         self.sr_combo.setEnabled(not is_offline)
 
     def on_offline_toggled(self, checked: bool):
         self.config_manager.set_offline_mode(checked)
         self._update_offline_ui_state()
-        
+
         if checked:
             rate = self.offline_rate_spin.value()
             self.audio_engine.set_offline_mode(True)
