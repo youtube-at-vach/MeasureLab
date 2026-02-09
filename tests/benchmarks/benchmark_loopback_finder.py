@@ -13,7 +13,7 @@ sys.modules['PyQt6.QtWidgets'] = unittest.mock.Mock()
 sys.modules['src.core.localization'] = unittest.mock.Mock()
 sys.modules['src.core.localization'].tr = lambda x, default=None: x
 
-from src.core.fft_manager import fft_manager
+from src.core.fft_manager import fft_manager  # noqa: E402
 
 def perform_scan_baseline(max_out, max_in, sample_rate, duration=0.1):
     found_paths = []
