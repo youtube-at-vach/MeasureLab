@@ -16,6 +16,18 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 
 ---
 
+## No Audio Interface? (Virtual Mode)
+
+If you don't have an audio interface or want to analyze existing audio files without any hardware, you can use the **Virtual / Offline Mode**.
+
+1. Go to **Settings** > **Audio Configuration**.
+2. Check the **Virtual / Offline Mode** option.
+3. Use the **Simulation Rate** to set your desired sampling rate.
+
+In this mode, you can load audio files into the **Player** widget or generate signals internally, and analyzed results will appear in the analyzer widgets just like real hardware.
+
+---
+
 ## Starting the Software
 
 MeasureLab works on Windows and Linux.
