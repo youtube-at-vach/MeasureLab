@@ -57,7 +57,7 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
         }
 
         # Setup mocks
-        self.mock_audio_calc.analyze_harmonics.return_value = {"thd": 0.1, "fft_data": np.zeros(513)}
+        self.mock_audio_calc.analyze_harmonics.return_value = {"thd": 0.1, "fft_data": np.zeros(513), "basic_wave": {}}
 
         worker.process(data, settings)
 

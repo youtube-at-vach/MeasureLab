@@ -38,7 +38,7 @@ class DistortionAnalyzer(MeasurementModule):
 
         # Generator Settings
         self.gen_frequency = 1000.0
-        self.gen_frequency = 1000.0
+        self.snap_to_bin_center = False
         self._gen_amplitude = 0.5  # Linear 0-1
         self.output_channel = 0  # 0: Left, 1: Right
         self.input_channel = 0  # 0: Left, 1: Right
@@ -114,6 +114,7 @@ class DistortionAnalyzer(MeasurementModule):
             "res_rms": raw_res_rms,
             "fund_amp": raw_fund_amp,
             "frequency": raw_freq,
+            "target_frequency": results.get("basic_wave", {}).get("target_frequency", raw_freq),
             "amplitude_dbfs": raw_amp_dbfs,
             "harmonics": raw_harmonics,
         }
@@ -131,7 +132,9 @@ class DistortionAnalyzer(MeasurementModule):
         avg_state["fund_rms"] = 0.0
         avg_state["res_rms"] = 0.0
         avg_state["fund_amp"] = 0.0
+        avg_state["fund_amp"] = 0.0
         avg_state["frequency"] = 0.0
+        avg_state["target_frequency"] = 0.0
         avg_state["amplitude_dbfs"] = 0.0
         avg_state["harmonics"] = np.zeros_like(raw_harmonics)
 
@@ -140,6 +143,7 @@ class DistortionAnalyzer(MeasurementModule):
             avg_state["res_rms"] += state["res_rms"]
             avg_state["fund_amp"] += state["fund_amp"]
             avg_state["frequency"] += state["frequency"]
+            avg_state["target_frequency"] += state.get("target_frequency", state["frequency"])
             avg_state["amplitude_dbfs"] += state["amplitude_dbfs"]
             # Handle potential shape mismatch (if settings changed mid-stream, though reset should prevent it)
             if state["harmonics"].shape == avg_state["harmonics"].shape:
@@ -191,6 +195,7 @@ class DistortionAnalyzer(MeasurementModule):
         averaged = {
             "basic_wave": {
                 "frequency": avg_state["frequency"],
+                "target_frequency": avg_state["target_frequency"],
                 "amplitude_dbfs": avg_state["amplitude_dbfs"],
                 "max_amplitude": avg_state["fund_amp"],
             },
@@ -412,7 +417,18 @@ class SweepWorker(QThread):
 
             # Set Generator
             if self.sweep_type == "frequency":
-                self.module.gen_frequency = val
+                if self.module.snap_to_bin_center:
+                    sample_rate = self.module.audio_engine.sample_rate
+                    bin_width = sample_rate / self.module.buffer_size
+                    # Snap to nearest bin
+                    bin_idx = round(val / bin_width)
+                    actual_freq = bin_idx * bin_width
+                    if actual_freq <= 0:
+                        actual_freq = bin_width  # Avoid DC
+                    self.module.gen_frequency = actual_freq
+                    # We store the target value for the plot X axis, but generate the actual frequency
+                else:
+                    self.module.gen_frequency = val
             else:
                 # val is dBFS, convert to linear
                 self.module.gen_amplitude = 10 ** (val / 20)
@@ -425,6 +441,7 @@ class SweepWorker(QThread):
             self.module.reset_averaging_state()
             avg_count = max(1, self.module.average_count)
             final_result = None
+            results = None
 
             for _ in range(avg_count):
                 if not self.is_running:
@@ -445,8 +462,20 @@ class SweepWorker(QThread):
 
                 sample_rate = self.module.audio_engine.sample_rate
 
+                # In sweep mode, gen_frequency is already set to the actual frequency (snapped or not)
+                # But we want to preserve the sweep parameter 'val' as the target
                 results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
+
+                # Add target frequency to results if we are snapping
+                if self.module.snap_to_bin_center and self.sweep_type == "frequency":
+                     results["basic_wave"]["target_frequency"] = val
+                else:
+                     results["basic_wave"]["target_frequency"] = self.module.gen_frequency
+
                 final_result = self.module._apply_result_averaging(results)
+
+            if results is None:
+                continue
 
             if final_result:
                 results = final_result
@@ -494,8 +523,16 @@ class RealtimeAnalysisWorker(QObject):
                 self.result_ready.emit(res)
             else:
                 gen_frequency = settings.get("gen_frequency", 1000.0)
+                # target_frequency logic could be passed in settings, 
+                # but for real-time mode we rely on what was set in module.
+                # However, the worker processes a snapshot of settings.
+                # Let's pass target vs actual in settings
+
+                target_freq = settings.get("target_frequency", gen_frequency)
+
                 results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate)
                 results["type"] = "harmonics"
+                results["basic_wave"]["target_frequency"] = target_freq
                 self.result_ready.emit(results)
 
         except Exception as e:
@@ -569,6 +606,17 @@ class DistortionAnalyzerWidget(QWidget):
         self.freq_spin.setSuffix(" Hz")
         self.freq_spin.valueChanged.connect(self.on_freq_changed)
         sine_layout.addRow(tr("Frequency:"), self.freq_spin)
+
+        # Bin Snapping
+        self.snap_check = QPushButton(tr("Bin Center"))
+        self.snap_check.setCheckable(True)
+        self.snap_check.toggled.connect(self.on_snap_changed)
+        sine_layout.addRow(tr("Snap to Bin:"), self.snap_check)
+
+        # Actual Frequency Display
+        self.actual_freq_label = QLabel("--- Hz")
+        self.actual_freq_label.setStyleSheet("color: #aaaaaa;")
+        sine_layout.addRow(tr("Actual Freq:"), self.actual_freq_label)
 
         sine_widget.setLayout(sine_layout)
         self.gen_stack.addWidget(sine_widget)
@@ -832,6 +880,9 @@ class DistortionAnalyzerWidget(QWidget):
         right_panel.addWidget(self.tabs)
         layout.addLayout(right_panel, 3)
 
+        # Initial update of Actual Frequency
+        self.update_actual_frequency()
+
         self.setLayout(layout)
 
         # Initial update
@@ -841,8 +892,10 @@ class DistortionAnalyzerWidget(QWidget):
     def sync_module_with_gui(self):
         """Synchronize the measurement module state with current GUI values."""
         # 1. Generator Settings
-        self.module.gen_frequency = self.freq_spin.value()
-        self.on_amp_changed(self.amp_spin.value())  # Handles unit conversion and sets module.gen_amplitude
+        # Update frequency based on snap setting
+        self.on_freq_changed(self.freq_spin.value())
+        self.module.gen_amplitude = self.get_linear_amplitude()
+        self.module.snap_to_bin_center = self.snap_check.isChecked()
 
         # 2. Signal Type (from out_mode_combo)
         out_idx = self.out_mode_combo.currentIndex()
@@ -960,7 +1013,6 @@ class DistortionAnalyzerWidget(QWidget):
                 self.module.imd_f2 = 20000.0
                 self.imd_f1_spin.setValue(19000.0)
                 self.imd_f2_spin.setValue(20000.0)
-                self.imd_f2_spin.setValue(20000.0)
                 self.imd_ratio_spin.setEnabled(False)
                 self.module.reset_averaging_state()
 
@@ -992,7 +1044,11 @@ class DistortionAnalyzerWidget(QWidget):
         self.amp_spin.setValue(val)
         self.amp_spin.blockSignals(False)
 
-    def on_amp_changed(self, val):
+        self.amp_spin.setValue(val)
+        self.amp_spin.blockSignals(False)
+
+    def get_linear_amplitude(self):
+        val = self.amp_spin.value()
         unit = self.unit_combo.currentText()
         gain = self.module.audio_engine.calibration.output_gain
         amp_linear = 0.0
@@ -1017,7 +1073,10 @@ class DistortionAnalyzerWidget(QWidget):
         elif amp_linear < 0.0:
             amp_linear = 0.0
 
-        self.module.gen_amplitude = amp_linear
+        return amp_linear
+
+    def on_amp_changed(self, val):
+        self.module.gen_amplitude = self.get_linear_amplitude()
         self.module.reset_averaging_state()
 
     def on_action(self, checked):
@@ -1124,8 +1183,28 @@ class DistortionAnalyzerWidget(QWidget):
     def on_sweep_finished(self):
         self.stop_sweep()
 
+    def update_actual_frequency(self):
+        target_freq = self.freq_spin.value()
+        if self.snap_check.isChecked():
+            sample_rate = self.module.audio_engine.sample_rate
+            bin_width = sample_rate / self.module.buffer_size
+            bin_idx = round(target_freq / bin_width)
+            actual_freq = bin_idx * bin_width
+            if actual_freq <= 0:
+                 actual_freq = bin_width # Prevent 0Hz
+            self.actual_freq_label.setText(f"{actual_freq:.3f} Hz")
+            self.module.gen_frequency = actual_freq
+        else:
+            self.actual_freq_label.setText(f"{target_freq:.3f} Hz")
+            self.module.gen_frequency = target_freq
+
+    def on_snap_changed(self, checked):
+        self.module.snap_to_bin_center = checked
+        self.update_actual_frequency()
+        self.module.reset_averaging_state()
+
     def on_freq_changed(self, val):
-        self.module.gen_frequency = val
+        self.update_actual_frequency()
         self.module.reset_averaging_state()
 
     def on_channel_changed(self, idx):
@@ -1162,6 +1241,7 @@ class DistortionAnalyzerWidget(QWidget):
             "window_type": self.module.window_type,
             "sample_rate": sample_rate,
             "gen_frequency": self.module.gen_frequency,
+            "target_frequency": self.freq_spin.value(), # Pass target separately
             "imd_f1": self.module.imd_f1,
             "imd_f2": self.module.imd_f2,
         }
@@ -1249,6 +1329,8 @@ class DistortionAnalyzerWidget(QWidget):
             bandwidth = "20 kHz"
 
             detailed_text = (
+                f"{tr('Target Freq:'):<15} {results['basic_wave'].get('target_frequency', 0):>10.3f} Hz\n"
+                f"{tr('Actual Freq:'):<15} {results['basic_wave']['frequency']:>10.3f} Hz   ✔\n"
                 f"{tr('Input level:'):<15} {input_level:>10.1f} dBFS   ✔\n"
                 f"{tr('Window:'):<15} {window_name:>10}\n"
                 f"{tr('FFT size:'):<15} {fft_size:>10}\n"

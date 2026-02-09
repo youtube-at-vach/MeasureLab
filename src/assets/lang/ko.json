@@ -1081,5 +1081,12 @@
     "Virtual Audio (No Hardware)": "가상 오디오 (하드웨어 없음)",
     "Virtual Loopback (Always On)": "가상 루프백 (항상 활성화)",
     "In Virtual Mode, audio is always looped back.": "가상 모드에서는 오디오가 항상 루프백됩니다.",
-    "Device refresh is disabled when JACK is active for safety.": "안전을 위해 JACK이 활성화된 경우 장치 새로 고침이 비활성화됩니다."
+    "Device refresh is disabled when JACK is active for safety.": "안전을 위해 JACK이 활성화된 경우 장치 새로 고침이 비활성화됩니다.",
+    "Actual Freq:": "실제 주파수:",
+    "Bin Center": "빈 센터",
+    "Bin Snap:": "빈 스냅:",
+    "Snap to Bin Center": "빈 센터에 스냅",
+    "Snap to Bin:": "빈에 스냅:",
+    "Target Freq:": "목표 주파수:",
+    "Window Width:": "창 너비:"
 }

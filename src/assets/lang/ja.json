@@ -1070,5 +1070,12 @@
     "Virtual / Offline Mode": "仮想 / オフラインモード",
     "Virtual Audio (No Hardware)": "仮想オーディオ (ハードウェアなし)",
     "In Virtual Mode, audio is always looped back.": "仮想モードでは、オーディオは常にループバックされます。",
-    "Device refresh is disabled when JACK is active for safety.": "安全のため、JACKが有効な間はデバイスの再読み込みを無効化しています。"
+    "Device refresh is disabled when JACK is active for safety.": "安全のため、JACKが有効な間はデバイスの再読み込みを無効化しています。",
+    "Actual Freq:": "実測周波数:",
+    "Bin Center": "ビンセンター",
+    "Bin Snap:": "ビンスナップ:",
+    "Snap to Bin Center": "ビンセンターに吸着",
+    "Snap to Bin:": "ビンに吸着:",
+    "Target Freq:": "目標周波数:",
+    "Window Width:": "ウィンドウ幅:"
 }
