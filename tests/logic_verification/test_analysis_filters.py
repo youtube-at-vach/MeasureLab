@@ -284,7 +284,7 @@ def test_notch_filter_edge_cases():
     # But w0 will be <= 0.
     # butter might raise error.
     try:
-        filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
+        AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
     except ValueError:
         pass
 
