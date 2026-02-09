@@ -216,6 +216,12 @@ class HRTFPlayer(MeasurementModule):
 
     def load_music(self, path):
         try:
+            # Security Check: Validate file size before loading
+            info = sf.info(path)
+            total_samples = info.frames * info.channels
+            if total_samples > AudioCalc.MAX_AUDIO_SAMPLES:
+                return False, f"File too large: {total_samples} samples (Max: {AudioCalc.MAX_AUDIO_SAMPLES})"
+
             data, sr = sf.read(path, always_2d=True)
             # Resample? For now assume close enough or user handles it.
             # Ideally we should resample if diff is large.
