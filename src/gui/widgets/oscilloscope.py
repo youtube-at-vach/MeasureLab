@@ -1026,17 +1026,18 @@ class OscilloscopeWidget(QWidget):
             if self.timebase_slider.value() != idx:
                 self.timebase_slider.setValue(idx)
 
+    def _sync_combo_from_slider(self, idx, keys, combo):
+        """Helper to sync combo box when slider changes."""
+        if 0 <= idx < len(keys):
+            key = keys[idx]
+            if combo.currentText() != key:
+                combo.setCurrentText(key)
+
     def on_timebase_slider_changed(self, idx):
-        if 0 <= idx < len(self.timebase_keys):
-            key = self.timebase_keys[idx]
-            if self.timebase_combo.currentText() != key:
-                self.timebase_combo.setCurrentText(key)
+        self._sync_combo_from_slider(idx, self.timebase_keys, self.timebase_combo)
 
     def on_vscale_left_slider_changed(self, idx):
-        if 0 <= idx < len(self.vscale_keys):
-            key = self.vscale_keys[idx]
-            if self.vscale_combo_l.currentText() != key:
-                self.vscale_combo_l.setCurrentText(key)
+        self._sync_combo_from_slider(idx, self.vscale_keys, self.vscale_combo_l)
 
     def on_vscale_left_changed(self, text):
         if text not in self.vscale_options:
@@ -1052,10 +1053,7 @@ class OscilloscopeWidget(QWidget):
                 self.vscale_slider_l.setValue(idx)
 
     def on_vscale_right_slider_changed(self, idx):
-        if 0 <= idx < len(self.vscale_keys):
-            key = self.vscale_keys[idx]
-            if self.vscale_combo_r.currentText() != key:
-                self.vscale_combo_r.setCurrentText(key)
+        self._sync_combo_from_slider(idx, self.vscale_keys, self.vscale_combo_r)
 
     def on_vscale_right_changed(self, text):
         if text not in self.vscale_options:
@@ -1069,35 +1067,6 @@ class OscilloscopeWidget(QWidget):
             idx = self.vscale_keys.index(text)
             if self.vscale_slider_r.value() != idx:
                 self.vscale_slider_r.setValue(idx)
-
-    def on_vscale_slider_changed(self, idx):
-        if 0 <= idx < len(self.vscale_keys):
-            key = self.vscale_keys[idx]
-            # Block signals to prevent feedback loop if needed,
-            # but usually setCurrentText emits signal which calls on_vscale_changed
-            # which sets slider value again. To avoid loop:
-            if self.vscale_combo.currentText() != key:
-                self.vscale_combo.setCurrentText(key)
-
-    def on_vscale_changed(self, text):
-        if text not in self.vscale_options:
-            return
-
-        scale = self.vscale_options[text]
-
-        # Sync slider
-        if text in self.vscale_keys:
-            idx = self.vscale_keys.index(text)
-            if self.vscale_slider.value() != idx:
-                self.vscale_slider.setValue(idx)
-
-        # Scale 1.0x -> Range -1.1 to 1.1
-        # Scale 2.0x -> Range -0.55 to 0.55 (Zoom In)
-        # Scale 0.5x -> Range -2.2 to 2.2 (Zoom Out)
-
-        base_range = 1.1
-        new_range = base_range / scale
-        self.plot_widget.setYRange(-new_range, new_range)
 
     def on_trig_source_changed(self, index):
         self.module.trigger_source = index
