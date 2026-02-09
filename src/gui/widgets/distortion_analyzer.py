@@ -460,17 +460,17 @@ class SweepWorker(QThread):
                     data = self.module.input_data.copy()  # Fallback
 
                 sample_rate = self.module.audio_engine.sample_rate
-                
+
                 # In sweep mode, gen_frequency is already set to the actual frequency (snapped or not)
                 # But we want to preserve the sweep parameter 'val' as the target
                 results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
-                
+
                 # Add target frequency to results if we are snapping
                 if self.module.snap_to_bin_center and self.sweep_type == "frequency":
                      results["basic_wave"]["target_frequency"] = val
                 else:
                      results["basic_wave"]["target_frequency"] = self.module.gen_frequency
-                
+
                 final_result = self.module._apply_result_averaging(results)
 
             if final_result:
@@ -523,9 +523,9 @@ class RealtimeAnalysisWorker(QObject):
                 # but for real-time mode we rely on what was set in module.
                 # However, the worker processes a snapshot of settings.
                 # Let's pass target vs actual in settings
-                
+
                 target_freq = settings.get("target_frequency", gen_frequency)
-                
+
                 results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate)
                 results["type"] = "harmonics"
                 results["basic_wave"]["target_frequency"] = target_freq
@@ -878,7 +878,7 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Initial update of Actual Frequency
         self.update_actual_frequency()
-        
+
         self.setLayout(layout)
 
         # Initial update
@@ -1063,13 +1063,13 @@ class DistortionAnalyzerWidget(QWidget):
         elif unit == "Vrms":
             v_peak = val * np.sqrt(2)
             amp_linear = v_peak / gain
-            
+
         # Clamp
         if amp_linear > 1.0:
             amp_linear = 1.0
         elif amp_linear < 0.0:
             amp_linear = 0.0
-            
+
         return amp_linear
 
     def on_amp_changed(self, val):
@@ -1236,7 +1236,6 @@ class DistortionAnalyzerWidget(QWidget):
         settings = {
             "signal_type": self.module.signal_type,
             "window_type": self.module.window_type,
-            "sample_rate": sample_rate,
             "sample_rate": sample_rate,
             "gen_frequency": self.module.gen_frequency,
             "target_frequency": self.freq_spin.value(), # Pass target separately
