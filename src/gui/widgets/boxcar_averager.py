@@ -338,11 +338,11 @@ class BoxcarAverager(MeasurementModule):
                             # We use 2^31 to allow ~2 billion accumulations before overflow if close to 1.0
                             # Realistically signal is much lower, so headroom is massive.
                             # Sanitize input to avoid ValueError on NaN/Inf
-                            clean_data = np.nan_to_num(data[data_off0:data_off1], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
                             chunk_data = (clean_data * 2147483648.0).astype(np.int64)
                             self.accumulator[inter_start:inter_end] += chunk_data
                         else:
-                            self.accumulator[inter_start:inter_end] += data[data_off0:data_off1]
+                            self.accumulator[inter_start:inter_end] += data[current_idx : current_idx + chunk_size]
                 else:
                     if self.use_int64:
                         clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
@@ -381,7 +381,7 @@ class BoxcarAverager(MeasurementModule):
                             break
                         rel_start = abs_ptr - abs_start
                         rel_end = rel_start + take
-                        
+
                         if self.use_int64:
                             # Sanitize input
                             clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
@@ -389,10 +389,10 @@ class BoxcarAverager(MeasurementModule):
                             self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
                         else:
                             self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
-                        
+
                         self.capture_idx += take
                         abs_ptr += take
-                        
+
                         if self.capture_idx >= period:
                             self.capture_active = False # Or True if we want immediate re-trigger?
                             # For Free Run, we want immediate re-trigger.
@@ -411,14 +411,14 @@ class BoxcarAverager(MeasurementModule):
                 ref_idx = self.ref_channel
                 if data.shape[1] <= ref_idx:
                     return  # Safety
-    
+
                 ref_sig = data[:, ref_idx]
-    
+
                 # Simple Edge Detection
                 # We need state from previous chunk to detect edge across boundary?
                 # For simplicity, we just look inside current chunk.
                 # Ideally we should keep last sample.
-    
+
                 # Create a shifted array including the last sample
                 if self.last_ref_sample is None:
                     # Prevent a false trigger right at the first sample after start/reset
@@ -427,35 +427,35 @@ class BoxcarAverager(MeasurementModule):
                 extended_ref = np.concatenate(([self.last_ref_sample], ref_sig))
                 self.last_ref_sample = float(ref_sig[-1])
                 self.last_ref_sample_index = int(idxs[-1])
-    
+
                 # Detect Crossings
                 # Rising: prev < level <= curr
                 # Falling: prev > level >= curr
                 level = self.trigger_level
-    
+
                 if self.trigger_edge == "Rising":
                     triggers = (extended_ref[:-1] < level) & (extended_ref[1:] >= level)
                 else:
                     triggers = (extended_ref[:-1] > level) & (extended_ref[1:] <= level)
-    
+
                 trigger_indices = np.where(triggers)[0]
                 # Absolute trigger sample indices; trigger_indices maps directly to data indices.
                 trigger_samples_abs = idxs[trigger_indices] if len(trigger_indices) > 0 else np.array([], dtype=np.int64)
-    
+
                 # State Machine:
                 # We might be currently capturing a window.
                 # Or waiting for a trigger.
-    
+
                 # Non-retriggerable capture windows, pinned to absolute trigger samples.
                 period = int(self.period_samples)
                 if self.accumulator.shape[0] != period:
                     self.reset_average()
                     return
-    
+
                 abs_start = int(idxs[0])
                 abs_end = int(idxs[-1]) + 1
                 abs_ptr = abs_start
-    
+
                 # Helper: find next trigger >= abs_ptr
                 def _next_trigger(at_or_after: int):
                     if trigger_samples_abs.size == 0:
@@ -464,7 +464,7 @@ class BoxcarAverager(MeasurementModule):
                     if pos >= trigger_samples_abs.size:
                         return None
                     return int(trigger_samples_abs[pos])
-    
+
                 while abs_ptr < abs_end:
                     if self.capture_active:
                         # Continue capturing until window full.
@@ -473,7 +473,7 @@ class BoxcarAverager(MeasurementModule):
                             break
                         rel_start = abs_ptr - abs_start
                         rel_end = rel_start + take
-                        
+
                         if self.use_int64:
                             clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
                             chunk_data = (clean_data * 2147483648.0).astype(np.int64)
@@ -482,7 +482,7 @@ class BoxcarAverager(MeasurementModule):
                             self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
                         self.capture_idx += take
                         abs_ptr += take
-    
+
                         if self.capture_idx >= period:
                             self.capture_active = False
                             self.capture_idx = 0
@@ -499,10 +499,10 @@ class BoxcarAverager(MeasurementModule):
     def export_to_file(self, filepath, format=None, subtype=None):
         if self.count == 0:
             return False, "No data to export"
-        
+
         try:
             import soundfile as sf
-            
+
             # Normalize
             if self.use_int64:
                 # Convert back to float
@@ -513,7 +513,7 @@ class BoxcarAverager(MeasurementModule):
                 data = self.accumulator.astype(np.float64) * scale
             else:
                 data = self.accumulator / self.count
-                
+
             sr = self.audio_engine.sample_rate
             sf.write(filepath, data, sr, format=format, subtype=subtype)
             return True, f"Saved: {filepath}"
@@ -530,17 +530,17 @@ class BoxcarAveragerWidget(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
         self.timer.setInterval(50)  # 20 FPS
-        
+
         self.export_worker = None
 
 
     def init_ui(self):
         layout = QVBoxLayout()
-        
+
         # --- Top Action Bar ---
         action_layout = QHBoxLayout()
         action_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.toggle_btn = QPushButton(tr("Start"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
@@ -553,22 +553,22 @@ class BoxcarAveragerWidget(QWidget):
         self.export_btn = QPushButton(tr("Export"))
         self.export_btn.clicked.connect(self.on_export)
         action_layout.addWidget(self.export_btn)
-        
+
         action_layout.addStretch()
-        
+
         self.int64_chk = QCheckBox(tr("Int64 Accumulation"))
         self.int64_chk.setToolTip(tr("Use 64-bit integers for accumulation (zero precision loss)"))
         self.int64_chk.setChecked(self.module.use_int64)
         self.int64_chk.toggled.connect(self.on_int64_changed)
         action_layout.addWidget(self.int64_chk)
-        
+
         layout.addLayout(action_layout)
 
         # --- Settings Group ---
         settings_group = QGroupBox(tr("Settings"))
         settings_layout = QGridLayout()
         # settings_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Row 0: Mode, Channel
         # Mode
         self.mode_combo = QComboBox()
@@ -595,7 +595,7 @@ class BoxcarAveragerWidget(QWidget):
         self.channel_combo.currentIndexChanged.connect(self.on_channel_changed)
         settings_layout.addWidget(QLabel(tr("Channel:")), 0, 2)
         settings_layout.addWidget(self.channel_combo, 0, 3)
-        
+
         # Row 1: Period, Block Samples
         # Period
         self.period_spin = QDoubleSpinBox()
@@ -605,7 +605,7 @@ class BoxcarAveragerWidget(QWidget):
         self.period_spin.valueChanged.connect(self.on_period_changed)
         settings_layout.addWidget(QLabel(tr("Period:")), 1, 0)
         settings_layout.addWidget(self.period_spin, 1, 1)
-        
+
         # Block
         self.block_samples_spin = QDoubleSpinBox() # Using Double to allow large numbers, though we enforce int
         self.block_samples_spin.setRange(1, 100_000_000) # Up to very large blocks
@@ -618,11 +618,11 @@ class BoxcarAveragerWidget(QWidget):
 
         settings_group.setLayout(settings_layout)
         layout.addWidget(settings_group)
-        
+
         # --- Gate & Sync Group ---
         # Combine Gate and Sync into a horizontal layout of groups to save vertical space
         bottom_layout = QHBoxLayout()
-        
+
         # Gate
         self.gate_group = QGroupBox(tr("Gate"))
         gate_layout = QHBoxLayout()
@@ -656,7 +656,7 @@ class BoxcarAveragerWidget(QWidget):
         self.gate_width_spin.valueChanged.connect(self.on_gate_width_changed)
         gate_layout.addWidget(QLabel(tr("Width:")))
         gate_layout.addWidget(self.gate_width_spin)
-        
+
         self.gate_group.setLayout(gate_layout)
         bottom_layout.addWidget(self.gate_group)
 
@@ -690,14 +690,14 @@ class BoxcarAveragerWidget(QWidget):
         self.trig_spin.valueChanged.connect(self.on_trig_changed)
         ext_layout.addWidget(QLabel(tr("Lvl:")))
         ext_layout.addWidget(self.trig_spin)
-        
+
         self.ext_group.setLayout(ext_layout)
         bottom_layout.addWidget(self.ext_group)
-        
+
         # Hide ext group initially if needed
         if "External" not in self.module.mode:
             self.ext_group.hide()
-            
+
         layout.addLayout(bottom_layout)
 
 
@@ -743,41 +743,43 @@ class BoxcarAveragerWidget(QWidget):
         # val is ms
         sr = self.module.audio_engine.sample_rate
         samples = int(val / 1000 * sr)
-        if samples < 1: samples = 1
-        
+        if samples < 1:
+            samples = 1
+
         self.block_samples_spin.blockSignals(True)
         self.block_samples_spin.setValue(samples)
         self.block_samples_spin.blockSignals(False)
-        
+
         self.module.period_samples = samples
         self.module.reset_average()
-        
+
     def on_block_samples_changed(self, val):
         # val is samples
         samples = int(val)
-        if samples < 1: samples = 1
-        
+        if samples < 1:
+            samples = 1
+
         sr = self.module.audio_engine.sample_rate
         ms = (samples / sr) * 1000.0
-        
+
         self.period_spin.blockSignals(True)
         self.period_spin.setValue(ms)
         self.period_spin.blockSignals(False)
-        
+
         self.module.period_samples = samples
         self.module.reset_average()
 
     def on_int64_changed(self, checked):
         self.module.use_int64 = checked
         self.module.reset_average()
-        
+
     def on_export(self):
         fname, selected_filter = QFileDialog.getSaveFileName(
             self, tr("Export Averaged Data"), "average.wav", tr("WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)")
         )
         if not fname:
             return
-            
+
         success, msg = self.module.export_to_file(fname)
         if success:
             QMessageBox.information(self, tr("Success"), msg)

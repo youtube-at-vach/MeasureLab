@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import QApplication
 # Mock QApplication to avoid "QWidget: Must construct a QApplication before a QWidget"
 app = QApplication(sys.argv)
 
-from src.gui.widgets.boxcar_averager import BoxcarAveragerWidget
 
 def test_imports_exist():
     """Verify that QFileDialog and QMessageBox are available in the module namespace."""
