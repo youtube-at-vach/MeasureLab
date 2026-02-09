@@ -335,13 +335,16 @@ class BoxcarAverager(MeasurementModule):
                             # Input is float32 (-1.0 to 1.0)
                             # We use 2^31 to allow ~2 billion accumulations before overflow if close to 1.0
                             # Realistically signal is much lower, so headroom is massive.
-                            chunk_data = (data[data_off0:data_off1] * 2147483648.0).astype(np.int64)
+                            # Sanitize input to avoid ValueError on NaN/Inf
+                            clean_data = np.nan_to_num(data[data_off0:data_off1], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
                             self.accumulator[inter_start:inter_end] += chunk_data
                         else:
                             self.accumulator[inter_start:inter_end] += data[data_off0:data_off1]
                 else:
                     if self.use_int64:
-                        chunk_data = (data[current_idx : current_idx + chunk_size] * 2147483648.0).astype(np.int64)
+                        clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                        chunk_data = (clean_data * 2147483648.0).astype(np.int64)
                         self.accumulator[fold_idx : fold_idx + chunk_size] += chunk_data
                     else:
                         self.accumulator[fold_idx : fold_idx + chunk_size] += data[current_idx : current_idx + chunk_size]
@@ -424,7 +427,8 @@ class BoxcarAverager(MeasurementModule):
                     rel_end = rel_start + take
                     
                     if self.use_int64:
-                        chunk_data = (data[rel_start:rel_end] * 2147483648.0).astype(np.int64)
+                        clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                        chunk_data = (clean_data * 2147483648.0).astype(np.int64)
                         self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
                     else:
                         self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
