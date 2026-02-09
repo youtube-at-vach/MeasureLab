@@ -123,8 +123,7 @@ class TestLocalizationManager(unittest.TestCase):
         with patch("src.core.localization.resource_path") as mock_path, \
              patch("os.path.exists") as mock_exists, \
              patch("os.listdir") as mock_listdir, \
-             patch("builtins.open", mock_open(read_data='invalid json')), \
-             patch("builtins.print") as mock_print:
+             patch("builtins.open", mock_open(read_data='invalid json')):
 
             mock_path.return_value = "/fake/path"
             mock_exists.return_value = True
@@ -132,13 +131,16 @@ class TestLocalizationManager(unittest.TestCase):
 
             manager = LocalizationManager()
 
-            # Should catch JSONDecodeError and print error
-            manager.load_language("en")
-            self.assertEqual(manager.translations, {})
-            # Verify print was called with error message
-            self.assertTrue(mock_print.called)
-            args, _ = mock_print.call_args
-            self.assertIn("Failed to load language en", args[0])
+            # Patch the instance logger's error method
+            with patch.object(manager.logger, 'error') as mock_error:
+                # Should catch JSONDecodeError and log error
+                manager.load_language("en")
+                self.assertEqual(manager.translations, {})
+
+                # Verify logger.error was called with error message
+                self.assertTrue(mock_error.called)
+                args, _ = mock_error.call_args
+                self.assertIn("Failed to load language en", args[0])
 
     def test_get_existing_key(self):
         """Test retrieving an existing key."""
