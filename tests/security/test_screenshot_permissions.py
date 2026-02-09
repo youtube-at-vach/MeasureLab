@@ -2,7 +2,6 @@ import os
 import stat
 import tempfile
 import sys
-import shutil
 
 # Ensure we can import src
 sys.path.append(os.getcwd())
