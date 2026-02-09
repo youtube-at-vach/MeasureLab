@@ -1088,5 +1088,12 @@
     "Snap to Bin Center": "Magnétisme au centre du bin",
     "Snap to Bin:": "Magnétisme au bin :",
     "Target Freq:": "Fréq. cible :",
-    "Window Width:": "Largeur de fenêtre :"
+    "Window Width:": "Largeur de fenêtre :",
+    "Block:": "Bloc :",
+    "Export": "Exporter",
+    "Export Averaged Data": "Exporter les données moyennées",
+    "External Sync": "Sync externe",
+    "Failed to export:\n{0}": "Échec de l'exportation :\n{0}",
+    "Int64 Accumulation": "Accumulation Int64",
+    "Use 64-bit integers for accumulation (zero precision loss)": "Utiliser des entiers 64 bits pour l'accumulation (aucune perte de précision)"
 }

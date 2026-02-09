@@ -1088,5 +1088,12 @@
     "Snap to Bin Center": "Ajustar al centro de bin",
     "Snap to Bin:": "Ajustar a bin:",
     "Target Freq:": "Frec. objetivo:",
-    "Window Width:": "Ancho de ventana:"
+    "Window Width:": "Ancho de ventana:",
+    "Block:": "Bloque:",
+    "Export": "Exportar",
+    "Export Averaged Data": "Exportar datos promediados",
+    "External Sync": "Sincronización externa",
+    "Failed to export:\n{0}": "Error al exportar:\n{0}",
+    "Int64 Accumulation": "Acumulación Int64",
+    "Use 64-bit integers for accumulation (zero precision loss)": "Usar enteros de 64 bits para la acumulación (sin pérdida de precisión)"
 }

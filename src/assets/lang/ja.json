@@ -1077,5 +1077,12 @@
     "Snap to Bin Center": "ビンセンターに吸着",
     "Snap to Bin:": "ビンに吸着:",
     "Target Freq:": "目標周波数:",
-    "Window Width:": "ウィンドウ幅:"
+    "Window Width:": "ウィンドウ幅:",
+    "Block:": "ブロック長:",
+    "Export": "エクスポート",
+    "Export Averaged Data": "平均化データの書き出し",
+    "External Sync": "外部同期",
+    "Failed to export:\n{0}": "エクスポートに失敗しました:\n{0}",
+    "Int64 Accumulation": "Int64累積",
+    "Use 64-bit integers for accumulation (zero precision loss)": "累積に64ビット整数を使用します（精度損失ゼロ）"
 }
