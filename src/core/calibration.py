@@ -199,7 +199,7 @@ class CalibrationManager:
         # Voltage = 10^(dBFS/20) * input_sensitivity
         # dBV = 20 * log10(10^(dBFS/20) * input_sensitivity)
         #     = dBFS + 20 * log10(input_sensitivity)
-        return dbfs + 20 * np.log10(self.input_sensitivity)
+        return dbfs + self.get_input_offset_db()
 
     def dbfs_to_volts(self, dbfs):
         """Converts dBFS to Volts (Peak)."""
