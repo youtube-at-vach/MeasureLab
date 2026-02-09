@@ -1,6 +1,5 @@
 import threading
 import unittest
-import time
 import sys
 import os
 from unittest.mock import MagicMock
@@ -11,7 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 # Mock sounddevice
 sys.modules['sounddevice'] = MagicMock()
 
-from src.core.audio_engine import VirtualStream
+from src.core.audio_engine import VirtualStream  # noqa: E402
 
 class TestVirtualStreamDummyTime(unittest.TestCase):
     def test_dummy_time_attributes(self):
@@ -22,8 +21,8 @@ class TestVirtualStreamDummyTime(unittest.TestCase):
         callback_event = threading.Event()
         self.time_obj = None
 
-        def callback(indata, outdata, frames, time, status):
-            self.time_obj = time
+        def callback(indata, outdata, frames, time_info, status):
+            self.time_obj = time_info
             callback_event.set()
 
         # Create VirtualStream
