@@ -40,9 +40,13 @@ def test_mls_fallback_correctness():
         # However, the code does `import scipy.signal` inside the function.
         # If we patch `scipy.signal.max_len_seq`, it should work because the module object is the same.
 
-        with patch('scipy.signal.max_len_seq', side_effect=RuntimeError("Forced failure for testing fallback")):
+        with patch('scipy.signal.max_len_seq', side_effect=RuntimeError("Forced failure for testing fallback")), \
+             patch('src.gui.widgets.signal_generator.logger') as mock_logger:
             # Note: We pass sample_rate but _generate_mls doesn't strictly use it for MLS length (it uses order)
             fallback_signal = sg._generate_mls(params, 48000)
+
+            # Verify logger was called
+            mock_logger.warning.assert_called_with("scipy.signal.max_len_seq not found/failed, using optimized fallback")
 
         # 3. Verify
         # Check length
