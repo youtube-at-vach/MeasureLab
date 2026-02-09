@@ -13,14 +13,7 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "Sample Rate",
-    "Sync with Audio Engine",
-    "Optimizing FFT... (Size {0}) {1}/{2}",
-    "Saving optimization results... {0}/{1}",
-    "Done {0}/{1}",
-    "Simulation Rate:",
-    "Virtual / Offline Mode",
-    "Virtual Audio (No Hardware)"
+    "Device refresh is disabled when JACK is active for safety."
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)

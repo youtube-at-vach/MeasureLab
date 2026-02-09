@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
+import pytest
 
 
 # Ensure the repository root is importable so tests can do `import src...`.
@@ -22,3 +24,10 @@ except (OSError, ImportError):
     sd.check_input_settings = MagicMock(return_value=True)
     sd.check_output_settings = MagicMock(return_value=True)
     sys.modules["sounddevice"] = sd
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_config():
+    yield
+    if os.path.exists("test_config.json"):
+        os.remove("test_config.json")

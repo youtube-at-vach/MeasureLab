@@ -1062,5 +1062,6 @@
     "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizing FFT... (Size {0}) {1}/{2}",
     "Simulation Rate:": "Simulation Rate:",
     "Virtual / Offline Mode": "Virtual / Offline Mode",
-    "Virtual Audio (No Hardware)": "Virtual Audio (No Hardware)"
+    "Virtual Audio (No Hardware)": "Virtual Audio (No Hardware)",
+    "Device refresh is disabled when JACK is active for safety.": "Device refresh is disabled when JACK is active for safety."
 }

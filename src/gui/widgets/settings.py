@@ -984,7 +984,7 @@ class SettingsWidget(QWidget):
         dev_layout.addRow(tr("Output Device:"), self.output_combo)
 
         self.refresh_btn = QPushButton(tr("Refresh Devices"))
-        self.refresh_btn.clicked.connect(self.refresh_devices)
+        self.refresh_btn.clicked.connect(self.on_refresh_clicked)
         dev_layout.addRow(self.refresh_btn)
 
         dev_group.setLayout(dev_layout)
@@ -1210,14 +1210,31 @@ class SettingsWidget(QWidget):
         self.refresh_cal_profiles()
         self._update_offline_ui_state()
 
+    def _is_jack_available(self) -> bool:
+        """Checks if JACK host API is available."""
+        host_apis = self.audio_engine.get_host_apis()
+        for api in host_apis:
+            if "jack" in api.get("name", "").lower():
+                return True
+        return False
+
     def _update_offline_ui_state(self):
         is_offline = self.offline_check.isChecked()
+        is_jack = self._is_jack_available()
 
         # Disable hardware controls when offline
         self.hostapi_combo.setEnabled(not is_offline)
         self.input_combo.setEnabled(not is_offline)
         self.output_combo.setEnabled(not is_offline)
-        self.refresh_btn.setEnabled(not is_offline)
+
+        # Disable refresh button if offline OR if JACK is present
+        self.refresh_btn.setEnabled(not is_offline and not is_jack)
+
+        # Tooltip for explaining why it's disabled
+        if is_jack:
+            self.refresh_btn.setToolTip(tr("Device refresh is disabled when JACK is active for safety."))
+        else:
+            self.refresh_btn.setToolTip("")
 
         # Enable simulation controls when offline
         self.offline_rate_spin.setEnabled(is_offline)
@@ -1358,6 +1375,11 @@ class SettingsWidget(QWidget):
         except ValueError:
             self.update_out_gain_display()
 
+    def on_refresh_clicked(self):
+        """Refreshes the backend (re-initializes PortAudio) and then updates the UI."""
+        self.audio_engine.refresh_backend()
+        self.refresh_devices()
+
     def refresh_devices(self):
         # 1. Fetch Host APIs
         host_apis = self.audio_engine.get_host_apis()
@@ -1376,7 +1398,10 @@ class SettingsWidget(QWidget):
 
         self.hostapi_combo.blockSignals(False)
 
-        # 2. Populate Devices based on selected Host API
+        # 2. Update UI state (disables refresh button if JACK is present)
+        self._update_offline_ui_state()
+
+        # 3. Populate Devices based on selected Host API
         self._populate_device_combos()
 
     def _get_current_host_api_index(self, host_apis):

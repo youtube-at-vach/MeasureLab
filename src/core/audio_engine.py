@@ -199,6 +199,29 @@ class AudioEngine:
         self.mute_output = enabled
         self.logger.info(f"Set mute output: {enabled}")
 
+    def refresh_backend(self):
+        """
+        Forces a re-initialization of the PortAudio backend.
+        This is useful on Linux/ALSA where device lists are cached.
+        """
+        self.logger.info("Refreshing audio backend...")
+
+        # Stop everything first
+        self.stop_stream()
+
+        # Terminate PortAudio
+        try:
+            sd._terminate()
+        except Exception as e:
+            self.logger.warning(f"Error terminating PortAudio: {e}")
+
+        # Re-initialize PortAudio
+        try:
+            sd._initialize()
+            self.logger.info("Audio backend refreshed successfully.")
+        except Exception as e:
+            self.logger.error(f"Error re-initializing PortAudio: {e}")
+
     def list_devices(self):
         """Returns a list of available audio devices.
 
