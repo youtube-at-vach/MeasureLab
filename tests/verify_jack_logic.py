@@ -12,7 +12,7 @@ sys.modules['PyQt6.QtCore'] = MagicMock()
 sys.modules['PyQt6.QtWidgets'] = MagicMock()
 sys.modules['PyQt6.QtGui'] = MagicMock()
 
-import src.gui.widgets.settings as settings
+import src.gui.widgets.settings as settings  # noqa: E402
 
 def test_jack_detection():
     # Mock AudioEngine
