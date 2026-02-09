@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "measurelab"
 version = "0.4.3"
-description = "DIY audio measurement and analysis suite (GUI + CLI)"
+description = "DIY audio measurement and analysis suite (GUI)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Unlicense"}
@@ -52,7 +52,7 @@ show_error_codes = true
 warn_unused_ignores = true
 warn_return_any = false
 warn_unreachable = true
-files = ["src/core", "src/main.py"]
+files = ["src/core"]
 
 [[tool.mypy.overrides]]
 module = "src.gui.*"
