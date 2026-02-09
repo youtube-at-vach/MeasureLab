@@ -30,10 +30,11 @@ jobs:
         id: target
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           # If triggered by release workflow completion, use that tag/branch
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+            TAG_NAME="$HEAD_BRANCH"
             echo "Targeting workflow_run head_branch: $TAG_NAME"
           # If triggered by release event (legacy, kept for completeness or manual trigger simulation)
           elif [[ "${{ github.event_name }}" == "release" ]]; then
