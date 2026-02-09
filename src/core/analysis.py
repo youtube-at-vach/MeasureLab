@@ -23,8 +23,8 @@ A_WEIGHTING_GAIN = 1.2589
 
 
 @functools.lru_cache(maxsize=16)
-def get_cached_window(window_name, nx, dtype=np.float64):
-    return get_window(window_name, nx).astype(dtype)
+def get_cached_window(window_name, nx, dtype=np.float64, fftbins=True):
+    return get_window(window_name, nx, fftbins=fftbins).astype(dtype)
 
 
 @functools.lru_cache(maxsize=128)

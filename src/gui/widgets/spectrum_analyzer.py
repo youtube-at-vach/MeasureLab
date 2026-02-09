@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy.signal.windows import dpss
 
+from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
@@ -838,9 +839,14 @@ class SpectrumAnalyzerWidget(QWidget):
             # --- Standard Method ---
             # Apply window
             if self.module.window_type == "rect":
-                window = np.ones(len(data))
+                window_name = "boxcar"
+            elif self.module.window_type == "hanning":
+                window_name = "hann"
             else:
-                window = getattr(np, self.module.window_type)(len(data))
+                window_name = self.module.window_type
+
+            # Use cached window (symmetric to match numpy behavior)
+            window = get_cached_window(window_name, len(data), fftbins=False)
 
             # Calculate Window Correction Factor (Amplitude Correction)
             # Factor = 1 / mean(window)
