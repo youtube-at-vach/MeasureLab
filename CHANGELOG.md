@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.4.3] - 2026-02-09
+
+### Added
+
+* Core: 1PPS Monitor module with pulse detection, drift calculation, and outlier rejection
+* Core: Online least squares regression for cumulative PPM and refined outlier rejection
+* UI: Dynamic precision formatting for THDN and distortion values
+* UI: Selectable output channel for loopback reference mode
+* Security: Secured wisdom persistence (JSON/Base64) and added SECURITY.md
+
+### Changed
+
+* Perf: Optimized A-Weighting curve calculation with content-based caching
+* Perf: Optimized frequency allocations and audio callback error handling
+* Perf: Offloaded NoiseProfiler analysis to QThreadPool (non-blocking)
+* Core: Improved frequency estimation accuracy with two-pass MSE minimization
+* Core: Rename `_nco_phase` to `_nco_phase_rad` for smooth frequency transitions
+
+### Fixed
+
+* Security: Fix path traversal vulnerabilities in ConfigManager and CalibrationManager
+* Core: Fix missing error signal in NoiseAnalysisWorker
+* Core: Fix potentially unsafe pickle usage for wisdom files
+* UI: Fix translation keys overlap and missing keys for output channels
+* UI: Disable mode combo box during active measurements to prevent invalid states
+
 ## [v0.4.2] - 2026-02-05
 
 Note: The Mac version is still unsupported and is being distributed for testing purposes only. The developer does not own a Mac, so no guarantees can be made regarding its functionality.
