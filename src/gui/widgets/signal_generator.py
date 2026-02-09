@@ -787,6 +787,30 @@ class SignalGeneratorWidget(QWidget):
         layout = QVBoxLayout()
 
         # --- Top Control Bar ---
+        layout.addLayout(self._create_top_control_bar())
+
+        # --- Target Selector ---
+        layout.addLayout(self._create_target_selector())
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addWidget(line)
+
+        # --- Main Controls ---
+        layout.addWidget(self._create_signal_params_group())
+
+        # --- Options Tabs ---
+        layout.addWidget(self._create_options_tabs())
+
+        layout.addStretch()
+        self.setLayout(layout)
+
+        # Initialize UI with current target (L)
+        self.load_params_to_ui(self.module.params_L)
+
+    def _create_top_control_bar(self):
         top_bar = QHBoxLayout()
 
         # Start/Stop
@@ -818,10 +842,9 @@ class SignalGeneratorWidget(QWidget):
         routing_group.setLayout(routing_layout)
         top_bar.addWidget(routing_group, 3)
 
-        layout.addLayout(top_bar)
+        return top_bar
 
-        # --- Signal Parameters Control ---
-        # Target Selector
+    def _create_target_selector(self):
         target_layout = QHBoxLayout()
         target_layout.addWidget(QLabel(f"<b>{tr('Edit Settings For:')}</b>"))
 
@@ -841,21 +864,24 @@ class SignalGeneratorWidget(QWidget):
         target_layout.addWidget(self.target_link)
         target_layout.addStretch()
 
-        layout.addLayout(target_layout)
+        return target_layout
 
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        layout.addWidget(line)
-
-        # --- Main Controls ---
-        # We use the same widgets but update their values based on current_target
-
+    def _create_signal_params_group(self):
         basic_group = QGroupBox(tr("Signal Parameters"))
         basic_layout = QFormLayout()
 
-        # Waveform
+        self._init_waveform_selector(basic_layout)
+        self._init_param_stack(basic_layout)
+        self._init_frequency_controls(basic_layout)
+        self._init_phase_controls(basic_layout)
+        self._init_delay_controls(basic_layout)
+        self._init_amplitude_controls(basic_layout)
+        self._init_bin_snap_controls(basic_layout)
+
+        basic_group.setLayout(basic_layout)
+        return basic_group
+
+    def _init_waveform_selector(self, layout):
         self.wave_combo = QComboBox()
         waveform_items = [
             ("sine", "sine"),
@@ -874,9 +900,9 @@ class SignalGeneratorWidget(QWidget):
         for label, key in waveform_items:
             self.wave_combo.addItem(label, key)
         self.wave_combo.currentIndexChanged.connect(self.on_wave_changed)
-        basic_layout.addRow(tr("Waveform:"), self.wave_combo)
+        layout.addRow(tr("Waveform:"), self.wave_combo)
 
-        # Dynamic Parameters Stack
+    def _init_param_stack(self, layout):
         self.param_stack = QWidget()
         self.param_layout = QVBoxLayout(self.param_stack)
         self.param_layout.setContentsMargins(0, 0, 0, 0)
@@ -992,11 +1018,9 @@ class SignalGeneratorWidget(QWidget):
         self.sawtooth_widget.hide()
         self.prbs_widget.hide()
 
-        basic_layout.addRow(self.param_stack)
+        layout.addRow(self.param_stack)
 
-
-
-        # Frequency
+    def _init_frequency_controls(self, layout):
         freq_layout = QHBoxLayout()
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(20, 20000)
@@ -1009,9 +1033,9 @@ class SignalGeneratorWidget(QWidget):
 
         freq_layout.addWidget(self.freq_spin)
         freq_layout.addWidget(self.freq_slider)
-        basic_layout.addRow(tr("Frequency (Hz):"), freq_layout)
+        layout.addRow(tr("Frequency (Hz):"), freq_layout)
 
-        # Phase
+    def _init_phase_controls(self, layout):
         phase_layout = QHBoxLayout()
         self.phase_spin = QDoubleSpinBox()
         self.phase_spin.setRange(-180, 180)
@@ -1026,9 +1050,9 @@ class SignalGeneratorWidget(QWidget):
 
         phase_layout.addWidget(self.phase_spin)
         phase_layout.addWidget(self.phase_slider)
-        basic_layout.addRow(tr("Phase Offset:"), phase_layout)
+        layout.addRow(tr("Phase Offset:"), phase_layout)
 
-        # Delay (ms)
+    def _init_delay_controls(self, layout):
         self.delay_label = QLabel(tr("Delay (ms):"))
         delay_layout = QHBoxLayout()
         self.delay_spin = QDoubleSpinBox()
@@ -1047,9 +1071,9 @@ class SignalGeneratorWidget(QWidget):
 
         delay_layout.addWidget(self.delay_spin)
         delay_layout.addWidget(self.delay_slider)
-        basic_layout.addRow(self.delay_label, delay_layout)
+        layout.addRow(self.delay_label, delay_layout)
 
-        # Amplitude
+    def _init_amplitude_controls(self, layout):
         amp_layout = QHBoxLayout()
         self.amp_spin = QDoubleSpinBox()
         self.amp_spin.setRange(0, 1.0)
@@ -1067,10 +1091,9 @@ class SignalGeneratorWidget(QWidget):
         amp_layout.addWidget(self.amp_spin)
         amp_layout.addWidget(self.unit_combo)
         amp_layout.addWidget(self.amp_slider)
-        basic_layout.addRow(tr("Amplitude:"), amp_layout)
+        layout.addRow(tr("Amplitude:"), amp_layout)
 
-        # --- Frequency Constraints (Bin Center Snap) ---
-        # Moved below Amplitude as an option
+    def _init_bin_snap_controls(self, layout):
         snap_layout = QHBoxLayout()
         self.snap_check = QCheckBox(tr("Snap to Bin Center"))
         self.snap_check.toggled.connect(self.on_snap_toggled)
@@ -1104,15 +1127,17 @@ class SignalGeneratorWidget(QWidget):
 
         # We assume the user wants this associated with "Frequency Snap" label or similar?
         # Or just "Bin Snap"
-        basic_layout.addRow(tr("Bin Snap:"), snap_layout)
+        layout.addRow(tr("Bin Snap:"), snap_layout)
 
-        basic_group.setLayout(basic_layout)
-        layout.addWidget(basic_group)
-
-        # --- Options Tabs (Sweep / FM / Delayed Copy) ---
+    def _create_options_tabs(self):
         tabs = QTabWidget()
+        tabs.addTab(self._create_sweep_tab(), tr("Sweep"))
+        tabs.addTab(self._create_am_tab(), tr("AM"))
+        tabs.addTab(self._create_fm_tab(), tr("FM"))
+        tabs.addTab(self._create_pm_tab(), tr("ΦM"))
+        return tabs
 
-        # Sweep tab
+    def _create_sweep_tab(self):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
         sweep_group.setCheckable(True)
         sweep_group.setChecked(False)
@@ -1141,9 +1166,9 @@ class SignalGeneratorWidget(QWidget):
         sweep_layout.addRow(self.log_check)
 
         sweep_group.setLayout(sweep_layout)
-        tabs.addTab(sweep_group, tr("Sweep"))
+        return sweep_group
 
-        # AM tab
+    def _create_am_tab(self):
         am_group = QGroupBox(tr("AM (Amplitude Modulation)"))
         am_group.setCheckable(True)
         am_group.setChecked(False)
@@ -1169,9 +1194,9 @@ class SignalGeneratorWidget(QWidget):
         am_layout.addRow(tr("Depth (m):"), self.am_depth_spin)
 
         am_group.setLayout(am_layout)
-        tabs.addTab(am_group, tr("AM"))
+        return am_group
 
-        # FM tab
+    def _create_fm_tab(self):
         fm_group = QGroupBox(tr("FM (Frequency Modulation)"))
         fm_group.setCheckable(True)
         fm_group.setChecked(False)
@@ -1195,9 +1220,9 @@ class SignalGeneratorWidget(QWidget):
         fm_layout.addRow(tr("Deviation Δf (Hz):"), self.fm_dev_spin)
 
         fm_group.setLayout(fm_layout)
-        tabs.addTab(fm_group, tr("FM"))
+        return fm_group
 
-        # ΦM tab
+    def _create_pm_tab(self):
         pm_group = QGroupBox(tr("ΦM (Phase Modulation)"))
         pm_group.setCheckable(True)
         pm_group.setChecked(False)
@@ -1221,15 +1246,7 @@ class SignalGeneratorWidget(QWidget):
         pm_layout.addRow(tr("Deviation Δφ (deg):"), self.pm_dev_spin)
 
         pm_group.setLayout(pm_layout)
-        tabs.addTab(pm_group, tr("ΦM"))
-
-        layout.addWidget(tabs)
-
-        layout.addStretch()
-        self.setLayout(layout)
-
-        # Initialize UI with current target (L)
-        self.load_params_to_ui(self.module.params_L)
+        return pm_group
 
     def get_active_params_list(self):
         if self.current_target == "L":
