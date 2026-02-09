@@ -797,6 +797,8 @@
     "I/O": "I/O",
     "IDLE": "IDLE",
     "IMD (dB):": "IMD (dB):",
+    "Virtual Loopback (Always On)": "Virtual Loopback (Always On)",
+    "In Virtual Mode, audio is always looped back.": "In Virtual Mode, audio is always looped back.",
     "Idle": "Idle",
     "In: - | Out: -": "In: - | Out: -",
     "In: {0} | Out: {1}": "In: {0} | Out: {1}",

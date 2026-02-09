@@ -428,6 +428,12 @@ class MainWindow(QMainWindow):
         # Sync output destination control with engine state on startup
         self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
 
+        # Track offline mode state to update UI dynamically
+        self._last_offline_mode = False
+        # Initial check
+        self._update_output_destination_ui_for_mode(self.audio_engine.offline_mode)
+        self._last_offline_mode = self.audio_engine.offline_mode
+
     def _find_device_id(self, devices: list, name: str, hostapi: str, is_input: bool) -> Optional[int]:
         """Find device ID by name and hostapi, with fallback to name only."""
         if not name:
@@ -594,10 +600,43 @@ class MainWindow(QMainWindow):
         # Clients
         self.clients_label.setText(tr("Clients: {0}").format(status["active_clients"]))
 
+        # Check for Offline Mode change
+        is_offline = status["offline_mode"]
+        if is_offline != self._last_offline_mode:
+            self._update_output_destination_ui_for_mode(is_offline)
+            self._last_offline_mode = is_offline
+
     def _get_engine_output_destination(self):
         if self.audio_engine.loopback:
             return "loopback_silent" if self.audio_engine.mute_output else "loopback_mix"
         return "physical"
+
+    def _update_output_destination_ui_for_mode(self, is_offline: bool):
+        """Update the output destination combobox based on offline/online mode."""
+        self.output_dest_combo.blockSignals(True)
+        self.output_dest_combo.clear()
+
+        if is_offline:
+            # unique item for offline mode
+            self.output_dest_combo.addItem(tr("Virtual Loopback (Always On)"), "virtual_loopback")
+            self.output_dest_combo.setCurrentIndex(0)
+            self.output_dest_combo.setEnabled(False)
+            self.output_dest_combo.setToolTip(tr("In Virtual Mode, audio is always looped back."))
+        else:
+            # Restore standard items
+            self.output_dest_combo.addItem(tr("Physical Output"), "physical")
+            self.output_dest_combo.addItem(tr("Internal Loopback (Silent)"), "loopback_silent")
+            self.output_dest_combo.addItem(tr("Loopback + Physical"), "loopback_mix")
+            self.output_dest_combo.setEnabled(True)
+            self.output_dest_combo.setToolTip(tr("Global output destination for all modules."))
+
+            # Resync selection with engine state
+            current_mode = self._get_engine_output_destination()
+            idx = self.output_dest_combo.findData(current_mode)
+            if idx != -1:
+                self.output_dest_combo.setCurrentIndex(idx)
+
+        self.output_dest_combo.blockSignals(False)
 
     def _sync_output_destination_ui(self, mode: str, propagate: bool = False):
         idx = self.output_dest_combo.findData(mode)

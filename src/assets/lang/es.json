@@ -1078,5 +1078,7 @@
     "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizando FFT... (Tamaño {0}) {1}/{2}",
     "Simulation Rate:": "Tasa de simulación:",
     "Virtual / Offline Mode": "Modo Virtual / Desconectado",
-    "Virtual Audio (No Hardware)": "Audio Virtual (Sin Hardware)"
+    "Virtual Audio (No Hardware)": "Audio Virtual (Sin Hardware)",
+    "Virtual Loopback (Always On)": "Loopback virtual (Siempre activo)",
+    "In Virtual Mode, audio is always looped back.": "En el modo virtual, el audio siempre se retroalimenta (loopback)."
 }
