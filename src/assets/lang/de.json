@@ -1075,5 +1075,8 @@
     "Count": "Anzahl",
     "Sample Rate": "Abtastrate",
     "Sync with Audio Engine": "Mit Audio-Engine synchronisieren",
-    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT wird optimiert... (Größe {0}) {1}/{2}"
+    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT wird optimiert... (Größe {0}) {1}/{2}",
+    "Simulation Rate:": "Simulationsrate:",
+    "Virtual / Offline Mode": "Virtueller / Offline-Modus",
+    "Virtual Audio (No Hardware)": "Virtuelles Audio (Keine Hardware)"
 }

@@ -1057,5 +1057,8 @@
     "Tolerance (Sigma):": "Tolerance (Sigma):",
     "Sample Rate": "Sample Rate",
     "Sync with Audio Engine": "Sync with Audio Engine",
-    "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizing FFT... (Size {0}) {1}/{2}"
+    "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizing FFT... (Size {0}) {1}/{2}",
+    "Simulation Rate:": "Simulation Rate:",
+    "Virtual / Offline Mode": "Virtual / Offline Mode",
+    "Virtual Audio (No Hardware)": "Virtual Audio (No Hardware)"
 }

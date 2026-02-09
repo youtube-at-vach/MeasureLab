@@ -1075,5 +1075,8 @@
     "Count": "Contagem",
     "Sample Rate": "Taxa de amostragem",
     "Sync with Audio Engine": "Sincronizar com o motor de áudio",
-    "Optimizing FFT... (Size {0}) {1}/{2}": "Otimizando FFT... (Tamanho {0}) {1}/{2}"
+    "Optimizing FFT... (Size {0}) {1}/{2}": "Otimizando FFT... (Tamanho {0}) {1}/{2}",
+    "Simulation Rate:": "Taxa de Simulação:",
+    "Virtual / Offline Mode": "Modo Virtual / Offline",
+    "Virtual Audio (No Hardware)": "Áudio Virtual (Sem Hardware)"
 }
