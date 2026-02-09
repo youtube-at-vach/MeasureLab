@@ -13,7 +13,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 ## Quick glance (English)
 
-- PyQt6 desktop app bundling 28+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, loopback finder, distortion/IMD tools, network/impedance analyzers, oscilloscope, spectrogram, ultrasound modulator, transient analyzer, lock-in/FRA, inverse filter, frequency counter, recorder/player, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
+- PyQt6 desktop app bundling 29+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, loopback finder, distortion/IMD tools, network/impedance analyzers, oscilloscope, spectrogram, ultrasound modulator, transient analyzer, lock-in/FRA, inverse filter, frequency counter, 1PPS monitor, recorder/player, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
 - Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes.
 - Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.10+).
 
@@ -26,12 +26,12 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 | No. | ウィジット (Widget) | 説明 (Description) |
 | :--- | :--- | :--- |
 | 1 | **Welcome** | 起動時のウェルカム画面で主要機能を案内。 |
-| 2 | **Signal Generator** | 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力に対応。 |
+| 2 | **Signal Generator** | 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力、ビンセンターへのスナップに対応。 |
 | 3 | **Spectrum Analyzer** | 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定に対応。 |
 | 4 | **Sound Level Meter** | A/C/Z 周波数重み付け、FAST/SLOW/IMPULSE/10ms 時間重み付け、20Hz–20k/12.5k/8k 帯域選択に対応した高機能騒音計。Lp/Leq/LE/Lmax/Lmin/Lpeak表示、キャリブレーションオフセット適用に対応。 |
 | 5 | **LUFS Meter** | ラウドネス (LUFS/LKFS) のリアルタイム測定。クレストファクター、ダイナミックレンジ表示。 |
 | 6 | **Loopback Finder** | オーディオインターフェースのループバック経路を検出するツール。 |
-| 7 | **Distortion Analyzer** | THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ハーモニクスバーグラフ、平均化機能搭載。 |
+| 7 | **Distortion Analyzer** | THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ビンセンターへのスナップ、ハーモニクスバーグラフ、平均化機能搭載。 |
 | 8 | **Linearity Analyzer** | 信号レベルに対するゲインの直線性（AES17 Linearity Deviation）を測定。DACの微小信号再現性やビット精度、ダイナミックレンジの検証に対応。 |
 | 9 | **Advanced Distortion Meter** | MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。 |
 | 10 | **Network Analyzer** | 周波数特性(ゲイン・位相・群遅延)の測定。スイープ測定、複数トレース表示、周波数範囲制限対応。 |
@@ -44,18 +44,19 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 | 17 | **Inverse Filter** | キャリブレーションマップから逆特性FIRを設計し、音声ファイルへ適用するデコンボリューションツール。ゲイン上限による正則化、タップ数/スムージング指定、応答プレビュー、出力ピーク正規化付きのバッチ処理に対応。 |
 | 18 | **Frequency Counter** | 高精度な周波数・周期測定。アラン分散プロット、ジッターヒストグラムおよび統計、キャリブレーション機能搭載。 |
 | 19 | **Lock-in Frequency Counter** | ロックイン検波 (PSD) による高精度な周波数・位相偏差のトラッキング。微小な偏差の可視化と安定性の評価に対応。 |
-| 20 | **Spectrogram** | 時間-周波数表示のスペクトログラム。周波数範囲制限、カラーマップ選択対応。 |
-| 21 | **Boxcar Averager** | ボックスカー平均によるノイズ低減と過渡応答解析。内部パルス/ステップ生成、外部リファレンス同期(立ち上がり/立ち下がりエッジ)対応。 |
-| 22 | **Goniometer** | ステレオ信号の位相相関と空間分布の可視化。Lissajous表示、フォスファー表示モード(残光効果)、カスタムカラーパレット対応。 |
-| 23 | **Noise Profiler** | ノイズ特性の詳細解析ツール。1/fノイズ、ハムノイズ、ホワイトノイズの自動検出と定量化。平均化モード、LNAゲイン補正、熱雑音限界表示、等価抵抗表示対応。 |
-| 24 | **Recorder & Player** | オーディオファイル(WAV/MP3/FLAC/OGG等)の録音・再生。リサンプリング、ループ再生、ソフトウェアループバック機能搭載。 |
-| 25 | **Sound Quality Analyzer** | 音質評価指標 (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality) の数値およびグラフ表示。 |
-| 26 | **Timecode Monitor & Generator** | LTC タイムコードのエンコード/デコードとリアルタイム監視。フレームベース計算、ドロップフレーム率、複数FPS表示、タイムゾーン/オフセット、JAMメモリ付きジェネレーターを備える。 |
-| 27 | **BNIM Meter** | ステレオ入力から ITD/ILD の「ニューラルマップ」を可視化し、両耳定位の傾向を観察するメーター。 |
-| 28 | **HRTF Player** | SOFA ファイルの読み込みと可視化。HRTF メトリクス (ITD/ILD/高域エネルギー/エンベロープピーク) のヒートマップ表示、クリックによる音源位置指定、任意の音楽ファイルを用いたリアルタイム回転再生 (Convolution による空間定位) に対応。 |
-| 29 | **Ultrasound AM Modulator** | オーディオ信号を振幅変調(AM)し、搬送波(40kHz)に乗せて超音波として出力。パラメトリックスピーカーの実験等に使用可能。 |
-| 30 | **Detachable Wrapper** | 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。 |
-| 31 | **Settings** | デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。 |
+| 20 | **1PPS Monitor** | 1PPS 信号の間隔を監視し、サンプリングレートの偏差を高精度に測定。ジッターや累積的なドリフトの統計表示に対応。 |
+| 21 | **Spectrogram** | 時間-周波数表示のスペクトログラム。周波数範囲制限、カラーマップ選択対応。 |
+| 22 | **Boxcar Averager** | ボックスカー平均によるノイズ低減と過渡応答解析。内部パルス/ステップ生成、外部リファレンス同期(立ち上がり/立ち下がりエッジ)対応. |
+| 23 | **Goniometer** | ステレオ信号の位相相関と空間分布の可視化。Lissajous表示、フォスファー表示モード(残光効果)、カスタムカラーパレット対応。 |
+| 24 | **Noise Profiler** | ノイズ特性の詳細解析ツール。1/fノイズ、ハムノイズ、ホワイトノイズの自動検出と定量化。平均化モード、LNAゲイン補正、熱雑音限界表示、等価抵抗表示対応。 |
+| 25 | **Recorder & Player** | オーディオファイル(WAV/MP3/FLAC/OGG等)の録音・再生。リサンプリング、ループ再生、ソフトウェアループバック機能搭載。 |
+| 26 | **Sound Quality Analyzer** | 音質評価指標 (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality) の数値およびグラフ表示。 |
+| 27 | **Timecode Monitor & Generator** | LTC タイムコードのエンコード/デコードとリアルタイム監視。フレームベース計算、ドロップフレーム率、複数FPS表示、タイムゾーン/オフセット、JAMメモリ付きジェネレーターを備える。 |
+| 28 | **BNIM Meter** | ステレオ入力から ITD/ILD の「ニューラルマップ」を可視化し、両耳定位の傾向を観察するメーター。 |
+| 29 | **HRTF Player** | SOFA ファイルの読み込みと可視化。HRTF メトリクス (ITD/ILD/高域エネルギー/エンベロープピーク) のヒートマップ表示、クリックによる音源位置指定、任意の音楽ファイルを用いたリアルタイム回転再生 (Convolution による空間定位) に対応。 |
+| 30 | **Ultrasound AM Modulator** | オーディオ信号を振幅変調(AM)し、搬送波(40kHz)に乗せて超音波として出力。パラメトリックスピーカーの実験等に使用可能。 |
+| 31 | **Detachable Wrapper** | 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。 |
+| 32 | **Settings** | デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。 |
 
 ### 🌍 多言語対応 (Localization)
 
