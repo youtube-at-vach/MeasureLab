@@ -277,9 +277,6 @@ class DistortionAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "THD, THD+N, and SINAD measurements."
 
-    def run(self, args: argparse.Namespace):
-        print("Distortion Analyzer running from CLI (not implemented)")
-
     def get_widget(self):
         return DistortionAnalyzerWidget(self)
 

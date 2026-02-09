@@ -204,9 +204,6 @@ class HRTFPlayer(MeasurementModule):
     def description(self) -> str:
         return "Visualize and Audition HRTF (SOFA) files."
 
-    def run(self, args: argparse.Namespace):
-        pass
-
     def get_widget(self):
         return HRTFPlayerWidget(self)
 

@@ -83,9 +83,6 @@ class UltrasoundModulator(MeasurementModule):
     def description(self) -> str:
         return "Real-time AM modulator for ultrasonic speakers (40kHz)"
 
-    def run(self, args: argparse.Namespace):
-        print("Ultrasound Modulator running from CLI (not fully implemented)")
-
     def get_widget(self):
         return UltrasoundModulatorWidget(self)
 

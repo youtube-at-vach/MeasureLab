@@ -179,39 +179,6 @@ class FrequencyCounter(MeasurementModule):
     def description(self) -> str:
         return "High-precision frequency measurement."
 
-    def run(self, args):
-        print("Frequency Counter running in CLI mode (not fully implemented)")
-        self.start_analysis()
-
-        # Drift-compensating loop
-        next_tick = time.perf_counter()
-
-        try:
-            while True:
-                # Interval in seconds
-                interval = self.update_interval_ms / 1000.0
-
-                freq = self.process()
-                if freq is not None:
-                    print(f"Frequency: {freq:.4f} Hz")
-
-                # Calculate next tick time
-                next_tick += interval
-                now = time.perf_counter()
-
-                # Sleep if we are ahead of schedule
-                sleep_time = next_tick - now
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-                else:
-                    # We are behind schedule, reset the tick to now to avoid burst of catch-ups
-                    # or keep it if we want to catch up (but usually for UI/CLI we skip)
-                    # For audio meas, maybe we just reset.
-                    next_tick = now
-
-        except KeyboardInterrupt:
-            self.stop_analysis()
-
     def get_widget(self):
         return FrequencyCounterWidget(self)
 

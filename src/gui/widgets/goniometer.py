@@ -63,9 +63,6 @@ class Goniometer(MeasurementModule):
     def description(self) -> str:
         return "Stereo image visualizer (Lissajous) and Phase Correlation."
 
-    def run(self, args: argparse.Namespace):
-        print("Goniometer CLI not implemented")
-
     def get_widget(self):
         return GoniometerWidget(self)
 

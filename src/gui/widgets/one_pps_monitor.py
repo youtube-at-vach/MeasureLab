@@ -93,10 +93,6 @@ class OnePPSMonitor(MeasurementModule):
     def get_widget(self):
         return OnePPSMonitorWidget(self)
 
-    def run(self, args: argparse.Namespace):
-        """CLI entry point (not used in GUI mode)."""
-        print("1PPS Monitor CLI mode not implemented.")
-
     def start_analysis(self):
         if self.is_running:
             return

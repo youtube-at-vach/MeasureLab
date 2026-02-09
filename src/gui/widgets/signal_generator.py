@@ -110,9 +110,6 @@ class SignalGenerator(MeasurementModule):
     def description(self) -> str:
         return "Generates advanced test signals (Sine, Square, Noise, Sweeps) with independent channel control"
 
-    def run(self, args: argparse.Namespace):
-        print("Signal Generator running from CLI (not fully implemented)")
-
     def get_widget(self):
         return SignalGeneratorWidget(self)
 

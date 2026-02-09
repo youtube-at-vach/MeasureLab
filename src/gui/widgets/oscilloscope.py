@@ -128,9 +128,6 @@ class Oscilloscope(MeasurementModule):
         # Accumulate
         np.add.at(heatmap, (x_idx, y_idx), intensity * 100)
 
-    def run(self, args: argparse.Namespace):
-        print("Oscilloscope running from CLI (not fully implemented)")
-
     def get_widget(self):
         return OscilloscopeWidget(self)
 

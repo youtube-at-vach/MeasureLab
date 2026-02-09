@@ -64,9 +64,6 @@ class Spectrogram(MeasurementModule):
     def description(self) -> str:
         return "Time-frequency analysis (Spectrogram)."
 
-    def run(self, args: argparse.Namespace):
-        print("Spectrogram CLI not implemented")
-
     def get_widget(self):
         return SpectrogramWidget(self)
 

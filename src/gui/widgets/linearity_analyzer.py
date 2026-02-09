@@ -243,9 +243,6 @@ class LinearityAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "Measure Linearity Error (Gain Accuracy vs Level)."
 
-    def run(self, args: argparse.Namespace):
-        logger.warning("CLI not implemented")
-
     def get_latest_buffer(self) -> np.ndarray:
         """Returns the current buffer contents ordered chronologically."""
         # Capture current state

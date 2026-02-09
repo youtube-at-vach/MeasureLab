@@ -42,9 +42,6 @@ class InverseFilter(MeasurementModule):
     def description(self) -> str:
         return "Apply inverse calibration filter to audio files."
 
-    def run(self, args: argparse.Namespace):
-        pass
-
     def get_widget(self):
         return InverseFilterWidget(self)
 

@@ -120,28 +120,6 @@ class LoopbackFinder(MeasurementModule):
             self.worker.result.emit(found_paths)
         return found_paths
 
-    def run(self, args):
-        # CLI implementation
-        print("Running Loopback Finder...")
-        # Need to parse args or use defaults
-        # For now just use default device from engine if available or query
-        # But run(args) implies we might not have audio_engine initialized fully or we use it.
-        # Let's assume audio_engine is available.
-
-        # Parse device ID from args if provided
-        device_id = getattr(args, "device_id", None)
-        if device_id is None:
-            device_id = self.audio_engine.output_device  # Use current
-        sample_rate = self.audio_engine.sample_rate
-
-        results = self.perform_scan(
-            device_id, sample_rate, progress_callback=lambda p, m: print(f"{p}%: {m}")
-        )
-
-        print("Found Paths:")
-        for p in results:
-            print(f"Out: {p[0]}, In: {p[1]}, Mag: {20 * np.log10(p[2]):.1f} dB")
-
     def get_widget(self):
         return LoopbackFinderWidget(self)
 
