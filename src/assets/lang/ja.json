@@ -958,7 +958,6 @@
     "Sound Level Meter": "騒音計",
     "Sound Quality Analyzer": "音質アナライザ",
     "Transient Analyzer": "トランジェントアナライザ",
-    "Optimizing FFT... (Size {0})": "FFTを最適化中... (サイズ {0})",
     "Calibration Profiles": "キャリブレーション・プロファイル",
     "Confirm Delete": "消去の確認",
     "Confirm Overwrite": "上書きの確認",
@@ -1064,5 +1063,6 @@
     "Host API:": "ホストAPI:",
     "Count": "回数",
     "Sample Rate": "サンプリングレート",
-    "Sync with Audio Engine": "オーディオエンジンと同期"
+    "Sync with Audio Engine": "オーディオエンジンと同期",
+    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT最適化中... (サイズ {0}) {1}/{2}"
 }

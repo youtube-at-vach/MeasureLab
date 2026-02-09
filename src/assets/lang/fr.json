@@ -946,7 +946,6 @@
     "Sharpness": "Acuité",
     "Tonality": "Tonalité",
     "Done {0}/{1}": "Terminé {0}/{1}",
-    "Optimizing FFT... (Size {0})": "Optimisation FFT... (Taille {0})",
     "Saving optimization results... {0}/{1}": "Enregistrement des résultats d'optimisation... {0}/{1}",
     "Calibration Profiles": "Profils d'étalonnage",
     "Confirm Delete": "Confirmer la suppression",
@@ -1075,5 +1074,6 @@
     "Host API:": "API de l'hôte:",
     "Count": "Compte",
     "Sample Rate": "Taux d'échantillonnage",
-    "Sync with Audio Engine": "Synchroniser avec le moteur audio"
+    "Sync with Audio Engine": "Synchroniser avec le moteur audio",
+    "Optimizing FFT... (Size {0}) {1}/{2}": "Optimisation de la FFT... (Taille {0}) {1}/{2}"
 }

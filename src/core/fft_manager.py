@@ -292,7 +292,7 @@ class FFTManager:
         for _i, size in enumerate(sizes_to_optimize):
             if callback:
                 # Progress ranges from 0 to total-1 during optimization
-                callback(tr("Optimizing FFT... (Size {0})").format(size))
+                callback(tr("Optimizing FFT... (Size {0}) {1}/{2}").format(size, _i + 1, total))
 
             # Use MEASURE for warmup to ensure peak performance
             self.get_plan(size, "float64", flags=("FFTW_MEASURE",))

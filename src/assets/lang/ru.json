@@ -946,7 +946,6 @@
     "Sharpness": "Резкость",
     "Tonality": "Тональность",
     "Done {0}/{1}": "Готово {0}/{1}",
-    "Optimizing FFT... (Size {0})": "Оптимизация FFT... (Размер {0})",
     "Saving optimization results... {0}/{1}": "Сохранение результатов оптимизации... {0}/{1}",
     "Calibration Profiles": "Профили калибровки",
     "Confirm Delete": "Подтвердите удаление",
@@ -1075,5 +1074,6 @@
     "Host API:": "Хост-API:",
     "Count": "Счетчик",
     "Sample Rate": "Частота дискретизации",
-    "Sync with Audio Engine": "Синхронизация с аудиодвижком"
+    "Sync with Audio Engine": "Синхронизация с аудиодвижком",
+    "Optimizing FFT... (Size {0}) {1}/{2}": "Оптимизация БПФ... (Размер {0}) {1}/{2}"
 }

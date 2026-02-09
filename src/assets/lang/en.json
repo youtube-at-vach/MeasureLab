@@ -955,7 +955,6 @@
     "Sound Quality Analyzer": "Sound Quality Analyzer",
     "Transient Analyzer": "Transient Analyzer",
     "Done {0}/{1}": "Done {0}/{1}",
-    "Optimizing FFT... (Size {0})": "Optimizing FFT... (Size {0})",
     "Saving optimization results... {0}/{1}": "Saving optimization results... {0}/{1}",
     "Calibration Profiles": "Calibration Profiles",
     "Confirm Delete": "Confirm Delete",
@@ -1057,5 +1056,6 @@
     "Threshold (FS):": "Threshold (FS):",
     "Tolerance (Sigma):": "Tolerance (Sigma):",
     "Sample Rate": "Sample Rate",
-    "Sync with Audio Engine": "Sync with Audio Engine"
+    "Sync with Audio Engine": "Sync with Audio Engine",
+    "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizing FFT... (Size {0}) {1}/{2}"
 }
