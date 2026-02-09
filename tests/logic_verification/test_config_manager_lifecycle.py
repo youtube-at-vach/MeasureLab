@@ -210,6 +210,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
                  # File written
                  mock_open.assert_called()
                  mock_fdopen.assert_called()
+                 mock_chmod.assert_called()
 
 if __name__ == '__main__':
     unittest.main()
