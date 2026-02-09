@@ -27,6 +27,7 @@ class VirtualStream:
         self.cpu_load = 0.0
         self._stop_event = threading.Event()
         self._thread = None
+        self.logger = logging.getLogger(__name__)
 
     def start(self):
         if self.active:
@@ -104,7 +105,7 @@ class VirtualStream:
                 # So we are good.
 
             except Exception as e:
-                print(f"VirtualStream Error: {e}")
+                self.logger.error(f"VirtualStream Error: {e}")
                 # Don't crash thread, just log
                 pass
 
