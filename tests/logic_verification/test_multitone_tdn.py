@@ -139,7 +139,7 @@ class TestMultitoneTDN(unittest.TestCase):
         # ratio = sqrt( sum(noise_bins^2) / sum(tone_bins^2) )
         # This is equivalent to RMS ratio.
 
-        expected_ratio = np.sqrt(0.0001 / 0.625)
+        # expected_ratio = np.sqrt(0.0001 / 0.625)
         # expected_ratio ~= sqrt(0.00016) = 0.0126
         # TDN % ~= 1.26%
 
