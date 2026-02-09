@@ -1009,7 +1009,6 @@ class DistortionAnalyzerWidget(QWidget):
                 self.module.imd_f2 = 20000.0
                 self.imd_f1_spin.setValue(19000.0)
                 self.imd_f2_spin.setValue(20000.0)
-                self.imd_f2_spin.setValue(20000.0)
                 self.imd_ratio_spin.setEnabled(False)
                 self.module.reset_averaging_state()
 
