@@ -946,7 +946,6 @@
     "Sharpness": "샤프니스",
     "Tonality": "조성",
     "Done {0}/{1}": "완료 {0}/{1}",
-    "Optimizing FFT... (Size {0})": "FFT 최적화 중... (크기 {0})",
     "Saving optimization results... {0}/{1}": "최적화 결과 저장 중... {0}/{1}",
     "Calibration Profiles": "보정 프로필",
     "Confirm Delete": "삭제 확인",
@@ -1075,5 +1074,6 @@
     "Host API:": "호스트 API:",
     "Count": "횟수",
     "Sample Rate": "샘플 속도",
-    "Sync with Audio Engine": "오디오 엔진과 동기화"
+    "Sync with Audio Engine": "오디오 엔진과 동기화",
+    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT 최적화 중... (크기 {0}) {1}/{2}"
 }

@@ -946,7 +946,6 @@
     "Sharpness": "尖锐度",
     "Tonality": "音调性",
     "Done {0}/{1}": "完成 {0}/{1}",
-    "Optimizing FFT... (Size {0})": "正在优化 FFT... (大小 {0})",
     "Saving optimization results... {0}/{1}": "正在保存优化结果... {0}/{1}",
     "Calibration Profiles": "校准配置文件",
     "Confirm Delete": "确认删除",
@@ -1075,5 +1074,6 @@
     "Host API:": "主机 API:",
     "Count": "计数",
     "Sample Rate": "采样率",
-    "Sync with Audio Engine": "与音频引擎同步"
+    "Sync with Audio Engine": "与音频引擎同步",
+    "Optimizing FFT... (Size {0}) {1}/{2}": "正在优化 FFT... (大小 {0}) {1}/{2}"
 }
