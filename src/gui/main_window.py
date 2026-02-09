@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from PyQt6.QtCore import QTimer
@@ -260,6 +261,7 @@ def _load_welcome_widget_class():
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.logger = logging.getLogger(__name__)
         self.setWindowTitle("MeasureLab")
         self.resize(1000, 700)
 
@@ -303,7 +305,7 @@ class MainWindow(QMainWindow):
                 if found_in_id is not None:
                     in_id = found_in_id
                 else:
-                    print(f"Saved input device '{last_in}' not found, using default.")
+                    self.logger.warning(f"Saved input device '{last_in}' not found, using default.")
 
             # Find Output Device
             if last_out:
@@ -311,7 +313,7 @@ class MainWindow(QMainWindow):
                 if found_out_id is not None:
                     out_id = found_out_id
                 else:
-                    print(f"Saved output device '{last_out}' not found, using default.")
+                    self.logger.warning(f"Saved output device '{last_out}' not found, using default.")
 
         try:
             self.audio_engine.set_devices(in_id, out_id)
@@ -331,7 +333,7 @@ class MainWindow(QMainWindow):
             self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
 
         except Exception as e:
-            print(f"Failed to set devices/settings: {e}")
+            self.logger.error(f"Failed to set devices/settings: {e}")
             # Try default if specific failed
             try:
                 self.audio_engine.set_devices(None, None)
@@ -659,7 +661,7 @@ class MainWindow(QMainWindow):
                     try:
                         target.set_output_destination(mode)
                     except Exception as e:
-                        print(f"Failed to sync output destination: {e}")
+                        self.logger.warning(f"Failed to sync output destination: {e}")
 
     def on_output_destination_changed(self, index):
         data = self.output_dest_combo.currentData()
