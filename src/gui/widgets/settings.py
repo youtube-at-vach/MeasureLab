@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.signal
-import subprocess
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -21,8 +20,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QSpinBox,
 )
-import sys
-import os
 
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
@@ -1363,25 +1360,6 @@ class SettingsWidget(QWidget):
 
     def on_refresh_clicked(self):
         """Refreshes the backend (re-initializes PortAudio) and then updates the UI."""
-        # Check for unsafe JACK state
-        if self.audio_engine.is_jack_unsafe():
-            ret = QMessageBox.warning(
-                self,
-                tr("Restart Required"),
-                tr(
-                    "The JACK server connection was lost or the server is unresponsive.\n\n"
-                    "Attempting to refresh devices in this state will crash the application due to a PortAudio issue.\n\n"
-                    "The application must be restarted to safely reconnect."
-                ),
-                QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-            )
-            
-            if ret == QMessageBox.StandardButton.Ok:
-                # Restart application
-                subprocess.Popen([sys.executable] + sys.argv)
-                os._exit(0)
-            return
-
         self.audio_engine.refresh_backend()
         self.refresh_devices()
 
