@@ -2,8 +2,6 @@ import sys
 import timeit
 import unittest.mock
 import numpy as np
-import threading
-import multiprocessing
 import os
 
 # Set path to allow imports from src
@@ -27,7 +25,7 @@ mock_pyfftw.FFTW = MockFFTW
 sys.modules['pyfftw'] = mock_pyfftw
 
 # Now import fft_manager
-from src.core import fft_manager
+from src.core import fft_manager  # noqa: E402
 
 # Force HAS_PYFFTW to True (it should be True if import succeeded, which it did via mock)
 # But strictly speaking, the module checks ImportError. Since we put it in sys.modules, it won't raise ImportError.
