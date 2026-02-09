@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from src.core.analysis import AudioCalc
 
 def test_imd_smpte_check():

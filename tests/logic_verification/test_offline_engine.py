@@ -1,7 +1,5 @@
 import time
-import os
 import numpy as np
-import pytest
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 
