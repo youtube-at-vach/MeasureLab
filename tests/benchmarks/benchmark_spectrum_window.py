@@ -36,11 +36,11 @@ def benchmark():
         print(f"\nWindow Type: {w_type}")
 
         # Baseline
-        t_base = timeit.timeit(lambda: baseline_method(w_type, length), number=iterations)
+        t_base = timeit.timeit(lambda w=w_type: baseline_method(w, length), number=iterations)
         print(f"  Baseline (numpy):    {t_base:.4f} seconds")
 
         # Optimized
-        t_opt = timeit.timeit(lambda: optimized_method(w_type, length), number=iterations)
+        t_opt = timeit.timeit(lambda w=w_type: optimized_method(w, length), number=iterations)
         print(f"  Optimized (cached):  {t_opt:.4f} seconds")
 
         if t_opt > 0:
