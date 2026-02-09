@@ -1080,5 +1080,6 @@
     "Virtual / Offline Mode": "Виртуальный / Автономный режим",
     "Virtual Audio (No Hardware)": "Виртуальное аудио (без оборудования)",
     "Virtual Loopback (Always On)": "Виртуальный loopback (всегда включен)",
-    "In Virtual Mode, audio is always looped back.": "В виртуальном режиме аудио всегда закольцовано."
+    "In Virtual Mode, audio is always looped back.": "В виртуальном режиме аудио всегда закольцовано.",
+    "Device refresh is disabled when JACK is active for safety.": "Обновление списка устройств отключено, когда JACK активен, в целях безопасности."
 }

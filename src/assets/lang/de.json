@@ -1080,5 +1080,6 @@
     "Virtual / Offline Mode": "Virtueller / Offline-Modus",
     "Virtual Audio (No Hardware)": "Virtuelles Audio (Keine Hardware)",
     "Virtual Loopback (Always On)": "Virtueller Loopback (Immer aktiv)",
-    "In Virtual Mode, audio is always looped back.": "Im virtuellen Modus wird der Ton immer zurückgeschleift."
+    "In Virtual Mode, audio is always looped back.": "Im virtuellen Modus wird der Ton immer zurückgeschleift.",
+    "Device refresh is disabled when JACK is active for safety.": "Die Geräteaktualisierung ist deaktiviert, wenn JACK aktiv ist, um die Sicherheit zu gewährleisten."
 }

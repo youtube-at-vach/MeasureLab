@@ -1069,5 +1069,6 @@
     "Simulation Rate:": "シミュレーションレート:",
     "Virtual / Offline Mode": "仮想 / オフラインモード",
     "Virtual Audio (No Hardware)": "仮想オーディオ (ハードウェアなし)",
-    "In Virtual Mode, audio is always looped back.": "仮想モードでは、オーディオは常にループバックされます。"
+    "In Virtual Mode, audio is always looped back.": "仮想モードでは、オーディオは常にループバックされます。",
+    "Device refresh is disabled when JACK is active for safety.": "安全のため、JACKが有効な間はデバイスの再読み込みを無効化しています。"
 }
