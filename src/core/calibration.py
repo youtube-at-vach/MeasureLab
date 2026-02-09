@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 
 import numpy as np
 
@@ -12,6 +13,7 @@ class CalibrationManager:
 
     def __init__(self, config_path="calibration.json"):
         self.config_path = config_path
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.input_sensitivity = 1.0  # Volts per Full Scale (V/FS) (Peak)
         self.output_gain = 1.0  # Volts per Full Scale (V/FS) (Peak)
         # Whether the output gain was explicitly calibrated by the user.
@@ -71,7 +73,7 @@ class CalibrationManager:
                     self.profiles = data.get("profiles", {})
                     self.last_profile = data.get("last_profile")
             except Exception as e:
-                print(f"Failed to load calibration: {e}")
+                self.logger.error("Failed to load calibration: %s", e)
 
     def save(self):
         data = {
@@ -89,7 +91,7 @@ class CalibrationManager:
             with open(self.config_path, "w") as f:
                 json.dump(data, f, indent=4)
         except Exception as e:
-            print(f"Failed to save calibration: {e}")
+            self.logger.error("Failed to save calibration: %s", e)
 
     # --- SPL Calibration ---
 
@@ -230,11 +232,11 @@ class CalibrationManager:
         Format: [[freq, mag_db, phase_deg], ...]
         """
         if not self._is_path_allowed(path):
-            print(f"Security Warning: Attempted to load calibration map from outside allowed directory: {path}")
+            self.logger.warning("Security Warning: Attempted to load calibration map from outside allowed directory: %s", path)
             return False
 
         if not os.path.exists(path):
-            print(f"Calibration map not found: {path}")
+            self.logger.warning("Calibration map not found: %s", path)
             return False
 
         try:
@@ -242,10 +244,10 @@ class CalibrationManager:
                 data = json.load(f)
                 # Sort by frequency just in case
                 self.frequency_map = sorted(data, key=lambda x: x[0])
-                print(f"Loaded calibration map with {len(self.frequency_map)} points.")
+                self.logger.info("Loaded calibration map with %d points.", len(self.frequency_map))
                 return True
         except Exception as e:
-            print(f"Failed to load calibration map: {e}")
+            self.logger.error("Failed to load calibration map: %s", e)
             return False
 
     def save_frequency_map(self, path, data):
@@ -257,10 +259,10 @@ class CalibrationManager:
             with open(path, "w") as f:
                 json.dump(data, f, indent=4)
             self.frequency_map = sorted(data, key=lambda x: x[0])
-            print(f"Saved calibration map to {path}")
+            self.logger.info("Saved calibration map to %s", path)
             return True
         except Exception as e:
-            print(f"Failed to save calibration map: {e}")
+            self.logger.error("Failed to save calibration map: %s", e)
             return False
 
     def get_frequency_correction(self, freq):
