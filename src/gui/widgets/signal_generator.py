@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.fft_manager import WARMUP_SIZES, MEDIUM_SIZES
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -79,6 +80,10 @@ class SignalParameters:
     # PRBS Parameters
     prbs_order: int = 15
     prbs_seed: int = 1
+
+    # Frequency Snapping
+    bin_center_snap: bool = False
+    fft_size: int = 16384
 
     # Internal state (not shared/copied usually, but kept here for simplicity per channel)
     _phase: float = 0.0
@@ -721,6 +726,13 @@ class SignalGeneratorWidget(QWidget):
                 self.wave_combo.setCurrentIndex(i)
                 return
 
+    def _set_fft_size_combo(self, size: int):
+        idx = self.fft_size_combo.findData(size)
+        if idx >= 0:
+            self.fft_size_combo.setCurrentIndex(idx)
+        else:
+            self.fft_size_combo.setCurrentText(str(size))
+
     def _apply_waveform_key(self, key: str, *, update_params: bool):
         # Map UI selection to internal params
         if update_params:
@@ -982,6 +994,8 @@ class SignalGeneratorWidget(QWidget):
 
         basic_layout.addRow(self.param_stack)
 
+
+
         # Frequency
         freq_layout = QHBoxLayout()
         self.freq_spin = QDoubleSpinBox()
@@ -1054,6 +1068,43 @@ class SignalGeneratorWidget(QWidget):
         amp_layout.addWidget(self.unit_combo)
         amp_layout.addWidget(self.amp_slider)
         basic_layout.addRow(tr("Amplitude:"), amp_layout)
+
+        # --- Frequency Constraints (Bin Center Snap) ---
+        # Moved below Amplitude as an option
+        snap_layout = QHBoxLayout()
+        self.snap_check = QCheckBox(tr("Snap to Bin Center"))
+        self.snap_check.toggled.connect(self.on_snap_toggled)
+
+        self.fft_size_combo = QComboBox()
+        self.fft_size_combo.setEditable(True)
+        # Add common FFT sizes
+        sizes = sorted(list(set(WARMUP_SIZES + MEDIUM_SIZES)))
+        for size in sizes:
+            self.fft_size_combo.addItem(str(size), size)
+
+        # Set default to 16384 if available, else something reasonable
+        idx = self.fft_size_combo.findData(16384)
+        if idx >= 0:
+            self.fft_size_combo.setCurrentIndex(idx)
+        else:
+            self.fft_size_combo.setCurrentText("16384")
+
+        self.fft_size_combo.currentTextChanged.connect(self.on_fft_size_changed)
+
+        # Validator for custom input
+        from PyQt6.QtGui import QIntValidator
+        self.fft_size_combo.setValidator(QIntValidator(2, 10000000))
+
+        # Initial state: disabled unless checked (handled in logic or load_params)
+        self.fft_size_combo.setEnabled(False) 
+
+        snap_layout.addWidget(self.snap_check)
+        snap_layout.addWidget(QLabel(tr("Window Width:")))
+        snap_layout.addWidget(self.fft_size_combo, 1) # Stretch
+
+        # We assume the user wants this associated with "Frequency Snap" label or similar?
+        # Or just "Bin Snap"
+        basic_layout.addRow(tr("Bin Snap:"), snap_layout)
 
         basic_group.setLayout(basic_layout)
         layout.addWidget(basic_group)
@@ -1245,6 +1296,10 @@ class SignalGeneratorWidget(QWidget):
         self.pm_freq_spin.setValue(params.pm_frequency)
         self.pm_dev_spin.setValue(params.pm_deviation_deg)
 
+        self.snap_check.setChecked(params.bin_center_snap)
+        self.fft_size_combo.setEnabled(params.bin_center_snap)
+        self._set_fft_size_combo(params.fft_size)
+
         self._apply_waveform_key(waveform_key, update_params=False)  # Update visibility
 
         self.block_all_signals(False)
@@ -1284,6 +1339,8 @@ class SignalGeneratorWidget(QWidget):
             self.pm_group,
             self.pm_freq_spin,
             self.pm_dev_spin,
+            self.snap_check,
+            self.fft_size_combo,
         ]
         for w in widgets:
             w.blockSignals(block)
@@ -1334,6 +1391,8 @@ class SignalGeneratorWidget(QWidget):
         dst.delay_ms = src.delay_ms
         dst.prbs_order = src.prbs_order
         dst.prbs_seed = src.prbs_seed
+        dst.bin_center_snap = src.bin_center_snap
+        dst.fft_size = src.fft_size
 
     def on_route_changed(self, btn):
         if self.route_l.isChecked():
@@ -1342,6 +1401,24 @@ class SignalGeneratorWidget(QWidget):
             self.module.output_mode = "R"
         elif self.route_stereo.isChecked():
             self.module.output_mode = "STEREO"
+
+    def on_snap_toggled(self, checked):
+        self.update_param("bin_center_snap", checked)
+        self.fft_size_combo.setEnabled(checked)
+        # Re-apply frequency to snap it if enabled
+        current_freq = self.freq_spin.value()
+        self.on_freq_spin_changed(current_freq)
+
+    def on_fft_size_changed(self, text):
+        try:
+            val = int(text)
+            if val > 0:
+                self.update_param("fft_size", val)
+                # Re-apply frequency to snap with new size
+                current_freq = self.freq_spin.value()
+                self.on_freq_spin_changed(current_freq)
+        except ValueError:
+            pass
 
     def on_wave_changed(self, _index):
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
@@ -1362,18 +1439,73 @@ class SignalGeneratorWidget(QWidget):
         log_freq = np.log10(20) + (val / 1000) * (np.log10(20000) - np.log10(20))
         return 10**log_freq
 
+    def _get_snapped_frequency(self, freq):
+        # Check if snapping is enabled in the active params
+        # We look at the first active param set (L or R)
+        params_list = self.get_active_params_list()
+        if not params_list:
+            return freq
+
+        params = params_list[0]
+        if not params.bin_center_snap:
+            return freq
+
+        sample_rate = self.module.audio_engine.sample_rate
+        if sample_rate <= 0 or params.fft_size <= 0:
+            return freq
+
+        bin_width = sample_rate / params.fft_size
+
+        # Calculate nearest bin index
+        # f = k * bin_width
+        k = round(freq / bin_width)
+        snapped_freq = k * bin_width
+
+        # Ensure we don't snap to 0 if the user didn't intend to (though 0 is a valid bin center DC)
+        # But for audio signal generator, usually we want > 0. 
+        # But let's respect the math. If freq is close to 0, it snaps to DC.
+
+        return snapped_freq
+
     def on_freq_spin_changed(self, val):
-        self.update_param("frequency", val)
+        snapped_val = self._get_snapped_frequency(val)
+
+        self.update_param("frequency", snapped_val)
+
+        # Block signals to update UI without recursion
+        self.freq_spin.blockSignals(True)
         self.freq_slider.blockSignals(True)
-        self.freq_slider.setValue(self._freq_to_slider(val))
+
+        if snapped_val != val:
+            self.freq_spin.setValue(snapped_val)
+
+        self.freq_slider.setValue(self._freq_to_slider(snapped_val if snapped_val > 0 else 20))
+
+        self.freq_spin.blockSignals(False)
         self.freq_slider.blockSignals(False)
 
     def on_freq_slider_changed(self, val):
         freq = self._slider_to_freq(val)
-        self.update_param("frequency", freq)
+        snapped_freq = self._get_snapped_frequency(freq)
+
+        self.update_param("frequency", snapped_freq)
+
         self.freq_spin.blockSignals(True)
-        self.freq_spin.setValue(freq)
+        self.freq_slider.blockSignals(True)
+
+        self.freq_spin.setValue(snapped_freq)
+        # We don't necessarily update the slider value back from snapped freq here 
+        # because it might make the slider 'jumpy' while dragging. 
+        # But to be consistent with the spin box, we probably should if the snap is large.
+        # For smooth checking, maybe only update slider if we released handle? 
+        # For now, let's keep slider smooth but actual param snapped.
+        # Actually, if we don't update slider, it might be out of sync.
+        # Let's update it.
+        if snapped_freq != freq:
+             self.freq_slider.setValue(self._freq_to_slider(snapped_freq if snapped_freq > 0 else 20))
+
         self.freq_spin.blockSignals(False)
+        self.freq_slider.blockSignals(False)
 
     def on_phase_spin_changed(self, val):
         self.update_param("phase_offset", val)
