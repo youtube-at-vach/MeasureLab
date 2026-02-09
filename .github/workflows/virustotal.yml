@@ -1,8 +1,9 @@
 name: VirusTotal Audit
 
-on:
-  release:
-    types: [created, published]
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
   workflow_dispatch:
 
 permissions:
@@ -10,6 +11,7 @@ permissions:
 
 jobs:
   virustotal-scan:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,8 +30,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # If triggered by release event, use that tag
-          if [[ "${{ github.event_name }}" == "release" ]]; then
+          # If triggered by release workflow completion, use that tag/branch
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+            echo "Targeting workflow_run head_branch: $TAG_NAME"
+          # If triggered by release event (legacy, kept for completeness or manual trigger simulation)
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
             TAG_NAME="${{ github.event.release.tag_name }}"
             echo "Targeting event release: $TAG_NAME"
           else
