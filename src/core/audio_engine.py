@@ -344,7 +344,12 @@ class AudioEngine:
             # Works same for Virtual and Hardware: 
             # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
             # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
-            if self.loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
+            # If Loopback is enabled OR we are in Offline Mode (where there is no other input),
+            # use the last output buffer as input.
+            # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
+            # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
+            use_loopback = self.loopback or self.offline_mode
+            if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
                 # We use the mixed output from the previous block
                 # last_output_buffer is (frames, logical_out_ch)
                 # We need to map it to logical_in (frames, 2)
@@ -388,7 +393,7 @@ class AudioEngine:
 
             if not active_callbacks:
                 # Even if no callbacks, we might need to update last_output_buffer (silence)
-                if self.loopback:
+                if use_loopback:
                     if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
                         self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
                     else:
@@ -424,7 +429,7 @@ class AudioEngine:
                 mix_buffer += client_out
 
             # Store for next loopback cycle
-            if self.loopback:
+            if use_loopback:
                 if self.last_output_buffer is None or self.last_output_buffer.shape != mix_buffer.shape:
                     self.last_output_buffer = np.empty_like(mix_buffer)
                 np.copyto(self.last_output_buffer, mix_buffer)
