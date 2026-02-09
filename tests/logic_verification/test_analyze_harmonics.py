@@ -106,9 +106,9 @@ class TestAnalyzeHarmonics(unittest.TestCase):
         # It breaks loop: `if harmonic_freq >= sampling_rate / 2: break`
         # So harmonics list might be shorter than 9 elements.
 
-        valid_harmonics = [h for h in result['harmonics'] if h['frequency'] < self.sampling_rate / 2]
-        # Only 2nd harmonic (20kHz) is below 24kHz. 3rd is 30kHz.
-        # So valid_harmonics should have 1 element (2nd harmonic).
+        # We can explicitly check that all returned harmonics are below Nyquist
+        for h in result['harmonics']:
+            self.assertLess(h['frequency'], self.sampling_rate / 2)
 
         # However, looking at the code:
         # for i in range(2, 11): ... if harmonic_freq >= sampling_rate / 2: break
@@ -126,7 +126,7 @@ class TestAnalyzeHarmonics(unittest.TestCase):
         """
         N = 4096
         t = np.arange(N) / self.sampling_rate
-        bin_width = self.sampling_rate / N # ~11.7 Hz
+        # bin_width = self.sampling_rate / N # ~11.7 Hz (Unused variable removed)
 
         target_freq = 1000.5 # Mid-bin
         amp = 0.5
