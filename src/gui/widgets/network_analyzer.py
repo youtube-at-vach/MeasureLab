@@ -262,12 +262,43 @@ class NetworkAnalyzer(MeasurementModule):
     def _execute_fast_sweep(self, worker):
         sample_rate = self.audio_engine.sample_rate
 
-        # 1. Generate Log Chirp
+        # 1. Generate Log Chirp & Inverse Filter
+        chirp, inv_filter = self._generate_chirp_and_filter(sample_rate)
+
+        self.signals.progress.emit(10)
+        if not worker.is_running:
+            return
+
+        # 2. Play and Record
+        rec_data = self._record_sweep(chirp, sample_rate)
+
+        self.signals.progress.emit(50)
+        if not worker.is_running:
+            return
+
+        # 3. Process
+        self._process_sweep_data(rec_data, inv_filter, sample_rate, worker)
+
+        self.signals.progress.emit(100)
+
+    def _record_sweep(self, chirp, sample_rate):
+        """Prepares output buffer and runs the play/record session."""
+        padding_sec = 1.0
+        padding_samples = int(padding_sec * sample_rate)
+        out_signal = np.concatenate([chirp, np.zeros(padding_samples)])
+        out_data = self._prepare_output_buffer(out_signal)
+
+        # Always capture stereo to avoid channel mapping issues
+        input_ch_count = 2
+        return self.run_play_rec(out_data, input_channels=input_ch_count)
+
+    def _generate_chirp_and_filter(self, sample_rate):
+        """Generates the logarithmic chirp signal and its inverse filter."""
         num_samples = int(sample_rate * self.chirp_duration)
         t = np.linspace(0, self.chirp_duration, num_samples, endpoint=False)
 
         w1 = 2 * np.pi * self.start_freq
-        2 * np.pi * self.end_freq
+        # w2 is not used but implicitly defined by end_freq in L
         T = self.chirp_duration
         L = np.log(self.end_freq / self.start_freq)
 
@@ -277,7 +308,6 @@ class NetworkAnalyzer(MeasurementModule):
         window = scipy.signal.windows.tukey(num_samples, alpha=0.05)
         chirp *= window
 
-        # 2. Generate Inverse Filter
         inv_envelope = np.exp(t * L / T)
         inv_filter = inv_envelope * np.sin(phase)
         inv_filter *= window
@@ -288,37 +318,15 @@ class NetworkAnalyzer(MeasurementModule):
         if norm_factor > 1e-9:
             inv_filter /= norm_factor
 
-        # 3. Play and Record
-        padding_sec = 1.0
-        padding_samples = int(padding_sec * sample_rate)
+        return chirp, inv_filter
 
-        # Prepare output
-        out_signal = np.concatenate([chirp, np.zeros(padding_samples)])
-        out_data = self._prepare_output_buffer(out_signal)
-
-        self.signals.progress.emit(10)
-        if not worker.is_running:
-            return
-
-        # Determine input channels
-        input_ch_count = 2  # Always capture stereo to avoid channel mapping issues
-
-        rec_data = self.run_play_rec(out_data, input_channels=input_ch_count)
-
-        self.signals.progress.emit(50)
-        if not worker.is_running:
-            return
-
-        # 4. Process
+    def _process_sweep_data(self, rec_data, inv_filter, sample_rate, worker):
+        """Processes the recorded sweep data to calculate magnitude and phase response."""
         def get_ir(signal):
             return scipy.signal.fftconvolve(signal, inv_filter, mode="full")
 
         if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
             # XFER Mode: Ref = Ch0, Meas = Ch1 (Default) or Custom for Crosstalk
-            # We assume Ch0 is Reference (e.g. Source Loopback) and Ch1 is Measurement (DUT)
-            # Or user can physically patch it.
-            # Standard XFER: H = Meas / Ref
-
             ref_sig = rec_data[:, self.ref_channel_index]
             meas_sig = rec_data[:, self.meas_channel_index]
 
@@ -338,19 +346,17 @@ class NetworkAnalyzer(MeasurementModule):
             len_win = end - start
 
             win_ref = ir_ref[start:end]
-            win_meas = ir_meas[start:end]  # Use same window for Meas
+            win_meas = ir_meas[start:end]
 
             H_ref = fft_manager.rfft(win_ref)
             H_meas = fft_manager.rfft(win_meas)
             freqs = fft_manager.rfftfreq(len_win, d=1 / sample_rate)
 
             # Transfer Function
-            # Avoid div by zero
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = H_meas / H_ref
                 H_xfer = np.nan_to_num(H_xfer)
 
-            # Mask
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
             valid_H = H_xfer[mask]
@@ -367,7 +373,6 @@ class NetworkAnalyzer(MeasurementModule):
             if self.input_mode == "R":
                 ch_idx = 1
 
-            # If we recorded 1 channel, it's at index 0
             if rec_data.shape[1] == 1:
                 sig = rec_data[:, 0]
             else:
@@ -391,7 +396,6 @@ class NetworkAnalyzer(MeasurementModule):
 
             mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
 
-            # If not XFER, adjust for output amplitude to show Absolute Level
             if self.input_mode != "XFER":
                 mag_db += 20 * np.log10(self.get_output_amplitude() + 1e-12)
             phase_rad = np.angle(valid_H)
@@ -410,8 +414,6 @@ class NetworkAnalyzer(MeasurementModule):
             if not worker.is_running:
                 break
             self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i])
-
-        self.signals.progress.emit(100)
 
     def _execute_sweep(self, worker):
         sample_rate = self.audio_engine.sample_rate
