@@ -1,4 +1,5 @@
 import argparse
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
@@ -25,6 +26,9 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -255,7 +259,7 @@ class SignalGenerator(MeasurementModule):
             signal = seq.astype(float) * 2 - 1
             return signal
         except Exception:
-            print("scipy.signal.max_len_seq not found/failed, using optimized fallback")
+            logger.warning("scipy.signal.max_len_seq not found/failed, using optimized fallback")
             tap_indices = [x - 1 for x in taps[order]]
             N = 2**order - 1
 
