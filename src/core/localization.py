@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 
 from src.core.utils import resource_path
 
 
 class LocalizationManager:
+    """Manages application localization and translation loading."""
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
@@ -19,6 +22,7 @@ class LocalizationManager:
         self.translations = {}
         self.available_languages = {}
         self.initialized = True
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.load_available_languages()
 
     def load_available_languages(self):
@@ -47,7 +51,7 @@ class LocalizationManager:
                 with open(path, "r", encoding="utf-8") as f:
                     self.translations = json.load(f)
             except Exception as e:
-                print(f"Failed to load language {lang_code}: {e}")
+                self.logger.error(f"Failed to load language {lang_code}: {e}")
                 self.translations = {}
         else:
             # If en.json doesn't exist, we just use keys
