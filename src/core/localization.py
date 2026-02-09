@@ -6,6 +6,8 @@ from src.core.utils import resource_path
 
 
 class LocalizationManager:
+    """Manages application localization and translation loading."""
+
     _instance = None
 
     def __new__(cls, *args, **kwargs):
