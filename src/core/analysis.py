@@ -9,6 +9,19 @@ from scipy.signal import butter, get_window, sosfiltfilt
 from src.core.fft_manager import fft_manager
 
 
+# A-weighting curve constants (IEC 61672:2003)
+# These define the poles and zeros of the analog A-weighting filter
+A_WEIGHTING_F1 = 20.6
+A_WEIGHTING_F2 = 107.7
+A_WEIGHTING_F3 = 737.9
+A_WEIGHTING_F4 = 12194.0
+
+# Gain normalization factor to achieve 0 dB at 1 kHz
+# 20 * log10(Ra(1000)) approx -2.000 dB
+# Gain = 10^(2.000/20) = 1.2589...
+A_WEIGHTING_GAIN = 1.2589
+
+
 @functools.lru_cache(maxsize=16)
 def get_cached_window(window_name, nx, dtype=np.float64):
     return get_window(window_name, nx).astype(dtype)
@@ -21,8 +34,12 @@ def _get_butter_sos(order, Wn, btype, fs=None):
 
 def _calculate_ra_raw(f):
     f2 = f**2
-    const = 12194**2 * f**4
-    denom = (f2 + 20.6**2) * np.sqrt((f2 + 107.7**2) * (f2 + 737.9**2)) * (f2 + 12194**2)
+    const = A_WEIGHTING_F4**2 * f**4
+    denom = (
+        (f2 + A_WEIGHTING_F1**2)
+        * np.sqrt((f2 + A_WEIGHTING_F2**2) * (f2 + A_WEIGHTING_F3**2))
+        * (f2 + A_WEIGHTING_F4**2)
+    )
     Ra = const / denom
     return Ra
 
@@ -31,14 +48,14 @@ def _calculate_ra_raw(f):
 def _compute_a_weighting_sq_curve(n_bins, step):
     f = np.arange(n_bins) * step
     ra = _calculate_ra_raw(f)
-    return (ra * 1.2589) ** 2
+    return (ra * A_WEIGHTING_GAIN) ** 2
 
 
 @functools.lru_cache(maxsize=32)
 def _get_a_weighting_curve_from_bytes(data_bytes, dtype_str, shape):
     freqs = np.frombuffer(data_bytes, dtype=dtype_str).reshape(shape)
     ra = _calculate_ra_raw(freqs)
-    return (ra * 1.2589) ** 2
+    return (ra * A_WEIGHTING_GAIN) ** 2
 
 
 @functools.lru_cache(maxsize=32)
