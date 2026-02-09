@@ -1,5 +1,8 @@
 import logging
 import threading
+import sys
+import subprocess
+import platform
 
 import numpy as np
 import sounddevice as sd
@@ -198,6 +201,64 @@ class AudioEngine:
     def set_mute_output(self, enabled):
         self.mute_output = enabled
         self.logger.info(f"Set mute output: {enabled}")
+
+    def refresh_backend(self):
+        """
+        Forces a re-initialization of the PortAudio backend.
+        This is useful on Linux/ALSA where device lists are cached.
+        """
+        self.logger.info("Refreshing audio backend...")
+        
+        # Stop everything first
+        self.stop_stream()
+        
+        # Terminate PortAudio
+        try:
+            sd._terminate()
+        except Exception as e:
+            self.logger.warning(f"Error terminating PortAudio: {e}")
+            
+        # Re-initialize PortAudio
+        try:
+            sd._initialize()
+            self.logger.info("Audio backend refreshed successfully.")
+        except Exception as e:
+            self.logger.error(f"Error re-initializing PortAudio: {e}")
+
+    def is_jack_unsafe(self) -> bool:
+        """
+        Checks if the JACK server is in an unsafe state (e.g. stopped/crashed)
+        which would cause PortAudio to crash on re-initialization.
+        Returns True if it is UNSAFE to refresh devices.
+        """
+        if platform.system() != "Linux":
+            return False
+
+        # Check if we already detected a compromised state
+        if getattr(self, "_jack_compromised", False):
+            self.logger.warning("JACK connection was previously lost. Unsafe to refresh.")
+            return True
+
+        # Check if JACK api is even available/loaded in PortAudio
+        try:
+            apis = sd.query_hostapis()
+            has_jack = any("JACK" in api.get("name", "") for api in apis)
+            if not has_jack:
+                return False
+        except Exception:
+            return False
+
+        # Check if JACK server is actually running using jack_lsp
+        # If jack_lsp fails, it means the server is down, but PortAudio might still try to use it and crash.
+        try:
+            # Run jack_lsp to see if server is responsive.
+            # We redirect stderr to devnull to avoid noise.
+            subprocess.check_output(["jack_lsp"], stderr=subprocess.STDOUT, timeout=2.0)
+            return False  # Server is running, safe to refresh
+        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+            self.logger.warning("JACK server appears to be down (jack_lsp failed). Unsafe to refresh.")
+            self._jack_compromised = True # Mark as compromised/dirty
+            return True  # Server is down, unsafe!
 
     def list_devices(self):
         """Returns a list of available audio devices.
