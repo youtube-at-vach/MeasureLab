@@ -1080,5 +1080,6 @@
     "Virtual / Offline Mode": "가상 / 오프라인 모드",
     "Virtual Audio (No Hardware)": "가상 오디오 (하드웨어 없음)",
     "Virtual Loopback (Always On)": "가상 루프백 (항상 활성화)",
-    "In Virtual Mode, audio is always looped back.": "가상 모드에서는 오디오가 항상 루프백됩니다."
+    "In Virtual Mode, audio is always looped back.": "가상 모드에서는 오디오가 항상 루프백됩니다.",
+    "The JACK server connection was lost or the server is unresponsive.\n\nAttempting to refresh devices in this state will crash the application due to a PortAudio issue.\n\nThe application must be restarted to safely reconnect.": "JACK 서버 연결이 끊어졌거나 서버가 응답하지 않습니다.\n\n이 상태에서 장치를 새로 고치려고 하면 PortAudio 문제로 인해 애플리케이션이 충돌합니다.\n\n안전하게 다시 연결하려면 애플리케이션을 다시 시작해야 합니다."
 }
