@@ -17,13 +17,13 @@ import src.gui.widgets.settings as settings
 def test_jack_detection():
     # Mock AudioEngine
     mock_engine = MagicMock()
-    
+
     # Mock host APIs
     mock_engine.get_host_apis.return_value = [
         {'name': 'ALSA', 'index': 0},
         {'name': 'JACK Audio Connection Kit', 'index': 1}
     ]
-    
+
     # Create widget with mocked dependencies
     with patch('src.gui.widgets.settings.ConfigManager'), \
          patch('src.gui.widgets.settings.get_manager'), \
@@ -39,10 +39,10 @@ def test_jack_detection():
          patch('src.gui.widgets.settings.QLabel'), \
          patch('src.gui.widgets.settings.QSpinBox'), \
          patch('src.gui.widgets.settings.QLineEdit'):
-        
+
         # We need to minimally initialize enough for _update_offline_ui_state to run
         widget = settings.SettingsWidget(mock_engine, MagicMock())
-        
+
         # Mock UI elements
         widget.offline_check = MagicMock()
         widget.offline_check.isChecked.return_value = False
@@ -52,11 +52,11 @@ def test_jack_detection():
         widget.output_combo = MagicMock()
         widget.offline_rate_spin = MagicMock()
         widget.sr_combo = MagicMock()
-        
+
         # Test detection
         print(f"JACK available: {widget._is_jack_available()}")
         assert widget._is_jack_available() is True
-        
+
         # Test UI update logic
         widget._update_offline_ui_state()
         widget.refresh_btn.setEnabled.assert_called_with(False)
@@ -66,7 +66,7 @@ def test_jack_detection():
         mock_engine.get_host_apis.return_value = [{'name': 'ALSA', 'index': 0}]
         print(f"JACK available (after removal): {widget._is_jack_available()}")
         assert widget._is_jack_available() is False
-        
+
         widget._update_offline_ui_state()
         widget.refresh_btn.setEnabled.assert_called_with(True)
         print("Test passed: Refresh button enabled when JACK is absent.")

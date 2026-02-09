@@ -14,11 +14,11 @@ logging.basicConfig(level=logging.INFO)
 def test_refresh_backend():
     print("Initializing AudioEngine...")
     engine = AudioEngine()
-    
+
     print("Initial device list:")
     devices = engine.list_devices()
     print(f"Found {len(devices)} devices.")
-    
+
     print("\nCalling refresh_backend()...")
     try:
         engine.refresh_backend()
@@ -30,7 +30,7 @@ def test_refresh_backend():
     print("\nDevice list after refresh:")
     devices_after = engine.list_devices()
     print(f"Found {len(devices_after)} devices.")
-    
+
     if len(devices) > 0 and len(devices_after) > 0:
         print("\nSUCCESS: Device list populated after refresh.")
     else:

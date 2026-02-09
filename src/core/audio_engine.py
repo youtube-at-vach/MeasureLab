@@ -205,16 +205,16 @@ class AudioEngine:
         This is useful on Linux/ALSA where device lists are cached.
         """
         self.logger.info("Refreshing audio backend...")
-        
+
         # Stop everything first
         self.stop_stream()
-        
+
         # Terminate PortAudio
         try:
             sd._terminate()
         except Exception as e:
             self.logger.warning(f"Error terminating PortAudio: {e}")
-            
+
         # Re-initialize PortAudio
         try:
             sd._initialize()

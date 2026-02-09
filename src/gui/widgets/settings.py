@@ -1226,10 +1226,10 @@ class SettingsWidget(QWidget):
         self.hostapi_combo.setEnabled(not is_offline)
         self.input_combo.setEnabled(not is_offline)
         self.output_combo.setEnabled(not is_offline)
-        
+
         # Disable refresh button if offline OR if JACK is present
         self.refresh_btn.setEnabled(not is_offline and not is_jack)
-        
+
         # Tooltip for explaining why it's disabled
         if is_jack:
             self.refresh_btn.setToolTip(tr("Device refresh is disabled when JACK is active for safety."))
