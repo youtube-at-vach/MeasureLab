@@ -144,6 +144,10 @@ class AudioEngine:
         self.input_channel_mode = "stereo"
         self.output_channel_mode = "stereo"
 
+        # Stream Configuration Snapshots (for master callback)
+        self._stream_input_mode = None
+        self._stream_output_mode = None
+
         # Mixer State
         self.callbacks = {}  # id -> callback
         self._cached_callbacks = []  # Cached list of values(self.callbacks)
@@ -344,6 +348,128 @@ class AudioEngine:
         if should_stop:
             self.stop_stream()
 
+    def _master_callback(self, indata, outdata, frames, time, status):
+        if status:
+            self.accumulated_status |= status
+
+        # Zero out master output buffer first
+        outdata.fill(0)
+
+        # Retrieve captured stream configuration
+        in_mode = self._stream_input_mode
+        out_mode = self._stream_output_mode
+
+        # Prepare logical input for clients
+        # Map Hardware Input -> Logical Input (Stereo usually, or as requested)
+
+        # If Loopback is enabled, use the last output buffer as input
+        # Works same for Virtual and Hardware:
+        # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
+        # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
+        # If Loopback is enabled OR we are in Offline Mode (where there is no other input),
+        # use the last output buffer as input.
+        # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
+        # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
+        use_loopback = self.loopback or self.offline_mode
+        if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
+            # We use the mixed output from the previous block
+            # last_output_buffer is (frames, logical_out_ch)
+            # We need to map it to logical_in (frames, 2)
+
+            # Assuming logical_out_ch is 2 (stereo) or 1 (mono)
+            # logical_in is usually stereo (2)
+
+            lb_src = self.last_output_buffer
+            # Reuse logical input buffer if possible to avoid allocation
+            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
+                # Allocate new buffer (zeros is safer than empty for initial state)
+                self._logical_in_buffer = np.zeros((frames, 2), dtype="float32")
+
+            logical_in = self._logical_in_buffer
+
+            if lb_src.shape[1] >= 2:
+                logical_in[:, :2] = lb_src[:, :2]
+            elif lb_src.shape[1] == 1:
+                logical_in[:, 0] = lb_src[:, 0]
+                logical_in[:, 1] = lb_src[:, 0]
+            else:
+                # Should not happen, but ensure silence if shape is unexpected
+                logical_in.fill(0)
+        else:
+            # Standard Hardware Input Mapping
+            if in_mode == "left":
+                logical_in = indata[:, 0:1]
+            elif in_mode == "right":
+                if indata.shape[1] >= 2:
+                    logical_in = indata[:, 1:2]
+                else:
+                    logical_in = np.zeros((frames, 1))
+            else:  # stereo
+                logical_in = indata[:, 0:2]
+
+        # Create a temp output buffer for clients
+        logical_out_ch = 2 if out_mode == "stereo" else 1
+
+        # Use cached callbacks (atomic read)
+        active_callbacks = self._cached_callbacks
+
+        if not active_callbacks:
+            # Even if no callbacks, we might need to update last_output_buffer (silence)
+            if use_loopback:
+                if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
+                    self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
+                else:
+                    self.last_output_buffer.fill(0)
+            return
+
+        # Mix buffer
+        if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch):
+            mix_buffer = self._mix_buffer
+            mix_buffer.fill(0)
+        else:
+            mix_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
+            self._mix_buffer = mix_buffer
+
+        for cb in active_callbacks:
+            # Temp buffer for this client
+            if self._client_buffer is not None and self._client_buffer.shape == (frames, logical_out_ch):
+                client_out = self._client_buffer
+                client_out.fill(0)
+            else:
+                client_out = np.zeros_like(mix_buffer)
+                self._client_buffer = client_out
+
+            try:
+                cb(logical_in, client_out, frames, time, status)
+            except Exception as e:
+                # Optimization: Use non-blocking error tracking instead of print to avoid audio dropouts
+                self.last_callback_error = e
+                self.callback_error_count += 1
+                continue
+
+            # Sum to mix
+            mix_buffer += client_out
+
+        # Store for next loopback cycle
+        if use_loopback:
+            if self.last_output_buffer is None or self.last_output_buffer.shape != mix_buffer.shape:
+                self.last_output_buffer = np.empty_like(mix_buffer)
+            np.copyto(self.last_output_buffer, mix_buffer)
+
+        # Map Logical Output -> Hardware Output
+        if not self.mute_output:
+            if out_mode == "stereo":
+                outdata[:, 0:2] = mix_buffer
+            elif out_mode == "left":
+                outdata[:, 0:1] = mix_buffer
+                if outdata.shape[1] > 1:
+                    outdata[:, 1:] = 0
+            elif out_mode == "right":
+                if outdata.shape[1] >= 2:
+                    outdata[:, 1:2] = mix_buffer
+                    outdata[:, 0] = 0
+        # If muted, outdata is already 0 filled at start of callback
+
     def _start_master_stream(self):
         """Starts the underlying sounddevice stream or VirtualStream."""
         if self.stream is not None:
@@ -353,129 +479,15 @@ class AudioEngine:
         in_mode = self.input_channel_mode
         out_mode = self.output_channel_mode
 
+        # Snapshot configuration for the callback
+        self._stream_input_mode = in_mode
+        self._stream_output_mode = out_mode
+
         hw_in_ch = 2 if in_mode in ["right", "stereo"] else 1
         hw_out_ch = 2 if out_mode in ["right", "stereo"] else 1
 
         # Reset loopback buffer
         self.last_output_buffer = None
-
-        def master_callback(indata, outdata, frames, time, status):
-            if status:
-                self.accumulated_status |= status
-
-            # Zero out master output buffer first
-            outdata.fill(0)
-
-            # Prepare logical input for clients
-            # Map Hardware Input -> Logical Input (Stereo usually, or as requested)
-
-            # If Loopback is enabled, use the last output buffer as input
-            # Works same for Virtual and Hardware: 
-            # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
-            # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
-            # If Loopback is enabled OR we are in Offline Mode (where there is no other input),
-            # use the last output buffer as input.
-            # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
-            # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
-            use_loopback = self.loopback or self.offline_mode
-            if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
-                # We use the mixed output from the previous block
-                # last_output_buffer is (frames, logical_out_ch)
-                # We need to map it to logical_in (frames, 2)
-
-                # Assuming logical_out_ch is 2 (stereo) or 1 (mono)
-                # logical_in is usually stereo (2)
-
-                lb_src = self.last_output_buffer
-                # Reuse logical input buffer if possible to avoid allocation
-                if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
-                    # Allocate new buffer (zeros is safer than empty for initial state)
-                    self._logical_in_buffer = np.zeros((frames, 2), dtype="float32")
-
-                logical_in = self._logical_in_buffer
-
-                if lb_src.shape[1] >= 2:
-                    logical_in[:, :2] = lb_src[:, :2]
-                elif lb_src.shape[1] == 1:
-                    logical_in[:, 0] = lb_src[:, 0]
-                    logical_in[:, 1] = lb_src[:, 0]
-                else:
-                    # Should not happen, but ensure silence if shape is unexpected
-                    logical_in.fill(0)
-            else:
-                # Standard Hardware Input Mapping
-                if in_mode == "left":
-                    logical_in = indata[:, 0:1]
-                elif in_mode == "right":
-                    if indata.shape[1] >= 2:
-                        logical_in = indata[:, 1:2]
-                    else:
-                        logical_in = np.zeros((frames, 1))
-                else:  # stereo
-                    logical_in = indata[:, 0:2]
-
-            # Create a temp output buffer for clients
-            logical_out_ch = 2 if out_mode == "stereo" else 1
-
-            # Use cached callbacks (atomic read)
-            active_callbacks = self._cached_callbacks
-
-            if not active_callbacks:
-                # Even if no callbacks, we might need to update last_output_buffer (silence)
-                if use_loopback:
-                    if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
-                        self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
-                    else:
-                        self.last_output_buffer.fill(0)
-                return
-
-            # Mix buffer
-            if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch):
-                mix_buffer = self._mix_buffer
-                mix_buffer.fill(0)
-            else:
-                mix_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
-                self._mix_buffer = mix_buffer
-
-            for cb in active_callbacks:
-                # Temp buffer for this client
-                if self._client_buffer is not None and self._client_buffer.shape == (frames, logical_out_ch):
-                    client_out = self._client_buffer
-                    client_out.fill(0)
-                else:
-                    client_out = np.zeros_like(mix_buffer)
-                    self._client_buffer = client_out
-
-                try:
-                    cb(logical_in, client_out, frames, time, status)
-                except Exception as e:
-                    # Optimization: Use non-blocking error tracking instead of print to avoid audio dropouts
-                    self.last_callback_error = e
-                    self.callback_error_count += 1
-                    continue
-
-                # Sum to mix
-                mix_buffer += client_out
-
-            # Store for next loopback cycle
-            if use_loopback:
-                if self.last_output_buffer is None or self.last_output_buffer.shape != mix_buffer.shape:
-                    self.last_output_buffer = np.empty_like(mix_buffer)
-                np.copyto(self.last_output_buffer, mix_buffer)
-
-            # Map Logical Output -> Hardware Output
-            if not self.mute_output:
-                if out_mode == "stereo":
-                    outdata[:, 0:2] = mix_buffer
-                elif out_mode == "left":
-                    outdata[:, 0:1] = mix_buffer
-                    if outdata.shape[1] > 1:
-                        outdata[:, 1:] = 0
-                elif out_mode == "right":
-                    if outdata.shape[1] >= 2:
-                        outdata[:, 1:2] = mix_buffer
-                        outdata[:, 0] = 0
-            # If muted, outdata is already 0 filled at start of callback
 
         try:
             if self.offline_mode:
@@ -483,7 +495,7 @@ class AudioEngine:
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
                     channels=(hw_in_ch, hw_out_ch),
-                    callback=master_callback
+                    callback=self._master_callback
                 )
                 self.stream.start()
                 self.logger.info(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
@@ -509,7 +521,7 @@ class AudioEngine:
                     device=(self.input_device, self.output_device),
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
-                    callback=master_callback,
+                    callback=self._master_callback,
                     channels=(hw_in_ch, hw_out_ch),
                     dtype="float32",
                     latency="high",
