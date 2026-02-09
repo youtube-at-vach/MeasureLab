@@ -1080,6 +1080,5 @@
     "Virtual / Offline Mode": "Виртуальный / Автономный режим",
     "Virtual Audio (No Hardware)": "Виртуальное аудио (без оборудования)",
     "Virtual Loopback (Always On)": "Виртуальный loopback (всегда включен)",
-    "In Virtual Mode, audio is always looped back.": "В виртуальном режиме аудио всегда закольцовано.",
-    "The JACK server connection was lost or the server is unresponsive.\n\nAttempting to refresh devices in this state will crash the application due to a PortAudio issue.\n\nThe application must be restarted to safely reconnect.": "Связь с сервером JACK потеряна или сервер не отвечает.\n\nПопытка обновить устройства в этом состоянии приведет к сбою приложения из-за проблемы с PortAudio.\n\nДля безопасного повторного подключения необходимо перезапустить приложение."
+    "In Virtual Mode, audio is always looped back.": "В виртуальном режиме аудио всегда закольцовано."
 }

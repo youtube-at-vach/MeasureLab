@@ -1080,6 +1080,5 @@
     "Virtual / Offline Mode": "Modo Virtual / Offline",
     "Virtual Audio (No Hardware)": "Áudio Virtual (Sem Hardware)",
     "Virtual Loopback (Always On)": "Loopback virtual (Sempre ativo)",
-    "In Virtual Mode, audio is always looped back.": "No modo virtual, o áudio é sempre retornado (loopback).",
-    "The JACK server connection was lost or the server is unresponsive.\n\nAttempting to refresh devices in this state will crash the application due to a PortAudio issue.\n\nThe application must be restarted to safely reconnect.": "A conexão com o servidor JACK foi perdida ou o servidor não responde.\n\nTentar atualizar os dispositivos neste estado fará com que o aplicativo falhe devido a um problema do PortAudio.\n\nO aplicativo deve ser reiniciado para reconectar com segurança."
+    "In Virtual Mode, audio is always looped back.": "No modo virtual, o áudio é sempre retornado (loopback)."
 }

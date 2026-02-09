@@ -1080,6 +1080,5 @@
     "Virtual / Offline Mode": "虚拟 / 离线模式",
     "Virtual Audio (No Hardware)": "虚拟音频（无硬件）",
     "Virtual Loopback (Always On)": "虚拟回送 (始终开启)",
-    "In Virtual Mode, audio is always looped back.": "在虚拟模式下，音频始终回送。",
-    "The JACK server connection was lost or the server is unresponsive.\n\nAttempting to refresh devices in this state will crash the application due to a PortAudio issue.\n\nThe application must be restarted to safely reconnect.": "JACK 服务器连接丢失或服务器无响应。\n\n在此状态下尝试刷新设备将导致应用程序因 PortAudio 问题而崩溃。\n\n必须重新启动应用程序才能安全地重新连接。"
+    "In Virtual Mode, audio is always looped back.": "在虚拟模式下，音频始终回送。"
 }
