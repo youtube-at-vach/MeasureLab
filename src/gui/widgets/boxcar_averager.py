@@ -362,93 +362,139 @@ class BoxcarAverager(MeasurementModule):
             # We need to find triggers in 'data'
             # We scan the reference channel for edge crossings.
 
-            ref_idx = self.ref_channel
-            if data.shape[1] <= ref_idx:
-                return  # Safety
+            if self.trigger_edge == "Free Run":
+                # Continuous capture mode - no trigger needed
+                abs_start = int(idxs[0])
+                abs_end = int(idxs[-1]) + 1
+                abs_ptr = abs_start
 
-            ref_sig = data[:, ref_idx]
+                period = int(self.period_samples)
+                if self.accumulator.shape[0] != period:
+                    self.reset_average()
+                    return
 
-            # Simple Edge Detection
-            # We need state from previous chunk to detect edge across boundary?
-            # For simplicity, we just look inside current chunk.
-            # Ideally we should keep last sample.
-
-            # Create a shifted array including the last sample
-            if self.last_ref_sample is None:
-                # Prevent a false trigger right at the first sample after start/reset
-                self.last_ref_sample = float(ref_sig[0])
-                self.last_ref_sample_index = int(idxs[0]) - 1
-            extended_ref = np.concatenate(([self.last_ref_sample], ref_sig))
-            self.last_ref_sample = float(ref_sig[-1])
-            self.last_ref_sample_index = int(idxs[-1])
-
-            # Detect Crossings
-            # Rising: prev < level <= curr
-            # Falling: prev > level >= curr
-            level = self.trigger_level
-
-            if self.trigger_edge == "Rising":
-                triggers = (extended_ref[:-1] < level) & (extended_ref[1:] >= level)
-            else:
-                triggers = (extended_ref[:-1] > level) & (extended_ref[1:] <= level)
-
-            trigger_indices = np.where(triggers)[0]
-            # Absolute trigger sample indices; trigger_indices maps directly to data indices.
-            trigger_samples_abs = idxs[trigger_indices] if len(trigger_indices) > 0 else np.array([], dtype=np.int64)
-
-            # State Machine:
-            # We might be currently capturing a window.
-            # Or waiting for a trigger.
-
-            # Non-retriggerable capture windows, pinned to absolute trigger samples.
-            period = int(self.period_samples)
-            if self.accumulator.shape[0] != period:
-                self.reset_average()
-                return
-
-            abs_start = int(idxs[0])
-            abs_end = int(idxs[-1]) + 1
-            abs_ptr = abs_start
-
-            # Helper: find next trigger >= abs_ptr
-            def _next_trigger(at_or_after: int):
-                if trigger_samples_abs.size == 0:
-                    return None
-                pos = np.searchsorted(trigger_samples_abs, at_or_after, side="left")
-                if pos >= trigger_samples_abs.size:
-                    return None
-                return int(trigger_samples_abs[pos])
-
-            while abs_ptr < abs_end:
-                if self.capture_active:
-                    # Continue capturing until window full.
-                    take = min(period - self.capture_idx, abs_end - abs_ptr)
-                    if take <= 0:
-                        break
-                    rel_start = abs_ptr - abs_start
-                    rel_end = rel_start + take
-                    
-                    if self.use_int64:
-                        clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
-                        chunk_data = (clean_data * 2147483648.0).astype(np.int64)
-                        self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
+                while abs_ptr < abs_end:
+                    if self.capture_active:
+                        # Continue capturing
+                        take = min(period - self.capture_idx, abs_end - abs_ptr)
+                        if take <= 0:
+                            break
+                        rel_start = abs_ptr - abs_start
+                        rel_end = rel_start + take
+                        
+                        if self.use_int64:
+                            # Sanitize input
+                            clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
+                        else:
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
+                        
+                        self.capture_idx += take
+                        abs_ptr += take
+                        
+                        if self.capture_idx >= period:
+                            self.capture_active = False # Or True if we want immediate re-trigger?
+                            # For Free Run, we want immediate re-trigger.
+                            # But effectively we just completed a block.
+                            self.count += 1
+                            self.capture_idx = 0
+                            # Immediate restart:
+                            self.capture_active = True
                     else:
-                        self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
-                    self.capture_idx += take
-                    abs_ptr += take
-
-                    if self.capture_idx >= period:
-                        self.capture_active = False
+                        # Start capture immediately
+                        self.capture_active = True
                         self.capture_idx = 0
-                        self.count += 1
+                        # Continue loop to process current sample
+            else:
+                # Regular Edge Triggering
+                ref_idx = self.ref_channel
+                if data.shape[1] <= ref_idx:
+                    return  # Safety
+    
+                ref_sig = data[:, ref_idx]
+    
+                # Simple Edge Detection
+                # We need state from previous chunk to detect edge across boundary?
+                # For simplicity, we just look inside current chunk.
+                # Ideally we should keep last sample.
+    
+                # Create a shifted array including the last sample
+                if self.last_ref_sample is None:
+                    # Prevent a false trigger right at the first sample after start/reset
+                    self.last_ref_sample = float(ref_sig[0])
+                    self.last_ref_sample_index = int(idxs[0]) - 1
+                extended_ref = np.concatenate(([self.last_ref_sample], ref_sig))
+                self.last_ref_sample = float(ref_sig[-1])
+                self.last_ref_sample_index = int(idxs[-1])
+    
+                # Detect Crossings
+                # Rising: prev < level <= curr
+                # Falling: prev > level >= curr
+                level = self.trigger_level
+    
+                if self.trigger_edge == "Rising":
+                    triggers = (extended_ref[:-1] < level) & (extended_ref[1:] >= level)
                 else:
-                    next_trig = _next_trigger(abs_ptr)
-                    if next_trig is None or next_trig >= abs_end:
-                        break
-                    # Start capture exactly at the trigger sample.
-                    self.capture_active = True
-                    self.capture_idx = 0
-                    abs_ptr = next_trig
+                    triggers = (extended_ref[:-1] > level) & (extended_ref[1:] <= level)
+    
+                trigger_indices = np.where(triggers)[0]
+                # Absolute trigger sample indices; trigger_indices maps directly to data indices.
+                trigger_samples_abs = idxs[trigger_indices] if len(trigger_indices) > 0 else np.array([], dtype=np.int64)
+    
+                # State Machine:
+                # We might be currently capturing a window.
+                # Or waiting for a trigger.
+    
+                # Non-retriggerable capture windows, pinned to absolute trigger samples.
+                period = int(self.period_samples)
+                if self.accumulator.shape[0] != period:
+                    self.reset_average()
+                    return
+    
+                abs_start = int(idxs[0])
+                abs_end = int(idxs[-1]) + 1
+                abs_ptr = abs_start
+    
+                # Helper: find next trigger >= abs_ptr
+                def _next_trigger(at_or_after: int):
+                    if trigger_samples_abs.size == 0:
+                        return None
+                    pos = np.searchsorted(trigger_samples_abs, at_or_after, side="left")
+                    if pos >= trigger_samples_abs.size:
+                        return None
+                    return int(trigger_samples_abs[pos])
+    
+                while abs_ptr < abs_end:
+                    if self.capture_active:
+                        # Continue capturing until window full.
+                        take = min(period - self.capture_idx, abs_end - abs_ptr)
+                        if take <= 0:
+                            break
+                        rel_start = abs_ptr - abs_start
+                        rel_end = rel_start + take
+                        
+                        if self.use_int64:
+                            clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
+                        else:
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
+                        self.capture_idx += take
+                        abs_ptr += take
+    
+                        if self.capture_idx >= period:
+                            self.capture_active = False
+                            self.capture_idx = 0
+                            self.count += 1
+                    else:
+                        next_trig = _next_trigger(abs_ptr)
+                        if next_trig is None or next_trig >= abs_end:
+                            break
+                        # Start capture exactly at the trigger sample.
+                        self.capture_active = True
+                        self.capture_idx = 0
+                        abs_ptr = next_trig
 
     def export_to_file(self, filepath, format=None, subtype=None):
         if self.count == 0:
@@ -629,6 +675,7 @@ class BoxcarAveragerWidget(QWidget):
         self.edge_combo = QComboBox()
         self.edge_combo.addItem(tr("Rising"), "Rising")
         self.edge_combo.addItem(tr("Falling"), "Falling")
+        self.edge_combo.addItem(tr("Free Run"), "Free Run")
         edge_idx = self.edge_combo.findData(self.module.trigger_edge)
         if edge_idx >= 0:
             self.edge_combo.setCurrentIndex(edge_idx)
