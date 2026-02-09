@@ -1088,5 +1088,12 @@
     "Snap to Bin Center": "吸附到Bin中心",
     "Snap to Bin:": "吸附到Bin:",
     "Target Freq:": "目标频率:",
-    "Window Width:": "窗口宽度:"
+    "Window Width:": "窗口宽度:",
+    "Block:": "数据块:",
+    "Export": "导出",
+    "Export Averaged Data": "导出平均数据",
+    "External Sync": "外部同步",
+    "Failed to export:\n{0}": "导出失败:\n{0}",
+    "Int64 Accumulation": "Int64 累加",
+    "Use 64-bit integers for accumulation (zero precision loss)": "使用 64 位整数进行累加（精度零损失）"
 }

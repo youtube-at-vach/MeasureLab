@@ -1,4 +1,5 @@
 import argparse
+import time
 
 import numpy as np
 import pyqtgraph as pg
@@ -7,10 +8,12 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -59,6 +62,10 @@ class BoxcarAverager(MeasurementModule):
         self.sample_index_ring = None
         self.input_write_pos = 0
         self.input_read_pos = 0
+
+        # Extended Averaging (Issue #409)
+        self.use_int64 = False
+        self.last_accumulation_time = 0.0
 
         # Absolute sample tracking
         self.global_sample_counter = 0
@@ -110,6 +117,9 @@ class BoxcarAverager(MeasurementModule):
         # Reset accumulator (but keep origin stable)
         self.reset_average()
 
+        self.last_accumulation_time = time.time()
+
+
         self.callback_id = self.audio_engine.register_callback(self._callback)
 
     def stop_analysis(self):
@@ -120,7 +130,11 @@ class BoxcarAverager(MeasurementModule):
             self.is_running = False
 
     def reset_average(self):
-        self.accumulator = np.zeros((self.period_samples, 2))
+        if self.use_int64:
+            self.accumulator = np.zeros((self.period_samples, 2), dtype=np.int64)
+        else:
+            self.accumulator = np.zeros((self.period_samples, 2), dtype=np.float64)
+
         self.count = 0
         # Keep window_origin_sample stable so the integration window doesn't drift.
         # We also restart accumulation at a stable boundary when possible.
@@ -318,11 +332,29 @@ class BoxcarAverager(MeasurementModule):
                         inter_end = min(chunk_end, seg_end)
                         if inter_end <= inter_start:
                             continue
-                        data_off0 = current_idx + (inter_start - chunk_start)
-                        data_off1 = current_idx + (inter_end - chunk_start)
-                        self.accumulator[inter_start:inter_end] += data[data_off0:data_off1]
+
+                        # Calculate offsets into the 'data' chunk corresponding to this intersection
+                        data_off0 = current_idx + (inter_start - fold_idx)
+                        data_off1 = current_idx + (inter_end - fold_idx)
+
+                        if self.use_int64:
+                            # Scale to utilize int64 dynamic range (2^31)
+                            # Input is float32 (-1.0 to 1.0)
+                            # We use 2^31 to allow ~2 billion accumulations before overflow if close to 1.0
+                            # Realistically signal is much lower, so headroom is massive.
+                            # Sanitize input to avoid ValueError on NaN/Inf
+                            clean_data = np.nan_to_num(data[data_off0:data_off1], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
+                            self.accumulator[inter_start:inter_end] += chunk_data
+                        else:
+                            self.accumulator[inter_start:inter_end] += data[data_off0:data_off1]
                 else:
-                    self.accumulator[fold_idx : fold_idx + chunk_size] += data[current_idx : current_idx + chunk_size]
+                    if self.use_int64:
+                        clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                        chunk_data = (clean_data * 2147483648.0).astype(np.int64)
+                        self.accumulator[fold_idx : fold_idx + chunk_size] += chunk_data
+                    else:
+                        self.accumulator[fold_idx : fold_idx + chunk_size] += data[current_idx : current_idx + chunk_size]
                 fold_idx += chunk_size
                 current_idx += chunk_size
 
@@ -335,87 +367,163 @@ class BoxcarAverager(MeasurementModule):
             # We need to find triggers in 'data'
             # We scan the reference channel for edge crossings.
 
-            ref_idx = self.ref_channel
-            if data.shape[1] <= ref_idx:
-                return  # Safety
+            if self.trigger_edge == "Free Run":
+                # Continuous capture mode - no trigger needed
+                abs_start = int(idxs[0])
+                abs_end = int(idxs[-1]) + 1
+                abs_ptr = abs_start
 
-            ref_sig = data[:, ref_idx]
+                period = int(self.period_samples)
+                if self.accumulator.shape[0] != period:
+                    self.reset_average()
+                    return
 
-            # Simple Edge Detection
-            # We need state from previous chunk to detect edge across boundary?
-            # For simplicity, we just look inside current chunk.
-            # Ideally we should keep last sample.
+                while abs_ptr < abs_end:
+                    if self.capture_active:
+                        # Continue capturing
+                        take = min(period - self.capture_idx, abs_end - abs_ptr)
+                        if take <= 0:
+                            break
+                        rel_start = abs_ptr - abs_start
+                        rel_end = rel_start + take
 
-            # Create a shifted array including the last sample
-            if self.last_ref_sample is None:
-                # Prevent a false trigger right at the first sample after start/reset
-                self.last_ref_sample = float(ref_sig[0])
-                self.last_ref_sample_index = int(idxs[0]) - 1
-            extended_ref = np.concatenate(([self.last_ref_sample], ref_sig))
-            self.last_ref_sample = float(ref_sig[-1])
-            self.last_ref_sample_index = int(idxs[-1])
+                        if self.use_int64:
+                            # Sanitize input
+                            clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
+                        else:
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
 
-            # Detect Crossings
-            # Rising: prev < level <= curr
-            # Falling: prev > level >= curr
-            level = self.trigger_level
+                        self.capture_idx += take
+                        abs_ptr += take
 
-            if self.trigger_edge == "Rising":
-                triggers = (extended_ref[:-1] < level) & (extended_ref[1:] >= level)
-            else:
-                triggers = (extended_ref[:-1] > level) & (extended_ref[1:] <= level)
-
-            trigger_indices = np.where(triggers)[0]
-            # Absolute trigger sample indices; trigger_indices maps directly to data indices.
-            trigger_samples_abs = idxs[trigger_indices] if len(trigger_indices) > 0 else np.array([], dtype=np.int64)
-
-            # State Machine:
-            # We might be currently capturing a window.
-            # Or waiting for a trigger.
-
-            # Non-retriggerable capture windows, pinned to absolute trigger samples.
-            period = int(self.period_samples)
-            if self.accumulator.shape[0] != period:
-                self.reset_average()
-                return
-
-            abs_start = int(idxs[0])
-            abs_end = int(idxs[-1]) + 1
-            abs_ptr = abs_start
-
-            # Helper: find next trigger >= abs_ptr
-            def _next_trigger(at_or_after: int):
-                if trigger_samples_abs.size == 0:
-                    return None
-                pos = np.searchsorted(trigger_samples_abs, at_or_after, side="left")
-                if pos >= trigger_samples_abs.size:
-                    return None
-                return int(trigger_samples_abs[pos])
-
-            while abs_ptr < abs_end:
-                if self.capture_active:
-                    # Continue capturing until window full.
-                    take = min(period - self.capture_idx, abs_end - abs_ptr)
-                    if take <= 0:
-                        break
-                    rel_start = abs_ptr - abs_start
-                    rel_end = rel_start + take
-                    self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
-                    self.capture_idx += take
-                    abs_ptr += take
-
-                    if self.capture_idx >= period:
-                        self.capture_active = False
+                        if self.capture_idx >= period:
+                            self.capture_active = False # Or True if we want immediate re-trigger?
+                            # For Free Run, we want immediate re-trigger.
+                            # But effectively we just completed a block.
+                            self.count += 1
+                            self.capture_idx = 0
+                            # Immediate restart:
+                            self.capture_active = True
+                    else:
+                        # Start capture immediately
+                        self.capture_active = True
                         self.capture_idx = 0
-                        self.count += 1
+                        # Continue loop to process current sample
+            else:
+                # Regular Edge Triggering
+                ref_idx = self.ref_channel
+                if data.shape[1] <= ref_idx:
+                    return  # Safety
+
+                ref_sig = data[:, ref_idx]
+
+                # Simple Edge Detection
+                # We need state from previous chunk to detect edge across boundary?
+                # For simplicity, we just look inside current chunk.
+                # Ideally we should keep last sample.
+
+                # Create a shifted array including the last sample
+                if self.last_ref_sample is None:
+                    # Prevent a false trigger right at the first sample after start/reset
+                    self.last_ref_sample = float(ref_sig[0])
+                    self.last_ref_sample_index = int(idxs[0]) - 1
+                extended_ref = np.concatenate(([self.last_ref_sample], ref_sig))
+                self.last_ref_sample = float(ref_sig[-1])
+                self.last_ref_sample_index = int(idxs[-1])
+
+                # Detect Crossings
+                # Rising: prev < level <= curr
+                # Falling: prev > level >= curr
+                level = self.trigger_level
+
+                if self.trigger_edge == "Rising":
+                    triggers = (extended_ref[:-1] < level) & (extended_ref[1:] >= level)
                 else:
-                    next_trig = _next_trigger(abs_ptr)
-                    if next_trig is None or next_trig >= abs_end:
-                        break
-                    # Start capture exactly at the trigger sample.
-                    self.capture_active = True
-                    self.capture_idx = 0
-                    abs_ptr = next_trig
+                    triggers = (extended_ref[:-1] > level) & (extended_ref[1:] <= level)
+
+                trigger_indices = np.where(triggers)[0]
+                # Absolute trigger sample indices; trigger_indices maps directly to data indices.
+                trigger_samples_abs = idxs[trigger_indices] if len(trigger_indices) > 0 else np.array([], dtype=np.int64)
+
+                # State Machine:
+                # We might be currently capturing a window.
+                # Or waiting for a trigger.
+
+                # Non-retriggerable capture windows, pinned to absolute trigger samples.
+                period = int(self.period_samples)
+                if self.accumulator.shape[0] != period:
+                    self.reset_average()
+                    return
+
+                abs_start = int(idxs[0])
+                abs_end = int(idxs[-1]) + 1
+                abs_ptr = abs_start
+
+                # Helper: find next trigger >= abs_ptr
+                def _next_trigger(at_or_after: int):
+                    if trigger_samples_abs.size == 0:
+                        return None
+                    pos = np.searchsorted(trigger_samples_abs, at_or_after, side="left")
+                    if pos >= trigger_samples_abs.size:
+                        return None
+                    return int(trigger_samples_abs[pos])
+
+                while abs_ptr < abs_end:
+                    if self.capture_active:
+                        # Continue capturing until window full.
+                        take = min(period - self.capture_idx, abs_end - abs_ptr)
+                        if take <= 0:
+                            break
+                        rel_start = abs_ptr - abs_start
+                        rel_end = rel_start + take
+
+                        if self.use_int64:
+                            clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
+                        else:
+                            self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
+                        self.capture_idx += take
+                        abs_ptr += take
+
+                        if self.capture_idx >= period:
+                            self.capture_active = False
+                            self.capture_idx = 0
+                            self.count += 1
+                    else:
+                        next_trig = _next_trigger(abs_ptr)
+                        if next_trig is None or next_trig >= abs_end:
+                            break
+                        # Start capture exactly at the trigger sample.
+                        self.capture_active = True
+                        self.capture_idx = 0
+                        abs_ptr = next_trig
+
+    def export_to_file(self, filepath, format=None, subtype=None):
+        if self.count == 0:
+            return False, "No data to export"
+
+        try:
+            import soundfile as sf
+
+            # Normalize
+            if self.use_int64:
+                # Convert back to float
+                # accumulator is int64 sum
+                # average = sum / count
+                # original_scale = average / 2^31
+                scale = 1.0 / (self.count * 2147483648.0)
+                data = self.accumulator.astype(np.float64) * scale
+            else:
+                data = self.accumulator / self.count
+
+            sr = self.audio_engine.sample_rate
+            sf.write(filepath, data, sr, format=format, subtype=subtype)
+            return True, f"Saved: {filepath}"
+        except Exception as e:
+            return False, str(e)
 
 
 class BoxcarAveragerWidget(QWidget):
@@ -428,26 +536,45 @@ class BoxcarAveragerWidget(QWidget):
         self.timer.timeout.connect(self.update_plot)
         self.timer.setInterval(50)  # 20 FPS
 
+        self.export_worker = None
+
+
     def init_ui(self):
         layout = QVBoxLayout()
 
-        # Controls
-        controls_group = QGroupBox(tr("Controls"))
-        # Use a grid to avoid an overly wide single-row toolbar.
-        controls_layout = QGridLayout()
-        controls_layout.setContentsMargins(0, 0, 0, 0)
-        controls_layout.setHorizontalSpacing(8)
-        controls_layout.setVerticalSpacing(4)
+        # --- Top Action Bar ---
+        action_layout = QHBoxLayout()
+        action_layout.setContentsMargins(0, 0, 0, 0)
 
         self.toggle_btn = QPushButton(tr("Start"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
-        controls_layout.addWidget(self.toggle_btn, 0, 0)
+        action_layout.addWidget(self.toggle_btn)
 
         self.reset_btn = QPushButton(tr("Reset"))
         self.reset_btn.clicked.connect(self.on_reset)
-        controls_layout.addWidget(self.reset_btn, 0, 1)
+        action_layout.addWidget(self.reset_btn)
 
+        self.export_btn = QPushButton(tr("Export"))
+        self.export_btn.clicked.connect(self.on_export)
+        action_layout.addWidget(self.export_btn)
+
+        action_layout.addStretch()
+
+        self.int64_chk = QCheckBox(tr("Int64 Accumulation"))
+        self.int64_chk.setToolTip(tr("Use 64-bit integers for accumulation (zero precision loss)"))
+        self.int64_chk.setChecked(self.module.use_int64)
+        self.int64_chk.toggled.connect(self.on_int64_changed)
+        action_layout.addWidget(self.int64_chk)
+
+        layout.addLayout(action_layout)
+
+        # --- Settings Group ---
+        settings_group = QGroupBox(tr("Settings"))
+        settings_layout = QGridLayout()
+        # settings_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Row 0: Mode, Channel
         # Mode
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("Internal Pulse"), "Internal Pulse")
@@ -459,17 +586,8 @@ class BoxcarAveragerWidget(QWidget):
         if mode_idx >= 0:
             self.mode_combo.setCurrentIndex(mode_idx)
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        controls_layout.addWidget(QLabel(tr("Mode:")), 0, 2)
-        controls_layout.addWidget(self.mode_combo, 0, 3)
-
-        # Period
-        self.period_spin = QDoubleSpinBox()
-        self.period_spin.setRange(1, 1000)  # ms
-        self.period_spin.setValue(100)
-        self.period_spin.setSuffix(" ms")
-        self.period_spin.valueChanged.connect(self.on_period_changed)
-        controls_layout.addWidget(QLabel(tr("Period:")), 0, 4)
-        controls_layout.addWidget(self.period_spin, 0, 5)
+        settings_layout.addWidget(QLabel(tr("Mode:")), 0, 0)
+        settings_layout.addWidget(self.mode_combo, 0, 1)
 
         # Channel
         self.channel_combo = QComboBox()
@@ -480,17 +598,42 @@ class BoxcarAveragerWidget(QWidget):
         if ch_idx >= 0:
             self.channel_combo.setCurrentIndex(ch_idx)
         self.channel_combo.currentIndexChanged.connect(self.on_channel_changed)
-        controls_layout.addWidget(QLabel(tr("Channel:")), 0, 6)
-        controls_layout.addWidget(self.channel_combo, 0, 7)
+        settings_layout.addWidget(QLabel(tr("Channel:")), 0, 2)
+        settings_layout.addWidget(self.channel_combo, 0, 3)
 
-        # Gate Controls
-        # Parent this container so calling .show() during init can't create a
-        # transient top-level window (startup flash during module preload).
-        self.gate_group = QWidget(controls_group)
-        gate_layout = QHBoxLayout(self.gate_group)
-        gate_layout.setContentsMargins(0, 0, 0, 0)
+        # Row 1: Period, Block Samples
+        # Period
+        self.period_spin = QDoubleSpinBox()
+        self.period_spin.setRange(1, 10000)  # ms
+        self.period_spin.setValue(100)
+        self.period_spin.setSuffix(" ms")
+        self.period_spin.valueChanged.connect(self.on_period_changed)
+        settings_layout.addWidget(QLabel(tr("Period:")), 1, 0)
+        settings_layout.addWidget(self.period_spin, 1, 1)
 
-        self.gate_enable_chk = QCheckBox(tr("Gate"))
+        # Block
+        self.block_samples_spin = QDoubleSpinBox() # Using Double to allow large numbers, though we enforce int
+        self.block_samples_spin.setRange(1, 100_000_000) # Up to very large blocks
+        self.block_samples_spin.setDecimals(0)
+        self.block_samples_spin.setValue(4800) 
+        self.block_samples_spin.setSuffix(" spl")
+        self.block_samples_spin.valueChanged.connect(self.on_block_samples_changed)
+        settings_layout.addWidget(QLabel(tr("Block:")), 1, 2)
+        settings_layout.addWidget(self.block_samples_spin, 1, 3)
+
+        settings_group.setLayout(settings_layout)
+        layout.addWidget(settings_group)
+
+        # --- Gate & Sync Group ---
+        # Combine Gate and Sync into a horizontal layout of groups to save vertical space
+        bottom_layout = QHBoxLayout()
+
+        # Gate
+        self.gate_group = QGroupBox(tr("Gate"))
+        gate_layout = QHBoxLayout()
+        # gate_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.gate_enable_chk = QCheckBox(tr("Enable"))
         self.gate_enable_chk.setChecked(bool(self.module.gate_enabled))
         self.gate_enable_chk.toggled.connect(self.on_gate_enable_changed)
         gate_layout.addWidget(self.gate_enable_chk)
@@ -519,14 +662,13 @@ class BoxcarAveragerWidget(QWidget):
         gate_layout.addWidget(QLabel(tr("Width:")))
         gate_layout.addWidget(self.gate_width_spin)
 
-        # Gate controls on second row to keep width compact.
-        controls_layout.addWidget(self.gate_group, 1, 0, 1, 4)
+        self.gate_group.setLayout(gate_layout)
+        bottom_layout.addWidget(self.gate_group)
 
-        # External Sync Controls (Hidden by default)
-        # Same reasoning as gate_group: ensure a parent exists before hide/show.
-        self.ext_group = QWidget(controls_group)
-        ext_layout = QHBoxLayout(self.ext_group)
-        ext_layout.setContentsMargins(0, 0, 0, 0)
+        # External Sync
+        self.ext_group = QGroupBox(tr("External Sync"))
+        ext_layout = QHBoxLayout()
+        # ext_layout.setContentsMargins(0, 0, 0, 0)
 
         self.ref_combo = QComboBox()
         self.ref_combo.addItems([tr("Left"), tr("Right")])
@@ -538,6 +680,7 @@ class BoxcarAveragerWidget(QWidget):
         self.edge_combo = QComboBox()
         self.edge_combo.addItem(tr("Rising"), "Rising")
         self.edge_combo.addItem(tr("Falling"), "Falling")
+        self.edge_combo.addItem(tr("Free Run"), "Free Run")
         edge_idx = self.edge_combo.findData(self.module.trigger_edge)
         if edge_idx >= 0:
             self.edge_combo.setCurrentIndex(edge_idx)
@@ -553,19 +696,15 @@ class BoxcarAveragerWidget(QWidget):
         ext_layout.addWidget(QLabel(tr("Lvl:")))
         ext_layout.addWidget(self.trig_spin)
 
-        # External sync controls on second row.
-        controls_layout.addWidget(self.ext_group, 1, 4, 1, 4)
-        self.ext_group.hide()
-        # Gate controls are always visible (Pulse/Step/External).
-        self.gate_group.show()
+        self.ext_group.setLayout(ext_layout)
+        bottom_layout.addWidget(self.ext_group)
 
-        # Let combo/spin fields take remaining space when window is narrow.
-        controls_layout.setColumnStretch(3, 1)
-        controls_layout.setColumnStretch(5, 1)
-        controls_layout.setColumnStretch(7, 1)
+        # Hide ext group initially if needed
+        if "External" not in self.module.mode:
+            self.ext_group.hide()
 
-        controls_group.setLayout(controls_layout)
-        layout.addWidget(controls_group)
+        layout.addLayout(bottom_layout)
+
 
         # Plot
         self.plot = pg.PlotWidget(title=tr("Averaged Signal"))
@@ -608,8 +747,50 @@ class BoxcarAveragerWidget(QWidget):
     def on_period_changed(self, val):
         # val is ms
         sr = self.module.audio_engine.sample_rate
-        self.module.period_samples = int(val / 1000 * sr)
+        samples = int(val / 1000 * sr)
+        if samples < 1:
+            samples = 1
+
+        self.block_samples_spin.blockSignals(True)
+        self.block_samples_spin.setValue(samples)
+        self.block_samples_spin.blockSignals(False)
+
+        self.module.period_samples = samples
         self.module.reset_average()
+
+    def on_block_samples_changed(self, val):
+        # val is samples
+        samples = int(val)
+        if samples < 1:
+            samples = 1
+
+        sr = self.module.audio_engine.sample_rate
+        ms = (samples / sr) * 1000.0
+
+        self.period_spin.blockSignals(True)
+        self.period_spin.setValue(ms)
+        self.period_spin.blockSignals(False)
+
+        self.module.period_samples = samples
+        self.module.reset_average()
+
+    def on_int64_changed(self, checked):
+        self.module.use_int64 = checked
+        self.module.reset_average()
+
+    def on_export(self):
+        fname, selected_filter = QFileDialog.getSaveFileName(
+            self, tr("Export Averaged Data"), "average.wav", tr("WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)")
+        )
+        if not fname:
+            return
+
+        success, msg = self.module.export_to_file(fname)
+        if success:
+            QMessageBox.information(self, tr("Success"), msg)
+        else:
+            QMessageBox.critical(self, tr("Error"), tr("Failed to export:\n{0}").format(msg))
+
 
     def on_channel_changed(self, idx):
         val = self.channel_combo.itemData(idx)

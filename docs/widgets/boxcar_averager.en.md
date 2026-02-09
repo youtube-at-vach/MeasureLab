@@ -15,6 +15,8 @@ This widget has both an "Internal mode," which outputs test signals itself to sy
 
 - **Start / Stop Button**: Switches between starting and stopping measurement (integration).
 - **Reset Button**: Clears the integrated data up to now and restarts averaging from zero. Press this immediately after changing settings or moving the measurement target.
+- **Export Button**: Saves the averaged result as an audio file such as WAV.
+- **Int64 Accumulation Checkbox**: Performs accumulation using 64-bit integers. Useful when averaging a very large number of times or when extreme precision is required for minute signals (eliminates errors caused by floating-point precision).
 
 ### Graph Display
 
@@ -31,28 +33,27 @@ This widget has both an "Internal mode," which outputs test signals itself to sy
     - **Internal PRBS/MLS**: Uses pseudo-random signals (for special measurements).
     - **External Reference**: Averaging the signal of another channel using an external reference signal (such as a square wave) as a trigger.
 
-- **Period**
-    - Specifies the length of time to perform one averaging in milliseconds (ms).
+- **Period / Block (spl)**
+    - Specifies the length of time to perform one averaging in milliseconds (ms) or number of samples (spl).
+    - Changing one automatically calculates the other.
     - Set it to a length where the response of the measurement target is sufficiently contained. If it is too short, reverberation will overlap with the next cycle (aliasing).
 
 - **Channel (Measurement Channel)**
     - Select the input channel you want to measure (Stereo / Left / Right).
 
-### Gate Settings (Gate)
+### Gate & Sync Settings
 
-A function to limit the time range to be analyzed. Used when extracting only specific reflected sounds or reducing the processing load.
+Settings for limiting the analysis range and synchronizing with external signals.
 
-- **Gate Checkbox**: Turns the function ON/OFF.
-- **Start**: Sets the delay time from the start point of the cycle (t=0) to the actual start of recording.
-- **Width**: Sets the width (length) to be recorded.
+- **Gate**: A function to limit the time range to be analyzed. Used when extracting only specific reflected sounds or reducing the processing load.
+    - **Enable**: Turns the function ON/OFF.
+    - **Start**: Sets the delay time from the start point of the cycle (t=0) to the actual start of recording.
+    - **Width**: Sets the width (length) to be recorded.
 
-### External Sync Settings (External Sync)
-
-Displayed only when Mode is set to `External Reference`.
-
-- **Ref (Reference Channel)**: Select the channel (Left or Right) to be used as a trigger. Usually, a clean synchronization signal is input here.
-- **Edge**: Select whether to trigger on the **Rising** edge or the **Falling** edge.
-- **Lvl (Level)**: Sets the voltage level (threshold) for trigger determination.
+- **External Sync**: Displayed only when Mode is set to `External Reference`.
+    - **Ref (Reference Channel)**: Select the channel (Left or Right) to be used as a trigger.
+    - **Edge**: Select whether to trigger on the **Rising** edge, **Falling** edge, or **Free Run** (continuous capture without synchronization).
+    - **Lvl (Level)**: Sets the voltage level (threshold) for trigger determination.
 
 ## Usage Examples
 
