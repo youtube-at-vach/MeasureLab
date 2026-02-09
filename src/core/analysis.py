@@ -329,29 +329,8 @@ class AudioCalc:
         return thdn_db, fund_rms, nd_rms
 
     @staticmethod
-    def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
-        window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
-        windowed_data = audio_data * window
-        fft_result = fft_manager.rfft(windowed_data)
-        freqs = fft_manager.rfftfreq(len(audio_data), 1 / sampling_rate)
-
-        # Coherent gain correction
-        coherent_gain = np.sum(window) / len(window)
-
-        # Amplitude spectrum (Peak)
-        # rfft returns N/2+1 bins. Magnitude is |X|/N * 2 (except DC and Nyquist)
-        amplitude_spectrum = (np.abs(fft_result) / len(audio_data)) * 2 / coherent_gain
-
-        # Find Fundamental Peak
-        # Search near expected frequency
-        if len(freqs) > 1:
-            bin_width = freqs[1] - freqs[0]
-        else:
-            bin_width = 1.0
-
-        # Search near expected frequency
-        # Ensure window is wide enough for low freq (at least 5 bins)
-        search_window = max(0.15 * fundamental_freq, 5.0 * bin_width)
+    def _analyze_fundamental(freqs, amplitude_spectrum, fundamental_freq, search_window):
+        """Finds the fundamental frequency and amplitude."""
         idx_min = np.searchsorted(freqs, fundamental_freq - search_window)
         idx_max = np.searchsorted(freqs, fundamental_freq + search_window)
         if idx_max <= idx_min:
@@ -384,11 +363,13 @@ class AudioCalc:
                 # Optional: Refine amplitude estimate
                 # max_amplitude = beta - 0.25 * (alpha - gamma) * p
 
-        amp_dbfs = 20 * np.log10(max_amplitude + 1e-12)
+        return max_freq, max_amplitude
 
-        result = {"frequency": max_freq, "amplitude_dbfs": amp_dbfs, "max_amplitude": max_amplitude}
-
-        # Harmonics
+    @staticmethod
+    def _analyze_harmonics_list(
+        freqs, amplitude_spectrum, max_freq, max_amplitude, sampling_rate, search_window, min_db
+    ):
+        """Calculates harmonics properties."""
         harmonic_results = []
         harmonic_amplitudes_linear = []
 
@@ -414,16 +395,28 @@ class AudioCalc:
                 amp_db = 20 * np.log10(relative_amp + 1e-12)
 
                 harmonic_results.append(
-                    {"order": i, "frequency": h_freq, "amplitude_dbr": amp_db, "amplitude_linear": h_amp}
+                    {
+                        "order": i,
+                        "frequency": h_freq,
+                        "amplitude_dbr": amp_db,
+                        "amplitude_linear": h_amp,
+                    }
                 )
                 harmonic_amplitudes_linear.append(h_amp)
             else:
                 harmonic_results.append(
-                    {"order": i, "frequency": harmonic_freq, "amplitude_dbr": min_db, "amplitude_linear": 0}
+                    {
+                        "order": i,
+                        "frequency": harmonic_freq,
+                        "amplitude_dbr": min_db,
+                        "amplitude_linear": 0,
+                    }
                 )
+        return harmonic_results, harmonic_amplitudes_linear
 
-        # THD Calculation
-        # THD = sqrt(sum(harmonics^2)) / fundamental
+    @staticmethod
+    def _calculate_thd(max_amplitude, harmonic_amplitudes_linear, min_db):
+        """Calculates Total Harmonic Distortion (THD)."""
         if max_amplitude > 0:
             if harmonic_amplitudes_linear:
                 thd_linear = np.sqrt(np.sum(np.square(harmonic_amplitudes_linear))) / max_amplitude
@@ -434,17 +427,81 @@ class AudioCalc:
         else:
             thd_percent = 0
             thd_db = min_db
+        return thd_percent, thd_db
 
-        # THD+N Calculation (Sine Fit)
-        # Use raw audio_data (no window applied yet)
-        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(audio_data, sampling_rate, max_freq)
+    @staticmethod
+    def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq):
+        """Calculates THD+N and SINAD."""
+        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(
+            audio_data, sampling_rate, max_freq
+        )
         thdn_linear = 10 ** (thdn_db / 20)
 
         thdn_percent = thdn_linear * 100
         sinad_db = -thdn_db
+        return thdn_percent, thdn_db, sinad_db, fund_rms, res_rms
+
+    @staticmethod
+    def analyze_harmonics(
+        audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0
+    ):
+        window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
+        windowed_data = audio_data * window
+        fft_result = fft_manager.rfft(windowed_data)
+        freqs = fft_manager.rfftfreq(len(audio_data), 1 / sampling_rate)
+
+        # Coherent gain correction
+        coherent_gain = np.sum(window) / len(window)
+
+        # Amplitude spectrum (Peak)
+        # rfft returns N/2+1 bins. Magnitude is |X|/N * 2 (except DC and Nyquist)
+        amplitude_spectrum = (np.abs(fft_result) / len(audio_data)) * 2 / coherent_gain
+
+        # Determine search window
+        if len(freqs) > 1:
+            bin_width = freqs[1] - freqs[0]
+        else:
+            bin_width = 1.0
+
+        # Ensure window is wide enough for low freq (at least 5 bins)
+        search_window = max(0.15 * fundamental_freq, 5.0 * bin_width)
+
+        # 1. Find Fundamental Peak
+        max_freq, max_amplitude = AudioCalc._analyze_fundamental(
+            freqs, amplitude_spectrum, fundamental_freq, search_window
+        )
+
+        amp_dbfs = 20 * np.log10(max_amplitude + 1e-12)
+        basic_wave_result = {
+            "frequency": max_freq,
+            "amplitude_dbfs": amp_dbfs,
+            "max_amplitude": max_amplitude,
+        }
+
+        # 2. Harmonics
+        harmonic_results, harmonic_amplitudes_linear = AudioCalc._analyze_harmonics_list(
+            freqs,
+            amplitude_spectrum,
+            max_freq,
+            max_amplitude,
+            sampling_rate,
+            search_window,
+            min_db,
+        )
+
+        # 3. THD Calculation
+        thd_percent, thd_db = AudioCalc._calculate_thd(
+            max_amplitude, harmonic_amplitudes_linear, min_db
+        )
+
+        # 4. THD+N Calculation (Sine Fit)
+        # Use raw audio_data (no window applied yet)
+        thdn_percent, thdn_db, sinad_db, fund_rms, res_rms = (
+            AudioCalc._calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq)
+        )
 
         return {
-            "basic_wave": result,
+            "basic_wave": basic_wave_result,
             "harmonics": harmonic_results,
             "thd_percent": thd_percent,
             "thd_db": thd_db,
