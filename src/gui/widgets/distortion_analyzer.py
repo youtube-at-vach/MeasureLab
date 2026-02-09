@@ -441,6 +441,7 @@ class SweepWorker(QThread):
             self.module.reset_averaging_state()
             avg_count = max(1, self.module.average_count)
             final_result = None
+            results = None
 
             for _ in range(avg_count):
                 if not self.is_running:
@@ -472,6 +473,9 @@ class SweepWorker(QThread):
                      results["basic_wave"]["target_frequency"] = self.module.gen_frequency
 
                 final_result = self.module._apply_result_averaging(results)
+
+            if results is None:
+                continue
 
             if final_result:
                 results = final_result
