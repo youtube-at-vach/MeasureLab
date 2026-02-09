@@ -1075,5 +1075,10 @@
     "Count": "횟수",
     "Sample Rate": "샘플 속도",
     "Sync with Audio Engine": "오디오 엔진과 동기화",
-    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT 최적화 중... (크기 {0}) {1}/{2}"
+    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT 최적화 중... (크기 {0}) {1}/{2}",
+    "Simulation Rate:": "시뮬레이션 속도:",
+    "Virtual / Offline Mode": "가상 / 오프라인 모드",
+    "Virtual Audio (No Hardware)": "가상 오디오 (하드웨어 없음)",
+    "Virtual Loopback (Always On)": "가상 루프백 (항상 활성화)",
+    "In Virtual Mode, audio is always looped back.": "가상 모드에서는 오디오가 항상 루프백됩니다."
 }

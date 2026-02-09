@@ -794,6 +794,7 @@
     "I/O": "I/O",
     "IDLE": "アイドル",
     "IMD (dB):": "IMD (dB):",
+    "Virtual Loopback (Always On)": "仮想ループバック（常時有効）",
     "Idle": "待機中",
     "In: - | Out: -": "In: - | Out: -",
     "In: {0} | Out: {1}": "In: {0} | Out: {1}",
@@ -1064,5 +1065,9 @@
     "Count": "回数",
     "Sample Rate": "サンプリングレート",
     "Sync with Audio Engine": "オーディオエンジンと同期",
-    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT最適化中... (サイズ {0}) {1}/{2}"
+    "Optimizing FFT... (Size {0}) {1}/{2}": "FFT最適化中... (サイズ {0}) {1}/{2}",
+    "Simulation Rate:": "シミュレーションレート:",
+    "Virtual / Offline Mode": "仮想 / オフラインモード",
+    "Virtual Audio (No Hardware)": "仮想オーディオ (ハードウェアなし)",
+    "In Virtual Mode, audio is always looped back.": "仮想モードでは、オーディオは常にループバックされます。"
 }

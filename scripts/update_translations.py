@@ -17,7 +17,10 @@ MISSING_EN_KEYS = [
     "Sync with Audio Engine",
     "Optimizing FFT... (Size {0}) {1}/{2}",
     "Saving optimization results... {0}/{1}",
-    "Done {0}/{1}"
+    "Done {0}/{1}",
+    "Simulation Rate:",
+    "Virtual / Offline Mode",
+    "Virtual Audio (No Hardware)"
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)

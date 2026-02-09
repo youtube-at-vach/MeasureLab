@@ -797,6 +797,8 @@
     "I/O": "I/O",
     "IDLE": "IDLE",
     "IMD (dB):": "IMD (dB):",
+    "Virtual Loopback (Always On)": "Virtual Loopback (Always On)",
+    "In Virtual Mode, audio is always looped back.": "In Virtual Mode, audio is always looped back.",
     "Idle": "Idle",
     "In: - | Out: -": "In: - | Out: -",
     "In: {0} | Out: {1}": "In: {0} | Out: {1}",
@@ -1057,5 +1059,8 @@
     "Tolerance (Sigma):": "Tolerance (Sigma):",
     "Sample Rate": "Sample Rate",
     "Sync with Audio Engine": "Sync with Audio Engine",
-    "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizing FFT... (Size {0}) {1}/{2}"
+    "Optimizing FFT... (Size {0}) {1}/{2}": "Optimizing FFT... (Size {0}) {1}/{2}",
+    "Simulation Rate:": "Simulation Rate:",
+    "Virtual / Offline Mode": "Virtual / Offline Mode",
+    "Virtual Audio (No Hardware)": "Virtual Audio (No Hardware)"
 }

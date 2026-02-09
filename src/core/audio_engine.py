@@ -7,6 +7,108 @@ import sounddevice as sd
 from src.core.calibration import CalibrationManager
 
 
+import time
+
+class VirtualStream:
+    """
+    Simulates a sounddevice.Stream for offline/virtual mode.
+    Driven by a timer to approximate real-time processing.
+    """
+
+    def __init__(self, samplerate, blocksize, channels, callback):
+        self.samplerate = samplerate
+        self.blocksize = blocksize
+        if isinstance(channels, int):
+            self.channels = (channels, channels)
+        else:
+            self.channels = channels  # (in, out)
+        self.callback = callback
+        self.active = False
+        self.cpu_load = 0.0
+        self._stop_event = threading.Event()
+        self._thread = None
+
+    def start(self):
+        if self.active:
+            return
+        self.active = True
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        if not self.active:
+            return
+        self.active = False
+        self._stop_event.set()
+        if self._thread:
+            self._thread.join(timeout=1.0)
+            self._thread = None
+
+    def close(self):
+        self.stop()
+
+    def _run_loop(self):
+        interval = self.blocksize / self.samplerate
+        # Pre-allocate buffers
+        indata = np.zeros((self.blocksize, self.channels[0]), dtype="float32")
+        outdata = np.zeros((self.blocksize, self.channels[1]), dtype="float32")
+
+        next_call_time = time.time()
+
+        while self.active and not self._stop_event.is_set():
+            t = time.time()
+            # Drift correction: if we are falling behind, catch up just a bit, but don't spiral
+            if t > next_call_time + 0.1:
+                next_call_time = t
+
+            # Sleep until next Tick
+            to_sleep = next_call_time - t
+            if to_sleep > 0:
+                time.sleep(to_sleep)
+
+            next_call_time += interval
+
+            # Call callback
+            try:
+                # status=0 for all good
+                getattr(sd, "CallbackTime", lambda: 0)()  # Dummy or approximation
+                # We need a proper CData struct for time if we strictly follow sd type, 
+                # but usually python callbacks just access attributes. 
+                # Let's mock a simple object if needed, or just pass an object.
+                # sd.Stream callback signature: (indata, outdata, frames, time, status)
+                # time is CData {inputBufferAdcTime, outputBufferDacTime, ...}
+                # For virtual, we can pass a dummy object or None if the app handles it safely.
+                # AudioEngine uses `time`? Checking... `cb(logical_in, client_out, frames, time, status)`
+                # The callback in AudioEngine is `master_callback`. It passes `time` through to clients.
+                # Let's pass a dummy object.
+
+                class DummyTime:
+                    inputBufferAdcTime = t
+                    outputBufferDacTime = t + interval
+                    currentTime = t
+
+                status = sd.CallbackFlags()
+
+                self.callback(indata, outdata, self.blocksize, DummyTime(), status)
+
+                # In Virtual Mode, `indata` is usually zeros, UNLESS the callback filled it?
+                # master_callback expects indata from "Hardware". 
+                # In our loopback logic enforced in master_callback:
+                # "If Loopback is enabled, use the last output buffer as input"
+                # So master_callback logic handles the copying from outdata -> internal buffer.
+                # So we just pass fresh zero indata every time. 
+                # BUT, `outdata` is written to by master_callback. 
+                # Next iteration `indata` is still zeros. 
+                # The Loopback logic in master_callback uses `self.last_output_buffer` which persists on `self`.
+                # So we are good.
+
+            except Exception as e:
+                print(f"VirtualStream Error: {e}")
+                # Don't crash thread, just log
+                pass
+
+
 class AudioEngine:
     """
     Handles audio I/O operations using sounddevice.
@@ -24,6 +126,9 @@ class AudioEngine:
         # PipeWire/JACK resident mode: keep PortAudio stream open for the app lifetime.
         self.pipewire_jack_resident = False
         self.jack_client_name = "MeasureLab"
+
+        # Offline / Virtual Mode
+        self.offline_mode = False
 
         # Calibration
         self.calibration = CalibrationManager()
@@ -74,6 +179,18 @@ class AudioEngine:
         if not has_clients:
             self.stop_stream()
 
+    def set_offline_mode(self, enabled: bool):
+        """Enable/disable offline (virtual) mode."""
+        if self.offline_mode == enabled:
+            return
+
+        self.offline_mode = enabled
+        self.logger.info(f"Set offline mode: {enabled}")
+
+        # Restart stream if active to switch backend
+        if self.is_active():
+            self._restart_stream()
+
     def set_loopback(self, enabled):
         self.loopback = enabled
         self.logger.info(f"Set software loopback: {enabled}")
@@ -88,6 +205,12 @@ class AudioEngine:
         We enrich PortAudio device info with a human-readable host API name
         (e.g. ASIO/WASAPI/DirectSound on Windows) to make UI selection clearer.
         """
+        # If offline mode, maybe return a dummy list or let UI handle it?
+        # The plan says "Disable/Hide Input and Output Device selectors" in UI.
+        # So we can keep this standard for when not in offline mode, 
+        # or return a specific virtual device list if needed.
+        # For now, let's keep standard behavior so user can see hardware even if offline is checked (though controls disabled).
+
         devices = sd.query_devices()
 
         # Try to attach host API names; fall back to raw device dicts on error.
@@ -193,7 +316,7 @@ class AudioEngine:
             self.stop_stream()
 
     def _start_master_stream(self):
-        """Starts the underlying sounddevice stream."""
+        """Starts the underlying sounddevice stream or VirtualStream."""
         if self.stream is not None:
             return
 
@@ -218,7 +341,15 @@ class AudioEngine:
             # Map Hardware Input -> Logical Input (Stereo usually, or as requested)
 
             # If Loopback is enabled, use the last output buffer as input
-            if self.loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
+            # Works same for Virtual and Hardware: 
+            # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
+            # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
+            # If Loopback is enabled OR we are in Offline Mode (where there is no other input),
+            # use the last output buffer as input.
+            # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
+            # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
+            use_loopback = self.loopback or self.offline_mode
+            if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
                 # We use the mixed output from the previous block
                 # last_output_buffer is (frames, logical_out_ch)
                 # We need to map it to logical_in (frames, 2)
@@ -262,7 +393,7 @@ class AudioEngine:
 
             if not active_callbacks:
                 # Even if no callbacks, we might need to update last_output_buffer (silence)
-                if self.loopback:
+                if use_loopback:
                     if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
                         self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
                     else:
@@ -298,7 +429,7 @@ class AudioEngine:
                 mix_buffer += client_out
 
             # Store for next loopback cycle
-            if self.loopback:
+            if use_loopback:
                 if self.last_output_buffer is None or self.last_output_buffer.shape != mix_buffer.shape:
                     self.last_output_buffer = np.empty_like(mix_buffer)
                 np.copyto(self.last_output_buffer, mix_buffer)
@@ -318,35 +449,45 @@ class AudioEngine:
             # If muted, outdata is already 0 filled at start of callback
 
         try:
-            extra_settings = None
-            # If running on JACK (including PipeWire-JACK), attempt to fix the client/node name.
-            try:
-                hostapi_name = None
-                dev_id = self.output_device
-                if dev_id is None:
-                    # Fallback to default output device.
-                    dev_id = sd.default.device[1]
-                if dev_id is not None and dev_id != -1:
-                    hostapi_idx = sd.query_devices(dev_id).get("hostapi")
-                    if hostapi_idx is not None:
-                        hostapi_name = sd.query_hostapis(hostapi_idx).get("name")
-                if hostapi_name and "jack" in str(hostapi_name).lower():
-                    extra_settings = sd.JackSettings(client_name=self.jack_client_name)
-            except Exception:
+            if self.offline_mode:
+                self.stream = VirtualStream(
+                    samplerate=self.sample_rate,
+                    blocksize=self.block_size,
+                    channels=(hw_in_ch, hw_out_ch),
+                    callback=master_callback
+                )
+                self.stream.start()
+                self.logger.info(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
+            else:
                 extra_settings = None
+                # If running on JACK (including PipeWire-JACK), attempt to fix the client/node name.
+                try:
+                    hostapi_name = None
+                    dev_id = self.output_device
+                    if dev_id is None:
+                        # Fallback to default output device.
+                        dev_id = sd.default.device[1]
+                    if dev_id is not None and dev_id != -1:
+                        hostapi_idx = sd.query_devices(dev_id).get("hostapi")
+                        if hostapi_idx is not None:
+                            hostapi_name = sd.query_hostapis(hostapi_idx).get("name")
+                    if hostapi_name and "jack" in str(hostapi_name).lower():
+                        extra_settings = sd.JackSettings(client_name=self.jack_client_name)
+                except Exception:
+                    extra_settings = None
 
-            self.stream = sd.Stream(
-                device=(self.input_device, self.output_device),
-                samplerate=self.sample_rate,
-                blocksize=self.block_size,
-                callback=master_callback,
-                channels=(hw_in_ch, hw_out_ch),
-                dtype="float32",
-                latency="high",
-                extra_settings=extra_settings,
-            )
-            self.stream.start()
-            self.logger.info(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
+                self.stream = sd.Stream(
+                    device=(self.input_device, self.output_device),
+                    samplerate=self.sample_rate,
+                    blocksize=self.block_size,
+                    callback=master_callback,
+                    channels=(hw_in_ch, hw_out_ch),
+                    dtype="float32",
+                    latency="high",
+                    extra_settings=extra_settings,
+                )
+                self.stream.start()
+                self.logger.info(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
         except Exception as e:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.
@@ -391,6 +532,7 @@ class AudioEngine:
 
         return {
             "active": active,
+            "offline_mode": self.offline_mode,
             "input_channels": self.input_channel_mode,
             "output_channels": self.output_channel_mode,
             "sample_rate": self.sample_rate,

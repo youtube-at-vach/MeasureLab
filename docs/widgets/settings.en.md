@@ -43,6 +43,8 @@ Selects the input and output devices to be used.
 ### Audio Configuration
 
 * **PipeWire / JACK Mode (Resident)**: Enable when using PipeWire or JACK in a Linux environment. If checked, the audio engine continues to operate even if all widgets are closed, and the routing connection in an external patchbay (such as Graph) is maintained.
+* **Virtual / Offline Mode**: Enables the virtual audio driver. Use this when no physical audio interface is available. You can load audio files and analyze them as if they were coming from an input device.
+* **Simulation Rate**: Sets the sampling rate for the Virtual Mode. This setting is only visible when Virtual Mode is enabled.
 * **Sample Rate**: Selects the sampling frequency (e.g., 48000Hz, 192000Hz). A sampling rate as high as possible is recommended for high-precision measurement.
 * **Buffer Optimization**: Selects the optimization level of the buffer size according to the application.
     * **FAST / MINIMUM**: Reduces latency, but sound may be interrupted under high load.
