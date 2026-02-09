@@ -9,6 +9,16 @@ from src.core.calibration import CalibrationManager
 
 import time
 
+
+class _DummyTime:
+    """Helper class to mock sounddevice time object in virtual stream."""
+
+    def __init__(self, t, interval):
+        self.inputBufferAdcTime = t
+        self.outputBufferDacTime = t + interval
+        self.currentTime = t
+
+
 class VirtualStream:
     """
     Simulates a sounddevice.Stream for offline/virtual mode.
@@ -84,14 +94,9 @@ class VirtualStream:
                 # The callback in AudioEngine is `master_callback`. It passes `time` through to clients.
                 # Let's pass a dummy object.
 
-                class DummyTime:
-                    inputBufferAdcTime = t
-                    outputBufferDacTime = t + interval
-                    currentTime = t
-
                 status = sd.CallbackFlags()
 
-                self.callback(indata, outdata, self.blocksize, DummyTime(), status)
+                self.callback(indata, outdata, self.blocksize, _DummyTime(t, interval), status)
 
                 # In Virtual Mode, `indata` is usually zeros, UNLESS the callback filled it?
                 # master_callback expects indata from "Hardware". 
