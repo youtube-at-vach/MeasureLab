@@ -2,7 +2,6 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from src.gui.widgets.hrtf_player import HRTFPlayer
-from src.core.analysis import AudioCalc
 
 class MockInfo:
     def __init__(self, frames, samplerate, channels):
