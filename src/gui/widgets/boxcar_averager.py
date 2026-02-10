@@ -1,4 +1,3 @@
-import argparse
 import time
 
 import numpy as np
@@ -91,9 +90,6 @@ class BoxcarAverager(MeasurementModule):
     @property
     def description(self) -> str:
         return "High-precision signal averaging for transient analysis."
-
-    def run(self, args: argparse.Namespace):
-        print("Boxcar Averager CLI not implemented")
 
     def get_widget(self):
         return BoxcarAveragerWidget(self)
