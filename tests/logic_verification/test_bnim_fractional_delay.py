@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from src.gui.widgets.bnim_meter import BNIMMeter
 
 class TestBNIMFractionalDelay:
