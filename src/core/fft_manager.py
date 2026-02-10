@@ -94,6 +94,15 @@ class FFTManager:
         except Exception as e:
             logger.error(f"Failed to save wisdom: {e}")
 
+    def _get_dtype_str(self, dtype):
+        """
+        Returns "float32" if dtype is single precision (float32 or complex64),
+        otherwise returns "float64".
+        """
+        if dtype == np.float32 or dtype == np.complex64:
+            return "float32"
+        return "float64"
+
     def get_plan(self, size, dtype="float64", flags=("FFTW_ESTIMATE",), direction="FFTW_FORWARD"):
         """
         Get or create an FFT plan for the given size.
@@ -180,10 +189,7 @@ class FFTManager:
         """
         size = len(data)
         # Determine dtype
-        if data.dtype == np.float32:
-            dtype_str = "float32"
-        else:
-            dtype_str = "float64"  # Default for generic types
+        dtype_str = self._get_dtype_str(data.dtype)
 
         if HAS_PYFFTW:
             # fast default: ESTIMATE
@@ -223,10 +229,7 @@ class FFTManager:
             n = 2 * (len(data) - 1)
 
         # Check dtype compatibility
-        if data.dtype == np.complex64:
-            dtype_str = "float32"
-        else:
-            dtype_str = "float64"
+        dtype_str = self._get_dtype_str(data.dtype)
 
         if HAS_PYFFTW:
             plan_entry = self.get_plan(n, dtype_str, flags=("FFTW_ESTIMATE",), direction="FFTW_BACKWARD")
