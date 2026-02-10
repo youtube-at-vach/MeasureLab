@@ -222,8 +222,8 @@ def test_frequency_correction_interpolation(cal_manager, tmp_path):
     mag, phase = cal_manager.get_frequency_correction(20000)
     assert mag == -10.0
 
-def test_frequency_map_security(cal_manager, tmp_path):
-    """Test that loading files outside the config directory is rejected."""
+def test_frequency_map_load_external(cal_manager, tmp_path):
+    """Test that loading files outside the config directory is allowed."""
     # Create a file in a separate temp directory that is not a child of tmp_path
     with tempfile.TemporaryDirectory() as unsafe_dir:
         unsafe_map = os.path.join(unsafe_dir, "unsafe.json")
@@ -231,8 +231,8 @@ def test_frequency_map_security(cal_manager, tmp_path):
         with open(unsafe_map, "w") as f:
             json.dump(data, f)
 
-        # Should be rejected because it is not inside tmp_path (where config_path is)
-        assert cal_manager.load_frequency_map(unsafe_map) is False
+        # Should be allowed (restriction removed)
+        assert cal_manager.load_frequency_map(unsafe_map) is True
 
 def test_no_frequency_map(cal_manager):
     """Test behavior when no frequency map is loaded."""
