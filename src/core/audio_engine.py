@@ -350,11 +350,30 @@ class AudioEngine:
             return
 
         # Determine hardware channels needed based on mode
-        in_mode = self.input_channel_mode
-        out_mode = self.output_channel_mode
+        in_mode_str = self.input_channel_mode
+        out_mode_str = self.output_channel_mode
 
-        hw_in_ch = 2 if in_mode in ["right", "stereo"] else 1
-        hw_out_ch = 2 if out_mode in ["right", "stereo"] else 1
+        # Performance Optimization: Pre-calculate mode integers to avoid string comparison in callback
+        MODE_STEREO = 0
+        MODE_LEFT = 1
+        MODE_RIGHT = 2
+
+        if in_mode_str == "left":
+            in_mode = MODE_LEFT
+        elif in_mode_str == "right":
+            in_mode = MODE_RIGHT
+        else:
+            in_mode = MODE_STEREO
+
+        if out_mode_str == "left":
+            out_mode = MODE_LEFT
+        elif out_mode_str == "right":
+            out_mode = MODE_RIGHT
+        else:
+            out_mode = MODE_STEREO
+
+        hw_in_ch = 2 if in_mode_str in ["right", "stereo"] else 1
+        hw_out_ch = 2 if out_mode_str in ["right", "stereo"] else 1
 
         # Reset loopback buffer
         self.last_output_buffer = None
@@ -404,9 +423,9 @@ class AudioEngine:
                     logical_in.fill(0)
             else:
                 # Standard Hardware Input Mapping
-                if in_mode == "left":
+                if in_mode == MODE_LEFT:
                     logical_in = indata[:, 0:1]
-                elif in_mode == "right":
+                elif in_mode == MODE_RIGHT:
                     if indata.shape[1] >= 2:
                         logical_in = indata[:, 1:2]
                     else:
@@ -415,7 +434,7 @@ class AudioEngine:
                     logical_in = indata[:, 0:2]
 
             # Create a temp output buffer for clients
-            logical_out_ch = 2 if out_mode == "stereo" else 1
+            logical_out_ch = 2 if out_mode == MODE_STEREO else 1
 
             # Use cached callbacks (atomic read)
             active_callbacks = self._cached_callbacks
@@ -465,13 +484,13 @@ class AudioEngine:
 
             # Map Logical Output -> Hardware Output
             if not self.mute_output:
-                if out_mode == "stereo":
+                if out_mode == MODE_STEREO:
                     outdata[:, 0:2] = mix_buffer
-                elif out_mode == "left":
+                elif out_mode == MODE_LEFT:
                     outdata[:, 0:1] = mix_buffer
                     if outdata.shape[1] > 1:
                         outdata[:, 1:] = 0
-                elif out_mode == "right":
+                elif out_mode == MODE_RIGHT:
                     if outdata.shape[1] >= 2:
                         outdata[:, 1:2] = mix_buffer
                         outdata[:, 0] = 0
