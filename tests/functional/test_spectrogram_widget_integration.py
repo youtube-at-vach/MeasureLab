@@ -33,7 +33,7 @@ def test_spectrogram_widget_update():
     # Initialize Widget
     # NOTE: Widget init might reset buffers (via fft_combo signals), so we create it before populating data
     widget = SpectrogramWidget(module)
-    
+
     # Fill audio buffer with some data so update_spectrogram has something to process
     # audio_buffer shape is (fft_size*2, 2)
     t = np.linspace(0, 1024/48000, 1024, endpoint=False)
