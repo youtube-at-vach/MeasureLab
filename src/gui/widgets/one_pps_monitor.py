@@ -623,7 +623,9 @@ class OnePPSMonitorWidget(QWidget):
         # For f_meas = f_ref * (1 + delta), factor = 1 / (1 + delta) approx 1 - delta.
         # Wait, the Frequency Counter uses: new_factor = target / avg_raw.
         # So we should use the same here:
-        new_factor = 1.0 / (1.0 + current_ppm / 1e6)
+
+        # this is answer. above comments are wrong.
+        new_factor = (1.0 + current_ppm / 1e6)
         
         # ACTUALLY, to align with the user's observation that it's "like a reciprocal",
         # let's use the exact same formula: f_ref / f_meas.
