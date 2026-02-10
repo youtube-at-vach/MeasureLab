@@ -78,28 +78,28 @@ class ConfigManager:
         """Loads configuration from JSON file."""
         if not os.path.exists(self.config_path):
             self.logger.info("No config file found, creating default.")
-            config = self._default_config()
+            config = self._create_initial_config()
+        else:
+            try:
+                with open(self.config_path, "r") as f:
+                    loaded = json.load(f)
+                config = self._merge_with_defaults(loaded)
+            except Exception as e:
+                self.logger.error(f"Failed to load config: {e}")
+                config = self._default_config()
 
-            # Auto-detect language on first run
-            detected_lang = self._detect_system_language()
-            if detected_lang:
-                config["language"] = detected_lang
-                self.logger.info(f"Auto-detected language: {detected_lang}")
+        self._ensure_screenshot_dir(config)
+        return config
 
-            self._ensure_screenshot_dir(config)
-            return config
-
-        try:
-            with open(self.config_path, "r") as f:
-                loaded = json.load(f)
-            config = self._merge_with_defaults(loaded)
-            self._ensure_screenshot_dir(config)
-            return config
-        except Exception as e:
-            self.logger.error(f"Failed to load config: {e}")
-            config = self._default_config()
-            self._ensure_screenshot_dir(config)
-            return config
+    def _create_initial_config(self):
+        """Creates default configuration with auto-detected language."""
+        config = self._default_config()
+        # Auto-detect language on first run
+        detected_lang = self._detect_system_language()
+        if detected_lang:
+            config["language"] = detected_lang
+            self.logger.info(f"Auto-detected language: {detected_lang}")
+        return config
 
     def _flush_config(self):
         """Internal method to immediately write config to disk."""
