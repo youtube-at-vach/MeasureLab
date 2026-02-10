@@ -97,3 +97,199 @@ def test_bandpass_filter_nyquist_handling():
     filtered_neg = AudioCalc.bandpass_filter(signal, sampling_rate, lowcut=-100.0, highcut=1000.0)
     assert len(filtered_neg) == len(signal)
     assert not np.array_equal(filtered_neg, signal)
+
+def test_lowpass_filter_attenuation():
+    """Verify that frequencies above the cutoff are attenuated."""
+    sampling_rate = 48000
+    duration = 0.1
+    t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
+
+    # Low freq: 100 Hz (well below 1000 Hz cutoff)
+    low_freq_signal = np.sin(2 * np.pi * 100 * t)
+    # High freq: 5000 Hz (well above 1000 Hz cutoff)
+    high_freq_signal = np.sin(2 * np.pi * 5000 * t)
+
+    # Filter with 1000 Hz cutoff
+    filtered_low = AudioCalc.lowpass_filter(low_freq_signal, sampling_rate, cutoff=1000.0)
+    filtered_high = AudioCalc.lowpass_filter(high_freq_signal, sampling_rate, cutoff=1000.0)
+
+    # Check RMS values
+    trim = int(sampling_rate * 0.01)
+
+    def get_rms(sig):
+        return np.sqrt(np.mean(sig[trim:-trim]**2))
+
+    rms_low = get_rms(filtered_low)
+    rms_high = get_rms(filtered_high)
+
+    orig_rms_low = np.sqrt(np.mean(low_freq_signal**2))
+    orig_rms_high = np.sqrt(np.mean(high_freq_signal**2))
+
+    # Expect significant attenuation for high freq
+    assert rms_high < orig_rms_high * 0.1, f"High frequency not attenuated enough: {rms_high} vs {orig_rms_high}"
+    # Expect preservation for low freq
+    assert rms_low > orig_rms_low * 0.9, f"Low frequency attenuated too much: {rms_low} vs {orig_rms_low}"
+
+
+def test_lowpass_filter_short_signal():
+    """Verify that signals shorter than 28 samples are returned as is."""
+    sampling_rate = 48000
+
+    # Test with exactly 27 samples
+    signal = np.zeros(27)
+    filtered = AudioCalc.lowpass_filter(signal, sampling_rate, cutoff=1000.0)
+    assert np.array_equal(filtered, signal)
+
+    # Test with shorter signal
+    signal = np.zeros(10)
+    filtered = AudioCalc.lowpass_filter(signal, sampling_rate, cutoff=1000.0)
+    assert np.array_equal(filtered, signal)
+
+
+def test_lowpass_filter_edge_cases():
+    """Verify behavior with edge cases."""
+    sampling_rate = 48000
+    signal = np.random.randn(1000)
+
+    # Case: cutoff > nyquist
+    filtered = AudioCalc.lowpass_filter(signal, sampling_rate, cutoff=sampling_rate + 1000.0)
+    assert len(filtered) == len(signal)
+    # Should not crash
+
+    # Case: cutoff <= 0
+    filtered = AudioCalc.lowpass_filter(signal, sampling_rate, cutoff=-100.0)
+    assert len(filtered) == len(signal)
+    # Should not crash
+
+
+def test_highpass_filter_attenuation():
+    """Verify that frequencies below the cutoff are attenuated."""
+    sampling_rate = 48000
+    duration = 0.1
+    t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
+
+    # Low freq: 100 Hz (well below 1000 Hz cutoff)
+    low_freq_signal = np.sin(2 * np.pi * 100 * t)
+    # High freq: 5000 Hz (well above 1000 Hz cutoff)
+    high_freq_signal = np.sin(2 * np.pi * 5000 * t)
+
+    # Filter with 1000 Hz cutoff
+    filtered_low = AudioCalc.highpass_filter(low_freq_signal, sampling_rate, cutoff=1000.0)
+    filtered_high = AudioCalc.highpass_filter(high_freq_signal, sampling_rate, cutoff=1000.0)
+
+    # Check RMS values
+    trim = int(sampling_rate * 0.01)
+
+    def get_rms(sig):
+        return np.sqrt(np.mean(sig[trim:-trim]**2))
+
+    rms_low = get_rms(filtered_low)
+    rms_high = get_rms(filtered_high)
+
+    orig_rms_low = np.sqrt(np.mean(low_freq_signal**2))
+    orig_rms_high = np.sqrt(np.mean(high_freq_signal**2))
+
+    # Expect significant attenuation for low freq
+    assert rms_low < orig_rms_low * 0.1, f"Low frequency not attenuated enough: {rms_low} vs {orig_rms_low}"
+    # Expect preservation for high freq
+    assert rms_high > orig_rms_high * 0.9, f"High frequency attenuated too much: {rms_high} vs {orig_rms_high}"
+
+
+def test_highpass_filter_short_signal():
+    """Verify that signals shorter than 28 samples are returned as is."""
+    sampling_rate = 48000
+
+    # Test with exactly 27 samples
+    signal = np.zeros(27)
+    filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=1000.0)
+    assert np.array_equal(filtered, signal)
+
+    # Test with shorter signal
+    signal = np.zeros(10)
+    filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=1000.0)
+    assert np.array_equal(filtered, signal)
+
+
+def test_highpass_filter_edge_cases():
+    """Verify behavior with edge cases."""
+    sampling_rate = 48000
+    signal = np.random.randn(1000)
+
+    # Case: cutoff > nyquist
+    filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=sampling_rate + 1000.0)
+    assert len(filtered) == len(signal)
+    # Should not crash
+
+    # Case: cutoff <= 0
+    filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=-100.0)
+    assert len(filtered) == len(signal)
+    # Should not crash
+
+
+def test_notch_filter_attenuation():
+    """Verify that the target frequency is attenuated."""
+    sampling_rate = 48000
+    duration = 0.2
+    t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
+
+    # Target freq: 1000 Hz
+    target_signal = np.sin(2 * np.pi * 1000 * t)
+    # Other freq: 500 Hz (far enough from 1000 Hz)
+    other_signal = np.sin(2 * np.pi * 500 * t)
+
+    # Filter at 1000 Hz
+    filtered_target = AudioCalc.notch_filter(target_signal, sampling_rate, target_frequency=1000.0, quality_factor=30)
+    filtered_other = AudioCalc.notch_filter(other_signal, sampling_rate, target_frequency=1000.0, quality_factor=30)
+
+    # Check RMS values
+    trim = int(sampling_rate * 0.05) # More trim for notch settling?
+
+    def get_rms(sig):
+        return np.sqrt(np.mean(sig[trim:-trim]**2))
+
+    rms_target = get_rms(filtered_target)
+    rms_other = get_rms(filtered_other)
+
+    orig_rms_target = np.sqrt(np.mean(target_signal**2))
+    orig_rms_other = np.sqrt(np.mean(other_signal**2))
+
+    # Expect significant attenuation for target freq (>20dB)
+    assert rms_target < orig_rms_target * 0.1, f"Target frequency not attenuated enough: {rms_target} vs {orig_rms_target}"
+    # Expect preservation for other freq
+    assert rms_other > orig_rms_other * 0.9, f"Other frequency attenuated too much: {rms_other} vs {orig_rms_other}"
+
+
+def test_notch_filter_short_signal():
+    """Verify that signals shorter than 16 samples are returned as is."""
+    sampling_rate = 48000
+
+    # Test with exactly 15 samples
+    signal = np.zeros(15)
+    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=1000.0)
+    assert np.array_equal(filtered, signal)
+
+    # Test with shorter signal
+    signal = np.zeros(10)
+    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=1000.0)
+    assert np.array_equal(filtered, signal)
+
+def test_notch_filter_edge_cases():
+    """Verify behavior with edge cases."""
+    sampling_rate = 48000
+    signal = np.random.randn(1000)
+
+    # Case: target <= 0
+    # Should probably not crash, or raise specific error?
+    # Current implementation doesn't check.
+    # But w0 will be <= 0.
+    # butter might raise error.
+    try:
+        AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
+    except ValueError:
+        pass
+
+    # Case: target > nyquist
+    try:
+        AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate)
+    except ValueError:
+        pass
