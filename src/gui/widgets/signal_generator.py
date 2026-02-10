@@ -70,7 +70,7 @@ class SignalParameters:
     lpf_enabled: bool = False
     lpf_freq: float = 20000.0
     lpf_order: int = 4
-    
+
     hpf_enabled: bool = False
     hpf_freq: float = 20.0
     hpf_order: int = 4
@@ -393,14 +393,14 @@ class SignalGenerator(MeasurementModule):
         try:
             order = params.lpf_order if filter_type == "low" else params.hpf_order
             freq = params.lpf_freq if filter_type == "low" else params.hpf_freq
-            
+
             # Constraint check
             if freq <= 0 or freq >= sample_rate / 2:
                 return None
-            
+
             sos = scipy.signal.butter(order, freq, btype=filter_type, fs=sample_rate, output='sos')
             return sos
-        except Exception as e:
+        except Exception:
             # logger.warning(f"Filter calculation failed: {e}")
             return None
 
@@ -464,21 +464,21 @@ class SignalGenerator(MeasurementModule):
 
                 env = 1.0 + m * np.sin(am_phase)
                 return x * env
-            
+
             def _filter_apply(x: np.ndarray) -> np.ndarray:
                 """Apply LPF/HPF if enabled."""
                 if scipy is None:
                     return x
 
                 y = x
-                
+
                 # Apply LPF
                 if params.lpf_enabled:
                     sos = self._get_filter_sos(params, "low", sample_rate)
                     if sos is not None:
                         if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
                              params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0 # Start from 0
-                        
+
                         y, params._lpf_zi = scipy.signal.sosfilt(sos, y, zi=params._lpf_zi)
 
                 # Apply HPF
@@ -487,9 +487,9 @@ class SignalGenerator(MeasurementModule):
                     if sos is not None:
                         if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
                              params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
-                        
+
                         y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
-                
+
                 return y
 
             signal = np.zeros(frames)
@@ -1194,14 +1194,15 @@ class SignalGeneratorWidget(QWidget):
 
     def _create_options_tabs(self):
         tabs = QTabWidget()
-        tabs.addTab(self._create_filter_tab(), tr("Filters (BPF)"))
         tabs.addTab(self._create_sweep_tab(), tr("Sweep"))
         tabs.addTab(self._create_am_tab(), tr("AM"))
         tabs.addTab(self._create_fm_tab(), tr("FM"))
         tabs.addTab(self._create_pm_tab(), tr("ΦM"))
+        tabs.addTab(self._create_lpf_tab(), tr("LPF"))
+        tabs.addTab(self._create_hpf_tab(), tr("HPF"))
         return tabs
 
-    def _create_filter_tab(self):
+    def _create_lpf_tab(self):
         filter_widget = QWidget()
         layout = QVBoxLayout(filter_widget)
 
@@ -1228,6 +1229,15 @@ class SignalGeneratorWidget(QWidget):
 
         lpf_group.setLayout(lpf_layout)
 
+        layout.addWidget(lpf_group)
+        layout.addStretch()
+
+        return filter_widget
+
+    def _create_hpf_tab(self):
+        filter_widget = QWidget()
+        layout = QVBoxLayout(filter_widget)
+
         # HPF Group
         hpf_group = QGroupBox(tr("High Pass Filter (HPF)"))
         hpf_group.setCheckable(True)
@@ -1251,7 +1261,6 @@ class SignalGeneratorWidget(QWidget):
 
         hpf_group.setLayout(hpf_layout)
 
-        layout.addWidget(lpf_group)
         layout.addWidget(hpf_group)
         layout.addStretch()
 
