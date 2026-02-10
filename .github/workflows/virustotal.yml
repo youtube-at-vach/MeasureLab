@@ -77,7 +77,7 @@ jobs:
             exit 1
           fi
           
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Download Release Assets
         env:
