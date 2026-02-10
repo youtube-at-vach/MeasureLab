@@ -267,7 +267,8 @@ class SpectrogramWidget(QWidget):
         # Colormap
         settings_layout.addWidget(QLabel(tr("Colormap:")), 1, 0)
         self.cmap_combo = QComboBox()
-        self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "cividis", "turbo"])
+        self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "turbo", "thermal", "flame", "yellowy", "bipolar", "spectrum", "cyclic"])
+        self.cmap_combo.setCurrentText("turbo")
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
         settings_layout.addWidget(self.cmap_combo, 1, 1)
 
@@ -333,7 +334,7 @@ class SpectrogramWidget(QWidget):
         self.hist.sigLookupTableChanged.connect(lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512)))
 
         # Set default colormap
-        self.hist.gradient.loadPreset("viridis")
+        self.hist.gradient.loadPreset("turbo")
         self.hist.setLevels(-120, 0)  # Default dB range
 
         return self.win
