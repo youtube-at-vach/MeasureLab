@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import MagicMock
 import sys
 import os
-import numpy as np
 
 # Ensure src is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
