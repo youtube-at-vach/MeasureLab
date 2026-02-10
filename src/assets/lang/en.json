@@ -28,7 +28,6 @@
     "Last: {freq:.0f} Hz, {itd:+.3f} ms": "Last: {freq:.0f} Hz, {itd:+.3f} ms",
     "Timecode Monitor & Generator": "Timecode Monitor & Generator",
     "LTC (Linear Timecode) Reader and Generator.": "LTC (Linear Timecode) Reader and Generator.",
-    "Timecode Monitor running in CLI mode (not fully implemented)": "Timecode Monitor running in CLI mode (not fully implemented)",
     "CH Δ (R-L): --": "CH Δ (R-L): --",
     "CH Δ (R-L): {0} fr ({1} ms)": "CH Δ (R-L): {0} fr ({1} ms)",
     "Gen Out: --:--:--:--": "Gen Out: --:--:--:--",
