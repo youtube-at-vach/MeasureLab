@@ -28,7 +28,6 @@
     "Last: {freq:.0f} Hz, {itd:+.3f} ms": "Last: {freq:.0f} Hz, {itd:+.3f} ms",
     "Timecode Monitor & Generator": "Timecode Monitor & Generator",
     "LTC (Linear Timecode) Reader and Generator.": "LTC (Linear Timecode) Reader and Generator.",
-    "Timecode Monitor running in CLI mode (not fully implemented)": "Timecode Monitor running in CLI mode (not fully implemented)",
     "CH Δ (R-L): --": "CH Δ (R-L): --",
     "CH Δ (R-L): {0} fr ({1} ms)": "CH Δ (R-L): {0} fr ({1} ms)",
     "Gen Out: --:--:--:--": "Gen Out: --:--:--:--",
@@ -1077,5 +1076,14 @@
     "External Sync": "External Sync",
     "Failed to export:\n{0}": "Failed to export:\n{0}",
     "Int64 Accumulation": "Int64 Accumulation",
-    "Use 64-bit integers for accumulation (zero precision loss)": "Use 64-bit integers for accumulation (zero precision loss)"
+    "Use 64-bit integers for accumulation (zero precision loss)": "Use 64-bit integers for accumulation (zero precision loss)",
+    "A-Weighted": "A-Weighted",
+    "Calibrate from Current": "Calibrate from Current",
+    "Calibration saved.": "Calibration saved.",
+    "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?": "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?",
+    "Monitor is not running.": "Monitor is not running.",
+    "No data available.": "No data available.",
+    "Not enough data to calibrate. Please wait.": "Not enough data to calibrate. Please wait.",
+    "Stored 1PPS Cal: 0.000 ppm": "Stored 1PPS Cal: 0.000 ppm",
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Stored 1PPS Cal: {0:+.3f} ppm"
 }

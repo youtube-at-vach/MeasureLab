@@ -1095,5 +1095,14 @@
     "External Sync": "Externe Synchronisation",
     "Failed to export:\n{0}": "Export fehlgeschlagen:\n{0}",
     "Int64 Accumulation": "Int64-Akkumulation",
-    "Use 64-bit integers for accumulation (zero precision loss)": "64-Bit-Ganzzahlen für die Akkumulation verwenden (kein Präzisionsverlust)"
+    "Use 64-bit integers for accumulation (zero precision loss)": "64-Bit-Ganzzahlen für die Akkumulation verwenden (kein Präzisionsverlust)",
+    "A-Weighted": "A-bewertet",
+    "Calibrate from Current": "Akt. Wert kalib.",
+    "Calibration saved.": "Kalib. gespeichert.",
+    "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?": "Gemessene Abweichung: {0:+.3f} ppm\n\nDies setzt den 1PPS-Kalibrierungsparameter.\nHinweis: Dies wirkt sich nicht auf die Frequenzzähler-Kalibrierung aus.\n\nKalibrierung speichern?",
+    "Monitor is not running.": "Monitor läuft nicht.",
+    "No data available.": "Keine Daten.",
+    "Not enough data to calibrate. Please wait.": "Nicht genug Daten. Bitte warten.",
+    "Stored 1PPS Cal: 0.000 ppm": "Gesp. 1PPS Cal: 0.000 ppm",
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Gesp. 1PPS Cal: {0:+.3f} ppm"
 }
