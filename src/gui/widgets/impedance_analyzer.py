@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.utils import format_si, resource_path
@@ -297,7 +298,7 @@ class ImpedanceAnalyzer(MeasurementModule):
 
         t = np.arange(n) / sr
         # Window the projections to reduce spectral leakage when we don't have an integer number of cycles.
-        w = np.hanning(n)
+        w = get_cached_window("hann", n)
         w_mean = float(np.mean(w))
         if not np.isfinite(w_mean) or w_mean <= 0.0:
             w_mean = 1.0
