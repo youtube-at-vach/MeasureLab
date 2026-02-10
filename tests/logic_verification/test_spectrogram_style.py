@@ -27,7 +27,9 @@ def test_spectrogram_style():
     mock_qt_widgets.QWidget = MockQWidget
     mock_qt_widgets.QPushButton = MagicMock()
     mock_qt_widgets.QApplication = MagicMock()
-    mock_qt_widgets.QComboBox = MagicMock()
+    mock_qt_widgets.QComboBox = MagicMock
+    mock_qt_widgets.QComboBox.findText = MagicMock(return_value=-1)
+    mock_qt_widgets.QComboBox.count = MagicMock(return_value=0)
     mock_qt_widgets.QGroupBox = MagicMock()
     mock_qt_widgets.QHBoxLayout = MagicMock()
     mock_qt_widgets.QVBoxLayout = MagicMock()
