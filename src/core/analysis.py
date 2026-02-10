@@ -125,7 +125,7 @@ class AudioCalc:
         lowcut = max(0.1, lowcut)
         highcut = min(nyquist - 1, highcut)
         if lowcut >= highcut:
-            return signal
+            return np.zeros_like(signal)
 
         # Wn must be a tuple to be hashable for lru_cache
         Wn = (lowcut / nyquist, highcut / nyquist)
@@ -161,11 +161,23 @@ class AudioCalc:
             return signal
 
         nyquist = 0.5 * sampling_rate
+        if target_frequency <= 0 or target_frequency >= nyquist:
+            return signal
+
         w0 = target_frequency / nyquist
         bandwidth = w0 / quality_factor
 
+        # Validate resulting filter poles
+        # bandwidth is normalized (0-1 range approx, relative to nyquist)
+        # The critical frequencies for bandstop are w0 - bw/2 and w0 + bw/2
+        w_low = w0 - bandwidth / 2
+        w_high = w0 + bandwidth / 2
+
+        if w_low <= 0 or w_high >= 1:
+            return signal
+
         # Wn must be a tuple to be hashable for lru_cache
-        Wn = (w0 - bandwidth / 2, w0 + bandwidth / 2)
+        Wn = (w_low, w_high)
         sos = _get_butter_sos(2, Wn, "bandstop")
         return sosfiltfilt(sos, signal)
 

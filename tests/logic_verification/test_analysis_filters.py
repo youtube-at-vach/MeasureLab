@@ -69,12 +69,36 @@ def test_bandpass_filter_invalid_bounds():
     signal = np.random.randn(1000)
 
     # Case 1: lowcut >= highcut
-    # Should return original signal
+    # Should return silence (zeros) as passband is empty
     filtered = AudioCalc.bandpass_filter(signal, sampling_rate, lowcut=5000.0, highcut=100.0)
-    assert np.array_equal(filtered, signal)
+    assert np.allclose(filtered, 0)
 
     # Case 2: lowcut = highcut
     filtered = AudioCalc.bandpass_filter(signal, sampling_rate, lowcut=1000.0, highcut=1000.0)
+    assert np.allclose(filtered, 0)
+
+def test_notch_filter_safety():
+    """Verify safety with invalid notch parameters."""
+    sampling_rate = 48000
+    signal = np.random.randn(1000)
+
+    # Case 1: Target > Nyquist
+    # Should return original signal (bypass)
+    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=30000.0)
+    assert np.array_equal(filtered, signal)
+
+    # Case 2: Target <= 0
+    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
+    assert np.array_equal(filtered, signal)
+
+    # Case 3: Bandwidth causes Nyquist violation
+    # Target 23900, Q=0.1 -> Bandwidth very large, upper > 24000
+    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=23900.0, quality_factor=0.1)
+    assert np.array_equal(filtered, signal)
+
+    # Case 4: Bandwidth causes DC violation
+    # Target 100, Q=0.1 -> Bandwidth very large, lower < 0
+    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=100.0, quality_factor=0.1)
     assert np.array_equal(filtered, signal)
 
 def test_bandpass_filter_nyquist_handling():
