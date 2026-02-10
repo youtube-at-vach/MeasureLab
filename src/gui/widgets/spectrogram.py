@@ -21,7 +21,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.analysis import get_cached_window
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
-from src.core.fft_manager import fft_manager
+from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
 
@@ -242,7 +242,7 @@ class SpectrogramWidget(QWidget):
         # FFT Size
         row1_layout.addWidget(QLabel(tr("FFT Size:")))
         self.fft_combo = QComboBox()
-        self.fft_combo.addItems(["512", "1024", "2048", "4096", "8192"])
+        self.update_available_fft_sizes(0)  # Initial: Fast
         self.fft_combo.setCurrentText(str(self.module.fft_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_changed)
         row1_layout.addWidget(self.fft_combo)
@@ -334,6 +334,39 @@ class SpectrogramWidget(QWidget):
 
         return self.win
 
+    def update_available_fft_sizes(self, speed_index):
+        current_text = self.fft_combo.currentText()
+        self.fft_combo.blockSignals(True)
+        self.fft_combo.clear()
+
+        # Fast (Realtime) -> Limit to 8192
+        # Others -> Use WARMUP_SIZES (up to 65536)
+        if speed_index == 0:
+            sizes = [str(s) for s in WARMUP_SIZES if s <= 8192]
+        else:
+            sizes = [str(s) for s in WARMUP_SIZES]
+
+        self.fft_combo.addItems(sizes)
+
+        # Restore selection if possible
+        index = self.fft_combo.findText(current_text)
+        if index >= 0:
+            self.fft_combo.setCurrentIndex(index)
+        else:
+            # If current selection is invalid (e.g. was 16384 and switched to Fast), select max available or default
+             # Try to select 2048 as default, or last item
+            def_idx = self.fft_combo.findText("2048")
+            if def_idx >= 0:
+                self.fft_combo.setCurrentIndex(def_idx)
+            else:
+                self.fft_combo.setCurrentIndex(self.fft_combo.count() - 1)
+
+             # Explicitly trigger change since we changed value
+            if self.fft_combo.currentText() != current_text:
+                self.on_fft_changed(self.fft_combo.currentText())
+
+        self.fft_combo.blockSignals(False)
+
     def on_toggle(self, checked):
         if checked:
             self.module.start_analysis()
@@ -359,6 +392,7 @@ class SpectrogramWidget(QWidget):
         self.hist.gradient.loadPreset(val)
 
     def on_speed_changed(self, idx):
+        self.update_available_fft_sizes(idx)
         self.module.sweep_speed_index = idx
         # Reset accumulator on speed change to avoid mixing
         self.module.accumulator = None
