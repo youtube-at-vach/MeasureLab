@@ -562,6 +562,10 @@ class Oscilloscope(MeasurementModule):
 
 
 class OscilloscopeWidget(QWidget):
+    # View constants
+    VIEW_Y_MIN = -1.1
+    VIEW_Y_MAX = 1.1
+
     def __init__(self, module: Oscilloscope):
         super().__init__()
         self.module = module
@@ -622,7 +626,7 @@ class OscilloscopeWidget(QWidget):
         # Hide Y-axis labels as they are confusing (showing raw FS instead of calibrated Volts)
         self.plot_widget.getPlotItem().getAxis("left").setStyle(showValues=False)
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
-        self.plot_widget.setYRange(-1.1, 1.1)
+        self.plot_widget.setYRange(self.VIEW_Y_MIN, self.VIEW_Y_MAX)
         self.plot_widget.showGrid(x=True, y=True)
 
         self.curve_l = self.plot_widget.plot(pen=pg.mkPen("#00ff00", width=2), name=tr("Left"))
@@ -645,18 +649,8 @@ class OscilloscopeWidget(QWidget):
         self.cursor_2.setVisible(False)
 
         # Persistence Images
-        # We need two images for L/R or composited.
-        # Let's use two ImageItems, one for each channel with different colors (Green/Red).
-        # We'll use CompositionMode to blend them? pg.ImageItem doesn't support easy blending on top of each other easily without opacity.
-        # Alternatively, we calculate the RGB image manually and display one ImageItem.
         # Let's start with one RGB ImageItem for simplicity of display, we'll compose the heatmap in update_plot.
         self.persistence_img = pg.ImageItem()
-        # Scale to match plot:
-        # X: range derived from timebase.
-        # Y: range -1.1 to 1.1?
-        # We need to setRect dynamically or fixed? Oscilloscope scales change.
-        # We will update setRect in update_plot or when timebase/scale changes?
-        # For now, just add it, hide it.
         self.plot_widget.addItem(self.persistence_img)
         self.persistence_img.setVisible(False)
         self.persistence_img.setZValue(0)  # Behind cursors
@@ -1316,10 +1310,10 @@ class OscilloscopeWidget(QWidget):
                 # Binning
                 w, h = self.module.heatmap_size
                 # X Range: 0 to window_duration
-                # Y Range: Fixed -1.1 to 1.1 (Plot View)
+                # Y Range: Fixed (Plot View)
                 # Note: We bin SCALED data.
 
-                rng = [[0, window_duration], [-1.1, 1.1]]
+                rng = [[0, window_duration], [self.VIEW_Y_MIN, self.VIEW_Y_MAX]]
 
                 if self.module.show_left:
                     self.module._accumulate_heatmap(
@@ -1387,7 +1381,9 @@ class OscilloscopeWidget(QWidget):
                 )
 
                 self.persistence_img.setImage(self._rgba_buffer, autoLevels=False)
-                self.persistence_img.setRect(pg.QtCore.QRectF(0, -1.1, window_duration, 2.2))
+                self.persistence_img.setRect(
+                    pg.QtCore.QRectF(0, self.VIEW_Y_MIN, window_duration, self.VIEW_Y_MAX - self.VIEW_Y_MIN)
+                )
 
                 # Hide curves
                 self.curve_l.setVisible(False)
