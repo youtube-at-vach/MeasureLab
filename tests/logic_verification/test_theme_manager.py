@@ -98,7 +98,7 @@ class TestThemeManager(unittest.TestCase):
         if 'src.core.theme_manager' in sys.modules:
             importlib.reload(sys.modules['src.core.theme_manager'])
         else:
-            import src.core.theme_manager
+            importlib.import_module('src.core.theme_manager')
 
         self.module_under_test = sys.modules['src.core.theme_manager']
         self.ThemeManager = self.module_under_test.ThemeManager
