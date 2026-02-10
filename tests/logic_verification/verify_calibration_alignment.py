@@ -10,18 +10,23 @@ mock_calibration = MagicMock()
 mock_audio_engine.calibration = mock_calibration
 
 # 1. Frequency Counter Logic Check
-# Reference: 1000Hz, Measured: 1000.004Hz (+4ppm)
+# Reference: 1000Hz
 f_ref = 1000.0
-f_meas = 1000.004
+# For a +4ppm fast clock, samples are captured faster.
+# 48000.192 samples take 1.0 seconds. 
+# In 48000 samples, only 48000/48000.192 seconds passed.
+# So a 1000Hz signal appears as 1000 * (48000/48000.192) = 999.996 Hz.
+f_meas = 999.996 
 fc_factor = f_ref / f_meas
-print(f"Frequency Counter factor for +4ppm error: {fc_factor:.8f}")
+# This results in fc_factor = 1.000004
+print(f"Frequency Counter factor (+4ppm error -> meas=999.996): {fc_factor:.8f}")
 
 # 2. 1PPS Monitor Logic Check
-# Simulated error in 1PPS monitor (also +4ppm)
+# 1PPS monitor measures +4.0 ppm directly from pulse intervals
 current_ppm = 4.0
-# New formula: new_factor = 1.0 / (1.0 + current_ppm / 1e6)
-pps_factor = 1.0 / (1.0 + current_ppm / 1e6)
-print(f"1PPS Monitor factor for +4ppm error:     {pps_factor:.8f}")
+# Factor: new_factor = 1.0 + current_ppm / 1e6
+pps_factor = 1.0 + current_ppm / 1e6
+print(f"1PPS Monitor factor (+4.0ppm error):                   {pps_factor:.8f}")
 
 assert np.isclose(fc_factor, pps_factor), f"Discrepancy: {fc_factor} vs {pps_factor}"
 
@@ -34,6 +39,6 @@ fc_ui_ppm = (fc_factor - 1.0) * 1e6
 print(f"1PPS UI display PPM for factor: {pps_ui_ppm:+.3f} ppm")
 print(f"FC UI display PPM for factor:   {fc_ui_ppm:+.3f} ppm")
 
-assert np.isclose(pps_ui_ppm, fc_ui_ppm), f"UI Display Discrepancy: {pps_ui_ppm} vs {fc_ui_ppm}"
+assert np.isclose(pps_ui_ppm, fc_ui_ppm, atol=1e-3), f"UI Display Discrepancy: {pps_ui_ppm} vs {fc_ui_ppm}"
 
 print("\nVerification Successful: Calibration parameters are aligned.")

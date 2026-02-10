@@ -615,23 +615,13 @@ class OnePPSMonitorWidget(QWidget):
         # Here, `current_ppm` describes how much the measured signal deviates from nominal.
         # If signal is 1PPS (1Hz), and we measure 1 + delta, we want to multiply by 1/(1+delta) to get 1.
         
-        # Factor definition: Corrected_Freq = Raw_Freq * Factor
-        # Here, `current_ppm` describes how much the measured signal deviates from nominal.
-        # If signal is 1PPS (1Hz), and we measure 1 + delta, we want to multiply by 1/(1+delta) to get 1.
-        # However, the user wants the dimensions to match Frequency Counter, where:
-        # factor = f_ref / f_meas
-        # For f_meas = f_ref * (1 + delta), factor = 1 / (1 + delta) approx 1 - delta.
-        # Wait, the Frequency Counter uses: new_factor = target / avg_raw.
-        # So we should use the same here:
-
-        # this is answer. above comments are wrong.
+        # Factor acting as multiplier: Corrected_Freq = Measured_Freq * Factor
+        # For a fast sampling clock (positive ppm), measured signal appears at a LOWER
+        # frequency than reality when using nominal rate.
+        # ppm = (Actual_Rate / Nominal_Rate - 1) * 1e6
+        # Corrected_Rate = Nominal_Rate * (1 + ppm/1e6)
+        # So we multiply measured frequency by (1 + ppm/1e6) to get true frequency.
         new_factor = (1.0 + current_ppm / 1e6)
-        
-        # ACTUALLY, to align with the user's observation that it's "like a reciprocal",
-        # let's use the exact same formula: f_ref / f_meas.
-        # current_ppm = (f_meas / f_ref - 1) * 1e6
-        # -> f_meas / f_ref = 1 + current_ppm / 1e6
-        # -> f_ref / f_meas = 1 / (1 + current_ppm / 1e6)
         
         # 3. Confirmation Dialog
         ret = QMessageBox.question(
