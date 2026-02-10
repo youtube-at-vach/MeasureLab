@@ -38,7 +38,7 @@ class Spectrogram(MeasurementModule):
         self.channel_mode = "Left"  # 'Left', 'Right', 'Average'
         self.history_length = 500  # Number of time steps to keep
         self.sweep_speed_index = 0  # 0: Fast, 1: Medium, 2: Slow, 3: Meteor
-        self.min_freq = 0
+        self.min_freq = 20
         self.max_freq = 20000  # Default, will be updated by UI or sample rate
 
         # State
