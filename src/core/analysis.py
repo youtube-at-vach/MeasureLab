@@ -250,24 +250,113 @@ class AudioCalc:
         # Pass 1: Coarse Search (Grid Search)
         # Avoid local minima (side lobes) by evaluating on a grid
         # Main lobe width is approx 2 * bin_width. Step size of bin_width/2 guarantees hitting it.
-        step = max(bin_width / 2.0, 0.1) # at least 0.1Hz step
+        step = max(bin_width / 2.0, 0.1)  # at least 0.1Hz step
         if bounds[1] > bounds[0]:
             grid = np.arange(bounds[0], bounds[1] + step, step)
         else:
             grid = np.array([freq_guess])
 
-        best_mse = float('inf')
+        # Filter negative frequencies
+        grid = grid[grid > 0]
+
         best_coarse = freq_guess
 
-        # Vectorization would be faster but get_residual_mse uses lstsq which is not easily vectorized over freq
-        for f in grid:
-            # Skip negative frequencies
-            if f <= 0:
-                continue
-            mse = get_residual_mse(f)
-            if mse < best_mse:
-                best_mse = mse
-                best_coarse = f
+        if len(grid) > 0:
+            # Vectorized implementation of grid search
+            # We want to minimize Residual MSE = mean((signal - fitted)^2)
+            # This is equivalent to maximizing the energy of the projection of signal onto the basis.
+            # Basis at freq f: [sin(2pi*f*t), cos(2pi*f*t), 1]
+            # We solve M_f.T @ M_f @ x = M_f.T @ signal for x
+            # Then score = x.T @ (M_f.T @ signal) = x.T @ v_f
+
+            K = len(grid)
+            # Accumulators for sufficient statistics
+            # G terms: s2, c2, sc, s, c (sum of squares/products)
+            acc_G = np.zeros((K, 5), dtype=np.float64)
+            # v terms: sig_s, sig_c (dot products with signal)
+            acc_v = np.zeros((K, 2), dtype=np.float64)
+
+            # Constant term for the '1' column
+            sum_sig = np.sum(signal)
+
+            # Chunked processing to limit memory usage
+            # 16384 * 8 bytes * K (approx 20) is small enough for L2 cache
+            chunk_size = 16384
+
+            # Pre-compute constants
+            two_pi = 2 * np.pi
+
+            for i in range(0, N, chunk_size):
+                end = min(i + chunk_size, N)
+                t_chunk = t[i:end]
+                sig_chunk = signal[i:end]
+
+                # Compute phases: (K, chunk_len)
+                # Outer product: grid (K,) * t_chunk (chunk_len,)
+                phases = np.outer(grid, t_chunk) * two_pi
+
+                s_chunk = np.sin(phases)
+                c_chunk = np.cos(phases)
+
+                # Update G accumulators
+                acc_G[:, 0] += np.sum(s_chunk**2, axis=1)
+                acc_G[:, 1] += np.sum(c_chunk**2, axis=1)
+                acc_G[:, 2] += np.sum(s_chunk * c_chunk, axis=1)
+                acc_G[:, 3] += np.sum(s_chunk, axis=1)
+                acc_G[:, 4] += np.sum(c_chunk, axis=1)
+
+                # Update v accumulators
+                # s_chunk @ sig_chunk -> (K, chunk) @ (chunk,) -> (K,)
+                acc_v[:, 0] += s_chunk @ sig_chunk
+                acc_v[:, 1] += c_chunk @ sig_chunk
+
+            # Solve small linear systems for each frequency
+            best_score = -1.0
+
+            # Reusing arrays for system solution
+            G = np.empty((3, 3), dtype=np.float64)
+            v = np.empty(3, dtype=np.float64)
+
+            # Fill constant part of G
+            G[2, 2] = N
+            v[2] = sum_sig
+
+            for k in range(K):
+                s2, c2, sc, s_sum, c_sum = acc_G[k]
+                sig_s, sig_c = acc_v[k]
+
+                G[0, 0] = s2
+                G[0, 1] = sc
+                G[0, 2] = s_sum
+                G[1, 0] = sc
+                G[1, 1] = c2
+                G[1, 2] = c_sum
+                G[2, 0] = s_sum
+                G[2, 1] = c_sum
+                # G[2, 2] is N (set outside loop)
+
+                v[0] = sig_s
+                v[1] = sig_c
+                # v[2] is sum_sig (set outside loop)
+
+                try:
+                    # Solve Gx = v
+                    # x = inv(G) * v
+                    # score = x.T * v
+
+                    # solve is generally faster/more stable than explicit inv
+                    # But for 3x3, maybe overhead is dominated by Python?
+                    # Batch solving might be faster but K is small (20-100).
+                    x = np.linalg.solve(G, v)
+                    score = np.dot(x, v)
+                except np.linalg.LinAlgError:
+                    # Fallback for singular matrix
+                    x, _, _, _ = np.linalg.lstsq(G, v, rcond=None)
+                    score = np.dot(x, v)
+
+                if score > best_score:
+                    best_score = score
+                    best_coarse = grid[k]
 
         # Pass 2: Fine Search (Zoom in)
         # Use bounded minimization around the best grid point
