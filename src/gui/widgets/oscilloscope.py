@@ -565,6 +565,8 @@ class OscilloscopeWidget(QWidget):
     def __init__(self, module: Oscilloscope):
         super().__init__()
         self.module = module
+        self._rgba_buffer = None
+        self._clip_buffer = None
         self.init_ui()
 
         self.timer = QTimer()
@@ -1363,27 +1365,28 @@ class OscilloscopeWidget(QWidget):
                 # If ImageItem expects data[x, y], then we are good.
 
                 w, h = self.module.heatmap_size
-                rgba = np.zeros((w, h, 4), dtype=np.ubyte)
+                if self._rgba_buffer is None or self._rgba_buffer.shape[:2] != (w, h):
+                    self._rgba_buffer = np.zeros((w, h, 4), dtype=np.ubyte)
+                    self._clip_buffer = np.empty((w, h), dtype=self.module.heatmap_l.dtype)
 
                 # Clip and map to 0-255
                 # Green (Left)
-                l_val = np.clip(self.module.heatmap_l, 0, 255).astype(np.ubyte)
+                np.clip(self.module.heatmap_l, 0, 255, out=self._clip_buffer)
+                self._rgba_buffer[..., 1] = self._clip_buffer.astype(np.ubyte)
+
                 # Red (Right)
-                r_val = np.clip(self.module.heatmap_r, 0, 255).astype(np.ubyte)
+                np.clip(self.module.heatmap_r, 0, 255, out=self._clip_buffer)
+                self._rgba_buffer[..., 0] = self._clip_buffer.astype(np.ubyte)
 
-                rgba[..., 0] = r_val  # R
-                rgba[..., 1] = l_val  # G
-                # B is 0
-                # Alpha: Max of L/R? Or just opaque blocks?
-                # If Alpha is 0, it's transparent.
-                # We want black background?
-                # Plot background is Black.
-                # So we can set Alpha = Max(R, G).
+                # B is 0 (untouched from init)
+                # Alpha: Max of L/R
+                np.maximum(
+                    self._rgba_buffer[..., 1],
+                    self._rgba_buffer[..., 0],
+                    out=self._rgba_buffer[..., 3],
+                )
 
-                alpha = np.maximum(l_val, r_val)
-                rgba[..., 3] = alpha
-
-                self.persistence_img.setImage(rgba, autoLevels=False)
+                self.persistence_img.setImage(self._rgba_buffer, autoLevels=False)
                 self.persistence_img.setRect(pg.QtCore.QRectF(0, -1.1, window_duration, 2.2))
 
                 # Hide curves
