@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -505,6 +506,19 @@ class OnePPSMonitorWidget(QWidget):
 
         vbox_display.addWidget(plot_group)
 
+        # Calibration
+        cal_group = QGroupBox(tr("Calibration"))
+        cal_vbox = QVBoxLayout(cal_group)
+
+        self.lbl_stored_cal = QLabel(tr("Stored 1PPS Cal: 0.000 ppm"))
+        cal_vbox.addWidget(self.lbl_stored_cal)
+
+        self.btn_calibrate = QPushButton(tr("Calibrate from Current"))
+        self.btn_calibrate.clicked.connect(self._on_calibrate_clicked)
+        cal_vbox.addWidget(self.btn_calibrate)
+
+        vbox_display.addWidget(cal_group)
+
 
         # Stats
         self.lbl_count = QLabel("Count: -")
@@ -550,8 +564,82 @@ class OnePPSMonitorWidget(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        self._update_calibration_label()
         if self.chk_sync_rate.isChecked():
             self._sync_sample_rate()
+
+    def _update_calibration_label(self):
+        cal = self.module.audio_engine.calibration.frequency_calibration_1pps
+        # Factor acting as multiplier: Corrected = Raw * Factor
+        # So PPM error in factor is (factor - 1.0) * 1e6
+        ppm = (cal - 1.0) * 1e6
+        self.lbl_stored_cal.setText(tr("Stored 1PPS Cal: {0:+.3f} ppm").format(ppm))
+
+    def _on_calibrate_clicked(self):
+        # 1. Get current Cumulative PPM
+        # We need a valid measurement
+        if not self.module.is_running:
+             QMessageBox.warning(self, tr("Error"), tr("Monitor is not running."))
+             return
+
+        # Check if we have enough history/warmup
+        count = self.module.get_pulse_count()
+        if count < self.module.warmup_count * 2:
+             QMessageBox.warning(self, tr("Error"), tr("Not enough data to calibrate. Please wait."))
+             return
+
+        # Get last cumulative PPM
+        t, ip, cp = self.module.get_history_arrays()
+        if len(cp) == 0:
+             QMessageBox.warning(self, tr("Error"), tr("No data available."))
+             return
+
+        current_ppm = cp[-1] # This is the "measured error" in ppm
+
+        # 2. Calculate new calibration factor
+        # The logic is: We measured 'current_ppm' error with the CURRENT system.
+        # This implies the system clock is off by that amount (or the source is).
+        # We assume the source (1PPS) is perfect.
+        # So we want to correct the system so that THIS signal reads 0 ppm.
+
+        # Factor definition: Corrected_Freq = Raw_Freq * Factor
+        # Corresponds to: Corrected_PPM = Raw_PPM - Calibration_PPM (approx)
+
+        # Exact math:
+        # We want Corrected_Freq = Nominal
+        # Currently: Measured_Freq = Nominal * (1 + current_ppm/1e6)
+        # But Measured_Freq is derived from samples.
+        # Correction Factor should scale the SAMPLE RATE or the FREQUENCY?
+        # In `frequency_counter.py`, precise_freq = detected_freq * factor.
+
+        # Here, `current_ppm` describes how much the measured signal deviates from nominal.
+        # If signal is 1PPS (1Hz), and we measure 1 + delta, we want to multiply by 1/(1+delta) to get 1.
+
+        # Factor acting as multiplier: Corrected_Freq = Measured_Freq * Factor
+        # For a fast sampling clock (positive ppm), measured signal appears at a LOWER
+        # frequency than reality when using nominal rate.
+        # ppm = (Actual_Rate / Nominal_Rate - 1) * 1e6
+        # Corrected_Rate = Nominal_Rate * (1 + ppm/1e6)
+        # So we multiply measured frequency by (1 + ppm/1e6) to get true frequency.
+        new_factor = (1.0 + current_ppm / 1e6)
+
+        # 3. Confirmation Dialog
+        ret = QMessageBox.question(
+            self,
+            tr("Confirm Calibration"),
+            tr(
+                "Current Measured Deviation: {0:+.3f} ppm\n\n"
+                "This will set the 1PPS calibration parameter.\n"
+                "Note: This does not affect the Frequency Counter calibration.\n\n"
+                "Save this calibration?"
+            ).format(current_ppm),
+             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if ret == QMessageBox.StandardButton.Yes:
+            self.module.audio_engine.calibration.set_frequency_calibration_1pps(new_factor)
+            self._update_calibration_label()
+            QMessageBox.information(self, tr("Success"), tr("Calibration saved."))
 
     def _sync_sample_rate(self):
         engine_sr = float(self.module.audio_engine.sample_rate)

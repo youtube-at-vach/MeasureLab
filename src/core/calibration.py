@@ -20,6 +20,7 @@ class CalibrationManager:
         # Used to decide when to offer voltage-based UI controls.
         self.output_gain_is_calibrated = False
         self.frequency_calibration = 1.0  # Multiplier for frequency correction
+        self.frequency_calibration_1pps = 1.0  # Independent 1PPS-derived calibration
         self.lockin_gain_offset = 0.0  # dB offset for Lock-in Amplifier
         # SPL calibration: maps measured (C-weighted) dBFS to SPL.
         # Stored as an offset: SPL[dB] = dBFS_C + spl_offset_db.
@@ -45,6 +46,7 @@ class CalibrationManager:
                         except Exception:
                             self.output_gain_is_calibrated = False
                     self.frequency_calibration = data.get("frequency_calibration", 1.0)
+                    self.frequency_calibration_1pps = data.get("frequency_calibration_1pps", 1.0)
                     self.lockin_gain_offset = data.get("lockin_gain_offset", 0.0)
 
                     # New format
@@ -76,11 +78,23 @@ class CalibrationManager:
                 self.logger.error("Failed to load calibration: %s", e)
 
     def save(self):
+        # Synchronize current settings to the active profile if one is selected
+        if self.last_profile and self.last_profile in self.profiles:
+            p = self.profiles[self.last_profile]
+            p["input_sensitivity"] = self.input_sensitivity
+            p["output_gain"] = self.output_gain
+            p["output_gain_is_calibrated"] = bool(self.output_gain_is_calibrated)
+            p["frequency_calibration"] = self.frequency_calibration
+            p["frequency_calibration_1pps"] = self.frequency_calibration_1pps
+            p["lockin_gain_offset"] = self.lockin_gain_offset
+            p["spl_offset_db"] = self.spl_offset_db
+
         data = {
             "input_sensitivity": self.input_sensitivity,
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": bool(self.output_gain_is_calibrated),
             "frequency_calibration": self.frequency_calibration,
+            "frequency_calibration_1pps": self.frequency_calibration_1pps,
             "lockin_gain_offset": self.lockin_gain_offset,
             # Keep a single SPL calibration value.
             "spl_offset_db": self.spl_offset_db,
@@ -143,6 +157,11 @@ class CalibrationManager:
         self.frequency_calibration = factor
         self.save()
 
+    def set_frequency_calibration_1pps(self, factor):
+        """Sets the 1PPS-derived frequency calibration factor (multiplier)."""
+        self.frequency_calibration_1pps = factor
+        self.save()
+
     def set_last_profile(self, name):
         """Sets the last selected profile name."""
         self.last_profile = name
@@ -162,6 +181,7 @@ class CalibrationManager:
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": self.output_gain_is_calibrated,
             "frequency_calibration": self.frequency_calibration,
+            "frequency_calibration_1pps": self.frequency_calibration_1pps,
             "lockin_gain_offset": self.lockin_gain_offset,
             "spl_offset_db": self.spl_offset_db,
         }
@@ -173,12 +193,17 @@ class CalibrationManager:
             raise ValueError(f"Profile '{name}' not found")
 
         p = self.profiles[name]
-        self.input_sensitivity = p.get("input_sensitivity", 1.0)
-        self.output_gain = p.get("output_gain", 1.0)
-        self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", False)
-        self.frequency_calibration = p.get("frequency_calibration", 1.0)
-        self.lockin_gain_offset = p.get("lockin_gain_offset", 0.0)
-        self.spl_offset_db = p.get("spl_offset_db")
+        self.input_sensitivity = p.get("input_sensitivity", self.input_sensitivity)
+        self.output_gain = p.get("output_gain", self.output_gain)
+        self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", self.output_gain_is_calibrated)
+        self.frequency_calibration = p.get("frequency_calibration", self.frequency_calibration)
+        self.frequency_calibration_1pps = p.get("frequency_calibration_1pps", self.frequency_calibration_1pps)
+        self.lockin_gain_offset = p.get("lockin_gain_offset", self.lockin_gain_offset)
+
+        # spl_offset_db can be None, handled explicitly
+        if "spl_offset_db" in p:
+            self.spl_offset_db = p["spl_offset_db"]
+
         self.save()  # Persist as current
 
     def delete_profile(self, name):
