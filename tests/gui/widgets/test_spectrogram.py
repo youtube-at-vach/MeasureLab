@@ -1,5 +1,3 @@
-import pytest
-import pyqtgraph as pg
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
 
 def test_spectrogram_colormaps_exist():

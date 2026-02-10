@@ -1,4 +1,3 @@
-import pytest
 from src.core.fft_manager import WARMUP_SIZES
 
 # Mocking the logic to verify correctness of the algorithm used in SpectrogramWidget
@@ -21,7 +20,7 @@ def test_fast_speed_fft_sizes():
     assert "4096" in sizes
     assert "16384" not in sizes
     assert "65536" not in sizes
-    
+
     # Verify max size
     max_size = max([int(s) for s in sizes])
     assert max_size == 8192
@@ -33,6 +32,6 @@ def test_slow_speed_fft_sizes():
         assert "8192" in sizes
         assert "16384" in sizes
         assert "65536" in sizes
-        
+
         max_size = max([int(s) for s in sizes])
         assert max_size == 65536

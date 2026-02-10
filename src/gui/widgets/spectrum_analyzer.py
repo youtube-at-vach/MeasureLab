@@ -318,7 +318,7 @@ class SpectrumAnalyzerWidget(QWidget):
                  idx = self.window_combo.findText("hann")
                  if idx >= 0:
                      self.window_combo.setCurrentIndex(idx)
-        
+
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         row1_layout.addWidget(self.window_combo)
 

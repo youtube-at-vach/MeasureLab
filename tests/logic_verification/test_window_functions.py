@@ -1,5 +1,4 @@
 import pytest
-from scipy import signal
 from src.core.fft_manager import fft_manager
 from src.core.analysis import get_cached_window
 
@@ -10,7 +9,7 @@ def test_available_windows_list():
     assert "hann" in windows
     assert "hamming" in windows
     assert "blackman" in windows
-    
+
     # Check that all returned windows are valid in scipy
     for win_name in windows:
         try:
@@ -25,7 +24,7 @@ def test_window_consistency():
     # Boxcar (Rectangular) should be all ones
     boxcar = get_cached_window("boxcar", 100)
     assert (boxcar == 1.0).all()
-    
+
     # Hann should be zero at ends (for standard definition, though scipy implementation details vary on endpoint)
     # scipy.signal.windows.hann(M, sym=True) is default.
     hann = get_cached_window("hann", 100)

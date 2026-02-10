@@ -410,17 +410,17 @@ class SpectrogramWidget(QWidget):
 
         self.module.min_freq = self.min_freq_spin.value()
         self.module.max_freq = self.max_freq_spin.value()
-        
+
         min_f = float(self.module.min_freq)
         max_f = float(self.module.max_freq)
-        
+
         if self.scale_combo.currentText() == "Log":
             # Avoid log(0) or negative
             if min_f <= 0:
                 min_f = 1.0 # 1Hz minimum for log scale
             if max_f <= min_f:
                  max_f = min_f + 10.0 # Valid range
-            
+
             self.plot.setYRange(np.log10(min_f), np.log10(max_f))
         else:
             self.plot.setYRange(min_f, max_f)
@@ -524,10 +524,10 @@ class SpectrogramWidget(QWidget):
 
         # Check Scale Mode
         is_log = (self.scale_combo.currentText() == "Log")
-        
+
         sample_rate = self.module.audio_engine.sample_rate
         nyquist = sample_rate / 2
-        
+
         # Prepare Display Data
         if is_log:
             # Resample to Log Scale
@@ -535,10 +535,10 @@ class SpectrogramWidget(QWidget):
             # We map from Linear Bins (0..N/2) to Log Bins (0..N/2)
             # Log Bins cover log10(min_freq) to log10(max_freq)
             # If min_freq is 0, clamp to 1 Hz
-            
+
             min_f = max(1, self.module.min_freq)
             max_f = max(min_f + 1, self.module.max_freq) # Ensure max > min
-            
+
             # Key for cache: (fft_size, min_f, max_f)
             cache_key = (self.module.fft_size, min_f, max_f)
             if not hasattr(self, "_log_map_cache") or self._log_map_cache[0] != cache_key:
@@ -552,35 +552,35 @@ class SpectrogramWidget(QWidget):
                 # Clamp
                 linear_indices = np.clip(linear_indices, 0, n_bins - 1).astype(int)
                 self._log_map_cache = (cache_key, linear_indices)
-            
+
             indices = self._log_map_cache[1]
             display_buffer = buffer[:, indices]
-            
+
             # Transform for Log Mode
             # Image Y: 0..Height -> log10(min)..log10(max)
             # height of image is n_bins
             # we want Y=0 to map to log10(min_f)
             # we want Y=n_bins to map to log10(max_f)
-            
+
             log_min = np.log10(min_f)
             log_max = np.log10(max_f)
             y_scale = (log_max - log_min) / display_buffer.shape[1]
-            
+
             transform = QTransform().translate(0, log_min).scale(1, y_scale)
-            
+
             # Limits in Log Domain
             self.plot.setLimits(yMin=log_min, yMax=log_max)
             self.plot.setYRange(log_min, log_max)
-            
+
         else:
             # Linear Scale
             display_buffer = buffer
-            
+
             # Transform for Linear Mode
             # Image Y: 0..Height -> 0..Nyquist
             y_scale = nyquist / (buffer.shape[1])
             transform = QTransform().scale(1, y_scale)
-            
+
             self.plot.setLimits(yMin=0, yMax=nyquist)
             self.plot.setYRange(self.module.min_freq, self.module.max_freq)
 
