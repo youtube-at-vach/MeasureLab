@@ -31,10 +31,12 @@ Two modes can be selected according to the application.
 
 ### Input/Output Settings
 
-* **Output Ch**: Select the channel to output the measurement signal.
+* **Output Ch**: Select the channel to output the measurement signal (Selectable L/R/Stereo even in XFER mode).
 * **Input Mode**: Select where to receive the signal returning from the measurement target.
     * **Left (Ch1)** / **Right (Ch2)**: Measures the signal of the selected channel as is (absolute level measurement).
-    * **XFER (Transfer Function Mode)**: Uses the Left channel as a "reference signal" and the Right channel as the "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface itself (relative measurement).
+    * **XFER (Ref=L, Meas=R)**: Uses the Left channel as a "reference signal" and the Right channel as the "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface itself (relative measurement).
+    * **XFER_REV (Ref=R, Meas=L)**: Reverse transfer function mode using Right as reference and Left as measurement signal.
+    * **XTALK (Crosstalk)**: Drives one channel and measures the leakage into the other channel.
 
 ## Display and Analysis (Display)
 
