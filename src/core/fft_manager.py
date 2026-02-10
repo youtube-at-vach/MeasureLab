@@ -25,8 +25,6 @@ WARMUP_SIZES = [256, 512, 1024, 2048, 4096, 8192, 16384, 24000, 32768, 48000, 65
 MEDIUM_SIZES = [131072, 262144]
 # Huge sizes that take very long to optimize (optional)
 HUGE_SIZES = [1048576, 2097152, 4194304]
-# Backwards compatibility or default full set if needed, but logic currently uses WARMUP + MEDIUM
-EXTENDED_SIZES = MEDIUM_SIZES + HUGE_SIZES
 
 
 class FFTManager:
