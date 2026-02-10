@@ -50,17 +50,3 @@ def test_worker_exception_logging():
         # exc_info should be True to log traceback
         assert kwargs.get('exc_info') is True, "exc_info=True is required for full traceback"
 
-def test_cli_run_logging():
-    """
-    Verify that NoiseProfiler.run logs an info message instead of printing.
-    """
-    mock_engine = MagicMock()
-    module = NoiseProfiler(mock_engine)
-
-    with patch('src.gui.widgets.noise_profiler.logger', create=True) as mock_logger:
-        module.run(None)
-
-        # Check if logger.info was called
-        mock_logger.info.assert_called()
-        args, _ = mock_logger.info.call_args
-        assert "Noise Profiler running from CLI" in args[0]

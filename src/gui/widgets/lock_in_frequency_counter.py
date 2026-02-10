@@ -1,4 +1,3 @@
-import argparse
 from collections import deque
 import time
 
@@ -185,9 +184,6 @@ class LockInFrequencyCounter(MeasurementModule):
     @property
     def description(self) -> str:
         return tr("Precision Frequency & Phase Drift Measurement using Lock-in Principle.")
-
-    def run(self, args: argparse.Namespace):
-        print("CLI not implemented")
 
     def get_widget(self):
         return LockInFrequencyCounterWidget(self)

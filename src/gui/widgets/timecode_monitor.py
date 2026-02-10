@@ -582,15 +582,6 @@ class TimecodeMonitor(MeasurementModule):
     def get_widget(self):
         return TimecodeMonitorWidget(self)
 
-    def run(self, args):
-        print(tr("Timecode Monitor running in CLI mode (not fully implemented)"))
-        self.start_analysis()
-        try:
-            while True:
-                time.sleep(1.0)
-        except KeyboardInterrupt:
-            self.stop_analysis()
-
     def start_analysis(self):
         if self.is_running:
             return

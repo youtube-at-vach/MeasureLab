@@ -1,4 +1,3 @@
-import argparse
 import threading
 import time
 from collections import deque
@@ -116,9 +115,6 @@ class LockInAmplifier(MeasurementModule):
     @property
     def description(self) -> str:
         return "Dual-phase lock-in detection."
-
-    def run(self, args: argparse.Namespace):
-        print("Lock-in Amplifier running from CLI (not fully implemented)")
 
     def get_widget(self):
         return LockInAmplifierWidget(self)

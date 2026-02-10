@@ -1,4 +1,3 @@
-import argparse
 import threading
 
 import numpy as np
@@ -170,9 +169,6 @@ class NetworkAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Bode Plot (Gain & Phase) with XFER support"
-
-    def run(self, args: argparse.Namespace):
-        print("CLI not implemented")
 
     def get_widget(self):
         return NetworkAnalyzerWidget(self)

@@ -89,9 +89,6 @@ class BNIMMeter(MeasurementModule):
     def description(self) -> str:
         return "Binaural Neural Interferometric Meter - ITD/ILD Neural Map."
 
-    def run(self, args):
-        print("BNIM Meter CLI not implemented")
-
     def get_widget(self):
         return BNIMMeterWidget(self)
 

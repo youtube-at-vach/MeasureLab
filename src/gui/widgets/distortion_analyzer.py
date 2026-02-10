@@ -1,4 +1,3 @@
-import argparse
 from collections import deque
 
 import numpy as np
@@ -281,9 +280,6 @@ class DistortionAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return "THD, THD+N, and SINAD measurements."
-
-    def run(self, args: argparse.Namespace):
-        print("Distortion Analyzer running from CLI (not implemented)")
 
     def get_widget(self):
         return DistortionAnalyzerWidget(self)
