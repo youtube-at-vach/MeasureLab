@@ -1,29 +1,41 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import sys
 import numpy as np
 import os
 import soundfile as sf
 import tempfile
 
-# Mock sounddevice
-sys.modules['sounddevice'] = MagicMock()
-
-# Mock PyQt6
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-
-from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
-
 class TestRecorderSaveOptimization(unittest.TestCase):
     def setUp(self):
+        # Patch sys.modules to mock sounddevice and PyQt6
+        self.modules_patcher = patch.dict(sys.modules, {
+            'sounddevice': MagicMock(),
+            'PyQt6.QtCore': MagicMock(),
+            'PyQt6.QtWidgets': MagicMock()
+        })
+        self.modules_patcher.start()
+
+        # Import RecorderPlayer locally to ensure it uses the mocked modules
+        # We need to remove it from sys.modules first if it's already there to force reload
+        if 'src.gui.widgets.recorder_player' in sys.modules:
+            del sys.modules['src.gui.widgets.recorder_player']
+
+        from src.gui.widgets.recorder_player import RecorderPlayer
+        self.RecorderPlayer = RecorderPlayer
+
         self.audio_engine = MagicMock()
         self.audio_engine.sample_rate = 48000
-        self.player = RecorderPlayer(self.audio_engine)
+        self.player = self.RecorderPlayer(self.audio_engine)
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
+        self.modules_patcher.stop()
+
+        # Clean up the module from sys.modules to avoid polluting other tests
+        if 'src.gui.widgets.recorder_player' in sys.modules:
+            del sys.modules['src.gui.widgets.recorder_player']
 
     def test_save_recording_content(self):
         """Verify that saving data chunk-by-chunk produces the correct file."""
