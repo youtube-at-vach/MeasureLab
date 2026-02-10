@@ -7,12 +7,12 @@ sys.modules["sounddevice"] = MagicMock()
 # Mock localization since it might rely on something
 sys.modules["src.core.localization"] = MagicMock()
 
-import numpy as np
+import numpy as np  # noqa: E402
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.goniometer import Goniometer
+from src.gui.widgets.goniometer import Goniometer  # noqa: E402
 
 
 class MockAudioEngine:
