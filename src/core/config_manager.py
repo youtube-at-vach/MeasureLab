@@ -105,8 +105,17 @@ class ConfigManager:
         """Internal method to immediately write config to disk."""
         with self._save_lock:
             try:
-                with open(self.config_path, "w") as f:
+                # Use os.open to ensure secure permissions (600) on creation
+                fd = os.open(self.config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w") as f:
                     json.dump(self.config, f, indent=4)
+
+                # Ensure permissions on existing files (best effort)
+                try:
+                    os.chmod(self.config_path, 0o600)
+                except Exception:
+                    pass
+
                 self.logger.info("Config saved.")
                 self._save_timer = None
             except Exception as e:
