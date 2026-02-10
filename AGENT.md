@@ -58,12 +58,6 @@ VS Code から `pytest (venv)` タスクを利用可能です。
     - Settings と各モジュールは **遅延 import / 遅延生成** されます（重い依存の起動時コスト低減）
     - `preload_all_modules()` はスプラッシュ中に Settings + 全モジュールをロードします
 
-### CLI（任意）
-
-`src/main.py` は対話式 CLI（`inquirer`）を使いますが、`requirements.txt` には `inquirer` が含まれていないため、そのままだと実行できません。
-
-- 使う場合: `./.venv/bin/python -m pip install inquirer`
-
 ## テスト
 
 最小スモーク（この環境で実行して 5 tests pass を確認）:
