@@ -33,8 +33,8 @@ class TestInverseFilterChunking(unittest.TestCase):
         # And has length N.
 
         delay = (M - 1) // 2
-        samples_to_skip = delay
-        samples_needed = N
+        # samples_to_skip = delay  # Logic is inside loop below
+        # samples_needed = N       # Logic is inside loop below
 
         # Process in chunks
         for i in range(0, N, chunk_size):

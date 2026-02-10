@@ -18,7 +18,7 @@ sys.modules['PyQt6.QtWidgets'] = MagicMock()
 sys.modules['pyqtgraph'] = MagicMock()
 
 # Now import the worker
-from src.gui.widgets.inverse_filter import ProcessingWorker
+from src.gui.widgets.inverse_filter import ProcessingWorker  # noqa: E402
 
 class TestInverseFilterWorker(unittest.TestCase):
     def setUp(self):
@@ -59,8 +59,8 @@ class TestInverseFilterWorker(unittest.TestCase):
         mock_signal.windows.hamming.return_value = np.zeros(8192, dtype='float32')
 
         def fftconvolve_side_effect(in1, in2, mode=None):
-            l = len(in1) + len(in2) - 1
-            return np.zeros(l, dtype='float32')
+            length = len(in1) + len(in2) - 1
+            return np.zeros(length, dtype='float32')
 
         mock_signal.fftconvolve.side_effect = fftconvolve_side_effect
 
