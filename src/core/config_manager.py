@@ -216,24 +216,6 @@ class ConfigManager:
         """Returns a dictionary of audio configuration."""
         return self.config.get("audio", self._default_config()["audio"])
 
-    # --- Legacy API (kept for backward compatibility with older tests/tools) ---
-    def get_last_devices(self):
-        audio = self.get_audio_config()
-        return audio.get("input_device"), audio.get("output_device")
-
-    def set_last_devices(self, input_name, output_name, input_hostapi=None, output_hostapi=None):
-        audio = self.get_audio_config()
-        self.set_audio_config(
-            input_name=input_name,
-            output_name=output_name,
-            sample_rate=audio.get("sample_rate", 48000),
-            block_size=audio.get("block_size", 1024),
-            in_ch=audio.get("input_channels", "stereo"),
-            out_ch=audio.get("output_channels", "stereo"),
-            input_hostapi=input_hostapi,
-            output_hostapi=output_hostapi,
-        )
-
     def set_audio_config(
         self,
         input_name,
