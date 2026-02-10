@@ -1,9 +1,8 @@
 
 import unittest
-from unittest.mock import MagicMock, patch, ANY, call
+from unittest.mock import MagicMock, patch
 import numpy as np
 import sys
-import os
 
 # Mock dependencies properly
 qt_core = MagicMock()
@@ -23,7 +22,7 @@ fft_mgr_mock = MagicMock()
 fft_mgr_mock.fft_manager.irfft.return_value = np.zeros(1024)
 sys.modules['src.core.fft_manager'] = fft_mgr_mock
 
-from src.gui.widgets.inverse_filter import ProcessingWorker
+from src.gui.widgets.inverse_filter import ProcessingWorker  # noqa: E402
 
 class TestInverseFilterMemory(unittest.TestCase):
     def setUp(self):
