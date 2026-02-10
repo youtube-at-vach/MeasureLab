@@ -2,46 +2,65 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 import sys
-import os
 from scipy.signal import get_window
-
-# Ensure src is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-
-# Mock dependencies BEFORE importing the module under test
-sys.modules['sounddevice'] = MagicMock()
-sys.modules['PyQt6'] = MagicMock()
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtGui'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-sys.modules['pyqtgraph'] = MagicMock()
-
-# Mock localization
-mock_localization = MagicMock()
-mock_localization.tr = lambda x, default=None: x
-sys.modules['src.core.localization'] = mock_localization
-
-try:
-    from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
-    from src.core.analysis import get_cached_window
-except ImportError:
-    # If imports fail (e.g. due to missing deps in environment), skip tests
-    ImpedanceAnalyzer = None
 
 class TestImpedanceAnalyzerWindow(unittest.TestCase):
     def setUp(self):
-        if ImpedanceAnalyzer is None:
+        # Define mocks
+        self.mock_pyqt = MagicMock()
+        self.mock_sd = MagicMock()
+        self.mock_pg = MagicMock()
+        self.mock_loc = MagicMock()
+        self.mock_loc.tr = lambda x, default=None: x
+
+        # Modules to patch
+        self.modules_to_patch = {
+            'PyQt6': self.mock_pyqt,
+            'PyQt6.QtCore': self.mock_pyqt,
+            'PyQt6.QtGui': self.mock_pyqt,
+            'PyQt6.QtWidgets': self.mock_pyqt,
+            'pyqtgraph': self.mock_pg,
+            'sounddevice': self.mock_sd,
+            'src.core.localization': self.mock_loc,
+        }
+
+        self.original_modules = {}
+        for name, mock_obj in self.modules_to_patch.items():
+            if name in sys.modules:
+                self.original_modules[name] = sys.modules[name]
+            sys.modules[name] = mock_obj
+
+        # Force reload of the module under test to ensure it uses the mocked dependencies
+        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
+            del sys.modules['src.gui.widgets.impedance_analyzer']
+
+        try:
+            import src.gui.widgets.impedance_analyzer
+            self.ImpedanceAnalyzer = src.gui.widgets.impedance_analyzer.ImpedanceAnalyzer
+        except ImportError:
             self.skipTest("ImpedanceAnalyzer could not be imported")
 
         self.mock_audio_engine = MagicMock()
         self.mock_audio_engine.sample_rate = 48000
-        self.analyzer = ImpedanceAnalyzer(self.mock_audio_engine)
+        self.analyzer = self.ImpedanceAnalyzer(self.mock_audio_engine)
         self.buffer_size = 1024
         self.analyzer.buffer_size = self.buffer_size
 
         # Populate input data
         with self.analyzer._buffer_lock:
             self.analyzer.input_data = np.ones((self.buffer_size, 2)) # Constant DC
+
+    def tearDown(self):
+        # Restore sys.modules
+        for name in self.modules_to_patch:
+            if name in self.original_modules:
+                sys.modules[name] = self.original_modules[name]
+            else:
+                del sys.modules[name]
+
+        # Cleanup module cache
+        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
+            del sys.modules['src.gui.widgets.impedance_analyzer']
 
     @patch('src.gui.widgets.impedance_analyzer.get_cached_window')
     def test_process_data_uses_cached_window(self, mock_get_window):
@@ -58,6 +77,12 @@ class TestImpedanceAnalyzerWindow(unittest.TestCase):
     def test_window_consistency(self):
         # Verify that get_cached_window returns the periodic Hann window
         # which is appropriate for spectral analysis.
+
+        # Note: We need to import get_cached_window from the (possibly mocked) module context
+        # or import it directly if it doesn't depend on GUI.
+        # src.core.analysis depends on scipy/numpy, not GUI.
+        from src.core.analysis import get_cached_window
+
         w = get_cached_window("hann", self.buffer_size)
 
         # We expect get_cached_window to return the same as scipy.signal.get_window('hann', ...)

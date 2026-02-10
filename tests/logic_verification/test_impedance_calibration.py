@@ -2,39 +2,48 @@ import unittest
 from unittest.mock import MagicMock
 import sys
 
-# Mock dependencies BEFORE importing the module under test
-# This is crucial because the module imports PyQt6 at the top level
-sys.modules['PyQt6'] = MagicMock()
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtGui'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-sys.modules['pyqtgraph'] = MagicMock()
-sys.modules['sounddevice'] = MagicMock()
-
-# Mock localization
-mock_localization = MagicMock()
-mock_localization.tr = lambda x, default=None: x
-sys.modules['src.core.localization'] = mock_localization
-
-# Now import the class to test
-# We use a try-except block to gracefully handle potential import errors
-# although mocking should prevent them.
-try:
-    from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
-except ImportError:
-    ImpedanceAnalyzer = None
-
 class TestImpedanceCalibration(unittest.TestCase):
     def setUp(self):
-        if ImpedanceAnalyzer is None:
-            self.skipTest("ImpedanceAnalyzer could not be imported")
+        # Setup mocks
+        self.mock_pyqt = MagicMock()
+        self.mock_sd = MagicMock()
+        self.mock_pg = MagicMock()
+        self.mock_loc = MagicMock()
+        self.mock_loc.tr = lambda x, default=None: x
+
+        # Modules to patch in sys.modules
+        self.modules_to_patch = {
+            'PyQt6': self.mock_pyqt,
+            'PyQt6.QtCore': self.mock_pyqt,
+            'PyQt6.QtGui': self.mock_pyqt,
+            'PyQt6.QtWidgets': self.mock_pyqt,
+            'pyqtgraph': self.mock_pg,
+            'sounddevice': self.mock_sd,
+            'src.core.localization': self.mock_loc,
+        }
+
+        # Manual patching of sys.modules to avoid patch.dict issues with C-extensions
+        self.original_modules = {}
+        for name, mock_obj in self.modules_to_patch.items():
+            if name in sys.modules:
+                self.original_modules[name] = sys.modules[name]
+            sys.modules[name] = mock_obj
+
+        # Force reload of the module under test to ensure it uses the mocked dependencies
+        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
+            del sys.modules['src.gui.widgets.impedance_analyzer']
+
+        try:
+            import src.gui.widgets.impedance_analyzer
+            self.ImpedanceAnalyzer = src.gui.widgets.impedance_analyzer.ImpedanceAnalyzer
+        except ImportError:
+            self.fail("Could not import ImpedanceAnalyzer even with mocks")
 
         self.mock_audio_engine = MagicMock()
         self.mock_audio_engine.sample_rate = 48000
 
         # Instantiate the analyzer
-        # We need to ensure the constructor doesn't crash due to mocks
-        self.analyzer = ImpedanceAnalyzer(self.mock_audio_engine)
+        self.analyzer = self.ImpedanceAnalyzer(self.mock_audio_engine)
 
         # Reset calibration state
         self.analyzer.cal_open = {}
@@ -42,6 +51,18 @@ class TestImpedanceCalibration(unittest.TestCase):
         self.analyzer.cal_load = {}
         self.analyzer.use_calibration = True
         self.analyzer.load_standard_real = 100.0
+
+    def tearDown(self):
+        # Restore sys.modules
+        for name in self.modules_to_patch:
+            if name in self.original_modules:
+                sys.modules[name] = self.original_modules[name]
+            else:
+                del sys.modules[name]
+
+        # Clean up the module from sys.modules so subsequent tests reload it with real dependencies
+        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
+            del sys.modules['src.gui.widgets.impedance_analyzer']
 
     def test_get_interpolated_cal_value(self):
         """Test interpolation logic with known points."""
