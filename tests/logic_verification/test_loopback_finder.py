@@ -36,7 +36,7 @@ class TestLoopbackFinder(unittest.TestCase):
         if 'src.gui.widgets.loopback_finder' in sys.modules:
             importlib.reload(sys.modules['src.gui.widgets.loopback_finder'])
         else:
-            import src.gui.widgets.loopback_finder
+            importlib.import_module('src.gui.widgets.loopback_finder')
 
         self.module_under_test = sys.modules['src.gui.widgets.loopback_finder']
 
