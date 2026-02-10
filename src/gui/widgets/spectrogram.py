@@ -256,6 +256,13 @@ class SpectrogramWidget(QWidget):
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         settings_layout.addWidget(self.window_combo, 0, 5)
 
+        # Scale (Log/Linear)
+        settings_layout.addWidget(QLabel(tr("Scale:")), 0, 6)
+        self.scale_combo = QComboBox()
+        self.scale_combo.addItems(["Log", "Linear"])
+        self.scale_combo.currentTextChanged.connect(self.on_scale_changed)
+        settings_layout.addWidget(self.scale_combo, 0, 7)
+
         # Row 2: Colormap, Speed, Frequency Range
         # Colormap
         settings_layout.addWidget(QLabel(tr("Colormap:")), 1, 0)
@@ -307,6 +314,7 @@ class SpectrogramWidget(QWidget):
         self.plot = self.win.addPlot(title=tr("Spectrogram"))
         self.plot.setLabel("left", tr("Frequency"), units="Hz")
         self.plot.setLabel("bottom", tr("Time"), units="frames")
+        self.plot.setLogMode(False, True)  # Default: Log Y-axis
 
         # Image Item
         # We use two images to render the circular buffer without copying
@@ -395,9 +403,31 @@ class SpectrogramWidget(QWidget):
         self.module.acc_count = 0
 
     def on_freq_range_changed(self):
+        # Safe check for init
+        if not hasattr(self, "min_freq_spin") or not hasattr(self, "max_freq_spin"):
+            return
+
         self.module.min_freq = self.min_freq_spin.value()
         self.module.max_freq = self.max_freq_spin.value()
-        self.plot.setYRange(self.module.min_freq, self.module.max_freq)
+        
+        min_f = float(self.module.min_freq)
+        max_f = float(self.module.max_freq)
+        
+        if self.scale_combo.currentText() == "Log":
+            # Avoid log(0) or negative
+            if min_f <= 0:
+                min_f = 1.0 # 1Hz minimum for log scale
+            if max_f <= min_f:
+                 max_f = min_f + 10.0 # Valid range
+            
+            self.plot.setYRange(np.log10(min_f), np.log10(max_f))
+        else:
+            self.plot.setYRange(min_f, max_f)
+
+    def on_scale_changed(self, val):
+        is_log = (val == "Log")
+        self.plot.setLogMode(False, is_log)
+        self.on_freq_range_changed()  # Re-apply limits safely
 
     def update_spectrogram(self):
         if not self.module.is_running:
@@ -491,33 +521,81 @@ class SpectrogramWidget(QWidget):
         ptr = self.module.spectrogram_ptr
         buffer = self.module.spectrogram_buffer
 
-        # Part 1: Oldest data (buffer[ptr:])
-        part1 = buffer[ptr:]
-        self.img_old.setImage(part1, autoLevels=False)
-        self.img_old.setPos(0, 0)
-
-        # Part 2: Newer data (buffer[:ptr])
-        part2 = buffer[:ptr]
-        self.img_new.setImage(part2, autoLevels=False)
-        self.img_new.setPos(len(part1), 0)
-
-        # Set Scale
-        # X axis: Time (0 to History)
-        # Y axis: Frequency (0 to Nyquist)
+        # Check Scale Mode
+        is_log = (self.scale_combo.currentText() == "Log")
+        
         sample_rate = self.module.audio_engine.sample_rate
         nyquist = sample_rate / 2
+        
+        # Prepare Display Data
+        if is_log:
+            # Resample to Log Scale
+            # Cache the map
+            # We map from Linear Bins (0..N/2) to Log Bins (0..N/2)
+            # Log Bins cover log10(min_freq) to log10(max_freq)
+            # If min_freq is 0, clamp to 1 Hz
+            
+            min_f = max(1, self.module.min_freq)
+            max_f = max(min_f + 1, self.module.max_freq) # Ensure max > min
+            
+            # Key for cache: (fft_size, min_f, max_f)
+            cache_key = (self.module.fft_size, min_f, max_f)
+            if not hasattr(self, "_log_map_cache") or self._log_map_cache[0] != cache_key:
+                # Generate Map
+                n_bins = buffer.shape[1]
+                # Log spaced frequencies
+                log_freqs = np.logspace(np.log10(min_f), np.log10(max_f), n_bins)
+                # Convert to linear bin indices
+                freq_res = sample_rate / self.module.fft_size
+                linear_indices = log_freqs / freq_res
+                # Clamp
+                linear_indices = np.clip(linear_indices, 0, n_bins - 1).astype(int)
+                self._log_map_cache = (cache_key, linear_indices)
+            
+            indices = self._log_map_cache[1]
+            display_buffer = buffer[:, indices]
+            
+            # Transform for Log Mode
+            # Image Y: 0..Height -> log10(min)..log10(max)
+            # height of image is n_bins
+            # we want Y=0 to map to log10(min_f)
+            # we want Y=n_bins to map to log10(max_f)
+            
+            log_min = np.log10(min_f)
+            log_max = np.log10(max_f)
+            y_scale = (log_max - log_min) / display_buffer.shape[1]
+            
+            transform = QTransform().translate(0, log_min).scale(1, y_scale)
+            
+            # Limits in Log Domain
+            self.plot.setLimits(yMin=log_min, yMax=log_max)
+            self.plot.setYRange(log_min, log_max)
+            
+        else:
+            # Linear Scale
+            display_buffer = buffer
+            
+            # Transform for Linear Mode
+            # Image Y: 0..Height -> 0..Nyquist
+            y_scale = nyquist / (buffer.shape[1])
+            transform = QTransform().scale(1, y_scale)
+            
+            self.plot.setLimits(yMin=0, yMax=nyquist)
+            self.plot.setYRange(self.module.min_freq, self.module.max_freq)
 
-        # Scale Y to match Frequency
-        # Image height is fft_size // 2 + 1
-        # We want it to span 0 to Nyquist
-        y_scale = nyquist / (buffer.shape[1])
-
-        transform = QTransform().scale(1, y_scale)
+        # Part 1: Oldest data (buffer[ptr:])
+        part1 = display_buffer[ptr:]
+        self.img_old.setImage(part1, autoLevels=False)
+        self.img_old.setPos(0, 0)
         self.img_old.setTransform(transform)
+
+        # Part 2: Newer data (buffer[:ptr])
+        part2 = display_buffer[:ptr]
+        self.img_new.setImage(part2, autoLevels=False)
+        self.img_new.setPos(len(part1), 0)
         self.img_new.setTransform(transform)
 
-        self.plot.setLimits(yMin=0, yMax=nyquist)
-        self.plot.setYRange(self.module.min_freq, self.module.max_freq)
+
 
     def apply_theme(self, theme_name):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
