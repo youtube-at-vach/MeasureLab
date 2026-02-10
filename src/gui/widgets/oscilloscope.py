@@ -1218,252 +1218,234 @@ class OscilloscopeWidget(QWidget):
         window_duration = self.module.timebase
         data = self.module.get_display_data(window_duration)
 
-        if data is not None:
-            # Create time axis
-            t = np.linspace(0, window_duration, len(data))
+        if data is None:
+            return
 
-            # Apply Filter if enabled
-            sr = self.module.audio_engine.sample_rate
-            if self.module.filter_type != "None":
-                if self.module.filter_type == "LPF":
-                    data[:, 0] = AudioCalc.lowpass_filter(data[:, 0], sr, self.module.filter_cutoff)
-                    data[:, 1] = AudioCalc.lowpass_filter(data[:, 1], sr, self.module.filter_cutoff)
-                elif self.module.filter_type == "HPF":
-                    data[:, 0] = AudioCalc.highpass_filter(data[:, 0], sr, self.module.filter_cutoff)
-                    data[:, 1] = AudioCalc.highpass_filter(data[:, 1], sr, self.module.filter_cutoff)
-                elif self.module.filter_type == "BPF":
-                    data[:, 0] = AudioCalc.bandpass_filter(
-                        data[:, 0], sr, self.module.filter_low, self.module.filter_high
-                    )
-                    data[:, 1] = AudioCalc.bandpass_filter(
-                        data[:, 1], sr, self.module.filter_low, self.module.filter_high
-                    )
+        # Create time axis
+        t = np.linspace(0, window_duration, len(data))
 
-            # Measurements
-            l_data = data[:, 0]
-            r_data = data[:, 1]
+        # Apply Filter if enabled
+        self._process_display_data(data)
 
-            meas = self.module.get_measurements(data)
+        # Measurements
+        self._update_measurements(data, t)
 
-            self.meas_l_label.setText(tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["l_rms"], meas["l_vpp"]))
-            self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["r_rms"], meas["r_vpp"]))
+        # Store for cursor interpolation
+        self.latest_data = data
+        self.latest_t = t
 
-            # Waveform-derived measurements (optional)
-            def _format_time(seconds):
-                if seconds is None or not np.isfinite(seconds) or seconds <= 0:
-                    return "--"
-                if seconds < 1e-6:
-                    return f"{seconds * 1e9:.1f} ns"
-                if seconds < 1e-3:
-                    return f"{seconds * 1e6:.2f} us"
-                if seconds < 1.0:
-                    return f"{seconds * 1e3:.3f} ms"
-                return f"{seconds:.3f} s"
+        # Scale Data for Display
+        scaled_l = data[:, 0] * float(getattr(self.module, "vscale_left", 1.0))
+        scaled_r = data[:, 1] * float(getattr(self.module, "vscale_right", 1.0))
 
-            def _format_freq(hz):
-                if hz is None or not np.isfinite(hz) or hz <= 0:
-                    return "--"
-                if hz >= 1e6:
-                    return f"{hz / 1e6:.3f} MHz"
-                if hz >= 1e3:
-                    return f"{hz / 1e3:.3f} kHz"
-                return f"{hz:.3f} Hz"
+        if self.module.persistence_mode:
+            self._update_persistence(t, scaled_l, scaled_r, window_duration)
+        else:
+            self._update_curves(t, scaled_l, scaled_r)
 
-            wave_meas_enabled = hasattr(self, "chk_wave_meas") and self.chk_wave_meas.isChecked()
-            self.meas_l_auto_label.setVisible(wave_meas_enabled and self.module.show_left)
-            self.meas_r_auto_label.setVisible(wave_meas_enabled and self.module.show_right)
+        # Math Processing
+        self._process_math(t, data)
 
-            if wave_meas_enabled:
-                if self.module.show_left:
-                    freq_hz = self.module.estimate_frequency_hz(t, l_data)
-                    rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, l_data)
-                    self.meas_l_auto_label.setText(
-                        tr("Freq")
-                        + f": {_format_freq(freq_hz)}  "
-                        + tr("Rise")
-                        + f": {_format_time(rise_s)}  "
-                        + tr("Fall")
-                        + f": {_format_time(fall_s)}"
-                    )
-                if self.module.show_right:
-                    freq_hz = self.module.estimate_frequency_hz(t, r_data)
-                    rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, r_data)
-                    self.meas_r_auto_label.setText(
-                        tr("Freq")
-                        + f": {_format_freq(freq_hz)}  "
-                        + tr("Rise")
-                        + f": {_format_time(rise_s)}  "
-                        + tr("Fall")
-                        + f": {_format_time(fall_s)}"
-                    )
+        # Update cursor info if they are on (to update voltage readings)
+        if self.chk_cursors.isChecked():
+            self.update_cursor_info()
 
-            # Store for cursor interpolation
-            self.latest_data = data
-            self.latest_t = t
+        # Single-shot mode
+        self._check_single_shot()
 
-            scaled_l = data[:, 0] * float(getattr(self.module, "vscale_left", 1.0))
-            scaled_r = data[:, 1] * float(getattr(self.module, "vscale_right", 1.0))
+    def _process_display_data(self, data: np.ndarray):
+        """Applies filters (LPF, HPF, BPF) to the data in-place."""
+        if self.module.filter_type == "None":
+            return
 
-            if self.module.persistence_mode:
-                # Update Persistence
-                decay = self.module.persistence_decay
-                intensity = self.module.persistence_intensity
+        sr = self.module.audio_engine.sample_rate
+        if self.module.filter_type == "LPF":
+            data[:, 0] = AudioCalc.lowpass_filter(data[:, 0], sr, self.module.filter_cutoff)
+            data[:, 1] = AudioCalc.lowpass_filter(data[:, 1], sr, self.module.filter_cutoff)
+        elif self.module.filter_type == "HPF":
+            data[:, 0] = AudioCalc.highpass_filter(data[:, 0], sr, self.module.filter_cutoff)
+            data[:, 1] = AudioCalc.highpass_filter(data[:, 1], sr, self.module.filter_cutoff)
+        elif self.module.filter_type == "BPF":
+            data[:, 0] = AudioCalc.bandpass_filter(
+                data[:, 0], sr, self.module.filter_low, self.module.filter_high
+            )
+            data[:, 1] = AudioCalc.bandpass_filter(
+                data[:, 1], sr, self.module.filter_low, self.module.filter_high
+            )
 
-                # Decay
-                self.module.heatmap_l *= decay
-                self.module.heatmap_r *= decay
+    def _update_measurements(self, data: np.ndarray, t: np.ndarray):
+        """Updates standard voltage measurements labels."""
+        meas = self.module.get_measurements(data)
+        self.meas_l_label.setText(tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["l_rms"], meas["l_vpp"]))
+        self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["r_rms"], meas["r_vpp"]))
 
-                # Binning
-                w, h = self.module.heatmap_size
-                # X Range: 0 to window_duration
-                # Y Range: Fixed -1.1 to 1.1 (Plot View)
-                # Note: We bin SCALED data.
+        wave_meas_enabled = hasattr(self, "chk_wave_meas") and self.chk_wave_meas.isChecked()
+        self.meas_l_auto_label.setVisible(wave_meas_enabled and self.module.show_left)
+        self.meas_r_auto_label.setVisible(wave_meas_enabled and self.module.show_right)
 
-                rng = [[0, window_duration], [-1.1, 1.1]]
+        if wave_meas_enabled:
+            self._update_wave_measurements(t, data[:, 0], data[:, 1])
 
-                if self.module.show_left:
-                    self.module._accumulate_heatmap(
-                        t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity
-                    )
+    def _update_wave_measurements(self, t: np.ndarray, l_data: np.ndarray, r_data: np.ndarray):
+        """Updates frequency/rise/fall time labels."""
+        def _format_time(seconds):
+            if seconds is None or not np.isfinite(seconds) or seconds <= 0:
+                return "--"
+            if seconds < 1e-6:
+                return f"{seconds * 1e9:.1f} ns"
+            if seconds < 1e-3:
+                return f"{seconds * 1e6:.2f} us"
+            if seconds < 1.0:
+                return f"{seconds * 1e3:.3f} ms"
+            return f"{seconds:.3f} s"
 
-                if self.module.show_right:
-                    self.module._accumulate_heatmap(
-                        t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity
-                    )
+        def _format_freq(hz):
+            if hz is None or not np.isfinite(hz) or hz <= 0:
+                return "--"
+            if hz >= 1e6:
+                return f"{hz / 1e6:.3f} MHz"
+            if hz >= 1e3:
+                return f"{hz / 1e3:.3f} kHz"
+            return f"{hz:.3f} Hz"
 
-                # Compose Image
-                # L = Green, R = Red
-                # Output shape (h, w, 4) (RGBA) or (w, h, 4)?
-                # pg.ImageItem takes (w, h) or (h, w) depending on axisOrder.
-                # Default is col-major (w, h)?
-                # histogram2d returns (nx, ny). T -> (ny, nx) i.e. (h, w).
-                # ImageItem expects (width, height) usually if axisOrder='col-major'.
-                # Let's check Goniometer: self.img_item.setImage(self.module.heatmap.T)
-                # It transposes.
-                # If we construct RGBA, we can match direct dimensions.
+        if self.module.show_left:
+            freq_hz = self.module.estimate_frequency_hz(t, l_data)
+            rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, l_data)
+            self.meas_l_auto_label.setText(
+                tr("Freq")
+                + f": {_format_freq(freq_hz)}  "
+                + tr("Rise")
+                + f": {_format_time(rise_s)}  "
+                + tr("Fall")
+                + f": {_format_time(fall_s)}"
+            )
+        if self.module.show_right:
+            freq_hz = self.module.estimate_frequency_hz(t, r_data)
+            rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, r_data)
+            self.meas_r_auto_label.setText(
+                tr("Freq")
+                + f": {_format_freq(freq_hz)}  "
+                + tr("Rise")
+                + f": {_format_time(rise_s)}  "
+                + tr("Fall")
+                + f": {_format_time(fall_s)}"
+            )
 
-                # Let's construct RGBA image of shape (w, h, 4)
-                # heatmap_l is (h, w) due to Transpose above?
-                # heatmap_l shape is (w, h) init.
-                # histogram2d(x, y, bins=[w, h]) -> shape (w, h).
-                # So hist_l is (w, h).
-                # We added hist_l.T -> (h, w)?
-                # If we want to map X(time) to X(screen), and Y(amp) to Y(screen).
-                # ImageItem:
-                # "image data is interpreted as a row-major array (shape=(height, width))" IF axisOrder='row-major'.
-                # Default is 'col-major' (width, height).
-                # Let's stick to (w, h) if default.
+    def _update_persistence(self, t: np.ndarray, scaled_l: np.ndarray, scaled_r: np.ndarray, window_duration: float):
+        """Handles the heatmap generation and display for persistence mode."""
+        decay = self.module.persistence_decay
+        intensity = self.module.persistence_intensity
 
-                # Reset buffers to not Transpose if we want (w, h).
-                # self.module.heatmap_l is initialized as (w, h).
-                # hist_l is (w, h).
-                # So: self.module.heatmap_l += hist_l * intensity.
+        # Decay
+        self.module.heatmap_l *= decay
+        self.module.heatmap_r *= decay
 
-                # But wait, y axis in numpy is usually index 0 or 1?
-                # histogram2d returns H[x, y].
-                # So H[0,0] is x=min, y=min.
-                # If ImageItem expects data[x, y], then we are good.
+        # Binning
+        w, h = self.module.heatmap_size
+        rng = [[0, window_duration], [-1.1, 1.1]]
 
-                w, h = self.module.heatmap_size
-                if self._rgba_buffer is None or self._rgba_buffer.shape[:2] != (w, h):
-                    self._rgba_buffer = np.zeros((w, h, 4), dtype=np.ubyte)
-                    self._clip_buffer = np.empty((w, h), dtype=self.module.heatmap_l.dtype)
+        if self.module.show_left:
+            self.module._accumulate_heatmap(
+                t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity
+            )
 
-                # Clip and map to 0-255
-                # Green (Left)
-                np.clip(self.module.heatmap_l, 0, 255, out=self._clip_buffer)
-                self._rgba_buffer[..., 1] = self._clip_buffer.astype(np.ubyte)
+        if self.module.show_right:
+            self.module._accumulate_heatmap(
+                t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity
+            )
 
-                # Red (Right)
-                np.clip(self.module.heatmap_r, 0, 255, out=self._clip_buffer)
-                self._rgba_buffer[..., 0] = self._clip_buffer.astype(np.ubyte)
+        if self._rgba_buffer is None or self._rgba_buffer.shape[:2] != (w, h):
+            self._rgba_buffer = np.zeros((w, h, 4), dtype=np.ubyte)
+            self._clip_buffer = np.empty((w, h), dtype=self.module.heatmap_l.dtype)
 
-                # B is 0 (untouched from init)
-                # Alpha: Max of L/R
-                np.maximum(
-                    self._rgba_buffer[..., 1],
-                    self._rgba_buffer[..., 0],
-                    out=self._rgba_buffer[..., 3],
-                )
+        # Clip and map to 0-255
+        # Green (Left)
+        np.clip(self.module.heatmap_l, 0, 255, out=self._clip_buffer)
+        self._rgba_buffer[..., 1] = self._clip_buffer.astype(np.ubyte)
 
-                self.persistence_img.setImage(self._rgba_buffer, autoLevels=False)
-                self.persistence_img.setRect(pg.QtCore.QRectF(0, -1.1, window_duration, 2.2))
+        # Red (Right)
+        np.clip(self.module.heatmap_r, 0, 255, out=self._clip_buffer)
+        self._rgba_buffer[..., 0] = self._clip_buffer.astype(np.ubyte)
 
-                # Hide curves
-                self.curve_l.setVisible(False)
-                self.curve_r.setVisible(False)
+        # Alpha: Max of L/R
+        np.maximum(
+            self._rgba_buffer[..., 1],
+            self._rgba_buffer[..., 0],
+            out=self._rgba_buffer[..., 3],
+        )
 
-            else:
-                # Normal Mode
-                if self.module.show_left:
-                    self.curve_l.setData(t, scaled_l)
-                    self.curve_l.setVisible(True)
-                else:
-                    self.curve_l.setVisible(False)
+        self.persistence_img.setImage(self._rgba_buffer, autoLevels=False)
+        self.persistence_img.setRect(pg.QtCore.QRectF(0, -1.1, window_duration, 2.2))
 
-                if self.module.show_right:
-                    self.curve_r.setData(t, scaled_r)
-                    self.curve_r.setVisible(True)
-                else:
-                    self.curve_r.setVisible(False)
+        # Hide curves
+        self.curve_l.setVisible(False)
+        self.curve_r.setVisible(False)
 
-                self.persistence_img.setVisible(False)
+    def _update_curves(self, t: np.ndarray, scaled_l: np.ndarray, scaled_r: np.ndarray):
+        """Updates the standard line plots for normal mode."""
+        if self.module.show_left:
+            self.curve_l.setData(t, scaled_l)
+            self.curve_l.setVisible(True)
+        else:
+            self.curve_l.setVisible(False)
 
-            # Math Processing
-            if self.module.math_mode != "Off":
-                math_data = None
+        if self.module.show_right:
+            self.curve_r.setData(t, scaled_r)
+            self.curve_r.setVisible(True)
+        else:
+            self.curve_r.setVisible(False)
 
-                # A = Left, B = Right
-                A = data[:, 0]
-                B = data[:, 1]
+        self.persistence_img.setVisible(False)
 
-                mode = self.module.math_mode
+    def _process_math(self, t: np.ndarray, data: np.ndarray):
+        """Computes and updates the math channel trace."""
+        if self.module.math_mode == "Off":
+            self.curve_math.setData([], [])
+            return
 
-                if mode == "A + B":
-                    math_data = A + B
-                elif mode == "A - B":
-                    math_data = A - B
-                elif mode == "A * B":
-                    math_data = A * B
-                elif mode == "A / B":
-                    # Avoid division by zero
-                    with np.errstate(divide="ignore", invalid="ignore"):
-                        math_data = np.divide(A, B)
-                        math_data[~np.isfinite(math_data)] = 0  # Replace inf/nan with 0
-                elif mode == "Derivative":  # Derivative of A (Left)
-                    dt = t[1] - t[0] if len(t) > 1 else 1e-6
-                    math_data = np.gradient(A, dt)
-                elif mode == "Integral":  # Integral of A (Left)
-                    dt = t[1] - t[0] if len(t) > 1 else 1e-6
-                    math_data = np.cumsum(A) * dt
-                    math_data = math_data - np.mean(math_data)
+        math_data = None
+        A = data[:, 0]
+        B = data[:, 1]
+        mode = self.module.math_mode
 
-                if math_data is not None:
-                    self.curve_math.setData(t, math_data)
-                    # Auto-scale Math View
-                    mn, mx = np.min(math_data), np.max(math_data)
-                    if mn == mx:
-                        mn -= 0.1
-                        mx += 0.1
-                    padding = (mx - mn) * 0.1
-                    self.math_view.setYRange(mn - padding, mx + padding)
-                else:
-                    self.curve_math.setData([], [])
-            else:
-                self.curve_math.setData([], [])
+        if mode == "A + B":
+            math_data = A + B
+        elif mode == "A - B":
+            math_data = A - B
+        elif mode == "A * B":
+            math_data = A * B
+        elif mode == "A / B":
+            with np.errstate(divide="ignore", invalid="ignore"):
+                math_data = np.divide(A, B)
+                math_data[~np.isfinite(math_data)] = 0  # Replace inf/nan with 0
+        elif mode == "Derivative":
+            dt = t[1] - t[0] if len(t) > 1 else 1e-6
+            math_data = np.gradient(A, dt)
+        elif mode == "Integral":
+            dt = t[1] - t[0] if len(t) > 1 else 1e-6
+            math_data = np.cumsum(A) * dt
+            math_data = math_data - np.mean(math_data)
 
-            # Update cursor info if they are on (to update voltage readings)
-            if self.chk_cursors.isChecked():
-                self.update_cursor_info()
+        if math_data is not None:
+            self.curve_math.setData(t, math_data)
+            mn, mx = np.min(math_data), np.max(math_data)
+            if mn == mx:
+                mn -= 0.1
+                mx += 0.1
+            padding = (mx - mn) * 0.1
+            self.math_view.setYRange(mn - padding, mx + padding)
+        else:
+            self.curve_math.setData([], [])
 
-            # Single-shot mode: stop updates immediately after the first trigger capture.
-            if self.module.trigger_mode == "Single" and self.module.single_shot_fired:
-                self.timer.stop()
-                self.module.stop_analysis()
-                self.toggle_btn.blockSignals(True)
-                self.toggle_btn.setChecked(False)
-                self.toggle_btn.setText(tr("Start"))
-                self.toggle_btn.blockSignals(False)
+    def _check_single_shot(self):
+        """Checks if single-shot mode fired and stops analysis if so."""
+        if self.module.trigger_mode == "Single" and self.module.single_shot_fired:
+            self.timer.stop()
+            self.module.stop_analysis()
+            self.toggle_btn.blockSignals(True)
+            self.toggle_btn.setChecked(False)
+            self.toggle_btn.setText(tr("Start"))
+            self.toggle_btn.blockSignals(False)
 
     def apply_theme(self, theme_name):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
