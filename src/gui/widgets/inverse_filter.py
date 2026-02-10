@@ -156,79 +156,199 @@ class ProcessingWorker(QThread):
             # Usually we trust the absolute values of H_inv.
 
             # 2. Process Audio
-            # Block processing
+            # Chunk processing with Overlap-Add to handle large files
+            self.progress.emit(25)
 
-            with sf.SoundFile(self.input_path) as infile:
-                with sf.SoundFile(self.output_path, "w", samplerate=sr, channels=infile.channels) as outfile:
-                    # Pre-fill for convolution tail if needed?
-                    # scipy.signal.convolve handles it, but for streaming we need Overlap-Add.
-                    # Simpler: Use scipy.signal.fftconvolve on the whole file if it fits in memory?
-                    # Or simple OLA.
+            # Temporary file for normalization pass if needed
+            temp_path = self.output_path + ".tmp.wav"
 
-                    # For safety with "arbitrary" files, let's implement simple OLA or use oaconvolve.
-                    # oaconvolve is efficient.
+            try:
+                # Use a large chunk size (e.g., 10 seconds at 48k ~ 500k samples)
+                chunk_frames = 512 * 1024  # Power of 2
 
-                    # Check file size
-                    if info.frames < 10 * 60 * sr:  # < 10 mins
-                        # Load all
-                        data = infile.read(dtype="float32")
-                        self.progress.emit(25)
+                # Parameters for Overlap-Add
+                M = len(kernel)
+                offset = (M - 1) // 2  # To match mode='same' behavior (assuming centered kernel)
+                total_frames = info.frames
 
-                        processed_channels = []
-                        channel_count = 1 if data.ndim == 1 else data.shape[1]
+                # RMS Accumulators - Per channel to match legacy behavior
+                # Using numpy arrays for vectorization
+                # We need to know channel count first, but it is available in info.channels (usually)
+                # But safer to use infile.channels after open.
 
-                        if data.ndim == 1:
-                            # Mono
-                            input_rms = float(np.sqrt(np.mean(np.square(data))))
-                            out_data = signal.oaconvolve(data, kernel, mode="same")
+                # We defer initialization until file open
 
-                            if self.normalize_rms:
-                                processed_rms = float(np.sqrt(np.mean(np.square(out_data))))
-                                if processed_rms > 0 and input_rms > 0:
-                                    out_data = out_data * (input_rms / processed_rms)
+                # Process
+                with sf.SoundFile(self.input_path) as infile:
+                    channels = infile.channels
+                    sum_sq_in = np.zeros(channels, dtype="float64")
+                    sum_sq_out = np.zeros(channels, dtype="float64")
 
-                            processed_channels.append(out_data)
-                            self.progress.emit(25 + int(60 * 1 / channel_count))
-                        else:
-                            # Multichannel
-                            for ch in range(channel_count):
-                                ch_data = data[:, ch]
-                                input_rms = float(np.sqrt(np.mean(np.square(ch_data))))
-                                out_data = signal.oaconvolve(ch_data, kernel, mode="same")
+                    # Write to temp file first (float32 to preserve precision before normalization)
+                    with sf.SoundFile(
+                        temp_path, "w", samplerate=sr, channels=channels, subtype="FLOAT"
+                    ) as temp_outfile:
 
-                                if self.normalize_rms:
-                                    processed_rms = float(np.sqrt(np.mean(np.square(out_data))))
-                                    if processed_rms > 0 and input_rms > 0:
-                                        out_data = out_data * (input_rms / processed_rms)
+                        overlap_buffer = np.zeros((M - 1, channels), dtype="float32") if M > 1 else None
 
-                                processed_channels.append(out_data)
-                                # Emit incremental progress per channel
-                                self.progress.emit(25 + int(60 * (ch + 1) / channel_count))
+                        # Streaming logic
+                        samples_read = 0
+                        samples_to_skip = offset
+                        samples_written = 0
 
-                        if len(processed_channels) == 1:
-                            data = processed_channels[0]
-                        else:
-                            data = np.column_stack(processed_channels)
+                        # Buffer to hold output before writing (to handle skip logic)
+                        # Initialize persistent buffer for output
+                        # We need to buffer at least `offset` samples to skip them.
+                        out_fifo = np.zeros((0, channels), dtype="float32")
 
-                        self.progress.emit(90)
-                        outfile.write(data)
-                        self.progress.emit(100)
+                        while samples_read < total_frames:
+                            if self.is_cancelled:
+                                return
 
-                    else:
-                        # Chunk processing (Naive implementation without proper overlap-add state for now,
-                        # just to avoid memory crash, but it will click at boundaries.
-                        # Implementing proper OLA is complex for this snippet.
-                        # Let's trust oaconvolve with large blocks?
-                        # Actually, `scipy.signal.convolve` doesn't support streaming state.
+                            # Read chunk
+                            chunk = infile.read(frames=chunk_frames, dtype="float32")
 
-                        # Fallback: Just limit to 10 mins for now or warn.
-                        # Or implementing a basic Overlap-Save.
+                            # Handle EOF / Truncated file
+                            if len(chunk) == 0:
+                                break
 
-                        # Let's try loading all. Most WAVs are short.
-                        # If huge, we risk MemoryError.
+                            if chunk.ndim == 1:
+                                chunk = chunk[:, np.newaxis]
 
-                        self.finished.emit(False, tr("File too large (> 10 mins) for current implementation."))
-                        return
+                            current_chunk_len = len(chunk)
+                            samples_read += current_chunk_len
+
+                            # Update Input RMS stats (per channel)
+                            sum_sq_in += np.sum(chunk**2, axis=0)
+
+                            # Convolve
+                            # Output size: current_chunk_len + M - 1
+                            convolved_chunk = np.zeros(
+                                (current_chunk_len + M - 1, channels), dtype="float32"
+                            )
+
+                            for ch in range(channels):
+                                convolved_chunk[:, ch] = signal.fftconvolve(
+                                    chunk[:, ch], kernel, mode="full"
+                                )
+
+                            # Add overlap
+                            if M > 1:
+                                convolved_chunk[: M - 1, :] += overlap_buffer
+                                overlap_buffer = convolved_chunk[current_chunk_len:, :]
+                                valid_part = convolved_chunk[:current_chunk_len, :]
+                            else:
+                                valid_part = convolved_chunk
+
+                            # Handle skip/write
+                            # We append `valid_part` to `out_fifo`
+                            if out_fifo.shape[0] == 0:
+                                out_fifo = valid_part
+                            else:
+                                out_fifo = np.vstack((out_fifo, valid_part))
+
+                            # If we have samples to skip
+                            if samples_to_skip > 0:
+                                to_skip = min(samples_to_skip, len(out_fifo))
+                                out_fifo = out_fifo[to_skip:]
+                                samples_to_skip -= to_skip
+
+                            # Write remaining samples up to total_frames limit
+                            if len(out_fifo) > 0 and samples_written < total_frames:
+                                to_write_count = min(total_frames - samples_written, len(out_fifo))
+                                to_write_data = out_fifo[:to_write_count]
+                                temp_outfile.write(to_write_data)
+                                samples_written += to_write_count
+                                out_fifo = out_fifo[to_write_count:]
+
+                                # Update Output RMS stats (on written data, per channel)
+                                sum_sq_out += np.sum(to_write_data**2, axis=0)
+
+                            # Update progress
+                            prog = 25 + int(65 * samples_read / total_frames)
+                            self.progress.emit(prog)
+
+                        # End of loop.
+                        # Flush overlap?
+                        if M > 1:
+                            # The remaining `overlap_buffer` contains the rest of the signal.
+                            # Append to fifo.
+                            if out_fifo.shape[0] == 0:
+                                out_fifo = overlap_buffer
+                            else:
+                                out_fifo = np.vstack((out_fifo, overlap_buffer))
+
+                            # Handle skip (unlikely at end, but consistent)
+                            if samples_to_skip > 0:
+                                to_skip = min(samples_to_skip, len(out_fifo))
+                                out_fifo = out_fifo[to_skip:]
+                                samples_to_skip -= to_skip
+
+                            # Write remaining
+                            if len(out_fifo) > 0 and samples_written < total_frames:
+                                to_write_count = min(total_frames - samples_written, len(out_fifo))
+                                to_write_data = out_fifo[:to_write_count]
+                                temp_outfile.write(to_write_data)
+                                samples_written += to_write_count
+                                sum_sq_out += np.sum(to_write_data**2, axis=0)
+
+                self.progress.emit(90)
+
+                # 3. Normalization Pass (Per Channel)
+                # Gain is now a vector (channels,)
+                # Default 1.0
+                # We need to read temp file to get channels again if we lost it?
+                # We have `channels` variable.
+
+                gain = np.ones(channels, dtype="float32")
+
+                if self.normalize_rms:
+                    # Avoid division by zero
+                    # Input RMS
+                    # Mean square = sum_sq / count
+                    # count for input is samples_read
+                    # count for output is samples_written
+
+                    if samples_read > 0 and samples_written > 0:
+                         mean_sq_in = sum_sq_in / samples_read
+                         mean_sq_out = sum_sq_out / samples_written
+
+                         rms_in = np.sqrt(mean_sq_in)
+                         rms_out = np.sqrt(mean_sq_out)
+
+                         # Compute gain where valid
+                         mask = (rms_out > 1e-9) & (rms_in > 1e-9)
+                         gain[mask] = rms_in[mask] / rms_out[mask]
+
+                # Copy to final file with gain
+                with sf.SoundFile(temp_path) as temp_in:
+                    with sf.SoundFile(
+                        self.output_path, "w", samplerate=sr, channels=temp_in.channels
+                    ) as final_out:
+                        # Process in chunks
+                        copy_chunk_size = 1024 * 1024
+                        copied = 0
+                        total = temp_in.frames
+                        while copied < total:
+                            if self.is_cancelled:
+                                return
+                            data = temp_in.read(frames=copy_chunk_size, dtype="float32")
+
+                            # Apply per-channel gain
+                            # data (N, C) * gain (C,) -> broadcasts
+                            if np.any(gain != 1.0):
+                                data *= gain
+
+                            final_out.write(data)
+                            copied += len(data)
+
+                            prog = 90 + int(10 * copied / total)
+                            self.progress.emit(prog)
+
+            finally:
+                # Cleanup temp file
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
 
             self.finished.emit(True, tr("Processing Complete."))
 
