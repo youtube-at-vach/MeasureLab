@@ -570,14 +570,9 @@ class OnePPSMonitorWidget(QWidget):
 
     def _update_calibration_label(self):
         cal = self.module.audio_engine.calibration.frequency_calibration_1pps
-        # Convert factor to ppm: ppm = (1/factor - 1) * 1e6
-        # factor = 1.0 / (1.0 + ppm/1e6)
-        # 1/factor = 1.0 + ppm/1e6
-        # ppm = (1/factor - 1) * 1e6
-        if cal != 0:
-            ppm = (1.0 / cal - 1.0) * 1e6
-        else:
-            ppm = 0.0
+        # Factor acting as multiplier: Corrected = Raw * Factor
+        # So PPM error in factor is (factor - 1.0) * 1e6
+        ppm = (cal - 1.0) * 1e6
         self.lbl_stored_cal.setText(tr("Stored 1PPS Cal: {0:+.3f} ppm").format(ppm))
 
     def _on_calibrate_clicked(self):
@@ -620,7 +615,21 @@ class OnePPSMonitorWidget(QWidget):
         # Here, `current_ppm` describes how much the measured signal deviates from nominal.
         # If signal is 1PPS (1Hz), and we measure 1 + delta, we want to multiply by 1/(1+delta) to get 1.
         
+        # Factor definition: Corrected_Freq = Raw_Freq * Factor
+        # Here, `current_ppm` describes how much the measured signal deviates from nominal.
+        # If signal is 1PPS (1Hz), and we measure 1 + delta, we want to multiply by 1/(1+delta) to get 1.
+        # However, the user wants the dimensions to match Frequency Counter, where:
+        # factor = f_ref / f_meas
+        # For f_meas = f_ref * (1 + delta), factor = 1 / (1 + delta) approx 1 - delta.
+        # Wait, the Frequency Counter uses: new_factor = target / avg_raw.
+        # So we should use the same here:
         new_factor = 1.0 / (1.0 + current_ppm / 1e6)
+        
+        # ACTUALLY, to align with the user's observation that it's "like a reciprocal",
+        # let's use the exact same formula: f_ref / f_meas.
+        # current_ppm = (f_meas / f_ref - 1) * 1e6
+        # -> f_meas / f_ref = 1 + current_ppm / 1e6
+        # -> f_ref / f_meas = 1 / (1 + current_ppm / 1e6)
         
         # 3. Confirmation Dialog
         ret = QMessageBox.question(
