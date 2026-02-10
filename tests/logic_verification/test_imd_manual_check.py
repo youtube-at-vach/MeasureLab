@@ -1,10 +1,8 @@
 import numpy as np
-
 from src.core.analysis import AudioCalc
 
-
-def test_imd_smpte():
-    print("Testing SMPTE IMD Calculation...")
+def test_imd_smpte_check():
+    """Verify SMPTE IMD Calculation logic."""
     sr = 48000
     duration = 1.0
     t = np.arange(int(sr * duration)) / sr
@@ -22,7 +20,8 @@ def test_imd_smpte():
 
     # Add IMD products (sidebands)
     # f2 +/- f1
-    imd_amp = amp_f2 * 0.01 # 1% IMD
+    # 1% IMD relative to modulation carrier (f2)
+    imd_amp = amp_f2 * 0.01
     sig += imd_amp * np.sin(2*np.pi*(f2-f1)*t)
     sig += imd_amp * np.sin(2*np.pi*(f2+f1)*t)
 
@@ -33,11 +32,15 @@ def test_imd_smpte():
     freqs = np.fft.rfftfreq(len(sig), 1/sr)
 
     res = AudioCalc.calculate_imd_smpte(mag, freqs, f1, f2)
-    print(f"SMPTE IMD Result: {res['imd']:.4f}% (Expected ~1.0%)")
-    print(f"SMPTE IMD dB: {res['imd_db']:.2f} dB")
 
-def test_imd_ccif():
-    print("\nTesting CCIF IMD Calculation...")
+    # Assertions
+    # Two sidebands of 1% amplitude each.
+    # SMPTE IMD is typically calculating the RMS of the sidebands relative to the carrier.
+    # sqrt(0.01^2 + 0.01^2) = 0.014142... = 1.4142%
+    assert abs(res['imd'] - 1.4142) < 0.1, f"SMPTE IMD Result {res['imd']:.4f}% deviates from expected 1.414%"
+
+def test_imd_ccif_check():
+    """Verify CCIF IMD Calculation logic."""
     sr = 48000
     duration = 1.0
     t = np.arange(int(sr * duration)) / sr
@@ -52,7 +55,8 @@ def test_imd_ccif():
     sig = amp * np.sin(2*np.pi*f1*t) + amp * np.sin(2*np.pi*f2*t)
 
     # Add IMD product (d2 = f2-f1 = 1kHz)
-    imd_amp = (amp + amp) * 0.01 # 1% of total amplitude
+    # 1% of total amplitude
+    imd_amp = (amp + amp) * 0.01
     sig += imd_amp * np.sin(2*np.pi*(f2-f1)*t)
 
     # FFT
@@ -62,9 +66,7 @@ def test_imd_ccif():
     freqs = np.fft.rfftfreq(len(sig), 1/sr)
 
     res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
-    print(f"CCIF IMD Result: {res['imd']:.4f}% (Expected ~1.0%)")
-    print(f"CCIF IMD dB: {res['imd_db']:.2f} dB")
 
-if __name__ == "__main__":
-    test_imd_smpte()
-    test_imd_ccif()
+    # Assertions
+    # Expected ~1.0%
+    assert abs(res['imd'] - 1.0) < 0.1, f"CCIF IMD Result {res['imd']:.4f}% deviates from expected 1.0%"
