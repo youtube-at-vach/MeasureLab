@@ -1,30 +1,67 @@
 import sys
 import os
 import numpy as np
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
 import re
 
-# Ensure sounddevice is mocked
-if 'sounddevice' not in sys.modules:
-    sys.modules['sounddevice'] = MagicMock()
+# Mock GUI dependencies
+mock_qt_core = MagicMock()
+class MockQObject:
+    def __init__(self): pass
+class MockQWidget:
+    def __init__(self, *args, **kwargs): pass
+    def update(self): pass
+    def setStyleSheet(self, style): pass
+    def setLayout(self, layout): pass
 
-# Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+mock_qt_core.QObject = MockQObject
+mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
+mock_qt_core.Qt.Orientation.Horizontal = 1
+mock_qt_core.Qt.PenStyle.DashLine = 2
 
-from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
-from PyQt6.QtWidgets import QApplication
+mock_qt_widgets = MagicMock()
+mock_qt_widgets.QWidget = MockQWidget
 
-# Initialize QApplication if not exists
-app = QApplication.instance()
-if app is None:
-    app = QApplication([])
+# Specific mocks for widget components
+mock_combo = MagicMock()
+mock_combo.findData.return_value = -1
+mock_combo.findText.return_value = -1
+mock_qt_widgets.QComboBox = MagicMock(return_value=mock_combo)
 
-def test_spectrum_rms_sine_accuracy(qtbot):
-    """
-    Verify that Overall Weighted RMS is accurate for a Sine Wave (0dBFS).
-    Expected RMS for Full Scale Sine is -3.01 dB.
-    """
+mock_label = MagicMock()
+mock_label.text.return_value = "Overall: -- dB"
+mock_qt_widgets.QLabel = MagicMock(return_value=mock_label)
+
+mock_pg = MagicMock()
+mock_plot_item = MagicMock()
+mock_axis = MagicMock()
+mock_plot_item.getAxis.return_value = mock_axis
+mock_pg.PlotWidget.return_value.getPlotItem.return_value = mock_plot_item
+# Scene mock
+mock_scene = MagicMock()
+mock_pg.PlotWidget.return_value.scene.return_value = mock_scene
+
+mock_modules = {
+    "PyQt6": MagicMock(),
+    "PyQt6.QtCore": mock_qt_core,
+    "PyQt6.QtGui": MagicMock(),
+    "PyQt6.QtWidgets": mock_qt_widgets,
+    "pyqtgraph": mock_pg,
+    "sounddevice": MagicMock(),
+}
+
+@pytest.fixture(autouse=True)
+def mock_deps():
+    with patch.dict(sys.modules, mock_modules):
+        # Clean import
+        if "src.gui.widgets.spectrum_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.spectrum_analyzer"]
+        yield
+
+def test_spectrum_rms_sine_accuracy():
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+
     # Mock AudioEngine
     mock_engine = MagicMock()
     mock_engine.sample_rate = 48000
@@ -40,7 +77,9 @@ def test_spectrum_rms_sine_accuracy(qtbot):
 
     # Init Widget
     widget = SpectrumAnalyzerWidget(sa)
-    qtbot.addWidget(widget)
+
+    # Capture label updates
+    # widget.overall_label is a Mock object
 
     # Generate Sine Wave 1kHz, Amplitude 1.0 (Peak 0dBFS)
     fs = 48000
@@ -49,13 +88,14 @@ def test_spectrum_rms_sine_accuracy(qtbot):
     sig = 1.0 * np.sin(2 * np.pi * 1000 * t)
 
     # Fill buffer
+    if sa.input_data.shape[0] < N:
+        sa.input_data = np.zeros((N, 2))
     sa.input_data[:, 0] = sig
     sa.input_data[:, 1] = sig
     sa.write_head = 0
 
     # Set Weighting to Z (Flat)
     sa.weighting = "Z"
-    # Ensure standard mode
     sa.multitaper_enabled = False
     sa.analysis_mode = "Spectrum"
 
@@ -64,7 +104,12 @@ def test_spectrum_rms_sine_accuracy(qtbot):
 
     # Check Overall Label
     # Expected: 20*log10(1/sqrt(2)) = -3.01 dB
-    text = widget.overall_label.text()
+
+    # Get the last call to setText
+    # widget.overall_label.setText.call_args[0][0]
+
+    assert widget.overall_label.setText.called
+    text = widget.overall_label.setText.call_args[0][0]
     print(f"Label Text: {text}")
 
     # Format: "Overall: -3.0 dBFS(Z)"
@@ -75,13 +120,11 @@ def test_spectrum_rms_sine_accuracy(qtbot):
     print(f"Measured RMS dB: {val}")
 
     # Check accuracy
-    # Allow some tolerance for windowing leakage
     assert val == pytest.approx(-3.01, abs=0.2)
 
-def test_spectrum_rms_silence(qtbot):
-    """
-    Verify that silence gives very low RMS.
-    """
+def test_spectrum_rms_silence():
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+
     mock_engine = MagicMock()
     mock_engine.sample_rate = 48000
     mock_engine.calibration = MagicMock()
@@ -94,7 +137,6 @@ def test_spectrum_rms_silence(qtbot):
     sa.start_analysis()
 
     widget = SpectrumAnalyzerWidget(sa)
-    qtbot.addWidget(widget)
 
     # Silence
     sa.input_data.fill(0)
@@ -102,7 +144,9 @@ def test_spectrum_rms_silence(qtbot):
 
     widget.update_plot()
 
-    text = widget.overall_label.text()
+    assert widget.overall_label.setText.called
+    text = widget.overall_label.setText.call_args[0][0]
+
     match = re.search(r"Overall:\s*([\d\.-]+)\s*dBFS", text)
     assert match is not None
     val = float(match.group(1))
