@@ -283,7 +283,7 @@ class SpectrogramWidget(QWidget):
         self.min_freq_spin.setRange(0, 96000)
         self.min_freq_spin.setValue(int(self.module.min_freq))
         self.min_freq_spin.setSuffix(" Hz")
-        self.min_freq_spin.setFixedWidth(80)
+        self.min_freq_spin.setFixedWidth(100)
         self.min_freq_spin.valueChanged.connect(self.on_freq_range_changed)
         row2_layout.addWidget(self.min_freq_spin)
 
@@ -292,7 +292,7 @@ class SpectrogramWidget(QWidget):
         self.max_freq_spin.setRange(0, 96000)
         self.max_freq_spin.setValue(int(self.module.max_freq))
         self.max_freq_spin.setSuffix(" Hz")
-        self.max_freq_spin.setFixedWidth(80)
+        self.max_freq_spin.setFixedWidth(100)
         self.max_freq_spin.valueChanged.connect(self.on_freq_range_changed)
         row2_layout.addWidget(self.max_freq_spin)
 
