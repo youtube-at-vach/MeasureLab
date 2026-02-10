@@ -865,6 +865,8 @@ class NoiseProfilerWidget(QWidget):
 
         unit_suffix = "V" if "dBV" in unit_mode else ("(dBu-lin)" if "dBu" in unit_mode else "FS")
 
+        rms_a = results.get("noise_rms_a_weighted", 0.0)
+
         txt = f"""
         <b>{tr("Noise Report")}</b><br>
         <br>
@@ -886,6 +888,7 @@ class NoiseProfilerWidget(QWidget):
         <br>
         <b>{tr("Integrated RMS")} (20k):</b><br>
         {tr("Total")}: {total_rms * 1e6:.2f} µ{unit_suffix}<br>
+        {tr("A-Weighted")}: {rms_a * 1e6:.2f} µ{unit_suffix} (A)<br>
         <br>
         <b>{tr("Thermal Limit")} ({R}Ω):</b><br>
         {thermal_density * 1e9:.2f} nV/√Hz ({thermal_density_db:.1f} dBV)
