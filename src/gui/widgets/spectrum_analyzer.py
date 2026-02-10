@@ -306,7 +306,19 @@ class SpectrumAnalyzerWidget(QWidget):
         # Window Selection
         row1_layout.addWidget(QLabel(tr("Window:")))
         self.window_combo = QComboBox()
-        self.window_combo.addItems(["hanning", "hamming", "blackman", "bartlett", "rect"])
+        self.window_combo.addItems(fft_manager.get_available_windows())
+        # Set initial if valid, else default to hanning (hann)
+        idx = self.window_combo.findText(self.module.window_type)
+        if idx >= 0:
+            self.window_combo.setCurrentIndex(idx)
+        else:
+             # Fallback for "hanning" vs "hann" if needed, though get_available_windows uses "hann"
+             # SpectrumAnalyzer init uses "hanning", let's standardise on what's in the list
+             if self.module.window_type == "hanning":
+                 idx = self.window_combo.findText("hann")
+                 if idx >= 0:
+                     self.window_combo.setCurrentIndex(idx)
+        
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         row1_layout.addWidget(self.window_combo)
 

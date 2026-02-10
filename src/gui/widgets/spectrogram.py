@@ -233,7 +233,8 @@ class SpectrogramWidget(QWidget):
         # Window
         controls_layout.addWidget(QLabel(tr("Window:")))
         self.window_combo = QComboBox()
-        self.window_combo.addItems(["hann", "hamming", "blackman", "bartlett", "boxcar"])
+        self.window_combo.addItems(fft_manager.get_available_windows())
+        self.window_combo.setCurrentText(self.module.window_type)
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         controls_layout.addWidget(self.window_combo)
 
