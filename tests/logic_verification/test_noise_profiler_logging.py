@@ -52,15 +52,16 @@ def test_worker_exception_logging():
 
 def test_cli_run_logging():
     """
-    Verify that NoiseProfiler.run logs an info message instead of printing.
+    Verify that NoiseProfiler.run prints an info message.
     """
     mock_engine = MagicMock()
     module = NoiseProfiler(mock_engine)
 
-    with patch('src.gui.widgets.noise_profiler.logger', create=True) as mock_logger:
+    # We expect print, not logger.info, as MeasurementModule.run uses print
+    with patch('builtins.print') as mock_print:
         module.run(None)
 
-        # Check if logger.info was called
-        mock_logger.info.assert_called()
-        args, _ = mock_logger.info.call_args
-        assert "Noise Profiler running from CLI" in args[0]
+        # Check if print was called
+        mock_print.assert_called()
+        args, _ = mock_print.call_args
+        assert "CLI not implemented for Noise Profiler" in args[0]
