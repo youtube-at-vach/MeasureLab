@@ -7,7 +7,11 @@ import numpy as np
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.signal_generator import SignalGenerator
+# Mock sounddevice before importing anything that uses it
+sys.modules['sounddevice'] = MagicMock()
+
+# Now import SignalGenerator
+from src.gui.widgets.signal_generator import SignalGenerator  # noqa: E402
 
 
 def test_independent_channels():
@@ -55,36 +59,21 @@ def test_independent_channels():
     expected_r = 0.5 * np.sign(np.sin(2 * np.pi * 500 * t))
 
     # Verify
-    if np.allclose(sig_l, expected_l, atol=1e-5):
-        print("Left Channel: PASS (Sine 1000Hz)")
-    else:
-        print("Left Channel: FAIL")
-        print("Max Diff:", np.max(np.abs(sig_l - expected_l)))
-
-    if np.allclose(sig_r, expected_r, atol=1e-5):
-        print("Right Channel: PASS (Square 500Hz)")
-    else:
-        print("Right Channel: FAIL")
-        print("Max Diff:", np.max(np.abs(sig_r - expected_r)))
+    np.testing.assert_allclose(sig_l, expected_l, atol=1e-5, err_msg="Left Channel (Sine 1000Hz) mismatch")
+    np.testing.assert_allclose(sig_r, expected_r, atol=1e-5, err_msg="Right Channel (Square 500Hz) mismatch")
 
     # Test Output Routing
-    print("\nTesting Routing: Left Only")
     sg.output_mode = 'L'
     outdata.fill(0)
     callback(None, outdata, frames, None, None)
-    if np.all(outdata[:, 1] == 0) and not np.all(outdata[:, 0] == 0):
-        print("Routing L: PASS")
-    else:
-        print("Routing L: FAIL")
+    assert np.all(outdata[:, 1] == 0), "Routing L: Right channel should be silent"
+    assert not np.all(outdata[:, 0] == 0), "Routing L: Left channel should have signal"
 
-    print("\nTesting Routing: Right Only")
     sg.output_mode = 'R'
     outdata.fill(0)
     callback(None, outdata, frames, None, None)
-    if np.all(outdata[:, 0] == 0) and not np.all(outdata[:, 1] == 0):
-        print("Routing R: PASS")
-    else:
-        print("Routing R: FAIL")
+    assert np.all(outdata[:, 0] == 0), "Routing R: Left channel should be silent"
+    assert not np.all(outdata[:, 1] == 0), "Routing R: Right channel should have signal"
 
 if __name__ == "__main__":
     test_independent_channels()
