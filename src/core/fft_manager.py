@@ -104,6 +104,19 @@ class FFTManager:
         """
         key = (size, dtype, direction)
 
+        # Fast path: Check if plan exists without acquiring lock
+        # This is safe because:
+        # 1. Dictionary get is atomic in CPython
+        # 2. Plan entries are only mutated during creation (under lock)
+        # 3. If we get a stale entry (extremely unlikely), the lock below handles it
+        existing_plan = self._plans.get(key)
+        if existing_plan:
+            existing_flags = existing_plan.get("flags", ("FFTW_MEASURE",))
+            # If we have what we need, return immediately
+            # If requested flags require upgrade (e.g. MEASURE requested but only ESTIMATE exists), fall through to lock
+            if not ("FFTW_MEASURE" in flags and "FFTW_MEASURE" not in existing_flags):
+                return existing_plan
+
         with self._lock:
             # Check if plan exists
             if key in self._plans:
