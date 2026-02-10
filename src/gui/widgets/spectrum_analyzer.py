@@ -1,4 +1,3 @@
-import argparse
 import queue
 
 import numpy as np
@@ -66,9 +65,6 @@ class SpectrumAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Real-time frequency spectrum analysis."
-
-    def run(self, args: argparse.Namespace):
-        print("Spectrum Analyzer running from CLI (not fully implemented)")
 
     def get_widget(self):
         return SpectrumAnalyzerWidget(self)

@@ -1,4 +1,4 @@
-import argparse
+
 import bisect
 import json
 import os
@@ -192,8 +192,7 @@ class ImpedanceAnalyzer(MeasurementModule):
     def description(self) -> str:
         return tr("Measure Impedance (Z) using Dual Lock-in Amplifier.")
 
-    def run(self, args: argparse.Namespace):
-        print("Impedance Analyzer running from CLI (not fully implemented)")
+
 
     def get_widget(self):
         return ImpedanceAnalyzerWidget(self)

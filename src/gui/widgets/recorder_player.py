@@ -120,8 +120,6 @@ class RecorderPlayer(MeasurementModule):
     def description(self) -> str:
         return "Record and play audio files (WAV, MP3, FLAC, etc.)"
 
-    def run(self, args):
-        pass
 
     def get_widget(self):
         if self.widget is None:

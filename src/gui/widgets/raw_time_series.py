@@ -1,4 +1,4 @@
-import argparse
+
 import threading
 
 import numpy as np
@@ -59,8 +59,7 @@ class RawTimeSeries(MeasurementModule):
     def description(self) -> str:
         return "Long-span scrolling time series monitor."
 
-    def run(self, args: argparse.Namespace):
-        print("Raw Time Series running from CLI (not implemented)")
+
 
     def get_widget(self):
         return RawTimeSeriesWidget(self)
