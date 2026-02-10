@@ -78,6 +78,17 @@ class CalibrationManager:
                 self.logger.error("Failed to load calibration: %s", e)
 
     def save(self):
+        # Synchronize current settings to the active profile if one is selected
+        if self.last_profile and self.last_profile in self.profiles:
+            p = self.profiles[self.last_profile]
+            p["input_sensitivity"] = self.input_sensitivity
+            p["output_gain"] = self.output_gain
+            p["output_gain_is_calibrated"] = bool(self.output_gain_is_calibrated)
+            p["frequency_calibration"] = self.frequency_calibration
+            p["frequency_calibration_1pps"] = self.frequency_calibration_1pps
+            p["lockin_gain_offset"] = self.lockin_gain_offset
+            p["spl_offset_db"] = self.spl_offset_db
+
         data = {
             "input_sensitivity": self.input_sensitivity,
             "output_gain": self.output_gain,
