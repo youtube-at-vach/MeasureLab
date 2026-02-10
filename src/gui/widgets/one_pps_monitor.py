@@ -587,13 +587,13 @@ class OnePPSMonitorWidget(QWidget):
         if count < self.module.warmup_count * 2:
              QMessageBox.warning(self, tr("Error"), tr("Not enough data to calibrate. Please wait."))
              return
-        
+
         # Get last cumulative PPM
         t, ip, cp = self.module.get_history_arrays()
         if len(cp) == 0:
              QMessageBox.warning(self, tr("Error"), tr("No data available."))
              return
-        
+
         current_ppm = cp[-1] # This is the "measured error" in ppm
 
         # 2. Calculate new calibration factor
@@ -601,20 +601,20 @@ class OnePPSMonitorWidget(QWidget):
         # This implies the system clock is off by that amount (or the source is).
         # We assume the source (1PPS) is perfect.
         # So we want to correct the system so that THIS signal reads 0 ppm.
-        
+
         # Factor definition: Corrected_Freq = Raw_Freq * Factor
         # Corresponds to: Corrected_PPM = Raw_PPM - Calibration_PPM (approx)
-        
+
         # Exact math:
         # We want Corrected_Freq = Nominal
         # Currently: Measured_Freq = Nominal * (1 + current_ppm/1e6)
         # But Measured_Freq is derived from samples.
         # Correction Factor should scale the SAMPLE RATE or the FREQUENCY?
         # In `frequency_counter.py`, precise_freq = detected_freq * factor.
-        
+
         # Here, `current_ppm` describes how much the measured signal deviates from nominal.
         # If signal is 1PPS (1Hz), and we measure 1 + delta, we want to multiply by 1/(1+delta) to get 1.
-        
+
         # Factor acting as multiplier: Corrected_Freq = Measured_Freq * Factor
         # For a fast sampling clock (positive ppm), measured signal appears at a LOWER
         # frequency than reality when using nominal rate.
@@ -622,7 +622,7 @@ class OnePPSMonitorWidget(QWidget):
         # Corrected_Rate = Nominal_Rate * (1 + ppm/1e6)
         # So we multiply measured frequency by (1 + ppm/1e6) to get true frequency.
         new_factor = (1.0 + current_ppm / 1e6)
-        
+
         # 3. Confirmation Dialog
         ret = QMessageBox.question(
             self,
@@ -635,7 +635,7 @@ class OnePPSMonitorWidget(QWidget):
             ).format(current_ppm),
              QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
-        
+
         if ret == QMessageBox.StandardButton.Yes:
             self.module.audio_engine.calibration.set_frequency_calibration_1pps(new_factor)
             self._update_calibration_label()

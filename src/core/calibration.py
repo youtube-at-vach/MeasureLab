@@ -199,11 +199,11 @@ class CalibrationManager:
         self.frequency_calibration = p.get("frequency_calibration", self.frequency_calibration)
         self.frequency_calibration_1pps = p.get("frequency_calibration_1pps", self.frequency_calibration_1pps)
         self.lockin_gain_offset = p.get("lockin_gain_offset", self.lockin_gain_offset)
-        
+
         # spl_offset_db can be None, handled explicitly
         if "spl_offset_db" in p:
             self.spl_offset_db = p["spl_offset_db"]
-            
+
         self.save()  # Persist as current
 
     def delete_profile(self, name):

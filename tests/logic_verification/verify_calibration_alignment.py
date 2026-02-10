@@ -1,7 +1,5 @@
 import numpy as np
 from unittest.mock import MagicMock
-from src.gui.widgets.frequency_counter import FrequencyCounter
-from src.gui.widgets.one_pps_monitor import OnePPSMonitor
 
 # Mock Audio Engine and Calibration
 mock_audio_engine = MagicMock()

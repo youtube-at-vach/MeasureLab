@@ -453,7 +453,7 @@ class FrequencyCalibrationDialog(QDialog):
         # Current Factor
         curr_factor = self.module.audio_engine.calibration.frequency_calibration
         layout.addWidget(QLabel(tr("Current Calibration Factor: {0:.8f}").format(curr_factor)))
-        
+
         # Display as PPM for consistency with 1PPS
         curr_ppm = (curr_factor - 1.0) * 1e6
         layout.addWidget(QLabel(tr("Current Offset: {0:+.3f} ppm").format(curr_ppm)))
