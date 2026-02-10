@@ -8,20 +8,10 @@ from src.core.utils import resource_path
 class LocalizationManager:
     """Manages application localization and translation loading."""
 
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super(LocalizationManager, cls).__new__(cls)
-        return cls._instance
-
     def __init__(self):
-        if hasattr(self, "initialized"):
-            return
         self.language = "en"
         self.translations = {}
         self.available_languages = {}
-        self.initialized = True
         self.logger = logging.getLogger(self.__class__.__name__)
         self.load_available_languages()
 

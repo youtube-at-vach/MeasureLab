@@ -3,29 +3,6 @@ from unittest.mock import patch, mock_open
 from src.core.localization import LocalizationManager, tr, get_manager
 
 class TestLocalizationManager(unittest.TestCase):
-    def setUp(self):
-        # Reset the singleton instance before each test
-        LocalizationManager._instance = None
-        # Reset the global manager if it was created
-        # Note: The module level _loc_manager is created on import.
-        # We can't easily reset that without reloading the module,
-        # but we can reset the class instance to verify new creations.
-
-    def test_singleton(self):
-        """Test that LocalizationManager is a singleton."""
-        with patch("src.core.localization.resource_path") as mock_path, \
-             patch("os.path.exists") as mock_exists, \
-             patch("os.listdir") as mock_listdir:
-
-            mock_path.return_value = "/fake/path"
-            mock_exists.return_value = True
-            mock_listdir.return_value = []
-
-            m1 = LocalizationManager()
-            m2 = LocalizationManager()
-            self.assertIs(m1, m2)
-            self.assertTrue(m1.initialized)
-
     def test_init_scans_directory(self):
         """Test that available languages are scanned correctly."""
         with patch("src.core.localization.resource_path") as mock_path, \
