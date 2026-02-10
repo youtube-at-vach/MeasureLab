@@ -1,4 +1,5 @@
 import argparse
+import logging
 from abc import ABC, abstractmethod
 
 
@@ -22,13 +23,12 @@ class MeasurementModule(ABC):
         """Brief description of the module's purpose."""
         pass
 
-    @abstractmethod
     def run(self, args: argparse.Namespace):
         """
         Execute the measurement from CLI.
         Currently frozen/not implemented for most modules.
         """
-        pass
+        logging.debug(f"CLI run not implemented for {self.name}")
 
     def get_widget(self):
         """
