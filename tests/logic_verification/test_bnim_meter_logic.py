@@ -90,7 +90,6 @@ class TestBNIMMeterLogic(unittest.TestCase):
 
     def test_process_buffer_correlated_noise(self):
         self.meter.start_analysis()
-        sr = 48000
         # Create correlated noise
         noise = np.random.normal(0, 0.1, self.meter.fft_size).astype(np.float32)
 
