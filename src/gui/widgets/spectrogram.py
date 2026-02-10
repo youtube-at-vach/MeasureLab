@@ -193,8 +193,11 @@ class SpectrogramWidget(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
+        layout.addWidget(self._init_controls())
+        layout.addWidget(self._init_plot())
+        self.setLayout(layout)
 
-        # --- Controls ---
+    def _init_controls(self) -> QGroupBox:
         controls_group = QGroupBox(tr("Settings"))
         controls_layout = QHBoxLayout()
 
@@ -240,7 +243,6 @@ class SpectrogramWidget(QWidget):
         self.cmap_combo = QComboBox()
         self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "cividis", "turbo"])
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
-        self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
         controls_layout.addWidget(self.cmap_combo)
 
         # Sweep Speed
@@ -269,12 +271,11 @@ class SpectrogramWidget(QWidget):
         controls_layout.addWidget(self.max_freq_spin)
 
         controls_group.setLayout(controls_layout)
-        layout.addWidget(controls_group)
+        return controls_group
 
-        # --- Plot ---
+    def _init_plot(self) -> pg.GraphicsLayoutWidget:
         # We use a GraphicsLayoutWidget to hold the Plot and Histogram
         self.win = pg.GraphicsLayoutWidget()
-        layout.addWidget(self.win)
 
         # Plot Item
         self.plot = self.win.addPlot(title=tr("Spectrogram"))
@@ -301,7 +302,7 @@ class SpectrogramWidget(QWidget):
         self.hist.gradient.loadPreset("viridis")
         self.hist.setLevels(-120, 0)  # Default dB range
 
-        self.setLayout(layout)
+        return self.win
 
     def on_toggle(self, checked):
         if checked:
