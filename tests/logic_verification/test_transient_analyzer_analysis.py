@@ -8,9 +8,8 @@ sys.modules["PyQt6.QtGui"] = MagicMock()
 sys.modules["PyQt6.QtWidgets"] = MagicMock()
 sys.modules["pyqtgraph"] = MagicMock()
 
-import numpy as np
-import pywt
-from src.gui.widgets.transient_analyzer import TransientAnalyzer
+import numpy as np  # noqa: E402
+from src.gui.widgets.transient_analyzer import TransientAnalyzer  # noqa: E402
 
 class MockAudioEngine:
     def __init__(self):
