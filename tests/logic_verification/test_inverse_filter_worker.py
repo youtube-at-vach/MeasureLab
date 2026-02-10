@@ -8,19 +8,34 @@ class MockQThread:
     def __init__(self):
         pass
 
-mock_qt_core = MagicMock()
-mock_qt_core.QThread = MockQThread
-mock_qt_core.pyqtSignal = MagicMock()
-mock_qt_core.Qt = MagicMock()
-
-sys.modules['PyQt6.QtCore'] = mock_qt_core
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-sys.modules['pyqtgraph'] = MagicMock()
-
-# Now import the worker
-from src.gui.widgets.inverse_filter import ProcessingWorker  # noqa: E402
-
 class TestInverseFilterWorker(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Patch sys.modules safely using patch.dict
+        cls.modules_patcher = patch.dict(sys.modules, {
+            'PyQt6.QtCore': MagicMock(),
+            'PyQt6.QtWidgets': MagicMock(),
+            'pyqtgraph': MagicMock()
+        })
+        cls.modules_patcher.start()
+
+        # Setup specific mocks
+        sys.modules['PyQt6.QtCore'].QThread = MockQThread
+        sys.modules['PyQt6.QtCore'].pyqtSignal = MagicMock()
+        sys.modules['PyQt6.QtCore'].Qt = MagicMock()
+
+        # Import the worker inside the patched environment
+        global ProcessingWorker
+        if 'src.gui.widgets.inverse_filter' in sys.modules:
+            del sys.modules['src.gui.widgets.inverse_filter']
+        from src.gui.widgets.inverse_filter import ProcessingWorker
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.modules_patcher.stop()
+        # Clean up the imported module so subsequent tests re-import correctly if needed
+        if 'src.gui.widgets.inverse_filter' in sys.modules:
+            del sys.modules['src.gui.widgets.inverse_filter']
     def setUp(self):
         self.mock_calibration = [(100, 1.0, 0.0), (1000, 1.0, 0.0)]
 

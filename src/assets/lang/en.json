@@ -1079,6 +1079,7 @@
     "A-Weighted": "A-Weighted",
     "Calibrate from Current": "Calibrate from Current",
     "Calibration saved.": "Calibration saved.",
+    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm",
     "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?": "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?",
     "Monitor is not running.": "Monitor is not running.",
     "No data available.": "No data available.",
