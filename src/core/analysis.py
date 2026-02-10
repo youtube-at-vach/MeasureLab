@@ -91,6 +91,7 @@ class AudioCalc:
     """
     Shared audio calculation utilities.
     """
+    MAX_AUDIO_SAMPLES = 500_000_000
 
     @staticmethod
     def resample(data, source_sr, target_sr):
