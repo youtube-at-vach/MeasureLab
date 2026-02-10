@@ -11,8 +11,6 @@ permissions:
 
 jobs:
   build-windows:
-    permissions:
-      contents: write
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -115,8 +113,6 @@ jobs:
         draft: ${{ github.event_name == 'workflow_dispatch' }}
 
   build-linux:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -210,8 +206,6 @@ jobs:
         draft: ${{ github.event_name == 'workflow_dispatch' }}
 
   build-macos:
-    permissions:
-      contents: write
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -334,8 +328,6 @@ jobs:
   release-checksums:
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Download Checksums
