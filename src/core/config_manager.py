@@ -194,7 +194,11 @@ class ConfigManager:
             out_dir = os.path.join(self.config_dir, "screenshots")
 
         try:
-            os.makedirs(out_dir, exist_ok=True)
+            os.makedirs(out_dir, mode=0o700, exist_ok=True)
+            try:
+                os.chmod(out_dir, 0o700)
+            except Exception as exc:
+                self.logger.warning(f"Unable to set secure permissions for {out_dir}: {exc}")
         except Exception as exc:  # PermissionError, OSError
             self.logger.warning(f"Unable to ensure screenshot directory at {out_dir}: {exc}")
         return out_dir
