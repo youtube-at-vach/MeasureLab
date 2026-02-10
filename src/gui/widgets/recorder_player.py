@@ -74,9 +74,16 @@ class FileSaveWorker(QThread):
             return
 
         try:
-            # Perform the heavy lifting: concatenation and IO
-            data = np.concatenate(self.record_buffer, axis=0)
-            sf.write(self.filepath, data, self.sample_rate, format=self.format, subtype=self.subtype)
+            # Determine channels from the first chunk
+            first_chunk = self.record_buffer[0]
+            channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
+
+            # Write chunks sequentially to avoid large memory allocation
+            with sf.SoundFile(self.filepath, mode='w', samplerate=self.sample_rate,
+                              channels=channels, format=self.format, subtype=self.subtype) as f:
+                for chunk in self.record_buffer:
+                    f.write(chunk)
+
             self.finished.emit(True, f"Saved: {self.filepath}")
         except Exception as e:
             self.finished.emit(False, str(e))
@@ -155,8 +162,16 @@ class RecorderPlayer(MeasurementModule):
             return False, "No recording data"
 
         try:
-            data = np.concatenate(self.record_buffer, axis=0)
-            sf.write(filepath, data, self.audio_engine.sample_rate, format=format, subtype=subtype)
+            # Determine channels from the first chunk
+            first_chunk = self.record_buffer[0]
+            channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
+
+            # Write chunks sequentially to avoid large memory allocation
+            with sf.SoundFile(filepath, mode='w', samplerate=self.audio_engine.sample_rate,
+                              channels=channels, format=format, subtype=subtype) as f:
+                for chunk in self.record_buffer:
+                    f.write(chunk)
+
             return True, f"Saved: {filepath}"
         except Exception as e:
             return False, str(e)

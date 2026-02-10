@@ -40,7 +40,8 @@ This tool measures the following values:
 Continues to measure the performance at the current moment.
 
 * **Use Case**: Suitable for adjusting equipment or seeing changes in distortion due to volume position.
-* **Meters**: Numerical values are displayed prominently on the left. Pressing the **Show Detailed** button displays the following additional information:
+* **Meters**: Numerical values are displayed prominently on the left. Percentage values like THD+N automatically adjust their decimal precision based on magnitude (Dynamic Precision).
+    * Pressing the **Show Detailed** button displays the following additional information:
     * **Input level**: Level of the input signal (dBFS).
     * **Window**: The window function being used (usually Blackman-Harris).
     * **ENOB (Effective Number of Bits)**: Effective bit depth calculated from SINAD (calculated only when the input level is sufficiently high).

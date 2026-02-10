@@ -1,4 +1,3 @@
-import argparse
 import logging
 
 import numpy as np
@@ -160,9 +159,6 @@ class NoiseProfiler(MeasurementModule):
     @property
     def description(self) -> str:
         return tr("Noise characterization and analysis tool.")
-
-    def run(self, args: argparse.Namespace):
-        logger.info("Noise Profiler running from CLI (not fully implemented)")
 
     def get_widget(self):
         return NoiseProfilerWidget(self)

@@ -27,7 +27,8 @@ class MeasurementModule(ABC):
         Execute the measurement from CLI.
         Currently frozen/not implemented for most modules.
         """
-        print(f"CLI run not implemented for {self.name}")
+        # Default implementation: no-op for modules that don't support CLI
+        return None
 
     def get_widget(self):
         """
