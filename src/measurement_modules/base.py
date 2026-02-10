@@ -1,4 +1,5 @@
 import argparse
+import logging
 from abc import ABC, abstractmethod
 
 
@@ -28,7 +29,7 @@ class MeasurementModule(ABC):
         Currently frozen/not implemented for most modules.
         Default implementation is a no-op.
         """
-        pass
+        logging.debug(f"CLI run not implemented for {self.name}")
 
     def get_widget(self):
         """
