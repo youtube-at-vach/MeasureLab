@@ -249,15 +249,93 @@ class AudioCalc:
         best_mse = float('inf')
         best_coarse = freq_guess
 
-        # Vectorization would be faster but get_residual_mse uses lstsq which is not easily vectorized over freq
-        for f in grid:
-            # Skip negative frequencies
-            if f <= 0:
-                continue
-            mse = get_residual_mse(f)
-            if mse < best_mse:
-                best_mse = mse
-                best_coarse = f
+        # Optimized Iterative Grid Search (Recurrence)
+        # Filter negative frequencies
+        grid = grid[grid > 0]
+
+        if len(grid) > 0:
+            # Reuse M buffer to keep cache locality (small buffer, fits in L1/L2)
+            # M is (N, 3). Reuse fitted/residual buffers as well
+
+            # Initial Frequency
+            f_start = grid[0]
+            w_start = 2 * np.pi * f_start
+
+            # Compute initial S, C into M
+            # M[:, 0] = sin, M[:, 1] = cos
+            np.sin(w_start * t, out=M[:, 0])
+            np.cos(w_start * t, out=M[:, 1])
+
+            # Pre-compute rotation vectors if needed
+            sin_step = None
+            cos_step = None
+
+            if len(grid) > 1:
+                step_actual = grid[1] - grid[0]
+                if step_actual > 0:
+                    w_step = 2 * np.pi * step_actual
+                    sin_step = np.sin(w_step * t)
+                    cos_step = np.cos(w_step * t)
+
+            # Pre-calculate signal energy
+            yy = np.sum(signal**2)
+
+            # Reuse buffers for temporary S
+            # We can use fitted_buffer as temp S storage during update
+            temp_S = fitted_buffer
+
+            # Iteration
+            for i, f in enumerate(grid):
+                if i > 0 and sin_step is not None:
+                    # Update S, C in place using rotation
+                    # S_new = S * cos_step + C * sin_step
+                    # C_new = C * cos_step - S * sin_step
+
+                    # Store current S in temp
+                    np.copyto(temp_S, M[:, 0])
+
+                    # Update S (M[:,0])
+                    # M[:,0] *= cos_step
+                    np.multiply(M[:, 0], cos_step, out=M[:, 0])
+                    # Add C * sin_step (use residual_buffer as scratch)
+                    np.multiply(M[:, 1], sin_step, out=residual_buffer)
+                    np.add(M[:, 0], residual_buffer, out=M[:, 0])
+
+                    # Update C (M[:,1])
+                    # M[:,1] *= cos_step
+                    np.multiply(M[:, 1], cos_step, out=M[:, 1])
+                    # Subtract temp_S * sin_step
+                    np.multiply(temp_S, sin_step, out=residual_buffer)
+                    np.subtract(M[:, 1], residual_buffer, out=M[:, 1])
+                elif i > 0:
+                    # Fallback if step is weird (shouldn't happen with arange)
+                    w = 2 * np.pi * f
+                    np.sin(w * t, out=M[:, 0])
+                    np.cos(w * t, out=M[:, 1])
+
+                # Solve Least Squares
+                # Use normal equations for speed: (M^T M) coeffs = M^T y
+                # M is (N, 3).
+
+                MT = M.T
+                # A = MT @ M (3, 3)
+                # b = MT @ signal (3,)
+
+                A = MT @ M
+                b = MT @ signal
+
+                try:
+                    coeffs = np.linalg.solve(A, b)
+                except np.linalg.LinAlgError:
+                    coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+
+                # Compute MSE
+                bx = np.dot(b, coeffs)
+                mse = (yy - bx) / N
+
+                if mse < best_mse:
+                    best_mse = mse
+                    best_coarse = f
 
         # Pass 2: Fine Search (Zoom in)
         # Use bounded minimization around the best grid point
