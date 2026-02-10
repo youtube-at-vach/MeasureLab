@@ -81,6 +81,10 @@ class LoopbackFinder(MeasurementModule):
         t = np.linspace(0, duration, int(sample_rate * duration), False, dtype=np.float32)
         test_signal = 0.5 * np.sin(2 * np.pi * test_freq * t)  # -6dBFS
 
+        # Optimization: Calculate frequencies and target bin once outside the loop
+        freqs = fft_manager.rfftfreq(len(test_signal), 1 / sample_rate)
+        target_bin = np.argmin(np.abs(freqs - test_freq))
+
         for out_ch in range(max_out):
             if check_stop and check_stop():
                 break
@@ -106,9 +110,7 @@ class LoopbackFinder(MeasurementModule):
                 # Simple RMS check or FFT? FFT is more robust against noise.
                 # Using FFT as in legacy code
                 input_fft = fft_manager.rfft(recorded_signal[:, in_ch])
-                freqs = fft_manager.rfftfreq(len(recorded_signal), 1 / sample_rate)
-
-                target_bin = np.argmin(np.abs(freqs - test_freq))
+                # freqs and target_bin are pre-calculated
                 magnitude = np.abs(input_fft[target_bin]) / len(recorded_signal) * 2
 
                 if magnitude > threshold:
