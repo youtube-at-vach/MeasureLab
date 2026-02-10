@@ -1,7 +1,6 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import sys
-import numpy as np
 
 # Mock dependencies BEFORE importing the module under test
 # This is crucial because the module imports PyQt6 at the top level
