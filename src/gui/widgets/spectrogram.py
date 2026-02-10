@@ -8,6 +8,7 @@ from PyQt6.QtGui import QTransform, QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -21,7 +22,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.analysis import get_cached_window
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
-from src.core.fft_manager import fft_manager
+from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
 
@@ -37,7 +38,7 @@ class Spectrogram(MeasurementModule):
         self.channel_mode = "Left"  # 'Left', 'Right', 'Average'
         self.history_length = 500  # Number of time steps to keep
         self.sweep_speed_index = 0  # 0: Fast, 1: Medium, 2: Slow, 3: Meteor
-        self.min_freq = 0
+        self.min_freq = 20
         self.max_freq = 20000  # Default, will be updated by UI or sample rate
 
         # State
@@ -198,12 +199,21 @@ class SpectrogramWidget(QWidget):
 
     def _init_controls(self) -> QGroupBox:
         controls_group = QGroupBox(tr("Settings"))
-        controls_layout = QHBoxLayout()
+        # Main layout is horizontal: [Start Button] [Settings Column]
+        main_layout = QHBoxLayout()
 
-        # Start/Stop
+        # --- Left: Start/Stop Button ---
         self.toggle_btn = QPushButton(tr("Start"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
+        self.toggle_btn.setFixedWidth(80)
+        self.toggle_btn.setSizePolicy(
+            self.toggle_btn.sizePolicy().horizontalPolicy(),
+            self.toggle_btn.sizePolicy().verticalPolicy(),
+        )
+        # Make button span height (approximate) or let layout handle it.
+        # Ideally, we want it to be tall enough.
+        self.toggle_btn.setMinimumHeight(50)
 
         # Theme handling
         self.app = QApplication.instance()
@@ -213,63 +223,88 @@ class SpectrogramWidget(QWidget):
         else:
             self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
 
-        controls_layout.addWidget(self.toggle_btn)
+        main_layout.addWidget(self.toggle_btn)
 
+        # --- Right: Settings Column ---
+        # --- Right: Settings Column ---
+        settings_layout = QGridLayout()
+        settings_layout.setContentsMargins(0, 0, 0, 0)
+        settings_layout.setHorizontalSpacing(10)
+        settings_layout.setVerticalSpacing(5)
+
+        # Row 1: Channel, FFT Size, Window
         # Channel
-        controls_layout.addWidget(QLabel(tr("Channel:")))
+        settings_layout.addWidget(QLabel(tr("Channel:")), 0, 0)
         self.channel_combo = QComboBox()
         self.channel_combo.addItems(["Left", "Right", "Average"])
         self.channel_combo.currentTextChanged.connect(self.on_channel_changed)
-        controls_layout.addWidget(self.channel_combo)
+        settings_layout.addWidget(self.channel_combo, 0, 1)
 
         # FFT Size
-        controls_layout.addWidget(QLabel(tr("FFT Size:")))
+        settings_layout.addWidget(QLabel(tr("FFT Size:")), 0, 2)
         self.fft_combo = QComboBox()
-        self.fft_combo.addItems(["512", "1024", "2048", "4096", "8192"])
+        self.update_available_fft_sizes(0)  # Initial: Fast
         self.fft_combo.setCurrentText(str(self.module.fft_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_changed)
-        controls_layout.addWidget(self.fft_combo)
+        settings_layout.addWidget(self.fft_combo, 0, 3)
 
         # Window
-        controls_layout.addWidget(QLabel(tr("Window:")))
+        settings_layout.addWidget(QLabel(tr("Window:")), 0, 4)
         self.window_combo = QComboBox()
-        self.window_combo.addItems(["hann", "hamming", "blackman", "bartlett", "boxcar"])
+        self.window_combo.addItems(fft_manager.get_available_windows())
+        self.window_combo.setCurrentText(self.module.window_type)
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
-        controls_layout.addWidget(self.window_combo)
+        settings_layout.addWidget(self.window_combo, 0, 5)
 
+        # Scale (Log/Linear)
+        settings_layout.addWidget(QLabel(tr("Scale:")), 0, 6)
+        self.scale_combo = QComboBox()
+        self.scale_combo.addItems(["Log", "Linear"])
+        self.scale_combo.currentTextChanged.connect(self.on_scale_changed)
+        settings_layout.addWidget(self.scale_combo, 0, 7)
+
+        # Row 2: Colormap, Speed, Frequency Range
         # Colormap
-        controls_layout.addWidget(QLabel(tr("Colormap:")))
+        settings_layout.addWidget(QLabel(tr("Colormap:")), 1, 0)
         self.cmap_combo = QComboBox()
-        self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "cividis", "turbo"])
+        self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "turbo", "thermal", "flame", "yellowy", "bipolar", "spectrum", "cyclic"])
+        self.cmap_combo.setCurrentText("turbo")
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
-        controls_layout.addWidget(self.cmap_combo)
+        settings_layout.addWidget(self.cmap_combo, 1, 1)
 
         # Sweep Speed
-        controls_layout.addWidget(QLabel(tr("Speed:")))
+        settings_layout.addWidget(QLabel(tr("Speed:")), 1, 2)
         self.speed_combo = QComboBox()
         self.speed_combo.addItems([tr("Fast (Realtime)"), tr("Medium (1m)"), tr("Slow (5m)"), tr("Meteor (10m)")])
         self.speed_combo.currentIndexChanged.connect(self.on_speed_changed)
-        controls_layout.addWidget(self.speed_combo)
+        settings_layout.addWidget(self.speed_combo, 1, 3)
 
+        # Frequency Range
         # Min Freq
-        controls_layout.addWidget(QLabel(tr("Min Freq:")))
+        settings_layout.addWidget(QLabel(tr("Min Freq:")), 1, 4)
         self.min_freq_spin = QSpinBox()
         self.min_freq_spin.setRange(0, 96000)
         self.min_freq_spin.setValue(int(self.module.min_freq))
         self.min_freq_spin.setSuffix(" Hz")
+        self.min_freq_spin.setFixedWidth(100)
         self.min_freq_spin.valueChanged.connect(self.on_freq_range_changed)
-        controls_layout.addWidget(self.min_freq_spin)
+        settings_layout.addWidget(self.min_freq_spin, 1, 5)
 
         # Max Freq
-        controls_layout.addWidget(QLabel(tr("Max Freq:")))
+        settings_layout.addWidget(QLabel(tr("Max Freq:")), 1, 6)
         self.max_freq_spin = QSpinBox()
         self.max_freq_spin.setRange(0, 96000)
         self.max_freq_spin.setValue(int(self.module.max_freq))
         self.max_freq_spin.setSuffix(" Hz")
+        self.max_freq_spin.setFixedWidth(100)
         self.max_freq_spin.valueChanged.connect(self.on_freq_range_changed)
-        controls_layout.addWidget(self.max_freq_spin)
+        settings_layout.addWidget(self.max_freq_spin, 1, 7)
 
-        controls_group.setLayout(controls_layout)
+        # Add stretch to compact the layout to the left
+        settings_layout.setColumnStretch(8, 1)
+
+        main_layout.addLayout(settings_layout)
+        controls_group.setLayout(main_layout)
         return controls_group
 
     def _init_plot(self) -> pg.GraphicsLayoutWidget:
@@ -280,6 +315,7 @@ class SpectrogramWidget(QWidget):
         self.plot = self.win.addPlot(title=tr("Spectrogram"))
         self.plot.setLabel("left", tr("Frequency"), units="Hz")
         self.plot.setLabel("bottom", tr("Time"), units="frames")
+        self.plot.setLogMode(False, True)  # Default: Log Y-axis
 
         # Image Item
         # We use two images to render the circular buffer without copying
@@ -298,10 +334,43 @@ class SpectrogramWidget(QWidget):
         self.hist.sigLookupTableChanged.connect(lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512)))
 
         # Set default colormap
-        self.hist.gradient.loadPreset("viridis")
+        self.hist.gradient.loadPreset("turbo")
         self.hist.setLevels(-120, 0)  # Default dB range
 
         return self.win
+
+    def update_available_fft_sizes(self, speed_index):
+        current_text = self.fft_combo.currentText()
+        self.fft_combo.blockSignals(True)
+        self.fft_combo.clear()
+
+        # Fast (Realtime) -> Limit to 8192
+        # Others -> Use WARMUP_SIZES (up to 65536)
+        if speed_index == 0:
+            sizes = [str(s) for s in WARMUP_SIZES if s <= 8192]
+        else:
+            sizes = [str(s) for s in WARMUP_SIZES]
+
+        self.fft_combo.addItems(sizes)
+
+        # Restore selection if possible
+        index = self.fft_combo.findText(current_text)
+        if index >= 0:
+            self.fft_combo.setCurrentIndex(index)
+        else:
+            # If current selection is invalid (e.g. was 16384 and switched to Fast), select max available or default
+             # Try to select 2048 as default, or last item
+            def_idx = self.fft_combo.findText("2048")
+            if def_idx >= 0:
+                self.fft_combo.setCurrentIndex(def_idx)
+            else:
+                self.fft_combo.setCurrentIndex(self.fft_combo.count() - 1)
+
+             # Explicitly trigger change since we changed value
+            if self.fft_combo.currentText() != current_text:
+                self.on_fft_changed(self.fft_combo.currentText())
+
+        self.fft_combo.blockSignals(False)
 
     def on_toggle(self, checked):
         if checked:
@@ -328,15 +397,38 @@ class SpectrogramWidget(QWidget):
         self.hist.gradient.loadPreset(val)
 
     def on_speed_changed(self, idx):
+        self.update_available_fft_sizes(idx)
         self.module.sweep_speed_index = idx
         # Reset accumulator on speed change to avoid mixing
         self.module.accumulator = None
         self.module.acc_count = 0
 
     def on_freq_range_changed(self):
+        # Safe check for init
+        if not hasattr(self, "min_freq_spin") or not hasattr(self, "max_freq_spin"):
+            return
+
         self.module.min_freq = self.min_freq_spin.value()
         self.module.max_freq = self.max_freq_spin.value()
-        self.plot.setYRange(self.module.min_freq, self.module.max_freq)
+
+        min_f = float(self.module.min_freq)
+        max_f = float(self.module.max_freq)
+
+        if self.scale_combo.currentText() == "Log":
+            # Avoid log(0) or negative
+            if min_f <= 0:
+                min_f = 1.0 # 1Hz minimum for log scale
+            if max_f <= min_f:
+                 max_f = min_f + 10.0 # Valid range
+
+            self.plot.setYRange(np.log10(min_f), np.log10(max_f))
+        else:
+            self.plot.setYRange(min_f, max_f)
+
+    def on_scale_changed(self, val):
+        is_log = (val == "Log")
+        self.plot.setLogMode(False, is_log)
+        self.on_freq_range_changed()  # Re-apply limits safely
 
     def update_spectrogram(self):
         if not self.module.is_running:
@@ -430,33 +522,81 @@ class SpectrogramWidget(QWidget):
         ptr = self.module.spectrogram_ptr
         buffer = self.module.spectrogram_buffer
 
-        # Part 1: Oldest data (buffer[ptr:])
-        part1 = buffer[ptr:]
-        self.img_old.setImage(part1, autoLevels=False)
-        self.img_old.setPos(0, 0)
+        # Check Scale Mode
+        is_log = (self.scale_combo.currentText() == "Log")
 
-        # Part 2: Newer data (buffer[:ptr])
-        part2 = buffer[:ptr]
-        self.img_new.setImage(part2, autoLevels=False)
-        self.img_new.setPos(len(part1), 0)
-
-        # Set Scale
-        # X axis: Time (0 to History)
-        # Y axis: Frequency (0 to Nyquist)
         sample_rate = self.module.audio_engine.sample_rate
         nyquist = sample_rate / 2
 
-        # Scale Y to match Frequency
-        # Image height is fft_size // 2 + 1
-        # We want it to span 0 to Nyquist
-        y_scale = nyquist / (buffer.shape[1])
+        # Prepare Display Data
+        if is_log:
+            # Resample to Log Scale
+            # Cache the map
+            # We map from Linear Bins (0..N/2) to Log Bins (0..N/2)
+            # Log Bins cover log10(min_freq) to log10(max_freq)
+            # If min_freq is 0, clamp to 1 Hz
 
-        transform = QTransform().scale(1, y_scale)
+            min_f = max(1, self.module.min_freq)
+            max_f = max(min_f + 1, self.module.max_freq) # Ensure max > min
+
+            # Key for cache: (fft_size, min_f, max_f)
+            cache_key = (self.module.fft_size, min_f, max_f)
+            if not hasattr(self, "_log_map_cache") or self._log_map_cache[0] != cache_key:
+                # Generate Map
+                n_bins = buffer.shape[1]
+                # Log spaced frequencies
+                log_freqs = np.logspace(np.log10(min_f), np.log10(max_f), n_bins)
+                # Convert to linear bin indices
+                freq_res = sample_rate / self.module.fft_size
+                linear_indices = log_freqs / freq_res
+                # Clamp
+                linear_indices = np.clip(linear_indices, 0, n_bins - 1).astype(int)
+                self._log_map_cache = (cache_key, linear_indices)
+
+            indices = self._log_map_cache[1]
+            display_buffer = buffer[:, indices]
+
+            # Transform for Log Mode
+            # Image Y: 0..Height -> log10(min)..log10(max)
+            # height of image is n_bins
+            # we want Y=0 to map to log10(min_f)
+            # we want Y=n_bins to map to log10(max_f)
+
+            log_min = np.log10(min_f)
+            log_max = np.log10(max_f)
+            y_scale = (log_max - log_min) / display_buffer.shape[1]
+
+            transform = QTransform().translate(0, log_min).scale(1, y_scale)
+
+            # Limits in Log Domain
+            self.plot.setLimits(yMin=log_min, yMax=log_max)
+            self.plot.setYRange(log_min, log_max)
+
+        else:
+            # Linear Scale
+            display_buffer = buffer
+
+            # Transform for Linear Mode
+            # Image Y: 0..Height -> 0..Nyquist
+            y_scale = nyquist / (buffer.shape[1])
+            transform = QTransform().scale(1, y_scale)
+
+            self.plot.setLimits(yMin=0, yMax=nyquist)
+            self.plot.setYRange(self.module.min_freq, self.module.max_freq)
+
+        # Part 1: Oldest data (buffer[ptr:])
+        part1 = display_buffer[ptr:]
+        self.img_old.setImage(part1, autoLevels=False)
+        self.img_old.setPos(0, 0)
         self.img_old.setTransform(transform)
+
+        # Part 2: Newer data (buffer[:ptr])
+        part2 = display_buffer[:ptr]
+        self.img_new.setImage(part2, autoLevels=False)
+        self.img_new.setPos(len(part1), 0)
         self.img_new.setTransform(transform)
 
-        self.plot.setLimits(yMin=0, yMax=nyquist)
-        self.plot.setYRange(self.module.min_freq, self.module.max_freq)
+
 
     def apply_theme(self, theme_name):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):

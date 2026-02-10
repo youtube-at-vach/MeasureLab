@@ -317,5 +317,31 @@ class FFTManager:
             callback(tr("Done {0}/{1}").format(total + 1, total + 1))
 
 
+
+    def get_available_windows(self):
+        """
+        Returns a list of supported window functions from scipy.signal.
+        Strings are compatible with scipy.signal.get_window().
+        """
+        return [
+            "boxcar",
+            "triang",
+            "blackman",
+            "hamming",
+            "hann",
+            "bartlett",
+            "flattop",
+            "parzen",
+            "bohman",
+            "blackmanharris",
+            "nuttall",
+            "barthann",
+            "cosine",
+            "exponential",
+            "tukey",
+            "taylor",
+        ]
+
+
 # Global instance for easy access
 fft_manager = FFTManager()
