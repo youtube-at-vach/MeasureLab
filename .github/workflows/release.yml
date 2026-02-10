@@ -99,7 +99,7 @@ jobs:
       id: changelog
       shell: bash
       run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        python misc/extract_changelog.py "${GITHUB_REF#refs/tags/}" > release_notes.md
         # If empty, use a default message
         if [ ! -s release_notes.md ]; then
           echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
@@ -180,7 +180,7 @@ jobs:
     - name: Generate Checksums
       run: |
         cd dist/release
-        sha256sum * > checksums_linux.txt
+        sha256sum ./* > checksums_linux.txt
 
     - name: Upload Checksums Fragment
       uses: actions/upload-artifact@v6
@@ -192,7 +192,7 @@ jobs:
     - name: Extract CHANGELOG for version
       id: changelog
       run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        python misc/extract_changelog.py "${GITHUB_REF#refs/tags/}" > release_notes.md
         # If empty, use a default message
         if [ ! -s release_notes.md ]; then
           echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
@@ -305,7 +305,7 @@ jobs:
     - name: Generate Checksums
       run: |
         cd dist/release
-        shasum -a 256 * > checksums_macos.txt
+        shasum -a 256 ./* > checksums_macos.txt
 
     - name: Upload Checksums Fragment
       uses: actions/upload-artifact@v6
@@ -316,7 +316,7 @@ jobs:
     - name: Extract CHANGELOG for version
       id: changelog
       run: |
-        python misc/extract_changelog.py ${GITHUB_REF#refs/tags/} > release_notes.md
+        python misc/extract_changelog.py "${GITHUB_REF#refs/tags/}" > release_notes.md
         # If empty, use a default message
         if [ ! -s release_notes.md ]; then
           echo "Release ${GITHUB_REF#refs/tags/}" > release_notes.md
