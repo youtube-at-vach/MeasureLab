@@ -1,5 +1,11 @@
 import os
 import sys
+from unittest.mock import MagicMock
+
+# Mock sounddevice before importing anything from src
+sys.modules["sounddevice"] = MagicMock()
+# Mock localization since it might rely on something
+sys.modules["src.core.localization"] = MagicMock()
 
 import numpy as np
 
