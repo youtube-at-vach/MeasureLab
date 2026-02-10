@@ -22,7 +22,6 @@ class MeasurementModule(ABC):
         """Brief description of the module's purpose."""
         pass
 
-    @abstractmethod
     def run(self, args: argparse.Namespace):
         """
         Execute the measurement from CLI.
