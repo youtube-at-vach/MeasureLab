@@ -1,6 +1,6 @@
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import importlib
 import numpy as np
 
@@ -36,7 +36,9 @@ class TestOscilloscopePersistence(unittest.TestCase):
             sys.modules[name] = mock
 
         # Mock QRectF specifically
-        rect_side_effect = lambda x, y, w, h: (x, y, w, h)
+        def rect_side_effect(x, y, w, h):
+            return x, y, w, h
+
         self.patched_modules["PyQt6.QtCore"].QRectF = MagicMock(side_effect=rect_side_effect)
         self.patched_modules["pyqtgraph"].QtCore.QRectF = MagicMock(side_effect=rect_side_effect)
 
