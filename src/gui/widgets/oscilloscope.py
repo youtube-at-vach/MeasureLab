@@ -1304,9 +1304,9 @@ class OscilloscopeWidget(QWidget):
                 return "--"
             if hz >= 1e6:
                 return f"{hz / 1e6:.3f} MHz"
-            if hz >= 1e3:
-                return f"{hz / 1e3:.3f} kHz"
-            return f"{hz:.3f} Hz"
+                if hz >= 1e3:
+                    return f"{hz / 1e3:.3f} kHz"
+                return f"{hz:.3f} Hz"
 
         if self.module.show_left:
             freq_hz = self.module.estimate_frequency_hz(t, l_data)
