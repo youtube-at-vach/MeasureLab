@@ -214,17 +214,9 @@ class CalibrationManager:
     # --- Frequency Correction Map ---
 
     def _is_path_allowed(self, path):
-        # Allow only files within the directory where the main calibration file resides.
-        if not self.config_path:
-            return False
-
-        config_dir = os.path.dirname(os.path.realpath(self.config_path))
-        target_path = os.path.realpath(path)
-
-        try:
-            return os.path.commonpath([config_dir, target_path]) == config_dir
-        except ValueError:
-            return False
+        # Allow loading calibration files from any location.
+        # Previously restricted to config directory, but this was too limiting.
+        return True
 
     def load_frequency_map(self, path):
         """
