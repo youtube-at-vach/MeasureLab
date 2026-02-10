@@ -8,8 +8,18 @@ from scipy.signal import get_window
 # Ensure src is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-# Mock sounddevice
+# Mock dependencies BEFORE importing the module under test
 sys.modules['sounddevice'] = MagicMock()
+sys.modules['PyQt6'] = MagicMock()
+sys.modules['PyQt6.QtCore'] = MagicMock()
+sys.modules['PyQt6.QtGui'] = MagicMock()
+sys.modules['PyQt6.QtWidgets'] = MagicMock()
+sys.modules['pyqtgraph'] = MagicMock()
+
+# Mock localization
+mock_localization = MagicMock()
+mock_localization.tr = lambda x, default=None: x
+sys.modules['src.core.localization'] = mock_localization
 
 try:
     from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
