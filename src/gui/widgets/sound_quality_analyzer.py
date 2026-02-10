@@ -1,4 +1,4 @@
-import argparse
+
 
 import numpy as np
 import pyqtgraph as pg
@@ -491,8 +491,7 @@ class SoundQualityAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "Offline analysis of sound quality metrics (Loudness, Sharpness, Roughness)."
 
-    def run(self, args: argparse.Namespace):
-        print("Sound Quality Analyzer is a GUI-only widget.")
+
 
     def get_widget(self):
         return SoundQualityAnalyzerWidget(self)

@@ -1,4 +1,4 @@
-import argparse
+
 import threading
 import time
 
@@ -107,8 +107,7 @@ class LufsMeter(MeasurementModule):
     def description(self) -> str:
         return "Real-time Loudness (LUFS) and Stereo Level Meter"
 
-    def run(self, args: argparse.Namespace):
-        print("LUFS Meter running from CLI (not fully implemented)")
+
 
     def get_widget(self):
         return LufsMeterWidget(self)

@@ -88,8 +88,6 @@ class SoundLevelMeter(MeasurementModule):
     def description(self):
         return "Advanced sound pressure level meter with A/C/Z weighting and time constants."
 
-    def run(self, args):
-        pass
 
     def get_widget(self):
         return SoundLevelMeterWidget(self)

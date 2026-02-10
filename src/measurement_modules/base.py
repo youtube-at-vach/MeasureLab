@@ -1,4 +1,3 @@
-import argparse
 from abc import ABC, abstractmethod
 
 
@@ -6,8 +5,7 @@ class MeasurementModule(ABC):
     """
     Base class for all measurement modules.
 
-    Provides interfaces for both GUI (get_widget) and CLI (run).
-    Note: CLI functionality (run method) is currently suspended/frozen.
+    Provides interface for GUI (get_widget).
     """
 
     @property
@@ -21,14 +19,6 @@ class MeasurementModule(ABC):
     def description(self) -> str:
         """Brief description of the module's purpose."""
         pass
-
-    def run(self, args: argparse.Namespace):
-        """
-        Execute the measurement from CLI.
-        Currently frozen/not implemented for most modules.
-        """
-        # Default implementation: no-op for modules that don't support CLI
-        return None
 
     def get_widget(self):
         """

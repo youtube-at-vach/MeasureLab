@@ -90,8 +90,7 @@ class AdvancedDistortionMeter(MeasurementModule):
     def description(self) -> str:
         return "Advanced distortion measurements including MIM, SPDR, and PIM."
 
-    def run(self, args):
-        print("Advanced Distortion Meter running from CLI (not implemented)")
+
 
     def get_widget(self):
         return AdvancedDistortionMeterWidget(self)

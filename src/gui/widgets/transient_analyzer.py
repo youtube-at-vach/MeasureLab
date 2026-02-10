@@ -68,8 +68,6 @@ class TransientAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "Transient analysis using Wavelet Transform."
 
-    def run(self, args):
-        pass
 
     def get_widget(self):
         if self.widget is None:
