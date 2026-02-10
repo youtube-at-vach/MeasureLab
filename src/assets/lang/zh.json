@@ -1104,5 +1104,10 @@
     "No data available.": "无可用数据。",
     "Not enough data to calibrate. Please wait.": "数据不足以进行校准。请稍候。",
     "Stored 1PPS Cal: 0.000 ppm": "存储的 1PPS 校准: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "存储的 1PPS 校准: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "存储的 1PPS 校准: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "当前偏移: {0:+.3f} ppm",
+    "Cutoff Freq (Hz):": "截止频率 (Hz):",
+    "High Pass Filter (HPF)": "高通滤波器 (HPF)",
+    "Low Pass Filter (LPF)": "低通滤波器 (LPF)",
+    "Order:": "阶数:"
 }

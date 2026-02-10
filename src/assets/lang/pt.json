@@ -1104,5 +1104,10 @@
     "No data available.": "Sem dados.",
     "Not enough data to calibrate. Please wait.": "Dados insuficientes. Aguarde.",
     "Stored 1PPS Cal: 0.000 ppm": "Cal. 1PPS arm: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "Cal. 1PPS arm: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Cal. 1PPS arm: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "Desvio atual: {0:+.3f} ppm",
+    "Cutoff Freq (Hz):": "Freq. de corte (Hz):",
+    "High Pass Filter (HPF)": "Filtro passa-alta (HPF)",
+    "Low Pass Filter (LPF)": "Filtro passa-baixa (LPF)",
+    "Order:": "Ordem:"
 }
