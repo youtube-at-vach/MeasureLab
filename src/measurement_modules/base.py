@@ -22,8 +22,7 @@ class MeasurementModule(ABC):
         """Brief description of the module's purpose."""
         pass
 
-    @abstractmethod
-    def run(self, args: argparse.Namespace):
+    def run(self, args: argparse.Namespace):  # noqa: B027
         """
         Execute the measurement from CLI.
         Currently frozen/not implemented for most modules.
