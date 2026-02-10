@@ -8,6 +8,7 @@ from PyQt6.QtGui import QTransform, QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -225,79 +226,74 @@ class SpectrogramWidget(QWidget):
         main_layout.addWidget(self.toggle_btn)
 
         # --- Right: Settings Column ---
-        settings_layout = QVBoxLayout()
+        # --- Right: Settings Column ---
+        settings_layout = QGridLayout()
         settings_layout.setContentsMargins(0, 0, 0, 0)
+        settings_layout.setHorizontalSpacing(10)
+        settings_layout.setVerticalSpacing(5)
 
-        # Row 1: Analysis
-        row1_layout = QHBoxLayout()
-        row1_layout.setContentsMargins(0, 0, 0, 0)
-
+        # Row 1: Channel, FFT Size, Window
         # Channel
-        row1_layout.addWidget(QLabel(tr("Channel:")))
+        settings_layout.addWidget(QLabel(tr("Channel:")), 0, 0)
         self.channel_combo = QComboBox()
         self.channel_combo.addItems(["Left", "Right", "Average"])
         self.channel_combo.currentTextChanged.connect(self.on_channel_changed)
-        row1_layout.addWidget(self.channel_combo)
+        settings_layout.addWidget(self.channel_combo, 0, 1)
 
         # FFT Size
-        row1_layout.addWidget(QLabel(tr("FFT Size:")))
+        settings_layout.addWidget(QLabel(tr("FFT Size:")), 0, 2)
         self.fft_combo = QComboBox()
         self.update_available_fft_sizes(0)  # Initial: Fast
         self.fft_combo.setCurrentText(str(self.module.fft_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_changed)
-        row1_layout.addWidget(self.fft_combo)
+        settings_layout.addWidget(self.fft_combo, 0, 3)
 
         # Window
-        row1_layout.addWidget(QLabel(tr("Window:")))
+        settings_layout.addWidget(QLabel(tr("Window:")), 0, 4)
         self.window_combo = QComboBox()
         self.window_combo.addItems(fft_manager.get_available_windows())
         self.window_combo.setCurrentText(self.module.window_type)
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
-        row1_layout.addWidget(self.window_combo)
+        settings_layout.addWidget(self.window_combo, 0, 5)
 
-        row1_layout.addStretch()
-        settings_layout.addLayout(row1_layout)
-
-        # Row 2: Display
-        row2_layout = QHBoxLayout()
-        row2_layout.setContentsMargins(0, 0, 0, 0)
-
+        # Row 2: Colormap, Speed, Frequency Range
         # Colormap
-        row2_layout.addWidget(QLabel(tr("Colormap:")))
+        settings_layout.addWidget(QLabel(tr("Colormap:")), 1, 0)
         self.cmap_combo = QComboBox()
         self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "cividis", "turbo"])
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
-        row2_layout.addWidget(self.cmap_combo)
+        settings_layout.addWidget(self.cmap_combo, 1, 1)
 
         # Sweep Speed
-        row2_layout.addWidget(QLabel(tr("Speed:")))
+        settings_layout.addWidget(QLabel(tr("Speed:")), 1, 2)
         self.speed_combo = QComboBox()
         self.speed_combo.addItems([tr("Fast (Realtime)"), tr("Medium (1m)"), tr("Slow (5m)"), tr("Meteor (10m)")])
         self.speed_combo.currentIndexChanged.connect(self.on_speed_changed)
-        row2_layout.addWidget(self.speed_combo)
+        settings_layout.addWidget(self.speed_combo, 1, 3)
 
         # Frequency Range
-        # Restoring separate labels for Min/Max Freq
-        row2_layout.addWidget(QLabel(tr("Min Freq:")))
+        # Min Freq
+        settings_layout.addWidget(QLabel(tr("Min Freq:")), 1, 4)
         self.min_freq_spin = QSpinBox()
         self.min_freq_spin.setRange(0, 96000)
         self.min_freq_spin.setValue(int(self.module.min_freq))
         self.min_freq_spin.setSuffix(" Hz")
         self.min_freq_spin.setFixedWidth(100)
         self.min_freq_spin.valueChanged.connect(self.on_freq_range_changed)
-        row2_layout.addWidget(self.min_freq_spin)
+        settings_layout.addWidget(self.min_freq_spin, 1, 5)
 
-        row2_layout.addWidget(QLabel(tr("Max Freq:")))
+        # Max Freq
+        settings_layout.addWidget(QLabel(tr("Max Freq:")), 1, 6)
         self.max_freq_spin = QSpinBox()
         self.max_freq_spin.setRange(0, 96000)
         self.max_freq_spin.setValue(int(self.module.max_freq))
         self.max_freq_spin.setSuffix(" Hz")
         self.max_freq_spin.setFixedWidth(100)
         self.max_freq_spin.valueChanged.connect(self.on_freq_range_changed)
-        row2_layout.addWidget(self.max_freq_spin)
+        settings_layout.addWidget(self.max_freq_spin, 1, 7)
 
-        row2_layout.addStretch()
-        settings_layout.addLayout(row2_layout)
+        # Add stretch to compact the layout to the left
+        settings_layout.setColumnStretch(8, 1)
 
         main_layout.addLayout(settings_layout)
         controls_group.setLayout(main_layout)
