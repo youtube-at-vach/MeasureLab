@@ -7,6 +7,7 @@ import numpy as np
 sys.modules['sounddevice'] = MagicMock()
 
 from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
+from src.core.analysis import AudioCalc  # noqa: E402
 
 class TestRecorderMemoryLimit(unittest.TestCase):
     def setUp(self):
@@ -35,7 +36,7 @@ class TestRecorderMemoryLimit(unittest.TestCase):
         self.assertTrue(self.recorder.is_recording)
         self.assertEqual(self.recorder.recorded_samples, 10 * frames)
 
-    @patch('src.core.analysis.AudioCalc.MAX_AUDIO_SAMPLES', 5000)
+    @patch.object(AudioCalc, 'MAX_AUDIO_SAMPLES', 5000)
     def test_recording_limit_enforcement(self):
         """
         Verifies that recording stops when the limit is reached.

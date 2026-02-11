@@ -1104,5 +1104,8 @@
     "No data available.": "Нет данных.",
     "Not enough data to calibrate. Please wait.": "Недостаточно данных. Подождите.",
     "Stored 1PPS Cal: 0.000 ppm": "Сохр. кал. 1PPS: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "Сохр. кал. 1PPS: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Сохр. кал. 1PPS: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm",
+    "Recording Stopped": "Recording Stopped",
+    "Recording reached the maximum allowed duration and was stopped to prevent memory exhaustion.": "Recording reached the maximum allowed duration and was stopped to prevent memory exhaustion."
 }

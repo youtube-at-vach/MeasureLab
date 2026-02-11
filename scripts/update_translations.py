@@ -13,7 +13,10 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "Device refresh is disabled when JACK is active for safety."
+    "Device refresh is disabled when JACK is active for safety.",
+    "Current Offset: {0:+.3f} ppm",
+    "Recording Stopped",
+    "Recording reached the maximum allowed duration and was stopped to prevent memory exhaustion."
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
