@@ -404,6 +404,48 @@ class SignalGenerator(MeasurementModule):
             # logger.warning(f"Filter calculation failed: {e}")
             return None
 
+    def _generate_wave_from_phase(self, params: SignalParameters, phase_rad: np.ndarray) -> np.ndarray:
+        """
+        Helper to generate waveform samples from a phase array (in radians).
+        Handles sine, square, triangle, sawtooth, pulse, tone_noise.
+        """
+        offset_rad = np.radians(params.phase_offset)
+
+        if params.waveform == "sine":
+            return params.amplitude * np.sin(phase_rad + offset_rad)
+
+        elif params.waveform == "square":
+            return params.amplitude * np.sign(np.sin(phase_rad + offset_rad))
+
+        elif params.waveform == "tone_noise":
+            signal = params.amplitude * np.sin(phase_rad + offset_rad)
+            # Use size of phase_rad for noise generation
+            noise = params.noise_amplitude * np.random.uniform(-1, 1, size=phase_rad.size)
+            signal += noise
+            return signal
+
+        # Cycle-based waveforms
+        # cycles = phase / 2pi
+        # off_cycles = offset_deg / 360
+        cycles = phase_rad / (2.0 * np.pi)
+        off_cycles = params.phase_offset / 360.0
+
+        if params.waveform == "triangle":
+            return params.amplitude * (2 * np.abs(2 * ((cycles + off_cycles) % 1) - 1) - 1)
+
+        elif params.waveform == "sawtooth":
+            raw_saw = 2 * ((cycles + off_cycles) % 1) - 1
+            if params.sawtooth_type == "Falling":
+                raw_saw *= -1
+            return params.amplitude * raw_saw
+
+        elif params.waveform == "pulse":
+            duty = params.pulse_width / 100.0
+            ramp = (cycles + off_cycles) % 1
+            return params.amplitude * np.where(ramp < duty, 1.0, -1.0)
+
+        return np.zeros_like(phase_rad)
+
     def start_generation(self):
         if self.is_playing:
             return
@@ -650,30 +692,7 @@ class SignalGenerator(MeasurementModule):
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = phase + beta * np.sin(pm_phase)
 
-                if params.waveform == "sine":
-                    signal = params.amplitude * np.sin(phase + offset_rad)
-                elif params.waveform == "square":
-                    signal = params.amplitude * np.sign(np.sin(phase + offset_rad))
-                else:
-                    # Use cycle-based definitions for the remaining waves.
-                    cycles = phase / (2.0 * np.pi)
-                    off_cycles = params.phase_offset / 360.0
-
-                    if params.waveform == "triangle":
-                        signal = params.amplitude * (2 * np.abs(2 * ((cycles + off_cycles) % 1) - 1) - 1)
-                    elif params.waveform == "sawtooth":
-                        raw_saw = 2 * ((cycles + off_cycles) % 1) - 1
-                        if params.sawtooth_type == "Falling":
-                            raw_saw *= -1
-                        signal = params.amplitude * raw_saw
-                    elif params.waveform == "pulse":
-                        duty = params.pulse_width / 100.0
-                        ramp = (cycles + off_cycles) % 1
-                        signal = params.amplitude * np.where(ramp < duty, 1.0, -1.0)
-                    elif params.waveform == "tone_noise":
-                        signal = params.amplitude * np.sin(phase + offset_rad)
-                        noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
-                        signal += noise
+                signal = self._generate_wave_from_phase(params, phase)
             else:
                 # Legacy fixed-frequency phase calculation
                 phase_t = (np.arange(frames) + params._phase) / sample_rate
@@ -690,56 +709,12 @@ class SignalGenerator(MeasurementModule):
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = 2.0 * np.pi * params.frequency * phase_t + beta * np.sin(pm_phase)
 
-                    if params.waveform == "sine":
-                        signal = params.amplitude * np.sin(phase + offset_rad)
-                    elif params.waveform == "square":
-                        signal = params.amplitude * np.sign(np.sin(phase + offset_rad))
-                    else:
-                        cycles = phase / (2.0 * np.pi)
-                        off_cycles = params.phase_offset / 360.0
-
-                        if params.waveform == "triangle":
-                            signal = params.amplitude * (2 * np.abs(2 * ((cycles + off_cycles) % 1) - 1) - 1)
-                        elif params.waveform == "sawtooth":
-                            raw_saw = 2 * ((cycles + off_cycles) % 1) - 1
-                            if params.sawtooth_type == "Falling":
-                                raw_saw *= -1
-                            signal = params.amplitude * raw_saw
-                        elif params.waveform == "pulse":
-                            duty = params.pulse_width / 100.0
-                            ramp = (cycles + off_cycles) % 1
-                            signal = params.amplitude * np.where(ramp < duty, 1.0, -1.0)
-                        elif params.waveform == "tone_noise":
-                            signal = params.amplitude * np.sin(phase + offset_rad)
-                            noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
-                            signal += noise
+                    signal = self._generate_wave_from_phase(params, phase)
 
                     return _filter_apply(_am_apply(signal))
 
-                if params.waveform == "sine":
-                    signal = params.amplitude * np.sin(2 * np.pi * params.frequency * phase_t + offset_rad)
-                elif params.waveform == "square":
-                    signal = params.amplitude * np.sign(np.sin(2 * np.pi * params.frequency * phase_t + offset_rad))
-                elif params.waveform == "triangle":
-                    off_cycles = params.phase_offset / 360.0
-                    signal = params.amplitude * (
-                        2 * np.abs(2 * ((phase_t * params.frequency + off_cycles) % 1) - 1) - 1
-                    )
-                elif params.waveform == "sawtooth":
-                    off_cycles = params.phase_offset / 360.0
-                    raw_saw = 2 * ((phase_t * params.frequency + off_cycles) % 1) - 1
-                    if params.sawtooth_type == "Falling":
-                        raw_saw *= -1
-                    signal = params.amplitude * raw_saw
-                elif params.waveform == "pulse":
-                    duty = params.pulse_width / 100.0
-                    off_cycles = params.phase_offset / 360.0
-                    ramp = (phase_t * params.frequency + off_cycles) % 1
-                    signal = params.amplitude * np.where(ramp < duty, 1.0, -1.0)
-                elif params.waveform == "tone_noise":
-                    signal = params.amplitude * np.sin(2 * np.pi * params.frequency * phase_t + offset_rad)
-                    noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
-                    signal += noise
+                phase_rad = 2.0 * np.pi * params.frequency * phase_t
+                signal = self._generate_wave_from_phase(params, phase_rad)
 
             return _filter_apply(_am_apply(signal))
 
