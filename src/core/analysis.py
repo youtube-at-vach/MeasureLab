@@ -1120,15 +1120,17 @@ class AudioCalc:
         return np.sqrt(power_a)
 
     @staticmethod
-    def calculate_noise_profile(mag, freqs, sampling_rate):
+    def _analyze_frequency_axis(freqs):
         """
-        Calculates noise profile including Hum, White, and 1/f noise.
-        mag: Magnitude spectrum (Linear V/rtHz)
-        freqs: Frequency bins
+        Analyzes the frequency axis to determine if it's linear or logarithmic.
+        Returns:
+            is_linear_freqs (bool)
+            is_log_freqs (bool)
+            freq_step (float)
+            start_freq (float)
+            stop_freq (float)
+            bin_width (float)
         """
-        results = {}
-
-        # Optimization: Check if freqs is linear or logarithmic
         is_linear_freqs = False
         is_log_freqs = False
         freq_step = 1.0
@@ -1157,9 +1159,34 @@ class AudioCalc:
                     is_log_freqs = True
                     stop_freq = freqs[-1]
 
-        # Pre-calculate squared magnitude and bin width
+        # Calculate bin width
+        # If linear, bin_width = freq_step
+        # If not linear (or log), we use first bin width or 1.0 as fallback for integration scale
+        bin_width = freqs[1] - freqs[0] if len(freqs) > 1 else 1.0
+
+        return is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq, bin_width
+
+    @staticmethod
+    def calculate_noise_profile(mag, freqs, sampling_rate):
+        """
+        Calculates noise profile including Hum, White, and 1/f noise.
+        mag: Magnitude spectrum (Linear V/rtHz)
+        freqs: Frequency bins
+        """
+        results = {}
+
+        # Optimization: Check if freqs is linear or logarithmic
+        (
+            is_linear_freqs,
+            is_log_freqs,
+            freq_step,
+            start_freq,
+            stop_freq,
+            bin_width,
+        ) = AudioCalc._analyze_frequency_axis(freqs)
+
+        # Pre-calculate squared magnitude
         mag_sq = mag**2
-        bin_width = freq_step if is_linear_freqs else (freqs[1] - freqs[0] if len(freqs) > 1 else 1.0)
 
         # 1. Hum Noise Detection (50Hz vs 60Hz)
         hum_rms, hum_freq, hum_components = AudioCalc._calculate_hum_noise(
