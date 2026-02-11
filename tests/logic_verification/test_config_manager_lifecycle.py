@@ -229,5 +229,21 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         self.mock_logger.error.assert_called_with("Failed to save config: Permission denied")
         cm.shutdown()
 
+    def test_flush_all_logs_exception(self):
+        """Test that _flush_all logs exceptions from instance shutdown."""
+        mock_instance = MagicMock()
+        exception = Exception("Crash")
+        mock_instance.shutdown.side_effect = exception
+
+        # Manually add to _instances
+        ConfigManager._instances.add(mock_instance)
+        try:
+            ConfigManager._flush_all()
+        finally:
+            if mock_instance in ConfigManager._instances:
+                ConfigManager._instances.remove(mock_instance)
+
+        self.mock_logger.error.assert_called_with("Error during shutdown: %s", exception)
+
 if __name__ == '__main__':
     unittest.main()
