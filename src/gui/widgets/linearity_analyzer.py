@@ -200,8 +200,8 @@ class LinearitySweepWorker(QThread):
 
         except Exception as e:
             self.error.emit(str(e))
-        finally:
-            self.module.stop_analysis()
+        # finally:
+        #     self.module.stop_analysis() -> Removed to avoid race with MainThread cleanup
 
     def stop(self):
         self.is_running = False
