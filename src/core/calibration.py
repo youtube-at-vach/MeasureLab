@@ -213,7 +213,7 @@ class CalibrationManager:
 
     def delete_profile(self, name):
         """Deletes a named profile."""
-        if hasattr(self, "profiles") and name in self.profiles:
+        if name in self.profiles:
             del self.profiles[name]
             self.save()
 

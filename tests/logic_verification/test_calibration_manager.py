@@ -140,6 +140,12 @@ def test_profile_management(cal_manager):
     cal_manager.delete_profile("test_profile")
     assert "test_profile" not in cal_manager.get_profiles()
 
+def test_delete_non_existent_profile(cal_manager):
+    """Test deleting a profile that doesn't exist (should not raise error)."""
+    # Ensure it handles missing profiles gracefully
+    cal_manager.delete_profile("ghost_profile")
+    assert "ghost_profile" not in cal_manager.get_profiles()
+
 def test_load_non_existent_profile(cal_manager):
     """Test loading a profile that doesn't exist."""
     with pytest.raises(ValueError, match="Profile 'fake' not found"):
