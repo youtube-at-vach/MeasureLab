@@ -104,6 +104,7 @@ class RecorderPlayer(MeasurementModule):
         self.playback_pos = 0
         self.record_buffer = []  # List of numpy arrays
         self.recorded_samples = 0
+        self.recording_limit_reached = False
 
         # Settings
         self.input_mode = "Stereo"  # Stereo, Left, Right
@@ -187,6 +188,7 @@ class RecorderPlayer(MeasurementModule):
     def start_recording(self):
         self.record_buffer = []
         self.recorded_samples = 0
+        self.recording_limit_reached = False
         self.is_recording = True
         self._ensure_callback()
 
@@ -207,19 +209,24 @@ class RecorderPlayer(MeasurementModule):
     def audio_callback(self, indata, outdata, frames, time_info, status):
         # Recording
         if self.is_recording:
-            # Select channels based on input_mode
-            if self.input_mode == "Stereo":
-                rec_data = indata.copy()
-            elif self.input_mode == "Left":
-                rec_data = indata[:, 0:1]  # Keep 2D
-            elif self.input_mode == "Right":
-                if indata.shape[1] > 1:
-                    rec_data = indata[:, 1:2]
-                else:
-                    rec_data = np.zeros((frames, 1), dtype=indata.dtype)
+            # Check for memory/size limit
+            if self.recorded_samples + frames > AudioCalc.MAX_AUDIO_SAMPLES:
+                self.is_recording = False
+                self.recording_limit_reached = True
+            else:
+                # Select channels based on input_mode
+                if self.input_mode == "Stereo":
+                    rec_data = indata.copy()
+                elif self.input_mode == "Left":
+                    rec_data = indata[:, 0:1]  # Keep 2D
+                elif self.input_mode == "Right":
+                    if indata.shape[1] > 1:
+                        rec_data = indata[:, 1:2]
+                    else:
+                        rec_data = np.zeros((frames, 1), dtype=indata.dtype)
 
-            self.record_buffer.append(rec_data)
-            self.recorded_samples += frames
+                self.record_buffer.append(rec_data)
+                self.recorded_samples += frames
 
         # Playback
         if self.is_playing and self.playback_buffer is not None:
@@ -543,6 +550,20 @@ class RecorderPlayerWidget(QWidget):
         self.module.input_mode = self.in_mode_combo.currentData()
 
     def update_ui(self):
+        # Check for auto-stop conditions
+        if self.module.recording_limit_reached:
+            self.module.recording_limit_reached = False
+            # Update UI state to stopped
+            if self.rec_btn.isChecked():
+                self.rec_btn.setChecked(False)
+                self.on_record_toggle()
+
+            QMessageBox.warning(
+                self,
+                tr("Recording Stopped"),
+                tr("Recording reached the maximum allowed duration and was stopped to prevent memory exhaustion.")
+            )
+
         # Update Playback UI
         if self.module.is_playing:
             self.play_btn.setText(tr("Stop"))
