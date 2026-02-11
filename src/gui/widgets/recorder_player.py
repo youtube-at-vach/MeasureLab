@@ -1,4 +1,7 @@
 import os
+import queue
+import threading
+import tempfile
 
 import numpy as np
 import soundfile as sf
@@ -25,24 +28,6 @@ from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 
 WRITE_BLOCK_SIZE = 65536
-
-
-def write_buffered(file_handle, chunks):
-    temp_buffer = []
-    temp_samples = 0
-    for chunk in chunks:
-        temp_buffer.append(chunk)
-        temp_samples += len(chunk)
-
-        if temp_samples >= WRITE_BLOCK_SIZE:
-            block = np.concatenate(temp_buffer)
-            file_handle.write(block)
-            temp_buffer = []
-            temp_samples = 0
-
-    if temp_buffer:
-        block = np.concatenate(temp_buffer)
-        file_handle.write(block)
 
 
 class FileLoadWorker(QThread):
@@ -84,33 +69,28 @@ class FileLoadWorker(QThread):
 class FileSaveWorker(QThread):
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, record_buffer, sample_rate, filepath, format=None, subtype=None):
+    def __init__(self, source_path, target_path, format=None, subtype=None):
         super().__init__()
-        # Create a shallow copy of the list to avoid concurrent modification issues
-        # (though arrays themselves are not modified, the list might be if recording wasn't stopped properly)
-        self.record_buffer = list(record_buffer)
-        self.sample_rate = sample_rate
-        self.filepath = filepath
+        self.source_path = source_path
+        self.target_path = target_path
         self.format = format
         self.subtype = subtype
 
     def run(self):
-        if not self.record_buffer:
-            self.finished.emit(False, "No recording data")
+        if not self.source_path or not os.path.exists(self.source_path):
+            self.finished.emit(False, "No recording data available")
             return
 
         try:
-            # Determine channels from the first chunk
-            first_chunk = self.record_buffer[0]
-            channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
+            info = sf.info(self.source_path)
 
-            # Write chunks sequentially to avoid large memory allocation
-            # Optimize by buffering small chunks into larger blocks
-            with sf.SoundFile(self.filepath, mode='w', samplerate=self.sample_rate,
-                              channels=channels, format=self.format, subtype=self.subtype) as f:
-                write_buffered(f, self.record_buffer)
+            with sf.SoundFile(self.source_path, mode='r') as fin:
+                with sf.SoundFile(self.target_path, mode='w', samplerate=info.samplerate,
+                                  channels=info.channels, format=self.format, subtype=self.subtype) as fout:
+                    for block in fin.blocks(blocksize=WRITE_BLOCK_SIZE):
+                        fout.write(block)
 
-            self.finished.emit(True, f"Saved: {self.filepath}")
+            self.finished.emit(True, f"Saved: {self.target_path}")
         except Exception as e:
             self.finished.emit(False, str(e))
 
@@ -128,8 +108,14 @@ class RecorderPlayer(MeasurementModule):
         # Buffers
         self.playback_buffer = None  # numpy array (samples, channels)
         self.playback_pos = 0
-        self.record_buffer = []  # List of numpy arrays
+        self.record_buffer = []  # List of numpy arrays (Legacy/Deprecated, unused in streaming mode)
         self.recorded_samples = 0
+
+        # Streaming State
+        self._write_queue = None
+        self._temp_file_path = None
+        self._writer_thread = None
+        self._stop_event = None
 
         # Settings
         self.input_mode = "Stereo"  # Stereo, Left, Right
@@ -186,19 +172,17 @@ class RecorderPlayer(MeasurementModule):
             return False, str(e)
 
     def save_recording(self, filepath, format=None, subtype=None):
-        if not self.record_buffer:
+        if not self._temp_file_path or not os.path.exists(self._temp_file_path):
             return False, "No recording data"
 
         try:
-            # Determine channels from the first chunk
-            first_chunk = self.record_buffer[0]
-            channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
+            info = sf.info(self._temp_file_path)
 
-            # Write chunks sequentially to avoid large memory allocation
-            # Optimize by buffering small chunks into larger blocks
-            with sf.SoundFile(filepath, mode='w', samplerate=self.audio_engine.sample_rate,
-                              channels=channels, format=format, subtype=subtype) as f:
-                write_buffered(f, self.record_buffer)
+            with sf.SoundFile(self._temp_file_path, mode='r') as fin:
+                with sf.SoundFile(filepath, mode='w', samplerate=info.samplerate,
+                                  channels=info.channels, format=format, subtype=subtype) as fout:
+                    for block in fin.blocks(blocksize=WRITE_BLOCK_SIZE):
+                        fout.write(block)
 
             return True, f"Saved: {filepath}"
         except Exception as e:
@@ -214,14 +198,93 @@ class RecorderPlayer(MeasurementModule):
         self.is_playing = False
         self._check_stop_callback()
 
+    def _cleanup_temp_file(self):
+        if self._temp_file_path and os.path.exists(self._temp_file_path):
+            try:
+                os.remove(self._temp_file_path)
+            except OSError:
+                pass
+        self._temp_file_path = None
+
+    def _writer_worker(self, filepath, q, stop_event):
+        """Background thread to write audio chunks to disk."""
+        try:
+            # Open file for writing.
+            # We don't know the exact length yet, so we just write chunks.
+            # Samplerate and channels must be known. We assume they match the engine.
+            # Channels will be determined by the first chunk or engine settings.
+            # But here we open it lazily or we need to know channels upfront.
+            # soundfile.SoundFile requires samplerate and channels if mode='w'.
+
+            # Wait for first chunk to determine channels?
+            # Or pass expected channels.
+            # Let's peek the queue.
+
+            first_chunk = q.get()
+            if first_chunk is None:
+                return
+
+            channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
+            samplerate = self.audio_engine.sample_rate
+
+            with sf.SoundFile(filepath, mode='w', samplerate=samplerate, channels=channels, subtype='FLOAT') as f:
+                f.write(first_chunk)
+
+                while not stop_event.is_set() or not q.empty():
+                    try:
+                        chunk = q.get(timeout=0.1)
+                    except queue.Empty:
+                        continue
+
+                    if chunk is None:
+                        break
+
+                    f.write(chunk)
+
+        except Exception as e:
+            print(f"Recorder Writer Error: {e}")
+
     def start_recording(self):
-        self.record_buffer = []
+        self._cleanup_temp_file()
+        self.record_buffer = [] # Clear legacy buffer just in case
         self.recorded_samples = 0
+
+        # Create temp file
+        # We assume .wav for the temp file
+        tf = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+        self._temp_file_path = tf.name
+        tf.close() # Close handle, let thread open it via soundfile
+
+        self._write_queue = queue.Queue()
+        self._stop_event = threading.Event()
+
+        self._writer_thread = threading.Thread(
+            target=self._writer_worker,
+            args=(self._temp_file_path, self._write_queue, self._stop_event),
+            daemon=True
+        )
+        self._writer_thread.start()
+
         self.is_recording = True
         self._ensure_callback()
 
     def stop_recording(self):
         self.is_recording = False
+
+        # Signal thread to stop
+        if self._write_queue:
+            self._write_queue.put(None) # Sentinel
+
+        if self._stop_event:
+            self._stop_event.set()
+
+        if self._writer_thread:
+            self._writer_thread.join()
+            self._writer_thread = None
+
+        self._write_queue = None
+        self._stop_event = None
+
         self._check_stop_callback()
 
     def _ensure_callback(self):
@@ -248,7 +311,11 @@ class RecorderPlayer(MeasurementModule):
                 else:
                     rec_data = np.zeros((frames, 1), dtype=indata.dtype)
 
-            self.record_buffer.append(rec_data)
+            # Stream to disk via queue
+            q = self._write_queue
+            if q is not None:
+                q.put(rec_data)
+
             self.recorded_samples += frames
 
         # Playback
@@ -538,8 +605,7 @@ class RecorderPlayerWidget(QWidget):
         self.save_btn.setEnabled(False)
 
         # Start background saving
-        # Pass explicit data to worker to decouple from module state during thread execution
-        self.save_worker = FileSaveWorker(self.module.record_buffer, self.module.audio_engine.sample_rate, fname)
+        self.save_worker = FileSaveWorker(self.module._temp_file_path, fname)
         self.save_worker.finished.connect(self.on_save_finished)
 
         # Show progress dialog

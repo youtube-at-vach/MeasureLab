@@ -53,10 +53,16 @@ class TestRecorderSaveOptimization(unittest.TestCase):
             # Create distinct data for each chunk within [-1, 1]
             val = (i / n_chunks) * 0.8  # 0.0, 0.16, 0.32, 0.48, 0.64
             chunk = np.full((frames_per_chunk, channels), val, dtype=np.float32)
-            self.player.record_buffer.append(chunk)
             expected_data.append(chunk)
 
         expected_full = np.concatenate(expected_data, axis=0)
+
+        # Setup temp file instead of buffer
+        tf = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+        # Use FLOAT subtype to match verification expectation
+        sf.write(tf.name, expected_full, 48000, subtype='FLOAT')
+        tf.close()
+        self.player._temp_file_path = tf.name
 
         filepath = os.path.join(self.temp_dir.name, "test_output.wav")
 
@@ -73,14 +79,22 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         self.assertEqual(loaded_data.shape, expected_full.shape)
         np.testing.assert_array_equal(loaded_data, expected_full)
 
+        # Cleanup temp
+        if os.path.exists(tf.name):
+            os.remove(tf.name)
+
     def test_save_recording_mono(self):
         """Verify saving mono data works correctly."""
         frames_per_chunk = 100
         channels = 1
 
         chunk = np.random.rand(frames_per_chunk, channels).astype(np.float32)
-        # Normalize to avoid clipping if any, though rand is [0, 1)
-        self.player.record_buffer.append(chunk)
+
+        # Setup temp file
+        tf = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+        sf.write(tf.name, chunk, 48000, subtype='FLOAT')
+        tf.close()
+        self.player._temp_file_path = tf.name
 
         filepath = os.path.join(self.temp_dir.name, "test_mono.wav")
 
@@ -94,6 +108,10 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         # soundfile read always_2d=True returns (N, 1) for mono file
         self.assertEqual(loaded_data.shape, (frames_per_chunk, 1))
         np.testing.assert_allclose(loaded_data, chunk, atol=1e-7)
+
+        # Cleanup temp
+        if os.path.exists(tf.name):
+            os.remove(tf.name)
 
 if __name__ == '__main__':
     unittest.main()
