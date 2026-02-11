@@ -1,6 +1,6 @@
 -c constraints.txt
 
-numpy
+numpy<2.0
 scipy
 sounddevice
 PyQt6
