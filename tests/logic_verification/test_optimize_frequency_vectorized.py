@@ -60,5 +60,23 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         best_freq = AudioCalc.optimize_frequency(signal, self.sr, guess)
         self.assertAlmostEqual(best_freq, self.freq, places=4)
 
+    def test_return_full(self):
+        guess = 1005.0
+        best_freq, coeffs, M = AudioCalc.optimize_frequency(self.signal, self.sr, guess, return_full=True)
+        self.assertAlmostEqual(best_freq, self.freq, places=2)
+        self.assertIsNotNone(coeffs)
+        self.assertIsNotNone(M)
+        self.assertEqual(M.shape, (self.N, 3))
+        self.assertEqual(len(coeffs), 3)
+
+    def test_empty_signal(self):
+        signal = np.array([])
+        freq = AudioCalc.optimize_frequency(signal, self.sr, 1000.0)
+        self.assertEqual(freq, 1000.0)
+
+    def test_invalid_sr(self):
+        freq = AudioCalc.optimize_frequency(self.signal, 0, 1000.0)
+        self.assertEqual(freq, 1000.0)
+
 if __name__ == '__main__':
     unittest.main()
