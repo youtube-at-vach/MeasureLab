@@ -212,5 +212,22 @@ class TestConfigManagerLifecycle(unittest.TestCase):
                  mock_fdopen.assert_called()
                  mock_chmod.assert_called()
 
+    @patch('src.core.config_manager.os.path.exists', return_value=False)
+    @patch('src.core.config_manager.os.makedirs')
+    @patch('src.core.config_manager.os.open')
+    def test_flush_config_os_error(self, mock_open, mock_makedirs, mock_exists):
+        """Test error handling when file open fails during save."""
+        # Setup mocks
+        mock_open.side_effect = OSError("Permission denied")
+
+        cm = ConfigManager(self.config_path)
+
+        # Trigger save
+        cm.save_config(force_sync=True)
+
+        # Verify error logged
+        self.mock_logger.error.assert_called_with("Failed to save config: Permission denied")
+        cm.shutdown()
+
 if __name__ == '__main__':
     unittest.main()
