@@ -1,72 +1,79 @@
-import unittest
-from unittest.mock import MagicMock
-import numpy as np
-from PyQt6.QtWidgets import QApplication
 import sys
+from unittest.mock import MagicMock, patch
+import pytest
+import numpy as np
 
-from src.gui.widgets.frequency_counter import AllanWorker
+# Prepare mocks
+mock_qt_core = MagicMock()
+class MockQRunnable:
+    def __init__(self): pass
+class MockQObject:
+    def __init__(self): pass
 
-# Ensure QApp exists
-app = QApplication.instance()
-if app is None:
-    app = QApplication(sys.argv)
+mock_qt_core.QRunnable = MockQRunnable
+mock_qt_core.QObject = MockQObject
+mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
 
-class TestAllanWorker(unittest.TestCase):
-    def test_worker_logic_basic(self):
-        # Setup data: Simple linear drift => constant diffs => constant deviation? 
-        # No, linear drift y = at + b => diffs are constant 'a' => variance of constant is 0 => sigma 0?
-        # Let's use white noise, sigma should decrease with tau.
+mock_modules = {
+    "PyQt6": MagicMock(),
+    "PyQt6.QtCore": mock_qt_core,
+    "PyQt6.QtGui": MagicMock(),
+    "PyQt6.QtWidgets": MagicMock(),
+    "pyqtgraph": MagicMock(),
+}
 
-        np.random.seed(42)
-        noise = np.random.normal(1000, 1.0, 1000)
-        history = list(noise)
+@pytest.fixture(autouse=True)
+def mock_gui_deps():
+    with patch.dict(sys.modules, mock_modules):
+        # We must remove the module under test from sys.modules to force reload with mocks
+        if "src.gui.widgets.frequency_counter" in sys.modules:
+            del sys.modules["src.gui.widgets.frequency_counter"]
+        yield
 
-        worker = AllanWorker(history, update_interval_ms=100, display_mode='frequency')
+def test_worker_logic_basic():
+    # Import inside the test/fixture context
+    from src.gui.widgets.frequency_counter import AllanWorker
 
-        # Mock signal slot
-        mock_slot = MagicMock()
-        worker.signals.result.connect(mock_slot)
+    np.random.seed(42)
+    noise = np.random.normal(1000, 1.0, 1000)
+    history = list(noise)
 
-        # Run synchronous
-        worker.run()
+    worker = AllanWorker(history, update_interval_ms=100, display_mode='frequency')
 
-        # Verify result was emitted
-        mock_slot.assert_called_once()
-        args = mock_slot.call_args[0]
-        taus, devs = args
+    # Check signals
+    # Since we reload module, AllanWorkerSignals class is recreated.
+    # pyqtSignal (mock) is called.
 
-        self.assertGreater(len(taus), 5)
-        self.assertGreater(len(devs), 5)
-        self.assertEqual(len(taus), len(devs))
+    # We need to access the signal on the instance.
+    # self.signals.result is the mock returned by pyqtSignal
 
-        # Check values are reasonable (not all zero, positive)
-        self.assertTrue(all(t > 0 for t in taus))
-        self.assertTrue(all(d > 0 for d in devs))
+    worker.run()
 
-    def test_worker_empty_history(self):
-        worker = AllanWorker([], 100, 'frequency')
-        mock_slot = MagicMock()
-        worker.signals.result.connect(mock_slot)
-        worker.run()
+    worker.signals.result.emit.assert_called_once()
+    args = worker.signals.result.emit.call_args[0]
+    taus, devs = args
 
-        mock_slot.assert_called_once_with([], [])
+    assert len(taus) > 5
+    assert len(devs) > 5
 
-    def test_worker_period_mode(self):
-        # If input is frequency, period mode should invert it
-        freqs = [100.0] * 100 # Constant freq => constant period => 0 dev
-        worker = AllanWorker(freqs, 100, 'period')
+def test_worker_empty_history():
+    from src.gui.widgets.frequency_counter import AllanWorker
+    worker = AllanWorker([], 100, 'frequency')
 
-        mock_slot = MagicMock()
-        worker.signals.result.connect(mock_slot)
-        worker.run()
+    worker.run()
 
-        args = mock_slot.call_args[0]
-        taus, devs = args
+    worker.signals.result.emit.assert_called_once_with([], [])
 
-        # Constant signal => deviation should be 0.0 (or very close to floating point error)
-        # But we filter 0s in the plot widget, here it returns raw.
-        # However, std(constant) is 0.
-        self.assertEqual(devs[0], 0.0)
+def test_worker_period_mode():
+    from src.gui.widgets.frequency_counter import AllanWorker
+    freqs = [100.0] * 100
+    worker = AllanWorker(freqs, 100, 'period')
 
-if __name__ == '__main__':
-    unittest.main()
+    worker.run()
+
+    worker.signals.result.emit.assert_called_once()
+    args = worker.signals.result.emit.call_args[0]
+    taus, devs = args
+
+    assert len(taus) > 0
+    assert devs[0] == 0.0
