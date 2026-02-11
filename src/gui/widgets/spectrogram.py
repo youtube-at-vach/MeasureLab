@@ -3,7 +3,7 @@ import threading
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, QRunnable, QThreadPool, QObject, pyqtSignal
 from PyQt6.QtGui import QTransform, QCloseEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -24,6 +24,55 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
+
+
+class SpectrogramWorkerSignals(QObject):
+    result = pyqtSignal(object)
+
+
+class SpectrogramWorker(QRunnable):
+    def __init__(self, raw_data, window_type, channel_mode):
+        super().__init__()
+        self.raw_data = raw_data
+        self.window_type = window_type
+        self.channel_mode = channel_mode
+        self.signals = SpectrogramWorkerSignals()
+
+    def run(self):
+        # Select Channel
+        if self.channel_mode == "Left":
+            sig = self.raw_data[:, 0]
+        elif self.channel_mode == "Right":
+            sig = self.raw_data[:, 1]
+        else:
+            sig = np.mean(self.raw_data, axis=1)
+
+        # Windowing
+        window = get_cached_window(self.window_type, len(sig))
+        sig_win = sig * window
+
+        # Window Correction Factor (Coherent Gain)
+        win_correction = 1.0 / np.mean(window)
+
+        # FFT
+        fft_res = fft_manager.rfft(sig_win)
+
+        # Mag
+        mag = np.abs(fft_res)
+
+        # Normalize
+        # Optimized in-place normalization
+        mag *= (2.0 * win_correction) / len(sig)
+
+        # Convert to dB
+        # In-place optimization to save memory bandwidth
+        with np.errstate(divide="ignore"):
+            np.add(mag, 1e-12, out=mag)
+            np.log10(mag, out=mag)
+            np.multiply(mag, 20, out=mag)
+            mag_db = mag
+
+        self.signals.result.emit(mag_db)
 
 
 class Spectrogram(MeasurementModule):
@@ -182,6 +231,8 @@ class SpectrogramWidget(QWidget):
         self.module = module
         self.log_spectrogram_buffer = None
         self._last_raw_buffer_id = None
+        self.threadpool = QThreadPool()
+        self.processing = False
         self.init_ui()
 
         self.timer = QTimer()
@@ -433,20 +484,23 @@ class SpectrogramWidget(QWidget):
         self.on_freq_range_changed()  # Re-apply limits safely
 
     def update_spectrogram(self):
-        if not self.module.is_running:
+        if not self.module.is_running or self.processing:
             return
 
         # Get latest data from buffer
         # We take the last fft_size samples
-        raw_data = self.module.get_latest_samples(self.module.fft_size)
+        # Copy to ensure thread safety when passed to worker
+        raw_data = self.module.get_latest_samples(self.module.fft_size).copy()
 
-        # Select Channel
-        if self.module.channel_mode == "Left":
-            sig = raw_data[:, 0]
-        elif self.module.channel_mode == "Right":
-            sig = raw_data[:, 1]
-        else:
-            sig = np.mean(raw_data, axis=1)
+        self.processing = True
+        worker = SpectrogramWorker(raw_data, self.module.window_type, self.module.channel_mode)
+        worker.signals.result.connect(self.on_worker_result)
+        self.threadpool.start(worker)
+
+    def on_worker_result(self, mag_db):
+        self.processing = False
+        if not self.module.is_running:
+            return
 
         # Determine Target Frames based on Speed
         # Update rate is 30ms.
@@ -462,35 +516,6 @@ class SpectrogramWidget(QWidget):
             target_frames = 20
         elif self.module.sweep_speed_index == 3:
             target_frames = 40
-
-        # Windowing
-        window = get_cached_window(self.module.window_type, len(sig))
-        sig_win = sig * window
-
-        # Window Correction Factor (Coherent Gain)
-        win_correction = 1.0 / np.mean(window)
-
-        # FFT
-        fft_res = fft_manager.rfft(sig_win)
-
-        # Optimized: Use pre-allocated buffer
-        if self.module.mag_buffer is None or self.module.mag_buffer.shape != fft_res.shape:
-            self.module.mag_buffer = np.zeros(fft_res.shape, dtype=fft_res.real.dtype)
-
-        mag = self.module.mag_buffer
-        np.abs(fft_res, out=mag)
-
-        # Normalize
-        # Optimized in-place normalization
-        mag *= (2.0 * win_correction) / len(sig)
-
-        # Convert to dB
-        # In-place optimization to save memory bandwidth
-        with np.errstate(divide="ignore"):
-            np.add(mag, 1e-12, out=mag)
-            np.log10(mag, out=mag)
-            np.multiply(mag, 20, out=mag)
-            mag_db = mag
 
         # --- Accumulation Logic ---
         if self.module.accumulator is None or self.module.accumulator.shape != mag_db.shape:

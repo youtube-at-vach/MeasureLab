@@ -68,11 +68,12 @@ class ConfigManager:
     @classmethod
     def _flush_all(cls):
         """Flushes all active ConfigManager instances."""
+        logger = logging.getLogger(cls.__name__)
         for instance in cls._instances:
             try:
                 instance.shutdown()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Error during shutdown: %s", e)
 
     def load_config(self):
         """Loads configuration from JSON file."""

@@ -38,6 +38,9 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
         self.widget = SpectrogramWidget(self.module)
         self.module.is_running = True
 
+        # Ensure fast speed so target_frames = 1
+        self.module.sweep_speed_index = 0
+
         # Disable Timer so we can manually trigger update
         self.widget.timer.stop()
 
@@ -46,19 +49,13 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
         self.widget.scale_combo.setCurrentText("Log")
 
         # 1. Initial Update
-        # Simulate data in module accumulator
         # Spectrogram buffer size: 500 x (2048//2 + 1) = 500 x 1025
         data_v1 = np.full(1025, -50.0, dtype=np.float32)
 
-        self.module.accumulator = data_v1.copy()
-        self.module.acc_count = 100 # Force update
-        self.module.get_latest_samples = MagicMock(return_value=np.zeros((self.module.fft_size, 2)))
-
-        self.widget.update_spectrogram()
+        # Call logic directly (bypassing threading/worker)
+        self.widget.on_worker_result(data_v1)
 
         # Verify log_buffer exists and is populated
-        # Note: logic not yet implemented, so check strictly only if implementation done
-        # But for TDD, we assert it exists
         if not hasattr(self.widget, 'log_spectrogram_buffer'):
             self.skipTest("Optimization not yet implemented")
 
@@ -78,13 +75,11 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
 
         # 2. Incremental Update
         data_v2 = np.full(1025, -20.0, dtype=np.float32)
-        self.module.accumulator = data_v2.copy()
-        self.module.acc_count = 100
 
         # Store state of buffer before update
         buffer_before = self.widget.log_spectrogram_buffer.copy()
 
-        self.widget.update_spectrogram()
+        self.widget.on_worker_result(data_v2)
 
         ptr_v2 = self.module.spectrogram_ptr
         idx_v2 = (ptr_v2 - 1 + self.module.history_length) % self.module.history_length
@@ -101,14 +96,11 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
         np.testing.assert_array_almost_equal(self.widget.log_spectrogram_buffer[idx_v1], buffer_before[idx_v1])
 
         # 3. Parameter Change (Min Freq) -> Should Reset Buffer
-        # old_buffer_id = id(self.widget.log_spectrogram_buffer)
         self.widget.min_freq_spin.setValue(500) # Change freq
         self.widget.on_freq_range_changed()
 
-        # Need another update to trigger the logic (as logic is in update_spectrogram)
-        self.module.accumulator = data_v1.copy()
-        self.module.acc_count = 100
-        self.widget.update_spectrogram()
+        # Trigger update again
+        self.widget.on_worker_result(data_v1)
 
         # Buffer ID might be same (if numpy reuses) or different.
         # But content should be consistent.
