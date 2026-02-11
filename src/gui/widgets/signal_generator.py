@@ -421,7 +421,8 @@ class SignalGenerator(MeasurementModule):
             signal = params.amplitude * np.sin(phase_rad + offset_rad)
             # Use size of phase_rad for noise generation
             noise = params.noise_amplitude * np.random.uniform(-1, 1, size=phase_rad.size)
-            return signal + noise
+            signal += noise
+            return signal
 
         # Cycle-based waveforms
         # cycles = phase / 2pi
