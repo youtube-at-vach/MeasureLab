@@ -59,6 +59,7 @@ You can choose from the following waveforms:
 Available parameters vary depending on the waveform.
 
 * **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input.
+* **Bin Snap**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT Size to prevent spectral leakage. Useful for accurate distortion measurements.
 * **Phase Offset (deg)**: The initial phase of the signal. Used when you want to create a phase difference between the left and right channels.
 * **Delay (ms)**: The delay time of the signal. Useful for adjusting timing in burst signals, etc.
 * **Amplitude**: The amplitude (volume) of the signal. You can select from the following units:
