@@ -1118,5 +1118,7 @@
     "Waveform": "Forme d'onde",
     "Frequency Calibration:": "Frequency Calibration:",
     "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
-    "Lock-in Gain Offset:": "Lock-in Gain Offset:"
+    "Lock-in Gain Offset:": "Lock-in Gain Offset:",
+    "Advanced Calibration": "Calibrage avancé",
+    "Show advanced calibration values": "Afficher les valeurs de calibrage avancé"
 }
