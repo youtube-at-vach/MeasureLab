@@ -31,7 +31,7 @@ def benchmark_log_map():
     for _ in range(iterations):
         # Simulate frame update
         # In the widget, this happens every frame:
-        display_buffer = buffer[:, indices]
+        display_buffer = buffer[:, indices]  # noqa: F841
     end_time = time.perf_counter()
     baseline_time = end_time - start_time
     print(f"Baseline (Full Copy): {baseline_time:.4f} s ({baseline_time/iterations*1000:.4f} ms/frame)")
@@ -54,7 +54,7 @@ def benchmark_log_map():
         log_buffer[ptr] = new_row[indices]
 
         # 3. Get display buffer (cheap reference)
-        display_buffer = log_buffer
+        # display_buffer = log_buffer
 
         ptr = (ptr + 1) % history_length
 

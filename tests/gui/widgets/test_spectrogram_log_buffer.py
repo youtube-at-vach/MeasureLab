@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import QApplication
 sys.modules['sounddevice'] = MagicMock()
 
 # Import after mocking
-from src.gui.widgets.spectrogram import SpectrogramWidget, Spectrogram
+from src.gui.widgets.spectrogram import SpectrogramWidget, Spectrogram  # noqa: E402
 
 class MockAudioEngine:
     def __init__(self):
@@ -101,7 +101,7 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
         np.testing.assert_array_almost_equal(self.widget.log_spectrogram_buffer[idx_v1], buffer_before[idx_v1])
 
         # 3. Parameter Change (Min Freq) -> Should Reset Buffer
-        old_buffer_id = id(self.widget.log_spectrogram_buffer)
+        # old_buffer_id = id(self.widget.log_spectrogram_buffer)
         self.widget.min_freq_spin.setValue(500) # Change freq
         self.widget.on_freq_range_changed()
 
