@@ -1115,5 +1115,8 @@
     "Fundamental (Lock-in):": "Fondamentale (Lock-in) :",
     "Residual": "Résiduel",
     "Residual RMS:": "RMS résiduel :",
-    "Waveform": "Forme d'onde"
+    "Waveform": "Forme d'onde",
+    "Frequency Calibration:": "Frequency Calibration:",
+    "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
+    "Lock-in Gain Offset:": "Lock-in Gain Offset:"
 }

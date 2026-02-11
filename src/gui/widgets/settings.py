@@ -1209,13 +1209,13 @@ class SettingsWidget(QWidget):
         self.freq_cal_ppm_edit.setReadOnly(True)
         # Make it look like a read-only display
         self.freq_cal_ppm_edit.setStyleSheet("background-color: transparent; border: none;")
-        adv_cal_layout.addRow(tr("Frequency Calibration (ppm):"), self.freq_cal_ppm_edit)
+        adv_cal_layout.addRow(tr("Frequency Calibration:"), self.freq_cal_ppm_edit)
 
         # 1PPS Frequency Calibration (ppm)
         self.freq_cal_1pps_ppm_edit = QLineEdit()
         self.freq_cal_1pps_ppm_edit.setReadOnly(True)
         self.freq_cal_1pps_ppm_edit.setStyleSheet("background-color: transparent; border: none;")
-        adv_cal_layout.addRow(tr("1PPS Frequency Calibration (ppm):"), self.freq_cal_1pps_ppm_edit)
+        adv_cal_layout.addRow(tr("1PPS Frequency Calibration:"), self.freq_cal_1pps_ppm_edit)
 
         # Lock-in Gain Offset
         self.lockin_gain_edit = QLineEdit()
@@ -1345,20 +1345,21 @@ class SettingsWidget(QWidget):
         # Frequency Calibration (ppm)
         # factor = 1.0 + ppm * 1e-6  => ppm = (factor - 1.0) * 1e6
         ppm = (cal.frequency_calibration - 1.0) * 1e6
-        self.freq_cal_ppm_edit.setText(f"{ppm:+.3f}")
+        self.freq_cal_ppm_edit.setText(f"{ppm:+.3f} ppm")
 
         # 1PPS Frequency Calibration (ppm)
         ppm_1pps = (cal.frequency_calibration_1pps - 1.0) * 1e6
-        self.freq_cal_1pps_ppm_edit.setText(f"{ppm_1pps:+.3f}")
+        self.freq_cal_1pps_ppm_edit.setText(f"{ppm_1pps:+.3f} ppm")
 
         # Lock-in Gain Offset
         offset_db = cal.lockin_gain_offset
-        if self.lockin_gain_unit.currentText() == "mdB":
+        unit = self.lockin_gain_unit.currentText()
+        if unit == "mdB":
             val = offset_db * 1000.0
-            self.lockin_gain_edit.setText(f"{val:.3f}")
+            self.lockin_gain_edit.setText(f"{val:.3f} {unit}")
         else:
             val = offset_db
-            self.lockin_gain_edit.setText(f"{val:.4f}")
+            self.lockin_gain_edit.setText(f"{val:.4f} {unit}")
 
     def on_language_changed(self):
         lang = self.lang_combo.currentData()

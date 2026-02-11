@@ -1115,5 +1115,8 @@
     "Fundamental (Lock-in):": "기본파 (Lock-in):",
     "Residual": "잔류 성분",
     "Residual RMS:": "잔류 RMS:",
-    "Waveform": "파형"
+    "Waveform": "파형",
+    "Frequency Calibration:": "Frequency Calibration:",
+    "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
+    "Lock-in Gain Offset:": "Lock-in Gain Offset:"
 }

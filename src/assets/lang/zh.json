@@ -1115,5 +1115,8 @@
     "Fundamental (Lock-in):": "基波 (锁相):",
     "Residual": "残留",
     "Residual RMS:": "残留 RMS:",
-    "Waveform": "波形"
+    "Waveform": "波形",
+    "Frequency Calibration:": "Frequency Calibration:",
+    "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
+    "Lock-in Gain Offset:": "Lock-in Gain Offset:"
 }

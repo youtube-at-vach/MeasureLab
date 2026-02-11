@@ -1115,5 +1115,8 @@
     "Fundamental (Lock-in):": "Основная гармоника (Lock-in):",
     "Residual": "Остаток",
     "Residual RMS:": "Среднеквадратичное значение остатка:",
-    "Waveform": "Форма волны"
+    "Waveform": "Форма волны",
+    "Frequency Calibration:": "Frequency Calibration:",
+    "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
+    "Lock-in Gain Offset:": "Lock-in Gain Offset:"
 }
