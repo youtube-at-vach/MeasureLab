@@ -27,6 +27,11 @@ class CalibrationManager:
         self.spl_offset_db = None
         self.profiles = {}
         self.last_profile = None
+        self.frequency_map = []
+        # Caches for vectorized interpolation
+        self._map_freqs = np.array([])
+        self._map_mags = np.array([])
+        self._map_phases = np.array([])
         self.load()
 
     def load(self):
@@ -252,6 +257,7 @@ class CalibrationManager:
                 data = json.load(f)
                 # Sort by frequency just in case
                 self.frequency_map = sorted(data, key=lambda x: x[0])
+                self._update_map_cache()
                 self.logger.info("Loaded calibration map with %d points.", len(self.frequency_map))
                 return True
         except Exception as e:
@@ -267,6 +273,7 @@ class CalibrationManager:
             with open(path, "w") as f:
                 json.dump(data, f, indent=4)
             self.frequency_map = sorted(data, key=lambda x: x[0])
+            self._update_map_cache()
             self.logger.info("Saved calibration map to %s", path)
             return True
         except Exception as e:
@@ -279,7 +286,7 @@ class CalibrationManager:
         Uses linear interpolation.
         Returns (0.0, 0.0) if no map is loaded.
         """
-        if not hasattr(self, "frequency_map") or not self.frequency_map:
+        if not self.frequency_map:
             return 0.0, 0.0
 
         # If out of range, clamp to nearest
@@ -288,30 +295,14 @@ class CalibrationManager:
         if freq >= self.frequency_map[-1][0]:
             return self.frequency_map[-1][1], self.frequency_map[-1][2]
 
-        # Binary search or simple search (map size usually < 1000)
-        # np.interp is convenient if we separate arrays, but here we have list of lists.
-        # Let's do a simple search or convert to numpy arrays on load?
-        # For now, simple search is fine for < 1000 points.
-
-        # Optimization: Convert to numpy arrays on load if performance is critical.
-        # But for now, let's just do it simply.
-
-        # Find index i such that map[i][0] <= freq < map[i+1][0]
-        # Using bisect would be faster but let's stick to basic python for clarity unless needed.
-
-        # Let's use numpy for interpolation, it's robust.
-        # We can cache the numpy arrays if this is called often (it is).
-
-        if not hasattr(self, "_map_freqs"):
-            self._update_map_cache()
-
+        # Use cached numpy arrays for interpolation
         mag_corr = np.interp(freq, self._map_freqs, self._map_mags)
         phase_corr = np.interp(freq, self._map_freqs, self._map_phases)
 
         return mag_corr, phase_corr
 
     def _update_map_cache(self):
-        if not hasattr(self, "frequency_map") or not self.frequency_map:
+        if not self.frequency_map:
             self._map_freqs = np.array([])
             self._map_mags = np.array([])
             self._map_phases = np.array([])

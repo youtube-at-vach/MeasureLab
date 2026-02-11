@@ -236,9 +236,35 @@ def test_frequency_map_load_external(cal_manager, tmp_path):
 
 def test_no_frequency_map(cal_manager):
     """Test behavior when no frequency map is loaded."""
-    if hasattr(cal_manager, "frequency_map"):
-        del cal_manager.frequency_map
+    # Ensure it's empty
+    cal_manager.frequency_map = []
+    cal_manager._update_map_cache()
 
     mag, phase = cal_manager.get_frequency_correction(1000)
     assert mag == 0.0
     assert phase == 0.0
+
+def test_frequency_map_reload_cache_update(cal_manager, tmp_path):
+    """Test that reloading a frequency map updates the cache."""
+    map_path1 = tmp_path / "map1.json"
+    map_path2 = tmp_path / "map2.json"
+
+    # Map 1: 100Hz -> 10.0 dB
+    data1 = [[100, 10.0, 0.0]]
+    with open(map_path1, "w") as f:
+        json.dump(data1, f)
+
+    # Map 2: 100Hz -> 20.0 dB
+    data2 = [[100, 20.0, 0.0]]
+    with open(map_path2, "w") as f:
+        json.dump(data2, f)
+
+    # Load Map 1
+    cal_manager.load_frequency_map(str(map_path1))
+    mag, _ = cal_manager.get_frequency_correction(100)
+    assert mag == 10.0
+
+    # Load Map 2
+    cal_manager.load_frequency_map(str(map_path2))
+    mag, _ = cal_manager.get_frequency_correction(100)
+    assert mag == 20.0
