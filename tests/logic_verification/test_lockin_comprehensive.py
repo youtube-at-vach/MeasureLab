@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-import warnings
 from src.core.analysis import AudioCalc
 
 
