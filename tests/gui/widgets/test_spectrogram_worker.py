@@ -1,7 +1,6 @@
 
 import numpy as np
 import pytest
-from PyQt6.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal
 
 # Import the worker class (to be implemented)
 # We use a try-except block or just assume it will be there when running tests after implementation.
