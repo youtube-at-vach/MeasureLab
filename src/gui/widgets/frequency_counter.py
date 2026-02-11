@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
-from src.core.fft_manager import fft_manager
+from src.core.frequency_analysis import calculate_frequency_metrics, calculate_allan_deviation
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -73,32 +73,7 @@ class AllanWorker(QRunnable):
                     return
 
             # --- Allan Deviation Calculation ---
-            n = len(data)
-            taus = []
-            devs = []
-            max_m = n // 2
-            m = 1
-
-            # Optimization: Don't calculate EVERY m if n is huge.
-            while m <= max_m:
-                num_samples = (n // m) * m
-                if num_samples < 2 * m:
-                    break
-
-                # Efficient mean calculation
-                y = data[:num_samples].reshape(-1, m).mean(axis=1)
-
-                if len(y) < 2:
-                    break
-
-                diffs = np.diff(y)
-                sigma = float(np.sqrt(0.5 * np.mean(diffs**2)))
-                tau_seconds = m * dt_seconds
-
-                taus.append(tau_seconds)
-                devs.append(sigma)
-
-                m *= 2
+            taus, devs = calculate_allan_deviation(data, dt_seconds)
 
             self.signals.result.emit(taus, devs)
 
@@ -129,7 +104,7 @@ class FrequencyWorker(QRunnable):
 
     def run(self):
         try:
-            freq, db = FrequencyCounter.calculate_metrics(
+            freq, db = calculate_frequency_metrics(
                 self.data, self.sr, self.gate_threshold_db, self.calibration_factor
             )
             self.signals.result.emit(freq, db)
@@ -178,8 +153,6 @@ class FrequencyCounter(MeasurementModule):
     @property
     def description(self) -> str:
         return "High-precision frequency measurement."
-
-
 
     def get_widget(self):
         return FrequencyCounterWidget(self)
@@ -253,39 +226,6 @@ class FrequencyCounter(MeasurementModule):
         if was_running:
             self.start_analysis()
 
-    @classmethod
-    def calculate_metrics(cls, data, sr, gate_threshold_db, calibration_factor=1.0):
-        # 1. Check Amplitude (Gate)
-        rms = np.sqrt(np.mean(data**2))
-        db = 20 * np.log10(rms + 1e-12)
-
-        if db < gate_threshold_db:
-            return None, db
-
-        # 2. Coarse Estimate (FFT)
-        window = np.hamming(len(data))
-        fft_res = fft_manager.rfft(data * window)
-        freqs = fft_manager.rfftfreq(len(data), 1 / sr)
-
-        idx = np.argmax(np.abs(fft_res))
-        coarse_freq = freqs[idx]
-
-        # 3. Fine Estimate (Parabolic)
-        # (Already implemented in AudioCalc.analyze_harmonics, but let's do a quick one here or skip to optimization)
-        # Optimization is robust enough if coarse is close.
-
-        # 4. Precision Estimate (Sine Fit)
-        # Only run if we have a reasonable signal
-        if coarse_freq > 10:  # Avoid DC/VLF noise
-            try:
-                precise_freq = AudioCalc.optimize_frequency(data, sr, coarse_freq)
-                precise_freq = float(precise_freq) * calibration_factor
-                return precise_freq, db
-            except Exception:
-                return coarse_freq, db
-        else:
-            return coarse_freq, db
-
     def process(self):
         if not self.is_running:
             return None
@@ -305,7 +245,7 @@ class FrequencyCounter(MeasurementModule):
         except Exception:
             cal_factor = 1.0
 
-        freq, db = self.calculate_metrics(data, sr, self.gate_threshold_db, cal_factor)
+        freq, db = calculate_frequency_metrics(data, sr, self.gate_threshold_db, cal_factor)
 
         self.current_amp_db = db
         if freq is not None:
@@ -358,59 +298,6 @@ class FrequencyCounter(MeasurementModule):
         # Allan Deviation (Tau = 1 sample)
         diffs = np.diff(data)
         self.allan_deviation = np.sqrt(0.5 * np.mean(diffs**2))
-
-    def calculate_allan_plot_data(self):
-        """
-        Calculates Allan Deviation for multiple Tau values.
-        Tau is in units of update_interval.
-        """
-        if len(self.freq_history) < 10:
-            return [], []
-
-        data = np.array(self.freq_history)
-        n = len(data)
-
-        taus = []
-        devs = []
-
-        # Calculate for Tau = 1, 2, 4, 8, ... up to N/2
-        # m is the averaging factor (Tau = m * dt)
-
-        max_m = n // 2
-        m = 1
-        while m <= max_m:
-            # Create averaged data
-            # We need non-overlapping averages of length m
-            # But standard Allan Variance definition uses adjacent averages
-            # Formula: sigma_y^2(tau) = 0.5 * < (y_{i+1} - y_i)^2 >
-            # where y_i are averages over tau
-
-            # Efficient implementation:
-            # Reshape data to (N//m, m) and take mean along axis 1
-            # This gives us the sequence of averages y_k
-
-            num_samples = (n // m) * m
-            if num_samples < 2 * m:
-                break
-
-            y = data[:num_samples].reshape(-1, m).mean(axis=1)
-
-            if len(y) < 2:
-                break
-
-            diffs = np.diff(y)
-            sigma = np.sqrt(0.5 * np.mean(diffs**2))
-
-            tau_seconds = m * (self.update_interval_ms / 1000.0)
-            taus.append(tau_seconds)
-            devs.append(sigma)
-
-            m *= 2
-
-        self.allan_taus = taus
-        self.allan_devs = devs
-
-        return taus, devs
 
 
 class FrequencyCalibrationDialog(QDialog):
@@ -975,38 +862,6 @@ class FrequencyCounterWidget(QWidget):
         diffs = np.diff(periods)
         allan_dev = float(np.sqrt(0.5 * np.mean(diffs**2))) if len(diffs) >= 1 else 0.0
         return std_dev, allan_dev
-
-    def _calculate_allan_plot_data_for_series(self, series, dt_seconds: float):
-        if series is None or len(series) < 10:
-            return [], []
-
-        data = np.asarray(series, dtype=float)
-        data = data[np.isfinite(data)]
-        if len(data) < 10:
-            return [], []
-
-        n = len(data)
-        taus = []
-        devs = []
-        max_m = n // 2
-        m = 1
-        while m <= max_m:
-            num_samples = (n // m) * m
-            if num_samples < 2 * m:
-                break
-
-            y = data[:num_samples].reshape(-1, m).mean(axis=1)
-            if len(y) < 2:
-                break
-
-            diffs = np.diff(y)
-            sigma = float(np.sqrt(0.5 * np.mean(diffs**2)))
-            tau_seconds = m * dt_seconds
-            taus.append(tau_seconds)
-            devs.append(sigma)
-            m *= 2
-
-        return taus, devs
 
     def open_calibration(self):
         if not self.module.is_running:
