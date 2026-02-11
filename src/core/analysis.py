@@ -1,9 +1,7 @@
 import functools
 import math
 import numpy as np
-import scipy.signal
-from scipy.optimize import minimize_scalar
-from scipy.signal import butter, get_window, sosfiltfilt
+from scipy import signal as scipy_signal, optimize
 
 
 from src.core.fft_manager import fft_manager
@@ -24,12 +22,12 @@ A_WEIGHTING_GAIN = 1.2589
 
 @functools.lru_cache(maxsize=16)
 def get_cached_window(window_name, nx, dtype=np.float64, fftbins=True):
-    return get_window(window_name, nx, fftbins=fftbins).astype(dtype)
+    return scipy_signal.get_window(window_name, nx, fftbins=fftbins).astype(dtype)
 
 
 @functools.lru_cache(maxsize=128)
 def _get_butter_sos(order, Wn, btype, fs=None):
-    return butter(order, Wn, btype=btype, fs=fs, output="sos")
+    return scipy_signal.butter(order, Wn, btype=btype, fs=fs, output="sos")
 
 
 def _calculate_ra_raw(f):
@@ -122,7 +120,7 @@ class AudioCalc:
 
         # resample_poly assumes axis=0 is the time axis, which matches (samples, channels)
         # It handles both 1D and 2D arrays correctly.
-        return scipy.signal.resample_poly(data, up, down)
+        return scipy_signal.resample_poly(data, up, down)
 
     @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
@@ -140,7 +138,7 @@ class AudioCalc:
         # Wn must be a tuple to be hashable for lru_cache
         Wn = (lowcut / nyquist, highcut / nyquist)
         sos = _get_butter_sos(8, Wn, "bandpass")
-        return sosfiltfilt(sos, signal)
+        return scipy_signal.sosfiltfilt(sos, signal)
 
     @staticmethod
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
@@ -151,7 +149,7 @@ class AudioCalc:
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
         sos = _get_butter_sos(8, cutoff, "lowpass", fs=sampling_rate)
-        return sosfiltfilt(sos, signal)
+        return scipy_signal.sosfiltfilt(sos, signal)
 
     @staticmethod
     def highpass_filter(signal, sampling_rate, cutoff=20.0):
@@ -162,7 +160,7 @@ class AudioCalc:
         nyquist = 0.5 * sampling_rate
         cutoff = min(nyquist - 1, max(0.1, cutoff))
         sos = _get_butter_sos(8, cutoff / nyquist, "highpass")
-        return sosfiltfilt(sos, signal)
+        return scipy_signal.sosfiltfilt(sos, signal)
 
     @staticmethod
     def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
@@ -189,7 +187,7 @@ class AudioCalc:
         # Wn must be a tuple to be hashable for lru_cache
         Wn = (w_low, w_high)
         sos = _get_butter_sos(2, Wn, "bandstop")
-        return sosfiltfilt(sos, signal)
+        return scipy_signal.sosfiltfilt(sos, signal)
 
     @staticmethod
     def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
@@ -362,7 +360,7 @@ class AudioCalc:
         # Use bounded minimization around the best grid point
         zoom_width = step * 1.5 # Overlap slightly
         bounds_fine = (max(0.1, best_coarse - zoom_width), best_coarse + zoom_width)
-        res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={'xatol': 1e-14})
+        res_fine = optimize.minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={'xatol': 1e-14})
         best_freq = res_fine.x
 
         if return_full:
@@ -405,12 +403,12 @@ class AudioCalc:
         if N > 18:
             if sampling_rate > 40:
                 sos_hp = _get_butter_sos(4, 20, "hp", fs=sampling_rate)
-                residual = sosfiltfilt(sos_hp, residual)
+                residual = scipy_signal.sosfiltfilt(sos_hp, residual)
 
             # Lowpass 20kHz
             if sampling_rate > 44100:
                 sos_lp = _get_butter_sos(4, 20000, "lp", fs=sampling_rate)
-                residual = sosfiltfilt(sos_lp, residual)
+                residual = scipy_signal.sosfiltfilt(sos_lp, residual)
 
         # 4. Calculate RMS
         # Trim edges to avoid filter transients from bandwidth limit (especially 20Hz HPF)
