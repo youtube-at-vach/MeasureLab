@@ -1106,7 +1106,8 @@ class AudioCalc:
                 # Use log space calculation to avoid overflow/precision issues with huge exponents?
                 # For audio range (20Hz-20kHz), direct power is fine.
                 expected_log_end = start_freq * (ratio ** (len(freqs) - 1))
-                if abs(freqs[-1] - expected_log_end) < 1e-4 * expected_log_end:
+                # Relax tolerance slightly (1e-3) for improved cross-platform detection
+                if abs(freqs[-1] - expected_log_end) < 1e-3 * expected_log_end:
                     is_log_freqs = True
                     stop_freq = freqs[-1]
 
