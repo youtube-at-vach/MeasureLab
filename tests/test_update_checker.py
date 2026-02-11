@@ -34,14 +34,14 @@ class TestUpdateChecker(unittest.TestCase):
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         checker = UpdateChecker()
-        
+
         # Mock signal emission
         signal_mock = MagicMock()
         checker.update_available.connect(signal_mock)
-        
+
         # Run synchronous for testing (normally runs in thread)
         checker.run()
-        
+
         signal_mock.assert_called_with("v9.9.9")
 
     @patch('urllib.request.urlopen')
@@ -53,13 +53,13 @@ class TestUpdateChecker(unittest.TestCase):
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         checker = UpdateChecker()
-        
+
         # Mock signal emission
         signal_mock = MagicMock()
         checker.update_available.connect(signal_mock)
-        
+
         checker.run()
-        
+
         signal_mock.assert_not_called()
 
 if __name__ == '__main__':

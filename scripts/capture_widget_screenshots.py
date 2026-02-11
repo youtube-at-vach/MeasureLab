@@ -79,30 +79,27 @@ def find_widget_pair(module):
             module_class = obj
             break
 
-    if not module_class:
-        return None, None
-
     # 2. Find Widget
     # First pass: Look for 'NameWidget' matching 'Name' of module
-    expected_widget_name = module_class.__name__ + "Widget"
-    if hasattr(module, expected_widget_name):
-        widget_class = getattr(module, expected_widget_name)
+    if module_class:
+        expected_widget_name = module_class.__name__ + "Widget"
+        if hasattr(module, expected_widget_name):
+            widget_class = getattr(module, expected_widget_name)
 
-    # Second pass: Look for any widget that seems to be the main interface
+    # Second pass: Look for any widget that seems to be the main interface or just a QWidget subclass
     if not widget_class:
         for name, obj in inspect.getmembers(module):
             if inspect.isclass(obj) and issubclass(obj, QWidget):
-                # Skip common utility widgets if they exist (unlikely in these files but good practice)
-                if name.startswith("Q"):
+                if name.startswith("Q") or obj is QWidget:
                     continue
-                if obj is module_class:
-                    continue # Just in case
+                if module_class and obj is module_class:
+                    continue
 
-                # Check init signature for 'module' arg?
-                sig = inspect.signature(obj.__init__)
-                if 'module' in sig.parameters:
+                # Assign if it's the first QWidget subclass we find, or if it contains 'Widget' in name
+                if not widget_class or "Widget" in name:
                     widget_class = obj
-                    break
+                    if "Widget" in name: # Prefer those with Widget in name
+                        break
 
     return module_class, widget_class
 
@@ -127,7 +124,6 @@ def capture_widgets(targets=None):
         if targets and module_name not in targets:
             continue
 
-        module_name = filename[:-3]
         file_path = os.path.join(widgets_dir, filename)
 
         print(f"Processing {module_name}...")
@@ -142,22 +138,21 @@ def capture_widgets(targets=None):
             # Find classes
             module_cls, widget_cls = find_widget_pair(mod)
 
-            if not module_cls or not widget_cls:
-                print(f"  -> Skipped: Could not identify Module/Widget pair (Mod: {module_cls}, Wid: {widget_cls})")
+            if not widget_cls:
+                print("  -> Skipped: Could not identify Widget class")
                 continue
 
             # Instantiate
-            print(f"  -> Found {module_cls.__name__} / {widget_cls.__name__}")
-            measure_module = module_cls(audio_engine=mock_engine)
-
-            # Some widgets might expect 'parent' as second arg, or just module
-            # We assume standard signature `__init__(self, module, parent=None)` or similar
-            try:
-                widget = widget_cls(module=measure_module)
-            except Exception as e:
-                # Try positional if keyword fails (unlikely given code style but possible)
-                print(f"  -> Init failed with keyword, trying positional: {e}")
-                widget = widget_cls(measure_module)
+            if module_cls:
+                print(f"  -> Found {module_cls.__name__} / {widget_cls.__name__}")
+                measure_module = module_cls(audio_engine=mock_engine)
+                try:
+                    widget = widget_cls(module=measure_module)
+                except Exception:
+                    widget = widget_cls(measure_module)
+            else:
+                print(f"  -> Found {widget_cls.__name__} (No module)")
+                widget = widget_cls()
 
             # Setup for screenshot
             widget.setWindowTitle(f"Screenshot: {module_name}")
