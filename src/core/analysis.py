@@ -4,7 +4,7 @@ import numpy as np
 import scipy.signal
 import soundfile as sf
 from scipy.optimize import minimize_scalar
-from scipy.signal import butter, get_window, sosfiltfilt
+from scipy.signal import butter, get_window, sosfiltfilt, firwin
 
 
 from src.core.fft_manager import fft_manager
@@ -98,6 +98,14 @@ def _get_reference_signals(N, sampling_rate, frequency):
     return sin_ref, cos_ref
 
 
+@functools.lru_cache(maxsize=32)
+def _get_resample_filter(up, down, window_type=('kaiser', 5.0)):
+    max_rate = max(up, down)
+    f_c = 1. / max_rate
+    half_len = 10 * max_rate
+    return firwin(2 * half_len + 1, f_c, window=window_type)
+
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
@@ -138,7 +146,8 @@ class AudioCalc:
 
         # resample_poly assumes axis=0 is the time axis, which matches (samples, channels)
         # It handles both 1D and 2D arrays correctly.
-        return scipy.signal.resample_poly(data, up, down)
+        window = _get_resample_filter(up, down)
+        return scipy.signal.resample_poly(data, up, down, window=window)
 
     @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):

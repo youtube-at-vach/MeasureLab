@@ -57,6 +57,10 @@ class TestAudioCalcResample(unittest.TestCase):
         mock_scipy_signal.reset_mock()
         mock_numpy.reset_mock()
 
+        # Clear cache to avoid test pollution
+        if 'src.core.analysis' in sys.modules:
+             sys.modules['src.core.analysis']._get_resample_filter.cache_clear()
+
     def test_resample_identity(self):
         """Test that resampling to the same rate returns original data."""
         data = MagicMock()
@@ -97,11 +101,14 @@ class TestAudioCalcResample(unittest.TestCase):
         source_sr = 48000
         target_sr = 96000
 
+        mock_window = MagicMock()
+        mock_scipy_signal.firwin.return_value = mock_window
+
         # Expected: GCD = 48000. up = 2, down = 1
 
         self.AudioCalc.resample(data, source_sr, target_sr)
 
-        mock_scipy_signal.resample_poly.assert_called_once_with(data, 2, 1)
+        mock_scipy_signal.resample_poly.assert_called_once_with(data, 2, 1, window=mock_window)
 
     def test_resample_downsampling_integer(self):
         """Test downsampling with integer ratio (e.g. 48k -> 24k)."""
@@ -109,11 +116,14 @@ class TestAudioCalcResample(unittest.TestCase):
         source_sr = 48000
         target_sr = 24000
 
+        mock_window = MagicMock()
+        mock_scipy_signal.firwin.return_value = mock_window
+
         # Expected: GCD = 24000. up = 1, down = 2
 
         self.AudioCalc.resample(data, source_sr, target_sr)
 
-        mock_scipy_signal.resample_poly.assert_called_once_with(data, 1, 2)
+        mock_scipy_signal.resample_poly.assert_called_once_with(data, 1, 2, window=mock_window)
 
     def test_resample_fractional(self):
         """Test resampling with fractional ratio (e.g. 44100 -> 48000)."""
@@ -121,13 +131,16 @@ class TestAudioCalcResample(unittest.TestCase):
         source_sr = 44100
         target_sr = 48000
 
+        mock_window = MagicMock()
+        mock_scipy_signal.firwin.return_value = mock_window
+
         # GCD of 44100 and 48000 is 300.
         # up = 48000 / 300 = 160
         # down = 44100 / 300 = 147
 
         self.AudioCalc.resample(data, source_sr, target_sr)
 
-        mock_scipy_signal.resample_poly.assert_called_once_with(data, 160, 147)
+        mock_scipy_signal.resample_poly.assert_called_once_with(data, 160, 147, window=mock_window)
 
     def test_resample_float_inputs(self):
         """Test that float sampling rates are handled correctly."""
@@ -135,7 +148,10 @@ class TestAudioCalcResample(unittest.TestCase):
         source_sr = 44100.0
         target_sr = 48000.0
 
+        mock_window = MagicMock()
+        mock_scipy_signal.firwin.return_value = mock_window
+
         self.AudioCalc.resample(data, source_sr, target_sr)
 
         # Should be converted to int internally for GCD
-        mock_scipy_signal.resample_poly.assert_called_once_with(data, 160, 147)
+        mock_scipy_signal.resample_poly.assert_called_once_with(data, 160, 147, window=mock_window)
