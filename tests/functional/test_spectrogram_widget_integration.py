@@ -3,6 +3,7 @@ import os
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
+from PyQt6.QtCore import QTimer
 
 # Add src to path
 sys.path.insert(0, os.getcwd())
@@ -49,6 +50,23 @@ def test_spectrogram_widget_update():
     except Exception as e:
         pytest.fail(f"update_spectrogram raised exception: {e}")
 
+    # Wait for the worker thread to complete and update the UI
+    # Since we are in a test with an event loop (QApplication), we can use processEvents
+    # We loop until the buffer is updated or timeout
+
+    timeout_ms = 2000
+    start_ptr = module.spectrogram_ptr
+
+    # Simple wait loop
+    t = QTimer()
+    t.setSingleShot(True)
+    t.start(timeout_ms)
+
+    while t.isActive():
+        app.processEvents()
+        if module.spectrogram_ptr != start_ptr:
+            break
+
     # Check if spectrogram_data was updated
     # Initial is -120.0
     # After update with sine wave, it should be higher
@@ -62,3 +80,4 @@ def test_spectrogram_widget_update():
     # Clean up
     module.stop_analysis()
     # We don't need to explicitly close widget as it wasn't shown
+    widget.threadpool.waitForDone(1000)
