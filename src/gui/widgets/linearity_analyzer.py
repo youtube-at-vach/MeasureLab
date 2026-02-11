@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QMessageBox,
     QTabWidget,
+    QCheckBox,
 )
 
 from src.core.analysis import AudioCalc
@@ -480,7 +481,6 @@ class LinearityAnalyzerWidget(QWidget):
         io_form.addRow(tr("Input:"), self.in_combo)
 
         # Hysteresis Toggle
-        from PyQt6.QtWidgets import QCheckBox
         self.hyst_check = QCheckBox(tr("Enable Hysteresis Sweep"))
         self.hyst_check.toggled.connect(lambda v: setattr(self.module, "hysteresis_mode", v))
         io_form.addRow(self.hyst_check)
