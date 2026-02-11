@@ -1,17 +1,25 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import sys
-
-# Mock sounddevice before importing AudioEngine
-sys.modules['sounddevice'] = MagicMock()
-
-from src.core.audio_engine import AudioEngine  # noqa: E402
+import importlib
 
 class TestAudioEngineLogic(unittest.TestCase):
     def setUp(self):
-        self.engine = AudioEngine()
+        # Patch sys.modules to mock sounddevice
+        self.patcher = patch.dict(sys.modules, {'sounddevice': MagicMock()})
+        self.patcher.start()
+
+        # Import and reload AudioEngine to use the mock
+        import src.core.audio_engine
+        importlib.reload(src.core.audio_engine)
+        self.AudioEngineClass = src.core.audio_engine.AudioEngine
+
+        self.engine = self.AudioEngineClass()
         self.engine.stream = MagicMock() # Pretend stream is created so we don't hit _start_master_stream logic logic
         self.engine.logger = MagicMock()
+
+    def tearDown(self):
+        self.patcher.stop()
 
     def test_register_unregister(self):
         def cb(*args):

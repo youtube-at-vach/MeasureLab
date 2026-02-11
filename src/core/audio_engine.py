@@ -468,12 +468,11 @@ class AudioEngine:
                     outdata[:, 0] = 0
         # If muted, outdata is already 0 filled at start of callback
 
-    def _start_master_stream(self):
-        """Starts the underlying sounddevice stream or VirtualStream."""
-        if self.stream is not None:
-            return
-
-        # Determine hardware channels needed based on mode
+    def _update_channel_modes(self):
+        """
+        Updates internal channel mode integers based on string settings.
+        Returns the required hardware channel count (in, out).
+        """
         in_mode_str = self.input_channel_mode
         out_mode_str = self.output_channel_mode
 
@@ -494,6 +493,38 @@ class AudioEngine:
         hw_in_ch = 2 if in_mode_str in ["right", "stereo"] else 1
         hw_out_ch = 2 if out_mode_str in ["right", "stereo"] else 1
 
+        return hw_in_ch, hw_out_ch
+
+    def _get_jack_settings(self):
+        """
+        Returns sd.JackSettings if the output device is JACK/PipeWire, else None.
+        """
+        # If running on JACK (including PipeWire-JACK), attempt to fix the client/node name.
+        try:
+            hostapi_name = None
+            dev_id = self.output_device
+            if dev_id is None:
+                # Fallback to default output device.
+                dev_id = sd.default.device[1]
+            if dev_id is not None and dev_id != -1:
+                device_info = sd.query_devices(dev_id)
+                hostapi_idx = device_info.get("hostapi")
+                if hostapi_idx is not None:
+                    hostapi_info = sd.query_hostapis(hostapi_idx)
+                    hostapi_name = hostapi_info.get("name")
+            if hostapi_name and "jack" in str(hostapi_name).lower():
+                return sd.JackSettings(client_name=self.jack_client_name)
+        except Exception:
+            pass
+        return None
+
+    def _start_master_stream(self):
+        """Starts the underlying sounddevice stream or VirtualStream."""
+        if self.stream is not None:
+            return
+
+        hw_in_ch, hw_out_ch = self._update_channel_modes()
+
         # Reset loopback buffer
         self.last_output_buffer = None
 
@@ -508,22 +539,7 @@ class AudioEngine:
                 self.stream.start()
                 self.logger.info(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
             else:
-                extra_settings = None
-                # If running on JACK (including PipeWire-JACK), attempt to fix the client/node name.
-                try:
-                    hostapi_name = None
-                    dev_id = self.output_device
-                    if dev_id is None:
-                        # Fallback to default output device.
-                        dev_id = sd.default.device[1]
-                    if dev_id is not None and dev_id != -1:
-                        hostapi_idx = sd.query_devices(dev_id).get("hostapi")
-                        if hostapi_idx is not None:
-                            hostapi_name = sd.query_hostapis(hostapi_idx).get("name")
-                    if hostapi_name and "jack" in str(hostapi_name).lower():
-                        extra_settings = sd.JackSettings(client_name=self.jack_client_name)
-                except Exception:
-                    extra_settings = None
+                extra_settings = self._get_jack_settings()
 
                 self.stream = sd.Stream(
                     device=(self.input_device, self.output_device),
