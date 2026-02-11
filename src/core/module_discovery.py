@@ -1,7 +1,7 @@
 import ast
 import os
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def discover_modules(directory: str, base_module_path: str) -> Dict[str, Tuple[s
     Returns:
         A dictionary mapping module name (from .name property) to (module_dotted_path, class_name).
     """
-    registry = {}
+    registry: Dict[str, Tuple[str, str]] = {}
 
     if not os.path.exists(directory):
         logger.error(f"Directory not found: {directory}")
@@ -60,7 +60,7 @@ def discover_modules(directory: str, base_module_path: str) -> Dict[str, Tuple[s
     return registry
 
 
-def _extract_name_property(class_node: ast.ClassDef) -> str:
+def _extract_name_property(class_node: ast.ClassDef) -> Optional[str]:
     """Extracts the string literal returned by the 'name' property."""
     for item in class_node.body:
         if isinstance(item, ast.FunctionDef) and item.name == "name":
