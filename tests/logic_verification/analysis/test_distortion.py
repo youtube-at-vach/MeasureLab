@@ -279,5 +279,15 @@ class TestDistortionLogic(unittest.TestCase):
         # Combined RMS of two -80dBc signals is -77dBc (3dB increase)
         self.assertAlmostEqual(res['pim_db'], -77, delta=2, msg=f"Expected ~-77dB, got {res['pim_db']:.2f}")
 
+    def test_calculate_thdn_sine_fit_empty(self):
+        """Test calculate_thdn_sine_fit with empty signal."""
+        signal = np.array([])
+        sr = 48000
+        thdn, fund, noise = AudioCalc.calculate_thdn_sine_fit(signal, sr, 1000)
+        # Should return -140dB or similar "no signal" result
+        self.assertEqual(thdn, -140.0)
+        self.assertEqual(fund, 0.0)
+        self.assertEqual(noise, 0.0)
+
 if __name__ == "__main__":
     unittest.main()

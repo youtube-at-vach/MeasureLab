@@ -1198,6 +1198,8 @@ class AudioCalc:
         Returns: magnitude, phase (degrees)
         """
         N = len(signal)
+        if N == 0:
+            return 0.0, 0.0
 
         # Generate Reference Sine/Cosine (Quadrature)
         # We need two orthogonal references to recover Phase and Magnitude independent of alignment

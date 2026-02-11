@@ -1,6 +1,5 @@
 import unittest
 import numpy as np
-import warnings
 from src.core.analysis import AudioCalc
 
 
@@ -152,16 +151,9 @@ class TestLockInComprehensive(unittest.TestCase):
     def test_empty_signal(self):
         """Verify behavior with empty signal."""
         signal = np.array([])
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs)
-                if np.isnan(mag) or np.isinf(mag):
-                     pass # Acceptable
-            except ZeroDivisionError:
-                 pass # Acceptable
-            except Exception as e:
-                 self.fail(f"Raised unexpected exception: {e}")
+        mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs)
+        self.assertEqual(mag, 0.0)
+        self.assertEqual(phase, 0.0)
 
 if __name__ == "__main__":
     unittest.main()

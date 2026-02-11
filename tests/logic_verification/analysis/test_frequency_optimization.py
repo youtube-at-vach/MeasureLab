@@ -78,5 +78,19 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         freq = AudioCalc.optimize_frequency(self.signal, 0, 1000.0)
         self.assertEqual(freq, 1000.0)
 
+    def test_optimize_frequency_return_full_empty(self):
+        """Test optimize_frequency with return_full=True and empty signal."""
+        signal = np.array([])
+        sr = 48000
+        ret = AudioCalc.optimize_frequency(signal, sr, 1000, return_full=True)
+        # Should return a tuple of 3
+        self.assertEqual(len(ret), 3)
+        best_freq, coeffs, M = ret
+        # best_freq should be guess or NaN
+        self.assertTrue(best_freq == 1000 or np.isnan(best_freq))
+        # coeffs and M might be None or empty
+        if M is not None:
+            self.assertEqual(len(M), 0)
+
 if __name__ == '__main__':
     unittest.main()
