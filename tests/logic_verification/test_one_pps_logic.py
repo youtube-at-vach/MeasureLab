@@ -3,8 +3,6 @@ from unittest.mock import MagicMock
 import numpy as np
 import sys
 import os
-import queue
-import time
 
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
