@@ -6,7 +6,7 @@ import sys
 sys.modules['sounddevice'] = MagicMock()
 sys.modules['numpy'] = MagicMock()
 
-from src.core.audio_engine import AudioEngine, _NOT_SET
+from src.core.audio_engine import AudioEngine, _NOT_SET  # noqa: E402
 
 class TestAudioEngineConfigure(unittest.TestCase):
     def setUp(self):
