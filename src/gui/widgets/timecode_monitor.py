@@ -6,6 +6,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from functools import partial
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
@@ -89,8 +90,8 @@ class _TimecodeChannelState:
     estimated_fps: float = 0.0
     last_frame_time: Optional[float] = None
     last_decoded_epoch: Optional[float] = None
-    fps_intervals: deque = field(default_factory=deque)
-    jam_history: deque = field(default_factory=deque)
+    fps_intervals: deque = field(default_factory=partial(deque, maxlen=32))
+    jam_history: deque = field(default_factory=partial(deque, maxlen=256))
     last_input_latency_sec: float = 0.0
     last_output_latency_sec: float = 0.0
 
@@ -491,7 +492,7 @@ class TimecodeMonitor(MeasurementModule):
         self._cal_active = False
         self._cal_key = "L"
         self._cal_prev_gen_enabled: Optional[bool] = None
-        self._cal_samples: deque = deque()
+        self._cal_samples: deque = deque(maxlen=256)
         self._cal_need = 30
         self._cal_started_at = 0.0
         self._cal_result = None
@@ -708,8 +709,6 @@ class TimecodeMonitor(MeasurementModule):
                                 dt = float(frame_t_epoch - ch.last_frame_time)
                                 if 0.015 <= dt <= 0.08:
                                     ch.fps_intervals.append(dt)
-                                    if len(ch.fps_intervals) > 32:
-                                        ch.fps_intervals.popleft()
                                     avg = float(sum(ch.fps_intervals)) / float(len(ch.fps_intervals))
                                     if avg > 0:
                                         ch.estimated_fps = 1.0 / avg
@@ -758,8 +757,6 @@ class TimecodeMonitor(MeasurementModule):
                                                     float(getattr(ch, "last_output_latency_sec", 0.0)),
                                                 )
                                             )
-                                            while len(self._cal_samples) > 256:
-                                                self._cal_samples.popleft()
 
                             parsed = self._parse_tc(ch.decoded_tc)
                             if parsed is not None:
@@ -770,8 +767,6 @@ class TimecodeMonitor(MeasurementModule):
                                 hh, mm, ss, ff = parsed
                                 total_frames = ((hh * 3600 + mm * 60 + ss) * nominal_fps) + int(ff)
                                 ch.jam_history.append((float(frame_t_epoch), int(total_frames)))
-                                if len(ch.jam_history) > 256:
-                                    ch.jam_history.popleft()
 
             if self.link_enabled:
                 src_key = self.link_source if self.link_source in self.channels else "L"
