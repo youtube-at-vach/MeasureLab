@@ -73,7 +73,9 @@ class ConfigManager:
             try:
                 instance.shutdown()
             except Exception as e:
-                logger.error("Error during shutdown: %s", e)
+                # Log the error with the config path if available for better context
+                path = getattr(instance, 'config_path', 'unknown')
+                logger.error(f"Error shutting down ConfigManager (path={path}): {e}")
 
     def load_config(self):
         """Loads configuration from JSON file."""
@@ -114,8 +116,8 @@ class ConfigManager:
                 # Ensure permissions on existing files (best effort)
                 try:
                     os.chmod(self.config_path, 0o600)
-                except Exception:
-                    pass
+                except Exception as e:
+                    self.logger.warning(f"Unable to set secure permissions for config file: {e}")
 
                 self.logger.info("Config saved.")
                 self._save_timer = None

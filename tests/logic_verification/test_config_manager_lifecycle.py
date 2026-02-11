@@ -12,13 +12,26 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         self.logger_patcher = patch('src.core.config_manager.logging.getLogger', return_value=self.mock_logger)
         self.logger_patcher.start()
 
+        # Prevent actual file IO
+        self.open_patcher = patch('os.open', return_value=123)
+        self.mock_open_fd = self.open_patcher.start()
+
+        self.fdopen_patcher = patch('os.fdopen')
+        self.mock_fdopen = self.fdopen_patcher.start()
+
+        self.chmod_patcher = patch('os.chmod')
+        self.mock_chmod = self.chmod_patcher.start()
+
     def tearDown(self):
+        self.chmod_patcher.stop()
+        self.fdopen_patcher.stop()
+        self.open_patcher.stop()
         self.logger_patcher.stop()
-        # Clean up any instances created (though WeakSet handles this if we drop ref)
-        # But we might want to manually clear the WeakSet if possible to avoid state leak,
-        # though it's private.
-        # Calling shutdown on instances is good practice if we have refs.
-        pass
+        if os.path.exists(self.config_path):
+            os.remove(self.config_path)
+
+        # Clear instances to prevent atexit from flushing them to disk
+        ConfigManager._instances.clear()
 
     @patch('src.core.config_manager.os.path.exists')
     @patch('src.core.config_manager.os.makedirs')
@@ -232,6 +245,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
     def test_flush_all_logs_exception(self):
         """Test that _flush_all logs exceptions from instance shutdown."""
         mock_instance = MagicMock()
+        mock_instance.config_path = "test_path.json"
         exception = Exception("Crash")
         mock_instance.shutdown.side_effect = exception
 
@@ -243,7 +257,40 @@ class TestConfigManagerLifecycle(unittest.TestCase):
             if mock_instance in ConfigManager._instances:
                 ConfigManager._instances.remove(mock_instance)
 
-        self.mock_logger.error.assert_called_with("Error during shutdown: %s", exception)
+        expected_msg = f"Error shutting down ConfigManager (path=test_path.json): {exception}"
+        self.mock_logger.error.assert_called_with(expected_msg)
+
+    @patch('src.core.config_manager.os.path.exists', return_value=False)
+    @patch('src.core.config_manager.os.makedirs')
+    @patch('src.core.config_manager.os.open')
+    @patch('src.core.config_manager.os.fdopen')
+    @patch('src.core.config_manager.os.chmod')
+    def test_flush_config_chmod_failure_logging(self, mock_chmod, mock_fdopen, mock_open, mock_makedirs, mock_exists):
+        """Test that chmod failure in _flush_config is logged."""
+        # Setup mocks
+        mock_open.return_value = 123
+        mock_file_handle = MagicMock()
+        mock_fdopen.return_value.__enter__.return_value = mock_file_handle
+
+        # Make chmod raise an exception
+        mock_chmod.side_effect = OSError("Permission denied for chmod")
+
+        cm = ConfigManager(self.config_path)
+
+        # Trigger save
+        cm.save_config(force_sync=True)
+
+        # Verify warning logged
+        self.mock_logger.warning.assert_called()
+        # Verify the message content (approximate match)
+        found = False
+        for call in self.mock_logger.warning.call_args_list:
+            args, _ = call
+            if "Unable to set secure permissions for config file" in args[0]:
+                found = True
+                break
+        self.assertTrue(found, "Expected warning log not found")
+        cm.shutdown()
 
 if __name__ == '__main__':
     unittest.main()
