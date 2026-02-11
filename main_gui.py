@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import os
 import signal
 import sys
@@ -11,6 +12,8 @@ from src.core.fft_manager import fft_manager
 
 def main():
     """GUI Application Entry Point"""
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
     # Suppress benign GNOME portal Settings warnings like:
     #   qt.qpa.theme.gnome: dbus reply error: ... org.freedesktop.portal.Settings
     # This must be set before importing Qt/PyQt.
@@ -35,7 +38,8 @@ def main():
     try:
         config_manager = ConfigManager()
         get_manager().load_language(config_manager.get_language())
-    except Exception:
+    except Exception as e:
+        logging.error(f"Failed to load configuration or translations: {e}")
         # If config or translations fail, proceed with defaults.
         pass
 
@@ -106,7 +110,7 @@ def main():
         # 2. Preload Modules
         window.preload_all_modules(progress_callback=_update_splash)
     except Exception as e:
-        print(f"Startup error: {e}")
+        logging.error(f"Startup error: {e}")
         # If preload fails, still show the window; individual pages may show errors.
         pass
 
