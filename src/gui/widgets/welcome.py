@@ -1,6 +1,6 @@
 import os
 
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QTimer, QUrl
 from PyQt6.QtGui import QDesktopServices, QFont, QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
@@ -14,7 +14,8 @@ class WelcomeWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
-        self.start_update_check()
+        # Delay the update check to ensure the UI renders first
+        QTimer.singleShot(1000, self.start_update_check)
 
     def start_update_check(self):
         self.update_checker = UpdateChecker()
