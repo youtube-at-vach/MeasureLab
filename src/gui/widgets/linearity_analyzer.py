@@ -830,16 +830,44 @@ class LinearityAnalyzerWidget(QWidget):
                 x_rev = np.array(self.results_x)[rev_mask]
                 g_rev = np.array(self.results_gain)[rev_mask]
 
-                # Create dicts for easy lookup
-                fwd_dict = {round(x, 6): g for x, g in zip(x_fwd, g_fwd, strict=False)}
-                max_hyst = 0.0
+                # Vectorized Hysteresis Calculation
+                # Round to handle floating point inaccuracies, similar to original dict approach
+                xf_r = np.round(x_fwd, 6)
+                xr_r = np.round(x_rev, 6)
 
-                for x, g_r in zip(x_rev, g_rev, strict=False):
-                    xr = round(x, 6)
-                    if xr in fwd_dict:
-                        diff = abs(g_r - fwd_dict[xr])
-                        if diff > max_hyst:
-                            max_hyst = diff
+                # 1. Prepare Forward Lookup (Last-Win Strategy)
+                # Flip to use np.unique(first) as "Last"
+                xf_flipped = xf_r[::-1]
+                # xf_clean is sorted unique values
+                xf_clean, unique_indices_flipped = np.unique(xf_flipped, return_index=True)
+
+                if xf_clean.size > 0:
+                    # Extract corresponding G (Last occurrence wins)
+                    gf_clean = g_fwd[::-1][unique_indices_flipped]
+
+                    # 2. Process Reverse Sweep (Check-All Strategy)
+                    # Find which x_rev points exist in xf_clean
+                    idx_in_clean = np.searchsorted(xf_clean, xr_r)
+
+                    # Clamp indices to valid range for validity check
+                    idx_in_clean = np.clip(idx_in_clean, 0, len(xf_clean) - 1)
+
+                    # Check which ones are actual matches
+                    matched_mask = (xf_clean[idx_in_clean] == xr_r)
+
+                    if np.any(matched_mask):
+                        # Get corresponding gains from Fwd
+                        g_ref = gf_clean[idx_in_clean[matched_mask]]
+
+                        # Get gains from Rev
+                        g_check = g_rev[matched_mask]
+
+                        diffs = np.abs(g_check - g_ref)
+                        max_hyst = np.max(diffs)
+                    else:
+                        max_hyst = 0.0
+                else:
+                    max_hyst = 0.0
 
                 self.stat_hysteresis.setText(f"{max_hyst:.3f} dB")
             else:
