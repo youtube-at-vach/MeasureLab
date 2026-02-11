@@ -1,7 +1,7 @@
 
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from src.gui.widgets.linearity_analyzer import LinearityAnalyzerWidget, LinearityAnalyzer
 
 @pytest.fixture
@@ -149,9 +149,6 @@ def test_hysteresis_duplicates(linearity_widget):
 def test_hysteresis_empty_fwd(linearity_widget):
     """Verifies robustness when forward sweep is missing."""
     widget = linearity_widget
-
-    x_fwd = []
-    g_fwd = []
 
     x_rev = [0.0, -1.0]
     g_rev = [10.0, 20.0]
