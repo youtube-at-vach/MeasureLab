@@ -46,6 +46,10 @@ class TestUnboundedLoading(unittest.TestCase):
         self.modules_patcher.start()
 
         # Import AudioCalc locally
+        # Force reload to ensure mocks are used
+        if 'src.core.analysis' in sys.modules:
+            del sys.modules['src.core.analysis']
+
         from src.core.analysis import AudioCalc
         self.AudioCalc = AudioCalc
 

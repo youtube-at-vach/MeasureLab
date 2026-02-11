@@ -1104,5 +1104,6 @@
     "No data available.": "Sin datos.",
     "Not enough data to calibrate. Please wait.": "Datos insuficientes. Espere.",
     "Stored 1PPS Cal: 0.000 ppm": "Cal. 1PPS alm: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "Cal. 1PPS alm: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Cal. 1PPS alm: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm"
 }
