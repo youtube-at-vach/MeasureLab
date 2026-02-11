@@ -1,9 +1,8 @@
 import sys
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import pytest
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QLabel
 from PyQt6.QtGui import QPixmap
 
 # Ensure src is in path
@@ -17,7 +16,7 @@ def mock_dependencies():
          patch('src.gui.widgets.welcome.os.path.exists') as mock_exists, \
          patch('src.gui.widgets.welcome.QPixmap') as mock_pixmap, \
          patch('src.gui.widgets.welcome.QTimer') as mock_timer, \
-         patch('src.gui.widgets.welcome.UpdateChecker') as mock_update_checker:
+         patch('src.gui.widgets.welcome.UpdateChecker'):
 
         # Setup QPixmap mock to return a REAL QPixmap via side_effect
         # This prevents TypeError in QLabel.setPixmap
