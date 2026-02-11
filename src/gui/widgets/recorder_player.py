@@ -218,7 +218,10 @@ class RecorderPlayer(MeasurementModule):
                 pass
 
     def cleanup(self):
-        """Clean up temporary files and resources on shutdown."""
+        """
+        Clean up temporary files and resources on shutdown.
+        Registered with atexit to ensure execution on app termination.
+        """
         if self.is_recording:
             # Try to stop cleanly
             self.stop_recording()
