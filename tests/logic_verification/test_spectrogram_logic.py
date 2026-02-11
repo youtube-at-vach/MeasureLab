@@ -1,6 +1,6 @@
 
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import sys
 import numpy as np
 
@@ -100,7 +100,7 @@ class TestSpectrogramLogic(unittest.TestCase):
         except ImportError as e:
             # If import fails, stop patcher and fail
             cls.modules_patcher.stop()
-            raise RuntimeError(f"Failed to import spectrogram module: {e}")
+            raise RuntimeError(f"Failed to import spectrogram module: {e}") from e
 
     @classmethod
     def tearDownClass(cls):
