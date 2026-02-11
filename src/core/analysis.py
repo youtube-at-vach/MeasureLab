@@ -149,12 +149,12 @@ class AudioCalc:
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
         # Check signal length to ensure padding works (3 * (2 * 8 + 1) = 51)
         def get_sos(nyquist):
-            l = max(0.1, lowcut)
-            h = min(nyquist - 1, highcut)
-            if l >= h:
+            l_clamped = max(0.1, lowcut)
+            h_clamped = min(nyquist - 1, highcut)
+            if l_clamped >= h_clamped:
                 return None
             # Wn must be a tuple to be hashable for lru_cache
-            Wn = (l / nyquist, h / nyquist)
+            Wn = (l_clamped / nyquist, h_clamped / nyquist)
             return _get_butter_sos(8, Wn, "bandpass")
 
         return AudioCalc._apply_filter(signal, sampling_rate, 51, get_sos, on_invalid_sos="silence")
