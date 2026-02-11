@@ -9,7 +9,7 @@ try:
 except ImportError:
     sys.modules["sounddevice"] = MagicMock()
 
-from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
+from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, calculate_hysteresis
 from src.core.audio_engine import AudioEngine
 
 def test_linearity_analyzer_mono_input():
@@ -107,3 +107,121 @@ def test_linearity_analyzer_ring_buffer_wrap():
 
     assert np.allclose(buffer[:40], 1.0), "First part of buffer (history) is incorrect"
     assert np.allclose(buffer[40:], 2.0), "Second part of buffer (latest) is incorrect"
+
+
+def test_calculate_hysteresis_standard():
+    """Verifies that the hysteresis calculation is correct and robust."""
+    # Setup synthetic results
+    # Forward sweep: 0 to -10 dB
+    x_fwd = np.linspace(0, -10, 11) # 0, -1, ..., -10
+    g_fwd = np.zeros_like(x_fwd) # Gain 0
+
+    # Reverse sweep: -10 to 0 dB
+    x_rev = x_fwd[::-1]
+    g_rev = np.zeros_like(x_rev)
+
+    # Add hysteresis: at -5dB, gain is 1.0 in reverse (diff = 1.0)
+    # x_rev is [-10, -9, ..., -5, ..., 0]
+    # index 5 is -5.0
+    g_rev[5] = 1.0
+
+    directions = ["fwd"] * len(x_fwd) + ["rev"] * len(x_rev)
+    x_data = list(np.concatenate((x_fwd, x_rev)))
+    gain_data = list(np.concatenate((g_fwd, g_rev)))
+
+    hyst = calculate_hysteresis(x_data, gain_data, directions)
+
+    # Should be 1.000 dB
+    assert abs(hyst - 1.0) < 1e-6
+
+
+def test_calculate_hysteresis_no_match():
+    """Verifies behavior when fwd and rev sweeps don't match exactly (but close)."""
+    # Fwd: [0, -1]
+    # Rev: [-1.0000001, 0] (should match due to rounding)
+
+    x_fwd = [0.0, -1.0]
+    g_fwd = [0.0, 0.0]
+
+    x_rev = [-1.0000001, 0.0]
+    g_rev = [0.5, 0.0] # 0.5 diff at -1.0
+
+    x_data = x_fwd + x_rev
+    gain_data = g_fwd + g_rev
+    directions = ["fwd"]*2 + ["rev"]*2
+
+    hyst = calculate_hysteresis(x_data, gain_data, directions)
+
+    # Should find the 0.5 diff
+    assert abs(hyst - 0.5) < 1e-6
+
+
+def test_calculate_hysteresis_disjoint():
+    """Verifies behavior when sweeps are disjoint."""
+    x_fwd = [0.0, -1.0]
+    g_fwd = [0.0, 0.0]
+
+    x_rev = [-2.0, -3.0] # No overlap
+    g_rev = [0.5, 0.5]
+
+    x_data = x_fwd + x_rev
+    gain_data = g_fwd + g_rev
+    directions = ["fwd"]*2 + ["rev"]*2
+
+    hyst = calculate_hysteresis(x_data, gain_data, directions)
+
+    # Should be 0.000 dB (or 0.0 returned as float)
+    assert hyst == 0.0
+
+
+def test_calculate_hysteresis_duplicates():
+    """Verifies that duplicate handling mimics 'Last-Win' for Fwd and 'Check-All' for Rev."""
+    # 1. Forward Sweep Duplicates (Last-Win)
+    # x: 0, 0 (first has gain 10, second has gain 20)
+    # Dictionary logic would overwrite 10 with 20.
+    x_fwd = [0.0, 0.0]
+    g_fwd = [10.0, 20.0]
+
+    # 2. Reverse Sweep Duplicates (Check-All)
+    # x: 0, 0 (first has gain 25, second has gain 22)
+    # Should compare both against the "Last" forward gain (20).
+    # Diff 1: |25 - 20| = 5.0
+    # Diff 2: |22 - 20| = 2.0
+    # Max hysteresis should be 5.0.
+
+    x_rev = [0.0, 0.0]
+    g_rev = [25.0, 22.0]
+
+    # Add a stabilizing point to avoid polyfit error (not needed here but good for structure)
+    x_fwd = [-100.0] + x_fwd
+    g_fwd = [0.0] + g_fwd
+    x_rev = [-100.0] + x_rev
+    g_rev = [0.0] + g_rev
+
+    x_data = x_fwd + x_rev
+    gain_data = g_fwd + g_rev
+    directions = ["fwd"]*len(x_fwd) + ["rev"]*len(x_rev)
+
+    hyst = calculate_hysteresis(x_data, gain_data, directions)
+
+    # Should be 5.000 dB exactly
+    assert abs(hyst - 5.0) < 1e-6
+
+
+def test_calculate_hysteresis_empty_fwd():
+    """Verifies robustness when forward sweep is missing."""
+    x_rev = [0.0, -1.0]
+    g_rev = [10.0, 20.0]
+
+    x_data = x_rev
+    gain_data = g_rev
+    directions = ["rev"]*2
+
+    # Logic: if "rev" in dirs... but x_fwd is empty.
+    # The function splits by mask. x_fwd will be empty.
+    # xf_clean size will be 0.
+    # max_hyst should be 0.0 (or None returned? No, logic returns 0.0 if xf_clean is empty)
+
+    hyst = calculate_hysteresis(x_data, gain_data, directions)
+
+    assert hyst == 0.0

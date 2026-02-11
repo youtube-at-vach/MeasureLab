@@ -28,6 +28,75 @@ from src.measurement_modules.base import MeasurementModule
 logger = logging.getLogger(__name__)
 
 
+def calculate_hysteresis(x_data, gain_data, directions):
+    """
+    Calculates the maximum hysteresis error between forward and reverse sweeps.
+    Returns the maximum difference in dB, or None if no reverse sweep data is present.
+    """
+    if not x_data or not gain_data or not directions:
+        return None
+
+    dirs = np.array(directions)
+    if "rev" not in dirs:
+        return None
+
+    x_arr = np.array(x_data)
+    g_arr = np.array(gain_data)
+
+    # Separate fwd and rev
+    fwd_mask = dirs == "fwd"
+    rev_mask = dirs == "rev"
+
+    # We need to map inputs to gains for both
+    # Assuming inputs are floats, exact match might be tricky if not careful,
+    # but we generated them using linspace in reverse order, so they should match exactly.
+    # However, float rounding can be annoying.
+
+    x_fwd = x_arr[fwd_mask]
+    g_fwd = g_arr[fwd_mask]
+
+    x_rev = x_arr[rev_mask]
+    g_rev = g_arr[rev_mask]
+
+    # Vectorized Hysteresis Calculation
+    # Round to handle floating point inaccuracies, similar to original dict approach
+    xf_r = np.round(x_fwd, 6)
+    xr_r = np.round(x_rev, 6)
+
+    # 1. Prepare Forward Lookup (Last-Win Strategy)
+    # Flip to use np.unique(first) as "Last"
+    xf_flipped = xf_r[::-1]
+    # xf_clean is sorted unique values
+    xf_clean, unique_indices_flipped = np.unique(xf_flipped, return_index=True)
+
+    if xf_clean.size > 0:
+        # Extract corresponding G (Last occurrence wins)
+        gf_clean = g_fwd[::-1][unique_indices_flipped]
+
+        # 2. Process Reverse Sweep (Check-All Strategy)
+        # Find which x_rev points exist in xf_clean
+        idx_in_clean = np.searchsorted(xf_clean, xr_r)
+
+        # Clamp indices to valid range for validity check
+        idx_in_clean = np.clip(idx_in_clean, 0, len(xf_clean) - 1)
+
+        # Check which ones are actual matches
+        matched_mask = (xf_clean[idx_in_clean] == xr_r)
+
+        if np.any(matched_mask):
+            # Get corresponding gains from Fwd
+            g_ref = gf_clean[idx_in_clean[matched_mask]]
+
+            # Get gains from Rev
+            g_check = g_rev[matched_mask]
+
+            diffs = np.abs(g_check - g_ref)
+            max_hyst = np.max(diffs)
+            return max_hyst
+
+    return 0.0
+
+
 class LinearitySweepWorker(QThread):
     progress = pyqtSignal(int)
     result_ready = pyqtSignal(dict)
@@ -826,62 +895,8 @@ class LinearityAnalyzerWidget(QWidget):
 
         # 5. Hysteresis
         if self.module.hysteresis_mode and len(self.results_direction) > 0:
-            dirs = np.array(self.results_direction)
-            if "rev" in dirs:
-                # Separate fwd and rev
-                fwd_mask = dirs == "fwd"
-                rev_mask = dirs == "rev"
-
-                # We need to map inputs to gains for both
-                # Assuming inputs are floats, exact match might be tricky if not careful,
-                # but we generated them using linspace in reverse order, so they should match exactly.
-                # However, float rounding can be annoying.
-
-                x_fwd = np.array(self.results_x)[fwd_mask]
-                g_fwd = np.array(self.results_gain)[fwd_mask]
-
-                x_rev = np.array(self.results_x)[rev_mask]
-                g_rev = np.array(self.results_gain)[rev_mask]
-
-                # Vectorized Hysteresis Calculation
-                # Round to handle floating point inaccuracies, similar to original dict approach
-                xf_r = np.round(x_fwd, 6)
-                xr_r = np.round(x_rev, 6)
-
-                # 1. Prepare Forward Lookup (Last-Win Strategy)
-                # Flip to use np.unique(first) as "Last"
-                xf_flipped = xf_r[::-1]
-                # xf_clean is sorted unique values
-                xf_clean, unique_indices_flipped = np.unique(xf_flipped, return_index=True)
-
-                if xf_clean.size > 0:
-                    # Extract corresponding G (Last occurrence wins)
-                    gf_clean = g_fwd[::-1][unique_indices_flipped]
-
-                    # 2. Process Reverse Sweep (Check-All Strategy)
-                    # Find which x_rev points exist in xf_clean
-                    idx_in_clean = np.searchsorted(xf_clean, xr_r)
-
-                    # Clamp indices to valid range for validity check
-                    idx_in_clean = np.clip(idx_in_clean, 0, len(xf_clean) - 1)
-
-                    # Check which ones are actual matches
-                    matched_mask = (xf_clean[idx_in_clean] == xr_r)
-
-                    if np.any(matched_mask):
-                        # Get corresponding gains from Fwd
-                        g_ref = gf_clean[idx_in_clean[matched_mask]]
-
-                        # Get gains from Rev
-                        g_check = g_rev[matched_mask]
-
-                        diffs = np.abs(g_check - g_ref)
-                        max_hyst = np.max(diffs)
-                    else:
-                        max_hyst = 0.0
-                else:
-                    max_hyst = 0.0
-
+            max_hyst = calculate_hysteresis(self.results_x, self.results_gain, self.results_direction)
+            if max_hyst is not None:
                 self.stat_hysteresis.setText(f"{max_hyst:.3f} dB")
             else:
                 self.stat_hysteresis.setText("--")
