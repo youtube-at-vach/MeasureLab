@@ -88,19 +88,22 @@ MODULE_REGISTRY = {
 }
 
 
+def _load_class(module_path: str, class_name: str):
+    """Dynamically load a class from a module."""
+    module = importlib.import_module(module_path)
+    return getattr(module, class_name)
+
+
 def _load_module_class(module_key: str):
     """Return MeasurementModule class by key.
 
-    Imports are intentionally inside this function to avoid importing all
-    heavy GUI modules (pyqtgraph/scipy, etc.) at application startup.
-    These imports remain explicit so PyInstaller can still discover them.
+    Uses _load_class to avoid importing heavy GUI modules at application startup.
+    Explicit imports for PyInstaller discovery are handled in _pyinstaller_imports.
     """
     if module_key not in MODULE_REGISTRY:
         raise KeyError(f"Unknown module key: {module_key}")
 
-    module_path, class_name = MODULE_REGISTRY[module_key]
-    module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    return _load_class(*MODULE_REGISTRY[module_key])
 
 
 def _pyinstaller_imports():
@@ -138,19 +141,17 @@ def _pyinstaller_imports():
         from src.gui.widgets.timecode_monitor import TimecodeMonitor  # noqa: F401
         from src.gui.widgets.transient_analyzer import TransientAnalyzer  # noqa: F401
         from src.gui.widgets.ultrasound_modulator import UltrasoundModulator  # noqa: F401
+        from src.gui.widgets.settings import SettingsWidget  # noqa: F401
+        from src.gui.widgets.welcome import WelcomeWidget  # noqa: F401
 
 
 def _load_settings_widget_class():
     # Same reasoning as _load_module_class: delay heavy imports (scipy, etc.).
-    from src.gui.widgets.settings import SettingsWidget
-
-    return SettingsWidget
+    return _load_class("src.gui.widgets.settings", "SettingsWidget")
 
 
 def _load_welcome_widget_class():
-    from src.gui.widgets.welcome import WelcomeWidget
-
-    return WelcomeWidget
+    return _load_class("src.gui.widgets.welcome", "WelcomeWidget")
 
 
 class MainWindow(QMainWindow):
