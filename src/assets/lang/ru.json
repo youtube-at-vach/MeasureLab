@@ -958,7 +958,7 @@
     "Please enter a profile name.": "Пожалуйста, введите имя профиля.",
     "Profile '{0}' already exists. Overwrite?": "Профиль '{0}' уже существует. Перезаписать?",
     "Profile saved.": "Профиль сохранен.",
-    "Save As...": "Сохранить как...",
+    "Duplicate Profile": "Дублировать профиль",
     "Saving recording...": "Сохранение записи...",
     "Select Profile:": "Выберите профиль:",
     "{0} deg": "{0} град",
@@ -1111,5 +1111,9 @@
     "Low Pass Filter (LPF)": "Фильтр нижних частот (ФНЧ)",
     "Order:": "Порядок:",
     "Version {0}": "Версия {0}",
-    "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}"
+    "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
+    "Fundamental (Lock-in):": "Основная гармоника (Lock-in):",
+    "Residual": "Остаток",
+    "Residual RMS:": "Среднеквадратичное значение остатка:",
+    "Waveform": "Форма волны"
 }

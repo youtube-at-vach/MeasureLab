@@ -958,7 +958,7 @@
     "Please enter a profile name.": "Bitte geben Sie einen Profilnamen ein.",
     "Profile '{0}' already exists. Overwrite?": "Profil '{0}' existiert bereits. Überschreiben?",
     "Profile saved.": "Profil gespeichert.",
-    "Save As...": "Speichern unter...",
+    "Duplicate Profile": "Profil duplizieren",
     "Saving recording...": "Aufnahme wird gespeichert...",
     "Select Profile:": "Profil auswählen:",
     "{0} deg": "{0} Grad",
@@ -1111,5 +1111,9 @@
     "Low Pass Filter (LPF)": "Tiefpassfilter (LPF)",
     "Order:": "Ordnung:",
     "Version {0}": "Version {0}",
-    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}"
+    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}",
+    "Fundamental (Lock-in):": "Grundwelle (Lock-in):",
+    "Residual": "Residuum",
+    "Residual RMS:": "Rest-Effektivwert (RMS):",
+    "Waveform": "Wellenform"
 }

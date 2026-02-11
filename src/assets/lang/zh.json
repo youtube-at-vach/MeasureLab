@@ -958,7 +958,7 @@
     "Please enter a profile name.": "请输入配置文件名称。",
     "Profile '{0}' already exists. Overwrite?": "配置文件 '{0}' 已存在。是否覆盖？",
     "Profile saved.": "配置文件已保存。",
-    "Save As...": "另存为...",
+    "Duplicate Profile": "复制配置",
     "Saving recording...": "正在保存录音...",
     "Select Profile:": "选择配置文件：",
     "{0} deg": "{0} 度",
@@ -1111,5 +1111,9 @@
     "Low Pass Filter (LPF)": "低通滤波器 (LPF)",
     "Order:": "阶数:",
     "Version {0}": "版本 {0}",
-    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}"
+    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
+    "Fundamental (Lock-in):": "基波 (锁相):",
+    "Residual": "残留",
+    "Residual RMS:": "残留 RMS:",
+    "Waveform": "波形"
 }

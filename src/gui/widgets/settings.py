@@ -1121,7 +1121,7 @@ class SettingsWidget(QWidget):
         prof_save_layout = QHBoxLayout()
         self.cal_profile_name_edit = QLineEdit()
         self.cal_profile_name_edit.setPlaceholderText(tr("New Profile Name"))
-        self.save_prof_btn = QPushButton(tr("Save As..."))
+        self.save_prof_btn = QPushButton(tr("Duplicate Profile"))
         self.save_prof_btn.clicked.connect(self.on_save_profile)
         prof_save_layout.addWidget(self.cal_profile_name_edit, 1)
         prof_save_layout.addWidget(self.save_prof_btn)

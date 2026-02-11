@@ -967,7 +967,7 @@
     "Please enter a profile name.": "Please enter a profile name.",
     "Profile '{0}' already exists. Overwrite?": "Profile '{0}' already exists. Overwrite?",
     "Profile saved.": "Profile saved.",
-    "Save As...": "Save As...",
+    "Duplicate Profile": "Duplicate Profile",
     "Saving recording...": "Saving recording...",
     "Select Profile:": "Select Profile:",
     "{0} dBFS": "{0} dBFS",
@@ -1091,5 +1091,9 @@
     "Low Pass Filter (LPF)": "Low Pass Filter (LPF)",
     "Order:": "Order:",
     "Version {0}": "Version {0}",
-    "⬆︎Update available: {0}": "⬆︎Update available: {0}"
+    "⬆︎Update available: {0}": "⬆︎Update available: {0}",
+    "Fundamental (Lock-in):": "Fundamental (Lock-in):",
+    "Residual": "Residual",
+    "Residual RMS:": "Residual RMS:",
+    "Waveform": "Waveform"
 }
