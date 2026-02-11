@@ -20,7 +20,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.frequency_analysis import calculate_frequency_metrics, calculate_allan_deviation
 from src.core.localization import tr
