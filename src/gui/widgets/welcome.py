@@ -23,7 +23,7 @@ class WelcomeWidget(QWidget):
         self.update_checker.start()
 
     def on_update_available(self, new_version):
-        self.update_label.setText(f"Update available: {new_version}")
+        self.update_label.setText(f"⬆︎Update available: {new_version}")
         self.update_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.update_label.show()
         self.new_version_url = f"https://github.com/youtube-at-vach/MeasureLab/releases/tag/{new_version}"
