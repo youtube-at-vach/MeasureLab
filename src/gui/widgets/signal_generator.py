@@ -17,10 +17,16 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QRadioButton,
     QSlider,
+    QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+
+try:
+    import scipy.signal
+except ImportError:
+    scipy = None
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -60,6 +66,15 @@ class SignalParameters:
     sweep_duration: float = 5.0
     log_sweep: bool = True
 
+    # Filter Parameters (BPF/LPF/HPF)
+    lpf_enabled: bool = False
+    lpf_freq: float = 20000.0
+    lpf_order: int = 4
+
+    hpf_enabled: bool = False
+    hpf_freq: float = 20.0
+    hpf_order: int = 4
+
     # Advanced Signal Parameters
     multitone_count: int = 10
     mls_order: int = 15
@@ -95,6 +110,10 @@ class SignalParameters:
     _fm_phase_rad: float = 0.0
     _pm_phase_rad: float = 0.0
     _am_phase_rad: float = 0.0
+
+    # Filter state
+    _lpf_zi: Optional[np.ndarray] = None
+    _hpf_zi: Optional[np.ndarray] = None
 
 
 class SignalGenerator(MeasurementModule):
@@ -366,6 +385,25 @@ class SignalGenerator(MeasurementModule):
             params._buffer = None
         params._buffer_index = 0
 
+    def _get_filter_sos(self, params: SignalParameters, filter_type: str, sample_rate: float):
+        """Calculates SOS coefficients for LPF or HPF."""
+        if scipy is None:
+            return None
+
+        try:
+            order = params.lpf_order if filter_type == "low" else params.hpf_order
+            freq = params.lpf_freq if filter_type == "low" else params.hpf_freq
+
+            # Constraint check
+            if freq <= 0 or freq >= sample_rate / 2:
+                return None
+
+            sos = scipy.signal.butter(order, freq, btype=filter_type, fs=sample_rate, output='sos')
+            return sos
+        except Exception:
+            # logger.warning(f"Filter calculation failed: {e}")
+            return None
+
     def start_generation(self):
         if self.is_playing:
             return
@@ -381,6 +419,8 @@ class SignalGenerator(MeasurementModule):
             params._fm_phase_rad = 0.0
             params._pm_phase_rad = 0.0
             params._am_phase_rad = 0.0
+            params._lpf_zi = None
+            params._hpf_zi = None
             self._prepare_buffer(params, sample_rate)
 
         def _phase_from_instantaneous_frequency(params: SignalParameters, f_inst_hz: np.ndarray, sample_rate: float):
@@ -425,6 +465,33 @@ class SignalGenerator(MeasurementModule):
                 env = 1.0 + m * np.sin(am_phase)
                 return x * env
 
+            def _filter_apply(x: np.ndarray) -> np.ndarray:
+                """Apply LPF/HPF if enabled."""
+                if scipy is None:
+                    return x
+
+                y = x
+
+                # Apply LPF
+                if params.lpf_enabled:
+                    sos = self._get_filter_sos(params, "low", sample_rate)
+                    if sos is not None:
+                        if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
+                             params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0 # Start from 0
+
+                        y, params._lpf_zi = scipy.signal.sosfilt(sos, y, zi=params._lpf_zi)
+
+                # Apply HPF
+                if params.hpf_enabled:
+                    sos = self._get_filter_sos(params, "high", sample_rate)
+                    if sos is not None:
+                        if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
+                             params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
+
+                        y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
+
+                return y
+
             signal = np.zeros(frames)
 
             if params._buffer is not None:
@@ -449,7 +516,7 @@ class SignalGenerator(MeasurementModule):
 
                         signal = (1.0 - frac) * buf[i0] + frac * buf[i1]
                         params._buffer_index = int((params._buffer_index + frames) % buf_len)
-                        return _am_apply(signal * params.amplitude)
+                        return _filter_apply(_am_apply(signal * params.amplitude))
 
                 # Buffer based generation
                 chunk_size = frames
@@ -471,7 +538,7 @@ class SignalGenerator(MeasurementModule):
                     if params._buffer_index >= buf_len:
                         params._buffer_index = 0
 
-                return _am_apply(signal * params.amplitude)
+                return _filter_apply(_am_apply(signal * params.amplitude))
 
             if params.sweep_enabled:
                 # Sweep generation
@@ -517,7 +584,7 @@ class SignalGenerator(MeasurementModule):
                     offset_rad = np.radians(params.phase_offset)
                     signal = params.amplitude * np.sin(phase + offset_rad)
                     params._sweep_time += frames / sample_rate
-                    return _am_apply(signal)
+                    return _filter_apply(_am_apply(signal))
 
                 if params.log_sweep:
                     k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
@@ -541,7 +608,7 @@ class SignalGenerator(MeasurementModule):
 
                 signal = params.amplitude * np.sin(phase)
                 params._sweep_time += frames / sample_rate
-                return _am_apply(signal)
+                return _filter_apply(_am_apply(signal))
 
             # Standard waveforms
             offset_rad = np.radians(params.phase_offset)
@@ -647,7 +714,7 @@ class SignalGenerator(MeasurementModule):
                             noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
                             signal += noise
 
-                    return signal
+                    return _filter_apply(_am_apply(signal))
 
                 if params.waveform == "sine":
                     signal = params.amplitude * np.sin(2 * np.pi * params.frequency * phase_t + offset_rad)
@@ -674,7 +741,7 @@ class SignalGenerator(MeasurementModule):
                     noise = params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
                     signal += noise
 
-            return _am_apply(signal)
+            return _filter_apply(_am_apply(signal))
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -1131,7 +1198,73 @@ class SignalGeneratorWidget(QWidget):
         tabs.addTab(self._create_am_tab(), tr("AM"))
         tabs.addTab(self._create_fm_tab(), tr("FM"))
         tabs.addTab(self._create_pm_tab(), tr("ΦM"))
+        tabs.addTab(self._create_lpf_tab(), tr("LPF"))
+        tabs.addTab(self._create_hpf_tab(), tr("HPF"))
         return tabs
+
+    def _create_lpf_tab(self):
+        filter_widget = QWidget()
+        layout = QVBoxLayout(filter_widget)
+
+        # LPF Group
+        lpf_group = QGroupBox(tr("Low Pass Filter (LPF)"))
+        lpf_group.setCheckable(True)
+        lpf_group.setChecked(False)
+        lpf_group.toggled.connect(lambda v: self.update_param("lpf_enabled", v))
+        self.lpf_group = lpf_group
+
+        lpf_layout = QFormLayout()
+        self.lpf_freq_spin = QDoubleSpinBox()
+        self.lpf_freq_spin.setRange(20, 20000)
+        self.lpf_freq_spin.setValue(20000)
+        self.lpf_freq_spin.setGroupSeparatorShown(True)
+        self.lpf_freq_spin.valueChanged.connect(lambda v: self.update_param("lpf_freq", v))
+        lpf_layout.addRow(tr("Cutoff Freq (Hz):"), self.lpf_freq_spin)
+
+        self.lpf_order_spin = QSpinBox()
+        self.lpf_order_spin.setRange(1, 20)
+        self.lpf_order_spin.setValue(4)
+        self.lpf_order_spin.valueChanged.connect(lambda v: self.update_param("lpf_order", v))
+        lpf_layout.addRow(tr("Order:"), self.lpf_order_spin)
+
+        lpf_group.setLayout(lpf_layout)
+
+        layout.addWidget(lpf_group)
+        layout.addStretch()
+
+        return filter_widget
+
+    def _create_hpf_tab(self):
+        filter_widget = QWidget()
+        layout = QVBoxLayout(filter_widget)
+
+        # HPF Group
+        hpf_group = QGroupBox(tr("High Pass Filter (HPF)"))
+        hpf_group.setCheckable(True)
+        hpf_group.setChecked(False)
+        hpf_group.toggled.connect(lambda v: self.update_param("hpf_enabled", v))
+        self.hpf_group = hpf_group
+
+        hpf_layout = QFormLayout()
+        self.hpf_freq_spin = QDoubleSpinBox()
+        self.hpf_freq_spin.setRange(20, 20000)
+        self.hpf_freq_spin.setValue(20)
+        self.hpf_freq_spin.setGroupSeparatorShown(True)
+        self.hpf_freq_spin.valueChanged.connect(lambda v: self.update_param("hpf_freq", v))
+        hpf_layout.addRow(tr("Cutoff Freq (Hz):"), self.hpf_freq_spin)
+
+        self.hpf_order_spin = QSpinBox()
+        self.hpf_order_spin.setRange(1, 20)
+        self.hpf_order_spin.setValue(4)
+        self.hpf_order_spin.valueChanged.connect(lambda v: self.update_param("hpf_order", v))
+        hpf_layout.addRow(tr("Order:"), self.hpf_order_spin)
+
+        hpf_group.setLayout(hpf_layout)
+
+        layout.addWidget(hpf_group)
+        layout.addStretch()
+
+        return filter_widget
 
     def _create_sweep_tab(self):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
@@ -1297,6 +1430,15 @@ class SignalGeneratorWidget(QWidget):
         self.duration_spin.setValue(params.sweep_duration)
         self.log_check.setChecked(params.log_sweep)
 
+        # Filter params
+        self.lpf_group.setChecked(params.lpf_enabled)
+        self.lpf_freq_spin.setValue(params.lpf_freq)
+        self.lpf_order_spin.setValue(params.lpf_order)
+
+        self.hpf_group.setChecked(params.hpf_enabled)
+        self.hpf_freq_spin.setValue(params.hpf_freq)
+        self.hpf_order_spin.setValue(params.hpf_order)
+
         self.am_group.setChecked(getattr(params, "am_enabled", False))
         self.am_freq_spin.setValue(getattr(params, "am_frequency", 5.0))
         self.am_depth_spin.setValue(getattr(params, "am_depth", 50.0))
@@ -1343,6 +1485,12 @@ class SignalGeneratorWidget(QWidget):
             self.end_freq_spin,
             self.duration_spin,
             self.log_check,
+            self.lpf_group,
+            self.lpf_freq_spin,
+            self.lpf_order_spin,
+            self.hpf_group,
+            self.hpf_freq_spin,
+            self.hpf_order_spin,
             self.am_group,
             self.am_freq_spin,
             self.am_depth_spin,
@@ -1392,6 +1540,12 @@ class SignalGeneratorWidget(QWidget):
         dst.end_freq = src.end_freq
         dst.sweep_duration = src.sweep_duration
         dst.log_sweep = src.log_sweep
+        dst.lpf_enabled = src.lpf_enabled
+        dst.lpf_freq = src.lpf_freq
+        dst.lpf_order = src.lpf_order
+        dst.hpf_enabled = src.hpf_enabled
+        dst.hpf_freq = src.hpf_freq
+        dst.hpf_order = src.hpf_order
         dst.multitone_count = src.multitone_count
         dst.mls_order = src.mls_order
         dst.burst_on_cycles = src.burst_on_cycles
