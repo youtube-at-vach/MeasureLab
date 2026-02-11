@@ -1104,5 +1104,6 @@
     "No data available.": "Pas de données.",
     "Not enough data to calibrate. Please wait.": "Pas assez de données. Attendez.",
     "Stored 1PPS Cal: 0.000 ppm": "Cal. 1PPS stockée : 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "Cal. 1PPS stockée : {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Cal. 1PPS stockée : {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "Décalage actuel: {0:+.3f} ppm"
 }

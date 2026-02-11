@@ -1093,5 +1093,6 @@
     "No data available.": "データがありません。",
     "Not enough data to calibrate. Please wait.": "校正に必要なデータが不足しています。お待ちください。",
     "Stored 1PPS Cal: 0.000 ppm": "保存済み1PPS校正値: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "保存済み1PPS校正値: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "保存済み1PPS校正値: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "現在のオフセット: {0:+.3f} ppm"
 }
