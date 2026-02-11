@@ -283,25 +283,62 @@ class SignalGenerator(MeasurementModule):
             tap_indices = [x - 1 for x in taps[order]]
             N = 2**order - 1
 
-            # Optimized bitwise implementation
+            # Optimized vectorized numpy implementation
+            # 1. Determine scaling
+            # We want min_delay >= chunk_size
+            TARGET_CHUNK = 256
+
+            delays = np.array(taps[order], dtype=int)
+            min_tap = np.min(delays)
+
+            if min_tap >= TARGET_CHUNK:
+                k = 0
+            else:
+                import math
+
+                k = math.ceil(math.log2(TARGET_CHUNK / min_tap))
+
+            scale = 2**k
+            new_delays = delays * scale
+            max_delay = int(np.max(new_delays))
+
+            # 2. Generate initial block using slow method
             reg = (1 << order) - 1
             mask = (1 << order) - 1
             output_idx = order - 1
 
-            raw_output = [0] * N
+            signal = np.zeros(N, dtype=np.int8)
+            limit = min(N, max_delay)
 
-            for i in range(N):
+            # Use local variables for speed in loop
+            for i in range(limit):
                 feedback = 0
                 for tap in tap_indices:
                     feedback ^= (reg >> tap) & 1
-
-                output = (reg >> output_idx) & 1
-                raw_output[i] = output
-
+                signal[i] = (reg >> output_idx) & 1
                 reg = ((reg << 1) & mask) | feedback
 
-            signal = np.array(raw_output, dtype=float) * 2 - 1
-            return signal
+            if limit == N:
+                return signal.astype(float) * 2 - 1
+
+            # 3. Vectorized filling
+            step = int(np.min(new_delays))
+            current_idx = limit
+
+            while current_idx < N:
+                this_step = min(step, N - current_idx)
+
+                # Compute XOR sum from history slices
+                # First term
+                chunk = signal[current_idx - new_delays[0] : current_idx - new_delays[0] + this_step].copy()
+                # Remaining terms
+                for d in new_delays[1:]:
+                    chunk ^= signal[current_idx - d : current_idx - d + this_step]
+
+                signal[current_idx : current_idx + this_step] = chunk
+                current_idx += this_step
+
+            return signal.astype(float) * 2 - 1
 
     def _generate_burst(self, params: SignalParameters, sample_rate):
         """Generates a Tone Burst."""
