@@ -180,6 +180,8 @@ class SpectrogramWidget(QWidget):
     def __init__(self, module: Spectrogram):
         super().__init__()
         self.module = module
+        self.log_spectrogram_buffer = None
+        self._last_raw_buffer_id = None
         self.init_ui()
 
         self.timer = QTimer()
@@ -537,10 +539,11 @@ class SpectrogramWidget(QWidget):
             # If min_freq is 0, clamp to 1 Hz
 
             min_f = max(1, self.module.min_freq)
-            max_f = max(min_f + 1, self.module.max_freq) # Ensure max > min
+            max_f = max(min_f + 1, self.module.max_freq)  # Ensure max > min
 
             # Key for cache: (fft_size, min_f, max_f)
             cache_key = (self.module.fft_size, min_f, max_f)
+            map_changed = False
             if not hasattr(self, "_log_map_cache") or self._log_map_cache[0] != cache_key:
                 # Generate Map
                 n_bins = buffer.shape[1]
@@ -552,9 +555,27 @@ class SpectrogramWidget(QWidget):
                 # Clamp
                 linear_indices = np.clip(linear_indices, 0, n_bins - 1).astype(int)
                 self._log_map_cache = (cache_key, linear_indices)
+                map_changed = True
 
             indices = self._log_map_cache[1]
-            display_buffer = buffer[:, indices]
+
+            # Optimized Incremental Update
+            # Check if raw buffer was reset or resized
+            raw_id = id(buffer)
+            if self._last_raw_buffer_id != raw_id:
+                map_changed = True
+                self._last_raw_buffer_id = raw_id
+
+            if map_changed or self.log_spectrogram_buffer is None:
+                # Full update needed (Parameter change or reset)
+                self.log_spectrogram_buffer = buffer[:, indices].copy()
+            else:
+                # Incremental update: Update only the latest row
+                # The latest row was written at (ptr - 1)
+                idx = (ptr - 1 + self.module.history_length) % self.module.history_length
+                self.log_spectrogram_buffer[idx] = final_mag_db[indices]
+
+            display_buffer = self.log_spectrogram_buffer
 
             # Transform for Log Mode
             # Image Y: 0..Height -> log10(min)..log10(max)
@@ -575,6 +596,7 @@ class SpectrogramWidget(QWidget):
         else:
             # Linear Scale
             display_buffer = buffer
+            self.log_spectrogram_buffer = None  # Free memory when not used
 
             # Transform for Linear Mode
             # Image Y: 0..Height -> 0..Nyquist
