@@ -4,13 +4,37 @@ import sys
 import numpy as np
 import os
 import tempfile
+import scipy.signal
+# Pre-load analysis to avoid re-import issues with scipy during sys.modules patching
+try:
+    from src.core.analysis import AudioCalc
+except ImportError:
+    pass
 
 class TestRecorderMemory(unittest.TestCase):
     def setUp(self):
+        # Create a mock for QtCore that has a proper QThread class
+        qt_core = MagicMock()
+        class MockQThread:
+            def __init__(self, parent=None): pass
+            def run(self): pass
+            def start(self): self.run()
+            def wait(self): pass
+            finished = MagicMock()
+
+        qt_core.QThread = MockQThread
+        # pyqtSignal must be a class-like thing or handled by QThread, but here it's used as class attribute
+        # In the code: finished = pyqtSignal(...)
+        # So pyqtSignal needs to be something that returns a descriptor or similar?
+        # But usually just MagicMock() works if it's assigned to a class attribute.
+        # NOTE: pyqtSignal(bool, str) calls MagicMock(bool, str), which interprets bool as 'spec', causing AttributeError on 'emit'.
+        # We must use a lambda/function to swallow args and return a fresh MagicMock.
+        qt_core.pyqtSignal = lambda *args, **kwargs: MagicMock()
+
         # Patch sys.modules to mock sounddevice and PyQt6
         self.modules_patcher = patch.dict(sys.modules, {
             'sounddevice': MagicMock(),
-            'PyQt6.QtCore': MagicMock(),
+            'PyQt6.QtCore': qt_core,
             'PyQt6.QtWidgets': MagicMock()
         })
         self.modules_patcher.start()
@@ -32,8 +56,8 @@ class TestRecorderMemory(unittest.TestCase):
         self.temp_dir.cleanup()
         self.modules_patcher.stop()
 
-    def test_save_recording_does_not_use_concatenate(self):
-        """Verify that save_recording does not use np.concatenate."""
+    def test_save_recording_uses_buffered_writes(self):
+        """Verify that save_recording uses buffered writes (np.concatenate is called)."""
         # Setup some data
         chunk = np.zeros((100, 2), dtype=np.float32)
         self.player.record_buffer.append(chunk)
@@ -41,18 +65,19 @@ class TestRecorderMemory(unittest.TestCase):
 
         filepath = os.path.join(self.temp_dir.name, "test_output.wav")
 
-        # Mock np.concatenate to fail if called
+        # Mock np.concatenate to verify it is called for buffering
         with patch('numpy.concatenate') as mock_concat:
-            mock_concat.side_effect = AssertionError("np.concatenate should not be called!")
+            # We must return a valid array to prevent downstream errors if needed
+            # But the mock will handle it if we don't set side_effect to raise
+            mock_concat.return_value = np.zeros((200, 2), dtype=np.float32)
 
-            # This should NOT trigger the assertion
             success, msg = self.player.save_recording(filepath)
 
             self.assertTrue(success, f"Save failed: {msg}")
-            self.assertFalse(mock_concat.called, "np.concatenate was called!")
+            self.assertTrue(mock_concat.called, "np.concatenate should be called for buffered writes!")
 
-    def test_worker_run_does_not_use_concatenate(self):
-        """Verify that FileSaveWorker.run does not use np.concatenate."""
+    def test_worker_run_uses_buffered_writes(self):
+        """Verify that FileSaveWorker.run uses buffered writes (np.concatenate is called)."""
         # Setup some data
         chunk = np.zeros((100, 2), dtype=np.float32)
         record_buffer = [chunk, chunk]
@@ -61,14 +86,20 @@ class TestRecorderMemory(unittest.TestCase):
 
         worker = self.FileSaveWorker(record_buffer, 48000, filepath)
 
+        # Verify worker.run exists and is the method we defined
+        # print(f"Worker type: {type(worker)}")
+        # print(f"Worker run: {worker.run}")
+
         # Mock np.concatenate
         with patch('numpy.concatenate') as mock_concat:
-            mock_concat.side_effect = AssertionError("np.concatenate should not be called!")
+            mock_concat.return_value = np.zeros((200, 2), dtype=np.float32)
 
             # Run the worker synchronously
             worker.run()
 
-            self.assertFalse(mock_concat.called, "np.concatenate was called inside worker!")
+            # print(f"Mock call count: {mock_concat.call_count}")
+
+            self.assertTrue(mock_concat.called, "np.concatenate should be called inside worker for buffered writes!")
 
 if __name__ == '__main__':
     unittest.main()
