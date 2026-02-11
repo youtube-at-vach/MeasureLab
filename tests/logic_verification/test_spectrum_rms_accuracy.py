@@ -4,51 +4,27 @@ from unittest.mock import MagicMock, patch
 import pytest
 import re
 
-# Mock GUI dependencies
-mock_qt_core = MagicMock()
-class MockQObject:
-    def __init__(self): pass
-class MockQWidget:
-    def __init__(self, *args, **kwargs): pass
-    def update(self): pass
-    def setStyleSheet(self, style): pass
-    def setLayout(self, layout): pass
-
-mock_qt_core.QObject = MockQObject
-mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
-mock_qt_core.Qt.Orientation.Horizontal = 1
-mock_qt_core.Qt.PenStyle.DashLine = 2
-
-mock_qt_widgets = MagicMock()
-mock_qt_widgets.QWidget = MockQWidget
-
-# Specific mocks for widget components
-mock_combo = MagicMock()
-mock_combo.findData.return_value = -1
-mock_combo.findText.return_value = -1
-mock_qt_widgets.QComboBox = MagicMock(return_value=mock_combo)
-
-mock_label = MagicMock()
-mock_label.text.return_value = "Overall: -- dB"
-mock_qt_widgets.QLabel = MagicMock(return_value=mock_label)
-
-mock_pg = MagicMock()
-mock_plot_item = MagicMock()
-mock_axis = MagicMock()
-mock_plot_item.getAxis.return_value = mock_axis
-mock_pg.PlotWidget.return_value.getPlotItem.return_value = mock_plot_item
-# Scene mock
-mock_scene = MagicMock()
-mock_pg.PlotWidget.return_value.scene.return_value = mock_scene
-
+# Mock dependencies
 mock_modules = {
     "PyQt6": MagicMock(),
-    "PyQt6.QtCore": mock_qt_core,
+    "PyQt6.QtCore": MagicMock(),
     "PyQt6.QtGui": MagicMock(),
-    "PyQt6.QtWidgets": mock_qt_widgets,
-    "pyqtgraph": mock_pg,
+    "PyQt6.QtWidgets": MagicMock(),
+    "pyqtgraph": MagicMock(),
     "sounddevice": MagicMock(),
 }
+
+# We need QThread from QtCore to be a class we can inherit if SpectrumAnalysisWorker inherits it
+class MockQThread:
+    def __init__(self, parent=None): pass
+    def start(self): pass
+    def wait(self): pass
+    def requestInterruption(self): pass
+    def isInterruptionRequested(self): return False
+    def msleep(self, ms): pass
+
+mock_modules["PyQt6.QtCore"].QThread = MockQThread
+mock_modules["PyQt6.QtCore"].pyqtSignal = lambda *args: MagicMock()
 
 @pytest.fixture(autouse=True)
 def mock_deps():
@@ -59,7 +35,7 @@ def mock_deps():
         yield
 
 def test_spectrum_rms_sine_accuracy():
-    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalysisWorker
 
     # Mock AudioEngine
     mock_engine = MagicMock()
@@ -73,12 +49,6 @@ def test_spectrum_rms_sine_accuracy():
     sa = SpectrumAnalyzer(mock_engine)
     sa.set_buffer_size(4096)
     sa.start_analysis()
-
-    # Init Widget
-    widget = SpectrumAnalyzerWidget(sa)
-
-    # Capture label updates
-    # widget.overall_label is a Mock object
 
     # Generate Sine Wave 1kHz, Amplitude 1.0 (Peak 0dBFS)
     fs = 48000
@@ -98,31 +68,21 @@ def test_spectrum_rms_sine_accuracy():
     sa.multitaper_enabled = False
     sa.analysis_mode = "Spectrum"
 
-    # Call update_plot
-    widget.update_plot()
+    # Init Worker
+    worker = SpectrumAnalysisWorker(sa)
 
-    # Check Overall Label
-    # Expected: 20*log10(1/sqrt(2)) = -3.01 dB
+    # Process cycle
+    result = worker.process_cycle()
 
-    # Get the last call to setText
-    # widget.overall_label.setText.call_args[0][0]
-
-    assert widget.overall_label.setText.called
-    text = widget.overall_label.setText.call_args[0][0]
-    print(f"Label Text: {text}")
-
-    # Format: "Overall: -3.0 dBFS(Z)"
-    match = re.search(r"Overall:\s*([\d\.-]+)\s*dBFS", text)
-    assert match is not None
-    val = float(match.group(1))
-
+    assert result is not None
+    val = result.overall_db
     print(f"Measured RMS dB: {val}")
 
-    # Check accuracy
+    # Expected: 20*log10(1/sqrt(2)) = -3.01 dB
     assert val == pytest.approx(-3.01, abs=0.2)
 
 def test_spectrum_rms_silence():
-    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalysisWorker
 
     mock_engine = MagicMock()
     mock_engine.sample_rate = 48000
@@ -135,20 +95,15 @@ def test_spectrum_rms_silence():
     sa.set_buffer_size(4096)
     sa.start_analysis()
 
-    widget = SpectrumAnalyzerWidget(sa)
-
     # Silence
     sa.input_data.fill(0)
     sa.write_head = 0
 
-    widget.update_plot()
+    worker = SpectrumAnalysisWorker(sa)
+    result = worker.process_cycle()
 
-    assert widget.overall_label.setText.called
-    text = widget.overall_label.setText.call_args[0][0]
-
-    match = re.search(r"Overall:\s*([\d\.-]+)\s*dBFS", text)
-    assert match is not None
-    val = float(match.group(1))
+    assert result is not None
+    val = result.overall_db
 
     print(f"Silence RMS dB: {val}")
     assert val < -100.0

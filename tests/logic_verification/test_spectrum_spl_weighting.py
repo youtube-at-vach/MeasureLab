@@ -4,49 +4,26 @@ from unittest.mock import MagicMock, patch
 import pytest
 import re
 
-# Mock GUI dependencies
-mock_qt_core = MagicMock()
-class MockQObject:
-    def __init__(self): pass
-class MockQWidget:
-    def __init__(self, *args, **kwargs): pass
-    def update(self): pass
-    def setStyleSheet(self, style): pass
-    def setLayout(self, layout): pass
-
-mock_qt_core.QObject = MockQObject
-mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
-mock_qt_core.Qt.Orientation.Horizontal = 1
-mock_qt_core.Qt.PenStyle.DashLine = 2
-
-mock_qt_widgets = MagicMock()
-mock_qt_widgets.QWidget = MockQWidget
-
-# Specific mocks
-mock_combo = MagicMock()
-mock_combo.findData.return_value = -1
-mock_combo.findText.return_value = -1
-mock_qt_widgets.QComboBox = MagicMock(return_value=mock_combo)
-
-mock_label = MagicMock()
-mock_label.text.return_value = "Overall: -- dB"
-mock_qt_widgets.QLabel = MagicMock(return_value=mock_label)
-
-mock_pg = MagicMock()
-mock_plot_item = MagicMock()
-mock_axis = MagicMock()
-mock_plot_item.getAxis.return_value = mock_axis
-mock_pg.PlotWidget.return_value.getPlotItem.return_value = mock_plot_item
-mock_pg.PlotWidget.return_value.scene.return_value = MagicMock()
-
+# Mock dependencies
 mock_modules = {
     "PyQt6": MagicMock(),
-    "PyQt6.QtCore": mock_qt_core,
+    "PyQt6.QtCore": MagicMock(),
     "PyQt6.QtGui": MagicMock(),
-    "PyQt6.QtWidgets": mock_qt_widgets,
-    "pyqtgraph": mock_pg,
+    "PyQt6.QtWidgets": MagicMock(),
+    "pyqtgraph": MagicMock(),
     "sounddevice": MagicMock(),
 }
+
+class MockQThread:
+    def __init__(self, parent=None): pass
+    def start(self): pass
+    def wait(self): pass
+    def requestInterruption(self): pass
+    def isInterruptionRequested(self): return False
+    def msleep(self, ms): pass
+
+mock_modules["PyQt6.QtCore"].QThread = MockQThread
+mock_modules["PyQt6.QtCore"].pyqtSignal = lambda *args: MagicMock()
 
 @pytest.fixture(autouse=True)
 def mock_deps():
@@ -55,17 +32,8 @@ def mock_deps():
             del sys.modules["src.gui.widgets.spectrum_analyzer"]
         yield
 
-def extract_overall_db(widget):
-    # Check if setText was called
-    if widget.overall_label.setText.called:
-        text = widget.overall_label.setText.call_args[0][0]
-        match = re.search(r"Overall:\s*([\d\.-]+)\s*", text)
-        if match:
-            return float(match.group(1))
-    return None
-
 def test_spectrum_weighting_at_100hz():
-    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalysisWorker
 
     mock_engine = MagicMock()
     mock_engine.sample_rate = 48000
@@ -77,8 +45,6 @@ def test_spectrum_weighting_at_100hz():
     sa = SpectrumAnalyzer(mock_engine)
     sa.set_buffer_size(4096)
     sa.start_analysis()
-
-    widget = SpectrumAnalyzerWidget(sa)
 
     # Generate Sine Wave 100Hz, Amplitude 1.0 (Peak 0dBFS)
     fs = 48000
@@ -95,36 +61,39 @@ def test_spectrum_weighting_at_100hz():
     sa.analysis_mode = "Spectrum"
     sa.multitaper_enabled = False
 
+    worker = SpectrumAnalysisWorker(sa)
+
     # 1. Test Z-weighting (Reference)
     sa.weighting = "Z"
-    widget.update_plot()
-    val_z = extract_overall_db(widget)
+    result_z = worker.process_cycle()
+    val_z = result_z.overall_db
     print(f"Z-weighted RMS at 100Hz: {val_z} dBFS")
     assert val_z == pytest.approx(-3.01, abs=0.2)
 
     # 2. Test A-weighting
     # A-weighting at 100Hz is approx -19.14 dB
     sa.weighting = "A"
-    widget.update_plot()
-    val_a = extract_overall_db(widget)
+    # Reset averaging to avoid smoothing influence
+    sa.reset_averaging_request = True
+    result_a = worker.process_cycle()
+    val_a = result_a.overall_db
     print(f"A-weighted RMS at 100Hz: {val_a} dBFS")
     assert val_a == pytest.approx(-3.01 - 19.14, abs=0.5)
 
-    text = widget.overall_label.setText.call_args[0][0]
-    assert "dBFS(A)" in text
+    assert "A" in result_a.unit_display
 
     # 3. Test C-weighting
     sa.weighting = "C"
-    widget.update_plot()
-    val_c = extract_overall_db(widget)
+    sa.reset_averaging_request = True
+    result_c = worker.process_cycle()
+    val_c = result_c.overall_db
     print(f"C-weighted RMS at 100Hz: {val_c} dBFS")
     assert val_c == pytest.approx(-3.01 - 0.3, abs=0.2)
 
-    text = widget.overall_label.setText.call_args[0][0]
-    assert "dBFS(C)" in text
+    assert "C" in result_c.unit_display
 
 def test_spectrum_spl_offset():
-    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalysisWorker
 
     mock_engine = MagicMock()
     mock_engine.sample_rate = 48000
@@ -137,8 +106,6 @@ def test_spectrum_spl_offset():
     sa = SpectrumAnalyzer(mock_engine)
     sa.set_buffer_size(4096)
     sa.start_analysis()
-
-    widget = SpectrumAnalyzerWidget(sa)
 
     # Generate Sine Wave 1kHz, Amplitude 1.0 (Peak 0dBFS)
     fs = 48000
@@ -153,27 +120,31 @@ def test_spectrum_spl_offset():
     sa.weighting = "Z"
     sa.display_unit = "dBFS"
 
-    widget.update_plot()
-    val_dbfs = extract_overall_db(widget)
+    worker = SpectrumAnalysisWorker(sa)
+
+    result_dbfs = worker.process_cycle()
+    val_dbfs = result_dbfs.overall_db
     assert val_dbfs == pytest.approx(-3.01, abs=0.2)
 
     # Switch to SPL
     sa.display_unit = "dB SPL"
-    widget.update_plot()
-    val_spl = extract_overall_db(widget)
+    sa.reset_averaging_request = True # Force reset if needed
+
+    result_spl = worker.process_cycle()
+    val_spl = result_spl.overall_db
     print(f"SPL RMS (Z): {val_spl}")
 
     # Expected: -3.01 + 94.0 = 90.99
     assert val_spl == pytest.approx(-3.01 + 94.0, abs=0.2)
-    text = widget.overall_label.setText.call_args[0][0]
-    assert "dB SPL(Z)" in text
+    assert "dB SPL" in result_spl.unit_display
 
     # Test SPL with A-weighting at 1kHz (A~0dB)
     sa.weighting = "A"
-    widget.update_plot()
-    val_spl_a = extract_overall_db(widget)
+    sa.reset_averaging_request = True
+
+    result_spl_a = worker.process_cycle()
+    val_spl_a = result_spl_a.overall_db
     print(f"SPL RMS (A): {val_spl_a}")
     assert val_spl_a == pytest.approx(-3.01 + 94.0, abs=0.2)
 
-    text = widget.overall_label.setText.call_args[0][0]
-    assert "dB SPL(A)" in text
+    assert "A" in result_spl_a.unit_display
