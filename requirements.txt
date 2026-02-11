@@ -9,9 +9,4 @@ soundfile
 PyWavelets
 netCDF4
 pyfftw
-mkdocs
-mkdocs-material
-mkdocs-with-pdf
-mkdocs-static-i18n
-mini-racer
 

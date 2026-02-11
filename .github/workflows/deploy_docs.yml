@@ -28,5 +28,5 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install mkdocs-material mkdocs-with-pdf mkdocs-static-i18n pyyaml mini-racer
+      - run: pip install -r requirements-docs.txt
       - run: mkdocs gh-deploy --force
