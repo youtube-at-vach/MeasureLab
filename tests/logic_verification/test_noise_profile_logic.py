@@ -164,5 +164,35 @@ class TestNoiseProfileLogic(unittest.TestCase):
 
         # If masking failed, the 50Hz peak would pull the slope up or down significantly or ruin fit
 
+    def test_1f_noise_insufficient_data(self):
+        # Create a scenario where the 1/f fit region has <= 5 points
+        # Freq step 2.0 Hz. Range 1.0 - 6.0 Hz contains [2.0, 4.0, 6.0] (3 points)
+        # We need knee detection to clamp f_max_fit to 6.0 Hz
+
+        freqs = np.arange(0, 22000, 2.0)
+        mag = np.ones_like(freqs) * 1e-9 # Low background
+
+        # Inject "slope" points that are high but drop quickly
+        idx_2 = np.searchsorted(freqs, 2.0)
+        idx_4 = np.searchsorted(freqs, 4.0)
+
+        mag[idx_2] = 1e-3
+        mag[idx_4] = 1e-5
+        # mag at 6.0 Hz remains 1e-9, which should trigger knee if white density is higher than ~5e-10
+
+        # White density from 1k-20k (median of 1e-9) is ~1.2e-9.
+        # Knee threshold ~ 2.4e-9.
+        # mag[idx_6] (1e-9) < 2.4e-9. So knee at 6.0 Hz.
+        # f_max_fit = max(6.0, 5.0) = 6.0.
+        # Points in [1.0, 6.0]: 2.0, 4.0, 6.0. Count = 3.
+        # 3 <= 5.
+
+        results = AudioCalc.calculate_noise_profile(mag, freqs, self.fs)
+
+        # Should fallback to 0.0 despite the clear slope in first few points
+        self.assertEqual(results['flicker_slope'], 0.0)
+        self.assertEqual(results['flicker_intercept'], 0.0)
+        self.assertEqual(results['corner_freq'], 0.0)
+
 if __name__ == '__main__':
     unittest.main()
