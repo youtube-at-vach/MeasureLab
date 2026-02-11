@@ -208,6 +208,8 @@ class CalibrationManager:
         # spl_offset_db can be None, handled explicitly
         if "spl_offset_db" in p:
             self.spl_offset_db = p["spl_offset_db"]
+        else:
+            self.spl_offset_db = None
 
         self.last_profile = name  # Update current profile name before saving
         self.save()  # Persist as current
