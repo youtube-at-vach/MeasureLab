@@ -45,6 +45,11 @@ class TestFormatSI:
         # 999.99 with 5 sig figs is 999.99
         assert format_si(999.99, sig_figs=5) == "999.99"
 
+        # Edge case: Floating point precision issue (e.g., 0.99995 with 4 sig figs)
+        # 0.99995 -> rounds to 1.000 (1000 m or 1)
+        # Previous logic might return "999.9 m" due to precision loss in division by 0.001
+        assert format_si(0.99995) == "1"
+
     def test_sig_figs(self):
         """Test significant figures formatting."""
         val = 12345.6789

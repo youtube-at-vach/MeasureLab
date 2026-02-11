@@ -47,8 +47,11 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
     exp3 = int(math.floor(math.log10(ax) / 3.0) * 3)
     exp3 = max(min(exp3, 24), -24)
 
-    scale = 10.0**exp3
-    scaled = x / scale
+    # Use multiplication for negative exponents to avoid precision loss from dividing by small numbers.
+    if exp3 < 0:
+        scaled = x * (10.0**-exp3)
+    else:
+        scaled = x / (10.0**exp3)
 
     # Format first to check if rounding causes spillover
     number = f"{scaled:.{int(sig_figs)}g}"
@@ -57,8 +60,10 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
     # If the formatted number rounds up to 1000 (or -1000), bump to next prefix.
     if abs(float(number)) >= 1000.0 and exp3 < 24:
         exp3 += 3
-        scale *= 1000.0
-        scaled = x / scale
+        if exp3 < 0:
+            scaled = x * (10.0**-exp3)
+        else:
+            scaled = x / (10.0**exp3)
         number = f"{scaled:.{int(sig_figs)}g}"
 
     prefix = _SI_PREFIXES.get(exp3, "")
