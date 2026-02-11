@@ -72,12 +72,12 @@ class TestSpectrumProcessor:
         }
 
         # First pass: Silence -> very low dB
-        res1 = processor.process(data, sr, config)
+        processor.process(data, sr, config)
 
         # Second pass: High signal (constant 1.0)
         # Use constant signal to be deterministic
         data_high = np.ones((1024, 2))
-        res2 = processor.process(data_high, sr, config)
+        processor.process(data_high, sr, config)
 
         # Let's verify processor state
         assert processor._avg_magnitude is not None
