@@ -49,6 +49,11 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 - **Window (Window Function)**
     - `hann` (standard) or `blackman` are suitable for noise analysis.
 
+- **Scale**
+    - Switches the display scale of the vertical axis (frequency).
+    - **Linear**: Equal spacing. Suitable for observing high-frequency details.
+    - **Log**: Logarithmic spacing. Expands the lower frequency range, matching human hearing characteristics. Suitable for musical pitch or low-frequency noise analysis.
+
 - **Colormap**
     - Changes the color scheme of the graph.
     - **viridis / plasma / inferno / magma / cividis**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
