@@ -1194,13 +1194,13 @@ class SettingsWidget(QWidget):
         cal_group.setLayout(cal_layout)
         calibration_layout.addWidget(cal_group)
 
-        # Advanced Calibration Group
-        self.show_adv_cal_check = QCheckBox(tr("Show advanced calibration values"))
+        # Stored Calibration Values Group
+        self.show_adv_cal_check = QCheckBox(tr("Show stored calibration values"))
         self.show_adv_cal_check.setChecked(False)
         self.show_adv_cal_check.toggled.connect(self.on_show_adv_cal_toggled)
         calibration_layout.addWidget(self.show_adv_cal_check)
 
-        self.adv_cal_group = QGroupBox(tr("Advanced Calibration"))
+        self.adv_cal_group = QGroupBox(tr("Stored Calibration Values"))
         self.adv_cal_group.setVisible(False)
         adv_cal_layout = QFormLayout()
 

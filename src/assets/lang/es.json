@@ -1120,5 +1120,7 @@
     "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
     "Lock-in Gain Offset:": "Lock-in Gain Offset:",
     "Advanced Calibration": "Calibración avanzada",
-    "Show advanced calibration values": "Mostrar valores de calibración avanzada"
+    "Show advanced calibration values": "Mostrar valores de calibración avanzada",
+    "Stored Calibration Values": "Valores de calibración guardados",
+    "Show stored calibration values": "Mostrar valores de calibración guardados"
 }

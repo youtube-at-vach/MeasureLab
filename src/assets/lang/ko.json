@@ -1120,5 +1120,7 @@
     "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
     "Lock-in Gain Offset:": "Lock-in Gain Offset:",
     "Advanced Calibration": "고급 교정",
-    "Show advanced calibration values": "고급 교정 값 표시"
+    "Show advanced calibration values": "고급 교정 값 표시",
+    "Stored Calibration Values": "저장된 교정 값",
+    "Show stored calibration values": "저장된 교정 값 표시"
 }
