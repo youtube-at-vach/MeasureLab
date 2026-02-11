@@ -1,7 +1,8 @@
 """
 Explicit imports so PyInstaller can discover dynamically loaded modules.
 
-This file is never imported at runtime, but PyInstaller's static analysis
+This file is included via the `--hidden-import` flag in build scripts.
+It is never imported at runtime, but PyInstaller's static analysis
 will detect these imports and include the modules in the bundle.
 """
 

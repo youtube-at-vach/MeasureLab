@@ -98,17 +98,13 @@ def _load_module_class(module_key: str):
     """Return MeasurementModule class by key.
 
     Uses _load_class to avoid importing heavy GUI modules at application startup.
-    Explicit imports for PyInstaller discovery are handled in src.gui.pyinstaller_imports.
+    Explicit imports for PyInstaller discovery are handled in src.gui.pyinstaller_imports
+    (included via --hidden-import in build scripts).
     """
     if module_key not in MODULE_REGISTRY:
         raise KeyError(f"Unknown module key: {module_key}")
 
     return _load_class(*MODULE_REGISTRY[module_key])
-
-
-if False:
-    # Explicit imports so PyInstaller can discover modules.
-    import src.gui.pyinstaller_imports  # noqa: F401
 
 
 def _load_settings_widget_class():

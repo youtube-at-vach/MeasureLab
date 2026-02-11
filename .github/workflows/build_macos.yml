@@ -68,6 +68,7 @@ jobs:
           --collect-all soundfile \
           --collect-all pyfftw \
           --hidden-import pyfftw \
+          --hidden-import src.gui.pyinstaller_imports \
           --distpath dist \
           --workpath build \
           --target-architecture arm64 \
