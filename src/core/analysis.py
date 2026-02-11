@@ -1107,9 +1107,13 @@ class AudioCalc:
                 # For audio range (20Hz-20kHz), direct power is fine.
                 expected_log_end = start_freq * (ratio ** (len(freqs) - 1))
                 # Relax tolerance slightly (1e-3) for improved cross-platform detection
-                if abs(freqs[-1] - expected_log_end) < 1e-3 * expected_log_end:
+                diff = abs(freqs[-1] - expected_log_end)
+                threshold = 1e-3 * expected_log_end
+                if diff < threshold:
                     is_log_freqs = True
                     stop_freq = freqs[-1]
+                else:
+                    print(f"DEBUG: Log detection failed. Start={start_freq}, End={freqs[-1]}, Expected={expected_log_end}, Diff={diff}, Threshold={threshold}")
 
         # Pre-calculate squared magnitude and bin width
         mag_sq = mag**2

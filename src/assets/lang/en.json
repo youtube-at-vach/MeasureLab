@@ -494,6 +494,7 @@
     "Target Value:": "Target Value:",
     "Calibrate Absolute Gain (1-Point)": "Calibrate Absolute Gain (1-Point)",
     "Current Offset: {0:.3f} dB": "Current Offset: {0:.3f} dB",
+    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm",
     "Calibration Map": "Calibration Map",
     "Correction": "Correction",
     "Mag Correction (dB)": "Mag Correction (dB)",
