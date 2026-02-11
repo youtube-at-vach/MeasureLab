@@ -175,11 +175,10 @@ class TestNoiseProfileLogic(unittest.TestCase):
         # Inject "slope" points that are high but drop quickly
         idx_2 = np.searchsorted(freqs, 2.0)
         idx_4 = np.searchsorted(freqs, 4.0)
-        idx_6 = np.searchsorted(freqs, 6.0)
 
         mag[idx_2] = 1e-3
         mag[idx_4] = 1e-5
-        # mag[idx_6] remains 1e-9, which should trigger knee if white density is higher than ~5e-10
+        # mag at 6.0 Hz remains 1e-9, which should trigger knee if white density is higher than ~5e-10
 
         # White density from 1k-20k (median of 1e-9) is ~1.2e-9.
         # Knee threshold ~ 2.4e-9.
