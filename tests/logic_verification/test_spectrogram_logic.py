@@ -95,6 +95,12 @@ class TestSpectrogramLogic(unittest.TestCase):
 
         # Import the module under test
         try:
+            # Force remove the module from sys.modules if it was already loaded
+            # This ensures we get a fresh import using our mocked dependencies (PyQt6, etc.)
+            # The patcher will restore the original module (if any) when stopped.
+            if "src.gui.widgets.spectrogram" in sys.modules:
+                del sys.modules["src.gui.widgets.spectrogram"]
+
             from src.gui.widgets import spectrogram
             cls.spectrogram_module = spectrogram
         except ImportError as e:
