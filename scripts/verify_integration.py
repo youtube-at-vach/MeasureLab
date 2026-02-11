@@ -2,7 +2,7 @@
 import sys
 import time
 import numpy as np
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # --- MOCKING ---
 # Mock sounddevice to avoid PortAudio requirement
@@ -15,7 +15,7 @@ sys.modules['sounddevice'] = mock_sd
 # SignalGenerator inherits MeasurementModule.
 # MeasurementModule is in src.measurement_modules.base.
 # Let's import QApp.
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 # Initialize QApp with offscreen platform explicitly in args
 if not QApplication.instance():
