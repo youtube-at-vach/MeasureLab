@@ -2,7 +2,6 @@
 import sys
 import numpy as np
 from unittest.mock import MagicMock
-import pytest
 
 # Ensure sounddevice is mocked if not present
 try:
@@ -11,7 +10,6 @@ except ImportError:
     sys.modules["sounddevice"] = MagicMock()
 
 from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
-from src.core.audio_engine import AudioEngine
 
 def test_linearity_analyzer_get_latest_buffer_into_correctness():
     """Verifies that get_latest_buffer_into returns the same data as get_latest_buffer."""
