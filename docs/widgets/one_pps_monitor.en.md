@@ -39,6 +39,14 @@ It accepts a 1PPS signal from a GPS receiver or high-precision clock source and 
 * **Mean / Std Dev**: Mean and standard deviation of the deviation.
 * **Min / Max**: Minimum and maximum deviation values.
 
+### Calibration
+
+Corrects the measurement offset.
+
+* **Stored 1PPS Cal**: Shows the current stored calibration factor (ppm).
+* **Calibrate from Current**: Saves the current cumulative average deviation as the calibration factor.
+    * *Note: Currently, this function only acquires the calibration factor.*
+
 ## Settings
 
 ### Sample Rate
