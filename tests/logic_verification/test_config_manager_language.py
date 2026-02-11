@@ -2,7 +2,7 @@ import unittest
 import tempfile
 import os
 from unittest.mock import patch, MagicMock
-from src.core.config_manager import ConfigManager, WINDOWS_LOCALE_MAP
+from src.core.config_manager import ConfigManager
 
 class TestConfigManagerLanguage(unittest.TestCase):
     def setUp(self):
