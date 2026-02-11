@@ -1109,5 +1109,7 @@
     "Cutoff Freq (Hz):": "Frec. de corte (Hz):",
     "High Pass Filter (HPF)": "Filtro paso alto (HPF)",
     "Low Pass Filter (LPF)": "Filtro paso bajo (LPF)",
-    "Order:": "Orden:"
+    "Order:": "Orden:",
+    "Version {0}": "Versión {0}",
+    "⬆︎Update available: {0}": "⬆︎Actualización disponible: {0}"
 }

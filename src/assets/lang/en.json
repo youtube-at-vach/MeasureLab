@@ -1086,9 +1086,10 @@
     "Not enough data to calibrate. Please wait.": "Not enough data to calibrate. Please wait.",
     "Stored 1PPS Cal: 0.000 ppm": "Stored 1PPS Cal: 0.000 ppm",
     "Stored 1PPS Cal: {0:+.3f} ppm": "Stored 1PPS Cal: {0:+.3f} ppm",
-    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm",
     "Cutoff Freq (Hz):": "Cutoff Freq (Hz):",
     "High Pass Filter (HPF)": "High Pass Filter (HPF)",
     "Low Pass Filter (LPF)": "Low Pass Filter (LPF)",
-    "Order:": "Order:"
+    "Order:": "Order:",
+    "Version {0}": "Version {0}",
+    "⬆︎Update available: {0}": "⬆︎Update available: {0}"
 }
