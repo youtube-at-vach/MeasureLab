@@ -1,17 +1,31 @@
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QPixmap
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices, QFont, QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from src.core.localization import tr
+from src.core.update_checker import UpdateChecker
 from src.core.utils import resource_path
+from src.core.version import __version__
 
 
 class WelcomeWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.start_update_check()
+
+    def start_update_check(self):
+        self.update_checker = UpdateChecker()
+        self.update_checker.update_available.connect(self.on_update_available)
+        self.update_checker.start()
+
+    def on_update_available(self, new_version):
+        self.update_label.setText(f"Update available: {new_version}")
+        self.update_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_label.show()
+        self.new_version_url = f"https://github.com/youtube-at-vach/MeasureLab/releases/tag/{new_version}"
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -105,6 +119,24 @@ class WelcomeWidget(QWidget):
         text_layout.addWidget(features_label)
         text_layout.addStretch()
 
+        # Update Notification
+        self.update_label = QLabel()
+        self.update_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        self.update_label.setStyleSheet("color: #4CAF50;")  # Green color for update
+        self.update_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.update_label.hide()
+        self.update_label.mousePressEvent = self.open_release_page
+        text_layout.addWidget(self.update_label)
+
+        # Version Display
+        version_label = QLabel(f"Version {__version__}")
+        version_label.setFont(QFont("Arial", 9))
+        version_label.setStyleSheet("color: #666666;")
+        version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        text_layout.addWidget(version_label)
+
         layout.addWidget(text_container)
 
-        self.setLayout(layout)
+    def open_release_page(self, event):
+        if hasattr(self, "new_version_url"):
+            QDesktopServices.openUrl(QUrl(self.new_version_url))
