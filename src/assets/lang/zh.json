@@ -1109,5 +1109,7 @@
     "Cutoff Freq (Hz):": "截止频率 (Hz):",
     "High Pass Filter (HPF)": "高通滤波器 (HPF)",
     "Low Pass Filter (LPF)": "低通滤波器 (LPF)",
-    "Order:": "阶数:"
+    "Order:": "阶数:",
+    "Version {0}": "版本 {0}",
+    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}"
 }

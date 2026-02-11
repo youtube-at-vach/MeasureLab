@@ -1109,5 +1109,7 @@
     "Cutoff Freq (Hz):": "차단 주파수 (Hz):",
     "High Pass Filter (HPF)": "하이패스 필터 (HPF)",
     "Low Pass Filter (LPF)": "로우패스 필터 (LPF)",
-    "Order:": "차수:"
+    "Order:": "차수:",
+    "Version {0}": "버전 {0}",
+    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}"
 }

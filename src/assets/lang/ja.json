@@ -1098,5 +1098,7 @@
     "Cutoff Freq (Hz):": "カットオフ周波数 (Hz):",
     "High Pass Filter (HPF)": "ハイパスフィルター (HPF)",
     "Low Pass Filter (LPF)": "ローパスフィルター (LPF)",
-    "Order:": "次数:"
+    "Order:": "次数:",
+    "Version {0}": "バージョン {0}",
+    "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}"
 }

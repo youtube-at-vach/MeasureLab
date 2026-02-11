@@ -23,7 +23,7 @@ class WelcomeWidget(QWidget):
         self.update_checker.start()
 
     def on_update_available(self, new_version):
-        self.update_label.setText(f"⬆︎Update available: {new_version}")
+        self.update_label.setText(tr("⬆︎Update available: {0}").format(new_version))
         self.update_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.update_label.show()
         self.new_version_url = f"https://github.com/youtube-at-vach/MeasureLab/releases/tag/{new_version}"
@@ -130,7 +130,7 @@ class WelcomeWidget(QWidget):
         text_layout.addWidget(self.update_label)
 
         # Version Display
-        version_label = QLabel(f"Version {__version__}")
+        version_label = QLabel(tr("Version {0}").format(__version__))
         version_label.setFont(QFont("Arial", 9))
         version_label.setStyleSheet("color: #777777;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
