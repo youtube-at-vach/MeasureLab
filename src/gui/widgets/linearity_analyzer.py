@@ -330,7 +330,7 @@ class LinearityAnalyzer(MeasurementModule):
         logger.debug(f"Started analysis. Registered callback {cid}")
 
     def stop_analysis(self):
-        if self.callback_id:
+        if self.callback_id is not None:
             logger.debug(f"Stopping analysis. Unregistering callback {self.callback_id}")
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
