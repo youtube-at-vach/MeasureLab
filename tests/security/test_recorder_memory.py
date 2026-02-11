@@ -4,10 +4,10 @@ import sys
 import numpy as np
 import os
 import tempfile
-import scipy.signal
+import scipy.signal  # noqa: F401
 # Pre-load analysis to avoid re-import issues with scipy during sys.modules patching
 try:
-    from src.core.analysis import AudioCalc
+    from src.core.analysis import AudioCalc  # noqa: F401
 except ImportError:
     pass
 
