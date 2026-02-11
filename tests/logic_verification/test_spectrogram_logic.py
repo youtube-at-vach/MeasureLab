@@ -1,85 +1,141 @@
 
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, call
 import sys
-import math
+import numpy as np
 
-# Mock numpy if not available
-try:
-    import numpy as np
-except ImportError:
-    mock_np = MagicMock()
-    mock_np.log10.side_effect = lambda x: math.log10(x) if x > 0 else -float('inf')
-    mock_np.float64 = float
-    sys.modules["numpy"] = mock_np
-    import numpy as np
+# --- Mocking Setup to Import SpectrogramWidget without GUI ---
 
-# Mock dependencies to allow importing SpectrogramWidget
-sys.modules["PyQt6"] = MagicMock()
-sys.modules["PyQt6.QtCore"] = MagicMock()
-sys.modules["PyQt6.QtGui"] = MagicMock()
-sys.modules["PyQt6.QtWidgets"] = MagicMock()
-sys.modules["pyqtgraph"] = MagicMock()
-sys.modules["src.core.audio_engine"] = MagicMock()
-sys.modules["src.core.analysis"] = MagicMock()
-sys.modules["src.core.localization"] = MagicMock()
-sys.modules["src.measurement_modules.base"] = MagicMock()
-sys.modules["src.core.fft_manager"] = MagicMock()
-sys.modules["src.gui.styles"] = MagicMock()
+# Define mocks globally so they can be pickled if needed (unlikely for tests but cleaner)
+class MockQWidget:
+    def __init__(self, *args, **kwargs):
+        pass
+    def setLayout(self, layout):
+        pass
+    def closeEvent(self, event):
+        pass
+    # Add sizePolicy for buttons
+    def sizePolicy(self):
+        m = MagicMock()
+        m.horizontalPolicy.return_value = MagicMock()
+        m.verticalPolicy.return_value = MagicMock()
+        return m
 
-class MockSpectrogramWidget:
-    """
-    Mock class replicating the logic of SpectrogramWidget for testing purposes.
-    This ensures that the logic in on_freq_range_changed, update_range, and update_plot_limits
-    behaves as expected.
-    """
-    def __init__(self):
-        self.module = MagicMock()
-        self.min_freq_spin = MagicMock()
-        self.max_freq_spin = MagicMock()
-        self.scale_combo = MagicMock()
-        self.plot = MagicMock()
-
-        # Initial values
-        self.module.min_freq = 20
-        self.module.max_freq = 20000
-        self.min_freq_spin.value.return_value = 20
-        self.max_freq_spin.value.return_value = 20000
-        self.scale_combo.currentText.return_value = "Linear"
-
-    def on_freq_range_changed(self):
-        self.update_range()
-        self.update_plot_limits()
-
-    def update_range(self):
-        if not hasattr(self, "min_freq_spin") or not hasattr(self, "max_freq_spin"):
-            return
-
-        self.module.min_freq = self.min_freq_spin.value()
-        self.module.max_freq = self.max_freq_spin.value()
-
-    def update_plot_limits(self):
-        if not hasattr(self, "min_freq_spin") or not hasattr(self, "max_freq_spin"):
-            return
-
-        min_f = float(self.module.min_freq)
-        max_f = float(self.module.max_freq)
-
-        if self.scale_combo.currentText() == "Log":
-            # Avoid log(0) or negative
-            if min_f <= 0:
-                min_f = 1.0  # 1Hz minimum for log scale
-            if max_f <= min_f:
-                max_f = min_f + 10.0  # Valid range
-
-            self.plot.setYRange(np.log10(min_f), np.log10(max_f))
-        else:
-            self.plot.setYRange(min_f, max_f)
-
+class MockMeasurementModule:
+    """Mock base class for MeasurementModule since we can't import the real one easily without deps."""
+    def __init__(self, audio_engine=None):
+        self.audio_engine = audio_engine
+        self.is_running = False
+    def stop_analysis(self):
+        pass
 
 class TestSpectrogramLogic(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Create mocks for PyQt6 modules
+        mock_qt_widgets = MagicMock()
+        mock_qt_widgets.QWidget = MockQWidget
+        mock_qt_widgets.QGroupBox = MagicMock()
+        mock_qt_widgets.QHBoxLayout = MagicMock()
+        mock_qt_widgets.QVBoxLayout = MagicMock()
+        mock_qt_widgets.QGridLayout = MagicMock()
+        mock_qt_widgets.QLabel = MagicMock()
+        mock_qt_widgets.QPushButton = MagicMock()
+
+        # Configure QComboBox mock specifically to handle logic
+        class MockQComboBox(MagicMock):
+            def findText(self, text):
+                return -1 # Default to not found for init logic
+        mock_qt_widgets.QComboBox = MockQComboBox
+
+        # Make QSpinBox return distinct mocks for each instantiation
+        mock_qt_widgets.QSpinBox.side_effect = lambda *args, **kwargs: MagicMock()
+
+        mock_qt_widgets.QApplication = MagicMock()
+
+        mock_qt_core = MagicMock()
+        mock_qt_core.QTimer = MagicMock()
+        # Mock Qt enum if needed
+        mock_qt_core.Qt = MagicMock()
+
+        mock_qt_gui = MagicMock()
+        mock_qt_gui.QTransform = MagicMock()
+
+        # Mock pyqtgraph
+        mock_pg = MagicMock()
+        mock_pg.GraphicsLayoutWidget = MagicMock()
+        mock_pg.ImageItem = MagicMock()
+        mock_pg.HistogramLUTItem = MagicMock()
+
+        # Mock application-specific modules
+        mock_audio_engine = MagicMock()
+        mock_analysis = MagicMock()
+        mock_localization = MagicMock()
+        mock_localization.tr = lambda x: x # Simple identity for translation
+
+        # Prepare the patcher
+        # We patch sys.modules so that when `src.gui.widgets.spectrogram` imports these, it gets our mocks.
+        cls.modules_patcher = patch.dict(sys.modules, {
+            "PyQt6": MagicMock(),
+            "PyQt6.QtCore": mock_qt_core,
+            "PyQt6.QtGui": mock_qt_gui,
+            "PyQt6.QtWidgets": mock_qt_widgets,
+            "pyqtgraph": mock_pg,
+            "src.core.audio_engine": mock_audio_engine,
+            "src.core.analysis": mock_analysis,
+            "src.core.localization": mock_localization,
+            "src.measurement_modules.base": MagicMock(), # Will inject class below
+            "src.core.fft_manager": MagicMock(),
+            "src.gui.styles": MagicMock(),
+        })
+        cls.modules_patcher.start()
+
+        # Inject the base class into the mocked module
+        sys.modules["src.measurement_modules.base"].MeasurementModule = MockMeasurementModule
+
+        # Import the module under test
+        try:
+            from src.gui.widgets import spectrogram
+            cls.spectrogram_module = spectrogram
+        except ImportError as e:
+            # If import fails, stop patcher and fail
+            cls.modules_patcher.stop()
+            raise RuntimeError(f"Failed to import spectrogram module: {e}")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.modules_patcher.stop()
+
     def setUp(self):
-        self.widget = MockSpectrogramWidget()
+        # Create a mock Spectrogram module (the data model, not the python module)
+        self.mock_spec_model = MagicMock()
+        self.mock_spec_model.fft_size = 2048
+        self.mock_spec_model.window_type = "hann"
+        self.mock_spec_model.min_freq = 20
+        self.mock_spec_model.max_freq = 20000
+        # Mock other attributes accessed during init
+        self.mock_spec_model.channel_mode = "Left"
+        self.mock_spec_model.sweep_speed_index = 0
+        self.mock_spec_model.accumulator = None
+        self.mock_spec_model.acc_count = 0
+        self.mock_spec_model.is_running = False
+
+        # Instantiate the widget
+        SpectrogramWidget = self.spectrogram_module.SpectrogramWidget
+        self.widget = SpectrogramWidget(self.mock_spec_model)
+
+        # Configure the UI elements on the widget instance
+        self.widget.min_freq_spin.value.return_value = 20
+        self.widget.max_freq_spin.value.return_value = 20000
+        self.widget.scale_combo.currentText.return_value = "Linear"
+
+        # Reset mock calls accumulated during init (like setYRange)
+        self.widget.plot.reset_mock()
+
+    def test_mocks_are_distinct(self):
+        # Debug test
+        self.assertIsNot(self.widget.min_freq_spin, self.widget.max_freq_spin,
+                         "Spinboxes should be distinct mocks")
 
     def test_linear_scale(self):
         # Setup
@@ -87,6 +143,7 @@ class TestSpectrogramLogic(unittest.TestCase):
         val_min = 100
         val_max = 5000
 
+        # Ensure distinct return values
         self.widget.min_freq_spin.value.return_value = val_min
         self.widget.max_freq_spin.value.return_value = val_max
 
@@ -98,6 +155,8 @@ class TestSpectrogramLogic(unittest.TestCase):
         self.assertEqual(self.widget.module.max_freq, val_max)
 
         # Verify Plot Updates
+        # Note: mocks might receive specific types, usually we compare loosely or ensure types match.
+        # But here logic passes float(val_min).
         self.widget.plot.setYRange.assert_called_with(float(val_min), float(val_max))
 
     def test_log_scale(self):
@@ -108,6 +167,9 @@ class TestSpectrogramLogic(unittest.TestCase):
 
         self.widget.min_freq_spin.value.return_value = val_min
         self.widget.max_freq_spin.value.return_value = val_max
+
+        # Reset mock to clear previous calls
+        self.widget.plot.reset_mock()
 
         # Execute
         self.widget.on_freq_range_changed()
@@ -126,6 +188,8 @@ class TestSpectrogramLogic(unittest.TestCase):
 
         self.widget.min_freq_spin.value.return_value = val_min
         self.widget.max_freq_spin.value.return_value = val_max
+
+        self.widget.plot.reset_mock()
 
         # Execute
         self.widget.on_freq_range_changed()
