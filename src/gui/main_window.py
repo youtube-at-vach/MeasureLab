@@ -161,6 +161,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("MeasureLab")
         self.resize(1000, 700)
 
+        self._init_core()
+        self._init_audio()
+        self._init_ui()
+        self._init_state()
+
+    def _init_core(self):
+        """Initialize core components (config, localization, audio engine, theme)."""
         # Initialize Core Components
         self.config_manager = ConfigManager()
 
@@ -181,6 +188,8 @@ class MainWindow(QMainWindow):
         saved_theme = self.config_manager.get_theme()
         self.theme_manager.set_theme(saved_theme)
 
+    def _init_audio(self):
+        """Configure AudioEngine with saved settings."""
         # Load saved config
         audio_cfg = self.config_manager.get_audio_config()
         last_in = audio_cfg.get("input_device")
@@ -242,6 +251,8 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
 
+    def _init_ui(self):
+        """Initialize UI components (Layouts, Sidebar, StackedWidget, Status Bar)."""
         # Module registry (keep keys identical to module.name strings)
         self._module_keys = list(ALL_MODULE_KEYS)
         self.modules = [None] * len(self._module_keys)
@@ -323,6 +334,8 @@ class MainWindow(QMainWindow):
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(500)  # 500ms update rate
 
+    def _init_state(self):
+        """Initial state synchronization (output destination, offline mode)."""
         # Sync output destination control with engine state on startup
         self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
 
