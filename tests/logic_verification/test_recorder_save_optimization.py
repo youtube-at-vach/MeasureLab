@@ -1,3 +1,4 @@
+
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
@@ -22,7 +23,6 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         self.modules_patcher.start()
 
         # Import RecorderPlayer locally to ensure it uses the mocked modules
-        # We need to remove it from sys.modules first if it's already there to force reload
         if 'src.gui.widgets.recorder_player' in sys.modules:
             del sys.modules['src.gui.widgets.recorder_player']
 
@@ -35,12 +35,14 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
+        # Cleanup temp file if exists (from player)
+        if self.player._temp_record_file and os.path.exists(self.player._temp_record_file):
+            try:
+                os.remove(self.player._temp_record_file)
+            except:
+                pass
         self.temp_dir.cleanup()
         self.modules_patcher.stop()
-
-        # Clean up the module from sys.modules to avoid polluting other tests
-        if 'src.gui.widgets.recorder_player' in sys.modules:
-            del sys.modules['src.gui.widgets.recorder_player']
 
     def test_save_recording_content(self):
         """Verify that saving data chunk-by-chunk produces the correct file."""
@@ -49,12 +51,20 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         channels = 2
 
         expected_data = []
+
+        # Use public API to record
+        self.player.start_recording()
+
         for i in range(n_chunks):
             # Create distinct data for each chunk within [-1, 1]
             val = (i / n_chunks) * 0.8  # 0.0, 0.16, 0.32, 0.48, 0.64
             chunk = np.full((frames_per_chunk, channels), val, dtype=np.float32)
-            self.player.record_buffer.append(chunk)
+
+            # Simulate callback
+            self.player.audio_callback(chunk, np.zeros_like(chunk), frames_per_chunk, None, None)
             expected_data.append(chunk)
+
+        self.player.stop_recording()
 
         expected_full = np.concatenate(expected_data, axis=0)
 
@@ -78,9 +88,22 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         frames_per_chunk = 100
         channels = 1
 
+        self.player.input_mode = "Right" # Force mono or specific channel?
+        # Actually input_mode="Right" selects channel 1 (if stereo input).
+        # But here we provide mono input to callback?
+        # audio_callback logic:
+        # if input_mode == "Right": rec_data = indata[:, 1:2] if 2ch else zeros
+
+        # Let's assume we want to test mono recording.
+        # If we feed 1ch input and set mode to something appropriate?
+        # If input_mode="Stereo" and input is 1ch, rec_data is 1ch.
+        self.player.input_mode = "Stereo"
+
         chunk = np.random.rand(frames_per_chunk, channels).astype(np.float32)
-        # Normalize to avoid clipping if any, though rand is [0, 1)
-        self.player.record_buffer.append(chunk)
+
+        self.player.start_recording()
+        self.player.audio_callback(chunk, np.zeros((frames_per_chunk, 2)), frames_per_chunk, None, None)
+        self.player.stop_recording()
 
         filepath = os.path.join(self.temp_dir.name, "test_mono.wav")
 

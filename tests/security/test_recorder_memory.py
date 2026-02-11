@@ -1,3 +1,4 @@
+
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
@@ -23,12 +24,6 @@ class TestRecorderMemory(unittest.TestCase):
             finished = MagicMock()
 
         qt_core.QThread = MockQThread
-        # pyqtSignal must be a class-like thing or handled by QThread, but here it's used as class attribute
-        # In the code: finished = pyqtSignal(...)
-        # So pyqtSignal needs to be something that returns a descriptor or similar?
-        # But usually just MagicMock() works if it's assigned to a class attribute.
-        # NOTE: pyqtSignal(bool, str) calls MagicMock(bool, str), which interprets bool as 'spec', causing AttributeError on 'emit'.
-        # We must use a lambda/function to swallow args and return a fresh MagicMock.
         qt_core.pyqtSignal = lambda *args, **kwargs: MagicMock()
 
         # Patch sys.modules to mock sounddevice and PyQt6
@@ -53,53 +48,64 @@ class TestRecorderMemory(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
+        if self.player._temp_record_file and os.path.exists(self.player._temp_record_file):
+            try:
+                os.remove(self.player._temp_record_file)
+            except:
+                pass
         self.temp_dir.cleanup()
         self.modules_patcher.stop()
 
-    def test_save_recording_uses_buffered_writes(self):
-        """Verify that save_recording uses buffered writes (np.concatenate is called)."""
-        # Setup some data
+    def test_audio_callback_streams_to_disk(self):
+        """Verify audio callback pushes to queue/disk instead of memory buffer."""
+        self.player.start_recording()
         chunk = np.zeros((100, 2), dtype=np.float32)
-        self.player.record_buffer.append(chunk)
-        self.player.record_buffer.append(chunk)
 
-        filepath = os.path.join(self.temp_dir.name, "test_output.wav")
+        self.player.audio_callback(chunk, np.zeros_like(chunk), 100, None, None)
 
-        # Mock np.concatenate to verify it is called for buffering
-        with patch('numpy.concatenate') as mock_concat:
-            # We must return a valid array to prevent downstream errors if needed
-            # But the mock will handle it if we don't set side_effect to raise
-            mock_concat.return_value = np.zeros((200, 2), dtype=np.float32)
+        # Buffer should be empty (primary fix for OOM)
+        self.assertEqual(len(self.player.record_buffer), 0)
 
-            success, msg = self.player.save_recording(filepath)
+        self.player.stop_recording()
 
-            self.assertTrue(success, f"Save failed: {msg}")
-            self.assertTrue(mock_concat.called, "np.concatenate should be called for buffered writes!")
+        # Temp file should exist and have data
+        self.assertTrue(os.path.exists(self.player._temp_record_file))
+        # Header (44) + 100 frames * 2 channels * 4 bytes = 844 bytes
+        self.assertGreater(os.path.getsize(self.player._temp_record_file), 44)
 
-    def test_worker_run_uses_buffered_writes(self):
-        """Verify that FileSaveWorker.run uses buffered writes (np.concatenate is called)."""
-        # Setup some data
+    def test_save_recording_from_temp_file(self):
+        """Verify save_recording copies from temp file correctly."""
+        # Create some recording data
+        self.player.start_recording()
         chunk = np.zeros((100, 2), dtype=np.float32)
-        record_buffer = [chunk, chunk]
+        self.player.audio_callback(chunk, np.zeros_like(chunk), 100, None, None)
+        self.player.stop_recording()
 
-        filepath = os.path.join(self.temp_dir.name, "test_worker_output.wav")
+        filepath = os.path.join(self.temp_dir.name, "output.wav")
 
-        worker = self.FileSaveWorker(record_buffer, 48000, filepath)
+        success, msg = self.player.save_recording(filepath)
 
-        # Verify worker.run exists and is the method we defined
-        # print(f"Worker type: {type(worker)}")
-        # print(f"Worker run: {worker.run}")
+        self.assertTrue(success, f"Save failed: {msg}")
+        self.assertTrue(os.path.exists(filepath))
+        self.assertGreater(os.path.getsize(filepath), 44)
 
-        # Mock np.concatenate
-        with patch('numpy.concatenate') as mock_concat:
-            mock_concat.return_value = np.zeros((200, 2), dtype=np.float32)
+    def test_worker_uses_streaming_copy(self):
+        """Verify that FileSaveWorker processes the file path, not a buffer."""
+        # Create a dummy source file
+        source_path = os.path.join(self.temp_dir.name, "source.wav")
+        import soundfile as sf
+        sf.write(source_path, np.zeros((100, 2)), 48000)
 
-            # Run the worker synchronously
-            worker.run()
+        target_path = os.path.join(self.temp_dir.name, "target.wav")
 
-            # print(f"Mock call count: {mock_concat.call_count}")
+        # Worker initialized with paths, not buffer
+        worker = self.FileSaveWorker(source_path, target_path)
 
-            self.assertTrue(mock_concat.called, "np.concatenate should be called inside worker for buffered writes!")
+        # Run worker synchronously
+        worker.run()
+
+        self.assertTrue(os.path.exists(target_path))
+        self.assertEqual(os.path.getsize(target_path), os.path.getsize(source_path))
 
 if __name__ == '__main__':
     unittest.main()
