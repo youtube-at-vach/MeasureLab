@@ -100,5 +100,16 @@ class TestResampleAccuracy(unittest.TestCase):
         # Same SR
         self.assertTrue(np.array_equal(AudioCalc.resample(data, 44100, 44100), data))
 
+    def test_resample_odd_ratio(self):
+        src_sr = 44100
+        dst_sr = 44101 # Very slight change, large GCD factors
+        # data len 44100
+        data = np.zeros((44100, 1))
+        # This will trigger large up/down values.
+        # up = 44101, down = 44100.
+        res = AudioCalc.resample(data, src_sr, dst_sr)
+        # Expected len: ceil(44100 * 44101 / 44100) = 44101
+        self.assertEqual(res.shape[0], 44101)
+
 if __name__ == '__main__':
     unittest.main()
