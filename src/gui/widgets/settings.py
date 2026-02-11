@@ -1121,7 +1121,7 @@ class SettingsWidget(QWidget):
         prof_save_layout = QHBoxLayout()
         self.cal_profile_name_edit = QLineEdit()
         self.cal_profile_name_edit.setPlaceholderText(tr("New Profile Name"))
-        self.save_prof_btn = QPushButton(tr("Save As..."))
+        self.save_prof_btn = QPushButton(tr("Duplicate Profile"))
         self.save_prof_btn.clicked.connect(self.on_save_profile)
         prof_save_layout.addWidget(self.cal_profile_name_edit, 1)
         prof_save_layout.addWidget(self.save_prof_btn)
@@ -1194,6 +1194,48 @@ class SettingsWidget(QWidget):
         cal_group.setLayout(cal_layout)
         calibration_layout.addWidget(cal_group)
 
+        # Stored Calibration Values Group
+        self.show_adv_cal_check = QCheckBox(tr("Show stored calibration values"))
+        self.show_adv_cal_check.setChecked(False)
+        self.show_adv_cal_check.toggled.connect(self.on_show_adv_cal_toggled)
+        calibration_layout.addWidget(self.show_adv_cal_check)
+
+        self.adv_cal_group = QGroupBox(tr("Stored Calibration Values"))
+        self.adv_cal_group.setVisible(False)
+        adv_cal_layout = QFormLayout()
+
+        # Frequency Calibration (ppm)
+        self.freq_cal_ppm_edit = QLineEdit()
+        self.freq_cal_ppm_edit.setReadOnly(True)
+        # Make it look like a read-only display
+        self.freq_cal_ppm_edit.setStyleSheet("background-color: transparent; border: none;")
+        adv_cal_layout.addRow(tr("Frequency Calibration:"), self.freq_cal_ppm_edit)
+
+        # 1PPS Frequency Calibration (ppm)
+        self.freq_cal_1pps_ppm_edit = QLineEdit()
+        self.freq_cal_1pps_ppm_edit.setReadOnly(True)
+        self.freq_cal_1pps_ppm_edit.setStyleSheet("background-color: transparent; border: none;")
+        adv_cal_layout.addRow(tr("1PPS Frequency Calibration:"), self.freq_cal_1pps_ppm_edit)
+
+        # Lock-in Gain Offset
+        self.lockin_gain_edit = QLineEdit()
+        self.lockin_gain_edit.setReadOnly(True)
+        self.lockin_gain_edit.setStyleSheet("background-color: transparent; border: none;")
+
+        self.lockin_gain_unit = QComboBox()
+        self.lockin_gain_unit.addItems(["mdB", "dB"])
+        self.lockin_gain_unit.currentIndexChanged.connect(self.update_adv_cal_display)
+
+        lockin_layout = QHBoxLayout()
+        lockin_layout.setContentsMargins(0, 0, 0, 0)
+        lockin_layout.addWidget(self.lockin_gain_edit)
+        lockin_layout.addWidget(self.lockin_gain_unit)
+
+        adv_cal_layout.addRow(tr("Lock-in Gain Offset:"), lockin_layout)
+
+        self.adv_cal_group.setLayout(adv_cal_layout)
+        calibration_layout.addWidget(self.adv_cal_group)
+
         calibration_layout.addStretch()
         calibration_tab.setLayout(calibration_layout)
         self.tabs.addTab(calibration_tab, tr("Calibration"))
@@ -1207,6 +1249,7 @@ class SettingsWidget(QWidget):
         self.update_out_gain_display()
 
         self.update_spl_display()
+        self.update_adv_cal_display()
         self.refresh_cal_profiles()
         self._update_offline_ui_state()
 
@@ -1290,6 +1333,33 @@ class SettingsWidget(QWidget):
             self.update_spl_display()
         except ValueError:
             self.update_spl_display()
+
+    def on_show_adv_cal_toggled(self, checked):
+        self.adv_cal_group.setVisible(checked)
+        if checked:
+            self.update_adv_cal_display()
+
+    def update_adv_cal_display(self):
+        cal = self.audio_engine.calibration
+
+        # Frequency Calibration (ppm)
+        # factor = 1.0 + ppm * 1e-6  => ppm = (factor - 1.0) * 1e6
+        ppm = (cal.frequency_calibration - 1.0) * 1e6
+        self.freq_cal_ppm_edit.setText(f"{ppm:+.3f} ppm")
+
+        # 1PPS Frequency Calibration (ppm)
+        ppm_1pps = (cal.frequency_calibration_1pps - 1.0) * 1e6
+        self.freq_cal_1pps_ppm_edit.setText(f"{ppm_1pps:+.3f} ppm")
+
+        # Lock-in Gain Offset
+        offset_db = cal.lockin_gain_offset
+        unit = self.lockin_gain_unit.currentText()
+        if unit == "mdB":
+            val = offset_db * 1000.0
+            self.lockin_gain_edit.setText(f"{val:.3f} {unit}")
+        else:
+            val = offset_db
+            self.lockin_gain_edit.setText(f"{val:.4f} {unit}")
 
     def on_language_changed(self):
         lang = self.lang_combo.currentData()

@@ -198,17 +198,15 @@ class CalibrationManager:
             raise ValueError(f"Profile '{name}' not found")
 
         p = self.profiles[name]
-        self.input_sensitivity = p.get("input_sensitivity", self.input_sensitivity)
-        self.output_gain = p.get("output_gain", self.output_gain)
-        self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", self.output_gain_is_calibrated)
-        self.frequency_calibration = p.get("frequency_calibration", self.frequency_calibration)
-        self.frequency_calibration_1pps = p.get("frequency_calibration_1pps", self.frequency_calibration_1pps)
-        self.lockin_gain_offset = p.get("lockin_gain_offset", self.lockin_gain_offset)
+        self.input_sensitivity = p.get("input_sensitivity", 1.0)
+        self.output_gain = p.get("output_gain", 1.0)
+        self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", False)
+        self.frequency_calibration = p.get("frequency_calibration", 1.0)
+        self.frequency_calibration_1pps = p.get("frequency_calibration_1pps", 1.0)
+        self.lockin_gain_offset = p.get("lockin_gain_offset", 0.0)
+        self.spl_offset_db = p.get("spl_offset_db", None)
 
-        # spl_offset_db can be None, handled explicitly
-        if "spl_offset_db" in p:
-            self.spl_offset_db = p["spl_offset_db"]
-
+        self.last_profile = name  # Update current profile name before saving
         self.save()  # Persist as current
 
     def delete_profile(self, name):

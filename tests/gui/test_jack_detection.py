@@ -27,6 +27,9 @@ def test_jack_detection(qtbot):
     mock_engine.calibration = MagicMock()
     mock_engine.calibration.input_sensitivity = 1.0
     mock_engine.calibration.output_gain = 1.0
+    mock_engine.calibration.frequency_calibration = 1.0
+    mock_engine.calibration.frequency_calibration_1pps = 1.0
+    mock_engine.calibration.lockin_gain_offset = 0.0
     mock_engine.calibration.get_spl_offset_db.return_value = None
     mock_engine.calibration.get_profiles.return_value = {}
 

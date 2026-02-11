@@ -355,7 +355,7 @@ class LockInTHDWidget(QWidget):
         self.lbl_thdn = QLabel("--")
         self.lbl_thdn.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
         self.lbl_thdn_db = QLabel("-- dB")
-        meters_layout.addWidget(QLabel("THD+N:"))
+        meters_layout.addWidget(QLabel(tr("THD+N:")))
         meters_layout.addWidget(self.lbl_thdn)
         meters_layout.addWidget(self.lbl_thdn_db)
 
@@ -363,11 +363,11 @@ class LockInTHDWidget(QWidget):
 
         self.lbl_fund = QLabel("-- V")
         self.lbl_fund.setStyleSheet("font-size: 18px; color: #55ff55;")
-        meters_layout.addWidget(QLabel("Fundamental (Lock-in):"))
+        meters_layout.addWidget(QLabel(tr("Fundamental (Lock-in):")))
         meters_layout.addWidget(self.lbl_fund)
 
         self.lbl_res = QLabel("-- V")
-        meters_layout.addWidget(QLabel("Residual RMS:"))
+        meters_layout.addWidget(QLabel(tr("Residual RMS:")))
         meters_layout.addWidget(self.lbl_res)
 
         meters_group.setLayout(meters_layout)
@@ -400,14 +400,14 @@ class LockInTHDWidget(QWidget):
 
         self.curve_input = self.plot_time.plot(pen="c", name="Input")
         self.curve_resid = self.plot_time.plot(pen="r", name="Residual (x10)")
-        self.tabs.addTab(plot_widget_container, "Waveform")
+        self.tabs.addTab(plot_widget_container, tr("Waveform"))
 
         # Plot 2: Residual-only Time Domain
         self.plot_res_time = pg.PlotWidget(title="Residual Only")
         self.plot_res_time.addLegend()
         self.curve_res_time = self.plot_res_time.plot(pen="m", name="Residual")
         self.curve_res_time_avg = self.plot_res_time.plot(pen="y", name="Moving Avg")
-        self.tabs.addTab(self.plot_res_time, "Residual")
+        self.tabs.addTab(self.plot_res_time, tr("Residual"))
 
         # Plot 3: Spectrum (Residual)
         self.plot_spec = pg.PlotWidget(title="Residual Spectrum")
@@ -416,7 +416,7 @@ class LockInTHDWidget(QWidget):
         self.plot_spec.setLabel("left", "Magnitude", units="dB")
         self.plot_spec.showGrid(x=True, y=True)
         self.curve_spec = self.plot_spec.plot(pen="y")
-        self.tabs.addTab(self.plot_spec, "Spectrum")
+        self.tabs.addTab(self.plot_spec, tr("Spectrum"))
 
         right_panel.addWidget(self.tabs)
         layout.addLayout(right_panel, 3)

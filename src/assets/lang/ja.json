@@ -355,6 +355,8 @@
     "Allan Dev: -- Hz": "アラン偏差: -- Hz",
     "Std Dev: --": "標準偏差: --",
     "Allan Dev: --": "アラン偏差: --",
+    "Stored Calibration Values": "保存された校正値",
+    "Show stored calibration values": "保存された校正値を表示",
     "Frequency Calibration": "周波数校正",
     "Calibrate": "校正",
     "Warning": "警告",
@@ -970,7 +972,7 @@
     "Please enter a profile name.": "プロファイル名を入力してください。",
     "Profile '{0}' already exists. Overwrite?": "プロファイル '{0}' は既に存在します。上書きしますか？",
     "Profile saved.": "プロファイルが保存されました。",
-    "Save As...": "別名で保存...",
+    "Duplicate Profile": "プロファイルを複製",
     "Saving recording...": "録音を保存中...",
     "Select Profile:": "プロファイルを選択:",
     "{0} deg": "{0} 度",
@@ -1100,5 +1102,12 @@
     "Low Pass Filter (LPF)": "ローパスフィルター (LPF)",
     "Order:": "次数:",
     "Version {0}": "バージョン {0}",
-    "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}"
+    "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}",
+    "Fundamental (Lock-in):": "基本波 (Lock-in):",
+    "Residual": "残留成分",
+    "Residual RMS:": "残留成分 RMS:",
+    "Waveform": "波形",
+    "Frequency Calibration:": "周波数校正:",
+    "1PPS Frequency Calibration:": "1PPS周波数校正:",
+    "Lock-in Gain Offset:": "ロックイン・ゲイン・オフセット:"
 }

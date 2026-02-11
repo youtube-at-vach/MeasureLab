@@ -958,7 +958,7 @@
     "Please enter a profile name.": "프로필 이름을 입력해 주세요.",
     "Profile '{0}' already exists. Overwrite?": "'{0}' 프로필이 이미 존재합니다. 덮어쓰시겠습니까?",
     "Profile saved.": "프로필을 저장했습니다.",
-    "Save As...": "다른 이름으로 저장...",
+    "Duplicate Profile": "프로필 복제",
     "Saving recording...": "녹음 저장 중...",
     "Select Profile:": "프로필 선택:",
     "{0} deg": "{0} 도",
@@ -1111,5 +1111,16 @@
     "Low Pass Filter (LPF)": "로우패스 필터 (LPF)",
     "Order:": "차수:",
     "Version {0}": "버전 {0}",
-    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}"
+    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}",
+    "Fundamental (Lock-in):": "기본파 (Lock-in):",
+    "Residual": "잔류 성분",
+    "Residual RMS:": "잔류 RMS:",
+    "Waveform": "파형",
+    "Frequency Calibration:": "Frequency Calibration:",
+    "1PPS Frequency Calibration:": "1PPS Frequency Calibration:",
+    "Lock-in Gain Offset:": "Lock-in Gain Offset:",
+    "Advanced Calibration": "고급 교정",
+    "Show advanced calibration values": "고급 교정 값 표시",
+    "Stored Calibration Values": "저장된 교정 값",
+    "Show stored calibration values": "저장된 교정 값 표시"
 }
