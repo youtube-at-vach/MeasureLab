@@ -51,7 +51,7 @@ class TestRecorderMemory(unittest.TestCase):
         if self.player._temp_record_file and os.path.exists(self.player._temp_record_file):
             try:
                 os.remove(self.player._temp_record_file)
-            except:
+            except OSError:
                 pass
         self.temp_dir.cleanup()
         self.modules_patcher.stop()

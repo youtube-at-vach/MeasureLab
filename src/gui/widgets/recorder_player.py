@@ -1,6 +1,5 @@
 import os
 import queue
-import shutil
 import tempfile
 import threading
 
