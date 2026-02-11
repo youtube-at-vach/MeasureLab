@@ -66,6 +66,10 @@ class BoxcarAverager(MeasurementModule):
         self.use_int64 = False
         self.last_accumulation_time = 0.0
 
+        # Optimization Buffer
+        self._proc_buffer = None
+        self._int_proc_buffer = None
+
         # Absolute sample tracking
         self.global_sample_counter = 0
         # Defines the 0-phase reference for (sample % period) folding.
@@ -132,6 +136,8 @@ class BoxcarAverager(MeasurementModule):
             self.accumulator = np.zeros((self.period_samples, 2), dtype=np.float64)
 
         self.count = 0
+        self._proc_buffer = None
+        self._int_proc_buffer = None
         # Keep window_origin_sample stable so the integration window doesn't drift.
         # We also restart accumulation at a stable boundary when possible.
         self.reset_pending = True
@@ -139,6 +145,49 @@ class BoxcarAverager(MeasurementModule):
         self.last_ref_sample_index = None
         self.capture_active = False
         self.capture_idx = 0
+
+    def _ensure_proc_buffer(self, required_len: int) -> tuple[np.ndarray, np.ndarray]:
+        """Ensure internal buffers are large enough for processing."""
+        if self._proc_buffer is None or len(self._proc_buffer) < required_len:
+            # Allocate with some headroom
+            new_size = required_len
+            if self._proc_buffer is not None:
+                new_size = max(new_size, int(len(self._proc_buffer) * 1.5))
+
+            self._proc_buffer = np.zeros((new_size, 2), dtype=np.float64)
+            self._int_proc_buffer = np.zeros((new_size, 2), dtype=np.int64)
+
+        return self._proc_buffer[:required_len], self._int_proc_buffer[:required_len]
+
+    def _accumulate_chunk(self, acc_start: int, acc_end: int, data_chunk: np.ndarray):
+        """Accumulate data_chunk into self.accumulator[acc_start:acc_end]."""
+        if len(data_chunk) == 0:
+            return
+
+        target_slice = self.accumulator[acc_start:acc_end]
+
+        if self.use_int64:
+            # Optimized int64 path: minimize allocations
+            n = len(data_chunk)
+            buf, int_buf = self._ensure_proc_buffer(n)
+
+            # Copy data to buffer (handles if data_chunk is a view or copy)
+            np.copyto(buf, data_chunk)
+
+            # Sanitize in-place
+            np.nan_to_num(buf, copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+
+            # Scale in-place
+            buf *= 2147483648.0
+
+            # Convert to int64 in separate buffer
+            # This is critical to avoid precision loss of large float values in accumulator
+            np.copyto(int_buf, buf, casting='unsafe')
+
+            # Add integer buffer to accumulator
+            target_slice += int_buf
+        else:
+            target_slice += data_chunk
 
     def _gate_segments_in_period(self, period: int):
         """Return list of (start,end) segments in [0,period) for the active gate.
@@ -333,24 +382,9 @@ class BoxcarAverager(MeasurementModule):
                         data_off0 = current_idx + (inter_start - fold_idx)
                         data_off1 = current_idx + (inter_end - fold_idx)
 
-                        if self.use_int64:
-                            # Scale to utilize int64 dynamic range (2^31)
-                            # Input is float32 (-1.0 to 1.0)
-                            # We use 2^31 to allow ~2 billion accumulations before overflow if close to 1.0
-                            # Realistically signal is much lower, so headroom is massive.
-                            # Sanitize input to avoid ValueError on NaN/Inf
-                            clean_data = np.nan_to_num(data[data_off0:data_off1], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
-                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
-                            self.accumulator[inter_start:inter_end] += chunk_data
-                        else:
-                            self.accumulator[inter_start:inter_end] += data[data_off0:data_off1]
+                        self._accumulate_chunk(inter_start, inter_end, data[data_off0:data_off1])
                 else:
-                    if self.use_int64:
-                        clean_data = np.nan_to_num(data[current_idx : current_idx + chunk_size], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
-                        chunk_data = (clean_data * 2147483648.0).astype(np.int64)
-                        self.accumulator[fold_idx : fold_idx + chunk_size] += chunk_data
-                    else:
-                        self.accumulator[fold_idx : fold_idx + chunk_size] += data[current_idx : current_idx + chunk_size]
+                    self._accumulate_chunk(fold_idx, fold_idx + chunk_size, data[current_idx : current_idx + chunk_size])
                 fold_idx += chunk_size
                 current_idx += chunk_size
 
@@ -383,13 +417,7 @@ class BoxcarAverager(MeasurementModule):
                         rel_start = abs_ptr - abs_start
                         rel_end = rel_start + take
 
-                        if self.use_int64:
-                            # Sanitize input
-                            clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
-                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
-                            self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
-                        else:
-                            self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
+                        self._accumulate_chunk(self.capture_idx, self.capture_idx + take, data[rel_start:rel_end])
 
                         self.capture_idx += take
                         abs_ptr += take
@@ -475,12 +503,7 @@ class BoxcarAverager(MeasurementModule):
                         rel_start = abs_ptr - abs_start
                         rel_end = rel_start + take
 
-                        if self.use_int64:
-                            clean_data = np.nan_to_num(data[rel_start:rel_end], copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
-                            chunk_data = (clean_data * 2147483648.0).astype(np.int64)
-                            self.accumulator[self.capture_idx : self.capture_idx + take] += chunk_data
-                        else:
-                            self.accumulator[self.capture_idx : self.capture_idx + take] += data[rel_start:rel_end]
+                        self._accumulate_chunk(self.capture_idx, self.capture_idx + take, data[rel_start:rel_end])
                         self.capture_idx += take
                         abs_ptr += take
 
