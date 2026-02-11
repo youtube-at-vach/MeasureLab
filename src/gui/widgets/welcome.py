@@ -132,7 +132,7 @@ class WelcomeWidget(QWidget):
         # Version Display
         version_label = QLabel(f"Version {__version__}")
         version_label.setFont(QFont("Arial", 9))
-        version_label.setStyleSheet("color: #666666;")
+        version_label.setStyleSheet("color: #555555;")
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         text_layout.addWidget(version_label)
 
