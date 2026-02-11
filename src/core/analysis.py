@@ -112,7 +112,7 @@ class AudioCalc:
     """
     Shared audio calculation utilities.
     """
-    MAX_AUDIO_SAMPLES = 500_000_000
+    MAX_AUDIO_SAMPLES = 100_000_000
 
     @staticmethod
     def validate_audio_file_size(filepath):
