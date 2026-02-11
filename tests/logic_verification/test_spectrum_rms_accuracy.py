@@ -2,7 +2,6 @@ import sys
 import numpy as np
 from unittest.mock import MagicMock, patch
 import pytest
-import re
 
 # Mock dependencies
 mock_modules = {

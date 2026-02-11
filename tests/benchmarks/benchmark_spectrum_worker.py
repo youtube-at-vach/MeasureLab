@@ -3,18 +3,13 @@ import timeit
 import numpy as np
 import sys
 import os
-import queue
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # Add repo root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 # Mock sounddevice before importing anything that uses it
 sys.modules['sounddevice'] = MagicMock()
-
-# Mock dependencies before importing SpectrumAnalyzer
-from src.core import audio_engine
-from src.core import calibration
 
 # Mock AudioEngine
 mock_audio_engine = MagicMock()
@@ -28,9 +23,7 @@ mock_calibration.get_spl_offset_db.return_value = 0.0
 mock_audio_engine.calibration = mock_calibration
 
 # Import SpectrumAnalyzer
-from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalysisWorker
-from src.core.fft_manager import fft_manager
-from src.core.analysis import get_cached_window
+from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalysisWorker  # noqa: E402
 
 def benchmark_size(size, multitaper=False, iterations=50):
     # Setup
