@@ -125,71 +125,80 @@ class AudioCalc:
         return scipy.signal.resample_poly(data, up, down)
 
     @staticmethod
-    def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
-        # Check signal length to ensure padding works (3 * (2 * 8 + 1) = 51)
-        if len(signal) <= 51:
+    def _apply_filter(signal, sampling_rate, min_len, sos_factory, on_invalid_sos="bypass"):
+        """
+        Helper to apply SOS filter with length check.
+        sos_factory: callable(nyquist) -> sos. Should return None if filter is invalid.
+        on_invalid_sos: "bypass" (return signal) or "silence" (return zeros).
+        """
+        if len(signal) <= min_len:
             return signal
 
         nyquist = 0.5 * sampling_rate
-        # Ensure valid bounds
-        lowcut = max(0.1, lowcut)
-        highcut = min(nyquist - 1, highcut)
-        if lowcut >= highcut:
-            return np.zeros_like(signal)
+        sos = sos_factory(nyquist)
 
-        # Wn must be a tuple to be hashable for lru_cache
-        Wn = (lowcut / nyquist, highcut / nyquist)
-        sos = _get_butter_sos(8, Wn, "bandpass")
+        if sos is None:
+            if on_invalid_sos == "silence":
+                return np.zeros_like(signal)
+            else:
+                return signal
+
         return sosfiltfilt(sos, signal)
+
+    @staticmethod
+    def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
+        # Check signal length to ensure padding works (3 * (2 * 8 + 1) = 51)
+        def get_sos(nyquist):
+            l = max(0.1, lowcut)
+            h = min(nyquist - 1, highcut)
+            if l >= h:
+                return None
+            # Wn must be a tuple to be hashable for lru_cache
+            Wn = (l / nyquist, h / nyquist)
+            return _get_butter_sos(8, Wn, "bandpass")
+
+        return AudioCalc._apply_filter(signal, sampling_rate, 51, get_sos, on_invalid_sos="silence")
 
     @staticmethod
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
         # Check signal length to ensure padding works (3 * (2 * 4 + 1) = 27)
-        if len(signal) <= 27:
-            return signal
+        def get_sos(nyquist):
+            c = min(nyquist - 1, max(0.1, cutoff))
+            return _get_butter_sos(8, c / nyquist, "lowpass")
 
-        nyquist = 0.5 * sampling_rate
-        cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = _get_butter_sos(8, cutoff, "lowpass", fs=sampling_rate)
-        return sosfiltfilt(sos, signal)
+        return AudioCalc._apply_filter(signal, sampling_rate, 27, get_sos)
 
     @staticmethod
     def highpass_filter(signal, sampling_rate, cutoff=20.0):
         # Check signal length to ensure padding works (3 * (2 * 4 + 1) = 27)
-        if len(signal) <= 27:
-            return signal
+        def get_sos(nyquist):
+            c = min(nyquist - 1, max(0.1, cutoff))
+            return _get_butter_sos(8, c / nyquist, "highpass")
 
-        nyquist = 0.5 * sampling_rate
-        cutoff = min(nyquist - 1, max(0.1, cutoff))
-        sos = _get_butter_sos(8, cutoff / nyquist, "highpass")
-        return sosfiltfilt(sos, signal)
+        return AudioCalc._apply_filter(signal, sampling_rate, 27, get_sos)
 
     @staticmethod
     def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
         # Check signal length to ensure padding works (3 * (2 * 2 + 1) = 15)
-        if len(signal) <= 15:
-            return signal
+        def get_sos(nyquist):
+            if target_frequency <= 0 or target_frequency >= nyquist:
+                return None
 
-        nyquist = 0.5 * sampling_rate
-        if target_frequency <= 0 or target_frequency >= nyquist:
-            return signal
+            w0 = target_frequency / nyquist
+            bandwidth = w0 / quality_factor
 
-        w0 = target_frequency / nyquist
-        bandwidth = w0 / quality_factor
+            # Validate resulting filter poles
+            w_low = w0 - bandwidth / 2
+            w_high = w0 + bandwidth / 2
 
-        # Validate resulting filter poles
-        # bandwidth is normalized (0-1 range approx, relative to nyquist)
-        # The critical frequencies for bandstop are w0 - bw/2 and w0 + bw/2
-        w_low = w0 - bandwidth / 2
-        w_high = w0 + bandwidth / 2
+            if w_low <= 0 or w_high >= 1:
+                return None
 
-        if w_low <= 0 or w_high >= 1:
-            return signal
+            # Wn must be a tuple to be hashable for lru_cache
+            Wn = (w_low, w_high)
+            return _get_butter_sos(2, Wn, "bandstop")
 
-        # Wn must be a tuple to be hashable for lru_cache
-        Wn = (w_low, w_high)
-        sos = _get_butter_sos(2, Wn, "bandstop")
-        return sosfiltfilt(sos, signal)
+        return AudioCalc._apply_filter(signal, sampling_rate, 15, get_sos)
 
     @staticmethod
     def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
