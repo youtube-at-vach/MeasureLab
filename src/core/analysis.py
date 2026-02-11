@@ -70,7 +70,7 @@ def _get_a_weighting_curve_from_bytes(data_bytes, dtype_str, shape):
 
 
 @functools.lru_cache(maxsize=32)
-def _get_time_array(N, sampling_rate):
+def _get_time_array(N: int, sampling_rate: float) -> np.ndarray:
     """
     Cached time array generation.
     Returns read-only array to prevent modification.
@@ -84,7 +84,9 @@ def _get_time_array(N, sampling_rate):
 
 
 @functools.lru_cache(maxsize=32)
-def _get_reference_signals(N, sampling_rate, frequency):
+def _get_reference_signals(
+    N: int, sampling_rate: float, frequency: float
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Cached reference sine and cosine waves generation.
     Returns read-only arrays to prevent modification.
