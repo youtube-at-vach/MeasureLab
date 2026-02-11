@@ -1,3 +1,4 @@
+import atexit
 import os
 import queue
 import tempfile
@@ -121,6 +122,9 @@ class RecorderPlayer(MeasurementModule):
         self._write_queue = None
         self._writer_thread = None
 
+        # Cleanup on exit
+        atexit.register(self.cleanup)
+
         # Settings
         self.input_mode = "Stereo"  # Stereo, Left, Right
         self.output_mode = "Stereo"  # Stereo, Left, Right, Mono
@@ -206,6 +210,21 @@ class RecorderPlayer(MeasurementModule):
         self.is_playing = False
         self._check_stop_callback()
 
+    def _remove_temp_file(self):
+        if self._temp_record_file and os.path.exists(self._temp_record_file):
+            try:
+                os.remove(self._temp_record_file)
+            except OSError:
+                pass
+
+    def cleanup(self):
+        """Clean up temporary files and resources on shutdown."""
+        if self.is_recording:
+            # Try to stop cleanly
+            self.stop_recording()
+
+        self._remove_temp_file()
+
     def _file_writer(self):
         """Background thread to write audio chunks to disk."""
         try:
@@ -233,11 +252,7 @@ class RecorderPlayer(MeasurementModule):
 
     def start_recording(self):
         # Cleanup previous temp file
-        if self._temp_record_file and os.path.exists(self._temp_record_file):
-            try:
-                os.remove(self._temp_record_file)
-            except OSError:
-                pass
+        self._remove_temp_file()
 
         # Create new temp file
         fd, self._temp_record_file = tempfile.mkstemp(suffix='.wav')
