@@ -83,6 +83,9 @@ class LinearitySweepWorker(QThread):
             # 100ms settling time is usually enough for electronics, plus buffer latency
             min_wait = 0.2
 
+            # Pre-allocate buffer for data
+            buffer = np.zeros_like(self.module.input_data)
+
             for i, (level_db, direction) in enumerate(zip(full_levels, directions, strict=False)):
                 if not self.is_running:
                     break
@@ -115,16 +118,16 @@ class LinearitySweepWorker(QThread):
                         # Wait for fresh buffer
                         self.wait_interruptible(wait_for_new_data)
 
-                    data = self.module.get_latest_buffer()
+                    self.module.get_latest_buffer_into(buffer)
 
                     # Process
                     if self.module.input_channel == 0:  # Left
-                        sig = data[:, 0]
+                        sig = buffer[:, 0]
                     else:  # Right
-                        if data.shape[1] > 1:
-                            sig = data[:, 1]
+                        if buffer.shape[1] > 1:
+                            sig = buffer[:, 1]
                         else:
-                            sig = data[:, 0]
+                            sig = buffer[:, 0]
 
                     # Lock-in measurement (Signal)
                     mag, phase = AudioCalc.calculate_lockin_measurement(
@@ -253,6 +256,16 @@ class LinearityAnalyzer(MeasurementModule):
 
         # Reconstruct ordered buffer: Oldest data (from idx to end) + Newest data (from 0 to idx)
         return np.concatenate((data[idx:], data[:idx]))
+
+    def get_latest_buffer_into(self, out: np.ndarray) -> None:
+        """Writes the current buffer contents ordered chronologically into `out`."""
+        idx = self.input_index
+        # Part 1: Oldest data (from idx to end)
+        part1_len = self.buffer_size - idx
+        out[:part1_len] = self.input_data[idx:]
+
+        # Part 2: Newest data (from 0 to idx)
+        out[part1_len:] = self.input_data[:idx]
 
     def get_widget(self):
         return LinearityAnalyzerWidget(self)

@@ -30,8 +30,11 @@ class TestLinearitySnrBug(unittest.TestCase):
         mock_module.averaging_count = 1
         mock_module.hysteresis_mode = False
 
-        # Mock get_latest_buffer to return zeros
-        mock_module.get_latest_buffer.return_value = np.zeros((1024, 2))
+        # Mock input_data for zeros_like
+        mock_module.input_data = np.zeros((1024, 2))
+
+        # Mock get_latest_buffer_into to be a no-op (buffer remains zeros)
+        mock_module.get_latest_buffer_into = MagicMock()
 
         # Instantiate Worker
         worker = LinearitySweepWorker(mock_module)
