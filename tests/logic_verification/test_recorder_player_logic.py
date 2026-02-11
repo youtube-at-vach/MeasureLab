@@ -3,8 +3,13 @@ from unittest.mock import MagicMock
 import sys
 import numpy as np
 
-# Mock sounddevice before importing AudioEngine
+# Mock dependencies
 sys.modules['sounddevice'] = MagicMock()
+qt_core = MagicMock()
+qt_core.QThread = MagicMock
+qt_core.pyqtSignal = lambda *args: MagicMock()
+sys.modules['PyQt6.QtCore'] = qt_core
+sys.modules['PyQt6.QtWidgets'] = MagicMock()
 
 from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
 from src.core.audio_engine import AudioEngine  # noqa: E402
@@ -14,6 +19,8 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         self.audio_engine = MagicMock(spec=AudioEngine)
         self.audio_engine.sample_rate = 48000
         self.player = RecorderPlayer(self.audio_engine)
+        # Mock the write queue for tests that expect recording
+        self.player._write_queue = MagicMock()
 
     def test_recording_stereo(self):
         self.player.is_recording = True
@@ -26,8 +33,11 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         self.player.audio_callback(indata, outdata, frames, None, None)
 
-        self.assertEqual(len(self.player.record_buffer), 1)
-        np.testing.assert_array_equal(self.player.record_buffer[0], indata)
+        # Verify data was put into queue instead of buffer
+        self.player._write_queue.put.assert_called_once()
+        args, _ = self.player._write_queue.put.call_args
+        self.assertTrue(np.array_equal(args[0], indata))
+
         self.assertEqual(self.player.recorded_samples, frames)
 
     def test_recording_left(self):
@@ -41,10 +51,13 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         self.player.audio_callback(indata, outdata, frames, None, None)
 
-        self.assertEqual(len(self.player.record_buffer), 1)
+        # Verify data was put into queue
+        self.player._write_queue.put.assert_called_once()
+        args, _ = self.player._write_queue.put.call_args
         # Should be indata[:, 0:1] (keep 2D)
         expected = indata[:, 0:1]
-        np.testing.assert_array_equal(self.player.record_buffer[0], expected)
+        self.assertTrue(np.array_equal(args[0], expected))
+
         self.assertEqual(self.player.recorded_samples, frames)
 
     def test_recording_right(self):
@@ -58,10 +71,13 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         self.player.audio_callback(indata, outdata, frames, None, None)
 
-        self.assertEqual(len(self.player.record_buffer), 1)
+        # Verify data was put into queue
+        self.player._write_queue.put.assert_called_once()
+        args, _ = self.player._write_queue.put.call_args
         # Should be indata[:, 1:2] (keep 2D)
         expected = indata[:, 1:2]
-        np.testing.assert_array_equal(self.player.record_buffer[0], expected)
+        self.assertTrue(np.array_equal(args[0], expected))
+
         self.assertEqual(self.player.recorded_samples, frames)
 
     def test_playback_stereo(self):
