@@ -24,6 +24,26 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 
+WRITE_BLOCK_SIZE = 65536
+
+
+def write_buffered(file_handle, chunks):
+    temp_buffer = []
+    temp_samples = 0
+    for chunk in chunks:
+        temp_buffer.append(chunk)
+        temp_samples += len(chunk)
+
+        if temp_samples >= WRITE_BLOCK_SIZE:
+            block = np.concatenate(temp_buffer)
+            file_handle.write(block)
+            temp_buffer = []
+            temp_samples = 0
+
+    if temp_buffer:
+        block = np.concatenate(temp_buffer)
+        file_handle.write(block)
+
 
 class FileLoadWorker(QThread):
     finished = pyqtSignal(bool, object, str)  # success, data, message
@@ -85,10 +105,10 @@ class FileSaveWorker(QThread):
             channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
 
             # Write chunks sequentially to avoid large memory allocation
+            # Optimize by buffering small chunks into larger blocks
             with sf.SoundFile(self.filepath, mode='w', samplerate=self.sample_rate,
                               channels=channels, format=self.format, subtype=self.subtype) as f:
-                for chunk in self.record_buffer:
-                    f.write(chunk)
+                write_buffered(f, self.record_buffer)
 
             self.finished.emit(True, f"Saved: {self.filepath}")
         except Exception as e:
@@ -175,10 +195,10 @@ class RecorderPlayer(MeasurementModule):
             channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
 
             # Write chunks sequentially to avoid large memory allocation
+            # Optimize by buffering small chunks into larger blocks
             with sf.SoundFile(filepath, mode='w', samplerate=self.audio_engine.sample_rate,
                               channels=channels, format=format, subtype=subtype) as f:
-                for chunk in self.record_buffer:
-                    f.write(chunk)
+                write_buffered(f, self.record_buffer)
 
             return True, f"Saved: {filepath}"
         except Exception as e:
