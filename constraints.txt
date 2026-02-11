@@ -1,7 +1,7 @@
 # Pinned versions for reproducible installs. Adjust when bumping Python/OS targets.
 # Python target: 3.10 (per CI workflows).
 
-numpy==2.2.6
+numpy==1.26.4
 scipy==1.15.3
 sounddevice==0.5.5
 PyQt6==6.10.2
