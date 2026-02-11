@@ -470,7 +470,7 @@ class LinearityAnalyzerWidget(QWidget):
         from PyQt6.QtWidgets import QCheckBox
         self.hyst_check = QCheckBox(tr("Enable Hysteresis Sweep"))
         self.hyst_check.toggled.connect(lambda v: setattr(self.module, "hysteresis_mode", v))
-        io_form.addRow("", self.hyst_check)
+        io_form.addRow(self.hyst_check)
 
         io_group.setLayout(io_form)
         config_layout.addWidget(io_group)

@@ -168,9 +168,13 @@ class ProcessingWorker(QThread):
                     # For safety with "arbitrary" files, let's implement simple OLA or use oaconvolve.
                     # oaconvolve is efficient.
 
-                    # Check file size
-                    if info.frames < 10 * 60 * sr:  # < 10 mins
-                        # Load all
+                    # Determine safe memory limit
+                    # 100 MB safe limit for "Load All"
+                    SAFE_MEMORY_LIMIT = 100 * 1024 * 1024
+                    required_memory = info.frames * info.channels * 4  # float32 = 4 bytes
+
+                    if required_memory < SAFE_MEMORY_LIMIT:
+                        # Load all (Fast Path)
                         data = infile.read(dtype="float32")
                         self.progress.emit(25)
 
@@ -215,20 +219,132 @@ class ProcessingWorker(QThread):
                         self.progress.emit(100)
 
                     else:
-                        # Chunk processing (Naive implementation without proper overlap-add state for now,
-                        # just to avoid memory crash, but it will click at boundaries.
-                        # Implementing proper OLA is complex for this snippet.
-                        # Let's trust oaconvolve with large blocks?
-                        # Actually, `scipy.signal.convolve` doesn't support streaming state.
+                        # Chunked Processing (Overlap-Add)
+                        # This avoids loading huge files into memory.
+                        self.progress.emit(25)
 
-                        # Fallback: Just limit to 10 mins for now or warn.
-                        # Or implementing a basic Overlap-Save.
+                        CHUNK_SIZE = 65536  # Process in 64k frame chunks
+                        channels = info.channels
+                        total_frames = info.frames
 
-                        # Let's try loading all. Most WAVs are short.
-                        # If huge, we risk MemoryError.
+                        # Initialize overlap buffers
+                        # Kernel length M. Overlap size M-1.
+                        M = len(kernel)
+                        overlap_buffer = np.zeros((M - 1, channels), dtype="float32")
 
-                        self.finished.emit(False, tr("File too large (> 10 mins) for current implementation."))
-                        return
+                        # Parameters for mode='same' slicing
+                        delay = (M - 1) // 2
+                        samples_to_skip = delay
+                        samples_written = 0
+
+                        # RMS Estimation (if needed)
+                        global_gain = 1.0
+                        if self.normalize_rms:
+                            # Estimate using first 10 seconds
+                            preview_frames = min(total_frames, 10 * sr)
+                            preview_data = infile.read(frames=preview_frames, dtype="float32")
+                            infile.seek(0)  # Reset
+
+                            if preview_data.ndim == 1:
+                                input_rms_sq = np.mean(np.square(preview_data))
+                                out_preview = signal.oaconvolve(preview_data, kernel, mode="same")
+                                output_rms_sq = np.mean(np.square(out_preview))
+                            else:
+                                input_rms_sq = np.mean(np.square(preview_data)) # Average across channels? Or per channel? Usually average power.
+                                # Simple average power
+                                out_preview = signal.oaconvolve(preview_data[:, 0], kernel, mode="same")
+                                output_rms_sq = np.mean(np.square(out_preview))
+
+                            if output_rms_sq > 0 and input_rms_sq > 0:
+                                global_gain = np.sqrt(input_rms_sq / output_rms_sq)
+
+                        # Process Loop
+                        processed_frames = 0
+
+                        while processed_frames < total_frames:
+                            # Read chunk
+                            chunk = infile.read(frames=CHUNK_SIZE, dtype="float32")
+                            if len(chunk) == 0:
+                                break
+
+                            current_chunk_len = len(chunk)
+
+                            # Ensure 2D
+                            if chunk.ndim == 1:
+                                chunk = chunk[:, np.newaxis]
+
+                            # Output buffer for this chunk (linear convolution part)
+                            # Length L
+                            out_chunk = np.zeros((current_chunk_len, channels), dtype="float32")
+
+                            for ch in range(channels):
+                                ch_data = chunk[:, ch]
+                                # Convolve chunk with kernel (full mode)
+                                # Returns L + M - 1
+                                conv_res = signal.fftconvolve(ch_data, kernel, mode="full")
+
+                                # Add overlap from previous block
+                                conv_res[:M-1] += overlap_buffer[:, ch]
+
+                                # Save new overlap (last M-1 samples)
+                                overlap_buffer[:, ch] = conv_res[current_chunk_len:]
+
+                                # Valid linear convolution part for this step
+                                out_chunk[:, ch] = conv_res[:current_chunk_len]
+
+                            # Flatten if mono output needed?
+                            # If input was mono, chunk is (N, 1), output is (N, 1).
+                            # If input was stereo, chunk is (N, 2), output is (N, 2).
+
+                            # Handle mode='same' slicing (discard initial samples)
+                            start_idx = 0
+                            end_idx = current_chunk_len
+
+                            if samples_to_skip > 0:
+                                skip_now = min(samples_to_skip, current_chunk_len)
+                                start_idx += skip_now
+                                samples_to_skip -= skip_now
+
+                            if start_idx < end_idx:
+                                to_write = out_chunk[start_idx:end_idx]
+
+                                # Normalize
+                                if global_gain != 1.0:
+                                    to_write *= global_gain
+
+                                if channels == 1:
+                                    to_write = to_write.flatten()
+
+                                outfile.write(to_write)
+                                samples_written += len(to_write)
+
+                            processed_frames += current_chunk_len
+
+                            # Update progress
+                            if total_frames > 0:
+                                progress_pct = 25 + int(65 * processed_frames / total_frames)
+                                self.progress.emit(progress_pct)
+
+                        # Flush tail (from overlap buffer) to complete N samples
+                        remaining = total_frames - samples_written
+                        if remaining > 0:
+                            # We need 'remaining' samples from the beginning of overlap_buffer
+                            # (because overlap_buffer contains the tail of the convolution stream, which corresponds to the "future" relative to input end)
+                            # Since we are shifting back by 'delay', we need these samples.
+
+                            to_flush = overlap_buffer[:remaining]
+
+                            if global_gain != 1.0:
+                                to_flush *= global_gain
+
+                            if channels == 1:
+                                to_flush = to_flush.flatten()
+
+                            outfile.write(to_flush)
+                            samples_written += len(to_flush)
+
+                        self.progress.emit(90)
+                        self.progress.emit(100)
 
             self.finished.emit(True, tr("Processing Complete."))
 

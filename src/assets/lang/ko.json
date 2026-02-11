@@ -1104,5 +1104,10 @@
     "No data available.": "데이터 없음.",
     "Not enough data to calibrate. Please wait.": "교정할 데이터가 부족합니다. 기다려 주세요.",
     "Stored 1PPS Cal: 0.000 ppm": "저장된 1PPS 교정: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "저장된 1PPS 교정: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "저장된 1PPS 교정: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "현재 오프셋: {0:+.3f} ppm",
+    "Cutoff Freq (Hz):": "차단 주파수 (Hz):",
+    "High Pass Filter (HPF)": "하이패스 필터 (HPF)",
+    "Low Pass Filter (LPF)": "로우패스 필터 (LPF)",
+    "Order:": "차수:"
 }

@@ -1,6 +1,7 @@
 import functools
 import math
 import numpy as np
+import soundfile as sf
 from scipy import signal as scipy_signal, optimize
 
 
@@ -95,11 +96,34 @@ def _get_reference_signals(N, sampling_rate, frequency):
     return sin_ref, cos_ref
 
 
+@functools.lru_cache(maxsize=32)
+def _get_resample_filter(up, down, window_type=('kaiser', 5.0)):
+    max_rate = max(up, down)
+    f_c = 1. / max_rate
+    half_len = 10 * max_rate
+    return scipy_signal.firwin(2 * half_len + 1, f_c, window=window_type)
+
+
 class AudioCalc:
     """
     Shared audio calculation utilities.
     """
     MAX_AUDIO_SAMPLES = 500_000_000
+
+    @staticmethod
+    def validate_audio_file_size(filepath):
+        """
+        Validates that the audio file size (total samples) does not exceed MAX_AUDIO_SAMPLES.
+        Returns (True, "") if valid, or (False, error_message) if invalid.
+        """
+        try:
+            info = sf.info(filepath)
+            total_samples = info.frames * info.channels
+            if total_samples > AudioCalc.MAX_AUDIO_SAMPLES:
+                return False, f"File too large: {total_samples} samples (Max: {AudioCalc.MAX_AUDIO_SAMPLES})"
+            return True, ""
+        except Exception as e:
+            return False, f"Failed to check file size: {e}"
 
     @staticmethod
     def resample(data, source_sr, target_sr):
@@ -120,7 +144,8 @@ class AudioCalc:
 
         # resample_poly assumes axis=0 is the time axis, which matches (samples, channels)
         # It handles both 1D and 2D arrays correctly.
-        return scipy_signal.resample_poly(data, up, down)
+        window = _get_resample_filter(up, down)
+        return scipy_signal.resample_poly(data, up, down, window=window)
 
     @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
@@ -710,6 +735,7 @@ class AudioCalc:
         idx_mins = np.searchsorted(freqs, start_freqs, side="left")
         idx_maxs = np.searchsorted(freqs, end_freqs, side="right")
 
+        peak_indices = []
         for i in range(len(tone_freqs_arr)):
             idx_min = idx_mins[i]
             idx_max = idx_maxs[i]
@@ -719,17 +745,27 @@ class AudioCalc:
                 # argmax on empty slice raises error, but checked idx_max > idx_min
                 local_peak_idx_rel = np.argmax(subset_mag)
                 peak_idx = idx_min + local_peak_idx_rel
+                peak_indices.append(peak_idx)
 
-                # Mark bins around peak as tone
-                # Blackman-Harris main lobe is approx +/- 4 bins
-                start = max(0, peak_idx - 4)
-                end = min(len(mag), peak_idx + 5)
-                is_tone_bin[start:end] = True
+        # Mark bins around peak as tone
+        # Blackman-Harris main lobe is approx +/- 4 bins
+        if peak_indices:
+            peak_indices_arr = np.array(peak_indices)
+            offsets = np.arange(-4, 5)
+            # Broadcast to shape (N_peaks, 9)
+            mask_indices = peak_indices_arr[:, None] + offsets[None, :]
+            # Flatten
+            mask_indices_flat = mask_indices.ravel()
+            # Clip/Filter valid indices
+            mask_indices_valid = mask_indices_flat[(mask_indices_flat >= 0) & (mask_indices_flat < len(mag))]
+            is_tone_bin[mask_indices_valid] = True
 
         # Calculate Energies
         # We can sum squares directly
-        tone_energy = np.sum(mag[is_tone_bin] ** 2)
-        noise_energy = np.sum(mag[~is_tone_bin] ** 2)
+        mag_sq = mag**2
+        tone_energy = np.sum(mag_sq[is_tone_bin])
+        # Use reduce with where to avoid huge temporary allocation for noise bins
+        noise_energy = np.add.reduce(mag_sq, where=~is_tone_bin)
 
         if tone_energy <= 1e-12:
             return {"tdn": 0.0, "tdn_db": -100.0}

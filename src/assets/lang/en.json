@@ -653,7 +653,6 @@
     "LPF (Hz):": "LPF (Hz):",
     "No calibration map content.": "No calibration map content.",
     "Failed to read input file: {0}": "Failed to read input file: {0}",
-    "File too large (> 10 mins) for current implementation.": "File too large (> 10 mins) for current implementation.",
     "Processing Complete.": "Processing Complete.",
     "Status: No Map Loaded": "Status: No Map Loaded",
     "Reload from Memory": "Reload from Memory",
@@ -1080,10 +1079,16 @@
     "A-Weighted": "A-Weighted",
     "Calibrate from Current": "Calibrate from Current",
     "Calibration saved.": "Calibration saved.",
+    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm",
     "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?": "Current Measured Deviation: {0:+.3f} ppm\n\nThis will set the 1PPS calibration parameter.\nNote: This does not affect the Frequency Counter calibration.\n\nSave this calibration?",
     "Monitor is not running.": "Monitor is not running.",
     "No data available.": "No data available.",
     "Not enough data to calibrate. Please wait.": "Not enough data to calibrate. Please wait.",
     "Stored 1PPS Cal: 0.000 ppm": "Stored 1PPS Cal: 0.000 ppm",
-    "Stored 1PPS Cal: {0:+.3f} ppm": "Stored 1PPS Cal: {0:+.3f} ppm"
+    "Stored 1PPS Cal: {0:+.3f} ppm": "Stored 1PPS Cal: {0:+.3f} ppm",
+    "Current Offset: {0:+.3f} ppm": "Current Offset: {0:+.3f} ppm",
+    "Cutoff Freq (Hz):": "Cutoff Freq (Hz):",
+    "High Pass Filter (HPF)": "High Pass Filter (HPF)",
+    "Low Pass Filter (LPF)": "Low Pass Filter (LPF)",
+    "Order:": "Order:"
 }
