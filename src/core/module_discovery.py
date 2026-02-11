@@ -33,7 +33,14 @@ def discover_modules(directory: str, base_module_path: str) -> Dict[str, Tuple[s
 
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                tree = ast.parse(f.read(), filename=filepath)
+                content = f.read()
+
+            # Optimization: Skip parsing if "MeasurementModule" is not in the file content.
+            # This avoids expensive AST parsing for utility files or non-modules.
+            if "MeasurementModule" not in content:
+                continue
+
+            tree = ast.parse(content, filename=filepath)
 
             for node in tree.body:
                 if isinstance(node, ast.ClassDef):
