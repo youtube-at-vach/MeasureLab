@@ -209,6 +209,7 @@ class CalibrationManager:
         if "spl_offset_db" in p:
             self.spl_offset_db = p["spl_offset_db"]
 
+        self.last_profile = name  # Update current profile name before saving
         self.save()  # Persist as current
 
     def delete_profile(self, name):
