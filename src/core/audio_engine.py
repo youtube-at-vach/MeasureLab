@@ -9,6 +9,8 @@ from src.core.calibration import CalibrationManager
 
 import time
 
+_NOT_SET = object()
+
 
 class _DummyTime:
     """Helper class to mock sounddevice time object in virtual stream."""
@@ -167,6 +169,73 @@ class AudioEngine:
         # Error tracking
         self.last_callback_error = None
         self.callback_error_count = 0
+
+    def configure(
+        self,
+        input_device=_NOT_SET,
+        output_device=_NOT_SET,
+        sample_rate=_NOT_SET,
+        block_size=_NOT_SET,
+        input_channel_mode=_NOT_SET,
+        output_channel_mode=_NOT_SET,
+    ):
+        """
+        Configures multiple engine parameters at once.
+        Values defaulted to _NOT_SET are ignored.
+        """
+        restart_required = False
+
+        # Devices
+        if input_device is not _NOT_SET or output_device is not _NOT_SET:
+            new_in = input_device if input_device is not _NOT_SET else self.input_device
+            new_out = output_device if output_device is not _NOT_SET else self.output_device
+
+            if new_in != self.input_device or new_out != self.output_device:
+                self.input_device = new_in
+                self.output_device = new_out
+                self.logger.info(f"Set devices: Input={new_in}, Output={new_out}")
+                restart_required = True
+
+        # Sample Rate
+        if sample_rate is not _NOT_SET:
+            if self.sample_rate != sample_rate:
+                self.sample_rate = sample_rate
+                self.logger.info(f"Set sample rate: {sample_rate}")
+                restart_required = True
+
+        # Block Size
+        if block_size is not _NOT_SET:
+            if self.block_size != block_size:
+                self.block_size = block_size
+                self.logger.info(f"Set block size: {block_size}")
+                restart_required = True
+
+        # Channel Mode
+        if input_channel_mode is not _NOT_SET or output_channel_mode is not _NOT_SET:
+            new_in_mode = (
+                input_channel_mode
+                if input_channel_mode is not _NOT_SET
+                else self.input_channel_mode
+            )
+            new_out_mode = (
+                output_channel_mode
+                if output_channel_mode is not _NOT_SET
+                else self.output_channel_mode
+            )
+
+            if (
+                new_in_mode != self.input_channel_mode
+                or new_out_mode != self.output_channel_mode
+            ):
+                self.input_channel_mode = new_in_mode
+                self.output_channel_mode = new_out_mode
+                self.logger.info(
+                    f"Set channel modes: Input={new_in_mode}, Output={new_out_mode}"
+                )
+                restart_required = True
+
+        if self.is_active() and restart_required:
+            self._restart_stream()
 
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""

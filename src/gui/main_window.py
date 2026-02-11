@@ -211,33 +211,38 @@ class MainWindow(QMainWindow):
                     self.logger.warning(f"Saved output device '{last_out}' not found, using default.")
 
         try:
-            self.audio_engine.set_devices(in_id, out_id)
-
-            # Apply other settings
             sr = audio_cfg.get("sample_rate", 48000)
-            self.audio_engine.set_sample_rate(sr)
-
             bs = audio_cfg.get("block_size", 1024)
-            self.audio_engine.set_block_size(bs)
-
             in_ch = audio_cfg.get("input_channels", "stereo")
             out_ch = audio_cfg.get("output_channels", "stereo")
-            self.audio_engine.set_channel_mode(in_ch, out_ch)
+
+            self.audio_engine.configure(
+                input_device=in_id,
+                output_device=out_id,
+                sample_rate=sr,
+                block_size=bs,
+                input_channel_mode=in_ch,
+                output_channel_mode=out_ch,
+            )
 
             # Apply PipeWire/JACK resident mode after devices + format are configured.
-            self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
+            self.audio_engine.set_pipewire_jack_resident(
+                self.config_manager.get_pipewire_jack_resident()
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to set devices/settings: {e}")
             # Try default if specific failed
             try:
-                self.audio_engine.set_devices(None, None)
+                self.audio_engine.configure(input_device=None, output_device=None)
             except Exception:
                 pass
 
             # Even if device selection failed, honor resident setting best-effort.
             try:
-                self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
+                self.audio_engine.set_pipewire_jack_resident(
+                    self.config_manager.get_pipewire_jack_resident()
+                )
             except Exception:
                 pass
 
