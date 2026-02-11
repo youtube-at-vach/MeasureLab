@@ -228,12 +228,129 @@ class AudioCalc:
         return AudioCalc._apply_filter(signal, sampling_rate, 15, get_sos)
 
     @staticmethod
+    def _sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer):
+        """
+        Calculates the residual MSE for a single frequency f using Sine Fitting.
+        Uses pre-allocated buffers M, fitted_buffer, residual_buffer.
+        """
+        w = 2 * np.pi * f
+
+        # Fill pre-allocated M columns
+        np.sin(w * t, out=M[:, 0])
+        np.cos(w * t, out=M[:, 1])
+        # M[:, 2] is already 1.0
+
+        # Use Normal Equations
+        try:
+            MT = M.T
+            coeffs = np.linalg.solve(MT @ M, MT @ signal)
+        except np.linalg.LinAlgError:
+            coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+
+        np.matmul(M, coeffs, out=fitted_buffer)
+        np.subtract(signal, fitted_buffer, out=residual_buffer)
+        np.square(residual_buffer, out=residual_buffer)
+        return np.mean(residual_buffer)
+
+    @staticmethod
+    def _perform_coarse_search(signal, t, grid):
+        """
+        Performs a coarse grid search for the best frequency using vectorized
+        sufficient statistics accumulation.
+        Returns the best frequency from the grid.
+        """
+        N = len(signal)
+        K = len(grid)
+        # Accumulators for sufficient statistics
+        # G terms: s2, c2, sc, s, c (sum of squares/products)
+        acc_G = np.zeros((K, 5), dtype=np.float64)
+        # v terms: sig_s, sig_c (dot products with signal)
+        acc_v = np.zeros((K, 2), dtype=np.float64)
+
+        # Constant term for the '1' column
+        sum_sig = np.sum(signal)
+
+        # Chunked processing to limit memory usage
+        chunk_size = 16384
+        two_pi = 2 * np.pi
+
+        for i in range(0, N, chunk_size):
+            end = min(i + chunk_size, N)
+            t_chunk = t[i:end]
+            sig_chunk = signal[i:end]
+
+            # Compute phases: (K, chunk_len)
+            phases = np.outer(grid, t_chunk) * two_pi
+
+            s_chunk = np.sin(phases)
+            c_chunk = np.cos(phases)
+
+            # Update G accumulators
+            acc_G[:, 0] += np.sum(s_chunk**2, axis=1)
+            acc_G[:, 1] += np.sum(c_chunk**2, axis=1)
+            acc_G[:, 2] += np.sum(s_chunk * c_chunk, axis=1)
+            acc_G[:, 3] += np.sum(s_chunk, axis=1)
+            acc_G[:, 4] += np.sum(c_chunk, axis=1)
+
+            # Update v accumulators
+            acc_v[:, 0] += s_chunk @ sig_chunk
+            acc_v[:, 1] += c_chunk @ sig_chunk
+
+        best_score = -1.0
+        best_coarse = grid[0] if len(grid) > 0 else 0.0
+
+        # Reusing arrays for system solution
+        G = np.empty((3, 3), dtype=np.float64)
+        v = np.empty(3, dtype=np.float64)
+
+        # Fill constant part of G
+        G[2, 2] = N
+        v[2] = sum_sig
+
+        for k in range(K):
+            s2, c2, sc, s_sum, c_sum = acc_G[k]
+            sig_s, sig_c = acc_v[k]
+
+            G[0, 0] = s2
+            G[0, 1] = sc
+            G[0, 2] = s_sum
+            G[1, 0] = sc
+            G[1, 1] = c2
+            G[1, 2] = c_sum
+            G[2, 0] = s_sum
+            G[2, 1] = c_sum
+            # G[2, 2] is N (set outside loop)
+
+            v[0] = sig_s
+            v[1] = sig_c
+            # v[2] is sum_sig (set outside loop)
+
+            try:
+                x = np.linalg.solve(G, v)
+                score = np.dot(x, v)
+            except np.linalg.LinAlgError:
+                x, _, _, _ = np.linalg.lstsq(G, v, rcond=None)
+                score = np.dot(x, v)
+
+            if score > best_score:
+                best_score = score
+                best_coarse = grid[k]
+
+        return best_coarse
+
+    @staticmethod
     def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
         """
         Optimizes frequency estimate using Sine Fitting (minimizing residual RMS).
         """
         N = len(signal)
         if N == 0 or sampling_rate <= 0:
+            if return_full:
+                return freq_guess, None, None
+            return freq_guess
+
+        if not np.isfinite(freq_guess):
+            # We can't do full FFT here easily without refactoring, so we rely on caller or return
             if return_full:
                 return freq_guess, None, None
             return freq_guess
@@ -245,47 +362,19 @@ class AudioCalc:
         M[:, 2] = 1.0  # The 'ones' column is constant
 
         # Pre-allocate working buffers for fitting to avoid loop allocations
-        # These are reused in every iteration of get_residual_rms
-        # Optimization: These buffers prevent N-sized allocations inside the minimization loop
         fitted_buffer = np.empty(N, dtype=t.dtype)
         residual_buffer = np.empty(N, dtype=t.dtype)
 
         def get_residual_mse(f):
-            w = 2 * np.pi * f
-
-            # Fill pre-allocated M columns
-            np.sin(w * t, out=M[:, 0])
-            np.cos(w * t, out=M[:, 1])
-
-            # Use Normal Equations
-            try:
-                MT = M.T
-                coeffs = np.linalg.solve(MT @ M, MT @ signal)
-            except np.linalg.LinAlgError:
-                coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
-
-            np.matmul(M, coeffs, out=fitted_buffer)
-            np.subtract(signal, fitted_buffer, out=residual_buffer)
-            np.square(residual_buffer, out=residual_buffer)
-            return np.mean(residual_buffer)
+            return AudioCalc._sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer)
 
         # Search around guess
-        # The objective function has local minima spaced by approx sampling_rate/N.
-        # We need to constrain the search to the main lobe, roughly +/- sampling_rate/N.
         bin_width = sampling_rate / N
         search_width = max(5.0 * bin_width, 5.0)
-
-        if not np.isfinite(freq_guess):
-             # We can't do full FFT here easily without refactoring, so we rely on caller or return
-            if return_full:
-                return freq_guess, None, None
-            return freq_guess
 
         bounds = (freq_guess - search_width, freq_guess + search_width)
 
         # Pass 1: Coarse Search (Grid Search)
-        # Avoid local minima (side lobes) by evaluating on a grid
-        # Main lobe width is approx 2 * bin_width. Step size of bin_width/2 guarantees hitting it.
         step = max(bin_width / 2.0, 0.1)  # at least 0.1Hz step
         if bounds[1] > bounds[0]:
             grid = np.arange(bounds[0], bounds[1] + step, step)
@@ -295,108 +384,13 @@ class AudioCalc:
         # Filter negative frequencies
         grid = grid[grid > 0]
 
-        best_coarse = freq_guess
-
         if len(grid) > 0:
-            # Vectorized implementation of grid search
-            # We want to minimize Residual MSE = mean((signal - fitted)^2)
-            # This is equivalent to maximizing the energy of the projection of signal onto the basis.
-            # Basis at freq f: [sin(2pi*f*t), cos(2pi*f*t), 1]
-            # We solve M_f.T @ M_f @ x = M_f.T @ signal for x
-            # Then score = x.T @ (M_f.T @ signal) = x.T @ v_f
-
-            K = len(grid)
-            # Accumulators for sufficient statistics
-            # G terms: s2, c2, sc, s, c (sum of squares/products)
-            acc_G = np.zeros((K, 5), dtype=np.float64)
-            # v terms: sig_s, sig_c (dot products with signal)
-            acc_v = np.zeros((K, 2), dtype=np.float64)
-
-            # Constant term for the '1' column
-            sum_sig = np.sum(signal)
-
-            # Chunked processing to limit memory usage
-            # 16384 * 8 bytes * K (approx 20) is small enough for L2 cache
-            chunk_size = 16384
-
-            # Pre-compute constants
-            two_pi = 2 * np.pi
-
-            for i in range(0, N, chunk_size):
-                end = min(i + chunk_size, N)
-                t_chunk = t[i:end]
-                sig_chunk = signal[i:end]
-
-                # Compute phases: (K, chunk_len)
-                # Outer product: grid (K,) * t_chunk (chunk_len,)
-                phases = np.outer(grid, t_chunk) * two_pi
-
-                s_chunk = np.sin(phases)
-                c_chunk = np.cos(phases)
-
-                # Update G accumulators
-                acc_G[:, 0] += np.sum(s_chunk**2, axis=1)
-                acc_G[:, 1] += np.sum(c_chunk**2, axis=1)
-                acc_G[:, 2] += np.sum(s_chunk * c_chunk, axis=1)
-                acc_G[:, 3] += np.sum(s_chunk, axis=1)
-                acc_G[:, 4] += np.sum(c_chunk, axis=1)
-
-                # Update v accumulators
-                # s_chunk @ sig_chunk -> (K, chunk) @ (chunk,) -> (K,)
-                acc_v[:, 0] += s_chunk @ sig_chunk
-                acc_v[:, 1] += c_chunk @ sig_chunk
-
-            # Solve small linear systems for each frequency
-            best_score = -1.0
-
-            # Reusing arrays for system solution
-            G = np.empty((3, 3), dtype=np.float64)
-            v = np.empty(3, dtype=np.float64)
-
-            # Fill constant part of G
-            G[2, 2] = N
-            v[2] = sum_sig
-
-            for k in range(K):
-                s2, c2, sc, s_sum, c_sum = acc_G[k]
-                sig_s, sig_c = acc_v[k]
-
-                G[0, 0] = s2
-                G[0, 1] = sc
-                G[0, 2] = s_sum
-                G[1, 0] = sc
-                G[1, 1] = c2
-                G[1, 2] = c_sum
-                G[2, 0] = s_sum
-                G[2, 1] = c_sum
-                # G[2, 2] is N (set outside loop)
-
-                v[0] = sig_s
-                v[1] = sig_c
-                # v[2] is sum_sig (set outside loop)
-
-                try:
-                    # Solve Gx = v
-                    # x = inv(G) * v
-                    # score = x.T * v
-
-                    # solve is generally faster/more stable than explicit inv
-                    # But for 3x3, maybe overhead is dominated by Python?
-                    # Batch solving might be faster but K is small (20-100).
-                    x = np.linalg.solve(G, v)
-                    score = np.dot(x, v)
-                except np.linalg.LinAlgError:
-                    # Fallback for singular matrix
-                    x, _, _, _ = np.linalg.lstsq(G, v, rcond=None)
-                    score = np.dot(x, v)
-
-                if score > best_score:
-                    best_score = score
-                    best_coarse = grid[k]
+            best_coarse = AudioCalc._perform_coarse_search(signal, t, grid)
+        else:
+            best_coarse = freq_guess
 
         # Pass 2: Fine Search (Zoom in)
-        # Use bounded minimization around the best grid point
-        zoom_width = step * 1.5 # Overlap slightly
+        zoom_width = step * 1.5
         bounds_fine = (max(0.1, best_coarse - zoom_width), best_coarse + zoom_width)
         res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={'xatol': 1e-14})
         best_freq = res_fine.x
