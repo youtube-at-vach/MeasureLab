@@ -733,18 +733,8 @@ class OnePPSMonitorWidget(QWidget):
 
             # Effective Rate
             nominal = self.module.nominal_rate
-            eff_rate = nominal * (1.0 + last_cp / 1e6) # last_cp is in PPM internally? 
-            # WAIT. last_cp derived from cp_plot, which is SCALED. 
-            # Logic error in previous step fixed implicitly here if I check carefully.
-            # NO: get_history_arrays returns PPM arrays.
-            # ip_plot = ip * scale.
-            # If scale=1e-6 (Seconds), ip_plot is in seconds.
-            # then last_cp is in seconds.
-            # Formula was: eff_rate = nominal * (1.0 + last_cp / 1e6) assuming last_cp is PPM.
-            # If last_cp is seconds, formula is wrong.
-            # Let's fix this robustness: use internal buffer for calculation, or unscale.
 
-            # Better: use the raw buffer values `ip`, `cp` which are always PPM.
+            # Use raw buffer values (always PPM) to calculate effective rate
             raw_cp = cp[-1]
             eff_rate = nominal * (1.0 + raw_cp / 1e6)
             self.lbl_rate.setText(f"Rate: {eff_rate:.4f} Hz")
