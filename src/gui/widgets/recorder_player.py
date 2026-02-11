@@ -35,6 +35,12 @@ class FileLoadWorker(QThread):
 
     def run(self):
         try:
+            # Validate file size
+            is_valid, msg = AudioCalc.validate_audio_file_size(self.filepath)
+            if not is_valid:
+                self.finished.emit(False, None, msg)
+                return
+
             # First read basic info to check length/sr
             info = sf.info(self.filepath)
             file_sr = info.samplerate
@@ -133,6 +139,10 @@ class RecorderPlayer(MeasurementModule):
     # Deprecated synchronous load, kept for compatibility if needed, but UI should use worker
     def load_file(self, filepath):
         try:
+            is_valid, msg = AudioCalc.validate_audio_file_size(filepath)
+            if not is_valid:
+                return False, msg
+
             data, file_sr = sf.read(filepath, always_2d=True)
             engine_sr = self.audio_engine.sample_rate
 

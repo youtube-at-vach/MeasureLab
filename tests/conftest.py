@@ -25,6 +25,16 @@ except (OSError, ImportError):
     sd.check_output_settings = MagicMock(return_value=True)
     sys.modules["sounddevice"] = sd
 
+# Mock soundfile if not available
+try:
+    import soundfile # noqa: F401
+except (OSError, ImportError):
+    sf = MagicMock()
+    # Basic mocks to prevent attribute errors on import or simple usage
+    sf.read.return_value = (MagicMock(), 48000)
+    sf.info.return_value = MagicMock(frames=0, channels=1, samplerate=48000)
+    sys.modules["soundfile"] = sf
+
 
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_test_config():

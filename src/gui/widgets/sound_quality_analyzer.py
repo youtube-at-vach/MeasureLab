@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.analysis import AudioCalc
 
 # --- Analysis Worker ---
 
@@ -43,6 +44,12 @@ class AnalysisWorker(QThread):
     def run(self):
         try:
             self.progress_update.emit(0, tr("Loading file..."))
+
+            is_valid, msg = AudioCalc.validate_audio_file_size(self.file_path)
+            if not is_valid:
+                self.error_occurred.emit(msg)
+                return
+
             data, samplerate = sf.read(self.file_path)
 
             # 1. Prepare Playback Data (at target_sr, e.g. 44.1k or 48k)

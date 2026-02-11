@@ -1,6 +1,7 @@
 import functools
 import math
 import numpy as np
+import soundfile as sf
 import scipy.signal
 from scipy.optimize import minimize_scalar
 from scipy.signal import butter, get_window, sosfiltfilt
@@ -102,6 +103,21 @@ class AudioCalc:
     Shared audio calculation utilities.
     """
     MAX_AUDIO_SAMPLES = 500_000_000
+
+    @staticmethod
+    def validate_audio_file_size(filepath):
+        """
+        Validates that the audio file size is within acceptable limits (MAX_AUDIO_SAMPLES).
+        Returns (is_valid, message).
+        """
+        try:
+            info = sf.info(filepath)
+            total_samples = info.frames * info.channels
+            if total_samples > AudioCalc.MAX_AUDIO_SAMPLES:
+                return False, f"File too large: {total_samples} samples (Max: {AudioCalc.MAX_AUDIO_SAMPLES})"
+            return True, "OK"
+        except Exception as e:
+            return False, f"Failed to read file info: {e}"
 
     @staticmethod
     def resample(data, source_sr, target_sr):
