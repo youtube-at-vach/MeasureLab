@@ -404,6 +404,10 @@ class SpectrogramWidget(QWidget):
         self.module.acc_count = 0
 
     def on_freq_range_changed(self):
+        self.update_range()
+        self.update_plot_limits()
+
+    def update_range(self):
         # Safe check for init
         if not hasattr(self, "min_freq_spin") or not hasattr(self, "max_freq_spin"):
             return
@@ -411,15 +415,20 @@ class SpectrogramWidget(QWidget):
         self.module.min_freq = self.min_freq_spin.value()
         self.module.max_freq = self.max_freq_spin.value()
 
+    def update_plot_limits(self):
+        # Safe check for init
+        if not hasattr(self, "min_freq_spin") or not hasattr(self, "max_freq_spin"):
+            return
+
         min_f = float(self.module.min_freq)
         max_f = float(self.module.max_freq)
 
         if self.scale_combo.currentText() == "Log":
             # Avoid log(0) or negative
             if min_f <= 0:
-                min_f = 1.0 # 1Hz minimum for log scale
+                min_f = 1.0  # 1Hz minimum for log scale
             if max_f <= min_f:
-                 max_f = min_f + 10.0 # Valid range
+                max_f = min_f + 10.0  # Valid range
 
             self.plot.setYRange(np.log10(min_f), np.log10(max_f))
         else:
