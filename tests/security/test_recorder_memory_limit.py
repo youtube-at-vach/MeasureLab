@@ -6,8 +6,7 @@ import numpy as np
 # Mock sounddevice before importing anything that uses it
 sys.modules['sounddevice'] = MagicMock()
 
-from src.core.analysis import AudioCalc
-from src.gui.widgets.recorder_player import RecorderPlayer
+from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
 
 class TestRecorderMemoryLimit(unittest.TestCase):
     def setUp(self):
