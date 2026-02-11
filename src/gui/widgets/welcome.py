@@ -137,6 +137,7 @@ class WelcomeWidget(QWidget):
         text_layout.addWidget(version_label)
 
         layout.addWidget(text_container)
+        self.setLayout(layout)
 
     def open_release_page(self, event):
         if hasattr(self, "new_version_url"):
