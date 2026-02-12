@@ -1122,5 +1122,7 @@
     "Advanced Calibration": "고급 교정",
     "Show advanced calibration values": "고급 교정 값 표시",
     "Stored Calibration Values": "저장된 교정 값",
-    "Show stored calibration values": "저장된 교정 값 표시"
+    "Show stored calibration values": "저장된 교정 값 표시",
+    "Enable Dithering (TPDF)": "디더링 활성화 (TPDF)",
+    "Dithering Bit Depth:": "디더링 비트 깊이:"
 }

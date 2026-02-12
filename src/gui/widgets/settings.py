@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import scipy.signal
 from PyQt6.QtCore import QTimer
@@ -814,6 +815,7 @@ def next_power_of_two(n):
 class SettingsWidget(QWidget):
     def __init__(self, audio_engine: AudioEngine, config_manager: ConfigManager):
         super().__init__()
+        self.logger = logging.getLogger(__name__)
         self.audio_engine = audio_engine
         self.config_manager = config_manager
         self.init_ui()
@@ -964,53 +966,56 @@ class SettingsWidget(QWidget):
         audio_tab = QWidget()
         audio_layout = QVBoxLayout()
 
-        # Device Selection Group
-        dev_group = QGroupBox(tr("Audio Devices"))
-        dev_layout = QFormLayout()
+        # Audio Sub-Tabs for Device selection and Offline mode
+        self.audio_sub_tabs = QTabWidget()
+
+        # Sub-Tab: Devices
+        device_sub_tab = QWidget()
+        device_sub_layout = QFormLayout(device_sub_tab)
 
         # Host API
         self.hostapi_combo = QComboBox()
         self.hostapi_combo.currentIndexChanged.connect(self.on_hostapi_changed)
-        dev_layout.addRow(tr("Host API:"), self.hostapi_combo)
+        device_sub_layout.addRow(tr("Host API:"), self.hostapi_combo)
 
         # Input
         self.input_combo = QComboBox()
         self.input_combo.currentIndexChanged.connect(self.on_device_changed)
-        dev_layout.addRow(tr("Input Device:"), self.input_combo)
+        device_sub_layout.addRow(tr("Input Device:"), self.input_combo)
 
         # Output
         self.output_combo = QComboBox()
         self.output_combo.currentIndexChanged.connect(self.on_device_changed)
-        dev_layout.addRow(tr("Output Device:"), self.output_combo)
+        device_sub_layout.addRow(tr("Output Device:"), self.output_combo)
 
         self.refresh_btn = QPushButton(tr("Refresh Devices"))
         self.refresh_btn.clicked.connect(self.on_refresh_clicked)
-        dev_layout.addRow(self.refresh_btn)
+        device_sub_layout.addRow(self.refresh_btn)
 
-        dev_group.setLayout(dev_layout)
-        audio_layout.addWidget(dev_group)
+        self.audio_sub_tabs.addTab(device_sub_tab, tr("Audio Devices"))
 
-        # Offline Mode Group
-        iso_group = QGroupBox(tr("Virtual / Offline Mode"))
-        iso_layout = QFormLayout()
+        # Sub-Tab: Virtual / Offline
+        offline_sub_tab = QWidget()
+        offline_sub_layout = QFormLayout(offline_sub_tab)
 
         self.offline_check = QCheckBox(tr("Virtual Audio (No Hardware)"))
         is_offline = self.config_manager.is_offline_mode()
         self.offline_check.setChecked(is_offline)
         self.offline_check.toggled.connect(self.on_offline_toggled)
-        iso_layout.addRow(self.offline_check)
+        offline_sub_layout.addRow(self.offline_check)
 
         self.offline_rate_spin = QSpinBox()
         self.offline_rate_spin.setRange(1000, 384000)
         self.offline_rate_spin.setValue(self.config_manager.get_offline_sample_rate())
         self.offline_rate_spin.setSuffix(" Hz")
         self.offline_rate_spin.valueChanged.connect(self.on_offline_rate_changed)
-        iso_layout.addRow(tr("Simulation Rate:"), self.offline_rate_spin)
+        offline_sub_layout.addRow(tr("Simulation Rate:"), self.offline_rate_spin)
 
-        iso_group.setLayout(iso_layout)
-        audio_layout.addWidget(iso_group)
+        self.audio_sub_tabs.addTab(offline_sub_tab, tr("Virtual / Offline Mode"))
 
-        # Audio Configuration Group
+        audio_layout.addWidget(self.audio_sub_tabs)
+
+        # Audio Configuration Group (Stays below sub-tabs)
         conf_group = QGroupBox(tr("Audio Configuration"))
         conf_layout = QFormLayout()
 
@@ -1081,6 +1086,25 @@ class SettingsWidget(QWidget):
             self.out_ch_combo.setCurrentIndex(idx)
         self.out_ch_combo.currentIndexChanged.connect(self.on_ch_mode_changed)
         conf_layout.addRow(tr("Output Channels:"), self.out_ch_combo)
+
+        # Dithering
+        self.dithering_check = QCheckBox(tr("Enable Dithering (TPDF)"))
+        self.dithering_check.setChecked(self.config_manager.is_dithering_enabled())
+        self.dithering_check.toggled.connect(self.on_dithering_toggled)
+        conf_layout.addRow(self.dithering_check)
+
+        self.dithering_depth_combo = QComboBox()
+        self.dithering_depth_combo.addItem("16-bit", "16")
+        self.dithering_depth_combo.addItem("24-bit", "24")
+
+        # Set current depth
+        current_depth = self.config_manager.get_dithering_bit_depth()
+        idx = self.dithering_depth_combo.findData(current_depth)
+        if idx >= 0:
+            self.dithering_depth_combo.setCurrentIndex(idx)
+
+        self.dithering_depth_combo.currentIndexChanged.connect(self.on_dithering_depth_changed)
+        conf_layout.addRow(tr("Dithering Bit Depth:"), self.dithering_depth_combo)
 
         conf_group.setLayout(conf_layout)
         audio_layout.addWidget(conf_group)
@@ -1309,6 +1333,17 @@ class SettingsWidget(QWidget):
     def on_pipewire_jack_resident_toggled(self, checked: bool):
         self.config_manager.set_pipewire_jack_resident(bool(checked))
         self.audio_engine.set_pipewire_jack_resident(bool(checked))
+
+    def on_dithering_toggled(self, checked: bool):
+        self.config_manager.set_dithering_enabled(checked)
+        self.audio_engine.dithering_enabled = checked
+        self.logger.info(f"Dithering toggled: {checked}")
+
+    def on_dithering_depth_changed(self, index: int):
+        depth = self.dithering_depth_combo.currentData()
+        self.config_manager.set_dithering_bit_depth(depth)
+        self.audio_engine.dithering_bit_depth = depth
+        self.logger.info(f"Dithering bit depth set to: {depth}")
 
     def open_spl_calibration(self):
         dlg = SplCalibrationDialog(self.audio_engine, self)

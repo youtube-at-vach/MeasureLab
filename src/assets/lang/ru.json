@@ -1122,5 +1122,7 @@
     "Advanced Calibration": "Расширенная калибровка",
     "Show advanced calibration values": "Показать расширенные значения калибровки",
     "Stored Calibration Values": "Сохраненные значения калибровки",
-    "Show stored calibration values": "Показать сохраненные значения калибровки"
+    "Show stored calibration values": "Показать сохраненные значения калибровки",
+    "Enable Dithering (TPDF)": "Включить дизеринг (TPDF)",
+    "Dithering Bit Depth:": "Разрядность дизеринга:"
 }

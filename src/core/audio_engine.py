@@ -174,6 +174,10 @@ class AudioEngine:
         self.last_callback_error = None
         self.callback_error_count = 0
 
+        # Dithering
+        self.dithering_enabled = False
+        self.dithering_bit_depth = "24"
+
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
         enabled = bool(enabled)
@@ -447,6 +451,30 @@ class AudioEngine:
 
             # Sum to mix
             mix_buffer += client_out
+
+        # Apply TPDF Dithering
+        if self.dithering_enabled:
+            depth_str = str(self.dithering_bit_depth)
+            if "16" in depth_str:
+                bit_depth = 16
+            else:
+                bit_depth = 24
+
+            # TPDF Dither
+            # LSB magnitude for given bit depth
+            # (Range is -1.0 to +1.0, so total range is 2.0. 
+            #  Wait, usually we think of normalized float as [-1, 1). 
+            #  2^(N-1) states in positive/negative side. 
+            #  LSB = 1.0 / (2**(bit_depth - 1)))
+            lsb = 1.0 / (2 ** (bit_depth - 1))
+
+            # Triangular dither: random1 - random2
+            # np.random.random_sample is [0.0, 1.0)
+            # (rand1 - rand2) is (-1.0, 1.0)
+            # Multiplying by lsb gives the required PDF.
+            dither = (np.random.random_sample(mix_buffer.shape).astype("float32") - 
+                      np.random.random_sample(mix_buffer.shape).astype("float32")) * lsb
+            mix_buffer += dither
 
         # Store for next loopback cycle
         if use_loopback:

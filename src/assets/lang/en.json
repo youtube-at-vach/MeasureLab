@@ -57,6 +57,8 @@
     "Sample Rate:": "Sample Rate:",
     "Buffer Size:": "Buffer Size:",
     "Buffer Optimization:": "Buffer Optimization:",
+    "Enable Dithering (TPDF)": "Enable Dithering (TPDF)",
+    "Dithering Bit Depth:": "Dithering Bit Depth:",
     "FAST": "FAST",
     "MINIMUM": "MINIMUM",
     "STABLE": "STABLE",
