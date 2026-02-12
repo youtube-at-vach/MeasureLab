@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.utils import ensure_extension
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -800,6 +801,8 @@ class BoxcarAveragerWidget(QWidget):
         )
         if not fname:
             return
+
+        fname = ensure_extension(fname, selected_filter)
 
         success, msg = self.module.export_to_file(fname)
         if success:

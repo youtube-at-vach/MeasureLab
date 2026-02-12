@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.utils import ensure_extension
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 
@@ -591,6 +592,8 @@ class RecorderPlayerWidget(QWidget):
         )
         if not fname:
             return
+
+        fname = ensure_extension(fname, selected_filter)
 
         # Disable UI to prevent concurrent actions
         self.rec_btn.setEnabled(False)

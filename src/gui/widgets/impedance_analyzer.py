@@ -35,7 +35,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.utils import format_si, resource_path
+from src.core.utils import format_si, resource_path, ensure_extension
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -1561,8 +1561,9 @@ class ImpedanceAnalyzerWidget(QWidget):
             # UI update will happen in on_sweep_finished
 
     def on_save_cal(self):
-        filename, _ = QFileDialog.getSaveFileName(self, tr("Save Calibration"), "", tr("JSON Files (*.json)"))
+        filename, selected_filter = QFileDialog.getSaveFileName(self, tr("Save Calibration"), "", tr("JSON Files (*.json)"))
         if filename:
+            filename = ensure_extension(filename, selected_filter)
             self.module.save_calibration(filename)
             QMessageBox.information(self, tr("Success"), tr("Calibration saved successfully."))
 

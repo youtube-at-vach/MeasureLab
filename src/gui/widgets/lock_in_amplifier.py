@@ -28,6 +28,7 @@ from scipy.signal import hilbert
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.utils import ensure_extension
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -1947,8 +1948,9 @@ class LockInAmplifierWidget(QWidget):
         if not self.cal_data:
             return
 
-        path, _ = QFileDialog.getSaveFileName(self, tr("Save Calibration Map"), "", tr("JSON Files (*.json)"))
+        path, selected_filter = QFileDialog.getSaveFileName(self, tr("Save Calibration Map"), "", tr("JSON Files (*.json)"))
         if path:
+            path = ensure_extension(path, selected_filter)
             if self.module.audio_engine.calibration.save_frequency_map(path, self.cal_data):
                 QMessageBox.information(self, tr("Success"), tr("Calibration map saved successfully."))
             else:

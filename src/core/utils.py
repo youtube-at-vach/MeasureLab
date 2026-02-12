@@ -1,5 +1,6 @@
 import math
 import os
+import re
 import sys
 
 _SI_PREFIXES = {
@@ -100,3 +101,48 @@ def resource_path(relative_path):
                 return os.path.join(base_path, "src", relative_path)
 
     return os.path.join(base_path, relative_path)
+
+
+def ensure_extension(filepath: str, selected_filter: str) -> str:
+    """
+    Ensures filepath has an extension matching the selected_filter.
+
+    Args:
+        filepath: The selected file path.
+        selected_filter: The Qt filter string (e.g. "WAV Files (*.wav)").
+
+    Returns:
+        The filepath with the correct extension appended if missing.
+    """
+    if not filepath or not selected_filter:
+        return filepath
+
+    # If "All Files (*)" is selected, accept anything
+    if "(*)" in selected_filter or selected_filter == "All Files (*)":
+        return filepath
+
+    # Extract extensions from filter
+    # e.g. "Audio Files (*.wav *.mp3)" -> ["wav", "mp3"]
+    match = re.search(r"\((.*?)\)", selected_filter)
+    if not match:
+        return filepath
+
+    pattern = match.group(1)
+    # Split by space, remove *, ., and lowercase
+    extensions = [ext.strip().lstrip("*.").lower() for ext in pattern.split()]
+
+    # Filter out empty or wildcard only
+    extensions = [ext for ext in extensions if ext and ext != "*"]
+
+    if not extensions:
+        return filepath
+
+    # Check if current extension matches any
+    # os.path.splitext returns extension with dot (e.g. ".wav")
+    current_ext = os.path.splitext(filepath)[1].lstrip(".").lower()
+
+    if current_ext in extensions:
+        return filepath
+
+    # If not match, append the first one
+    return f"{filepath}.{extensions[0]}"

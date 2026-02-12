@@ -24,6 +24,7 @@ from scipy import signal
 from scipy.interpolate import interp1d
 
 from src.core.localization import tr
+from src.core.utils import ensure_extension
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 
@@ -566,10 +567,11 @@ class InverseFilterWidget(QWidget):
             self.out_path_edit.setText(base + "_inverted" + ext)
 
     def select_output_file(self):
-        path, _ = QFileDialog.getSaveFileName(
+        path, selected_filter = QFileDialog.getSaveFileName(
             self, tr("Save Wav File"), self.out_path_edit.text(), tr("Wav Files (*.wav)")
         )
         if path:
+            path = ensure_extension(path, selected_filter)
             self.out_path_edit.setText(path)
             self._update_process_btn()
 
