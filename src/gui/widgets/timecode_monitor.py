@@ -6,6 +6,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from functools import partial
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
@@ -52,6 +53,7 @@ class _LTCGenState:
     gen_current_tc: str = "--:--:--:--"
     gen_pos: int = 0
     frames_generated: int = 0
+    recycle_pool: deque = field(default_factory=deque)
     tod_epoch_base: Optional[float] = None
     free_run_start_time: float = 0.0
     jam_base_total_frames: Optional[int] = None
@@ -89,8 +91,8 @@ class _TimecodeChannelState:
     estimated_fps: float = 0.0
     last_frame_time: Optional[float] = None
     last_decoded_epoch: Optional[float] = None
-    fps_intervals: deque = field(default_factory=deque)
-    jam_history: deque = field(default_factory=deque)
+    fps_intervals: deque = field(default_factory=partial(deque, maxlen=32))
+    jam_history: deque = field(default_factory=partial(deque, maxlen=256))
     last_input_latency_sec: float = 0.0
     last_output_latency_sec: float = 0.0
 
@@ -112,7 +114,15 @@ class LTCEncoder:
         self.fps = fps
         self.samples_per_frame = self.sample_rate / fps
 
-    def generate_frame(self, hh: int, mm: int, ss: int, ff: int, user_bits: list = None) -> np.ndarray:
+    def generate_frame(
+        self,
+        hh: int,
+        mm: int,
+        ss: int,
+        ff: int,
+        user_bits: list = None,
+        out_buffer: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
         """Generates audio samples for one LTC frame."""
         bits = [0] * 80
 
@@ -178,7 +188,11 @@ class LTCEncoder:
         # Calculate samples per bit (80 bits total)
         # Note: Samples per bit is not integer usually. We need sub-sample precision or just accumulate phase.
 
-        samples = np.zeros(int(self.samples_per_frame) + 2, dtype=np.float32)  # Over allocate slightly
+        req_size = int(self.samples_per_frame) + 2
+        if out_buffer is not None and len(out_buffer) >= req_size:
+            samples = out_buffer
+        else:
+            samples = np.zeros(req_size, dtype=np.float32)  # Over allocate slightly
 
         samples_per_bit = self.samples_per_frame / 80.0
 
@@ -491,7 +505,7 @@ class TimecodeMonitor(MeasurementModule):
         self._cal_active = False
         self._cal_key = "L"
         self._cal_prev_gen_enabled: Optional[bool] = None
-        self._cal_samples: deque = deque()
+        self._cal_samples: deque = deque(maxlen=256)
         self._cal_need = 30
         self._cal_started_at = 0.0
         self._cal_result = None
@@ -708,8 +722,6 @@ class TimecodeMonitor(MeasurementModule):
                                 dt = float(frame_t_epoch - ch.last_frame_time)
                                 if 0.015 <= dt <= 0.08:
                                     ch.fps_intervals.append(dt)
-                                    if len(ch.fps_intervals) > 32:
-                                        ch.fps_intervals.popleft()
                                     avg = float(sum(ch.fps_intervals)) / float(len(ch.fps_intervals))
                                     if avg > 0:
                                         ch.estimated_fps = 1.0 / avg
@@ -746,6 +758,8 @@ class TimecodeMonitor(MeasurementModule):
                                         frames_per_day = 24 * 3600 * nominal_fps
                                         if frames_per_day > 0:
                                             diff = (int(exp_total) - int(dec_total)) % int(frames_per_day)
+                                            if diff > frames_per_day // 2:
+                                                diff -= frames_per_day
                                         else:
                                             diff = int(exp_total) - int(dec_total)
 
@@ -758,8 +772,6 @@ class TimecodeMonitor(MeasurementModule):
                                                     float(getattr(ch, "last_output_latency_sec", 0.0)),
                                                 )
                                             )
-                                            while len(self._cal_samples) > 256:
-                                                self._cal_samples.popleft()
 
                             parsed = self._parse_tc(ch.decoded_tc)
                             if parsed is not None:
@@ -770,8 +782,6 @@ class TimecodeMonitor(MeasurementModule):
                                 hh, mm, ss, ff = parsed
                                 total_frames = ((hh * 3600 + mm * 60 + ss) * nominal_fps) + int(ff)
                                 ch.jam_history.append((float(frame_t_epoch), int(total_frames)))
-                                if len(ch.jam_history) > 256:
-                                    ch.jam_history.popleft()
 
             if self.link_enabled:
                 src_key = self.link_source if self.link_source in self.channels else "L"
@@ -851,6 +861,17 @@ class TimecodeMonitor(MeasurementModule):
 
         while out_pos < frames:
             if ch.gen.gen_current is None or ch.gen.gen_pos >= len(ch.gen.gen_current):
+                if ch.gen.gen_current is not None:
+                    # Recycle the underlying buffer if possible
+                    cand = ch.gen.gen_current
+                    if getattr(cand, "base", None) is not None:
+                        cand = cand.base
+
+                    if isinstance(cand, np.ndarray):
+                        if len(ch.gen.recycle_pool) < 16:
+                            ch.gen.recycle_pool.append(cand)
+                    ch.gen.gen_current = None
+
                 if ch.gen.gen_buffer:
                     ch.gen.gen_current = ch.gen.gen_buffer.popleft()
                     if ch.gen.gen_tc_buffer:
@@ -989,7 +1010,18 @@ class TimecodeMonitor(MeasurementModule):
             ch.gen.frames_generated += 1
 
         tc = f"{int(hh):02}:{int(mm):02}:{int(ss):02}:{int(ff):02}"
-        samples = ch.gen.encoder.generate_frame(hh, mm, ss, ff)
+
+        # Attempt to reuse buffer from recycle pool
+        out_buf = None
+        req_size = int(ch.gen.encoder.samples_per_frame) + 2
+        while ch.gen.recycle_pool:
+            cand = ch.gen.recycle_pool.pop()
+            if len(cand) >= req_size:
+                out_buf = cand
+                break
+            # Discard too-small buffers (e.g. if FPS changed)
+
+        samples = ch.gen.encoder.generate_frame(hh, mm, ss, ff, out_buffer=out_buf)
         ch.gen.gen_buffer.append(samples)
         ch.gen.gen_tc_buffer.append(tc)
 
@@ -2313,6 +2345,9 @@ class TimecodeMonitorWidget(QWidget):
         return w
 
     def _on_run_calibration(self):
+        # Ensure monitor is running
+        self._set_monitor_running(True)
+
         key = "L"
         try:
             key = self._cal_ch.currentData() or "L"

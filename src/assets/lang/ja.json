@@ -59,6 +59,8 @@
     "Sample Rate:": "サンプリングレート:",
     "Buffer Size:": "バッファサイズ:",
     "Buffer Optimization:": "バッファ最適化:",
+    "Enable Dithering (TPDF)": "ディザリングを有効化 (TPDF)",
+    "Dithering Bit Depth:": "ディザリング・ビット深度:",
     "FAST": "高速",
     "MINIMUM": "最小",
     "STABLE": "標準（安定）",

@@ -23,6 +23,8 @@ DEFAULT_CONFIG = {
         "pipewire_jack_resident": False,
         "offline_mode": False,
         "offline_sample_rate": 48000,
+        "dithering_enabled": False,
+        "dithering_bit_depth": "24",
     },
     "language": "en",
     "theme": "system",
@@ -72,8 +74,8 @@ class ConfigManager:
         for instance in cls._instances:
             try:
                 instance.shutdown()
-            except Exception as e:
-                logger.error("Error during shutdown: %s", e)
+            except Exception:
+                logger.exception("Error during shutdown")
 
     def load_config(self):
         """Loads configuration from JSON file."""
@@ -114,8 +116,8 @@ class ConfigManager:
                 # Ensure permissions on existing files (best effort)
                 try:
                     os.chmod(self.config_path, 0o600)
-                except Exception:
-                    pass
+                except Exception as e:
+                    self.logger.warning(f"Failed to set secure permissions for config file: {e}")
 
                 self.logger.info("Config saved.")
                 self._save_timer = None
@@ -276,6 +278,30 @@ class ConfigManager:
         if "audio" not in self.config:
             self.config["audio"] = {}
         self.config["audio"]["offline_sample_rate"] = int(rate)
+        self.save_config()
+
+    def is_dithering_enabled(self) -> bool:
+        """Returns whether dithering is enabled."""
+        audio = self.get_audio_config()
+        return bool(audio.get("dithering_enabled", False))
+
+    def set_dithering_enabled(self, enabled: bool):
+        """Enables/disables dithering."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["dithering_enabled"] = bool(enabled)
+        self.save_config()
+
+    def get_dithering_bit_depth(self) -> str:
+        """Returns the dithering bit depth setting ('16' or '24')."""
+        audio = self.get_audio_config()
+        return str(audio.get("dithering_bit_depth", "24"))
+
+    def set_dithering_bit_depth(self, depth: str):
+        """Sets the dithering bit depth."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["dithering_bit_depth"] = str(depth)
         self.save_config()
 
     def get_language(self):

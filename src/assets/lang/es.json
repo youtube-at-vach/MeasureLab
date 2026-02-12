@@ -1123,5 +1123,11 @@
     "Show advanced calibration values": "Mostrar valores de calibración avanzada",
     "Stored Calibration Values": "Valores de calibración guardados",
     "Show stored calibration values": "Mostrar valores de calibración guardados",
+<<<<<<< fix/translation-leakage-onepps-12686427059005551646
     "Warming Up... ({0}/{1})": "Warming Up... ({0}/{1})"
 }
+=======
+    "Enable Dithering (TPDF)": "Activar dithering (TPDF)",
+    "Dithering Bit Depth:": "Profundidad de bits de dithering:"
+}
+>>>>>>> main

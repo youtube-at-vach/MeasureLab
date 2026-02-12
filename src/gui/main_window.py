@@ -107,7 +107,7 @@ def _load_module_class(module_key: str):
 
 
 if False:
-    # Explicit imports so PyInstaller can discover modules.
+    # Explicit imports via src.gui.pyinstaller_imports so PyInstaller can discover dynamically loaded modules.
     import src.gui.pyinstaller_imports  # noqa: F401
 
 
