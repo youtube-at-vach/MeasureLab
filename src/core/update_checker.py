@@ -12,10 +12,6 @@ class UpdateChecker(QThread):
     def run(self):
         try:
             url = "https://api.github.com/repos/youtube-at-vach/MeasureLab/releases/latest"
-            # Create a context that ignores SSL certificate errors (for simplicity in some envs, though properly verified is better)
-            # However, for standard shipping, standard validation is preferred.
-            # If encountering issues, we might need ssl._create_unverified_context()
-            # But let's try standard request first.
 
             req = urllib.request.Request(url)
             req.add_header("User-Agent", f"MeasureLab/{__version__}")
