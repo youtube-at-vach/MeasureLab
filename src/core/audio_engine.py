@@ -220,7 +220,7 @@ class AudioEngine:
         Forces a re-initialization of the PortAudio backend.
         This is useful on Linux/ALSA where device lists are cached.
         """
-        self.logger.info("Refreshing audio backend...")
+        self.logger.debug("Refreshing audio backend...")
 
         # Stop everything first
         self.stop_stream()
@@ -234,7 +234,7 @@ class AudioEngine:
         # Re-initialize PortAudio
         try:
             sd._initialize()
-            self.logger.info("Audio backend refreshed successfully.")
+            self.logger.debug("Audio backend refreshed successfully.")
         except Exception as e:
             self.logger.error(f"Error re-initializing PortAudio: {e}")
 
