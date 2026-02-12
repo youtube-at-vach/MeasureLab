@@ -23,6 +23,8 @@ DEFAULT_CONFIG = {
         "pipewire_jack_resident": False,
         "offline_mode": False,
         "offline_sample_rate": 48000,
+        "dithering_enabled": False,
+        "dithering_bit_depth": "auto",
     },
     "language": "en",
     "theme": "system",
@@ -276,6 +278,30 @@ class ConfigManager:
         if "audio" not in self.config:
             self.config["audio"] = {}
         self.config["audio"]["offline_sample_rate"] = int(rate)
+        self.save_config()
+
+    def is_dithering_enabled(self) -> bool:
+        """Returns whether dithering is enabled."""
+        audio = self.get_audio_config()
+        return bool(audio.get("dithering_enabled", False))
+
+    def set_dithering_enabled(self, enabled: bool):
+        """Enables/disables dithering."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["dithering_enabled"] = bool(enabled)
+        self.save_config()
+
+    def get_dithering_bit_depth(self) -> str:
+        """Returns the dithering bit depth setting ('16', '24', or 'auto')."""
+        audio = self.get_audio_config()
+        return str(audio.get("dithering_bit_depth", "auto"))
+
+    def set_dithering_bit_depth(self, depth: str):
+        """Sets the dithering bit depth."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["dithering_bit_depth"] = str(depth)
         self.save_config()
 
     def get_language(self):

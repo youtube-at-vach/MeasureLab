@@ -1082,6 +1082,26 @@ class SettingsWidget(QWidget):
         self.out_ch_combo.currentIndexChanged.connect(self.on_ch_mode_changed)
         conf_layout.addRow(tr("Output Channels:"), self.out_ch_combo)
 
+        # Dithering
+        self.dithering_check = QCheckBox(tr("Enable Dithering (TPDF)"))
+        self.dithering_check.setChecked(self.config_manager.is_dithering_enabled())
+        self.dithering_check.toggled.connect(self.on_dithering_toggled)
+        conf_layout.addRow(self.dithering_check)
+
+        self.dithering_depth_combo = QComboBox()
+        self.dithering_depth_combo.addItem(tr("Auto"), "auto")
+        self.dithering_depth_combo.addItem("16-bit", "16")
+        self.dithering_depth_combo.addItem("24-bit", "24")
+
+        # Set current depth
+        current_depth = self.config_manager.get_dithering_bit_depth()
+        idx = self.dithering_depth_combo.findData(current_depth)
+        if idx >= 0:
+            self.dithering_depth_combo.setCurrentIndex(idx)
+
+        self.dithering_depth_combo.currentIndexChanged.connect(self.on_dithering_depth_changed)
+        conf_layout.addRow(tr("Dithering Bit Depth:"), self.dithering_depth_combo)
+
         conf_group.setLayout(conf_layout)
         audio_layout.addWidget(conf_group)
 
@@ -1309,6 +1329,17 @@ class SettingsWidget(QWidget):
     def on_pipewire_jack_resident_toggled(self, checked: bool):
         self.config_manager.set_pipewire_jack_resident(bool(checked))
         self.audio_engine.set_pipewire_jack_resident(bool(checked))
+
+    def on_dithering_toggled(self, checked: bool):
+        self.config_manager.set_dithering_enabled(checked)
+        self.audio_engine.dithering_enabled = checked
+        self.logger.info(f"Dithering toggled: {checked}")
+
+    def on_dithering_depth_changed(self, index: int):
+        depth = self.dithering_depth_combo.currentData()
+        self.config_manager.set_dithering_bit_depth(depth)
+        self.audio_engine.dithering_bit_depth = depth
+        self.logger.info(f"Dithering bit depth set to: {depth}")
 
     def open_spl_calibration(self):
         dlg = SplCalibrationDialog(self.audio_engine, self)
