@@ -209,11 +209,11 @@ class AudioEngine:
 
     def set_loopback(self, enabled):
         self.loopback = enabled
-        self.logger.info(f"Set software loopback: {enabled}")
+        self.logger.debug(f"Set software loopback: {enabled}")
 
     def set_mute_output(self, enabled):
         self.mute_output = enabled
-        self.logger.info(f"Set mute output: {enabled}")
+        self.logger.debug(f"Set mute output: {enabled}")
 
     def refresh_backend(self):
         """
@@ -330,7 +330,7 @@ class AudioEngine:
             if self.stream is None:
                 self._start_master_stream()
 
-        self.logger.info(f"Registered callback {cid}")
+        self.logger.debug(f"Registered callback {cid}")
         return cid
 
     def unregister_callback(self, callback_id):
@@ -348,7 +348,7 @@ class AudioEngine:
                 should_stop = True
 
         if unregistered:
-            self.logger.info(f"Unregistered callback {callback_id}")
+            self.logger.debug(f"Unregistered callback {callback_id}")
 
         # Stop stream outside the lock to avoid deadlock with callback
         if should_stop:
@@ -565,7 +565,7 @@ class AudioEngine:
                     callback=self._master_callback
                 )
                 self.stream.start()
-                self.logger.info(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
+                self.logger.debug(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
             else:
                 extra_settings = self._get_jack_settings()
 
@@ -580,7 +580,7 @@ class AudioEngine:
                     extra_settings=extra_settings,
                 )
                 self.stream.start()
-                self.logger.info(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
+                self.logger.debug(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
         except Exception as e:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.
@@ -593,7 +593,7 @@ class AudioEngine:
                 self.stream.stop()
                 self.stream.close()
                 self.stream = None
-                self.logger.info("Master audio stream stopped")
+                self.logger.debug("Master audio stream stopped")
 
     def _restart_stream(self):
         self.stop_stream()
