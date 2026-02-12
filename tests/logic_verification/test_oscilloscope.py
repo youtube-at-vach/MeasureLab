@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 import sys
 import importlib
 import numpy as np
-import types
 
 # -----------------------------------------------------------------------------
 # Common Mocks for Widget Tests
