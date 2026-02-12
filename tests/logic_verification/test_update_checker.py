@@ -1,17 +1,35 @@
-
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-from PyQt6.QtCore import QCoreApplication
+# Mock PyQt6 modules before importing UpdateChecker
+mock_pyqt_core = MagicMock()
+sys.modules["PyQt6"] = MagicMock()
+sys.modules["PyQt6.QtCore"] = mock_pyqt_core
 
-from src.core.update_checker import UpdateChecker
+# Define QThread mock
+class MockQThread:
+    def __init__(self, parent=None):
+        pass
+    def start(self):
+        self.run()
+    def run(self):
+        pass
+    def wait(self):
+        pass
 
+mock_pyqt_core.QThread = MockQThread
+# pyqtSignal is called as pyqtSignal(str), so we need it to return a Mock that acts as the signal
+mock_signal_instance = MagicMock()
+mock_pyqt_core.pyqtSignal = MagicMock(return_value=mock_signal_instance)
+mock_pyqt_core.QCoreApplication = MagicMock()
+
+# Now import the module under test
+from src.core.update_checker import UpdateChecker  # noqa: E402
 
 class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
-        # Create a QCoreApplication instance if it doesn't exist
-        if not QCoreApplication.instance():
-            self.app = QCoreApplication([])
+        pass
 
     def test_version_comparison_newer(self):
         checker = UpdateChecker()
@@ -34,15 +52,12 @@ class TestUpdateChecker(unittest.TestCase):
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         checker = UpdateChecker()
+        checker.update_available.emit.reset_mock()
 
-        # Mock signal emission
-        signal_mock = MagicMock()
-        checker.update_available.connect(signal_mock)
-
-        # Run synchronous for testing (normally runs in thread)
+        # Run synchronous for testing
         checker.run()
 
-        signal_mock.assert_called_with("v9.9.9")
+        checker.update_available.emit.assert_called_with("v9.9.9")
 
     @patch('urllib.request.urlopen')
     def test_update_check_not_found(self, mock_urlopen):
@@ -53,14 +68,24 @@ class TestUpdateChecker(unittest.TestCase):
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         checker = UpdateChecker()
-
-        # Mock signal emission
-        signal_mock = MagicMock()
-        checker.update_available.connect(signal_mock)
+        checker.update_available.emit.reset_mock()
 
         checker.run()
 
-        signal_mock.assert_not_called()
+        checker.update_available.emit.assert_not_called()
+
+    @patch('urllib.request.urlopen')
+    def test_update_check_failure_logs_error(self, mock_urlopen):
+        # Mock side effect to raise exception
+        mock_urlopen.side_effect = Exception("Network error")
+
+        checker = UpdateChecker()
+
+        # Verify logging
+        with self.assertLogs('UpdateChecker', level='ERROR') as cm:
+            checker.run()
+
+        self.assertTrue(any("Network error" in log for log in cm.output))
 
 if __name__ == '__main__':
     unittest.main()

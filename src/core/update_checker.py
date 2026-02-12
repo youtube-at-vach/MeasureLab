@@ -1,4 +1,5 @@
 import json
+import logging
 import urllib.request
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -8,6 +9,10 @@ from src.core.version import __version__
 
 class UpdateChecker(QThread):
     update_available = pyqtSignal(str)  # Emits the new version string
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def run(self):
         try:
@@ -29,9 +34,8 @@ class UpdateChecker(QThread):
                         self.update_available.emit(latest_tag)
 
         except Exception as e:
-            # Silently fail or log if we had a logger.
-            # For this feature, "noise-free" means we don't annoy the user with errors.
-            print(f"Update check failed: {e}")
+            # Log failure but do not annoy the user with error popups.
+            self.logger.error(f"Update check failed: {e}")
 
     def _is_newer(self, latest: str, current: str) -> bool:
         try:
