@@ -746,6 +746,8 @@ class TimecodeMonitor(MeasurementModule):
                                         frames_per_day = 24 * 3600 * nominal_fps
                                         if frames_per_day > 0:
                                             diff = (int(exp_total) - int(dec_total)) % int(frames_per_day)
+                                            if diff > frames_per_day // 2:
+                                                diff -= frames_per_day
                                         else:
                                             diff = int(exp_total) - int(dec_total)
 
