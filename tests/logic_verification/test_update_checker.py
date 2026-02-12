@@ -26,7 +26,7 @@ mock_pyqt_core.pyqtSignal = MagicMock(return_value=mock_signal_instance)
 mock_pyqt_core.QCoreApplication = MagicMock()
 
 # Now import the module under test
-import src.core.update_checker
+import src.core.update_checker  # noqa: E402
 importlib.reload(src.core.update_checker)
 from src.core.update_checker import UpdateChecker  # noqa: E402
 
