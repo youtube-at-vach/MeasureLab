@@ -79,6 +79,15 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 - **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
 - **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
 
+## 💻 サポートされる OS (Supported Operating Systems)
+
+| OS | 状態 (Status) | 備考 (Notes) |
+| --- | --- | --- |
+| Linux (x86_64) | ✅ Supported | Tested on Ubuntu 22.04 / 24.04 |
+| Windows 10/11 | ✅ Supported | Official binary available |
+| macOS | ⚠️ Experimental | Build may succeed, runtime not fully tested |
+
+
 ---
 
 ## 🚀 インストールと実行 (Installation & Usage)
