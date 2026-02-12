@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 # --- MOCK PYQT6 ---
 # We mock PyQt6.QtCore before importing UpdateChecker because it inherits from QThread.
 try:
-    from PyQt6.QtCore import QCoreApplication, QThread, pyqtSignal
+    from PyQt6.QtCore import QCoreApplication
 except ImportError:
     # If PyQt6 is not installed, we create mocks
 
