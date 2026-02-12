@@ -16,7 +16,7 @@ description: Instructions for running development tools (pytest, ruff, mypy)
 ## 実行環境
 
 - OS: Linux
-- Python: 3.10+ 想定（README 記載）
+- Python: 3.12+ 想定（README 記載）
 - 推奨 Python 実行環境: `./.venv/bin/python`
 
 ## セットアップ (venv)

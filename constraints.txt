@@ -1,5 +1,5 @@
 # Pinned versions for reproducible installs. Adjust when bumping Python/OS targets.
-# Python target: 3.10 (per CI workflows).
+# Python target: 3.12 (per CI workflows).
 
 numpy==2.2.6
 scipy==1.15.3

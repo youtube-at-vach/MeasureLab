@@ -15,7 +15,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 - PyQt6 desktop app bundling 29+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, loopback finder, distortion/IMD tools, network/impedance analyzers, oscilloscope, spectrogram, ultrasound modulator, transient analyzer, lock-in/FRA, inverse filter, frequency counter, 1PPS monitor, recorder/player, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
 - Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes.
-- Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.10+).
+- Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.12+).
 
 ## ✨ 主な機能 (Features)
 
@@ -106,7 +106,7 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 
 ### 🐍 ソースコードから実行する場合
 
-**必要条件**: Python 3.10 以上
+**必要条件**: Python 3.12 以上
 
 #### Linux / Ubuntu（推奨）: 仮想環境 (venv) で実行する
 
