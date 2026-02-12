@@ -39,9 +39,11 @@ description: Instructions for running development tools (pytest, ruff, mypy)
 - `mypy`   -> `./.venv/bin/mypy` (型チェック)
 
 ### VS Code タスク
+
 VS Code から `pytest (venv)` タスクを利用可能です。
 
 ### スラッシュコマンド
+
 ```bash
 /slash-command test
 /slash-command lint
@@ -51,18 +53,22 @@ VS Code から `pytest (venv)` タスクを利用可能です。
 ## 起動方法
 
 ### GUI (MeasureLab 本体)
+
 - `./.venv/bin/python main_gui.py`
 
 起動時の流れ:
+
 - `main_gui.py`: `ConfigManager` で言語設定を読み、スプラッシュ表示中にモジュールを事前ロード。
 - `src/gui/main_window.py`: サイドバーでモジュールを切り替え。モジュールは基本的に遅延ロードされます。
 
 ## テスト
 
 最小スモークテスト:
+
 - `./.venv/bin/python -m pytest -q tests/functional/test_config.py tests/functional/test_si_formatting.py`
 
 全体テスト:
+
 - `./.venv/bin/python -m pytest -q`
 
 ## 主要ディレクトリ / コンポーネント
@@ -91,6 +97,7 @@ README にもある通り、JACK / PipeWire の利用が推奨される場合が
 - **URL**: `<https://example.com>` のように `<>` で囲む。
 
 チェックコマンド:
+
 ```bash
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
