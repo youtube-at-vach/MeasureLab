@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import MagicMock, patch
 import pytest
 from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
