@@ -14,11 +14,11 @@ class TestConfigManagerLifecycle(unittest.TestCase):
 
     def tearDown(self):
         self.logger_patcher.stop()
-        # Clean up any instances created (though WeakSet handles this if we drop ref)
-        # But we might want to manually clear the WeakSet if possible to avoid state leak,
-        # though it's private.
-        # Calling shutdown on instances is good practice if we have refs.
-        pass
+        if os.path.exists(self.config_path):
+            try:
+                os.remove(self.config_path)
+            except OSError:
+                pass
 
     @patch('src.core.config_manager.os.path.exists')
     @patch('src.core.config_manager.os.makedirs')
@@ -243,7 +243,46 @@ class TestConfigManagerLifecycle(unittest.TestCase):
             if mock_instance in ConfigManager._instances:
                 ConfigManager._instances.remove(mock_instance)
 
-        self.mock_logger.error.assert_called_with("Error during shutdown: %s", exception)
+        self.mock_logger.exception.assert_called_with("Error during shutdown")
+
+    @patch('src.core.config_manager.os.path.exists', return_value=False)
+    @patch('src.core.config_manager.os.makedirs')
+    @patch('src.core.config_manager.os.open')
+    @patch('src.core.config_manager.os.fdopen')
+    @patch('src.core.config_manager.os.chmod')
+    def test_save_config_chmod_failure_logs_warning(self, mock_chmod, mock_fdopen, mock_open, mock_makedirs, mock_exists):
+        """Test that failure to set permissions (chmod) is logged as a warning."""
+        # Setup mocks to succeed until chmod
+        mock_open.return_value = 123
+        mock_file_handle = MagicMock()
+        mock_fdopen.return_value.__enter__.return_value = mock_file_handle
+
+        # Simulate chmod raising an exception (e.g. PermissionError)
+        error = OSError("Operation not permitted")
+        mock_chmod.side_effect = error
+
+        cm = ConfigManager(self.config_path)
+        # Reset mock logger because _ensure_screenshot_dir called during init might have logged warnings
+        self.mock_logger.reset_mock()
+
+        # Force immediate save, which calls _flush_config
+        cm.save_config(force_sync=True)
+
+        # Verify that chmod was called
+        mock_chmod.assert_called_with(self.config_path, 0o600)
+
+        # Verify that a warning was logged.
+        self.mock_logger.warning.assert_called()
+
+        # Check that the log message mentions the error
+        found = False
+        for call in self.mock_logger.warning.call_args_list:
+            args, _ = call
+            if str(error) in str(args):
+                found = True
+                break
+        self.assertTrue(found, "Warning log should contain the error message")
+        cm.shutdown()
 
 if __name__ == '__main__':
     unittest.main()
