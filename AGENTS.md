@@ -37,3 +37,17 @@ This is critical for ensuring the correct versions and configuration are used.
 ```bash
 /slash-command typecheck
 ```
+
+## Markdown Lint
+
+This project uses `markdownlint-cli2` for Markdown quality checks.
+
+- Remove trailing spaces and keep proper blank lines around headings, lists, and code blocks.
+- Keep list marker/numbering style consistent.
+- Wrap bare URLs with angle brackets like `<https://example.com>`.
+
+Run after editing docs:
+
+```bash
+npx markdownlint-cli2 "**/*.md" "#node_modules"
+```
