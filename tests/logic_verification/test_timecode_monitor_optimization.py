@@ -1,8 +1,5 @@
 
-import pytest
 from collections import deque
-from unittest.mock import MagicMock
-import sys
 
 # Mock AudioEngine if needed
 class MockAudioEngine:
@@ -17,7 +14,7 @@ def test_deque_optimization():
     # It imports QWidget, so we need a QApplication or just hope import works if no GUI is created?
     # PyQt6 import usually requires a display or at least successful library load.
 
-    from src.gui.widgets.timecode_monitor import TimecodeMonitor, _TimecodeChannelState
+    from src.gui.widgets.timecode_monitor import TimecodeMonitor
 
     ae = MockAudioEngine()
     monitor = TimecodeMonitor(ae)
