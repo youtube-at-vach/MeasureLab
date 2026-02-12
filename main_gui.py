@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import os
 import signal
 import sys
@@ -30,6 +31,9 @@ def main():
     # Allow Ctrl+C to exit
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+    # Configure logging early
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
     # Load language early so the splash text matches user settings.
     # Keep this lightweight: just read config + load translations.
     try:
@@ -37,6 +41,7 @@ def main():
         get_manager().load_language(config_manager.get_language())
     except Exception:
         # If config or translations fail, proceed with defaults.
+        logging.error("Failed to load configuration or language", exc_info=True)
         pass
 
     app = QApplication(sys.argv)
