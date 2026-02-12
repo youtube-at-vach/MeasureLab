@@ -2315,6 +2315,9 @@ class TimecodeMonitorWidget(QWidget):
         return w
 
     def _on_run_calibration(self):
+        # Ensure monitor is running
+        self._set_monitor_running(True)
+
         key = "L"
         try:
             key = self._cal_ch.currentData() or "L"
