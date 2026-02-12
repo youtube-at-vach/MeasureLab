@@ -73,6 +73,8 @@ Settings for the test signal used for measurement.
     * **Sine Wave**: A basic sine wave. Used for THD measurement.
     * **SMPTE / CCIF**: Special pair signals for IMD measurement.
 * **Frequency**: Frequency of the sine wave. Standard is `1000 Hz`.
+* **Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT settings (buffer size) to prevent spectral leakage. Useful for accurate distortion measurements.
+* **Actual Freq**: Displays the exact frequency being generated when the Bin Center feature is enabled.
 * **Amplitude**: Strength of the signal. The following units can be selected:
     * **dBFS**: Relative to digital full scale.
     * **dBV**: Relative to 1Vrms.
