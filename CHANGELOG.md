@@ -2,15 +2,31 @@
 
 ## [v0.4.4] - 2026-02-12
 
+### Added
+
+* UI: New update notification system on the Welcome screen
+* UI: Advanced Calibration section in Settings (ppm for frequency, mdB/dB for gain offset)
+* UI: Interactive LPF and HPF tabs in Signal Generator for precise band-limiting
+* I18n: Complete translation updates for Chinese, Korean, Portuguese, and Russian
+
+### Changed
+
+* UI: Renamed "Save As..." profile button to "Duplicate Profile" for clarity
+* Core: Improved reciprocity and consistency of calibration factors across modules
+
 ### Fixed
 
-* Core: cap maximum update interval for frequency measurements to improve performance
-* UI: suppress benign GNOME portal Settings warnings by setting QT_LOGGING_RULES
-* CI: bump dependencies in github-actions and python-dependencies groups
+* Core: Fixed major calibration persistence issue (ensured profile independence)
+* Core: Fixed 1PPS calibration factor being overwritten when loading old profiles
+* UI: Fixed crash in Linearity Analyzer when using Hysteresis mode
+* UI: Suppressed GNOME portal noise in logs via QT_LOGGING_RULES
 
-### Documentation
+### Performance
 
-* README: add instructions for directly invoking Python in virtual environments on Linux
+* Perf: Optimized Tone/Noise generation algorithms in Signal Generator
+* Perf: Implemented buffered I/O for high-speed audio recording
+* Perf: Optimized buffer memory allocation for Linearity Analyzer
+* Perf: Capped frequency measurement update intervals for high stability
 
 ## [v0.4.3] - 2026-02-09
 
