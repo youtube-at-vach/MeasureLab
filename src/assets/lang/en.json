@@ -1102,5 +1102,6 @@
     "Fundamental (Lock-in):": "Fundamental (Lock-in):",
     "Residual": "Residual",
     "Residual RMS:": "Residual RMS:",
-    "Waveform": "Waveform"
+    "Waveform": "Waveform",
+    "Warming Up... ({0}/{1})": "Warming Up... ({0}/{1})"
 }

@@ -1123,6 +1123,7 @@
     "Show advanced calibration values": "显示高级校准值",
     "Stored Calibration Values": "保存的校准值",
     "Show stored calibration values": "显示保存的校准值",
+    "Warming Up... ({0}/{1})": "Warming Up... ({0}/{1})",
     "Enable Dithering (TPDF)": "启用抖动 (TPDF)",
     "Dithering Bit Depth:": "抖动位深:"
 }
