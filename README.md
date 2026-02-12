@@ -87,7 +87,6 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 | Windows 10/11 | ✅ Supported | Official binary available |
 | macOS | ⚠️ Experimental | Build may succeed, runtime not fully tested |
 
-
 ---
 
 ## 🚀 インストールと実行 (Installation & Usage)
