@@ -467,7 +467,7 @@ class AudioEngine:
             #  2^(N-1) states in positive/negative side. 
             #  LSB = 1.0 / (2**(bit_depth - 1)))
             lsb = 1.0 / (2 ** (bit_depth - 1))
-            
+
             # Triangular dither: random1 - random2
             # np.random.random_sample is [0.0, 1.0)
             # (rand1 - rand2) is (-1.0, 1.0)
