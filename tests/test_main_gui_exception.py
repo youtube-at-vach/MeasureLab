@@ -1,9 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import sys
-import logging
 import os
-import importlib
 
 # Ensure we can import main_gui
 # We go up one level from 'tests/' to reach the project root
