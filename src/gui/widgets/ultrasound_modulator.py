@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import scipy.signal
 from PyQt6.QtCore import Qt, QTimer
@@ -24,6 +25,8 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+logger = logging.getLogger(__name__)
 
 
 # Precomputed Hilbert coefficients for fallback (approx 48kHz, width=800, 65 taps)
@@ -122,7 +125,7 @@ class UltrasoundModulator(MeasurementModule):
                 try:
                     self._hilbert_coeffs = scipy.signal.remez(numtaps, bands, [1], type="hilbert", fs=fs)
                 except Exception as e:
-                    print(f"Error designing Hilbert filter: {e}. Fallback to basic.")
+                    logger.warning(f"Error designing Hilbert filter: {e}. Fallback to basic.")
                     # Fallback to precomputed coefficients
                     self._hilbert_coeffs = np.array(_FALLBACK_HILBERT_COEFFS)
 
@@ -147,7 +150,7 @@ class UltrasoundModulator(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                logger.warning(f"Audio callback status: {status}")
 
             fs = self.audio_engine.sample_rate
 

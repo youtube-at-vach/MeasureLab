@@ -26,8 +26,11 @@ class TestUltrasoundModulator(unittest.TestCase):
         # Test fallback when remez fails
         with patch('scipy.signal.remez') as mock_remez:
             mock_remez.side_effect = ValueError("Convergence failed")
-            self.modulator._update_filter(48000)
 
+            with self.assertLogs('src.gui.widgets.ultrasound_modulator', level='WARNING') as cm:
+                self.modulator._update_filter(48000)
+
+            self.assertTrue(any("Error designing Hilbert filter" in output for output in cm.output))
             self.assertIsNotNone(self.modulator._hilbert_coeffs)
             self.assertEqual(len(self.modulator._hilbert_coeffs), 65)
 
