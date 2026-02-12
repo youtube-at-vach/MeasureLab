@@ -8,7 +8,7 @@ def test_theme_manager_caches_styles():
     mock_app.styleHints.return_value = MagicMock()
 
     # Mock QStyleFactory.keys to return a fixed list so we are consistent
-    with patch('PyQt6.QtWidgets.QStyleFactory.keys', return_value=['Windows', 'Fusion', 'Macintosh']) as mock_keys:
+    with patch('src.core.theme_manager.QStyleFactory.keys', return_value=['Windows', 'Fusion', 'Macintosh']) as mock_keys:
 
         # Instantiate ThemeManager
         manager = ThemeManager(mock_app)
@@ -47,8 +47,10 @@ def test_theme_manager_caches_styles():
 def test_theme_manager_init_calls_keys():
     """Test that __init__ populates the cache."""
     mock_app = MagicMock()
+    # Ensure styleHints is mocked to avoid failures if ThemeManager uses it
+    mock_app.styleHints.return_value = MagicMock()
 
-    with patch('PyQt6.QtWidgets.QStyleFactory.keys', return_value=['Windows', 'Fusion']) as mock_keys:
+    with patch('src.core.theme_manager.QStyleFactory.keys', return_value=['Windows', 'Fusion']) as mock_keys:
         manager = ThemeManager(mock_app)
 
         # Verify it was called during init
