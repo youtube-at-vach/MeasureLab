@@ -14,11 +14,15 @@ class TestConfigManagerLifecycle(unittest.TestCase):
 
     def tearDown(self):
         self.logger_patcher.stop()
+        if os.path.exists(self.config_path):
+            try:
+                os.remove(self.config_path)
+            except OSError:
+                pass
         # Clean up any instances created (though WeakSet handles this if we drop ref)
         # But we might want to manually clear the WeakSet if possible to avoid state leak,
         # though it's private.
         # Calling shutdown on instances is good practice if we have refs.
-        pass
 
     @patch('src.core.config_manager.os.path.exists')
     @patch('src.core.config_manager.os.makedirs')
@@ -243,7 +247,33 @@ class TestConfigManagerLifecycle(unittest.TestCase):
             if mock_instance in ConfigManager._instances:
                 ConfigManager._instances.remove(mock_instance)
 
-        self.mock_logger.error.assert_called_with("Error during shutdown: %s", exception)
+        self.mock_logger.exception.assert_called_with("Error during shutdown")
+
+    @patch('src.core.config_manager.os.path.exists', return_value=False)
+    @patch('src.core.config_manager.os.makedirs')
+    @patch('src.core.config_manager.os.open')
+    @patch('src.core.config_manager.os.fdopen')
+    @patch('src.core.config_manager.os.chmod')
+    def test_flush_config_chmod_failure(self, mock_chmod, mock_fdopen, mock_open, mock_makedirs, mock_exists):
+        """Test that chmod failure in _flush_config is logged as warning."""
+        # Setup mocks
+        mock_open.return_value = 123
+        mock_file_handle = MagicMock()
+        mock_fdopen.return_value.__enter__.return_value = mock_file_handle
+
+        # Make chmod raise an exception
+        exception_msg = "Permission denied for chmod"
+        mock_chmod.side_effect = OSError(exception_msg)
+
+        cm = ConfigManager(self.config_path)
+
+        # Trigger save
+        cm.save_config(force_sync=True)
+
+        # Verify warning logged
+        # self.mock_logger is the mock object returned by logging.getLogger
+        self.mock_logger.warning.assert_called_with(f"Failed to set secure permissions for config file: {exception_msg}")
+        cm.shutdown()
 
 if __name__ == '__main__':
     unittest.main()
