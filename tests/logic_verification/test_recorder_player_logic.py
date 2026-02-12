@@ -1,7 +1,10 @@
+
 import unittest
 from unittest.mock import MagicMock
 import sys
 import numpy as np
+import queue
+import os
 
 # Mock sounddevice before importing AudioEngine
 sys.modules['sounddevice'] = MagicMock()
@@ -15,6 +18,17 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         self.audio_engine.sample_rate = 48000
         self.player = RecorderPlayer(self.audio_engine)
 
+        # Manually initialize write queue for testing logic without starting background thread
+        self.player._write_queue = queue.Queue()
+
+    def tearDown(self):
+        # Cleanup temp file if it was created (though we mock logic mostly)
+        if self.player._temp_record_file and os.path.exists(self.player._temp_record_file):
+            try:
+                os.remove(self.player._temp_record_file)
+            except OSError:
+                pass
+
     def test_recording_stereo(self):
         self.player.is_recording = True
         self.player.input_mode = "Stereo"
@@ -26,9 +40,15 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         self.player.audio_callback(indata, outdata, frames, None, None)
 
-        self.assertEqual(len(self.player.record_buffer), 1)
-        np.testing.assert_array_equal(self.player.record_buffer[0], indata)
+        # Verify data pushed to queue
+        self.assertFalse(self.player._write_queue.empty())
+        rec_data = self.player._write_queue.get()
+        np.testing.assert_array_equal(rec_data, indata)
+
+        # Verify recorded_samples updated
         self.assertEqual(self.player.recorded_samples, frames)
+        # Verify record_buffer is NOT used
+        self.assertEqual(len(self.player.record_buffer), 0)
 
     def test_recording_left(self):
         self.player.is_recording = True
@@ -41,10 +61,12 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         self.player.audio_callback(indata, outdata, frames, None, None)
 
-        self.assertEqual(len(self.player.record_buffer), 1)
+        self.assertFalse(self.player._write_queue.empty())
+        rec_data = self.player._write_queue.get()
+
         # Should be indata[:, 0:1] (keep 2D)
         expected = indata[:, 0:1]
-        np.testing.assert_array_equal(self.player.record_buffer[0], expected)
+        np.testing.assert_array_equal(rec_data, expected)
         self.assertEqual(self.player.recorded_samples, frames)
 
     def test_recording_right(self):
@@ -58,10 +80,12 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         self.player.audio_callback(indata, outdata, frames, None, None)
 
-        self.assertEqual(len(self.player.record_buffer), 1)
+        self.assertFalse(self.player._write_queue.empty())
+        rec_data = self.player._write_queue.get()
+
         # Should be indata[:, 1:2] (keep 2D)
         expected = indata[:, 1:2]
-        np.testing.assert_array_equal(self.player.record_buffer[0], expected)
+        np.testing.assert_array_equal(rec_data, expected)
         self.assertEqual(self.player.recorded_samples, frames)
 
     def test_playback_stereo(self):
@@ -236,6 +260,8 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         np.testing.assert_array_equal(outdata, np.zeros((frames, channels), dtype=np.float32))
         # Record buffer should be empty
         self.assertEqual(len(self.player.record_buffer), 0)
+        # Queue should be empty (or None, but we inited it in setUp)
+        self.assertTrue(self.player._write_queue.empty())
 
 if __name__ == '__main__':
     unittest.main()
