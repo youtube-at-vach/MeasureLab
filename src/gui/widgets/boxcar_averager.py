@@ -229,9 +229,6 @@ class BoxcarAverager(MeasurementModule):
         return seq
 
     def _callback(self, indata, outdata, frames, time, status):
-        if status:
-            print(status)
-
         abs_start = int(self.global_sample_counter)
 
         # 1. Store Input
