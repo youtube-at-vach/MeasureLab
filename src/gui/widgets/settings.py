@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import scipy.signal
 from PyQt6.QtCore import QTimer
@@ -814,6 +815,7 @@ def next_power_of_two(n):
 class SettingsWidget(QWidget):
     def __init__(self, audio_engine: AudioEngine, config_manager: ConfigManager):
         super().__init__()
+        self.logger = logging.getLogger(__name__)
         self.audio_engine = audio_engine
         self.config_manager = config_manager
         self.init_ui()
