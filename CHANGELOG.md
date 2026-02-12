@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.4.4] - 2026-02-12
+
+### Fixed
+
+* Core: cap maximum update interval for frequency measurements to improve performance
+* UI: suppress benign GNOME portal Settings warnings by setting QT_LOGGING_RULES
+* CI: bump dependencies in github-actions and python-dependencies groups
+
+### Documentation
+
+* README: add instructions for directly invoking Python in virtual environments on Linux
+
 ## [v0.4.3] - 2026-02-09
 
 ### Added
