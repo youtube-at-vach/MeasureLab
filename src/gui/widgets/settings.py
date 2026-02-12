@@ -964,53 +964,56 @@ class SettingsWidget(QWidget):
         audio_tab = QWidget()
         audio_layout = QVBoxLayout()
 
-        # Device Selection Group
-        dev_group = QGroupBox(tr("Audio Devices"))
-        dev_layout = QFormLayout()
+        # Audio Sub-Tabs for Device selection and Offline mode
+        self.audio_sub_tabs = QTabWidget()
+
+        # Sub-Tab: Devices
+        device_sub_tab = QWidget()
+        device_sub_layout = QFormLayout(device_sub_tab)
 
         # Host API
         self.hostapi_combo = QComboBox()
         self.hostapi_combo.currentIndexChanged.connect(self.on_hostapi_changed)
-        dev_layout.addRow(tr("Host API:"), self.hostapi_combo)
+        device_sub_layout.addRow(tr("Host API:"), self.hostapi_combo)
 
         # Input
         self.input_combo = QComboBox()
         self.input_combo.currentIndexChanged.connect(self.on_device_changed)
-        dev_layout.addRow(tr("Input Device:"), self.input_combo)
+        device_sub_layout.addRow(tr("Input Device:"), self.input_combo)
 
         # Output
         self.output_combo = QComboBox()
         self.output_combo.currentIndexChanged.connect(self.on_device_changed)
-        dev_layout.addRow(tr("Output Device:"), self.output_combo)
+        device_sub_layout.addRow(tr("Output Device:"), self.output_combo)
 
         self.refresh_btn = QPushButton(tr("Refresh Devices"))
         self.refresh_btn.clicked.connect(self.on_refresh_clicked)
-        dev_layout.addRow(self.refresh_btn)
+        device_sub_layout.addRow(self.refresh_btn)
 
-        dev_group.setLayout(dev_layout)
-        audio_layout.addWidget(dev_group)
+        self.audio_sub_tabs.addTab(device_sub_tab, tr("Audio Devices"))
 
-        # Offline Mode Group
-        iso_group = QGroupBox(tr("Virtual / Offline Mode"))
-        iso_layout = QFormLayout()
+        # Sub-Tab: Virtual / Offline
+        offline_sub_tab = QWidget()
+        offline_sub_layout = QFormLayout(offline_sub_tab)
 
         self.offline_check = QCheckBox(tr("Virtual Audio (No Hardware)"))
         is_offline = self.config_manager.is_offline_mode()
         self.offline_check.setChecked(is_offline)
         self.offline_check.toggled.connect(self.on_offline_toggled)
-        iso_layout.addRow(self.offline_check)
+        offline_sub_layout.addRow(self.offline_check)
 
         self.offline_rate_spin = QSpinBox()
         self.offline_rate_spin.setRange(1000, 384000)
         self.offline_rate_spin.setValue(self.config_manager.get_offline_sample_rate())
         self.offline_rate_spin.setSuffix(" Hz")
         self.offline_rate_spin.valueChanged.connect(self.on_offline_rate_changed)
-        iso_layout.addRow(tr("Simulation Rate:"), self.offline_rate_spin)
+        offline_sub_layout.addRow(tr("Simulation Rate:"), self.offline_rate_spin)
 
-        iso_group.setLayout(iso_layout)
-        audio_layout.addWidget(iso_group)
+        self.audio_sub_tabs.addTab(offline_sub_tab, tr("Virtual / Offline Mode"))
 
-        # Audio Configuration Group
+        audio_layout.addWidget(self.audio_sub_tabs)
+
+        # Audio Configuration Group (Stays below sub-tabs)
         conf_group = QGroupBox(tr("Audio Configuration"))
         conf_layout = QFormLayout()
 
