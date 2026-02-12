@@ -33,25 +33,26 @@ Performs optimization to improve the processing speed of FFT (Fast Fourier Trans
 
 ### Audio Devices
 
-Selects the input and output devices to be used.
+Selects the input and output devices. Previous settings have been split into tabs.
 
-* **Input Device**: Selects the input device with a measurement microphone, etc., connected.
-* **Output Device**: Selects the output device with speakers, etc., connected.
-* **Host API**: Selects the audio backend (API) (e.g., MME, WASAPI, ASIO, ALSA, JACK, etc.). Used to filter the device list to show only devices for the specific API.
-* **Refresh Devices**: Updates the device list.
+* **Audio Devices Tab**:
+    * **Host API**: Selects the audio backend (API) (e.g., MME, WASAPI, ASIO, ALSA, JACK, etc.).
+    * **Input Device**: Selects the input device with a measurement microphone, etc., connected.
+    * **Output Device**: Selects the output device with speakers, etc., connected.
+    * **Refresh Devices**: Updates the device list. This is disabled when JACK is running on Linux for safety.
+* **Virtual / Offline Mode Tab**:
+    * **Virtual Audio (No Hardware)**: Enables the virtual audio driver. Use this when no physical interface is available.
+    * **Simulation Rate**: Sets the sampling rate for the Virtual Mode.
 
 ### Audio Configuration
 
-* **PipeWire / JACK Mode (Resident)**: Enable when using PipeWire or JACK in a Linux environment. If checked, the audio engine continues to operate even if all widgets are closed, and the routing connection in an external patchbay (such as Graph) is maintained.
-* **Virtual / Offline Mode**: Enables the virtual audio driver. Use this when no physical audio interface is available. You can load audio files and analyze them as if they were coming from an input device.
-* **Simulation Rate**: Sets the sampling rate for the Virtual Mode. This setting is only visible when Virtual Mode is enabled.
-* **Sample Rate**: Selects the sampling frequency (e.g., 48000Hz, 192000Hz). A sampling rate as high as possible is recommended for high-precision measurement.
+* **PipeWire / JACK Mode (Resident)**: Enable when using PipeWire or JACK in a Linux environment. If checked, the audio engine continues to operate even if all widgets are closed, and external connections are maintained.
+* **Sample Rate**: Selects the sampling frequency.
 * **Buffer Optimization**: Selects the optimization level of the buffer size according to the application.
-    * **FAST / MINIMUM**: Reduces latency, but sound may be interrupted under high load.
-    * **STABLE**: Recommended setting. Emphasizes stability.
-    * **LOW_FREQ / ULTRA**: Use when low-frequency phase accuracy is important or when extremely high stability is required.
-* **Buffer Size**: Actual size of the audio buffer. It is automatically calculated based on the level selected in Buffer Optimization and the sampling rate, but it is also possible to select "Custom" and set it manually.
+* **Buffer Size**: Actual size of the audio buffer.
 * **Input/Output Channels**: Selects the channel mode (Stereo, Left, Right).
+* **Enable Dithering (TPDF)**: Adds dither to the output signal to reduce quantization distortion.
+* **Dithering Bit Depth**: Selects the bit depth for dithering application.
 
 ## Calibration
 
@@ -59,29 +60,22 @@ Performs calibration to improve measurement accuracy. Pressing the "Wizard" butt
 
 ### Calibration Profiles
 
-You can save the current calibration settings (Input Sensitivity, Output Gain, SPL Offset, etc.) as a named profile.
-This is useful for quickly switching settings when using different audio interfaces or microphones.
-The profile also records the device name and Host API used at the time of saving.
+You can save the current calibration settings as a named profile.
 
-* **Select Profile**: Select a saved profile. When selected, the device name associated with that profile is displayed.
-* **Load**: Loads the settings of the selected profile and applies them to the current settings.
+* **Select Profile**: Select a saved profile.
 * **Delete**: Deletes the selected profile.
-* **Save As...**: Saves the current settings with a new name. Entering an existing name overwrites it.
+* **Duplicate Profile**: Saves (duplicates) the current settings with a new name. Entering an existing name overwrites it.
 
-### Input Sensitivity
+### Current Settings
 
-Setting for correctly displaying the voltage level of the input signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is input, it is 1.0V.
+* **Input Sensitivity**: Setting for the voltage level of the input signal. Can be automatically calculated with "Wizard".
+* **Output Gain**: Setting for the voltage level of the output signal. Can be automatically calculated with "Wizard".
+* **SPL Offset**: Correction value of the dB SPL value displayed by the Sound Level Meter, etc. Can be automatically calculated with "Wizard".
 
-* **Wizard**: Automatically calculates by inputting a known voltage (for example, a 1Vrms sine wave) and inputting that value.
+### Stored Calibration Values
 
-### Output Gain
+Visible when "Show stored calibration values" is checked. These are read-only reference data.
 
-Setting for correctly controlling the voltage level of the output signal. "1.0 V/FS" means that when a digital full scale (0dBFS) signal is output, the terminal voltage is 1.0V.
-
-* **Wizard**: Automatically calculates by outputting a test signal (such as a 1kHz sine wave) and measuring the voltage with a tester and inputting it.
-
-### SPL Offset
-
-Offset (correction value) of the dB SPL value displayed by the Sound Level Meter, etc.
-
-* **Wizard**: Automatically calculates the total correction value including microphone sensitivity by outputting noise from a speaker and inputting the value (dB SPL) measured with a commercially available sound level meter.
+* **Frequency Calibration**: Frequency deviation of the internal clock (ppm).
+* **1PPS Frequency Calibration**: Deviation from an external reference based on the 1PPS signal (ppm).
+* **Lock-in Gain Offset**: Internal gain correction value for lock-in amplifier measurements (mdB/dB).

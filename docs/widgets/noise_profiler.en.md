@@ -47,6 +47,7 @@ A bar graph showing which components are dominant in the total noise power.
 Displays analysis results in numerical values.
 
 * **Total Noise RMS**: Total noise amount in the audible range (20Hz-20kHz).
+* **A-weighted RMS**: Total noise amount with A-weighting (perceptual correction) filter applied.
 * **White Density**: White noise voltage density per 1Hz (e.g., `nV/√Hz`).
 * **Corner Freq**: Frequency where 1/f noise and white noise intersect.
 

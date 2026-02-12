@@ -40,7 +40,7 @@ This tool measures the following values:
 Continues to measure the performance at the current moment.
 
 * **Use Case**: Suitable for adjusting equipment or seeing changes in distortion due to volume position.
-* **Meters**: Numerical values are displayed prominently on the left. Percentage values like THD+N automatically adjust their decimal precision based on magnitude (Dynamic Precision).
+* **Meters**: Numerical values are displayed prominently on the left. Percentage values like THD+N automatically adjust their decimal precision based on magnitude (Dynamic Precision). When the measurement reaches its limit (e.g., THD+N is lower than THD), "LO" may be displayed next to the value.
     * Pressing the **Show Detailed** button displays the following additional information:
     * **Input level**: Level of the input signal (dBFS).
     * **Window**: The window function being used (usually Blackman-Harris).
@@ -73,6 +73,8 @@ Settings for the test signal used for measurement.
     * **Sine Wave**: A basic sine wave. Used for THD measurement.
     * **SMPTE / CCIF**: Special pair signals for IMD measurement.
 * **Frequency**: Frequency of the sine wave. Standard is `1000 Hz`.
+* **Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT settings (buffer size) to prevent spectral leakage. Useful for accurate distortion measurements.
+* **Actual Freq**: Displays the exact frequency being generated when the Bin Center feature is enabled.
 * **Amplitude**: Strength of the signal. The following units can be selected:
     * **dBFS**: Relative to digital full scale.
     * **dBV**: Relative to 1Vrms.
@@ -87,7 +89,7 @@ Settings for the test signal used for measurement.
     * Selects the audio channel (Left or Right) to use for measurement.
 
 * **Averaging**
-    * Sets how many measurements to average to stabilize the values.
+    * **Avg Count**: Sets how many measurements to average to stabilize the values.
     * Increasing the value stabilizes the display, but reaction to changes becomes slower.
 
 ## Usage Examples

@@ -41,10 +41,11 @@ This vertical bar on the right side of the graph is a **"correspondence table be
     - **Left / Right / Average**: Select the audio channel to analyze.
 
 - **FFT Size (Frequency Resolution)**
-    - Sets the granularity of the analysis.
-    - **4096 / 8192, etc.**: Frequencies are seen in more detail, but response in the time direction becomes slightly blurred.
-    - **512 / 1024, etc.**: Time response (rhythm, etc.) appears sharp, but frequency resolution becomes coarser.
+    - Configures the granularity of the analysis.
+    - **4096 / 8192 etc.**: Finer frequency resolution, but time-domain response becomes slightly blurred.
+    - **512 / 1024 etc.**: Sharper time response (for rhythms, etc.), but frequency resolution becomes coarse.
     - `2048` is generally recommended for a good balance.
+    - *Note: When a faster "Speed" is selected, the maximum available FFT size is automatically limited to maintain real-time performance.*
 
 - **Window (Window Function)**
     - `hann` (standard) or `blackman` are suitable for noise analysis.

@@ -71,7 +71,7 @@ class FFTManager:
                 if isinstance(data, list):
                     wisdom = tuple(base64.b64decode(item) for item in data)
                     pyfftw.import_wisdom(wisdom)
-                    logger.info(f"Loaded pyfftw wisdom from {self.wisdom_path}")
+                    logger.debug(f"Loaded pyfftw wisdom from {self.wisdom_path}")
                 else:
                     logger.warning(f"Invalid wisdom format in {self.wisdom_path}")
             except Exception as e:
@@ -90,7 +90,7 @@ class FFTManager:
 
             with open(self.wisdom_path, "w") as f:
                 json.dump(data, f)
-            logger.info(f"Saved pyfftw wisdom to {self.wisdom_path}")
+            logger.debug(f"Saved pyfftw wisdom to {self.wisdom_path}")
         except Exception as e:
             logger.error(f"Failed to save wisdom: {e}")
 
@@ -132,7 +132,7 @@ class FFTManager:
 
                 # If we requested MEASURE but have ESTIMATE, we should upgrade (re-create)
                 if "FFTW_MEASURE" in flags and "FFTW_MEASURE" not in existing_flags:
-                    logger.info(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
+                    logger.debug(f"Upgrading plan for size {size} from ESTIMATE to MEASURE")
                     self._create_plan(size, dtype, flags, direction)
                 # Otherwise, use existing (ESTIMATE is fine if we requested MEASURE or ESTIMATE and have MEASURE,
                 # and MEASURE is fine if we requested ESTIMATE and have MEASURE)
@@ -178,7 +178,7 @@ class FFTManager:
                 "flags": flags,
                 "lock": threading.Lock(),
             }
-            logger.info(f"Created pyfftw plan for size {size} ({dtype_str}, {direction}) with flags {flags}")
+            logger.debug(f"Created pyfftw plan for size {size} ({dtype_str}, {direction}) with flags {flags}")
 
         except Exception as e:
             logger.error(f"Failed to create pyfftw plan for size {size}: {e}")

@@ -43,7 +43,7 @@ class ThemeManager(QObject):
             # Connect to system theme changes
             try:
                 style_hints.colorSchemeChanged.connect(self._on_system_theme_changed)
-                self.logger.info("System theme change detection enabled (Qt 6.5+)")
+                self.logger.debug("System theme change detection enabled (Qt 6.5+)")
             except AttributeError:
                 self.logger.warning("colorSchemeChanged signal not available")
 
@@ -59,7 +59,7 @@ class ThemeManager(QObject):
             return
 
         self.current_theme = theme_name
-        self.logger.info(f"Setting theme to: {theme_name}")
+        self.logger.debug(f"Setting theme to: {theme_name}")
 
         if theme_name == "system":
             self._apply_system_theme()
@@ -86,7 +86,7 @@ class ThemeManager(QObject):
     def _on_system_theme_changed(self, scheme):
         """Handle system theme change (Qt 6.5+ only)."""
         if self.current_theme == "system":
-            self.logger.info(f"System theme changed to: {scheme}")
+            self.logger.debug(f"System theme changed to: {scheme}")
             self._apply_system_theme()
 
     def _detect_system_theme(self) -> str:
@@ -131,7 +131,7 @@ class ThemeManager(QObject):
     def _apply_system_theme(self):
         """Apply system theme."""
         detected = self._detect_system_theme()
-        self.logger.info(f"Applying system theme (detected: {detected})")
+        self.logger.debug(f"Applying system theme (detected: {detected})")
 
         if detected == "dark":
             self._apply_dark_theme()
@@ -171,7 +171,7 @@ class ThemeManager(QObject):
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
 
         self.app.setPalette(palette)
-        self.logger.info("Light theme applied")
+        self.logger.debug("Light theme applied")
 
     def _apply_dark_theme(self):
         """Apply dark theme palette."""
@@ -206,7 +206,7 @@ class ThemeManager(QObject):
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
 
         self.app.setPalette(palette)
-        self.logger.info("Dark theme applied")
+        self.logger.debug("Dark theme applied")
 
     def _ensure_fusion_style_on_windows(self) -> None:
         """Force Fusion style on Windows so custom palettes render consistently."""
