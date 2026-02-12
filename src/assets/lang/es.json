@@ -1122,5 +1122,7 @@
     "Advanced Calibration": "Calibración avanzada",
     "Show advanced calibration values": "Mostrar valores de calibración avanzada",
     "Stored Calibration Values": "Valores de calibración guardados",
-    "Show stored calibration values": "Mostrar valores de calibración guardados"
+    "Show stored calibration values": "Mostrar valores de calibración guardados",
+    "Enable Dithering (TPDF)": "Activar dithering (TPDF)",
+    "Dithering Bit Depth:": "Profundidad de bits de dithering:"
 }
