@@ -13,5 +13,5 @@ If you are using this tool for the first time, grasp the overall picture of each
 
 ## Functions
 
-* **Preview of Major Tools**: The major measurement functions that MeasureLab possesses (Spectrum Analyzer, Signal Generator, Oscilloscope, etc.) are listed.
-* **Checking Version Information**: You can check the latest status and brand image of the software.
+* **Preview of Major Tools**: Lists the major measurement functions of MeasureLab (Spectrum Analyzer, Signal Generator, Oscilloscope, etc.).
+* **Version Information and Update Notifications**: Displays the current version number. If a new release is available on GitHub, a notification will appear. Clicking the notification opens the release page.

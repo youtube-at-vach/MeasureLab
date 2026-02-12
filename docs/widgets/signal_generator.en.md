@@ -93,6 +93,15 @@ Periodically changes the frequency or phase of the signal.
 * **Mod Freq**: The frequency of the modulation signal.
 * **Deviation**: The maximum width of change (Hz or deg).
 
+### Filters (LPF / HPF)
+
+Applies Low-Pass (LPF) and/or High-Pass (HPF) filters to the generated signal.
+
+* **Low Pass / High Pass tabs**: Can be configured independently.
+* **Enable**: Activates the filter.
+* **Freq**: Sets the cutoff frequency.
+* **Order**: Selects the filter order (steepness) from 2-pole to 8-pole.
+
 ## Measurement Tips
 
 * **To measure frequency response**: Enable the "Sweep" tab and run a logarithmic sweep from 20 Hz to 20 kHz. You can record and analyze the signal using the **Recorder** widget.

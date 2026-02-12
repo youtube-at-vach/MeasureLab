@@ -19,8 +19,8 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
         Note that locking the NCO frequency merely means the measurement reference is tracking the input; it does not imply that all frequencies used by the audio device are locked to this reference.
 2. **Reference Mode**:
     * **Internal (NCO)**: Uses an internally generated ideal sine wave as the reference.
-    * **Loopback (Ref Out)**: Uses the signal output from the system as the reference (FLL lock is disabled in this mode).
-    * **Ref Output**: Selects the output channel to use in Loopback mode (Ch 1 / Ch 2).
+    * **Loopback (Ref Out)**: Uses the signal output from the device as the reference (FLL locking is disabled in this mode). Useful when measuring with physical cable loopback or internal loopback.
+    * **Ref Output**: Selects the physical output channel (Ch 1 / Ch 2) providing the reference signal in Loopback mode.
 3. **Input Settings**:
     * **Channel**: Selects the input channel for measurement (Ch 1 / Ch 2).
     * **Gate Threshold**: Stops measurement if the input level falls below this threshold (in dB). Used to prevent operation on noise.

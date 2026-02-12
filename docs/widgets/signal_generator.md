@@ -93,6 +93,15 @@ Signal Generator（シグナルジェネレータ）は、正弦波、矩形波�
 * **Mod Freq**: 変調信号の周波数。
 * **Deviation**: 変化の最大幅（Hzまたはdeg）。
 
+### Filters (LPF / HPF)
+
+出力信号にローパスフィルタ(LPF)やハイパスフィルタ(HPF)を適用します。
+
+* **Low Pass / High Pass タブ**: それぞれ個別に設定可能です。
+* **Enable**: フィルタを有効にします。
+* **Freq**: カットオフ周波数を設定します。
+* **Order**: フィルタの次数（切れ味）を選択します（2-pole ～ 8-pole）。
+
 ## 測定のヒント
 
 * **周波数特性を測りたい**: 「Sweep」タブを有効にし、Logarithmic Sweepで20Hz〜20kHzをスイープさせます。**Recorder** ウィジェットで録音し、解析することができます。
