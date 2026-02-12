@@ -7,7 +7,7 @@ name = "measurelab"
 version = "0.4.4"
 description = "DIY audio measurement and analysis suite"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "Unlicense"}
 authors = [
   {name = "MeasureLab maintainers"}
@@ -33,7 +33,7 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
 # Start with a narrow, low-noise rule set focused on correctness and
@@ -46,7 +46,7 @@ ignore = []
 
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 ignore_missing_imports = true
 show_error_codes = true
 warn_unused_ignores = true

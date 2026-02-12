@@ -38,7 +38,7 @@ To contribute to MeasureLab, you'll need to set up a development environment.
 
 ### Prerequisites
 
-- **Python 3.10** or higher
+- **Python 3.12** or higher
 - `pip` and `venv`
 - **Node.js** (optional, for markdown linting)
 
