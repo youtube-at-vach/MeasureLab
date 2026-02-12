@@ -182,7 +182,7 @@ class AudioEngine:
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
         enabled = bool(enabled)
         self.pipewire_jack_resident = enabled
-        self.logger.info(f"Set PipeWire/JACK resident mode: {enabled}")
+        self.logger.debug(f"Set PipeWire/JACK resident mode: {enabled}")
 
         if enabled:
             # Ensure master stream is open even with zero clients.
@@ -201,7 +201,7 @@ class AudioEngine:
             return
 
         self.offline_mode = enabled
-        self.logger.info(f"Set offline mode: {enabled}")
+        self.logger.debug(f"Set offline mode: {enabled}")
 
         # Restart stream if active to switch backend
         if self.is_active():
@@ -288,27 +288,27 @@ class AudioEngine:
         """Sets the input and output devices."""
         self.input_device = input_device_id
         self.output_device = output_device_id
-        self.logger.info(f"Set devices: Input={input_device_id}, Output={output_device_id}")
+        self.logger.debug(f"Set devices: Input={input_device_id}, Output={output_device_id}")
         # Restart stream if running to apply changes
         if self.is_active():
             self._restart_stream()
 
     def set_sample_rate(self, rate):
         self.sample_rate = rate
-        self.logger.info(f"Set sample rate: {rate}")
+        self.logger.debug(f"Set sample rate: {rate}")
         if self.is_active():
             self._restart_stream()
 
     def set_block_size(self, size):
         self.block_size = size
-        self.logger.info(f"Set block size: {size}")
+        self.logger.debug(f"Set block size: {size}")
         if self.is_active():
             self._restart_stream()
 
     def set_channel_mode(self, input_mode, output_mode):
         self.input_channel_mode = input_mode
         self.output_channel_mode = output_mode
-        self.logger.info(f"Set channel modes: Input={input_mode}, Output={output_mode}")
+        self.logger.debug(f"Set channel modes: Input={input_mode}, Output={output_mode}")
         # Note: Changing channel mode might affect active callbacks if they expect specific mapping.
         # For now, we assume global mode applies to the master stream.
         if self.is_active():
