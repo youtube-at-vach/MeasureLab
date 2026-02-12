@@ -176,7 +176,7 @@ class AudioEngine:
 
         # Dithering
         self.dithering_enabled = False
-        self.dithering_bit_depth = "auto"
+        self.dithering_bit_depth = "24"
 
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
@@ -454,14 +454,9 @@ class AudioEngine:
 
         # Apply TPDF Dithering
         if self.dithering_enabled:
-            depth_str = str(self.dithering_bit_depth).lower()
-            if depth_str == "auto":
-                # Fallback to 24-bit if auto-detection is not implemented or possible
-                bit_depth = 24
-            elif "16" in depth_str:
+            depth_str = str(self.dithering_bit_depth)
+            if "16" in depth_str:
                 bit_depth = 16
-            elif "24" in depth_str:
-                bit_depth = 24
             else:
                 bit_depth = 24
 

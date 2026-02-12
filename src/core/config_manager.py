@@ -24,7 +24,7 @@ DEFAULT_CONFIG = {
         "offline_mode": False,
         "offline_sample_rate": 48000,
         "dithering_enabled": False,
-        "dithering_bit_depth": "auto",
+        "dithering_bit_depth": "24",
     },
     "language": "en",
     "theme": "system",
@@ -293,9 +293,9 @@ class ConfigManager:
         self.save_config()
 
     def get_dithering_bit_depth(self) -> str:
-        """Returns the dithering bit depth setting ('16', '24', or 'auto')."""
+        """Returns the dithering bit depth setting ('16' or '24')."""
         audio = self.get_audio_config()
-        return str(audio.get("dithering_bit_depth", "auto"))
+        return str(audio.get("dithering_bit_depth", "24"))
 
     def set_dithering_bit_depth(self, depth: str):
         """Sets the dithering bit depth."""
