@@ -1122,5 +1122,6 @@
     "Advanced Calibration": "Расширенная калибровка",
     "Show advanced calibration values": "Показать расширенные значения калибровки",
     "Stored Calibration Values": "Сохраненные значения калибровки",
-    "Show stored calibration values": "Показать сохраненные значения калибровки"
+    "Show stored calibration values": "Показать сохраненные значения калибровки",
+    "Warming Up... ({0}/{1})": "Warming Up... ({0}/{1})"
 }

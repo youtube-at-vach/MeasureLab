@@ -745,7 +745,7 @@ class OnePPSMonitorWidget(QWidget):
             self.lbl_max.setText(f"Max: {fmt(max_val)}")
         else:
             if self.module.is_running:
-                 self.lbl_inst.setText(tr(f"Warming Up... ({count}/{self.module.warmup_count})"))
+                 self.lbl_inst.setText(tr("Warming Up... ({0}/{1})").format(count, self.module.warmup_count))
                  self.lbl_cumul.setText("-")
                  self.lbl_rate.setText("-")
 

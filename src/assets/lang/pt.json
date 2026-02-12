@@ -1122,5 +1122,6 @@
     "Advanced Calibration": "Calibração avançada",
     "Show advanced calibration values": "Mostrar valores de calibração avançada",
     "Stored Calibration Values": "Valores de calibração armazenados",
-    "Show stored calibration values": "Mostrar valores de calibração armazenados"
+    "Show stored calibration values": "Mostrar valores de calibração armazenados",
+    "Warming Up... ({0}/{1})": "Warming Up... ({0}/{1})"
 }

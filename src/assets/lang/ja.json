@@ -1109,5 +1109,6 @@
     "Waveform": "波形",
     "Frequency Calibration:": "周波数校正:",
     "1PPS Frequency Calibration:": "1PPS周波数校正:",
-    "Lock-in Gain Offset:": "ロックイン・ゲイン・オフセット:"
+    "Lock-in Gain Offset:": "ロックイン・ゲイン・オフセット:",
+    "Warming Up... ({0}/{1})": "ウォーミングアップ中... ({0}/{1})"
 }
