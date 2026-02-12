@@ -53,6 +53,7 @@ warn_unused_ignores = true
 warn_return_any = false
 warn_unreachable = true
 files = ["src/core"]
+exclude = "^(site|docs)/"
 
 [[tool.mypy.overrides]]
 module = "src.gui.*"
@@ -60,4 +61,3 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 addopts = "-ra"
-
