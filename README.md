@@ -14,8 +14,9 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 ## Quick glance (English)
 
 - PyQt6 desktop app bundling 29+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, loopback finder, distortion/IMD tools, network/impedance analyzers, oscilloscope, spectrogram, ultrasound modulator, transient analyzer, lock-in/FRA, inverse filter, frequency counter, 1PPS monitor, recorder/player, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
-- Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes.
+- Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes, and **Dithering (TPDF/Bit-depth control)**.
 - Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.12+).
+- **Virtual / Offline Mode**: Analyze audio files or internal signals without hardware, supporting custom simulation rates.
 
 ## ✨ 主な機能 (Features)
 
@@ -74,8 +75,9 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 ### ⚙️ 高度な設定
 
-- **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。
-- **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。
+- **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。**Virtual / Offline Mode** ではシミュレーションレートを自由に設定可能。
+- **ディザリング (Dithering)**: TPDF ディザリングおよび出力ビット深度（8 / 16 / 24 bit）の設定に対応。量子化ノイズを低減し、高精度な測定をサポートします。
+- **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。1PPS 信号を用いたクロック偏差の記録にも対応。
 - **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
 - **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
 
@@ -86,7 +88,6 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 | Linux (x86_64) | ✅ Supported | Tested on Ubuntu 22.04 / 24.04 |
 | Windows 10/11 | ✅ Supported | Official binary available |
 | macOS | ⚠️ Experimental | Build may succeed, runtime not fully tested |
-
 
 ---
 
@@ -188,6 +189,7 @@ pip install -c constraints.txt -e .[dev]
 営利・非営利を問わず、自由にコピー、変更、配布、使用することができます。
 
 > **Note**: This is free and unencumbered software released into the public domain.
+
 ## 👥 コントリビューター (Contributors)
 
 ### 🧑‍💻 サポートしてくれた皆さん (Thanks to everyone who helped improve this software)

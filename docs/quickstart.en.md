@@ -23,6 +23,7 @@ If you don't have an audio interface or want to analyze existing audio files wit
 1. Go to **Settings** > **Audio Configuration**.
 2. Check the **Virtual / Offline Mode** option.
 3. Use the **Simulation Rate** to set your desired sampling rate.
+    * When analyzing high-quality audio files (e.g., 24-bit/192kHz), setting the Simulation Rate to match the file's rate ensures analysis without degradation from downsampling.
 
 In this mode, you can load audio files into the **Player** widget or generate signals internally, and analyzed results will appear in the analyzer widgets just like real hardware.
 
@@ -113,6 +114,11 @@ When performing high-precision measurements in a Linux environment, we strongly 
 * **Buffer Size / Buffer Optimization**
     * **We strongly recommend setting it to "Long (STABLE or higher)".**
     * Since this software is for "measurement," prioritize data stability over latency.
+
+!!! tip
+    **Using Dithering**
+
+    When outputting at low bit depths (e.g., 16-bit) or measuring extremely low distortion (THD+N), enable **Dithering** in the **Audio** tab of the **Settings**. This converts quantization distortion into noise, improving the linearity of low-level signals.
 
 ---
 

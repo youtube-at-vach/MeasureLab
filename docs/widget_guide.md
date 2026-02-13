@@ -35,6 +35,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 * **[1PPS Monitor](widgets/one_pps_monitor.md)**
     * GPSなどからの1PPS信号を監視し、サンプリングレートの偏差(PPM)を測定します。
 
+* **[Ultrasound AM Modulator](widgets/ultrasound_modulator.md)**
+    * オーディオ信号を超音波(40kHz)で振幅変調して出力します。パラメトリックスピーカーの実験に使用します。
+
 ---
 
 ## 📊 基本解析
