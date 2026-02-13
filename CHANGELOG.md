@@ -1,5 +1,37 @@
 # Changelog
 
+## [v0.5.0] - 2026-02-13
+
+### Major
+
+* **Python Build**: Upgraded project to Python 3.12 for improved performance and modern feature support
+* **UI**: Major reorganization of the Settings Widget, introducing a tabbed interface for General, Audio, and Calibration settings
+
+### Added
+
+* **UI**: New "BIN Center" frequency snapping feature for Signal Generator and Distortion Analyzer
+* **UI**: Added "Stored Calibration Values" section in Settings for persistent hardware correction factors
+* **UI**: Interactive dithering options with support for multiple bit-depths and noise shaping
+* **Docs**: Comprehensive update to README.md including detailed OS support status and tables
+
+### Changed
+
+* **UI**: Improved organization and visibility of audio device settings and host API selection
+* **Log**: Optimized log verbosity by setting many repetitive INFO logs to DEBUG across GUI widgets
+* **Core**: Improved Timecode Generator calibration stability and reliability
+
+### Fixed
+
+* **Core**: Fixed calibration factor wrap-around/overflow issue in Timecode Generator
+* **UI**: Fixed broad exception handling in `main_gui.py` by implementing proper error logging
+* **UI**: Fixed translation leaks in `OnePPSMonitor` and improved multi-language consistency
+* **UI**: Fixed crash in Linearity Analyzer when operating in specific modes or with complex configurations
+
+### Performance
+
+* **Perf**: Optimized `TimecodeMonitor` by improving deque usage efficiency
+* **Perf**: Enhanced frequency estimation algorithms for better real-time response
+
 ## [v0.4.4] - 2026-02-12
 
 ### Added

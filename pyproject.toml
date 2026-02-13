@@ -3,8 +3,8 @@ requires = ["setuptools>=69,<82", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "measurelab"
-version = "0.4.4"
+name = "MeasureLab"
+version = "0.5.0"
 description = "DIY audio measurement and analysis suite"
 readme = "README.md"
 requires-python = ">=3.12"
