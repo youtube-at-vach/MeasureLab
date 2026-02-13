@@ -44,8 +44,9 @@ It accepts a 1PPS signal from a GPS receiver or high-precision clock source and 
 Corrects the measurement offset.
 
 * **Stored 1PPS Cal**: Shows the current stored calibration factor (ppm).
-* **Calibrate from Current**: Saves the current cumulative average deviation as the calibration factor.
-    * *Note: Currently, this function only acquires the calibration factor.*
+
+> [!IMPORTANT]
+> **Calibrate from Current**: Currently, this function only **acquires and stores** the calibration factor in the settings. It does not automatically apply this factor to the measurement engine yet. To use the calibrated value, refer to the "Stored 1PPS Cal" display.
 
 ## Settings
 
