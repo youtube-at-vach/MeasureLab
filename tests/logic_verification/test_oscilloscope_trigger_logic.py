@@ -1,4 +1,8 @@
+import unittest
+from unittest.mock import MagicMock
 import numpy as np
+
+# Dependencies are installed in the environment, so we can import directly.
 from src.gui.widgets.oscilloscope import Oscilloscope
 
 class MockCalibration:
@@ -121,3 +125,43 @@ def test_get_display_data_trigger_at_wrap_boundary():
     assert data is not None
     assert len(data) == 10
     assert data[0, 0] == 1.0
+
+def test_single_mode_stops_capture():
+    engine = MockAudioEngine()
+    engine.sample_rate = 48000
+    scope = Oscilloscope(engine)
+
+    scope.trigger_source = 0
+    scope.trigger_slope = 'Rising'
+    scope.trigger_level = 0.0
+    scope.trigger_mode = 'Single'
+    scope.single_shot_armed = True
+    scope.single_shot_fired = False
+
+    # We need a larger buffer for this test logic to work as expected
+    scope.buffer_size = 10000
+    scope.input_data = np.full((scope.buffer_size, 2), -1.0) # Reset buffer
+
+    # Make a buffer with a clean rising crossing inside the search window.
+    # Search window is typically 2048.
+    # buffer_size = 10000.
+    # required_samples (for 10ms) = 480.
+    # search_end = 10000 - 480 = 9520.
+    # search_window = 2048.
+    # Searches [7472, 9520].
+
+    crossing_prev = 7700
+    crossing_now = 7701
+    scope.input_data[crossing_prev, 0] = -0.5
+    scope.input_data[crossing_now, 0] = 0.5
+
+    window_duration = 0.01  # 10ms
+    data = scope.get_display_data(window_duration)
+
+    assert data is not None, "Should capture trigger"
+    assert scope.single_shot_fired is True, "Should set fired flag"
+    assert scope.single_shot_armed is False, "Should disarm"
+
+    # After firing, further calls should not produce new data until re-armed.
+    data2 = scope.get_display_data(window_duration)
+    assert data2 is None, "Should not capture after firing in Single mode"
