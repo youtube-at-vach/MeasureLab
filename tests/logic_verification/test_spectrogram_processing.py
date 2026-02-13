@@ -7,8 +7,6 @@ from PyQt6.QtWidgets import QApplication
 
 # Use real dependencies for logic verification where possible
 # But mock sounddevice and soundfile to avoid hardware dependency
-from unittest.mock import patch
-import sys
 
 # We patch sys.modules inside setUpContext? No, we can patch just for imports if needed.
 # But Spectrogram imports at module level.

@@ -1,5 +1,3 @@
-import unittest
-from unittest.mock import MagicMock
 import numpy as np
 
 # Dependencies are installed in the environment, so we can import directly.
