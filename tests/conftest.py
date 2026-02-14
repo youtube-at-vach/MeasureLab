@@ -12,6 +12,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+# Set Qt platform to offscreen for headless testing
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 # Mock sounddevice if not available or fails to initialize (no PortAudio)
 try:
     import sounddevice # noqa: F401

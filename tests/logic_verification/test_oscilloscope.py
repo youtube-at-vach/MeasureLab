@@ -104,6 +104,32 @@ class TestOscilloscopeStaticMethods(unittest.TestCase):
         self.assertLess(abs(rise_s - 20e-6), 2e-6)
         self.assertLess(abs(fall_s - 20e-6), 2e-6)
 
+    def test_frequency_estimation_edge_cases(self):
+        from src.gui.widgets.oscilloscope import Oscilloscope
+        # Insufficient data
+        t = np.array([0, 1, 2])
+        y = np.array([0, 1, 0])
+        self.assertIsNone(Oscilloscope.estimate_frequency_hz(t, y))
+        self.assertIsNone(Oscilloscope.estimate_frequency_hz(None, None))
+
+        # No crossings
+        sample_rate = 1000
+        t = np.arange(100) / sample_rate
+        y = np.ones(100)
+        self.assertIsNone(Oscilloscope.estimate_frequency_hz(t, y))
+
+        # Exact zero crossings (< 2)
+        t = np.array([0, 1, 2, 3, 4], dtype=float)
+        y = np.array([-1, 0, 1, 0, -1], dtype=float)
+        self.assertIsNone(Oscilloscope.estimate_frequency_hz(t, y))
+
+        # Exact zero crossings (>= 2)
+        t = np.arange(10, dtype=float)
+        y = np.array([-1, 1, -1, 1, -1, 1, -1, 1, -1, 1], dtype=float)
+        est = Oscilloscope.estimate_frequency_hz(t, y)
+        self.assertIsNotNone(est)
+        self.assertAlmostEqual(est, 0.5, places=6)
+
 
 class TestOscilloscopeLogic(unittest.TestCase):
     """Tests for Oscilloscope logic (buffers, triggering) without UI."""
@@ -154,6 +180,92 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.assertIsNotNone(data)
         self.assertEqual(len(data), 10)
         self.assertEqual(data[0, 0], 1.0)
+
+    def test_get_display_data_trigger_at_wrap_boundary(self):
+        # Pulse spans across physical boundary
+        # write_index = 50.
+        # Logical index 45 to 55 crosses physical 95 -> 4
+        # Pulse at logical 48.
+        # Physical: (50+48)%100 = 98.
+        # 98, 99, 0, 1, 2
+
+        self.scope.write_index = 50
+        self.scope.input_data[98, 0] = 1.0
+        self.scope.input_data[99, 0] = 1.0
+        self.scope.input_data[0, 0] = 1.0
+        self.scope.input_data[1, 0] = 1.0
+        self.scope.input_data[2, 0] = 1.0
+
+        self.scope.trigger_source = 0
+        self.scope.trigger_mode = "Normal"
+        self.scope.trigger_level = 0.5
+        self.scope.trigger_slope = "Rising"
+
+        self.engine.sample_rate = 1000
+        window_duration = 0.01 # 10 samples
+
+        data = self.scope.get_display_data(window_duration)
+
+        self.assertIsNotNone(data)
+        self.assertEqual(len(data), 10)
+        self.assertEqual(data[0, 0], 1.0)
+
+    def test_single_mode_stops_capture(self):
+        self.engine.sample_rate = 48000
+        self.scope.trigger_source = 0
+        self.scope.trigger_slope = 'Rising'
+        self.scope.trigger_level = 0.0
+        self.scope.trigger_mode = 'Single'
+        self.scope.single_shot_armed = True
+        self.scope.single_shot_fired = False
+
+        self.scope.buffer_size = 10000
+        self.scope.input_data = np.full((self.scope.buffer_size, 2), -1.0) # Reset buffer
+
+        # Searches window [7472, 9520] for 48000Hz, 10ms window
+        crossing_prev = 7700
+        crossing_now = 7701
+        self.scope.input_data[crossing_prev, 0] = -0.5
+        self.scope.input_data[crossing_now, 0] = 0.5
+
+        window_duration = 0.01  # 10ms
+        data = self.scope.get_display_data(window_duration)
+
+        self.assertIsNotNone(data, "Should capture trigger")
+        self.assertTrue(self.scope.single_shot_fired, "Should set fired flag")
+        self.assertFalse(self.scope.single_shot_armed, "Should disarm")
+
+        # After firing, further calls should not produce new data until re-armed.
+        data2 = self.scope.get_display_data(window_duration)
+        self.assertIsNone(data2, "Should not capture after firing in Single mode")
+
+    def test_measurements_apply_calibration(self):
+        # 1. Test with default sensitivity (1.0)
+        t = np.linspace(0, 1, 1000)
+        data = np.zeros((1000, 2))
+        data[:, 0] = 0.5 * np.sin(2 * np.pi * 50 * t) # Left
+        data[:, 1] = 0.2 * np.sin(2 * np.pi * 50 * t) # Right
+
+        meas = self.scope.get_measurements(data)
+
+        expected_l_rms = 0.5 / np.sqrt(2)
+        expected_r_rms = 0.2 / np.sqrt(2)
+
+        self.assertAlmostEqual(meas['l_rms'], expected_l_rms, places=3)
+        self.assertAlmostEqual(meas['l_vpp'], 1.0, places=3) # 0.5 to -0.5 -> 1.0 Vpp
+        self.assertAlmostEqual(meas['r_rms'], expected_r_rms, places=3)
+
+        # 2. Test with sensitivity = 2.0 (1.0 FS = 2.0 Volts)
+        self.engine.calibration.input_sensitivity = 2.0
+        meas_cal = self.scope.get_measurements(data)
+
+        # RMS should double
+        self.assertAlmostEqual(meas_cal['l_rms'], expected_l_rms * 2.0, places=3)
+        self.assertAlmostEqual(meas_cal['l_vpp'], 2.0, places=3)
+
+    def test_measurements_none_data(self):
+        meas = self.scope.get_measurements(None)
+        self.assertEqual(meas['l_rms'], 0.0)
 
 
 class TestOscilloscopeWidgetLogic(unittest.TestCase):
