@@ -12,9 +12,9 @@ mock_loc = MagicMock()
 mock_loc.tr = lambda x: x
 sys.modules["src.core.localization"] = mock_loc
 
-import pytest
+import pytest  # noqa: E402
 try:
-    import numpy as np
+    import numpy as np  # noqa: E402
 except ImportError:
     pytest.skip("numpy not installed", allow_module_level=True)
 

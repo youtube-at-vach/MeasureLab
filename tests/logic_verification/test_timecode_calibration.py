@@ -24,7 +24,7 @@ mock_loc.tr = lambda x: x
 sys.modules["src.core.localization"] = mock_loc
 
 # Now import the module
-from src.gui.widgets.timecode_monitor import TimecodeMonitor
+from src.gui.widgets.timecode_monitor import TimecodeMonitor  # noqa: E402
 
 class TestTimecodeCalibration(unittest.TestCase):
     def test_calibration_poll_optimization(self):
