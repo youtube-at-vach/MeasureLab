@@ -316,18 +316,37 @@ class RecorderPlayer(MeasurementModule):
             self.recorded_samples += frames
 
         # Playback
-        if self.is_playing and self.playback_buffer is not None:
-            pb_len = len(self.playback_buffer)
+        # Capture reference locally to ensure consistency during callback (avoid race if main thread swaps buffer)
+        current_buffer = self.playback_buffer
+
+        if self.is_playing and current_buffer is not None:
+            pb_len = len(current_buffer)
+
+            if pb_len == 0:
+                self.is_playing = False
+                outdata.fill(0)
+                return
+
+            # Sanity check for race conditions (e.g. buffer swapped to smaller one)
+            if self.playback_pos >= pb_len:
+                if self.loop_playback:
+                    self.playback_pos = 0
+                else:
+                    self.is_playing = False
+                    outdata.fill(0)
+                    return
+
             current_idx = 0
 
             while current_idx < frames:
                 remaining = frames - current_idx
                 available = pb_len - self.playback_pos
 
+                # available is guaranteed > 0 here because of the check above and loop logic
                 to_copy = min(remaining, available)
 
                 # Get chunk from buffer
-                chunk = self.playback_buffer[self.playback_pos : self.playback_pos + to_copy]
+                chunk = current_buffer[self.playback_pos : self.playback_pos + to_copy]
 
                 # Apply digital gain/attenuation in linear domain
                 if self.playback_gain_db != 0.0:
