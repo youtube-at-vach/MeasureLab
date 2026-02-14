@@ -47,12 +47,12 @@ Signal Generator（シグナルジェネレータ）は、正弦波、矩形波�
 * **Triangle**: 三角波。
 * **Sawtooth**: のこぎり波。「Raising（上昇）」と「Falling（下降）」を選択可能。
 * **Pulse**: パルス波。パルス幅（Duty比）を調整可能。
-* **Tone + Noise**: 正弦波にノイズを重畳した信号。S/N比のテストなどに使用。
+* **Tone + Noise**: 正弦波にノイズを重畳した信号。S/N比のテストなどに使用。ノイズの振幅（Noise Amplitude）を調整可能。
 * **Noise**: ノイズ信号。「White」「Pink」「Brown」などの色（周波数特性）を選択可能。
 * **Multitone**: 複数の正弦波を対数間隔（Log-spaced）で合成した信号。クレストファクタ（波高率）が最小になるよう位相が最適化されています。
-* **MLS (Maximum Length Sequence)**: 室響特性の測定などに使用される擬似ランダム信号。
+* **MLS (Maximum Length Sequence)**: 室響特性の測定などに使用される擬似ランダム信号。次数（Order）を 10〜18 の範囲で選択可能。
 * **Burst**: トーンバースト信号。On/Offのサイクル数を指定可能。「Windowed」を選ぶとハン窓が適用され、クリックノイズを低減します。
-* **PRBS (Pseudo-Random Binary Sequence)**: 擬似ランダムビット列。
+* **PRBS (Pseudo-Random Binary Sequence)**: 擬似ランダムビット列。次数（Order, 7〜23）とシード値（Seed）を設定可能。
 
 ### 基本パラメータ
 

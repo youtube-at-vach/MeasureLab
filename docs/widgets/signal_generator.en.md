@@ -47,12 +47,12 @@ You can choose from the following waveforms:
 * **Triangle**: Triangle wave.
 * **Sawtooth**: Sawtooth wave. You can choose "Rising" or "Falling".
 * **Pulse**: Pulse wave. The pulse width (Duty cycle) can be adjusted.
-* **Tone + Noise**: A signal with noise superimposed on a sine wave. Used for S/N ratio testing, etc.
+* **Tone + Noise**: A signal with noise superimposed on a sine wave. Used for S/N ratio testing, etc. Noise amplitude can be adjusted.
 * **Noise**: Noise signal. You can choose the color (frequency characteristic) such as "White", "Pink", or "Brown".
 * **Multitone**: A signal synthesized from multiple sine waves.
-* **MLS (Maximum Length Sequence)**: A pseudo-random signal used for measuring room acoustics, etc.
+* **MLS (Maximum Length Sequence)**: A pseudo-random signal used for measuring room acoustics, etc. Order can be selected in the range of 10-18.
 * **Burst**: Tone burst signal. You can specify the number of On/Off cycles. Selecting "Windowed" applies a Hanning window to reduce click noise.
-* **PRBS (Pseudo-Random Binary Sequence)**: A pseudo-random binary sequence.
+* **PRBS (Pseudo-Random Binary Sequence)**: A pseudo-random binary sequence. Order (7-23) and Seed can be configured.
 
 ### Basic Parameters
 
