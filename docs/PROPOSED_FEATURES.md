@@ -21,8 +21,13 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 * **Multimeter (AC Voltmeter):**
     * **Concept:** A dedicated widget acting as a Digital Multimeter (DMM) for audio.
-    * **Features:** Large, high-visibility readout of Vrms, Vpeak, Crest Factor, and Frequency.
+    * **Features:** Large, high-visibility readout of Vrms, Vpeak, Crest Factor, Frequency, and **Phase (L vs R)**.
     * **Why:** Existing widgets (Scope/SpecAn) are too complex for simple level checks. A simple "Meter" mode is essential for gain staging and quick diagnostics.
+
+* **Step Response Analyzer:**
+    * **Concept:** Dedicated widget for analyzing transient response using band-limited step or square wave signals.
+    * **Features:** Automated measurement of Rise/Fall Time (10-90%), Overshoot/Undershoot (%), Settling Time, and Pre/Post-ringing Ratio.
+    * **Why:** Essential for characterizing DAC reconstruction filters (distinguishing Linear Phase vs Minimum Phase) and amplifier stability, distinct from the frequency-domain focus of the Network Analyzer.
 
 ### 🛠️ Extensions to Existing Widgets
 
