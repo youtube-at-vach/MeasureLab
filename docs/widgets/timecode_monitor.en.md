@@ -69,6 +69,15 @@ A function for outputting a timecode signal from MeasureLab. After performing se
     A checkbox in the center of the main screen.
     When this is enabled, the generator settings of one channel (Source) are copied to the other, and exactly the same timecode is output from both left and right.
 
+### JAM Memories
+
+A tab where you can check the history of timecodes captured with the **JAM** button.
+Up to 5 slots are saved, which can be referenced later or used as initial values for the generator.
+
+* **Slot**: Memory number (1-5)
+* **Captured**: The timecode value at the moment the JAM button was pressed.
+* **Current**: The estimated current timecode value, calculated by adding the elapsed time since capture.
+
 ### Calibration
 
 A feature to measure and automatically compensate for the input/output latency (delay) of the audio interface.
