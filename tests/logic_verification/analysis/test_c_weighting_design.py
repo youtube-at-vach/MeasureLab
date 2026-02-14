@@ -29,27 +29,42 @@ def test_design_c_weighting_response_at_1k():
     # Should be 0 dB (normalized)
     assert np.isclose(gain_db, 0.0, atol=0.1)
 
-def test_design_c_weighting_response_shape():
-    """Verify roughly C-weighting shape."""
+def test_design_c_weighting_response_wide():
+    """Verify roughly C-weighting shape at key frequencies."""
+    # Use higher SR to match the original test's accuracy requirement
+    sr = 192000
+    b, a = design_c_weighting(sr)
+
+    # Test frequencies: 20Hz, 1kHz, 20kHz
+    freqs = [20.0, 1000.0, 20000.0]
+    w, h = scipy.signal.freqz(b, a, worN=freqs, fs=sr)
+    gains = 20 * np.log10(np.abs(h) + 1e-12)
+
+    # 20 Hz: approx -6.2 dB
+    assert np.isclose(gains[0], -6.2, atol=0.5), f"Gain at 20Hz: {gains[0]} (expected ~ -6.2)"
+
+    # 1 kHz: approx 0 dB
+    assert np.isclose(gains[1], 0.0, atol=0.1), f"Gain at 1kHz: {gains[1]} (expected ~ 0.0)"
+
+    # 20 kHz: approx -11.2 dB (with some rolloff/warping depending on SR, but test expects ~ -11.2)
+    assert np.isclose(gains[2], -11.2, atol=1.0), f"Gain at 20kHz: {gains[2]} (expected ~ -11.2)"
+
+def test_design_c_weighting_response_shape_corners():
+    """Verify approximate attenuation at corner frequencies (20.6Hz, 12194Hz)."""
     sr = 48000
     b, a = design_c_weighting(sr)
 
-    # w1 = 20.6 Hz, w2 = 12194 Hz are the poles.
-    # Since they are double poles, the attenuation at these frequencies should be approx -6 dB relative to passband center.
-
-    freqs = [20.6, 1000, 12194]
+    freqs = [20.6, 12194]
     w, h = scipy.signal.freqz(b, a, worN=freqs, fs=sr)
     gains = 20 * np.log10(np.abs(h))
 
-    # 1kHz is 0dB reference
-    assert np.isclose(gains[1], 0.0, atol=0.1)
+    # Expect roughly -3dB to -6dB attenuation relative to passband center
+    # The magnitude of 1/(s+w)^2 at s=jw is 1/|jw+w|^2 = 1/(2w^2).
+    # Normalized to 1/(2w^2) at w=0 (if specific)?
+    # Actually, standard Butterworth/Bessel filters are -3dB at corner.
+    # C-weighting poles are real double poles (-w1, -w1).
+    # |H(jw1)| / |H(passband)| ~= |(jw1)^2 / (2jw1)^2| ? No.
+    # Let's just assert significant attenuation without strict value, as implementation details matter.
 
-    # Check approximate attenuation at corner frequencies
-    # Expecting roughly -6dB (since transfer function has (s+w)^2 in denominator)
-    # The magnitude of 1/(s+w)^2 at s=jw is 1/|jw+w|^2 = 1/|w(j+1)|^2 = 1/(2w^2).
-    # At DC (s -> 0)? No, s^2 in numerator.
-    # At passband (w >> w1, w << w2), H ~ s^2 / (s^2 * w2^2 / s^2?) -> 1.
-
-    # Let's just assert they are attenuated.
     assert gains[0] < -2.0, f"Expected attenuation at 20.6Hz, got {gains[0]} dB"
-    assert gains[2] < -2.0, f"Expected attenuation at 12194Hz, got {gains[2]} dB"
+    assert gains[1] < -2.0, f"Expected attenuation at 12194Hz, got {gains[1]} dB"
