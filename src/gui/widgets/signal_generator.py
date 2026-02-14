@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from PyQt6.QtCore import Qt
@@ -114,6 +114,12 @@ class SignalParameters:
     # Filter state
     _lpf_zi: Optional[np.ndarray] = None
     _hpf_zi: Optional[np.ndarray] = None
+
+    # Filter cache
+    _lpf_sos: Optional[np.ndarray] = None
+    _lpf_cache_key: Optional[Tuple] = None
+    _hpf_sos: Optional[np.ndarray] = None
+    _hpf_cache_key: Optional[Tuple] = None
 
 
 class SignalGenerator(MeasurementModule):
@@ -391,15 +397,49 @@ class SignalGenerator(MeasurementModule):
             return None
 
         try:
-            order = params.lpf_order if filter_type == "low" else params.hpf_order
-            freq = params.lpf_freq if filter_type == "low" else params.hpf_freq
+            # Determine target parameters based on filter type
+            if filter_type == "low":
+                order = params.lpf_order
+                freq = params.lpf_freq
+                current_key = (order, freq, sample_rate, "low")
 
-            # Constraint check
-            if freq <= 0 or freq >= sample_rate / 2:
-                return None
+                # Check LPF cache
+                if params._lpf_sos is not None and params._lpf_cache_key == current_key:
+                    return params._lpf_sos
 
-            sos = scipy.signal.butter(order, freq, btype=filter_type, fs=sample_rate, output='sos')
-            return sos
+                # Cache miss
+                if freq <= 0 or freq >= sample_rate / 2:
+                    params._lpf_sos = None
+                    params._lpf_cache_key = None
+                    return None
+
+                sos = scipy.signal.butter(order, freq, btype="low", fs=sample_rate, output='sos')
+                params._lpf_sos = sos
+                params._lpf_cache_key = current_key
+                return sos
+
+            elif filter_type == "high":
+                order = params.hpf_order
+                freq = params.hpf_freq
+                current_key = (order, freq, sample_rate, "high")
+
+                # Check HPF cache
+                if params._hpf_sos is not None and params._hpf_cache_key == current_key:
+                    return params._hpf_sos
+
+                # Cache miss
+                if freq <= 0 or freq >= sample_rate / 2:
+                    params._hpf_sos = None
+                    params._hpf_cache_key = None
+                    return None
+
+                sos = scipy.signal.butter(order, freq, btype="high", fs=sample_rate, output='sos')
+                params._hpf_sos = sos
+                params._hpf_cache_key = current_key
+                return sos
+
+            return None
+
         except Exception:
             # logger.warning(f"Filter calculation failed: {e}")
             return None
