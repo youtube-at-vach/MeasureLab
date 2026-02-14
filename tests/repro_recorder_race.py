@@ -1,18 +1,21 @@
 
 import sys
+import threading
 import unittest
 from unittest.mock import MagicMock
-import threading
-import time
+
 
 # --- Mock Infrastructure ---
 # (Same MockArray as before)
 class MockArray:
     def __init__(self, shape, fill_value=0.0):
-        if isinstance(shape, int): self.shape = (shape,)
-        else: self.shape = tuple(shape)
+        if isinstance(shape, int):
+            self.shape = (shape,)
+        else:
+            self.shape = tuple(shape)
         self.size = 1
-        for dim in self.shape: self.size *= dim
+        for dim in self.shape:
+            self.size *= dim
         self.data = [fill_value] * self.size
         self.ndim = len(self.shape)
         self.dtype = "float32"
@@ -23,7 +26,8 @@ class MockArray:
     def __getitem__(self, key):
         if isinstance(key, slice):
             start, stop, step = key.indices(self.shape[0])
-            if step is None: step = 1
+            if step is None:
+                step = 1
             length = max(0, (stop - start + (step or 1) - 1) // (step or 1))
             new_shape = list(self.shape)
             new_shape[0] = length
@@ -36,8 +40,12 @@ class MockArray:
     def __setitem__(self, key, value):
         pass
 
-    def fill(self, val): pass
-    def copy(self): return MockArray(self.shape)
+    def fill(self, val):
+        pass
+
+    def copy(self):
+        return MockArray(self.shape)
+
 
 mock_np = MagicMock()
 mock_np.zeros.side_effect = lambda shape, dtype=None: MockArray(shape)
@@ -56,7 +64,8 @@ sys.modules['PyQt6.QtWidgets'] = MagicMock()
 sys.modules['src.core.audio_engine'] = MagicMock()
 sys.modules['src.core.localization'] = MagicMock()
 
-from src.gui.widgets.recorder_player import RecorderPlayer
+from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
+
 
 class TestRecorderPlayerRace(unittest.TestCase):
     def test_infinite_loop_hang_empty_buffer(self):
@@ -98,7 +107,7 @@ class TestRecorderPlayerRace(unittest.TestCase):
         player.loop_playback = True
         player.output_mode = "Stereo"
         player.playback_buffer = MockArray((100, 2))
-        player.playback_pos = 9000 # Exceeds 100
+        player.playback_pos = 9000  # Exceeds 100
 
         indata = MockArray((512, 2))
         outdata = MockArray((512, 2))
@@ -128,6 +137,7 @@ class TestRecorderPlayerRace(unittest.TestCase):
         player.audio_callback(indata, outdata, 512, None, None)
 
         self.assertFalse(player.is_playing, "Should stop playing if out of bounds and not looping")
+
 
 if __name__ == '__main__':
     unittest.main()
