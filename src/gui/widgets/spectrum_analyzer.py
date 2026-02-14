@@ -16,10 +16,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from scipy.signal.windows import dpss
 
 from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
-from src.core.fft_manager import fft_manager, get_dpss_windows
+from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
@@ -47,6 +48,10 @@ class SpectrumAnalyzer(MeasurementModule):
         self.multitaper_enabled = False
         self.display_unit = "dBFS"  # 'dBFS', 'dBV', 'dB SPL'
         self.weighting = "Z"  # 'Z', 'A', 'C'
+
+        # Multitaper cache
+        self._dpss_windows = None
+        self._dpss_cache_key = None  # (N, NW, K)
 
         # State
         self._avg_magnitude = None
@@ -76,6 +81,9 @@ class SpectrumAnalyzer(MeasurementModule):
         self._avg_cross_spectrum = None
         self._peak_magnitude = None
         self._avg_weighted_power = None
+        # Reset DPSS cache as N changed
+        self._dpss_windows = None
+        self._dpss_cache_key = None
 
     def start_analysis(self):
         if self.is_running:
@@ -167,6 +175,22 @@ class SpectrumAnalyzer(MeasurementModule):
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
             self.is_running = False
+
+    def _get_dpss_windows(self, N, NW=3, Kmax=None):
+        """
+        Get DPSS windows, caching them for performance.
+        """
+        if Kmax is None:
+            Kmax = 2 * NW - 1
+
+        key = (N, NW, Kmax)
+        if self._dpss_windows is None or self._dpss_cache_key != key:
+            # Generate windows
+            # dpss returns (K, N) array
+            self._dpss_windows = dpss(N, NW, int(Kmax))
+            self._dpss_cache_key = key
+
+        return self._dpss_windows
 
     def compute_weighting(self, freqs, weighting_type):
         """
@@ -679,7 +703,7 @@ class SpectrumAnalyzerWidget(QWidget):
         if self.module.multitaper_enabled:
             # --- Multitaper Method ---
             # Get DPSS windows
-            windows = get_dpss_windows(len(data))  # (K, N)
+            windows = self.module._get_dpss_windows(len(data))  # (K, N)
             K = windows.shape[0]
 
             if self.module.analysis_mode == "Spectrum" or self.module.analysis_mode == "PSD":

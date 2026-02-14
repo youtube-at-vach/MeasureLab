@@ -95,15 +95,14 @@ class ConfigManager:
         try:
             with open(self.config_path, "r") as f:
                 loaded = json.load(f)
-        except (OSError, json.JSONDecodeError) as e:
+            config = self._merge_with_defaults(loaded)
+            self._ensure_screenshot_dir(config)
+            return config
+        except Exception as e:
             self.logger.error(f"Failed to load config: {e}")
             config = self._default_config()
             self._ensure_screenshot_dir(config)
             return config
-
-        config = self._merge_with_defaults(loaded)
-        self._ensure_screenshot_dir(config)
-        return config
 
     def _flush_config(self):
         """Internal method to immediately write config to disk."""
