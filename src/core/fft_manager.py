@@ -311,6 +311,7 @@ class FFTManager:
 
             # Use MEASURE for warmup to ensure peak performance
             self.get_plan(size, "float64", flags=("FFTW_MEASURE",))
+            self.get_plan(size, "float32", flags=("FFTW_MEASURE",))
 
         # Save wisdom at the end of warmup to capture any new measurements
         if callback:
