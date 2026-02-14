@@ -37,6 +37,7 @@ class TestSignalGeneratorMLS(unittest.TestCase):
         pass
 
     def test_mls_fallback_properties(self):
+        """Test that the fallback MLS generator produces valid sequences."""
         # Import here to use mocks
         from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
         from src.core.audio_engine import AudioEngine
