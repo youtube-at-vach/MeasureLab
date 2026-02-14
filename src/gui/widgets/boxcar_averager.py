@@ -797,7 +797,7 @@ class BoxcarAveragerWidget(QWidget):
 
     def on_export(self):
         fname, selected_filter = QFileDialog.getSaveFileName(
-            self, tr("Export Averaged Data"), "average.wav", tr("WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)")
+            self, tr("Export Averaged Data"), "average.wav", tr("WAV (*.wav)")
         )
         if not fname:
             return
