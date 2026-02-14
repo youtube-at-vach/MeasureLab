@@ -33,6 +33,31 @@ def _get_butter_sos(order, Wn, btype, fs=None):
     return butter(order, Wn, btype=btype, fs=fs, output="sos")
 
 
+def design_c_weighting(sr: float):
+    """Design digital C-weighting filter (IEC 61672) for sample rate sr."""
+    sr = float(sr)
+    if sr <= 0:
+        raise ValueError("Invalid sample rate")
+
+    # Analog poles (rad/s)
+    w1 = 2 * np.pi * 20.6
+    w2 = 2 * np.pi * 12194.0
+
+    # C-weighting analog transfer function: H(s) = K * s^2 / ((s + w1)^2 (s + w2)^2)
+    zeros = np.array([0.0, 0.0])
+    poles = np.array([-w1, -w1, -w2, -w2])
+    gain = 1.0
+
+    # Normalize to 0 dB at 1 kHz
+    s = 1j * 2 * np.pi * 1000.0
+    h = gain * (s**2) / ((s + w1) ** 2 * (s + w2) ** 2)
+    gain = 1.0 / np.abs(h)
+
+    z, p, k = scipy.signal.bilinear_zpk(zeros, poles, gain, fs=sr)
+    b, a = scipy.signal.zpk2tf(z, p, k)
+    return b.astype(np.float64), a.astype(np.float64)
+
+
 def _calculate_ra_raw(f):
     f2 = f**2
     const = A_WEIGHTING_F4**2 * f**4
