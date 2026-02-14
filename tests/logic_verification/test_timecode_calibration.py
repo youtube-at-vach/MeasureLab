@@ -1,5 +1,6 @@
 import sys
 import unittest
+import importlib.util
 from unittest.mock import MagicMock, patch
 from collections import deque
 
@@ -20,17 +21,14 @@ class TestTimecodeCalibration(unittest.TestCase):
         }
 
         # Mock numpy if not present
-        if "numpy" not in sys.modules:
-            try:
-                import numpy
-            except ImportError:
-                # Create a mock numpy that behaves enough like numpy for import
-                mock_np = MagicMock()
-                # Essential attributes often used at import time
-                mock_np.array = MagicMock()
-                mock_np.float32 = float
-                mock_np.int64 = int
-                mocks["numpy"] = mock_np
+        if "numpy" not in sys.modules and importlib.util.find_spec("numpy") is None:
+            # Create a mock numpy that behaves enough like numpy for import
+            mock_np = MagicMock()
+            # Essential attributes often used at import time
+            mock_np.array = MagicMock()
+            mock_np.float32 = float
+            mock_np.int64 = int
+            mocks["numpy"] = mock_np
 
         # Setup patcher for sys.modules
         self.modules_patcher = patch.dict(sys.modules, mocks)
