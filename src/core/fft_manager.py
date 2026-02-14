@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 import multiprocessing
 import threading
@@ -344,6 +345,20 @@ class FFTManager:
             "tukey",
             "taylor",
         ]
+
+
+@functools.lru_cache(maxsize=16)
+def get_dpss_windows(N, NW=3, Kmax=None):
+    """
+    Get DPSS windows, caching them for performance.
+    """
+    # Lazy import to avoid hard dependency at module level
+    from scipy.signal.windows import dpss
+
+    if Kmax is None:
+        Kmax = int(2 * NW - 1)
+
+    return dpss(N, NW, int(Kmax))
 
 
 # Global instance for easy access
