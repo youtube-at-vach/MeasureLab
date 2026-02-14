@@ -3,36 +3,59 @@ import unittest
 from unittest.mock import MagicMock, patch
 from collections import deque
 
-# Mock PyQt6 before importing the module under test to allow logic testing without GUI
-# We assign MagicMock instances to modules.
-mock_qt = MagicMock()
-sys.modules["PyQt6"] = mock_qt
-sys.modules["PyQt6.QtCore"] = MagicMock()
-sys.modules["PyQt6.QtGui"] = MagicMock()
-sys.modules["PyQt6.QtWidgets"] = MagicMock()
-
-# Mock numpy if not present
-try:
-    import numpy as np
-except ImportError:
-    np = MagicMock()
-    sys.modules["numpy"] = np
-
-# Mock src.core.localization
-mock_loc = MagicMock()
-mock_loc.tr = lambda x: x
-sys.modules["src.core.localization"] = mock_loc
-
-# Now import the module
-from src.gui.widgets.timecode_monitor import TimecodeMonitor  # noqa: E402
-
 class TestTimecodeCalibration(unittest.TestCase):
+    def setUp(self):
+        # Create mocks
+        self.mock_qt = MagicMock()
+        self.mock_loc = MagicMock()
+        self.mock_loc.tr = lambda x: x
+
+        # Prepare mocks dict
+        mocks = {
+            "PyQt6": self.mock_qt,
+            "PyQt6.QtCore": MagicMock(),
+            "PyQt6.QtGui": MagicMock(),
+            "PyQt6.QtWidgets": MagicMock(),
+            "src.core.localization": self.mock_loc
+        }
+
+        # Mock numpy if not present
+        if "numpy" not in sys.modules:
+            try:
+                import numpy
+            except ImportError:
+                # Create a mock numpy that behaves enough like numpy for import
+                mock_np = MagicMock()
+                # Essential attributes often used at import time
+                mock_np.array = MagicMock()
+                mock_np.float32 = float
+                mock_np.int64 = int
+                mocks["numpy"] = mock_np
+
+        # Setup patcher for sys.modules
+        self.modules_patcher = patch.dict(sys.modules, mocks)
+        self.modules_patcher.start()
+
+        # Ensure we reload the module under test to pick up the mocks
+        if "src.gui.widgets.timecode_monitor" in sys.modules:
+            del sys.modules["src.gui.widgets.timecode_monitor"]
+
+        # Now import
+        from src.gui.widgets.timecode_monitor import TimecodeMonitor
+        self.TimecodeMonitor = TimecodeMonitor
+
+    def tearDown(self):
+        self.modules_patcher.stop()
+        # Clean up the poisoned module so subsequent tests import the real one
+        if "src.gui.widgets.timecode_monitor" in sys.modules:
+            del sys.modules["src.gui.widgets.timecode_monitor"]
+
     def test_calibration_poll_optimization(self):
         # Mock AudioEngine
         audio_engine = MagicMock()
         audio_engine.sample_rate = 48000
 
-        monitor = TimecodeMonitor(audio_engine)
+        monitor = self.TimecodeMonitor(audio_engine)
 
         # Setup calibration state manually
         monitor._cal_active = True

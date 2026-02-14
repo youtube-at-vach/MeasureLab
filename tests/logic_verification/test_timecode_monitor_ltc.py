@@ -1,20 +1,31 @@
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+import pytest
 
-# Mock PyQt6 before importing the module under test
-sys.modules["PyQt6"] = MagicMock()
-sys.modules["PyQt6.QtCore"] = MagicMock()
-sys.modules["PyQt6.QtGui"] = MagicMock()
-sys.modules["PyQt6.QtWidgets"] = MagicMock()
+# Helper to mock dependencies for tests in this file
+@pytest.fixture(autouse=True)
+def mock_dependencies():
+    mock_qt = MagicMock()
+    mock_loc = MagicMock()
+    mock_loc.tr = lambda x: x
 
-# Mock src.core.localization
-mock_loc = MagicMock()
-mock_loc.tr = lambda x: x
-sys.modules["src.core.localization"] = mock_loc
+    with patch.dict(sys.modules, {
+        "PyQt6": mock_qt,
+        "PyQt6.QtCore": MagicMock(),
+        "PyQt6.QtGui": MagicMock(),
+        "PyQt6.QtWidgets": MagicMock(),
+        "src.core.localization": mock_loc
+    }):
+        # Force reload of the module under test to ensure it uses the mocks
+        if "src.gui.widgets.timecode_monitor" in sys.modules:
+            del sys.modules["src.gui.widgets.timecode_monitor"]
+        yield
+        # After test, clear it again so other tests import the real one
+        if "src.gui.widgets.timecode_monitor" in sys.modules:
+            del sys.modules["src.gui.widgets.timecode_monitor"]
 
-import pytest  # noqa: E402
 try:
-    import numpy as np  # noqa: E402
+    import numpy as np
 except ImportError:
     pytest.skip("numpy not installed", allow_module_level=True)
 
