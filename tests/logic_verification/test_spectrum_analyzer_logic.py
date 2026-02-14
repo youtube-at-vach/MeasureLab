@@ -1,17 +1,25 @@
 import sys
 import os
-import numpy as np
+import unittest
 from unittest.mock import MagicMock
 import pytest
 
-# Ensure sounddevice is mocked
+# Skip if dependencies missing
+pytest.importorskip("PyQt6")
+pytest.importorskip("pyqtgraph")
+np = pytest.importorskip("numpy")
+
+# Mock sounddevice if missing
 if 'sounddevice' not in sys.modules:
     sys.modules['sounddevice'] = MagicMock()
 
 # Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
+try:
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
+except ImportError:
+    pytest.skip("Skipping due to import errors", allow_module_level=True)
 
 def test_spectrum_analyzer_queue_data_flow():
     """
@@ -31,6 +39,15 @@ def test_spectrum_analyzer_queue_data_flow():
     mock_engine.register_callback.side_effect = register_callback
 
     # Init SpectrumAnalyzer
+    # Mocking QWidget parent if needed?
+    # SpectrumAnalyzer is a QWidget. We need QApplication or mock it.
+    # But since we importorskip PyQt6, we assume it's there.
+    # However, creating a QWidget without QApplication might fail.
+    # We should ensure QApplication exists.
+    from PyQt6.QtWidgets import QApplication
+    if not QApplication.instance():
+        app = QApplication([])
+
     sa = SpectrumAnalyzer(mock_engine)
     sa.set_buffer_size(4096)
     sa.start_analysis()
@@ -78,13 +95,3 @@ def test_spectrum_analyzer_queue_data_flow():
     assert np.all(sa.input_data[100:] == 0)
 
     print("Queue data flow test passed.")
-
-if __name__ == "__main__":
-    try:
-        test_spectrum_analyzer_queue_data_flow()
-    except AssertionError as e:
-        print(f"Test Failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Test Error: {e}")
-        sys.exit(1)

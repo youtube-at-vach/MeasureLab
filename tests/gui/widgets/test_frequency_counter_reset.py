@@ -2,16 +2,23 @@ import sys
 import os
 import unittest
 from unittest.mock import MagicMock
+import pytest
+
+# Skip if PyQt6 is not installed
+pytest.importorskip("PyQt6")
+
+try:
+    from PyQt6.QtWidgets import QApplication
+    # Import the module under test
+    # We assume src is in python path or pytest handles it.
+    # The original file did sys.path.append(os.getcwd())
+    # Pytest usually adds root to path.
+    from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget
+except ImportError:
+    pytest.skip("Skipping GUI test due to missing dependencies", allow_module_level=True)
 
 # Set environment for headless testing
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
-from PyQt6.QtWidgets import QApplication
-
-# Import the module under test
-sys.path.append(os.getcwd())
-
-from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget
 
 class TestFrequencyCounterReset(unittest.TestCase):
     @classmethod

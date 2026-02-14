@@ -5,12 +5,6 @@ import sys
 import numpy as np
 import os
 import tempfile
-import scipy.signal  # noqa: F401
-# Pre-load analysis to avoid re-import issues with scipy during sys.modules patching
-try:
-    from src.core.analysis import AudioCalc  # noqa: F401
-except ImportError:
-    pass
 
 class TestRecorderMemory(unittest.TestCase):
     def setUp(self):
@@ -30,13 +24,18 @@ class TestRecorderMemory(unittest.TestCase):
         self.modules_patcher = patch.dict(sys.modules, {
             'sounddevice': MagicMock(),
             'PyQt6.QtCore': qt_core,
-            'PyQt6.QtWidgets': MagicMock()
+            'PyQt6.QtWidgets': MagicMock(),
+            'scipy': MagicMock(),
+            'scipy.signal': MagicMock()
         })
         self.modules_patcher.start()
 
         # Import RecorderPlayer locally to ensure it uses the mocked modules
         if 'src.gui.widgets.recorder_player' in sys.modules:
             del sys.modules['src.gui.widgets.recorder_player']
+        # Also clean up modules that might have imported real scipy/qt
+        if 'src.core.analysis' in sys.modules:
+            del sys.modules['src.core.analysis']
 
         from src.gui.widgets.recorder_player import RecorderPlayer, FileSaveWorker
         self.RecorderPlayer = RecorderPlayer

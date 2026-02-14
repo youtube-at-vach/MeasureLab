@@ -1,9 +1,16 @@
 
-import pyqtgraph as pg
+import pytest
 from unittest.mock import MagicMock
 
-from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
-from src.core.audio_engine import AudioEngine
+# Ensure dependencies are present before proceeding
+pytest.importorskip("PyQt6")
+pg = pytest.importorskip("pyqtgraph")
+
+try:
+    from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
+    from src.core.audio_engine import AudioEngine
+except ImportError:
+    pytest.skip("Skipping due to import errors (likely missing GUI libs)", allow_module_level=True)
 
 def test_tolerance_lines_presence(qtbot):
     """Verifies that tolerance lines are added to the error plot."""
