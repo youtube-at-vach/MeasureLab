@@ -186,7 +186,8 @@ class AudioEngine:
 
         if enabled:
             # Ensure master stream is open even with zero clients.
-            self._start_master_stream()
+            with self.lock:
+                self._start_master_stream()
             return
 
         # Disabled: revert to legacy behavior (only keep stream open while clients exist).
@@ -597,8 +598,9 @@ class AudioEngine:
 
     def _restart_stream(self):
         self.stop_stream()
-        if self.callbacks:
-            self._start_master_stream()
+        with self.lock:
+            if self.callbacks:
+                self._start_master_stream()
 
     def is_active(self):
         """Returns True if the stream is active."""
