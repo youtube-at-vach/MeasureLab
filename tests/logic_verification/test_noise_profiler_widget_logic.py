@@ -90,6 +90,18 @@ class TestNoiseProfilerProcess(unittest.TestCase):
         self.assertIsNone(output)
 
 class TestNoiseProfilerLogging(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Ensure QApplication exists for signal emission
+        try:
+            from PyQt6.QtWidgets import QApplication
+            if not QApplication.instance():
+                cls.app = QApplication([])
+            else:
+                cls.app = QApplication.instance()
+        except ImportError:
+            pass
+
     def test_worker_exception_logging(self):
         """
         Verify that exceptions in NoiseAnalysisWorker.run are logged using logger.error with exc_info=True,
@@ -117,6 +129,9 @@ class TestNoiseProfilerLogging(unittest.TestCase):
         with patch('src.gui.widgets.noise_profiler.logger', create=True) as mock_logger:
             # Run worker directly
             worker.run()
+
+            # Check that process_data was actually called
+            module.process_data.assert_called()
 
             # Check if error signal was emitted
             error_slot.assert_called_once_with("Simulated Crash")
