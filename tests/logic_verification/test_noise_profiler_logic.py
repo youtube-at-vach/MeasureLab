@@ -26,8 +26,10 @@ sys.modules['src.core.localization'].tr = lambda x: x
 mock_analysis = MagicMock()
 sys.modules['src.core.analysis'] = mock_analysis
 
+
 def get_cached_window_mock(name, length):
-    return np.ones(length) # Rectangular window for simplicity in test
+    return np.ones(length)  # Rectangular window for simplicity in test
+
 
 mock_analysis.get_cached_window = get_cached_window_mock
 mock_analysis.AudioCalc = MagicMock()
@@ -38,19 +40,19 @@ mock_analysis.AudioCalc.calculate_noise_profile.return_value = {
 }
 
 # Now import the module
-import src.gui.widgets.noise_profiler as np_module
-from src.gui.widgets.noise_profiler import NoiseProfiler
-from src.core.fft_manager import fft_manager
+from src.gui.widgets.noise_profiler import NoiseProfiler  # noqa: E402
+from src.core.fft_manager import fft_manager  # noqa: E402
+
 
 class TestNoiseProfilerLogic(unittest.TestCase):
     def setUp(self):
         self.mock_engine = MagicMock()
-        self.mock_engine.sample_rate = 1000.0 # Simple rate
+        self.mock_engine.sample_rate = 1000.0  # Simple rate
         self.mock_engine.calibration.get_input_offset_db.return_value = 0.0
 
         self.profiler = NoiseProfiler(self.mock_engine)
-        self.profiler.buffer_size = 100 # Small buffer
-        self.profiler.set_buffer_size(100) # Reset
+        self.profiler.buffer_size = 100  # Small buffer
+        self.profiler.set_buffer_size(100)  # Reset
 
     def tearDown(self):
         pass
@@ -64,13 +66,13 @@ class TestNoiseProfilerLogic(unittest.TestCase):
 
         # Generate a ramp signal: 0, 1, 2, ...
         # This allows easy verification of order.
-        data_len = 250 # More than 2x buffer size to force wrap
+        data_len = 250  # More than 2x buffer size to force wrap
         ramp = np.arange(data_len, dtype=float)
 
         # Feed in chunks
         chunk_size = 20
         for i in range(0, data_len, chunk_size):
-            chunk = ramp[i:i+chunk_size]
+            chunk = ramp[i : i + chunk_size]
             indata = np.zeros((len(chunk), 2))
             indata[:, 0] = chunk
             indata[:, 1] = chunk
@@ -99,7 +101,8 @@ class TestNoiseProfilerLogic(unittest.TestCase):
             # It might be multiplied by window (ones).
 
             np.testing.assert_array_almost_equal(fft_input_arg, expected,
-                err_msg="Reconstructed data passed to FFT does not match expected linear sequence")
+                                                 err_msg="Reconstructed data passed to FFT does not match expected linear sequence")
+
 
 if __name__ == '__main__':
     unittest.main()
