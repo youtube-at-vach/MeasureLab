@@ -39,7 +39,7 @@ sys.modules['PyQt6.QtWidgets'] = mock_qt_widgets
 sys.modules['pyqtgraph'] = mock_pyqtgraph
 
 # Now import the module under test
-from src.gui.widgets.one_pps_monitor import OnePPSMonitor
+from src.gui.widgets.one_pps_monitor import OnePPSMonitor  # noqa: E402
 
 class TestOnePPSDoS(unittest.TestCase):
     def setUp(self):
@@ -48,7 +48,7 @@ class TestOnePPSDoS(unittest.TestCase):
 
     def test_queue_bound_and_overflow(self):
         # Patch threading.Thread so start_analysis doesn't actually start a thread
-        with patch('threading.Thread') as mock_thread_cls:
+        with patch('threading.Thread'):
             # Setup
             audio_engine = MagicMock()
             audio_engine.sample_rate = 48000
