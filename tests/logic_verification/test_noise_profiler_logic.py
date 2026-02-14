@@ -2,60 +2,69 @@ import unittest
 import numpy as np
 from unittest.mock import MagicMock, patch
 import sys
-
-# Mock modules BEFORE importing the module under test
-mock_modules = {
-    'PyQt6.QtCore': MagicMock(),
-    'PyQt6.QtWidgets': MagicMock(),
-    'pyqtgraph': MagicMock(),
-    'src.core.audio_engine': MagicMock(),
-    'src.core.localization': MagicMock(),
-    'scipy.signal': MagicMock(),
-    'scipy.optimize': MagicMock(),
-    'scipy': MagicMock(),
-    'soundfile': MagicMock(),
-}
-
-patcher = patch.dict(sys.modules, mock_modules)
-patcher.start()
-
-# Setup common mocks
-sys.modules['src.core.localization'].tr = lambda x: x
-
-# Mock src.core.analysis specifically because NoiseProfiler imports from it
-mock_analysis = MagicMock()
-sys.modules['src.core.analysis'] = mock_analysis
-
-
-def get_cached_window_mock(name, length):
-    return np.ones(length)  # Rectangular window for simplicity in test
-
-
-mock_analysis.get_cached_window = get_cached_window_mock
-mock_analysis.AudioCalc = MagicMock()
-# Mock calculate_noise_profile to return dummy results
-mock_analysis.AudioCalc.calculate_noise_profile.return_value = {
-    "hum_rms": 0, "noise_rms_20k": 0, "white_density": 0,
-    "flicker_slope": 0, "flicker_intercept": 0, "hum_components": []
-}
-
-# Now import the module
-from src.gui.widgets.noise_profiler import NoiseProfiler  # noqa: E402
-from src.core.fft_manager import fft_manager  # noqa: E402
-
+import importlib
 
 class TestNoiseProfilerLogic(unittest.TestCase):
     def setUp(self):
+        # Mock modules
+        self.mock_modules = {
+            'PyQt6.QtCore': MagicMock(),
+            'PyQt6.QtWidgets': MagicMock(),
+            'pyqtgraph': MagicMock(),
+            'src.core.audio_engine': MagicMock(),
+            'src.core.localization': MagicMock(),
+            'scipy.signal': MagicMock(),
+            'scipy.optimize': MagicMock(),
+            'scipy': MagicMock(),
+            'soundfile': MagicMock(),
+        }
+
+        # Patch sys.modules
+        self.patcher = patch.dict(sys.modules, self.mock_modules)
+        self.patcher.start()
+
+        # Setup common mocks
+        sys.modules['src.core.localization'].tr = lambda x: x
+
+        # Mock src.core.analysis specifically
+        mock_analysis = MagicMock()
+        sys.modules['src.core.analysis'] = mock_analysis
+
+        def get_cached_window_mock(name, length):
+            return np.ones(length)  # Rectangular window for simplicity in test
+
+        mock_analysis.get_cached_window = get_cached_window_mock
+        mock_analysis.AudioCalc = MagicMock()
+        # Mock calculate_noise_profile to return dummy results
+        mock_analysis.AudioCalc.calculate_noise_profile.return_value = {
+            "hum_rms": 0, "noise_rms_20k": 0, "white_density": 0,
+            "flicker_slope": 0, "flicker_intercept": 0, "hum_components": []
+        }
+
+        # Import modules under test INSIDE the patched environment
+        # We need to make sure they are reloaded if they were already imported
+        # to ensure they pick up the mocks.
+        import src.gui.widgets.noise_profiler
+        import src.core.fft_manager
+
+        importlib.reload(src.gui.widgets.noise_profiler)
+        # We probably don't need to reload fft_manager if it only depends on numpy/scipy which are mocked or present
+        # But if it imports pyfftw and we want to control that...
+        # For this test, we just need NoiseProfiler to work.
+
+        self.NoiseProfiler = src.gui.widgets.noise_profiler.NoiseProfiler
+        self.fft_manager = src.core.fft_manager.fft_manager
+
         self.mock_engine = MagicMock()
         self.mock_engine.sample_rate = 1000.0  # Simple rate
         self.mock_engine.calibration.get_input_offset_db.return_value = 0.0
 
-        self.profiler = NoiseProfiler(self.mock_engine)
+        self.profiler = self.NoiseProfiler(self.mock_engine)
         self.profiler.buffer_size = 100  # Small buffer
         self.profiler.set_buffer_size(100)  # Reset
 
     def tearDown(self):
-        pass
+        self.patcher.stop()
 
     def test_buffer_logic_reconstruction(self):
         # This test verifies that data fed into the callback is correctly
@@ -87,7 +96,14 @@ class TestNoiseProfilerLogic(unittest.TestCase):
         expected = np.arange(150, 250, dtype=float)
 
         # Intercept fft_manager.rfft call
-        with patch.object(fft_manager, 'rfft', wraps=fft_manager.rfft) as mock_rfft:
+        # Note: we need to patch the fft_manager instance that NoiseProfiler is using.
+        # Since we reloaded NoiseProfiler, it imported fft_manager.
+        # We can patch it on the module we imported.
+
+        import src.gui.widgets.noise_profiler
+        target_fft_manager = src.gui.widgets.noise_profiler.fft_manager
+
+        with patch.object(target_fft_manager, 'rfft', side_effect=target_fft_manager.rfft) as mock_rfft:
             self.profiler.process_data(0, "dBV", False)
 
             # Check arguments
