@@ -33,6 +33,7 @@ class NoiseProfiler(MeasurementModule):
         self.is_running = False
         self.buffer_size = 16384  # Large buffer for better low-freq resolution
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.buffer_ptr = 0
 
         # Settings
         self.window_type = "hanning"
@@ -91,7 +92,11 @@ class NoiseProfiler(MeasurementModule):
         Process the current input data buffer to produce noise profile results.
         Returns (freqs, calibrated_magnitude, results_dict) or None if insufficient data.
         """
-        data = self.input_data
+        # Linearize the circular buffer
+        # We perform the copy and rotation here (worker thread) to offload the audio thread.
+        ptr = self.buffer_ptr
+        data = np.concatenate((self.input_data[ptr:], self.input_data[:ptr]))
+
         if len(data) < self.buffer_size:
             return None
 
@@ -166,6 +171,7 @@ class NoiseProfiler(MeasurementModule):
     def set_buffer_size(self, size):
         self.buffer_size = size
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.buffer_ptr = 0
         self.reset_average()
 
     def start_analysis(self):
@@ -175,6 +181,7 @@ class NoiseProfiler(MeasurementModule):
         self.is_running = True
         self.reset_average()
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.buffer_ptr = 0
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -186,10 +193,21 @@ class NoiseProfiler(MeasurementModule):
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
             if len(new_data) > self.buffer_size:
+                # If new data is larger than buffer, just take the last part
                 self.input_data[:] = new_data[-self.buffer_size :]
+                # Since we filled the whole buffer, the "oldest" data (next write) is at index 0
+                self.buffer_ptr = 0
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data) :] = new_data
+                # Circular buffer write
+                ptr = self.buffer_ptr
+                end = ptr + len(new_data)
+                if end <= self.buffer_size:
+                    self.input_data[ptr:end] = new_data
+                else:
+                    split = self.buffer_size - ptr
+                    self.input_data[ptr:] = new_data[:split]
+                    self.input_data[: len(new_data) - split] = new_data[split:]
+                self.buffer_ptr = (ptr + len(new_data)) % self.buffer_size
 
             outdata.fill(0)
 
