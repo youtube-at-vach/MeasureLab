@@ -34,7 +34,7 @@ class OnePPSMonitor(MeasurementModule):
         self.is_running = False
         self._lock = threading.Lock()
 
-        self.data_queue = queue.Queue()
+        self.data_queue = queue.Queue(maxsize=100)
         self.process_thread = None
 
         # User settings
@@ -145,7 +145,10 @@ class OnePPSMonitor(MeasurementModule):
                 # Copy data to avoid buffer issues and push to queue
                 # indata is only valid during the callback
                 sig = indata[:, 0].copy()
-                self.data_queue.put((sig, frames))
+                try:
+                    self.data_queue.put_nowait((sig, frames))
+                except queue.Full:
+                    pass
 
             outdata.fill(0)
 
