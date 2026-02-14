@@ -1,15 +1,25 @@
 import sys
 import os
 import pytest
-import numpy as np
 from unittest.mock import MagicMock
-from PyQt6.QtCore import QTimer
 
-# Add src to path
-sys.path.insert(0, os.getcwd())
+# Skip test if PyQt6 or numpy/scipy are not installed
+pytest.importorskip("PyQt6")
+pytest.importorskip("numpy")
+pytest.importorskip("scipy")
 
-from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWidget
-from PyQt6.QtWidgets import QApplication
+try:
+    import numpy as np
+    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtCore import QTimer
+
+    # Add src to path if needed (though pytest usually handles this)
+    if os.getcwd() not in sys.path:
+        sys.path.insert(0, os.getcwd())
+
+    from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWidget
+except ImportError:
+    pytest.skip("Required modules not found", allow_module_level=True)
 
 # Set offscreen to avoid display issues
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -80,4 +90,5 @@ def test_spectrogram_widget_update():
     # Clean up
     module.stop_analysis()
     # We don't need to explicitly close widget as it wasn't shown
-    widget.threadpool.waitForDone(1000)
+    if hasattr(widget, 'threadpool'):
+        widget.threadpool.waitForDone(1000)
