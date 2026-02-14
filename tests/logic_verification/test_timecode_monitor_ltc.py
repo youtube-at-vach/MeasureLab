@@ -1,4 +1,25 @@
-import numpy as np
+import sys
+from unittest.mock import MagicMock
+
+# Mock PyQt6 before importing the module under test
+sys.modules["PyQt6"] = MagicMock()
+sys.modules["PyQt6.QtCore"] = MagicMock()
+sys.modules["PyQt6.QtGui"] = MagicMock()
+sys.modules["PyQt6.QtWidgets"] = MagicMock()
+
+# Mock src.core.localization
+mock_loc = MagicMock()
+mock_loc.tr = lambda x: x
+sys.modules["src.core.localization"] = mock_loc
+
+import pytest
+try:
+    import numpy as np
+except ImportError:
+    pytest.skip("numpy not installed", allow_module_level=True)
+
+if isinstance(np, MagicMock) or hasattr(np, 'reset_mock'):
+    pytest.skip("numpy is mocked", allow_module_level=True)
 
 
 def _chunk_iter(arr: np.ndarray, chunk_size: int):

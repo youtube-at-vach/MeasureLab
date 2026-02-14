@@ -66,6 +66,7 @@ def test_initialization(cal_manager):
     assert cal_manager.output_gain == 1.0
     assert cal_manager.output_gain_is_calibrated is False
     assert cal_manager.frequency_calibration == 1.0
+    assert cal_manager.frequency_calibration_1pps == 1.0
     assert cal_manager.lockin_gain_offset == 0.0
     assert cal_manager.spl_offset_db is None
     assert cal_manager.profiles == {}
@@ -76,6 +77,7 @@ def test_save_load(cal_manager):
     cal_manager.input_sensitivity = 2.0
     cal_manager.output_gain = 0.5
     cal_manager.output_gain_is_calibrated = True
+    cal_manager.frequency_calibration_1pps = 0.999
     cal_manager.save()
 
     # Reload in a new instance
@@ -83,6 +85,7 @@ def test_save_load(cal_manager):
     assert new_cm.input_sensitivity == 2.0
     assert new_cm.output_gain == 0.5
     assert new_cm.output_gain_is_calibrated is True
+    assert new_cm.frequency_calibration_1pps == 0.999
 
 def test_load_missing_file(cal_manager):
     """Test loading when file does not exist (should use defaults)."""
