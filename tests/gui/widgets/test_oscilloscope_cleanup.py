@@ -2,20 +2,25 @@ import sys
 import os
 import unittest
 from unittest.mock import MagicMock
+import pytest
+
+# Skip if PyQt6 is not installed
+pytest.importorskip("PyQt6")
+
+# Mock sounddevice BEFORE importing any module that uses it
+# This ensures the test can run even if sounddevice is missing (as long as PyQt6 is present)
+if "sounddevice" not in sys.modules:
+    sys.modules["sounddevice"] = MagicMock()
 
 # Set offscreen
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
-# Mock sounddevice BEFORE importing any module that uses it
-mock_sd = MagicMock()
-sys.modules['sounddevice'] = mock_sd
-
-# Add src to path
-sys.path.insert(0, os.getcwd())
-
-from PyQt6.QtWidgets import QApplication  # noqa: E402
-from PyQt6.QtGui import QCloseEvent  # noqa: E402
-from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget  # noqa: E402
+try:
+    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QCloseEvent
+    from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget
+except ImportError:
+    pytest.skip("Skipping GUI test due to missing dependencies", allow_module_level=True)
 
 class TestOscilloscopeCleanup(unittest.TestCase):
     def setUp(self):

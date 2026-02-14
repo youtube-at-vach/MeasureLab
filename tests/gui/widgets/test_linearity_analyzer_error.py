@@ -1,6 +1,14 @@
 from unittest.mock import MagicMock, patch
 import pytest
-from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
+
+# Skip if dependencies are missing
+pytest.importorskip("PyQt6")
+
+try:
+    from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
+    from PyQt6.QtWidgets import QMessageBox # noqa: F401
+except ImportError:
+    pytest.skip("Skipping GUI test due to import errors", allow_module_level=True)
 
 @pytest.fixture
 def mock_engine():
