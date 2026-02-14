@@ -3,48 +3,57 @@ from unittest.mock import MagicMock, patch
 import sys
 import os
 import queue
+import importlib
 
 # Ensure src is in path
 sys.path.append(os.getcwd())
 
-# Mock modules BEFORE importing the module under test
-mock_numpy = MagicMock()
-mock_numpy.float64 = float
-mock_numpy.nan = float('nan')
-mock_numpy.zeros.return_value = MagicMock()
-mock_numpy.array.return_value = MagicMock()
-mock_numpy.mean.return_value = 0.0
-mock_numpy.std.return_value = 0.0
-mock_numpy.min.return_value = 0.0
-mock_numpy.max.return_value = 0.0
-mock_numpy.median.return_value = 0.0
-mock_numpy.abs.return_value = MagicMock()
-
-# Mock PyQt6
-mock_qt_core = MagicMock()
-mock_qt_widgets = MagicMock()
-mock_pyqtgraph = MagicMock()
-
-# Mock audio libraries
-mock_sd = MagicMock()
-mock_sf = MagicMock()
-
-# Apply mocks to sys.modules
-sys.modules['numpy'] = mock_numpy
-sys.modules['sounddevice'] = mock_sd
-sys.modules['soundfile'] = mock_sf
-sys.modules['PyQt6'] = MagicMock()
-sys.modules['PyQt6.QtCore'] = mock_qt_core
-sys.modules['PyQt6.QtWidgets'] = mock_qt_widgets
-sys.modules['pyqtgraph'] = mock_pyqtgraph
-
-# Now import the module under test
-from src.gui.widgets.one_pps_monitor import OnePPSMonitor  # noqa: E402
-
 class TestOnePPSDoS(unittest.TestCase):
     def setUp(self):
-        # Reset queue default if it was modified globally (unlikely but safe)
-        pass
+        # Mocks
+        self.mock_numpy = MagicMock()
+        self.mock_numpy.float64 = float
+        self.mock_numpy.nan = float('nan')
+        self.mock_numpy.zeros.return_value = MagicMock()
+        self.mock_numpy.array.return_value = MagicMock()
+        self.mock_numpy.mean.return_value = 0.0
+        self.mock_numpy.std.return_value = 0.0
+        self.mock_numpy.min.return_value = 0.0
+        self.mock_numpy.max.return_value = 0.0
+        self.mock_numpy.median.return_value = 0.0
+        self.mock_numpy.abs.return_value = MagicMock()
+
+        self.mock_qt_core = MagicMock()
+        self.mock_qt_widgets = MagicMock()
+        self.mock_pyqtgraph = MagicMock()
+        self.mock_sd = MagicMock()
+        self.mock_sf = MagicMock()
+
+        self.modules_patcher = patch.dict('sys.modules', {
+            'numpy': self.mock_numpy,
+            'sounddevice': self.mock_sd,
+            'soundfile': self.mock_sf,
+            'PyQt6': MagicMock(),
+            'PyQt6.QtCore': self.mock_qt_core,
+            'PyQt6.QtWidgets': self.mock_qt_widgets,
+            'pyqtgraph': self.mock_pyqtgraph
+        })
+        self.modules_patcher.start()
+
+        # Import inside setUp to use mocked modules
+        # We must ensure previous imports don't cache the real modules or different mocks
+        if 'src.gui.widgets.one_pps_monitor' in sys.modules:
+            del sys.modules['src.gui.widgets.one_pps_monitor']
+
+        import src.gui.widgets.one_pps_monitor
+        importlib.reload(src.gui.widgets.one_pps_monitor)
+        self.OnePPSMonitor = src.gui.widgets.one_pps_monitor.OnePPSMonitor
+
+    def tearDown(self):
+        self.modules_patcher.stop()
+        # Clean up the module we imported so it doesn't leave traces
+        if 'src.gui.widgets.one_pps_monitor' in sys.modules:
+            del sys.modules['src.gui.widgets.one_pps_monitor']
 
     def test_queue_bound_and_overflow(self):
         # Patch threading.Thread so start_analysis doesn't actually start a thread
@@ -53,7 +62,7 @@ class TestOnePPSDoS(unittest.TestCase):
             audio_engine = MagicMock()
             audio_engine.sample_rate = 48000
 
-            monitor = OnePPSMonitor(audio_engine)
+            monitor = self.OnePPSMonitor(audio_engine)
 
             # Capture the callback
             captured_callback = None
