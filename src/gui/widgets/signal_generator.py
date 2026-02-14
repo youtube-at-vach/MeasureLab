@@ -286,25 +286,31 @@ class SignalGenerator(MeasurementModule):
             return signal
         except Exception:
             logger.warning("scipy.signal.max_len_seq not found/failed, using optimized fallback")
-            tap_indices = [x - 1 for x in taps[order]]
+
+            # Recurrence-based generation: y[i] = y[i-t1] ^ y[i-t2] ...
+            # This is significantly faster than bitwise simulation.
+            # Taps for MLS are defined such that they satisfy this recurrence.
+
             N = 2**order - 1
+            raw_output = [1] * N  # Initialize with 1s (initial state)
 
-            # Optimized bitwise implementation
-            reg = (1 << order) - 1
-            mask = (1 << order) - 1
-            output_idx = order - 1
+            current_taps = taps[order]
 
-            raw_output = [0] * N
-
-            for i in range(N):
-                feedback = 0
-                for tap in tap_indices:
-                    feedback ^= (reg >> tap) & 1
-
-                output = (reg >> output_idx) & 1
-                raw_output[i] = output
-
-                reg = ((reg << 1) & mask) | feedback
+            if len(current_taps) == 2:
+                t1, t2 = current_taps
+                for i in range(order, N):
+                    raw_output[i] = raw_output[i - t1] ^ raw_output[i - t2]
+            elif len(current_taps) == 4:
+                t1, t2, t3, t4 = current_taps
+                for i in range(order, N):
+                    raw_output[i] = raw_output[i - t1] ^ raw_output[i - t2] ^ raw_output[i - t3] ^ raw_output[i - t4]
+            else:
+                # Generic fallback for any number of taps
+                for i in range(order, N):
+                    val = 0
+                    for t in current_taps:
+                        val ^= raw_output[i - t]
+                    raw_output[i] = val
 
             signal = np.array(raw_output, dtype=float) * 2 - 1
             return signal
