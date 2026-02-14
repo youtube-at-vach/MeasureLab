@@ -6,7 +6,7 @@ pytest.importorskip("PyQt6")
 
 try:
     from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
-    from PyQt6.QtWidgets import QMessageBox
+    from PyQt6.QtWidgets import QMessageBox # noqa: F401
 except ImportError:
     pytest.skip("Skipping GUI test due to import errors", allow_module_level=True)
 

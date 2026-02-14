@@ -1,6 +1,5 @@
 import sys
 import os
-import unittest
 from unittest.mock import MagicMock
 import pytest
 
@@ -46,7 +45,7 @@ def test_spectrum_analyzer_queue_data_flow():
     # We should ensure QApplication exists.
     from PyQt6.QtWidgets import QApplication
     if not QApplication.instance():
-        app = QApplication([])
+        QApplication([])
 
     sa = SpectrumAnalyzer(mock_engine)
     sa.set_buffer_size(4096)

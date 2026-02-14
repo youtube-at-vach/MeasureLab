@@ -2,7 +2,7 @@ import os
 import json
 import unittest
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import sys
 
 # Patch numpy if missing, before importing logic modules
