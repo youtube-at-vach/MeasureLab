@@ -10,3 +10,4 @@ PyWavelets
 netCDF4
 pyfftw
 
+requests

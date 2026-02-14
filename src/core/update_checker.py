@@ -1,7 +1,6 @@
-import json
 import logging
-import urllib.request
 
+import requests
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from src.core.version import __version__
@@ -17,21 +16,20 @@ class UpdateChecker(QThread):
     def run(self):
         try:
             url = "https://api.github.com/repos/youtube-at-vach/MeasureLab/releases/latest"
+            headers = {"User-Agent": f"MeasureLab/{__version__}"}
 
-            req = urllib.request.Request(url)
-            req.add_header("User-Agent", f"MeasureLab/{__version__}")
+            response = requests.get(url, headers=headers, timeout=5)
 
-            with urllib.request.urlopen(req, timeout=5) as response:
-                if response.status == 200:
-                    data = json.loads(response.read().decode())
-                    latest_tag = data.get("tag_name", "")
+            if response.status_code == 200:
+                data = response.json()
+                latest_tag = data.get("tag_name", "")
 
-                    # Remove 'v' prefix if present for comparison
-                    clean_latest = latest_tag.lstrip("v")
-                    clean_current = __version__.lstrip("v")
+                # Remove 'v' prefix if present for comparison
+                clean_latest = latest_tag.lstrip("v")
+                clean_current = __version__.lstrip("v")
 
-                    if self._is_newer(clean_latest, clean_current):
-                        self.update_available.emit(latest_tag)
+                if self._is_newer(clean_latest, clean_current):
+                    self.update_available.emit(latest_tag)
 
         except Exception as e:
             # Log failure but do not annoy the user with error popups.

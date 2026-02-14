@@ -46,13 +46,13 @@ class TestUpdateChecker(unittest.TestCase):
         self.assertFalse(checker._is_newer("0.4.2", "0.4.3"))
         self.assertFalse(checker._is_newer("0.3.9", "0.4.3"))
 
-    @patch('urllib.request.urlopen')
-    def test_update_check_found(self, mock_urlopen):
+    @patch('requests.get')
+    def test_update_check_found(self, mock_get):
         # Mock response
         mock_response = MagicMock()
-        mock_response.status = 200
-        mock_response.read.return_value = b'{"tag_name": "v9.9.9"}'
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"tag_name": "v9.9.9"}
+        mock_get.return_value = mock_response
 
         checker = UpdateChecker()
         checker.update_available.emit.reset_mock()
@@ -62,13 +62,13 @@ class TestUpdateChecker(unittest.TestCase):
 
         checker.update_available.emit.assert_called_with("v9.9.9")
 
-    @patch('urllib.request.urlopen')
-    def test_update_check_not_found(self, mock_urlopen):
+    @patch('requests.get')
+    def test_update_check_not_found(self, mock_get):
         # Mock response with older version
         mock_response = MagicMock()
-        mock_response.status = 200
-        mock_response.read.return_value = b'{"tag_name": "v0.0.1"}'
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"tag_name": "v0.0.1"}
+        mock_get.return_value = mock_response
 
         checker = UpdateChecker()
         checker.update_available.emit.reset_mock()
@@ -77,10 +77,10 @@ class TestUpdateChecker(unittest.TestCase):
 
         checker.update_available.emit.assert_not_called()
 
-    @patch('urllib.request.urlopen')
-    def test_update_check_failure_logs_error(self, mock_urlopen):
+    @patch('requests.get')
+    def test_update_check_failure_logs_error(self, mock_get):
         # Mock side effect to raise exception
-        mock_urlopen.side_effect = Exception("Network error")
+        mock_get.side_effect = Exception("Network error")
 
         checker = UpdateChecker()
 
