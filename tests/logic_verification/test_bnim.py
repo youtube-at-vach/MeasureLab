@@ -71,9 +71,6 @@ def test_bnim_mono():
     peak_itd_ms = bnim.itd_axis[np.argmax(itd_pattern)]
 
     # Peak should be at 0ms
-    print(f"ITD axis: {bnim.itd_axis}")
-    print(f"Pattern: {itd_pattern}")
-    print(f"Peak ITD: {peak_itd_ms}")
     assert abs(peak_itd_ms) < 0.1 # Relaxed slightly for resolution
 
     bnim.stop_analysis()
@@ -119,7 +116,40 @@ def test_bnim_symmetry():
     diff = np.abs(map_swapped - map_normal_flipped)
     max_diff = np.max(diff)
 
-    print(f"Symmetry Max Diff: {max_diff}")
     assert max_diff < 1e-5, f"Asymmetry detected: {max_diff}"
+
+    bnim.stop_analysis()
+
+def test_bnim_ild_balance():
+    """Test that ILD weighting shifts energy balance (extracted from test_bnim_meter_logic.py)."""
+    engine = MockAudioEngine()
+    bnim = BNIMMeter(engine)
+    bnim.start_analysis()
+    bnim.enable_ild = True
+    bnim.ild_strength = 1.0 # Strong ILD effect
+    bnim.decay = 0.0
+
+    # Create signal where L is much louder than R
+    # ILD is positive (L > R).
+    np.random.seed(123)
+    noise = np.random.normal(0, 0.1, bnim.fft_size).astype(np.float32)
+    L_data = noise * 10.0
+    R_data = noise * 0.1
+
+    with bnim._buffer_lock:
+        bnim.audio_buffer[-bnim.fft_size:, 0] = L_data
+        bnim.audio_buffer[-bnim.fft_size:, 1] = R_data
+        bnim._buffer_seq += 1
+
+    bnim.process_buffer()
+
+    # Check energy balance
+    mid_idx = bnim.num_itd_bins // 2
+    left_energy = np.sum(bnim.neural_map[:, :mid_idx])
+    right_energy = np.sum(bnim.neural_map[:, mid_idx:])
+
+    # Expect Left Energy > Right Energy
+    assert left_energy > right_energy, \
+        f"Expected Left Energy > Right Energy for L > R signal. L={left_energy}, R={right_energy}"
 
     bnim.stop_analysis()

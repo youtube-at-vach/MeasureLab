@@ -326,5 +326,30 @@ class TestThemeManager(unittest.TestCase):
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
         self.assertEqual(window_color.r, 53)
 
+    def test_style_factory_keys_cached(self):
+        """Test that QStyleFactory.keys() is cached to improve performance."""
+        # Reset mock to ensure clean state
+        self.mock_qt_widgets.QStyleFactory.keys.reset_mock()
+
+        # Instantiate ThemeManager
+        tm = self.ThemeManager(self.mock_app)
+
+        # Should be called once during init to populate cache
+        self.mock_qt_widgets.QStyleFactory.keys.assert_called_once()
+        self.mock_qt_widgets.QStyleFactory.keys.reset_mock()
+
+        # Trigger method that uses available styles
+        with patch('platform.system', return_value='Windows'):
+            # Setup style mock
+            style_mock = MagicMock()
+            style_mock.objectName.return_value = "WindowsVista"
+            self.mock_app.style.return_value = style_mock
+
+            # This triggers _ensure_fusion_style_on_windows which checks _available_styles
+            tm.set_theme("dark")
+
+        # Should NOT call keys() again
+        self.mock_qt_widgets.QStyleFactory.keys.assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()
