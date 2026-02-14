@@ -21,12 +21,14 @@ fi
 # Download appimagetool if not present (Workaround for CI download failure)
 if [ ! -f "$APPIMAGETOOL" ]; then
     wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O "$APPIMAGETOOL"
+    echo "a6d71e2b6cd66f8e8d16c37ad164658985e0cf5fcaa950c90a482890cb9d13e0  $APPIMAGETOOL" | sha256sum -c -
     chmod +x "$APPIMAGETOOL"
 fi
 
 # Download runtime manually (Workaround for CI download failure)
 if [ ! -f "$RUNTIME" ]; then
     wget https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64 -O "$RUNTIME"
+    echo "27ddd3f78e483fc5f7856e413d7c17092917f8c35bfe3318a0d378aa9435ad17  $RUNTIME" | sha256sum -c -
 fi
 
 # Create AppDir structure
