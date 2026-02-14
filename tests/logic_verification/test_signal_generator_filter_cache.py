@@ -8,7 +8,7 @@ import numpy as np
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
+from src.gui.widgets.signal_generator import SignalGenerator
 
 class TestSignalGeneratorFilterCache(unittest.TestCase):
     def setUp(self):
@@ -38,7 +38,7 @@ class TestSignalGeneratorFilterCache(unittest.TestCase):
 
             # Third call - change params - should calculate
             self.sg.params_L.lpf_freq = 2000.0
-            sos3 = self.sg._get_filter_sos(self.sg.params_L, "low", 48000)
+            self.sg._get_filter_sos(self.sg.params_L, "low", 48000)
             mock_butter.assert_called_once()
 
     def test_hpf_caching(self):
@@ -63,7 +63,7 @@ class TestSignalGeneratorFilterCache(unittest.TestCase):
 
             # Third call - change params - should calculate
             self.sg.params_L.hpf_order = 2
-            sos3 = self.sg._get_filter_sos(self.sg.params_L, "high", 48000)
+            self.sg._get_filter_sos(self.sg.params_L, "high", 48000)
             mock_butter.assert_called_once()
 
     def test_independent_caches(self):
