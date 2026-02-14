@@ -735,7 +735,7 @@
     "0.000 deg": "0.000 deg",
     "1. Calibration Data": "1. Calibration Data",
     "20 Hz - 12.5 kHz": "20 Hz - 12.5 kHz",
-    "20 Hz - 20 kHz (Wide)": "20 Hz - 20 kHz (Wide)",
+    "20 Hz - 20 kHz (Wide)": "20 Hz - 20 kHz (Breit)",
     "20 Hz - 8 kHz (Normal)": "20 Hz - 8 kHz (Normal)",
     "ACTIVE": "ACTIVE",
     "Absolute Gain Calibrated.\nOffset adjusted by {0:+.3f} dB.\nNew Offset: {1:.3f} dB": "Absolute Verstärkung kalibriert.\nOffset angepasst um {0:+.3f} dB.\nNeuer Offset: {1:.3f} dB",
