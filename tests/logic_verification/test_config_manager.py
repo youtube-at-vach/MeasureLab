@@ -1,6 +1,7 @@
 import os
 import tempfile
 import pytest
+import unittest.mock
 from src.core.config_manager import ConfigManager, DEFAULT_CONFIG
 
 @pytest.fixture
@@ -83,6 +84,41 @@ def test_merge_with_defaults_screenshot_invalid_type(config_manager):
     result = config_manager._merge_with_defaults(loaded)
 
     assert result["screenshot"] == DEFAULT_CONFIG["screenshot"]
+
+
+def test_load_config_malformed_json(config_manager, caplog):
+    """Test that malformed JSON results in default config and logs error."""
+    with open(config_manager.config_path, "w") as f:
+        f.write("{invalid_json")
+
+    config = config_manager.load_config()
+    assert config == DEFAULT_CONFIG
+    assert "Failed to load config" in caplog.text
+
+
+def test_load_config_os_error(config_manager, caplog):
+    """Test that OSError results in default config and logs error."""
+    # We mock open to raise OSError
+    # We patch builtins.open only for the duration of this context
+    with unittest.mock.patch("builtins.open", side_effect=OSError("Disk error")):
+        # We need to ensure os.path.exists returns True so it tries to open
+        with unittest.mock.patch("os.path.exists", return_value=True):
+            config = config_manager.load_config()
+
+    assert config == DEFAULT_CONFIG
+    assert "Failed to load config" in caplog.text
+
+
+def test_load_config_logic_error(config_manager):
+    """Test that logic errors are propagated."""
+    # Mock _merge_with_defaults to raise TypeError
+    with unittest.mock.patch.object(config_manager, "_merge_with_defaults", side_effect=TypeError("Logic bug")):
+        # Ensure we have a valid file to pass the open() check
+        with open(config_manager.config_path, "w") as f:
+            f.write("{}")
+
+        with pytest.raises(TypeError, match="Logic bug"):
+            config_manager.load_config()
 
 def test_merge_with_defaults_screenshot_empty(config_manager):
     """Test that empty screenshot section uses defaults."""
