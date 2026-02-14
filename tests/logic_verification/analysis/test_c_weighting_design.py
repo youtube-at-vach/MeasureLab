@@ -59,12 +59,5 @@ def test_design_c_weighting_response_shape_corners():
     gains = 20 * np.log10(np.abs(h))
 
     # Expect roughly -3dB to -6dB attenuation relative to passband center
-    # The magnitude of 1/(s+w)^2 at s=jw is 1/|jw+w|^2 = 1/(2w^2).
-    # Normalized to 1/(2w^2) at w=0 (if specific)?
-    # Actually, standard Butterworth/Bessel filters are -3dB at corner.
-    # C-weighting poles are real double poles (-w1, -w1).
-    # |H(jw1)| / |H(passband)| ~= |(jw1)^2 / (2jw1)^2| ? No.
-    # Let's just assert significant attenuation without strict value, as implementation details matter.
-
     assert gains[0] < -2.0, f"Expected attenuation at 20.6Hz, got {gains[0]} dB"
     assert gains[1] < -2.0, f"Expected attenuation at 12194Hz, got {gains[1]} dB"
