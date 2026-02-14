@@ -1,3 +1,4 @@
+import logging
 import queue
 
 import numpy as np
@@ -22,6 +23,9 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class SpectrumAnalyzer(MeasurementModule):
@@ -103,7 +107,7 @@ class SpectrumAnalyzer(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                logger.debug(status)
 
             # Shift buffer and append new data
             # We always capture 2 channels now if available

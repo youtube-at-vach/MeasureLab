@@ -119,7 +119,7 @@ class ConfigManager:
                 except Exception as e:
                     self.logger.warning(f"Failed to set secure permissions for config file: {e}")
 
-                self.logger.info("Config saved.")
+                self.logger.debug("Config saved.")
                 self._save_timer = None
             except Exception as e:
                 self.logger.error(f"Failed to save config: {e}")

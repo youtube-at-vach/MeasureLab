@@ -1,3 +1,4 @@
+import logging
 import threading
 
 import numpy as np
@@ -35,6 +36,9 @@ from src.gui.styles import (
     STYLE_LABEL_RIGHT_CH_LIGHT,
     STYLE_LABEL_CURSOR_LIGHT,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class Oscilloscope(MeasurementModule):
@@ -169,7 +173,7 @@ class Oscilloscope(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                pass
+                logger.debug(status)
 
             # Write to transfer buffer with lock, NO allocation
             with self.transfer_lock:

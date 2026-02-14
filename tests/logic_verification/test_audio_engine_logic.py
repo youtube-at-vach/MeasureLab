@@ -33,9 +33,9 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.assertEqual(self.engine.callbacks[cid], cb)
 
         # Check logging happened
-        self.engine.logger.info.assert_called()
+        self.engine.logger.debug.assert_called()
         # Verify call args
-        args, _ = self.engine.logger.info.call_args
+        args, _ = self.engine.logger.debug.call_args
         self.assertIn(f"Registered callback {cid}", args[0])
 
         # Reset mock
@@ -46,11 +46,11 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.assertNotIn(cid, self.engine.callbacks)
 
         # Check logging happened
-        self.engine.logger.info.assert_called()
+        self.engine.logger.debug.assert_called()
 
         # We look through all calls because stop_stream might also log
         found_msg = False
-        for call in self.engine.logger.info.call_args_list:
+        for call in self.engine.logger.debug.call_args_list:
             if f"Unregistered callback {cid}" in call[0][0]:
                 found_msg = True
                 break

@@ -364,10 +364,10 @@ class SignalGenerator(MeasurementModule):
             return signal
 
         except ImportError:
-            print("scipy not found, cannot generate PRBS efficiently")
+            logger.error("scipy not found, cannot generate PRBS efficiently")
             return np.zeros(100)
         except Exception as e:
-            print(f"Error generating PRBS: {e}")
+            logger.error(f"Error generating PRBS: {e}")
             return np.zeros(100)
 
     def _prepare_buffer(self, params: SignalParameters, sample_rate):
@@ -720,7 +720,7 @@ class SignalGenerator(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                logger.debug(status)
 
             t = np.arange(frames) / sample_rate
             outdata.fill(0)

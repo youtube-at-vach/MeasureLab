@@ -1,4 +1,5 @@
 import atexit
+import logging
 import os
 import queue
 import tempfile
@@ -27,6 +28,10 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
+
+
+logger = logging.getLogger(__name__)
+
 
 WRITE_BLOCK_SIZE = 65536
 
@@ -164,7 +169,7 @@ class RecorderPlayer(MeasurementModule):
 
             # Resample if needed
             if file_sr != engine_sr:
-                print(f"Resampling {os.path.basename(filepath)}: {file_sr}Hz -> {engine_sr}Hz")
+                logger.debug(f"Resampling {os.path.basename(filepath)}: {file_sr}Hz -> {engine_sr}Hz")
 
                 # Use efficient polyphase resampling
                 data = AudioCalc.resample(data, file_sr, engine_sr)
@@ -251,7 +256,7 @@ class RecorderPlayer(MeasurementModule):
                     f.write(chunk)
 
         except Exception as e:
-            print(f"Recorder writer error: {e}")
+            logger.error(f"Recorder writer error: {e}")
 
     def start_recording(self):
         # Cleanup previous temp file

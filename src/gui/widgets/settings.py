@@ -1337,13 +1337,13 @@ class SettingsWidget(QWidget):
     def on_dithering_toggled(self, checked: bool):
         self.config_manager.set_dithering_enabled(checked)
         self.audio_engine.dithering_enabled = checked
-        self.logger.info(f"Dithering toggled: {checked}")
+        self.logger.debug(f"Dithering toggled: {checked}")
 
     def on_dithering_depth_changed(self, index: int):
         depth = self.dithering_depth_combo.currentData()
         self.config_manager.set_dithering_bit_depth(depth)
         self.audio_engine.dithering_bit_depth = depth
-        self.logger.info(f"Dithering bit depth set to: {depth}")
+        self.logger.debug(f"Dithering bit depth set to: {depth}")
 
     def open_spl_calibration(self):
         dlg = SplCalibrationDialog(self.audio_engine, self)

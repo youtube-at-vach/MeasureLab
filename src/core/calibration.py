@@ -256,7 +256,7 @@ class CalibrationManager:
                 # Sort by frequency just in case
                 self.frequency_map = sorted(data, key=lambda x: x[0])
                 self._update_map_cache()
-                self.logger.info("Loaded calibration map with %d points.", len(self.frequency_map))
+                self.logger.debug("Loaded calibration map with %d points.", len(self.frequency_map))
                 return True
         except Exception as e:
             self.logger.error("Failed to load calibration map: %s", e)
@@ -272,7 +272,7 @@ class CalibrationManager:
                 json.dump(data, f, indent=4)
             self.frequency_map = sorted(data, key=lambda x: x[0])
             self._update_map_cache()
-            self.logger.info("Saved calibration map to %s", path)
+            self.logger.debug("Saved calibration map to %s", path)
             return True
         except Exception as e:
             self.logger.error("Failed to save calibration map: %s", e)

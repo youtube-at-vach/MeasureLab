@@ -230,7 +230,7 @@ class ThemeManager(QObject):
             self.logger.warning("Fusion style not available; cannot stabilize dark palette on Windows")
             return
 
-        self.logger.info(f"Windows detected: switching style '{current}' -> '{fusion_key}' for dark theme")
+        self.logger.debug(f"Windows detected: switching style '{current}' -> '{fusion_key}' for dark theme")
         self.app.setStyle(fusion_key)
 
     def _restore_platform_style_if_needed(self) -> None:
@@ -255,5 +255,5 @@ class ThemeManager(QObject):
             # If the exact original style isn't available, keep Fusion rather than risking a crash.
             return
 
-        self.logger.info(f"Windows detected: restoring style '{current}' -> '{desired}'")
+        self.logger.debug(f"Windows detected: restoring style '{current}' -> '{desired}'")
         self.app.setStyle(desired)

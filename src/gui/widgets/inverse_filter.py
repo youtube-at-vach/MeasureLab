@@ -1,4 +1,5 @@
 
+import logging
 import os
 
 import numpy as np
@@ -26,6 +27,9 @@ from scipy.interpolate import interp1d
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
+
+
+logger = logging.getLogger(__name__)
 
 
 class InverseFilter(MeasurementModule):
@@ -349,9 +353,7 @@ class ProcessingWorker(QThread):
             self.finished.emit(True, tr("Processing Complete."))
 
         except Exception as e:
-            import traceback
-
-            traceback.print_exc()
+            logger.error("Error in ProcessingWorker", exc_info=True)
             self.finished.emit(False, str(e))
 
     def cancel(self):
