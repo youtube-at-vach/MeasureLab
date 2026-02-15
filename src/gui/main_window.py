@@ -219,17 +219,29 @@ class MainWindow(QMainWindow):
 
     def _init_ui(self):
         """Initialize UI components (Layouts, Sidebar, StackedWidget, Status Bar)."""
+        self._init_module_registry()
+
+        main_layout = self._init_main_layout()
+        self._init_sidebar(main_layout)
+        self._init_content_area(main_layout)
+        self._init_status_bar()
+
+    def _init_module_registry(self):
+        """Initialize module registry arrays."""
         # Module registry (keep keys identical to module.name strings)
         self._module_keys = list(ALL_MODULE_KEYS)
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
 
-        # Main layout container
+    def _init_main_layout(self):
+        """Initialize the main widget and layout."""
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QHBoxLayout(main_widget)
+        return layout
 
-        # Sidebar for tool selection
+    def _init_sidebar(self, layout):
+        """Initialize the sidebar with navigation items."""
         self.sidebar = QListWidget()
         self.sidebar.setFixedWidth(200)
         self.sidebar.addItem(tr("Welcome"))
@@ -241,7 +253,8 @@ class MainWindow(QMainWindow):
         self.sidebar.currentRowChanged.connect(self.on_tool_selected)
         layout.addWidget(self.sidebar)
 
-        # Main content area
+    def _init_content_area(self, layout):
+        """Initialize the central stacked widget content area."""
         self.content_area = QStackedWidget()
         layout.addWidget(self.content_area)
 
@@ -268,7 +281,8 @@ class MainWindow(QMainWindow):
             self._module_containers.append(container)
             self.content_area.addWidget(container)
 
-        # Status Bar
+    def _init_status_bar(self):
+        """Initialize the status bar and its indicators."""
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
