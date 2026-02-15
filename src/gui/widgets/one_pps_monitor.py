@@ -255,7 +255,6 @@ class OnePPSMonitor(MeasurementModule):
 
                 # Processing Logic
                 # Optimization: If signal is way below threshold everywhere, skip.
-                # print(f"Processing chunk frames={frames}, max={np.max(sig)}")
                 if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
                     self._total_samples_processed += frames
                     if self._triggered:
@@ -290,7 +289,6 @@ class OnePPSMonitor(MeasurementModule):
 
                     if not self._triggered:
                         if s >= th_high:
-                            # print(f"Triggered at abs_pos={abs_pos}, s={s}")
                             self._triggered = True
                             
                             # --- Triggered Visualization Capture ---
@@ -591,23 +589,6 @@ class OnePPSMonitorWidget(QWidget):
 
         vbox_settings.addWidget(rate_group)
 
-        # Threshold
-        vbox_settings.addWidget(QLabel(tr("Threshold (FS):")))
-        self.spin_thresh = QDoubleSpinBox()
-        self.spin_thresh.setRange(-1.0, 1.0)
-        self.spin_thresh.setSingleStep(0.01)
-        self.spin_thresh.setValue(0.5)
-        self.spin_thresh.valueChanged.connect(self._on_thresh_changed)
-        vbox_settings.addWidget(self.spin_thresh)
-
-        # Hysteresis
-        vbox_settings.addWidget(QLabel(tr("Hysteresis (FS):")))
-        self.spin_hyst = QDoubleSpinBox()
-        self.spin_hyst.setRange(0.0, 0.5)
-        self.spin_hyst.setSingleStep(0.01)
-        self.spin_hyst.setValue(0.05)
-        self.spin_hyst.valueChanged.connect(self._on_hyst_changed)
-        vbox_settings.addWidget(self.spin_hyst)
 
         # Outlier Filter Group
         filter_group = QGroupBox(tr("Outlier Rejection"))
@@ -756,8 +737,9 @@ class OnePPSMonitorWidget(QWidget):
 
         # Initialize
         self.module.nominal_rate = self.spin_rate.value()
-        self._on_thresh_changed(self.spin_thresh.value())
-        self._on_hyst_changed(self.spin_hyst.value())
+        # Initialize Waveform controls with module defaults if any, or just trigger handler
+        self._on_thresh_wave_changed(self.spin_thresh_wave.value())
+        self._on_hyst_wave_changed(self.spin_hyst_wave.value())
         self._on_filter_toggled(self.chk_filter.isChecked())
         self._on_window_changed(self.spin_window.value())
         self._on_tol_changed(self.spin_tol.value())
@@ -871,26 +853,14 @@ class OnePPSMonitorWidget(QWidget):
     def _on_rate_changed(self, val):
         self.module.nominal_rate = val
 
-    def _on_thresh_changed(self, val):
+    def _on_thresh_wave_changed(self, val):
         self.module.threshold_fs = val
-        if abs(self.spin_thresh_wave.value() - val) > 1e-6:
-            self.spin_thresh_wave.setValue(val)
         self.line_thresh_high.setValue(val)
         self.line_thresh_low.setValue(val - self.module.hysteresis_fs)
-
-    def _on_hyst_changed(self, val):
-        self.module.hysteresis_fs = val
-        if abs(self.spin_hyst_wave.value() - val) > 1e-6:
-            self.spin_hyst_wave.setValue(val)
-        self.line_thresh_low.setValue(self.module.threshold_fs - val)
-        
-    def _on_thresh_wave_changed(self, val):
-        if abs(self.spin_thresh.value() - val) > 1e-6:
-            self.spin_thresh.setValue(val)
             
     def _on_hyst_wave_changed(self, val):
-        if abs(self.spin_hyst.value() - val) > 1e-6:
-            self.spin_hyst.setValue(val)
+        self.module.hysteresis_fs = val
+        self.line_thresh_low.setValue(self.module.threshold_fs - val)
 
     def _turn_off_indicator(self):
         self.lbl_indicator.setStyleSheet("background-color: gray; border-radius: 10px; border: 1px solid black;")

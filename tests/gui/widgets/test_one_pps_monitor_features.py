@@ -45,26 +45,21 @@ def test_initialization(widget):
     assert isinstance(thresh_spin, QDoubleSpinBox)
     assert isinstance(hyst_spin, QDoubleSpinBox)
 
-def test_control_synchronization(widget, monitor):
-    """Test that controls in Settings and Waveform tabs are synchronized."""
+def test_waveform_controls(widget, monitor):
+    """Test that controls in Waveform tab update the module directly."""
     
-    # Change Settings -> Waveform should update
-    widget.spin_thresh.setValue(0.6)
-    assert widget.spin_thresh_wave.value() == 0.6
+    # Change Waveform Threshold -> Module should update
+    widget.spin_thresh_wave.setValue(0.6)
     assert monitor.threshold_fs == 0.6
+    assert widget.line_thresh_high.value() == 0.6
+    # Low line = Thresh - Hyst = 0.6 - 0.05 = 0.55
+    assert abs(widget.line_thresh_low.value() - 0.55) < 1e-6
     
-    widget.spin_hyst.setValue(0.1)
-    assert widget.spin_hyst_wave.value() == 0.1
+    # Change Waveform Hysteresis -> Module and Low line should update
+    widget.spin_hyst_wave.setValue(0.1)
     assert monitor.hysteresis_fs == 0.1
-    
-    # Change Waveform -> Settings should update
-    widget.spin_thresh_wave.setValue(0.4)
-    assert widget.spin_thresh.value() == 0.4
-    assert monitor.threshold_fs == 0.4
-    
-    widget.spin_hyst_wave.setValue(0.02)
-    assert widget.spin_hyst.value() == 0.02
-    assert monitor.hysteresis_fs == 0.02
+    # Low line = 0.6 - 0.1 = 0.5
+    assert abs(widget.line_thresh_low.value() - 0.5) < 1e-6
 
 def test_pulse_indicator_logic(widget, monitor, qtbot):
     """Test the pulse indicator logic."""
