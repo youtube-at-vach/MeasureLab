@@ -147,21 +147,30 @@ class FFTManager:
             return
 
         try:
-            # We focus on rfft (Real input -> Complex output) and irfft (Complex input -> Real output)
+            # Determine dtypes based on precision
+            if dtype_str == "float32":
+                real_dtype = "float32"
+                complex_dtype = "complex64"
+            else:
+                real_dtype = "float64"
+                complex_dtype = "complex128"
+
+            # Determine input/output shapes and dtypes based on direction
+            # rfft: Real input -> Complex output (FFTW_FORWARD)
+            # irfft: Complex input -> Real output (FFTW_BACKWARD)
             if direction == "FFTW_FORWARD":
-                if dtype_str == "float32":
-                    input_array = pyfftw.empty_aligned(size, dtype="float32")
-                    output_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex64")
-                else:
-                    input_array = pyfftw.empty_aligned(size, dtype="float64")
-                    output_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex128")
-            else:  # FFTW_BACKWARD (irfft)
-                if dtype_str == "float32":
-                    input_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex64")
-                    output_array = pyfftw.empty_aligned(size, dtype="float32")
-                else:
-                    input_array = pyfftw.empty_aligned(size // 2 + 1, dtype="complex128")
-                    output_array = pyfftw.empty_aligned(size, dtype="float64")
+                input_shape = size
+                input_dtype = real_dtype
+                output_shape = size // 2 + 1
+                output_dtype = complex_dtype
+            else:
+                input_shape = size // 2 + 1
+                input_dtype = complex_dtype
+                output_shape = size
+                output_dtype = real_dtype
+
+            input_array = pyfftw.empty_aligned(input_shape, dtype=input_dtype)
+            output_array = pyfftw.empty_aligned(output_shape, dtype=output_dtype)
 
             # Use provided flags (ESTIMATE vs MEASURE)
             fft_object = pyfftw.FFTW(input_array, output_array, direction=direction, flags=flags, threads=self.threads)
