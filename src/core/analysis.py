@@ -22,6 +22,10 @@ A_WEIGHTING_F4 = 12194.0
 # Gain = 10^(2.000/20) = 1.2589...
 A_WEIGHTING_GAIN = 1.2589
 
+# Factor to convert Median of Rayleigh distribution (magnitude of Gaussian noise) to RMS
+# RMS / Median = 1 / sqrt(ln(2)) ~= 1.2011
+RAYLEIGH_RMS_FACTOR = 1.2011
+
 
 @functools.lru_cache(maxsize=16)
 def get_cached_window(window_name, nx, dtype=np.float64, fftbins=True):
@@ -935,8 +939,7 @@ class AudioCalc:
 
         if i_white_start < i_white_end:
             # Median is robust to peaks, but under-estimates RMS of Gaussian noise (Rayleigh magnitude)
-            # Factor: RMS / Median = 1 / sqrt(ln(2)) ~= 1.2011
-            white_density = np.median(mag[i_white_start:i_white_end]) * 1.2011
+            white_density = np.median(mag[i_white_start:i_white_end]) * RAYLEIGH_RMS_FACTOR
         else:
             white_density = 1e-9  # Fallback
         return white_density
