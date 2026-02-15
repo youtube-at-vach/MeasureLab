@@ -41,6 +41,9 @@ FFT（高速フーリエ変換）の処理速度を向上させるための最�
     * **Output Device**: スピーカーなどを接続した出力デバイスを選択します。
     * **Refresh Devices**: デバイスリストを更新します。Linux環境でJACKが動作している場合は、安全のため無効化されます。
     * **Measure Bit Depth...**: オーディオデバイスの実効ビット深度（ENOB）と量子化ノイズの特性を測定・可視化するためのダイアログを開きます。実測に基づいたビット深度の確認に役立ちます。
+        * **Effective Bit Depth History**: ENOB（有効ビット数）の時系列変化を表示します。
+        * **Bit Activity (LSB to MSB)**: 各ビット（LSBからMSBまで）の活動状況をヒートマップで可視化します。スタックビット（常に0または1）の検出に役立ちます。
+        * **Quantization Step (Delta) Distribution**: 隣接サンプル間の差分（量子化ステップ）の分布を表示します。
 * **Virtual / Offline Mode タブ**:
     * **Virtual Audio (No Hardware)**: 仮想オーディオドライバを有効にします。物理的なインターフェースがない場合に使用します。
     * **Simulation Rate**: 仮想モード時のサンプリングレートを設定します。
