@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from src.core.analysis import AudioCalc
+from src.core.analysis import AudioCalc, RAYLEIGH_RMS_FACTOR
 
 class TestNoiseProfileLogic(unittest.TestCase):
     def setUp(self):
@@ -14,8 +14,8 @@ class TestNoiseProfileLogic(unittest.TestCase):
     def test_white_noise_profile(self):
         results = AudioCalc.calculate_noise_profile(self.mag_white, self.freqs, self.fs)
 
-        # White noise density should be approx 1e-7 * 1.2011 (correction factor in code)
-        expected_density = 1e-7 * 1.2011
+        # White noise density should be approx 1e-7 * RAYLEIGH_RMS_FACTOR (correction factor in code)
+        expected_density = 1e-7 * RAYLEIGH_RMS_FACTOR
         self.assertAlmostEqual(results['white_density'], expected_density, delta=1e-9)
 
         # Hum should be negligible (sum of 10 harmonics integration of noise floor)
@@ -130,11 +130,11 @@ class TestNoiseProfileLogic(unittest.TestCase):
 
         # Allow some margin because median estimate factor is approx
         # For flat magnitude, median = mean = 1e-4.
-        # But the function multiplies by 1.2011 (assuming Rayleigh).
+        # But the function multiplies by RAYLEIGH_RMS_FACTOR (assuming Rayleigh).
         # Wait, if input is constant 1e-4, median is 1e-4.
-        # Expected result = 1e-4 * 1.2011
+        # Expected result = 1e-4 * RAYLEIGH_RMS_FACTOR
 
-        expected = 1e-4 * 1.2011
+        expected = 1e-4 * RAYLEIGH_RMS_FACTOR
         self.assertAlmostEqual(results['white_density'], expected, delta=expected*0.1)
 
     def test_masking_logic_correctness(self):
