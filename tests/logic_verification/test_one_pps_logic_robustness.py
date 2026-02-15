@@ -73,12 +73,14 @@ def test_gate_filter_logic():
     wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
-    # Should have 2 intervals:
+    # Should have 3 intervals:
     # 1. 0->1000 (Delta 1000)
-    # 2. 1000->2000 (Delta 1000). The 1010 trigger should be ignored.
+    # 2. 1000->1010 (Delta 10)
+    # 3. 1010->2000 (Delta 990)
 
-    assert len(ip) == 2
-    assert np.allclose(ip, 0.0)
+    assert len(ip) == 3
+    # First one should be 1000 samples -> 0 ppm
+    assert np.allclose(ip[0], 0.0)
 
 def test_gate_filter_massive_glitch():
     engine = MockAudioEngine()
@@ -110,8 +112,14 @@ def test_gate_filter_massive_glitch():
     wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
-    assert len(ip) == 2
-    assert np.allclose(ip, 0.0)
+    # Should have 3 intervals:
+    # 1. 0->48k: OK.
+    # 2. 48k->52k: Delta 4000.
+    # 3. 52k->96k: Delta 44k000.
+
+    assert len(ip) == 3
+    # First one should be 48000 samples -> 0 ppm
+    assert np.allclose(ip[0], 0.0)
 
 def test_mad_death_spiral():
     engine = MockAudioEngine()
