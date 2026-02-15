@@ -84,7 +84,8 @@ class OnePPSMonitor(MeasurementModule):
         
         self.last_trig_waveform = None
         self.last_trig_time = 0
-        self.detected_samples_since_trig = -1
+        self.last_trig_time = 0
+        self._capture_trigger_index = -1
 
         # Regression State (Online Least Squares)
         # y = mx + c
@@ -157,9 +158,9 @@ class OnePPSMonitor(MeasurementModule):
         self.vis_buffer.fill(0)
         self.vis_write_pos = 0
         self.last_trig_waveform = None
-        self.detected_samples_since_trig = -1
+        self.vis_write_pos = 0
         self.last_trig_waveform = None
-        self.detected_samples_since_trig = -1
+        self._capture_trigger_index = -1
 
         # Clear queue
         while not self.data_queue.empty():
@@ -261,12 +262,15 @@ class OnePPSMonitor(MeasurementModule):
                          self._triggered = False
                     
                     # Still need to handle waveform capture if active
-                    if self.detected_samples_since_trig >= 0:
-                        self.detected_samples_since_trig += frames
-                        # Check if we have enough data (duplicate logic, or move logic out)
-                        required_post = int(self.vis_window_post * self.nominal_rate)
-                        if self.detected_samples_since_trig >= required_post:
-                             self._capture_waveform(required_post)
+                    # Still need to handle waveform capture if active
+                    if self._capture_trigger_index != -1:
+                         # Current head is self._total_samples_processed + frames (since we skipped loop)
+                         # We skip processing loop, but frames are counted.
+                         # Check if enough samples:
+                         current_head = self._total_samples_processed + frames
+                         required_post = int(self.vis_window_post * self.nominal_rate)
+                         if (current_head - self._capture_trigger_index) >= required_post:
+                              self._capture_waveform(required_post, current_head)
 
                     continue
 
@@ -309,8 +313,10 @@ class OnePPSMonitor(MeasurementModule):
                             # BUT we need to wait for POST-trigger part.
                             # So, let's just record "samples_since_trigger = 0" and "capturing = True"
                             
-                            if self.detected_samples_since_trig == -1: # Not currently capturing
-                                self.detected_samples_since_trig = 0
+                            
+                            # --- Triggered Visualization Capture ---
+                            if self._capture_trigger_index == -1:
+                                self._capture_trigger_index = abs_pos
                             
                             # Rising edge detected
 
@@ -417,14 +423,13 @@ class OnePPSMonitor(MeasurementModule):
                             self._triggered = False
 
                 # Handle Waveform Capture (If not skipped by optimization)
-                if self.detected_samples_since_trig >= 0:
-                    self.detected_samples_since_trig += frames
-                    
-                    # Check if we have enough data
+                # Handle Waveform Capture (If not skipped by optimization)
+                if self._capture_trigger_index != -1:
+                    current_head = self._total_samples_processed + frames
                     required_post = int(self.vis_window_post * self.nominal_rate)
                     
-                    if self.detected_samples_since_trig >= required_post:
-                        self._capture_waveform(required_post)
+                    if (current_head - self._capture_trigger_index) >= required_post:
+                        self._capture_waveform(required_post, current_head)
                     
 
                 # Save back regression state
@@ -441,7 +446,7 @@ class OnePPSMonitor(MeasurementModule):
             except Exception as e:
                 print(f"OnePPSMonitor Worker Error: {e}")
 
-    def _capture_waveform(self, required_post):
+    def _capture_waveform(self, required_post, current_head):
         """Helper to extract waveform from buffer."""
         required_pre = int(self.vis_window_pre * self.nominal_rate)
         
@@ -449,14 +454,11 @@ class OnePPSMonitor(MeasurementModule):
             # Total samples to extract = pre + post
             total_samps = required_pre + required_post
             
-            # Read pointer should be:
-            # Current Write Pos - detected_samples_since_trig - required_pre
-            # No: Trigger is at (WritePos - detected_samples_since_trig)
-            # Start read at: Trigger - required_pre
+            # Use absolute trigger index to calculate exact read index
+            samples_since_trig = current_head - self._capture_trigger_index
             
-            # Note: We need to handle wrap-around carefully for the read index calculation
-            # Python's % operator handles negative numbers correctly for this (e.g. -5 % 10 = 5)
-            read_idx = (self.vis_write_pos - self.detected_samples_since_trig - required_pre) % self.vis_buffer_size
+            # Start read at: Head - SamplesSince - Pre
+            read_idx = (self.vis_write_pos - samples_since_trig - required_pre) % self.vis_buffer_size
             
             # Extract
             if read_idx + total_samps <= self.vis_buffer_size:
@@ -468,7 +470,7 @@ class OnePPSMonitor(MeasurementModule):
             
             self.last_trig_waveform = waveform
             
-        self.detected_samples_since_trig = -1 # Done
+        self._capture_trigger_index = -1 # Done
 
 
     def get_history_arrays(self):
@@ -631,6 +633,7 @@ class OnePPSMonitorWidget(QWidget):
         
         # Plot
         self.plot_waveform = pg.PlotWidget(title=tr("Input Waveform (Triggered)"))
+        self.plot_waveform.setMaximumWidth(400)
         self.plot_waveform.setLabel("left", tr("Amplitude"), units="FS")
         self.plot_waveform.setLabel("bottom", tr("Time vs Trigger"), units="s")
         self.plot_waveform.showGrid(x=True, y=True, alpha=0.3)
