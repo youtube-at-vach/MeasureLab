@@ -1114,15 +1114,11 @@ class AudioCalc:
         return np.sqrt(power_a)
 
     @staticmethod
-    def calculate_noise_profile(mag, freqs, sampling_rate):
+    def _analyze_frequency_axis(freqs):
         """
-        Calculates noise profile including Hum, White, and 1/f noise.
-        mag: Magnitude spectrum (Linear V/rtHz)
-        freqs: Frequency bins
+        Analyzes the frequency axis to determine if it's linear or logarithmic.
+        Returns (is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq)
         """
-        results = {}
-
-        # Optimization: Check if freqs is linear or logarithmic
         is_linear_freqs = False
         is_log_freqs = False
         freq_step = 1.0
@@ -1150,6 +1146,20 @@ class AudioCalc:
                 if abs(freqs[-1] - expected_log_end) < 1e-4 * expected_log_end:
                     is_log_freqs = True
                     stop_freq = freqs[-1]
+
+        return is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq
+
+    @staticmethod
+    def calculate_noise_profile(mag, freqs, sampling_rate):
+        """
+        Calculates noise profile including Hum, White, and 1/f noise.
+        mag: Magnitude spectrum (Linear V/rtHz)
+        freqs: Frequency bins
+        """
+        results = {}
+
+        # Optimization: Check if freqs is linear or logarithmic
+        is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq = AudioCalc._analyze_frequency_axis(freqs)
 
         # Pre-calculate squared magnitude and bin width
         mag_sq = mag**2
