@@ -40,6 +40,7 @@ class OnePPSMonitor(MeasurementModule):
         # User settings
         self.threshold_fs = 0.5
         self.hysteresis_fs = 0.05
+        self.target_pps = 1.0
         self.nominal_rate = 48000.0
 
         # Filter settings (Robust Median/MAD)
@@ -262,7 +263,8 @@ class OnePPSMonitor(MeasurementModule):
                 th_low = self.threshold_fs - self.hysteresis_fs
 
                 t_samples = self._total_samples_processed
-                nominal = self.nominal_rate
+                sample_rate = self.nominal_rate
+                expected_interval = sample_rate / self.target_pps if self.target_pps > 0 else sample_rate
 
                 # Local copies for speed
                 reg_n = self._reg_n
@@ -323,14 +325,12 @@ class OnePPSMonitor(MeasurementModule):
                                 # Instantaneous calculation
                                 delta = abs_pos - self._last_trigger_sample_index
 
-                                # 0. Gate Filter (Hard Rejection)
-                                # Reject if deviation is > 50% of nominal (e.g. double trigger or missed trigger)
-                                # This handles the massive glitches seen in 1PPS (e.g. 192kHz -> < 96k or > 288k)
-                                # 50% is safe for 1PPS.
-                                gate_threshold = nominal * 0.5
-                                is_gross_outlier = abs(delta - nominal) > gate_threshold
+                                # 0. Gate Filter (Hard Rejection) - REMOVED
+                                # We no longer reject based on 50% deviation.
+                                # is_gross_outlier = abs(delta - nominal) > gate_threshold
+                                is_gross_outlier = False
 
-                                accepted = not is_gross_outlier
+                                accepted = True
 
                                 # 1. MAD/Median Filter
                                 if accepted and self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
@@ -353,21 +353,18 @@ class OnePPSMonitor(MeasurementModule):
                                         self._filter_window.pop(0)
 
                                     # 2. Instantaneous Result
-                                    error_samples = delta - nominal
-                                    # PPM = (Error / Nominal) * 1e6
-                                    # Seconds Error = Error / Nominal_Rate (Sampling Rate ~ Nominal) assuming Nominal is Rate
-                                    # We store PPM. UI can convert to Seconds (PPM * 1e-6).
-                                    instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
+                                    error_samples = delta - expected_interval
+                                    # PPM = (Error / Expected) * 1e6
+                                    # Seconds Error = Error / Sample_Rate
+                                    instant_ppm = (error_samples / expected_interval) * 1e6 if expected_interval != 0 else 0
 
-                                    # 3. Regression Update
                                     # x = Pulse Count (approx seconds)
                                     # y = Actual Sample Position relative to first
                                     y_val = abs_pos - self._first_trigger_sample_index
-                                    # x_val = round(y_val / nominal) 
-                                    # Better: x is the index of the pulse.
-                                    # Since we might have missed pulses, let's trust the "nominal" grid?
-                                    # No, existing logic was:
-                                    x_val = round(y_val / nominal)
+                                    
+                                    # x is the index of the pulse.
+                                    # Since we might have missed pulses, let's estimate index from y_val
+                                    x_val = round(y_val / expected_interval)
 
                                     reg_n += 1
                                     reg_sx += x_val
@@ -379,7 +376,10 @@ class OnePPSMonitor(MeasurementModule):
                                     denom = (reg_n * reg_sxx - reg_sx * reg_sx)
                                     if denom != 0:
                                         slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
-                                        cumulative_ppm = ((slope - nominal) / nominal) * 1e6
+                                        # Slope is Samples per Pulse.
+                                        # Nominal Samples per Pulse is expected_interval.
+                                        # PPM Error = (measured_slope - expected) / expected
+                                        cumulative_ppm = ((slope - expected_interval) / expected_interval) * 1e6
                                     else:
                                         cumulative_ppm = 0.0
 
@@ -403,8 +403,8 @@ class OnePPSMonitor(MeasurementModule):
                                 if not is_gross_outlier:
                                     self._last_trigger_sample_index = abs_pos
 
-                        if s <= th_low:
-                            self._triggered = False
+                    if s <= th_low:
+                        self._triggered = False
 
                 # Handle Waveform Capture (If not skipped by optimization)
                 # Handle Waveform Capture (If not skipped by optimization)
@@ -574,6 +574,17 @@ class OnePPSMonitorWidget(QWidget):
         rate_vbox.addLayout(rate_row)
 
         vbox_settings.addWidget(rate_group)
+
+        # Target PPS
+        pps_group = QHBoxLayout()
+        pps_group.addWidget(QLabel(tr("Target PPS (Hz):")))
+        self.spin_pps = QDoubleSpinBox()
+        self.spin_pps.setRange(0.1, 1000.0)
+        self.spin_pps.setValue(1.0)
+        self.spin_pps.setSingleStep(0.1)
+        self.spin_pps.valueChanged.connect(self._on_pps_changed)
+        pps_group.addWidget(self.spin_pps)
+        vbox_settings.addLayout(pps_group)
 
 
         # Outlier Filter Group
@@ -747,6 +758,7 @@ class OnePPSMonitorWidget(QWidget):
         layout.addLayout(ctrl_layout)
 
         # Initialize
+        self.module.target_pps = self.spin_pps.value()
         self.module.nominal_rate = self.spin_rate.value()
         # Initialize Waveform controls with module defaults if any, or just trigger handler
         self._on_thresh_wave_changed(self.spin_thresh_wave.value())
@@ -863,6 +875,9 @@ class OnePPSMonitorWidget(QWidget):
 
     def _on_rate_changed(self, val):
         self.module.nominal_rate = val
+
+    def _on_pps_changed(self, val):
+        self.module.target_pps = val
 
     def _on_thresh_wave_changed(self, val):
         self.module.threshold_fs = val
