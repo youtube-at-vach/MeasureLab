@@ -1,12 +1,10 @@
-
 import sys
 import threading
 import unittest
-from unittest.mock import MagicMock
-
+from unittest.mock import MagicMock, patch
+import importlib
 
 # --- Mock Infrastructure ---
-# (Same MockArray as before)
 class MockArray:
     def __init__(self, shape, fill_value=0.0):
         if isinstance(shape, int):
@@ -46,33 +44,45 @@ class MockArray:
     def copy(self):
         return MockArray(self.shape)
 
-
-mock_np = MagicMock()
-mock_np.zeros.side_effect = lambda shape, dtype=None: MockArray(shape)
-mock_np.array.side_effect = lambda data, dtype=None: MockArray((len(data), len(data[0]) if data else 0))
-mock_np.mean.return_value = MockArray((1,))
-
-sys.modules['numpy'] = mock_np
-sys.modules['scipy'] = MagicMock()
-sys.modules['scipy.signal'] = MagicMock()
-sys.modules['scipy.optimize'] = MagicMock()
-sys.modules['sounddevice'] = MagicMock()
-sys.modules['soundfile'] = MagicMock()
-sys.modules['src.core.calibration'] = MagicMock()
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-sys.modules['src.core.audio_engine'] = MagicMock()
-sys.modules['src.core.localization'] = MagicMock()
-
-from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
-
-
 class TestRecorderPlayerRace(unittest.TestCase):
+    def setUp(self):
+        self.mock_np = MagicMock()
+        self.mock_np.zeros.side_effect = lambda shape, dtype=None: MockArray(shape)
+        self.mock_np.array.side_effect = lambda data, dtype=None: MockArray((len(data), len(data[0]) if data else 0))
+        self.mock_np.mean.return_value = MockArray((1,))
+
+        self.mock_modules = {
+            'numpy': self.mock_np,
+            'scipy': MagicMock(),
+            'scipy.signal': MagicMock(),
+            'scipy.optimize': MagicMock(),
+            'sounddevice': MagicMock(),
+            'soundfile': MagicMock(),
+            'src.core.calibration': MagicMock(),
+            'PyQt6': MagicMock(),
+            'PyQt6.QtCore': MagicMock(),
+            'PyQt6.QtWidgets': MagicMock(),
+            'src.core.audio_engine': MagicMock(),
+            'src.core.localization': MagicMock(),
+        }
+
+        self.patcher = patch.dict(sys.modules, self.mock_modules)
+        self.patcher.start()
+
+        # Import and reload the module to ensure it uses the mocks
+        import src.gui.widgets.recorder_player
+        importlib.reload(src.gui.widgets.recorder_player)
+        self.module = src.gui.widgets.recorder_player
+
+    def tearDown(self):
+        self.patcher.stop()
+
     def test_infinite_loop_hang_empty_buffer(self):
         """Verify that an empty buffer doesn't cause an infinite loop."""
         mock_engine = MagicMock()
         mock_engine.sample_rate = 48000
-        player = RecorderPlayer(mock_engine)
+        # Use the class from the reloaded module
+        player = self.module.RecorderPlayer(mock_engine)
 
         player.is_playing = True
         player.loop_playback = True
@@ -101,7 +111,7 @@ class TestRecorderPlayerRace(unittest.TestCase):
     def test_race_condition_pos_exceeds_len(self):
         """Verify handling when playback_pos exceeds buffer length."""
         mock_engine = MagicMock()
-        player = RecorderPlayer(mock_engine)
+        player = self.module.RecorderPlayer(mock_engine)
 
         player.is_playing = True
         player.loop_playback = True
@@ -115,17 +125,6 @@ class TestRecorderPlayerRace(unittest.TestCase):
         # This should execute quickly and reset pos to 0 (since loop is True)
         player.audio_callback(indata, outdata, 512, None, None)
 
-        # In current logic: if pos >= len and loop, pos = 0. Then it processes 0->min(frames, len).
-        # So pos should advance by min(512, 100) = 100.
-        # Wait, if pos reset to 0.
-        # available = 100 - 0 = 100.
-        # to_copy = 100.
-        # pos += 100 -> 100.
-        # loop continues?
-        # if pos >= len (100 >= 100): pos = 0.
-        # So depending on frames (512), it might loop multiple times.
-        # But eventually finishes.
-
         # Check that it didn't crash or hang
         self.assertTrue(True)
 
@@ -137,7 +136,3 @@ class TestRecorderPlayerRace(unittest.TestCase):
         player.audio_callback(indata, outdata, 512, None, None)
 
         self.assertFalse(player.is_playing, "Should stop playing if out of bounds and not looping")
-
-
-if __name__ == '__main__':
-    unittest.main()

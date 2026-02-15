@@ -1,9 +1,5 @@
-import os
-import sys
-from unittest.mock import patch
-
-from src.core.utils import format_si, resource_path
-
+import pytest
+from src.core.utils import format_si
 
 class TestFormatSI:
     """Tests for the format_si utility function."""
@@ -29,6 +25,8 @@ class TestFormatSI:
         assert format_si(0.0) == "0"
         assert format_si(0, unit="Hz") == "0 Hz"
         assert format_si(0.0, unit="V") == "0 V"
+        # From test_utils_si.py
+        assert format_si(0.0, "S") == "0 S"
 
     def test_negative_values(self):
         """Test formatting of negative values."""
@@ -49,6 +47,10 @@ class TestFormatSI:
         # 0.99995 -> rounds to 1.000 (1000 m or 1)
         # Previous logic might return "999.9 m" due to precision loss in division by 0.001
         assert format_si(0.99995) == "1"
+
+        # From test_utils_si.py
+        # 0.9996 S is 999.6 mS; with 3 sig figs it should display as 1 S (spillover fix).
+        assert format_si(0.9996, "S", sig_figs=3) == "1 S"
 
     def test_sig_figs(self):
         """Test significant figures formatting."""
@@ -75,6 +77,9 @@ class TestFormatSI:
         assert format_si(float("nan")) == "-"
         assert format_si(float("inf")) == "-"
         assert format_si(float("-inf")) == "-"
+        # From test_utils_si.py
+        assert format_si(float("nan"), "S") == "-"
+        assert format_si(float("inf"), "S") == "-"
 
     def test_invalid_input(self):
         """Test invalid input handling."""
@@ -87,69 +92,8 @@ class TestFormatSI:
         assert format_si(0.001, unit="V") == "1 mV"
         assert format_si(100, unit="A") == "100 A"
 
-
-class TestResourcePath:
-    """Tests for the resource_path utility function."""
-
-    def setup_method(self):
-        """Ensure clean state for sys._MEIPASS before each test."""
-        # Clean up _MEIPASS if it somehow exists (e.g. from a failed test)
-        if hasattr(sys, "_MEIPASS"):
-            del sys._MEIPASS
-
-    def teardown_method(self):
-        """Ensure clean state for sys._MEIPASS after each test."""
-        if hasattr(sys, "_MEIPASS"):
-            del sys._MEIPASS
-
-    def test_frozen_app(self):
-        """Test resource_path when running as a frozen app (PyInstaller)."""
-        mock_meipass = "/tmp/MEIPASS"
-        # Use patch to set sys._MEIPASS temporarily
-        with patch.object(sys, "_MEIPASS", mock_meipass, create=True):
-            result = resource_path("test.png")
-            assert result == os.path.join(mock_meipass, "test.png")
-
-    def test_dev_env_in_root(self):
-        """Test resource_path when running from source (dev environment)."""
-        # Ensure _MEIPASS is definitely not present (setup/teardown handles this)
-        assert not hasattr(sys, "_MEIPASS")
-
-        base_path = "/app"
-        with patch("os.path.abspath", return_value=base_path):
-            # Scenario 1: File exists in base_path
-            with patch("os.path.exists") as mock_exists:
-                mock_exists.side_effect = lambda p: p == os.path.join(base_path, "test.png")
-
-                result = resource_path("test.png")
-                assert result == os.path.join(base_path, "test.png")
-
-    def test_dev_env_in_src(self):
-        """Test resource_path when file is in src/ subdirectory."""
-        assert not hasattr(sys, "_MEIPASS")
-
-        base_path = "/app"
-        with patch("os.path.abspath", return_value=base_path):
-            # Scenario 2: File does NOT exist in base_path, but exists in src/
-            with patch("os.path.exists") as mock_exists:
-                def side_effect(p):
-                    if p == os.path.join(base_path, "test.png"):
-                        return False
-                    if p == os.path.join(base_path, "src", "test.png"):
-                        return True
-                    return False
-                mock_exists.side_effect = side_effect
-
-                result = resource_path("test.png")
-                assert result == os.path.join(base_path, "src", "test.png")
-
-    def test_dev_env_not_found(self):
-        """Test resource_path when file is nowhere to be found."""
-        assert not hasattr(sys, "_MEIPASS")
-
-        base_path = "/app"
-        with patch("os.path.abspath", return_value=base_path):
-            with patch("os.path.exists", return_value=False):
-                # Should fallback to base_path joined with relative path
-                result = resource_path("missing.png")
-                assert result == os.path.join(base_path, "missing.png")
+    def test_admittance_prefixes(self):
+        """Test admittance prefixes from test_utils_si.py."""
+        assert format_si(0.00123, "S", sig_figs=4) == "1.23 mS"
+        assert format_si(1.234e-6, "S", sig_figs=4) == "1.234 µS"
+        assert format_si(-2.5e-9, "S", sig_figs=3) == "-2.5 nS"

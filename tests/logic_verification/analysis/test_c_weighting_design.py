@@ -15,6 +15,8 @@ mock_modules = {
     "src.core.localization": MagicMock(),
     "src.core.fft_manager": MagicMock(),
     "sounddevice": MagicMock(),
+    "pyqtgraph": MagicMock(),
+    "pyqtgraph.Qt": MagicMock(),
 }
 
 # Apply mocks
