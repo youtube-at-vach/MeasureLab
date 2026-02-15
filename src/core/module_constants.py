@@ -30,6 +30,7 @@ MODULE_HRTF_PLAYER = "HRTF Player"
 MODULE_ULTRASOUND_MODULATOR = "Ultrasound AM Modulator"
 MODULE_LINEARITY_ANALYZER = "Linearity Analyzer"
 MODULE_1PPS_MONITOR = "1PPS Monitor"
+MODULE_BIT_DEPTH_ANALYZER = "Bit Depth Analyzer"
 
 # List of all module keys in the order they should appear in the UI
 ALL_MODULE_KEYS = [
@@ -62,4 +63,5 @@ ALL_MODULE_KEYS = [
     MODULE_ULTRASOUND_MODULATOR,
     MODULE_LINEARITY_ANALYZER,
     MODULE_1PPS_MONITOR,
+    MODULE_BIT_DEPTH_ANALYZER,
 ]
