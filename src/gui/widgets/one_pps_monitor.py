@@ -59,10 +59,32 @@ class OnePPSMonitor(MeasurementModule):
         self._pulses_detected = 0
         self.warmup_count = 7
 
-        # Visualization Buffer (approx 1 second circular buffer)
-        self.vis_buffer_size = 48000 # Default, will resize if rate changes significantly
+        # Triggered Waveform Visualization
+        # We want to show e.g. -0.1s to +0.2s around the trigger.
+        # At 48kHz, 0.1s = 4800 samples. 0.3s total = 14400 samples.
+        self.vis_pre_trigger_sec = 0.1
+        self.vis_post_trigger_sec = 0.9 # Total 1s window as requested by user (0.9 to 1.1s but let's do -0.1 to +0.9 for now to fit 1s)
+        # Actually user said "0.9s to 1.1s" interval? No "0.9s after to 1.1s after"?
+        # "timing 1s... inferred from previous pulse... close to that"
+        # The user wants to see the PULSE. The pulse happens at t=0, 1, 2...
+        # So we want to see [-0.1, +0.9] of the pulse? 
+        # "0.9s after to 1.1s after" means looking at the NEXT pulse based on previous.
+        # If we just trigger on the CURRENT pulse and show it, it's easier and equivalent if 1PPS.
+        # So let's capture [-0.1s, +0.2s] around the detection. 
+        # Wait, the user said "0.9s to 1.1s" -> they want to see the NEXT pulse?
+        # "Timing... inferred from previous... plot near that".
+        # If I just plot the *just detected* pulse, it is effectively what they want (the pulse).
+        # Triggered view is standard oscilloscope behavior.
+        
+        self.vis_window_pre = 0.1
+        self.vis_window_post = 0.2
+        self.vis_buffer_size = 96000 # 2 seconds circular buffer to hold history for pre-trigger
         self.vis_buffer = np.zeros(self.vis_buffer_size, dtype=np.float32)
         self.vis_write_pos = 0
+        
+        self.last_trig_waveform = None
+        self.last_trig_time = 0
+        self.detected_samples_since_trig = -1
 
         # Regression State (Online Least Squares)
         # y = mx + c
@@ -134,6 +156,10 @@ class OnePPSMonitor(MeasurementModule):
         # Reset visualization buffer
         self.vis_buffer.fill(0)
         self.vis_write_pos = 0
+        self.last_trig_waveform = None
+        self.detected_samples_since_trig = -1
+        self.last_trig_waveform = None
+        self.detected_samples_since_trig = -1
 
         # Clear queue
         while not self.data_queue.empty():
@@ -183,10 +209,11 @@ class OnePPSMonitor(MeasurementModule):
             self.process_thread = None
 
     def get_latest_waveform(self):
-        """Returns a copy of the visualization buffer, ordered from oldest to newest."""
+        """Returns the last triggered waveform window or None."""
         with self._lock:
-            # Roll so that the oldest sample is at index 0
-            return np.roll(self.vis_buffer, -self.vis_write_pos)
+            if self.last_trig_waveform is not None:
+                return self.last_trig_waveform.copy()
+            return None
 
     def _process_loop(self):
         while self.is_running:
@@ -228,10 +255,20 @@ class OnePPSMonitor(MeasurementModule):
 
                 # Processing Logic
                 # Optimization: If signal is way below threshold everywhere, skip.
+                # print(f"Processing chunk frames={frames}, max={np.max(sig)}")
                 if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
                     self._total_samples_processed += frames
                     if self._triggered:
                          self._triggered = False
+                    
+                    # Still need to handle waveform capture if active
+                    if self.detected_samples_since_trig >= 0:
+                        self.detected_samples_since_trig += frames
+                        # Check if we have enough data (duplicate logic, or move logic out)
+                        required_post = int(self.vis_window_post * self.nominal_rate)
+                        if self.detected_samples_since_trig >= required_post:
+                             self._capture_waveform(required_post)
+
                     continue
 
                 th_high = self.threshold_fs
@@ -253,7 +290,30 @@ class OnePPSMonitor(MeasurementModule):
 
                     if not self._triggered:
                         if s >= th_high:
+                            # print(f"Triggered at abs_pos={abs_pos}, s={s}")
                             self._triggered = True
+                            
+                            # --- Triggered Visualization Capture ---
+                            # Capture window around this point
+                            # We are at 'abs_pos'. The 'sig' we are processing is in the buffer?
+                            # 'sig[i]' is current sample. 
+                            # We need to extract from buffer where we just wrote.
+                            # Since we write 'sig' to buffer at the start of loop, 'sig[i]' corresponds to
+                            # the latest data.
+                            # 'vis_write_pos' points to NEXT write.
+                            # Current sample 'sig[i]' is at (vis_write_pos - (frames - i)) % size
+                            
+                            # Let's simplify: We just detected a trigger.
+                            # We want [-pre, +post] window. If we have enough post data?
+                            # No, we are processing real-time. We don't have post data yet.
+                            # So we just mark the trigger time/index.
+                            # AND we can immediately extract the PRE-trigger part from buffer.
+                            # BUT we need to wait for POST-trigger part.
+                            # So, let's just record "samples_since_trigger = 0" and "capturing = True"
+                            
+                            if self.detected_samples_since_trig == -1: # Not currently capturing
+                                self.detected_samples_since_trig = 0
+                            
                             # Rising edge detected
 
                             # First pulse logic
@@ -355,9 +415,19 @@ class OnePPSMonitor(MeasurementModule):
                                 if not is_gross_outlier:
                                     self._last_trigger_sample_index = abs_pos
 
-                    else:
                         if s <= th_low:
                             self._triggered = False
+
+                # Handle Waveform Capture (If not skipped by optimization)
+                if self.detected_samples_since_trig >= 0:
+                    self.detected_samples_since_trig += frames
+                    
+                    # Check if we have enough data
+                    required_post = int(self.vis_window_post * self.nominal_rate)
+                    
+                    if self.detected_samples_since_trig >= required_post:
+                        self._capture_waveform(required_post)
+                    
 
                 # Save back regression state
                 self._reg_n = reg_n
@@ -372,6 +442,35 @@ class OnePPSMonitor(MeasurementModule):
                 continue
             except Exception as e:
                 print(f"OnePPSMonitor Worker Error: {e}")
+
+    def _capture_waveform(self, required_post):
+        """Helper to extract waveform from buffer."""
+        required_pre = int(self.vis_window_pre * self.nominal_rate)
+        
+        with self._lock:
+            # Total samples to extract = pre + post
+            total_samps = required_pre + required_post
+            
+            # Read pointer should be:
+            # Current Write Pos - detected_samples_since_trig - required_pre
+            # No: Trigger is at (WritePos - detected_samples_since_trig)
+            # Start read at: Trigger - required_pre
+            
+            # Note: We need to handle wrap-around carefully for the read index calculation
+            # Python's % operator handles negative numbers correctly for this (e.g. -5 % 10 = 5)
+            read_idx = (self.vis_write_pos - self.detected_samples_since_trig - required_pre) % self.vis_buffer_size
+            
+            # Extract
+            if read_idx + total_samps <= self.vis_buffer_size:
+                waveform = self.vis_buffer[read_idx : read_idx + total_samps].copy()
+            else:
+                part1 = self.vis_buffer[read_idx:].copy()
+                part2 = self.vis_buffer[:total_samps - len(part1)].copy()
+                waveform = np.concatenate((part1, part2))
+            
+            self.last_trig_waveform = waveform
+            
+        self.detected_samples_since_trig = -1 # Done
 
 
     def get_history_arrays(self):
@@ -550,11 +649,13 @@ class OnePPSMonitorWidget(QWidget):
         vbox_waveform = QVBoxLayout(tab_waveform)
         
         # Plot
-        self.plot_waveform = pg.PlotWidget(title=tr("Input Waveform"))
+        self.plot_waveform = pg.PlotWidget(title=tr("Input Waveform (Triggered)"))
         self.plot_waveform.setLabel("left", tr("Amplitude"), units="FS")
-        self.plot_waveform.setLabel("bottom", tr("Sample Frame"))
+        self.plot_waveform.setLabel("bottom", tr("Time vs Trigger"), units="s")
         self.plot_waveform.showGrid(x=True, y=True, alpha=0.3)
         self.plot_waveform.setYRange(-1.1, 1.1)
+        # Set X range to show pre/post trigger
+        self.plot_waveform.setXRange(-self.module.vis_window_pre, self.module.vis_window_post)
         self.curve_waveform = self.plot_waveform.plot(pen='y')
         
         # Threshold Lines
@@ -824,7 +925,17 @@ class OnePPSMonitorWidget(QWidget):
              # Tab 1.5 is index 1 (Settings=0, Waveform=1, Display=2)
              if self.tabs.currentIndex() == 1:
                 wave_data = self.module.get_latest_waveform()
-                self.curve_waveform.setData(wave_data)
+                if wave_data is not None:
+                     # Create time axis
+                     # trigger is at index corresponding to 'vis_window_pre'
+                     # 0.1s pre means trigger is at index 4800 (if 48k)
+                     n = len(wave_data)
+                     # t = (np.arange(n) - (self.module.vis_window_pre * self.module.nominal_rate)) / self.module.nominal_rate
+                     # More robust:
+                     pre_samps = int(self.module.vis_window_pre * self.module.nominal_rate)
+                     t_wave = (np.arange(n) - pre_samps) / self.module.nominal_rate
+                     
+                     self.curve_waveform.setData(t_wave, wave_data)
 
         if len(t) > 0:
 

@@ -87,23 +87,80 @@ def test_pulse_indicator_logic(widget, monitor, qtbot):
 
 def test_visualization_buffer(monitor):
     """Test the visualization buffer logic in the module."""
-    assert monitor.vis_buffer.shape == (48000,)
+    # Default buffer size is now 96000 (2 seconds at 48k)
+    assert monitor.vis_buffer.shape == (96000,)
     
-    # Simulate data
-    data = np.ones(100, dtype=np.float32)
-    frames = 100
+    # Simulate data with a pulse
+    # We need enough data to fill pre-trigger and post-trigger
+    # 2 seconds of data to be safe (96000 samples)
+    monitor.vis_buffer_size = 96000
+    monitor.vis_buffer = np.zeros(monitor.vis_buffer_size, dtype=np.float32)
     
-    monitor.data_queue.put((data, frames))
-    monitor.data_queue.put(None) # Signal termination
+    # Generate signal: 1.5s of silence, then pulse, then 0.5s silence
+    fs = 48000
+    silence1 = np.zeros(int(1.5 * fs), dtype=np.float32)
+    pulse = np.array([0.0, 0.2, 0.8, 1.0, 0.8, 0.2, 0.0], dtype=np.float32) 
+    silence2 = np.zeros(int(0.5 * fs), dtype=np.float32)
+    
+    data = np.concatenate((silence1, pulse, silence2))
+    frames = len(data)
+    
+    # We need to feed it in chunks to simulate real-time and allow trigger logic to work
+    # Feed 4800 frames at a time
+    chunk_size = 4800
     monitor.is_running = True
-    monitor._process_loop() # Run loop (will process data then break on None)
+    
+    for i in range(0, frames, chunk_size):
+        chunk = data[i:i+chunk_size]
+        monitor.data_queue.put((chunk, len(chunk)))
+        
+    monitor.data_queue.put(None) # Signal termination
+    monitor._process_loop() 
     
     # Check buffer
     latest = monitor.get_latest_waveform()
-    # Should have 100 ones at the end (or near end depending on implementation roll)
-    # The implementation rolls so oldest is at 0.
-    # So newest data should be at the end.
-    assert np.all(latest[-100:] == 1.0)
-    assert latest[0] == 0.0
+    
+    assert latest is not None
+    # We expect the pulse to be at 'pre_trigger' index
+    # vis_window_pre = 0.1s = 4800 samples
+    expected_idx = int(monitor.vis_window_pre * fs)
+    
+    # Find peak in latest
+    peak_idx = np.argmax(latest)
+    
+    # Should be close to expected_idx
+    # The extraction logic is precise, so it should be exactly or very close depending on rounding
+    assert abs(peak_idx - expected_idx) < 5 
+    assert latest[peak_idx] == 1.0
 
     monitor.is_running = False
+
+def test_update_plot_crash(widget, qtbot):
+    """Regression test: _update_plot should not crash if history is empty but waveform is present."""
+    # Setup: 
+    # 1. Widget is shown (tabs visible)
+    widget.show()
+    qtbot.addWidget(widget)
+    
+    # 2. Switch to Waveform tab (index 1) to enable waveform update logic
+    widget.tabs.setCurrentIndex(1)
+    
+    # 3. Inject dummy waveform data into module
+    # We need to mock get_latest_waveform to return something valid
+    # And get_history_arrays to return EMPTY arrays (which is default state)
+    
+    # Creating a dummy waveform
+    dummy_wave = np.zeros(14400)
+    widget.module.last_trig_waveform = dummy_wave
+    
+    # Ensure history is empty (it is by default new module)
+    t, ip, cp = widget.module.get_history_arrays()
+    assert len(t) == 0
+    
+    # 4. Call _update_plot
+    try:
+        widget._update_plot()
+    except IndexError:
+        pytest.fail("_update_plot raised IndexError (likely variable shadowing bug)")
+    except Exception as e:
+        pytest.fail(f"_update_plot raised unexpected exception: {e}")
