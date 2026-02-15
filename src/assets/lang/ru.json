@@ -1125,5 +1125,14 @@
     "Show stored calibration values": "Показать сохраненные значения калибровки",
     "Warming Up... ({0}/{1})": "Разогрев... ({0}/{1})",
     "Enable Dithering (TPDF)": "Включить дизеринг (TPDF)",
-    "Dithering Bit Depth:": "Разрядность дизеринга:"
+    "Dithering Bit Depth:": "Разрядность дизеринга:",
+    "Compensate Input Latency": "Компенсация задержки ввода",
+    "Hyst": "Гист.",
+    "Hysteresis:": "Гистерезис:",
+    "Input Waveform (Triggered)": "Входная осциллограмма (запуск)",
+    "Manual Offset:": "Ручное смещение:",
+    "Pulse:": "Импульс:",
+    "Thresh": "Порог",
+    "Threshold:": "Порог:",
+    "Time (rel to trig)": "Время (относительно запуска)"
 }

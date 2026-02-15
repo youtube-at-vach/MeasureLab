@@ -13,10 +13,15 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "Fundamental (Lock-in):",
-    "Residual",
-    "Residual RMS:",
-    "Waveform"
+    "Compensate Input Latency",
+    "Hyst",
+    "Hysteresis:",
+    "Input Waveform (Triggered)",
+    "Manual Offset:",
+    "Pulse:",
+    "Thresh",
+    "Threshold:",
+    "Time (rel to trig)"
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)

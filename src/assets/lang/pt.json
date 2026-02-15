@@ -1125,5 +1125,14 @@
     "Show stored calibration values": "Mostrar valores de calibração armazenados",
     "Warming Up... ({0}/{1})": "Aquecendo... ({0}/{1})",
     "Enable Dithering (TPDF)": "Ativar dithering (TPDF)",
-    "Dithering Bit Depth:": "Profundidade de bits de dithering:"
+    "Dithering Bit Depth:": "Profundidade de bits de dithering:",
+    "Compensate Input Latency": "Compensar latência de entrada",
+    "Hyst": "Hist",
+    "Hysteresis:": "Histerese:",
+    "Input Waveform (Triggered)": "Forma de onda de entrada (gatilhada)",
+    "Manual Offset:": "Deslocamento manual:",
+    "Pulse:": "Pulso:",
+    "Thresh": "Limiar",
+    "Threshold:": "Limiar:",
+    "Time (rel to trig)": "Tempo (rel. ao gatilho)"
 }

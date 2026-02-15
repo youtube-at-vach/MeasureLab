@@ -1125,5 +1125,14 @@
     "Show stored calibration values": "저장된 교정 값 표시",
     "Warming Up... ({0}/{1})": "워밍업 중... ({0}/{1})",
     "Enable Dithering (TPDF)": "디더링 활성화 (TPDF)",
-    "Dithering Bit Depth:": "디더링 비트 깊이:"
+    "Dithering Bit Depth:": "디더링 비트 깊이:",
+    "Compensate Input Latency": "입력 지연 보정",
+    "Hyst": "히스",
+    "Hysteresis:": "히스테리시스:",
+    "Input Waveform (Triggered)": "입력 파형 (트리거됨)",
+    "Manual Offset:": "수동 오프셋:",
+    "Pulse:": "펄스:",
+    "Thresh": "임계값",
+    "Threshold:": "임계값:",
+    "Time (rel to trig)": "시간 (트리거 대비)"
 }

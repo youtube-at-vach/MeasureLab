@@ -1112,5 +1112,14 @@
     "Frequency Calibration:": "周波数校正:",
     "1PPS Frequency Calibration:": "1PPS周波数校正:",
     "Lock-in Gain Offset:": "ロックイン・ゲイン・オフセット:",
-    "Warming Up... ({0}/{1})": "ウォームアップ中... ({0}/{1})"
+    "Warming Up... ({0}/{1})": "ウォームアップ中... ({0}/{1})",
+    "Compensate Input Latency": "入力遅延を補正",
+    "Hyst": "ヒス",
+    "Hysteresis:": "ヒステリシス:",
+    "Input Waveform (Triggered)": "入力波形 (トリガー済み)",
+    "Manual Offset:": "手動オフセット:",
+    "Pulse:": "パルス:",
+    "Thresh": "しきい値",
+    "Threshold:": "しきい値:",
+    "Time (rel to trig)": "時間 (トリガー相対)"
 }

@@ -1125,5 +1125,14 @@
     "Show stored calibration values": "Gespeicherte Kalibrierwerte anzeigen",
     "Warming Up... ({0}/{1})": "Aufwärmen... ({0}/{1})",
     "Enable Dithering (TPDF)": "Dithering aktivieren (TPDF)",
-    "Dithering Bit Depth:": "Dithering-Bittiefe:"
+    "Dithering Bit Depth:": "Dithering-Bittiefe:",
+    "Compensate Input Latency": "Eingabelatenz kompensieren",
+    "Hyst": "Hyst",
+    "Hysteresis:": "Hysterese:",
+    "Input Waveform (Triggered)": "Eingabewellenform (getriggert)",
+    "Manual Offset:": "Manueller Versatz:",
+    "Pulse:": "Impuls:",
+    "Thresh": "Schwellw.",
+    "Threshold:": "Schwellenwert:",
+    "Time (rel to trig)": "Zeit (rel. zum Trigger)"
 }
