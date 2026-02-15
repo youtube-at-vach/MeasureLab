@@ -641,3 +641,25 @@ class AudioEngine:
             "last_error": last_error,
         }
 
+    def get_input_latency(self):
+        """Returns the input latency in seconds."""
+        if self.stream is not None:
+            # sd.Stream.latency is a tuple (input, output) or float if not available?
+            # Documentation says: "The latency of the stream in seconds. This is a tuple (input_latency, output_latency)."
+            try:
+                # specific check for VirtualStream which might not have latency attr or it is just simulated
+                if isinstance(self.stream, VirtualStream):
+                    # For virtual stream, latency is essentially one block? Or zero?
+                    # Let's say it's 0 for now as it is instantaneous in simulation, 
+                    # or block_size / sample_rate if we want to simulate buffering.
+                    # Logic: VirtualStream reads zeros instantly.
+                    return 0.0
+                
+                lat = self.stream.latency
+                if isinstance(lat, tuple) or isinstance(lat, list):
+                    return float(lat[0])
+                return float(lat)
+            except Exception:
+                return 0.0
+        return 0.0
+

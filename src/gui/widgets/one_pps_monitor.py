@@ -670,6 +670,30 @@ class OnePPSMonitorWidget(QWidget):
         
         vbox_waveform.addLayout(form_layout)
         
+        # Latency Compensation
+        
+        comp_layout = QHBoxLayout()
+        self.chk_latency_comp = QCheckBox(tr("Compensate Input Latency"))
+        self.chk_latency_comp.setChecked(False)
+        self.chk_latency_comp.toggled.connect(self._update_plot)
+        comp_layout.addWidget(self.chk_latency_comp)
+        
+        self.lbl_latency_val = QLabel("(Lat: N/A)")
+        comp_layout.addWidget(self.lbl_latency_val)
+        
+        comp_layout.addSpacing(10)
+        comp_layout.addWidget(QLabel(tr("Manual Offset:")))
+        self.spin_manual_latency = QDoubleSpinBox()
+        self.spin_manual_latency.setRange(-1000.0, 1000.0)
+        self.spin_manual_latency.setSuffix(" ms")
+        self.spin_manual_latency.setValue(0.0)
+        self.spin_manual_latency.valueChanged.connect(self._update_plot)
+        comp_layout.addWidget(self.spin_manual_latency)
+
+        comp_layout.addStretch()
+        
+        vbox_waveform.addLayout(comp_layout)
+        
         self.tabs.addTab(tab_waveform, tr("Waveform"))
 
         # --- Tab 2: Display ---
@@ -899,6 +923,10 @@ class OnePPSMonitorWidget(QWidget):
              if self.tabs.currentIndex() == 1:
                 wave_data = self.module.get_latest_waveform()
                 if wave_data is not None:
+                     
+                     lat = self.module.audio_engine.get_input_latency()
+                     self.lbl_latency_val.setText(f"(Lat: {lat*1000:.1f} ms)")
+
                      # Create time axis
                      # trigger is at index corresponding to 'vis_window_pre'
                      # 0.1s pre means trigger is at index 4800 (if 48k)
@@ -908,6 +936,45 @@ class OnePPSMonitorWidget(QWidget):
                      pre_samps = int(self.module.vis_window_pre * self.module.nominal_rate)
                      t_wave = (np.arange(n) - pre_samps) / self.module.nominal_rate
                      
+                     # Latency Compensation
+                     if self.chk_latency_comp.isChecked():
+                         # Subtract input latency to shift time 'back' 
+                         # (e.g. if event happened 10ms ago but we just got it, the timestamp t=0 is "now", so event is at -10ms)
+                         # Wait, our t=0 is the TRIGGER point in the buffer.
+                         # The buffer is filled by callback. 
+                         # If latency is L, the signal at index i actually arrived at the ADC L seconds before it was written/processed?
+                         # Input Latency = Time between ADC capture and Callback.
+                         # So the sample at index i was captured at (Time_Current - Latency - (Indices_from_end / Rate)).
+                         # Our specific Trigger Point is at t=0 relative to the captured buffer window.
+                         # If we want "Time relative to Pulse Arrival at ADC", 
+                         # The Pulse Arrived at ADC, then Latency later it Arrived at Callback.
+                         # Step 1: Detect Pulse in Buffer. Trigger Index T.
+                         # This Index T corresponds to some time.
+                         # If we say T is t=0.
+                         # Using the latency compensation means we want to show... what?
+                         # The user likely wants to know the "absolute time" or just shift it so it matches something?
+                         # User said: "shift drawing range by buffer latency".
+                         # If we shift X axis by -Latency, then t=0 (Trigger) becomes t=-Latency.
+                         # This means "The trigger event happened -Latency seconds ago relative to the timestamp of the data block"?
+                         # Actually usually in audio apps, "Compensate Latency" means aligning recording with playback.
+                         # Here we are just plotting.
+                         # If the user wants to see "When did the pulse happen at the connector?",
+                         # And our t=0 is "When did the software see the pulse?".
+                         # The software sees it 'Latency' seconds LATE.
+                         # So the Pulse actually happened at t = -Latency relative to Software Time.
+                         # So if we plot X axis, the Pulse (Peak) is at X=0 in Software Time.
+                         # In "Connector Time", the Pulse is at X=0, but the Software Time 0 is actually +Latency?
+                         # Let's simple shift: t_adjusted = t_wave - latency?
+                         # If t_wave=0 (Trigger), t_adjusted = -Latency.
+                         # So the peak moves to -Latency.
+                         # This seems correct if t=0 implies "When software processed it".
+                         # Use audio_engine.get_input_latency()
+                         
+                         manual_offset_sec = self.spin_manual_latency.value() / 1000.0
+                         
+                         # Total shift = Latency + Manual Offset
+                         t_wave -= (lat + manual_offset_sec)
+
                      self.curve_waveform.setData(t_wave, wave_data)
 
         if len(t) > 0:
