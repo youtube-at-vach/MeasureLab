@@ -83,7 +83,6 @@ class VirtualStream:
             # Call callback
             try:
                 # status=0 for all good
-                getattr(sd, "CallbackTime", lambda: 0)()  # Dummy or approximation
                 # We need a proper CData struct for time if we strictly follow sd type, 
                 # but usually python callbacks just access attributes. 
                 # Let's mock a simple object if needed, or just pass an object.
@@ -535,12 +534,16 @@ class AudioEngine:
             if dev_id is None:
                 # Fallback to default output device.
                 dev_id = sd.default.device[1]
-            if dev_id is not None and dev_id != -1:
-                device_info = sd.query_devices(dev_id)
+
+            # Validate device ID range
+            devices = sd.query_devices()
+            if dev_id is not None and 0 <= dev_id < len(devices):
+                device_info = devices[dev_id]
                 hostapi_idx = device_info.get("hostapi")
                 if hostapi_idx is not None:
                     hostapi_info = sd.query_hostapis(hostapi_idx)
                     hostapi_name = hostapi_info.get("name")
+
             if hostapi_name and "jack" in str(hostapi_name).lower():
                 return sd.JackSettings(client_name=self.jack_client_name)
         except Exception:

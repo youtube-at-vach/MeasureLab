@@ -409,7 +409,12 @@ class MainWindow(QMainWindow):
                 self._replace_container_contents(container, wrapper)
 
                 # Sync global output destination into newly loaded widget
-                self._propagate_output_destination(self._get_engine_output_destination())
+                # Only set it for this specific widget, not all of them
+                if hasattr(widget, "set_output_destination"):
+                    try:
+                        widget.set_output_destination(self._get_engine_output_destination())
+                    except Exception as e:
+                        self.logger.warning(f"Failed to sync output destination for {key}: {e}")
             else:
                 self._replace_container_contents(container, QLabel(tr("No GUI for {0}").format(key)))
         except Exception as e:
