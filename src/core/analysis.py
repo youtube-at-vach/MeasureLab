@@ -588,9 +588,8 @@ class AudioCalc:
         return thdn_percent, thdn_db, sinad_db, fund_rms, res_rms
 
     @staticmethod
-    def analyze_harmonics(
-        audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0
-    ):
+    def _compute_spectrum(audio_data, window_name, sampling_rate):
+        """Computes FFT spectrum and frequencies."""
         window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
         windowed_data = audio_data * window
         fft_result = fft_manager.rfft(windowed_data)
@@ -602,27 +601,47 @@ class AudioCalc:
         # Amplitude spectrum (Peak)
         # rfft returns N/2+1 bins. Magnitude is |X|/N * 2 (except DC and Nyquist)
         amplitude_spectrum = (np.abs(fft_result) / len(audio_data)) * 2 / coherent_gain
+        return freqs, amplitude_spectrum, fft_result
 
-        # Determine search window
+    @staticmethod
+    def _calculate_search_window(freqs, fundamental_freq):
+        """Determines search window for fundamental frequency."""
         if len(freqs) > 1:
             bin_width = freqs[1] - freqs[0]
         else:
             bin_width = 1.0
 
         # Ensure window is wide enough for low freq (at least 5 bins)
-        search_window = max(0.15 * fundamental_freq, 5.0 * bin_width)
+        return max(0.15 * fundamental_freq, 5.0 * bin_width)
+
+    @staticmethod
+    def _format_fundamental_result(max_freq, max_amplitude):
+        """Formats fundamental analysis result."""
+        amp_dbfs = 20 * np.log10(max_amplitude + 1e-12)
+        return {
+            "frequency": max_freq,
+            "amplitude_dbfs": amp_dbfs,
+            "max_amplitude": max_amplitude,
+        }
+
+    @staticmethod
+    def analyze_harmonics(
+        audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0
+    ):
+        # 0. Compute Spectrum
+        freqs, amplitude_spectrum, fft_result = AudioCalc._compute_spectrum(
+            audio_data, window_name, sampling_rate
+        )
+
+        # Determine search window
+        search_window = AudioCalc._calculate_search_window(freqs, fundamental_freq)
 
         # 1. Find Fundamental Peak
         max_freq, max_amplitude = AudioCalc._analyze_fundamental(
             freqs, amplitude_spectrum, fundamental_freq, search_window
         )
 
-        amp_dbfs = 20 * np.log10(max_amplitude + 1e-12)
-        basic_wave_result = {
-            "frequency": max_freq,
-            "amplitude_dbfs": amp_dbfs,
-            "max_amplitude": max_amplitude,
-        }
+        basic_wave_result = AudioCalc._format_fundamental_result(max_freq, max_amplitude)
 
         # 2. Harmonics
         harmonic_results, harmonic_amplitudes_linear = AudioCalc._analyze_harmonics_list(
