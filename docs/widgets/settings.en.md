@@ -40,6 +40,7 @@ Selects the input and output devices. Previous settings have been split into tab
     * **Input Device**: Selects the input device with a measurement microphone, etc., connected.
     * **Output Device**: Selects the output device with speakers, etc., connected.
     * **Refresh Devices**: Updates the device list. This is disabled when JACK is running on Linux for safety.
+    * **Measure Bit Depth...**: Opens a dialog to measure and visualize the Effective Number of Bits (ENOB) and quantization noise characteristics of the audio device. Useful for verifying the actual bit depth based on real measurements.
 * **Virtual / Offline Mode Tab**:
     * **Virtual Audio (No Hardware)**: Enables the virtual audio driver. Use this when no physical interface is available.
     * **Simulation Rate**: Sets the sampling rate for the Virtual Mode.
