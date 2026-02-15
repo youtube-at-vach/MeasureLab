@@ -1,4 +1,3 @@
-import pytest
 from src.core.utils import format_si
 
 class TestFormatSI:
