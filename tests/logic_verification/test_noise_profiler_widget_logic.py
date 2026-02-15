@@ -32,7 +32,7 @@ sys.modules['pywt'] = MagicMock()
 # Ensure repo root is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseAnalysisWorker
+from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseAnalysisWorker  # noqa: E402
 
 class MockEngine:
     def __init__(self):
