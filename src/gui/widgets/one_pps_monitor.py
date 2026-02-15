@@ -40,6 +40,7 @@ class OnePPSMonitor(MeasurementModule):
         # User settings
         self.threshold_fs = 0.5
         self.hysteresis_fs = 0.05
+        self.target_pps = 1.0
         self.nominal_rate = 48000.0
 
         # Filter settings (Robust Median/MAD)
@@ -58,6 +59,18 @@ class OnePPSMonitor(MeasurementModule):
         self._triggered = False
         self._pulses_detected = 0
         self.warmup_count = 7
+
+        # Triggered Waveform Visualization
+        self.vis_window_pre = 0.5
+        self.vis_window_post = 0.5
+        self.vis_buffer_size = 96000 # 2 seconds circular buffer to hold history for pre-trigger
+        self.vis_buffer = np.zeros(self.vis_buffer_size, dtype=np.float32)
+        self.vis_write_pos = 0
+
+        self.last_trig_waveform = None
+        self.last_trig_time = 0
+        self.last_trig_time = 0
+        self._capture_trigger_index = -1
 
         # Regression State (Online Least Squares)
         # y = mx + c
@@ -126,6 +139,14 @@ class OnePPSMonitor(MeasurementModule):
         self.history_filled = 0
         self._filter_window = []
 
+        # Reset visualization buffer
+        self.vis_buffer.fill(0)
+        self.vis_write_pos = 0
+        self.last_trig_waveform = None
+        self.vis_write_pos = 0
+        self.last_trig_waveform = None
+        self._capture_trigger_index = -1
+
         # Clear queue
         while not self.data_queue.empty():
             try:
@@ -173,6 +194,13 @@ class OnePPSMonitor(MeasurementModule):
             self.process_thread.join(timeout=1.0)
             self.process_thread = None
 
+    def get_latest_waveform(self):
+        """Returns the last triggered waveform window or None."""
+        with self._lock:
+            if self.last_trig_waveform is not None:
+                return self.last_trig_waveform.copy()
+            return None
+
     def _process_loop(self):
         while self.is_running:
             try:
@@ -182,19 +210,61 @@ class OnePPSMonitor(MeasurementModule):
 
                 sig, frames = item
 
+                # Update Visualization Buffer
+                # We do this under lock to prevent tearing when reading? 
+                # Actually, for visualization, tearing is acceptable usually, but let's be safe-ish or just atomic write.
+                # Since we want a rolling view, we just write to the ring buffer.
+                # If frames > buffer size, we just take the last part.
+
+                write_len = min(frames, self.vis_buffer_size)
+                src_data = sig[-write_len:].astype(np.float32)
+
+                # Check for buffer resize if rate changed drastically?
+                # For now assume fixed size enough for ~1s at 48k. 
+                # If 192k, it will be 0.25s, which might be too short for 1PPS.
+                # Let's dynamically resize if needed in future, but for now fixed is okay or we check nominal.
+
+                # Logic for ring buffer write
+                with self._lock:
+                     # Calculate split
+                    remain = self.vis_buffer_size - self.vis_write_pos
+                    if write_len <= remain:
+                        self.vis_buffer[self.vis_write_pos : self.vis_write_pos + write_len] = src_data
+                        self.vis_write_pos = (self.vis_write_pos + write_len) % self.vis_buffer_size
+                    else:
+                        # Split write
+                        part1 = remain
+                        part2 = write_len - remain
+                        self.vis_buffer[self.vis_write_pos : self.vis_buffer_size] = src_data[:part1]
+                        self.vis_buffer[0 : part2] = src_data[part1:]
+                        self.vis_write_pos = part2
+
                 # Processing Logic
                 # Optimization: If signal is way below threshold everywhere, skip.
                 if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
                     self._total_samples_processed += frames
                     if self._triggered:
                          self._triggered = False
+
+                    # Still need to handle waveform capture if active
+                    # Still need to handle waveform capture if active
+                    if self._capture_trigger_index != -1:
+                         # Current head is self._total_samples_processed + frames (since we skipped loop)
+                         # We skip processing loop, but frames are counted.
+                         # Check if enough samples:
+                         current_head = self._total_samples_processed + frames
+                         required_post = int(self.vis_window_post * self.nominal_rate)
+                         if (current_head - self._capture_trigger_index) >= required_post:
+                              self._capture_waveform(required_post, current_head)
+
                     continue
 
                 th_high = self.threshold_fs
                 th_low = self.threshold_fs - self.hysteresis_fs
 
                 t_samples = self._total_samples_processed
-                nominal = self.nominal_rate
+                sample_rate = self.nominal_rate
+                expected_interval = sample_rate / self.target_pps if self.target_pps > 0 else sample_rate
 
                 # Local copies for speed
                 reg_n = self._reg_n
@@ -210,6 +280,30 @@ class OnePPSMonitor(MeasurementModule):
                     if not self._triggered:
                         if s >= th_high:
                             self._triggered = True
+
+                            # --- Triggered Visualization Capture ---
+                            # Capture window around this point
+                            # We are at 'abs_pos'. The 'sig' we are processing is in the buffer?
+                            # 'sig[i]' is current sample. 
+                            # We need to extract from buffer where we just wrote.
+                            # Since we write 'sig' to buffer at the start of loop, 'sig[i]' corresponds to
+                            # the latest data.
+                            # 'vis_write_pos' points to NEXT write.
+                            # Current sample 'sig[i]' is at (vis_write_pos - (frames - i)) % size
+
+                            # Let's simplify: We just detected a trigger.
+                            # We want [-pre, +post] window. If we have enough post data?
+                            # No, we are processing real-time. We don't have post data yet.
+                            # So we just mark the trigger time/index.
+                            # AND we can immediately extract the PRE-trigger part from buffer.
+                            # BUT we need to wait for POST-trigger part.
+                            # So, let's just record "samples_since_trigger = 0" and "capturing = True"
+
+
+                            # --- Triggered Visualization Capture ---
+                            if self._capture_trigger_index == -1:
+                                self._capture_trigger_index = abs_pos
+
                             # Rising edge detected
 
                             # First pulse logic
@@ -231,14 +325,12 @@ class OnePPSMonitor(MeasurementModule):
                                 # Instantaneous calculation
                                 delta = abs_pos - self._last_trigger_sample_index
 
-                                # 0. Gate Filter (Hard Rejection)
-                                # Reject if deviation is > 50% of nominal (e.g. double trigger or missed trigger)
-                                # This handles the massive glitches seen in 1PPS (e.g. 192kHz -> < 96k or > 288k)
-                                # 50% is safe for 1PPS.
-                                gate_threshold = nominal * 0.5
-                                is_gross_outlier = abs(delta - nominal) > gate_threshold
+                                # 0. Gate Filter (Hard Rejection) - REMOVED
+                                # We no longer reject based on 50% deviation.
+                                # is_gross_outlier = abs(delta - nominal) > gate_threshold
+                                is_gross_outlier = False
 
-                                accepted = not is_gross_outlier
+                                accepted = True
 
                                 # 1. MAD/Median Filter
                                 if accepted and self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
@@ -261,21 +353,18 @@ class OnePPSMonitor(MeasurementModule):
                                         self._filter_window.pop(0)
 
                                     # 2. Instantaneous Result
-                                    error_samples = delta - nominal
-                                    # PPM = (Error / Nominal) * 1e6
-                                    # Seconds Error = Error / Nominal_Rate (Sampling Rate ~ Nominal) assuming Nominal is Rate
-                                    # We store PPM. UI can convert to Seconds (PPM * 1e-6).
-                                    instant_ppm = (error_samples / nominal) * 1e6 if nominal != 0 else 0
+                                    error_samples = delta - expected_interval
+                                    # PPM = (Error / Expected) * 1e6
+                                    # Seconds Error = Error / Sample_Rate
+                                    instant_ppm = (error_samples / expected_interval) * 1e6 if expected_interval != 0 else 0
 
-                                    # 3. Regression Update
                                     # x = Pulse Count (approx seconds)
                                     # y = Actual Sample Position relative to first
                                     y_val = abs_pos - self._first_trigger_sample_index
-                                    # x_val = round(y_val / nominal) 
-                                    # Better: x is the index of the pulse.
-                                    # Since we might have missed pulses, let's trust the "nominal" grid?
-                                    # No, existing logic was:
-                                    x_val = round(y_val / nominal)
+
+                                    # x is the index of the pulse.
+                                    # Since we might have missed pulses, let's estimate index from y_val
+                                    x_val = round(y_val / expected_interval)
 
                                     reg_n += 1
                                     reg_sx += x_val
@@ -287,7 +376,10 @@ class OnePPSMonitor(MeasurementModule):
                                     denom = (reg_n * reg_sxx - reg_sx * reg_sx)
                                     if denom != 0:
                                         slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
-                                        cumulative_ppm = ((slope - nominal) / nominal) * 1e6
+                                        # Slope is Samples per Pulse.
+                                        # Nominal Samples per Pulse is expected_interval.
+                                        # PPM Error = (measured_slope - expected) / expected
+                                        cumulative_ppm = ((slope - expected_interval) / expected_interval) * 1e6
                                     else:
                                         cumulative_ppm = 0.0
 
@@ -311,9 +403,18 @@ class OnePPSMonitor(MeasurementModule):
                                 if not is_gross_outlier:
                                     self._last_trigger_sample_index = abs_pos
 
-                    else:
-                        if s <= th_low:
-                            self._triggered = False
+                    if s <= th_low:
+                        self._triggered = False
+
+                # Handle Waveform Capture (If not skipped by optimization)
+                # Handle Waveform Capture (If not skipped by optimization)
+                if self._capture_trigger_index != -1:
+                    current_head = self._total_samples_processed + frames
+                    required_post = int(self.vis_window_post * self.nominal_rate)
+
+                    if (current_head - self._capture_trigger_index) >= required_post:
+                        self._capture_waveform(required_post, current_head)
+
 
                 # Save back regression state
                 self._reg_n = reg_n
@@ -328,6 +429,32 @@ class OnePPSMonitor(MeasurementModule):
                 continue
             except Exception as e:
                 print(f"OnePPSMonitor Worker Error: {e}")
+
+    def _capture_waveform(self, required_post, current_head):
+        """Helper to extract waveform from buffer."""
+        required_pre = int(self.vis_window_pre * self.nominal_rate)
+
+        with self._lock:
+            # Total samples to extract = pre + post
+            total_samps = required_pre + required_post
+
+            # Use absolute trigger index to calculate exact read index
+            samples_since_trig = current_head - self._capture_trigger_index
+
+            # Start read at: Head - SamplesSince - Pre
+            read_idx = (self.vis_write_pos - samples_since_trig - required_pre) % self.vis_buffer_size
+
+            # Extract
+            if read_idx + total_samps <= self.vis_buffer_size:
+                waveform = self.vis_buffer[read_idx : read_idx + total_samps].copy()
+            else:
+                part1 = self.vis_buffer[read_idx:].copy()
+                part2 = self.vis_buffer[:total_samps - len(part1)].copy()
+                waveform = np.concatenate((part1, part2))
+
+            self.last_trig_waveform = waveform
+
+        self._capture_trigger_index = -1 # Done
 
 
     def get_history_arrays(self):
@@ -363,6 +490,12 @@ class OnePPSMonitorWidget(QWidget):
         self.timer.timeout.connect(self._update_plot)
         self.timer.setInterval(200) # Update GUI 5 times a second
 
+        self.last_pulse_count = 0
+        self.indicator_on_timer = QTimer()
+        self.indicator_on_timer.setSingleShot(True)
+        self.indicator_on_timer.timeout.connect(self._turn_off_indicator)
+        self.indicator_on_timer.setInterval(100) # 100ms flash
+
     def _init_ui(self):
         layout = QHBoxLayout(self)
 
@@ -394,6 +527,16 @@ class OnePPSMonitorWidget(QWidget):
 
         # Right: Controls
         ctrl_layout = QVBoxLayout()
+
+        # indicator Group
+        ind_layout = QHBoxLayout()
+        ind_layout.addWidget(QLabel(tr("Pulse:")))
+        self.lbl_indicator = QLabel()
+        self.lbl_indicator.setFixedSize(20, 20)
+        self.lbl_indicator.setStyleSheet("background-color: gray; border-radius: 10px; border: 1px solid black;")
+        ind_layout.addWidget(self.lbl_indicator)
+        ind_layout.addStretch()
+        ctrl_layout.addLayout(ind_layout)
 
         # Start Button (Always visible)
         self.btn_start = QPushButton(tr("Start"))
@@ -432,23 +575,26 @@ class OnePPSMonitorWidget(QWidget):
 
         vbox_settings.addWidget(rate_group)
 
-        # Threshold
-        vbox_settings.addWidget(QLabel(tr("Threshold (FS):")))
-        self.spin_thresh = QDoubleSpinBox()
-        self.spin_thresh.setRange(-1.0, 1.0)
-        self.spin_thresh.setSingleStep(0.01)
-        self.spin_thresh.setValue(0.5)
-        self.spin_thresh.valueChanged.connect(self._on_thresh_changed)
-        vbox_settings.addWidget(self.spin_thresh)
+        # Target PPS
+        pps_group = QHBoxLayout()
+        pps_group.addWidget(QLabel(tr("Target PPS:")))
 
-        # Hysteresis
-        vbox_settings.addWidget(QLabel(tr("Hysteresis (FS):")))
-        self.spin_hyst = QDoubleSpinBox()
-        self.spin_hyst.setRange(0.0, 0.5)
-        self.spin_hyst.setSingleStep(0.01)
-        self.spin_hyst.setValue(0.05)
-        self.spin_hyst.valueChanged.connect(self._on_hyst_changed)
-        vbox_settings.addWidget(self.spin_hyst)
+        self.combo_pps_preset = QComboBox()
+        self.combo_pps_preset.addItems([tr("1 PPS"), tr("Other...")])
+        self.combo_pps_preset.currentIndexChanged.connect(self._on_pps_preset_changed)
+        pps_group.addWidget(self.combo_pps_preset)
+
+        self.spin_pps = QDoubleSpinBox()
+        self.spin_pps.setRange(0.1, 1000.0)
+        self.spin_pps.setValue(1.0)
+        self.spin_pps.setSingleStep(0.1)
+        self.spin_pps.setSuffix(" Hz")
+        self.spin_pps.setEnabled(False) # Disabled by default (1 PPS selected)
+        self.spin_pps.valueChanged.connect(self._on_pps_changed)
+        pps_group.addWidget(self.spin_pps)
+        vbox_settings.addLayout(pps_group)
+
+
 
         # Outlier Filter Group
         filter_group = QGroupBox(tr("Outlier Rejection"))
@@ -484,6 +630,75 @@ class OnePPSMonitorWidget(QWidget):
         vbox_settings.addStretch()
 
         self.tabs.addTab(tab_settings, tr("Settings"))
+
+        # --- Tab 1.5: Waveform ---
+        tab_waveform = QWidget()
+        vbox_waveform = QVBoxLayout(tab_waveform)
+
+        # Plot
+        self.plot_waveform = pg.PlotWidget(title=tr("Input Waveform (Triggered)"))
+        self.plot_waveform.setMaximumWidth(400)
+        self.plot_waveform.setLabel("left", tr("Amplitude"), units="FS")
+        self.plot_waveform.setLabel("bottom", tr("Time (rel to trig)"), units="s")
+        self.plot_waveform.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_waveform.setYRange(-1.1, 1.1)
+        # Set X range to show pre/post trigger
+        self.plot_waveform.setXRange(-0.5, 0.5)
+        self.curve_waveform = self.plot_waveform.plot(pen='y')
+
+        # Threshold Lines
+        self.line_thresh_high = pg.InfiniteLine(angle=0, pen=pg.mkPen('g', width=1), label=tr("Thresh"), labelOpts={'position':0.9, 'color': (200,255,200)})
+        self.line_thresh_low = pg.InfiniteLine(angle=0, pen=pg.mkPen('r', width=1, style=Qt.PenStyle.DashLine), label=tr("Hyst"), labelOpts={'position':0.9, 'color': (255,200,200)})
+        self.plot_waveform.addItem(self.line_thresh_high)
+        self.plot_waveform.addItem(self.line_thresh_low)
+
+        vbox_waveform.addWidget(self.plot_waveform)
+
+        # Controls for Threshold (Synced)
+        form_layout = QHBoxLayout()
+        form_layout.addWidget(QLabel(tr("Threshold:")))
+        self.spin_thresh_wave = QDoubleSpinBox()
+        self.spin_thresh_wave.setRange(-1.0, 1.0)
+        self.spin_thresh_wave.setSingleStep(0.01)
+        self.spin_thresh_wave.setValue(0.5)
+        self.spin_thresh_wave.valueChanged.connect(self._on_thresh_wave_changed)
+        form_layout.addWidget(self.spin_thresh_wave)
+
+        form_layout.addWidget(QLabel(tr("Hysteresis:")))
+        self.spin_hyst_wave = QDoubleSpinBox()
+        self.spin_hyst_wave.setRange(0.0, 0.5)
+        self.spin_hyst_wave.setSingleStep(0.01)
+        self.spin_hyst_wave.setValue(0.05)
+        self.spin_hyst_wave.valueChanged.connect(self._on_hyst_wave_changed)
+        form_layout.addWidget(self.spin_hyst_wave)
+
+        vbox_waveform.addLayout(form_layout)
+
+        # Latency Compensation
+
+        comp_layout = QHBoxLayout()
+        self.chk_latency_comp = QCheckBox(tr("Compensate Input Latency"))
+        self.chk_latency_comp.setChecked(False)
+        self.chk_latency_comp.toggled.connect(self._update_plot)
+        comp_layout.addWidget(self.chk_latency_comp)
+
+        self.lbl_latency_val = QLabel("(Lat: N/A)")
+        comp_layout.addWidget(self.lbl_latency_val)
+
+        comp_layout.addSpacing(10)
+        comp_layout.addWidget(QLabel(tr("Manual Offset:")))
+        self.spin_manual_latency = QDoubleSpinBox()
+        self.spin_manual_latency.setRange(-1000.0, 1000.0)
+        self.spin_manual_latency.setSuffix(" ms")
+        self.spin_manual_latency.setValue(0.0)
+        self.spin_manual_latency.valueChanged.connect(self._update_plot)
+        comp_layout.addWidget(self.spin_manual_latency)
+
+        comp_layout.addStretch()
+
+        vbox_waveform.addLayout(comp_layout)
+
+        self.tabs.addTab(tab_waveform, tr("Waveform"))
 
         # --- Tab 2: Display ---
         tab_display = QWidget()
@@ -552,9 +767,11 @@ class OnePPSMonitorWidget(QWidget):
         layout.addLayout(ctrl_layout)
 
         # Initialize
+        self.module.target_pps = self.spin_pps.value()
         self.module.nominal_rate = self.spin_rate.value()
-        self._on_thresh_changed(self.spin_thresh.value())
-        self._on_hyst_changed(self.spin_hyst.value())
+        # Initialize Waveform controls with module defaults if any, or just trigger handler
+        self._on_thresh_wave_changed(self.spin_thresh_wave.value())
+        self._on_hyst_wave_changed(self.spin_hyst_wave.value())
         self._on_filter_toggled(self.chk_filter.isChecked())
         self._on_window_changed(self.spin_window.value())
         self._on_tol_changed(self.spin_tol.value())
@@ -668,11 +885,27 @@ class OnePPSMonitorWidget(QWidget):
     def _on_rate_changed(self, val):
         self.module.nominal_rate = val
 
-    def _on_thresh_changed(self, val):
-        self.module.threshold_fs = val
+    def _on_pps_changed(self, val):
+        self.module.target_pps = val
 
-    def _on_hyst_changed(self, val):
+    def _on_pps_preset_changed(self, index):
+        if index == 0: # 1 PPS
+            self.spin_pps.setValue(1.0)
+            self.spin_pps.setEnabled(False)
+        else: # Other...
+            self.spin_pps.setEnabled(True)
+
+    def _on_thresh_wave_changed(self, val):
+        self.module.threshold_fs = val
+        self.line_thresh_high.setValue(val)
+        self.line_thresh_low.setValue(val - self.module.hysteresis_fs)
+
+    def _on_hyst_wave_changed(self, val):
         self.module.hysteresis_fs = val
+        self.line_thresh_low.setValue(self.module.threshold_fs - val)
+
+    def _turn_off_indicator(self):
+        self.lbl_indicator.setStyleSheet("background-color: gray; border-radius: 10px; border: 1px solid black;")
 
     def _on_filter_toggled(self, checked):
         self.module.filter_enabled = checked
@@ -691,6 +924,73 @@ class OnePPSMonitorWidget(QWidget):
         t, ip, cp = self.module.get_history_arrays()
         count = self.module.get_pulse_count()
         self.lbl_count.setText(f"{tr('Count')}: {count}")
+
+        # Pulse Indicator Logic
+        if count > self.last_pulse_count:
+            self.lbl_indicator.setStyleSheet("background-color: #00FF00; border-radius: 10px; border: 1px solid black;")
+            self.indicator_on_timer.start()
+        self.last_pulse_count = count
+
+        # Waveform Update (only if tab is visible)
+        if self.tabs.currentWidget().layout() is not None and self.plot_waveform.isVisible():
+             # Basic visibility check, can be improved checking current tab index
+             # Tab 1.5 is index 1 (Settings=0, Waveform=1, Display=2)
+             if self.tabs.currentIndex() == 1:
+                wave_data = self.module.get_latest_waveform()
+                if wave_data is not None:
+
+                     lat = self.module.audio_engine.get_input_latency()
+                     self.lbl_latency_val.setText(f"(Lat: {lat*1000:.1f} ms)")
+
+                     # Create time axis
+                     # trigger is at index corresponding to 'vis_window_pre'
+                     # 0.1s pre means trigger is at index 4800 (if 48k)
+                     n = len(wave_data)
+                     # t = (np.arange(n) - (self.module.vis_window_pre * self.module.nominal_rate)) / self.module.nominal_rate
+                     # More robust:
+                     pre_samps = int(self.module.vis_window_pre * self.module.nominal_rate)
+                     t_wave = (np.arange(n) - pre_samps) / self.module.nominal_rate
+
+                     # Latency Compensation
+                     if self.chk_latency_comp.isChecked():
+                         # Subtract input latency to shift time 'back' 
+                         # (e.g. if event happened 10ms ago but we just got it, the timestamp t=0 is "now", so event is at -10ms)
+                         # Wait, our t=0 is the TRIGGER point in the buffer.
+                         # The buffer is filled by callback. 
+                         # If latency is L, the signal at index i actually arrived at the ADC L seconds before it was written/processed?
+                         # Input Latency = Time between ADC capture and Callback.
+                         # So the sample at index i was captured at (Time_Current - Latency - (Indices_from_end / Rate)).
+                         # Our specific Trigger Point is at t=0 relative to the captured buffer window.
+                         # If we want "Time relative to Pulse Arrival at ADC", 
+                         # The Pulse Arrived at ADC, then Latency later it Arrived at Callback.
+                         # Step 1: Detect Pulse in Buffer. Trigger Index T.
+                         # This Index T corresponds to some time.
+                         # If we say T is t=0.
+                         # Using the latency compensation means we want to show... what?
+                         # The user likely wants to know the "absolute time" or just shift it so it matches something?
+                         # User said: "shift drawing range by buffer latency".
+                         # If we shift X axis by -Latency, then t=0 (Trigger) becomes t=-Latency.
+                         # This means "The trigger event happened -Latency seconds ago relative to the timestamp of the data block"?
+                         # Actually usually in audio apps, "Compensate Latency" means aligning recording with playback.
+                         # Here we are just plotting.
+                         # If the user wants to see "When did the pulse happen at the connector?",
+                         # And our t=0 is "When did the software see the pulse?".
+                         # The software sees it 'Latency' seconds LATE.
+                         # So the Pulse actually happened at t = -Latency relative to Software Time.
+                         # So if we plot X axis, the Pulse (Peak) is at X=0 in Software Time.
+                         # In "Connector Time", the Pulse is at X=0, but the Software Time 0 is actually +Latency?
+                         # Let's simple shift: t_adjusted = t_wave - latency?
+                         # If t_wave=0 (Trigger), t_adjusted = -Latency.
+                         # So the peak moves to -Latency.
+                         # This seems correct if t=0 implies "When software processed it".
+                         # Use audio_engine.get_input_latency()
+
+                         manual_offset_sec = self.spin_manual_latency.value() / 1000.0
+
+                         # Total shift = Latency + Manual Offset
+                         t_wave -= (lat + manual_offset_sec)
+
+                     self.curve_waveform.setData(t_wave, wave_data)
 
         if len(t) > 0:
 

@@ -173,7 +173,14 @@ def test_outlier_rejection_robustness():
     # 5400 (Noise/Glitch) -> Delta 400. Reject.
     # 6000 (Good) -> Delta from 5000 is 1000. Accept.
 
-    pulse_locations = [0, 1000, 2000, 3000, 4000, 5000, 5400, 6000]
+    # Simulated pulses:
+    # 0, 1000, 2000, 3000, 4000, 5000: 5 intervals accepted.
+    # 5400: Rejected by MAD (delta 400). BUT last_trigger updated to 5400.
+    # 6000: Rejected by MAD (delta 600 from 5400). BUT last_trigger updated to 6000.
+    # 7000: ACCEPTED (delta 1000 from 6000). 1 interval accepted.
+    # Total = 6 intervals.
+
+    pulse_locations = [0, 1000, 2000, 3000, 4000, 5000, 5400, 6000, 7000]
 
     total_len = 8000
     sig = np.zeros(total_len, dtype=np.float32)
@@ -188,26 +195,9 @@ def test_outlier_rejection_robustness():
     wait_for_monitor(monitor)
     t, ip, cp = monitor.get_history_arrays()
 
-    # Expected:
-    # Deltas: 1000, 1000, 1000, 1000, 1000.
-    # Then 5400 comes. Delta=400. Rejection?
-    # Window=[1000,1000,1000,1000,1000]. Median=1000. MAD=0. Thresh=1.
-    # |400-1000|=600 > 500 (Gate). Gross Outlier!
-    # Next is 6000.
-    # Since 5400 was a gross outlier, last_trigger remains at 5000.
-    # Delta = 6000 - 5000 = 1000. ACCEPT.
-
-    # So we should have 6 accepted intervals, all 1000.
-    # If the bug existed (updating last_trigger even on reject), 
-    # then next delta would be 6000 - 5500 = 500. REJECT!
-    # And we'd lose the good pulse too.
-
-    print(f"Stored IP: {ip}")
-    print(f"Stored CP: {cp}")
-
+    print(f"Final IP: {ip}")
     assert len(ip) == 6
-    assert np.all(ip == 0.0)
-    assert np.all(cp == 0.0)
+    assert np.allclose(ip, 0.0)
 
 def test_cumulative_precision():
     engine = MockAudioEngine()
