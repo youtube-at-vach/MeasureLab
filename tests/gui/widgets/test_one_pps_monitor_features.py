@@ -46,9 +46,11 @@ def test_initialization(widget):
     assert isinstance(thresh_spin, QDoubleSpinBox)
     assert isinstance(hyst_spin, QDoubleSpinBox)
 
-    # Check Target PPS spinbox
-    assert hasattr(widget, 'spin_pps')
-    assert isinstance(widget.spin_pps, QDoubleSpinBox)
+    # Check Target PPS components
+    assert hasattr(widget, 'combo_pps_preset')
+    assert widget.combo_pps_preset.itemText(0) == "1 PPS"
+    assert widget.combo_pps_preset.currentIndex() == 0
+    assert not widget.spin_pps.isEnabled()
     assert widget.spin_pps.value() == 1.0
 
 def test_waveform_controls(widget, monitor):
@@ -163,6 +165,22 @@ def test_update_plot_crash(widget, qtbot):
         pytest.fail("_update_plot raised IndexError (likely variable shadowing bug)")
     except Exception as e:
         pytest.fail(f"_update_plot raised unexpected exception: {e}")
+
+def test_target_pps_preset_logic(widget, monitor):
+    """Test that the PPS preset combo box controls the spin box."""
+    # 1. Switch to "Other..."
+    widget.combo_pps_preset.setCurrentIndex(1)
+    assert widget.spin_pps.isEnabled()
+
+    # 2. Change value
+    widget.spin_pps.setValue(10.0)
+    assert monitor.target_pps == 10.0
+
+    # 3. Switch back to "1 PPS"
+    widget.combo_pps_preset.setCurrentIndex(0)
+    assert not widget.spin_pps.isEnabled()
+    assert widget.spin_pps.value() == 1.0
+    assert monitor.target_pps == 1.0
 
 def test_target_pps_feature(widget, monitor, qtbot):
     """Test the Target PPS feature."""

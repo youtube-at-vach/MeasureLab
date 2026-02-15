@@ -577,14 +577,23 @@ class OnePPSMonitorWidget(QWidget):
 
         # Target PPS
         pps_group = QHBoxLayout()
-        pps_group.addWidget(QLabel(tr("Target PPS (Hz):")))
+        pps_group.addWidget(QLabel(tr("Target PPS:")))
+
+        self.combo_pps_preset = QComboBox()
+        self.combo_pps_preset.addItems([tr("1 PPS"), tr("Other...")])
+        self.combo_pps_preset.currentIndexChanged.connect(self._on_pps_preset_changed)
+        pps_group.addWidget(self.combo_pps_preset)
+
         self.spin_pps = QDoubleSpinBox()
         self.spin_pps.setRange(0.1, 1000.0)
         self.spin_pps.setValue(1.0)
         self.spin_pps.setSingleStep(0.1)
+        self.spin_pps.setSuffix(" Hz")
+        self.spin_pps.setEnabled(False) # Disabled by default (1 PPS selected)
         self.spin_pps.valueChanged.connect(self._on_pps_changed)
         pps_group.addWidget(self.spin_pps)
         vbox_settings.addLayout(pps_group)
+
 
 
         # Outlier Filter Group
@@ -878,6 +887,13 @@ class OnePPSMonitorWidget(QWidget):
 
     def _on_pps_changed(self, val):
         self.module.target_pps = val
+
+    def _on_pps_preset_changed(self, index):
+        if index == 0: # 1 PPS
+            self.spin_pps.setValue(1.0)
+            self.spin_pps.setEnabled(False)
+        else: # Other...
+            self.spin_pps.setEnabled(True)
 
     def _on_thresh_wave_changed(self, val):
         self.module.threshold_fs = val
