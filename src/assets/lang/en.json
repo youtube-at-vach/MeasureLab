@@ -1110,5 +1110,6 @@
     "Pulse:": "Pulse:",
     "Thresh": "Thresh",
     "Threshold:": "Threshold:",
-    "Time (rel to trig)": "Time (rel to trig)"
+    "Time (rel to trig)": "Time (rel to trig)",
+    "Target PPS (Hz):": "Target PPS (Hz):"
 }

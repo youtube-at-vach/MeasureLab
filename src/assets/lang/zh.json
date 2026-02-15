@@ -1134,5 +1134,6 @@
     "Pulse:": "脉冲:",
     "Thresh": "阈值",
     "Threshold:": "阈值:",
-    "Time (rel to trig)": "时间 (相对于触发)"
+    "Time (rel to trig)": "时间 (相对于触发)",
+    "Target PPS (Hz):": "目标 PPS (Hz):"
 }

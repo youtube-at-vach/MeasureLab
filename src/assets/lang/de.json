@@ -1134,5 +1134,6 @@
     "Pulse:": "Impuls:",
     "Thresh": "Schwellw.",
     "Threshold:": "Schwellenwert:",
-    "Time (rel to trig)": "Zeit (rel. zum Trigger)"
+    "Time (rel to trig)": "Zeit (rel. zum Trigger)",
+    "Target PPS (Hz):": "Ziel-PPS (Hz):"
 }

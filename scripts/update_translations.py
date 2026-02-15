@@ -21,7 +21,8 @@ MISSING_EN_KEYS = [
     "Pulse:",
     "Thresh",
     "Threshold:",
-    "Time (rel to trig)"
+    "Time (rel to trig)",
+    "Target PPS (Hz):"
 ]
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)

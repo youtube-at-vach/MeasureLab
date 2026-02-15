@@ -1134,5 +1134,6 @@
     "Pulse:": "펄스:",
     "Thresh": "임계값",
     "Threshold:": "임계값:",
-    "Time (rel to trig)": "시간 (트리거 대비)"
+    "Time (rel to trig)": "시간 (트리거 대비)",
+    "Target PPS (Hz):": "목표 PPS (Hz):"
 }

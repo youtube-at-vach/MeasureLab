@@ -1134,5 +1134,6 @@
     "Pulse:": "Pulso:",
     "Thresh": "Limiar",
     "Threshold:": "Limiar:",
-    "Time (rel to trig)": "Tempo (rel. ao gatilho)"
+    "Time (rel to trig)": "Tempo (rel. ao gatilho)",
+    "Target PPS (Hz):": "PPS alvo (Hz):"
 }

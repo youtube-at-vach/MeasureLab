@@ -1121,5 +1121,6 @@
     "Pulse:": "パルス:",
     "Thresh": "しきい値",
     "Threshold:": "しきい値:",
-    "Time (rel to trig)": "時間 (トリガー相対)"
+    "Time (rel to trig)": "時間 (トリガー相対)",
+    "Target PPS (Hz):": "目標 PPS (Hz):"
 }

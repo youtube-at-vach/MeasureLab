@@ -1134,5 +1134,6 @@
     "Pulse:": "Impulsion :",
     "Thresh": "Seuil",
     "Threshold:": "Seuil :",
-    "Time (rel to trig)": "Temps (par rapport au déclenchement)"
+    "Time (rel to trig)": "Temps (par rapport au déclenchement)",
+    "Target PPS (Hz):": "PPS cible (Hz):"
 }

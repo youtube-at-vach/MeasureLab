@@ -1134,5 +1134,6 @@
     "Pulse:": "Pulso:",
     "Thresh": "Umbral",
     "Threshold:": "Umbral:",
-    "Time (rel to trig)": "Tiempo (rel. al disparo)"
+    "Time (rel to trig)": "Tiempo (rel. al disparo)",
+    "Target PPS (Hz):": "PPS objetivo (Hz):"
 }
