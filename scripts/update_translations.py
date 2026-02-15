@@ -8,7 +8,6 @@ import ast
 import glob
 import json
 import os
-import sys
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -109,7 +108,7 @@ def main():
     file_count = 0
 
     # Recursive scan of src/ directory
-    for root, dirs, files in os.walk(SRC_DIR):
+    for root, _dirs, files in os.walk(SRC_DIR):
         for file in files:
             if file.endswith(".py"):
                 filepath = os.path.join(root, file)
