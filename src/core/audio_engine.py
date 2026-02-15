@@ -643,6 +643,8 @@ class AudioEngine:
 
     def get_input_latency(self):
         """Returns the input latency in seconds."""
+        latency = 0.0
+        
         if self.stream is not None:
             # sd.Stream.latency is a tuple (input, output) or float if not available?
             # Documentation says: "The latency of the stream in seconds. This is a tuple (input_latency, output_latency)."
@@ -656,10 +658,18 @@ class AudioEngine:
                     return 0.0
                 
                 lat = self.stream.latency
-                if isinstance(lat, tuple) or isinstance(lat, list):
-                    return float(lat[0])
-                return float(lat)
+                if isinstance(lat, (tuple, list)):
+                    latency = float(lat[0])
+                else:
+                    latency = float(lat)
             except Exception:
-                return 0.0
-        return 0.0
+                latency = 0.0
+
+        # Fallback if reported latency is effectively zero (common in some backends or if unavailable)
+        if latency <= 1e-6:
+             # Use block size / sample rate as estimate
+             if self.sample_rate > 0:
+                 latency = float(self.block_size) / float(self.sample_rate)
+        
+        return latency
 
