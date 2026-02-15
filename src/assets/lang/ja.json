@@ -1113,5 +1113,11 @@
     "Time (rel to trig)": "時間 (トリガー相対)",
     "1 PPS": "1 PPS",
     "Other...": "その他...",
-    "Target PPS:": "目標 PPS:"
+    "Target PPS:": "目標 PPS:",
+    "Bit Activity (LSB to MSB)": "ビットアクティビティ (LSBからMSB)",
+    "Bit Depth Analyzer": "ビット深度アナライザー",
+    "Bit Index (0=LSB)": "ビットインデックス (0=LSB)",
+    "Effective Bit Depth History": "有効ビット深度履歴",
+    "Log Time": "ログ時間",
+    "Quantization Step Distribution": "量子化ステップ分布"
 }

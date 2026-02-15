@@ -13,15 +13,16 @@ LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
 
 # Missing keys in en.json (from check_trn_keys.py output)
 MISSING_EN_KEYS = [
-    "1 PPS",
-    "Other...",
-    "Target PPS:"
+    "Bit Activity (LSB to MSB)",
+    "Bit Depth Analyzer",
+    "Bit Index (0=LSB)",
+    "Effective Bit Depth History",
+    "Log Time",
+    "Quantization Step Distribution"
 ]
 
 # Keys to remove (unused in code)
-UNUSED_KEYS = [
-    "Target PPS (Hz):"
-]
+UNUSED_KEYS = []
 
 # Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
 MISSING_OTHER_KEYS = MISSING_EN_KEYS

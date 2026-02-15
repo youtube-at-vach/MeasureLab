@@ -1113,5 +1113,11 @@
     "Time (rel to trig)": "Zeit (rel. zum Trigger)",
     "1 PPS": "1 PPS",
     "Other...": "Sonstige...",
-    "Target PPS:": "Ziel-PPS:"
+    "Target PPS:": "Ziel-PPS:",
+    "Bit Activity (LSB to MSB)": "Bit Activity (LSB to MSB)",
+    "Bit Depth Analyzer": "Bit Depth Analyzer",
+    "Bit Index (0=LSB)": "Bit Index (0=LSB)",
+    "Effective Bit Depth History": "Effective Bit Depth History",
+    "Log Time": "Log Time",
+    "Quantization Step Distribution": "Quantization Step Distribution"
 }
