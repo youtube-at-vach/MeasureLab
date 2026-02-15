@@ -23,7 +23,6 @@ from src.core.module_constants import (
     ALL_MODULE_KEYS,
     MODULE_1PPS_MONITOR,
     MODULE_ADVANCED_DISTORTION_METER,
-    MODULE_BIT_DEPTH_ANALYZER,
     MODULE_BNIM_METER,
     MODULE_BOXCAR_AVERAGER,
     MODULE_DISTORTION_ANALYZER,
@@ -86,7 +85,6 @@ MODULE_REGISTRY = {
     MODULE_ULTRASOUND_MODULATOR: ("src.gui.widgets.ultrasound_modulator", "UltrasoundModulator"),
     MODULE_LINEARITY_ANALYZER: ("src.gui.widgets.linearity_analyzer", "LinearityAnalyzer"),
     MODULE_1PPS_MONITOR: ("src.gui.widgets.one_pps_monitor", "OnePPSMonitor"),
-    MODULE_BIT_DEPTH_ANALYZER: ("src.gui.widgets.bit_depth_analyzer", "BitDepthAnalyzer"),
 }
 
 

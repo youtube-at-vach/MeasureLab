@@ -31,6 +31,9 @@ from src.core.fft_manager import fft_manager
 from PyQt6.QtWidgets import QProgressDialog
 from PyQt6.QtCore import Qt
 
+from src.core.bit_depth_estimator import BitDepthEstimator
+import pyqtgraph as pg
+
 
 def _design_c_weighting(sr: float):
     """Design digital C-weighting filter (IEC 61672) for sample rate sr."""
@@ -772,6 +775,143 @@ def next_power_of_two(n):
     return 1 << (int(n) - 1).bit_length()
 
 
+
+class BitDepthDialog(QDialog):
+    def __init__(self, audio_engine: AudioEngine, parent=None):
+        super().__init__(parent)
+        self.audio_engine = audio_engine
+        self.estimator = BitDepthEstimator()
+        self.setWindowTitle(tr("Bit Depth & Quantization Analysis"))
+        self.resize(800, 600)
+        self.is_running = False
+        self.callback_id = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_ui)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        # Top: Controls & ENOB
+        top_layout = QHBoxLayout()
+
+        self.start_btn = QPushButton(tr("Start Analysis"))
+        self.start_btn.setCheckable(True)
+        self.start_btn.clicked.connect(self.on_start_toggle)
+        top_layout.addWidget(self.start_btn)
+
+        self.enob_label = QLabel(tr("ENOB: -- bits"))
+        self.enob_label.setStyleSheet("font-size: 24px; font-weight: bold; margin-left: 20px;")
+        top_layout.addWidget(self.enob_label)
+
+        top_layout.addStretch()
+        layout.addLayout(top_layout)
+
+        # Plots
+        self.plot_layout = QVBoxLayout()
+
+        # 1. ENOB History
+        self.enob_plot = pg.PlotWidget(title=tr("Effective Bit Depth History"))
+        self.enob_plot.setLabel("left", "Bits")
+        self.enob_plot.setYRange(0, 32)
+        self.enob_plot.showGrid(y=True)
+        self.enob_curve = self.enob_plot.plot(pen="y")
+        self.enob_history = []
+        self.plot_layout.addWidget(self.enob_plot)
+
+        # 2. Bit Activity Heatmap
+        self.heatmap_plot = pg.PlotWidget(title=tr("Bit Activity (LSB to MSB)"))
+        self.heatmap_plot.setLabel("bottom", tr("Bit Index (0=LSB)"))
+        self.heatmap_plot.setLabel("left", tr("Time (Frames)"))
+        self.heatmap_plot.setXRange(-0.5, 31.5)
+        # Heatmap Image
+        self.heatmap_img = pg.ImageItem()
+        self.heatmap_plot.addItem(self.heatmap_img)
+        # Colormap
+        pos = np.array([0.0, 0.5, 1.0])
+        color = np.array(
+            [[0, 0, 0, 255], [0, 255, 0, 255], [255, 255, 0, 255]], dtype=np.ubyte
+        )
+        cmap = pg.ColorMap(pos, color)
+        self.heatmap_img.setLookupTable(cmap.getLookupTable(0.0, 1.0))
+
+        self.heatmap_history_len = 50
+        self.heatmap_data = np.zeros((self.heatmap_history_len, 32))
+        self.plot_layout.addWidget(self.heatmap_plot)
+
+        # 3. Delta Histogram
+        self.hist_plot = pg.PlotWidget(title=tr("Quantization Step (Delta) Distribution"))
+        self.hist_plot.setLabel("bottom", "Log10(Delta)")
+        self.hist_plot.setLabel("left", "Count")
+        self.hist_bar = pg.BarGraphItem(x=[], height=[], width=0.1, brush="b")
+        self.hist_plot.addItem(self.hist_bar)
+        self.plot_layout.addWidget(self.hist_plot)
+
+        layout.addLayout(self.plot_layout)
+        self.setLayout(layout)
+
+    def on_start_toggle(self, checked):
+        if checked:
+            self.start_analysis()
+            self.start_btn.setText(tr("Stop Analysis"))
+        else:
+            self.stop_analysis()
+            self.start_btn.setText(tr("Start Analysis"))
+
+    def start_analysis(self):
+        self.estimator.reset()
+        self.enob_history = []
+        self.heatmap_data.fill(0)
+        self.heatmap_img.setImage(self.heatmap_data, autoLevels=False, levels=(0.0, 1.0))
+
+        def callback(indata, outdata, frames, time, status):
+            if indata.shape[1] >= 1:
+                # Copy is important because indata is reused
+                self.estimator.add_samples(indata[:, 0].copy())
+            outdata.fill(0)
+
+        self.callback_id = self.audio_engine.register_callback(callback)
+        self.is_running = True
+        self.timer.start(100)  # Update UI every 100ms
+
+    def stop_analysis(self):
+        if self.is_running:
+            if self.callback_id is not None:
+                self.audio_engine.unregister_callback(self.callback_id)
+                self.callback_id = None
+            self.is_running = False
+            self.timer.stop()
+
+    def update_ui(self):
+        results = self.estimator.analyze()
+        if not results:
+            return
+
+        # ENOB
+        enob = results["bit_depth"]
+        self.enob_label.setText(f"ENOB: {enob:.1f} bits")
+        self.enob_history.append(enob)
+        if len(self.enob_history) > 100:
+            self.enob_history.pop(0)
+        self.enob_curve.setData(self.enob_history)
+
+        # Heatmap
+        dist = results["bit_distribution"]
+        self.heatmap_data = np.roll(self.heatmap_data, 1, axis=0)
+        self.heatmap_data[0] = dist
+        self.heatmap_img.setImage(self.heatmap_data, autoLevels=False, levels=(0.0, 1.0))
+
+        # Histogram
+        if results["delta_hist"]:
+            hist, edges = results["delta_hist"]
+            x = (edges[:-1] + edges[1:]) / 2
+            self.hist_bar.setOpts(x=x, height=hist, width=(x[1] - x[0]))
+
+    def closeEvent(self, event):
+        self.stop_analysis()
+        super().closeEvent(event)
+
+
 class SettingsWidget(QWidget):
     def __init__(self, audio_engine: AudioEngine, config_manager: ConfigManager):
         super().__init__()
@@ -951,6 +1091,10 @@ class SettingsWidget(QWidget):
         self.refresh_btn = QPushButton(tr("Refresh Devices"))
         self.refresh_btn.clicked.connect(self.on_refresh_clicked)
         device_sub_layout.addRow(self.refresh_btn)
+
+        self.bit_depth_btn = QPushButton(tr("Measure Bit Depth..."))
+        self.bit_depth_btn.clicked.connect(self.open_bit_depth_analysis)
+        device_sub_layout.addRow(self.bit_depth_btn)
 
         self.audio_sub_tabs.addTab(device_sub_tab, tr("Audio Devices"))
 
@@ -1405,6 +1549,10 @@ class SettingsWidget(QWidget):
         dlg = OutputCalibrationDialog(self.audio_engine, self)
         if dlg.exec():
             self.update_out_gain_display()
+
+    def open_bit_depth_analysis(self):
+        dlg = BitDepthDialog(self.audio_engine, self)
+        dlg.exec()
 
     def update_in_sens_display(self):
         val = self.audio_engine.calibration.input_sensitivity

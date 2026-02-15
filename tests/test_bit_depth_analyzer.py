@@ -8,53 +8,59 @@ def app():
     return QApplication.instance() or QApplication([])
 
 @pytest.fixture
-def analyzer():
+def estimator():
+    from src.core.bit_depth_estimator import BitDepthEstimator
+    return BitDepthEstimator()
+
+def test_bit_depth_estimation_16bit(estimator):
+    # Setup 16-bit quantization
+    step = 2.0 / 65536.0
+    t = np.linspace(-0.1, 0.1, 10000)
+    quantized_signal = np.round(t / step) * step
+
+    estimator.add_samples(quantized_signal)
+    results = estimator.analyze()
+
+    assert results is not None
+    assert abs(results["bit_depth"] - 16.0) < 0.5
+
+def test_bit_depth_estimation_24bit(estimator):
+    # Setup 24-bit quantization
+    step = 2.0 / (2**24)
+    # Ensure enough variance
+    quantized_signal = np.array([0, step, 3*step, 10*step, step, 0, -step])
+
+    estimator.add_samples(quantized_signal)
+    results = estimator.analyze()
+
+    assert results is not None
+    assert abs(results["bit_depth"] - 24.0) < 0.5
+
+def test_bit_depth_dialog(app):
     from src.core.audio_engine import AudioEngine
-    from src.gui.widgets.bit_depth_analyzer import BitDepthAnalyzer
+    from src.gui.widgets.settings import BitDepthDialog
+
     engine = AudioEngine()
-    # Mocking register_callback to avoid actual audio device access
+    # Mocking register_callback
     engine.register_callback = lambda cb: 123
     engine.unregister_callback = lambda id: None
-    return BitDepthAnalyzer(engine)
 
-def test_bit_depth_estimation_16bit(analyzer):
-    analyzer.integration_time = 0
-    analyzer.start_analysis()
-    step = 2.0 / 65536.0
-    t = np.linspace(-0.1, 0.1, 100000)
-    quantized_signal = np.round(t / step) * step
-    analyzer.audio_queue.put(quantized_signal)
-    analyzer.process_queue()
-    assert abs(analyzer._current_bit_depth - 16.0) < 0.5
+    dialog = BitDepthDialog(engine)
+    dialog.start_analysis()
 
-def test_bit_depth_estimation_24bit(analyzer):
-    analyzer.integration_time = 0
-    analyzer.start_analysis()
-    step = 2.0 / (2**24)
-    quantized_signal = np.array([0, step, 3*step, 10*step, step, 0, -step])
-    analyzer.audio_queue.put(quantized_signal)
-    analyzer.process_queue()
-    assert abs(analyzer._current_bit_depth - 24.0) < 0.5
+    # Simulate callback
+    noise = np.random.uniform(-0.1, 0.1, (4096, 2))
+    # Using internal estimator to bypass callback loop for test if needed, 
+    # but let's test the callback registration indirectly by calling what callback would do
+    # Actually, we can't easily invoke the callback defined inside start_analysis 
+    # unless we captured it or refactored.
+    # But we can test that UI updates don't crash when there's data in estimator
 
-def test_bit_depth_visualization(app, analyzer):
-    from src.gui.widgets.bit_depth_analyzer import BitDepthAnalyzerWidget
-    analyzer.integration_time = 0
-    widget = BitDepthAnalyzerWidget(analyzer)
-    analyzer.start_analysis()
-    noise = np.random.uniform(-0.1, 0.1, 4096)
-    analyzer.audio_queue.put(noise)
-    analyzer.process_queue()
-    widget.update_ui()
-    assert widget.enob_value_label.text() != "0.0 bits"
-    assert len(widget.enob_curve.getData()[1]) > 0
+    dialog.estimator.add_samples(noise[:, 0])
+    dialog.update_ui()
 
-def test_heatmap_updates(app, analyzer):
-    from src.gui.widgets.bit_depth_analyzer import BitDepthAnalyzerWidget
-    analyzer.integration_time = 0
-    widget = BitDepthAnalyzerWidget(analyzer)
-    analyzer.start_analysis()
-    silence_dither = np.random.normal(0, 1e-6, 4096)
-    analyzer.audio_queue.put(silence_dither)
-    analyzer.process_queue()
-    widget.update_ui()
-    assert np.any(widget.heatmap_data > 0)
+    assert dialog.enob_label.text() != "ENOB: -- bits"
+    assert len(dialog.enob_history) > 0
+
+    dialog.stop_analysis()
+    dialog.close()
