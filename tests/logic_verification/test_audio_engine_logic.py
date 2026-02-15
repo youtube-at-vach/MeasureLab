@@ -144,8 +144,13 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.engine.output_device = 1
         self.engine.jack_client_name = "TestClient"
 
-        # Mock device query return
-        mock_devices.return_value = {"hostapi": 0} # Device 1 uses hostapi 0
+        # Mock device query return.
+        # Now _get_jack_settings calls sd.query_devices() with no args to get a list, then indexes it.
+        # We need a list where index 1 has "hostapi": 0.
+        mock_devices.return_value = [
+            {"hostapi": 0, "name": "Dummy0"},
+            {"hostapi": 0, "name": "Dummy1"}
+        ]
 
         # Mock hostapi query return
         mock_hostapis.return_value = {"name": "JACK Audio Connection Kit"} # Hostapi 0 is JACK
@@ -164,7 +169,10 @@ class TestAudioEngineLogic(unittest.TestCase):
     def test_get_jack_settings_no_jack(self, mock_hostapis, mock_devices):
         self.engine.output_device = 1
 
-        mock_devices.return_value = {"hostapi": 0}
+        mock_devices.return_value = [
+            {"hostapi": 0, "name": "Dummy0"},
+            {"hostapi": 0, "name": "Dummy1"}
+        ]
         mock_hostapis.return_value = {"name": "ALSA"} # Not JACK
 
         settings = self.engine._get_jack_settings()
@@ -180,7 +188,10 @@ class TestAudioEngineLogic(unittest.TestCase):
         type(sd.default).device = unittest.mock.PropertyMock(return_value=[0, 1])
 
         # Mock device 1 as non-JACK
-        mock_devices.return_value = {"hostapi": 0}
+        mock_devices.return_value = [
+            {"hostapi": 0, "name": "Dummy0"},
+            {"hostapi": 0, "name": "Dummy1"}
+        ]
 
         settings = self.engine._get_jack_settings()
         self.assertIsNone(settings)
