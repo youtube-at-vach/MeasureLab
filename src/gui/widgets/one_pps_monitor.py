@@ -59,6 +59,11 @@ class OnePPSMonitor(MeasurementModule):
         self._pulses_detected = 0
         self.warmup_count = 7
 
+        # Visualization Buffer (approx 1 second circular buffer)
+        self.vis_buffer_size = 48000 # Default, will resize if rate changes significantly
+        self.vis_buffer = np.zeros(self.vis_buffer_size, dtype=np.float32)
+        self.vis_write_pos = 0
+
         # Regression State (Online Least Squares)
         # y = mx + c
         # x = Pulse Count (Seconds)
@@ -125,6 +130,10 @@ class OnePPSMonitor(MeasurementModule):
         self.history_write_pos = 0
         self.history_filled = 0
         self._filter_window = []
+        
+        # Reset visualization buffer
+        self.vis_buffer.fill(0)
+        self.vis_write_pos = 0
 
         # Clear queue
         while not self.data_queue.empty():
@@ -173,6 +182,12 @@ class OnePPSMonitor(MeasurementModule):
             self.process_thread.join(timeout=1.0)
             self.process_thread = None
 
+    def get_latest_waveform(self):
+        """Returns a copy of the visualization buffer, ordered from oldest to newest."""
+        with self._lock:
+            # Roll so that the oldest sample is at index 0
+            return np.roll(self.vis_buffer, -self.vis_write_pos)
+
     def _process_loop(self):
         while self.is_running:
             try:
@@ -181,6 +196,35 @@ class OnePPSMonitor(MeasurementModule):
                     break
 
                 sig, frames = item
+
+                # Update Visualization Buffer
+                # We do this under lock to prevent tearing when reading? 
+                # Actually, for visualization, tearing is acceptable usually, but let's be safe-ish or just atomic write.
+                # Since we want a rolling view, we just write to the ring buffer.
+                # If frames > buffer size, we just take the last part.
+                
+                write_len = min(frames, self.vis_buffer_size)
+                src_data = sig[-write_len:].astype(np.float32)
+                
+                # Check for buffer resize if rate changed drastically?
+                # For now assume fixed size enough for ~1s at 48k. 
+                # If 192k, it will be 0.25s, which might be too short for 1PPS.
+                # Let's dynamically resize if needed in future, but for now fixed is okay or we check nominal.
+                
+                # Logic for ring buffer write
+                with self._lock:
+                     # Calculate split
+                    remain = self.vis_buffer_size - self.vis_write_pos
+                    if write_len <= remain:
+                        self.vis_buffer[self.vis_write_pos : self.vis_write_pos + write_len] = src_data
+                        self.vis_write_pos = (self.vis_write_pos + write_len) % self.vis_buffer_size
+                    else:
+                        # Split write
+                        part1 = remain
+                        part2 = write_len - remain
+                        self.vis_buffer[self.vis_write_pos : self.vis_buffer_size] = src_data[:part1]
+                        self.vis_buffer[0 : part2] = src_data[part1:]
+                        self.vis_write_pos = part2
 
                 # Processing Logic
                 # Optimization: If signal is way below threshold everywhere, skip.
@@ -363,6 +407,12 @@ class OnePPSMonitorWidget(QWidget):
         self.timer.timeout.connect(self._update_plot)
         self.timer.setInterval(200) # Update GUI 5 times a second
 
+        self.last_pulse_count = 0
+        self.indicator_on_timer = QTimer()
+        self.indicator_on_timer.setSingleShot(True)
+        self.indicator_on_timer.timeout.connect(self._turn_off_indicator)
+        self.indicator_on_timer.setInterval(100) # 100ms flash
+
     def _init_ui(self):
         layout = QHBoxLayout(self)
 
@@ -394,6 +444,16 @@ class OnePPSMonitorWidget(QWidget):
 
         # Right: Controls
         ctrl_layout = QVBoxLayout()
+
+        # indicator Group
+        ind_layout = QHBoxLayout()
+        ind_layout.addWidget(QLabel(tr("Pulse:")))
+        self.lbl_indicator = QLabel()
+        self.lbl_indicator.setFixedSize(20, 20)
+        self.lbl_indicator.setStyleSheet("background-color: gray; border-radius: 10px; border: 1px solid black;")
+        ind_layout.addWidget(self.lbl_indicator)
+        ind_layout.addStretch()
+        ctrl_layout.addLayout(ind_layout)
 
         # Start Button (Always visible)
         self.btn_start = QPushButton(tr("Start"))
@@ -484,6 +544,48 @@ class OnePPSMonitorWidget(QWidget):
         vbox_settings.addStretch()
 
         self.tabs.addTab(tab_settings, tr("Settings"))
+
+        # --- Tab 1.5: Waveform ---
+        tab_waveform = QWidget()
+        vbox_waveform = QVBoxLayout(tab_waveform)
+        
+        # Plot
+        self.plot_waveform = pg.PlotWidget(title=tr("Input Waveform"))
+        self.plot_waveform.setLabel("left", tr("Amplitude"), units="FS")
+        self.plot_waveform.setLabel("bottom", tr("Sample Frame"))
+        self.plot_waveform.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_waveform.setYRange(-1.1, 1.1)
+        self.curve_waveform = self.plot_waveform.plot(pen='y')
+        
+        # Threshold Lines
+        self.line_thresh_high = pg.InfiniteLine(angle=0, pen=pg.mkPen('g', width=1), label=tr("Thresh"), labelOpts={'position':0.9, 'color': (200,255,200)})
+        self.line_thresh_low = pg.InfiniteLine(angle=0, pen=pg.mkPen('r', width=1, style=Qt.PenStyle.DashLine), label=tr("Hyst"), labelOpts={'position':0.9, 'color': (255,200,200)})
+        self.plot_waveform.addItem(self.line_thresh_high)
+        self.plot_waveform.addItem(self.line_thresh_low)
+        
+        vbox_waveform.addWidget(self.plot_waveform)
+        
+        # Controls for Threshold (Synced)
+        form_layout = QHBoxLayout()
+        form_layout.addWidget(QLabel(tr("Threshold:")))
+        self.spin_thresh_wave = QDoubleSpinBox()
+        self.spin_thresh_wave.setRange(-1.0, 1.0)
+        self.spin_thresh_wave.setSingleStep(0.01)
+        self.spin_thresh_wave.setValue(0.5)
+        self.spin_thresh_wave.valueChanged.connect(self._on_thresh_wave_changed)
+        form_layout.addWidget(self.spin_thresh_wave)
+        
+        form_layout.addWidget(QLabel(tr("Hysteresis:")))
+        self.spin_hyst_wave = QDoubleSpinBox()
+        self.spin_hyst_wave.setRange(0.0, 0.5)
+        self.spin_hyst_wave.setSingleStep(0.01)
+        self.spin_hyst_wave.setValue(0.05)
+        self.spin_hyst_wave.valueChanged.connect(self._on_hyst_wave_changed)
+        form_layout.addWidget(self.spin_hyst_wave)
+        
+        vbox_waveform.addLayout(form_layout)
+        
+        self.tabs.addTab(tab_waveform, tr("Waveform"))
 
         # --- Tab 2: Display ---
         tab_display = QWidget()
@@ -670,9 +772,27 @@ class OnePPSMonitorWidget(QWidget):
 
     def _on_thresh_changed(self, val):
         self.module.threshold_fs = val
+        if abs(self.spin_thresh_wave.value() - val) > 1e-6:
+            self.spin_thresh_wave.setValue(val)
+        self.line_thresh_high.setValue(val)
+        self.line_thresh_low.setValue(val - self.module.hysteresis_fs)
 
     def _on_hyst_changed(self, val):
         self.module.hysteresis_fs = val
+        if abs(self.spin_hyst_wave.value() - val) > 1e-6:
+            self.spin_hyst_wave.setValue(val)
+        self.line_thresh_low.setValue(self.module.threshold_fs - val)
+        
+    def _on_thresh_wave_changed(self, val):
+        if abs(self.spin_thresh.value() - val) > 1e-6:
+            self.spin_thresh.setValue(val)
+            
+    def _on_hyst_wave_changed(self, val):
+        if abs(self.spin_hyst.value() - val) > 1e-6:
+            self.spin_hyst.setValue(val)
+
+    def _turn_off_indicator(self):
+        self.lbl_indicator.setStyleSheet("background-color: gray; border-radius: 10px; border: 1px solid black;")
 
     def _on_filter_toggled(self, checked):
         self.module.filter_enabled = checked
@@ -691,6 +811,20 @@ class OnePPSMonitorWidget(QWidget):
         t, ip, cp = self.module.get_history_arrays()
         count = self.module.get_pulse_count()
         self.lbl_count.setText(f"{tr('Count')}: {count}")
+
+        # Pulse Indicator Logic
+        if count > self.last_pulse_count:
+            self.lbl_indicator.setStyleSheet("background-color: #00FF00; border-radius: 10px; border: 1px solid black;")
+            self.indicator_on_timer.start()
+        self.last_pulse_count = count
+
+        # Waveform Update (only if tab is visible)
+        if self.tabs.currentWidget().layout() is not None and self.plot_waveform.isVisible():
+             # Basic visibility check, can be improved checking current tab index
+             # Tab 1.5 is index 1 (Settings=0, Waveform=1, Display=2)
+             if self.tabs.currentIndex() == 1:
+                wave_data = self.module.get_latest_waveform()
+                self.curve_waveform.setData(wave_data)
 
         if len(t) > 0:
 
