@@ -1114,10 +1114,12 @@
     "1 PPS": "1 PPS",
     "Other...": "Outro...",
     "Target PPS:": "PPS de destino:",
-    "Bit Activity (LSB to MSB)": "Bit Activity (LSB to MSB)",
-    "Bit Depth Analyzer": "Bit Depth Analyzer",
-    "Bit Index (0=LSB)": "Bit Index (0=LSB)",
-    "Effective Bit Depth History": "Effective Bit Depth History",
-    "Log Time": "Log Time",
-    "Quantization Step Distribution": "Quantization Step Distribution"
+    "Bit Activity (LSB to MSB)": "Atividade de bits (LSB para MSB)",
+    "Bit Index (0=LSB)": "Índice de bits (0=LSB)",
+    "Effective Bit Depth History": "Histórico de profundidade de bits efetiva",
+    "Bit Depth & Quantization Analysis": "Análise de Profundidade de Bits e Quantização",
+    "ENOB: -- bits": "ENOB: -- bits",
+    "Measure Bit Depth...": "Medir Profundidade de Bits...",
+    "Quantization Step (Delta) Distribution": "Distribuição de Passo de Quantização (Delta)",
+    "Time (Frames)": "Tempo (Quadros)"
 }

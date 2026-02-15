@@ -1114,10 +1114,12 @@
     "1 PPS": "1 PPS",
     "Other...": "其他...",
     "Target PPS:": "目标 PPS:",
-    "Bit Activity (LSB to MSB)": "Bit Activity (LSB to MSB)",
-    "Bit Depth Analyzer": "Bit Depth Analyzer",
-    "Bit Index (0=LSB)": "Bit Index (0=LSB)",
-    "Effective Bit Depth History": "Effective Bit Depth History",
-    "Log Time": "Log Time",
-    "Quantization Step Distribution": "Quantization Step Distribution"
+    "Bit Activity (LSB to MSB)": "位活跃度 (LSB 到 MSB)",
+    "Bit Index (0=LSB)": "位索引 (0=LSB)",
+    "Effective Bit Depth History": "有效位深度历史",
+    "Bit Depth & Quantization Analysis": "位深度与量化分析",
+    "ENOB: -- bits": "ENOB: -- 位",
+    "Measure Bit Depth...": "测量位深度...",
+    "Quantization Step (Delta) Distribution": "量化阶 (Delta) 分布",
+    "Time (Frames)": "时间 (帧)"
 }

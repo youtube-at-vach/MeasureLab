@@ -1114,10 +1114,12 @@
     "1 PPS": "1 PPS",
     "Other...": "Другое...",
     "Target PPS:": "Целевой PPS:",
-    "Bit Activity (LSB to MSB)": "Bit Activity (LSB to MSB)",
-    "Bit Depth Analyzer": "Bit Depth Analyzer",
-    "Bit Index (0=LSB)": "Bit Index (0=LSB)",
-    "Effective Bit Depth History": "Effective Bit Depth History",
-    "Log Time": "Log Time",
-    "Quantization Step Distribution": "Quantization Step Distribution"
+    "Bit Activity (LSB to MSB)": "Активность битов (от LSB до MSB)",
+    "Bit Index (0=LSB)": "Индекс бита (0=LSB)",
+    "Effective Bit Depth History": "История эффективной разрядности",
+    "Bit Depth & Quantization Analysis": "Анализ разрядности и квантования",
+    "ENOB: -- bits": "ENOB: -- бит",
+    "Measure Bit Depth...": "Измерить разрядность...",
+    "Quantization Step (Delta) Distribution": "Распределение шагов квантования (Delta)",
+    "Time (Frames)": "Время (кадры)"
 }
