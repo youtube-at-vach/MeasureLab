@@ -60,24 +60,8 @@ class OnePPSMonitor(MeasurementModule):
         self.warmup_count = 7
 
         # Triggered Waveform Visualization
-        # We want to show e.g. -0.1s to +0.2s around the trigger.
-        # At 48kHz, 0.1s = 4800 samples. 0.3s total = 14400 samples.
-        self.vis_pre_trigger_sec = 0.1
-        self.vis_post_trigger_sec = 0.9 # Total 1s window as requested by user (0.9 to 1.1s but let's do -0.1 to +0.9 for now to fit 1s)
-        # Actually user said "0.9s to 1.1s" interval? No "0.9s after to 1.1s after"?
-        # "timing 1s... inferred from previous pulse... close to that"
-        # The user wants to see the PULSE. The pulse happens at t=0, 1, 2...
-        # So we want to see [-0.1, +0.9] of the pulse? 
-        # "0.9s after to 1.1s after" means looking at the NEXT pulse based on previous.
-        # If we just trigger on the CURRENT pulse and show it, it's easier and equivalent if 1PPS.
-        # So let's capture [-0.1s, +0.2s] around the detection. 
-        # Wait, the user said "0.9s to 1.1s" -> they want to see the NEXT pulse?
-        # "Timing... inferred from previous... plot near that".
-        # If I just plot the *just detected* pulse, it is effectively what they want (the pulse).
-        # Triggered view is standard oscilloscope behavior.
-        
-        self.vis_window_pre = 0.1
-        self.vis_window_post = 0.2
+        self.vis_window_pre = 0.5
+        self.vis_window_post = 0.5
         self.vis_buffer_size = 96000 # 2 seconds circular buffer to hold history for pre-trigger
         self.vis_buffer = np.zeros(self.vis_buffer_size, dtype=np.float32)
         self.vis_write_pos = 0
@@ -635,11 +619,11 @@ class OnePPSMonitorWidget(QWidget):
         self.plot_waveform = pg.PlotWidget(title=tr("Input Waveform (Triggered)"))
         self.plot_waveform.setMaximumWidth(400)
         self.plot_waveform.setLabel("left", tr("Amplitude"), units="FS")
-        self.plot_waveform.setLabel("bottom", tr("Time vs Trigger"), units="s")
+        self.plot_waveform.setLabel("bottom", tr("Time (rel to trig)"), units="s")
         self.plot_waveform.showGrid(x=True, y=True, alpha=0.3)
         self.plot_waveform.setYRange(-1.1, 1.1)
         # Set X range to show pre/post trigger
-        self.plot_waveform.setXRange(-self.module.vis_window_pre, self.module.vis_window_post)
+        self.plot_waveform.setXRange(-0.5, 0.5)
         self.curve_waveform = self.plot_waveform.plot(pen='y')
         
         # Threshold Lines
