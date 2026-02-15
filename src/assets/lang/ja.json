@@ -1113,5 +1113,13 @@
     "Time (rel to trig)": "時間 (トリガー相対)",
     "1 PPS": "1 PPS",
     "Other...": "その他...",
-    "Target PPS:": "目標 PPS:"
+    "Target PPS:": "目標 PPS:",
+    "Bit Activity (LSB to MSB)": "ビットアクティビティ (LSBからMSB)",
+    "Bit Index (0=LSB)": "ビットインデックス (0=LSB)",
+    "Effective Bit Depth History": "有効ビット深度履歴",
+    "Bit Depth & Quantization Analysis": "ビット深度・量子化分析",
+    "ENOB: -- bits": "ENOB: -- bits",
+    "Measure Bit Depth...": "ビット深度計測...",
+    "Quantization Step (Delta) Distribution": "量子化ステップ (Δ) 分布",
+    "Time (Frames)": "時間 (フレーム)"
 }

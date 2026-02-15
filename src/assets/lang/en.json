@@ -1113,5 +1113,13 @@
     "Time (rel to trig)": "Time (rel to trig)",
     "1 PPS": "1 PPS",
     "Other...": "Other...",
-    "Target PPS:": "Target PPS:"
+    "Target PPS:": "Target PPS:",
+    "Bit Activity (LSB to MSB)": "Bit Activity (LSB to MSB)",
+    "Bit Depth & Quantization Analysis": "Bit Depth & Quantization Analysis",
+    "Bit Index (0=LSB)": "Bit Index (0=LSB)",
+    "ENOB: -- bits": "ENOB: -- bits",
+    "Effective Bit Depth History": "Effective Bit Depth History",
+    "Measure Bit Depth...": "Measure Bit Depth...",
+    "Quantization Step (Delta) Distribution": "Quantization Step (Delta) Distribution",
+    "Time (Frames)": "Time (Frames)"
 }

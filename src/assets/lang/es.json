@@ -1113,5 +1113,13 @@
     "Time (rel to trig)": "Tiempo (rel. al disparo)",
     "1 PPS": "1 PPS",
     "Other...": "Otro...",
-    "Target PPS:": "PPS objetivo:"
+    "Target PPS:": "PPS objetivo:",
+    "Bit Activity (LSB to MSB)": "Actividad de bits (LSB a MSB)",
+    "Bit Index (0=LSB)": "Índice de bits (0=LSB)",
+    "Effective Bit Depth History": "Historial de profundidad de bits efectiva",
+    "Bit Depth & Quantization Analysis": "Análisis de profundidad de bits y cuantización",
+    "ENOB: -- bits": "ENOB: -- bits",
+    "Measure Bit Depth...": "Medir profundidad de bits...",
+    "Quantization Step (Delta) Distribution": "Distribución de pasos de cuantización (Delta)",
+    "Time (Frames)": "Tiempo (fotogramas)"
 }

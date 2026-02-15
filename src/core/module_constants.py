@@ -31,6 +31,7 @@ MODULE_ULTRASOUND_MODULATOR = "Ultrasound AM Modulator"
 MODULE_LINEARITY_ANALYZER = "Linearity Analyzer"
 MODULE_1PPS_MONITOR = "1PPS Monitor"
 
+
 # List of all module keys in the order they should appear in the UI
 ALL_MODULE_KEYS = [
     MODULE_SIGNAL_GENERATOR,

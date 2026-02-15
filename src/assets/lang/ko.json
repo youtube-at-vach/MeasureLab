@@ -1113,5 +1113,13 @@
     "Time (rel to trig)": "시간 (트리거 대비)",
     "1 PPS": "1 PPS",
     "Other...": "기타...",
-    "Target PPS:": "목표 PPS:"
+    "Target PPS:": "목표 PPS:",
+    "Bit Activity (LSB to MSB)": "비트 활성도 (LSB에서 MSB로)",
+    "Bit Index (0=LSB)": "비트 인덱스 (0=LSB)",
+    "Effective Bit Depth History": "유효 비트 심도 이력",
+    "Bit Depth & Quantization Analysis": "비트 심도 및 양자화 분석",
+    "ENOB: -- bits": "ENOB: -- 비트",
+    "Measure Bit Depth...": "비트 심도 측정...",
+    "Quantization Step (Delta) Distribution": "양자화 단계(델타) 분포",
+    "Time (Frames)": "시간 (프레임)"
 }

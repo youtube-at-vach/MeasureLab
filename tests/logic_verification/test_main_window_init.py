@@ -79,6 +79,9 @@ class TestMainWindowInitRefactor(unittest.TestCase):
             "src.gui.widgets.detachable_wrapper": MagicMock(),
         }
 
+        # Capture keys before
+        before_keys = set(sys.modules.keys())
+
         with patch.dict(sys.modules, modules_to_patch):
             if "src.gui.main_window" in sys.modules:
                 del sys.modules["src.gui.main_window"]
@@ -101,6 +104,12 @@ class TestMainWindowInitRefactor(unittest.TestCase):
 
             # Check if WelcomeWidget was initialized
             self.assertTrue(mock_welcome_cls.called)
+
+        # Cleanup newly loaded modules
+        after_keys = set(sys.modules.keys())
+        for key in (after_keys - before_keys):
+            if key.startswith("src.") or key.startswith("PyQt6"):
+                del sys.modules[key]
 
 if __name__ == "__main__":
     unittest.main()

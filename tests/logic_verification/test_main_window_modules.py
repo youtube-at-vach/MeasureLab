@@ -28,6 +28,9 @@ def test_load_module_class():
         # We must mock dependencies BEFORE importing main_window
         # Ensure it is importable
 
+        # Capture keys before import
+        before_keys = set(sys.modules.keys())
+
         with patch('src.gui.main_window.ConfigManager'), \
              patch('src.gui.main_window.AudioEngine'), \
              patch('src.gui.main_window.get_manager'):
@@ -47,3 +50,9 @@ def test_load_module_class():
             # Verify invalid key raises KeyError
             with pytest.raises(KeyError):
                 _load_module_class("Invalid Key")
+
+        # Cleanup newly loaded modules that might be poisoned by mocks
+        after_keys = set(sys.modules.keys())
+        for key in (after_keys - before_keys):
+            if key.startswith("src.") or key.startswith("PyQt6"):
+                del sys.modules[key]
