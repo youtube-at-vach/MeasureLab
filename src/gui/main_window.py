@@ -316,33 +316,36 @@ class MainWindow(QMainWindow):
         if not name:
             return None
 
-        # 1. Strict match (Name + HostAPI)
-        for i, dev in enumerate(devices):
-            # Check capabilities
-            if is_input and dev["max_input_channels"] <= 0:
-                continue
-            if not is_input and dev["max_output_channels"] <= 0:
-                continue
+        def is_valid_device(dev):
+            if is_input:
+                return dev["max_input_channels"] > 0
+            return dev["max_output_channels"] > 0
 
-            if dev["name"] == name:
-                # If hostapi is specified, strict match is required.
-                if hostapi:
-                    if dev.get("hostapi_name") == hostapi:
-                        return i
-                else:
-                    # If hostapi is not specified, just match name
-                    return i
+        # Pass 1: Strict match
+        strict = next(
+            (
+                i
+                for i, d in enumerate(devices)
+                if is_valid_device(d)
+                and d["name"] == name
+                and (not hostapi or d.get("hostapi_name") == hostapi)
+            ),
+            None,
+        )
 
-        # 2. Loose match (Name only) - only needed if hostapi was specified
+        if strict is not None:
+            return strict
+
+        # Pass 2: Loose match
         if hostapi:
-            for i, dev in enumerate(devices):
-                if is_input and dev["max_input_channels"] <= 0:
-                    continue
-                if not is_input and dev["max_output_channels"] <= 0:
-                    continue
-
-                if dev["name"] == name:
-                    return i
+            return next(
+                (
+                    i
+                    for i, d in enumerate(devices)
+                    if is_valid_device(d) and d["name"] == name
+                ),
+                None,
+            )
 
         return None
 

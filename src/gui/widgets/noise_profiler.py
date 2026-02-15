@@ -33,6 +33,7 @@ class NoiseProfiler(MeasurementModule):
         self.is_running = False
         self.buffer_size = 16384  # Large buffer for better low-freq resolution
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.buffer_ptr = 0
 
         # Settings
         self.window_type = "hanning"
@@ -91,9 +92,19 @@ class NoiseProfiler(MeasurementModule):
         Process the current input data buffer to produce noise profile results.
         Returns (freqs, calibrated_magnitude, results_dict) or None if insufficient data.
         """
-        data = self.input_data
-        if len(data) < self.buffer_size:
+        raw_data = self.input_data
+        if len(raw_data) < self.buffer_size:
             return None
+
+        # Reconstruct linear buffer from ring buffer
+        ptr = self.buffer_ptr
+        if ptr >= self.buffer_size:
+            ptr = 0
+
+        if ptr == 0:
+            data = raw_data
+        else:
+            data = np.concatenate((raw_data[ptr:], raw_data[:ptr]))
 
         # 1. Compute PSD (V/rtHz)
         # Use Hanning window
@@ -166,6 +177,7 @@ class NoiseProfiler(MeasurementModule):
     def set_buffer_size(self, size):
         self.buffer_size = size
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.buffer_ptr = 0
         self.reset_average()
 
     def start_analysis(self):
@@ -175,6 +187,7 @@ class NoiseProfiler(MeasurementModule):
         self.is_running = True
         self.reset_average()
         self.input_data = np.zeros((self.buffer_size, 2))
+        self.buffer_ptr = 0
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -185,11 +198,29 @@ class NoiseProfiler(MeasurementModule):
             else:
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
-            if len(new_data) > self.buffer_size:
+            n = len(new_data)
+            if n > self.buffer_size:
+                # Buffer overrun: just keep the last chunk
                 self.input_data[:] = new_data[-self.buffer_size :]
+                self.buffer_ptr = 0
             else:
-                self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
-                self.input_data[-len(new_data) :] = new_data
+                # Ring buffer write
+                ptr = self.buffer_ptr
+                space = self.buffer_size - ptr
+
+                if n <= space:
+                    self.input_data[ptr : ptr + n] = new_data
+                    self.buffer_ptr = ptr + n
+                else:
+                    # Wrap around
+                    part1 = space
+                    part2 = n - space
+                    self.input_data[ptr:] = new_data[:part1]
+                    self.input_data[:part2] = new_data[part1:]
+                    self.buffer_ptr = part2
+
+            if self.buffer_ptr >= self.buffer_size:
+                self.buffer_ptr = 0
 
             outdata.fill(0)
 
