@@ -8,11 +8,12 @@ sys.modules['PyQt6'] = MagicMock()
 sys.modules['PyQt6.QtCore'] = MagicMock()
 sys.modules['PyQt6.QtWidgets'] = MagicMock()
 
-import numpy as np
-import pytest
-from scipy import signal
+import numpy as np  # noqa: E402
+import pytest  # noqa: E402
+from scipy import signal  # noqa: E402
+
 # Now import the module
-from src.gui.widgets.lufs_meter import LufsMeter
+from src.gui.widgets.lufs_meter import LufsMeter  # noqa: E402
 
 class MockAudioEngine:
     def __init__(self, sample_rate=48000):
