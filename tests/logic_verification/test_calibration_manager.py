@@ -277,3 +277,118 @@ def test_frequency_map_reload_cache_update(cal_manager, tmp_path):
     cal_manager.load_frequency_map(str(map_path2))
     mag, _ = cal_manager.get_frequency_correction(100)
     assert mag == 20.0
+
+# --- Legacy Support Tests ---
+
+@pytest.fixture
+def legacy_config_path(tmp_path):
+    return tmp_path / "legacy_calibration.json"
+
+def test_legacy_speaker_priority(legacy_config_path):
+    """Verify that if 'speaker' key exists in spl_calibration, its offset_db is used."""
+    data = {
+        "spl_calibration": {
+            "speaker": {
+                "offset_db": 10.5
+            },
+            "subwoofer": {
+                "offset_db": -5.0
+            }
+        }
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db == 10.5
+
+def test_legacy_subwoofer_fallback(legacy_config_path):
+    """Verify that if 'speaker' is missing but 'subwoofer' exists, its offset_db is used."""
+    data = {
+        "spl_calibration": {
+            "subwoofer": {
+                "offset_db": -5.0
+            }
+        }
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db == -5.0
+
+def test_legacy_arbitrary_key_fallback(legacy_config_path):
+    """Verify that if neither 'speaker' nor 'subwoofer' exists, the first available key's offset_db is used."""
+    data = {
+        "spl_calibration": {
+            "unknown_device": {
+                "offset_db": 3.3
+            }
+        }
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db == 3.3
+
+def test_legacy_invalid_format(legacy_config_path):
+    """Verify behavior with broken JSON structure or invalid values (should result in None)."""
+    # Case 1: spl_calibration is not a dict
+    data = {
+        "spl_calibration": "invalid"
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db is None
+
+    # Case 2: offset_db is invalid
+    data = {
+        "spl_calibration": {
+            "speaker": {
+                "offset_db": "not_a_number"
+            }
+        }
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db is None
+
+    # Case 3: entry is not a dict
+    data = {
+        "spl_calibration": {
+            "speaker": "not_a_dict"
+        }
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db is None
+
+def test_legacy_precedence(legacy_config_path):
+    """Verify that if the new format spl_offset_db is present at the top level, it takes precedence over the legacy format."""
+    data = {
+        "spl_offset_db": 20.0,
+        "spl_calibration": {
+            "speaker": {
+                "offset_db": 10.0
+            }
+        }
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db == 20.0
+
+def test_legacy_empty_dict(legacy_config_path):
+    """Verify behavior when spl_calibration is an empty dict."""
+    data = {
+        "spl_calibration": {}
+    }
+    with open(legacy_config_path, "w") as f:
+        json.dump(data, f)
+    cm = CalibrationManager(str(legacy_config_path))
+    assert cm.spl_offset_db is None
