@@ -9,11 +9,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 ### 🆕 New Proposals
 
-* **Quantization / Bit Depth Analyzer:**
-    * **Concept:** Analyzes the float stream to estimate the effective bit depth and quantization noise floor.
-    * **Features:** Histogram of sample values, LSB activity meter, "Stuck Bit" detection, and ENOB (Effective Number of Bits) calculation.
-    * **Why:** To verify digital signal path integrity (e.g., checking if a 24-bit interface is being truncated to 16-bit by the OS mixer).
-
 * **Offline Null Comparator:**
     * **Concept:** A file-based tool to compare two audio recordings (Reference vs. DUT).
     * **Features:** Automatic sub-sample time alignment, gain matching, and inversion to produce a "Difference" (Null) file.
@@ -47,6 +42,7 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 ## ✅ Already Implemented
 
+* **Quantization / Bit Depth Analyzer:** Integrated into the "Settings" dialog (Audio Devices tab). It estimates effective bit depth (ENOB) and visualizes quantization noise/LSB activity to verify signal path integrity.
 * **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer` (supports L->R / R->L).
 * **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter`.
 * **Oscilloscope Persistence / Eye Pattern:** Implemented in `Oscilloscope`.
