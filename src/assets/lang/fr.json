@@ -1121,5 +1121,10 @@
     "ENOB: -- bits": "ENOB : -- bits",
     "Measure Bit Depth...": "Mesurer la profondeur de bits...",
     "Quantization Step (Delta) Distribution": "Distribution des pas de quantification (Delta)",
-    "Time (Frames)": "Temps (trames)"
+    "Time (Frames)": "Temps (Trames)",
+    "Inst": "Inst",
+    "Cumul": "Cumul",
+    "Rate": "Débit",
+    "Std Dev": "Écart Type",
+    "Lat": "Lat"
 }

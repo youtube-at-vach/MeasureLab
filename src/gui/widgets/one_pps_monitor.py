@@ -736,15 +736,15 @@ class OnePPSMonitorWidget(QWidget):
 
 
         # Stats
-        self.lbl_count = QLabel("Count: -")
-        self.lbl_inst = QLabel("Inst: -")
-        self.lbl_cumul = QLabel("Cumul: -")
-        self.lbl_rate = QLabel("Rate: -")
+        self.lbl_count = QLabel(f"{tr('Count')}: -")
+        self.lbl_inst = QLabel(f"{tr('Inst')}: -")
+        self.lbl_cumul = QLabel(f"{tr('Cumul')}: -")
+        self.lbl_rate = QLabel(f"{tr('Rate')}: -")
 
-        self.lbl_mean = QLabel("Mean: -")
-        self.lbl_std = QLabel("Std Dev: -")
-        self.lbl_min = QLabel("Min: -")
-        self.lbl_max = QLabel("Max: -")
+        self.lbl_mean = QLabel(f"{tr('Mean')}: -")
+        self.lbl_std = QLabel(f"{tr('Std Dev')}: -")
+        self.lbl_min = QLabel(f"{tr('Min')}: -")
+        self.lbl_max = QLabel(f"{tr('Max')}: -")
 
 
         stats_group = QGroupBox(tr("Statistics"))
@@ -940,7 +940,7 @@ class OnePPSMonitorWidget(QWidget):
                 if wave_data is not None:
 
                      lat = self.module.audio_engine.get_input_latency()
-                     self.lbl_latency_val.setText(f"(Lat: {lat*1000:.1f} ms)")
+                     self.lbl_latency_val.setText(f"({tr('Lat')}: {lat*1000:.1f} ms)")
 
                      # Create time axis
                      # trigger is at index corresponding to 'vis_window_pre'
@@ -1028,8 +1028,8 @@ class OnePPSMonitorWidget(QWidget):
             min_val = np.min(vals)
             max_val = np.max(vals)
 
-            self.lbl_inst.setText(f"Inst: {fmt(last_ip)}")
-            self.lbl_cumul.setText(f"Cumul: {fmt(last_cp)}")
+            self.lbl_inst.setText(f"{tr('Inst')}: {fmt(last_ip)}")
+            self.lbl_cumul.setText(f"{tr('Cumul')}: {fmt(last_cp)}")
 
             # Effective Rate
             nominal = self.module.nominal_rate
@@ -1037,12 +1037,12 @@ class OnePPSMonitorWidget(QWidget):
             # Use raw buffer values (always PPM) to calculate effective rate
             raw_cp = cp[-1]
             eff_rate = nominal * (1.0 + raw_cp / 1e6)
-            self.lbl_rate.setText(f"Rate: {eff_rate:.4f} Hz")
+            self.lbl_rate.setText(f"{tr('Rate')}: {eff_rate:.4f} Hz")
 
-            self.lbl_mean.setText(f"Mean: {fmt(mean_val)}")
-            self.lbl_std.setText(f"Std Dev: {fmt(std_val)}")
-            self.lbl_min.setText(f"Min: {fmt(min_val)}")
-            self.lbl_max.setText(f"Max: {fmt(max_val)}")
+            self.lbl_mean.setText(f"{tr('Mean')}: {fmt(mean_val)}")
+            self.lbl_std.setText(f"{tr('Std Dev')}: {fmt(std_val)}")
+            self.lbl_min.setText(f"{tr('Min')}: {fmt(min_val)}")
+            self.lbl_max.setText(f"{tr('Max')}: {fmt(max_val)}")
         else:
             if self.module.is_running:
                  self.lbl_inst.setText(tr("Warming Up... ({0}/{1})").format(count, self.module.warmup_count))

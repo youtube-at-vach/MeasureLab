@@ -1121,5 +1121,10 @@
     "ENOB: -- bits": "ENOB: -- бит",
     "Measure Bit Depth...": "Измерить разрядность...",
     "Quantization Step (Delta) Distribution": "Распределение шагов квантования (Delta)",
-    "Time (Frames)": "Время (кадры)"
+    "Time (Frames)": "Время (кадры)",
+    "Inst": "Мгн",
+    "Cumul": "Накоп",
+    "Rate": "Скорость",
+    "Std Dev": "Станд отклон",
+    "Lat": "Зад"
 }

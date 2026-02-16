@@ -1121,5 +1121,10 @@
     "ENOB: -- bits": "ENOB: -- 비트",
     "Measure Bit Depth...": "비트 심도 측정...",
     "Quantization Step (Delta) Distribution": "양자화 단계(델타) 분포",
-    "Time (Frames)": "시간 (프레임)"
+    "Time (Frames)": "시간 (프레임)",
+    "Inst": "순간",
+    "Cumul": "누적",
+    "Rate": "속도",
+    "Std Dev": "표준 편차",
+    "Lat": "지연"
 }

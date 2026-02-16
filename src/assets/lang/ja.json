@@ -1121,5 +1121,10 @@
     "ENOB: -- bits": "ENOB: -- bits",
     "Measure Bit Depth...": "ビット深度計測...",
     "Quantization Step (Delta) Distribution": "量子化ステップ (Δ) 分布",
-    "Time (Frames)": "時間 (フレーム)"
+    "Time (Frames)": "時間 (フレーム)",
+    "Inst": "瞬間",
+    "Cumul": "累積",
+    "Rate": "レート",
+    "Std Dev": "標準偏差",
+    "Lat": "遅延"
 }
