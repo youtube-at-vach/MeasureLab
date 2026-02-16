@@ -1,19 +1,13 @@
-import sys
 from unittest.mock import MagicMock
+import numpy as np
+import pytest
+from scipy import signal
 
-# Mock GUI dependencies BEFORE importing module under test
-mock_pg = MagicMock()
-sys.modules['pyqtgraph'] = mock_pg
-sys.modules['PyQt6'] = MagicMock()
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
-
-import numpy as np  # noqa: E402
-import pytest  # noqa: E402
-from scipy import signal  # noqa: E402
-
-# Now import the module
-from src.gui.widgets.lufs_meter import LufsMeter  # noqa: E402
+# Now import the module - since we are in CI environment with PyQt6 installed,
+# or in a local env where we might want to mock it if missing.
+# However, modifying sys.modules globally is dangerous for other tests.
+# If we are in a headless environment, standard PyQt6 imports should work if installed.
+from src.gui.widgets.lufs_meter import LufsMeter
 
 class MockAudioEngine:
     def __init__(self, sample_rate=48000):
