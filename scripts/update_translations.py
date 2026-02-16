@@ -1,140 +1,192 @@
 #!/usr/bin/env python3
 """
 Script to automatically update translation files with missing keys.
-This script adds missing keys from the check_trn_keys.py output to all language files.
+This script scans the entire src/ directory for tr() calls and updates all language files.
 """
 
+import ast
+import glob
 import json
 import os
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
+SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+LANG_DIR = os.path.join(SRC_DIR, "assets", "lang")
 
-# Missing keys in en.json (from check_trn_keys.py output)
-MISSING_EN_KEYS = [
-    "Bit Depth & Quantization Analysis",
-    "ENOB: -- bits",
-    "Measure Bit Depth...",
-    "Quantization Step (Delta) Distribution",
-    "Time (Frames)"
-]
 
-# Keys to remove (unused in code)
-UNUSED_KEYS = [
-    "Bit Depth Analyzer",
-    "Log Time",
-    "Quantization Step Distribution"
-]
+class TrVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self.keys = set()
 
-# Missing keys in other language files (de, es, fr, ja, ko, pt, ru, zh)
-MISSING_OTHER_KEYS = MISSING_EN_KEYS
+    def visit_Call(self, node):
+        func_name = ""
+        if isinstance(node.func, ast.Name):
+            func_name = node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            func_name = node.func.attr
+
+        if func_name == 'tr':
+            if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+                self.keys.add(node.args[0].value)
+
+        self.generic_visit(node)
+
+    def visit_Assign(self, node):
+        # Look for self._module_keys = [...] or _module_keys = [...]
+        target_name = None
+        for target in node.targets:
+            if isinstance(target, ast.Attribute) and target.attr == '_module_keys':
+                target_name = '_module_keys'
+            elif isinstance(target, ast.Name) and target.id == '_module_keys':
+                target_name = '_module_keys'
+
+        if target_name == '_module_keys':
+            if isinstance(node.value, ast.List):
+                for elt in node.value.elts:
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                        self.keys.add(elt.value)
+
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        # Look for @property def name(self) -> str: return "..."
+        is_property = False
+        for decorator in node.decorator_list:
+            if isinstance(decorator, ast.Name) and decorator.id == 'property':
+                is_property = True
+                break
+            if isinstance(decorator, ast.Attribute) and decorator.attr == 'property':
+                is_property = True
+                break
+
+        if is_property and node.name == 'name':
+            # Look for return "some string"
+            for stmt in node.body:
+                if isinstance(stmt, ast.Return):
+                    if isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str):
+                        self.keys.add(stmt.value.value)
+
+        self.generic_visit(node)
+
+
+def extract_tr_keys(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            tree = ast.parse(f.read(), filename=filepath)
+        visitor = TrVisitor()
+        visitor.visit(tree)
+        return visitor.keys
+    except Exception as e:
+        print(f"Error parsing {filepath}: {e}")
+        return set()
+
 
 def load_json(path):
     """Load JSON file preserving order"""
+    if not os.path.exists(path):
+        return {}
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+
 def save_json(path, data):
     """Save JSON file with proper formatting"""
+    # Sort keys alphabetically to ensure deterministic output
+    sorted_data = dict(sorted(data.items()))
     with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+        json.dump(sorted_data, f, ensure_ascii=False, indent=4)
         f.write('\n')  # Add trailing newline
 
-def update_en_json():
-    """Add missing keys to en.json and remove unused ones"""
-    en_path = os.path.join(LANG_DIR, 'en.json')
-    print(f"Updating {en_path}...")
 
-    data = load_json(en_path)
-    added = 0
-    removed = 0
+def main():
+    print("=== Translation Update Script ===\n")
 
-    # Add missing
-    for key in MISSING_EN_KEYS:
-        if key not in data:
-            data[key] = key  # For English, key = value
-            added += 1
-            print(f"  Added: '{key}'")
+    # 1. Scan Source Code for Keys
+    print(f"Scanning {SRC_DIR} for translation keys...")
+    code_keys = set()
+    file_count = 0
 
-    # Remove unused
-    for key in UNUSED_KEYS:
-        if key in data:
-            del data[key]
-            removed += 1
-            print(f"  Removed: '{key}'")
+    # Recursive scan of src/ directory
+    for root, _dirs, files in os.walk(SRC_DIR):
+        for file in files:
+            if file.endswith(".py"):
+                filepath = os.path.join(root, file)
+                keys = extract_tr_keys(filepath)
+                code_keys.update(keys)
+                file_count += 1
 
-    if added > 0 or removed > 0:
-        save_json(en_path, data)
-        print(f"✓ Added {added} keys, removed {removed} keys in en.json")
-    else:
-        print("✓ No changes needed for en.json")
+    # Also include main_gui.py in root
+    main_gui = os.path.join(PROJECT_ROOT, "main_gui.py")
+    if os.path.exists(main_gui):
+        keys = extract_tr_keys(main_gui)
+        code_keys.update(keys)
+        file_count += 1
 
-    return added, removed
+    print(f"Found {len(code_keys)} unique keys in {file_count} files.\n")
 
-def update_other_lang_files():
-    """Add missing keys and remove unused keys in other language files"""
-    lang_files = ['de.json', 'es.json', 'fr.json', 'ja.json', 'ko.json', 'pt.json', 'ru.json', 'zh.json']
-
-    # Load en.json to get all current keys
+    # 2. Update en.json (Source of Truth)
     en_path = os.path.join(LANG_DIR, 'en.json')
     en_data = load_json(en_path)
 
-    total_added = 0
-    total_removed = 0
+    en_added = 0
+    en_removed = 0
 
-    for lang_file in lang_files:
-        lang_path = os.path.join(LANG_DIR, lang_file)
-        if not os.path.exists(lang_path):
-            print(f"⚠ {lang_file} not found, skipping...")
+    # Add missing keys
+    for key in code_keys:
+        if key not in en_data:
+            en_data[key] = key
+            en_added += 1
+            print(f"[en] Added: '{key}'")
+
+    # Remove unused keys
+    keys_to_remove = [k for k in en_data.keys() if k not in code_keys]
+    for key in keys_to_remove:
+        del en_data[key]
+        en_removed += 1
+        print(f"[en] Removed: '{key}'")
+
+    if en_added > 0 or en_removed > 0:
+        save_json(en_path, en_data)
+        print(f"✓ Updated en.json: +{en_added} / -{en_removed}\n")
+    else:
+        print("✓ en.json is up to date.\n")
+
+    # 3. Update other language files
+    lang_files = glob.glob(os.path.join(LANG_DIR, "*.json"))
+
+    for lang_path in lang_files:
+        filename = os.path.basename(lang_path)
+        if filename == 'en.json':
             continue
 
-        print(f"\nUpdating {lang_file}...")
-        data = load_json(lang_path)
+        print(f"Updating {filename}...")
+        lang_data = load_json(lang_path)
         added = 0
         removed = 0
 
-        # Add all missing keys from en.json
+        # Sync with en.json keys
+        # Add missing keys (use English as placeholder)
         for key in en_data.keys():
-            if key not in data:
-                # For non-English files, use the English value as placeholder
-                data[key] = en_data[key]
+            if key not in lang_data:
+                lang_data[key] = en_data[key] # Use English value
                 added += 1
-                print(f"  Added: '{key}'")
+                # print(f"  Added: '{key}'")
 
-        # Remove keys that are no longer in en.json
-        keys_to_remove = [k for k in data.keys() if k not in en_data]
+        # Remove keys not in en.json
+        keys_to_remove = [k for k in lang_data.keys() if k not in en_data]
         for key in keys_to_remove:
-            del data[key]
+            del lang_data[key]
             removed += 1
-            print(f"  Removed: '{key}'")
+            # print(f"  Removed: '{key}'")
 
         if added > 0 or removed > 0:
-            save_json(lang_path, data)
-            print(f"✓ Added {added} keys, removed {removed} keys in {lang_file}")
-            total_added += added
-            total_removed += removed
+            save_json(lang_path, lang_data)
+            print(f"✓ Updated {filename}: +{added} / -{removed}")
         else:
-            print(f"✓ No changes needed for {lang_file}")
+            print(f"✓ {filename} is up to date.")
 
-    return total_added, total_removed
-
-def main():
-    print("=== Translation File Update Script ===\n")
-
-    # Update en.json first
-    en_added, en_removed = update_en_json()
-
-    # Update other language files
-    print("\n" + "="*50)
-    other_added, other_removed = update_other_lang_files()
-
-    print("\n" + "="*50)
-    print("\n✓ Update complete!")
-    print(f"  - en.json: Added {en_added}, Removed {en_removed}")
-    print(f"  - Other files: Added {other_added}, Removed {other_removed}")
-    print("\nNote: Non-English translations use English as placeholder.")
-    print("Please review and translate them appropriately.")
+    print("\n=== Update Complete ===")
 
 if __name__ == "__main__":
     main()
