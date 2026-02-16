@@ -140,7 +140,8 @@ def test_filter_application_via_callback(slm):
     chunk_size = 1024
     for i in range(0, frames, chunk_size):
         chunk = indata_1k[i:i+chunk_size]
-        if len(chunk) < chunk_size: break
+        if len(chunk) < chunk_size:
+            break
         slm.callback(chunk, None, len(chunk), None, None)
 
     level_1k_db = slm.results["Lp"]
@@ -156,7 +157,8 @@ def test_filter_application_via_callback(slm):
 
     for i in range(0, frames, chunk_size):
         chunk = indata_100[i:i+chunk_size]
-        if len(chunk) < chunk_size: break
+        if len(chunk) < chunk_size:
+            break
         slm.callback(chunk, None, len(chunk), None, None)
 
     level_100_db = slm.results["Lp"]
