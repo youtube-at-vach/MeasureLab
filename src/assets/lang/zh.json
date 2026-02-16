@@ -1121,5 +1121,10 @@
     "ENOB: -- bits": "ENOB: -- 位",
     "Measure Bit Depth...": "测量位深度...",
     "Quantization Step (Delta) Distribution": "量化阶 (Delta) 分布",
-    "Time (Frames)": "时间 (帧)"
+    "Time (Frames)": "时间 (帧)",
+    "Inst": "瞬时",
+    "Cumul": "累积",
+    "Rate": "速率",
+    "Std Dev": "标准差",
+    "Lat": "延迟"
 }

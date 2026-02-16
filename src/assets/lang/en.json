@@ -1121,5 +1121,10 @@
     "Effective Bit Depth History": "Effective Bit Depth History",
     "Measure Bit Depth...": "Measure Bit Depth...",
     "Quantization Step (Delta) Distribution": "Quantization Step (Delta) Distribution",
-    "Time (Frames)": "Time (Frames)"
+    "Time (Frames)": "Time (Frames)",
+    "Inst": "Inst",
+    "Cumul": "Cumul",
+    "Rate": "Rate",
+    "Std Dev": "Std Dev",
+    "Lat": "Lat"
 }

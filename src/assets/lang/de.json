@@ -1121,5 +1121,10 @@
     "ENOB: -- bits": "ENOB: -- Bits",
     "Measure Bit Depth...": "Bittiefe messen...",
     "Quantization Step (Delta) Distribution": "Quantisierungsstufen-Verteilung (Delta)",
-    "Time (Frames)": "Zeit (Frames)"
+    "Time (Frames)": "Zeit (Frames)",
+    "Inst": "Inst",
+    "Cumul": "Kumul",
+    "Rate": "Rate",
+    "Std Dev": "Standardabw",
+    "Lat": "Lat"
 }
