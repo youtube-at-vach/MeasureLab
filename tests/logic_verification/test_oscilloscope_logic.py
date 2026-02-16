@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
-import importlib
 import numpy as np
 
 # -----------------------------------------------------------------------------
@@ -23,7 +22,10 @@ class MockAudioEngine:
         self.callbacks = {}
 
     def register_callback(self, callback):
-        return 1
+        # Allow capturing the callback for testing allocation/data flow
+        cid = len(self.callbacks)
+        self.callbacks[cid] = callback
+        return cid
 
     def unregister_callback(self, cid):
         pass
@@ -268,6 +270,98 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.assertEqual(meas['l_rms'], 0.0)
 
 
+class TestOscilloscopeAllocation(unittest.TestCase):
+    def setUp(self):
+        self.mock_engine = MockAudioEngine()
+        from src.gui.widgets.oscilloscope import Oscilloscope
+        self.osc = Oscilloscope(self.mock_engine)
+
+    def test_no_allocation_in_callback(self):
+        """
+        Verify that the Oscilloscope audio callback does not reallocate the input buffer
+        or transfer buffer, ensuring zero-allocation in the audio thread.
+        """
+        self.osc.start_analysis()
+
+        # Verify initial buffer IDs
+        initial_transfer_id = id(self.osc.transfer_buffer)
+
+        # Get the registered callback
+        # In this mock setup, we assume start_analysis calls register_callback
+        # We need to manually verify if callback was registered in mock
+        self.assertTrue(len(self.mock_engine.callbacks) > 0, "Callback should be registered")
+        cb = self.mock_engine.callbacks[0]
+
+        # Create dummy audio data
+        frames = 1024
+        indata = np.random.rand(frames, 2).astype(np.float32)
+        outdata = np.zeros_like(indata)
+
+        # Run callback multiple times
+        for _ in range(10):
+            cb(indata, outdata, frames, 0.0, None)
+
+            # Verify transfer buffer object hasn't changed (reallocation check)
+            self.assertEqual(id(self.osc.transfer_buffer), initial_transfer_id,
+                             "Transfer buffer should not be reallocated in callback")
+
+        # Verify that data was actually written to transfer buffer
+        # Write count should be 10 * 1024
+        self.assertEqual(self.osc.transfer_write_count, 10 * 1024)
+
+
+class TestOscilloscopeDataFlow(unittest.TestCase):
+    def setUp(self):
+        self.mock_engine = MockAudioEngine()
+        from src.gui.widgets.oscilloscope import Oscilloscope
+        self.osc = Oscilloscope(self.mock_engine)
+
+    def test_oscilloscope_queue_data_flow(self):
+        """
+        Verify that data flows from callback -> transfer_buffer -> process_queue -> input_data.
+        """
+        self.osc.start_analysis()
+
+        # Verify buffer is empty/reset
+        self.assertEqual(self.osc.transfer_write_count, 0)
+        self.assertEqual(self.osc.transfer_read_count, 0)
+
+        # Get the registered callback
+        self.assertTrue(len(self.mock_engine.callbacks) > 0)
+        cb = self.mock_engine.callbacks[0]
+
+        # Create test data
+        frames = 100
+        indata = np.ones((frames, 2), dtype=np.float32) * 0.5
+        outdata = np.zeros_like(indata)
+
+        # Call callback
+        cb(indata, outdata, frames, 0.0, None)
+
+        # Verify data is in transfer buffer
+        self.assertEqual(self.osc.transfer_write_count, 100)
+        self.assertEqual(self.osc.transfer_read_count, 0)
+
+        # Check data content in transfer buffer
+        # transfer_buffer is large, we check the first 100 samples
+        self.assertTrue(np.allclose(self.osc.transfer_buffer[0:100], 0.5))
+
+        # Verify input_data is still zero (before process_queue)
+        self.assertTrue(np.all(self.osc.input_data == 0))
+
+        # Call process_queue
+        self.osc.process_queue()
+
+        # Verify transfer buffer is read
+        self.assertEqual(self.osc.transfer_read_count, 100)
+
+        # Verify input_data has data
+        self.assertEqual(self.osc.write_index, 100)
+        self.assertTrue(np.allclose(self.osc.input_data[0:100], 0.5))
+        # The rest should be 0
+        self.assertTrue(np.all(self.osc.input_data[100:] == 0))
+
+
 class TestOscilloscopeWidgetLogic(unittest.TestCase):
     """Tests for OscilloscopeWidget logic (UI interactions) using mocks."""
 
@@ -297,21 +391,21 @@ class TestOscilloscopeWidgetLogic(unittest.TestCase):
 
         # Reload module
         if "src.gui.widgets.oscilloscope" in sys.modules:
-            importlib.reload(sys.modules["src.gui.widgets.oscilloscope"])
-        else:
-            importlib.import_module("src.gui.widgets.oscilloscope")
+            del sys.modules["src.gui.widgets.oscilloscope"]
 
-        self.osc_module = sys.modules["src.gui.widgets.oscilloscope"]
+        # We don't import here, we let test methods import to trigger mocks
 
     def tearDown(self):
         self.patcher.stop()
 
     def test_slider_sync(self):
+        from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget
+
         # Setup
         mock_audio_engine = MagicMock()
         mock_audio_engine.calibration.input_sensitivity = 1.0
-        oscilloscope = self.osc_module.Oscilloscope(mock_audio_engine)
-        widget = self.osc_module.OscilloscopeWidget(oscilloscope)
+        oscilloscope = Oscilloscope(mock_audio_engine)
+        widget = OscilloscopeWidget(oscilloscope)
 
         # Test Timebase Slider -> Combo
         keys = widget.timebase_keys
@@ -323,13 +417,15 @@ class TestOscilloscopeWidgetLogic(unittest.TestCase):
         widget.timebase_combo.setCurrentText.assert_called_with(target_key)
 
     def test_persistence_rect_update(self):
+        from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget
+
         # Setup
         mock_audio_engine = MagicMock()
         mock_audio_engine.sample_rate = 48000
         mock_audio_engine.calibration.input_sensitivity = 1.0
 
-        oscilloscope = self.osc_module.Oscilloscope(mock_audio_engine)
-        widget = self.osc_module.OscilloscopeWidget(oscilloscope)
+        oscilloscope = Oscilloscope(mock_audio_engine)
+        widget = OscilloscopeWidget(oscilloscope)
 
         # Configure mocks to prevent crashes
         widget.cursor_1.value.return_value = 0.0
