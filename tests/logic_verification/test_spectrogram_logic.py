@@ -10,8 +10,8 @@ sys.modules['sounddevice'] = MagicMock()
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker
-from src.core.fft_manager import WARMUP_SIZES
+from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker  # noqa: E402
+from src.core.fft_manager import WARMUP_SIZES  # noqa: E402
 
 # Shared Mock AudioEngine
 class MockAudioEngine:
@@ -255,7 +255,7 @@ class TestSpectrogramOptimization(unittest.TestCase):
 
         audio_engine = MockAudioEngine()
         module = Spectrogram(audio_engine)
-        widget = SpectrogramWidget(module)
+        _ = SpectrogramWidget(module)
 
         module.start_analysis()
 
