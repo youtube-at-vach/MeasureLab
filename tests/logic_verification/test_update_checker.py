@@ -29,7 +29,7 @@ mock_pyqt_core.QCoreApplication = MagicMock()
 import src.core.update_checker  # noqa: E402
 importlib.reload(src.core.update_checker)
 from src.core.update_checker import UpdateChecker  # noqa: E402
-from src.core.constants import UPDATE_CHECK_URL
+from src.core.constants import UPDATE_CHECK_URL  # noqa: E402
 
 class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
