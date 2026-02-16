@@ -4,6 +4,7 @@ import urllib.request
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from src.core.constants import UPDATE_CHECK_URL
 from src.core.version import __version__
 
 
@@ -16,7 +17,7 @@ class UpdateChecker(QThread):
 
     def run(self):
         try:
-            url = "https://api.github.com/repos/youtube-at-vach/MeasureLab/releases/latest"
+            url = UPDATE_CHECK_URL
 
             req = urllib.request.Request(url)
             req.add_header("User-Agent", f"MeasureLab/{__version__}")
