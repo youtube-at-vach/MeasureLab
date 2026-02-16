@@ -163,12 +163,18 @@ class SoundLevelMeter(MeasurementModule):
 
         # Ensure upper freq is below Nyquist
         nyquist = sr / 2.0
+
+        # Design separately to avoid wide-bandpass issues
+        # Highpass 20Hz (Always apply)
+        sos_hp = scipy.signal.butter(4, 20, btype="highpass", fs=sr, output="sos")
+
         if upper_freq >= nyquist * 0.95:
-            # Just Highpass 20Hz
-            self.bw_filter = scipy.signal.butter(4, 20, btype="highpass", fs=sr, output="sos")
+            # Just Highpass
+            self.bw_filter = sos_hp
         else:
-            # Bandpass 20 - upper
-            self.bw_filter = scipy.signal.butter(4, [20, upper_freq], btype="bandpass", fs=sr, output="sos")
+            # Highpass + Lowpass cascade
+            sos_lp = scipy.signal.butter(4, upper_freq, btype="lowpass", fs=sr, output="sos")
+            self.bw_filter = np.vstack((sos_hp, sos_lp))
 
         self.bw_filter_state = np.zeros((self.bw_filter.shape[0], 2))
 
@@ -176,33 +182,23 @@ class SoundLevelMeter(MeasurementModule):
             self.sos_filter = None
             self.filter_state = None
         elif self.freq_weighting == "A":
-            # A-weighting design (approximate) via bilinear transform or standard library if available.
-            # Using scipy.signal.bilinear_zpk or similar if we had analog poles/zeros.
-            # Using a standard approximation function here.
             self.sos_filter = self._design_a_weighting(sr)
             self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
         elif self.freq_weighting == "C":
             self.sos_filter = self._design_c_weighting(sr)
             self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
 
+    def _prewarp(self, f, fs):
+        """Pre-warp analog frequency for bilinear transform."""
+        return (fs / np.pi) * np.tan(np.pi * f / fs)
+
     def _design_a_weighting(self, fs):
-        """Design A-weighting filter."""
-        # Constants for A-weighting
-        f1 = 20.598997
-        f2 = 107.65265
-        f3 = 737.86223
-        f4 = 12194.217
-
-        np.convolve(
-            np.poly([-2 * np.pi * f4, -2 * np.pi * f4]),
-            np.convolve(np.poly([-2 * np.pi * f1, -2 * np.pi * f1]), np.poly([-2 * np.pi * f2, -2 * np.pi * f3])),
-        )
-
-        # Gain at 1 kHz should be 0 dB.
-        # Analog generic formulation. Converting to digital SOS.
-        # Simplify: Use scipy's generic filter design tools if possible, or predefined coefficients.
-        # For robustness and "good enough" accuracy, let's use the 'ABC_weighting' library logic logic or standard implementation.
-        # Here is a standard implementation using scipy.signal.zpk2sos and bilinear.
+        """Design A-weighting filter with pre-warping."""
+        # Constants for A-weighting (Analog)
+        f1 = self._prewarp(20.598997, fs)
+        f2 = self._prewarp(107.65265, fs)
+        f3 = self._prewarp(737.86223, fs)
+        f4 = self._prewarp(12194.217, fs)
 
         # Analog poles and zeros
         # z: 0, 0, 0, 0 (s-plane zeros at 0)
@@ -211,27 +207,23 @@ class SoundLevelMeter(MeasurementModule):
         pi = np.pi
         z = [0, 0, 0, 0]
         p = [-2 * pi * f1, -2 * pi * f1, -2 * pi * f2, -2 * pi * f3, -2 * pi * f4, -2 * pi * f4]
-        k = 1.0  # normalize later
-
-        # Normalize to 0dB at 1000Hz
-        # Filter response H(s). |H(j*2*pi*1000)| = 1 (0dB) ideally?
-        # Actually standard definition constants usually result in unity gain at passband tip, but let's normalize strictly at 1k.
+        k = 1.0
 
         # Convert to discrete
         zd, pd, kd = scipy.signal.bilinear_zpk(z, p, k, fs)
         sos = scipy.signal.zpk2sos(zd, pd, kd)
 
-        # Frequency response check at 1kHz
+        # Normalize at 1kHz (using actual digital frequency)
         w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
         gain_1k = np.abs(h[0])
-        sos[0, :3] /= gain_1k  # Normalization
+        sos[0, :3] /= gain_1k
 
         return sos
 
     def _design_c_weighting(self, fs):
-        """Design C-weighting filter."""
-        f1 = 20.598997
-        f4 = 12194.217
+        """Design C-weighting filter with pre-warping."""
+        f1 = self._prewarp(20.598997, fs)
+        f4 = self._prewarp(12194.217, fs)
 
         pi = np.pi
         z = [0, 0]
