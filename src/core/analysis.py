@@ -930,7 +930,10 @@ class AudioCalc:
 
             # Integration: Power = sum(PSD * bin_width)
             # mag is V/rtHz. mag_sq is V^2/Hz (PSD).
-            power = np.sum(mag_sq[idx_start:idx_end]) * bin_width
+            if np.ndim(bin_width) == 0:
+                power = np.sum(mag_sq[idx_start:idx_end]) * bin_width
+            else:
+                power = np.sum(mag_sq[idx_start:idx_end] * bin_width[idx_start:idx_end])
             return power
 
         p50 = get_power_in_band(50.0)
@@ -1077,7 +1080,11 @@ class AudioCalc:
             if idx_start >= idx_end:
                 return 0.0
             # bin_width is pre-calculated
-            return np.sqrt(np.sum(mag_sq[idx_start:idx_end]) * bin_width)
+            if np.ndim(bin_width) == 0:
+                power = np.sum(mag_sq[idx_start:idx_end]) * bin_width
+            else:
+                power = np.sum(mag_sq[idx_start:idx_end] * bin_width[idx_start:idx_end])
+            return np.sqrt(power)
 
         rms_20k = integrate_band(20, 20000)
         rms_100k = integrate_band(20, 100000)
@@ -1131,7 +1138,11 @@ class AudioCalc:
         # Power = sum(PSD * Weight^2 * bin_width)
         # Avoid allocating full weighted magnitude array
         weighted_power_slice = mag_sq[i_a_start:i_a_end] * weighting_sq[i_a_start:i_a_end]
-        power_a = np.sum(weighted_power_slice) * bin_width
+
+        if np.ndim(bin_width) == 0:
+            power_a = np.sum(weighted_power_slice) * bin_width
+        else:
+            power_a = np.sum(weighted_power_slice * bin_width[i_a_start:i_a_end])
 
         return np.sqrt(power_a)
 
@@ -1185,7 +1196,16 @@ class AudioCalc:
 
         # Pre-calculate squared magnitude and bin width
         mag_sq = mag**2
-        bin_width = freq_step if is_linear_freqs else (freqs[1] - freqs[0] if len(freqs) > 1 else 1.0)
+        if is_linear_freqs:
+            bin_width = freq_step
+        else:
+            # Calculate variable bin widths for log/arbitrary scale
+            if len(freqs) > 1:
+                # Use forward difference, append last
+                diffs = np.diff(freqs)
+                bin_width = np.append(diffs, diffs[-1])
+            else:
+                bin_width = 1.0
 
         # 1. Hum Noise Detection (50Hz vs 60Hz)
         hum_rms, hum_freq, hum_components = AudioCalc._calculate_hum_noise(
