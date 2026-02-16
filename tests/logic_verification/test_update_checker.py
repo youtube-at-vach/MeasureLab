@@ -29,6 +29,7 @@ mock_pyqt_core.QCoreApplication = MagicMock()
 import src.core.update_checker  # noqa: E402
 importlib.reload(src.core.update_checker)
 from src.core.update_checker import UpdateChecker  # noqa: E402
+from src.core.constants import UPDATE_CHECK_URL
 
 class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
@@ -59,6 +60,11 @@ class TestUpdateChecker(unittest.TestCase):
 
         # Run synchronous for testing
         checker.run()
+
+        # Verify URL usage
+        args, _ = mock_urlopen.call_args
+        request_obj = args[0]
+        self.assertEqual(request_obj.full_url, UPDATE_CHECK_URL)
 
         checker.update_available.emit.assert_called_with("v9.9.9")
 

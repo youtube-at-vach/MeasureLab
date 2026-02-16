@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, QTimer, QUrl
 from PyQt6.QtGui import QDesktopServices, QFont, QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from src.core.constants import RELEASE_PAGE_URL_TEMPLATE
 from src.core.localization import tr
 from src.core.update_checker import UpdateChecker
 from src.core.utils import resource_path
@@ -26,7 +27,7 @@ class WelcomeWidget(QWidget):
         self.update_label.setText(tr("⬆︎Update available: {0}").format(new_version))
         self.update_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.update_label.show()
-        self.new_version_url = f"https://github.com/youtube-at-vach/MeasureLab/releases/tag/{new_version}"
+        self.new_version_url = RELEASE_PAGE_URL_TEMPLATE.format(tag=new_version)
 
     def init_ui(self):
         layout = QVBoxLayout()
