@@ -48,26 +48,14 @@ class TestIMDAnalysis(unittest.TestCase):
         amp_f2 = 0.2
 
         # Inject sidebands at f2 +/- f1
-        # Amplitude of sidebands relative to f2 amplitude determines IMD %
-        # Let's target 1% IMD.
-        # IMD = sqrt(sum(sidebands^2)) / amp_f2
-        # If we have two sidebands with same amplitude 'A_sb':
-        # IMD = sqrt(2 * A_sb^2) / amp_f2 = A_sb * sqrt(2) / amp_f2
-        # We want IMD = 0.01 (1%).
-        # 0.01 = A_sb * 1.414 / 0.2
-        # A_sb = 0.01 * 0.2 / 1.414 = 0.001414...
-
         target_imd_percent = 1.0
         target_imd = target_imd_percent / 100.0
 
-        # Solve for sideband amplitude
-        # target_imd = sqrt(2 * A_sb^2) / amp_f2
-        # target_imd * amp_f2 = A_sb * sqrt(2)
+        # Solve for sideband amplitude to achieve exactly 1% IMD
+        # IMD = sqrt(sum(sidebands^2)) / amp_f2
         # A_sb = (target_imd * amp_f2) / np.sqrt(2)
-
         A_sb = (target_imd * amp_f2) / np.sqrt(2)
 
-        # Construct signal
         signal = amp_f1 * np.sin(2 * np.pi * f1 * self.t) + \
                  amp_f2 * np.sin(2 * np.pi * f2 * self.t) + \
                  A_sb * np.sin(2 * np.pi * (f2 - f1) * self.t) + \
@@ -79,17 +67,38 @@ class TestIMDAnalysis(unittest.TestCase):
 
         # Verify result is close to 1%
         self.assertAlmostEqual(result['imd'], target_imd_percent, delta=0.05)
-
-        # Verify dB value: 20 * log10(0.01) = -40 dB
         self.assertAlmostEqual(result['imd_db'], -40.0, delta=0.5)
 
     def test_calculate_imd_smpte_no_signal(self):
         """Test SMPTE IMD calculation with silence."""
         signal = np.zeros_like(self.t)
         mag = self._get_mag(signal)
-
-        # Using standard f1, f2
         result = AudioCalc.calculate_imd_smpte(mag, self.freqs, 60.0, 7000.0)
-
         self.assertEqual(result['imd'], 0.0)
         self.assertEqual(result['imd_db'], -100.0)
+
+    def test_calculate_imd_ccif(self):
+        """Test CCIF IMD Calculation logic (from manual check)."""
+        # CCIF: 19kHz and 20kHz, 1:1 amplitude
+        f1 = 19000.0
+        f2 = 20000.0
+        amp = 0.25
+
+        # Generate Clean Signal
+        signal = amp * np.sin(2 * np.pi * f1 * self.t) + \
+                 amp * np.sin(2 * np.pi * f2 * self.t)
+
+        # Add IMD product (d2 = f2-f1 = 1kHz)
+        # 1% of total amplitude (sum of carriers = 0.5)
+        # Note: manual check used: imd_amp = (amp + amp) * 0.01 = 0.5 * 0.01 = 0.005
+        imd_amp = (amp + amp) * 0.01
+        signal += imd_amp * np.sin(2 * np.pi * (f2 - f1) * self.t)
+
+        mag = self._get_mag(signal)
+
+        res = AudioCalc.calculate_imd_ccif(mag, self.freqs, f1, f2)
+
+        # Assertions
+        # Expected ~1.0%
+        # AudioCalc.calculate_imd_ccif likely calculates ratio of d2 to sum of carriers (or similar standard)
+        self.assertAlmostEqual(res['imd'], 1.0, delta=0.1)
