@@ -27,6 +27,9 @@ env/
 # MyPy / Pyright
 .mypy_cache/
 .pyright/
+.pytest_cache/
+.ruff_cache/
+.coverage
 
 # VSCode settings
 .vscode/
