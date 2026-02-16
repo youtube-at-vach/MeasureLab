@@ -40,7 +40,7 @@ Selects the input and output devices. Previous settings have been split into tab
     * **Input Device**: Selects the input device with a measurement microphone, etc., connected.
     * **Output Device**: Selects the output device with speakers, etc., connected.
     * **Refresh Devices**: Updates the device list. This is disabled when JACK is running on Linux for safety.
-    * **Measure Bit Depth...**: Opens a dialog to measure and visualize the Effective Number of Bits (ENOB) and quantization noise characteristics of the audio device. Useful for verifying the actual bit depth based on real measurements.
+    * **Measure Bit Depth...**: Opens a dialog to measure and visualize the Effective Number of Bits (ENOB) and quantization noise characteristics of the audio device. Click "Start Analysis" to begin the measurement. Useful for verifying the actual bit depth based on real measurements.
         * **Effective Bit Depth History**: Displays the time series of ENOB (Effective Number of Bits).
         * **Bit Activity (LSB to MSB)**: Visualizes the activity of each bit (from LSB to MSB) as a heatmap. Useful for detecting stuck bits.
         * **Quantization Step (Delta) Distribution**: Displays the distribution of quantization steps (differences between adjacent samples).
