@@ -16,19 +16,6 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 
 ---
 
-## No Audio Interface? (Virtual Mode)
-
-If you don't have an audio interface or want to analyze existing audio files without any hardware, you can use the **Virtual / Offline Mode**.
-
-1. Go to **Settings** > **Audio Configuration**.
-2. Check the **Virtual / Offline Mode** option.
-3. Use the **Simulation Rate** to set your desired sampling rate.
-    * When analyzing high-quality audio files (e.g., 24-bit/192kHz), setting the Simulation Rate to match the file's rate ensures analysis without degradation from downsampling.
-
-In this mode, you can load audio files into the **Player** widget or generate signals internally, and analyzed results will appear in the analyzer widgets just like real hardware.
-
----
-
 ## Starting the Software
 
 MeasureLab works on Windows and Linux.
@@ -56,7 +43,7 @@ Please download the latest version for your OS from the [Releases](https://githu
    ```
 
 !!! important
-    **Note for the first launch: FFT Optimization (WISDOM)**
+    **Note for the first launch: FFT Optimization ([WISDOM](glossary.en.md#fft-wisdom-initial-optimization))**
 
     On the first launch, preparation (WISDOM generation) is performed to speed up measurement calculations.
     - **The screen may appear to be frozen for several tens of seconds, but it is not a malfunction.** Heavy calculations are being performed in the background.
@@ -137,6 +124,19 @@ After the settings are finished, let's actually output sound and look at the gra
 1. Open **Spectrum Analyzer** from the left menu.
 2. Increase the input gain of the interface and confirm that a **"sharp peak at 1000Hz"** appears on the screen.
 3. **If you see the peak, it's a success!** Your PC has now started to function as a proper measurement instrument.
+
+---
+
+## No Audio Interface? (Virtual Mode)
+
+If you don't have an audio interface or want to analyze existing audio files without any hardware, you can use the **Virtual / Offline Mode**.
+
+1. Go to **Settings** (gear icon) > **Audio** tab > **Driver** section.
+2. Check the **Virtual / Offline Mode** option.
+3. Use the **Simulation Rate** to set your desired sampling rate.
+    * When analyzing high-quality audio files (e.g., 24-bit/192kHz), setting the Simulation Rate to match the file's rate ensures analysis without degradation from downsampling.
+
+In this mode, you can load audio files into the **Player** widget or generate signals internally, and analyzed results will appear in the analyzer widgets just like real hardware.
 
 ---
 

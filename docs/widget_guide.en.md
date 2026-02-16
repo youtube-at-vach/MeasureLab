@@ -4,7 +4,7 @@ Introduce numerous widgets included in MeasureLab, categorized by purpose.
 
 ---
 
-## 🔍 Quick Search Guide
+## 🔍 Quick Search Guide {: #quick-search-guide }
 
 Checklist to find the best tool for "what you want to do" quickly.
 

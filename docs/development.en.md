@@ -1,0 +1,70 @@
+# Development Guide
+
+Instructions for running from source code and setting up the development environment.
+
+## 🐍 Running from Source Code
+
+**Prerequisites**: Python 3.12 or higher
+
+### Linux / Ubuntu (Recommended): Run in a Virtual Environment (venv)
+
+While the release versions (AppImage/ZIP) work as is, when running from source code, **APT (OS package) Python dependencies (e.g., PyQt6) might be too old to work**.
+Therefore, on Linux, it is recommended to **use the system Python but install dependent packages using venv + pip**.
+
+1. Install OS dependent libraries (minimum requirements).
+    - `sounddevice` uses PortAudio, so `libportaudio2` is required at runtime.
+    - `soundfile` uses libsndfile, so `libsndfile1` is required at runtime.
+
+    ```bash
+    sudo apt update
+    sudo apt install -y python3 python3-venv python3-pip libportaudio2 libsndfile1
+    ```
+
+    Only if you encounter build errors with `pip install`, install additional development headers:
+
+    ```bash
+    sudo apt install -y build-essential portaudio19-dev libsndfile1-dev
+    ```
+
+2. Create and activate a virtual environment (e.g., `.venv` under the repository root).
+
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    python -m pip install -U pip
+    ```
+
+    From here on, `python` / `pip` refer to the venv (do not use `sudo pip`).
+
+    - If you want to run without using `activate`, you can always call the venv Python directly:
+
+    ```bash
+    ./.venv/bin/python -m pip install -U pip
+    ./.venv/bin/python -m pip install -c constraints.txt -r requirements.txt
+    ./.venv/bin/python main_gui.py
+    ```
+
+3. Clone the repository.
+4. Install dependencies (use constraints for reproducibility):
+
+    ```bash
+    pip install -c constraints.txt -r requirements.txt
+    ```
+
+5. Launch the application:
+
+    ```bash
+    python main_gui.py
+    ```
+
+### 🛠️ Development Setup
+
+If you want to run tests or Lint/type checks, install development tools as well.
+
+```bash
+pip install -c constraints.txt -e .[dev]
+```
+
+- Lint: `ruff check src scripts tests`
+- Type check: `mypy src`
+- Tests: `pytest` (Hardware/GUI dependent tests require environment variables; skipped by default in CI)
