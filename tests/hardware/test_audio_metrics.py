@@ -113,7 +113,7 @@ class TestAudioHardwareMetrics:
         # AudioCalc analysis usually handles some drift, but let's just return raw for now.
         return recorded
 
-    @pytest.mark.hardware_quick
+
     def test_thdn_1khz(self, record_property):
         """
         Quick THD+N check at 1kHz.
@@ -156,7 +156,7 @@ class TestAudioHardwareMetrics:
         assert thdn_db < -10.0, f"THD+N too high: {thdn_db:.2f} dB (Validation check)"
 
 
-    @pytest.mark.hardware_full
+
     def test_imd_smpte(self, record_property):
         """
         SMPTE IMD Measurement (60Hz / 7kHz, 4:1).

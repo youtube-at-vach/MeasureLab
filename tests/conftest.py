@@ -49,7 +49,8 @@ def pytest_addoption(parser):
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--hardware"):
         # --hardware given: skip everything EXCEPT hardware tests
-        skip_non_hardware = pytest.mark.skip(reason="skipping non-hardware tests because --hardware is set")
+        # This ensuring that non-hardware benchmarks are also skipped
+        skip_non_hardware = pytest.mark.skip(reason="skipping non-hardware tests/benchmarks because --hardware is set")
         for item in items:
             if not item.get_closest_marker("hardware"):
                 item.add_marker(skip_non_hardware)
