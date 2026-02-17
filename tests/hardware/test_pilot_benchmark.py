@@ -26,7 +26,7 @@ class TestPilotHardwareBenchmark:
         with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    def test_hardware_measurement_loop(self):
+    def test_hardware_measurement_loop(self, record_property):
         """
         A pilot hardware measurement loop.
         
@@ -86,7 +86,9 @@ class TestPilotHardwareBenchmark:
         # Assertions
         assert callback_data["frames_processed"] > 0, "No frames were processed during the test"
         
-        print(f"\nBenchmark Result:")
-        print(f"  Frames Processed: {callback_data['frames_processed']}")
-        print(f"  Max Amplitude: {callback_data['max_amplitude']:.6f}")
-        print(f"  CPU Load: {self.engine.stream.cpu_load if self.engine.stream else 'N/A'}")
+        # Record properties for JSON report instead of printing
+        cpu_load = self.engine.stream.cpu_load if self.engine.stream else 'N/A'
+        
+        record_property("frames_processed", callback_data["frames_processed"])
+        record_property("max_amplitude", callback_data["max_amplitude"])
+        record_property("cpu_load", cpu_load)

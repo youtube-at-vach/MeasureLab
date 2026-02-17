@@ -1,0 +1,45 @@
+{
+    "created": 1771294970.4919171,
+    "duration": 0.20860528945922852,
+    "exitcode": 0,
+    "root": "/home/hotstaff/github-vach/MeasureLab",
+    "environment": {},
+    "summary": {
+        "total": 0,
+        "collected": 1
+    },
+    "collectors": [
+        {
+            "nodeid": "",
+            "outcome": "passed",
+            "result": [
+                {
+                    "nodeid": "tests/hardware/test_pilot_benchmark.py",
+                    "type": "Module"
+                }
+            ]
+        },
+        {
+            "nodeid": "tests/hardware/test_pilot_benchmark.py::TestPilotHardwareBenchmark",
+            "outcome": "passed",
+            "result": [
+                {
+                    "nodeid": "tests/hardware/test_pilot_benchmark.py::TestPilotHardwareBenchmark::test_hardware_measurement_loop",
+                    "type": "Function",
+                    "lineno": 28
+                }
+            ]
+        },
+        {
+            "nodeid": "tests/hardware/test_pilot_benchmark.py",
+            "outcome": "passed",
+            "result": [
+                {
+                    "nodeid": "tests/hardware/test_pilot_benchmark.py::TestPilotHardwareBenchmark",
+                    "type": "Class"
+                }
+            ]
+        }
+    ],
+    "tests": []
+}
