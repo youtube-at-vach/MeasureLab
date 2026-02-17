@@ -34,3 +34,29 @@ def cleanup_test_config():
     yield
     if os.path.exists("test_config.json"):
         os.remove("test_config.json")
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--hardware",
+        action="store_true",
+        default=False,
+        help="run hardware benchmark tests (requires physical hardware)",
+    )
+
+
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--hardware"):
+        # --hardware given: skip everything EXCEPT hardware tests
+        skip_non_hardware = pytest.mark.skip(reason="skipping non-hardware tests because --hardware is set")
+        for item in items:
+            if not item.get_closest_marker("hardware"):
+                item.add_marker(skip_non_hardware)
+        return
+
+    # --hardware NOT given: skip hardware tests
+    skip_hardware = pytest.mark.skip(reason="need --hardware option to run")
+    for item in items:
+        if item.get_closest_marker("hardware"):
+            item.add_marker(skip_hardware)
