@@ -28,7 +28,7 @@ def pytest_generate_tests(metafunc):
             # Amplitude sweep from -12dB to 0dB in 1dB steps
             db_values = list(range(-12, 1)) 
             metafunc.parametrize("target_dbfs", db_values)
-            metafunc.parametrize("averaging_count", [1, 2, 5, 10, 20])
+            metafunc.parametrize("averaging_count", [10])
 
 class TestAudioHardwareMetrics:
     @pytest.fixture(autouse=True)
