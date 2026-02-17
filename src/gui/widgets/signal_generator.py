@@ -123,6 +123,8 @@ class SignalParameters:
 
 
 class SignalGenerator(MeasurementModule):
+    BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "burst", "prbs"]
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
 
@@ -796,6 +798,18 @@ class SignalGenerator(MeasurementModule):
                 self.callback_id = None
             self.is_playing = False
 
+    def update_waveform(self, params: SignalParameters, waveform: str, sample_rate: float):
+        """Updates the waveform type and regenerates/clears buffer if needed."""
+        params.waveform = waveform
+
+        # Check if new waveform uses buffer
+        if waveform in self.BUFFERED_WAVEFORMS:
+            self._prepare_buffer(params, sample_rate)
+        else:
+            # Clear buffer so that standard generation logic is used
+            params._buffer = None
+            params._buffer_index = 0
+
 
 class SignalGeneratorWidget(QWidget):
     def __init__(self, module: SignalGenerator):
@@ -820,13 +834,20 @@ class SignalGeneratorWidget(QWidget):
     def _apply_waveform_key(self, key: str, *, update_params: bool):
         # Map UI selection to internal params
         if update_params:
+            sample_rate = self.module.audio_engine.sample_rate
+            target_waveform = key
+
             if key == "burst_windowed":
-                self.update_param("waveform", "burst")
-                self.update_param("burst_windowed", True)
-            else:
-                self.update_param("waveform", key)
-                if key == "burst":
-                    self.update_param("burst_windowed", False)
+                target_waveform = "burst"
+
+            for params in self.get_active_params_list():
+                # Set auxiliary flags first because update_waveform/prepare_buffer might use them
+                if key == "burst_windowed":
+                    params.burst_windowed = True
+                elif key == "burst":
+                    params.burst_windowed = False
+
+                self.module.update_waveform(params, target_waveform, sample_rate)
 
         # Dynamic widgets
         self.noise_widget.hide()
