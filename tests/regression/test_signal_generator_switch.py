@@ -10,7 +10,7 @@ sys.modules['sounddevice'] = MagicMock()
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from src.gui.widgets.signal_generator import SignalGenerator
+from src.gui.widgets.signal_generator import SignalGenerator  # noqa: E402
 
 class TestSignalGeneratorBug(unittest.TestCase):
     def setUp(self):
