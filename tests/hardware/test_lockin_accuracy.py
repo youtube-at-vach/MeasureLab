@@ -22,7 +22,8 @@ class TestLockinAccuracy:
             self.engine.stop_stream()
 
     @pytest.mark.parametrize("buffer_size", [4096, 16384, 65536, 131072])
-    def test_lockin_stability(self, buffer_size, record_property):
+    @pytest.mark.parametrize("averaging_count", [1, 10, 50])
+    def test_lockin_stability(self, buffer_size, averaging_count, record_property):
         """
         Measures stability of 1kHz signal measurement across different buffer sizes
         using the actual LockInAmplifier widget logic.
@@ -50,20 +51,21 @@ class TestLockinAccuracy:
         self.lockin.output_channel = 0
         
         # Disable post-processing for raw stability test
-        self.lockin.averaging_count = 1
+        self.lockin.averaging_count = averaging_count
         self.lockin.postmix_lpf_order = 0
         
         # Start Analysis (Hardware + Logic)
         self.lockin.start_analysis()
         
-        # Wait for initial settling (at least 2 buffer periods)
+        # Wait for initial settling (fill buffer + averaging history)
         buffer_duration = buffer_size / sr
-        initial_wait = max(0.5, buffer_duration * 3.0)
+        # Wait for at least averaging_count buffers to fill the history deque, plus margin
+        initial_wait = max(0.5, buffer_duration * (averaging_count + 2.0))
         time.sleep(initial_wait)
         
         measured_magnitudes = []
         
-        print(f"\nTesting Buffer Size: {buffer_size}")
+        print(f"\nTesting Buffer Size: {buffer_size}, Averaging: {averaging_count}")
         
         for i in range(iterations):
             # Wait for next buffer update (plus margin)
@@ -97,6 +99,7 @@ class TestLockinAccuracy:
         # Log properties
         record_property("test_type", "Lock-in Accuracy (Widget Logic)")
         record_property("buffer_size", buffer_size)
+        record_property("averaging_count", averaging_count)
         record_property("iterations", iterations)
         record_property("mean_rms", mean_val)
         record_property("std_dev", std_val)
@@ -109,7 +112,3 @@ class TestLockinAccuracy:
         
         # Basic sanity check
         assert mean_val > 0.001, "Signal too weak or not measured"
-        
-        # With real hardware logic, stability should be decent.
-        # Check against reasonable threshold for loopback
-        # assert rsd_ppm < 1000.0, f"Instability too high: {rsd_ppm:.2f} ppm"
