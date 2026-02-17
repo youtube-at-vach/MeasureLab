@@ -1,14 +1,16 @@
-
 import unittest
 import numpy as np
 import sys
+import os
 from unittest.mock import MagicMock
 
 # Mock sounddevice before importing anything that uses it
 sys.modules['sounddevice'] = MagicMock()
 
-# Import SignalGenerator
-from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
+# Add src to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+from src.gui.widgets.signal_generator import SignalGenerator
 
 class TestSignalGeneratorBug(unittest.TestCase):
     def setUp(self):
@@ -46,22 +48,12 @@ class TestSignalGeneratorBug(unittest.TestCase):
         callback(None, outdata, frames, None, None)
 
         # Expected: Noise (random)
-        # Actual (Bug): Silence (because buffer is None) OR Sine (if logic falls through)
 
         # Check if silent
         is_silent = np.all(outdata[:, 0] == 0)
-        print(f"Output silent: {is_silent}")
-
-        # If it falls through to standard waveforms, it might produce silence because
-        # _generate_wave_from_phase doesn't handle 'noise'.
-        # Let's see what happens.
 
         # If it's silent, that's a bug (user expects noise).
-
         self.assertFalse(is_silent, "Output should not be silent after switching to Noise")
-        # Variance of sine (0.5 amp) is 0.5^2 / 2 = 0.125
-        # Variance of noise (0.5 amp) depends on noise type, but check zero crossings or similar?
-        # Simple check: if it's sine, it's deterministic.
 
     def test_waveform_change_during_playback_noise_to_sine(self):
         # 1. Start with Noise
@@ -89,16 +81,7 @@ class TestSignalGeneratorBug(unittest.TestCase):
         callback(None, outdata, frames, None, None)
 
         # Expected: Sine
-        # Actual (Bug): Noise (because _buffer is not None, it takes precedence)
-
         # Check if buffer is still being used
-        # If buffer is used, values will match buffer values (looping)
-        # If sine is used, it will match calculated sine
-
-        t = np.arange(frames) / 48000
-        expected_sine = 0.5 * np.sin(2 * np.pi * 1000 * t) # Phase 0 for simplicity (though continuous phase might differ)
-
-        # Since phase is continuous and reset at start, checking exact match is hard.
 
         # Easy check: if _buffer is None, buffer is cleared.
         self.assertIsNone(self.sg.params_L._buffer, "Buffer should be cleared after switching to Sine")
