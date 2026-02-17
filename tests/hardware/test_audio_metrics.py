@@ -118,7 +118,7 @@ class TestAudioHardwareMetrics:
         """
         THD+N check with matrix testing support.
         """
-        sr = 48000
+        sr = 192000
         
         # Calculate Bin Center Frequency
         # self.analyzer.buffer_size is 16384 by default
@@ -189,7 +189,7 @@ class TestAudioHardwareMetrics:
         """
         SMPTE IMD Measurement with matrix testing.
         """
-        sr = 48000
+        sr = 192000
         
         self.engine.set_sample_rate(sr)
         
