@@ -42,6 +42,13 @@ def pytest_addoption(parser):
         default=False,
         help="run hardware benchmark tests (requires physical hardware)",
     )
+    parser.addoption(
+        "--hardware-mode",
+        action="store",
+        default="typical",
+        choices=["typical", "limit"],
+        help="hardware test mode: typical (fixed params) or limit (matrix test)",
+    )
 
 
 

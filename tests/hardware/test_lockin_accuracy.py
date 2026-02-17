@@ -7,6 +7,26 @@ from src.gui.widgets.lock_in_amplifier import LockInAmplifier
 # Mark entire module as hardware tests
 pytestmark = pytest.mark.hardware
 
+
+def pytest_generate_tests(metafunc):
+    """
+    Generate test cases based on --hardware-mode option.
+    'typical': Run a single representative case (Buffer 16384, Avg 10).
+    'limit': Run the full matrix of buffer sizes and averaging counts to find performance limits.
+    """
+    if "buffer_size" in metafunc.fixturenames and "averaging_count" in metafunc.fixturenames:
+        mode = metafunc.config.getoption("hardware_mode")
+        
+        if mode == "typical":
+            # Fixed typical values
+            metafunc.parametrize("buffer_size", [16384])
+            metafunc.parametrize("averaging_count", [10])
+        else:
+            # Limit mode (Matrix test) - Original values
+            # Using the extended range requested by user
+            metafunc.parametrize("buffer_size", [16384, 65536, 131072, 262144, 524288])
+            metafunc.parametrize("averaging_count", [1, 2, 5, 10, 20])
+
 class TestLockinAccuracy:
     @pytest.fixture(autouse=True)
     def setup_teardown(self):
@@ -21,8 +41,6 @@ class TestLockinAccuracy:
         if self.engine.is_active():
             self.engine.stop_stream()
 
-    @pytest.mark.parametrize("buffer_size", [4096, 16384, 65536, 131072])
-    @pytest.mark.parametrize("averaging_count", [1, 10, 50])
     def test_lockin_stability(self, buffer_size, averaging_count, record_property):
         """
         Measures stability of 1kHz signal measurement across different buffer sizes
