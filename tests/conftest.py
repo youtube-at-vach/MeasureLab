@@ -90,3 +90,79 @@ def pytest_configure(config):
         # Set default indentation for readability if not specified
         if not getattr(config.option, 'json_report_indent', None):
             config.option.json_report_indent = 4
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """
+    Generate a simplified measurement report after tests finish.
+    """
+    if not config.getoption("--hardware"):
+        return
+
+    # Check if report.json exists
+    report_file = getattr(config.option, 'json_report_file', 'report.json')
+    if not os.path.exists(report_file):
+        terminalreporter.write_line(f"Warning: {report_file} not found. Cannot generate measurement report.")
+        return
+
+    import json
+    
+    try:
+        with open(report_file, 'r') as f:
+            full_report = json.load(f)
+    except Exception as e:
+        terminalreporter.write_line(f"Error reading {report_file}: {e}")
+        return
+
+    simplified_tests = []
+    
+    for test in full_report.get('tests', []):
+        # We only care about tests with user_properties (metrics)
+        if 'user_properties' not in test:
+            continue
+            
+        # Extract properties
+        props = {k: v for d in test['user_properties'] for k, v in d.items()}
+        
+        # Determine test ID and Type
+        # Default ID is the function name
+        nodeid = test.get('nodeid', '')
+        func_name = nodeid.split('::')[-1] if '::' in nodeid else nodeid
+        
+        # Default Type from props or basic mapping
+        test_type = props.get('test_type', func_name)
+        
+        # Remove metadata from metrics
+        metrics = props.copy()
+        if 'test_type' in metrics:
+            del metrics['test_type']
+            
+        test_entry = {
+            "id": func_name,
+            "type": test_type,
+            "metrics": metrics
+        }
+        
+        simplified_tests.append(test_entry)
+
+    # Construct final report
+    # Device and Profile are hardcoded/defaults for now as per requirements/limitations
+    # In a real scenario, these could be passed via CLI args or environment variables
+    
+    # Try to get device info if available (e.g. from env var or config)
+    device_name = os.environ.get("MEASURELAB_DEVICE", "System Default")
+    profile_name = os.environ.get("MEASURELAB_PROFILE", "standard")
+
+    final_report = {
+        "device": device_name,
+        "profile": profile_name,
+        "tests": simplified_tests
+    }
+    
+    out_file = "measurement_report.json"
+    try:
+        with open(out_file, 'w') as f:
+            json.dump(final_report, f, indent=2)
+        terminalreporter.write_line(f"\nGenerated simplified measurement report: {out_file}")
+    except Exception as e:
+        terminalreporter.write_line(f"Error writing {out_file}: {e}")

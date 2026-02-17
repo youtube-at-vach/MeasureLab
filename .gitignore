@@ -77,3 +77,4 @@ site/
 # Agent Local Rules
 .agent/rules/*
 report.json
+measurement_report.json
