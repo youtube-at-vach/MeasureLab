@@ -60,3 +60,30 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if item.get_closest_marker("hardware"):
             item.add_marker(skip_hardware)
+
+
+def pytest_configure(config):
+    """
+    Auto-enable json-report if --hardware is used.
+    """
+    if config.getoption("--hardware"):
+        # Check if --json-report option exists (plugin installed)
+        if not hasattr(config.option, "json_report"):
+            print("WARNING: --hardware flag used but pytest-json-report plugin seems missing (no --json-report option).")
+            return
+
+        # Enable json-report if not explicitly disabled or configured?
+        # We just force enable it if not already set.
+        
+        # Verify if user already passed --json-report
+        if not config.option.json_report:
+            # print("Notice: Auto-enabling --json-report for hardware tests.")
+            config.option.json_report = True
+            
+        # Verify if user already passed --json-report-file
+        # If not set (None) or set to default hidden file, enforce 'report.json'
+        # The plugin default is typically none or .report.json depending on version
+        current_file = getattr(config.option, 'json_report_file', None)
+        if not current_file or current_file == '.report.json':
+             config.option.json_report_file = 'report.json'
+

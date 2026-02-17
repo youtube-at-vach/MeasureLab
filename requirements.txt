@@ -9,4 +9,5 @@ soundfile
 PyWavelets
 netCDF4
 pyfftw
+pytest-json-report
 
