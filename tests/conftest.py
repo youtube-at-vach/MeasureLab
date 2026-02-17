@@ -87,3 +87,6 @@ def pytest_configure(config):
         if not current_file or current_file == '.report.json':
              config.option.json_report_file = 'report.json'
 
+        # Set default indentation for readability if not specified
+        if not getattr(config.option, 'json_report_indent', None):
+            config.option.json_report_indent = 4
