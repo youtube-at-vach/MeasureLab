@@ -89,6 +89,10 @@ class TestPilotHardwareBenchmark:
         # Record properties for JSON report instead of printing
         cpu_load = self.engine.stream.cpu_load if self.engine.stream else 'N/A'
         
-        record_property("frames_processed", callback_data["frames_processed"])
-        record_property("max_amplitude", callback_data["max_amplitude"])
-        record_property("cpu_load", cpu_load)
+        record_property("frames_processed", int(callback_data["frames_processed"]))
+        record_property("max_amplitude", float(callback_data["max_amplitude"]))
+        
+        if cpu_load != 'N/A':
+            record_property("cpu_load", float(cpu_load))
+        else:
+            record_property("cpu_load", 0.0)
