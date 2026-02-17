@@ -119,7 +119,12 @@ class TestAudioHardwareMetrics:
         THD+N check with matrix testing support.
         """
         sr = 48000
-        freq = 1000.0
+        
+        # Calculate Bin Center Frequency
+        # self.analyzer.buffer_size is 16384 by default
+        bin_width = sr / self.analyzer.buffer_size
+        freq_bin_idx = round(1000.0 / bin_width)
+        freq = freq_bin_idx * bin_width
         
         # Configure Engine
         self.engine.set_sample_rate(sr)
