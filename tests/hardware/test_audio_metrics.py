@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from src.core.audio_engine import AudioEngine
 from src.core.analysis import AudioCalc
+from src.gui.widgets.distortion_analyzer import DistortionAnalyzer
 
 # Mark entire module as hardware tests
 pytestmark = pytest.mark.hardware
@@ -16,6 +17,10 @@ class TestAudioHardwareMetrics:
         self.engine = AudioEngine()
         # Ensure we are in a known state
         self.engine.set_offline_mode(False) 
+        
+        # Instantiate the analyzer to access its logic
+        self.analyzer = DistortionAnalyzer(self.engine)
+        
         yield
         if self.engine.is_active():
             self.engine.stop_stream()
@@ -118,7 +123,7 @@ class TestAudioHardwareMetrics:
         """
         Quick THD+N check at 1kHz.
         """
-        sr = 48000
+        sr = 192000
         duration = 1.0 # seconds
         freq = 1000.0
         
@@ -133,11 +138,16 @@ class TestAudioHardwareMetrics:
         skip_samples = int(sr * 0.2)
         data = recorded[skip_samples:, 0]
         
-        # Calculate THD+N
-        # We reuse AudioCalc.analyze_harmonics which gives us everything
-        # But we need basic THD+N
+        # Calculate THD+N using DistortionAnalyzer logic
+        settings = {
+            "signal_type": "sine",
+            "sample_rate": sr,
+            "window_type": self.analyzer.window_type, # Use widget default (blackmanharris)
+            "gen_frequency": freq,
+            "target_frequency": freq
+        }
         
-        metrics = AudioCalc.analyze_harmonics(data, freq, "hann", sr)
+        metrics = DistortionAnalyzer.calculate_metrics(data, settings)
         
         thdn_db = metrics["thdn_db"]
         thdn_percent = metrics["thdn_percent"]
@@ -145,12 +155,12 @@ class TestAudioHardwareMetrics:
         
         # Log properties for JSON report
         record_property("test_type", "THD+N")
-        record_property("frequency_hz", freq)
-        record_property("thdn_db", thdn_db)
-        record_property("thdn_percent", thdn_percent)
-        record_property("sinad_db", sinad)
-        record_property("signal_rms", metrics["raw_fund_rms"])
-        record_property("noise_rms", metrics["raw_res_rms"])
+        record_property("frequency_hz", float(freq))
+        record_property("thdn_db", float(thdn_db))
+        record_property("thdn_percent", float(thdn_percent))
+        record_property("sinad_db", float(sinad))
+        record_property("signal_rms", float(metrics["raw_fund_rms"]))
+        record_property("noise_rms", float(metrics["raw_res_rms"]))
         
         # Thresholds (Configurable? For now flexible pass)
         assert thdn_db < -10.0, f"THD+N too high: {thdn_db:.2f} dB (Validation check)"
@@ -161,27 +171,30 @@ class TestAudioHardwareMetrics:
         """
         SMPTE IMD Measurement (60Hz / 7kHz, 4:1).
         """
-        sr = 48000
+        sr = 192000
         duration = 2.0
         
         signal = self.generate_signal(sr, duration, "smpte", amp=0.5)
         recorded = self.run_measurement(signal, sr, duration)
         
+        # Skip settline
         skip_samples = int(sr * 0.2)
         data = recorded[skip_samples:, 0]
         
-        # For IMD analysis, we need spectrum
-        window = np.hamming(len(data))
-        fft_res = np.fft.rfft(data * window)
-        freqs = np.fft.rfftfreq(len(data), 1/sr)
-        mag = np.abs(fft_res)
+        # Calculate IMD SMPTE using DistortionAnalyzer logic
+        settings = {
+            "signal_type": "smpte",
+            "sample_rate": sr,
+            "window_type": self.analyzer.window_type,
+            "imd_f1": 60.0,
+            "imd_f2": 7000.0
+        }
         
-        # Calculate IMD SMPTE
-        imd_res = AudioCalc.calculate_imd_smpte(mag, freqs, 60.0, 7000.0)
+        imd_res = DistortionAnalyzer.calculate_metrics(data, settings)
         
         record_property("test_type", "IMD SMPTE")
-        record_property("imd_smpte_db", imd_res["imd_db"])
-        record_property("imd_smpte_percent", imd_res["imd"])
+        record_property("imd_smpte_db", float(imd_res["imd_db"]))
+        record_property("imd_smpte_percent", float(imd_res["imd"]))
         
         print(f"IMD SMPTE: {imd_res['imd_db']:.2f} dB")
         
