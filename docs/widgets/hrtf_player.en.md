@@ -37,6 +37,7 @@ The graph occupying most of the screen displays HRTF characteristics based on th
 Allows loading a music file and simulating a sound source rotating around you.
 
 * **Load Music**: Load a music file (`.wav`, `.mp3`, etc.) for auditioning.
+    * **Limit**: There is a file size limit of 500 million total samples (approx. 1 hour 26 mins for 48kHz Stereo).
 * **Play Rotation / Stop**: Starts and stops rotation playback.
 * **Mode**: Select the rotation pattern.
     * **Horizontal**: Rotates horizontally around you.
