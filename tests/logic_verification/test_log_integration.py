@@ -54,12 +54,8 @@ def test_log_integration_bug():
     ratio = actual_power / expected_power
     print(f"Ratio (Actual/Expected): {ratio:.6f}")
 
-    if abs(ratio - 1.0) > 0.1:
-        print("FAIL: Integration is significantly incorrect.")
-        return False
-    else:
-        print("PASS: Integration is correct.")
-        return True
+    assert abs(ratio - 1.0) <= 0.1, "FAIL: Integration is significantly incorrect."
+    print("PASS: Integration is correct.")
 
 if __name__ == "__main__":
     test_log_integration_bug()
