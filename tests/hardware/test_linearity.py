@@ -128,7 +128,8 @@ class TestLinearityHardware:
         self.engine.set_block_size(1024)
         
         record_property("sample_rate", sr)
-        record_property("test_mode", linearity_params["mode_name"])
+        record_property("start_db", linearity_params["start_db"])
+        record_property("end_db", linearity_params["end_db"])
         
         # Start Audio
         self.callback_id = self.engine.register_callback(self._audio_callback)
