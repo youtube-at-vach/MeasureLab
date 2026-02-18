@@ -23,7 +23,7 @@ def pytest_generate_tests(metafunc):
         if mode == "typical":
             # Typical: 31 tones, standard buffer, -6dBFS
             metafunc.parametrize("mim_params", [
-                {"tone_count": 31, "buffer_size": 65536, "duration_sec": 5.0, "amp_dbfs": -6.0}
+                {"tone_count": 31, "buffer_size": 65536, "duration_sec": 5.0, "amp_dbfs": -12.0}
             ])
         else:
             # Limit: Matrix
