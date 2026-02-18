@@ -386,6 +386,45 @@ class DistortionAnalyzer(MeasurementModule):
         self.capture_requested = True
 
 
+    @staticmethod
+    def calculate_metrics(data, settings):
+        """
+        Performs the core analysis (THD, IMD, etc.) on the provided data.
+        Shared by RealtimeAnalysisWorker and Hardware Tests.
+        """
+        signal_type = settings.get("signal_type", "sine")
+        sample_rate = settings.get("sample_rate", 48000)
+        window_type = settings.get("window_type", "blackmanharris")
+
+        if signal_type in ["smpte", "ccif"]:
+            window = get_cached_window(window_type, len(data), dtype=data.dtype)
+            fft_data = fft_manager.rfft(data * window)
+            mag_linear = np.abs(fft_data) * (2 / np.sum(window))
+            freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
+
+            imd_f1 = settings.get("imd_f1", 60.0)
+            imd_f2 = settings.get("imd_f2", 7000.0)
+
+            if signal_type == "smpte":
+                res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, imd_f1, imd_f2)
+            else:
+                res = AudioCalc.calculate_imd_ccif(mag_linear, freqs, imd_f1, imd_f2)
+
+            # Add type and data for UI
+            res["type"] = "imd"
+            res["fft_data"] = fft_data
+            res["mag_linear"] = mag_linear  # Pass linear mag for averaging
+            res["input_rms_db"] = 20 * np.log10(np.sqrt(np.mean(data**2)) + 1e-12)
+            return res
+        else:
+            gen_frequency = settings.get("gen_frequency", 1000.0)
+            target_freq = settings.get("target_frequency", gen_frequency)
+
+            results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate)
+            results["type"] = "harmonics"
+            results["basic_wave"]["target_frequency"] = target_freq
+            return results
+
 class SweepWorker(QThread):
     result_ready = pyqtSignal(dict)
     finished = pyqtSignal()
@@ -495,44 +534,23 @@ class RealtimeAnalysisWorker(QObject):
 
     def process(self, data, settings):
         try:
-            signal_type = settings.get("signal_type", "sine")
-            sample_rate = settings.get("sample_rate", 48000)
-            window_type = settings.get("window_type", "blackmanharris")
+            # We need an instance of AudioCalc or similar if we want to use static methods,
+            # but here we are calling a static method on the class.
+            # However, the refactoring goal is to move logic to the DistortionAnalyzer class
+            # so it can be used by tests without a worker.
 
-            if signal_type in ["smpte", "ccif"]:
-                window = get_cached_window(window_type, len(data), dtype=data.dtype)
-                fft_data = fft_manager.rfft(data * window)
-                mag_linear = np.abs(fft_data) * (2 / np.sum(window))
-                freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
+            # Since the worker doesn't have a reference to the module instance (it just gets data/settings),
+            # we should make the calculation logic a static method or class method of DistortionAnalyzer,
+            # OR make the worker use an instance if possible.
+            # But the worker is designed to be detached.
 
-                imd_f1 = settings.get("imd_f1", 60.0)
-                imd_f2 = settings.get("imd_f2", 7000.0)
+            # BETTER APPROACH:
+            # The test will instantiate DistortionAnalyzer.
+            # The test can call `DistortionAnalyzer.calculate_metrics(data, settings)`.
+            # So we move the logic to a static method `DistortionAnalyzer.calculate_metrics`.
 
-                if signal_type == "smpte":
-                    res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, imd_f1, imd_f2)
-                else:
-                    res = AudioCalc.calculate_imd_ccif(mag_linear, freqs, imd_f1, imd_f2)
-
-                # Add type and data for UI
-                res["type"] = "imd"
-                res["fft_data"] = fft_data
-                res["mag_linear"] = mag_linear  # Pass linear mag for averaging
-                res["input_rms_db"] = 20 * np.log10(np.sqrt(np.mean(data**2)) + 1e-12)
-
-                self.result_ready.emit(res)
-            else:
-                gen_frequency = settings.get("gen_frequency", 1000.0)
-                # target_frequency logic could be passed in settings, 
-                # but for real-time mode we rely on what was set in module.
-                # However, the worker processes a snapshot of settings.
-                # Let's pass target vs actual in settings
-
-                target_freq = settings.get("target_frequency", gen_frequency)
-
-                results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate)
-                results["type"] = "harmonics"
-                results["basic_wave"]["target_frequency"] = target_freq
-                self.result_ready.emit(results)
+            results = DistortionAnalyzer.calculate_metrics(data, settings)
+            self.result_ready.emit(results)
 
         except Exception as e:
             print(f"Error in analysis worker: {e}")

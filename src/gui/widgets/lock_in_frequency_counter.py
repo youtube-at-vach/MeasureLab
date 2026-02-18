@@ -399,7 +399,7 @@ class LockInFrequencyCounter(MeasurementModule):
                 self.start_time = now
 
             # Integrate Phase using RAW Delta F for physical correctness
-            self.current_phase_deg += delta_f * 360.0 * 0.1
+            self.current_phase_deg += delta_f * 360.0 * dt
 
             self.freq_dev_history.append(delta_f)
             self.phase_history.append(self.current_phase_deg)
