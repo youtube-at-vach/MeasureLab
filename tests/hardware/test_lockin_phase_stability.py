@@ -40,17 +40,25 @@ class TestLockinPhaseStability:
         if self.engine.is_active():
             self.engine.stop_stream()
 
-    def test_phase_stability(self, duration_sec, buffer_size, record_property):
+    def test_phase_stability(self, duration_sec, buffer_size, record_property, hardware_config):
         """
         Measures Phase Stability (Phase RMS) and Time Interval Error (TIE)
         using LockInFrequencyCounter (Continous Phase Integration).
         This avoids the random walk drift associated with integrating frequency frequency counters.
         """
-        sr = 192000
+        sr = hardware_config.get("sample_rate", 48000)
+        input_device = hardware_config.get("input_device")
+        output_device = hardware_config.get("output_device")
+        
         target_freq = 1000.0
         
         # Configure Audio Engine
         self.engine.set_sample_rate(sr)
+        self.engine.set_devices(input_device, output_device)
+        
+        # Log Hardware Config
+        record_property("sample_rate", sr)
+        record_property("buffer_size", buffer_size)
         
         # Configure Lock-in Frequency Counter
         self.lockin.gen_frequency = target_freq

@@ -41,18 +41,25 @@ class TestLockinAccuracy:
         if self.engine.is_active():
             self.engine.stop_stream()
 
-    def test_lockin_stability(self, buffer_size, averaging_count, record_property):
+    def test_lockin_stability(self, buffer_size, averaging_count, record_property, hardware_config):
         """
         Measures stability of 1kHz signal measurement across different buffer sizes
         using the actual LockInAmplifier widget logic.
         """
-        sr = 192000
+        sr = hardware_config.get("sample_rate", 48000)
+        input_device = hardware_config.get("input_device")
+        output_device = hardware_config.get("output_device")
+        
         # For larger buffer sizes, we need longer wait times to ensure buffer fills
         freq = 1000.0
         iterations = 30
         
         # Configure Audio Engine
         self.engine.set_sample_rate(sr)
+        self.engine.set_devices(input_device, output_device)
+        
+        # Log Config
+        record_property("sample_rate", sr)
         
         # Configure Lock-in Amplifier
         self.lockin.gen_frequency = freq

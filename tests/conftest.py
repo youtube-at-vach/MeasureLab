@@ -35,6 +35,39 @@ def cleanup_test_config():
     if os.path.exists("test_config.json"):
         os.remove("test_config.json")
 
+
+@pytest.fixture(scope="session")
+def hardware_config():
+    """
+    Loads hardware configuration from config.json.
+    Returns a dictionary with audio settings.
+    """
+    import json
+    config_path = _REPO_ROOT / "config.json"
+    
+    default_config = {
+        "audio": {
+            "input_device": "system", 
+            "output_device": "system",
+            "sample_rate": 48000,
+            "block_size": 1024,
+            "input_channels": "stereo",
+            "output_channels": "stereo"
+        }
+    }
+
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                user_config = json.load(f)
+                # Merge with default (shallow merge for 'audio' key)
+                if "audio" in user_config:
+                    default_config["audio"].update(user_config["audio"])
+        except Exception as e:
+            print(f"Warning: Failed to load config.json: {e}")
+            
+    return default_config["audio"]
+
 def pytest_addoption(parser):
     parser.addoption(
         "--hardware",

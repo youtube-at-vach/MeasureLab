@@ -114,11 +114,13 @@ class TestAudioHardwareMetrics:
         return results_list
 
 
-    def test_thdn_1khz(self, target_dbfs, averaging_count, record_property):
+    def test_thdn_1khz(self, target_dbfs, averaging_count, record_property, hardware_config):
         """
         THD+N check with matrix testing support.
         """
-        sr = 192000
+        sr = hardware_config.get("sample_rate", 48000)
+        input_device = hardware_config.get("input_device")
+        output_device = hardware_config.get("output_device")
         
         # Calculate Bin Center Frequency
         # self.analyzer.buffer_size is 16384 by default
@@ -128,7 +130,10 @@ class TestAudioHardwareMetrics:
         
         # Configure Engine
         self.engine.set_sample_rate(sr)
+        self.engine.set_devices(input_device, output_device)
         self.engine.set_block_size(1024)
+        
+        record_property("sample_rate", sr)
         
         # Configure Analyzer
         self.analyzer.signal_type = "sine"
@@ -185,13 +190,18 @@ class TestAudioHardwareMetrics:
                 assert mean_thdn < -60.0, f"THD+N too high at {target_dbfs}dBFS: {mean_thdn:.2f} dB"
 
 
-    def test_imd_smpte(self, target_dbfs, averaging_count, record_property):
+    def test_imd_smpte(self, target_dbfs, averaging_count, record_property, hardware_config):
         """
         SMPTE IMD Measurement with matrix testing.
         """
-        sr = 192000
+        sr = hardware_config.get("sample_rate", 48000)
+        input_device = hardware_config.get("input_device")
+        output_device = hardware_config.get("output_device")
         
         self.engine.set_sample_rate(sr)
+        self.engine.set_devices(input_device, output_device)
+        
+        record_property("sample_rate", sr)
         
         # Configure Analyzer for SMPTE
         self.analyzer.signal_type = "smpte"
