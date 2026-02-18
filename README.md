@@ -144,3 +144,4 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 - OpenAI: GPT-4.1, GPT-5, GPT-5.1 Codex Max, GPT-5.2
 - Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash
 - Anthropic: Claude 4.5 Sonnet
+
