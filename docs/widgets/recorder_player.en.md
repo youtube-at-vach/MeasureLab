@@ -16,6 +16,7 @@ Load and play files.
 
 * **Load File**: Opens an audio file.
     * **Sampling Rate Conversion**: If the file's sample rate differs from the application's operating rate (e.g., opening a 44.1kHz file while the app is set to 48kHz), you will be asked whether to automatically resample it. Usually, loading it as-is is fine.
+    * **Limit**: There is a file size limit of 500 million total samples (approx. 1 hour 26 mins for 48kHz Stereo). Files exceeding this limit cannot be loaded.
 * **Play / Stop**: Starts and stops playback.
 * **Loop**: When checked, the file will repeat from the beginning after reaching the end. Useful for continuously outputting test signals.
 * **Player Progress**: A bar indicating the current playback position.

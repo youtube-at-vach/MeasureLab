@@ -19,6 +19,7 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 
 1. Click **Load File** to select an audio file.
     - Supported formats: WAV, FLAC, AIFF
+    - There is a file size limit of 500 million total samples (approx. 1 hour 26 mins for 48kHz Stereo).
 2. Press the **Analyze** button to start the analysis.
     - Internally, the audio is resampled to 48kHz for analysis (to optimize psychoacoustic filters).
     - Long files may take some time to process.
