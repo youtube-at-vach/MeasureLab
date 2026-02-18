@@ -4,6 +4,9 @@
 
 This version is essentially a minor update almost identical to v0.5.0.
 
+Starting from this version, the baseline Python version is officially Python 3.12.
+As a result, older Linux systems such as Ubuntu 18.04 may no longer be supported.
+
 ### Changed
 
 * Refactor: Consolidated hardware test suite and cleaned up pytest configuration
