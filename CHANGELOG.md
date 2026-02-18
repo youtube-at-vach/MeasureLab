@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.5.1] - 2026-02-18
+
+This version is essentially a minor update almost identical to v0.5.0.
+
+### Changed
+
+* Refactor: Consolidated hardware test suite and cleaned up pytest configuration
+* Refactor: Migrated functional tests to logic verification
+* Log: Reduced log verbosity from INFO to DEBUG for smoother operation
+
+### Fixed
+
+* Core: Fixed race condition in AudioEngine stream startup
+* I18n: Fixed untranslated keys in multilingual files (Japanese, etc.)
+* CI: Resolved unused import errors in hardware tests
+
+### Documentation
+
+* Docs: Added "JAM Memories" section to Timecode Monitor documentation
+
 ## [v0.5.0] - 2026-02-13
 
 ### Major
