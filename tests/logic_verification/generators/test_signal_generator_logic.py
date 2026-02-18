@@ -16,7 +16,6 @@ except ImportError:
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
-from src.core.audio_engine import AudioEngine
 
 class TestSignalGeneratorChannels(unittest.TestCase):
     """Tests for channel independence and routing logic."""
@@ -321,7 +320,7 @@ class TestSignalGeneratorMultitone(unittest.TestCase):
         t = np.arange(N) / sample_rate
         signal = np.zeros(N)
 
-        for f, p in zip(freqs, phases):
+        for f, p in zip(freqs, phases, strict=False):
             signal += np.sin(2 * np.pi * f * t + p)
 
         max_val = np.max(np.abs(signal))
