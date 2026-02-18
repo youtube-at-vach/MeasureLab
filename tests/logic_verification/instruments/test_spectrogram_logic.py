@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
+from PyQt6.QtWidgets import QApplication
 from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker  # noqa: E402
 from src.core.fft_manager import WARMUP_SIZES  # noqa: E402
 
@@ -93,8 +94,6 @@ class TestSpectrogramFFTLogic(unittest.TestCase):
             max_size = max([int(s) for s in sizes])
             self.assertEqual(max_size, 65536)
 
-
-from PyQt6.QtWidgets import QApplication
 
 class TestSpectrogramProcessing(unittest.TestCase):
     @classmethod

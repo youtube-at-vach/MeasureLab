@@ -4,7 +4,7 @@ import sys
 import os
 
 # Ensure src is in path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 # --- Conditional Mock for numpy ---
 # Only mock numpy if it's not already installed/available.

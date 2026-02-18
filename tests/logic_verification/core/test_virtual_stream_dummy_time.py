@@ -2,10 +2,9 @@ import threading
 import unittest
 import sys
 import os
-from unittest.mock import MagicMock
 
 # Add src to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 # Mock sounddevice
 
