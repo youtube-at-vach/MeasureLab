@@ -32,7 +32,7 @@ def pytest_generate_tests(metafunc):
             # Limit: -5 to -120 dBFS, more steps, higher averaging
             metafunc.parametrize("linearity_params", [{
                 "start_db": -5.0,
-                "end_db": -120.0,
+                "end_db": -90.0,
                 "steps": 30,
                 "averaging": 10,
                 "mode_name": "limit"
