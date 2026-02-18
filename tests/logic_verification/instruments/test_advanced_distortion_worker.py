@@ -12,6 +12,12 @@ def setup_module(module):
     else:
         module.app = QApplication.instance()
 
+    # Ensure clean imports to avoid mock pollution
+    if 'src.core.analysis' in sys.modules:
+        del sys.modules['src.core.analysis']
+    if 'src.gui.widgets.advanced_distortion_meter' in sys.modules:
+        del sys.modules['src.gui.widgets.advanced_distortion_meter']
+
 def test_analysis_worker_mim():
     # Setup
     sr = 48000

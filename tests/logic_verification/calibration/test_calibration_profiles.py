@@ -5,7 +5,6 @@ import os
 import json
 import unittest
 import tempfile
-from unittest.mock import MagicMock
 import sys
 
 try:

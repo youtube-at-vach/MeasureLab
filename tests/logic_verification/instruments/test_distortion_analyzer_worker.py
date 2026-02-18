@@ -20,6 +20,12 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
             cls.app = QApplication.instance()
 
     def setUp(self):
+        # Ensure we start with a clean slate to avoid pollution from previous tests
+        if 'src.gui.widgets.distortion_analyzer' in sys.modules:
+            del sys.modules['src.gui.widgets.distortion_analyzer']
+        if 'src.core.analysis' in sys.modules:
+            del sys.modules['src.core.analysis']
+
         # Patch modules where RealtimeAnalysisWorker will be imported from
         self.audio_calc_patcher = patch('src.gui.widgets.distortion_analyzer.AudioCalc')
         self.fft_manager_patcher = patch('src.gui.widgets.distortion_analyzer.fft_manager')
@@ -33,6 +39,10 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
         self.audio_calc_patcher.stop()
         self.fft_manager_patcher.stop()
         self.get_window_patcher.stop()
+
+        # Clean up sys.modules to prevent our mocks from leaking
+        if 'src.gui.widgets.distortion_analyzer' in sys.modules:
+            del sys.modules['src.gui.widgets.distortion_analyzer']
 
     def test_process_harmonics(self):
         try:
