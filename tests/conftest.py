@@ -187,16 +187,43 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         simplified_tests.append(test_entry)
 
     # Construct final report
-    # Device and Profile are hardcoded/defaults for now as per requirements/limitations
-    # In a real scenario, these could be passed via CLI args or environment variables
     
-    # Try to get device info if available (e.g. from env var or config)
-    device_name = os.environ.get("MEASURELAB_DEVICE", "System Default")
-    profile_name = os.environ.get("MEASURELAB_PROFILE", "standard")
+    # Reload config to get device info for the report header
+    # We could reuse hardware_config fixture logic but it's cleaner to just read here
+    # or rely on what tests reported. But user wants specific top-level fields.
+    
+    config_path = _REPO_ROOT / "config.json"
+    audio_conf = {}
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                c = json.load(f)
+                audio_conf = c.get("audio", {})
+        except:
+            pass
+            
+    input_dev = audio_conf.get("input_device", "System Default")
+    output_dev = audio_conf.get("output_device", "System Default")
+    input_hostapi = audio_conf.get("input_hostapi", "Unknown")
+    output_hostapi = audio_conf.get("output_hostapi", "Unknown")
+    sr = audio_conf.get("sample_rate", 48000)
+    bs = audio_conf.get("block_size", 1024)
+    
+    hardware_mode = config.getoption("--hardware-mode")
+    
+    device_str = f"{input_dev} / {output_dev} (Loaded from config.json)"
 
     final_report = {
-        "device": device_name,
-        "profile": profile_name,
+        "device": device_str,
+        "mode": hardware_mode,
+        "configuration": {
+            "sample_rate": sr,
+            "block_size": bs,
+            "input_device": input_dev,
+            "output_device": output_dev,
+            "input_hostapi": input_hostapi,
+            "output_hostapi": output_hostapi
+        },
         "tests": simplified_tests
     }
     
