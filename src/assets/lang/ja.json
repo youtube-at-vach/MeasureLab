@@ -1118,7 +1118,7 @@
     "Bit Index (0=LSB)": "ビットインデックス (0=LSB)",
     "Effective Bit Depth History": "有効ビット深度履歴",
     "Bit Depth & Quantization Analysis": "ビット深度・量子化分析",
-    "ENOB: -- bits": "ENOB: -- bits",
+    "ENOB: -- bits": "ENOB: -- ビット",
     "Measure Bit Depth...": "ビット深度計測...",
     "Quantization Step (Delta) Distribution": "量子化ステップ (Δ) 分布",
     "Time (Frames)": "時間 (フレーム)",
