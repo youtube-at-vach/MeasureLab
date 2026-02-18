@@ -137,6 +137,22 @@ class TestSpectrogramProcessing(unittest.TestCase):
 
         self.assertTrue(abs(peak_freq - 1000) < 50, f"Expected ~1000Hz, got {peak_freq}Hz")
 
+    def test_spectrogram_worker_stereo_average(self):
+        """Verify that average channel mode uses both channels."""
+        raw_data = np.zeros((512, 2), dtype=np.float32)
+        raw_data[:, 0] = 1.0
+
+        worker = SpectrogramWorker(raw_data, "boxcar", "Average")
+        result_container = []
+        worker.signals.result = MagicMock()
+        worker.signals.result.emit = lambda res: result_container.append(res)
+
+        worker.run()
+
+        self.assertEqual(len(result_container), 1)
+        mag_db = result_container[0]
+        self.assertGreater(mag_db[0], -10.0)
+
     def test_buffer_update(self):
         """Verify that add_spectrum updates the ring buffer correctly."""
         self.spec.history_length = 5
