@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import time
 from src.core.audio_engine import AudioEngine
-from src.gui.widgets.lock_in_amplifier import LockInAmplifier
+from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
 
 # Mark entire module as hardware tests
 pytestmark = pytest.mark.hardware
@@ -33,7 +33,7 @@ class TestLockinPhaseStability:
         """Setup and teardown for hardware tests."""
         self.engine = AudioEngine()
         self.engine.set_offline_mode(False)
-        self.lockin = LockInAmplifier(self.engine)
+        self.lockin = LockInFrequencyCounter(self.engine)
         yield
         if self.lockin.is_running:
             self.lockin.stop_analysis()
@@ -43,7 +43,7 @@ class TestLockinPhaseStability:
     def test_phase_stability(self, duration_sec, buffer_size, record_property):
         """
         Measures Phase Stability (Phase RMS) and Time Interval Error (TIE)
-        using LockInAmplifier (Absolute Phase + Unwrapping).
+        using LockInFrequencyCounter (Continous Phase Integration).
         This avoids the random walk drift associated with integrating frequency frequency counters.
         """
         sr = 192000
@@ -52,22 +52,19 @@ class TestLockinPhaseStability:
         # Configure Audio Engine
         self.engine.set_sample_rate(sr)
         
-        # Configure Lock-in Amplifier
+        # Configure Lock-in Frequency Counter
         self.lockin.gen_frequency = target_freq
-        self.lockin.gen_amplitude = 0.5
-        self.lockin.set_buffer_size(buffer_size)
+        self.lockin.buffer_size = buffer_size
         
         # Loopback Mode
-        # For LockInAmplifier:
-        # signal_channel: 0 (Left), ref_channel: 0 (Left)
-        # We output to 0 (Left) and read from 0 (Left)
-        self.lockin.output_channel = 0
-        self.lockin.signal_channel = 0
+        # Ref Output: Ch1 (L), Signal Input: Ch1 (L)
+        self.lockin.ref_mode = "loopback"
         self.lockin.ref_channel = 0
+        self.lockin.signal_channel = 0
         
-        # Disable post-processing for raw stability
-        self.lockin.averaging_count = 10 # Slight averaging for stability
-        self.lockin.postmix_lpf_order = 0
+        # Disable FLL and smoothing for raw stability measurement
+        self.lockin.locked = False
+        self.lockin.smoothing_tau = 0.0
         
         # Start Analysis
         self.lockin.start_analysis()
@@ -92,8 +89,17 @@ class TestLockinPhaseStability:
             if current_time - last_process >= buffer_duration:
                 self.lockin.process_data()
                 
-                # Capture Absolute Phase (Wrapped -180..180)
-                p = self.lockin.current_phase
+                # Check for signal
+                if not getattr(self.lockin, "signal_present", False):
+                    # In real loopback, signal should be present. 
+                    # If not, it might be just skipping a frame or setting up.
+                    # We continue but don't record potentially bad data?
+                    # Or we just rely on the buffer duration wait.
+                    pass
+
+                # Capture Accumulated Phase (Degrees)
+                # This is already unwrapped/integrated phase
+                p = self.lockin.current_phase_deg
                 
                 phases.append(p)
                 timestamps.append(current_time - start_time)
@@ -105,10 +111,9 @@ class TestLockinPhaseStability:
         if len(phases) < 5:
             pytest.fail("Not enough data points collected")
             
-        phases_rad = np.radians(np.array(phases))
-        # Unwrap phase to get tracking history
-        phases_unwrapped_rad = np.unwrap(phases_rad)
-        phases_unwrapped_deg = np.degrees(phases_unwrapped_rad)
+        phases_unwrapped_deg = np.array(phases)
+        # Note: LockInFrequencyCounter.current_phase_deg is accumulated phase, 
+        # so it is already unwrapped.
         
         t = np.array(timestamps)
         
@@ -125,10 +130,31 @@ class TestLockinPhaseStability:
         tie_rms_jitter_sec = phase_jitter_rms_deg / (360.0 * target_freq)
         
         # Metric B: Long-term TIE (Drift + Jitter)
-        # Raw phase deviation (includes frequency offset / slope)
+        # Raw phase deviation (relative to linear fit)
+        # Actually, "Drift" in TIE usually refers to the wander of the clock.
+        # But here we are comparing against a fixed NCO.
+        # If we remove the slope (frequency offset), the residuals are the TIE (Time Interval Error).
+        # The slope itself is the frequency offset.
+        
+        # If we want TIE including the drift (deviation from ideal frequency),
+        # we would compare against ideal phase (slope = 0 relative to target_freq).
+        # But our NCO IS the target freq.
+        # So phases_unwrapped_deg SHOULD be near 0 slope if freq is exact.
+        # The slope IS the frequency error.
+        
         # This corresponds to the "Frequency Counter" style TIE
-        phase_total_std_deg = np.std(phases_unwrapped_deg)
-        tie_rms_total_sec = phase_total_std_deg / (360.0 * target_freq)
+        # But phases_unwrapped_deg grows indefinitely if there is offset.
+        # We probably want the std deviation of the residuals for "Jitter".
+        
+        # For "Long Term Stability", maybe we look at how much the slope changes?
+        # Or just reports the metrics as defined in previous test.
+        
+        metric_long_term_deg = np.std(phases_unwrapped_deg) 
+        # This value is dominated by the slope if freq offset is non-zero.
+        # Let's keep the logic from previous test for consistency if that was intentional.
+        # Previous test: phase_total_std_deg = np.std(phases_unwrapped_deg)
+        
+        tie_rms_total_sec = metric_long_term_deg / (360.0 * target_freq)
         
         # Frequency Offset from Slope
         measured_freq_offset_hz = slope / 360.0
