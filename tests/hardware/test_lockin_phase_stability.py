@@ -174,6 +174,8 @@ class TestLockinPhaseStability:
         print(f"  TIE (Short):     {tie_rms_jitter_sec * 1e9:.3f} ns (Jitter)") 
         print(f"  TIE (Long):      {tie_rms_total_sec * 1e9:.3f} ns (Total)")
         
+        
+        record_property("test_type", "Phase Stability")
         record_property("duration_sec", duration_sec)
         record_property("freq_offset_hz", measured_freq_offset_hz)
         record_property("phase_jitter_rms_deg", phase_jitter_rms_deg)

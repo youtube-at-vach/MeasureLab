@@ -123,11 +123,12 @@ class TestLockinAccuracy:
         
         # Log properties
         record_property("test_type", "Lock-in Accuracy (Widget Logic)")
+        record_property("frequency_hz", freq)
         record_property("buffer_size", buffer_size)
         record_property("averaging_count", averaging_count)
         record_property("iterations", iterations)
-        record_property("mean_rms", mean_val)
-        record_property("std_dev", std_val)
+        record_property("rms_mean", mean_val)
+        record_property("rms_std_dev", std_val)
         record_property("variance", var_val)
         record_property("rsd_ppm", rsd_ppm)
         

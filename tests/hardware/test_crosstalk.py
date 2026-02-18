@@ -122,8 +122,9 @@ class TestCrosstalkHardware:
         test_freq = crosstalk_params["freq"]
         self.test_frequency = test_freq
         
+        record_property("test_type", "Crosstalk")
         record_property("sample_rate", sr)
-        record_property("frequency", test_freq)
+        record_property("frequency_hz", test_freq)
         
         # Start Audio
         self.callback_id = self.engine.register_callback(self._audio_callback)

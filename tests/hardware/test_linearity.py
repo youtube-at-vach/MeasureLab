@@ -127,9 +127,10 @@ class TestLinearityHardware:
         self.engine.set_devices(input_device, output_device)
         self.engine.set_block_size(1024)
         
+        record_property("test_type", "Linearity Sweep")
         record_property("sample_rate", sr)
-        record_property("start_db", linearity_params["start_db"])
-        record_property("end_db", linearity_params["end_db"])
+        record_property("start_dbfs", linearity_params["start_db"])
+        record_property("end_dbfs", linearity_params["end_db"])
         
         # Start Audio
         self.callback_id = self.engine.register_callback(self._audio_callback)
@@ -208,7 +209,7 @@ class TestLinearityHardware:
 
         # Record Properties
         record_property("max_linearity_error_db", float(max_linearity_error))
-        record_property("ref_gain_db", float(ref_gain_db))
+        record_property("gain_ref_db", float(ref_gain_db))
         
         # Check basic functionality
         # The first point (reference) should have error 0 by definition.

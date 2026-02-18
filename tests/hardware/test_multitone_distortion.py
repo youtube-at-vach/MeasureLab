@@ -73,6 +73,7 @@ class TestMultitoneDistortion:
         self.engine.set_devices(input_device, output_device)
         
         # Log Hardware Config
+        record_property("test_type", "Multitone Distortion")
         record_property("sample_rate", sr)
         record_property("buffer_size", buffer_size)
         record_property("tone_count", tone_count)
