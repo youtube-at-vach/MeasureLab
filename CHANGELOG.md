@@ -2,6 +2,8 @@
 
 ## [v0.5.1] - 2026-02-18
 
+This version is essentially a minor update almost identical to v0.5.0.
+
 ### Changed
 
 * Refactor: Consolidated hardware test suite and cleaned up pytest configuration
