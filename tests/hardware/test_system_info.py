@@ -13,6 +13,8 @@ def test_system_configuration(record_property, hardware_config):
     sr = hardware_config.get("sample_rate", 48000)
     input_device = hardware_config.get("input_device", "system")
     output_device = hardware_config.get("output_device", "system")
+    input_hostapi = hardware_config.get("input_hostapi", "Unknown")
+    output_hostapi = hardware_config.get("output_hostapi", "Unknown")
     block_size = hardware_config.get("block_size", 1024)
     
     # Try to get more info from AudioEngine if possible
@@ -24,6 +26,8 @@ def test_system_configuration(record_property, hardware_config):
     record_property("conf_sample_rate", sr)
     record_property("conf_input_device", input_device)
     record_property("conf_output_device", output_device)
+    record_property("conf_input_hostapi", input_hostapi)
+    record_property("conf_output_hostapi", output_hostapi)
     record_property("conf_block_size", block_size)
     
     # Optional: Log Host API if we can deduce it or if it's in config
@@ -31,6 +35,6 @@ def test_system_configuration(record_property, hardware_config):
     
     print(f"\nSystem Configuration:")
     print(f"  Sample Rate:   {sr}")
-    print(f"  Input Device:  {input_device}")
-    print(f"  Output Device: {output_device}")
+    print(f"  Input Device:  {input_device} ({input_hostapi})")
+    print(f"  Output Device: {output_device} ({output_hostapi})")
     print(f"  Block Size:    {block_size}")
