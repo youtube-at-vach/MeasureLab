@@ -2,26 +2,48 @@
 
 ## [v0.5.1] - 2026-02-18
 
-This version is essentially a minor update almost identical to v0.5.0.
-
 Starting from this version, the baseline Python version is officially Python 3.12.
 As a result, older Linux systems such as Ubuntu 18.04 may no longer be supported.
 
+### Major
+
+* **Bit Depth Analyzer**: Introduced a new module for measuring bit depth and quantization levels, featuring dedicated GUI, core estimator logic, and comprehensive documentation.
+* **1PPS Monitor Enhancement**: Significant update to the One PPS Monitor including triggered waveform visualization, pulse indicators, and input latency compensation.
+
+### Added
+
+* **Hardware Test Suite**: Introduced a new automated hardware verification suite using the `--hardware` pytest marker.
+    * Added automated hardware metrics for THD+N and IMD SMPTE.
+    * Added lock-in amplifier accuracy, signal stability, and phase stability tests.
+    * Added multitone distortion (TD+N) measurement using the MIM method.
+    * Added hardware linearity sweep and crosstalk tests with parameterized frequencies.
+    * Automated generation of a simplified `report.json` for hardware test results.
+* **Core**: Added fallback input latency estimation for audio streams reporting zero latency.
+* **1PPS**: Added configurable target PPS support and improved glitch handling.
+* **I18n**: Added internationalization for One PPS Monitor statistics and Bit Depth Analyzer terms.
+
 ### Changed
 
-* Refactor: Consolidated hardware test suite and cleaned up pytest configuration
-* Refactor: Migrated functional tests to logic verification
-* Log: Reduced log verbosity from INFO to DEBUG for smoother operation
+* **Core**: Downgrade NumPy to version 2.2.6 in constraints to resolve Windows DLL load failures.
+* **Security**: Centralized hardcoded GitHub update URLs for improved maintainability.
+* **Docs**: Added a new Development Guide and Glossary; updated Signal Generator manuals for MLS/PRBS parameters.
+* **Test**: Consolidated the test suite into a logic verification structure and cleaned up obsolete functional tests.
+* **Refactor**: Consolidated hardware test suite and cleaned up pytest configuration.
+* **Refactor**: Migrated functional tests to logic verification.
+* **Log**: Reduced log verbosity from INFO to DEBUG for smoother operation.
 
 ### Fixed
 
-* Core: Fixed race condition in AudioEngine stream startup
-* I18n: Fixed untranslated keys in multilingual files (Japanese, etc.)
-* CI: Resolved unused import errors in hardware tests
+* **UI**: Fixed a bug in Signal Generator where waveform switching during playback could fail.
+* **UI**: Fixed infinite loop and race condition in `RecorderPlayer`.
+* **Core**: Fixed incorrect noise integration calculation for non-linear frequency axes.
+* **Core**: Fixed race condition in AudioEngine stream startup.
+* **I18n**: Fixed untranslated keys in multilingual files (Japanese, etc.) and improved resource safety.
+* **CI**: Resolved unused import errors in hardware tests.
 
 ### Documentation
 
-* Docs: Added "JAM Memories" section to Timecode Monitor documentation
+* **Docs**: Added "JAM Memories" section to Timecode Monitor documentation.
 
 ## [v0.5.0] - 2026-02-13
 
