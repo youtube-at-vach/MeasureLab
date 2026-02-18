@@ -736,8 +736,9 @@ class AudioCalc:
         # d3
         d3_low = 2 * f1 - f2
         d3_high = 2 * f2 - f1
-        amp_d3_low = AudioCalc._find_peak(mag, freqs, d3_low) if d3_low > 0 else 0
-        amp_d3_high = AudioCalc._find_peak(mag, freqs, d3_high)
+        # Use abs() because distortion products wrap around DC (negative frequencies alias to positive)
+        amp_d3_low = AudioCalc._find_peak(mag, freqs, abs(d3_low))
+        amp_d3_high = AudioCalc._find_peak(mag, freqs, abs(d3_high))
 
         distortion_sum_sq = amp_d2**2 + amp_d3_low**2 + amp_d3_high**2
         imd = np.sqrt(distortion_sum_sq) / total_amp
@@ -885,8 +886,9 @@ class AudioCalc:
             # Upper side
             im_high = k * f2 - m * f1
 
-            amp_low = AudioCalc._find_peak(mag, freqs, im_low) if im_low > 0 else 0
-            amp_high = AudioCalc._find_peak(mag, freqs, im_high)
+            # Use abs() because IMD products can wrap around 0Hz
+            amp_low = AudioCalc._find_peak(mag, freqs, abs(im_low))
+            amp_high = AudioCalc._find_peak(mag, freqs, abs(im_high))
 
             sum_sq_pim += amp_low**2 + amp_high**2
 

@@ -102,3 +102,38 @@ class TestIMDAnalysis(unittest.TestCase):
         # Expected ~1.0%
         # AudioCalc.calculate_imd_ccif likely calculates ratio of d2 to sum of carriers (or similar standard)
         self.assertAlmostEqual(res['imd'], 1.0, delta=0.1)
+
+    def test_calculate_imd_ccif_negative_freq(self):
+        """Test CCIF IMD with wide spacing causing negative 2*f1-f2 frequency."""
+        f1 = 2000.0
+        f2 = 5000.0
+        # 2*f1 - f2 = -1000 Hz (wraps to 1000 Hz)
+        # 2*f2 - f1 = 8000 Hz
+
+        # Use synthetic magnitude spectrum directly to avoid windowing/aliasing issues in signal gen
+        # and ensure precise amplitude injection.
+        freqs = np.linspace(0, 10000, 10001)
+        mag = np.zeros_like(freqs)
+
+        idx_f1 = 2000
+        idx_f2 = 5000
+        idx_d3_low = 1000 # abs(2*2000 - 5000)
+        idx_d3_high = 8000 # 2*5000 - 2000
+
+        mag[idx_f1] = 1.0
+        mag[idx_f2] = 1.0
+
+        # Inject distortion
+        dist_amp = 0.1
+        mag[idx_d3_low] = dist_amp
+        mag[idx_d3_high] = dist_amp
+
+        # Calculate
+        res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
+
+        # Expected:
+        # Total Amp = 2.0
+        # Distortion RMS = sqrt(0^2 + 0.1^2 + 0.1^2) = sqrt(0.02) = 0.14142
+        # IMD = 0.14142 / 2.0 = 0.07071 (7.07%)
+
+        self.assertAlmostEqual(res['imd'], 7.071, places=3)
