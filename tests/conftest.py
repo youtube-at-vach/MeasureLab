@@ -44,7 +44,7 @@ def hardware_config():
     """
     import json
     config_path = _REPO_ROOT / "config.json"
-    
+
     default_config = {
         "audio": {
             "input_device": "system", 
@@ -65,7 +65,7 @@ def hardware_config():
                     default_config["audio"].update(user_config["audio"])
         except Exception as e:
             print(f"Warning: Failed to load config.json: {e}")
-            
+
     return default_config["audio"]
 
 def pytest_addoption(parser):
@@ -115,12 +115,12 @@ def pytest_configure(config):
 
         # Enable json-report if not explicitly disabled or configured?
         # We just force enable it if not already set.
-        
+
         # Verify if user already passed --json-report
         if not config.option.json_report:
             # print("Notice: Auto-enabling --json-report for hardware tests.")
             config.option.json_report = True
-            
+
         # Verify if user already passed --json-report-file
         # If not set (None) or set to default hidden file, enforce 'report.json'
         # The plugin default is typically none or .report.json depending on version
@@ -147,7 +147,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         return
 
     import json
-    
+
     try:
         with open(report_file, 'r') as f:
             full_report = json.load(f)
@@ -156,42 +156,42 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         return
 
     simplified_tests = []
-    
+
     for test in full_report.get('tests', []):
         # We only care about tests with user_properties (metrics)
         if 'user_properties' not in test:
             continue
-            
+
         # Extract properties
         props = {k: v for d in test['user_properties'] for k, v in d.items()}
-        
+
         # Determine test ID and Type
         # Default ID is the function name
         nodeid = test.get('nodeid', '')
         func_name = nodeid.split('::')[-1] if '::' in nodeid else nodeid
-        
+
         # Default Type from props or basic mapping
         test_type = props.get('test_type', func_name)
-        
+
         # Remove metadata from metrics
         metrics = props.copy()
         if 'test_type' in metrics:
             del metrics['test_type']
-            
+
         test_entry = {
             "id": func_name,
             "type": test_type,
             "metrics": metrics
         }
-        
+
         simplified_tests.append(test_entry)
 
     # Construct final report
-    
+
     # Reload config to get device info for the report header
     # We could reuse hardware_config fixture logic but it's cleaner to just read here
     # or rely on what tests reported. But user wants specific top-level fields.
-    
+
     config_path = _REPO_ROOT / "config.json"
     audio_conf = {}
     if config_path.exists():
@@ -199,18 +199,18 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             with open(config_path, "r", encoding="utf-8") as f:
                 c = json.load(f)
                 audio_conf = c.get("audio", {})
-        except:
+        except Exception:
             pass
-            
+
     input_dev = audio_conf.get("input_device", "System Default")
     output_dev = audio_conf.get("output_device", "System Default")
     input_hostapi = audio_conf.get("input_hostapi", "Unknown")
     output_hostapi = audio_conf.get("output_hostapi", "Unknown")
     sr = audio_conf.get("sample_rate", 48000)
     bs = audio_conf.get("block_size", 1024)
-    
+
     hardware_mode = config.getoption("--hardware-mode")
-    
+
     device_str = f"{input_dev} / {output_dev} (Loaded from config.json)"
 
     final_report = {
@@ -226,7 +226,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         },
         "tests": simplified_tests
     }
-    
+
     out_file = "measurement_report.json"
     try:
         with open(out_file, 'w') as f:
