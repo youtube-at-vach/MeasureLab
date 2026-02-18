@@ -61,8 +61,9 @@ class TestNoiseProfilerLogicBase(unittest.TestCase):
 
         # 2. Clean up module from sys.modules
         # This prevents our mocked version from polluting subsequent tests
-        if 'src.gui.widgets.noise_profiler' in sys.modules:
-            del sys.modules['src.gui.widgets.noise_profiler']
+        for mod in ['src.gui.widgets.noise_profiler', 'src.core.analysis', 'src.core.fft_manager', 'src.core.audio_engine']:
+            if mod in sys.modules:
+                del sys.modules[mod]
 
 class TestNoiseProfilerAverage(TestNoiseProfilerLogicBase):
     def setUp(self):

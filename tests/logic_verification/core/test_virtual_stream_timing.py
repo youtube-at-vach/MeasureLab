@@ -6,30 +6,7 @@ import os
 # Ensure src is in path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
-# --- Conditional Mock for numpy ---
-# Only mock numpy if it's not already installed/available.
-try:
-    import numpy as np
-except ImportError:
-    mock_np = MagicMock()
-
-    def mock_zeros(shape, dtype=None):
-        m = MagicMock()
-        m.shape = shape
-        m.dtype = dtype
-        # Allow equality check to return something truthy or expected
-        m.__eq__ = lambda self, other: MagicMock()
-        return m
-
-    mock_np.zeros = mock_zeros
-    mock_np.all = lambda x: True
-    sys.modules["numpy"] = mock_np
-    np = mock_np
-
-# Mock sounddevice if not present
-if 'sounddevice' not in sys.modules:
-    sys.modules['sounddevice'] = MagicMock()
-
+import numpy as np
 from src.core.audio_engine import VirtualStream
 
 class TestVirtualStreamTiming(unittest.TestCase):
