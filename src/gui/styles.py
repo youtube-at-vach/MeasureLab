@@ -1,6 +1,7 @@
 """
 Common stylesheet definitions for GUI widgets.
 """
+import sys
 
 # Toggle Button Styles (Start/Stop)
 STYLE_TOGGLE_BTN_DARK = (
@@ -28,7 +29,7 @@ STYLE_LABEL_LEFT_CH_LIGHT = "font-family: monospace; font-weight: bold; color: #
 STYLE_LABEL_RIGHT_CH_LIGHT = "font-family: monospace; font-weight: bold; color: #cc0000;"
 STYLE_LABEL_CURSOR_LIGHT = "font-family: monospace; font-weight: bold; color: #888800;"
 
-import sys
+
 
 # Cross-platform Monospace Font Family
 # "Monospace" is not a guaranteed family on macOS/Windows Qt.
