@@ -351,5 +351,53 @@ class TestThemeManager(unittest.TestCase):
         # Should NOT call keys() again
         self.mock_qt_widgets.QStyleFactory.keys.assert_not_called()
 
+
+    def test_macos_fusion_workaround(self):
+        """Test that Fusion style is forced on macOS (Darwin) when switching to dark theme."""
+        # Mock platform.system to return 'Darwin'
+        with patch('platform.system', return_value='Darwin'):
+            # Setup available styles has "Fusion"
+            self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
+            
+            tm = self.ThemeManager(self.mock_app)
+
+            # Setup: Current style is "Macintosh"
+            style_mock = MagicMock()
+            style_mock.objectName.return_value = "Macintosh"
+            self.mock_app.style.return_value = style_mock
+
+            # Re-init to capture available styles
+            tm = self.ThemeManager(self.mock_app)
+
+            tm.set_theme("dark")
+
+            # Check that setStyle('Fusion') was called
+            self.mock_app.setStyle.assert_called_with("Fusion")
+
+    def test_macos_restore_style(self):
+        """Test that original style is restored on macOS when switching back to light theme."""
+        with patch('platform.system', return_value='Darwin'):
+            # Setup available styles has "Fusion" and "Macintosh"
+            self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
+            
+            # Setup initial style as Macintosh
+            style_mock = MagicMock()
+            style_mock.objectName.return_value = "Macintosh"
+            self.mock_app.style.return_value = style_mock
+
+            tm = self.ThemeManager(self.mock_app)
+
+            # Switch to dark (should switch to Fusion)
+            tm.set_theme("dark")
+
+            # Now current style is Fusion
+            style_mock.objectName.return_value = "Fusion"
+
+            # Switch back to light
+            tm.set_theme("light")
+
+            # Should restore Macintosh
+            self.mock_app.setStyle.assert_called_with("Macintosh")
+
 if __name__ == '__main__':
     unittest.main()
