@@ -39,7 +39,7 @@ def _chunk_iter(arr: np.ndarray, chunk_size: int):
 
 
 def test_ltc_encoder_decoder_roundtrip_single_frame():
-    from src.gui.widgets.timecode_monitor import LTCDecoder, LTCEncoder
+    from src.core.ltc import LTCDecoder, LTCEncoder
 
     sr = 48_000
     fps = 30.0
@@ -70,7 +70,7 @@ def test_ltc_decoder_handles_block_boundary_crossings_halfbit_chunks():
     decoder can miss all crossings and decode garbage.
     """
 
-    from src.gui.widgets.timecode_monitor import LTCDecoder, LTCEncoder
+    from src.core.ltc import LTCDecoder, LTCEncoder
 
     sr = 48_000
     fps = 30.0
