@@ -18,7 +18,9 @@
 * **Config**: Moved configuration and calibration data storage to standard user data directories.
     * macOS: `~/Library/Application Support/MeasureLab`
     * Linux: `~/.config/MeasureLab` (or `$XDG_CONFIG_HOME`)
-* **Config**: Default screenshot directory now resolves to the system's "Pictures/MeasureLab" folder on all platforms.
+* **Config**: Default screenshot directory now resolves to a platform-specific location.
+    * macOS: `~/Pictures/MeasureLab` (Standard Pictures folder)
+    * Windows/Linux: `AppRoot/screenshots` (Local to application root)
 * **UI**: Updated application icon.
 * **Theming**: Enforced `Fusion` style on macOS to ensure consistent visual appearance across light/dark themes.
 
