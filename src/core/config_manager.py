@@ -2,10 +2,15 @@ import locale
 import json
 import logging
 import os
+import sys
 import threading
 import atexit
 import weakref
 from copy import deepcopy
+from pathlib import Path
+
+# Use QLocale for robust language detection on all platforms, including macOS
+from PyQt6.QtCore import QLocale
 
 from src.core.utils import resource_path
 
@@ -54,18 +59,64 @@ class ConfigManager:
     _instances: weakref.WeakSet["ConfigManager"] = weakref.WeakSet()
     _atexit_registered = False
 
-    def __init__(self, config_path="config.json"):
-        self.config_path = config_path
+    def __init__(self, config_filename="config.json"):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.config_dir = os.path.dirname(os.path.abspath(self.config_path)) or os.getcwd()
-        self.config = self.load_config()
+        
+        # Determine the best path for the configuration file
+        self.config_path = self._resolve_config_path(config_filename)
+        self.config_dir = os.path.dirname(os.path.abspath(self.config_path))
+        
+        
+        self.logger.info(f"Using config file at: {self.config_path}")
+
         self._save_timer = None
         self._save_lock = threading.Lock()
+        self.config = self.load_config()
 
         self._instances.add(self)
         if not ConfigManager._atexit_registered:
             atexit.register(ConfigManager._flush_all)
             ConfigManager._atexit_registered = True
+
+    def _get_user_data_dir(self) -> str:
+        """Returns the platform-specific user data directory for the application."""
+        app_name = "MeasureLab"
+        home = Path.home()
+
+        if sys.platform == "win32":
+            return os.path.join(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")), app_name)
+        elif sys.platform == "darwin":
+            return os.path.join(home, "Library", "Application Support", app_name)
+        else:
+            # Linux / Unix (XDG)
+            xdg_config = os.environ.get("XDG_CONFIG_HOME", str(home / ".config"))
+            return os.path.join(xdg_config, app_name)
+
+    def _resolve_config_path(self, filename: str) -> str:
+        """
+        Resolves the configuration file path.
+        Priority:
+        1. Existing file in current working directory (Portable mode).
+        2. Platform-specific user data directory.
+        """
+        cwd_path = os.path.abspath(filename)
+        if os.path.exists(cwd_path):
+            return cwd_path
+        
+        # If explicit path provided (containing separators), use it directly
+        if os.path.dirname(filename):
+            return os.path.abspath(filename)
+
+        # Otherwise, use user data directory
+        user_dir = self._get_user_data_dir()
+        try:
+            os.makedirs(user_dir, exist_ok=True)
+        except OSError as e:
+            self.logger.warning(f"Failed to create user data directory {user_dir}: {e}")
+            # Fallback to CWD if we can't write to user dir
+            return cwd_path
+            
+        return os.path.join(user_dir, filename)
 
     @classmethod
     def _flush_all(cls):
@@ -90,6 +141,9 @@ class ConfigManager:
                 self.logger.info(f"Auto-detected language: {detected_lang}")
 
             self._ensure_screenshot_dir(config)
+            # Save the new default config to disk immediately
+            self.config = config
+            self.save_config(force_sync=True)
             return config
 
         try:
@@ -345,39 +399,36 @@ class ConfigManager:
         self.save_config()
 
     def _detect_system_language(self) -> str | None:
-        """Detects the system locale and returns a supported language code, or None."""
+        """
+        Detects the system locale using QLocale (primary) and locale module (fallback).
+        Returns a supported language code (e.g., 'ja', 'en'), or None if detection fails/unsupported.
+        """
         try:
-            # getlocale() returns (language_code, encoding), e.g., ('ja_JP', 'UTF-8')
-            # It may return (None, None) if not set.
-            loc = locale.getlocale()
-            if not loc or not loc[0]:
-                # Fallback to getdefaultlocale() which might work even if setlocale wasn't called
-                loc = locale.getdefaultlocale()
-
-            if not loc or not loc[0]:
-                return None
-
-            lang_str = loc[0]
-
-            # 1. Check explicit Windows mapping first
-            # "Japanese_Japan" -> "Japanese" -> "ja"
-            base_lang = lang_str.split("_")[0].lower()
-            if base_lang in WINDOWS_LOCALE_MAP:
-                lang_code = WINDOWS_LOCALE_MAP[base_lang]
-            else:
-                lang_code = base_lang
-
-            # Checks if this language is supported
-            # We check if src/assets/lang/{lang_code}.json exists
+            # 1. Try QLocale first (Most reliable on macOS/Windows)
+            sys_locale = QLocale.system()
+            lang_code = sys_locale.name().split("_")[0]  # e.g., "ja_JP" -> "ja"
+            
+            # Verify if we have a translation file for this
             lang_file = resource_path(f"src/assets/lang/{lang_code}.json")
             if os.path.exists(lang_file):
                 return lang_code
 
-            # Fallback for standard locales if not in map but file exists (e.g. ja_JP -> ja -> check file)
-            # Already covered by else block above roughly, but let's be safe for cases like "en_US"
-            # Split and try again if the map check failed or returned something invalid
+            # 2. Fallback to standard python locale
+            loc = locale.getlocale()
+            if not loc or not loc[0]:
+                loc = locale.getdefaultlocale()
 
-            # If lang_code is still "Japanese" (because it wasn't in map for some reason) it fails check above.
+            if loc and loc[0]:
+                lang_str = loc[0]
+                base_lang = lang_str.split("_")[0].lower()
+                
+                # Check Windows mapping
+                if base_lang in WINDOWS_LOCALE_MAP:
+                    base_lang = WINDOWS_LOCALE_MAP[base_lang]
+
+                lang_file = resource_path(f"src/assets/lang/{base_lang}.json")
+                if os.path.exists(lang_file):
+                    return base_lang
 
             return None
         except Exception as e:
