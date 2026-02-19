@@ -272,8 +272,6 @@ class ConfigManager:
         else:
             full_path = os.path.abspath(os.path.join(self.config_dir, path_value))
 
-        base_dir = os.path.abspath(self.config_dir)
-
         return full_path
 
     def _ensure_screenshot_dir(self, config):
