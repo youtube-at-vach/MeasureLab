@@ -31,7 +31,7 @@ class LTCEncoder:
         mm: int,
         ss: int,
         ff: int,
-        user_bits: list = None,
+        user_bits: Optional[list] = None,
         out_buffer: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """Generates audio samples for one LTC frame."""
@@ -170,10 +170,10 @@ class LTCDecoder:
         self.sample_rate = sample_rate
         self.fps = fps
         self.samples_since_last_zc = 0
-        self._last_sign = None
+        self._last_sign: Optional[bool] = None
         self.bit_stream = 0
         self.bits_count = 0
-        self.current_bits = []
+        self.current_bits: list[int] = []
         self.last_bit_is_one = False
 
         # Pulse Width discrimination
@@ -181,7 +181,7 @@ class LTCDecoder:
         # 80 bits per frame.
         self.pulse_avg = (sample_rate / fps) / 160.0
 
-        self.decoded_bits = []
+        self.decoded_bits: list[int] = []
         self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
@@ -212,7 +212,7 @@ class LTCDecoder:
         self.total_samples = 0
         self.last_frame_offset_in_chunk = None
 
-    def process_samples(self, samples: np.ndarray):
+    def process_samples(self, samples: Optional[np.ndarray]):
         """Process a chunk of audio samples. Returns True if a new frame was decoded."""
         # Vectorized zero-crossing (sign change) detection.
         # IMPORTANT: we must not miss a transition that occurs exactly at the
