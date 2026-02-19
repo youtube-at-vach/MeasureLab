@@ -71,12 +71,37 @@ class ConfigManager:
 
         self._save_timer = None
         self._save_lock = threading.Lock()
+        # Initialize config (will load from file or create defaults)
         self.config = self.load_config()
 
         self._instances.add(self)
         if not ConfigManager._atexit_registered:
             atexit.register(ConfigManager._flush_all)
             ConfigManager._atexit_registered = True
+
+    @staticmethod
+    def get_app_root_dir() -> str:
+        """Returns the application root directory (executable dir or source root)."""
+        if getattr(sys, 'frozen', False):
+            # PyInstaller
+            return os.path.dirname(sys.executable)
+        else:
+            # Running from source (assume this file is in src/core/)
+            # We want the project root, which is 2 levels up from here
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            return os.path.dirname(os.path.dirname(current_dir))
+
+    @staticmethod
+    def _get_default_screenshot_dir() -> str:
+        """Returns the platform-specific default screenshot directory."""
+        if sys.platform == "darwin":
+            # macOS: ~/Pictures/MeasureLab
+            return os.path.join(str(Path.home()), "Pictures", "MeasureLab")
+        else:
+            # Windows/Linux: AppRoot/screenshots
+            # This keeps screenshots local to the app, which is often preferred
+            # especially for portable usages or simple organization.
+            return os.path.join(ConfigManager.get_app_root_dir(), "screenshots")
 
     @staticmethod
     def get_user_data_dir() -> str:
@@ -203,7 +228,10 @@ class ConfigManager:
         self._save_timer.start()
 
     def _default_config(self):
-        return deepcopy(DEFAULT_CONFIG)
+        config = deepcopy(DEFAULT_CONFIG)
+        # Update dynamic defaults (paths that depend on runtime environment)
+        config["screenshot"]["output_dir"] = self._get_default_screenshot_dir()
+        return config
 
     def _merge_with_defaults(self, loaded_config):
         if not isinstance(loaded_config, dict):
@@ -389,7 +417,7 @@ class ConfigManager:
         try:
             return self._resolve_path(str(out_dir))
         except ValueError:
-            return os.path.join(self.config_dir, "screenshots")
+            return self._get_default_screenshot_dir()
 
     def set_screenshot_output_dir(self, output_dir: str):
         """Updates the screenshot output directory."""
