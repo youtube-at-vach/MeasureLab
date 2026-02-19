@@ -1,4 +1,4 @@
-[English](README.md)
+[**🇺🇸 English Version**](README.md)
 
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 

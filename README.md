@@ -1,4 +1,4 @@
-[日本語](README.ja.md)
+[**🇯🇵 日本語版**](README.ja.md)
 
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 
