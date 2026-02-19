@@ -1,5 +1,5 @@
 import numpy as np
-from src.core.analysis import AudioCalc
+from src.core.analysis import AudioCalc, get_cached_window
 from src.core.fft_manager import fft_manager
 
 
@@ -25,7 +25,8 @@ def calculate_frequency_metrics(data, sr, gate_threshold_db, calibration_factor=
         return None, db
 
     # 2. Coarse Estimate (FFT)
-    window = np.hamming(len(data))
+    # Use cached window for performance (fftbins=False to match np.hamming symmetric behavior)
+    window = get_cached_window("hamming", len(data), dtype=data.dtype, fftbins=False)
     fft_res = fft_manager.rfft(data * window)
     freqs = fft_manager.rfftfreq(len(data), 1 / sr)
 
