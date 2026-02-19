@@ -28,7 +28,8 @@ class TestConfigManagerLifecycle(unittest.TestCase):
     @patch('src.core.config_manager.os.path.exists')
     @patch('src.core.config_manager.os.makedirs')
     @patch('src.core.config_manager.locale.getlocale')
-    def test_load_defaults_when_file_missing(self, mock_getlocale, mock_makedirs, mock_exists, mock_resource_path):
+    @patch('src.core.config_manager.QLocale')
+    def test_load_defaults_when_file_missing(self, mock_qlocale, mock_getlocale, mock_makedirs, mock_exists, mock_resource_path):
         """Test that default config is loaded when file does not exist."""
         # We need side_effect to allow language file check to pass while config file check fails
         def exists_side_effect(path):
@@ -43,6 +44,8 @@ class TestConfigManagerLifecycle(unittest.TestCase):
 
         # Mock locale to avoid non-deterministic behavior based on system
         mock_getlocale.return_value = ('en_US', 'UTF-8')
+        # Mock QLocale to avoid falling back to system locale (which might be 'C' in CI)
+        mock_qlocale.system.return_value.name.return_value = 'en_US'
 
         cm = ConfigManager(config_filename=self.config_path)
 
