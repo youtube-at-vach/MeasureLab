@@ -182,12 +182,8 @@ class AnalysisWorker(QThread):
             # Fallback warning or attempt to design filter
             pass
 
-        # Stage 1: Shelf
-        b1 = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285])
-        a1 = np.array([1.0, -1.69065929318241, 0.73248077421585])
-        # Stage 2: High-pass
-        b2 = np.array([1.0, -2.0, 1.0])
-        a2 = np.array([1.0, -1.99004745483398, 0.99007225036621])
+        # Stage 1: Shelf, Stage 2: High-pass
+        b1, a1, b2, a2 = AudioCalc.get_k_weighting_filter(sr)
 
         y = signal.lfilter(b1, a1, audio)
         y = signal.lfilter(b2, a2, y)

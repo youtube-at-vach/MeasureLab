@@ -4,7 +4,7 @@ import numpy as np
 import scipy.signal
 import soundfile as sf
 from scipy.optimize import minimize_scalar
-from scipy.signal import butter, get_window, sosfiltfilt, firwin
+from scipy.signal import butter, get_window, sosfiltfilt, firwin, bilinear_zpk, zpk2tf
 
 
 from src.core.fft_manager import fft_manager
@@ -1299,3 +1299,41 @@ class AudioCalc:
         phase = np.arctan2(val_y, val_x)
 
         return magnitude, np.degrees(phase)
+
+    @staticmethod
+    def get_k_weighting_filter(sampling_rate=48000):
+        """
+        Returns K-weighting filter coefficients (ITU-R BS.1770-4).
+        Currently only supports 48kHz coefficients.
+        Returns: (b0, a0, b1, a1) where 0 is shelf, 1 is highpass.
+        """
+        # Coefficients for 48kHz
+        b0_shelf = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285], dtype=np.float32)
+        a0_shelf = np.array([1.0, -1.69065929318241, 0.73248077421585], dtype=np.float32)
+        b1_hp = np.array([1.0, -2.0, 1.0], dtype=np.float32)
+        a1_hp = np.array([1.0, -1.99004745483398, 0.99007225036621], dtype=np.float32)
+
+        return b0_shelf, a0_shelf, b1_hp, a1_hp
+
+    @staticmethod
+    def design_c_weighting(sr: float):
+        """Design digital C-weighting filter (IEC 61672) for sample rate sr."""
+        sr = float(sr)
+        if sr <= 0:
+            raise ValueError("Invalid sample rate")
+
+        w1 = 2 * np.pi * 20.6
+        w2 = 2 * np.pi * 12194.0
+
+        zeros = np.array([0.0, 0.0])
+        poles = np.array([-w1, -w1, -w2, -w2])
+        gain = 1.0
+
+        # Normalize to 0 dB at 1 kHz
+        s = 1j * 2 * np.pi * 1000.0
+        h = gain * (s**2) / ((s + w1) ** 2 * (s + w2) ** 2)
+        gain = 1.0 / np.abs(h)
+
+        z, p, k = bilinear_zpk(zeros, poles, gain, fs=sr)
+        b, a = zpk2tf(z, p, k)
+        return b.astype(np.float32), a.astype(np.float32)

@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy import signal
 
+from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -115,10 +116,7 @@ class LufsMeter(MeasurementModule):
     def _init_filters(self):
         # K-weighting filter coefficients (ITU-R BS.1770-4)
         # Keep float32 to avoid per-block float64 upcasts in the audio callback.
-        self.b0_shelf = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285], dtype=np.float32)
-        self.a0_shelf = np.array([1.0, -1.69065929318241, 0.73248077421585], dtype=np.float32)
-        self.b1_hp = np.array([1.0, -2.0, 1.0], dtype=np.float32)
-        self.a1_hp = np.array([1.0, -1.99004745483398, 0.99007225036621], dtype=np.float32)
+        self.b0_shelf, self.a0_shelf, self.b1_hp, self.a1_hp = AudioCalc.get_k_weighting_filter(self.sample_rate)
 
         # Initial filter states (per-channel)
         zi_shelf = signal.lfilter_zi(self.b0_shelf, self.a0_shelf).astype(np.float32, copy=False)
@@ -129,37 +127,10 @@ class LufsMeter(MeasurementModule):
         self.zi_hp_r = zi_hp.copy()
 
         # C-weighting (IEC 61672) for SPL calibration compatibility
-        self.c_b, self.c_a = self._design_c_weighting(self.sample_rate)
+        self.c_b, self.c_a = AudioCalc.design_c_weighting(self.sample_rate)
         zi = signal.lfilter_zi(self.c_b, self.c_a).astype(np.float32, copy=False)
         self.c_zi_l = zi.copy()
         self.c_zi_r = zi.copy()
-
-    def _design_c_weighting(self, sr: float):
-        """Design digital C-weighting filter (IEC 61672) for sample rate sr.
-
-        Matches the SPL calibration wizard's filter so that measured dBFS_C
-        is compatible with the stored SPL offset.
-        """
-        sr = float(sr)
-        if sr <= 0:
-            raise ValueError("Invalid sample rate")
-
-        w1 = 2 * np.pi * 20.6
-        w2 = 2 * np.pi * 12194.0
-
-        zeros = np.array([0.0, 0.0])
-        poles = np.array([-w1, -w1, -w2, -w2])
-        gain = 1.0
-
-        # Normalize to 0 dB at 1 kHz
-        s = 1j * 2 * np.pi * 1000.0
-        h = gain * (s**2) / ((s + w1) ** 2 * (s + w2) ** 2)
-        gain = 1.0 / np.abs(h)
-
-        z, p, k = signal.bilinear_zpk(zeros, poles, gain, fs=sr)
-        b, a = signal.zpk2tf(z, p, k)
-        # Use float32 for callback efficiency; response accuracy remains sufficient for metering.
-        return b.astype(np.float32), a.astype(np.float32)
 
     def reset_peaks(self):
         self.peak_hold_l = self._db_floor
