@@ -62,6 +62,10 @@ Limits the frequency bandwidth to be measured.
 
 Sets the time to automatically end measurement (e.g., 1 minute, 10 minutes, etc.). Setting it to "Continuous" continues measurement until manually stopped.
 
+### Lp Interval
+
+Sets the sampling interval of the instantaneous value (Lp) used for calculating statistical information (histogram and LN values). A smaller value increases the time resolution but also increases the calculation load (Default: 0.1s).
+
 ## About Calibration
 
 To display accurate "dB SPL" values, please calibrate the "SPL Offset" in the "Calibration" tab of the **Settings widget** beforehand. If not calibrated, the values displayed are relative to the digital full scale (dBFS).
