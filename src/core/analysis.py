@@ -1204,8 +1204,9 @@ class AudioCalc:
             # Calculate variable bin widths for log/arbitrary scale
             if len(freqs) > 1:
                 # Use forward difference, append last
-                diffs = np.diff(freqs)
-                bin_width = np.append(diffs, diffs[-1])
+                bin_width = np.empty_like(freqs)
+                np.subtract(freqs[1:], freqs[:-1], out=bin_width[:-1])
+                bin_width[-1] = bin_width[-2]
             else:
                 bin_width = 1.0
 
