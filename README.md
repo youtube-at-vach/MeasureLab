@@ -136,7 +136,7 @@ You are free to copy, modify, distribute, and use it for any commercial or non-c
 ### 🧑‍💻 Special Thanks (Thanks to everyone who helped improve this software)
 
 - [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
-- [vach-at-youtube](https://www.youtube.com/@va-ch)
+- [vach@YouTube](https://www.youtube.com/@va-ch)
 
 ### 🤖 AI Models
 
