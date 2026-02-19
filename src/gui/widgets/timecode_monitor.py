@@ -36,6 +36,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 # Constants
 SYNC_WORD = 0xBFFC  # 1011 1111 1111 1100 (Reverse of 0011 1111 1111 1101 ?)
@@ -1625,7 +1626,7 @@ class TimecodeMonitorWidget(QWidget):
             v.addLayout(header)
 
             tc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            tc_label.setFont(QFont("Monospace", 44, QFont.Weight.Bold))
+            tc_label.setFont(QFont(MONOSPACE_FONT_FAMILY, 44, QFont.Weight.Bold))
             tc_label.setStyleSheet("color: #ff3333;")
             v.addWidget(tc_label)
 
@@ -1682,7 +1683,7 @@ class TimecodeMonitorWidget(QWidget):
         # CH offset visualization (L/R LTC frame difference)
         self.ltc_offset_label = QLabel(tr("CH Δ (R-L): --"))
         self.ltc_offset_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.ltc_offset_label.setFont(QFont("Monospace", 11))
+        self.ltc_offset_label.setFont(QFont(MONOSPACE_FONT_FAMILY, 11))
         self.ltc_offset_label.setStyleSheet("color: #888;")
         layout.addWidget(self.ltc_offset_label)
 
@@ -2096,7 +2097,7 @@ class TimecodeMonitorWidget(QWidget):
 
         gen_out = QLabel(tr("Gen Out: --:--:--:--"))
         gen_out.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        gen_out.setFont(QFont("Monospace", 10))
+        gen_out.setFont(QFont(MONOSPACE_FONT_FAMILY, 10))
         gen_out.setStyleSheet("color: #888;")
         gl.addWidget(gen_out, 2, 2)
         self._gen_out_labels[key] = gen_out
@@ -2212,8 +2213,8 @@ class TimecodeMonitorWidget(QWidget):
             gl.addWidget(QLabel(str(slot + 1)), row, 0)
             cap = QLabel("--:--:--:--")
             cur = QLabel("--:--:--:--")
-            cap.setFont(QFont("Monospace", 10))
-            cur.setFont(QFont("Monospace", 10))
+            cap.setFont(QFont(MONOSPACE_FONT_FAMILY, 10))
+            cur.setFont(QFont(MONOSPACE_FONT_FAMILY, 10))
             gl.addWidget(cap, row, 1)
             gl.addWidget(cur, row, 2)
             self._jam_labels[(slot, "cap")] = cap

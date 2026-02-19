@@ -27,3 +27,8 @@ STYLE_LABEL_CURSOR_DARK = "font-family: monospace; font-weight: bold; color: yel
 STYLE_LABEL_LEFT_CH_LIGHT = "font-family: monospace; font-weight: bold; color: #008800;"
 STYLE_LABEL_RIGHT_CH_LIGHT = "font-family: monospace; font-weight: bold; color: #cc0000;"
 STYLE_LABEL_CURSOR_LIGHT = "font-family: monospace; font-weight: bold; color: #888800;"
+
+# Cross-platform Monospace Font Family
+# "Monospace" is not a guaranteed family on macOS/Windows Qt.
+# We prefer standard fixed-width fonts.
+MONOSPACE_FONT_FAMILY = "Menlo, Consolas, Monaco, Courier New, monospace"
