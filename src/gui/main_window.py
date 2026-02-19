@@ -208,14 +208,14 @@ class MainWindow(QMainWindow):
             # Try default if specific failed
             try:
                 self.audio_engine.set_devices(None, None)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.error(f"Failed to set default devices: {e}")
 
             # Even if device selection failed, honor resident setting best-effort.
             try:
                 self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.warning(f"Failed to set resident mode: {e}")
 
     def _init_ui(self):
         """Initialize UI components (Layouts, Sidebar, StackedWidget, Status Bar)."""

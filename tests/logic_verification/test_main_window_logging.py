@@ -123,5 +123,84 @@ class TestMainWindowLogging(unittest.TestCase):
                 # Check for output warning
                 spy_logger.warning.assert_any_call("Saved output device 'Saved Speaker' not found, using default.")
 
+    def test_swallowed_exception_logging(self):
+        """
+        Verify that logger.error is called when set_devices fallback fails.
+        """
+        # Reset mocks
+        mock_audio_engine.reset_mock()
+        mock_config_manager.reset_mock()
+
+        # Setup mock behavior
+        mock_config_manager.ConfigManager.return_value.get_audio_config.return_value = {
+            "input_device": "Saved Mic",
+            "output_device": "Saved Speaker"
+        }
+
+        # Mock set_devices to raise exception ALWAYS
+        # First call (specific devices) raises "Primary Failure"
+        # Second call (None, None) raises "Fallback Failure"
+        mock_ae_instance = mock_audio_engine.AudioEngine.return_value
+
+        def set_devices_side_effect(in_id, out_id):
+            if in_id is None and out_id is None:
+                raise Exception("Fallback Failure")
+            raise Exception("Primary Failure")
+
+        mock_ae_instance.set_devices.side_effect = set_devices_side_effect
+
+        # Mock set_pipewire_jack_resident to raise exception
+        mock_ae_instance.set_pipewire_jack_resident.side_effect = Exception("Resident Failure")
+
+        # Patch modules
+        modules_to_patch = {
+            "PyQt6": MagicMock(),
+            "PyQt6.QtCore": MagicMock(),
+            "PyQt6.QtWidgets": qt_widgets,
+            "PyQt6.QtGui": MagicMock(),
+            "src.core.audio_engine": mock_audio_engine,
+            "src.core.config_manager": mock_config_manager,
+            "src.core.localization": mock_localization,
+            "src.core.theme_manager": mock_theme_manager,
+            "src.gui.widgets.detachable_wrapper": mock_detachable,
+        }
+
+        with patch.dict(sys.modules, modules_to_patch):
+            if "src.gui.main_window" in sys.modules:
+                del sys.modules["src.gui.main_window"]
+
+            with patch("logging.getLogger") as mock_get_logger:
+                spy_logger = MagicMock()
+                mock_get_logger.return_value = spy_logger
+
+                from src.gui.main_window import MainWindow
+
+                # Instantiate MainWindow
+                MainWindow()
+
+                # Verify:
+                # 1. Primary failure logged (already implemented)
+                spy_logger.error.assert_any_call("Failed to set devices/settings: Primary Failure")
+
+                # 2. Fallback failure logged
+                # We check if error or warning was called with "Fallback Failure"
+                # Searching all calls
+                fallback_found = False
+                for call in spy_logger.error.call_args_list + spy_logger.warning.call_args_list:
+                    if "Fallback Failure" in str(call):
+                        fallback_found = True
+                        break
+
+                self.assertTrue(fallback_found, "Fallback Failure was not logged")
+
+                # 3. Resident failure logged
+                resident_found = False
+                for call in spy_logger.error.call_args_list + spy_logger.warning.call_args_list:
+                    if "Resident Failure" in str(call):
+                        resident_found = True
+                        break
+
+                self.assertTrue(resident_found, "Resident Failure was not logged")
+
 if __name__ == "__main__":
     unittest.main()
