@@ -28,7 +28,15 @@ STYLE_LABEL_LEFT_CH_LIGHT = "font-family: monospace; font-weight: bold; color: #
 STYLE_LABEL_RIGHT_CH_LIGHT = "font-family: monospace; font-weight: bold; color: #cc0000;"
 STYLE_LABEL_CURSOR_LIGHT = "font-family: monospace; font-weight: bold; color: #888800;"
 
+import sys
+
 # Cross-platform Monospace Font Family
 # "Monospace" is not a guaranteed family on macOS/Windows Qt.
-# We prefer standard fixed-width fonts.
-MONOSPACE_FONT_FAMILY = "Menlo, Consolas, Monaco, Courier New, monospace"
+# We prefer standard fixed-width fonts suitable for each platform.
+if sys.platform == "darwin":
+    MONOSPACE_FONT_FAMILY = "Menlo, Monaco, Courier New, monospace"
+elif sys.platform == "win32":
+    MONOSPACE_FONT_FAMILY = "Consolas, Courier New, monospace"
+else:
+    # Linux and others
+    MONOSPACE_FONT_FAMILY = "Monospace, Courier New, monospace"
