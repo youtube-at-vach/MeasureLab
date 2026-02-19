@@ -18,7 +18,7 @@ def calculate_frequency_metrics(data, sr, gate_threshold_db, calibration_factor=
                frequency_hz is None if below gate threshold.
     """
     # 1. Check Amplitude (Gate)
-    rms = np.sqrt(np.mean(data**2))
+    rms = np.sqrt(np.vdot(data, data) / data.size)
     db = 20 * np.log10(rms + 1e-12)
 
     if db < gate_threshold_db:
