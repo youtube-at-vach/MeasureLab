@@ -284,17 +284,26 @@ class ConfigManager:
 
     def _ensure_screenshot_dir(self, config):
         try:
-            out_dir = self._resolve_path(config["screenshot"].get("output_dir", "screenshots"))
-        except ValueError as e:
-            self.logger.warning(f"{e}. Reverting to default.")
-            out_dir = os.path.join(self.config_dir, "screenshots")
+            # Allow arbitrary paths for screenshots (no sandboxing)
+            raw_path = config["screenshot"].get("output_dir", "screenshots")
+            # Expand ~ if present
+            raw_path = os.path.expanduser(raw_path)
+            
+            if os.path.isabs(raw_path):
+                out_dir = os.path.abspath(raw_path)
+            else:
+                out_dir = os.path.abspath(os.path.join(self.config_dir, raw_path))
+                
+        except Exception as e:
+            self.logger.warning(f"Error resolving screenshot path: {e}. Reverting to default.")
+            out_dir = self._get_default_screenshot_dir()
 
         try:
             os.makedirs(out_dir, mode=0o700, exist_ok=True)
-            try:
-                os.chmod(out_dir, 0o700)
-            except Exception as exc:
-                self.logger.warning(f"Unable to set secure permissions for {out_dir}: {exc}")
+            # Only attempt chmod if we own the directory/it's new, but strict permissioning 
+            # might be too aggressive for public folders like Desktop. 
+            # keeping it simple: just try to create it.
+            pass
         except Exception as exc:  # PermissionError, OSError
             self.logger.warning(f"Unable to ensure screenshot directory at {out_dir}: {exc}")
         return out_dir
@@ -414,9 +423,15 @@ class ConfigManager:
         out_dir = screenshot.get("output_dir", "screenshots")
         if not out_dir:
             return "screenshots"
+        # Allow arbitrary paths for screenshots (no sandboxing)
+        out_dir = str(out_dir)
         try:
-            return self._resolve_path(str(out_dir))
-        except ValueError:
+            out_dir = os.path.expanduser(out_dir)
+            if os.path.isabs(out_dir):
+                return os.path.abspath(out_dir)
+            else:
+                return os.path.abspath(os.path.join(self.config_dir, out_dir))
+        except Exception:
             return self._get_default_screenshot_dir()
 
     def set_screenshot_output_dir(self, output_dir: str):
