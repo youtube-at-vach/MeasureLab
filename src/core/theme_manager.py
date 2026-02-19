@@ -140,7 +140,13 @@ class ThemeManager(QObject):
 
     def _apply_light_theme(self):
         """Apply light theme palette."""
-        self._restore_native_style_if_needed()
+        # On macOS, we always use Fusion to ensure consistent styling.
+        # On Windows, we restore native style for light theme.
+        if platform.system().lower() == "darwin":
+            self._ensure_fusion_style()
+        else:
+            self._restore_native_style_if_needed()
+
         palette = QPalette()
 
         # Base colors
@@ -235,9 +241,9 @@ class ThemeManager(QObject):
         self.app.setStyle(fusion_key)
 
     def _restore_native_style_if_needed(self) -> None:
-        """Restore the original style if we previously switched it for dark theme."""
+        """Restore the original style (Windows only)."""
         system = platform.system().lower()
-        if not (system.startswith("win") or system == "darwin"):
+        if not system.startswith("win"):
             return
         if not self._original_style_name:
             return
