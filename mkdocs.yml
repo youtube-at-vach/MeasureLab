@@ -29,7 +29,7 @@ theme:
         name: Switch to light mode
   icon:
     logo: material/chart-bell-curve-cumulative
-    favicon: material/chart-bell-curve-cumulative
+    favicon: assets/images/favicon.png
 
 markdown_extensions:
   - admonition
