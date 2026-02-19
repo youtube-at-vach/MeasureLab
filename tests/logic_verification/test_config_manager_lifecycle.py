@@ -24,12 +24,23 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         # though it's private.
         # Calling shutdown on instances is good practice if we have refs.
 
+    @patch('src.core.config_manager.resource_path', side_effect=lambda x: x)
     @patch('src.core.config_manager.os.path.exists')
     @patch('src.core.config_manager.os.makedirs')
     @patch('src.core.config_manager.locale.getlocale')
-    def test_load_defaults_when_file_missing(self, mock_getlocale, mock_makedirs, mock_exists):
+    def test_load_defaults_when_file_missing(self, mock_getlocale, mock_makedirs, mock_exists, mock_resource_path):
         """Test that default config is loaded when file does not exist."""
-        mock_exists.return_value = False
+        # We need side_effect to allow language file check to pass while config file check fails
+        def exists_side_effect(path):
+            if path == self.config_path:
+                return False
+            # Allow language files to "exist"
+            if "src/assets/lang" in path:
+                return True
+            return False
+
+        mock_exists.side_effect = exists_side_effect
+
         # Mock locale to avoid non-deterministic behavior based on system
         mock_getlocale.return_value = ('en_US', 'UTF-8')
 
@@ -37,8 +48,47 @@ class TestConfigManagerLifecycle(unittest.TestCase):
 
         # Check defaults are loaded
         self.assertEqual(cm.config['audio']['sample_rate'], 48000)
+        # Check language detected as en (since we mocked en_US)
+        self.assertEqual(cm.config['language'], 'en')
+
         # Check screenshot dir ensured
         mock_makedirs.assert_called()
+        cm.shutdown()
+
+    @patch('src.core.config_manager.resource_path', side_effect=lambda x: x)
+    @patch('src.core.config_manager.os.path.exists')
+    @patch('src.core.config_manager.os.makedirs')
+    @patch('src.core.config_manager.locale.getlocale')
+    def test_auto_detect_language_ja(self, mock_getlocale, mock_makedirs, mock_exists, mock_resource_path):
+        """Test that Japanese is auto-detected when config file is missing."""
+        def exists_side_effect(path):
+            if path == self.config_path:
+                return False
+            if "src/assets/lang/ja.json" in path:
+                return True
+            return False
+
+        mock_exists.side_effect = exists_side_effect
+        mock_getlocale.return_value = ('ja_JP', 'UTF-8')
+
+        cm = ConfigManager(self.config_path)
+
+        self.assertEqual(cm.config['language'], 'ja')
+        cm.shutdown()
+
+    @patch('src.core.config_manager.os.path.exists')
+    @patch('src.core.config_manager.os.makedirs')
+    @patch('builtins.open', new_callable=mock_open, read_data='{"language": "fr"}')
+    @patch('src.core.config_manager.locale.getlocale')
+    def test_config_file_overrides_system_language(self, mock_getlocale, mock_open_file, mock_makedirs, mock_exists):
+        """Test that existing config file language setting overrides system locale."""
+        mock_exists.return_value = True # Config file exists
+        mock_getlocale.return_value = ('ja_JP', 'UTF-8') # System is Japanese
+
+        cm = ConfigManager(self.config_path)
+
+        # Should be French from file, not Japanese from system
+        self.assertEqual(cm.config['language'], 'fr')
         cm.shutdown()
 
     @patch('src.core.config_manager.os.path.exists')
