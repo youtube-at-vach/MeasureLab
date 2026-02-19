@@ -61,12 +61,12 @@ class ConfigManager:
 
     def __init__(self, config_filename="config.json"):
         self.logger = logging.getLogger(self.__class__.__name__)
-        
+
         # Determine the best path for the configuration file
         self.config_path = self._resolve_config_path(config_filename)
         self.config_dir = os.path.dirname(os.path.abspath(self.config_path))
-        
-        
+
+
         self.logger.info(f"Using config file at: {self.config_path}")
 
         self._save_timer = None
@@ -128,7 +128,7 @@ class ConfigManager:
         cwd_path = os.path.abspath(filename)
         if os.path.exists(cwd_path):
             return cwd_path
-        
+
         # If explicit path provided (containing separators), use it directly
         if os.path.dirname(filename):
             return os.path.abspath(filename)
@@ -141,7 +141,7 @@ class ConfigManager:
             self.logger.warning(f"Failed to create user data directory {user_dir}: {e}")
             # Fallback to CWD if we can't write to user dir
             return cwd_path
-            
+
         return os.path.join(user_dir, filename)
 
     @classmethod
@@ -288,12 +288,12 @@ class ConfigManager:
             raw_path = config["screenshot"].get("output_dir", "screenshots")
             # Expand ~ if present
             raw_path = os.path.expanduser(raw_path)
-            
+
             if os.path.isabs(raw_path):
                 out_dir = os.path.abspath(raw_path)
             else:
                 out_dir = os.path.abspath(os.path.join(self.config_dir, raw_path))
-                
+
         except Exception as e:
             self.logger.warning(f"Error resolving screenshot path: {e}. Reverting to default.")
             out_dir = self._get_default_screenshot_dir()
@@ -451,7 +451,7 @@ class ConfigManager:
             # 1. Try QLocale first (Most reliable on macOS/Windows)
             sys_locale = QLocale.system()
             lang_code = sys_locale.name().split("_")[0]  # e.g., "ja_JP" -> "ja"
-            
+
             # Verify if we have a translation file for this
             lang_file = resource_path(f"src/assets/lang/{lang_code}.json")
             if os.path.exists(lang_file):
@@ -465,7 +465,7 @@ class ConfigManager:
             if loc and loc[0]:
                 lang_str = loc[0]
                 base_lang = lang_str.split("_")[0].lower()
-                
+
                 # Check Windows mapping
                 if base_lang in WINDOWS_LOCALE_MAP:
                     base_lang = WINDOWS_LOCALE_MAP[base_lang]

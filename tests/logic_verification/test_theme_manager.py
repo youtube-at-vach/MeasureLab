@@ -358,7 +358,7 @@ class TestThemeManager(unittest.TestCase):
         with patch('platform.system', return_value='Darwin'):
             # Setup available styles has "Fusion"
             self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
-            
+
             tm = self.ThemeManager(self.mock_app)
 
             # Setup: Current style is "Macintosh"
@@ -379,7 +379,7 @@ class TestThemeManager(unittest.TestCase):
         with patch('platform.system', return_value='Darwin'):
             # Setup available styles has "Fusion" and "Macintosh"
             self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
-            
+
             # Setup initial style as Macintosh
             style_mock = MagicMock()
             style_mock.objectName.return_value = "Macintosh"
