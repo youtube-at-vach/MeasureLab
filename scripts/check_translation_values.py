@@ -40,7 +40,7 @@ def main():
 
         # Hardware / Software
         "CPU", "RAM", "GPU", "OS", "GUI", "API", "ASIO", "WASAPI", "ALSA", "JACK",
-        "USB", "PCI", "LAN", "IP", "TCP", "UDP",
+        "PCI", "LAN", "IP", "TCP", "UDP",
         "1 PPS", "10 MHz", "NCO", "DDS", "DAC", "ADC", "FPGA", "DSP",
         "FIR", "IIR", "SOS", "FFT", "DFT", "PDF", "CDF",
         "L", "R", "M", "S", "X", "Y", "Z", "I", "Q",
