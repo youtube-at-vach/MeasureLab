@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 # Mock sounddevice before importing anything that uses it
 try:
     import sounddevice # noqa: F401
-except ImportError:
+except (ImportError, OSError):
     sys.modules['sounddevice'] = MagicMock()
 
 # Add src to path
