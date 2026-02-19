@@ -42,6 +42,14 @@ MeasureLab は Windows および Linux で動作します。
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
+### macOS (arm64) の場合
+
+1. `MeasureLab-<version>-macos-arm64.dmg`（または `.app`）をダウンロードします。
+2. **ゲートキーパーの回避**:
+   - 初回起動時は、そのまま開こうとすると「開発元が未確認のため開けません」と表示される場合があります。
+   - アプリを **「右クリック（または Control + クリック）して『開く』を選択」** してください。
+   - 確認ダイアログが表示されるので、再度 **「開く」** をクリックすると起動します。
+
 !!! important
     **初回起動時の注意：FFT 最適化 ([WISDOM](glossary.md#fft-wisdom-初期最適化))**
 

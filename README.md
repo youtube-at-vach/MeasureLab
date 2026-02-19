@@ -90,7 +90,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 | --- | --- | --- |
 | Linux (x86_64) | ✅ Supported | Tested on Ubuntu 22.04 / 24.04 |
 | Windows 10/11 | ✅ Supported | Official binary available |
-| macOS | ⚠️ Experimental | Build may succeed, runtime not fully tested |
+| macOS (arm64) | ✅ Supported | Official binary available (M1/M2/M3) |
 
 ---
 
@@ -107,6 +107,11 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
     chmod +x MeasureLab-*-linux-x86_64.AppImage
     ./MeasureLab-*-linux-x86_64.AppImage
     ```
+
+- **macOS (arm64)**: `MeasureLab-<version>-macos-arm64.dmg`（または `.app`）をダウンロードします。
+    - **重要：ゲートキーパーの回避**
+    - 本アプリは現時点で未署名のため、通常の手順では「開発元が未確認のため開けません」と表示されます。
+    - アプリを起動するには、**「右クリック（または Control + クリック）して『開く』を選択」** してください。確認のダイアログが出るので、そこで再度「開く」を選択すると実行可能です。
 
 #### Linux（任意）: JACK / PipeWire を使う場合の注意
 

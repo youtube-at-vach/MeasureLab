@@ -42,6 +42,14 @@ Please download the latest version for your OS from the [Releases](https://githu
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
+### For macOS (arm64)
+
+1. Download `MeasureLab-<version>-macos-arm64.dmg` (or `.app`).
+2. **Gatekeeper Bypass**:
+   - On the first launch, you may see a message saying the application "cannot be opened because the developer cannot be verified."
+   - To open it, **"Right-click (or Control + click) the app and select 'Open'."**
+   - A confirmation dialog will appear. Click **"Open"** again to start the application.
+
 !!! important
     **Note for the first launch: FFT Optimization ([WISDOM](glossary.en.md#fft-wisdom-initial-optimization))**
 
