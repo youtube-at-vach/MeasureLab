@@ -1,92 +1,86 @@
+[**🇯🇵 日本語版**](README.ja.md)
+
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 
-![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg) [![Docs](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/deploy_docs.yml/badge.svg)](https://youtube-at-vach.github.io/MeasureLab/) [オンライン・マニュアル](https://youtube-at-vach.github.io/MeasureLab/)
+![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg) [![Docs](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/deploy_docs.yml/badge.svg)](https://youtube-at-vach.github.io/MeasureLab/) [Online Manual](https://youtube-at-vach.github.io/MeasureLab/)
 
 [![MeasureLab Demo](docs/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
 
 A collection of DIY audio measurement and analysis tools, grown organically as needed. This software is compatible with standard audio devices.
-「必要に応じて作り足しながら育ててきた DIY のオーディオ測定・解析ツール集」です。
 
-**MeasureLab** は、これらのツールを1つの GUI アプリにまとめた形で提供します。Python と PyQt6 製で、高精度な信号生成・解析・測定を直感的に扱えます。このソフトウェアは一般的なオーディオデバイスで使うことが出来ます。
+**MeasureLab** provides these tools bundled into a single GUI application. Built with Python and PyQt6, it allows for intuitive high-precision signal generation, analysis, and measurement. This software works with standard audio devices.
 
-本プロジェクトは、高価な測定機器を入手できないオーディオ研究家に向けた代替手段として、より多くの人に届くことを目指しています。
+This project aims to reach more people as an alternative for audio enthusiasts who cannot afford expensive measurement equipment.
 
-## Quick glance (English)
+## ✨ Features
 
-- PyQt6 desktop app bundling 29+ DIY modules: signal generator, spectrum/PSD analyzer, sound level & LUFS meters, loopback finder, distortion/IMD tools, network/impedance analyzers, oscilloscope, spectrogram, ultrasound modulator, transient analyzer, lock-in/FRA, inverse filter, frequency counter, 1PPS monitor, recorder/player, sound quality analyzer, noise profiler, boxcar averager, goniometer, BNIM meter (ITD/ILD neural map), HRTF Player, and more.
-- Built for hobbyists and engineers: device routing, calibration (input/output/SPL), multi-language UI, light/dark themes, and **Dithering (TPDF/Bit-depth control)**.
-- Runs on Windows/Linux; grab the AppImage/ZIP or `python main_gui.py` from source (Python 3.12+).
-- **Virtual / Offline Mode**: Analyze audio files or internal signals without hardware, supporting custom simulation rates.
+### 🛠️ Widgets / Measurement Modules
 
-## ✨ 主な機能 (Features)
+The following modules/widgets are integrated.
+Due to the large number of features, we recommend starting with the [**Widget Guide: Index by Purpose**](docs/widget_guide.md#quick-search-guide).
 
-### 🛠️ ウィジット / 測定モジュール
+For details on each function, please refer to the [**Widget Guide**](docs/widget_guide.md), and for actual measurement examples, see the [**Measurement Recipes**](docs/measurement_recipes/index.md).
 
-以下のモジュール/ウィジットが統合されています。
-機能が多いため、まずは [**ウィジットガイド：目的別インデックス**](docs/widget_guide.md#quick-search-guide) から探すことをおすすめします。
-
-各機能の詳細は [**ウィジットガイド**](docs/widget_guide.md) を、実際の測定例については [**測定レシピ**](docs/measurement_recipes/index.md) を参照してください。
-
-| No. | ウィジット (Widget) | 説明 (Description) |
+| No. | Widget | Description |
 | :--- | :--- | :--- |
-| 1 | **Welcome** | 起動時のウェルカム画面で主要機能を案内。 |
-| 2 | **Signal Generator** | 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力、ビンセンターへのスナップに対応。 |
-| 3 | **Spectrum Analyzer** | 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定に対応。 |
-| 4 | **Sound Level Meter** | A/C/Z 周波数重み付け、FAST/SLOW/IMPULSE/10ms 時間重み付け、20Hz–20k/12.5k/8k 帯域選択に対応した高機能騒音計。Lp/Leq/LE/Lmax/Lmin/Lpeak表示、キャリブレーションオフセット適用に対応。 |
-| 5 | **LUFS Meter** | ラウドネス (LUFS/LKFS) のリアルタイム測定。クレストファクター、ダイナミックレンジ表示。 |
-| 6 | **Loopback Finder** | オーディオインターフェースのループバック経路を検出するツール。 |
-| 7 | **Distortion Analyzer** | THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ビンセンターへのスナップ、ハーモニクスバーグラフ、平均化機能搭載。 |
-| 8 | **Linearity Analyzer** | 信号レベルに対するゲインの直線性（AES17 Linearity Deviation）を測定。DACの微小信号再現性やビット精度、ダイナミックレンジの検証に対応。 |
-| 9 | **Advanced Distortion Meter** | MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。 |
-| 10 | **Network Analyzer** | 周波数特性(ゲイン・位相・群遅延)の測定。スイープ測定、複数トレース表示、周波数範囲制限対応。 |
-| 11 | **Oscilloscope** | 2チャンネル波形表示、トリガー機能、カーソル測定、演算波形(A+B, A-B)、リアルタイムローパス/ハイパスフィルタリング対応。 |
-| 12 | **Raw Time Series** | 長時間スパンをリングバッファで保持する2chスクロール波形モニタ。 |
-| 13 | **Transient Analyzer** | トリガ収録＋CWT で過渡解析、解析帯域/スケールを柔軟に指定。 |
-| 14 | **Lock-in Amplifier** | 位相敏感検波 (PSD) による微小信号測定。周波数応答解析 (FRA) モード、ハーモニクス復調(2次〜10次)、キャリブレーション機能搭載。 |
-| 15 | **Lock-in THD+N Analyzer** | ロックイン検波を用いた THD/THD+N 測定専用モジュール。整数周期ウィンドウと平均化、残差履歴・プロット表示、ハーモニクス/残差バーグラフで歪み成分を可視化。 |
-| 16 | **Impedance Analyzer** | インピーダンス測定とOSL (Open/Short/Load) キャリブレーション。複数プロットモード(Z/θ、R/X、Q、C/L、Nyquist、Smith Chart)、スイープ測定、キャリブレーション補間対応。 |
-| 17 | **Inverse Filter** | キャリブレーションマップから逆特性FIRを設計し、音声ファイルへ適用するデコンボリューションツール。ゲイン上限による正則化、タップ数/スムージング指定、応答プレビュー、出力ピーク正規化付きのバッチ処理に対応。 |
-| 18 | **Frequency Counter** | 高精度な周波数・周期測定。アラン分散プロット、ジッターヒストグラムおよび統計、キャリブレーション機能搭載。 |
-| 19 | **Lock-in Frequency Counter** | ロックイン検波 (PSD) による高精度な周波数・位相偏差のトラッキング。微小な偏差の可視化と安定性の評価に対応。 |
-| 20 | **1PPS Monitor** | 1PPS 信号の間隔を監視し、サンプリングレートの偏差を高精度に測定。ジッターや累積的なドリフトの統計表示に対応。 |
-| 21 | **Spectrogram** | 時間-周波数表示のスペクトログラム。周波数範囲制限、カラーマップ選択対応。 |
-| 22 | **Boxcar Averager** | ボックスカー平均によるノイズ低減と過渡応答解析。内部パルス/ステップ生成、外部リファレンス同期(立ち上がり/立ち下がりエッジ)対応. |
-| 23 | **Goniometer** | ステレオ信号の位相相関と空間分布の可視化。Lissajous表示、フォスファー表示モード(残光効果)、カスタムカラーパレット対応。 |
-| 24 | **Noise Profiler** | ノイズ特性の詳細解析ツール。1/fノイズ、ハムノイズ、ホワイトノイズの自動検出と定量化。平均化モード、LNAゲイン補正、熱雑音限界表示、等価抵抗表示対応。 |
-| 25 | **Recorder & Player** | オーディオファイル(WAV/MP3/FLAC/OGG等)の録音・再生。リサンプリング、ループ再生、ソフトウェアループバック機能搭載。 |
-| 26 | **Sound Quality Analyzer** | 音質評価指標 (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality) の数値およびグラフ表示。 |
-| 27 | **Timecode Monitor & Generator** | LTC タイムコードのエンコード/デコードとリアルタイム監視。フレームベース計算、ドロップフレーム率、複数FPS表示、タイムゾーン/オフセット、JAMメモリ付きジェネレーターを備える。 |
-| 28 | **BNIM Meter** | ステレオ入力から ITD/ILD の「ニューラルマップ」を可視化し、両耳定位の傾向を観察するメーター。 |
-| 29 | **HRTF Player** | SOFA ファイルの読み込みと可視化。HRTF メトリクス (ITD/ILD/高域エネルギー/エンベロープピーク) のヒートマップ表示、クリックによる音源位置指定、任意の音楽ファイルを用いたリアルタイム回転再生 (Convolution による空間定位) に対応。 |
-| 30 | **Ultrasound AM Modulator** | オーディオ信号を振幅変調(AM)し、搬送波(40kHz)に乗せて超音波として出力。パラメトリックスピーカーの実験等に使用可能。 |
-| 31 | **Detachable Wrapper** | 任意ウィジットを独立ウィンドウとして切り離し・再接続できるUIユーティリティ。 |
-| 32 | **Settings** | デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。 |
+| 1 | **Welcome** | Shows main features at startup. |
+| 2 | **Signal Generator** | Generates sine, square, triangle, sawtooth (rising/falling), white/pink noise, and frequency sweep signals. Supports phase control, amplitude control, stereo output, and snap to bin center. |
+| 3 | **Spectrum Analyzer** | Real-time spectrum analysis using fast FFT. Supports PSD/RMS display, SI unit display, frequency range limiting, memory function, and cursor measurement. |
+| 4 | **Sound Level Meter** | Advanced sound level meter with A/C/Z frequency weighting and FAST/SLOW/IMPULSE/10ms time weighting. Supports 20Hz–20k/12.5k/8k band selection, Lp/Leq/LE/Lmax/Lmin/Lpeak display, and calibration offset. |
+| 5 | **LUFS Meter** | Real-time loudness (LUFS/LKFS) measurement. Includes crest factor and dynamic range display. |
+| 6 | **Loopback Finder** | Tool to detect loopback paths of audio interfaces. |
+| 7 | **Distortion Analyzer** | Measures THD, THD+N, SINAD, and IMD (SMPTE/CCIF). Includes built-in signal generator, frequency sweep, snap to bin center, harmonic bar graph, and averaging function. |
+| 8 | **Linearity Analyzer** | Measures gain linearity relative to signal level (AES17 Linearity Deviation). Used for verifying DAC low-level signal reproducibility, bit accuracy, and dynamic range. |
+| 9 | **Advanced Distortion Meter** | Advanced distortion analysis including MIM (Multi-tone Intermodulation), SPDR (Spurious-free Dynamic Range), and PIM (Passive Intermodulation) measurement. |
+| 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay). Supports sweep measurement, multiple trace display, and frequency range limiting. |
+| 11 | **Oscilloscope** | 2-channel waveform display with trigger function, cursor measurement, math waveforms (A+B, A-B), and real-time low-pass/high-pass filtering. |
+| 12 | **Raw Time Series** | 2-channel scroll waveform monitor that holds long-term spans in a ring buffer. |
+| 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
+| 14 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
+| 15 | **Lock-in THD+N Analyzer** | Dedicated module for THD/THD+N measurement using lock-in detection. Visualizes distortion components with integer period windowing and averaging, residual history/plot display, and harmonics/residual bar graph. |
+| 16 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
+| 17 | **Inverse Filter** | Deconvolution tool that designs inverse characteristic FIR from calibration map and applies it to audio files. Supports regularization with gain limit, tap count/smoothing specification, response preview, and batch processing with output peak normalization. |
+| 18 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
+| 19 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
+| 20 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
+| 21 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
+| 22 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
+| 23 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
+| 24 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
+| 25 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
+| 26 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
+| 27 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
+| 28 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
+| 29 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
+| 30 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
+| 31 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
+| 32 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 
-### 🌍 多言語対応 (Localization)
+### 🌍 Localization
 
-世界中の主要な言語をサポートしています。設定画面から切り替え可能です。
+Major languages from around the world are supported. You can switch languages from the settings screen.
 
-- 英語 (English)
-- 日本語 (Japanese)
-- 中国語 (Chinese)
-- スペイン語 (Spanish)
-- フランス語 (French)
-- ドイツ語 (German)
-- ポルトガル語 (Portuguese)
-- ロシア語 (Russian)
-- 韓国語 (Korean)
+- English
+- Japanese
+- Chinese
+- Spanish
+- French
+- German
+- Portuguese
+- Russian
+- Korean
 
-### ⚙️ 高度な設定
+### ⚙️ Advanced Settings
 
-- **入出力設定**: デバイス選択、サンプリングレート (44.1kHz - 192kHz)、バッファーサイズ変更。**Virtual / Offline Mode** ではシミュレーションレートを自由に設定可能。
-- **ディザリング (Dithering)**: TPDF ディザリングおよび出力ビット深度（8 / 16 / 24 bit）の設定に対応。量子化ノイズを低減し、高精度な測定をサポートします。
-- **キャリブレーション**: 入力感度と出力ゲインの補正ウィザードを搭載し、電圧 (Vrms, Vpeak, dBu, dBV) での正確な読み取りが可能。1PPS 信号を用いたクロック偏差の記録にも対応。
-- **チャンネルルーティング**: 入力・出力チャンネルの個別割り当てに対応。
-- **テーマ設定**: ライト/ダーク/システムテーマの切り替えが可能。
+- **Input/Output Settings**: Device selection, sampling rate (44.1kHz - 192kHz), buffer size change. **Virtual / Offline Mode** allows free simulation rate setting.
+- **Dithering**: Supports TPDF dithering and output bit depth (8 / 16 / 24 bit) settings. Reduces quantization noise and supports high-precision measurement.
+- **Calibration**: Input sensitivity and output gain correction wizard included, enabling accurate readings in voltage (Vrms, Vpeak, dBu, dBV). Also supports clock deviation recording using 1PPS signal.
+- **Channel Routing**: Supports individual assignment of input/output channels.
+- **Theme Settings**: Light/Dark/System theme switching is possible.
 
-## 💻 サポートされる OS (Supported Operating Systems)
+## 💻 Supported Operating Systems
 
-| OS | 状態 (Status) | 備考 (Notes) |
+| OS | Status | Notes |
 | --- | --- | --- |
 | Linux (x86_64) | ✅ Supported | Tested on Ubuntu 22.04 / 24.04 |
 | Windows 10/11 | ✅ Supported | Official binary available |
@@ -94,57 +88,57 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 ---
 
-## 🚀 インストールと実行 (Installation & Usage)
+## 🚀 Installation & Usage
 
-### 📦 ビルド済みパッケージを使用する場合
+### 📦 Using Pre-built Packages
 
-**Releases** ページから最新のバージョンをダウンロードしてください。
+Please download the latest version from the **Releases** page.
 
-- **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
-- **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
+- **Windows**: Download `MeasureLab-<version>-windows-x64-onefile.zip` (or `MeasureLab-<version>-windows-x64-onedir.zip`), unzip it, and run `MeasureLab.exe`.
+- **Linux**: Download `MeasureLab-<version>-linux-x86_64.AppImage`, grant execution permission, and run it.
 
     ```bash
     chmod +x MeasureLab-*-linux-x86_64.AppImage
     ./MeasureLab-*-linux-x86_64.AppImage
     ```
 
-- **macOS (arm64)**: `MeasureLab-<version>-macos-arm64.dmg`（または `.app`）をダウンロードします。
-    - **重要：ゲートキーパーの回避**
-    - 本アプリは現時点で未署名のため、通常の手順では「開発元が未確認のため開けません」と表示されます。
-    - アプリを起動するには、**「右クリック（または Control + クリック）して『開く』を選択」** してください。確認のダイアログが出るので、そこで再度「開く」を選択すると実行可能です。
+- **macOS (arm64)**: Download `MeasureLab-<version>-macos-arm64.dmg` (or `.app`).
+    - **Important: Bypassing Gatekeeper**
+    - Since this app is currently unsigned, the normal procedure will display "cannot be opened because the developer cannot be verified".
+    - To launch the app, **"Right-click (or Control + Click) and select 'Open'"**. A confirmation dialog will appear, select "Open" again to run.
 
-#### Linux（任意）: JACK / PipeWire を使う場合の注意
+#### Linux (Optional): Notes on using JACK / PipeWire
 
-Linux ではそのまま **PortAudio** バックエンドでも通常利用できますが、環境によっては **バッファ境界で位相が飛ぶ**（位相連続性が崩れる）ことがあります。
-位相の連続性が重要な測定（位相・群遅延・ロックイン等）を行う場合は、入出力先として **JACK** もしくは **PipeWire** を指定して使うことを推奨します。
+On Linux, you can usually use the **PortAudio** backend as is, but depending on the environment, **phase jumps may occur at buffer boundaries** (phase continuity is broken).
+When performing measurements where phase continuity is important (phase, group delay, lock-in, etc.), it is recommended to specify **JACK** or **PipeWire** as the input/output destination.
 
-ただし JACK / PipeWire 経由にすると、起動後に音が出ない・入出力がつながらない場合があります。その際は **QJackCtl** などでルーティング（接続）を確認・設定してください。
+However, if you use JACK / PipeWire, sound may not be output or input/output may not be connected after startup. In that case, check and set the routing (connection) with **QJackCtl** etc.
 
-※この項目はあくまでオプションです。PortAudio のままでも普通に使えます。
+*This item is just an option. It can be used normally with PortAudio.*
 
-### 🐍 ソースコードから実行する場合・開発者の方へ
+### 🐍 Running from Source / For Developers
 
-ソースコードからの実行手順や、開発環境のセットアップについては以下のドキュメントを参照してください。
+For instructions on running from source code and setting up the development environment, please refer to the following document.
 
-- [**開発者向けガイド (Development)**](docs/development.md)
+- [**Developer Guide**](docs/development.md)
 
 ---
 
-## 📜 ライセンス (License)
+## 📜 License
 
-このプロジェクトは **The Unlicense** の下でパブリックドメインとして公開されています。
-営利・非営利を問わず、自由にコピー、変更、配布、使用することができます。
+This project is released into the public domain under **The Unlicense**.
+You are free to copy, modify, distribute, and use it for any commercial or non-commercial purpose.
 
 > **Note**: This is free and unencumbered software released into the public domain.
 
-## 👥 コントリビューター (Contributors)
+## 👥 Contributors
 
-### 🧑‍💻 サポートしてくれた皆さん (Thanks to everyone who helped improve this software)
+### 🧑‍💻 Special Thanks (Thanks to everyone who helped improve this software)
 
 - [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
-- [バーチャ農ちゃんねる](https://www.youtube.com/@va-ch)
+- [vach@YouTube](https://www.youtube.com/@va-ch)
 
-### 🤖 AI パートナー (AI Models)
+### 🤖 AI Models
 
 - OpenAI: GPT-4.1, GPT-5, GPT-5.1 Codex Max, GPT-5.2, GPT-5.3-Codex
 - Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash
