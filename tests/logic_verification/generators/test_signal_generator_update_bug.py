@@ -5,11 +5,11 @@ from unittest.mock import MagicMock
 mock_sd = MagicMock()
 sys.modules["sounddevice"] = mock_sd
 
-import unittest
-import numpy as np
+import unittest  # noqa: E402
+import numpy as np  # noqa: E402
 # Now we can safely import modules that use sounddevice
-from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
-from src.core.audio_engine import AudioEngine
+from src.gui.widgets.signal_generator import SignalGenerator  # noqa: E402
+from src.core.audio_engine import AudioEngine  # noqa: E402
 
 class TestSignalGeneratorUpdateBug(unittest.TestCase):
     def setUp(self):
