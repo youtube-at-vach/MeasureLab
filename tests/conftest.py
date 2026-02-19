@@ -18,7 +18,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 # Mock sounddevice if not available or fails to initialize (no PortAudio)
 try:
     import sounddevice # noqa: F401
-except (OSError, ImportError):
+except Exception:
     sd = MagicMock()
     sd.query_devices.return_value = []
     sd.query_hostapis.return_value = []
