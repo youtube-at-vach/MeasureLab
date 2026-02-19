@@ -140,7 +140,13 @@ class ThemeManager(QObject):
 
     def _apply_light_theme(self):
         """Apply light theme palette."""
-        self._restore_platform_style_if_needed()
+        # On macOS, we always use Fusion to ensure consistent styling.
+        # On Windows, we restore native style for light theme.
+        if platform.system().lower() == "darwin":
+            self._ensure_fusion_style()
+        else:
+            self._restore_native_style_if_needed()
+
         palette = QPalette()
 
         # Base colors
@@ -175,7 +181,7 @@ class ThemeManager(QObject):
 
     def _apply_dark_theme(self):
         """Apply dark theme palette."""
-        self._ensure_fusion_style_on_windows()
+        self._ensure_fusion_style()
         palette = QPalette()
 
         # Base colors
@@ -208,9 +214,10 @@ class ThemeManager(QObject):
         self.app.setPalette(palette)
         self.logger.debug("Dark theme applied")
 
-    def _ensure_fusion_style_on_windows(self) -> None:
-        """Force Fusion style on Windows so custom palettes render consistently."""
-        if not platform.system().lower().startswith("win"):
+    def _ensure_fusion_style(self) -> None:
+        """Force Fusion style on Windows/macOS so custom palettes render consistently."""
+        system = platform.system().lower()
+        if not (system.startswith("win") or system == "darwin"):
             return
 
         try:
@@ -230,12 +237,13 @@ class ThemeManager(QObject):
             self.logger.warning("Fusion style not available; cannot stabilize dark palette on Windows")
             return
 
-        self.logger.debug(f"Windows detected: switching style '{current}' -> '{fusion_key}' for dark theme")
+        self.logger.debug(f"{system} detected: switching style '{current}' -> '{fusion_key}' for dark theme")
         self.app.setStyle(fusion_key)
 
-    def _restore_platform_style_if_needed(self) -> None:
-        """Restore the original style if we previously switched it for dark theme."""
-        if not platform.system().lower().startswith("win"):
+    def _restore_native_style_if_needed(self) -> None:
+        """Restore the original style (Windows only)."""
+        system = platform.system().lower()
+        if not system.startswith("win"):
             return
         if not self._original_style_name:
             return
@@ -255,5 +263,5 @@ class ThemeManager(QObject):
             # If the exact original style isn't available, keep Fusion rather than risking a crash.
             return
 
-        self.logger.debug(f"Windows detected: restoring style '{current}' -> '{desired}'")
+        self.logger.debug(f"{system} detected: restoring style '{current}' -> '{desired}'")
         self.app.setStyle(desired)

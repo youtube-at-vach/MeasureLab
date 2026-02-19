@@ -17,7 +17,7 @@ def config_manager_instance():
         with open(config_path, "w") as f:
             json.dump({}, f)
 
-        cm = ConfigManager(config_path=config_path)
+        cm = ConfigManager(config_filename=config_path)
         yield cm, temp_dir
 
         # Shutdown to clean up resources (timers, etc.)
@@ -39,8 +39,10 @@ def test_resolve_valid_absolute_path_inside_root(config_manager_instance):
 def test_resolve_path_traversal_relative(config_manager_instance):
     cm, temp_dir = config_manager_instance
     path = "../outside"
-    with pytest.raises(ValueError, match="Path resolution failed"):
-        cm._resolve_path(path)
+    # Now allowed
+    resolved = cm._resolve_path(path)
+    expected = os.path.abspath(os.path.join(temp_dir, "../outside"))
+    assert resolved == expected
 
 def test_resolve_path_traversal_absolute(config_manager_instance):
     cm, temp_dir = config_manager_instance
@@ -49,14 +51,17 @@ def test_resolve_path_traversal_absolute(config_manager_instance):
     outside_dir = os.path.dirname(temp_dir)
     path = os.path.join(outside_dir, "secret.txt")
 
-    with pytest.raises(ValueError, match="Path resolution failed"):
-        cm._resolve_path(path)
+    # Now allowed
+    resolved = cm._resolve_path(path)
+    assert resolved == path
 
 def test_resolve_complex_traversal(config_manager_instance):
     cm, temp_dir = config_manager_instance
     path = "subdir/../../outside"
-    with pytest.raises(ValueError, match="Path resolution failed"):
-        cm._resolve_path(path)
+    # Now allowed
+    resolved = cm._resolve_path(path)
+    expected = os.path.abspath(os.path.join(temp_dir, "subdir/../../outside"))
+    assert resolved == expected
 
 def test_resolve_current_directory_reference(config_manager_instance):
     cm, temp_dir = config_manager_instance

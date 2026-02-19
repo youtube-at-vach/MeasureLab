@@ -351,5 +351,72 @@ class TestThemeManager(unittest.TestCase):
         # Should NOT call keys() again
         self.mock_qt_widgets.QStyleFactory.keys.assert_not_called()
 
+
+    def test_macos_fusion_workaround(self):
+        """Test that Fusion style is forced on macOS (Darwin) when switching to dark theme."""
+        # Mock platform.system to return 'Darwin'
+        with patch('platform.system', return_value='Darwin'):
+            # Setup available styles has "Fusion"
+            self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
+
+            tm = self.ThemeManager(self.mock_app)
+
+            # Setup: Current style is "Macintosh"
+            style_mock = MagicMock()
+            style_mock.objectName.return_value = "Macintosh"
+            self.mock_app.style.return_value = style_mock
+
+            # Re-init to capture available styles
+            tm = self.ThemeManager(self.mock_app)
+
+            tm.set_theme("dark")
+
+            # Check that setStyle('Fusion') was called
+            self.mock_app.setStyle.assert_called_with("Fusion")
+
+    def test_macos_always_fusion_style(self):
+        """Test that Fusion style is used on macOS for both light and dark themes."""
+        with patch('platform.system', return_value='Darwin'):
+            # Setup available styles has "Fusion" and "Macintosh"
+            self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
+
+            # Setup initial style as Macintosh
+            style_mock = MagicMock()
+            style_mock.objectName.return_value = "Macintosh"
+            self.mock_app.style.return_value = style_mock
+
+            tm = self.ThemeManager(self.mock_app)
+
+            # Switch to dark (should switch to Fusion)
+            tm.set_theme("dark")
+
+            # Verify Fusion applied
+            self.mock_app.setStyle.assert_called_with("Fusion")
+
+            # Reset call count
+            self.mock_app.setStyle.reset_mock()
+
+            # Now current style is Fusion
+            style_mock.objectName.return_value = "Fusion"
+
+            # Switch back to light (should apply Fusion again or keep it)
+            tm.set_theme("light")
+
+            # Verify Fusion applied (or at least native not restored)
+            # Since _ensure_fusion_style calls setStyle if current is Fusion it returns early?
+            # Wait, _ensure_fusion_style checks: if current.casefold() == "fusion": return
+            # So if it's already fusion, setStyle is NOT called.
+            self.mock_app.setStyle.assert_not_called()
+
+            # But definitely not "Macintosh"
+            try:
+                # assert_not_called fails if ANY call was made, which is fine as long as we check args if it WAS called
+                # but we expect NO call if it's already Fusion.
+                self.mock_app.setStyle.assert_not_called()
+            except AssertionError:
+                # If it WAS called, check it wasn't Macintosh
+                args = self.mock_app.setStyle.call_args
+                self.assertNotEqual(args[0][0], "Macintosh")
+
 if __name__ == '__main__':
     unittest.main()

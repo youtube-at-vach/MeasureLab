@@ -7,14 +7,14 @@ from src.core.calibration import CalibrationManager
 def test_spl_calibration_roundtrip_and_convert():
     with tempfile.TemporaryDirectory() as d:
         path = os.path.join(d, "calibration.json")
-        cal = CalibrationManager(config_path=path)
+        cal = CalibrationManager(config_filename=path)
 
         cal.set_spl_calibration(
             measured_dbfs_c=-40.0,
             measured_spl_db=70.0,
         )
 
-        cal2 = CalibrationManager(config_path=path)
+        cal2 = CalibrationManager(config_filename=path)
         off = cal2.get_spl_offset_db()
         assert off is not None
         assert abs(off - 110.0) < 1e-6

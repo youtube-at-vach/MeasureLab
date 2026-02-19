@@ -4,6 +4,8 @@ import logging
 
 import numpy as np
 
+from src.core.config_manager import ConfigManager
+
 
 class CalibrationManager:
     """
@@ -11,8 +13,22 @@ class CalibrationManager:
     Stores data in a JSON file.
     """
 
-    def __init__(self, config_path="calibration.json"):
-        self.config_path = config_path
+    def __init__(self, config_filename="calibration.json"):
+        # Resolve config path using ConfigManager's logic (User Data Directory)
+        # This ensures consistent storage across platforms (e.g. macOS App Support)
+        if os.path.dirname(config_filename):
+            # If absolute or relative with dir, use as is
+            self.config_path = config_filename
+        else:
+            # If just a filename, put in user data dir
+            user_dir = ConfigManager.get_user_data_dir()
+            try:
+                os.makedirs(user_dir, exist_ok=True)
+                self.config_path = os.path.join(user_dir, config_filename)
+            except Exception:
+                # Fallback to current working directory
+                self.config_path = os.path.abspath(config_filename)
+
         self.logger = logging.getLogger(self.__class__.__name__)
         self.input_sensitivity = 1.0  # Volts per Full Scale (V/FS) (Peak)
         self.output_gain = 1.0  # Volts per Full Scale (V/FS) (Peak)

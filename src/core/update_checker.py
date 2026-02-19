@@ -1,6 +1,8 @@
 import json
 import logging
 import urllib.request
+import ssl
+import certifi
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -22,7 +24,10 @@ class UpdateChecker(QThread):
             req = urllib.request.Request(url)
             req.add_header("User-Agent", f"MeasureLab/{__version__}")
 
-            with urllib.request.urlopen(req, timeout=5) as response:
+            # Create SSL context that uses certifi's CA bundle
+            context = ssl.create_default_context(cafile=certifi.where())
+
+            with urllib.request.urlopen(req, timeout=5, context=context) as response:
                 if response.status == 200:
                     data = json.loads(response.read().decode())
                     latest_tag = data.get("tag_name", "")
