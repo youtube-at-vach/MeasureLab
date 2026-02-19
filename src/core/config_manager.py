@@ -78,7 +78,8 @@ class ConfigManager:
             atexit.register(ConfigManager._flush_all)
             ConfigManager._atexit_registered = True
 
-    def _get_user_data_dir(self) -> str:
+    @staticmethod
+    def get_user_data_dir() -> str:
         """Returns the platform-specific user data directory for the application."""
         app_name = "MeasureLab"
         home = Path.home()
@@ -108,7 +109,7 @@ class ConfigManager:
             return os.path.abspath(filename)
 
         # Otherwise, use user data directory
-        user_dir = self._get_user_data_dir()
+        user_dir = ConfigManager.get_user_data_dir()
         try:
             os.makedirs(user_dir, exist_ok=True)
         except OSError as e:
