@@ -1990,11 +1990,12 @@ class SettingsWidget(QWidget):
             return
 
         # Get active device name to store with profile
+        dev_name = "Unknown"
+        host_api = ""
         try:
             # Try to get input device name
             devices = self.audio_engine.list_devices()
             in_dev_id = self.audio_engine.input_device
-            dev_name = "Unknown"
             if in_dev_id is not None and 0 <= int(in_dev_id) < len(devices):
                 dev_info = devices[int(in_dev_id)]
                 dev_name = dev_info.get("name", "Unknown")
