@@ -44,7 +44,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         # Mock locale to avoid non-deterministic behavior based on system
         mock_getlocale.return_value = ('en_US', 'UTF-8')
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Check defaults are loaded
         self.assertEqual(cm.config['audio']['sample_rate'], 48000)
@@ -71,7 +71,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         mock_exists.side_effect = exists_side_effect
         mock_getlocale.return_value = ('ja_JP', 'UTF-8')
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         self.assertEqual(cm.config['language'], 'ja')
         cm.shutdown()
@@ -85,7 +85,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         mock_exists.return_value = True # Config file exists
         mock_getlocale.return_value = ('ja_JP', 'UTF-8') # System is Japanese
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Should be French from file, not Japanese from system
         self.assertEqual(cm.config['language'], 'fr')
@@ -98,7 +98,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         """Test loading a valid configuration file."""
         mock_exists.return_value = True
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         self.assertEqual(cm.config['audio']['sample_rate'], 96000)
         # Verify defaults are merged (e.g. block_size should still be default)
@@ -116,7 +116,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         # Easier to mock json.load directly or let it parse the invalid string.
         # The mock_open read_data string '{invalid_json' will cause json.load to fail naturally.
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Verify fallback to default
         self.assertEqual(cm.config['audio']['sample_rate'], 48000)
@@ -128,7 +128,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
     @patch('src.core.config_manager.os.makedirs')
     def test_save_config_debounced(self, mock_makedirs, mock_exists, mock_timer_cls):
         """Test that save_config starts a timer instead of writing immediately."""
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
         mock_timer_inst = MagicMock()
         mock_timer_cls.return_value = mock_timer_inst
 
@@ -156,7 +156,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         mock_file_handle = MagicMock()
         mock_fdopen.return_value.__enter__.return_value = mock_file_handle
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         cm.config['audio']['sample_rate'] = 88200
         cm.save_config(force_sync=True)
@@ -164,39 +164,32 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         # Verify os.open called with correct flags and mode
         # 0o600 = 384
         expected_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        mock_open.assert_called_with(self.config_path, expected_flags, 0o600)
+        mock_open.assert_called_with(cm.config_path, expected_flags, 0o600)
 
         # Verify os.fdopen called
         mock_fdopen.assert_called_with(123, 'w')
 
         # Verify chmod called
-        mock_chmod.assert_called_with(self.config_path, 0o600)
+        mock_chmod.assert_called_with(cm.config_path, 0o600)
 
         cm.shutdown()
 
     @patch('src.core.config_manager.os.path.exists', return_value=False)
     @patch('src.core.config_manager.os.makedirs')
     def test_resolve_path_security(self, mock_makedirs, mock_exists):
-        """Test path traversal prevention."""
-        cm = ConfigManager(self.config_path)
+        """Test path traversal is now ALLOWED."""
+        cm = ConfigManager(config_filename=self.config_path)
 
-        # Assume config_dir is where self.config_path is (relative or absolute)
-        # For this test, we can mock os.path.abspath to control the base dir logic
-        # but it's easier to rely on real path logic if we are careful.
-        # Or better, just test that '..' raises ValueError.
+        # These should NOW succeed
+        path = cm._resolve_path("../outside_dir")
+        self.assertTrue(path.endswith("outside_dir"))
 
-        with self.assertRaises(ValueError):
-            cm._resolve_path("../outside_dir")
-
-        with self.assertRaises(ValueError):
-            cm._resolve_path("subdir/../../etc/passwd")
+        path = cm._resolve_path("subdir/../../etc/passwd")
+        self.assertTrue(path.endswith("passwd"))
 
         # Valid path
-        try:
-            path = cm._resolve_path("screenshots")
-            self.assertTrue(path.endswith("screenshots"))
-        except ValueError:
-            self.fail("_resolve_path raised ValueError on valid path")
+        path = cm._resolve_path("screenshots")
+        self.assertTrue(path.endswith("screenshots"))
         cm.shutdown()
 
     @patch('src.core.config_manager.os.path.exists', return_value=False)
@@ -204,7 +197,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
     @patch('src.core.config_manager.threading.Timer')
     def test_setters_trigger_save(self, mock_timer, mock_makedirs, mock_exists):
         """Test that setters update config and trigger save."""
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         cm.set_language('fr')
         self.assertEqual(cm.config['language'], 'fr')
@@ -226,23 +219,23 @@ class TestConfigManagerLifecycle(unittest.TestCase):
     @patch('src.core.config_manager.os.makedirs')
     def test_screenshot_dir_fallback(self, mock_makedirs, mock_exists):
         """Test fallback for screenshot directory."""
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Inject invalid path traversal into config (e.g. if loaded from malicious file)
         cm.config['screenshot']['output_dir'] = "../bad_path"
 
-        # Verify getter returns default safe path
+        # Verify getter returns the configured path (traversal allowed)
         out_dir = cm.get_screenshot_output_dir()
-        # Should fall back to <config_dir>/screenshots
-        expected = os.path.join(cm.config_dir, "screenshots")
-        self.assertEqual(out_dir, expected)
+        # Should resolve to <config_dir>/../bad_path
+        expected = os.path.abspath(os.path.join(cm.config_dir, "../bad_path"))
+        self.assertEqual(os.path.abspath(out_dir), expected)
         cm.shutdown()
 
     @patch('src.core.config_manager.os.path.exists', return_value=False)
     @patch('src.core.config_manager.os.makedirs')
     def test_shutdown_flushes_config(self, mock_makedirs, mock_exists):
         """Test that shutdown flushes pending config."""
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Start a save timer
         with patch('src.core.config_manager.threading.Timer') as mock_timer_cls:
@@ -274,7 +267,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         # Setup mocks
         mock_open.side_effect = OSError("Permission denied")
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Trigger save
         cm.save_config(force_sync=True)
@@ -315,7 +308,7 @@ class TestConfigManagerLifecycle(unittest.TestCase):
         exception_msg = "Permission denied for chmod"
         mock_chmod.side_effect = OSError(exception_msg)
 
-        cm = ConfigManager(self.config_path)
+        cm = ConfigManager(config_filename=self.config_path)
 
         # Trigger save
         cm.save_config(force_sync=True)

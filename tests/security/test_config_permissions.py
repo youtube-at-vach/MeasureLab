@@ -9,7 +9,7 @@ class TestConfigPermissions(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         self.config_path = os.path.join(self.test_dir, "test_config.json")
-        self.cm = ConfigManager(config_path=self.config_path)
+        self.cm = ConfigManager(config_filename=self.config_path)
 
     def tearDown(self):
         if hasattr(self, 'cm'):

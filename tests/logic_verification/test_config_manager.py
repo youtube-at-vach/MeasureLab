@@ -9,7 +9,7 @@ def config_manager():
     """Fixture to provide a ConfigManager instance with a temporary config path."""
     with tempfile.TemporaryDirectory() as temp_dir:
         config_path = os.path.join(temp_dir, "config.json")
-        cm = ConfigManager(config_path=config_path)
+        cm = ConfigManager(config_filename=config_path)
         yield cm
         cm.shutdown()
 

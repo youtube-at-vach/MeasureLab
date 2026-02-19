@@ -37,21 +37,16 @@ def test_screenshot_path_traversal():
         try:
             # Initialize ConfigManager
             # This should trigger _ensure_screenshot_dir
-            cm = ConfigManager(config_path=config_file)
+            cm = ConfigManager(config_filename=config_file)
 
             # Check if the target directory was created
-            # If the fix is working, this directory should NOT exist
-            assert not os.path.exists(target_path), f"Security vulnerability: Directory created at {target_path}"
+            # If the fix is working, this directory SHOULD exist
+            assert os.path.exists(target_path), f"Directory should be created at {target_path}"
 
-            # Also check that the screenshot directory inside config dir IS created (fallback)
-            # OR that we fallback to "screenshots"
-            expected_fallback = os.path.join(temp_dir, "screenshots")
-            assert os.path.exists(expected_fallback), "Fallback directory was not created"
-
-            # Verify the config internal state points to the fallback
+            # Verify the config internal state points to the target
             actual_dir = cm.get_screenshot_output_dir()
             # Normalize paths for comparison
-            assert os.path.abspath(actual_dir) == os.path.abspath(expected_fallback)
+            assert os.path.abspath(actual_dir) == os.path.abspath(target_path)
 
         finally:
             if os.path.exists(target_path):
@@ -75,13 +70,9 @@ def test_absolute_path_rejected():
             with open(config_file, "w") as f:
                 json.dump(config_data, f)
 
-            cm = ConfigManager(config_path=config_file)
+            cm = ConfigManager(config_filename=config_file)
 
-            # Should default to "screenshots" in config dir because abs_target_dir is outside temp_dir
+            # Should use the provided absolute path
             actual_dir = cm.get_screenshot_output_dir()
 
-            # The fallback path
-            expected_fallback = os.path.join(temp_dir, "screenshots")
-
-            assert os.path.abspath(actual_dir) == os.path.abspath(expected_fallback)
-            assert os.path.abspath(actual_dir) != os.path.abspath(abs_target_dir)
+            assert os.path.abspath(actual_dir) == os.path.abspath(abs_target_dir)

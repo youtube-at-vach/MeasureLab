@@ -15,7 +15,7 @@ def test_load_frequency_map_allows_external_path():
     with tempfile.TemporaryDirectory() as safe_dir, tempfile.TemporaryDirectory() as external_dir:
         # Initialize CalibrationManager in safe_dir
         config_path = os.path.join(safe_dir, "calibration.json")
-        cal = CalibrationManager(config_path=config_path)
+        cal = CalibrationManager(config_filename=config_path)
 
         # Create a valid map file in safe_dir
         valid_map_path = os.path.join(safe_dir, "valid_map.json")

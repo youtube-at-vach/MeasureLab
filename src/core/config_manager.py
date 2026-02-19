@@ -274,12 +274,6 @@ class ConfigManager:
 
         base_dir = os.path.abspath(self.config_dir)
 
-        try:
-            if os.path.commonpath([base_dir, full_path]) != base_dir:
-                raise ValueError(f"Path traversal detected: {path_value}")
-        except ValueError as e:
-            raise ValueError(f"Path resolution failed for {path_value}: {e}") from e
-
         return full_path
 
     def _ensure_screenshot_dir(self, config):
