@@ -1,5 +1,33 @@
 # Changelog
 
+## [v0.5.2] - 2026-02-19
+
+### Major
+
+* **Official Mac Support**: The "Experimental" warning has been removed. Universal Binary (arm64/x86_64) builds are now officially supported.
+* **Platform Standards**: Configuration and data files now strictly follow platform conventions (XDG on Linux, `Application Support` on macOS).
+
+### Added
+
+* **Docs**: Added macOS (arm64) quickstart instructions and Gatekeeper bypass guide.
+* **Core**: Implemented dynamic monospace font selection for consistent rendering across platforms.
+* **Core**: Added `certifi` integration for robust SSL verification in Update Checker.
+
+### Changed
+
+* **Config**: Moved configuration and calibration data storage to standard user data directories.
+    * macOS: `~/Library/Application Support/MeasureLab`
+    * Linux: `~/.config/MeasureLab` (or `$XDG_CONFIG_HOME`)
+* **Config**: Default screenshot directory now resolves to the system's "Pictures/MeasureLab" folder on all platforms.
+* **UI**: Updated application icon.
+* **Theming**: Enforced `Fusion` style on macOS to ensure consistent visual appearance across light/dark themes.
+
+### Fixed
+
+* **Core**: Fixed potential path traversal and configuration loading issues.
+* **UI**: Resolved font rendering warnings on macOS.
+* **Net**: Fixed SSL certificate verification errors on some systems.
+
 ## [v0.5.1] - 2026-02-18
 
 Starting from this version, the baseline Python version is officially Python 3.12.
