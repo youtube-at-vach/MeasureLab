@@ -13,13 +13,15 @@ def config_manager():
         yield cm
         cm.shutdown()
 
-def test_merge_with_defaults_none(config_manager):
+@unittest.mock.patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+def test_merge_with_defaults_none(mock_get_default, config_manager):
     """Test that passing None to _merge_with_defaults returns defaults."""
     result = config_manager._merge_with_defaults(None)
     assert result == DEFAULT_CONFIG
     assert result is not DEFAULT_CONFIG  # Should return a copy
 
-def test_merge_with_defaults_empty_dict(config_manager):
+@unittest.mock.patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+def test_merge_with_defaults_empty_dict(mock_get_default, config_manager):
     """Test that passing an empty dict returns defaults."""
     result = config_manager._merge_with_defaults({})
     assert result == DEFAULT_CONFIG
@@ -78,7 +80,8 @@ def test_merge_with_defaults_screenshot_valid(config_manager):
 
     assert result["screenshot"]["output_dir"] == "custom_screens"
 
-def test_merge_with_defaults_screenshot_invalid_type(config_manager):
+@unittest.mock.patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+def test_merge_with_defaults_screenshot_invalid_type(mock_get_default, config_manager):
     """Test that non-dict screenshot section falls back to defaults."""
     loaded = {"screenshot": "invalid"}
     result = config_manager._merge_with_defaults(loaded)
@@ -86,7 +89,8 @@ def test_merge_with_defaults_screenshot_invalid_type(config_manager):
     assert result["screenshot"] == DEFAULT_CONFIG["screenshot"]
 
 
-def test_load_config_malformed_json(config_manager, caplog):
+@unittest.mock.patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+def test_load_config_malformed_json(mock_get_default, config_manager, caplog):
     """Test that malformed JSON results in default config and logs error."""
     with open(config_manager.config_path, "w") as f:
         f.write("{invalid_json")
@@ -96,7 +100,8 @@ def test_load_config_malformed_json(config_manager, caplog):
     assert "Failed to load config" in caplog.text
 
 
-def test_load_config_os_error(config_manager, caplog):
+@unittest.mock.patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+def test_load_config_os_error(mock_get_default, config_manager, caplog):
     """Test that OSError results in default config and logs error."""
     # We mock open to raise OSError
     # We patch builtins.open only for the duration of this context
@@ -120,7 +125,8 @@ def test_load_config_logic_error(config_manager):
         with pytest.raises(TypeError, match="Logic bug"):
             config_manager.load_config()
 
-def test_merge_with_defaults_screenshot_empty(config_manager):
+@unittest.mock.patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+def test_merge_with_defaults_screenshot_empty(mock_get_default, config_manager):
     """Test that empty screenshot section uses defaults."""
     loaded = {"screenshot": {}}
     result = config_manager._merge_with_defaults(loaded)
