@@ -177,6 +177,77 @@ class AudioCalc:
         return sosfiltfilt(sos, signal)
 
     @staticmethod
+    def _prewarp(f, fs):
+        """Pre-warp analog frequency for bilinear transform."""
+        return (fs / np.pi) * np.tan(np.pi * f / fs)
+
+    @staticmethod
+    def design_a_weighting(sampling_rate):
+        """Design A-weighting filter with pre-warping (IEC 61672). Returns SOS."""
+        fs = float(sampling_rate)
+        if fs <= 0:
+            raise ValueError("Invalid sample rate")
+
+        # Constants for A-weighting (Analog)
+        # 20.6 Hz, 107.7 Hz, 737.9 Hz, 12194 Hz
+        f1 = AudioCalc._prewarp(20.598997, fs)
+        f2 = AudioCalc._prewarp(107.65265, fs)
+        f3 = AudioCalc._prewarp(737.86223, fs)
+        f4 = AudioCalc._prewarp(12194.217, fs)
+
+        # Analog poles and zeros
+        # z: 0, 0, 0, 0
+        pi = np.pi
+        z = [0, 0, 0, 0]
+        p = [
+            -2 * pi * f1,
+            -2 * pi * f1,
+            -2 * pi * f2,
+            -2 * pi * f3,
+            -2 * pi * f4,
+            -2 * pi * f4,
+        ]
+        k = 1.0
+
+        # Convert to discrete
+        zd, pd, kd = scipy.signal.bilinear_zpk(z, p, k, fs)
+        sos = scipy.signal.zpk2sos(zd, pd, kd)
+
+        # Normalize at 1kHz
+        w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
+        gain_1k = np.abs(h[0])
+        if gain_1k > 1e-12:
+            sos[0, :3] /= gain_1k
+
+        return sos
+
+    @staticmethod
+    def design_c_weighting(sampling_rate):
+        """Design C-weighting filter with pre-warping (IEC 61672). Returns SOS."""
+        fs = float(sampling_rate)
+        if fs <= 0:
+            raise ValueError("Invalid sample rate")
+
+        f1 = AudioCalc._prewarp(20.598997, fs)
+        f4 = AudioCalc._prewarp(12194.217, fs)
+
+        pi = np.pi
+        z = [0, 0]
+        p = [-2 * pi * f1, -2 * pi * f1, -2 * pi * f4, -2 * pi * f4]
+        k = 1.0
+
+        zd, pd, kd = scipy.signal.bilinear_zpk(z, p, k, fs)
+        sos = scipy.signal.zpk2sos(zd, pd, kd)
+
+        # Normalize at 1kHz
+        w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
+        gain_1k = np.abs(h[0])
+        if gain_1k > 1e-12:
+            sos[0, :3] /= gain_1k
+
+        return sos
+
+    @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
         # Check signal length to ensure padding works (3 * (2 * 8 + 1) = 51)
         def get_sos(nyquist):

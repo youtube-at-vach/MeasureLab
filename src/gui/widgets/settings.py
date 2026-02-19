@@ -26,6 +26,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
 from src.core.generators import PinkNoise
+from src.core.analysis import AudioCalc
 
 from src.core.fft_manager import fft_manager
 from PyQt6.QtWidgets import QProgressDialog
@@ -33,31 +34,6 @@ from PyQt6.QtCore import Qt
 
 from src.core.bit_depth_estimator import BitDepthEstimator
 import pyqtgraph as pg
-
-
-def _design_c_weighting(sr: float):
-    """Design digital C-weighting filter (IEC 61672) for sample rate sr."""
-    sr = float(sr)
-    if sr <= 0:
-        raise ValueError("Invalid sample rate")
-
-    # Analog poles (rad/s)
-    w1 = 2 * np.pi * 20.6
-    w2 = 2 * np.pi * 12194.0
-
-    # C-weighting analog transfer function: H(s) = K * s^2 / ((s + w1)^2 (s + w2)^2)
-    zeros = np.array([0.0, 0.0])
-    poles = np.array([-w1, -w1, -w2, -w2])
-    gain = 1.0
-
-    # Normalize to 0 dB at 1 kHz
-    s = 1j * 2 * np.pi * 1000.0
-    h = gain * (s**2) / ((s + w1) ** 2 * (s + w2) ** 2)
-    gain = 1.0 / np.abs(h)
-
-    z, p, k = scipy.signal.bilinear_zpk(zeros, poles, gain, fs=sr)
-    b, a = scipy.signal.zpk2tf(z, p, k)
-    return b.astype(np.float64), a.astype(np.float64)
 
 
 class SplCalibrationDialog(QDialog):
@@ -81,8 +57,7 @@ class SplCalibrationDialog(QDialog):
         self._bpf_zi = None
         self._noise_ref_rms = None
         self._target_fs_rms = None
-        self._c_b = None
-        self._c_a = None
+        self._c_sos = None
         self._c_zi = None
         self._measure_bw_sos = None
         self._measure_bw_zi = None
@@ -359,10 +334,8 @@ class SplCalibrationDialog(QDialog):
             self._noise_ref_rms = 1.0
 
         # C-weighting for input measurement
-        c_b, c_a = _design_c_weighting(sr)
-        self._c_b = c_b
-        self._c_a = c_a
-        self._c_zi = scipy.signal.lfilter_zi(c_b, c_a).astype(np.float64)
+        self._c_sos = AudioCalc.design_c_weighting(sr)
+        self._c_zi = scipy.signal.sosfilt_zi(self._c_sos).astype(np.float64)
 
         # Measurement bandwidth (input side)
         meas_band = self._get_measurement_band_hz()
@@ -434,7 +407,7 @@ class SplCalibrationDialog(QDialog):
                 x = indata[:, 0].astype(np.float64)
                 if self._measure_bw_sos is not None and self._measure_bw_zi is not None:
                     x, self._measure_bw_zi = scipy.signal.sosfilt(self._measure_bw_sos, x, zi=self._measure_bw_zi)
-                xw, self._c_zi = scipy.signal.lfilter(self._c_b, self._c_a, x, zi=self._c_zi)
+                xw, self._c_zi = scipy.signal.sosfilt(self._c_sos, x, zi=self._c_zi)
                 p = float(np.mean(xw * xw) + 1e-24)
 
                 # EMA on power for stable reading

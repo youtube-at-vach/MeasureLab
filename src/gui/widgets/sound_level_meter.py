@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -182,63 +183,11 @@ class SoundLevelMeter(MeasurementModule):
             self.sos_filter = None
             self.filter_state = None
         elif self.freq_weighting == "A":
-            self.sos_filter = self._design_a_weighting(sr)
+            self.sos_filter = AudioCalc.design_a_weighting(sr)
             self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
         elif self.freq_weighting == "C":
-            self.sos_filter = self._design_c_weighting(sr)
+            self.sos_filter = AudioCalc.design_c_weighting(sr)
             self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
-
-    def _prewarp(self, f, fs):
-        """Pre-warp analog frequency for bilinear transform."""
-        return (fs / np.pi) * np.tan(np.pi * f / fs)
-
-    def _design_a_weighting(self, fs):
-        """Design A-weighting filter with pre-warping."""
-        # Constants for A-weighting (Analog)
-        f1 = self._prewarp(20.598997, fs)
-        f2 = self._prewarp(107.65265, fs)
-        f3 = self._prewarp(737.86223, fs)
-        f4 = self._prewarp(12194.217, fs)
-
-        # Analog poles and zeros
-        # z: 0, 0, 0, 0 (s-plane zeros at 0)
-        # p: -2*pi*f1, -2*pi*f1, -2*pi*f2, -2*pi*f3, -2*pi*f4, -2*pi*f4
-
-        pi = np.pi
-        z = [0, 0, 0, 0]
-        p = [-2 * pi * f1, -2 * pi * f1, -2 * pi * f2, -2 * pi * f3, -2 * pi * f4, -2 * pi * f4]
-        k = 1.0
-
-        # Convert to discrete
-        zd, pd, kd = scipy.signal.bilinear_zpk(z, p, k, fs)
-        sos = scipy.signal.zpk2sos(zd, pd, kd)
-
-        # Normalize at 1kHz (using actual digital frequency)
-        w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
-        gain_1k = np.abs(h[0])
-        sos[0, :3] /= gain_1k
-
-        return sos
-
-    def _design_c_weighting(self, fs):
-        """Design C-weighting filter with pre-warping."""
-        f1 = self._prewarp(20.598997, fs)
-        f4 = self._prewarp(12194.217, fs)
-
-        pi = np.pi
-        z = [0, 0]
-        p = [-2 * pi * f1, -2 * pi * f1, -2 * pi * f4, -2 * pi * f4]
-        k = 1.0
-
-        zd, pd, kd = scipy.signal.bilinear_zpk(z, p, k, fs)
-        sos = scipy.signal.zpk2sos(zd, pd, kd)
-
-        # Normalize at 1kHz
-        w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
-        gain_1k = np.abs(h[0])
-        sos[0, :3] /= gain_1k
-
-        return sos
 
     def _apply_impulse_weighting(self, sq_sig, sr):
         """
