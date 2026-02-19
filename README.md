@@ -17,9 +17,9 @@ This project aims to reach more people as an alternative for audio enthusiasts w
 ### 🛠️ Widgets / Measurement Modules
 
 The following modules/widgets are integrated.
-Due to the large number of features, we recommend starting with the [**Widget Guide: Index by Purpose**](docs/widget_guide.md#quick-search-guide).
+Due to the large number of features, we recommend starting with the [**Widget Guide: Index by Purpose**](docs/widget_guide.en.md#quick-search-guide).
 
-For details on each function, please refer to the [**Widget Guide**](docs/widget_guide.md), and for actual measurement examples, see the [**Measurement Recipes**](docs/measurement_recipes/index.md).
+For details on each function, please refer to the [**Widget Guide**](docs/widget_guide.en.md), and for actual measurement examples, see the [**Measurement Recipes**](docs/measurement_recipes/index.en.md).
 
 | No. | Widget | Description |
 | :--- | :--- | :--- |
@@ -120,7 +120,7 @@ However, if you use JACK / PipeWire, sound may not be output or input/output may
 
 For instructions on running from source code and setting up the development environment, please refer to the following document.
 
-- [**Developer Guide**](docs/development.md)
+- [**Developer Guide**](docs/development.en.md)
 
 ---
 
