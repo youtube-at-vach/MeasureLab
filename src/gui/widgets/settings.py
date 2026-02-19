@@ -63,6 +63,7 @@ def _design_c_weighting(sr: float):
 class SplCalibrationDialog(QDialog):
     def __init__(self, audio_engine: AudioEngine, parent=None):
         super().__init__(parent)
+        self.logger = logging.getLogger(__name__)
         self.audio_engine = audio_engine
         self.setWindowTitle(tr("SPL Calibration Wizard"))
         self.resize(460, 360)
@@ -198,7 +199,8 @@ class SplCalibrationDialog(QDialog):
         has_output_cal = False
         try:
             has_output_cal = bool(getattr(cal, "output_gain_is_calibrated", False))
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"Output calibration check failed: {e}")
             has_output_cal = False
 
         if has_output_cal:
@@ -352,7 +354,8 @@ class SplCalibrationDialog(QDialog):
             y2 = y[discard:]
             rms = float(np.sqrt(np.mean(y2 * y2) + 1e-24))
             self._noise_ref_rms = float(max(rms, 1e-12))
-        except Exception:
+        except Exception as e:
+            self.logger.error(f"Failed to calculate reference noise RMS: {e}", exc_info=True)
             self._noise_ref_rms = 1.0
 
         # C-weighting for input measurement
@@ -937,13 +940,14 @@ class SettingsWidget(QWidget):
                     name = devices[idx].get("name")
                     if name:
                         return str(name)
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.debug(f"Failed to get device name from index: {e}")
 
         # Fallback to prior behavior (best-effort, strips our appended hostapi).
         try:
             raw = fallback_text.split(": ", 1)[1]
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"Failed to parse fallback device name: {e}")
             raw = fallback_text
         raw = str(raw).strip()
         if raw.endswith(")") and " (" in raw:
@@ -1632,7 +1636,8 @@ class SettingsWidget(QWidget):
         try:
              import sounddevice as sd
              return sd.default.hostapi
-        except Exception:
+        except Exception as e:
+             self.logger.debug(f"Failed to get default hostapi: {e}")
              return 0
 
     def on_hostapi_changed(self):
@@ -1914,8 +1919,8 @@ class SettingsWidget(QWidget):
                     total = int(parts[1])
                     val = int((curr / total) * 100)
                     progress.setValue(val)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug(f"Failed to parse FFT progress message: {e}")
             QApplication.processEvents()
 
         # Run optimization
@@ -2003,7 +2008,8 @@ class SettingsWidget(QWidget):
                 if not host_api:
                     # Fallback to index if name missing (shouldn't happen usually)
                     host_api = str(dev_info.get("hostapi", ""))
-        except Exception:
+        except Exception as e:
+            self.logger.warning(f"Failed to get active device info for profile: {e}")
             dev_name = "Unknown"
             host_api = ""
 
