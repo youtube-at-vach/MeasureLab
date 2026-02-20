@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from src.gui.widgets.signal_generator import SignalGenerator
 

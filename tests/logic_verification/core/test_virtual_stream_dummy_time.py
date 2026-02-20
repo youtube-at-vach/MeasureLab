@@ -2,17 +2,27 @@ import threading
 import unittest
 import sys
 import os
-from unittest.mock import MagicMock
-
-# Add src to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-
-# Mock sounddevice
-sys.modules['sounddevice'] = MagicMock()
-
-from src.core.audio_engine import VirtualStream  # noqa: E402
+import importlib
+from unittest.mock import MagicMock, patch
 
 class TestVirtualStreamDummyTime(unittest.TestCase):
+    def setUp(self):
+        self.mock_sd = MagicMock()
+        self.patcher = patch.dict(sys.modules, {'sounddevice': self.mock_sd})
+        self.patcher.start()
+
+        # Import module under test
+        if "src.core.audio_engine" in sys.modules:
+            del sys.modules["src.core.audio_engine"]
+
+        import src.core.audio_engine
+        self.VirtualStream = src.core.audio_engine.VirtualStream
+
+    def tearDown(self):
+        self.patcher.stop()
+        if "src.core.audio_engine" in sys.modules:
+            del sys.modules["src.core.audio_engine"]
+
     def test_dummy_time_attributes(self):
         """
         Verify that the time object passed to the callback has the expected attributes:
@@ -26,7 +36,7 @@ class TestVirtualStreamDummyTime(unittest.TestCase):
             callback_event.set()
 
         # Create VirtualStream
-        stream = VirtualStream(
+        stream = self.VirtualStream(
             samplerate=48000,
             blocksize=1024,
             channels=(2, 2),

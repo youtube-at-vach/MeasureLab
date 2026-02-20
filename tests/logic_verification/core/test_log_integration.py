@@ -3,7 +3,7 @@ import sys
 import os
 
 # Adjust path to import src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 from src.core.analysis import AudioCalc
 

@@ -4,7 +4,7 @@ import sys
 import os
 
 # Ensure repo root is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from src.core.analysis import AudioCalc, RAYLEIGH_RMS_FACTOR
 

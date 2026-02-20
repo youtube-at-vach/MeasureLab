@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 sys.modules['sounddevice'] = MagicMock()
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker  # noqa: E402
 from src.core.fft_manager import WARMUP_SIZES  # noqa: E402

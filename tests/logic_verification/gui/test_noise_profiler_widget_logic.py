@@ -5,7 +5,7 @@ import os
 import numpy as np
 
 # Ensure repo root is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 class TestNoiseProfilerLogicBase(unittest.TestCase):
     def setUp(self):
