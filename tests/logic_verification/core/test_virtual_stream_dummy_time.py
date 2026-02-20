@@ -1,8 +1,6 @@
 import threading
 import unittest
 import sys
-import os
-import importlib
 from unittest.mock import MagicMock, patch
 
 class TestVirtualStreamDummyTime(unittest.TestCase):
