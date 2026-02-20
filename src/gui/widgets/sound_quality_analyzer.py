@@ -83,7 +83,7 @@ class AnalysisWorker(QThread):
 
             results = {"samplerate": self.target_sr, "duration": len(data_playback) / self.target_sr, "channels": []}
 
-            total_steps = len(channels) * 4
+            total_steps = len(channels) * 6
             current_step = 0
 
             for i, audio in enumerate(channels):
@@ -127,6 +127,26 @@ class AnalysisWorker(QThread):
                 )
                 t_res = self._calc_tonality(audio, analysis_sr)
                 ch_res.update(t_res)
+                current_step += 1
+
+                # 5. Fluctuation Strength
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Fluctuation Strength ({})...").format(ch_names[i])
+                )
+                f_res = self._calc_fluctuation_strength(audio, analysis_sr)
+                ch_res.update(f_res)
+                current_step += 1
+
+                # 6. Articulation Index
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Articulation Index ({})...").format(ch_names[i])
+                )
+                a_res = self._calc_articulation_index(audio, analysis_sr)
+                ch_res.update(a_res)
                 current_step += 1
 
                 results["channels"].append(ch_res)
@@ -481,6 +501,93 @@ class AnalysisWorker(QThread):
 
         return {"mean_tonality": np.mean(global_tonality), "tonality_series": global_tonality, "tonality_step": step}
 
+    def _calc_fluctuation_strength(self, audio, sr):
+        # Fluctuation Strength (vacil)
+        # Similar to roughness but for slower modulations (< 20Hz, peak around 4Hz)
+
+        # 1. Hilbert Envelope of full signal
+        sos_pre = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
+        filtered = signal.sosfilt(sos_pre, audio)
+
+        env = np.abs(signal.hilbert(filtered))
+        env_ac = env - np.mean(env)
+
+        # 2. Extract Modulation Signal (0.5-20 Hz)
+        mod_sos = signal.butter(2, [0.5, 20], btype="bandpass", fs=sr, output="sos")
+        mod_signal = signal.sosfilt(mod_sos, env_ac)
+
+        # 3. RMS Calculation of Modulation vs Carrier
+        window_sec = 0.4
+        step_sec = 0.1
+        block_size = int(window_sec * sr)
+        step_size = int(step_sec * sr)
+
+        mod_sq = mod_signal**2
+        car_sq = filtered**2
+
+        kernel = np.ones(block_size) / block_size
+        mod_rms = np.sqrt(signal.fftconvolve(mod_sq, kernel, mode="valid"))
+        car_rms = np.sqrt(signal.fftconvolve(car_sq, kernel, mode="valid"))
+
+        mod_rms = mod_rms[::step_size]
+        car_rms = car_rms[::step_size]
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            m = mod_rms / (car_rms + 1e-9)
+            m[car_rms < 1e-4] = 0
+
+        # Approximation: roughly similar modulation index scale
+        f_series = m
+
+        return {"mean_fluctuation": np.mean(f_series), "fluctuation_series": f_series, "fluctuation_step": step_sec}
+
+    def _calc_articulation_index(self, audio, sr):
+        # Articulation Index (AI)
+        # 15 bands from 200 Hz to 5000 Hz, applying fixed weights to S/N ratio.
+
+        window_sec = 0.2
+        nperseg = int(window_sec * sr)
+        noverlap = int(nperseg // 2)
+
+        f, t, Zxx = signal.stft(audio, fs=sr, window="hann", nperseg=nperseg, noverlap=noverlap)
+        mag_sq = np.abs(Zxx) ** 2 + 1e-12
+
+        # 1/3 Octave ISO center bands relevant to speech
+        center_freqs = [200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000]
+        # French-Steinberg approx weights
+        weights = [0.012, 0.030, 0.030, 0.042, 0.042, 0.060, 0.060, 0.072, 0.090, 0.111, 0.111, 0.104, 0.082, 0.070, 0.054]
+        weights = np.array(weights)
+
+        # Band boundaries
+        factor = 2**(1/6)
+        lower_edges = [fc / factor for fc in center_freqs]
+        upper_edges = [fc * factor for fc in center_freqs]
+
+        ai_series = np.zeros(Zxx.shape[1])
+        noise_floor_db = -60.0 # Assumed nominal noise
+
+        band_levels = []
+        for low, high in zip(lower_edges, upper_edges, strict=True):
+            mask = (f >= low) & (f <= high)
+            if np.any(mask):
+                band_p = np.sum(mag_sq[mask, :], axis=0)
+                band_db = 10 * np.log10(band_p + 1e-12)
+            else:
+                band_db = np.full(Zxx.shape[1], -100.0)
+            band_levels.append(band_db)
+
+        # Calculate AI per time frame
+        for i in range(15):
+            snr = band_levels[i] - noise_floor_db
+            snr_clipped = np.clip(snr, -12, 18)
+            contribution = (snr_clipped + 12) / 30.0
+            ai_series += weights[i] * contribution
+
+        ai_series = np.clip(ai_series, 0.0, 1.0)
+        step = (nperseg - noverlap) / sr
+
+        return {"mean_ai": np.mean(ai_series), "ai_series": ai_series, "ai_step": step}
+
 
 # --- Widget ---
 
@@ -579,6 +686,8 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.summary_grid.addWidget(QLabel(tr("Mean Sharpness (acum)")), 0, 2)
         self.summary_grid.addWidget(QLabel(tr("Mean Roughness (asper)")), 0, 3)
         self.summary_grid.addWidget(QLabel(tr("Mean Tonality (0-1)")), 0, 4)
+        self.summary_grid.addWidget(QLabel(tr("Mean Fluctuation (vacil)")), 0, 5)
+        self.summary_grid.addWidget(QLabel(tr("Mean AI (0-1)")), 0, 6)
 
         summary_group.setLayout(self.summary_grid)
         layout.addWidget(summary_group)
@@ -606,6 +715,16 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.layout_tonality = QVBoxLayout(self.tab_tonality)
         self.tabs.addTab(self.tab_tonality, tr("Tonality"))
 
+        # Tab 5: Fluctuation Strength
+        self.tab_fluctuation = QWidget()
+        self.layout_fluctuation = QVBoxLayout(self.tab_fluctuation)
+        self.tabs.addTab(self.tab_fluctuation, tr("Fluctuation Strength"))
+
+        # Tab 6: Articulation Index
+        self.tab_ai = QWidget()
+        self.layout_ai = QVBoxLayout(self.tab_ai)
+        self.tabs.addTab(self.tab_ai, tr("Articulation Index"))
+
         layout.addWidget(self.tabs)
 
         self.setLayout(layout)
@@ -621,6 +740,8 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.summary_grid.addWidget(QLabel("-"), 1, 2)
         self.summary_grid.addWidget(QLabel("-"), 1, 3)
         self.summary_grid.addWidget(QLabel("-"), 1, 4)
+        self.summary_grid.addWidget(QLabel("-"), 1, 5)
+        self.summary_grid.addWidget(QLabel("-"), 1, 6)
 
     def load_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Open Audio File"), "", "Audio Files (*.wav *.flac *.aiff)")
@@ -632,7 +753,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
     def clear_plots(self):
         # Clear all separate layouts
-        for layout in [self.layout_loudness, self.layout_sharpness, self.layout_roughness, self.layout_tonality]:
+        for layout in [self.layout_loudness, self.layout_sharpness, self.layout_roughness, self.layout_tonality, self.layout_fluctuation, self.layout_ai]:
             if layout is not None:
                 while layout.count():
                     item = layout.takeAt(0)
@@ -645,6 +766,8 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.p2 = None
         self.p3 = None
         self.p4 = None
+        self.p5 = None
+        self.p6 = None
         self.cursors = []
 
     def start_analysis(self):
@@ -707,8 +830,8 @@ class SoundQualityAnalyzerWidget(QWidget):
         # Clear grid
         # Note: Removing widgets from layout is tedious in Qt.
         # Let's just hide or delete properly.
-        while self.summary_grid.count() > 5:  # Keep headers
-            item = self.summary_grid.takeAt(5)
+        while self.summary_grid.count() > 7:  # Keep headers
+            item = self.summary_grid.takeAt(7)
             w = item.widget()
             if w:
                 w.deleteLater()
@@ -720,12 +843,16 @@ class SoundQualityAnalyzerWidget(QWidget):
             m_sh = ch["mean_sharpness"]
             m_r = ch["mean_roughness"]
             m_t = ch["mean_tonality"]
+            m_f = ch["mean_fluctuation"]
+            m_a = ch["mean_ai"]
 
             self.summary_grid.addWidget(QLabel(name), row, 0)
             self.summary_grid.addWidget(QLabel(f"{i_lufs:.1f} LUFS"), row, 1)
             self.summary_grid.addWidget(QLabel(f"{m_sh:.2f} acum"), row, 2)
             self.summary_grid.addWidget(QLabel(f"{m_r:.2f} asper"), row, 3)
             self.summary_grid.addWidget(QLabel(f"{m_t:.2f} (0-1)"), row, 4)
+            self.summary_grid.addWidget(QLabel(f"{m_f:.2f} vacil"), row, 5)
+            self.summary_grid.addWidget(QLabel(f"{m_a:.2f} (0-1)"), row, 6)
             row += 1
 
     def plot_series(self, results):
@@ -762,6 +889,22 @@ class SoundQualityAnalyzerWidget(QWidget):
         p4.addLegend()
         p4.setXLink(p1)
 
+        # Fluctuation Strength Plot (Tab 5)
+        p5 = pg.PlotWidget(title=tr("Fluctuation Strength"))
+        p5.setLabel("left", "vacil")
+        p5.setLabel("bottom", "Time", units="s")
+        p5.showGrid(y=True)
+        p5.addLegend()
+        p5.setXLink(p1)
+
+        # Articulation Index Plot (Tab 6)
+        p6 = pg.PlotWidget(title=tr("Articulation Index"))
+        p6.setLabel("left", "AI (0-1)")
+        p6.setLabel("bottom", "Time", units="s")
+        p6.showGrid(y=True)
+        p6.addLegend()
+        p6.setXLink(p1)
+
         colors = ["c", "m", "g", "y"]
 
         for i, ch in enumerate(results["channels"]):
@@ -784,19 +927,31 @@ class SoundQualityAnalyzerWidget(QWidget):
             t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
             p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
 
+            # Fluctuation Strength
+            t_f = np.arange(len(ch["fluctuation_series"])) * ch["fluctuation_step"]
+            p5.plot(t_f, ch["fluctuation_series"], pen=c, name=name)
+
+            # Articulation Index
+            t_a = np.arange(len(ch["ai_series"])) * ch["ai_step"]
+            p6.plot(t_a, ch["ai_series"], pen=c, name=name)
+
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
         self.p4 = p4
+        self.p5 = p5
+        self.p6 = p6
 
         self.layout_loudness.addWidget(p1)
         self.layout_sharpness.addWidget(p2)
         self.layout_roughness.addWidget(p3)
         self.layout_tonality.addWidget(p4)
+        self.layout_fluctuation.addWidget(p5)
+        self.layout_ai.addWidget(p6)
 
         # Add cursors
         self.cursors = []
-        for p in [self.p1, self.p2, self.p3, self.p4]:
+        for p in [self.p1, self.p2, self.p3, self.p4, self.p5, self.p6]:
             if p is None:
                 continue
             # Click event
@@ -925,7 +1080,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Determine which plot was clicked
         target_plot = None
-        plots = [p for p in [self.p1, self.p2, self.p3, self.p4] if p is not None]
+        plots = [p for p in [self.p1, self.p2, self.p3, self.p4, self.p5, self.p6] if p is not None]
 
         for p in plots:
             if p.sceneBoundingRect().contains(event.scenePos()):
