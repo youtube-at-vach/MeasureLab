@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QPushButton,
+    QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -27,10 +28,11 @@ from src.measurement_modules.base import MeasurementModule
 
 
 class NetworkAnalyzerSignals(QObject):
-    update_plot = pyqtSignal(float, float, float)  # freq, mag_db, phase_deg
+    update_plot = pyqtSignal(float, float, float, float)  # freq, mag_db, phase_deg, coherence
     sweep_finished = pyqtSignal()
     progress = pyqtSignal(int)
     latency_result = pyqtSignal(float)
+    ir_snr_result = pyqtSignal(float)
     error = pyqtSignal(str)
 
 
@@ -88,23 +90,6 @@ class PlayRecSession:
                 self.completion_event.set()
 
 
-class SweepWorker(QThread):
-    def __init__(self, analyzer):
-        super().__init__()
-        self.analyzer = analyzer
-        self.is_running = True
-
-    def run(self):
-        try:
-            self.analyzer._execute_sweep(self)
-        except Exception as e:
-            self.analyzer.signals.error.emit(str(e))
-        finally:
-            self.analyzer.signals.sweep_finished.emit()
-
-    def stop(self):
-        self.is_running = False
-
 
 class CalibrationWorker(QThread):
     def __init__(self, analyzer):
@@ -140,13 +125,10 @@ class NetworkAnalyzer(MeasurementModule):
 
         # Parameters
         self.start_freq = 20.0
-        self.end_freq = 20000.0
-        self.steps_per_octave = 12
+        self.end_freq = 24000.0
         self.amplitude = 0.5
         self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
-        self.duration_per_step = 0.5
         self.latency_sec = 0.0
-        self.num_averages = 1
 
         # Routing
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -155,8 +137,9 @@ class NetworkAnalyzer(MeasurementModule):
         self.meas_channel_index = 1
 
         # Fast Sweep Parameters
-        self.sweep_mode = "Fast Chirp"  # or "Stepped Sine"
+        self.sweep_mode = "Fast Chirp"
         self.chirp_duration = 1.0
+        self.averages = 1
 
         self.worker = None
         self.calibration_worker = None
@@ -232,10 +215,7 @@ class NetworkAnalyzer(MeasurementModule):
     def start_sweep(self):
         if self.worker and self.worker.isRunning():
             return
-        if self.sweep_mode == "Fast Chirp":
-            self.worker = FastSweepWorker(self)
-        else:
-            self.worker = SweepWorker(self)
+        self.worker = FastSweepWorker(self)
         self.worker.start()
 
     def start_calibration(self):
@@ -268,15 +248,55 @@ class NetworkAnalyzer(MeasurementModule):
         if not worker.is_running:
             return
 
-        # 2. Play and Record
-        rec_data = self._record_sweep(chirp, sample_rate)
+        # 2. Play and Record (with averaging)
+        accumulated_data = None
+        reference_peak_idx = None
 
-        self.signals.progress.emit(50)
-        if not worker.is_running:
+        # Determine the channel to use for time alignment
+        if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+            align_ch = self.ref_channel_index
+        elif self.input_mode == "R":
+            align_ch = 1
+        else:
+            align_ch = 0
+
+        for i in range(self.averages):
+            if not worker.is_running:
+                return
+
+            rec_data = self._record_sweep(chirp, sample_rate)
+
+            # Find delay to align
+            sig = rec_data[:, align_ch]
+            ir = scipy.signal.fftconvolve(sig, inv_filter, mode="full")
+            peak_idx = np.argmax(np.abs(ir))
+
+            if accumulated_data is None:
+                accumulated_data = rec_data
+                reference_peak_idx = peak_idx
+            else:
+                shift = reference_peak_idx - peak_idx
+                shifted_data = np.roll(rec_data, shift, axis=0)
+
+                # Zero out the rolled-over parts
+                if shift > 0:
+                    shifted_data[:shift, :] = 0
+                elif shift < 0:
+                    shifted_data[shift:, :] = 0
+
+                accumulated_data += shifted_data
+
+            # Progress update (10 to 50)
+            progress = 10 + int(40 * (i + 1) / self.averages)
+            self.signals.progress.emit(progress)
+
+        if accumulated_data is None:
             return
 
+        averaged_data = accumulated_data / self.averages
+
         # 3. Process
-        self._process_sweep_data(rec_data, inv_filter, sample_rate, worker)
+        self._process_sweep_data(averaged_data, inv_filter, chirp, sample_rate, worker)
 
         self.signals.progress.emit(100)
 
@@ -319,10 +339,12 @@ class NetworkAnalyzer(MeasurementModule):
 
         return chirp, inv_filter
 
-    def _process_sweep_data(self, rec_data, inv_filter, sample_rate, worker):
-        """Processes the recorded sweep data to calculate magnitude and phase response."""
+    def _process_sweep_data(self, rec_data, inv_filter, chirp, sample_rate, worker):
+        """Processes the recorded sweep data to calculate magnitude and phase response, IR SNR, and Coherence."""
         def get_ir(signal):
             return scipy.signal.fftconvolve(signal, inv_filter, mode="full")
+
+        ir_snr_db = None
 
         if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
             # XFER Mode: Ref = Ch0, Meas = Ch1 (Default) or Custom for Crosstalk
@@ -334,6 +356,15 @@ class NetworkAnalyzer(MeasurementModule):
 
             # Find peak in Ref to align
             peak_idx = np.argmax(np.abs(ir_ref))
+
+            # IR SNR Calculation
+            noise_start = max(0, peak_idx - int(0.5 * sample_rate))
+            noise_end = max(0, peak_idx - int(0.05 * sample_rate))
+            if noise_end > noise_start:
+                noise_segment = ir_meas[noise_start:noise_end]
+                noise_rms = np.sqrt(np.mean(noise_segment**2))
+                peak_val = np.abs(ir_meas[np.argmax(np.abs(ir_meas))])
+                ir_snr_db = 20 * np.log10(peak_val / (noise_rms + 1e-12))
 
             # Window both
             pre = int(0.01 * sample_rate)
@@ -366,6 +397,10 @@ class NetworkAnalyzer(MeasurementModule):
             phase_deg = np.degrees(phase_rad)
             phase_deg = (phase_deg + 180) % 360 - 180
 
+            # Coherence
+            f_coh, coh = scipy.signal.coherence(meas_sig, ref_sig, fs=sample_rate, nperseg=8192)
+            coh_interp = np.interp(valid_freqs, f_coh, coh)
+
         else:
             # Single Channel Mode
             ch_idx = 0
@@ -379,6 +414,14 @@ class NetworkAnalyzer(MeasurementModule):
 
             ir = get_ir(sig)
             peak_idx = np.argmax(np.abs(ir))
+
+            noise_start = max(0, peak_idx - int(0.5 * sample_rate))
+            noise_end = max(0, peak_idx - int(0.05 * sample_rate))
+            if noise_end > noise_start:
+                noise_segment = ir[noise_start:noise_end]
+                noise_rms = np.sqrt(np.mean(noise_segment**2))
+                peak_val = np.abs(ir[peak_idx])
+                ir_snr_db = 20 * np.log10(peak_val / (noise_rms + 1e-12))
 
             pre = int(0.01 * sample_rate)
             post = int(0.5 * sample_rate)
@@ -407,120 +450,22 @@ class NetworkAnalyzer(MeasurementModule):
             phase_deg = np.degrees(phase_rad)
             phase_deg = (phase_deg + 180) % 360 - 180
 
+            # Coherence against ideal chirp
+            min_len = min(len(sig), len(chirp))
+            f_coh, coh = scipy.signal.coherence(sig[:min_len], chirp[:min_len], fs=sample_rate, nperseg=8192)
+            coh_interp = np.interp(valid_freqs, f_coh, coh)
+
+        if ir_snr_db is not None:
+            self.signals.ir_snr_result.emit(ir_snr_db)
+
         # Emit
         step = max(1, len(valid_freqs) // 500)
         for i in range(0, len(valid_freqs), step):
             if not worker.is_running:
                 break
-            self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i])
+            self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i], coh_interp[i])
 
-    def _execute_sweep(self, worker):
-        sample_rate = self.audio_engine.sample_rate
-        freqs = self._generate_log_freqs(self.start_freq, self.end_freq, self.steps_per_octave)
-        total_steps = len(freqs)
 
-        input_ch_count = 2  # Always capture stereo
-
-        for i, freq in enumerate(freqs):
-            if not worker.is_running:
-                break
-
-            avg_mag = 0.0
-            avg_phase = 0.0 + 0.0j
-
-            for _ in range(self.num_averages):
-                if not worker.is_running:
-                    break
-
-                num_samples = int(sample_rate * self.duration_per_step)
-                num_samples = int(sample_rate * self.duration_per_step)
-                t = np.arange(num_samples) / sample_rate
-                tone = self.get_output_amplitude() * np.cos(2 * np.pi * freq * t)
-
-                padding = int((self.latency_sec + 0.1) * sample_rate)
-                out_signal = np.concatenate([tone, np.zeros(padding)])
-                out_data = self._prepare_output_buffer(out_signal)
-
-                rec_data = self.run_play_rec(out_data, input_channels=input_ch_count)
-
-                start_idx = int(self.latency_sec * sample_rate)
-                end_idx = start_idx + len(tone)
-                if end_idx > len(rec_data):
-                    end_idx = len(rec_data)
-
-                if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
-                    # XFER Analysis
-                    ref_seg = rec_data[start_idx:end_idx, self.ref_channel_index]
-                    meas_seg = rec_data[start_idx:end_idx, self.meas_channel_index]
-                    tone_seg = tone[: len(ref_seg)]
-
-                    mag_ref, phase_ref = self._analyze_tone(ref_seg, tone_seg, freq, sample_rate, comp_latency=False)
-                    mag_meas, phase_meas = self._analyze_tone(meas_seg, tone_seg, freq, sample_rate, comp_latency=False)
-
-                    # H = Meas / Ref
-                    mag_ratio = mag_meas / (mag_ref + 1e-12)
-                    phase_diff = phase_meas - phase_ref
-
-                    avg_mag += mag_ratio
-                    avg_phase += np.exp(1j * np.radians(phase_diff))
-
-                else:
-                    # Single Channel
-                    ch_idx = 0
-                    if self.input_mode == "R":
-                        ch_idx = 1
-                    if rec_data.shape[1] == 1:
-                        ch_idx = 0
-
-                    seg = rec_data[start_idx:end_idx, ch_idx]
-                    tone_seg = tone[: len(seg)]
-
-                    mag, phase = self._analyze_tone(seg, tone_seg, freq, sample_rate, comp_latency=True)
-
-                    avg_mag += mag
-                    avg_phase += np.exp(1j * np.radians(phase))
-
-            avg_mag /= self.num_averages
-            avg_phase /= self.num_averages
-
-            final_mag_db = 20 * np.log10(avg_mag + 1e-12)
-            final_phase_deg = np.degrees(np.angle(avg_phase))
-
-            self.signals.update_plot.emit(freq, final_mag_db, final_phase_deg)
-            self.signals.progress.emit(int((i + 1) / total_steps * 100))
-
-    def _generate_log_freqs(self, start, end, steps_per_oct):
-        if start >= end:
-            return [start]
-        freqs = []
-        curr = start
-        while curr < end:
-            freqs.append(curr)
-            curr *= 2 ** (1 / steps_per_oct)
-        if not freqs or freqs[-1] < end:
-            freqs.append(end)
-        return freqs
-
-    def _analyze_tone(self, recorded, reference, freq, sample_rate, comp_latency=True):
-        window = scipy.signal.windows.hann(len(recorded))
-        rec_windowed = recorded * window
-
-        fft_rec = fft_manager.rfft(rec_windowed)
-        idx = np.argmax(np.abs(fft_rec))
-
-        mag_linear = np.abs(fft_rec[idx]) * 2 / np.sum(window)
-        phase_rec = np.angle(fft_rec[idx])
-
-        if comp_latency:
-            latency_samples = self.latency_sec * sample_rate
-            fractional_sec = (latency_samples - int(latency_samples)) / sample_rate
-            phase_delay_comp = 2 * np.pi * freq * fractional_sec
-            phase_sys_rad = phase_rec + phase_delay_comp
-        else:
-            phase_sys_rad = phase_rec
-
-        phase_sys_rad = (phase_sys_rad + np.pi) % (2 * np.pi) - np.pi
-        return mag_linear, np.degrees(phase_sys_rad)
 
 
 class NetworkAnalyzerWidget(QWidget):
@@ -533,11 +478,13 @@ class NetworkAnalyzerWidget(QWidget):
         self.module.signals.sweep_finished.connect(self.on_sweep_finished)
         self.module.signals.progress.connect(self.progress_bar.setValue)
         self.module.signals.latency_result.connect(self.on_latency_result)
+        self.module.signals.ir_snr_result.connect(self.on_ir_snr_result)
         self.module.signals.error.connect(self.on_error)
 
         self.freqs = []
         self.mags = []
         self.phases = []
+        self.cohs = []
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -560,18 +507,8 @@ class NetworkAnalyzerWidget(QWidget):
         controls_group = QGroupBox(tr("Sweep Settings"))
         form = QFormLayout()
 
-        # Mode
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItem(tr("Stepped Sine"), "Stepped Sine")
-        self.mode_combo.addItem(tr("Fast Chirp"), "Fast Chirp")
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        # Default to the module's current mode (Fast Chirp by default)
-        default_mode_idx = self.mode_combo.findData(self.module.sweep_mode)
-        if default_mode_idx != -1:
-            self.mode_combo.blockSignals(True)
-            self.mode_combo.setCurrentIndex(default_mode_idx)
-            self.mode_combo.blockSignals(False)
-        form.addRow(tr("Sweep Mode:"), self.mode_combo)
+        # Sweep Mode removed, Fast Chirp is standard
+
 
         # Routing
         self.out_combo = QComboBox()
@@ -602,20 +539,9 @@ class NetworkAnalyzerWidget(QWidget):
 
         self.end_spin = QDoubleSpinBox(controls_group)
         self.end_spin.setRange(10, 24000)
-        self.end_spin.setValue(20000)
+        self.end_spin.setValue(24000)
         self.end_spin.valueChanged.connect(lambda v: setattr(self.module, "end_freq", v))
         form.addRow(tr("End Freq:"), self.end_spin)
-
-        # NOTE: These widgets are shown/hidden immediately in on_mode_changed().
-        # They must have a parent during init, otherwise .show() makes them a
-        # transient top-level window (startup flash).
-        self.steps_spin = QDoubleSpinBox(controls_group)
-        self.steps_spin.setDecimals(0)
-        self.steps_spin.setRange(1, 48)
-        self.steps_spin.setValue(12)
-        self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, "steps_per_octave", int(v)))
-        self.steps_label = QLabel(tr("Steps/Octave:"), controls_group)
-        form.addRow(self.steps_label, self.steps_spin)
 
         self.duration_spin = QDoubleSpinBox(controls_group)
         self.duration_spin.setRange(0.1, 60.0)
@@ -623,11 +549,12 @@ class NetworkAnalyzerWidget(QWidget):
         self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, "chirp_duration", v))
         self.duration_label = QLabel(tr("Duration (s):"), controls_group)
         form.addRow(self.duration_label, self.duration_spin)
-        self.duration_label.hide()
-        self.duration_spin.hide()
 
-        # Apply initial visibility/state after controls exist
-        self.on_mode_changed(self.mode_combo.currentIndex())
+        self.avg_spin = QSpinBox(controls_group)
+        self.avg_spin.setRange(1, 100)
+        self.avg_spin.setValue(1)
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
+        form.addRow(tr("Averages:"), self.avg_spin)
 
         self.amp_spin = QDoubleSpinBox()
         self.amp_spin.setRange(0, 1)
@@ -644,13 +571,6 @@ class NetworkAnalyzerWidget(QWidget):
         amp_layout.addWidget(self.gen_unit_combo)
         form.addRow(tr("Amplitude:"), amp_layout)
 
-        self.avg_spin = QDoubleSpinBox()
-        self.avg_spin.setDecimals(0)
-        self.avg_spin.setRange(1, 10)
-        self.avg_spin.setValue(1)
-        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "num_averages", int(v)))
-        form.addRow(tr("Averages:"), self.avg_spin)
-
         controls_group.setLayout(form)
         settings_layout.addWidget(controls_group)
         settings_layout.addStretch()
@@ -665,7 +585,8 @@ class NetworkAnalyzerWidget(QWidget):
         display_form = QFormLayout()
 
         # Limit Plot Freq (Max)
-        self.limit_check = QCheckBox(tr("Limit Max"))
+        self.limit_check = QCheckBox(tr("Limit"))
+        self.limit_check.setChecked(True)
         self.limit_check.toggled.connect(self.refresh_plots)
         self.limit_spin = QDoubleSpinBox()
         self.limit_spin.setRange(10, 24000)
@@ -678,7 +599,8 @@ class NetworkAnalyzerWidget(QWidget):
         display_form.addRow(tr("Max Freq:"), limit_layout)
 
         # Limit Plot Freq (Min)
-        self.min_limit_check = QCheckBox(tr("Limit Min"))
+        self.min_limit_check = QCheckBox(tr("Limit"))
+        self.min_limit_check.setChecked(True)
         self.min_limit_check.toggled.connect(self.refresh_plots)
         self.min_limit_spin = QDoubleSpinBox()
         self.min_limit_spin.setRange(10, 24000)
@@ -707,6 +629,10 @@ class NetworkAnalyzerWidget(QWidget):
         self.gd_check.toggled.connect(self.refresh_plots)
         display_form.addRow(self.gd_check)
 
+        self.coh_check = QCheckBox(tr("Show Coherence"))
+        self.coh_check.toggled.connect(self.refresh_plots)
+        display_form.addRow(self.coh_check)
+
         display_group.setLayout(display_form)
         display_layout.addWidget(display_group)
         display_layout.addStretch()
@@ -725,6 +651,10 @@ class NetworkAnalyzerWidget(QWidget):
         lat_form.addRow(self.lat_btn)
         self.lat_label = QLabel(tr("Latency: 0.00 ms"))
         lat_form.addRow(self.lat_label)
+
+        self.ir_snr_label = QLabel(tr("IR SNR: -- dB"))
+        lat_form.addRow(self.ir_snr_label)
+
         lat_group.setLayout(lat_form)
         cal_tab_layout.addWidget(lat_group)
 
@@ -770,6 +700,24 @@ class NetworkAnalyzerWidget(QWidget):
         self.mag_plot.setLogMode(x=True, y=False)
         self.mag_plot.showGrid(x=True, y=True)
         self.mag_curve = self.mag_plot.plot(pen="g")
+
+        # Coherence Axis (Right)
+        self.coh_axis = pg.AxisItem("right")
+        self.coh_axis.setLabel(tr("Coherence"), units="")
+        self.mag_plot.plotItem.layout.addItem(self.coh_axis, 2, 3)
+
+        self.coh_view = pg.ViewBox()
+        self.coh_axis.linkToView(self.coh_view)
+        self.mag_plot.plotItem.scene().addItem(self.coh_view)
+        self.coh_view.setXLink(self.mag_plot.plotItem.vb)
+        self.coh_view.setYRange(0, 1.05, padding=0)
+
+        self.coh_view.setLogMode(False, False)
+        self.coh_curve = pg.PlotCurveItem(pen="c") # Cyan for visibility
+        self.coh_view.addItem(self.coh_curve)
+
+        self.mag_plot.plotItem.vb.sigResized.connect(self.update_coh_views)
+
         plot_layout.addWidget(self.mag_plot)
 
         self.phase_plot = pg.PlotWidget(title=tr("Phase Response"))
@@ -803,19 +751,7 @@ class NetworkAnalyzerWidget(QWidget):
         layout.addLayout(plot_layout)
         self.setLayout(layout)
 
-    def on_mode_changed(self, index):
-        mode = self.mode_combo.itemData(index)
-        self.module.sweep_mode = mode
-        if mode == "Stepped Sine":
-            self.steps_label.show()
-            self.steps_spin.show()
-            self.duration_label.hide()
-            self.duration_spin.hide()
-        else:
-            self.steps_label.hide()
-            self.steps_spin.hide()
-            self.duration_label.show()
-            self.duration_spin.show()
+
 
     def on_routing_changed(self, index):
         self.module.input_mode = self.in_combo.currentData()
@@ -1003,9 +939,12 @@ class NetworkAnalyzerWidget(QWidget):
             self.freqs = []
             self.mags = []
             self.phases = []
+            self.cohs = []
             self.mag_curve.setData([], [])
             self.phase_curve.setData([], [])
             self.gd_curve.setData([], [])
+            self.coh_curve.setData([], [])
+            self.ir_snr_label.setText(tr("IR SNR: -- dB"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.module.start_sweep()
         else:
@@ -1020,10 +959,17 @@ class NetworkAnalyzerWidget(QWidget):
         # Keep the GD view aligned with the main view
         self.gd_view.setGeometry(self.phase_plot.plotItem.vb.sceneBoundingRect())
 
-    def update_plot(self, freq, mag, phase):
+    def update_coh_views(self):
+        self.coh_view.setGeometry(self.mag_plot.plotItem.vb.sceneBoundingRect())
+
+    def on_ir_snr_result(self, snr):
+        self.ir_snr_label.setText(tr("IR SNR: {0:.1f} dB").format(snr))
+
+    def update_plot(self, freq, mag, phase, coh):
         self.freqs.append(freq)
         self.mags.append(mag)
         self.phases.append(phase)
+        self.cohs.append(coh)
         self.refresh_plots()
 
     def _apply_smoothing(self, freqs, mags, phases, mode):
@@ -1224,3 +1170,25 @@ class NetworkAnalyzerWidget(QWidget):
         else:
             self.gd_axis.hide()
             self.gd_curve.setData([], [])
+
+        # Coherence
+        if self.coh_check.isChecked() and len(freqs_to_plot) > 1 and len(self.cohs) == len(self.freqs):
+            self.coh_axis.show()
+            cohs_arr = np.array(self.cohs)
+            cohs_to_plot = cohs_arr[mask]
+
+            if smooth_mode != "off":
+                window_map = {"light": 5, "medium": 11, "heavy": 21}
+                window = window_map.get(smooth_mode, 5)
+                max_len = len(cohs_to_plot) if len(cohs_to_plot) % 2 == 1 else len(cohs_to_plot) - 1
+                window = min(window, max_len)
+                if window >= 3:
+                    cohs_to_plot = scipy.signal.savgol_filter(cohs_to_plot, window_length=window, polyorder=2)
+                    cohs_to_plot = np.clip(cohs_to_plot, 0, 1)
+
+            log_freqs = np.log10(freqs_to_plot)
+            self.coh_curve.setData(log_freqs, cohs_to_plot)
+            self.update_coh_views()
+        else:
+            self.coh_axis.hide()
+            self.coh_curve.setData([], [])
