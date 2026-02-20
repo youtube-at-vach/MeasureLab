@@ -251,7 +251,7 @@ class NetworkAnalyzer(MeasurementModule):
         # 2. Play and Record (with averaging)
         accumulated_data = None
         reference_peak_idx = None
-        
+
         # Determine the channel to use for time alignment
         if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
             align_ch = self.ref_channel_index
@@ -277,13 +277,13 @@ class NetworkAnalyzer(MeasurementModule):
             else:
                 shift = reference_peak_idx - peak_idx
                 shifted_data = np.roll(rec_data, shift, axis=0)
-                
+
                 # Zero out the rolled-over parts
                 if shift > 0:
                     shifted_data[:shift, :] = 0
                 elif shift < 0:
                     shifted_data[shift:, :] = 0
-                    
+
                 accumulated_data += shifted_data
 
             # Progress update (10 to 50)
