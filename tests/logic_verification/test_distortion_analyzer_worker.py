@@ -10,8 +10,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 # Mock sounddevice before importing anything that uses it
 sys.modules["sounddevice"] = MagicMock()
 
-from src.gui.widgets.distortion_analyzer import RealtimeAnalysisWorker
-
 class TestRealtimeAnalysisWorker(unittest.TestCase):
     def setUp(self):
         # Patch modules where RealtimeAnalysisWorker will be imported from
@@ -29,6 +27,8 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
         self.get_window_patcher.stop()
 
     def test_process_harmonics(self):
+        from src.gui.widgets.distortion_analyzer import RealtimeAnalysisWorker
+
         # Create worker
         # We need to mock QObject if we don't want to rely on PyQt6 being fully functional in headless without qpa
         # But RealtimeAnalysisWorker inherits QObject.
@@ -67,6 +67,8 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
         self.assertEqual(result.get("type"), "harmonics")
 
     def test_process_imd(self):
+        from src.gui.widgets.distortion_analyzer import RealtimeAnalysisWorker
+
         worker = RealtimeAnalysisWorker()
         mock_slot = MagicMock()
         worker.result_ready.connect(mock_slot)
