@@ -84,7 +84,7 @@ Major languages from around the world are supported. You can switch languages fr
 | --- | --- | --- |
 | Linux (x86_64) | ✅ Supported | Tested on Ubuntu 22.04 / 24.04 |
 | Windows 10/11 | ✅ Supported | Official binary available |
-| macOS (arm64) | ✅ Supported | Official binary available (M1/M2/M3) |
+| macOS (arm64) | ✅ Supported | macOS 11.0 or later (Apple Silicon only) |
 
 ---
 
@@ -103,6 +103,7 @@ Please download the latest version from the **Releases** page.
     ```
 
 - **macOS (arm64)**: Download `MeasureLab-<version>-macos-arm64.dmg` (or `.app`).
+    - **Note: Currently only arm64 (Apple Silicon) and macOS 11.0 or later are supported.**
     - **Important: Bypassing Gatekeeper**
     - Since this app is currently unsigned, the normal procedure will display "cannot be opened because the developer cannot be verified".
     - To launch the app, **"Right-click (or Control + Click) and select 'Open'"**. A confirmation dialog will appear, select "Open" again to run.
