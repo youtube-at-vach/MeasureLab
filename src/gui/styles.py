@@ -7,9 +7,9 @@ import sys
 # "monospace" (lowercase) is the standard CSS generic family name.
 # Qt on some platforms warns if "Monospace" (capital M) is used and not found.
 if sys.platform == "darwin":
-    MONOSPACE_FONT_FAMILY = "Menlo, Monaco, Courier New, monospace"
+    MONOSPACE_FONT_FAMILY = "Menlo, Monaco, Courier New"
 elif sys.platform == "win32":
-    MONOSPACE_FONT_FAMILY = "Consolas, Courier New, monospace"
+    MONOSPACE_FONT_FAMILY = "Consolas, Courier New"
 else:
     # Linux and others: Use lowercase "monospace" as the primary/fallback
     MONOSPACE_FONT_FAMILY = "monospace, Courier New, Courier"

@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 
@@ -804,7 +805,7 @@ class DistortionAnalyzerWidget(QWidget):
         detailed_layout.setContentsMargins(0, 5, 0, 5)
 
         self.detailed_label = QLabel()
-        self.detailed_label.setStyleSheet("font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.5;")
+        self.detailed_label.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 14px; line-height: 1.5;")
         self.detailed_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         detailed_layout.addWidget(self.detailed_label)
 
