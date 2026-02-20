@@ -22,6 +22,7 @@ from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -488,7 +489,7 @@ class NoiseProfilerWidget(QWidget):
         report_group = QGroupBox(tr("Noise Report"))
         self.report_label = QLabel(tr("Waiting for data..."))
         self.report_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.report_label.setStyleSheet("font-family: monospace; font-size: 12px;")
+        self.report_label.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 12px;")
         self.report_label.setWordWrap(True)
 
         report_layout = QVBoxLayout()
