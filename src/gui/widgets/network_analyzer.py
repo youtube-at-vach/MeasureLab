@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QPushButton,
+    QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -138,6 +139,7 @@ class NetworkAnalyzer(MeasurementModule):
         # Fast Sweep Parameters
         self.sweep_mode = "Fast Chirp"
         self.chirp_duration = 1.0
+        self.averages = 1
 
         self.worker = None
         self.calibration_worker = None
@@ -246,15 +248,55 @@ class NetworkAnalyzer(MeasurementModule):
         if not worker.is_running:
             return
 
-        # 2. Play and Record
-        rec_data = self._record_sweep(chirp, sample_rate)
+        # 2. Play and Record (with averaging)
+        accumulated_data = None
+        reference_peak_idx = None
+        
+        # Determine the channel to use for time alignment
+        if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+            align_ch = self.ref_channel_index
+        elif self.input_mode == "R":
+            align_ch = 1
+        else:
+            align_ch = 0
 
-        self.signals.progress.emit(50)
-        if not worker.is_running:
+        for i in range(self.averages):
+            if not worker.is_running:
+                return
+
+            rec_data = self._record_sweep(chirp, sample_rate)
+
+            # Find delay to align
+            sig = rec_data[:, align_ch]
+            ir = scipy.signal.fftconvolve(sig, inv_filter, mode="full")
+            peak_idx = np.argmax(np.abs(ir))
+
+            if accumulated_data is None:
+                accumulated_data = rec_data
+                reference_peak_idx = peak_idx
+            else:
+                shift = reference_peak_idx - peak_idx
+                shifted_data = np.roll(rec_data, shift, axis=0)
+                
+                # Zero out the rolled-over parts
+                if shift > 0:
+                    shifted_data[:shift, :] = 0
+                elif shift < 0:
+                    shifted_data[shift:, :] = 0
+                    
+                accumulated_data += shifted_data
+
+            # Progress update (10 to 50)
+            progress = 10 + int(40 * (i + 1) / self.averages)
+            self.signals.progress.emit(progress)
+
+        if accumulated_data is None:
             return
 
+        averaged_data = accumulated_data / self.averages
+
         # 3. Process
-        self._process_sweep_data(rec_data, inv_filter, chirp, sample_rate, worker)
+        self._process_sweep_data(averaged_data, inv_filter, chirp, sample_rate, worker)
 
         self.signals.progress.emit(100)
 
@@ -507,6 +549,12 @@ class NetworkAnalyzerWidget(QWidget):
         self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, "chirp_duration", v))
         self.duration_label = QLabel(tr("Duration (s):"), controls_group)
         form.addRow(self.duration_label, self.duration_spin)
+
+        self.avg_spin = QSpinBox(controls_group)
+        self.avg_spin.setRange(1, 100)
+        self.avg_spin.setValue(1)
+        self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
+        form.addRow(tr("Averages:"), self.avg_spin)
 
         self.amp_spin = QDoubleSpinBox()
         self.amp_spin.setRange(0, 1)
