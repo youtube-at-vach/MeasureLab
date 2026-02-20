@@ -1,22 +1,14 @@
 import os
 import sys
-import shutil
 import tempfile
 import unittest
 import json
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 # Adjust path to import src if needed
 # Since this file is in tests/logic_verification/core/, we need to go up 3 levels to reach project root.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
-
-# Mock PyQt6 before importing src.core.config_manager
-# This allows tests to run in headless environments without PyQt6 installed
-sys.modules["PyQt6"] = MagicMock()
-sys.modules["PyQt6.QtCore"] = MagicMock()
-
-from src.core.config_manager import ConfigManager, DEFAULT_CONFIG
 
 class TestConfigManagerLogic(unittest.TestCase):
     """
@@ -28,6 +20,19 @@ class TestConfigManagerLogic(unittest.TestCase):
     """
 
     def setUp(self):
+        # Patch sys.modules to mock PyQt6 dependencies BEFORE importing ConfigManager
+        self.modules_patcher = patch.dict(sys.modules, {
+            "PyQt6": MagicMock(),
+            "PyQt6.QtCore": MagicMock()
+        })
+        self.modules_patcher.start()
+
+        # Import ConfigManager inside setUp to ensure mocks are active
+        # and avoid top-level import errors or linter E402
+        from src.core.config_manager import ConfigManager, DEFAULT_CONFIG
+        self.ConfigManager = ConfigManager
+        self.DEFAULT_CONFIG = DEFAULT_CONFIG
+
         # Create a temporary directory for config to avoid side effects
         self.temp_dir = tempfile.TemporaryDirectory()
         self.config_path = os.path.join(self.temp_dir.name, "config.json")
@@ -38,14 +43,17 @@ class TestConfigManagerLogic(unittest.TestCase):
         self.logger_patcher.start()
 
         # Clear singleton instances
-        if hasattr(ConfigManager, '_instances'):
-            ConfigManager._instances.clear()
+        if hasattr(self.ConfigManager, '_instances'):
+            self.ConfigManager._instances.clear()
 
     def tearDown(self):
         self.logger_patcher.stop()
         self.temp_dir.cleanup()
-        if hasattr(ConfigManager, '_instances'):
-            ConfigManager._instances.clear()
+        if hasattr(self.ConfigManager, '_instances'):
+            self.ConfigManager._instances.clear()
+
+        # Stop module patching
+        self.modules_patcher.stop()
 
     # -------------------------------------------------------------------------
     # Basic Merge Logic (from test_config_manager.py)
@@ -54,34 +62,34 @@ class TestConfigManagerLogic(unittest.TestCase):
     @patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
     def test_merge_with_defaults(self, mock_get_default):
         """Test merging loaded config with defaults."""
-        cm = ConfigManager(config_filename=self.config_path)
+        cm = self.ConfigManager(config_filename=self.config_path)
 
         # Case: None
         result = cm._merge_with_defaults(None)
-        self.assertEqual(result, DEFAULT_CONFIG)
-        self.assertIsNot(result, DEFAULT_CONFIG)  # Should return a copy
+        self.assertEqual(result, self.DEFAULT_CONFIG)
+        self.assertIsNot(result, self.DEFAULT_CONFIG)  # Should return a copy
 
         # Case: Empty dict
         result = cm._merge_with_defaults({})
-        self.assertEqual(result, DEFAULT_CONFIG)
+        self.assertEqual(result, self.DEFAULT_CONFIG)
 
         # Case: Valid audio settings
         loaded = {"audio": {"sample_rate": 96000, "block_size": 2048}}
         result = cm._merge_with_defaults(loaded)
         self.assertEqual(result["audio"]["sample_rate"], 96000)
         self.assertEqual(result["audio"]["block_size"], 2048)
-        self.assertEqual(result["audio"]["input_channels"], DEFAULT_CONFIG["audio"]["input_channels"])
+        self.assertEqual(result["audio"]["input_channels"], self.DEFAULT_CONFIG["audio"]["input_channels"])
 
         # Case: Partial audio settings
         loaded = {"audio": {"sample_rate": 44100}}
         result = cm._merge_with_defaults(loaded)
         self.assertEqual(result["audio"]["sample_rate"], 44100)
-        self.assertEqual(result["audio"]["block_size"], DEFAULT_CONFIG["audio"]["block_size"])
+        self.assertEqual(result["audio"]["block_size"], self.DEFAULT_CONFIG["audio"]["block_size"])
 
         # Case: Invalid type for section
         loaded = {"audio": [1, 2, 3]}
         result = cm._merge_with_defaults(loaded)
-        self.assertEqual(result["audio"], DEFAULT_CONFIG["audio"])
+        self.assertEqual(result["audio"], self.DEFAULT_CONFIG["audio"])
 
         # Case: Extra keys ignored
         loaded = {"audio": {"sample_rate": 48000, "extra_key": "value"}}
@@ -107,21 +115,21 @@ class TestConfigManagerLogic(unittest.TestCase):
         # Case: Screenshot invalid
         loaded = {"screenshot": "invalid"}
         result = cm._merge_with_defaults(loaded)
-        self.assertEqual(result["screenshot"], DEFAULT_CONFIG["screenshot"])
+        self.assertEqual(result["screenshot"], self.DEFAULT_CONFIG["screenshot"])
 
         cm.shutdown()
 
     @patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
     def test_load_config_errors(self, mock_get_default):
         """Test error handling during load_config."""
-        cm = ConfigManager(config_filename=self.config_path)
+        cm = self.ConfigManager(config_filename=self.config_path)
 
         # Case: Malformed JSON
         with open(self.config_path, "w") as f:
             f.write("{invalid_json")
 
         config = cm.load_config()
-        self.assertEqual(config, DEFAULT_CONFIG)
+        self.assertEqual(config, self.DEFAULT_CONFIG)
         # Using mock_logger instead of caplog
         self.mock_logger.error.assert_called()
 
@@ -145,7 +153,7 @@ class TestConfigManagerLogic(unittest.TestCase):
     @patch('src.core.config_manager.locale.getlocale')
     def test_detect_system_language(self, mock_get, mock_default, mock_exists, mock_resource_path, mock_qlocale):
         """Test system language detection logic."""
-        cm = ConfigManager(config_filename=self.config_path)
+        cm = self.ConfigManager(config_filename=self.config_path)
 
         # Setup mocks common behavior
         mock_resource_path.side_effect = lambda x: f"/path/to/{x}"
@@ -216,7 +224,7 @@ class TestConfigManagerLogic(unittest.TestCase):
         mock_getlocale.return_value = ('en_US', 'UTF-8')
         mock_qlocale.system.return_value.name.return_value = 'en_US'
 
-        cm = ConfigManager(config_filename=self.config_path)
+        cm = self.ConfigManager(config_filename=self.config_path)
 
         # Check defaults loaded
         self.assertEqual(cm.config['audio']['sample_rate'], 48000)
@@ -229,7 +237,7 @@ class TestConfigManagerLogic(unittest.TestCase):
     @patch('src.core.config_manager.os.makedirs')
     def test_save_config_debounced(self, mock_makedirs, mock_exists, mock_timer_cls):
         """Test that save_config starts a timer."""
-        cm = ConfigManager(config_filename=self.config_path)
+        cm = self.ConfigManager(config_filename=self.config_path)
         mock_timer_inst = MagicMock()
         mock_timer_cls.return_value = mock_timer_inst
 
@@ -246,18 +254,18 @@ class TestConfigManagerLogic(unittest.TestCase):
     @patch('src.core.config_manager.os.open')
     @patch('src.core.config_manager.os.fdopen')
     @patch('src.core.config_manager.os.chmod')
-    def test_save_config_force_sync(self, mock_chmod, mock_fdopen, mock_open, mock_makedirs, mock_exists):
+    def test_save_config_force_sync(self, mock_chmod, mock_fdopen, mock_open_func, mock_makedirs, mock_exists):
         """Test that force_sync writes immediately."""
-        mock_open.return_value = 123
+        mock_open_func.return_value = 123
         mock_file_handle = MagicMock()
         mock_fdopen.return_value.__enter__.return_value = mock_file_handle
 
-        cm = ConfigManager(config_filename=self.config_path)
+        cm = self.ConfigManager(config_filename=self.config_path)
         cm.config['audio']['sample_rate'] = 88200
         cm.save_config(force_sync=True)
 
         expected_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        mock_open.assert_called_with(cm.config_path, expected_flags, 0o600)
+        mock_open_func.assert_called_with(cm.config_path, expected_flags, 0o600)
         mock_fdopen.assert_called_with(123, 'w')
         mock_chmod.assert_called_with(cm.config_path, 0o600)
 
@@ -274,9 +282,9 @@ class TestConfigManagerLogic(unittest.TestCase):
         mock_home.return_value = Path("/Users/testuser")
 
         # Clear existing instance to force re-init with new platform
-        ConfigManager._instances.clear()
+        self.ConfigManager._instances.clear()
 
-        cm = ConfigManager() # No filename provided, uses default path logic
+        cm = self.ConfigManager() # No filename provided, uses default path logic
         expected_path = "/Users/testuser/Library/Application Support/MeasureLab/config.json"
         self.assertEqual(os.path.abspath(cm.config_path), os.path.abspath(expected_path))
 
@@ -287,9 +295,9 @@ class TestConfigManagerLogic(unittest.TestCase):
     def test_windows_path_resolution(self, mock_home, mock_makedirs):
         mock_home.return_value = Path(r"C:\Users\testuser")
 
-        ConfigManager._instances.clear()
+        self.ConfigManager._instances.clear()
 
-        cm = ConfigManager()
+        cm = self.ConfigManager()
         expected_path = os.path.join(r"C:\Users\testuser\AppData\Roaming", "MeasureLab", "config.json")
         self.assertEqual(os.path.normpath(cm.config_path), os.path.normpath(expected_path))
 
@@ -299,11 +307,11 @@ class TestConfigManagerLogic(unittest.TestCase):
     def test_linux_path_resolution(self, mock_home, mock_makedirs):
         mock_home.return_value = Path("/home/testuser")
 
-        ConfigManager._instances.clear()
+        self.ConfigManager._instances.clear()
 
         # Mock XDG_CONFIG_HOME not set
         with patch.dict(os.environ, {}, clear=True):
-            cm = ConfigManager()
+            cm = self.ConfigManager()
             expected_path = "/home/testuser/.config/MeasureLab/config.json"
             self.assertEqual(os.path.abspath(cm.config_path), os.path.abspath(expected_path))
 
@@ -319,8 +327,8 @@ class TestConfigManagerLogic(unittest.TestCase):
             with open("config.json", "w") as f:
                 json.dump({"test": "value"}, f)
 
-            ConfigManager._instances.clear()
-            cm = ConfigManager()
+            self.ConfigManager._instances.clear()
+            cm = self.ConfigManager()
 
             self.assertEqual(os.path.abspath(cm.config_path), os.path.abspath("config.json"))
             self.assertTrue(os.path.exists(cm.config_path))
