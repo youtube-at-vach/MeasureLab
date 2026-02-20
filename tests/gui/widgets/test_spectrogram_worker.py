@@ -11,7 +11,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 sys.modules['sounddevice'] = MagicMock()
 
 try:
-    from PyQt6.QtCore import QThreadPool, QObject, pyqtSignal
     from PyQt6.QtWidgets import QApplication
     from src.gui.widgets.spectrogram import SpectrogramWorker
 except ImportError:
