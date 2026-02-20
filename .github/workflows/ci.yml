@@ -40,6 +40,7 @@ jobs:
             libsndfile1
             libxcb-cursor0
             libfftw3-dev
+            libnetcdf-dev
           )
 
           # Ubuntu 24.04 (noble) migrated several libs to *t64 names.

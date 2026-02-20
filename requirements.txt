@@ -1,0 +1,10 @@
+numpy
+scipy
+sounddevice
+PyQt6
+pyqtgraph
+soundfile
+PyWavelets
+netCDF4
+pyfftw
+pytest-json-report
