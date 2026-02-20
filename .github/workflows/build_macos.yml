@@ -73,6 +73,12 @@ jobs:
           --target-architecture arm64 \
           main_gui.py
 
+    - name: Display Minimum macOS Version
+      run: |
+        echo "Inspecting dist/MeasureLab.app/Contents/MacOS/MeasureLab for LC_BUILD_VERSION..."
+        otool -l dist/MeasureLab.app/Contents/MacOS/MeasureLab | grep -A 10 LC_BUILD_VERSION | grep minos || echo "LC_BUILD_VERSION not found, checking LC_VERSION_MIN_MACOSX..."
+        otool -l dist/MeasureLab.app/Contents/MacOS/MeasureLab | grep -A 10 LC_VERSION_MIN_MACOSX | grep version || echo "Version info not found"
+
     - name: Verify macOS Application (Self-Test)
       run: |
         echo "Testing dist/MeasureLab.app/Contents/MacOS/MeasureLab with --self-test..."
