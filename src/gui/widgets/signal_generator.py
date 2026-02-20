@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from PyQt6.QtCore import Qt
@@ -810,6 +810,36 @@ class SignalGenerator(MeasurementModule):
             params._buffer = None
             params._buffer_index = 0
 
+    def update_param(self, params: SignalParameters, name: str, value: Any):
+        """Updates a parameter and triggers buffer regeneration if necessary."""
+        # Check if value actually changed
+        current_value = getattr(params, name)
+        if current_value == value:
+            return
+
+        setattr(params, name, value)
+
+        # Buffer regeneration logic
+        # Only if the waveform is currently active and buffered
+        if params.waveform in self.BUFFERED_WAVEFORMS:
+            # Check if the changed parameter affects buffer generation for this waveform
+            needs_update = False
+
+            if params.waveform == "noise" and name == "noise_color":
+                needs_update = True
+            elif params.waveform == "multitone" and name in ["multitone_count", "start_freq", "end_freq"]:
+                needs_update = True
+            elif params.waveform == "mls" and name == "mls_order":
+                needs_update = True
+            elif params.waveform == "burst" and name in ["frequency", "burst_on_cycles", "burst_off_cycles", "burst_windowed"]:
+                needs_update = True
+            elif params.waveform == "prbs" and name in ["prbs_order", "prbs_seed"]:
+                needs_update = True
+
+            if needs_update:
+                sample_rate = self.audio_engine.sample_rate
+                self._prepare_buffer(params, sample_rate)
+
 
 class SignalGeneratorWidget(QWidget):
     def __init__(self, module: SignalGenerator):
@@ -1430,7 +1460,7 @@ class SignalGeneratorWidget(QWidget):
 
     def update_param(self, name, value):
         for p in self.get_active_params_list():
-            setattr(p, name, value)
+            self.module.update_param(p, name, value)
 
         # If linked, we might need to refresh UI if we just set both?
         # No, UI reflects the state. If linked, we assume they are now same.
