@@ -28,7 +28,7 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
     def setUpClass(cls):
         # Create QApplication if it doesn't exist
         if not QApplication.instance():
-            cls.app = QApplication(sys.argv)
+            cls.app = QApplication(sys.argv + ['-platform', 'offscreen'])
         else:
             cls.app = QApplication.instance()
 
@@ -56,9 +56,6 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
         self.widget.on_worker_result(data_v1)
 
         # Verify log_buffer exists and is populated
-        if not hasattr(self.widget, 'log_spectrogram_buffer'):
-            self.skipTest("Optimization not yet implemented")
-
         self.assertIsNotNone(self.widget.log_spectrogram_buffer)
         self.assertEqual(self.widget.log_spectrogram_buffer.shape[0], self.module.history_length)
 
