@@ -24,6 +24,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.frequency_analysis import calculate_frequency_metrics, calculate_allan_deviation
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 
 class AllanWorkerSignals(QObject):
@@ -447,8 +448,13 @@ class FrequencyCounterWidget(QWidget):
         self.freq_label = QLabel(tr("0.00000 Hz"))
         self.freq_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         # Use a monospaced font if available, or just a clean sans-serif
-        font = QFont("Courier New", 72, QFont.Weight.Bold)
-        font.setStyleHint(QFont.StyleHint.Monospace)
+        font = QFont()
+        font.setFamilies(MONOSPACE_FONT_FAMILY.split(", "))
+        font.setPointSize(72)
+        font.setWeight(QFont.Weight.Bold)
+        # StyleHint.Typewriter or StyleHint.Monospace can still cause warnings on some platforms
+        # if the OS mapping for generic "Monospace" is missing.
+        # By setting explicit families first, we avoid the costly fallback search.
         self.freq_label.setFont(font)
         self.freq_label.setStyleSheet("color: #00ff00;")  # Green LED style
         display_layout.addWidget(self.freq_label)
