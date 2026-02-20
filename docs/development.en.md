@@ -40,15 +40,15 @@ Therefore, on Linux, it is recommended to **use the system Python but install de
 
     ```bash
     ./.venv/bin/python -m pip install -U pip
-    ./.venv/bin/python -m pip install -c constraints.txt -r requirements.txt
+    ./.venv/bin/python -m pip install .
     ./.venv/bin/python main_gui.py
     ```
 
 3. Clone the repository.
-4. Install dependencies (use constraints for reproducibility):
+4. Install dependencies:
 
     ```bash
-    pip install -c constraints.txt -r requirements.txt
+    pip install .
     ```
 
 5. Launch the application:
@@ -62,7 +62,7 @@ Therefore, on Linux, it is recommended to **use the system Python but install de
 If you want to run tests or Lint/type checks, install development tools as well.
 
 ```bash
-pip install -c constraints.txt -e .[dev]
+pip install -e .[dev]
 ```
 
 - Lint: `ruff check src scripts tests`

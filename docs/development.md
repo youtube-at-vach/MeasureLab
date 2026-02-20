@@ -40,15 +40,15 @@
 
     ```bash
     ./.venv/bin/python -m pip install -U pip
-    ./.venv/bin/python -m pip install -c constraints.txt -r requirements.txt
+    ./.venv/bin/python -m pip install .
     ./.venv/bin/python main_gui.py
     ```
 
 3. リポジトリをクローンします。
-4. 依存関係をインストールします（再現性のため constraints を利用）：
+4. 依存関係をインストールします：
 
     ```bash
-    pip install -c constraints.txt -r requirements.txt
+    pip install .
     ```
 
 5. アプリケーションを起動します：
@@ -62,7 +62,7 @@
 テストやLint/型チェックを実行する場合は開発ツールもインストールしてください。
 
 ```bash
-pip install -c constraints.txt -e .[dev]
+pip install -e .[dev]
 ```
 
 - Lint: `ruff check src scripts tests`

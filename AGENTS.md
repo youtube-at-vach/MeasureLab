@@ -25,7 +25,7 @@ description: Instructions for running development tools (pytest, ruff, mypy)
    - `python3 -m venv .venv`
    - `./.venv/bin/python -m pip install -U pip`
 2. 依存導入
-   - `./.venv/bin/python -m pip install -r requirements.txt`
+   - `./.venv/bin/python -m pip install .`
 
 > [!NOTE]
 > `PyWavelets` は pip パッケージ名ですが、Python での import 名は `pywt` です。

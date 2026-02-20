@@ -60,17 +60,16 @@ To contribute to MeasureLab, you'll need to set up a development environment.
     ```
 
 3. **Install Dependencies**
-    We use `constraints.txt` to ensure reproducible builds.
 
     ```bash
     pip install -U pip
-    pip install -c constraints.txt -r requirements.txt
+    pip install .
     ```
 
 4. **Install Development Tools**
 
     ```bash
-    pip install -c constraints.txt -e .[dev]
+    pip install -e .[dev]
     ```
 
 ---
