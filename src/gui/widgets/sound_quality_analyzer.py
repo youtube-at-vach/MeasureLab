@@ -8,16 +8,21 @@ from PyQt6.QtCore import QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
-    QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+from PyQt6.QtCore import Qt
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -83,7 +88,7 @@ class AnalysisWorker(QThread):
 
             results = {"samplerate": self.target_sr, "duration": len(data_playback) / self.target_sr, "channels": []}
 
-            total_steps = len(channels) * 4
+            total_steps = len(channels) * 6
             current_step = 0
 
             for i, audio in enumerate(channels):
@@ -127,6 +132,26 @@ class AnalysisWorker(QThread):
                 )
                 t_res = self._calc_tonality(audio, analysis_sr)
                 ch_res.update(t_res)
+                current_step += 1
+
+                # 5. Fluctuation Strength
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Fluctuation Strength ({})...").format(ch_names[i])
+                )
+                f_res = self._calc_fluctuation_strength(audio, analysis_sr)
+                ch_res.update(f_res)
+                current_step += 1
+
+                # 6. Articulation Index
+                if self._is_cancelled:
+                    return
+                self.progress_update.emit(
+                    int((current_step / total_steps) * 100), tr("Calculating Articulation Index ({})...").format(ch_names[i])
+                )
+                a_res = self._calc_articulation_index(audio, analysis_sr)
+                ch_res.update(a_res)
                 current_step += 1
 
                 results["channels"].append(ch_res)
@@ -481,6 +506,93 @@ class AnalysisWorker(QThread):
 
         return {"mean_tonality": np.mean(global_tonality), "tonality_series": global_tonality, "tonality_step": step}
 
+    def _calc_fluctuation_strength(self, audio, sr):
+        # Fluctuation Strength (vacil)
+        # Similar to roughness but for slower modulations (< 20Hz, peak around 4Hz)
+
+        # 1. Hilbert Envelope of full signal
+        sos_pre = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
+        filtered = signal.sosfilt(sos_pre, audio)
+
+        env = np.abs(signal.hilbert(filtered))
+        env_ac = env - np.mean(env)
+
+        # 2. Extract Modulation Signal (0.5-20 Hz)
+        mod_sos = signal.butter(2, [0.5, 20], btype="bandpass", fs=sr, output="sos")
+        mod_signal = signal.sosfilt(mod_sos, env_ac)
+
+        # 3. RMS Calculation of Modulation vs Carrier
+        window_sec = 0.4
+        step_sec = 0.1
+        block_size = int(window_sec * sr)
+        step_size = int(step_sec * sr)
+
+        mod_sq = mod_signal**2
+        car_sq = filtered**2
+
+        kernel = np.ones(block_size) / block_size
+        mod_rms = np.sqrt(signal.fftconvolve(mod_sq, kernel, mode="valid"))
+        car_rms = np.sqrt(signal.fftconvolve(car_sq, kernel, mode="valid"))
+
+        mod_rms = mod_rms[::step_size]
+        car_rms = car_rms[::step_size]
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            m = mod_rms / (car_rms + 1e-9)
+            m[car_rms < 1e-4] = 0
+
+        # Approximation: roughly similar modulation index scale
+        f_series = m
+
+        return {"mean_fluctuation": np.mean(f_series), "fluctuation_series": f_series, "fluctuation_step": step_sec}
+
+    def _calc_articulation_index(self, audio, sr):
+        # Articulation Index (AI)
+        # 15 bands from 200 Hz to 5000 Hz, applying fixed weights to S/N ratio.
+
+        window_sec = 0.2
+        nperseg = int(window_sec * sr)
+        noverlap = int(nperseg // 2)
+
+        f, t, Zxx = signal.stft(audio, fs=sr, window="hann", nperseg=nperseg, noverlap=noverlap)
+        mag_sq = np.abs(Zxx) ** 2 + 1e-12
+
+        # 1/3 Octave ISO center bands relevant to speech
+        center_freqs = [200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000]
+        # French-Steinberg approx weights
+        weights = [0.012, 0.030, 0.030, 0.042, 0.042, 0.060, 0.060, 0.072, 0.090, 0.111, 0.111, 0.104, 0.082, 0.070, 0.054]
+        weights = np.array(weights)
+
+        # Band boundaries
+        factor = 2**(1/6)
+        lower_edges = [fc / factor for fc in center_freqs]
+        upper_edges = [fc * factor for fc in center_freqs]
+
+        ai_series = np.zeros(Zxx.shape[1])
+        noise_floor_db = -60.0 # Assumed nominal noise
+
+        band_levels = []
+        for low, high in zip(lower_edges, upper_edges, strict=True):
+            mask = (f >= low) & (f <= high)
+            if np.any(mask):
+                band_p = np.sum(mag_sq[mask, :], axis=0)
+                band_db = 10 * np.log10(band_p + 1e-12)
+            else:
+                band_db = np.full(Zxx.shape[1], -100.0)
+            band_levels.append(band_db)
+
+        # Calculate AI per time frame
+        for i in range(15):
+            snr = band_levels[i] - noise_floor_db
+            snr_clipped = np.clip(snr, -12, 18)
+            contribution = (snr_clipped + 12) / 30.0
+            ai_series += weights[i] * contribution
+
+        ai_series = np.clip(ai_series, 0.0, 1.0)
+        step = (nperseg - noverlap) / sr
+
+        return {"mean_ai": np.mean(ai_series), "ai_series": ai_series, "ai_step": step}
+
 
 # --- Widget ---
 
@@ -524,64 +636,106 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # Main vertical layout contains just the splitter
+        main_layout = QVBoxLayout(self)
+
+        self.splitter = QSplitter(Qt.Orientation.Vertical)
+        main_layout.addWidget(self.splitter)
+
+        # Top Section Widget
+        self.top_widget = QWidget()
+        top_layout = QVBoxLayout(self.top_widget)
+        top_layout.setContentsMargins(0, 0, 0, 0)
 
         # --- Top: Controls ---
         controls_layout = QHBoxLayout()
+
+        # Playback Group
+        playback_group = QGroupBox(tr("Playback"))
+        playback_layout = QHBoxLayout()
+        playback_layout.setContentsMargins(5, 5, 5, 5)
 
         self.play_btn = QPushButton("▶")
         self.play_btn.setToolTip(tr("Play/Pause"))
         self.play_btn.setFixedWidth(40)
         self.play_btn.clicked.connect(self.toggle_playback)
         self.play_btn.setEnabled(False)
-        controls_layout.addWidget(self.play_btn)
+        playback_layout.addWidget(self.play_btn)
 
         self.stop_btn = QPushButton("■")
         self.stop_btn.setToolTip(tr("Stop"))
         self.stop_btn.setFixedWidth(40)
         self.stop_btn.clicked.connect(self.stop_playback)
         self.stop_btn.setEnabled(False)
-        controls_layout.addWidget(self.stop_btn)
+        playback_layout.addWidget(self.stop_btn)
 
         self.chk_follow = QCheckBox(tr("Follow Cursor"))
         self.chk_follow.setChecked(True)
-        controls_layout.addWidget(self.chk_follow)
+        playback_layout.addWidget(self.chk_follow)
 
-        # Spacer
-        controls_layout.addSpacing(10)
+        playback_group.setLayout(playback_layout)
+        controls_layout.addWidget(playback_group)
+
+        # File & Analysis Group
+        file_group = QGroupBox(tr("File && Analysis"))
+        file_layout = QHBoxLayout()
+        file_layout.setContentsMargins(5, 5, 5, 5)
 
         self.file_label = QLabel(tr("No file selected"))
-        controls_layout.addWidget(self.file_label, stretch=1)
+        file_layout.addWidget(self.file_label, stretch=1)
 
         self.load_btn = QPushButton(tr("Load File..."))
         self.load_btn.clicked.connect(self.load_file)
-        controls_layout.addWidget(self.load_btn)
+        file_layout.addWidget(self.load_btn)
 
         self.analyze_btn = QPushButton(tr("Analyze"))
         self.analyze_btn.clicked.connect(self.start_analysis)
         self.analyze_btn.setEnabled(False)
-        controls_layout.addWidget(self.analyze_btn)
+        file_layout.addWidget(self.analyze_btn)
 
-        layout.addLayout(controls_layout)
+        self.export_btn = QPushButton(tr("Export CSV..."))
+        self.export_btn.clicked.connect(self.export_csv)
+        self.export_btn.setEnabled(False)
+        file_layout.addWidget(self.export_btn)
+
+        file_group.setLayout(file_layout)
+        controls_layout.addWidget(file_group, stretch=1)
+
+        top_layout.addLayout(controls_layout)
 
         # Progress
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
+        top_layout.addWidget(self.progress_bar)
 
         # --- Middle: Metrics Summary ---
         summary_group = QGroupBox(tr("Summary Metrics"))
-        self.summary_grid = QGridLayout()
+        summary_layout = QVBoxLayout()
 
-        # Headers
-        self.summary_grid.addWidget(QLabel(tr("Channel")), 0, 0)
-        self.summary_grid.addWidget(QLabel(tr("Integrated Loudness (LUFS)")), 0, 1)
-        self.summary_grid.addWidget(QLabel(tr("Mean Sharpness (acum)")), 0, 2)
-        self.summary_grid.addWidget(QLabel(tr("Mean Roughness (asper)")), 0, 3)
-        self.summary_grid.addWidget(QLabel(tr("Mean Tonality (0-1)")), 0, 4)
+        self.summary_table = QTableWidget()
+        self.summary_table.setColumnCount(7)
+        self.summary_table.setHorizontalHeaderLabels([
+            tr("Channel"),
+            tr("Integrated\nLoudness (LUFS)"),
+            tr("Mean Sharpness\n(acum)"),
+            tr("Mean Roughness\n(asper)"),
+            tr("Mean Tonality\n(0-1)"),
+            tr("Mean Fluctuation\n(vacil)"),
+            tr("Mean AI\n(0-1)")
+        ])
 
-        summary_group.setLayout(self.summary_grid)
-        layout.addWidget(summary_group)
+        # Table configuration
+        self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.summary_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Read-only
+        self.summary_table.setAlternatingRowColors(True)
+        self.summary_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.summary_table.verticalHeader().setVisible(False)
+
+        summary_layout.addWidget(self.summary_table)
+        summary_group.setLayout(summary_layout)
+        top_layout.addWidget(summary_group)
+
+        self.splitter.addWidget(self.top_widget)
 
         # --- Bottom: Graphs ---
         self.tabs = QTabWidget()
@@ -606,21 +760,29 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.layout_tonality = QVBoxLayout(self.tab_tonality)
         self.tabs.addTab(self.tab_tonality, tr("Tonality"))
 
-        layout.addWidget(self.tabs)
+        # Tab 5: Fluctuation Strength
+        self.tab_fluctuation = QWidget()
+        self.layout_fluctuation = QVBoxLayout(self.tab_fluctuation)
+        self.tabs.addTab(self.tab_fluctuation, tr("Fluctuation Strength"))
 
-        self.setLayout(layout)
+        # Tab 6: Articulation Index
+        self.tab_ai = QWidget()
+        self.layout_ai = QVBoxLayout(self.tab_ai)
+        self.tabs.addTab(self.tab_ai, tr("Articulation Index"))
 
-        # Placeholder rows
+        self.splitter.addWidget(self.tabs)
+
+        # Give initial proportions to splitter (e.g. 1/3 top, 2/3 bottom)
+        self.splitter.setSizes([300, 500])
+
         self._set_summary_placeholder()
 
     def _set_summary_placeholder(self):
-        # Clear existing rows except header
-        # (Simplified: Just add empty labels for row 1)
-        self.summary_grid.addWidget(QLabel("-"), 1, 0)
-        self.summary_grid.addWidget(QLabel("-"), 1, 1)
-        self.summary_grid.addWidget(QLabel("-"), 1, 2)
-        self.summary_grid.addWidget(QLabel("-"), 1, 3)
-        self.summary_grid.addWidget(QLabel("-"), 1, 4)
+        self.summary_table.setRowCount(1)
+        for i in range(7):
+            item = QTableWidgetItem("-")
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.summary_table.setItem(0, i, item)
 
     def load_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Open Audio File"), "", "Audio Files (*.wav *.flac *.aiff)")
@@ -632,7 +794,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
     def clear_plots(self):
         # Clear all separate layouts
-        for layout in [self.layout_loudness, self.layout_sharpness, self.layout_roughness, self.layout_tonality]:
+        for layout in [self.layout_loudness, self.layout_sharpness, self.layout_roughness, self.layout_tonality, self.layout_fluctuation, self.layout_ai]:
             if layout is not None:
                 while layout.count():
                     item = layout.takeAt(0)
@@ -645,6 +807,8 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.p2 = None
         self.p3 = None
         self.p4 = None
+        self.p5 = None
+        self.p6 = None
         self.cursors = []
 
     def start_analysis(self):
@@ -693,6 +857,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.load_btn.setEnabled(True)
         self.play_btn.setEnabled(True)
         self.stop_btn.setEnabled(True)
+        self.export_btn.setEnabled(True)
 
         self.display_metrics(results)
         self.plot_series(results)
@@ -704,29 +869,70 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.file_label.setText(f"Error: {msg}")
 
     def display_metrics(self, results):
-        # Clear grid
-        # Note: Removing widgets from layout is tedious in Qt.
-        # Let's just hide or delete properly.
-        while self.summary_grid.count() > 5:  # Keep headers
-            item = self.summary_grid.takeAt(5)
-            w = item.widget()
-            if w:
-                w.deleteLater()
+        channels = results.get("channels", [])
+        self.summary_table.setRowCount(len(channels))
 
-        row = 1
-        for ch in results["channels"]:
+        for row, ch in enumerate(channels):
             name = ch["name"]
             i_lufs = ch["integrated_lufs"]
             m_sh = ch["mean_sharpness"]
             m_r = ch["mean_roughness"]
             m_t = ch["mean_tonality"]
+            m_f = ch["mean_fluctuation"]
+            m_a = ch["mean_ai"]
 
-            self.summary_grid.addWidget(QLabel(name), row, 0)
-            self.summary_grid.addWidget(QLabel(f"{i_lufs:.1f} LUFS"), row, 1)
-            self.summary_grid.addWidget(QLabel(f"{m_sh:.2f} acum"), row, 2)
-            self.summary_grid.addWidget(QLabel(f"{m_r:.2f} asper"), row, 3)
-            self.summary_grid.addWidget(QLabel(f"{m_t:.2f} (0-1)"), row, 4)
-            row += 1
+            # Create items
+            items = [
+                QTableWidgetItem(name),
+                QTableWidgetItem(f"{i_lufs:.1f}"),
+                QTableWidgetItem(f"{m_sh:.2f}"),
+                QTableWidgetItem(f"{m_r:.2f}"),
+                QTableWidgetItem(f"{m_t:.2f}"),
+                QTableWidgetItem(f"{m_f:.2f}"),
+                QTableWidgetItem(f"{m_a:.2f}")
+            ]
+
+            # Center text for data columns
+            for i, item in enumerate(items):
+                if i > 0:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+                self.summary_table.setItem(row, i, item)
+
+    def export_csv(self):
+        if not self.analysis_results:
+            return
+
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export Metrics to CSV"), "sound_quality_metrics.csv", "CSV Files (*.csv);;All Files (*)")
+        if not path:
+            return
+
+        try:
+            import csv
+            with open(path, mode='w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+
+                # Write header
+                writer.writerow([
+                    "Channel", "Integrated Loudness (LUFS)", "Mean Sharpness (acum)", 
+                    "Mean Roughness (asper)", "Mean Tonality (0-1)", 
+                    "Mean Fluctuation (vacil)", "Mean AI (0-1)"
+                ])
+
+                # Write data rows
+                for ch in self.analysis_results.get("channels", []):
+                    writer.writerow([
+                        ch["name"],
+                        f"{ch['integrated_lufs']:.1f}",
+                        f"{ch['mean_sharpness']:.2f}",
+                        f"{ch['mean_roughness']:.2f}",
+                        f"{ch['mean_tonality']:.2f}",
+                        f"{ch['mean_fluctuation']:.2f}",
+                        f"{ch['mean_ai']:.2f}"
+                    ])
+
+            QMessageBox.information(self, tr("Export Successful"), tr("Successfully exported metrics to:\n{}").format(path))
+        except Exception as e:
+            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to export metrics.\nError: {}").format(str(e)))
 
     def plot_series(self, results):
         self.clear_plots()
@@ -762,6 +968,22 @@ class SoundQualityAnalyzerWidget(QWidget):
         p4.addLegend()
         p4.setXLink(p1)
 
+        # Fluctuation Strength Plot (Tab 5)
+        p5 = pg.PlotWidget(title=tr("Fluctuation Strength"))
+        p5.setLabel("left", "vacil")
+        p5.setLabel("bottom", "Time", units="s")
+        p5.showGrid(y=True)
+        p5.addLegend()
+        p5.setXLink(p1)
+
+        # Articulation Index Plot (Tab 6)
+        p6 = pg.PlotWidget(title=tr("Articulation Index"))
+        p6.setLabel("left", "AI (0-1)")
+        p6.setLabel("bottom", "Time", units="s")
+        p6.showGrid(y=True)
+        p6.addLegend()
+        p6.setXLink(p1)
+
         colors = ["c", "m", "g", "y"]
 
         for i, ch in enumerate(results["channels"]):
@@ -784,19 +1006,31 @@ class SoundQualityAnalyzerWidget(QWidget):
             t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
             p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
 
+            # Fluctuation Strength
+            t_f = np.arange(len(ch["fluctuation_series"])) * ch["fluctuation_step"]
+            p5.plot(t_f, ch["fluctuation_series"], pen=c, name=name)
+
+            # Articulation Index
+            t_a = np.arange(len(ch["ai_series"])) * ch["ai_step"]
+            p6.plot(t_a, ch["ai_series"], pen=c, name=name)
+
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
         self.p4 = p4
+        self.p5 = p5
+        self.p6 = p6
 
         self.layout_loudness.addWidget(p1)
         self.layout_sharpness.addWidget(p2)
         self.layout_roughness.addWidget(p3)
         self.layout_tonality.addWidget(p4)
+        self.layout_fluctuation.addWidget(p5)
+        self.layout_ai.addWidget(p6)
 
         # Add cursors
         self.cursors = []
-        for p in [self.p1, self.p2, self.p3, self.p4]:
+        for p in [self.p1, self.p2, self.p3, self.p4, self.p5, self.p6]:
             if p is None:
                 continue
             # Click event
@@ -925,7 +1159,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Determine which plot was clicked
         target_plot = None
-        plots = [p for p in [self.p1, self.p2, self.p3, self.p4] if p is not None]
+        plots = [p for p in [self.p1, self.p2, self.p3, self.p4, self.p5, self.p6] if p is not None]
 
         for p in plots:
             if p.sceneBoundingRect().contains(event.scenePos()):

@@ -14,6 +14,8 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 - **Sharpness**: Represents the "sharpness" or "metallic" quality of a sound. Higher values indicate more high-frequency components (typically above 15.8 Bark). The unit is `acum`.
 - **Roughness**: Represents the "graininess" or "roughness" of a sound. It evaluates unpleasant modulations (around 70 Hz, for example) that cause a sensation of "roughness." The unit is `asper`.
 - **Tonality**: Represents the extent to which the sound contains "sine-wave-like components" (Spectral Flatness). Sounds like white noise have low tonality, while sounds like a whistle or a pure sine wave approach 1.0. The unit is `0-1` (normalized value).
+- **Fluctuation Strength**: Similar to roughness, it represents the "modulation" or "fluctuation" of a sound, but for slower changes (typically below 20 Hz, peaking around 4 Hz). The unit is `vacil`.
+- **Articulation Index (AI)**: A metric representing "speech intelligibility" in the presence of noise. It ranges from 0.0 to 1.0, where 1.0 means perfect intelligibility.
 
 ## Operation
 
@@ -23,8 +25,8 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 2. Press the **Analyze** button to start the analysis.
     - Internally, the audio is resampled to 48kHz for analysis (to optimize psychoacoustic filters).
     - Long files may take some time to process.
-3. Once the analysis is complete, the **Summary Metrics** will display the average values for each channel.
-4. The graphs below show how each of these metrics (Loudness, Sharpness, Roughness, Tonality) "changed over time." Use the tabs to switch between metrics.
+3. Once the analysis is complete, the **Summary Metrics** will display the average values for each channel (Loudness, Sharpness, Roughness, Tonality, Fluctuation Strength, AI).
+4. The graphs below show how each of these metrics "changed over time." Use the tabs to switch between metrics.
 
 ### Playback and Verification
 
