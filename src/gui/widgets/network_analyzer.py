@@ -537,7 +537,7 @@ class NetworkAnalyzerWidget(QWidget):
         display_form = QFormLayout()
 
         # Limit Plot Freq (Max)
-        self.limit_check = QCheckBox(tr("Limit Max"))
+        self.limit_check = QCheckBox(tr("Limit"))
         self.limit_check.setChecked(True)
         self.limit_check.toggled.connect(self.refresh_plots)
         self.limit_spin = QDoubleSpinBox()
@@ -551,7 +551,7 @@ class NetworkAnalyzerWidget(QWidget):
         display_form.addRow(tr("Max Freq:"), limit_layout)
 
         # Limit Plot Freq (Min)
-        self.min_limit_check = QCheckBox(tr("Limit Min"))
+        self.min_limit_check = QCheckBox(tr("Limit"))
         self.min_limit_check.setChecked(True)
         self.min_limit_check.toggled.connect(self.refresh_plots)
         self.min_limit_spin = QDoubleSpinBox()
