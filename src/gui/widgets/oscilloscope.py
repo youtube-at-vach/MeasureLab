@@ -42,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 
 class Oscilloscope(MeasurementModule):
+    TRIGGER_SEARCH_WINDOW_SIZE = 2048
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -339,7 +341,7 @@ class Oscilloscope(MeasurementModule):
         # We search backwards from the end-required_samples to find the most recent trigger event
         # Or search forwards?
         # Let's search in the last 'search_window' samples
-        search_window = 2048  # Limit search to avoid high CPU
+        search_window = self.TRIGGER_SEARCH_WINDOW_SIZE  # Limit search to avoid high CPU
         start_idx = max(0, search_end - search_window)
 
         # Extract only the search window subset
