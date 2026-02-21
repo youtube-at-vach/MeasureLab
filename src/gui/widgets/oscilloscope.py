@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import (
     STYLE_TOGGLE_BTN_DARK,
@@ -1249,26 +1250,6 @@ class OscilloscopeWidget(QWidget):
             self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["r_rms"], meas["r_vpp"]))
 
             # Waveform-derived measurements (optional)
-            def _format_time(seconds):
-                if seconds is None or not np.isfinite(seconds) or seconds <= 0:
-                    return "--"
-                if seconds < 1e-6:
-                    return f"{seconds * 1e9:.1f} ns"
-                if seconds < 1e-3:
-                    return f"{seconds * 1e6:.2f} us"
-                if seconds < 1.0:
-                    return f"{seconds * 1e3:.3f} ms"
-                return f"{seconds:.3f} s"
-
-            def _format_freq(hz):
-                if hz is None or not np.isfinite(hz) or hz <= 0:
-                    return "--"
-                if hz >= 1e6:
-                    return f"{hz / 1e6:.3f} MHz"
-                if hz >= 1e3:
-                    return f"{hz / 1e3:.3f} kHz"
-                return f"{hz:.3f} Hz"
-
             wave_meas_enabled = hasattr(self, "chk_wave_meas") and self.chk_wave_meas.isChecked()
             self.meas_l_auto_label.setVisible(wave_meas_enabled and self.module.show_left)
             self.meas_r_auto_label.setVisible(wave_meas_enabled and self.module.show_right)
@@ -1277,24 +1258,34 @@ class OscilloscopeWidget(QWidget):
                 if self.module.show_left:
                     freq_hz = self.module.estimate_frequency_hz(t, l_data)
                     rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, l_data)
+
+                    freq_str = format_si(freq_hz, "Hz", sig_figs=5) if freq_hz is not None and freq_hz > 0 else "--"
+                    rise_str = format_si(rise_s, "s", sig_figs=5) if rise_s is not None and rise_s > 0 else "--"
+                    fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
+
                     self.meas_l_auto_label.setText(
                         tr("Freq")
-                        + f": {_format_freq(freq_hz)}  "
+                        + f": {freq_str}  "
                         + tr("Rise")
-                        + f": {_format_time(rise_s)}  "
+                        + f": {rise_str}  "
                         + tr("Fall")
-                        + f": {_format_time(fall_s)}"
+                        + f": {fall_str}"
                     )
                 if self.module.show_right:
                     freq_hz = self.module.estimate_frequency_hz(t, r_data)
                     rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, r_data)
+
+                    freq_str = format_si(freq_hz, "Hz", sig_figs=5) if freq_hz is not None and freq_hz > 0 else "--"
+                    rise_str = format_si(rise_s, "s", sig_figs=5) if rise_s is not None and rise_s > 0 else "--"
+                    fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
+
                     self.meas_r_auto_label.setText(
                         tr("Freq")
-                        + f": {_format_freq(freq_hz)}  "
+                        + f": {freq_str}  "
                         + tr("Rise")
-                        + f": {_format_time(rise_s)}  "
+                        + f": {rise_str}  "
                         + tr("Fall")
-                        + f": {_format_time(fall_s)}"
+                        + f": {fall_str}"
                     )
 
             # Store for cursor interpolation
