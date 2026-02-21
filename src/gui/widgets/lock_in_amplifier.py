@@ -1,4 +1,5 @@
 
+import logging
 import threading
 import time
 from collections import deque
@@ -29,6 +30,9 @@ from scipy.signal import hilbert
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class LockInAmplifier(MeasurementModule):
@@ -99,11 +103,11 @@ class LockInAmplifier(MeasurementModule):
             try:
                 self.reset_postmix_lpf()
             except Exception:
-                pass
+                logger.error("Failed to reset post-mix LPF on harmonic change", exc_info=True)
             try:
                 self.history.clear()
             except Exception:
-                pass
+                logger.error("Failed to clear history on harmonic change", exc_info=True)
 
     def reset_postmix_lpf(self):
         self._postmix_lpf_state = [0j] * 8
