@@ -112,9 +112,10 @@ def _get_resample_filter(up, down, window_type=('kaiser', 5.0)):
     return firwin(2 * half_len + 1, f_c, window=window_type)
 
 
-class AudioCalc:
+
+class AudioValidator:
     """
-    Shared audio calculation utilities.
+    Validates audio file properties.
     """
     MAX_AUDIO_SAMPLES = 500_000_000
 
@@ -127,12 +128,17 @@ class AudioCalc:
         try:
             info = sf.info(filepath)
             total_samples = info.frames * info.channels
-            if total_samples > AudioCalc.MAX_AUDIO_SAMPLES:
-                return False, f"File too large: {total_samples} samples (Max: {AudioCalc.MAX_AUDIO_SAMPLES})"
+            if total_samples > AudioValidator.MAX_AUDIO_SAMPLES:
+                return False, f"File too large: {total_samples} samples (Max: {AudioValidator.MAX_AUDIO_SAMPLES})"
             return True, ""
         except Exception as e:
             return False, f"Failed to check file size: {e}"
 
+
+class AudioFiltering:
+    """
+    Audio filtering and resampling utilities.
+    """
     @staticmethod
     def resample(data, source_sr, target_sr):
         """
@@ -190,10 +196,10 @@ class AudioCalc:
 
         # Constants for A-weighting (Analog)
         # 20.6 Hz, 107.7 Hz, 737.9 Hz, 12194 Hz
-        f1 = AudioCalc._prewarp(20.598997, fs)
-        f2 = AudioCalc._prewarp(107.65265, fs)
-        f3 = AudioCalc._prewarp(737.86223, fs)
-        f4 = AudioCalc._prewarp(12194.217, fs)
+        f1 = AudioFiltering._prewarp(20.598997, fs)
+        f2 = AudioFiltering._prewarp(107.65265, fs)
+        f3 = AudioFiltering._prewarp(737.86223, fs)
+        f4 = AudioFiltering._prewarp(12194.217, fs)
 
         # Analog poles and zeros
         # z: 0, 0, 0, 0
@@ -228,8 +234,8 @@ class AudioCalc:
         if fs <= 0:
             raise ValueError("Invalid sample rate")
 
-        f1 = AudioCalc._prewarp(20.598997, fs)
-        f4 = AudioCalc._prewarp(12194.217, fs)
+        f1 = AudioFiltering._prewarp(20.598997, fs)
+        f4 = AudioFiltering._prewarp(12194.217, fs)
 
         pi = np.pi
         z = [0, 0]
@@ -259,7 +265,7 @@ class AudioCalc:
             Wn = (l_clamped / nyquist, h_clamped / nyquist)
             return _get_butter_sos(8, Wn, "bandpass")
 
-        return AudioCalc._apply_filter(signal, sampling_rate, 51, get_sos, on_invalid_sos="silence")
+        return AudioFiltering._apply_filter(signal, sampling_rate, 51, get_sos, on_invalid_sos="silence")
 
     @staticmethod
     def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
@@ -268,7 +274,7 @@ class AudioCalc:
             c = min(nyquist - 1, max(0.1, cutoff))
             return _get_butter_sos(8, c / nyquist, "lowpass")
 
-        return AudioCalc._apply_filter(signal, sampling_rate, 27, get_sos)
+        return AudioFiltering._apply_filter(signal, sampling_rate, 27, get_sos)
 
     @staticmethod
     def highpass_filter(signal, sampling_rate, cutoff=20.0):
@@ -277,7 +283,7 @@ class AudioCalc:
             c = min(nyquist - 1, max(0.1, cutoff))
             return _get_butter_sos(8, c / nyquist, "highpass")
 
-        return AudioCalc._apply_filter(signal, sampling_rate, 27, get_sos)
+        return AudioFiltering._apply_filter(signal, sampling_rate, 27, get_sos)
 
     @staticmethod
     def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
@@ -300,8 +306,107 @@ class AudioCalc:
             Wn = (w_low, w_high)
             return _get_butter_sos(2, Wn, "bandstop")
 
-        return AudioCalc._apply_filter(signal, sampling_rate, 15, get_sos)
+        return AudioFiltering._apply_filter(signal, sampling_rate, 15, get_sos)
 
+
+class SpectralUtils:
+    """
+    Utilities for spectral analysis and frequency domain processing.
+    """
+    @staticmethod
+    def _compute_spectrum(audio_data, window_name, sampling_rate):
+        """Computes FFT spectrum and frequencies."""
+        window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
+        windowed_data = audio_data * window
+        fft_result = fft_manager.rfft(windowed_data)
+        freqs = fft_manager.rfftfreq(len(audio_data), 1 / sampling_rate)
+
+        # Coherent gain correction
+        coherent_gain = np.sum(window) / len(window)
+
+        # Amplitude spectrum (Peak)
+        # rfft returns N/2+1 bins. Magnitude is |X|/N * 2 (except DC and Nyquist)
+        amplitude_spectrum = (np.abs(fft_result) / len(audio_data)) * 2 / coherent_gain
+        return freqs, amplitude_spectrum, fft_result
+
+    @staticmethod
+    def _calculate_search_window(freqs, fundamental_freq):
+        """Determines search window for fundamental frequency."""
+        if len(freqs) > 1:
+            bin_width = freqs[1] - freqs[0]
+        else:
+            bin_width = 1.0
+
+        # Ensure window is wide enough for low freq (at least 5 bins)
+        return max(0.15 * fundamental_freq, 5.0 * bin_width)
+
+    @staticmethod
+    def _find_peak(mag, freqs, target_freq, width=20.0):
+        # Optimized using searchsorted since freqs is sorted
+        f_start = target_freq - width
+        f_end = target_freq + width
+
+        idx_start = np.searchsorted(freqs, f_start, side="left")
+        idx_end = np.searchsorted(freqs, f_end, side="right")
+
+        if idx_start >= idx_end:
+            return 0.0
+
+        return np.max(mag[idx_start:idx_end])
+
+    @staticmethod
+    def _get_freq_index(freqs, f, is_linear_freqs, freq_step, start_freq=0.0, side="left"):
+        if is_linear_freqs:
+            val = (f - start_freq) / freq_step
+            if side == "left":
+                idx = int(math.ceil(val))
+            else:
+                idx = int(math.floor(val)) + 1
+            return max(0, min(idx, len(freqs)))
+        else:
+            return np.searchsorted(freqs, f, side=side)
+
+    @staticmethod
+    def _analyze_frequency_axis(freqs):
+        """
+        Analyzes the frequency axis to determine if it's linear or logarithmic.
+        Returns (is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq)
+        """
+        is_linear_freqs = False
+        is_log_freqs = False
+        freq_step = 1.0
+        start_freq = 0.0
+        stop_freq = 0.0
+
+        if len(freqs) > 1:
+            start_freq = freqs[0]
+            # Assume linear step from first two bins
+            freq_step = freqs[1] - start_freq
+            expected_end = start_freq + freq_step * (len(freqs) - 1)
+
+            # Check approximate linearity
+            # Use absolute tolerance suitable for frequency precision
+            if abs(freqs[-1] - expected_end) < 1e-5:
+                is_linear_freqs = True
+            elif start_freq > 1e-9:
+                # Check for logarithmic spacing (geometric progression)
+                # ratio = f[1] / f[0]
+                ratio = freqs[1] / start_freq
+                # expected_end = start * ratio^(n-1)
+                # Use log space calculation to avoid overflow/precision issues with huge exponents?
+                # For audio range (20Hz-20kHz), direct power is fine.
+                expected_log_end = start_freq * (ratio ** (len(freqs) - 1))
+                if abs(freqs[-1] - expected_log_end) < 1e-4 * expected_log_end:
+                    is_log_freqs = True
+                    stop_freq = freqs[-1]
+
+        return is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq
+
+
+class DistortionAnalyzer:
+    """
+    Distortion analysis (THD, IMD, etc.) and lock-in measurement.
+    """
     @staticmethod
     def _sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer):
         """
@@ -441,7 +546,7 @@ class AudioCalc:
         residual_buffer = np.empty(N, dtype=t.dtype)
 
         def get_residual_mse(f):
-            return AudioCalc._sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer)
+            return DistortionAnalyzer._sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer)
 
         # Search around guess
         bin_width = sampling_rate / N
@@ -460,7 +565,7 @@ class AudioCalc:
         grid = grid[grid > 0]
 
         if len(grid) > 0:
-            best_coarse = AudioCalc._perform_coarse_search(signal, t, grid)
+            best_coarse = DistortionAnalyzer._perform_coarse_search(signal, t, grid)
         else:
             best_coarse = freq_guess
 
@@ -495,7 +600,7 @@ class AudioCalc:
         N = len(signal)
 
         # 1. Optimize Frequency
-        best_freq, coeffs, M = AudioCalc.optimize_frequency(signal, sampling_rate, freq_guess, return_full=True)
+        best_freq, coeffs, M = DistortionAnalyzer.optimize_frequency(signal, sampling_rate, freq_guess, return_full=True)
 
         if not np.isfinite(best_freq) or M is None or coeffs is None:
             return -140.0, 0.0, 0.0
@@ -649,7 +754,7 @@ class AudioCalc:
     @staticmethod
     def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq):
         """Calculates THD+N and SINAD."""
-        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(
+        thdn_db, fund_rms, res_rms = DistortionAnalyzer.calculate_thdn_sine_fit(
             audio_data, sampling_rate, max_freq
         )
         thdn_linear = 10 ** (thdn_db / 20)
@@ -657,33 +762,6 @@ class AudioCalc:
         thdn_percent = thdn_linear * 100
         sinad_db = -thdn_db
         return thdn_percent, thdn_db, sinad_db, fund_rms, res_rms
-
-    @staticmethod
-    def _compute_spectrum(audio_data, window_name, sampling_rate):
-        """Computes FFT spectrum and frequencies."""
-        window = get_cached_window(window_name, len(audio_data), dtype=audio_data.dtype)
-        windowed_data = audio_data * window
-        fft_result = fft_manager.rfft(windowed_data)
-        freqs = fft_manager.rfftfreq(len(audio_data), 1 / sampling_rate)
-
-        # Coherent gain correction
-        coherent_gain = np.sum(window) / len(window)
-
-        # Amplitude spectrum (Peak)
-        # rfft returns N/2+1 bins. Magnitude is |X|/N * 2 (except DC and Nyquist)
-        amplitude_spectrum = (np.abs(fft_result) / len(audio_data)) * 2 / coherent_gain
-        return freqs, amplitude_spectrum, fft_result
-
-    @staticmethod
-    def _calculate_search_window(freqs, fundamental_freq):
-        """Determines search window for fundamental frequency."""
-        if len(freqs) > 1:
-            bin_width = freqs[1] - freqs[0]
-        else:
-            bin_width = 1.0
-
-        # Ensure window is wide enough for low freq (at least 5 bins)
-        return max(0.15 * fundamental_freq, 5.0 * bin_width)
 
     @staticmethod
     def _format_fundamental_result(max_freq, max_amplitude):
@@ -700,22 +778,22 @@ class AudioCalc:
         audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0
     ):
         # 0. Compute Spectrum
-        freqs, amplitude_spectrum, fft_result = AudioCalc._compute_spectrum(
+        freqs, amplitude_spectrum, fft_result = SpectralUtils._compute_spectrum(
             audio_data, window_name, sampling_rate
         )
 
         # Determine search window
-        search_window = AudioCalc._calculate_search_window(freqs, fundamental_freq)
+        search_window = SpectralUtils._calculate_search_window(freqs, fundamental_freq)
 
         # 1. Find Fundamental Peak
-        max_freq, max_amplitude = AudioCalc._analyze_fundamental(
+        max_freq, max_amplitude = DistortionAnalyzer._analyze_fundamental(
             freqs, amplitude_spectrum, fundamental_freq, search_window
         )
 
-        basic_wave_result = AudioCalc._format_fundamental_result(max_freq, max_amplitude)
+        basic_wave_result = DistortionAnalyzer._format_fundamental_result(max_freq, max_amplitude)
 
         # 2. Harmonics
-        harmonic_results, harmonic_amplitudes_linear = AudioCalc._analyze_harmonics_list(
+        harmonic_results, harmonic_amplitudes_linear = DistortionAnalyzer._analyze_harmonics_list(
             freqs,
             amplitude_spectrum,
             max_freq,
@@ -726,14 +804,14 @@ class AudioCalc:
         )
 
         # 3. THD Calculation
-        thd_percent, thd_db = AudioCalc._calculate_thd(
+        thd_percent, thd_db = DistortionAnalyzer._calculate_thd(
             max_amplitude, harmonic_amplitudes_linear, min_db
         )
 
         # 4. THD+N Calculation (Sine Fit)
         # Use raw audio_data (no window applied yet)
         thdn_percent, thdn_db, sinad_db, fund_rms, res_rms = (
-            AudioCalc._calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq)
+            DistortionAnalyzer._calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq)
         )
 
         return {
@@ -753,23 +831,9 @@ class AudioCalc:
         }
 
     @staticmethod
-    def _find_peak(mag, freqs, target_freq, width=20.0):
-        # Optimized using searchsorted since freqs is sorted
-        f_start = target_freq - width
-        f_end = target_freq + width
-
-        idx_start = np.searchsorted(freqs, f_start, side="left")
-        idx_end = np.searchsorted(freqs, f_end, side="right")
-
-        if idx_start >= idx_end:
-            return 0.0
-
-        return np.max(mag[idx_start:idx_end])
-
-    @staticmethod
     def calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands=3):
         # SMPTE: f1 (low), f2 (high). IMD products at f2 +/- n*f1
-        amp_f2 = AudioCalc._find_peak(mag, freqs, f2, width=max(50.0, f1 * 0.1))
+        amp_f2 = SpectralUtils._find_peak(mag, freqs, f2, width=max(50.0, f1 * 0.1))
 
         if amp_f2 < 1e-6:
             return {"imd": 0.0, "imd_db": -100.0}
@@ -779,8 +843,8 @@ class AudioCalc:
             sb_upper = f2 + n * f1
             sb_lower = f2 - n * f1
 
-            amp_upper = AudioCalc._find_peak(mag, freqs, sb_upper)
-            amp_lower = AudioCalc._find_peak(mag, freqs, sb_lower)
+            amp_upper = SpectralUtils._find_peak(mag, freqs, sb_upper)
+            amp_lower = SpectralUtils._find_peak(mag, freqs, sb_lower)
 
             sum_sq_sidebands += amp_upper**2 + amp_lower**2
 
@@ -793,8 +857,8 @@ class AudioCalc:
         # d2 = f2 - f1
         # d3 = 2f1 - f2, 2f2 - f1
 
-        amp_f1 = AudioCalc._find_peak(mag, freqs, f1)
-        amp_f2 = AudioCalc._find_peak(mag, freqs, f2)
+        amp_f1 = SpectralUtils._find_peak(mag, freqs, f1)
+        amp_f2 = SpectralUtils._find_peak(mag, freqs, f2)
         total_amp = amp_f1 + amp_f2
 
         if total_amp < 1e-6:
@@ -802,14 +866,14 @@ class AudioCalc:
 
         # d2
         d2_freq = abs(f2 - f1)
-        amp_d2 = AudioCalc._find_peak(mag, freqs, d2_freq)
+        amp_d2 = SpectralUtils._find_peak(mag, freqs, d2_freq)
 
         # d3
         d3_low = 2 * f1 - f2
         d3_high = 2 * f2 - f1
         # Use abs() because distortion products wrap around DC (negative frequencies alias to positive)
-        amp_d3_low = AudioCalc._find_peak(mag, freqs, abs(d3_low))
-        amp_d3_high = AudioCalc._find_peak(mag, freqs, abs(d3_high))
+        amp_d3_low = SpectralUtils._find_peak(mag, freqs, abs(d3_low))
+        amp_d3_high = SpectralUtils._find_peak(mag, freqs, abs(d3_high))
 
         distortion_sum_sq = amp_d2**2 + amp_d3_low**2 + amp_d3_high**2
         imd = np.sqrt(distortion_sum_sq) / total_amp
@@ -930,8 +994,8 @@ class AudioCalc:
         # IM7: 4f1 - 3f2, 4f2 - 3f1
 
         # Find carrier amplitudes
-        amp_f1 = AudioCalc._find_peak(mag, freqs, f1)
-        amp_f2 = AudioCalc._find_peak(mag, freqs, f2)
+        amp_f1 = SpectralUtils._find_peak(mag, freqs, f1)
+        amp_f2 = SpectralUtils._find_peak(mag, freqs, f2)
         carrier_amp = (amp_f1 + amp_f2) / 2  # Average carrier power
 
         if carrier_amp < 1e-6:
@@ -958,8 +1022,8 @@ class AudioCalc:
             im_high = k * f2 - m * f1
 
             # Use abs() because IMD products can wrap around 0Hz
-            amp_low = AudioCalc._find_peak(mag, freqs, abs(im_low))
-            amp_high = AudioCalc._find_peak(mag, freqs, abs(im_high))
+            amp_low = SpectralUtils._find_peak(mag, freqs, abs(im_low))
+            amp_high = SpectralUtils._find_peak(mag, freqs, abs(im_high))
 
             sum_sq_pim += amp_low**2 + amp_high**2
 
@@ -978,25 +1042,73 @@ class AudioCalc:
         return {"pim_db": pim_db, "products": products}
 
     @staticmethod
-    def _get_freq_index(freqs, f, is_linear_freqs, freq_step, start_freq=0.0, side="left"):
-        if is_linear_freqs:
-            val = (f - start_freq) / freq_step
-            if side == "left":
-                idx = int(math.ceil(val))
-            else:
-                idx = int(math.floor(val)) + 1
-            return max(0, min(idx, len(freqs)))
-        else:
-            return np.searchsorted(freqs, f, side=side)
+    def calculate_lockin_measurement(signal, frequency, sampling_rate, phase_ref=0.0, window_name="hann"):
+        """
+        Performs a single-point Lock-in detection (Coherent Demodulation).
+        Returns: magnitude, phase (degrees)
+        """
+        N = len(signal)
+        if N == 0:
+            return 0.0, 0.0
 
+        # Generate Reference Sine/Cosine (Quadrature)
+        # We need two orthogonal references to recover Phase and Magnitude independent of alignment
+        # Optimization: Use cached reference signals and apply phase rotation
+        sin_ref, cos_ref = _get_reference_signals(N, sampling_rate, frequency)
+
+        # Windowing
+        # Important if N is not integer number of cycles
+        w = get_cached_window(window_name, N)
+        w_mean = np.mean(w)
+
+        # Multiply (Mix)
+        # Optimization: Use dot product to avoid allocating full mix arrays
+        # val = 2 * mean(sig * ref * w) / w_mean
+        #     = 2 * sum(sig * w * ref) / N / w_mean
+        #     = 2 * dot(sig * w, ref) / (N * w_mean)
+
+        sig_w = signal * w
+        scaling = 2.0 / (N * w_mean)
+
+        # Compute dot products with raw reference signals
+        # This avoids allocating new mixed reference arrays (ref_sin, ref_cos)
+        raw_x = np.dot(sig_w, sin_ref)
+        raw_y = np.dot(sig_w, cos_ref)
+
+        if phase_ref != 0.0:
+            sin_phi = np.sin(phase_ref)
+            cos_phi = np.cos(phase_ref)
+
+            # Apply phase rotation to the scalar results
+            # sin(theta + phi) = sin(theta)cos(phi) + cos(theta)sin(phi)
+            # val_x corresponds to dot(sig_w, ref_sin)
+            val_x = (raw_x * cos_phi + raw_y * sin_phi) * scaling
+
+            # cos(theta + phi) = cos(theta)cos(phi) - sin(theta)sin(phi)
+            # val_y corresponds to dot(sig_w, ref_cos)
+            val_y = (raw_y * cos_phi - raw_x * sin_phi) * scaling
+        else:
+            val_x = raw_x * scaling
+            val_y = raw_y * scaling
+
+        magnitude = np.sqrt(val_x**2 + val_y**2)
+        phase = np.arctan2(val_y, val_x)
+
+        return magnitude, np.degrees(phase)
+
+
+class NoiseAnalyzer:
+    """
+    Noise profile analysis utilities.
+    """
     @staticmethod
     def _calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
         def get_power_in_band(f_center, width=5.0):
             f_start = f_center - width
             f_end = f_center + width
 
-            idx_start = AudioCalc._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
-            idx_end = AudioCalc._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="right")
+            idx_start = SpectralUtils._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
+            idx_end = SpectralUtils._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="right")
 
             if idx_start >= idx_end:
                 return 0.0
@@ -1029,8 +1141,8 @@ class AudioCalc:
 
     @staticmethod
     def _calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq=0.0):
-        i_white_start = AudioCalc._get_freq_index(freqs, 1000.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_white_end = AudioCalc._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_white_start = SpectralUtils._get_freq_index(freqs, 1000.0, is_linear_freqs, freq_step, start_freq, side="left")
+        i_white_end = SpectralUtils._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
 
         if i_white_start < i_white_end:
             # Median is robust to peaks, but under-estimates RMS of Gaussian noise (Rayleigh magnitude)
@@ -1046,8 +1158,8 @@ class AudioCalc:
         # Determine Fit Upper Bound
         # Find first frequency where mag < white_density * 1.5 (approx 3.5dB margin)
         # Search in 1Hz - 1kHz range
-        i_search_start = AudioCalc._get_freq_index(freqs, 1.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_search_end = AudioCalc._get_freq_index(freqs, 1000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_search_start = SpectralUtils._get_freq_index(freqs, 1.0, is_linear_freqs, freq_step, start_freq, side="left")
+        i_search_end = SpectralUtils._get_freq_index(freqs, 1000.0, is_linear_freqs, freq_step, start_freq, side="right")
 
         search_freqs = freqs[i_search_start:i_search_end]
         search_mags = mag[i_search_start:i_search_end]
@@ -1078,8 +1190,8 @@ class AudioCalc:
         for h_freq, _h_amp in hum_components:
             f_start = h_freq - 5.0
             f_end = h_freq + 5.0
-            idx_start = AudioCalc._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
-            idx_end = AudioCalc._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="right")
+            idx_start = SpectralUtils._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
+            idx_end = SpectralUtils._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="right")
             mask_1f[idx_start:idx_end] = False
 
         if np.sum(mask_1f) > 5:
@@ -1147,8 +1259,8 @@ class AudioCalc:
     @staticmethod
     def _calculate_integrated_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
         def integrate_band(f_start, f_end):
-            idx_start = AudioCalc._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
-            idx_end = AudioCalc._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="left")
+            idx_start = SpectralUtils._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
+            idx_end = SpectralUtils._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="left")
 
             if idx_start >= idx_end:
                 return 0.0
@@ -1167,8 +1279,8 @@ class AudioCalc:
     def _calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq=0.0):
         # Peak Detection
         # Find peak in 20Hz-20kHz
-        i_peak_start = AudioCalc._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_peak_end = AudioCalc._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_peak_start = SpectralUtils._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
+        i_peak_end = SpectralUtils._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
 
         # Exclude Hum regions from peak search (optional, but requested to find "Other" noise)
         # If we want the absolute peak, we shouldn't exclude hum.
@@ -1204,8 +1316,8 @@ class AudioCalc:
             )
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
-        i_a_start = AudioCalc._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_a_end = AudioCalc._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_a_start = SpectralUtils._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
+        i_a_end = SpectralUtils._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
 
         # Integration
         # Power = sum(PSD * Weight^2 * bin_width)
@@ -1220,42 +1332,6 @@ class AudioCalc:
         return np.sqrt(power_a)
 
     @staticmethod
-    def _analyze_frequency_axis(freqs):
-        """
-        Analyzes the frequency axis to determine if it's linear or logarithmic.
-        Returns (is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq)
-        """
-        is_linear_freqs = False
-        is_log_freqs = False
-        freq_step = 1.0
-        start_freq = 0.0
-        stop_freq = 0.0
-
-        if len(freqs) > 1:
-            start_freq = freqs[0]
-            # Assume linear step from first two bins
-            freq_step = freqs[1] - start_freq
-            expected_end = start_freq + freq_step * (len(freqs) - 1)
-
-            # Check approximate linearity
-            # Use absolute tolerance suitable for frequency precision
-            if abs(freqs[-1] - expected_end) < 1e-5:
-                is_linear_freqs = True
-            elif start_freq > 1e-9:
-                # Check for logarithmic spacing (geometric progression)
-                # ratio = f[1] / f[0]
-                ratio = freqs[1] / start_freq
-                # expected_end = start * ratio^(n-1)
-                # Use log space calculation to avoid overflow/precision issues with huge exponents?
-                # For audio range (20Hz-20kHz), direct power is fine.
-                expected_log_end = start_freq * (ratio ** (len(freqs) - 1))
-                if abs(freqs[-1] - expected_log_end) < 1e-4 * expected_log_end:
-                    is_log_freqs = True
-                    stop_freq = freqs[-1]
-
-        return is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq
-
-    @staticmethod
     def calculate_noise_profile(mag, freqs, sampling_rate):
         """
         Calculates noise profile including Hum, White, and 1/f noise.
@@ -1265,7 +1341,7 @@ class AudioCalc:
         results = {}
 
         # Optimization: Check if freqs is linear or logarithmic
-        is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq = AudioCalc._analyze_frequency_axis(freqs)
+        is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq = SpectralUtils._analyze_frequency_axis(freqs)
 
         # Pre-calculate squared magnitude and bin width
         mag_sq = mag**2
@@ -1282,7 +1358,7 @@ class AudioCalc:
                 bin_width = 1.0
 
         # 1. Hum Noise Detection (50Hz vs 60Hz)
-        hum_rms, hum_freq, hum_components = AudioCalc._calculate_hum_noise(
+        hum_rms, hum_freq, hum_components = NoiseAnalyzer._calculate_hum_noise(
             mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
         )
         results["hum_rms"] = hum_rms
@@ -1291,83 +1367,188 @@ class AudioCalc:
 
         # 2. 1/f Noise Analysis & White Noise
         # Estimate White Noise (Median of 1k-20k)
-        white_density = AudioCalc._calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
+        white_density = NoiseAnalyzer._calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
         results["white_density"] = white_density  # V/rtHz
 
-        flicker_results = AudioCalc._calculate_1f_noise(
+        flicker_results = NoiseAnalyzer._calculate_1f_noise(
             mag, freqs, hum_components, white_density, is_linear_freqs, freq_step, start_freq
         )
         results.update(flicker_results)
 
         # 4. Integrated Noise in Bands
-        rms_20k, rms_100k = AudioCalc._calculate_integrated_noise(
+        rms_20k, rms_100k = NoiseAnalyzer._calculate_integrated_noise(
             mag_sq, freqs, bin_width, is_linear_freqs, freq_step, start_freq
         )
         results["noise_rms_20k"] = rms_20k
         results["noise_rms_100k"] = rms_100k
 
         # Peak Detection
-        peak_freq, peak_amp = AudioCalc._calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
+        peak_freq, peak_amp = NoiseAnalyzer._calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
         results["peak_freq"] = peak_freq
         results["peak_amp"] = peak_amp
 
         # A-weighting Integration
-        rms_a = AudioCalc._calculate_a_weighted_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs, start_freq, stop_freq)
+        rms_a = NoiseAnalyzer._calculate_a_weighted_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs, start_freq, stop_freq)
         results["noise_rms_a_weighted"] = rms_a
 
         return results
 
+
+class AudioCalc:
+    """
+    Shared audio calculation utilities.
+    Facade for backward compatibility.
+    """
+    MAX_AUDIO_SAMPLES = AudioValidator.MAX_AUDIO_SAMPLES
+
+    @staticmethod
+    def validate_audio_file_size(filepath):
+        return AudioValidator.validate_audio_file_size(filepath)
+
+    @staticmethod
+    def resample(data, source_sr, target_sr):
+        return AudioFiltering.resample(data, source_sr, target_sr)
+
+    @staticmethod
+    def _apply_filter(signal, sampling_rate, min_len, sos_factory, on_invalid_sos="bypass"):
+        return AudioFiltering._apply_filter(signal, sampling_rate, min_len, sos_factory, on_invalid_sos)
+
+    @staticmethod
+    def _prewarp(f, fs):
+        return AudioFiltering._prewarp(f, fs)
+
+    @staticmethod
+    def design_a_weighting(sampling_rate):
+        return AudioFiltering.design_a_weighting(sampling_rate)
+
+    @staticmethod
+    def design_c_weighting(sampling_rate):
+        return AudioFiltering.design_c_weighting(sampling_rate)
+
+    @staticmethod
+    def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
+        return AudioFiltering.bandpass_filter(signal, sampling_rate, lowcut, highcut)
+
+    @staticmethod
+    def lowpass_filter(signal, sampling_rate, cutoff=20000.0):
+        return AudioFiltering.lowpass_filter(signal, sampling_rate, cutoff)
+
+    @staticmethod
+    def highpass_filter(signal, sampling_rate, cutoff=20.0):
+        return AudioFiltering.highpass_filter(signal, sampling_rate, cutoff)
+
+    @staticmethod
+    def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
+        return AudioFiltering.notch_filter(signal, sampling_rate, target_frequency, quality_factor)
+
+    @staticmethod
+    def _sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer):
+        return DistortionAnalyzer._sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer)
+
+    @staticmethod
+    def _perform_coarse_search(signal, t, grid):
+        return DistortionAnalyzer._perform_coarse_search(signal, t, grid)
+
+    @staticmethod
+    def optimize_frequency(signal, sampling_rate, freq_guess, return_full=False):
+        return DistortionAnalyzer.optimize_frequency(signal, sampling_rate, freq_guess, return_full)
+
+    @staticmethod
+    def calculate_thdn_sine_fit(signal, sampling_rate, freq_guess):
+        return DistortionAnalyzer.calculate_thdn_sine_fit(signal, sampling_rate, freq_guess)
+
+    @staticmethod
+    def _analyze_fundamental(freqs, amplitude_spectrum, fundamental_freq, search_window):
+        return DistortionAnalyzer._analyze_fundamental(freqs, amplitude_spectrum, fundamental_freq, search_window)
+
+    @staticmethod
+    def _analyze_harmonics_list(freqs, amplitude_spectrum, max_freq, max_amplitude, sampling_rate, search_window, min_db):
+        return DistortionAnalyzer._analyze_harmonics_list(freqs, amplitude_spectrum, max_freq, max_amplitude, sampling_rate, search_window, min_db)
+
+    @staticmethod
+    def _calculate_thd(max_amplitude, harmonic_amplitudes_linear, min_db):
+        return DistortionAnalyzer._calculate_thd(max_amplitude, harmonic_amplitudes_linear, min_db)
+
+    @staticmethod
+    def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq):
+        return DistortionAnalyzer._calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq)
+
+    @staticmethod
+    def _compute_spectrum(audio_data, window_name, sampling_rate):
+        return SpectralUtils._compute_spectrum(audio_data, window_name, sampling_rate)
+
+    @staticmethod
+    def _calculate_search_window(freqs, fundamental_freq):
+        return SpectralUtils._calculate_search_window(freqs, fundamental_freq)
+
+    @staticmethod
+    def _format_fundamental_result(max_freq, max_amplitude):
+        return DistortionAnalyzer._format_fundamental_result(max_freq, max_amplitude)
+
+    @staticmethod
+    def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
+        return DistortionAnalyzer.analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db)
+
+    @staticmethod
+    def _find_peak(mag, freqs, target_freq, width=20.0):
+        return SpectralUtils._find_peak(mag, freqs, target_freq, width)
+
+    @staticmethod
+    def calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands=3):
+        return DistortionAnalyzer.calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands)
+
+    @staticmethod
+    def calculate_imd_ccif(mag, freqs, f1, f2):
+        return DistortionAnalyzer.calculate_imd_ccif(mag, freqs, f1, f2)
+
+    @staticmethod
+    def calculate_multitone_tdn(mag, freqs, tone_freqs, window_width_pct=0.05):
+        return DistortionAnalyzer.calculate_multitone_tdn(mag, freqs, tone_freqs, window_width_pct)
+
+    @staticmethod
+    def calculate_spdr(mag, freqs, fundamental_freq, window_width_pct=0.1):
+        return DistortionAnalyzer.calculate_spdr(mag, freqs, fundamental_freq, window_width_pct)
+
+    @staticmethod
+    def calculate_pim(mag, freqs, f1, f2, order=3):
+        return DistortionAnalyzer.calculate_pim(mag, freqs, f1, f2, order)
+
+    @staticmethod
+    def _get_freq_index(freqs, f, is_linear_freqs, freq_step, start_freq=0.0, side="left"):
+        return SpectralUtils._get_freq_index(freqs, f, is_linear_freqs, freq_step, start_freq, side)
+
+    @staticmethod
+    def _calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
+        return NoiseAnalyzer._calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq)
+
+    @staticmethod
+    def _calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq=0.0):
+        return NoiseAnalyzer._calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
+
+    @staticmethod
+    def _calculate_1f_noise(mag, freqs, hum_components, white_density, is_linear_freqs, freq_step, start_freq=0.0):
+        return NoiseAnalyzer._calculate_1f_noise(mag, freqs, hum_components, white_density, is_linear_freqs, freq_step, start_freq)
+
+    @staticmethod
+    def _calculate_integrated_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
+        return NoiseAnalyzer._calculate_integrated_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, start_freq)
+
+    @staticmethod
+    def _calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq=0.0):
+        return NoiseAnalyzer._calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
+
+    @staticmethod
+    def _calculate_a_weighted_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs=False, start_freq=0.0, stop_freq=0.0):
+        return NoiseAnalyzer._calculate_a_weighted_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs, start_freq, stop_freq)
+
+    @staticmethod
+    def _analyze_frequency_axis(freqs):
+        return SpectralUtils._analyze_frequency_axis(freqs)
+
+    @staticmethod
+    def calculate_noise_profile(mag, freqs, sampling_rate):
+        return NoiseAnalyzer.calculate_noise_profile(mag, freqs, sampling_rate)
+
     @staticmethod
     def calculate_lockin_measurement(signal, frequency, sampling_rate, phase_ref=0.0, window_name="hann"):
-        """
-        Performs a single-point Lock-in detection (Coherent Demodulation).
-        Returns: magnitude, phase (degrees)
-        """
-        N = len(signal)
-        if N == 0:
-            return 0.0, 0.0
-
-        # Generate Reference Sine/Cosine (Quadrature)
-        # We need two orthogonal references to recover Phase and Magnitude independent of alignment
-        # Optimization: Use cached reference signals and apply phase rotation
-        sin_ref, cos_ref = _get_reference_signals(N, sampling_rate, frequency)
-
-        # Windowing
-        # Important if N is not integer number of cycles
-        w = get_cached_window(window_name, N)
-        w_mean = np.mean(w)
-
-        # Multiply (Mix)
-        # Optimization: Use dot product to avoid allocating full mix arrays
-        # val = 2 * mean(sig * ref * w) / w_mean
-        #     = 2 * sum(sig * w * ref) / N / w_mean
-        #     = 2 * dot(sig * w, ref) / (N * w_mean)
-
-        sig_w = signal * w
-        scaling = 2.0 / (N * w_mean)
-
-        # Compute dot products with raw reference signals
-        # This avoids allocating new mixed reference arrays (ref_sin, ref_cos)
-        raw_x = np.dot(sig_w, sin_ref)
-        raw_y = np.dot(sig_w, cos_ref)
-
-        if phase_ref != 0.0:
-            sin_phi = np.sin(phase_ref)
-            cos_phi = np.cos(phase_ref)
-
-            # Apply phase rotation to the scalar results
-            # sin(theta + phi) = sin(theta)cos(phi) + cos(theta)sin(phi)
-            # val_x corresponds to dot(sig_w, ref_sin)
-            val_x = (raw_x * cos_phi + raw_y * sin_phi) * scaling
-
-            # cos(theta + phi) = cos(theta)cos(phi) - sin(theta)sin(phi)
-            # val_y corresponds to dot(sig_w, ref_cos)
-            val_y = (raw_y * cos_phi - raw_x * sin_phi) * scaling
-        else:
-            val_x = raw_x * scaling
-            val_y = raw_y * scaling
-
-        magnitude = np.sqrt(val_x**2 + val_y**2)
-        phase = np.arctan2(val_y, val_x)
-
-        return magnitude, np.degrees(phase)
+        return DistortionAnalyzer.calculate_lockin_measurement(signal, frequency, sampling_rate, phase_ref, window_name)
