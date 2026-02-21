@@ -143,18 +143,18 @@ class TestDetachableWidgetWrapper(unittest.TestCase):
         self.mock_qt.QtWidgets.QMessageBox = MockQMessageBox
         self.mock_qt.QtWidgets.QSizePolicy = MagicMock()
 
+        # Mock localization
+        self.mock_localization = MagicMock()
+        self.mock_localization.tr = lambda x: x
+
         # Patch sys.modules
         self.modules_patcher = patch.dict(sys.modules, {
             'PyQt6': self.mock_qt,
             'PyQt6.QtCore': self.mock_qt.QtCore,
             'PyQt6.QtWidgets': self.mock_qt.QtWidgets,
+            'src.core.localization': self.mock_localization
         })
         self.modules_patcher.start()
-
-        # Mock localization
-        self.mock_localization = MagicMock()
-        self.mock_localization.tr = lambda x: x
-        sys.modules['src.core.localization'] = self.mock_localization
 
         # Force re-import
         if 'src.gui.widgets.detachable_wrapper' in sys.modules:
@@ -169,8 +169,92 @@ class TestDetachableWidgetWrapper(unittest.TestCase):
         self.modules_patcher.stop()
         if 'src.gui.widgets.detachable_wrapper' in sys.modules:
             del sys.modules['src.gui.widgets.detachable_wrapper']
-        if 'src.core.localization' in sys.modules:
-             del sys.modules['src.core.localization']
+
+        # When we mocked src.core.localization in setUp (via modules_patcher),
+        # stopping the patcher restores the original state of sys.modules.
+        # However, if the module was NOT loaded before setUp, patch.dict might remove it completely.
+        # Or if it was loaded, it restores the original.
+        # But we want to ensure that subsequent tests (like test_localization_logic.py)
+        # get a clean slate or the original module, not a partial state.
+
+        # If the module is missing from sys.modules after stop(), that's fine, it will be reloaded.
+        # BUT, if we have other modules that imported it and hold references...
+        # The issue seen in CI is likely because test_localization_logic runs AFTER this test,
+        # and this test modified sys.modules.
+
+        # Let's ensure src.core.localization is removed so it reloads cleanly if it was mocked.
+        # BUT wait, the CI error said "AssertIs(get_manager(), _loc_manager) failed".
+        # get_manager returned an OLD instance, _loc_manager was a NEW instance.
+        # This implies get_manager (function) was imported from a module that wasn't reloaded,
+        # but _loc_manager was imported from a reloaded module.
+
+        # If test_localization_logic imports both at top level, they should be consistent.
+        # Unless test_localization_logic was imported BEFORE this test ran.
+        # If it was imported before, it holds refs to the ORIGINAL module's objects.
+        # Then this test runs. It mocks the module. Then unpatches.
+        # If unpatching restores the ORIGINAL module object, then subsequent imports should get the ORIGINAL module.
+
+        # However, if we delete it from sys.modules manually (as I did in the previous version),
+        # then the next import creates a NEW module.
+        # But the old test_localization_logic still holds refs to the OLD module's objects (via `from ... import ...`).
+        # So when test_localization_logic calls `from src.core.localization import _loc_manager` inside a function,
+        # it gets the NEW module's _loc_manager.
+        # But `get_manager` was imported at top level (OLD module).
+        # Mismatch!
+
+        # CONCLUSION: The fix is indeed NOT to delete the module manually if patch.dict handles restoration.
+        # In my previous attempt (which failed to apply), I tried to check and delete.
+        # But I had ALREADY removed the manual delete in the previous successful edit (patch applied was: removing the lines).
+        # So wait, I removed the lines:
+        # -        if 'src.core.localization' in sys.modules:
+        # -             del sys.modules['src.core.localization']
+
+        # So currently, I am relying on patcher.stop() to restore it.
+        # But I added 'src.core.localization': self.mock_localization to the patch dict.
+        # So patcher.stop() puts back whatever was there before.
+        # If it wasn't there, it removes it.
+
+        # If it wasn't there before, and patcher removes it, then next import creates NEW module.
+        # If test_localization_logic was imported BEFORE, it has OLD module refs?
+        # If it wasn't in sys.modules, how could it have OLD module refs?
+        # It must have been in sys.modules.
+
+        # If it WAS in sys.modules, patcher restores it. So we should be good.
+        # UNLESS `src.gui.widgets.detachable_wrapper` imports it?
+        # Yes, `from src.core.localization import tr`.
+
+        # If I mocked it, detachable_wrapper imports the MOCK.
+        # In tearDown, I delete `src.gui.widgets.detachable_wrapper`.
+
+        # So, the plan is: ensure I do NOT manually delete src.core.localization.
+        # I already removed that manual delete in the previous step.
+        # So the code currently looks like:
+        #     def tearDown(self):
+        #         self.modules_patcher.stop()
+        #         if 'src.gui.widgets.detachable_wrapper' in sys.modules:
+        #             del sys.modules['src.gui.widgets.detachable_wrapper']
+
+        # So why did I think I needed to fix it?
+        # Because the CI failed with the code that included the manual delete.
+        # I submitted `testing-detachable-wrapper` which had the manual delete.
+        # The CI failure happened on THAT submission.
+
+        # So, simply removing the manual delete (which I did in the previous step) should fix it.
+        # But I need to verify that I actually did that.
+        # The previous `read_file` shows:
+        #     def tearDown(self):
+        #         self.modules_patcher.stop()
+        #         if 'src.gui.widgets.detachable_wrapper' in sys.modules:
+        #             del sys.modules['src.gui.widgets.detachable_wrapper']
+
+        # It does NOT show the delete for localization.
+        # So the file is ALREADY fixed in my workspace?
+        # Ah, I applied the fix in step "Fix tests/gui/widgets/test_detachable_wrapper.py".
+        # I replaced the block.
+
+        # So the current file state is CORRECT (it relies on patcher to restore).
+        # I just need to verify this works.
+        pass
 
     def test_initialization(self):
         mock_widget = self.mock_qt.QtWidgets.QWidget()
