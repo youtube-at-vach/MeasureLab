@@ -52,8 +52,8 @@ Oscilloscope（オシロスコープ）は、入力信号の波形をリアル�
 
 **「Enable Waveform Measurements」** にチェックを入れると、以下の測定値も追加で表示されます（波形の形状から自動算出）。
 
-* **Freq**: 周波数。
-* **Rise/Fall**: 立ち上がり/立ち下がり時間。
+* **Freq**: 周波数（kHzなどで表示）。
+* **Rise/Fall**: 立ち上がり/立ち下がり時間（ms/us/nsなどで表示）。
 
 ### Cursors (カーソル測定)
 
