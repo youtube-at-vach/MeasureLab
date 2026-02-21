@@ -13,6 +13,6 @@ soundfile==0.13.1
 PyWavelets==1.9.0
 inquirer==3.4.1
 pytest==9.0.2
-ruff==0.15.1
+ruff==0.15.2
 mypy==1.19.1
 pyfftw==0.15.1
