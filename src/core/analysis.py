@@ -1243,7 +1243,8 @@ class AudioCalc:
             if abs(freqs[-1] - expected_end) < 1e-5:
                 # Verify strictly all steps
                 # Use slice to avoid allocating full diff if possible? No, diff is fast.
-                if np.allclose(np.diff(freqs), freq_step, atol=1e-5, rtol=0):
+                # Also ensure freq_step is not zero to avoid division by zero later
+                if freq_step > 1e-9 and np.allclose(np.diff(freqs), freq_step, atol=1e-5, rtol=0):
                     is_linear_freqs = True
 
             if not is_linear_freqs and start_freq > 1e-9:
