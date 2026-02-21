@@ -1,4 +1,5 @@
 import threading
+from typing import Optional
 import numpy as np
 
 
@@ -89,7 +90,7 @@ class RingBuffer:
 
             self._write_index += n_frames
 
-    def read(self, num_samples: int = None) -> np.ndarray:
+    def read(self, num_samples: Optional[int] = None) -> np.ndarray:
         """
         Reads data from the buffer.
 
