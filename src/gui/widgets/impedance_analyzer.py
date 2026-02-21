@@ -35,7 +35,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.utils import format_si, resource_path
+from src.core.utils import resource_path
 from src.gui.widgets.impedance_results import ImpedanceResultsWidget
 from src.measurement_modules.base import MeasurementModule
 
