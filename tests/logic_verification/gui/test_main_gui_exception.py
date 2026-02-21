@@ -4,8 +4,8 @@ import sys
 import os
 
 # Ensure we can import main_gui
-# We go up two levels from 'tests/logic_verification/' to reach the project root
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+# We go up three levels from 'tests/logic_verification/gui' to reach the project root
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 class TestMainGuiException(unittest.TestCase):
     def setUp(self):
