@@ -103,9 +103,9 @@ class TestImpedanceAnalyzerDynamicBuffer(unittest.TestCase):
 
     def test_invalid_configuration_attributes(self):
         """Robustness against bad config values (e.g. from UI or file)."""
-        # Zero base buffer -> Fallback to default (4096), so 50Hz gives mul=2
+        # Zero base buffer -> Treated as invalid (<=0), returns 1
         self.analyzer.base_buffer_size = 0
-        self.assertEqual(self.analyzer._desired_buffer_multiplier(50.0), 2)
+        self.assertEqual(self.analyzer._desired_buffer_multiplier(50.0), 1)
 
         # Negative base buffer -> Should return 1 (safety check)
         self.analyzer.base_buffer_size = -4096
@@ -113,9 +113,9 @@ class TestImpedanceAnalyzerDynamicBuffer(unittest.TestCase):
 
         self.analyzer.base_buffer_size = 4096
 
-        # Zero max multiplier -> Fallback to default (8), so 50Hz gives mul=2
+        # Zero max multiplier -> Treated as invalid (<=0), returns 1
         self.analyzer.max_buffer_multiplier = 0
-        self.assertEqual(self.analyzer._desired_buffer_multiplier(50.0), 2)
+        self.assertEqual(self.analyzer._desired_buffer_multiplier(50.0), 1)
 
         # Negative max multiplier -> Should return 1 (safety check)
         self.analyzer.max_buffer_multiplier = -8

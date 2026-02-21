@@ -111,7 +111,7 @@ class ImpedanceAnalyzer(MeasurementModule):
 
     @property
     def gen_frequency(self) -> float:
-        return float(getattr(self, "_gen_frequency", 0.0) or 0.0)
+        return self._gen_frequency
 
     @gen_frequency.setter
     def gen_frequency(self, value: float):
@@ -131,10 +131,10 @@ class ImpedanceAnalyzer(MeasurementModule):
             pass
 
     def _desired_buffer_multiplier(self, freq_hz: float) -> int:
-        base = int(getattr(self, "base_buffer_size", 4096) or 4096)
-        max_mul = int(getattr(self, "max_buffer_multiplier", 8) or 8)
-        threshold = float(getattr(self, "dynamic_buffer_threshold_hz", 100.0) or 100.0)
-        min_cycles = float(getattr(self, "dynamic_buffer_min_cycles", 8.0) or 8.0)
+        base = int(self.base_buffer_size)
+        max_mul = int(self.max_buffer_multiplier)
+        threshold = float(self.dynamic_buffer_threshold_hz)
+        min_cycles = float(self.dynamic_buffer_min_cycles)
         sr = float(self.audio_engine.sample_rate)
 
         if base <= 0 or max_mul <= 0 or sr <= 0:
@@ -154,7 +154,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         new_size = int(new_size)
         if new_size <= 0:
             return
-        if new_size == int(getattr(self, "buffer_size", 0) or 0):
+        if new_size == int(self.buffer_size):
             return
 
         # Reset state that depends on integration time/buffer.
@@ -173,11 +173,11 @@ class ImpedanceAnalyzer(MeasurementModule):
             self.input_data = np.zeros((self.buffer_size, 2))
 
     def _apply_dynamic_buffering(self, freq_hz: float):
-        base = int(getattr(self, "base_buffer_size", 4096) or 4096)
+        base = int(self.base_buffer_size)
         mul = self._desired_buffer_multiplier(freq_hz)
         target = base * mul
         # Cap at max_multiplier by design.
-        max_mul = int(getattr(self, "max_buffer_multiplier", 16) or 16)
+        max_mul = int(self.max_buffer_multiplier)
         target = min(target, base * max_mul)
         self._set_buffer_size(target)
 
@@ -277,7 +277,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         f0 = float(self.gen_frequency)
 
         # If the demodulation frequency changes, reset stateful filters/averaging to avoid mixing data.
-        last_f = getattr(self, "_last_demod_freq", None)
+        last_f = self._last_demod_freq
         if last_f is None or abs(float(last_f) - f0) > 1e-9:
             try:
                 self.reset_postmix_lpf()
@@ -327,12 +327,12 @@ class ImpedanceAnalyzer(MeasurementModule):
         i_rot = i_corr * np.conj(v_ref)
 
         # Post-mix IIR LPF (dynamic reserve) on complex baseband (V and I separately)
-        order = int(getattr(self, "postmix_lpf_order", 0) or 0)
+        order = int(self.postmix_lpf_order)
         if order > 0:
             order = min(max(order, 1), 8)
             dt = self.buffer_size / self.audio_engine.sample_rate
 
-            tau = float(getattr(self, "postmix_lpf_tau_s", 0.0) or 0.0)
+            tau = float(self.postmix_lpf_tau_s)
             if tau <= 0.0:
                 tau = dt
             tau = max(tau, 1e-6)
@@ -872,13 +872,13 @@ class ImpedanceResultsWidget(QWidget):
         z_sig_figs = self._sig_figs_from_std(
             z_mag_std,
             z_mag,
-            default=int(getattr(self, "_default_z_sig_figs", 5) or 5),
+            default=int(self._default_z_sig_figs),
             max_figs=7,
             min_figs=3,
         )
         phase_places = self._phase_places_from_std(
             z_phase_std_deg,
-            default=int(getattr(self, "_default_phase_places", 2) or 2),
+            default=int(self._default_phase_places),
             max_places=4,
         )
 
@@ -1059,7 +1059,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.base_buffer_combo = QComboBox()
         self.base_buffer_combo.addItems(["4096", "8192", "16384"])
         try:
-            current_base = int(getattr(self.module, "base_buffer_size", 4096) or 4096)
+            current_base = int(self.module.base_buffer_size)
         except Exception:
             current_base = 4096
         if current_base in (4096, 8192, 16384):
@@ -1270,7 +1270,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         try:
             if not (hasattr(self, "manual_ts_check") and self.manual_ts_check.isChecked()):
                 return False
-            if not bool(getattr(self.module, "is_running", False)):
+            if not self.module.is_running:
                 return False
             if not bool(self.timer.isActive()):
                 return False
@@ -1292,7 +1292,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             try:
                 sr = float(self.module.audio_engine.sample_rate)
                 buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
-                avg = int(getattr(self.module, "averaging_count", 1) or 1)
+                avg = int(self.module.averaging_count)
                 warmup_s = max(0.25, buf_s * max(1, avg))
             except Exception:
                 warmup_s = 1.0
@@ -1328,7 +1328,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 try:
                     sr = float(self.module.audio_engine.sample_rate)
                     buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
-                    avg = int(getattr(self.module, "averaging_count", 1) or 1)
+                    avg = int(self.module.averaging_count)
                     warmup_s = max(0.25, buf_s * max(1, avg))
                 except Exception:
                     warmup_s = 1.0
@@ -1380,9 +1380,9 @@ class ImpedanceAnalyzerWidget(QWidget):
         z_mag_std = None
         z_phase_std_deg = None
         try:
-            if int(getattr(self.module, "averaging_count", 1) or 1) >= 2:
-                hv = list(getattr(self.module, "history_v", []) or [])
-                hi = list(getattr(self.module, "history_i", []) or [])
+            if int(self.module.averaging_count) >= 2:
+                hv = list(self.module.history_v)
+                hi = list(self.module.history_i)
                 if len(hv) >= 2 and len(hi) == len(hv):
                     hv_arr = np.asarray(hv, dtype=np.complex128)
                     hi_arr = np.asarray(hi, dtype=np.complex128)
@@ -1391,9 +1391,9 @@ class ImpedanceAnalyzerWidget(QWidget):
                     z_raw[mask] = -(hv_arr[mask] * float(self.module.shunt_resistance)) / hi_arr[mask]
 
                     if (
-                        bool(getattr(self.module, "use_calibration", False))
-                        and bool(getattr(self.module, "cal_short", {}))
-                        and bool(getattr(self.module, "cal_open", {}))
+                        bool(self.module.use_calibration)
+                        and bool(self.module.cal_short)
+                        and bool(self.module.cal_open)
                     ):
                         z_samp = []
                         for zr in z_raw:
@@ -1441,7 +1441,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 try:
                     sr = float(self.module.audio_engine.sample_rate)
                     buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
-                    avg = int(getattr(self.module, "averaging_count", 1) or 1)
+                    avg = int(self.module.averaging_count)
                     min_interval_s = max(1.0, buf_s * max(1, avg))
                 except Exception:
                     min_interval_s = 1.0
