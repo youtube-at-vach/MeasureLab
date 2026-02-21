@@ -127,8 +127,8 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Apply dynamic buffering when frequency changes.
         try:
             self._apply_dynamic_buffering(f)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to apply dynamic buffering for frequency %s: %s", f, e)
 
     def _desired_buffer_multiplier(self, freq_hz: float) -> int:
         base = int(getattr(self, "base_buffer_size", 4096) or 4096)
