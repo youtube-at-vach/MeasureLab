@@ -1,5 +1,6 @@
 
 
+import logging
 import numpy as np
 import pyqtgraph as pg
 import scipy.signal as signal
@@ -28,6 +29,8 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
+
+logger = logging.getLogger(__name__)
 
 # --- Analysis Worker ---
 
@@ -205,7 +208,9 @@ class AnalysisWorker(QThread):
         # Since we adhere to Resampling before analysis, sr IS 48000.
         if abs(sr - 48000) > 10:
             # Fallback warning or attempt to design filter
-            pass
+            logger.warning(
+                "K-weighting filters are designed for 48kHz, but input is %.1fHz. Results may be inaccurate.", sr
+            )
 
         # Stage 1: Shelf
         b1 = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285])
