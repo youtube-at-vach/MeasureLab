@@ -11,7 +11,7 @@ jobs:
   build-pdf:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
       
       - name: Configure Git Credentials
         run: |
