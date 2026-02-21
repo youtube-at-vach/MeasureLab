@@ -5,7 +5,6 @@ import os
 import shutil
 import tempfile
 import json
-import stat
 
 class TestImpedanceAnalyzerSecurity(unittest.TestCase):
     def setUp(self):
