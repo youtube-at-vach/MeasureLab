@@ -2,30 +2,33 @@ import unittest
 from unittest.mock import MagicMock, patch
 import sys
 import os
-import logging
 
 # Ensure src is in path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-# Mock sounddevice and PyQt6 modules before importing the widget
-# We need to mock them in sys.modules so that imports in the target module don't fail
-sys.modules['sounddevice'] = MagicMock()
-
-# Mock PyQt6 modules
-mock_qt = MagicMock()
-sys.modules['PyQt6'] = mock_qt
-sys.modules['PyQt6.QtCore'] = mock_qt
-sys.modules['PyQt6.QtGui'] = mock_qt
-sys.modules['PyQt6.QtWidgets'] = mock_qt
-sys.modules['pyqtgraph'] = MagicMock()
-
-from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
-
 class TestImpedanceAnalyzerSecurity(unittest.TestCase):
     def setUp(self):
+        # Mock modules before import
+        self.modules_patcher = patch.dict(sys.modules, {
+            'sounddevice': MagicMock(),
+            'PyQt6': MagicMock(),
+            'PyQt6.QtCore': MagicMock(),
+            'PyQt6.QtGui': MagicMock(),
+            'PyQt6.QtWidgets': MagicMock(),
+            'pyqtgraph': MagicMock()
+        })
+        self.modules_patcher.start()
+
+        # Local import to avoid top-level dependency issues and satisfy linter
+        from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
+        self.ImpedanceAnalyzer = ImpedanceAnalyzer
+
         self.mock_audio_engine = MagicMock()
         self.mock_audio_engine.sample_rate = 48000
-        self.analyzer = ImpedanceAnalyzer(self.mock_audio_engine)
+        self.analyzer = self.ImpedanceAnalyzer(self.mock_audio_engine)
+
+    def tearDown(self):
+        self.modules_patcher.stop()
 
     def test_exception_logging_in_frequency_setter(self):
         """
