@@ -128,7 +128,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         try:
             self._apply_dynamic_buffering(f)
         except Exception:
-            pass
+            logger.error("Failed to apply dynamic buffering for frequency %s", f, exc_info=True)
 
     def _desired_buffer_multiplier(self, freq_hz: float) -> int:
         base = int(getattr(self, "base_buffer_size", 4096) or 4096)
