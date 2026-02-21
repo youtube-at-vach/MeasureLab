@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
+from src.core.ring_buffer import RingBuffer
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import (
@@ -91,10 +92,7 @@ class Oscilloscope(MeasurementModule):
         # High-performance transfer buffer (Ring Buffer)
         # Replaces queue to avoid allocation in audio callback
         self.transfer_buffer_size = 65536
-        self.transfer_buffer = np.zeros((self.transfer_buffer_size, 2), dtype=np.float32)
-        self.transfer_write_count = 0
-        self.transfer_read_count = 0
-        self.transfer_lock = threading.Lock()
+        self.transfer_buffer = RingBuffer(self.transfer_buffer_size, 2, dtype=np.float32)
 
         self.callback_id = None
 
@@ -160,10 +158,7 @@ class Oscilloscope(MeasurementModule):
         self.write_index = 0
 
         # Reset transfer buffer
-        with self.transfer_lock:
-            self.transfer_write_count = 0
-            self.transfer_read_count = 0
-            self.transfer_buffer.fill(0)
+        self.transfer_buffer.reset()
 
         # Reset heatmaps
         if self.persistence_mode:
@@ -177,28 +172,8 @@ class Oscilloscope(MeasurementModule):
             if status:
                 logger.debug(status)
 
-            # Write to transfer buffer with lock, NO allocation
-            with self.transfer_lock:
-                idx = self.transfer_write_count % self.transfer_buffer_size
-                remaining = self.transfer_buffer_size - idx
-
-                # Determine how much we can write in first chunk
-                chunk1 = min(frames, remaining)
-                chunk2 = frames - chunk1
-
-                if indata.shape[1] >= 2:
-                    self.transfer_buffer[idx : idx + chunk1] = indata[:chunk1, :2]
-                    if chunk2 > 0:
-                        self.transfer_buffer[:chunk2] = indata[chunk1:, :2]
-                else:
-                    # Mono expansion
-                    self.transfer_buffer[idx : idx + chunk1, 0] = indata[:chunk1, 0]
-                    self.transfer_buffer[idx : idx + chunk1, 1] = indata[:chunk1, 0]
-                    if chunk2 > 0:
-                        self.transfer_buffer[:chunk2, 0] = indata[chunk1:, 0]
-                        self.transfer_buffer[:chunk2, 1] = indata[chunk1:, 0]
-
-                self.transfer_write_count += frames
+            # Write to transfer buffer (RingBuffer handles lock and wrapping)
+            self.transfer_buffer.write(indata)
 
             outdata.fill(0)
 
@@ -206,41 +181,12 @@ class Oscilloscope(MeasurementModule):
 
     def process_queue(self):
         # Poll transfer buffer
-        with self.transfer_lock:
-            written = self.transfer_write_count
-            read = self.transfer_read_count
-
-            available = written - read
-            if available <= 0:
-                return
-
-            if available > self.transfer_buffer_size:
-                # Overflow: skip old data
-                read = written - self.transfer_buffer_size
-                available = self.transfer_buffer_size
-
-            # Read data
-            # To avoid holding lock too long or complicating logic,
-            # we copy to a temp buffer here (allocating in UI thread is fine).
-            # This replaces the 'queue.get()' behavior.
-
-            start_idx = read % self.transfer_buffer_size
-            chunk1 = min(available, self.transfer_buffer_size - start_idx)
-            chunk2 = available - chunk1
-
-            if chunk2 == 0:
-                new_data = self.transfer_buffer[start_idx : start_idx + chunk1].copy()
-            else:
-                # Wrapped read
-                # Allocates new array
-                new_data = np.concatenate(
-                    (self.transfer_buffer[start_idx:], self.transfer_buffer[:chunk2])
-                )
-
-            self.transfer_read_count = written  # Mark all as read
+        new_data = self.transfer_buffer.read()
+        n_frames = len(new_data)
+        if n_frames == 0:
+            return
 
         # Now process new_data into input_data (display buffer)
-        n_frames = len(new_data)
         if n_frames > self.buffer_size:
             # Just take the last part
             self.input_data[:] = new_data[-self.buffer_size :]

@@ -285,6 +285,7 @@ class TestOscilloscopeAllocation(unittest.TestCase):
 
         # Verify initial buffer IDs
         initial_transfer_id = id(self.osc.transfer_buffer)
+        initial_internal_buffer_id = id(self.osc.transfer_buffer._buffer)
 
         # Get the registered callback
         # In this mock setup, we assume start_analysis calls register_callback
@@ -304,10 +305,12 @@ class TestOscilloscopeAllocation(unittest.TestCase):
             # Verify transfer buffer object hasn't changed (reallocation check)
             self.assertEqual(id(self.osc.transfer_buffer), initial_transfer_id,
                              "Transfer buffer should not be reallocated in callback")
+            self.assertEqual(id(self.osc.transfer_buffer._buffer), initial_internal_buffer_id,
+                             "Internal buffer should not be reallocated")
 
         # Verify that data was actually written to transfer buffer
         # Write count should be 10 * 1024
-        self.assertEqual(self.osc.transfer_write_count, 10 * 1024)
+        self.assertEqual(self.osc.transfer_buffer._write_index, 10 * 1024)
 
 
 class TestOscilloscopeDataFlow(unittest.TestCase):
@@ -323,8 +326,8 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
         self.osc.start_analysis()
 
         # Verify buffer is empty/reset
-        self.assertEqual(self.osc.transfer_write_count, 0)
-        self.assertEqual(self.osc.transfer_read_count, 0)
+        self.assertEqual(self.osc.transfer_buffer._write_index, 0)
+        self.assertEqual(self.osc.transfer_buffer._read_index, 0)
 
         # Get the registered callback
         self.assertTrue(len(self.mock_engine.callbacks) > 0)
@@ -339,12 +342,12 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
         cb(indata, outdata, frames, 0.0, None)
 
         # Verify data is in transfer buffer
-        self.assertEqual(self.osc.transfer_write_count, 100)
-        self.assertEqual(self.osc.transfer_read_count, 0)
+        self.assertEqual(self.osc.transfer_buffer._write_index, 100)
+        self.assertEqual(self.osc.transfer_buffer._read_index, 0)
 
         # Check data content in transfer buffer
         # transfer_buffer is large, we check the first 100 samples
-        self.assertTrue(np.allclose(self.osc.transfer_buffer[0:100], 0.5))
+        self.assertTrue(np.allclose(self.osc.transfer_buffer._buffer[0:100], 0.5))
 
         # Verify input_data is still zero (before process_queue)
         self.assertTrue(np.all(self.osc.input_data == 0))
@@ -353,7 +356,7 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
         self.osc.process_queue()
 
         # Verify transfer buffer is read
-        self.assertEqual(self.osc.transfer_read_count, 100)
+        self.assertEqual(self.osc.transfer_buffer._read_index, 100)
 
         # Verify input_data has data
         self.assertEqual(self.osc.write_index, 100)
