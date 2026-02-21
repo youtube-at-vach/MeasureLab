@@ -26,7 +26,7 @@ It is suitable for searching for the cause of phenomena such as "having good num
 
 ### Results
 
-Depending on the measurement mode, the most important indicators are displayed largely here.
+Depending on the measurement mode, the most important indicators are displayed prominently here.
 
 - **TD+N / SPDR / PIM**: Main measurement values. Whether a larger (or smaller) value is better depends on the mode (described later).
 

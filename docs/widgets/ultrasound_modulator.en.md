@@ -4,7 +4,7 @@
 
 ## Overview
 
-The Ultrasound Modulator is a widget that amplitute-modulates (AM) audio signals into the ultrasonic range, making them suitable for playback on ultrasonic reference speakers (typically centered at 40kHz).
+The Ultrasound Modulator is a widget that amplitude-modulates (AM) audio signals into the ultrasonic range, making them suitable for playback on ultrasonic reference speakers (typically centered at 40kHz).
 
 It is used for experiments with parametric speakers and acoustic measurements in the ultrasonic band.
 
