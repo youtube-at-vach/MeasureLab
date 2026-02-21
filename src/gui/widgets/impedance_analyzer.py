@@ -538,12 +538,9 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Dict[str, [real, imag]] -> Dict[float, complex]
         new_cal = {}
         for f_str, z_list in data_dict.items():
-            try:
-                f = float(f_str)
-                z = complex(z_list[0], z_list[1])
-                new_cal[f] = z
-            except Exception:
-                pass
+            f = float(f_str)
+            z = complex(z_list[0], z_list[1])
+            new_cal[f] = z
         return new_cal
 
 
