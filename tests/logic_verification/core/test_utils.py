@@ -1,0 +1,90 @@
+import unittest
+import sys
+import os
+
+# Ensure src can be imported
+sys.path.append(os.getcwd())
+
+from src.core.utils import format_si
+
+class TestUtils(unittest.TestCase):
+    def test_format_si_basic(self):
+        """Test basic SI formatting functionality."""
+        # Simple cases
+        self.assertEqual(format_si(1000, "Hz"), "1 kHz")
+        self.assertEqual(format_si(0.001, "s"), "1 ms")
+        self.assertEqual(format_si(1, "V"), "1 V")
+
+        # Micro
+        # Note: format_si uses 'µ' (U+00B5) or similar. Let's check implementation behavior.
+        # implementation uses _SI_PREFIXES = { ..., -6: "µ", ... }
+        self.assertEqual(format_si(1e-6, "s"), "1 µs")
+
+    def test_format_si_precision(self):
+        """Test sig_figs parameter."""
+        val = 1234.5678
+        # Default sig_figs=4
+        self.assertEqual(format_si(val, "Hz"), "1.235 kHz")
+        # sig_figs=5
+        self.assertEqual(format_si(val, "Hz", sig_figs=5), "1.2346 kHz")
+        # sig_figs=3
+        self.assertEqual(format_si(val, "Hz", sig_figs=3), "1.23 kHz")
+
+        val_small = 0.0012345678
+        self.assertEqual(format_si(val_small, "s", sig_figs=4), "1.235 ms")
+
+    def test_format_si_edge_cases(self):
+        """Test edge cases: 0, None, Inf, NaN."""
+        # Zero
+        self.assertEqual(format_si(0, "Hz"), "0 Hz")
+        self.assertEqual(format_si(0.0, "s"), "0 s")
+
+        # Negative
+        self.assertEqual(format_si(-1000, "Hz"), "-1 kHz")
+
+        # None
+        self.assertEqual(format_si(None, "Hz"), "-")
+
+        # Inf
+        self.assertEqual(format_si(float('inf'), "Hz"), "-")
+        self.assertEqual(format_si(float('-inf'), "Hz"), "-")
+
+        # NaN
+        self.assertEqual(format_si(float('nan'), "Hz"), "-")
+
+    def test_format_si_rounding_up(self):
+        """Test rounding that bumps the prefix (e.g. 999.9 m -> 1.0 k)."""
+        # 999.95 m -> 1.000 s if sig_figs=4
+        val = 999.95e-3
+        # 0.99995 s.
+        # exp3 = -3 (m). scaled = 999.95.
+        # with sig_figs=4 -> 999.95 rounds to 1000.
+        # So format_si logic sees 1000 >= 1000. Bumps prefix to 0 (base).
+        # New scaled: 0.99995.
+        # Formats to "1".
+        self.assertEqual(format_si(val, "s", sig_figs=4), "1 s")
+
+        # Another case: 999.96 Hz
+        # sig_figs=4 -> 1000.
+        val = 999.96
+        self.assertEqual(format_si(val, "Hz", sig_figs=4), "1 kHz")
+
+    def test_format_si_large_numbers(self):
+        """Test very large numbers."""
+        self.assertEqual(format_si(1e6, "Hz"), "1 MHz")
+        self.assertEqual(format_si(1e9, "Hz"), "1 GHz")
+        self.assertEqual(format_si(2.5e6, "Hz"), "2.5 MHz")
+
+    def test_format_si_small_numbers(self):
+        """Test very small numbers."""
+        self.assertEqual(format_si(1e-9, "s"), "1 ns")
+        self.assertEqual(format_si(1e-12, "s"), "1 ps")
+
+        # Test values relevant to Oscilloscope
+        # 123.456 ns -> 1.235e-7 s
+        val = 1.23456e-7
+        self.assertEqual(format_si(val, "s", sig_figs=4), "123.5 ns")
+        self.assertEqual(format_si(val, "s", sig_figs=5), "123.46 ns")
+
+if __name__ == '__main__':
+    unittest.main()
