@@ -5,6 +5,7 @@ LANG_DIR = "src/assets/lang"
 
 # Define translations for missing keys
 TRANSLATIONS = {
+    # Existing entries (kept for completeness)
     "Period:": {
         "de": "Periode:",
         "es": "Período:",
@@ -164,6 +165,77 @@ TRANSLATIONS = {
         "pt": "Aquecendo... ({0}/{1})",
         "ru": "Разогрев... ({0}/{1})",
         "zh": "预热中... ({0}/{1})"
+    },
+    # New Leaks Fixed
+    "Calculating Articulation Index ({})...": {
+        "de": "Berechne Articulation Index ({})...",
+        "es": "Calculando Índice de Articulación ({})...",
+        "fr": "Calcul de l'indice d'articulation ({})...",
+        "ja": "明瞭度指数を計算中 ({})...",
+        "ko": "명료도 지수 (AI) 계산 중 ({})...",
+        "pt": "Calculando Índice de Articulação ({})...",
+        "ru": "Вычисление индекса артикуляции ({})...",
+        "zh": "正在计算清晰度指数 ({})..."
+    },
+    "Calculating Fluctuation Strength ({})...": {
+        "de": "Berechne Schwankungsstärke ({})...",
+        "es": "Calculando Fuerza de Fluctuación ({})...",
+        "fr": "Calcul de la force de fluctuation ({})...",
+        "ja": "変動強度を計算中 ({})...",
+        "ko": "변동 강도 계산 중 ({})...",
+        "pt": "Calculando Força de Flutuação ({})...",
+        "ru": "Вычисление силы флуктуации ({})...",
+        "zh": "正在计算波动强度 ({})..."
+    },
+    "Export Failed": {
+        "de": "Export fehlgeschlagen",
+        "es": "Exportación fallida",
+        "fr": "Échec de l'exportation",
+        "ja": "エクスポート失敗",
+        "ko": "내보내기 실패",
+        "pt": "Falha na exportação",
+        "ru": "Ошибка экспорта",
+        "zh": "导出失败"
+    },
+    "Export Metrics to CSV": {
+        "de": "Metriken als CSV exportieren",
+        "es": "Exportar métricas a CSV",
+        "fr": "Exporter les mesures au format CSV",
+        "ja": "メトリクスをCSVにエクスポート",
+        "ko": "CSV로 측정항목 내보내기",
+        "pt": "Exportar métricas para CSV",
+        "ru": "Экспорт метрик в CSV",
+        "zh": "导出指标到 CSV"
+    },
+    "Export Successful": {
+        "de": "Export erfolgreich",
+        "es": "Exportación exitosa",
+        "fr": "Exportation réussie",
+        "ja": "エクスポート成功",
+        "ko": "내보내기 성공",
+        "pt": "Exportação bem-sucedida",
+        "ru": "Экспорт успешен",
+        "zh": "导出成功"
+    },
+    "File && Analysis": {
+        "de": "Datei && Analyse",
+        "es": "Archivo && Análisis",
+        "fr": "Fichier && Analyse",
+        "ja": "ファイル && 解析",
+        "ko": "파일 && 분석",
+        "pt": "Arquivo && Análise",
+        "ru": "Файл && Анализ",
+        "zh": "文件 && 分析"
+    },
+    "Successfully exported metrics to:\n{}": {
+        "de": "Metriken erfolgreich exportiert nach:\n{}",
+        "es": "Métricas exportadas exitosamente a:\n{}",
+        "fr": "Mesures exportées avec succès vers :\n{}",
+        "ja": "メトリクスのエクスポートに成功しました:\n{}",
+        "ko": "측정항목을 다음으로 성공적으로 내보냈습니다:\n{}",
+        "pt": "Métricas exportadas com sucesso para:\n{}",
+        "ru": "Метрики успешно экспортированы в:\n{}",
+        "zh": "成功导出指标至:\n{}"
     }
 }
 
@@ -196,11 +268,21 @@ def main():
                     if lang_code in translations:
                         new_value = translations[lang_code]
                         # Only update if current value is untranslated (same as English key) OR forced update
-                        # Here we update unconditionally for these keys as we know they are problematic
-                        if data[key] != new_value:
-                            print(f"  Updated '{key}': '{data[key]}' -> '{new_value}'")
+                        # Here we check if the current value is same as key (untranslated) or empty
+                        # Or if we want to overwrite even if translated (to fix bad translations)
+                        # We will overwrite if current value == key
+                        if data[key] == key or data[key] == "":
+                            print(f"  Fixing '{key}': '{data[key]}' -> '{new_value}'")
                             data[key] = new_value
                             updated_count += 1
+                        elif data[key] != new_value:
+                             # Check if it's the known untranslated state (English)
+                             # Since we don't have en.json here easily, we rely on the fact that TRANSLATIONS has the correction.
+                             # But we should be careful not to overwrite valid manual translations if they differ slightly.
+                             # Let's trust the TRANSLATIONS dict as the source of truth for these specific problematic keys.
+                             print(f"  Updating '{key}': '{data[key]}' -> '{new_value}'")
+                             data[key] = new_value
+                             updated_count += 1
                     else:
                         print(f"  Warning: No translation for '{key}' in language '{lang_code}'")
 
