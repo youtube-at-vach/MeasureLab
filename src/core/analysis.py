@@ -1209,13 +1209,14 @@ class AudioCalc:
 
         # Integration
         # Power = sum(PSD * Weight^2 * bin_width)
-        # Avoid allocating full weighted magnitude array
-        weighted_power_slice = mag_sq[i_a_start:i_a_end] * weighting_sq[i_a_start:i_a_end]
+        # Optimized to use dot product to avoid allocating intermediate weighted power array
+        mag_slice = mag_sq[i_a_start:i_a_end]
+        weight_slice = weighting_sq[i_a_start:i_a_end]
 
         if np.ndim(bin_width) == 0:
-            power_a = np.sum(weighted_power_slice) * bin_width
+            power_a = np.dot(mag_slice, weight_slice) * bin_width
         else:
-            power_a = np.sum(weighted_power_slice * bin_width[i_a_start:i_a_end])
+            power_a = np.dot(mag_slice, weight_slice * bin_width[i_a_start:i_a_end])
 
         return np.sqrt(power_a)
 
