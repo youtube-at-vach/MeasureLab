@@ -176,6 +176,7 @@ class AudioEngine:
         # Dithering
         self.dithering_enabled = False
         self.dithering_bit_depth = "24"
+        self._rng = np.random.default_rng()
 
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
@@ -469,12 +470,25 @@ class AudioEngine:
             lsb = 1.0 / (2 ** (bit_depth - 1))
 
             # Triangular dither: random1 - random2
-            # np.random.random_sample is [0.0, 1.0)
-            # (rand1 - rand2) is (-1.0, 1.0)
-            # Multiplying by lsb gives the required PDF.
-            dither = (np.random.random_sample(mix_buffer.shape).astype("float32") - 
-                      np.random.random_sample(mix_buffer.shape).astype("float32")) * lsb
-            mix_buffer += dither
+            # Use _client_buffer as a temporary buffer to avoid allocation.
+            # _client_buffer is guaranteed to be initialized and correctly sized here
+            # because dithering only runs if there are active callbacks.
+            dither_buf = self._client_buffer
+
+            # 1. Generate R1
+            self._rng.random(out=dither_buf, dtype="float32")
+            # 2. Add scaled R1 to mix
+            # mix += R1 * lsb
+            # To do this efficiently in-place without another buffer:
+            # We can scale dither_buf in-place, add it, then reuse dither_buf for R2.
+            dither_buf *= lsb
+            mix_buffer += dither_buf
+
+            # 3. Generate R2
+            self._rng.random(out=dither_buf, dtype="float32")
+            # 4. Subtract scaled R2 from mix
+            dither_buf *= lsb
+            mix_buffer -= dither_buf
 
         # Store for next loopback cycle
         if use_loopback:
