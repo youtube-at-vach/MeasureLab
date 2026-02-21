@@ -1237,21 +1237,30 @@ class AudioCalc:
             freq_step = freqs[1] - start_freq
             expected_end = start_freq + freq_step * (len(freqs) - 1)
 
-            # Check approximate linearity
+            # Check approximate linearity (Endpoint check first for speed)
             # Use absolute tolerance suitable for frequency precision
             if abs(freqs[-1] - expected_end) < 1e-5:
-                is_linear_freqs = True
-            elif start_freq > 1e-9:
+                # Verify strictly all steps
+                # Use slice to avoid allocating full diff if possible? No, diff is fast.
+                if np.allclose(np.diff(freqs), freq_step, atol=1e-5, rtol=0):
+                    is_linear_freqs = True
+
+            if not is_linear_freqs and start_freq > 1e-9:
                 # Check for logarithmic spacing (geometric progression)
-                # ratio = f[1] / f[0]
                 ratio = freqs[1] / start_freq
                 # expected_end = start * ratio^(n-1)
-                # Use log space calculation to avoid overflow/precision issues with huge exponents?
-                # For audio range (20Hz-20kHz), direct power is fine.
                 expected_log_end = start_freq * (ratio ** (len(freqs) - 1))
+
                 if abs(freqs[-1] - expected_log_end) < 1e-4 * expected_log_end:
-                    is_log_freqs = True
-                    stop_freq = freqs[-1]
+                    # Verify strictly using log domain
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        log_freqs = np.log(freqs)
+                    log_steps = np.diff(log_freqs)
+                    if len(log_steps) > 0:
+                        log_step = log_steps[0]
+                        if np.allclose(log_steps, log_step, atol=1e-5):
+                            is_log_freqs = True
+                            stop_freq = freqs[-1]
 
         return is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq
 
