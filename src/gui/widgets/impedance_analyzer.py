@@ -514,7 +514,9 @@ class ImpedanceAnalyzer(MeasurementModule):
             "cal_load": self._serialize_cal(self.cal_load),
             "load_std_real": self.load_standard_real,
         }
-        with open(filename, "w") as f:
+        # Secure file creation with 600 permissions
+        fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with open(fd, "w") as f:
             json.dump(data, f, indent=4)
 
     def load_calibration(self, filename):
