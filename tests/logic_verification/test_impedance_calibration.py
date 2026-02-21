@@ -10,6 +10,12 @@ class TestImpedanceCalibration(unittest.TestCase):
         self.mock_pg = MagicMock()
         self.mock_loc = MagicMock()
         self.mock_loc.tr = lambda x, default=None: x
+        self.mock_numpy = MagicMock()
+        self.mock_numpy.zeros.return_value = MagicMock()
+        self.mock_numpy.isfinite = lambda x: True
+
+        self.mock_analysis = MagicMock()
+        self.mock_analysis.get_cached_window = MagicMock(return_value=MagicMock())
 
         # Modules to patch in sys.modules
         self.modules_to_patch = {
@@ -20,6 +26,8 @@ class TestImpedanceCalibration(unittest.TestCase):
             'pyqtgraph': self.mock_pg,
             'sounddevice': self.mock_sd,
             'src.core.localization': self.mock_loc,
+            'src.core.analysis': self.mock_analysis,
+            'numpy': self.mock_numpy,
         }
 
         # Manual patching of sys.modules to avoid patch.dict issues with C-extensions
@@ -45,12 +53,12 @@ class TestImpedanceCalibration(unittest.TestCase):
         # Instantiate the analyzer
         self.analyzer = self.ImpedanceAnalyzer(self.mock_audio_engine)
 
-        # Reset calibration state
-        self.analyzer.cal_open = {}
-        self.analyzer.cal_short = {}
-        self.analyzer.cal_load = {}
-        self.analyzer.use_calibration = True
-        self.analyzer.load_standard_real = 100.0
+        # Reset calibration state (via .calibration helper)
+        self.analyzer.calibration.cal_open = {}
+        self.analyzer.calibration.cal_short = {}
+        self.analyzer.calibration.cal_load = {}
+        self.analyzer.calibration.use_calibration = True
+        self.analyzer.calibration.load_standard_real = 100.0
 
     def tearDown(self):
         # Restore sys.modules
@@ -73,48 +81,48 @@ class TestImpedanceCalibration(unittest.TestCase):
         }
 
         # Exact match
-        val = self.analyzer._get_interpolated_cal_value(cal_dict, 100.0)
+        val = self.analyzer.calibration._get_interpolated_cal_value(cal_dict, 100.0)
         self.assertEqual(val, 10 + 10j)
 
-        val = self.analyzer._get_interpolated_cal_value(cal_dict, 200.0)
+        val = self.analyzer.calibration._get_interpolated_cal_value(cal_dict, 200.0)
         self.assertEqual(val, 20 + 20j)
 
         # Mid-point (Linear Interpolation)
         # At 150.0 (midway between 100 and 200), expected 15+15j
-        val = self.analyzer._get_interpolated_cal_value(cal_dict, 150.0)
+        val = self.analyzer.calibration._get_interpolated_cal_value(cal_dict, 150.0)
         self.assertAlmostEqual(val.real, 15.0)
         self.assertAlmostEqual(val.imag, 15.0)
 
         # 25% point
         # At 125.0 (25% from 100 to 200), expected 12.5+12.5j
-        val = self.analyzer._get_interpolated_cal_value(cal_dict, 125.0)
+        val = self.analyzer.calibration._get_interpolated_cal_value(cal_dict, 125.0)
         self.assertAlmostEqual(val.real, 12.5)
         self.assertAlmostEqual(val.imag, 12.5)
 
         # Out of bounds (Clamping)
         # Below min -> clamp to min
-        val = self.analyzer._get_interpolated_cal_value(cal_dict, 50.0)
+        val = self.analyzer.calibration._get_interpolated_cal_value(cal_dict, 50.0)
         self.assertEqual(val, 10 + 10j)
 
         # Above max -> clamp to max
-        val = self.analyzer._get_interpolated_cal_value(cal_dict, 400.0)
+        val = self.analyzer.calibration._get_interpolated_cal_value(cal_dict, 400.0)
         self.assertEqual(val, 30 + 30j)
 
     def test_apply_calibration_no_cal(self):
         """Verify returns raw measurement when calibration is disabled or empty."""
-        self.analyzer.use_calibration = False
+        self.analyzer.calibration.use_calibration = False
         z_meas = 50 + 50j
         freq = 1000.0
 
-        result = self.analyzer.apply_calibration(z_meas, freq)
+        result = self.analyzer.calibration.apply_calibration(z_meas, freq)
         self.assertEqual(result, z_meas)
 
         # Enable calibration but empty dicts
-        self.analyzer.use_calibration = True
-        self.analyzer.cal_open = {}
-        self.analyzer.cal_short = {}
+        self.analyzer.calibration.use_calibration = True
+        self.analyzer.calibration.cal_open = {}
+        self.analyzer.calibration.cal_short = {}
 
-        result = self.analyzer.apply_calibration(z_meas, freq)
+        result = self.analyzer.calibration.apply_calibration(z_meas, freq)
         self.assertEqual(result, z_meas)
 
     def test_apply_calibration_os(self):
@@ -124,9 +132,9 @@ class TestImpedanceCalibration(unittest.TestCase):
         z_open = 1000 + 0j
         z_short = 1 + 0j
 
-        self.analyzer.cal_open = {freq: z_open}
-        self.analyzer.cal_short = {freq: z_short}
-        self.analyzer.cal_load = {} # Ensure no load cal
+        self.analyzer.calibration.cal_open = {freq: z_open}
+        self.analyzer.calibration.cal_short = {freq: z_short}
+        self.analyzer.calibration.cal_load = {} # Ensure no load cal
 
         z_meas = 100 + 0j
 
@@ -138,7 +146,7 @@ class TestImpedanceCalibration(unittest.TestCase):
 
         expected = (z_meas - z_short) / (1 - (z_meas - z_short) / z_open)
 
-        result = self.analyzer.apply_calibration(z_meas, freq)
+        result = self.analyzer.calibration.apply_calibration(z_meas, freq)
 
         self.assertAlmostEqual(result.real, expected.real, places=5)
         self.assertAlmostEqual(result.imag, expected.imag, places=5)
@@ -147,15 +155,15 @@ class TestImpedanceCalibration(unittest.TestCase):
         """Verify Open/Short/Load (OSL) calibration logic."""
         freq = 1000.0
         z_std = 100.0
-        self.analyzer.load_standard_real = z_std
+        self.analyzer.calibration.load_standard_real = z_std
 
         z_open = 1000 + 0j
         z_short = 10 + 0j
         z_load = 100 + 0j
 
-        self.analyzer.cal_open = {freq: z_open}
-        self.analyzer.cal_short = {freq: z_short}
-        self.analyzer.cal_load = {freq: z_load}
+        self.analyzer.calibration.cal_open = {freq: z_open}
+        self.analyzer.calibration.cal_short = {freq: z_short}
+        self.analyzer.calibration.cal_load = {freq: z_load}
 
         z_meas = 200 + 0j
 
@@ -170,7 +178,7 @@ class TestImpedanceCalibration(unittest.TestCase):
 
         # Expected = 17,100,000 / 72,000 = 237.5
 
-        result = self.analyzer.apply_calibration(z_meas, freq)
+        result = self.analyzer.calibration.apply_calibration(z_meas, freq)
 
         self.assertAlmostEqual(result.real, 237.5, places=5)
         self.assertAlmostEqual(result.imag, 0.0, places=5)
@@ -181,8 +189,8 @@ class TestImpedanceCalibration(unittest.TestCase):
         z_open = 1000 + 0j
         z_short = 1 + 0j
 
-        self.analyzer.cal_open = {freq: z_open}
-        self.analyzer.cal_short = {freq: z_short}
+        self.analyzer.calibration.cal_open = {freq: z_open}
+        self.analyzer.calibration.cal_short = {freq: z_short}
 
         # Case 1: Denominator near zero in OS cal
         # Denom = 1 - (Z_meas - Z_short) * Y_open
@@ -190,15 +198,15 @@ class TestImpedanceCalibration(unittest.TestCase):
         # (Z_meas - 1) * 0.001 = 1 => Z_meas - 1 = 1000 => Z_meas = 1001
 
         z_meas_fail = 1001 + 0j
-        result = self.analyzer.apply_calibration(z_meas_fail, freq)
+        result = self.analyzer.calibration.apply_calibration(z_meas_fail, freq)
 
         # Expect raw measurement return (fallback)
         self.assertEqual(result, z_meas_fail)
 
         # Case 2: Zero Open impedance (should avoid 1/0)
-        self.analyzer.cal_open = {freq: 0j}
+        self.analyzer.calibration.cal_open = {freq: 0j}
         z_meas = 100 + 0j
-        result = self.analyzer.apply_calibration(z_meas, freq)
+        result = self.analyzer.calibration.apply_calibration(z_meas, freq)
         self.assertEqual(result, z_meas)
 
 if __name__ == '__main__':
