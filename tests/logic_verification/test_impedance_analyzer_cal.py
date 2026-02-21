@@ -26,9 +26,9 @@ mock_base_module = MagicMock()
 mock_base_module.MeasurementModule = MockMeasurementModule
 sys.modules['src.measurement_modules.base'] = mock_base_module
 
-from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
+from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer  # noqa: E402
 
-import unittest
+import unittest  # noqa: E402
 
 class TestImpedanceAnalyzerDeserialization(unittest.TestCase):
     def test_deserialize_cal_raises_on_invalid_data(self):
@@ -41,7 +41,7 @@ class TestImpedanceAnalyzerDeserialization(unittest.TestCase):
         }
 
         # Expectation: Should raise ValueError or similar
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             analyzer._deserialize_cal(data)
 
     def test_load_calibration_catches_exception(self):
