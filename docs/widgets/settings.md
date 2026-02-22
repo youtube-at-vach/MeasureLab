@@ -80,6 +80,9 @@ FFT（高速フーリエ変換）の処理速度を向上させるための最�
 
 「Show stored calibration values」にチェックを入れると表示されます。これらは書き換え不可の参照用データです。
 
+* **Frequency Calibration Source**: オーディオエンジンの周波数補正に使用する基準ソースを選択します。
+    * **Frequency Counter**: Frequency Counter ウィジェットで校正された係数を使用します。
+    * **1PPS Monitor**: 1PPS Monitor ウィジェットで校正（Calibrate from Current）された係数を使用します。1PPS 基準を利用可能な場合に、より高精度な校正を行えます。
 * **Frequency Calibration**: 内部クロックの周波数偏差（ppm）。
 * **1PPS Frequency Calibration**: 1PPS信号に基づく外部基準との偏差（ppm）。
 * **Lock-in Gain Offset**: ロックインアンプ測定時の内部ゲイン補正値（mdB/dB）。

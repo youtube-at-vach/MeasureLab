@@ -54,9 +54,16 @@ Monitor the pulse waveform in real-time and adjust trigger settings.
 * **Unit**: Switch the graph unit between `PPM` and `Seconds`.
 * **Show Instantaneous**: Toggle the visibility of the instantaneous deviation curve.
 * **Calibration**: Calculate and store calibration factors from measurements.
-    * **Stored 1PPS Cal**: Shows the current stored calibration factor.
-    * **Calibrate from Current**: Performs calibration based on the current cumulative average.
-* **Statistics**: Displays count, mean, standard deviation, max/min values, etc.
+    * **Stored 1PPS Cal**: Shows the current stored calibration factor (ppm).
+    * **Calibrate from Current**: Performs calibration based on the current cumulative average and saves it to the "1PPS Frequency Calibration" slot.
+        > [!NOTE]
+        > To apply the calibration from this monitor system-wide, you must switch the **Frequency Calibration Source** to `1PPS Monitor` in the **Calibration** tab of the **Settings** widget.
+* **Statistics**:
+    * **Count**: Number of pulses detected.
+    * **Inst / Cumul**: Latest instantaneous and cumulative average deviations (PPM).
+    * **Rate**: Effective sample rate estimated from the measurements.
+    * **Mean / Std Dev**: Mean and standard deviation of the deviations.
+    * **Min / Max**: Minimum and maximum deviations recorded since the start.
 
 ## Understanding the Graph
 

@@ -99,6 +99,10 @@ class SignalParameters:
     bin_center_snap: bool = False
     fft_size: int = 16384
 
+    # Frequency Calibration
+    use_freq_cal: bool = False
+    freq_cal_manual_ppm: float = 0.0
+
     # Internal state (not shared/copied usually, but kept here for simplicity per channel)
     _phase: float = 0.0
     _sweep_time: float = 0.0
@@ -148,6 +152,20 @@ class SignalGenerator(MeasurementModule):
     def get_widget(self):
         return SignalGeneratorWidget(self)
 
+    def _get_cal_factor(self, params: SignalParameters) -> float:
+        if getattr(params, "use_freq_cal", False) and hasattr(self.audio_engine, "calibration"):
+            cal = self.audio_engine.calibration
+            if hasattr(cal, "get_active_frequency_calibration"):
+                val = cal.get_active_frequency_calibration()
+                base_cal = 1.0 / val if val > 0 else 1.0
+            else:
+                val = getattr(cal, "frequency_calibration", 1.0)
+                base_cal = 1.0 / val if val > 0 else 1.0
+
+            ppm_adj = getattr(params, "freq_cal_manual_ppm", 0.0)
+            return base_cal * (1.0 + ppm_adj / 1_000_000.0)
+        return 1.0
+
     def _generate_noise_buffer(self, params: SignalParameters, sample_rate, duration=5.0):
         """Pre-generates a buffer of colored noise."""
         num_samples = int(sample_rate * duration)
@@ -164,7 +182,9 @@ class SignalGenerator(MeasurementModule):
 
         # FFT filtering
         fft = np.fft.rfft(white)
-        freqs = np.fft.rfftfreq(num_samples, d=1 / sample_rate)
+        # Apply calibration factor to frequencies so that shaping is correctly aligned
+        cal_factor = self._get_cal_factor(params)
+        freqs = np.fft.rfftfreq(num_samples, d=1 / (sample_rate / cal_factor))
 
         scaling = np.ones_like(freqs)
 
@@ -221,10 +241,14 @@ class SignalGenerator(MeasurementModule):
 
     def _generate_multitone(self, params: SignalParameters, sample_rate):
         """Generates a Crest-Factor optimized Multitone signal."""
+        cal_factor = self._get_cal_factor(params)
+
         if params.start_freq >= params.end_freq:
             freqs = np.array([params.start_freq])
         else:
             freqs = np.logspace(np.log10(params.start_freq), np.log10(params.end_freq), params.multitone_count)
+
+        freqs = freqs * cal_factor
 
         N = int(sample_rate)  # 1 second buffer
         bin_width = sample_rate / N
@@ -319,14 +343,17 @@ class SignalGenerator(MeasurementModule):
 
     def _generate_burst(self, params: SignalParameters, sample_rate):
         """Generates a Tone Burst."""
+        cal_factor = self._get_cal_factor(params)
+        target_freq = params.frequency * cal_factor
+
         total_cycles = params.burst_on_cycles + params.burst_off_cycles
-        cycle_duration = 1.0 / params.frequency
+        cycle_duration = 1.0 / target_freq if target_freq > 0 else 1.0
         total_duration = total_cycles * cycle_duration
 
         num_samples = int(total_duration * sample_rate)
         t = np.arange(num_samples) / sample_rate
 
-        sine = np.sin(2 * np.pi * params.frequency * t)
+        sine = np.sin(2 * np.pi * target_freq * t)
 
         on_duration = params.burst_on_cycles * cycle_duration
         on_samples = int(on_duration * sample_rate)
@@ -499,7 +526,7 @@ class SignalGenerator(MeasurementModule):
             return
 
         self.is_playing = True
-        sample_rate = self.audio_engine.sample_rate
+        base_sample_rate = self.audio_engine.sample_rate
 
         # Reset states
         for params in [self.params_L, self.params_R]:
@@ -511,7 +538,7 @@ class SignalGenerator(MeasurementModule):
             params._am_phase_rad = 0.0
             params._lpf_zi = None
             params._hpf_zi = None
-            self._prepare_buffer(params, sample_rate)
+            self._prepare_buffer(params, base_sample_rate)
 
         def _phase_from_instantaneous_frequency(params: SignalParameters, f_inst_hz: np.ndarray, sample_rate: float):
             """Integrate instantaneous frequency to phase (radians) with continuity across blocks."""
@@ -534,7 +561,7 @@ class SignalGenerator(MeasurementModule):
             return phase
 
         def generate_channel_signal(params: SignalParameters, frames, t_global):
-            def _am_apply(x: np.ndarray) -> np.ndarray:
+            def _am_apply(x: np.ndarray, t_global_eff: np.ndarray, sample_rate_eff: float) -> np.ndarray:
                 """Apply simple AM (DSB-LC) envelope: x(t) * (1 + m*sin(2π*f_am*t))."""
                 if not (params.am_enabled and params.am_frequency > 0 and params.am_depth != 0):
                     return x
@@ -544,10 +571,10 @@ class SignalGenerator(MeasurementModule):
                     return x
 
                 am_phase0 = float(params._am_phase_rad)
-                am_phase = am_phase0 + 2.0 * np.pi * float(params.am_frequency) * t_global
+                am_phase = am_phase0 + 2.0 * np.pi * float(params.am_frequency) * t_global_eff
                 params._am_phase_rad = float(
                     np.fmod(
-                        am_phase0 + 2.0 * np.pi * float(params.am_frequency) * (frames / sample_rate),
+                        am_phase0 + 2.0 * np.pi * float(params.am_frequency) * (frames / sample_rate_eff),
                         2.0 * np.pi,
                     )
                 )
@@ -555,7 +582,7 @@ class SignalGenerator(MeasurementModule):
                 env = 1.0 + m * np.sin(am_phase)
                 return x * env
 
-            def _filter_apply(x: np.ndarray) -> np.ndarray:
+            def _filter_apply(x: np.ndarray, sample_rate_eff: float) -> np.ndarray:
                 """Apply LPF/HPF if enabled."""
                 if scipy is None:
                     return x
@@ -564,7 +591,7 @@ class SignalGenerator(MeasurementModule):
 
                 # Apply LPF
                 if params.lpf_enabled:
-                    sos = self._get_filter_sos(params, "low", sample_rate)
+                    sos = self._get_filter_sos(params, "low", sample_rate_eff)
                     if sos is not None:
                         if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
                              params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0 # Start from 0
@@ -573,7 +600,7 @@ class SignalGenerator(MeasurementModule):
 
                 # Apply HPF
                 if params.hpf_enabled:
-                    sos = self._get_filter_sos(params, "high", sample_rate)
+                    sos = self._get_filter_sos(params, "high", sample_rate_eff)
                     if sos is not None:
                         if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
                              params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
@@ -581,6 +608,12 @@ class SignalGenerator(MeasurementModule):
                         y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
 
                 return y
+
+            cal_factor = self._get_cal_factor(params)
+
+            # Use effective parameters for clean continuous generation
+            sample_rate_eff = base_sample_rate / cal_factor if cal_factor > 0 else base_sample_rate
+            t_global_eff = t_global * cal_factor
 
             signal = np.zeros(frames)
 
@@ -591,7 +624,7 @@ class SignalGenerator(MeasurementModule):
                     buf = params._buffer
                     buf_len = len(buf)
                     if buf_len > 0:
-                        delay_samples = float(params.delay_ms) * float(sample_rate) / 1000.0
+                        delay_samples = float(params.delay_ms) * float(base_sample_rate) / 1000.0
                         # Use remainder + explicit wrapping to avoid rare float edge cases
                         # where floor(idx) can equal buf_len.
                         idx = np.remainder(
@@ -606,7 +639,7 @@ class SignalGenerator(MeasurementModule):
 
                         signal = (1.0 - frac) * buf[i0] + frac * buf[i1]
                         params._buffer_index = int((params._buffer_index + frames) % buf_len)
-                        return _filter_apply(_am_apply(signal * params.amplitude))
+                        return _filter_apply(_am_apply(signal * params.amplitude, t_global_eff, sample_rate_eff), sample_rate_eff)
 
                 # Buffer based generation
                 chunk_size = frames
@@ -628,12 +661,12 @@ class SignalGenerator(MeasurementModule):
                     if params._buffer_index >= buf_len:
                         params._buffer_index = 0
 
-                return _filter_apply(_am_apply(signal * params.amplitude))
+                return _filter_apply(_am_apply(signal * params.amplitude, t_global_eff, sample_rate_eff), sample_rate_eff)
 
             if params.sweep_enabled:
                 # Sweep generation
-                current_times = params._sweep_time + t_global
-                current_times = np.mod(current_times, params.sweep_duration)
+                current_times_eff = params._sweep_time + t_global_eff
+                current_times_eff = np.mod(current_times_eff, params.sweep_duration)
 
                 # If FM is enabled, integrate instantaneous frequency (sweep + FM).
                 # Otherwise, preserve legacy analytic sweep phase.
@@ -642,63 +675,63 @@ class SignalGenerator(MeasurementModule):
                         # f(t) = f0 * exp(k t)
                         k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
                         f_base = (
-                            params.start_freq * np.exp(k * current_times)
+                            params.start_freq * np.exp(k * current_times_eff)
                             if k != 0
-                            else np.full_like(current_times, params.start_freq)
+                            else np.full_like(current_times_eff, params.start_freq)
                         )
                     else:
                         # f(t) = f0 + k t
                         k = (params.end_freq - params.start_freq) / params.sweep_duration
-                        f_base = params.start_freq + k * current_times
+                        f_base = params.start_freq + k * current_times_eff
 
                     # Modulator phase advances continuously across blocks.
                     mod_phase0 = float(params._fm_phase_rad)
-                    mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t_global
+                    mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t_global_eff
                     params._fm_phase_rad = float(
-                        np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                        np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                     )
 
                     f_inst = f_base + params.fm_deviation * np.sin(mod_phase)
-                    phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate)
+                    phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate_eff)
 
                     # Optional ΦM (phase modulation) applied as additional phase term.
                     if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
                         pm_phase0 = float(params._pm_phase_rad)
-                        pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global
+                        pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global_eff
                         params._pm_phase_rad = float(
-                            np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                            np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                         )
                         beta = float(np.radians(params.pm_deviation_deg))
                         phase = phase + beta * np.sin(pm_phase)
 
                     offset_rad = np.radians(params.phase_offset)
                     signal = params.amplitude * np.sin(phase + offset_rad)
-                    params._sweep_time += frames / sample_rate
-                    return _filter_apply(_am_apply(signal))
+                    params._sweep_time += frames / sample_rate_eff
+                    return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
 
                 if params.log_sweep:
                     k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
                     if k == 0:
-                        phase = 2 * np.pi * params.start_freq * current_times
+                        phase = 2 * np.pi * params.start_freq * current_times_eff
                     else:
-                        phase = 2 * np.pi * params.start_freq * (np.exp(k * current_times) - 1) / k
+                        phase = 2 * np.pi * params.start_freq * (np.exp(k * current_times_eff) - 1) / k
                 else:
                     k = (params.end_freq - params.start_freq) / params.sweep_duration
-                    phase = 2 * np.pi * (params.start_freq * current_times + 0.5 * k * current_times**2)
+                    phase = 2 * np.pi * (params.start_freq * current_times_eff + 0.5 * k * current_times_eff**2)
 
                 # Optional ΦM (phase modulation) for analytic sweep phase.
                 if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
                     pm_phase0 = float(params._pm_phase_rad)
-                    pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global
+                    pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global_eff
                     params._pm_phase_rad = float(
-                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                     )
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = phase + beta * np.sin(pm_phase)
 
                 signal = params.amplitude * np.sin(phase)
-                params._sweep_time += frames / sample_rate
-                return _filter_apply(_am_apply(signal))
+                params._sweep_time += frames / sample_rate_eff
+                return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
 
             # Standard waveforms
             offset_rad = np.radians(params.phase_offset)
@@ -721,21 +754,21 @@ class SignalGenerator(MeasurementModule):
 
             if use_fm:
                 # Modulator phase advances continuously across blocks.
-                t = t_global
+                t = t_global_eff
                 mod_phase0 = float(params._fm_phase_rad)
                 mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t
                 params._fm_phase_rad = float(
-                    np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                    np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                 )
 
                 f_inst = params.frequency + params.fm_deviation * np.sin(mod_phase)
-                phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate)
+                phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate_eff)
 
                 if use_pm:
                     pm_phase0 = float(params._pm_phase_rad)
                     pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
                     params._pm_phase_rad = float(
-                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                     )
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = phase + beta * np.sin(pm_phase)
@@ -743,34 +776,34 @@ class SignalGenerator(MeasurementModule):
                 signal = self._generate_wave_from_phase(params, phase)
             else:
                 # Legacy fixed-frequency phase calculation
-                phase_t = (np.arange(frames) + params._phase) / sample_rate
+                phase_t = (np.arange(frames) + params._phase) / sample_rate_eff
                 params._phase += frames
 
                 # If ΦM is enabled, construct explicit phase and use the phase-based definitions.
                 if use_pm:
-                    t = t_global
+                    t = t_global_eff
                     pm_phase0 = float(params._pm_phase_rad)
                     pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
                     params._pm_phase_rad = float(
-                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate), 2.0 * np.pi)
+                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                     )
                     beta = float(np.radians(params.pm_deviation_deg))
                     phase = 2.0 * np.pi * params.frequency * phase_t + beta * np.sin(pm_phase)
 
                     signal = self._generate_wave_from_phase(params, phase)
 
-                    return _filter_apply(_am_apply(signal))
+                    return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
 
                 phase_rad = 2.0 * np.pi * params.frequency * phase_t
                 signal = self._generate_wave_from_phase(params, phase_rad)
 
-            return _filter_apply(_am_apply(signal))
+            return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
 
         def callback(indata, outdata, frames, time, status):
             if status:
                 logger.debug(status)
 
-            t = np.arange(frames) / sample_rate
+            t = np.arange(frames) / base_sample_rate
             outdata.fill(0)
 
             # Left Channel
@@ -827,11 +860,11 @@ class SignalGenerator(MeasurementModule):
 
             if params.waveform == "noise" and name == "noise_color":
                 needs_update = True
-            elif params.waveform == "multitone" and name in ["multitone_count", "start_freq", "end_freq"]:
+            elif params.waveform == "multitone" and name in ["multitone_count", "start_freq", "end_freq", "use_freq_cal"]:
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
                 needs_update = True
-            elif params.waveform == "burst" and name in ["frequency", "burst_on_cycles", "burst_off_cycles", "burst_windowed"]:
+            elif params.waveform == "burst" and name in ["frequency", "burst_on_cycles", "burst_off_cycles", "burst_windowed", "use_freq_cal"]:
                 needs_update = True
             elif params.waveform == "prbs" and name in ["prbs_order", "prbs_seed"]:
                 needs_update = True
@@ -1264,6 +1297,30 @@ class SignalGeneratorWidget(QWidget):
         # Or just "Bin Snap"
         layout.addRow(tr("Bin Snap:"), snap_layout)
 
+        # Apply Frequency Calibration Checkbox
+        cal_layout = QHBoxLayout()
+        self.cal_check = QCheckBox(tr("Apply Frequency Calibration"))
+        self.cal_check.toggled.connect(self.on_cal_toggled)
+
+        self.cal_ppm_label = QLabel(tr("Fine Tune:"))
+        self.cal_ppm_spin = QDoubleSpinBox()
+        self.cal_ppm_spin.setRange(-1000.0, 1000.0)
+        self.cal_ppm_spin.setSingleStep(0.001)
+        self.cal_ppm_spin.setDecimals(3)
+        self.cal_ppm_spin.setSuffix(" ppm")
+        self.cal_ppm_spin.setToolTip(tr("Manual Frequency Calibration Adjustment"))
+        self.cal_ppm_spin.valueChanged.connect(self.on_cal_ppm_changed)
+
+        self.cal_freq_label = QLabel("")
+        self.cal_freq_label.setStyleSheet("color: gray;")
+
+        cal_layout.addWidget(self.cal_check)
+        cal_layout.addWidget(self.cal_ppm_label)
+        cal_layout.addWidget(self.cal_ppm_spin)
+        cal_layout.addWidget(self.cal_freq_label)
+        cal_layout.addStretch()
+        layout.addRow(tr("Frequency Calibration:"), cal_layout)
+
     def _create_options_tabs(self):
         tabs = QTabWidget()
         tabs.addTab(self._create_sweep_tab(), tr("Sweep"))
@@ -1488,6 +1545,12 @@ class SignalGeneratorWidget(QWidget):
         self.freq_spin.setValue(params.frequency)
         self.freq_slider.setValue(self._freq_to_slider(params.frequency))
 
+        self.cal_check.setChecked(getattr(params, "use_freq_cal", False))
+        self.cal_ppm_label.setEnabled(getattr(params, "use_freq_cal", False))
+        self.cal_ppm_spin.setValue(getattr(params, "freq_cal_manual_ppm", 0.0))
+        self.cal_ppm_spin.setEnabled(getattr(params, "use_freq_cal", False))
+        self.update_cal_freq_label()
+
         self.phase_spin.setValue(params.phase_offset)
         self.phase_slider.setValue(int(params.phase_offset))
 
@@ -1546,6 +1609,8 @@ class SignalGeneratorWidget(QWidget):
             self.prbs_seed_spin,
             self.freq_spin,
             self.freq_slider,
+            self.cal_check,
+            self.cal_ppm_spin,
             self.phase_spin,
             self.phase_slider,
             self.delay_spin,
@@ -1596,6 +1661,8 @@ class SignalGeneratorWidget(QWidget):
     def copy_params(self, src, dst):
         dst.waveform = src.waveform
         dst.frequency = src.frequency
+        dst.use_freq_cal = getattr(src, "use_freq_cal", False)
+        dst.freq_cal_manual_ppm = getattr(src, "freq_cal_manual_ppm", 0.0)
         dst.amplitude = src.amplitude
         dst.noise_color = src.noise_color
         dst.fm_enabled = src.fm_enabled
@@ -1640,6 +1707,30 @@ class SignalGeneratorWidget(QWidget):
             self.module.output_mode = "R"
         elif self.route_stereo.isChecked():
             self.module.output_mode = "STEREO"
+
+    def on_cal_toggled(self, checked):
+        self.update_param("use_freq_cal", checked)
+        self.cal_ppm_label.setEnabled(checked)
+        self.cal_ppm_spin.setEnabled(checked)
+        self.update_cal_freq_label()
+
+    def on_cal_ppm_changed(self, value):
+        self.update_param("freq_cal_manual_ppm", value)
+        self.update_cal_freq_label()
+
+    def update_cal_freq_label(self):
+        params_list = self.get_active_params_list()
+        if not params_list:
+            self.cal_freq_label.setText("")
+            return
+
+        params = params_list[0]
+        if getattr(params, "use_freq_cal", False):
+            cal_factor = self.module._get_cal_factor(params)
+            calibrated_freq = params.frequency * cal_factor
+            self.cal_freq_label.setText(f"({calibrated_freq:.3f} Hz)")
+        else:
+            self.cal_freq_label.setText("")
 
     def on_snap_toggled(self, checked):
         self.update_param("bin_center_snap", checked)
@@ -1710,6 +1801,7 @@ class SignalGeneratorWidget(QWidget):
         snapped_val = self._get_snapped_frequency(val)
 
         self.update_param("frequency", snapped_val)
+        self.update_cal_freq_label()
 
         # Block signals to update UI without recursion
         self.freq_spin.blockSignals(True)
@@ -1728,6 +1820,7 @@ class SignalGeneratorWidget(QWidget):
         snapped_freq = self._get_snapped_frequency(freq)
 
         self.update_param("frequency", snapped_freq)
+        self.update_cal_freq_label()
 
         self.freq_spin.blockSignals(True)
         self.freq_slider.blockSignals(True)
