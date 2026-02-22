@@ -1195,13 +1195,6 @@ class SignalGeneratorWidget(QWidget):
         freq_layout.addWidget(self.freq_spin)
         freq_layout.addWidget(self.freq_slider)
         layout.addRow(tr("Frequency (Hz):"), freq_layout)
-        
-        # Apply Frequency Calibration Checkbox
-        cal_layout = QHBoxLayout()
-        self.cal_check = QCheckBox(tr("Apply Frequency Calibration"))
-        self.cal_check.toggled.connect(lambda v: self.update_param("use_freq_cal", v))
-        cal_layout.addWidget(self.cal_check)
-        layout.addRow("", cal_layout)
 
     def _init_phase_controls(self, layout):
         phase_layout = QHBoxLayout()
@@ -1296,6 +1289,13 @@ class SignalGeneratorWidget(QWidget):
         # We assume the user wants this associated with "Frequency Snap" label or similar?
         # Or just "Bin Snap"
         layout.addRow(tr("Bin Snap:"), snap_layout)
+
+        # Apply Frequency Calibration Checkbox
+        cal_layout = QHBoxLayout()
+        self.cal_check = QCheckBox(tr("Apply Frequency Calibration"))
+        self.cal_check.toggled.connect(lambda v: self.update_param("use_freq_cal", v))
+        cal_layout.addWidget(self.cal_check)
+        layout.addRow("", cal_layout)
 
     def _create_options_tabs(self):
         tabs = QTabWidget()
