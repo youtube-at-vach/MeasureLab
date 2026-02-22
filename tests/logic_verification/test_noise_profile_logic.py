@@ -200,5 +200,24 @@ class TestNoiseProfileLogic(unittest.TestCase):
         self.assertEqual(results['flicker_intercept'], 0.0)
         self.assertEqual(results['corner_freq'], 0.0)
 
+    def test_zero_frequency_step_handling(self):
+        """
+        Regression test for potential DivisionByZero/OverflowError when frequency step is 0.
+        Caused by _analyze_frequency_axis incorrectly flagging constant frequency array as linear.
+        """
+        freqs = np.array([100.0, 100.0, 100.0], dtype=np.float64)
+        mag = np.array([0.5, 0.5, 0.5], dtype=np.float64)
+
+        # This calls calculate_noise_profile -> _analyze_frequency_axis
+        # Should complete without error
+        try:
+            results = AudioCalc.calculate_noise_profile(mag, freqs, self.fs)
+        except Exception as e:
+            self.fail(f"calculate_noise_profile raised exception with zero-step frequency array: {e}")
+
+        # Verify that it didn't return garbage or crash
+        # With non-linear handling, it should fallback to robust methods
+        self.assertIn("white_density", results)
+
 if __name__ == '__main__':
     unittest.main()
