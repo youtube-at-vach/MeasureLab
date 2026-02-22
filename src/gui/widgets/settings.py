@@ -1108,7 +1108,7 @@ class SettingsWidget(QWidget):
 
         # Sample Rate
         self.sr_combo = QComboBox()
-        self.sr_combo.addItems(["44100", "48000", "88200", "96000", "192000"])
+        self.sr_combo.addItems(["44100", "48000", "88200", "96000", "176400", "192000", "352800", "384000"])
         self.sr_combo.setCurrentText(str(self.audio_engine.sample_rate))
         self.sr_combo.currentTextChanged.connect(self.on_sr_changed)
         conf_layout.addRow(tr("Sample Rate:"), self.sr_combo)
