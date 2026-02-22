@@ -5,9 +5,37 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 
 ---
 
+## 🔮 Future / Visionary Ideas (Experimental)
+
+* **AI-Based Audio Anomaly Detection:**
+    * **Concept:** Real-time monitoring of audio streams using a lightweight ML model to detect clicks, pops, dropouts, and digital artifacts.
+    * **Why:** Automates long-term reliability testing without human supervision.
+
+* **Digital Interface Analyzer (Jitter/Eye Metrics):**
+    * **Concept:** Dedicated analysis of digital signals (SPDIF/I2S via very high sample-rate analog capture or specialized hardware) to extract metrics: Eye Height/Width, Total Jitter (TIE), Rise/Fall stats.
+    * **Why:** Complements the visual "Eye Pattern" in Oscilloscope with quantitative data for signal integrity verification. Requires hardware beyond standard audio interfaces.
+
+* **Headless / Web Remote Interface:**
+    * **Concept:** Decouple the GUI from the core engine to allow running the backend on embedded devices (e.g., Raspberry Pi) and viewing results via a web browser or mobile app.
+    * **Why:** Enables remote monitoring of equipment in difficult-to-access locations.
+
+* **Plugin / Scripting System:**
+    * **Concept:** Allow users to write custom Python scripts (DSP hooks) to process audio buffers without recompiling the application.
+    * **Why:** Empowers advanced users to implement custom filters or specialized measurements.
+
+* **3D Spectral Waterfall:**
+    * **Concept:** Extension to the Spectrogram widget to visualize frequency response over time in 3D (Z-axis depth).
+    * **Why:** Superior visualization for analyzing resonance decay and transient behavior.
+
+---
+
 ## 🚀 Active / High Priority (Signal Focus)
 
 ### 🆕 New Proposals
+
+* **Realtime Null Comparator:**
+    * **Concept:** A widget to perform real-time difference listening (Null Test) by inverting one channel and applying precise delay/gain matching.
+    * **Why:** Immediate auditory verification of signal chain transparency without offline file processing.
 
 * **Offline Null Comparator:**
     * **Concept:** A file-based tool to compare two audio recordings (Reference vs. DUT).
@@ -22,31 +50,35 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 * **Step Response Analyzer:**
     * **Concept:** Dedicated widget for analyzing transient response using band-limited step or square wave signals.
     * **Features:** Automated measurement of Rise/Fall Time (10-90%), Overshoot/Undershoot (%), Settling Time, and Pre/Post-ringing Ratio.
-    * **Why:** Essential for characterizing DAC reconstruction filters (distinguishing Linear Phase vs Minimum Phase) and amplifier stability, distinct from the frequency-domain focus of the Network Analyzer.
+    * **Why:** Essential for characterizing DAC reconstruction filters (distinguishing Linear Phase vs Minimum Phase) and amplifier stability.
 
 ### 🛠️ Extensions to Existing Widgets
 
+* **Impedance Analyzer: Cable Tester Mode:**
+    * **Extension:** Add a "Cable Test" preset to measure Capacitance (pF/m), Inductance (µH/m), and Resistance (mΩ/m).
+    * **Why:** Simplifies cable characterization for audiophiles and engineers using existing hardware.
+
 * **Network Analyzer: Impulse Response View:**
     * **Extension:** Add a time-domain "Impulse Response" plot tab to the Network Analyzer.
-    * **Why:** The analyzer already calculates IR internally for the frequency response. Visualizing the IR allows diagnosis of time-domain issues (polarity, pre-ringing, reflections) without needing a separate tool.
+    * **Why:** Visualizing the IR allows diagnosis of time-domain issues (polarity, pre-ringing, reflections).
 
 * **Network Analyzer: Coherence Function:**
     * **Extension:** Add a Coherence plot (0.0 - 1.0) to the Transfer Function mode.
-    * **Why:** To evaluate measurement confidence and linearity/SNR, especially in noisy environments or when measuring non-linear devices.
+    * **Why:** To evaluate measurement confidence and linearity/SNR.
 
 * **Spectrum Analyzer: Cepstrum Analysis:**
     * **Extension:** Add "Cepstrum" (Power Cepstrum) mode (Quefrency domain).
-    * **Why:** Useful for analyzing harmonic structures, pitch detection, and separating source/filter characteristics (echo/reflection analysis).
+    * **Why:** Useful for analyzing harmonic structures and pitch detection.
 
 ---
 
 ## ✅ Already Implemented
 
-* **Quantization / Bit Depth Analyzer:** Integrated into the "Settings" dialog (Audio Devices tab). It estimates effective bit depth (ENOB) and visualizes quantization noise/LSB activity to verify signal path integrity.
-* **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer` (supports L->R / R->L).
+* **Quantization / Bit Depth Analyzer:** Integrated into Settings (Audio Devices tab).
+* **Crosstalk Analyzer:** Integrated into `NetworkAnalyzer`.
 * **Multitone Analyzer:** Implemented in `AdvancedDistortionMeter`.
 * **Oscilloscope Persistence / Eye Pattern:** Implemented in `Oscilloscope`.
-* **Linearity Analyzer:** Implemented as a dedicated widget (`LinearityAnalyzer`).
+* **Linearity Analyzer:** Implemented as `LinearityAnalyzer`.
 
 ---
 
