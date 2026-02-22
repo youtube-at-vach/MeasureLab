@@ -101,6 +101,7 @@ class SignalParameters:
 
     # Frequency Calibration
     use_freq_cal: bool = False
+    freq_cal_manual_ppm: float = 0.0
 
     # Internal state (not shared/copied usually, but kept here for simplicity per channel)
     _phase: float = 0.0
@@ -156,9 +157,13 @@ class SignalGenerator(MeasurementModule):
             cal = self.audio_engine.calibration
             if hasattr(cal, "get_active_frequency_calibration"):
                 val = cal.get_active_frequency_calibration()
-                return 1.0 / val if val > 0 else 1.0
-            val = getattr(cal, "frequency_calibration", 1.0)
-            return 1.0 / val if val > 0 else 1.0
+                base_cal = 1.0 / val if val > 0 else 1.0
+            else:
+                val = getattr(cal, "frequency_calibration", 1.0)
+                base_cal = 1.0 / val if val > 0 else 1.0
+
+            ppm_adj = getattr(params, "freq_cal_manual_ppm", 0.0)
+            return base_cal * (1.0 + ppm_adj / 1_000_000.0)
         return 1.0
 
     def _generate_noise_buffer(self, params: SignalParameters, sample_rate, duration=5.0):
@@ -1295,10 +1300,23 @@ class SignalGeneratorWidget(QWidget):
         # Apply Frequency Calibration Checkbox
         cal_layout = QHBoxLayout()
         self.cal_check = QCheckBox(tr("Apply Frequency Calibration"))
+        self.cal_check.toggled.connect(self.on_cal_toggled)
+
+        self.cal_ppm_label = QLabel(tr("Fine Tune:"))
+        self.cal_ppm_spin = QDoubleSpinBox()
+        self.cal_ppm_spin.setRange(-1000.0, 1000.0)
+        self.cal_ppm_spin.setSingleStep(0.001)
+        self.cal_ppm_spin.setDecimals(3)
+        self.cal_ppm_spin.setSuffix(" ppm")
+        self.cal_ppm_spin.setToolTip(tr("Manual Frequency Calibration Adjustment"))
+        self.cal_ppm_spin.valueChanged.connect(self.on_cal_ppm_changed)
+
         self.cal_freq_label = QLabel("")
         self.cal_freq_label.setStyleSheet("color: gray;")
-        self.cal_check.toggled.connect(self.on_cal_toggled)
+
         cal_layout.addWidget(self.cal_check)
+        cal_layout.addWidget(self.cal_ppm_label)
+        cal_layout.addWidget(self.cal_ppm_spin)
         cal_layout.addWidget(self.cal_freq_label)
         cal_layout.addStretch()
         layout.addRow(tr("Frequency Calibration:"), cal_layout)
@@ -1528,6 +1546,9 @@ class SignalGeneratorWidget(QWidget):
         self.freq_slider.setValue(self._freq_to_slider(params.frequency))
 
         self.cal_check.setChecked(getattr(params, "use_freq_cal", False))
+        self.cal_ppm_label.setEnabled(getattr(params, "use_freq_cal", False))
+        self.cal_ppm_spin.setValue(getattr(params, "freq_cal_manual_ppm", 0.0))
+        self.cal_ppm_spin.setEnabled(getattr(params, "use_freq_cal", False))
         self.update_cal_freq_label()
 
         self.phase_spin.setValue(params.phase_offset)
@@ -1589,6 +1610,7 @@ class SignalGeneratorWidget(QWidget):
             self.freq_spin,
             self.freq_slider,
             self.cal_check,
+            self.cal_ppm_spin,
             self.phase_spin,
             self.phase_slider,
             self.delay_spin,
@@ -1640,6 +1662,7 @@ class SignalGeneratorWidget(QWidget):
         dst.waveform = src.waveform
         dst.frequency = src.frequency
         dst.use_freq_cal = getattr(src, "use_freq_cal", False)
+        dst.freq_cal_manual_ppm = getattr(src, "freq_cal_manual_ppm", 0.0)
         dst.amplitude = src.amplitude
         dst.noise_color = src.noise_color
         dst.fm_enabled = src.fm_enabled
@@ -1687,6 +1710,12 @@ class SignalGeneratorWidget(QWidget):
 
     def on_cal_toggled(self, checked):
         self.update_param("use_freq_cal", checked)
+        self.cal_ppm_label.setEnabled(checked)
+        self.cal_ppm_spin.setEnabled(checked)
+        self.update_cal_freq_label()
+
+    def on_cal_ppm_changed(self, value):
+        self.update_param("freq_cal_manual_ppm", value)
         self.update_cal_freq_label()
 
     def update_cal_freq_label(self):
