@@ -1296,6 +1296,16 @@ class SettingsWidget(QWidget):
 
         cal_layout.addRow(tr("SPL Offset:"), spl_layout)
 
+        # Frequency Calibration Source
+        self.freq_cal_source_combo = QComboBox()
+        self.freq_cal_source_combo.addItem(tr("Frequency Counter"), "basic")
+        self.freq_cal_source_combo.addItem(tr("1PPS Monitor"), "1pps")
+        idx = self.freq_cal_source_combo.findData(self.audio_engine.calibration.frequency_calibration_source)
+        if idx >= 0:
+            self.freq_cal_source_combo.setCurrentIndex(idx)
+        self.freq_cal_source_combo.currentIndexChanged.connect(self.on_freq_cal_source_changed)
+        cal_layout.addRow(tr("Frequency Calibration Source:"), self.freq_cal_source_combo)
+
         cal_group.setLayout(cal_layout)
         calibration_layout.addWidget(cal_group)
 
@@ -1449,6 +1459,11 @@ class SettingsWidget(QWidget):
             self.update_spl_display()
         except ValueError:
             self.update_spl_display()
+
+    def on_freq_cal_source_changed(self, index: int):
+        source = self.freq_cal_source_combo.currentData()
+        if source:
+            self.audio_engine.calibration.set_frequency_calibration_source(source)
 
     def on_show_adv_cal_toggled(self, checked):
         self.adv_cal_group.setVisible(checked)

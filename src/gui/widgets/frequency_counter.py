@@ -239,7 +239,10 @@ class FrequencyCounter(MeasurementModule):
         cal_factor = 1.0
         calibration = getattr(self.audio_engine, "calibration", None)
         if calibration is not None:
-            cal_factor = getattr(calibration, "frequency_calibration", 1.0)
+            if hasattr(calibration, "get_active_frequency_calibration"):
+                cal_factor = calibration.get_active_frequency_calibration()
+            else:
+                cal_factor = getattr(calibration, "frequency_calibration", 1.0)
         try:
             cal_factor = float(cal_factor)
         except Exception:
@@ -1066,7 +1069,10 @@ class FrequencyCounterWidget(QWidget):
         cal_factor = 1.0
         calibration = getattr(self.module.audio_engine, "calibration", None)
         if calibration is not None:
-            cal_factor = getattr(calibration, "frequency_calibration", 1.0)
+            if hasattr(calibration, "get_active_frequency_calibration"):
+                cal_factor = calibration.get_active_frequency_calibration()
+            else:
+                cal_factor = getattr(calibration, "frequency_calibration", 1.0)
         try:
             cal_factor = float(cal_factor)
         except Exception:

@@ -19,6 +19,7 @@ class TestFrequencyCalibration(unittest.TestCase):
         # Mock calibration object
         self.mock_audio_engine.calibration = MagicMock()
         self.mock_audio_engine.calibration.frequency_calibration = 1.0
+        self.mock_audio_engine.calibration.get_active_frequency_calibration.return_value = 1.0
 
         self.counter = FrequencyCounter(self.mock_audio_engine)
         self.counter.is_running = True # Enable processing
@@ -26,6 +27,7 @@ class TestFrequencyCalibration(unittest.TestCase):
     def test_calibration_applied(self):
         # Setup
         self.mock_audio_engine.calibration.frequency_calibration = 1.0
+        self.mock_audio_engine.calibration.get_active_frequency_calibration.return_value = 1.0
 
         # Create a sine wave in input_buffer to pass gate and coarse check
         sr = 48000
@@ -44,6 +46,7 @@ class TestFrequencyCalibration(unittest.TestCase):
 
             # Case 1: Factor 1.0
             self.mock_audio_engine.calibration.frequency_calibration = 1.0
+            self.mock_audio_engine.calibration.get_active_frequency_calibration.return_value = 1.0
             mock_opt.return_value = 1000.0
 
             freq = self.counter.process()
@@ -52,6 +55,7 @@ class TestFrequencyCalibration(unittest.TestCase):
 
             # Case 2: Factor 1.000001 (1ppm offset)
             self.mock_audio_engine.calibration.frequency_calibration = 1.000001
+            self.mock_audio_engine.calibration.get_active_frequency_calibration.return_value = 1.000001
 
             freq = self.counter.process()
             # Expected: 1000.0 * 1.000001 = 1000.001
