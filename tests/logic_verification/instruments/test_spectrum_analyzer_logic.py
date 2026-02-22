@@ -13,7 +13,7 @@ if 'sounddevice' not in sys.modules:
     sys.modules['sounddevice'] = MagicMock()
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 try:
     from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
