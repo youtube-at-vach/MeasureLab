@@ -2,7 +2,6 @@ import sys
 import os
 import unittest
 from unittest.mock import MagicMock, patch
-import numpy as np
 
 # Ensure root is in path
 sys.path.append(os.getcwd())
@@ -19,39 +18,41 @@ class MockMeasurementModule:
         pass
 
 class TestUltrasoundModulatorLogic(unittest.TestCase):
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         # Prepare Mocks
-        self.qt_widgets = MagicMock()
-        self.qt_widgets.QWidget = MockQWidget
+        cls.qt_widgets = MagicMock()
+        cls.qt_widgets.QWidget = MockQWidget
 
         # Setup sys.modules patching
-        self.modules_patch = patch.dict(sys.modules, {
+        cls.modules_patch = patch.dict(sys.modules, {
             "PyQt6": MagicMock(),
             "PyQt6.QtCore": MagicMock(),
-            "PyQt6.QtWidgets": self.qt_widgets,
+            "PyQt6.QtWidgets": cls.qt_widgets,
             "scipy": MagicMock(),
             "scipy.signal": MagicMock(),
             "src.core.audio_engine": MagicMock(),
             "src.core.localization": MagicMock(),
             "src.measurement_modules.base": MagicMock(),
         })
-        self.modules_patch.start()
+        cls.modules_patch.start()
 
         # Specific configurations
         sys.modules["src.core.localization"].tr = lambda x: x
         sys.modules["src.measurement_modules.base"].MeasurementModule = MockMeasurementModule
 
         # Import Target
-        # Force reload not needed if running fresh process, but good practice if test runner reuses process
-        if "src.gui.widgets.ultrasound_modulator" in sys.modules:
-            del sys.modules["src.gui.widgets.ultrasound_modulator"]
+        # Note: Do NOT reload or delete sys.modules entries for modules that import numpy extension modules,
+        # as it can cause "ImportError: cannot load module more than once per process".
+        # Instead, rely on patching only affecting future imports or existing mocks.
 
         from src.gui.widgets.ultrasound_modulator import UltrasoundModulatorWidget, UltrasoundModulator
-        self.UltrasoundModulatorWidget = UltrasoundModulatorWidget
-        self.UltrasoundModulator = UltrasoundModulator
+        cls.UltrasoundModulatorWidget = UltrasoundModulatorWidget
+        cls.UltrasoundModulator = UltrasoundModulator
 
-    def tearDown(self):
-        self.modules_patch.stop()
+    @classmethod
+    def tearDownClass(cls):
+        cls.modules_patch.stop()
 
     def _create_mock_module(self):
         mod_mock = MagicMock(spec=self.UltrasoundModulator)
