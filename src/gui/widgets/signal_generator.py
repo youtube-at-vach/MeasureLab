@@ -237,7 +237,7 @@ class SignalGenerator(MeasurementModule):
     def _generate_multitone(self, params: SignalParameters, sample_rate):
         """Generates a Crest-Factor optimized Multitone signal."""
         cal_factor = self._get_cal_factor(params)
-        
+
         if params.start_freq >= params.end_freq:
             freqs = np.array([params.start_freq])
         else:
@@ -340,7 +340,7 @@ class SignalGenerator(MeasurementModule):
         """Generates a Tone Burst."""
         cal_factor = self._get_cal_factor(params)
         target_freq = params.frequency * cal_factor
-        
+
         total_cycles = params.burst_on_cycles + params.burst_off_cycles
         cycle_duration = 1.0 / target_freq if target_freq > 0 else 1.0
         total_duration = total_cycles * cycle_duration
@@ -605,7 +605,7 @@ class SignalGenerator(MeasurementModule):
                 return y
 
             cal_factor = self._get_cal_factor(params)
-            
+
             # Use effective parameters for clean continuous generation
             sample_rate_eff = base_sample_rate / cal_factor if cal_factor > 0 else base_sample_rate
             t_global_eff = t_global * cal_factor
@@ -619,7 +619,7 @@ class SignalGenerator(MeasurementModule):
                     buf = params._buffer
                     buf_len = len(buf)
                     if buf_len > 0:
-                        delay_samples = float(params.delay_ms) * float(sample_rate) / 1000.0
+                        delay_samples = float(params.delay_ms) * float(base_sample_rate) / 1000.0
                         # Use remainder + explicit wrapping to avoid rare float edge cases
                         # where floor(idx) can equal buf_len.
                         idx = np.remainder(
@@ -1295,8 +1295,12 @@ class SignalGeneratorWidget(QWidget):
         # Apply Frequency Calibration Checkbox
         cal_layout = QHBoxLayout()
         self.cal_check = QCheckBox(tr("Apply Frequency Calibration"))
-        self.cal_check.toggled.connect(lambda v: self.update_param("use_freq_cal", v))
+        self.cal_freq_label = QLabel("")
+        self.cal_freq_label.setStyleSheet("color: gray;")
+        self.cal_check.toggled.connect(self.on_cal_toggled)
         cal_layout.addWidget(self.cal_check)
+        cal_layout.addWidget(self.cal_freq_label)
+        cal_layout.addStretch()
         layout.addRow(tr("Frequency Calibration:"), cal_layout)
 
     def _create_options_tabs(self):
@@ -1522,8 +1526,9 @@ class SignalGeneratorWidget(QWidget):
 
         self.freq_spin.setValue(params.frequency)
         self.freq_slider.setValue(self._freq_to_slider(params.frequency))
-        
+
         self.cal_check.setChecked(getattr(params, "use_freq_cal", False))
+        self.update_cal_freq_label()
 
         self.phase_spin.setValue(params.phase_offset)
         self.phase_slider.setValue(int(params.phase_offset))
@@ -1680,6 +1685,24 @@ class SignalGeneratorWidget(QWidget):
         elif self.route_stereo.isChecked():
             self.module.output_mode = "STEREO"
 
+    def on_cal_toggled(self, checked):
+        self.update_param("use_freq_cal", checked)
+        self.update_cal_freq_label()
+
+    def update_cal_freq_label(self):
+        params_list = self.get_active_params_list()
+        if not params_list:
+            self.cal_freq_label.setText("")
+            return
+
+        params = params_list[0]
+        if getattr(params, "use_freq_cal", False):
+            cal_factor = self.module._get_cal_factor(params)
+            calibrated_freq = params.frequency * cal_factor
+            self.cal_freq_label.setText(f"({calibrated_freq:.3f} Hz)")
+        else:
+            self.cal_freq_label.setText("")
+
     def on_snap_toggled(self, checked):
         self.update_param("bin_center_snap", checked)
         self.fft_size_combo.setEnabled(checked)
@@ -1749,6 +1772,7 @@ class SignalGeneratorWidget(QWidget):
         snapped_val = self._get_snapped_frequency(val)
 
         self.update_param("frequency", snapped_val)
+        self.update_cal_freq_label()
 
         # Block signals to update UI without recursion
         self.freq_spin.blockSignals(True)
@@ -1767,6 +1791,7 @@ class SignalGeneratorWidget(QWidget):
         snapped_freq = self._get_snapped_frequency(freq)
 
         self.update_param("frequency", snapped_freq)
+        self.update_cal_freq_label()
 
         self.freq_spin.blockSignals(True)
         self.freq_slider.blockSignals(True)
