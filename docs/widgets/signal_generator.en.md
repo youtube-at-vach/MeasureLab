@@ -58,6 +58,9 @@ You can choose from the following waveforms:
 
 Available parameters vary depending on the waveform.
 
+> [!NOTE]
+> Changes to parameters (including buffered waveforms such as Noise and Multitone) are applied immediately in real-time without restarting the output.
+
 * **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input.
 * **Snap to Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT Size to prevent spectral leakage. Useful for accurate distortion measurements.
 * **Phase Offset (deg)**: The initial phase of the signal. Used when you want to create a phase difference between the left and right channels.

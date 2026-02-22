@@ -52,8 +52,8 @@ The current signal measurement values are displayed in the upper left of the scr
 
 When **"Enable Waveform Measurements"** is checked, the following additional measurement values are also displayed (automatically calculated from the waveform shape).
 
-* **Freq**: Frequency.
-* **Rise/Fall**: Rise/Fall time.
+* **Freq**: Frequency (displayed in Hz, kHz, etc.).
+* **Rise/Fall**: Rise/Fall time (displayed in s, ms, us, ns).
 
 ### Cursors
 
