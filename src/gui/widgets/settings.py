@@ -1295,17 +1295,6 @@ class SettingsWidget(QWidget):
         spl_layout.addWidget(spl_btn)
 
         cal_layout.addRow(tr("SPL Offset:"), spl_layout)
-
-        # Frequency Calibration Source
-        self.freq_cal_source_combo = QComboBox()
-        self.freq_cal_source_combo.addItem(tr("Frequency Counter"), "basic")
-        self.freq_cal_source_combo.addItem(tr("1PPS Monitor"), "1pps")
-        idx = self.freq_cal_source_combo.findData(self.audio_engine.calibration.frequency_calibration_source)
-        if idx >= 0:
-            self.freq_cal_source_combo.setCurrentIndex(idx)
-        self.freq_cal_source_combo.currentIndexChanged.connect(self.on_freq_cal_source_changed)
-        cal_layout.addRow(tr("Frequency Calibration Source:"), self.freq_cal_source_combo)
-
         cal_group.setLayout(cal_layout)
         calibration_layout.addWidget(cal_group)
 
@@ -1318,6 +1307,16 @@ class SettingsWidget(QWidget):
         self.adv_cal_group = QGroupBox(tr("Stored Calibration Values"))
         self.adv_cal_group.setVisible(False)
         adv_cal_layout = QFormLayout()
+
+        # Frequency Calibration Source
+        self.freq_cal_source_combo = QComboBox()
+        self.freq_cal_source_combo.addItem(tr("Frequency Counter"), "basic")
+        self.freq_cal_source_combo.addItem(tr("1PPS Monitor"), "1pps")
+        idx = self.freq_cal_source_combo.findData(self.audio_engine.calibration.frequency_calibration_source)
+        if idx >= 0:
+            self.freq_cal_source_combo.setCurrentIndex(idx)
+        self.freq_cal_source_combo.currentIndexChanged.connect(self.on_freq_cal_source_changed)
+        adv_cal_layout.addRow(tr("Frequency Calibration Source:"), self.freq_cal_source_combo)
 
         # Frequency Calibration (ppm)
         self.freq_cal_ppm_edit = QLineEdit()
