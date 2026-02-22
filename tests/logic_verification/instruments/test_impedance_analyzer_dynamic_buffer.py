@@ -4,7 +4,7 @@ import sys
 import os
 
 # Ensure src is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 
 # Mock sounddevice
 sys.modules['sounddevice'] = MagicMock()
