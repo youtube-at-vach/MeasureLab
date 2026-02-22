@@ -155,8 +155,10 @@ class SignalGenerator(MeasurementModule):
         if getattr(params, "use_freq_cal", False) and hasattr(self.audio_engine, "calibration"):
             cal = self.audio_engine.calibration
             if hasattr(cal, "get_active_frequency_calibration"):
-                return cal.get_active_frequency_calibration()
-            return getattr(cal, "frequency_calibration", 1.0)
+                val = cal.get_active_frequency_calibration()
+                return 1.0 / val if val > 0 else 1.0
+            val = getattr(cal, "frequency_calibration", 1.0)
+            return 1.0 / val if val > 0 else 1.0
         return 1.0
 
     def _generate_noise_buffer(self, params: SignalParameters, sample_rate, duration=5.0):
