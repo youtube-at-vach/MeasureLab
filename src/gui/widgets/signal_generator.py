@@ -1295,7 +1295,7 @@ class SignalGeneratorWidget(QWidget):
         self.cal_check = QCheckBox(tr("Apply Frequency Calibration"))
         self.cal_check.toggled.connect(lambda v: self.update_param("use_freq_cal", v))
         cal_layout.addWidget(self.cal_check)
-        layout.addRow("", cal_layout)
+        layout.addRow(tr("Frequency Calibration:"), cal_layout)
 
     def _create_options_tabs(self):
         tabs = QTabWidget()
