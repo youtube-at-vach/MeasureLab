@@ -7,10 +7,8 @@ import sys
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
-WIDGETS_DIR = os.path.join(PROJECT_ROOT, "src", "gui", "widgets")
-CORE_DIR = os.path.join(PROJECT_ROOT, "src", "core")
-MAIN_WINDOW_FILE = os.path.join(PROJECT_ROOT, "src", "gui", "main_window.py")
+SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+LANG_DIR = os.path.join(SRC_DIR, "assets", "lang")
 MAIN_GUI_FILE = os.path.join(PROJECT_ROOT, "main_gui.py")
 
 # Helpers
@@ -136,13 +134,12 @@ def main():
 
     # 2. Extract keys from Code
     files_to_scan = []
-    # Widgets
-    files_to_scan.extend(glob.glob(os.path.join(WIDGETS_DIR, "*.py")))
-    # Core
-    files_to_scan.extend(glob.glob(os.path.join(CORE_DIR, "*.py")))
-    # Main Window
-    if os.path.exists(MAIN_WINDOW_FILE):
-        files_to_scan.append(MAIN_WINDOW_FILE)
+    # Recursive scan of src/ directory
+    for root, _dirs, files in os.walk(SRC_DIR):
+        for file in files:
+            if file.endswith(".py"):
+                files_to_scan.append(os.path.join(root, file))
+
     # Main GUI
     if os.path.exists(MAIN_GUI_FILE):
         files_to_scan.append(MAIN_GUI_FILE)
