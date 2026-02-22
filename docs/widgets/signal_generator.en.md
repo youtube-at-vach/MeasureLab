@@ -66,6 +66,9 @@ Available parameters vary depending on the waveform.
     * **Linear (0-1)**: Linear scale from 0.0 to 1.0.
     * **dBFS**: Decibel value relative to digital full scale. The maximum value is 0 dBFS.
     * **dBV, dBu, Vrms, Vpeak**: Voltage units (*requires output calibration for accurate display).
+* **Frequency Calibration**:
+    * **Apply Frequency Calibration**: When checked, applies the frequency calibration factor sets in Settings. While active, the calibrated frequency is displayed to the right of the input field.
+    * **Manual Adjustment (Fine Tune)**: Allows manual fine-tuning (in ppm) to the calibration factor. Useful if a tiny discrepancy remains in a physical loopback test.
 
 ## Modulation and Sweep Functions
 
