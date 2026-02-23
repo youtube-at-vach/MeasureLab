@@ -1,14 +1,13 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
-import pytest
 import sys
 import os
 
 # Add src to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication
 from src.gui.widgets.ultrasound_modulator import UltrasoundModulator, UltrasoundModulatorWidget
 import src.gui.widgets.ultrasound_modulator as um_module
 
@@ -127,11 +126,12 @@ class TestUltrasoundSSB(unittest.TestCase):
 
         target_idx = np.argmin(np.abs(freqs - 11000))
         image_idx = np.argmin(np.abs(freqs - 9000))
-        carrier_idx = np.argmin(np.abs(freqs - 10000))
+        # Carrier frequency index is calculated but unused variable 'carrier_amp' removed to fix lint error
+        # carrier_idx = np.argmin(np.abs(freqs - 10000))
 
         target_amp = fft_out[target_idx]
         image_amp = fft_out[image_idx]
-        carrier_amp = fft_out[carrier_idx]
+        # carrier_amp = fft_out[carrier_idx]
 
         # Check suppression
         # We expect Target >> Image

@@ -2,7 +2,6 @@ import sys
 import unittest
 import numpy as np
 import pytest
-from unittest.mock import MagicMock
 import os
 
 # Add src to path

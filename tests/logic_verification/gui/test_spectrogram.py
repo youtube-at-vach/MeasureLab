@@ -10,10 +10,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 # Mock sounddevice to avoid import errors or audio device initialization
 sys.modules['sounddevice'] = MagicMock()
 
-from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker, SpectrogramWidget
-from src.core.fft_manager import WARMUP_SIZES
-from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
-from PyQt6.QtWidgets import QApplication
+from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker, SpectrogramWidget  # noqa: E402
+from src.core.fft_manager import WARMUP_SIZES  # noqa: E402
+from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # noqa: E402
+from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 # Shared Mock AudioEngine
 class MockAudioEngine:

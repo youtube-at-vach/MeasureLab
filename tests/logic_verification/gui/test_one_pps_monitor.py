@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import QLabel, QDoubleSpinBox
 import pyqtgraph as pg
 
 from src.gui.widgets.one_pps_monitor import OnePPSMonitor, OnePPSMonitorWidget
-from src.core.audio_engine import AudioEngine
 
 # -----------------------------------------------------------------------------
 # Helpers
