@@ -1187,6 +1187,13 @@ class SettingsWidget(QWidget):
         self.dithering_depth_combo.currentIndexChanged.connect(self.on_dithering_depth_changed)
         conf_layout.addRow(tr("Dithering Bit Depth:"), self.dithering_depth_combo)
 
+        # 64-bit Audio Engine
+        self.audio_engine_64bit_check = QCheckBox(tr("64-bit Audio Engine (Float64)"))
+        self.audio_engine_64bit_check.setToolTip(tr("Enable 64-bit processing for ultra-low distortion measurements. Applies immediately."))
+        self.audio_engine_64bit_check.setChecked(self.config_manager.is_audio_engine_64bit())
+        self.audio_engine_64bit_check.toggled.connect(self.on_audio_engine_64bit_toggled)
+        conf_layout.addRow(self.audio_engine_64bit_check)
+
         conf_group.setLayout(conf_layout)
         audio_layout.addWidget(conf_group)
 
@@ -1434,6 +1441,49 @@ class SettingsWidget(QWidget):
         self.config_manager.set_dithering_bit_depth(depth)
         self.audio_engine.dithering_bit_depth = depth
         self.logger.debug(f"Dithering bit depth set to: {depth}")
+
+    def on_audio_engine_64bit_toggled(self, checked: bool):
+        self.config_manager.set_audio_engine_64bit(checked)
+        self.audio_engine.set_audio_engine_64bit(checked)
+        self.logger.debug(f"64-bit Audio Engine set to: {checked}")
+
+        # If enabled, check and generate FFT plans if they don't seem fully populated
+        if checked:
+            from PyQt6.QtWidgets import QProgressDialog
+            from PyQt6.QtCore import Qt
+            from src.core.fft_manager import FFTManager
+            import numpy as np
+
+            manager = FFTManager()
+            # Simple heuristic: check if a basic float64 plan exists. We check if 32768 size exists for float64.
+            # PyFFTW wisdom stores plans across sessions if saved correctly, but to ensure smooth first-time experience:
+            # We explicitly trigger a targeted warmup for float64 specifically.
+            progress = QProgressDialog(tr("Optimizing 64-bit FFT Operations..."), tr("Cancel"), 0, 100, self)
+            progress.setWindowModality(Qt.WindowModality.WindowModal)
+            progress.setWindowTitle(tr("FFT Optimization"))
+            progress.setMinimumDuration(0)
+            progress.setValue(0)
+
+            # Define sizes to warm up
+            sizes_to_warm = [
+                1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144
+            ]
+            
+            if self.include_huge_check.isChecked():
+                sizes_to_warm.extend([524288, 1048576, 2097152, 4194304])
+
+            total_sizes = len(sizes_to_warm)
+            
+            for i, size in enumerate(sizes_to_warm):
+                if progress.wasCanceled():
+                    break
+                # Only warming up float64
+                _ = manager.get_plan(size, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_FORWARD")
+                _ = manager.get_plan(size//2 + 1, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_BACKWARD")
+                progress.setValue(int(((i + 1) / total_sizes) * 100))
+
+            manager.save_wisdom()
+            progress.setValue(100)
 
     def open_spl_calibration(self):
         dlg = SplCalibrationDialog(self.audio_engine, self)

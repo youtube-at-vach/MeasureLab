@@ -30,6 +30,7 @@ DEFAULT_CONFIG = {
         "offline_sample_rate": 48000,
         "dithering_enabled": False,
         "dithering_bit_depth": "24",
+        "audio_engine_64bit": False,
     },
     "language": "en",
     "theme": "system",
@@ -387,6 +388,18 @@ class ConfigManager:
         if "audio" not in self.config:
             self.config["audio"] = {}
         self.config["audio"]["dithering_bit_depth"] = str(depth)
+        self.save_config()
+
+    def is_audio_engine_64bit(self) -> bool:
+        """Returns whether the 64-bit audio engine is enabled."""
+        audio = self.get_audio_config()
+        return bool(audio.get("audio_engine_64bit", False))
+
+    def set_audio_engine_64bit(self, enabled: bool):
+        """Enables/disables the 64-bit audio engine."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["audio_engine_64bit"] = bool(enabled)
         self.save_config()
 
     def get_language(self):

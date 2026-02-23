@@ -205,6 +205,10 @@ class MainWindow(QMainWindow):
             # Apply PipeWire/JACK resident mode after devices + format are configured.
             self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
 
+            # Apply 64-bit engine mode
+            is_64bit = audio_cfg.get("audio_engine_64bit", False)
+            self.audio_engine.set_audio_engine_64bit(is_64bit)
+
         except Exception as e:
             self.logger.error(f"Failed to set devices/settings: {e}")
             # Try default if specific failed
