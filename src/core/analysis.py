@@ -554,7 +554,7 @@ class AudioCalc:
             idx_max = idx_min + 1
 
         # Find max in range
-        if idx_max < len(amplitude_spectrum):
+        if idx_max <= len(amplitude_spectrum):
             subset = amplitude_spectrum[idx_min:idx_max]
             if len(subset) > 0:
                 local_max_idx = np.argmax(subset)
@@ -600,8 +600,20 @@ class AudioCalc:
             h_idx_min = np.searchsorted(freqs, harmonic_freq - search_window)
             h_idx_max = np.searchsorted(freqs, harmonic_freq + search_window)
 
-            if h_idx_max < len(amplitude_spectrum) and h_idx_max > h_idx_min:
+            if h_idx_max <= len(amplitude_spectrum) and h_idx_max > h_idx_min:
                 subset = amplitude_spectrum[h_idx_min:h_idx_max]
+                if len(subset) == 0:
+                    # Can happen if h_idx_min >= len
+                    harmonic_results.append(
+                        {
+                            "order": i,
+                            "frequency": harmonic_freq,
+                            "amplitude_dbr": min_db,
+                            "amplitude_linear": 0,
+                        }
+                    )
+                    continue
+
                 local_max_h = np.argmax(subset)
                 h_peak_idx = h_idx_min + local_max_h
 
