@@ -66,63 +66,138 @@ class LoopbackFinder(MeasurementModule):
         return "Detects active loopback paths between output and input channels."
 
     def perform_scan(self, device_id, sample_rate, progress_callback=None, check_stop=None):
-        device_info = sd.query_devices(device_id)
-        max_out = device_info["max_output_channels"]
-        max_in = device_info["max_input_channels"]
+        if isinstance(device_id, tuple):
+            input_device, output_device = device_id
+            in_info = sd.query_devices(input_device)
+            out_info = sd.query_devices(output_device)
+            max_in = in_info["max_input_channels"]
+            max_out = out_info["max_output_channels"]
+        else:
+            device_info = sd.query_devices(device_id)
+            max_out = device_info["max_output_channels"]
+            max_in = device_info["max_input_channels"]
 
         if max_out == 0 or max_in == 0:
             raise Exception(f"Device {device_id} does not support both input and output.")
 
         found_paths = []
         test_freq = 440
-        duration = 0.1
+        tone_duration = 0.1
+        listen_padding = 0.2  # Allow latency/tail capture
+        step_duration = tone_duration + listen_padding
+
+        tone_frames = int(sample_rate * tone_duration)
+        step_frames = int(sample_rate * step_duration)
+
+        # Wait a short duration to let JACK/PipeWire routing establish
+        settle_duration = 0.8
+        settle_frames = int(sample_rate * settle_duration)
+
+        t = np.linspace(0, tone_duration, tone_frames, False, dtype=np.float32)
+        test_signal = 0.5 * np.sin(2 * np.pi * test_freq * t)
+
+        freqs = fft_manager.rfftfreq(step_frames, 1 / sample_rate)
+        target_bin = np.argmin(np.abs(freqs - test_freq))
         threshold = 0.01  # -40dBFS approx
 
-        t = np.linspace(0, duration, int(sample_rate * duration), False, dtype=np.float32)
-        test_signal = 0.5 * np.sin(2 * np.pi * test_freq * t)  # -6dBFS
+        current_out_ch = 0
+        current_frame = 0
+        settle_passed = 0
 
-        # Optimization: Calculate frequencies and target bin once outside the loop
-        freqs = fft_manager.rfftfreq(len(test_signal), 1 / sample_rate)
-        target_bin = np.argmin(np.abs(freqs - test_freq))
+        rec_buffer = np.zeros((step_frames, max_in), dtype=np.float32)
+        stream_error = None
 
-        for out_ch in range(max_out):
-            if check_stop and check_stop():
-                break
-
-            if progress_callback:
-                progress_callback(int((out_ch / max_out) * 100), tr("Testing Output Channel {}").format(out_ch + 1))
-
-            # Prepare output buffer for all channels
-            output_signal = np.zeros((len(test_signal), max_out), dtype=np.float32)
-            output_signal[:, out_ch] = test_signal
-
-            # Play and Record
-            # We record all input channels
+        def callback(indata, outdata, frames, time_info, status):
+            nonlocal current_out_ch, current_frame, settle_passed, rec_buffer, stream_error
             try:
-                recorded_signal = sd.playrec(
-                    output_signal, samplerate=sample_rate, channels=max_in, device=device_id, blocking=True
-                )
+                outdata.fill(0)
+
+                if current_out_ch >= max_out:
+                    raise sd.CallbackStop()
+
+                frames_processed = 0
+                if settle_passed < settle_frames:
+                    rem_settle = settle_frames - settle_passed
+                    consume = min(frames, rem_settle)
+                    settle_passed += consume
+                    frames_processed += consume
+
+                while frames_processed < frames:
+                    if current_out_ch >= max_out:
+                        raise sd.CallbackStop()
+
+                    rem_in_step = step_frames - current_frame
+                    write_size = min(frames - frames_processed, rem_in_step)
+
+                    rec_start = current_frame
+                    rec_end = current_frame + write_size
+                    in_start = frames_processed
+                    in_end = frames_processed + write_size
+
+                    # Store recording, up to max_in channels to prevent slice errors
+                    rec_buffer[rec_start:rec_end, :] = indata[in_start:in_end, :max_in]
+
+                    # Output tone
+                    tone_rem = tone_frames - current_frame
+                    if tone_rem > 0:
+                        tone_write = min(write_size, tone_rem)
+                        outdata[in_start : in_start + tone_write, current_out_ch] = test_signal[
+                            current_frame : current_frame + tone_write
+                        ]
+
+                    current_frame += write_size
+                    frames_processed += write_size
+
+                    if current_frame >= step_frames:
+                        # Process the recorded buffer to find paths
+                        for in_ch in range(max_in):
+                            input_fft = fft_manager.rfft(rec_buffer[:, in_ch])
+                            # Normalize by tone_frames so the magnitude scale matches older implementation
+                            magnitude = np.abs(input_fft[target_bin]) / tone_frames * 2
+                            if magnitude > threshold:
+                                found_paths.append((current_out_ch + 1, in_ch + 1, magnitude))
+
+                        current_out_ch += 1
+                        current_frame = 0
+                        rec_buffer.fill(0)
+
+                        # Update UI
+                        if progress_callback:
+                            display_ch = min(current_out_ch + 1, max_out)
+                            progress_callback(
+                                int((current_out_ch / max_out) * 100),
+                                tr("Testing Output Channel {}").format(display_ch),
+                            )
+
+            except sd.CallbackStop:
+                raise
             except Exception as e:
-                raise Exception(f"Error during playback/recording: {str(e)}") from e
+                stream_error = e
+                raise sd.CallbackAbort() from e
 
-            # Analyze inputs
-            for in_ch in range(max_in):
-                # Simple RMS check or FFT? FFT is more robust against noise.
-                # Using FFT as in legacy code
-                input_fft = fft_manager.rfft(recorded_signal[:, in_ch])
-                # freqs and target_bin are pre-calculated
-                magnitude = np.abs(input_fft[target_bin]) / len(recorded_signal) * 2
+        if progress_callback:
+            progress_callback(0, tr("Starting connection..."))
 
-                if magnitude > threshold:
-                    found_paths.append((out_ch + 1, in_ch + 1, magnitude))
+        try:
+            with sd.Stream(
+                device=device_id, samplerate=sample_rate, channels=(max_in, max_out), dtype="float32", callback=callback
+            ) as stream:
+                import time
 
-        # If called from worker, we might want to emit result here or return it.
-        # The worker expects result signal.
+                while stream.active:
+                    time.sleep(0.1)
+                    if check_stop and check_stop():
+                        stream.abort()
+                        break
+        except Exception as e:
+            raise Exception(f"Stream error: {str(e)}") from e
+
+        if stream_error:
+            raise Exception(f"Callback error: {stream_error}")
+
         if self.worker:
             self.worker.result.emit(found_paths)
         return found_paths
-
-
 
     def get_widget(self):
         return LoopbackFinderWidget(self)
@@ -177,33 +252,13 @@ class LoopbackFinderWidget(QWidget):
         self._update_availability()
 
     def _update_availability(self):
-        # Loopback scan relies on PortAudio playrec behavior that is unreliable when
-        # the app runs in PipeWire/JACK resident mode (routing persistence).
-        self._scan_available = not bool(getattr(self.module.audio_engine, "pipewire_jack_resident", False))
-
-        if not self._scan_available:
-            self.start_btn.setEnabled(False)
-            self.stop_btn.setEnabled(False)
-            self.progress_bar.setValue(0)
-            self.status_label.setText(
-                tr(
-                    "Loopback Finder is not available in PipeWire/JACK mode. Disable 'PipeWire / JACK Mode (Resident)' in Settings to use this tool."
-                )
-            )
-        else:
-            self.start_btn.setEnabled(True)
-            self.status_label.setText(tr("Ready"))
+        # Now fully supports JACK resident mode because we use a continuous stream
+        # that allows WirePlumber routing to patch the device during the test.
+        self._scan_available = True
+        self.start_btn.setEnabled(True)
+        self.status_label.setText(tr("Ready"))
 
     def start_scan(self):
-        if not self._scan_available:
-            QMessageBox.warning(
-                self,
-                tr("Unavailable"),
-                tr(
-                    "Loopback Finder is not available in PipeWire/JACK mode. Please disable 'PipeWire / JACK Mode (Resident)' in Settings."
-                ),
-            )
-            return
 
         # Stop main engine if running
         if self.module.audio_engine.stream and self.module.audio_engine.stream.active:
