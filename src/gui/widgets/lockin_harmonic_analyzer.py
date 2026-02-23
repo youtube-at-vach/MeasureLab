@@ -28,7 +28,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
-DISTORTION_DB_FLOOR = -200.0
+DISTORTION_DB_FLOOR = -300.0
 DISTORTION_RATIO_EPS = 10 ** (DISTORTION_DB_FLOOR / 10.0)
 
 
