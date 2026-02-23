@@ -748,9 +748,26 @@ class UltrasoundModulatorWidget(QWidget):
         self.in_gain_spin.blockSignals(False)
 
     def _freq_to_slider(self, freq, min_f, max_f):
+        # Robustness: Clamp values to positive range
+        if min_f <= 0:
+            min_f = 1e-6
+        if max_f <= min_f:
+            max_f = min_f * 10.0
+
+        if freq < min_f:
+            freq = min_f
+        elif freq > max_f:
+            freq = max_f
+
         return int(1000 * (np.log10(freq) - np.log10(min_f)) / (np.log10(max_f) - np.log10(min_f)))
 
     def _slider_to_freq(self, val, min_f, max_f):
+        # Robustness
+        if min_f <= 0:
+            min_f = 1e-6
+        if max_f <= min_f:
+            max_f = min_f * 10.0
+
         log_freq = np.log10(min_f) + (val / 1000) * (np.log10(max_f) - np.log10(min_f))
         return 10**log_freq
 
