@@ -183,7 +183,7 @@ class TestLoopbackFinder(unittest.TestCase):
         sample_rate = 48000
 
         # Should not raise
-        results = self.finder.perform_scan(device_id, sample_rate)
+        self.finder.perform_scan(device_id, sample_rate)
 
         # Verify calls
         sd.query_devices.assert_any_call(1)
