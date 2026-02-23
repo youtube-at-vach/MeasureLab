@@ -25,8 +25,9 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
 2. Press the **Analyze** button to start the analysis.
     - Internally, the audio is resampled to 48kHz for analysis (to optimize psychoacoustic filters).
     - Long files may take some time to process.
-3. Once the analysis is complete, the **Summary Metrics** will display the average values for each channel (Loudness, Sharpness, Roughness, Tonality, Fluctuation Strength, AI).
-4. The graphs below show how each of these metrics "changed over time." Use the tabs to switch between metrics.
+3. Once the analysis is complete, the **Summary Metrics** will display the average values for each channel (Loudness, Sharpness, Roughness, Tonality, Fluctuation Strength, AI) in a table format.
+4. Click the **Export CSV** button to save the analysis results (including average metrics and time-series data) as a CSV file.
+5. The graphs below show how each of these metrics "changed over time." Use the tabs to switch between metrics.
 
 ### Playback and Verification
 

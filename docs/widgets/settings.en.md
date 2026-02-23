@@ -76,13 +76,13 @@ You can save the current calibration settings as a named profile.
 * **Output Gain**: Setting for the voltage level of the output signal. Can be automatically calculated with "Wizard".
 * **SPL Offset**: Correction value of the dB SPL value displayed by the Sound Level Meter, etc. Can be automatically calculated with "Wizard".
 
-### Stored Calibration Values
+### Stored Calibration Values (Advanced Settings)
 
-Visible when "Show stored calibration values" is checked. These are read-only reference data.
+Visible when "Show stored calibration values" is checked.
 
-* **Frequency Calibration Source**: Selects the reference source used for audio engine frequency correction.
+* **Frequency Calibration Source**: Selects the reference source used for audio engine frequency correction (Configurable).
     * **Frequency Counter**: Uses the factor calibrated by the Frequency Counter widget.
     * **1PPS Monitor**: Uses the factor calibrated (Calibrate from Current) from the 1PPS Monitor widget. This provides higher precision calibration when a 1PPS reference is available.
-* **Frequency Calibration**: Frequency deviation of the internal clock (ppm).
-* **1PPS Frequency Calibration**: Deviation from an external reference based on the 1PPS signal (ppm).
-* **Lock-in Gain Offset**: Internal gain correction value for lock-in amplifier measurements (mdB/dB).
+* **Frequency Calibration**: Frequency deviation of the internal clock (ppm). (Read-only)
+* **1PPS Frequency Calibration**: Deviation from an external reference based on the 1PPS signal (ppm). (Read-only)
+* **Lock-in Gain Offset**: Internal gain correction value for lock-in amplifier measurements (mdB/dB). (Read-only)
