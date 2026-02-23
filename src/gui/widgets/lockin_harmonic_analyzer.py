@@ -74,7 +74,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Lock-in THD Analyzer (Parallel)"
+        return tr("Lock-in THD Analyzer (Parallel)")
 
     @property
     def description(self) -> str:
@@ -488,7 +488,7 @@ class LockInHarmonicWidget(QWidget):
 
         if filled < size:
             pct = int((filled / size) * 100)
-            self.lbl_thd.setText(tr(f"Buffering... {pct}%"))
+            self.lbl_thd.setText(tr("Buffering... {}%").format(pct))
             self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ffaa00;")
             self.lbl_thdn.setText("--")
             self.lbl_fund.setText(tr("Fundamental Amplitude: -- dBFS"))
@@ -508,7 +508,7 @@ class LockInHarmonicWidget(QWidget):
         fund_dbfs = 20 * np.log10((self.module.harmonics_amp[0]/np.sqrt(2)) + 1e-15) + 3 # Adjusting RMS to peak for dBFS? Usually dBFS is peak. We calc peak.
         fund_peak = self.module.harmonics_amp[0]
         fund_dbfs = 20 * np.log10(fund_peak + 1e-15)
-        self.lbl_fund.setText(f"Fundamental: {fund_dbfs:.2f} dBFS")
+        self.lbl_fund.setText(tr("Fundamental: {} dBFS").format(f"{fund_dbfs:.2f}"))
 
         # Update Table and Bar Plot
         heights = np.zeros(self.module.max_harmonic)
