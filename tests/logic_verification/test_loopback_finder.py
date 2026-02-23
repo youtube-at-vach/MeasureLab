@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import importlib
 
+
 class TestLoopbackFinder(unittest.TestCase):
     def setUp(self):
         # Patch modules
@@ -24,21 +25,21 @@ class TestLoopbackFinder(unittest.TestCase):
                 pass
 
         # Make QThread a type so it can be inherited
-        mock_qt_core.QThread = type('QThread', (MockBase,), {})
+        mock_qt_core.QThread = type("QThread", (MockBase,), {})
         # pyqtSignal can be a function returning a mock
         mock_qt_core.pyqtSignal = MagicMock(return_value=MagicMock())
 
         # Mock QWidget
         mock_qt_widgets = sys.modules["PyQt6.QtWidgets"]
-        mock_qt_widgets.QWidget = type('QWidget', (MockBase,), {})
+        mock_qt_widgets.QWidget = type("QWidget", (MockBase,), {})
 
         # Import/Reload module under test
-        if 'src.gui.widgets.loopback_finder' in sys.modules:
-            importlib.reload(sys.modules['src.gui.widgets.loopback_finder'])
+        if "src.gui.widgets.loopback_finder" in sys.modules:
+            importlib.reload(sys.modules["src.gui.widgets.loopback_finder"])
         else:
-            importlib.import_module('src.gui.widgets.loopback_finder')
+            importlib.import_module("src.gui.widgets.loopback_finder")
 
-        self.module_under_test = sys.modules['src.gui.widgets.loopback_finder']
+        self.module_under_test = sys.modules["src.gui.widgets.loopback_finder"]
 
         # Instantiate LoopbackFinder
         self.mock_audio_engine = MagicMock()
@@ -54,8 +55,8 @@ class TestLoopbackFinder(unittest.TestCase):
                     del sys.modules[mod]
 
         # Remove module under test to ensure clean slate
-        if 'src.gui.widgets.loopback_finder' in sys.modules:
-            del sys.modules['src.gui.widgets.loopback_finder']
+        if "src.gui.widgets.loopback_finder" in sys.modules:
+            del sys.modules["src.gui.widgets.loopback_finder"]
 
     def test_perform_scan_success(self):
         # Setup mocks
@@ -71,7 +72,7 @@ class TestLoopbackFinder(unittest.TestCase):
 
         class MockStream:
             def __init__(self, *args, **kwargs):
-                self.callback = kwargs.get('callback')
+                self.callback = kwargs.get("callback")
                 self.active = True
                 self.calls = 0
 
@@ -80,20 +81,21 @@ class TestLoopbackFinder(unittest.TestCase):
 
             def __exit__(self, exc_type, exc_val, exc_tb):
                 pass
-                
+
             def abort(self):
                 self.active = False
 
         def stream_side_effect(*args, **kwargs):
             stream = MockStream(*args, **kwargs)
+
             # We must simulate the callback being called until it raises CallbackStop
             def run_stream():
-                frames = 4800 # 0.1s block
+                frames = 4800  # 0.1s block
                 try:
                     while stream.active and stream.calls < 100:  # Prevent infinite loop in test
                         indata = np.zeros((frames, 2), dtype=np.float32)
                         outdata = np.zeros((frames, 2), dtype=np.float32)
-                        
+
                         # Simulate loopback: if outdata channel 0 has signal, put it in indata channel 0
                         # But wait, outdata is written BY the callback.
                         # So we have to call it first, then next block we'll feedback?
@@ -102,7 +104,7 @@ class TestLoopbackFinder(unittest.TestCase):
                         # The finder tests ch0 then ch1.
                         # Let's just inject the test signal into indata 0 continuously, it will trigger when finder is listening to ch0.
                         indata[:, 0] = test_signal[:frames]
-                        
+
                         stream.callback(indata, outdata, frames, None, None)
                         stream.calls += 1
                 except sd.CallbackStop:
@@ -110,12 +112,13 @@ class TestLoopbackFinder(unittest.TestCase):
                 except Exception as e:
                     stream.active = False
                     raise e
-                    
+
             # In real life the callback is in a background thread.
             # Here we just run it synchronously or rely on the main thread loop.
             # But the main thread does `while stream.active: time.sleep(0.1)`
             # We need to run it in a thread or mock the sleep.
             import threading
+
             t = threading.Thread(target=run_stream)
             t.start()
             return stream
@@ -137,7 +140,7 @@ class TestLoopbackFinder(unittest.TestCase):
 
         class MockStream:
             def __init__(self, *args, **kwargs):
-                self.callback = kwargs.get('callback')
+                self.callback = kwargs.get("callback")
                 self.active = True
 
             def __enter__(self):
@@ -145,24 +148,28 @@ class TestLoopbackFinder(unittest.TestCase):
 
             def __exit__(self, exc_type, exc_val, exc_tb):
                 pass
-                
+
             def abort(self):
                 self.active = False
 
         def stream_side_effect(*args, **kwargs):
             stream = MockStream(*args, **kwargs)
+
             def run_stream():
                 frames = 4800
                 import time
+
                 try:
-                    for _ in range(20): # Run for a bit and stop
+                    for _ in range(20):  # Run for a bit and stop
                         indata = np.zeros((frames, 2), dtype=np.float32)
                         outdata = np.zeros((frames, 2), dtype=np.float32)
                         stream.callback(indata, outdata, frames, None, None)
                         time.sleep(0.01)
                 except Exception:
                     stream.active = False
+
             import threading
+
             t = threading.Thread(target=run_stream)
             t.start()
             return stream
@@ -186,7 +193,7 @@ class TestLoopbackFinder(unittest.TestCase):
     def test_perform_scan_playrec_error(self):
         sd = sys.modules["sounddevice"]
         sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 2}
-        
+
         # Make the stream raise an error on creation
         sd.Stream.side_effect = Exception("Audio Error")
 
@@ -201,10 +208,13 @@ class TestLoopbackFinder(unittest.TestCase):
         class MockStream:
             def __init__(self, *args, **kwargs):
                 self.active = True
+
             def __enter__(self):
                 return self
+
             def __exit__(self, exc_type, exc_val, exc_tb):
                 pass
+
             def abort(self):
                 self.active = False
 
@@ -221,10 +231,10 @@ class TestLoopbackFinder(unittest.TestCase):
     def test_perform_scan_progress(self):
         sd = sys.modules["sounddevice"]
         sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 2}
-        
+
         class MockStream:
             def __init__(self, *args, **kwargs):
-                self.callback = kwargs.get('callback')
+                self.callback = kwargs.get("callback")
                 self.active = True
 
             def __enter__(self):
@@ -232,12 +242,13 @@ class TestLoopbackFinder(unittest.TestCase):
 
             def __exit__(self, exc_type, exc_val, exc_tb):
                 pass
-                
+
             def abort(self):
                 self.active = False
 
         def stream_side_effect(*args, **kwargs):
             stream = MockStream(*args, **kwargs)
+
             def run_stream():
                 frames = 4800
                 try:
@@ -247,7 +258,9 @@ class TestLoopbackFinder(unittest.TestCase):
                         stream.callback(indata, outdata, frames, None, None)
                 except Exception:
                     stream.active = False
+
             import threading
+
             t = threading.Thread(target=run_stream)
             t.start()
             return stream
@@ -264,25 +277,30 @@ class TestLoopbackFinder(unittest.TestCase):
 
     def test_perform_scan_tuple_device_id(self):
         sd = sys.modules["sounddevice"]
+
         # Configure side effect to simulate sd.query_devices failing on tuple
         def query_devices_side_effect(device=None, kind=None):
             if isinstance(device, tuple):
                 raise TypeError("Invalid device ID: tuple not allowed")
             if isinstance(device, int):
-                if device == 1: # Input
+                if device == 1:  # Input
                     return {"max_output_channels": 0, "max_input_channels": 2}
-                if device == 2: # Output
+                if device == 2:  # Output
                     return {"max_output_channels": 2, "max_input_channels": 0}
             return {"max_output_channels": 2, "max_input_channels": 2}
 
         sd.query_devices.side_effect = query_devices_side_effect
-        
+
         class MockStream:
             def __init__(self, *args, **kwargs):
-                self.active = False # Stop immediately
-            def __enter__(self): return self
-            def __exit__(self, exc_type, exc_val, exc_tb): pass
-        
+                self.active = False  # Stop immediately
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                pass
+
         sd.Stream.return_value = MockStream()
         sd.CallbackStop = Exception
 
@@ -296,5 +314,6 @@ class TestLoopbackFinder(unittest.TestCase):
         sd.query_devices.assert_any_call(1)
         sd.query_devices.assert_any_call(2)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
