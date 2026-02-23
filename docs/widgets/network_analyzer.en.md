@@ -4,7 +4,7 @@
 
 ## Overview
 
-The Network Analyzer is a tool for measuring the frequency response (amplitude and phase characteristics) of equipment and systems. It features two modes: "Stepped Sine," which measures by changing a sine wave incrementally, and "Fast Chirp," which measures the entire band instantaneously.
+The Network Analyzer is a tool for measuring the frequency response (amplitude and phase characteristics) of equipment and systems. It uses the "Fast Chirp" method (logarithmic chirp signal) to perform high-precision measurements of the entire band in a short time.
 
 Primary uses:
 
@@ -19,13 +19,6 @@ Primary uses:
 1. Set the measurement range (Start/End Freq) and Amplitude in the **"Sweep Settings"** tab.
 2. Click the **"Start Sweep"** button to begin measurement. Progress is shown on the progress bar during measurement.
 3. Click the button again to stop the measurement midway.
-
-### Selecting Measurement Mode
-
-Two modes can be selected according to the application.
-
-* **Stepped Sine**: Measures by changing the frequency one by one in steps. Although it takes more time, it has a high S/N ratio and allows for very high-precision measurements.
-* **Fast Chirp**: Uses a signal (chirp signal) that changes rapidly from low to high frequencies. Since measurement of the entire band can be completed in just a few seconds, it is convenient for measuring while making adjustments.
 
 ## Routing and XFER Mode
 
@@ -47,6 +40,7 @@ Customize the graph display in the **"Display Settings"** tab.
 * **Magnitude Response**: Displays gain (amplification factor) for each frequency. Units can be selected from dBFS, dBV, dBu, etc.
 * **Phase Response**: Displays the phase shift for each frequency.
 * **Group Delay**: Displays the delay time for each frequency, calculated from the slope of the phase (check "Show Group Delay").
+* **Coherence**: Displays the correlation (reliability) between input and output. Values closer to 1.0 indicate less influence from noise or distortion (check "Show Coherence").
 
 ### Display Options
 
@@ -58,6 +52,8 @@ Customize the graph display in the **"Display Settings"** tab.
 ### Latency
 
 Press the "Calibrate Latency" button to measure the input/output delay time of the system. It is recommended to perform this in advance with a loopback connection to ensure accurate phase measurement (especially at high frequencies).
+
+Additionally, when running a normal sweep measurement, the Impulse Response S/N Ratio (IR SNR) for that measurement will also be displayed in this section.
 
 ### Reference Trace
 
