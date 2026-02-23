@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections import deque
 
 import numpy as np
@@ -38,6 +39,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.buffer_size = 262144
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
+        self.buffer_filled_samples = 0
 
         # Generator Settings
         self.gen_frequency = 1000.0
@@ -68,6 +70,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.callback_id = None
         self.history_len = min(8192, self.buffer_size // 10)
         self.residual_history = deque(maxlen=self.history_len)
+        self.lock = threading.Lock()
 
     @property
     def name(self) -> str:
@@ -87,6 +90,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
+        self.buffer_filled_samples = 0
         self._phase_gen = 0.0
 
         sample_rate = self.audio_engine.sample_rate
@@ -117,17 +121,20 @@ class LockInHarmonicAnalyzer(MeasurementModule):
                 new_data = np.column_stack((indata[:, 0], indata[:, 0]))
 
             n = len(new_data)
-            p = self.input_buffer_pos
+            with self.lock:
+                p = self.input_buffer_pos
 
-            if p + n <= self.buffer_size:
-                self.input_data[p : p + n] = new_data
-                self.input_buffer_pos = (p + n) % self.buffer_size
-            else:
-                chunk1 = self.buffer_size - p
-                chunk2 = n - chunk1
-                self.input_data[p:] = new_data[:chunk1]
-                self.input_data[:chunk2] = new_data[chunk1:]
-                self.input_buffer_pos = chunk2
+                if p + n <= self.buffer_size:
+                    self.input_data[p : p + n] = new_data
+                    self.input_buffer_pos = (p + n) % self.buffer_size
+                else:
+                    chunk1 = self.buffer_size - p
+                    chunk2 = n - chunk1
+                    self.input_data[p:] = new_data[:chunk1]
+                    self.input_data[:chunk2] = new_data[chunk1:]
+                    self.input_buffer_pos = chunk2
+
+                self.buffer_filled_samples = min(self.buffer_size, self.buffer_filled_samples + n)
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
@@ -138,15 +145,29 @@ class LockInHarmonicAnalyzer(MeasurementModule):
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
 
+    def clear_buffer(self):
+        with self.lock:
+            self.input_data.fill(0)
+            self.input_buffer_pos = 0
+            self.buffer_filled_samples = 0
+            self._reset_results()
+
     def _get_ordered_input_data(self):
-        data = self.input_data.copy()
-        pos = self.input_buffer_pos
+        with self.lock:
+            data = self.input_data.copy()
+            pos = self.input_buffer_pos
         if pos == 0:
             return data
         return np.roll(data, -pos, axis=0)
 
     def process(self):
         if not self.is_running:
+            return
+
+        with self.lock:
+            filled = self.buffer_filled_samples
+            
+        if filled < self.buffer_size:
             return
 
         data = self._get_ordered_input_data()
@@ -196,43 +217,32 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             self._reset_results()
             return
 
-        # Ensure we only process integer numbers of cycles to avoid leakage
-        samples_per_cycle = fs / f0
-        n_cycles = int(N / samples_per_cycle)
-        if n_cycles < 1:
-            n_samples = N
-        else:
-            n_samples = int(n_cycles * samples_per_cycle)
-
-        # Slice data for precise integer cycles without windowing for pure lock-in
-        # (Alternatively use window W, but for pure frequencies integer cycles is best)
-        sig_slice = sig[:n_samples]
-        t_slice = t[:n_samples]
-
         # 2. Parallel Lock-in (Matrix Projection)
-        # B = [cos(w_0 t + t_0), sin(...), cos(2w_0 t + 2t_0), sin(2w...)]
-        # We can directly use the unwrapped phase if it's clean, or the fitted phase.
-        # Fitted phase is much cleaner against ADC thermal noise.
-        phase_ideal = omega * t_slice + theta_0
+        phase_ideal = omega * t + theta_0
         
-        # Allocate Basis Matrix (N_samples x 20)
+        # Allocate Basis Matrix (N x 20)
         num_bases = self.max_harmonic * 2
-        B = np.zeros((n_samples, num_bases))
+        B = np.zeros((N, num_bases))
+
+        if not hasattr(self, '_window_cache') or len(self._window_cache) != N:
+            from scipy.signal.windows import blackmanharris
+            self._window_cache = blackmanharris(N)
+            self._window_mean = np.mean(self._window_cache)
+            
+        W = self._window_cache
+        W_mean = self._window_mean
+        sig_windowed = sig * W
 
         for n in range(1, self.max_harmonic + 1):
             idx = (n - 1) * 2
             B[:, idx] = np.cos(n * phase_ideal)
-            B[:, idx + 1] = -np.sin(n * phase_ideal) # Negative sin to align with standard lock-in math
-            # Notice standard IQ: I = sig * cos, Q = sig * -sin (if using exp(-jwt))
-            # or Q = sig * sin. Let's stick to standard projection:
             B[:, idx + 1] = np.sin(n * phase_ideal)
 
-        # Projection: X = (2/N) * B^T * S
-        # Using BLAS np.dot
-        X = (2.0 / n_samples) * np.dot(B.T, sig_slice)
+        # Projection: X = (2/N) * B^T * (sig * W) / W_mean
+        X = (2.0 / N) * np.dot(B.T, sig_windowed) / W_mean
 
         # 3. Compute Harmonics
-        reconstructed_sig = np.zeros(n_samples)
+        reconstructed_sig = np.zeros(N)
         sum_sq_harmonics = 0.0
 
         for n in range(1, self.max_harmonic + 1):
@@ -260,11 +270,9 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             if n > 1:
                 sum_sq_harmonics += (amp / np.sqrt(2))**2
                 
-            # Reconstruct for THD+N
-            reconstructed_sig += amp * np.cos(n * phase_ideal - phase) 
-            # Check phase formulation: A*cos(wt)*cos(phi) + A*sin(wt)*sin(phi) = A*cos(wt-phi)
-            # if I = A*cos(phi), Q = A*sin(phi)
-            # then I*cos(wt) + Q*sin(wt) = A*cos(phi)*cos(wt) + A*sin(phi)*sin(wt) = A*cos(wt - phi)
+            # Reconstruct for THD+N by directly using the projections and basis functions
+            # I_comp * cos(n * wt) + Q_comp * sin(n * wt)
+            reconstructed_sig += I_comp * B[:, idx] + Q_comp * B[:, idx + 1]
 
         # 4. THD Calculations
         fund_rms_sq = (self.harmonics_amp[0] / np.sqrt(2))**2
@@ -276,7 +284,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             self.thd_db = 10 * np.log10(thd_sq + 1e-15)
 
             # THD+N
-            residual = sig_slice - reconstructed_sig
+            residual = sig - reconstructed_sig
             self.residual_rms = np.sqrt(np.mean(residual**2))
             
             # Store some residual history for plot
@@ -333,7 +341,7 @@ class LockInHarmonicWidget(QWidget):
         self.combo_output_ch.addItems([tr("Left (Ch 1)"), tr("Right (Ch 2)"), tr("Stereo (Both)")])
         out_idx = 2 if self.module.output_channel == 2 else self.module.output_channel
         self.combo_output_ch.setCurrentIndex(out_idx)
-        self.combo_output_ch.currentIndexChanged.connect(lambda v: setattr(self.module, "output_channel", v))
+        self.combo_output_ch.currentIndexChanged.connect(self.on_output_ch_changed)
         form.addRow(tr("Output Ch:"), self.combo_output_ch)
 
         # Buffer size
@@ -347,7 +355,7 @@ class LockInHarmonicWidget(QWidget):
         self.freq_spin.setRange(20, 20000)
         self.freq_spin.setValue(self.module.gen_frequency)
         self.freq_spin.setSuffix(" Hz")
-        self.freq_spin.valueChanged.connect(lambda v: setattr(self.module, "gen_frequency", v))
+        self.freq_spin.valueChanged.connect(self.on_freq_changed)
         form.addRow(tr("Frequency:"), self.freq_spin)
 
         self.amp_spin = QDoubleSpinBox()
@@ -366,13 +374,13 @@ class LockInHarmonicWidget(QWidget):
         self.sig_combo = QComboBox()
         self.sig_combo.addItems([tr("Left"), tr("Right")])
         self.sig_combo.setCurrentIndex(self.module.signal_channel)
-        self.sig_combo.currentIndexChanged.connect(lambda v: setattr(self.module, "signal_channel", v))
+        self.sig_combo.currentIndexChanged.connect(self.on_sig_ch_changed)
         r_form.addRow(tr("Signal Input:"), self.sig_combo)
 
         self.ref_combo = QComboBox()
         self.ref_combo.addItems([tr("Left"), tr("Right")])
         self.ref_combo.setCurrentIndex(self.module.ref_channel)
-        self.ref_combo.currentIndexChanged.connect(lambda v: setattr(self.module, "ref_channel", v))
+        self.ref_combo.currentIndexChanged.connect(self.on_ref_ch_changed)
         r_form.addRow(tr("Reference Input:"), self.ref_combo)
         routing_group.setLayout(r_form)
         left_panel.addWidget(routing_group)
@@ -452,11 +460,41 @@ class LockInHarmonicWidget(QWidget):
 
     def on_amp_changed(self, val):
         self.module.gen_amplitude = 10 ** (val / 20)
+        self.module.clear_buffer()
+
+    def on_freq_changed(self, val):
+        self.module.gen_frequency = val
+        self.module.clear_buffer()
+
+    def on_output_ch_changed(self, val):
+        self.module.output_channel = val
+        self.module.clear_buffer()
+
+    def on_sig_ch_changed(self, val):
+        self.module.signal_channel = val
+        self.module.clear_buffer()
+
+    def on_ref_ch_changed(self, val):
+        self.module.ref_channel = val
+        self.module.clear_buffer()
 
     def update_ui(self):
         if not self.module.is_running:
             return
             
+        with self.module.lock:
+            filled = self.module.buffer_filled_samples
+            size = self.module.buffer_size
+
+        if filled < size:
+            pct = int((filled / size) * 100)
+            self.lbl_thd.setText(tr(f"Buffering... {pct}%"))
+            self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ffaa00;")
+            self.lbl_thdn.setText("--")
+            self.lbl_fund.setText(tr("Fundamental Amplitude: -- dBFS"))
+            return
+
+        self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
         self.module.process()
 
         thd_db = self.module.thd_db
