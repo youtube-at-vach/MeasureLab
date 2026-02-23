@@ -28,6 +28,8 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
+DISTORTION_DB_FLOOR = -200.0
+DISTORTION_RATIO_EPS = 10 ** (DISTORTION_DB_FLOOR / 10.0)
 
 
 class LockInHarmonicAnalyzer(MeasurementModule):
@@ -53,15 +55,18 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         # Harmonic Analysis Specs
         self.max_harmonic = 10
+        self.analysis_mode = "windowed"  # "windowed" or "coherent"
+        self.coherent_cycles = 256
+        self.min_analysis_samples = 2048
 
         # Results
         self.measured_freq = 0.0
         self.harmonics_amp = np.zeros(self.max_harmonic)
         self.harmonics_phase_deg = np.zeros(self.max_harmonic)
         self.thd_value = 0.0
-        self.thd_db = -140.0
+        self.thd_db = DISTORTION_DB_FLOOR
         self.thdn_value = 0.0
-        self.thdn_db = -140.0
+        self.thdn_db = DISTORTION_DB_FLOOR
         self.ref_level_dbfs = -140.0
         self.residual_rms = 0.0
 
@@ -160,6 +165,70 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             return data
         return np.roll(data, -pos, axis=0)
 
+    def _estimate_ref_phase_params(self, ref: np.ndarray, fs: float):
+        n_samples = len(ref)
+        if n_samples < 100:
+            return None, None
+
+        t = np.arange(n_samples) / fs
+        ref_analytic = hilbert(ref)
+
+        trim = int(n_samples * 0.05)
+        if trim > 0 and (n_samples - 2 * trim) >= 100:
+            ref_analytic = ref_analytic[trim:-trim]
+            t = t[trim:-trim]
+
+        if len(ref_analytic) < 100:
+            return None, None
+
+        ref_phase = np.unwrap(np.angle(ref_analytic))
+        omega, theta_0 = np.polyfit(t, ref_phase, 1)
+        # hilbert(sin(wt)) = sin(wt) - j*cos(wt) -> phase is wt - pi/2
+        theta_0 += np.pi / 2
+        return omega, theta_0
+
+    def _extract_coherent_segment(self, sig: np.ndarray, ref: np.ndarray, fs: float):
+        """Cut a recent integer-cycle segment using rising zero crossings."""
+        if len(ref) < 4:
+            return sig, ref, None
+
+        rising_idx = np.flatnonzero((ref[:-1] <= 0.0) & (ref[1:] > 0.0))
+        if len(rising_idx) < (self.coherent_cycles + 1):
+            return sig, ref, None
+
+        # Sub-sample crossing timing via linear interpolation.
+        crossing_pos = []
+        for i in rising_idx:
+            y0 = ref[i]
+            y1 = ref[i + 1]
+            dy = y1 - y0
+            frac = 0.0 if abs(dy) < 1e-18 else (-y0 / dy)
+            frac = np.clip(frac, 0.0, 1.0)
+            crossing_pos.append(i + frac)
+        crossing_pos = np.asarray(crossing_pos, dtype=np.float64)
+
+        end_cross = crossing_pos[-1]
+        start_cross = crossing_pos[-(self.coherent_cycles + 1)]
+        if end_cross <= start_cross:
+            return sig, ref, None
+
+        start_idx = max(0, int(np.floor(start_cross)))
+        end_idx = min(len(ref), int(np.ceil(end_cross)) + 1)
+        if (end_idx - start_idx) < self.min_analysis_samples:
+            return sig, ref, None
+
+        sig_seg = sig[start_idx:end_idx]
+        ref_seg = ref[start_idx:end_idx]
+
+        duration_sec = (end_cross - start_cross) / fs
+        if duration_sec <= 0:
+            return sig, ref, None
+
+        omega = 2.0 * np.pi * (self.coherent_cycles / duration_sec)
+        # Rising zero crossing defines sin phase = 0 at t = start_cross/fs.
+        theta_0 = -omega * (start_cross / fs)
+        return sig_seg, ref_seg, (omega, theta_0)
+
     def process(self):
         if not self.is_running:
             return
@@ -173,46 +242,54 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         data = self._get_ordered_input_data()
         fs = self.audio_engine.sample_rate
 
-        sig = data[:, self.signal_channel]
-        ref = data[:, self.ref_channel]
-
-        N = len(sig)
-        t = np.arange(N) / fs
+        sig_full = data[:, self.signal_channel]
+        ref_full = data[:, self.ref_channel]
 
         # 1. Analyze Reference
-        ref_rms = np.sqrt(np.mean(ref**2))
+        ref_rms = np.sqrt(np.mean(ref_full**2))
         self.ref_level_dbfs = 20 * np.log10(ref_rms * np.sqrt(2) + 1e-12)
 
         if ref_rms < 0.0001:  # -80dB threshold
             self._reset_results()
             return
 
-        # Estimate Ref Frequency by linear fit of unwrapped phase
-        ref_analytic = hilbert(ref)
-        
-        # Trim edges
-        trim = int(N * 0.05)
-        if trim > 0:
-            ref_analytic_trimmed = ref_analytic[trim:-trim]
-            t_trimmed = t[trim:-trim]
-        else:
-            ref_analytic_trimmed = ref_analytic
-            t_trimmed = t
-
-        if len(ref_analytic_trimmed) < 100:
+        omega_pre, _ = self._estimate_ref_phase_params(ref_full, fs)
+        if omega_pre is None:
             self._reset_results()
             return
 
-        ref_phase = np.unwrap(np.angle(ref_analytic_trimmed))
-        omega, theta_0 = np.polyfit(t_trimmed, ref_phase, 1)
-        
-        # hilbert(sin(wt)) = sin(wt) - j*cos(wt), which has angle wt - pi/2.
-        # We want the phase to represent the original sine wave, so add pi/2.
-        theta_0 += np.pi / 2
+        f0_pre = omega_pre / (2 * np.pi)
+        if f0_pre <= 0:
+            self._reset_results()
+            return
+
+        sig = sig_full
+        ref = ref_full
+        omega = None
+        theta_0 = None
+        if self.analysis_mode == "coherent":
+            sig_c, ref_c, phase_seed = self._extract_coherent_segment(sig_full, ref_full, fs)
+            sig = sig_c
+            ref = ref_c
+            if phase_seed is not None:
+                omega, theta_0 = phase_seed
+
+        N = len(sig)
+        t = np.arange(N) / fs
+
+        if omega is None or theta_0 is None:
+            omega, theta_0 = self._estimate_ref_phase_params(ref, fs)
+            if omega is None:
+                self._reset_results()
+                return
+
+        # Refine phase anchor at current omega.
+        ref_i = (2.0 / N) * np.dot(ref, np.cos(omega * t))
+        ref_q = (2.0 / N) * np.dot(ref, np.sin(omega * t))
+        theta_0 = np.arctan2(ref_i, ref_q)
 
         f0 = omega / (2 * np.pi)
         self.measured_freq = f0
-
         if f0 <= 0:
             self._reset_results()
             return
@@ -220,35 +297,47 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         # 2. Parallel Lock-in (Matrix Projection)
         phase_ideal = omega * t + theta_0
         
-        # Allocate Basis Matrix (N x 20)
-        num_bases = self.max_harmonic * 2
+        # Allocate Basis Matrix with DC term: [1, cos(1w), sin(1w), ...]
+        num_bases = 1 + self.max_harmonic * 2
         B = np.zeros((N, num_bases))
+        B[:, 0] = 1.0
 
-        if not hasattr(self, '_window_cache') or len(self._window_cache) != N:
-            from scipy.signal.windows import blackmanharris
-            self._window_cache = blackmanharris(N)
-            self._window_mean = np.mean(self._window_cache)
-            
-        W = self._window_cache
-        W_mean = self._window_mean
+        if self.analysis_mode == "windowed":
+            if not hasattr(self, '_window_cache') or len(self._window_cache) != N:
+                from scipy.signal.windows import blackmanharris
+                self._window_cache = blackmanharris(N)
+            W = self._window_cache
+        else:
+            W = np.ones(N)
         sig_windowed = sig * W
 
         for n in range(1, self.max_harmonic + 1):
-            idx = (n - 1) * 2
+            idx = 1 + (n - 1) * 2
             B[:, idx] = np.cos(n * phase_ideal)
             B[:, idx + 1] = np.sin(n * phase_ideal)
 
-        # Projection: X = (2/N) * B^T * (sig * W) / W_mean
-        X = (2.0 / N) * np.dot(B.T, sig_windowed) / W_mean
+        # Weighted least-squares projection to suppress cross-coupling between bases.
+        # This is more robust than simple dot products when bases are not perfectly orthogonal.
+        BW = B * W[:, None]
+        gram = np.dot(B.T, BW)
+        rhs = np.dot(B.T, sig_windowed)
+        try:
+            coeff = np.linalg.solve(gram, rhs)
+        except np.linalg.LinAlgError:
+            coeff = np.linalg.lstsq(BW, sig_windowed, rcond=None)[0]
+
+        # Harmonic coefficients only (excluding DC term)
+        X = coeff[1:]
 
         # 3. Compute Harmonics
-        reconstructed_sig = np.zeros(N)
+        reconstructed_sig = np.full(N, coeff[0])
         sum_sq_harmonics = 0.0
 
         for n in range(1, self.max_harmonic + 1):
             idx = (n - 1) * 2
             I_comp = X[idx]
             Q_comp = X[idx + 1]
+            b_idx = 1 + idx
             amp = np.sqrt(I_comp**2 + Q_comp**2)
             # Generator outputs sin(wt). Ref is sin(wt).
             # B_I = cos(n*wt), B_Q = sin(n*wt)
@@ -272,7 +361,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
                 
             # Reconstruct for THD+N by directly using the projections and basis functions
             # I_comp * cos(n * wt) + Q_comp * sin(n * wt)
-            reconstructed_sig += I_comp * B[:, idx] + Q_comp * B[:, idx + 1]
+            reconstructed_sig += I_comp * B[:, b_idx] + Q_comp * B[:, b_idx + 1]
 
         # 4. THD Calculations
         fund_rms_sq = (self.harmonics_amp[0] / np.sqrt(2))**2
@@ -281,7 +370,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             # purely Harmonic Distortion (THD)
             thd_sq = sum_sq_harmonics / fund_rms_sq
             self.thd_value = np.sqrt(thd_sq) * 100
-            self.thd_db = 10 * np.log10(thd_sq + 1e-15)
+            self.thd_db = 10 * np.log10(thd_sq + DISTORTION_RATIO_EPS)
 
             # THD+N
             residual = sig - reconstructed_sig
@@ -298,7 +387,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             thdn_sq = num_sq / fund_rms_sq
 
             self.thdn_value = np.sqrt(thdn_sq) * 100
-            self.thdn_db = 10 * np.log10(thdn_sq + 1e-15)
+            self.thdn_db = 10 * np.log10(thdn_sq + DISTORTION_RATIO_EPS)
         else:
             self._reset_results()
 
@@ -307,9 +396,9 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.harmonics_amp.fill(0)
         self.harmonics_phase_deg.fill(0)
         self.thd_value = 0.0
-        self.thd_db = -140.0
+        self.thd_db = DISTORTION_DB_FLOOR
         self.thdn_value = 0.0
-        self.thdn_db = -140.0
+        self.thdn_db = DISTORTION_DB_FLOOR
         self.residual_rms = 0.0
         self.residual_history.clear()
 
@@ -350,6 +439,21 @@ class LockInHarmonicWidget(QWidget):
         self.combo_buffer.setCurrentIndex(2) # Default 262144
         self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer (Integ. Time):"), self.combo_buffer)
+
+        self.combo_analysis_mode = QComboBox()
+        self.combo_analysis_mode.addItems(
+            [tr("Windowed (Blackman-Harris)"), tr("Coherent (Bin-centered)")]
+        )
+        self.combo_analysis_mode.setCurrentIndex(0 if self.module.analysis_mode == "windowed" else 1)
+        self.combo_analysis_mode.currentIndexChanged.connect(self.on_analysis_mode_changed)
+        form.addRow(tr("Analysis Mode:"), self.combo_analysis_mode)
+
+        self.spin_coherent_cycles = QSpinBox()
+        self.spin_coherent_cycles.setRange(8, 20000)
+        self.spin_coherent_cycles.setValue(self.module.coherent_cycles)
+        self.spin_coherent_cycles.setSuffix(tr(" cycles"))
+        self.spin_coherent_cycles.valueChanged.connect(self.on_coherent_cycles_changed)
+        form.addRow(tr("Coherent Cycles:"), self.spin_coherent_cycles)
 
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(20, 20000)
@@ -424,7 +528,7 @@ class LockInHarmonicWidget(QWidget):
         self.plot_bar.setLabel("bottom", "Harmonic Order")
         self.plot_bar.setLabel("left", "Amplitude", units="dBFS")
         self.plot_bar.showGrid(y=True)
-        self.plot_bar.setYRange(-160, 0)
+        self.plot_bar.setYRange(-200, 0)
         self.bar_items = pg.BarGraphItem(x=np.arange(1, 11), height=np.zeros(10), width=0.6, brush='b')
         self.plot_bar.addItem(self.bar_items)
         self.tabs.addTab(self.plot_bar, tr("Harmonics Plot"))
@@ -438,6 +542,7 @@ class LockInHarmonicWidget(QWidget):
         layout.addLayout(right_panel, 2)
 
         self.setLayout(layout)
+        self._update_analysis_controls()
 
     def on_toggle(self, checked):
         if checked:
@@ -458,6 +563,16 @@ class LockInHarmonicWidget(QWidget):
                 self.module.stop_analysis()
                 self.module.start_analysis()
 
+    def on_analysis_mode_changed(self, idx):
+        self.module.analysis_mode = "windowed" if idx == 0 else "coherent"
+        self._update_analysis_controls()
+        self.module.clear_buffer()
+
+    def on_coherent_cycles_changed(self, val):
+        self.module.coherent_cycles = max(1, int(val))
+        if self.module.analysis_mode == "coherent":
+            self.module.clear_buffer()
+
     def on_amp_changed(self, val):
         self.module.gen_amplitude = 10 ** (val / 20)
         self.module.clear_buffer()
@@ -477,6 +592,17 @@ class LockInHarmonicWidget(QWidget):
     def on_ref_ch_changed(self, val):
         self.module.ref_channel = val
         self.module.clear_buffer()
+
+    def _update_analysis_controls(self):
+        is_coherent = self.module.analysis_mode == "coherent"
+        self.spin_coherent_cycles.setEnabled(is_coherent)
+
+    def _format_percent(self, value: float) -> str:
+        if value >= 0.001:
+            return f"{value:.5f} %"
+        if value > 0:
+            return f"{value:.3e} %"
+        return "0 %"
 
     def update_ui(self):
         if not self.module.is_running:
@@ -502,8 +628,8 @@ class LockInHarmonicWidget(QWidget):
         thdn_db = self.module.thdn_db
         thdn_pct = self.module.thdn_value
 
-        self.lbl_thd.setText(f"{thd_db:.3f} dB ({thd_pct:.5f} %)")
-        self.lbl_thdn.setText(f"{thdn_db:.3f} dB ({thdn_pct:.5f} %)")
+        self.lbl_thd.setText(f"{thd_db:.3f} dB ({self._format_percent(thd_pct)})")
+        self.lbl_thdn.setText(f"{thdn_db:.3f} dB ({self._format_percent(thdn_pct)})")
 
         fund_dbfs = 20 * np.log10((self.module.harmonics_amp[0]/np.sqrt(2)) + 1e-15) + 3 # Adjusting RMS to peak for dBFS? Usually dBFS is peak. We calc peak.
         fund_peak = self.module.harmonics_amp[0]
@@ -519,7 +645,7 @@ class LockInHarmonicWidget(QWidget):
             amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
             dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
 
-            heights[i] = max(-160, amp_dbfs)
+            heights[i] = max(-200, amp_dbfs)
 
             self.table.setItem(i, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
             self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else "--"))

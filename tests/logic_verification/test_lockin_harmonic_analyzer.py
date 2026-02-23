@@ -80,3 +80,34 @@ def test_lockin_harmonic_analyzer_math():
     assert np.isclose(analyzer.thd_value, expected_thd_pct, rtol=1e-2)
 
     analyzer.stop_analysis()
+
+
+def test_lockin_harmonic_analyzer_coherent_bin_centered_mode():
+    engine = MockAudioEngine()
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    analyzer.analysis_mode = "coherent"
+    analyzer.coherent_cycles = 200
+    analyzer.buffer_size = 65536
+    analyzer.start_analysis()
+
+    fs = engine.sample_rate
+    t = np.arange(analyzer.buffer_size) / fs
+    f0 = 997.3
+
+    sig = 0.8 * np.sin(2 * np.pi * f0 * t + 0.2)
+    ref = 1.0 * np.sin(2 * np.pi * f0 * t)
+
+    indata = np.column_stack((sig, ref))
+    outdata = np.zeros_like(indata)
+
+    for cb in engine.callbacks.values():
+        cb(indata, outdata, len(indata), None, None)
+
+    analyzer.process()
+
+    assert analyzer.measured_freq > 0.0
+    assert np.isclose(analyzer.harmonics_amp[0], 0.8, rtol=2e-2)
+    assert analyzer.harmonics_amp[1] < 5e-3
+
+    analyzer.stop_analysis()
