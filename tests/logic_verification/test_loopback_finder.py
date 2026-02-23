@@ -163,5 +163,34 @@ class TestLoopbackFinder(unittest.TestCase):
         # Should be called 2 times (once per output channel)
         self.assertEqual(progress_cb.call_count, 2)
 
+    def test_perform_scan_tuple_device_id(self):
+        sd = sys.modules["sounddevice"]
+        # Configure side effect to simulate sd.query_devices failing on tuple
+        def query_devices_side_effect(device=None, kind=None):
+            if isinstance(device, tuple):
+                raise TypeError("Invalid device ID: tuple not allowed")
+            if isinstance(device, int):
+                if device == 1: # Input
+                    return {"max_output_channels": 0, "max_input_channels": 2}
+                if device == 2: # Output
+                    return {"max_output_channels": 2, "max_input_channels": 0}
+            return {"max_output_channels": 2, "max_input_channels": 2}
+
+        sd.query_devices.side_effect = query_devices_side_effect
+        sd.playrec.return_value = np.zeros((4800, 2), dtype=np.float32)
+
+        device_id = (1, 2)
+        sample_rate = 48000
+
+        # Should not raise
+        results = self.finder.perform_scan(device_id, sample_rate)
+
+        # Verify calls
+        sd.query_devices.assert_any_call(1)
+        sd.query_devices.assert_any_call(2)
+
+        args, kwargs = sd.playrec.call_args
+        self.assertEqual(kwargs['device'], (1, 2))
+
 if __name__ == '__main__':
     unittest.main()

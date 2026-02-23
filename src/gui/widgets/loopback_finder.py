@@ -66,9 +66,16 @@ class LoopbackFinder(MeasurementModule):
         return "Detects active loopback paths between output and input channels."
 
     def perform_scan(self, device_id, sample_rate, progress_callback=None, check_stop=None):
-        device_info = sd.query_devices(device_id)
-        max_out = device_info["max_output_channels"]
-        max_in = device_info["max_input_channels"]
+        if isinstance(device_id, tuple):
+            input_device, output_device = device_id
+            in_info = sd.query_devices(input_device)
+            out_info = sd.query_devices(output_device)
+            max_in = in_info["max_input_channels"]
+            max_out = out_info["max_output_channels"]
+        else:
+            device_info = sd.query_devices(device_id)
+            max_out = device_info["max_output_channels"]
+            max_in = device_info["max_input_channels"]
 
         if max_out == 0 or max_in == 0:
             raise Exception(f"Device {device_id} does not support both input and output.")
