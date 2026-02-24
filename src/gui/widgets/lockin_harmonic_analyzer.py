@@ -605,7 +605,7 @@ class LockInHarmonicWidget(QWidget):
         fs = self.module.audio_engine.sample_rate
         if fs == self._last_fs:
             return
-        
+
         self._last_fs = fs
         sizes = [65536, 131072, 262144, 524288]
         current_idx = self.combo_buffer.currentIndex()
