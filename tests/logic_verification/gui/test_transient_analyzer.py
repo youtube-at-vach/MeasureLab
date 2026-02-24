@@ -1,18 +1,99 @@
+import sys
+import unittest
 import numpy as np
 import pytest
+import os
+
+# Add src to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
+from PyQt6.QtWidgets import QApplication
 from src.gui.widgets.transient_analyzer import TransientAnalyzer
 
-# Mock AudioEngine to satisfy dependency
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
         self.callbacks = {}
 
     def register_callback(self, callback):
-        return 1
+        cid = 1
+        self.callbacks[cid] = callback
+        return cid
 
     def unregister_callback(self, cid):
-        pass
+        if cid in self.callbacks:
+            del self.callbacks[cid]
+
+class TestTransientAnalyzerAnalysis(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not QApplication.instance():
+            cls.app = QApplication(sys.argv + ['-platform', 'offscreen'])
+        else:
+            cls.app = QApplication.instance()
+
+    def setUp(self):
+        self.audio_engine = MockAudioEngine()
+        self.analyzer = TransientAnalyzer(self.audio_engine)
+
+    def test_analyze_empty_data(self):
+        """Test that analyze returns None when no data is present."""
+        self.analyzer.final_data = None
+        times, freqs, mag = self.analyzer.analyze()
+        self.assertIsNone(times)
+        self.assertIsNone(freqs)
+        self.assertIsNone(mag)
+
+        self.analyzer.final_data = np.array([])
+        times, freqs, mag = self.analyzer.analyze()
+        self.assertIsNone(times)
+        self.assertIsNone(freqs)
+        self.assertIsNone(mag)
+
+    def test_analyze_sine_wave(self):
+        """Test CWT analysis on a simple sine wave."""
+        fs = 48000
+        duration = 1.0
+        t = np.linspace(0, duration, int(fs * duration), endpoint=False)
+        f_sig = 1000
+        sig = np.sin(2 * np.pi * f_sig * t)
+
+        self.analyzer.final_data = sig
+        self.analyzer.fs = fs
+        # Set frequency range to include the signal frequency
+        self.analyzer.min_anal_freq = 100
+        self.analyzer.max_anal_freq = 2000
+
+        times, freqs, mag = self.analyzer.analyze()
+
+        # Check dimensions
+        self.assertIsNotNone(times)
+        self.assertEqual(len(times), len(sig))
+        self.assertEqual(len(freqs), 120) # Hardcoded num_scales in analyze()
+        self.assertEqual(mag.shape, (120, len(sig)))
+
+        # Check content: Frequency detection
+        # Find peak frequency at middle of signal to avoid edge effects
+        mid_idx = len(sig) // 2
+        spectrum_at_mid = mag[:, mid_idx]
+        peak_idx = np.argmax(spectrum_at_mid)
+        peak_freq = freqs[peak_idx]
+
+        # Allow generous error margin (10%) due to wavelet resolution and scale discretization
+        self.assertTrue(900 < peak_freq < 1100, f"Peak frequency {peak_freq} not close to 1000 Hz")
+
+    def test_analyze_frequency_limits(self):
+        """Test that frequency limits are respected."""
+        self.analyzer.final_data = np.zeros(1000)
+        self.analyzer.fs = 48000
+        self.analyzer.min_anal_freq = 500
+        self.analyzer.max_anal_freq = 1500
+
+        times, freqs, mag = self.analyzer.analyze()
+
+        self.assertTrue(np.all(freqs >= 500))
+        self.assertTrue(np.all(freqs <= 1500))
+        self.assertEqual(len(freqs), 120)
 
 class TestTransientAnalyzerTrigger:
     @pytest.fixture
@@ -125,3 +206,6 @@ class TestTransientAnalyzerTrigger:
         sig = np.array([0.4])
         idx = analyzer._find_trigger_index(sig)
         assert idx == 0
+
+if __name__ == '__main__':
+    unittest.main()
