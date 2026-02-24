@@ -1,5 +1,7 @@
 # Lock-in Harmonic Analyzer
 
+![Lock-in Harmonic Analyzer](../assets/widgets/lockin_harmonic_analyzer.png)
+
 **Lock-in Harmonic Analyzer (ロックイン高調波解析)** は、ロックインアンプの原理を利用して極めて低ノイズかつ高精度に全高調波歪（THD）およびTHD+Nを測定するモジュールです。
 
 従来のFFTベースの歪み測定では窓関数を使用するため、微小な成分がノイズに埋もれがちでした。このウィジットでは、基本波および2次から10次までの高調波に対して**10並列のIQ検波（ロックイン測定）**を同時に行うことで、目的の周波数成分のみをピンポイントで抽出します。これにより、FFTの限界を超える超低歪み領域（-160dBc以下など）の測定が可能になります。
