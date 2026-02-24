@@ -78,11 +78,11 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Lock-in Harmonic Analyzer"
+        return tr("Lock-in Harmonic Analyzer")
 
     @property
     def description(self) -> str:
-        return "Ultra-precision THD measurement using parallel reference-locked matrix projection."
+        return tr("Ultra-precision THD measurement using parallel reference-locked matrix projection.")
 
     def get_widget(self):
         return LockInHarmonicWidget(self)
