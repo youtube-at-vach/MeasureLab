@@ -1,5 +1,9 @@
 # Lock-in THD+N Analyzer (超低歪みロックイン測定)
 
+> [!WARNING]
+> このウィジットは非推奨となりました。現在は **[Lock-in Harmonic Analyzer](lockin_harmonic_analyzer.md)** が上位互換として提供されています。
+> Lock-in THD+N Analyzer はデフォルトで非表示になっています。使用するには起動時に `--experimental` フラグを付けてください。
+
 ![Lockin Thd Analyzer](../assets/widgets/lockin_thd_analyzer.png)
 
 ## 概要

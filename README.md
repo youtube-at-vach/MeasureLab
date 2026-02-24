@@ -37,7 +37,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 12 | **Raw Time Series** | 2-channel scroll waveform monitor that holds long-term spans in a ring buffer. |
 | 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
 | 14 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
-| 15 | **Lock-in THD+N Analyzer** | Dedicated module for THD/THD+N measurement using lock-in detection. Visualizes distortion components with integer period windowing and averaging, residual history/plot display, and harmonics/residual bar graph. |
+| 15 | **Lock-in Harmonic Analyzer** | Ultra-low distortion measurement module using parallel lock-in detection and matrix projection without window functions. Visualizes harmonics and residuals with high precision. |
 | 16 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
 | 17 | **Inverse Filter** | Deconvolution tool that designs inverse characteristic FIR from calibration map and applies it to audio files. Supports regularization with gain limit, tap count/smoothing specification, response preview, and batch processing with output peak normalization. |
 | 18 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |

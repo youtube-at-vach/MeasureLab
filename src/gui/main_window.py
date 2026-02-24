@@ -51,6 +51,7 @@ from src.core.module_constants import (
     MODULE_TIMECODE_MONITOR,
     MODULE_TRANSIENT_ANALYZER,
     MODULE_ULTRASOUND_MODULATOR,
+    EXPERIMENTAL_MODULE_KEYS,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -123,8 +124,9 @@ def _load_welcome_widget_class():
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, enable_experimental: bool = False):
         super().__init__()
+        self.enable_experimental = enable_experimental
         self.logger = logging.getLogger(__name__)
         self.setWindowTitle("MeasureLab")
         self.resize(1000, 700)
@@ -235,7 +237,10 @@ class MainWindow(QMainWindow):
     def _init_module_registry(self):
         """Initialize module registry arrays."""
         # Module registry (keep keys identical to module.name strings)
-        self._module_keys = list(ALL_MODULE_KEYS)
+        self._module_keys = [
+            k for k in ALL_MODULE_KEYS 
+            if self.enable_experimental or k not in EXPERIMENTAL_MODULE_KEYS
+        ]
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
 

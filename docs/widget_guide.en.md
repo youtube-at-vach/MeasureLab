@@ -68,8 +68,7 @@ Tools for evaluating equipment performance and sound quality.
 * **[Advanced Distortion Meter](widgets/advanced_distortion_meter.md)**
     * Performs more advanced distortion analysis, such as multitone measurement and IMD (Intermodulation Distortion).
 
-* **[Lock-in THD+N Analyzer](widgets/lockin_thd_analyzer.md)**
-    * An extremely low-noise distortion measurement module using the principle of a lock-in amplifier.
+
 
 * **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md)**
     * An extremely low-noise distortion measurement module using the principle of a lock-in amplifier and matrix projection without window functions.
