@@ -134,6 +134,27 @@ class TestRingBuffer(unittest.TestCase):
 
         np.testing.assert_array_equal(read_data, expected)
 
+    def test_insufficient_channels_write(self):
+        # Test writing 2 channels to 4 channel buffer
+        rb = RingBuffer(10, 4)
+        # Data: (5, 2)
+        data = np.zeros((5, 2), dtype=np.float32)
+        data[:, 0] = 1.0
+        data[:, 1] = 2.0
+
+        rb.write(data)
+
+        read_data = rb.read()
+        self.assertEqual(read_data.shape, (5, 4))
+
+        # Expected: first 2 channels match data, others are 0
+        expected = np.zeros((5, 4), dtype=np.float32)
+        expected[:, 0] = 1.0
+        expected[:, 1] = 2.0
+        # channel 2 and 3 should be 0.0
+
+        np.testing.assert_array_equal(read_data, expected)
+
     def test_reset(self):
         rb = RingBuffer(10, 1)
         rb.write(np.ones((5, 1)))
