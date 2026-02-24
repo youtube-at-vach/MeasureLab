@@ -82,7 +82,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
     @property
     def description(self) -> str:
-        return tr("Ultra-precision THD measurement using parallel reference-locked matrix projection.")
+        return "Ultra-precision THD measurement using parallel reference-locked matrix projection."
 
     def get_widget(self):
         return LockInHarmonicWidget(self)
