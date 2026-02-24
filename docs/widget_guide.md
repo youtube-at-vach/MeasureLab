@@ -77,6 +77,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 * **[Lock-in THD+N Analyzer](widgets/lockin_thd_analyzer.md)**
     * ロックインアンプの原理を用いた、極めて低ノイズな歪み測定モジュールです。
 
+* **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md)**
+    * ロックインアンプの原理と行列表射を用いた、窓関数不要の超低歪み測定モジュールです。
+
 * **[Sound Quality Analyzer](widgets/sound_quality_analyzer.md)**
     * シャープネス (Sharpness) やラフネス (Roughness) など、聴感上の「音質」指標を計算します。
 

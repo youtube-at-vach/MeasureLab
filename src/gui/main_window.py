@@ -34,6 +34,7 @@ from src.core.module_constants import (
     MODULE_LINEARITY_ANALYZER,
     MODULE_LOCK_IN_AMPLIFIER,
     MODULE_LOCK_IN_FREQUENCY_COUNTER,
+    MODULE_LOCK_IN_HARMONIC_ANALYZER,
     MODULE_LOCK_IN_THD_ANALYZER,
     MODULE_LOOPBACK_FINDER,
     MODULE_LUFS_METER,
@@ -68,6 +69,7 @@ MODULE_REGISTRY = {
     MODULE_RAW_TIME_SERIES: ("src.gui.widgets.raw_time_series", "RawTimeSeries"),
     MODULE_LOCK_IN_AMPLIFIER: ("src.gui.widgets.lock_in_amplifier", "LockInAmplifier"),
     MODULE_LOCK_IN_THD_ANALYZER: ("src.gui.widgets.lockin_thd_analyzer", "LockInTHDAnalyzer"),
+    MODULE_LOCK_IN_HARMONIC_ANALYZER: ("src.gui.widgets.lockin_harmonic_analyzer", "LockInHarmonicAnalyzer"),
     MODULE_FREQUENCY_COUNTER: ("src.gui.widgets.frequency_counter", "FrequencyCounter"),
     MODULE_LOCK_IN_FREQUENCY_COUNTER: ("src.gui.widgets.lock_in_frequency_counter", "LockInFrequencyCounter"),
     MODULE_SPECTROGRAM: ("src.gui.widgets.spectrogram", "Spectrogram"),
@@ -202,6 +204,10 @@ class MainWindow(QMainWindow):
 
             # Apply PipeWire/JACK resident mode after devices + format are configured.
             self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
+
+            # Apply 64-bit engine mode
+            is_64bit = audio_cfg.get("audio_engine_64bit", False)
+            self.audio_engine.set_audio_engine_64bit(is_64bit)
 
         except Exception as e:
             self.logger.error(f"Failed to set devices/settings: {e}")

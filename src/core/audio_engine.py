@@ -139,6 +139,9 @@ class AudioEngine:
         # Offline / Virtual Mode
         self.offline_mode = False
 
+        # Precision Mode
+        self.audio_engine_64bit = False
+
         # Calibration
         self.calibration = CalibrationManager()
 
@@ -177,6 +180,17 @@ class AudioEngine:
         self.dithering_enabled = False
         self.dithering_bit_depth = "24"
         self._rng = np.random.default_rng()
+
+    def _get_dtype(self):
+        """Returns the appropriate numpy dtype based on precision settings."""
+        return "float64" if self.audio_engine_64bit else "float32"
+
+    def set_audio_engine_64bit(self, enabled: bool):
+        """Enable/disable 64-bit precision."""
+        self.audio_engine_64bit = enabled
+        self.logger.info(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
+        # Apply instantly by restarting active stream
+        self._restart_stream()
 
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
@@ -383,8 +397,7 @@ class AudioEngine:
             lb_src = self.last_output_buffer
             # Reuse logical input buffer if possible to avoid allocation
             if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
-                # Allocate new buffer (zeros is safer than empty for initial state)
-                self._logical_in_buffer = np.zeros((frames, 2), dtype="float32")
+                self._logical_in_buffer = np.zeros((frames, 2), dtype=self._get_dtype())
 
             logical_in = self._logical_in_buffer
 
@@ -399,15 +412,29 @@ class AudioEngine:
         else:
             in_mode = self._current_in_mode
             # Standard Hardware Input Mapping
+
+            # Determine how many logical channels we need based on in_mode
+            req_channels = 1 if in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
+
+            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, req_channels):
+                self._logical_in_buffer = np.zeros((frames, req_channels), dtype=self._get_dtype())
+
+            logical_in = self._logical_in_buffer
+
             if in_mode == self.MODE_LEFT:
-                logical_in = indata[:, 0:1]
+                logical_in[:, 0] = indata[:, 0]
             elif in_mode == self.MODE_RIGHT:
                 if indata.shape[1] >= 2:
-                    logical_in = indata[:, 1:2]
+                    logical_in[:, 0] = indata[:, 1]
                 else:
-                    logical_in = np.zeros((frames, 1))
+                    logical_in.fill(0)
             else:  # stereo
-                logical_in = indata[:, 0:2]
+                if indata.shape[1] >= 2:
+                    logical_in[:, 0:2] = indata[:, 0:2]
+                elif indata.shape[1] == 1:
+                    logical_in[:, 0] = indata[:, 0]
+                    # We only have one channel, copy it to both to simulate stereo
+                    logical_in[:, 1] = indata[:, 0]
 
         out_mode = self._current_out_mode
         # Create a temp output buffer for clients
@@ -420,7 +447,7 @@ class AudioEngine:
             # Even if no callbacks, we might need to update last_output_buffer (silence)
             if use_loopback:
                 if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
-                    self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
+                    self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype=self._get_dtype())
                 else:
                     self.last_output_buffer.fill(0)
             return
@@ -430,7 +457,7 @@ class AudioEngine:
             mix_buffer = self._mix_buffer
             mix_buffer.fill(0)
         else:
-            mix_buffer = np.zeros((frames, logical_out_ch), dtype="float32")
+            mix_buffer = np.zeros((frames, logical_out_ch), dtype=self._get_dtype())
             self._mix_buffer = mix_buffer
 
         for cb in active_callbacks:
@@ -476,7 +503,7 @@ class AudioEngine:
             dither_buf = self._client_buffer
 
             # 1. Generate R1
-            self._rng.random(out=dither_buf, dtype="float32")
+            self._rng.random(out=dither_buf, dtype=self._get_dtype())
             # 2. Add scaled R1 to mix
             # mix += R1 * lsb
             # To do this efficiently in-place without another buffer:
@@ -485,7 +512,7 @@ class AudioEngine:
             mix_buffer += dither_buf
 
             # 3. Generate R2
-            self._rng.random(out=dither_buf, dtype="float32")
+            self._rng.random(out=dither_buf, dtype=self._get_dtype())
             # 4. Subtract scaled R2 from mix
             dither_buf *= lsb
             mix_buffer -= dither_buf
