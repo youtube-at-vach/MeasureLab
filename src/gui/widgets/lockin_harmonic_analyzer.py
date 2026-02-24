@@ -394,6 +394,7 @@ class LockInHarmonicWidget(QWidget):
     def __init__(self, module: LockInHarmonicAnalyzer):
         super().__init__()
         self.module = module
+        self._last_fs = 0
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
@@ -423,12 +424,7 @@ class LockInHarmonicWidget(QWidget):
 
         # Buffer size
         self.combo_buffer = QComboBox()
-        self.combo_buffer.addItems([
-            tr("65,536 (1.3s@48k)"),
-            tr("131,072 (2.7s@48k)"),
-            tr("262,144 (5.4s@48k)"),
-            tr("524,288 (10.9s@48k)")
-        ])
+        self._update_buffer_labels()
         self.combo_buffer.setCurrentIndex(2) # Default 262144
         self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer (Integ. Time):"), self.combo_buffer)
@@ -604,6 +600,26 @@ class LockInHarmonicWidget(QWidget):
             # If current value exceeds new limit, it will be automatically clamped by QSpinBox, 
             # and valueChanged will trigger module update.
 
+    def _update_buffer_labels(self):
+        """Update the buffer combo box items with dynamic integration time labels."""
+        fs = self.module.audio_engine.sample_rate
+        if fs == self._last_fs:
+            return
+        
+        self._last_fs = fs
+        sizes = [65536, 131072, 262144, 524288]
+        current_idx = self.combo_buffer.currentIndex()
+        if current_idx < 0:
+             current_idx = 2 # Default to 262144
+
+        self.combo_buffer.blockSignals(True)
+        self.combo_buffer.clear()
+        for s in sizes:
+            time_sec = s / fs
+            self.combo_buffer.addItem(tr("{:,} ({:.1f}s@{}k)").format(s, time_sec, fs//1000))
+        self.combo_buffer.setCurrentIndex(current_idx)
+        self.combo_buffer.blockSignals(False)
+
     def _format_percent(self, value: float) -> str:
         if value >= 0.001:
             return tr("{:.5f} %").format(value)
@@ -629,6 +645,7 @@ class LockInHarmonicWidget(QWidget):
 
         self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
         self._update_harmonic_limit()
+        self._update_buffer_labels()
         self.module.process()
 
         thd_db = self.module.thd_db
