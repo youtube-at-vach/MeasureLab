@@ -448,10 +448,12 @@ class LockInHarmonicWidget(QWidget):
         form.addRow(tr("Amplitude:"), self.amp_spin)
 
         self.harmonic_spin = QSpinBox()
-        self.harmonic_spin.setRange(2, 100)
+        self.harmonic_spin.setRange(2, 200)
         self.harmonic_spin.setValue(self.module.max_harmonic)
         self.harmonic_spin.valueChanged.connect(self.on_max_harmonic_changed)
         form.addRow(tr("Harmonics:"), self.harmonic_spin)
+
+        self._update_harmonic_limit()
 
         settings_group.setLayout(form)
         left_panel.addWidget(settings_group)
@@ -571,6 +573,7 @@ class LockInHarmonicWidget(QWidget):
 
     def on_freq_changed(self, val):
         self.module.gen_frequency = val
+        self._update_harmonic_limit()
         self.module.clear_buffer()
 
     def on_output_ch_changed(self, val):
@@ -584,6 +587,22 @@ class LockInHarmonicWidget(QWidget):
     def on_ref_ch_changed(self, val):
         self.module.ref_channel = val
         self.module.clear_buffer()
+
+    def _update_harmonic_limit(self):
+        """Update the maximum allowed harmonic order based on fundamental frequency and sample rate."""
+        fs = self.module.audio_engine.sample_rate
+        f0 = self.module.gen_frequency
+        if f0 > 0:
+            # Nyquist margin (e.g. 48% of FS) to avoid aliasing artifacts near Nyquist.
+            limit = int(np.floor((fs * 0.48) / f0))
+            limit = max(2, min(200, limit))
+        else:
+            limit = 200
+
+        if self.harmonic_spin.maximum() != limit:
+            self.harmonic_spin.setMaximum(limit)
+            # If current value exceeds new limit, it will be automatically clamped by QSpinBox, 
+            # and valueChanged will trigger module update.
 
     def _format_percent(self, value: float) -> str:
         if value >= 0.001:
@@ -609,6 +628,7 @@ class LockInHarmonicWidget(QWidget):
             return
 
         self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
+        self._update_harmonic_limit()
         self.module.process()
 
         thd_db = self.module.thd_db
