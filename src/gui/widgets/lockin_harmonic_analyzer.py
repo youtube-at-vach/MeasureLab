@@ -556,10 +556,10 @@ class LockInHarmonicWidget(QWidget):
 
     def _format_percent(self, value: float) -> str:
         if value >= 0.001:
-            return f"{value:.5f} %"
+            return tr("{:.5f} %").format(value)
         if value > 0:
-            return f"{value:.3e} %"
-        return "0 %"
+            return tr("{:.3e} %").format(value)
+        return tr("0 %")
 
     def update_ui(self):
         if not self.module.is_running:
@@ -585,8 +585,8 @@ class LockInHarmonicWidget(QWidget):
         thdn_db = self.module.thdn_db
         thdn_pct = self.module.thdn_value
 
-        self.lbl_thd.setText(f"{thd_db:.3f} dB ({self._format_percent(thd_pct)})")
-        self.lbl_thdn.setText(f"{thdn_db:.3f} dB ({self._format_percent(thdn_pct)})")
+        self.lbl_thd.setText(tr("{} dB ({})").format(f"{thd_db:.3f}", self._format_percent(thd_pct)))
+        self.lbl_thdn.setText(tr("{} dB ({})").format(f"{thdn_db:.3f}", self._format_percent(thdn_pct)))
 
         fund_dbfs = 20 * np.log10((self.module.harmonics_amp[0]/np.sqrt(2)) + 1e-15) + 3 # Adjusting RMS to peak for dBFS? Usually dBFS is peak. We calc peak.
         fund_peak = self.module.harmonics_amp[0]
@@ -605,7 +605,7 @@ class LockInHarmonicWidget(QWidget):
             heights[i] = max(-200, amp_dbfs)
 
             self.table.setItem(i, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
-            self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else "--"))
+            self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else tr("--")))
             self.table.setItem(i, 3, QTableWidgetItem(f"{phase:.2f}"))
 
         self.bar_items.setOpts(height=heights)
