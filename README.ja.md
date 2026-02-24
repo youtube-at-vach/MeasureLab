@@ -37,7 +37,7 @@
 | 12 | **Raw Time Series** | 長時間スパンをリングバッファで保持する2chスクロール波形モニタ。 |
 | 13 | **Transient Analyzer** | トリガ収録＋CWT で過渡解析、解析帯域/スケールを柔軟に指定。 |
 | 14 | **Lock-in Amplifier** | 位相敏感検波 (PSD) による微小信号測定。周波数応答解析 (FRA) モード、ハーモニクス復調(2次〜10次)、キャリブレーション機能搭載。 |
-| 15 | **Lock-in THD+N Analyzer** | ロックイン検波を用いた THD/THD+N 測定専用モジュール。整数周期ウィンドウと平均化、残差履歴・プロット表示、ハーモニクス/残差バーグラフで歪み成分を可視化。 |
+| 15 | **Lock-in Harmonic Analyzer** | 並列ロックイン検波と行列表射を用いた、窓関数不要の超低歪み測定モジュール。高調波と残差を高精度に可視化します。 |
 | 16 | **Impedance Analyzer** | インピーダンス測定とOSL (Open/Short/Load) キャリブレーション。複数プロットモード(Z/θ、R/X、Q、C/L、Nyquist、Smith Chart)、スイープ測定、キャリブレーション補間対応。 |
 | 17 | **Inverse Filter** | キャリブレーションマップから逆特性FIRを設計し、音声ファイルへ適用するデコンボリューションツール。ゲイン上限による正則化、タップ数/スムージング指定、応答プレビュー、出力ピーク正規化付きのバッチ処理に対応。 |
 | 18 | **Frequency Counter** | 高精度な周波数・周期測定。アラン分散プロット、ジッターヒストグラムおよび統計、キャリブレーション機能搭載。 |
@@ -142,5 +142,5 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 ### 🤖 AI パートナー
 
 - OpenAI: GPT-4.1, GPT-5, GPT-5.1 Codex Max, GPT-5.2, GPT-5.3-Codex
-- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash
+- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash, Gemini 3.1 Pro
 - Anthropic: Claude 4.5 Sonnet
