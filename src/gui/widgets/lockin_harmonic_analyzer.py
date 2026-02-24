@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -34,6 +35,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
+        self.lock = threading.Lock()
 
         # Long buffer for ultra-low THD extraction
         self.buffer_size = 262144
@@ -57,8 +59,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         # Results
         self.measured_freq = 0.0
-        self.harmonics_amp = np.zeros(self.max_harmonic)
-        self.harmonics_phase_deg = np.zeros(self.max_harmonic)
+        self._allocate_harmonic_buffers()
         self.thd_value = 0.0
         self.thd_db = DISTORTION_DB_FLOOR
         self.thdn_value = 0.0
@@ -71,15 +72,25 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.callback_id = None
         self.history_len = min(8192, self.buffer_size // 10)
         self.residual_history = deque(maxlen=self.history_len)
-        self.lock = threading.Lock()
+
+    def _allocate_harmonic_buffers(self):
+        with self.lock:
+            self.harmonics_amp = np.zeros(self.max_harmonic)
+            self.harmonics_phase_deg = np.zeros(self.max_harmonic)
+
+    def set_max_harmonic(self, val: int):
+        if val == self.max_harmonic:
+            return
+        self.max_harmonic = val
+        self._allocate_harmonic_buffers()
 
     @property
     def name(self) -> str:
-        return tr("Lock-in Harmonic Analyzer")
+        return "Lock-in Harmonic Analyzer"
 
     @property
     def description(self) -> str:
-        return tr("Ultra-precision THD measurement using parallel reference-locked matrix projection.")
+        return "Ultra-precision THD measurement using parallel reference-locked matrix projection."
 
     def get_widget(self):
         return LockInHarmonicWidget(self)
@@ -383,6 +394,7 @@ class LockInHarmonicWidget(QWidget):
     def __init__(self, module: LockInHarmonicAnalyzer):
         super().__init__()
         self.module = module
+        self._last_fs = 0
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
@@ -412,12 +424,7 @@ class LockInHarmonicWidget(QWidget):
 
         # Buffer size
         self.combo_buffer = QComboBox()
-        self.combo_buffer.addItems([
-            tr("65,536 (1.3s@48k)"),
-            tr("131,072 (2.7s@48k)"),
-            tr("262,144 (5.4s@48k)"),
-            tr("524,288 (10.9s@48k)")
-        ])
+        self._update_buffer_labels()
         self.combo_buffer.setCurrentIndex(2) # Default 262144
         self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer (Integ. Time):"), self.combo_buffer)
@@ -435,6 +442,14 @@ class LockInHarmonicWidget(QWidget):
         self.amp_spin.setSuffix(" dBFS")
         self.amp_spin.valueChanged.connect(self.on_amp_changed)
         form.addRow(tr("Amplitude:"), self.amp_spin)
+
+        self.harmonic_spin = QSpinBox()
+        self.harmonic_spin.setRange(2, 200)
+        self.harmonic_spin.setValue(self.module.max_harmonic)
+        self.harmonic_spin.valueChanged.connect(self.on_max_harmonic_changed)
+        form.addRow(tr("Harmonics:"), self.harmonic_spin)
+
+        self._update_harmonic_limit()
 
         settings_group.setLayout(form)
         left_panel.addWidget(settings_group)
@@ -501,7 +516,8 @@ class LockInHarmonicWidget(QWidget):
         self.plot_bar.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_bar.showGrid(y=True)
         self.plot_bar.setYRange(-200, 0)
-        self.bar_items = pg.BarGraphItem(x=np.arange(1, 11), height=np.zeros(10), width=0.6, brush='b')
+        x_indices = np.arange(1, self.module.max_harmonic + 1)
+        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(len(x_indices)), width=0.6, brush='b')
         self.plot_bar.addItem(self.bar_items)
         self.tabs.addTab(self.plot_bar, tr("Harmonics Plot"))
 
@@ -529,10 +545,23 @@ class LockInHarmonicWidget(QWidget):
         sizes = [65536, 131072, 262144, 524288]
         if 0 <= idx < len(sizes):
             self.module.buffer_size = sizes[idx]
-            # Restart if running
             if self.module.is_running:
                 self.module.stop_analysis()
                 self.module.start_analysis()
+
+    def on_max_harmonic_changed(self, val):
+        self.module.set_max_harmonic(val)
+        # Resize table
+        self.table.setRowCount(val)
+        for i in range(val):
+            if not self.table.item(i, 0):
+                self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
+        # Re-create plot items
+        self.plot_bar.removeItem(self.bar_items)
+        x_indices = np.arange(1, val + 1)
+        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(val), width=0.6, brush='b')
+        self.plot_bar.addItem(self.bar_items)
+        self.module.clear_buffer()
 
     def on_amp_changed(self, val):
         self.module.gen_amplitude = 10 ** (val / 20)
@@ -540,6 +569,7 @@ class LockInHarmonicWidget(QWidget):
 
     def on_freq_changed(self, val):
         self.module.gen_frequency = val
+        self._update_harmonic_limit()
         self.module.clear_buffer()
 
     def on_output_ch_changed(self, val):
@@ -554,12 +584,48 @@ class LockInHarmonicWidget(QWidget):
         self.module.ref_channel = val
         self.module.clear_buffer()
 
+    def _update_harmonic_limit(self):
+        """Update the maximum allowed harmonic order based on fundamental frequency and sample rate."""
+        fs = self.module.audio_engine.sample_rate
+        f0 = self.module.gen_frequency
+        if f0 > 0:
+            # Nyquist margin (e.g. 48% of FS) to avoid aliasing artifacts near Nyquist.
+            limit = int(np.floor((fs * 0.48) / f0))
+            limit = max(2, min(200, limit))
+        else:
+            limit = 200
+
+        if self.harmonic_spin.maximum() != limit:
+            self.harmonic_spin.setMaximum(limit)
+            # If current value exceeds new limit, it will be automatically clamped by QSpinBox, 
+            # and valueChanged will trigger module update.
+
+    def _update_buffer_labels(self):
+        """Update the buffer combo box items with dynamic integration time labels."""
+        fs = self.module.audio_engine.sample_rate
+        if fs == self._last_fs:
+            return
+
+        self._last_fs = fs
+        sizes = [65536, 131072, 262144, 524288]
+        current_idx = self.combo_buffer.currentIndex()
+        if current_idx < 0:
+             current_idx = 2 # Default to 262144
+
+        self.combo_buffer.blockSignals(True)
+        self.combo_buffer.clear()
+        for s in sizes:
+            time_sec = s / fs
+            self.combo_buffer.addItem(tr("{:,} ({:.1f}s@{}k)").format(s, time_sec, fs//1000))
+        self.combo_buffer.setCurrentIndex(current_idx)
+        self.combo_buffer.blockSignals(False)
+
     def _format_percent(self, value: float) -> str:
         if value >= 0.001:
-            return f"{value:.5f} %"
+            return tr("{:.5f} %").format(value)
         if value > 0:
-            return f"{value:.3e} %"
-        return "0 %"
+            return tr("{:.3e} %").format(value)
+        return tr("0 %")
 
     def update_ui(self):
         if not self.module.is_running:
@@ -578,6 +644,8 @@ class LockInHarmonicWidget(QWidget):
             return
 
         self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
+        self._update_harmonic_limit()
+        self._update_buffer_labels()
         self.module.process()
 
         thd_db = self.module.thd_db
@@ -585,8 +653,8 @@ class LockInHarmonicWidget(QWidget):
         thdn_db = self.module.thdn_db
         thdn_pct = self.module.thdn_value
 
-        self.lbl_thd.setText(f"{thd_db:.3f} dB ({self._format_percent(thd_pct)})")
-        self.lbl_thdn.setText(f"{thdn_db:.3f} dB ({self._format_percent(thdn_pct)})")
+        self.lbl_thd.setText(tr("{} dB ({})").format(f"{thd_db:.3f}", self._format_percent(thd_pct)))
+        self.lbl_thdn.setText(tr("{} dB ({})").format(f"{thdn_db:.3f}", self._format_percent(thdn_pct)))
 
         fund_dbfs = 20 * np.log10((self.module.harmonics_amp[0]/np.sqrt(2)) + 1e-15) + 3 # Adjusting RMS to peak for dBFS? Usually dBFS is peak. We calc peak.
         fund_peak = self.module.harmonics_amp[0]
@@ -602,10 +670,10 @@ class LockInHarmonicWidget(QWidget):
             amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
             dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
 
-            heights[i] = max(-200, amp_dbfs)
+            heights[i] = max(0, amp_dbfs + 200)
 
             self.table.setItem(i, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
-            self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else "--"))
+            self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else tr("--")))
             self.table.setItem(i, 3, QTableWidgetItem(f"{phase:.2f}"))
 
         self.bar_items.setOpts(height=heights)
