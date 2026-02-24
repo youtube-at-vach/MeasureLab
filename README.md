@@ -142,5 +142,5 @@ You are free to copy, modify, distribute, and use it for any commercial or non-c
 ### 🤖 AI Models
 
 - OpenAI: GPT-4.1, GPT-5, GPT-5.1 Codex Max, GPT-5.2, GPT-5.3-Codex
-- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash
+- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash, Gemini 3.1 Pro
 - Anthropic: Claude 4.5 Sonnet
