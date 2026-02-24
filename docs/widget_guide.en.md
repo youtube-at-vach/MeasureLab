@@ -70,7 +70,7 @@ Tools for evaluating equipment performance and sound quality.
     * Performs more advanced distortion analysis, such as multitone measurement and IMD (Intermodulation Distortion).
 
 * **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md)**
-    * An extremely low-noise distortion measurement module using the principle of a lock-in amplifier and matrix projection without window functions.
+    * An ultra-low distortion (THD) measurement module utilizing the principle of a lock-in amplifier. It achieves high precision by performing 10-parallel IQ detection strictly tuned to the fundamental and harmonics.
 
 * **[Sound Quality Analyzer](widgets/sound_quality_analyzer.md)**
     * Calculates psychoacoustic "sound quality" metrics such as sharpness and roughness.
