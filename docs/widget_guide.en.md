@@ -16,6 +16,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Measure distortion (THD) of amps or components** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
 | **Measure frequency response of amps, etc.** | [Network Analyzer](widgets/network_analyzer.md) |
 | **Measure impedance of speakers** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
+| **Measure ultra-low distortion (THD) with high precision** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md) |
 | **Manage loudness (LUFS)** | [LUFS Meter](widgets/lufs_meter.md) |
 | **Know ambient noise level (SPL)** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.md) |

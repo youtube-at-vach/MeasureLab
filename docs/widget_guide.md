@@ -16,6 +16,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | **アンプや部品の歪み(THD)を測りたい** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
 | **アンプ等の周波数特性(F特)を測りたい** | [Network Analyzer](widgets/network_analyzer.md) |
 | **スピーカーのインピーダンスを測りたい** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
+| **超低歪み(THD)を高精度に測りたい** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md) |
 | **音の大きさ(LUFS)を管理したい** | [LUFS Meter](widgets/lufs_meter.md) |
 | **周囲の騒音レベル(SPL)を知りたい** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
