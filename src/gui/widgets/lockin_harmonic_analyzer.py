@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -34,6 +35,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
+        self.lock = threading.Lock()
 
         # Long buffer for ultra-low THD extraction
         self.buffer_size = 262144
@@ -57,8 +59,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         # Results
         self.measured_freq = 0.0
-        self.harmonics_amp = np.zeros(self.max_harmonic)
-        self.harmonics_phase_deg = np.zeros(self.max_harmonic)
+        self._allocate_harmonic_buffers()
         self.thd_value = 0.0
         self.thd_db = DISTORTION_DB_FLOOR
         self.thdn_value = 0.0
@@ -71,7 +72,17 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.callback_id = None
         self.history_len = min(8192, self.buffer_size // 10)
         self.residual_history = deque(maxlen=self.history_len)
-        self.lock = threading.Lock()
+
+    def _allocate_harmonic_buffers(self):
+        with self.lock:
+            self.harmonics_amp = np.zeros(self.max_harmonic)
+            self.harmonics_phase_deg = np.zeros(self.max_harmonic)
+
+    def set_max_harmonic(self, val: int):
+        if val == self.max_harmonic:
+            return
+        self.max_harmonic = val
+        self._allocate_harmonic_buffers()
 
     @property
     def name(self) -> str:
@@ -436,6 +447,12 @@ class LockInHarmonicWidget(QWidget):
         self.amp_spin.valueChanged.connect(self.on_amp_changed)
         form.addRow(tr("Amplitude:"), self.amp_spin)
 
+        self.harmonic_spin = QSpinBox()
+        self.harmonic_spin.setRange(2, 100)
+        self.harmonic_spin.setValue(self.module.max_harmonic)
+        self.harmonic_spin.valueChanged.connect(self.on_max_harmonic_changed)
+        form.addRow(tr("Harmonics:"), self.harmonic_spin)
+
         settings_group.setLayout(form)
         left_panel.addWidget(settings_group)
 
@@ -501,7 +518,8 @@ class LockInHarmonicWidget(QWidget):
         self.plot_bar.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_bar.showGrid(y=True)
         self.plot_bar.setYRange(-200, 0)
-        self.bar_items = pg.BarGraphItem(x=np.arange(1, 11), y0=-200, height=np.zeros(10), width=0.6, brush='b')
+        x_indices = np.arange(1, self.module.max_harmonic + 1)
+        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(len(x_indices)), width=0.6, brush='b')
         self.plot_bar.addItem(self.bar_items)
         self.tabs.addTab(self.plot_bar, tr("Harmonics Plot"))
 
@@ -529,10 +547,23 @@ class LockInHarmonicWidget(QWidget):
         sizes = [65536, 131072, 262144, 524288]
         if 0 <= idx < len(sizes):
             self.module.buffer_size = sizes[idx]
-            # Restart if running
             if self.module.is_running:
                 self.module.stop_analysis()
                 self.module.start_analysis()
+
+    def on_max_harmonic_changed(self, val):
+        self.module.set_max_harmonic(val)
+        # Resize table
+        self.table.setRowCount(val)
+        for i in range(val):
+            if not self.table.item(i, 0):
+                self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
+        # Re-create plot items
+        self.plot_bar.removeItem(self.bar_items)
+        x_indices = np.arange(1, val + 1)
+        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(val), width=0.6, brush='b')
+        self.plot_bar.addItem(self.bar_items)
+        self.module.clear_buffer()
 
     def on_amp_changed(self, val):
         self.module.gen_amplitude = 10 ** (val / 20)
