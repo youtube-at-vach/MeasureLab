@@ -23,6 +23,9 @@ from scipy.signal import hilbert
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.module_constants import (
+    MODULE_LOCK_IN_HARMONIC_ANALYZER,
+)
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -75,11 +78,11 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return tr("Lock-in THD Analyzer (Parallel)")
+        return "Lock-in Harmonic Analyzer"
 
     @property
     def description(self) -> str:
-        return "Ultra-precision THD measurement using parallel reference-locked matrix projection."
+        return tr("Ultra-precision THD measurement using parallel reference-locked matrix projection.")
 
     def get_widget(self):
         return LockInHarmonicWidget(self)
@@ -412,7 +415,12 @@ class LockInHarmonicWidget(QWidget):
 
         # Buffer size
         self.combo_buffer = QComboBox()
-        self.combo_buffer.addItems(["65,536 (1.3s@48k)", "131,072 (2.7s@48k)", "262,144 (5.4s@48k)", "524,288 (10.9s@48k)"])
+        self.combo_buffer.addItems([
+            tr("65,536 (1.3s@48k)"),
+            tr("131,072 (2.7s@48k)"),
+            tr("262,144 (5.4s@48k)"),
+            tr("524,288 (10.9s@48k)")
+        ])
         self.combo_buffer.setCurrentIndex(2) # Default 262144
         self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer (Integ. Time):"), self.combo_buffer)
@@ -478,17 +486,22 @@ class LockInHarmonicWidget(QWidget):
         # Harmonic Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Harmonic", "Amp (dBFS)", "Level (dBc)", "Phase (deg)"])
+        self.table.setHorizontalHeaderLabels([
+            tr("Harmonic"),
+            tr("Amp (dBFS)"),
+            tr("Level (dBc)"),
+            tr("Phase (deg)")
+        ])
         self.table.setRowCount(self.module.max_harmonic)
         for i in range(self.module.max_harmonic):
-            self.table.setItem(i, 0, QTableWidgetItem(f"{i+1}th" if i > 0 else "Fund."))
+            self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
         self.table.resizeColumnsToContents()
         self.tabs.addTab(self.table, tr("Harmonics Table"))
 
         # Bar Plot
-        self.plot_bar = pg.PlotWidget(title="Harmonics Spectrum")
-        self.plot_bar.setLabel("bottom", "Harmonic Order")
-        self.plot_bar.setLabel("left", "Amplitude", units="dBFS")
+        self.plot_bar = pg.PlotWidget(title=tr("Harmonics Spectrum"))
+        self.plot_bar.setLabel("bottom", tr("Harmonic Order"))
+        self.plot_bar.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_bar.showGrid(y=True)
         self.plot_bar.setYRange(-200, 0)
         self.bar_items = pg.BarGraphItem(x=np.arange(1, 11), height=np.zeros(10), width=0.6, brush='b')
@@ -496,7 +509,7 @@ class LockInHarmonicWidget(QWidget):
         self.tabs.addTab(self.plot_bar, tr("Harmonics Plot"))
 
         # Residual Time
-        self.plot_res = pg.PlotWidget(title="Residual Waveform")
+        self.plot_res = pg.PlotWidget(title=tr("Residual Waveform"))
         self.curve_res = self.plot_res.plot(pen="y")
         self.tabs.addTab(self.plot_res, tr("Residual"))
 
