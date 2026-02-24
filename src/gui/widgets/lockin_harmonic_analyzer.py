@@ -4,9 +4,8 @@ from collections import deque
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -14,7 +13,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -55,8 +53,6 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         # Harmonic Analysis Specs
         self.max_harmonic = 10
-        self.analysis_mode = "windowed"  # "windowed" or "coherent"
-        self.coherent_cycles = 256
         self.min_analysis_samples = 2048
 
         # Results
@@ -193,22 +189,21 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             return sig, ref, None
 
         rising_idx = np.flatnonzero((ref[:-1] <= 0.0) & (ref[1:] > 0.0))
-        if len(rising_idx) < (self.coherent_cycles + 1):
+        num_cycles = len(rising_idx) - 1
+        if num_cycles < 1:
             return sig, ref, None
 
         # Sub-sample crossing timing via linear interpolation.
-        crossing_pos = []
-        for i in rising_idx:
-            y0 = ref[i]
-            y1 = ref[i + 1]
+        def get_crossing(idx):
+            y0 = ref[idx]
+            y1 = ref[idx + 1]
             dy = y1 - y0
             frac = 0.0 if abs(dy) < 1e-18 else (-y0 / dy)
-            frac = np.clip(frac, 0.0, 1.0)
-            crossing_pos.append(i + frac)
-        crossing_pos = np.asarray(crossing_pos, dtype=np.float64)
+            return idx + np.clip(frac, 0.0, 1.0)
 
-        end_cross = crossing_pos[-1]
-        start_cross = crossing_pos[-(self.coherent_cycles + 1)]
+        start_cross = get_crossing(rising_idx[0])
+        end_cross = get_crossing(rising_idx[-1])
+
         if end_cross <= start_cross:
             return sig, ref, None
 
@@ -224,7 +219,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         if duration_sec <= 0:
             return sig, ref, None
 
-        omega = 2.0 * np.pi * (self.coherent_cycles / duration_sec)
+        omega = 2.0 * np.pi * (num_cycles / duration_sec)
         # Rising zero crossing defines sin phase = 0 at t = start_cross/fs.
         theta_0 = -omega * (start_cross / fs)
         return sig_seg, ref_seg, (omega, theta_0)
@@ -235,7 +230,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         with self.lock:
             filled = self.buffer_filled_samples
-            
+
         if filled < self.buffer_size:
             return
 
@@ -263,25 +258,18 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             self._reset_results()
             return
 
-        sig = sig_full
-        ref = ref_full
-        omega = None
-        theta_0 = None
-        if self.analysis_mode == "coherent":
-            sig_c, ref_c, phase_seed = self._extract_coherent_segment(sig_full, ref_full, fs)
-            sig = sig_c
-            ref = ref_c
-            if phase_seed is not None:
-                omega, theta_0 = phase_seed
-
-        N = len(sig)
-        t = np.arange(N) / fs
-
-        if omega is None or theta_0 is None:
+        # Always use coherent (bin-centered) mode
+        sig, ref, phase_seed = self._extract_coherent_segment(sig_full, ref_full, fs)
+        if phase_seed is not None:
+            omega, theta_0 = phase_seed
+        else:
             omega, theta_0 = self._estimate_ref_phase_params(ref, fs)
             if omega is None:
                 self._reset_results()
                 return
+
+        N = len(sig)
+        t = np.arange(N) / fs
 
         # Refine phase anchor at current omega.
         ref_i = (2.0 / N) * np.dot(ref, np.cos(omega * t))
@@ -296,35 +284,24 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         # 2. Parallel Lock-in (Matrix Projection)
         phase_ideal = omega * t + theta_0
-        
+
         # Allocate Basis Matrix with DC term: [1, cos(1w), sin(1w), ...]
         num_bases = 1 + self.max_harmonic * 2
         B = np.zeros((N, num_bases))
         B[:, 0] = 1.0
-
-        if self.analysis_mode == "windowed":
-            if not hasattr(self, '_window_cache') or len(self._window_cache) != N:
-                from scipy.signal.windows import blackmanharris
-                self._window_cache = blackmanharris(N)
-            W = self._window_cache
-        else:
-            W = np.ones(N)
-        sig_windowed = sig * W
 
         for n in range(1, self.max_harmonic + 1):
             idx = 1 + (n - 1) * 2
             B[:, idx] = np.cos(n * phase_ideal)
             B[:, idx + 1] = np.sin(n * phase_ideal)
 
-        # Weighted least-squares projection to suppress cross-coupling between bases.
-        # This is more robust than simple dot products when bases are not perfectly orthogonal.
-        BW = B * W[:, None]
-        gram = np.dot(B.T, BW)
-        rhs = np.dot(B.T, sig_windowed)
+        # Matrix projection over coherent cycles
+        gram = np.dot(B.T, B)
+        rhs = np.dot(B.T, sig)
         try:
             coeff = np.linalg.solve(gram, rhs)
         except np.linalg.LinAlgError:
-            coeff = np.linalg.lstsq(BW, sig_windowed, rcond=None)[0]
+            coeff = np.linalg.lstsq(B, sig, rcond=None)[0]
 
         # Harmonic coefficients only (excluding DC term)
         X = coeff[1:]
@@ -348,7 +325,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             # So phi = arctan(sin/cos) = arctan(I/Q)
             # numpy.arctan2(y, x) -> y=I_comp, x=Q_comp
             phase = np.arctan2(I_comp, Q_comp) # rad
-            
+
             # Wrap phase to standard [-pi, pi]
             phase_deg = np.degrees(phase)
             phase_deg = (phase_deg + 180) % 360 - 180
@@ -358,7 +335,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
             if n > 1:
                 sum_sq_harmonics += (amp / np.sqrt(2))**2
-                
+
             # Reconstruct for THD+N by directly using the projections and basis functions
             # I_comp * cos(n * wt) + Q_comp * sin(n * wt)
             reconstructed_sig += I_comp * B[:, b_idx] + Q_comp * B[:, b_idx + 1]
@@ -375,7 +352,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             # THD+N
             residual = sig - reconstructed_sig
             self.residual_rms = np.sqrt(np.mean(residual**2))
-            
+
             # Store some residual history for plot
             step = max(1, len(residual) // self.history_len)
             decimated_res = residual[::step]
@@ -440,21 +417,6 @@ class LockInHarmonicWidget(QWidget):
         self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer (Integ. Time):"), self.combo_buffer)
 
-        self.combo_analysis_mode = QComboBox()
-        self.combo_analysis_mode.addItems(
-            [tr("Windowed (Blackman-Harris)"), tr("Coherent (Bin-centered)")]
-        )
-        self.combo_analysis_mode.setCurrentIndex(0 if self.module.analysis_mode == "windowed" else 1)
-        self.combo_analysis_mode.currentIndexChanged.connect(self.on_analysis_mode_changed)
-        form.addRow(tr("Analysis Mode:"), self.combo_analysis_mode)
-
-        self.spin_coherent_cycles = QSpinBox()
-        self.spin_coherent_cycles.setRange(8, 20000)
-        self.spin_coherent_cycles.setValue(self.module.coherent_cycles)
-        self.spin_coherent_cycles.setSuffix(tr(" cycles"))
-        self.spin_coherent_cycles.valueChanged.connect(self.on_coherent_cycles_changed)
-        form.addRow(tr("Coherent Cycles:"), self.spin_coherent_cycles)
-
         self.freq_spin = QDoubleSpinBox()
         self.freq_spin.setRange(20, 20000)
         self.freq_spin.setValue(self.module.gen_frequency)
@@ -497,7 +459,7 @@ class LockInHarmonicWidget(QWidget):
         self.lbl_thdn = QLabel("--")
         self.lbl_thdn.setStyleSheet("font-size: 18px; color: #ffaaaa;")
         self.lbl_fund = QLabel(tr("Fundamental Amplitude: -- dBFS"))
-        
+
         ov_layout.addWidget(QLabel(tr("THD:")))
         ov_layout.addWidget(self.lbl_thd)
         ov_layout.addWidget(QLabel(tr("THD+N:")))
@@ -542,7 +504,6 @@ class LockInHarmonicWidget(QWidget):
         layout.addLayout(right_panel, 2)
 
         self.setLayout(layout)
-        self._update_analysis_controls()
 
     def on_toggle(self, checked):
         if checked:
@@ -562,16 +523,6 @@ class LockInHarmonicWidget(QWidget):
             if self.module.is_running:
                 self.module.stop_analysis()
                 self.module.start_analysis()
-
-    def on_analysis_mode_changed(self, idx):
-        self.module.analysis_mode = "windowed" if idx == 0 else "coherent"
-        self._update_analysis_controls()
-        self.module.clear_buffer()
-
-    def on_coherent_cycles_changed(self, val):
-        self.module.coherent_cycles = max(1, int(val))
-        if self.module.analysis_mode == "coherent":
-            self.module.clear_buffer()
 
     def on_amp_changed(self, val):
         self.module.gen_amplitude = 10 ** (val / 20)
@@ -593,10 +544,6 @@ class LockInHarmonicWidget(QWidget):
         self.module.ref_channel = val
         self.module.clear_buffer()
 
-    def _update_analysis_controls(self):
-        is_coherent = self.module.analysis_mode == "coherent"
-        self.spin_coherent_cycles.setEnabled(is_coherent)
-
     def _format_percent(self, value: float) -> str:
         if value >= 0.001:
             return f"{value:.5f} %"
@@ -607,7 +554,7 @@ class LockInHarmonicWidget(QWidget):
     def update_ui(self):
         if not self.module.is_running:
             return
-            
+
         with self.module.lock:
             filled = self.module.buffer_filled_samples
             size = self.module.buffer_size
@@ -641,7 +588,7 @@ class LockInHarmonicWidget(QWidget):
         for i in range(self.module.max_harmonic):
             amp_peak = self.module.harmonics_amp[i]
             phase = self.module.harmonics_phase_deg[i]
-            
+
             amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
             dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
 
