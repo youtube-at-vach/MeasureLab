@@ -71,6 +71,9 @@ Tools for evaluating equipment performance and sound quality.
 * **[Lock-in THD+N Analyzer](widgets/lockin_thd_analyzer.md)**
     * An extremely low-noise distortion measurement module using the principle of a lock-in amplifier.
 
+* **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md)**
+    * An extremely low-noise distortion measurement module using the principle of a lock-in amplifier and matrix projection without window functions.
+
 * **[Sound Quality Analyzer](widgets/sound_quality_analyzer.md)**
     * Calculates psychoacoustic "sound quality" metrics such as sharpness and roughness.
 
