@@ -23,9 +23,6 @@ from scipy.signal import hilbert
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.module_constants import (
-    MODULE_LOCK_IN_HARMONIC_ANALYZER,
-)
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)

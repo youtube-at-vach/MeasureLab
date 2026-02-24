@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer
 
@@ -48,7 +47,7 @@ def test_lockin_harmonic_analyzer_math():
     # Inject data
     indata = np.column_stack((sig, ref))
     outdata = np.zeros_like(indata)
-    
+
     # Run callback
     for cb in engine.callbacks.values():
         cb(indata, outdata, len(indata), None, None)
@@ -58,7 +57,7 @@ def test_lockin_harmonic_analyzer_math():
 
     # Check results
     assert np.isclose(analyzer.measured_freq, 1000.0, rtol=1e-3)
-    
+
     # 1st harmonic (Fund)
     assert np.isclose(analyzer.harmonics_amp[0], 1.0, rtol=1e-2)
     assert np.isclose(analyzer.harmonics_phase_deg[0], 0.0, atol=2.0)

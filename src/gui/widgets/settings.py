@@ -1452,7 +1452,6 @@ class SettingsWidget(QWidget):
             from PyQt6.QtWidgets import QProgressDialog
             from PyQt6.QtCore import Qt
             from src.core.fft_manager import FFTManager
-            import numpy as np
 
             manager = FFTManager()
             # Simple heuristic: check if a basic float64 plan exists. We check if 32768 size exists for float64.
@@ -1468,12 +1467,12 @@ class SettingsWidget(QWidget):
             sizes_to_warm = [
                 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144
             ]
-            
+
             if self.include_huge_check.isChecked():
                 sizes_to_warm.extend([524288, 1048576, 2097152, 4194304])
 
             total_sizes = len(sizes_to_warm)
-            
+
             for i, size in enumerate(sizes_to_warm):
                 if progress.wasCanceled():
                     break

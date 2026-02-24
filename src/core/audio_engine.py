@@ -412,15 +412,15 @@ class AudioEngine:
         else:
             in_mode = self._current_in_mode
             # Standard Hardware Input Mapping
-            
+
             # Determine how many logical channels we need based on in_mode
             req_channels = 1 if in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
-            
+
             if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, req_channels):
                 self._logical_in_buffer = np.zeros((frames, req_channels), dtype=self._get_dtype())
-            
+
             logical_in = self._logical_in_buffer
-            
+
             if in_mode == self.MODE_LEFT:
                 logical_in[:, 0] = indata[:, 0]
             elif in_mode == self.MODE_RIGHT:
