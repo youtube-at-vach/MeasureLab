@@ -85,6 +85,15 @@ The performance of a lock-in amplifier is determined by the "strength of the fil
 
 * **Count**: Averages and displays the specified number of measurement data points. Effective for reducing random noise.
 
+### Display Unit
+
+Selects the unit for displaying the measurement result (Magnitude).
+
+* **dBFS**: Digital Full Scale relative (0dBFS = Max)
+* **dBV**: 1Vrms relative (0dBV = 1V)
+* **dBu**: 0.775Vrms relative (0dBu = 0.775V)
+* **V / mV**: Linear voltage (Vrms)
+
 ## Calibration
 
 This widget provides calibration features to improve the absolute accuracy of measurements.
