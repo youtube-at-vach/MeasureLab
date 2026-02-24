@@ -76,7 +76,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     * マルチトーン測定や IMD (混変調歪) など、より高度な歪み解析を行います。
 
 * **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md)**
-    * ロックインアンプの原理を利用した超低歪み(THD)測定モジュールです。10並列のIQ検波により基本波および高調波へ正確に同調（ロックイン）し、微小な歪みを高精度に抽出します。
+    * ロックインアンプの原理を利用した超低歪み(THD)測定モジュールです。最大200次までの多重並列IQ検波により基本波および高調波へ正確に同調（ロックイン）し、微小な歪みを高精度に抽出します。
 
 * **[Sound Quality Analyzer](widgets/sound_quality_analyzer.md)**
     * シャープネス (Sharpness) やラフネス (Roughness) など、聴感上の「音質」指標を計算します。
