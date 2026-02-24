@@ -501,7 +501,7 @@ class LockInHarmonicWidget(QWidget):
         self.plot_bar.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_bar.showGrid(y=True)
         self.plot_bar.setYRange(-200, 0)
-        self.bar_items = pg.BarGraphItem(x=np.arange(1, 11), height=np.zeros(10), width=0.6, brush='b')
+        self.bar_items = pg.BarGraphItem(x=np.arange(1, 11), y0=-200, height=np.zeros(10), width=0.6, brush='b')
         self.plot_bar.addItem(self.bar_items)
         self.tabs.addTab(self.plot_bar, tr("Harmonics Plot"))
 
@@ -602,7 +602,7 @@ class LockInHarmonicWidget(QWidget):
             amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
             dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
 
-            heights[i] = max(-200, amp_dbfs)
+            heights[i] = max(0, amp_dbfs + 200)
 
             self.table.setItem(i, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
             self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else tr("--")))
