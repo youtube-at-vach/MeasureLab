@@ -3,7 +3,6 @@ import numpy as np
 import scipy.signal
 import scipy.stats
 import sys
-import os
 from unittest.mock import MagicMock, patch
 
 # Mock sounddevice before importing anything that uses it
