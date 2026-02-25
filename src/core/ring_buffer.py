@@ -67,13 +67,6 @@ class RingBuffer:
         # Handle channel mismatch (e.g. input 4ch -> buffer 2ch)
         if n_channels > self._channels:
             data = data[:, :self._channels]
-        elif 1 < n_channels < self._channels:
-            # Expand data to match buffer channels, filling extras with 0.
-            # NumPy broadcasting handles (N, 1) -> (N, C) automatically,
-            # but (N, M) -> (N, C) where 1 < M < C raises a ValueError.
-            new_data = np.zeros((n_frames, self._channels), dtype=data.dtype)
-            new_data[:, :n_channels] = data
-            data = new_data
 
         # Handle overflow if writing more than capacity (only keep latest)
         if n_frames > self._capacity:
