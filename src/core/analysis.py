@@ -1262,10 +1262,13 @@ class AudioCalc:
             if not is_linear_freqs and start_freq > 1e-9:
                 # Check for logarithmic spacing (geometric progression)
                 ratio = freqs[1] / start_freq
-                # expected_end = start * ratio^(n-1)
-                expected_log_end = start_freq * (ratio ** (len(freqs) - 1))
+                # Use log domain to check for geometric progression to avoid overflow
+                # log(expected_end) = log(start) + (n-1) * log(ratio)
+                log_ratio = np.log(ratio)
+                expected_log_end_log = np.log(start_freq) + (len(freqs) - 1) * log_ratio
 
-                if abs(freqs[-1] - expected_log_end) < 1e-4 * expected_log_end:
+                # Check if the last element matches the expected end in log domain
+                if abs(np.log(freqs[-1]) - expected_log_end_log) < 1e-4:
                     # Verify strictly using log domain
                     with np.errstate(divide='ignore', invalid='ignore'):
                         log_freqs = np.log(freqs)
