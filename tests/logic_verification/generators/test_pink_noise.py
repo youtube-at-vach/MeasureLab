@@ -74,7 +74,7 @@ class TestPinkNoise(unittest.TestCase):
             mock_randn.return_value = np.ones(10, dtype=np.float32)
 
             # First call
-            out1 = pn.generate(10)
+            _ = pn.generate(10)
 
             # Check that state variables are no longer 0
             state_vars = [pn.b0, pn.b1, pn.b2, pn.b3, pn.b4, pn.b5, pn.b6]
@@ -84,7 +84,7 @@ class TestPinkNoise(unittest.TestCase):
             state_after_first = list(state_vars)
 
             # Second call (mock still returns ones)
-            out2 = pn.generate(10)
+            _ = pn.generate(10)
 
             # Check that state has evolved further
             state_after_second = [pn.b0, pn.b1, pn.b2, pn.b3, pn.b4, pn.b5, pn.b6]
