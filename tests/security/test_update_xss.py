@@ -1,5 +1,4 @@
 
-import pytest
 from PyQt6.QtCore import Qt
 from src.gui.widgets.welcome import WelcomeWidget
 
