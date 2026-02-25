@@ -523,6 +523,11 @@ class OscilloscopeWidget(QWidget):
         self.module = module
         self._rgba_buffer = None
         self._clip_buffer = None
+
+        # Optimization: Time array cache
+        self._time_array_cache = None
+        self._time_array_cache_params = (None, None)  # (window_duration, length)
+
         self.init_ui()
 
         self.timer = QTimer()
@@ -1166,7 +1171,20 @@ class OscilloscopeWidget(QWidget):
 
         if data is not None:
             # Create time axis
-            t = np.linspace(0, window_duration, len(data))
+            # Optimization: Cache time array
+            current_len = len(data)
+            cached_duration, cached_len = self._time_array_cache_params
+
+            if (
+                self._time_array_cache is not None
+                and cached_duration == window_duration
+                and cached_len == current_len
+            ):
+                t = self._time_array_cache
+            else:
+                t = np.linspace(0, window_duration, current_len)
+                self._time_array_cache = t
+                self._time_array_cache_params = (window_duration, current_len)
 
             # Apply Filter if enabled
             sr = self.module.audio_engine.sample_rate
