@@ -268,6 +268,7 @@ class ConfigManager:
         return config
 
     def _resolve_path(self, path_value: str) -> str:
+        path_value = os.path.expanduser(path_value)
         if os.path.isabs(path_value):
             full_path = os.path.abspath(path_value)
         else:
@@ -279,13 +280,7 @@ class ConfigManager:
         try:
             # Allow arbitrary paths for screenshots (no sandboxing)
             raw_path = config["screenshot"].get("output_dir", "screenshots")
-            # Expand ~ if present
-            raw_path = os.path.expanduser(raw_path)
-
-            if os.path.isabs(raw_path):
-                out_dir = os.path.abspath(raw_path)
-            else:
-                out_dir = os.path.abspath(os.path.join(self.config_dir, raw_path))
+            out_dir = self._resolve_path(raw_path)
 
         except Exception as e:
             self.logger.warning(f"Error resolving screenshot path: {e}. Reverting to default.")
@@ -429,13 +424,8 @@ class ConfigManager:
         if not out_dir:
             return "screenshots"
         # Allow arbitrary paths for screenshots (no sandboxing)
-        out_dir = str(out_dir)
         try:
-            out_dir = os.path.expanduser(out_dir)
-            if os.path.isabs(out_dir):
-                return os.path.abspath(out_dir)
-            else:
-                return os.path.abspath(os.path.join(self.config_dir, out_dir))
+            return self._resolve_path(str(out_dir))
         except Exception:
             return self._get_default_screenshot_dir()
 
