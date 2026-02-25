@@ -1,5 +1,33 @@
 # Changelog
 
+## [v0.5.3] - 2026-02-25
+
+### Major
+
+* **Lock-in Harmonic Analyzer**: Introduced a new module for ultra-precision THD measurement using parallel reference-locked matrix projection. The analyzer supports dynamic harmonic order limits up to 200 and parallel IQ detection.
+* **64-bit Audio Engine**: Added an option to enable 64-bit audio processing precision throughout the audio engine, including float64 FFT optimization.
+* **Sound Quality Enhancements**: Added Fluctuation Strength, Articulation Index (AI), Coherence calculation, IR SNR, and CSV export functionality to the Sound Quality Analyzer.
+
+### Added
+
+* **Network Analyzer**: Implemented averaging for fast sweeps and time alignment for recorded data.
+* **Signal Generator**: Added selectable frequency calibration source functionality to the UI.
+* **Docs**: Added dedicated documentation for Oscilloscope, Signal Generator, and Lock-in Harmonic Analyzer.
+
+### Changed
+
+* **UI**: Applied dynamic monospace font family (`MONOSPACE_FONT_FAMILY`) uniformly across frequency displays and analyzer widgets.
+* **Perf**: Optimized A-weighted noise calculation using `np.dot` and improved audio dither generation to reduce array allocations.
+* **Config**: Deprecated the old THD analyzer, renaming it to "Lock-in Harmonic Analyzer" and hiding it under an `--experimental` flag to streamline the UI.
+* **Test**: Cleaned up the pytest suite in logic verification and consolidated ConfigManager/MainWindow logic tests.
+
+### Fixed
+
+* **Analysis**: Fixed division by zero bug in frequency axis analysis.
+* **Signal Generator**: Fixed a bug where parameter changes were not correctly updating the output buffer.
+* **Audio**: Fixed swallowed exceptions in Impedance Analyzer and Lock-In Amplifier callbacks.
+* **I18n**: Fixed translation leaks across multiple language files and updated `.json` assets.
+
 ## [v0.5.2] - 2026-02-19
 
 ### Major
