@@ -123,6 +123,7 @@ class WelcomeWidget(QWidget):
 
         # Update Notification
         self.update_label = QLabel()
+        self.update_label.setTextFormat(Qt.TextFormat.PlainText)
         self.update_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         self.update_label.setStyleSheet("color: #4CAF50;")  # Green color for update
         self.update_label.setAlignment(Qt.AlignmentFlag.AlignRight)
