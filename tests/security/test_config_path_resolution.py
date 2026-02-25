@@ -2,6 +2,7 @@ import os
 import pytest
 import tempfile
 import json
+from unittest.mock import patch
 from src.core.config_manager import ConfigManager
 
 @pytest.fixture
@@ -83,3 +84,35 @@ def test_resolve_base_directory(config_manager_instance):
     path = "."
     resolved = cm._resolve_path(path)
     assert resolved == temp_dir
+
+def test_resolve_home_directory_expansion(config_manager_instance):
+    cm, temp_dir = config_manager_instance
+    path = "~/subdir"
+
+    # Mock expanduser to return a path relative to temp_dir for predictability
+    # We choose an absolute path to simulate successful expansion
+    expanded_path = os.path.join(temp_dir, "home/user/subdir")
+
+    with patch("os.path.expanduser", return_value=expanded_path) as mock_expand:
+        resolved = cm._resolve_path(path)
+
+        # Verify expanduser was called
+        mock_expand.assert_called_with(path)
+
+        # Verify result matches expected expanded path
+        # Since expanded_path is absolute, _resolve_path should return it as is
+        assert resolved == expanded_path
+
+def test_ensure_screenshot_dir_expansion(config_manager_instance):
+    cm, temp_dir = config_manager_instance
+    config = {"screenshot": {"output_dir": "~/screenshots"}}
+
+    expanded_path = os.path.join(temp_dir, "home/user/screenshots")
+
+    with patch("os.path.expanduser", return_value=expanded_path) as mock_expand:
+        # We need to mock makedirs to avoid actual FS operations on non-existent paths
+        with patch("os.makedirs"):
+             out_dir = cm._ensure_screenshot_dir(config)
+
+        mock_expand.assert_called_with("~/screenshots")
+        assert out_dir == expanded_path
