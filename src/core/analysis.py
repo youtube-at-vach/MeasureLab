@@ -1266,7 +1266,7 @@ class AudioCalc:
                 # log(expected_end) = log(start) + (n-1) * log(ratio)
                 log_ratio = np.log(ratio)
                 expected_log_end_log = np.log(start_freq) + (len(freqs) - 1) * log_ratio
-                
+
                 # Check if the last element matches the expected end in log domain
                 if abs(np.log(freqs[-1]) - expected_log_end_log) < 1e-4:
                     # Verify strictly using log domain
