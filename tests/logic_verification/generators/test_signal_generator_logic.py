@@ -3,7 +3,6 @@ import numpy as np
 import scipy.signal
 import scipy.stats
 import sys
-import os
 from unittest.mock import MagicMock, patch
 
 # Mock sounddevice before importing anything that uses it
@@ -12,13 +11,68 @@ try:
 except (ImportError, OSError):
     sys.modules['sounddevice'] = MagicMock()
 
-# Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-
 from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
 
 class TestSignalGeneratorChannels(unittest.TestCase):
     """Tests for channel independence and routing logic."""
+
+    def test_phase_control(self):
+        """Verify phase offset control between channels."""
+        # Mock AudioEngine
+        mock_engine = MagicMock()
+        mock_engine.sample_rate = 48000
+        mock_engine.calibration.output_gain = 1.0
+
+        sg = SignalGenerator(mock_engine)
+
+        # Start generation to register callback
+        sg.start_generation()
+
+        # Capture callback
+        args, _ = mock_engine.register_callback.call_args
+        callback = args[0]
+
+        frames = 480 # 10ms
+        outdata = np.zeros((frames, 2))
+
+        # Case 1: 0 vs 90 degrees (Orthogonal)
+        sg.params_L.waveform = 'sine'
+        sg.params_L.frequency = 1000
+        sg.params_L.amplitude = 1.0
+        sg.params_L.phase_offset = 0.0
+        sg.params_L._phase = 0 # Internal reset
+
+        sg.params_R.waveform = 'sine'
+        sg.params_R.frequency = 1000
+        sg.params_R.amplitude = 1.0
+        sg.params_R.phase_offset = 90.0
+        sg.params_R._phase = 0 # Internal reset
+
+        sg.output_mode = 'STEREO'
+
+        callback(None, outdata, frames, None, None)
+
+        left = outdata[:, 0]
+        right = outdata[:, 1]
+
+        # Correlation
+        corr = np.sum(left * right) / (np.sqrt(np.sum(left**2)) * np.sqrt(np.sum(right**2)))
+        self.assertLess(abs(corr), 0.01, "Correlation of 0 vs 90 deg should be ~0")
+
+        # Case 2: 0 vs 180 degrees (Anti-phase)
+        sg.params_R.phase_offset = 180.0
+        # Manually reset phases for test determinism
+        sg.params_L._phase = 0
+        sg.params_R._phase = 0
+
+        outdata.fill(0)
+        callback(None, outdata, frames, None, None)
+
+        left = outdata[:, 0]
+        right = outdata[:, 1]
+
+        corr = np.sum(left * right) / (np.sqrt(np.sum(left**2)) * np.sqrt(np.sum(right**2)))
+        self.assertAlmostEqual(corr, -1.0, delta=0.01, msg="Correlation of 0 vs 180 deg should be ~-1.0")
 
     def test_independent_channels(self):
         # Mock AudioEngine
