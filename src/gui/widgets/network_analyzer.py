@@ -429,23 +429,45 @@ class NetworkAnalyzer(MeasurementModule):
             end = min(len(ir), peak_idx + post)
 
             ir_win = ir[start:end]
-            H = fft_manager.rfft(ir_win)
-            freqs = fft_manager.rfftfreq(len(ir_win), d=1 / sample_rate)
+            # Normalize by the known excitation/deconvolution chain so that a unity
+            # loopback is near 0 dB independent of output amplitude.
+            ir_drive = get_ir(chirp)
+            drive_peak_idx = np.argmax(np.abs(ir_drive))
+            drive_start = max(0, drive_peak_idx - pre)
+            drive_end = min(len(ir_drive), drive_peak_idx + post)
+            drive_win = ir_drive[drive_start:drive_end]
+
+            len_win = min(len(ir_win), len(drive_win))
+            if len_win < 8:
+                len_win = len(ir_win)
+                ir_ref_win = ir_win
+                drive_ref_win = None
+            else:
+                ir_ref_win = ir_win[:len_win]
+                drive_ref_win = drive_win[:len_win]
+
+            H = fft_manager.rfft(ir_ref_win)
+            freqs = fft_manager.rfftfreq(len(ir_ref_win), d=1 / sample_rate)
+            H_norm = None
+            if drive_ref_win is not None:
+                H_drive = fft_manager.rfft(drive_ref_win)
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    H_norm = np.nan_to_num(H / (H_drive + 1e-12))
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
-            valid_H = H[mask]
+            valid_H = H_norm[mask] if H_norm is not None else H[mask]
 
             mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
-
-            if self.input_mode != "XFER":
-                mag_db += 20 * np.log10(self.get_output_amplitude() + 1e-12)
             phase_rad = np.angle(valid_H)
             phase_rad = np.unwrap(phase_rad)
 
-            # Latency Comp
-            delay_samples = peak_idx - start
-            phase_rad += 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
+            # Latency compensation is only required when we use the raw transfer
+            # (non-normalized) path. In normalized mode, drive path delay/phase is
+            # already canceled by H/H_drive.
+            if H_norm is None:
+                delay_samples = peak_idx - start
+                phase_rad += 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
 
             phase_deg = np.degrees(phase_rad)
             phase_deg = (phase_deg + 180) % 360 - 180
@@ -1033,7 +1055,9 @@ class NetworkAnalyzerWidget(QWidget):
         if len(freqs_to_plot) == 0:
             return
 
-        if self.module.input_mode == "XFER":
+        is_relative_mode = self.module.input_mode in ["XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"]
+
+        if is_relative_mode:
             # XFER is already in dB relative
             y_values = mags_to_plot
             self.mag_plot.setLabel("left", tr("Gain"), units="dB")
@@ -1075,7 +1099,7 @@ class NetworkAnalyzerWidget(QWidget):
                 interp_mags = np.interp(freqs_to_plot, ref["freqs"], ref["mags"])
 
                 # If XFER, just subtract dB
-                if self.module.input_mode == "XFER":
+                if is_relative_mode:
                     y_values -= interp_mags
                 else:
                     # If not XFER, we need to handle units carefully
