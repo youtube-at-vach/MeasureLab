@@ -730,6 +730,7 @@ class LockInAmplifierWidget(QWidget):
                 tr("Slow (16384 samples)"),
                 tr("Very Slow (65536 samples)"),
                 tr("Very Slow 2x (131072 samples)"),
+                tr("Very Slow 4x (262144 samples)"),
             ]
         )
         self.time_combo.setCurrentIndex(1)
@@ -1270,6 +1271,8 @@ class LockInAmplifierWidget(QWidget):
             size = 65536
         elif idx == 4:
             size = 131072
+        elif idx == 5:
+            size = 262144
 
         self.module.set_buffer_size(size)
 
