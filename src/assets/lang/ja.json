@@ -1094,6 +1094,7 @@
     "Vertical": "垂直",
     "Very Slow (65536 samples)": "超低速 (65536サンプル)",
     "Very Slow 2x (131072 samples)": "超低速 2x (131072サンプル)",
+    "Very Slow 4x (262144 samples)": "極低速 4x (262144サンプル)",
     "Virtual / Offline Mode": "仮想 / オフラインモード",
     "Virtual Audio (No Hardware)": "仮想オーディオ (ハードウェアなし)",
     "Virtual Loopback (Always On)": "仮想ループバック（常時有効）",
