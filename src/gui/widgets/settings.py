@@ -602,6 +602,8 @@ class OutputCalibrationDialog(QDialog):
                 tr("Success"),
                 tr("Output Gain calibrated to {0:.4f} V/FS").format(gain),
             )
+            # Stop test tone immediately after saving.
+            self.stop_tone()
             self.accept()
 
         except Exception as e:
@@ -732,6 +734,9 @@ class InputCalibrationDialog(QDialog):
                 tr("Success"),
                 tr("Input Sensitivity calibrated to {0:.4f} V/FS").format(sensitivity),
             )
+            # Stop measurement immediately after saving.
+            self.stop_measurement()
+            self.timer.stop()
             self.accept()
 
         except Exception as e:
