@@ -1,8 +1,6 @@
-import sys
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
-from PyQt6.QtWidgets import QApplication
+from unittest.mock import MagicMock
 
 from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
 # AudioEngine not imported as class, only mocked
