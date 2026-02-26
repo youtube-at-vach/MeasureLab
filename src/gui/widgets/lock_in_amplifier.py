@@ -370,29 +370,29 @@ class LockInAmplifier(MeasurementModule):
         # For harmonic measurements, the reference channel often contains only the fundamental.
         osc_ref = np.exp(-1j * 2 * np.pi * ref_freq * t)
         ref_c_fund = 2 * np.mean(ref * w * osc_ref) / w_mean
-        
+
         # Exact Phase tracking for fractional harmonics:
         # Calculate the phase of the fundamental in the current buffer
         current_buffer_phase = np.angle(ref_c_fund)
-        
+
         # Phase unwrap using the expected phase advance from the absolute sample position
         # dt is approx, but start_idx is exact. We can use difference in start_idx to predict phase jump.
         if not hasattr(self, "_last_start_idx"):
             self._last_start_idx = start_idx
             self._unwrapped_ref_phase = current_buffer_phase
-            
+
         exact_dt = (start_idx - self._last_start_idx) / self.audio_engine.sample_rate
         expected_phase_jump = 2 * np.pi * ref_freq * exact_dt
-        
+
         # Predict the current wrapped phase
         predicted_phase = self._unwrapped_ref_phase + expected_phase_jump
-        
+
         # Find the integer number of wraps that makes the measured phase closest to the predicted phase
         diff = current_buffer_phase - predicted_phase
         wraps = np.round(diff / (2 * np.pi))
         self._unwrapped_ref_phase = current_buffer_phase - wraps * 2 * np.pi
         self._last_start_idx = start_idx
-        
+
         # The true phase of the fractional harmonic is scaled perfectly:
         fractional_phase = self._unwrapped_ref_phase * (harmonic_num / harmonic_den)
         ref_fractional_phasor = np.exp(1j * fractional_phase)
@@ -802,15 +802,15 @@ class LockInAmplifierWidget(QWidget):
         self.harmonic_num_spin.setRange(1, 63)
         self.harmonic_num_spin.setValue(1)
         self.harmonic_num_spin.valueChanged.connect(lambda v: setattr(self.module, "harmonic_numerator", v))
-        
+
         harmonic_layout.addWidget(self.harmonic_num_spin)
         harmonic_layout.addWidget(QLabel(" / "))
-        
+
         self.harmonic_den_spin = QSpinBox()
         self.harmonic_den_spin.setRange(1, 63)
         self.harmonic_den_spin.setValue(1)
         self.harmonic_den_spin.valueChanged.connect(lambda v: setattr(self.module, "harmonic_denominator", v))
-        
+
         harmonic_layout.addWidget(self.harmonic_den_spin)
         settings_layout.addRow(tr("Harmonic:"), harmonic_layout)
 
