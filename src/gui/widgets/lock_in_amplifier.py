@@ -47,7 +47,6 @@ class LockInAmplifier(MeasurementModule):
         # Settings
         self.gen_frequency = 1000.0
         self.gen_amplitude = 0.5  # Linear 0-1
-        self.gen_amplitude = 0.5  # Linear 0-1
         self.output_channel = 0  # 0: Left, 1: Right
         self.external_mode = False
 
@@ -63,7 +62,6 @@ class LockInAmplifier(MeasurementModule):
         self.current_phase = 0.0
         self.current_x = 0.0
         self.current_y = 0.0
-        self.ref_freq = 0.0
         self.ref_freq = 0.0
         self.ref_level = 0.0
         self.ref_coherence = 0.0
@@ -158,8 +156,6 @@ class LockInAmplifier(MeasurementModule):
             data = self.input_data.copy()
             pos = self.input_buffer_pos
             start_idx = getattr(self, "_total_samples_written", 0) - self.buffer_size
-            if start_idx < 0:
-                start_idx = 0
 
         if pos == 0:
             return data, start_idx
@@ -284,7 +280,6 @@ class LockInAmplifier(MeasurementModule):
             self.current_x = 0.0
             self.current_y = 0.0
             self.ref_freq = 0.0
-            self.ref_freq = 0.0
             # Clear history if reference is lost to prevent stale averaging
             if self.history:
                 self.history.clear()
@@ -348,7 +343,6 @@ class LockInAmplifier(MeasurementModule):
             self.current_magnitude = 0.0
             self.current_phase = 0.0
             self.current_x = 0.0
-            self.current_y = 0.0
             self.current_y = 0.0
             if self.history:
                 self.history.clear()

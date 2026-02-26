@@ -59,7 +59,7 @@ class TestLockInBuffer(unittest.TestCase):
         np.testing.assert_array_equal(self.lockin.input_data[0:10], new_data)
 
         # Verify reconstructed data
-        ordered = self.lockin.get_ordered_input_data()
+        ordered, s_idx = self.lockin.get_ordered_input_data()
         expected = np.zeros((100, 2))
         expected[-10:] = new_data
 
@@ -90,7 +90,7 @@ class TestLockInBuffer(unittest.TestCase):
         np.testing.assert_array_equal(self.lockin.input_data[90:100], data_2[:10])
 
         # Check reconstruction
-        ordered = self.lockin.get_ordered_input_data()
+        ordered, s_idx = self.lockin.get_ordered_input_data()
 
         expected = np.concatenate((
             np.ones((80, 2)) * 1, # 80 samples of 1s
@@ -115,7 +115,7 @@ class TestLockInBuffer(unittest.TestCase):
         self.assertEqual(self.lockin.input_buffer_pos, 0)
         np.testing.assert_array_equal(self.lockin.input_data, expected_internal)
 
-        ordered = self.lockin.get_ordered_input_data()
+        ordered, s_idx = self.lockin.get_ordered_input_data()
         np.testing.assert_array_equal(ordered, expected_internal)
 
 if __name__ == "__main__":
