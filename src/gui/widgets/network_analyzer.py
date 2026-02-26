@@ -647,6 +647,12 @@ class NetworkAnalyzerWidget(QWidget):
         self.unit_combo.currentTextChanged.connect(self.refresh_plots)
         display_form.addRow(tr("Unit:"), self.unit_combo)
 
+        self.single_mode_combo = QComboBox()
+        self.single_mode_combo.addItem(tr("Relative (Gain)"), "relative")
+        self.single_mode_combo.addItem(tr("Absolute (Level)"), "absolute")
+        self.single_mode_combo.currentIndexChanged.connect(self.on_display_mode_changed)
+        display_form.addRow(tr("Single-Ch Mode:"), self.single_mode_combo)
+
         self.gd_check = QCheckBox(tr("Show Group Delay"))
         self.gd_check.toggled.connect(self.refresh_plots)
         display_form.addRow(self.gd_check)
@@ -772,6 +778,7 @@ class NetworkAnalyzerWidget(QWidget):
 
         layout.addLayout(plot_layout)
         self.setLayout(layout)
+        self.on_routing_changed(self.in_combo.currentIndex())
 
 
 
@@ -829,10 +836,18 @@ class NetworkAnalyzerWidget(QWidget):
                 self.mag_plot.setTitle(tr("Crosstalk (Meas / Ref)"))
             else:
                 self.mag_plot.setTitle(tr("Transfer Function (Meas / Ref)"))
-            self.unit_combo.setEnabled(False)  # XFER is always relative dB
+            self.single_mode_combo.setEnabled(False)
+            self.unit_combo.setEnabled(False)  # Transfer mode is always relative dB
         else:
             self.mag_plot.setTitle(tr("Magnitude Response"))
-            self.unit_combo.setEnabled(True)
+            self.single_mode_combo.setEnabled(True)
+            self.unit_combo.setEnabled(self.single_mode_combo.currentData() == "absolute")
+
+    def on_display_mode_changed(self, index):
+        is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
+        if not is_transfer_mode:
+            self.unit_combo.setEnabled(self.single_mode_combo.currentData() == "absolute")
+        self.refresh_plots()
 
     def on_gen_unit_changed(self, unit):
         self.module.gen_unit = unit
@@ -946,6 +961,7 @@ class NetworkAnalyzerWidget(QWidget):
             "freqs": np.array(self.freqs),
             "mags": np.array(self.mags),
             "phases": np.array(self.phases),
+            "gen_amp": float(self.module.amplitude),
         }
         print("Reference trace stored.")
 
@@ -1055,22 +1071,51 @@ class NetworkAnalyzerWidget(QWidget):
         if len(freqs_to_plot) == 0:
             return
 
-        is_relative_mode = self.module.input_mode in ["XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"]
+        is_transfer_mode = self.module.input_mode in ["XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"]
+        is_single_absolute_mode = (not is_transfer_mode) and (self.single_mode_combo.currentData() == "absolute")
 
-        if is_relative_mode:
-            # XFER is already in dB relative
-            y_values = mags_to_plot
+        # Base domain:
+        # - transfer/relative: gain in dB
+        # - single absolute: input level in dBFS(peak)
+        if is_single_absolute_mode:
+            out_amp_db = 20 * np.log10(self.module.get_output_amplitude() + 1e-12)
+            base_db = mags_to_plot + out_amp_db
+        else:
+            base_db = mags_to_plot
+
+        # Apply Reference
+        if self.apply_ref_check.isChecked() and self.module.reference_trace is not None:
+            ref = self.module.reference_trace
+            if len(ref["freqs"]) > 1:
+                interp_mags = np.interp(freqs_to_plot, ref["freqs"], ref["mags"])
+                if is_single_absolute_mode:
+                    ref_amp = float(ref.get("gen_amp", self.module.amplitude))
+                    ref_db = interp_mags + 20 * np.log10(ref_amp + 1e-12)
+                    base_db -= ref_db
+                else:
+                    base_db -= interp_mags
+
+            # Phase Subtraction
+            if len(ref["phases"]) > 1:
+                interp_phases = np.interp(freqs_to_plot, ref["freqs"], ref["phases"])
+                phases_to_plot -= interp_phases
+                # Wrap to [-180, 180]
+                phases_to_plot = (phases_to_plot + 180) % 360 - 180
+
+        # With reference subtraction, output is always a relative quantity.
+        is_effectively_relative = is_transfer_mode or (not is_single_absolute_mode) or self.apply_ref_check.isChecked()
+        if is_effectively_relative:
+            y_values = base_db
             self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         else:
-            # Standard conversion logic (same as before)
-            mags_linear = 10 ** (mags_to_plot / 20)
+            mags_linear = 10 ** (base_db / 20)
             try:
                 input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
             except Exception:
                 input_sensitivity = 1.0
 
             if unit == "dBFS":
-                y_values = mags_to_plot
+                y_values = base_db
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="dBFS")
             elif unit == "dBV":
                 v_peak = mags_linear * input_sensitivity
@@ -1090,46 +1135,7 @@ class NetworkAnalyzerWidget(QWidget):
                 y_values = mags_linear * input_sensitivity
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="V")
             else:
-                y_values = mags_to_plot
-
-        # Apply Reference
-        if self.apply_ref_check.isChecked() and self.module.reference_trace is not None:
-            ref = self.module.reference_trace
-            if len(ref["freqs"]) > 1:
-                interp_mags = np.interp(freqs_to_plot, ref["freqs"], ref["mags"])
-
-                # If XFER, just subtract dB
-                if is_relative_mode:
-                    y_values -= interp_mags
-                else:
-                    # If not XFER, we need to handle units carefully
-                    # But usually reference is stored in dBFS (base unit)
-                    # So if we are displaying dB, we subtract.
-                    # If linear, we divide.
-                    if "dB" in unit:
-                        # We need to convert ref to target unit first?
-                        # Actually, if we store ref in dBFS, and current is in dBV,
-                        # Ref in dBV would be Ref_dBFS + Offset.
-                        # Current in dBV is Curr_dBFS + Offset.
-                        # Diff is Curr_dBFS - Ref_dBFS.
-                        # So simple subtraction works for dB units.
-                        y_values -= interp_mags
-                    else:
-                        # Linear
-                        ref_linear = 10 ** (interp_mags / 20)
-                        # Scale ref to unit?
-                        # Ratio = Curr_Linear / Ref_Linear
-                        # This is unitless.
-                        # So we display Ratio? Or normalized V?
-                        # Standard practice: Normalized Magnitude (Unitless or %)
-                        y_values /= ref_linear + 1e-12
-
-            # Phase Subtraction
-            if len(ref["phases"]) > 1:
-                interp_phases = np.interp(freqs_to_plot, ref["freqs"], ref["phases"])
-                phases_to_plot -= interp_phases
-                # Wrap to [-180, 180]
-                phases_to_plot = (phases_to_plot + 180) % 360 - 180
+                y_values = base_db
 
         y_values, phases_to_plot = self._apply_smoothing(freqs_to_plot, y_values, phases_to_plot, smooth_mode)
 
