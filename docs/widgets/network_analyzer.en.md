@@ -16,48 +16,50 @@ Primary uses:
 
 ### Starting Measurement
 
-1. Set the measurement range (Start/End Freq) and Amplitude in the **"Sweep Settings"** tab.
-2. Click the **"Start Sweep"** button to begin measurement. Progress is shown on the progress bar during measurement.
-3. Click the button again to stop the measurement midway.
+1. Set the measurement range (**Start/End Freq**) and **Amplitude** in the **"Settings"** tab.
+2. Adjust the **Duration** of the chirp signal. Longer durations generally improve the S/N ratio.
+3. Set the number of **Averages**. Multiple sweeps are performed and averaged to reduce noise.
+4. Click the **"Start Sweep"** button to begin measurement. Progress is shown on the progress bar.
+5. Click the button again to stop the measurement midway.
 
 ## Routing and XFER Mode
 
 ### Input/Output Settings
 
-* **Output Ch**: Select the channel to output the measurement signal (Selectable L/R/Stereo even in XFER mode).
+* **Output Ch**: Select the channel to output the measurement signal (L, R, or Stereo).
 * **Input Mode**: Select where to receive the signal returning from the measurement target.
-    * **Left (Ch1)** / **Right (Ch2)**: Measures the signal of the selected channel as is (absolute level measurement).
-    * **XFER (Ref=L, Meas=R)**: Uses the Left channel as a "reference signal" and the Right channel as the "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface itself (relative measurement).
-    * **XFER_REV (Ref=R, Meas=L)**: Reverse transfer function mode using Right as reference and Left as measurement signal.
-    * **XTALK (Crosstalk)**: Drives one channel and measures the leakage into the other channel.
+    * **Left (Ch1)** / **Right (Ch2)**: Measures the signal of the selected channel. In "Absolute (Level)" mode, it displays the input level in various units.
+    * **XFER (Ref=L, Meas=R)**: Uses the Left channel as a "reference signal" and the Right channel as a "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface (relative measurement).
+    * **XFER (Ref=R, Meas=L)**: Reverse transfer function mode using Right as reference.
+    * **Crosstalk L -> R / R -> L**: Pre-configured macros for measuring crosstalk between channels.
 
-## Display and Analysis (Display)
+## Display and Analysis
 
-Customize the graph display in the **"Display Settings"** tab.
+Customize the graph display in the **"Display"** tab.
 
 ### Graph Types
 
-* **Magnitude Response**: Displays gain (amplification factor) for each frequency. Units can be selected from dBFS, dBV, dBu, etc.
+* **Magnitude Response**: Displays gain (amplification factor) or absolute level for each frequency. Units can be selected from dBFS, dBV, dBu, Vrms, or Vpeak.
 * **Phase Response**: Displays the phase shift for each frequency.
 * **Group Delay**: Displays the delay time for each frequency, calculated from the slope of the phase (check "Show Group Delay").
-* **Coherence**: Displays the correlation (reliability) between input and output. Values closer to 1.0 indicate less influence from noise or distortion (check "Show Coherence").
+* **Coherence**: Displays the correlation (reliability) between input and output. Values closer to 1.0 indicate high reliability. Low coherence suggests noise, distortion, or timing issues (check "Show Coherence").
 
 ### Display Options
 
-* **Smoothing**: Smooths out fine jaggedness (noise) in the graph. Selectable from Light/Medium/Heavy.
-* **Limit Max/Min**: Limits the frequency range displayed on the graph.
+* **Smoothing**: Smooths out fine jaggedness (noise) in the graph. Selectable from Off/Light/Medium/Heavy.
+* **Max/Min Freq**: Limits the frequency range displayed on the graph.
+* **Single-Ch Mode**: When using a single input channel, choose between **Relative (Gain)** (normalized to the output) or **Absolute (Level)**.
 
 ## Calibration
 
-### Latency
+### Latency and IR SNR
 
-Press the "Calibrate Latency" button to measure the input/output delay time of the system. It is recommended to perform this in advance with a loopback connection to ensure accurate phase measurement (especially at high frequencies).
-
-Additionally, when running a normal sweep measurement, the Impulse Response S/N Ratio (IR SNR) for that measurement will also be displayed in this section.
+* **Calibrate Latency**: Measures the total input/output delay of the system. This is crucial for accurate phase measurement.
+* **IR SNR**: Displays the Signal-to-Noise Ratio of the Impulse Response for the most recent sweep. Higher values indicate a cleaner measurement.
 
 ### Reference Trace
 
-Saves the current measurement result as a "reference" to compare with subsequent measurements or to subtract it.
+Saves the current measurement result as a "reference" to compare with subsequent measurements.
 
 * **Store Reference**: Saves the current graph as a reference.
-* **Apply Reference**: Subtracts the saved reference from the current measurement result and displays it (useful for checking changes from a flat state).
+* **Apply Reference**: Subtracts the saved reference from the current measurement result. Useful for checking relative changes or "flattening" a response.
