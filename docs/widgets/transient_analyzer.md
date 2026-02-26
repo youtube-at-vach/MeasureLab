@@ -30,7 +30,7 @@
 
 ## 設定項目
 
-* **Wavelet**: 解析に使う波形（母関数）の種類を選びます。通常は `cmor` (Complex Morlet) が適しています。
+* **Wavelet**: 解析に使う波形（母関数）の種類を選びます。`cmor` (Complex Morlet), `mexh` (Mexican Hat), `morl` (Morlet), `cgau1`, `gaus1` から選択可能です。通常は `cmor` が適しています。
 * **Min / Max Freq**: 解析する周波数の範囲を指定します。
 
 ## 使用例

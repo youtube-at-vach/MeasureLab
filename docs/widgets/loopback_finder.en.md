@@ -18,10 +18,6 @@ When using multi-channel interfaces, this tool allows you to quickly verify if u
     * **Input Channel**: The input where the sound was detected.
     * **Signal Level**: The strength of the detected signal (dB).
 
-## Limitations
-
-* **PipeWire / JACK Mode**: This tool cannot be used in certain Linux environments (PipeWire/JACK) when "Resident Mode" is enabled. It must be temporarily disabled in the settings.
-
 ## Usage Examples
 
 * **Verifying Wiring**: Verify if your assumption that "sound from Output 3 should be reaching Input 5" is correct without unplugging and replugging cables.

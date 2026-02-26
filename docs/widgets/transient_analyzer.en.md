@@ -30,7 +30,7 @@ It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while mai
 
 ## Settings
 
-* **Wavelet**: Selection of the waveform (mother function) type used for analysis. Generally, `cmor` (Complex Morlet) is suitable.
+* **Wavelet**: Selection of the waveform (mother function) type used for analysis. Available options are `cmor` (Complex Morlet), `mexh` (Mexican Hat), `morl` (Morlet), `cgau1`, and `gaus1`. Generally, `cmor` is suitable.
 * **Min / Max Freq**: Specifies the frequency range to be analyzed.
 
 ## Use Cases
