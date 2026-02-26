@@ -13,7 +13,7 @@ While general spectrum analyzers "see all frequencies," the lock-in amplifier "m
 
 ### Phase Sensitive Detection (PSD)
 
-A lock-in amplifier performs measurement by multiplying a基準 wave called a "Reference Signal" with the input signal.
+A lock-in amplifier performs measurement by multiplying a reference wave called a "Reference Signal" with the input signal.
 
 * **Input Signal**: A signal buried in noise ($A \sin(2\pi ft + \phi) + \text{Noise}$)
 * **Reference Signal**: Clean waves of the frequency $f$ you want to measure ($\sin(2\pi ft)$ and $\cos(2\pi ft)$)
@@ -54,7 +54,7 @@ Switching between tabs allows you to choose between fixed-point measurement and 
 * **Manual Control**
     * Continuously monitors a specific single frequency.
     * Since numerical values change in real-time, it is suitable for adjustment work and observing time-series changes (similar to a trend graph).
-    * **Harmonic Measurement**: Setting `Harmonic` to `2` allows you to extract and measure only the frequency component at twice the fundamental frequency (2nd harmonic).
+    * **Harmonic Measurement**: By changing the `Harmonic` settings (Numerator/Denominator), you can extract frequency components that are fractional or integer multiples of the fundamental wave. For example, setting it to `2 / 1` measures the 2nd harmonic.
 
 * **Frequency Response Analyzer (FRA)**
     * Measures while automatically changing the frequency from `Start` to `End` (frequency sweep).
@@ -74,7 +74,7 @@ The performance of a lock-in amplifier is determined by the "strength of the fil
     * The length of data used for a single measurement.
     * `Fast (2048)`: Fast response, but lower accuracy for low-frequency measurements.
     * `Slow / Very Slow`: Slower response, but higher noise rejection capability.
-    * `Very Slow 2x (131072)`: Uses an even longer integration time (approx. 0.5s+ depending on sample rate) for extremely high measurement precision.
+    * `Very Slow 4x (262144)`: Uses an even longer integration time (approx. several seconds depending on sample rate) for extremely high measurement precision.
 
 2. **Post-mix LPF (Time Constant $\tau$)**:
     * A filter that further smooths the signal after detection. Corresponds to the "Time Constant" of analog lock-in amplifiers.
@@ -93,6 +93,7 @@ Selects the unit for displaying the measurement result (Magnitude).
 * **dBV**: 1Vrms relative (0dBV = 1V)
 * **dBu**: 0.775Vrms relative (0dBu = 0.775V)
 * **V / mV**: Linear voltage (Vrms)
+* **Vpeak**: Peak voltage display ($Vrms \times \sqrt{2}$)
 
 ## Calibration
 
