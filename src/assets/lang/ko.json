@@ -1097,6 +1097,7 @@
     "Vertical": "수직",
     "Very Slow (65536 samples)": "매우 느림 (65536샘플)",
     "Very Slow 2x (131072 samples)": "매우 느림 2x (131072 샘플)",
+    "Very Slow 4x (262144 samples)": "매우 느림 4x (262144 샘플)",
     "Virtual / Offline Mode": "가상 / 오프라인 모드",
     "Virtual Audio (No Hardware)": "가상 오디오 (하드웨어 없음)",
     "Virtual Loopback (Always On)": "가상 루프백 (항상 활성화)",

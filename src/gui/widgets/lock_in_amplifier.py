@@ -47,11 +47,11 @@ class LockInAmplifier(MeasurementModule):
         # Settings
         self.gen_frequency = 1000.0
         self.gen_amplitude = 0.5  # Linear 0-1
-        self.gen_amplitude = 0.5  # Linear 0-1
         self.output_channel = 0  # 0: Left, 1: Right
         self.external_mode = False
 
-        self._harmonic_order = 1
+        self._harmonic_numerator = 1
+        self._harmonic_denominator = 1
         self.apply_calibration = False
 
         self.signal_channel = 0  # 0: Left, 1: Right
@@ -62,7 +62,6 @@ class LockInAmplifier(MeasurementModule):
         self.current_phase = 0.0
         self.current_x = 0.0
         self.current_y = 0.0
-        self.ref_freq = 0.0
         self.ref_freq = 0.0
         self.ref_level = 0.0
         self.ref_coherence = 0.0
@@ -88,26 +87,42 @@ class LockInAmplifier(MeasurementModule):
         self._last_process_time = 0.0
 
     @property
-    def harmonic_order(self) -> int:
-        return int(getattr(self, "_harmonic_order", 1) or 1)
+    def harmonic_numerator(self) -> int:
+        return int(getattr(self, "_harmonic_numerator", 1) or 1)
 
-    @harmonic_order.setter
-    def harmonic_order(self, value: int):
+    @harmonic_numerator.setter
+    def harmonic_numerator(self, value: int):
         new_value = max(int(value or 1), 1)
-        old_value = int(getattr(self, "_harmonic_order", 1) or 1)
-        self._harmonic_order = new_value
+        old_value = int(getattr(self, "_harmonic_numerator", 1) or 1)
+        self._harmonic_numerator = new_value
 
+        if new_value != old_value:
+            self._on_harmonic_changed()
+
+    @property
+    def harmonic_denominator(self) -> int:
+        return int(getattr(self, "_harmonic_denominator", 1) or 1)
+
+    @harmonic_denominator.setter
+    def harmonic_denominator(self, value: int):
+        new_value = max(int(value or 1), 1)
+        old_value = int(getattr(self, "_harmonic_denominator", 1) or 1)
+        self._harmonic_denominator = new_value
+
+        if new_value != old_value:
+            self._on_harmonic_changed()
+
+    def _on_harmonic_changed(self):
         # Changing the harmonic changes the demodulation frequency and phase reference.
         # Reset stateful filters/averaging so the displayed result doesn't include stale data.
-        if new_value != old_value:
-            try:
-                self.reset_postmix_lpf()
-            except Exception:
-                logger.error("Failed to reset post-mix LPF on harmonic change", exc_info=True)
-            try:
-                self.history.clear()
-            except Exception:
-                logger.error("Failed to clear history on harmonic change", exc_info=True)
+        try:
+            self.reset_postmix_lpf()
+        except Exception:
+            logger.error("Failed to reset post-mix LPF on harmonic change", exc_info=True)
+        try:
+            self.history.clear()
+        except Exception:
+            logger.error("Failed to clear history on harmonic change", exc_info=True)
 
     def reset_postmix_lpf(self):
         self._postmix_lpf_state = [0j] * 8
@@ -140,11 +155,12 @@ class LockInAmplifier(MeasurementModule):
         with self.buffer_lock:
             data = self.input_data.copy()
             pos = self.input_buffer_pos
+            start_idx = getattr(self, "_total_samples_written", 0) - self.buffer_size
 
         if pos == 0:
-            return data
+            return data, start_idx
         # Roll so that pos (oldest sample) moves to 0
-        return np.roll(data, -pos, axis=0)
+        return np.roll(data, -pos, axis=0), start_idx
 
     def start_analysis(self):
         if self.is_running:
@@ -153,6 +169,8 @@ class LockInAmplifier(MeasurementModule):
         self.is_running = True
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
+        self._total_samples_written = 0
+        self._unwrapped_ref_phase = 0.0
         self.reset_postmix_lpf()
 
         # Generator State
@@ -195,6 +213,8 @@ class LockInAmplifier(MeasurementModule):
                         self.input_data[p:] = new_data[:chunk1]
                         self.input_data[:chunk2] = new_data[chunk1:]
                         self.input_buffer_pos = chunk2
+
+                self._total_samples_written += n
 
             # --- Output Generation ---
             # Generate Sine Wave
@@ -245,7 +265,7 @@ class LockInAmplifier(MeasurementModule):
 
         self._last_process_time = now
 
-        data = self.get_ordered_input_data()
+        data, start_idx = self.get_ordered_input_data()
         sig = data[:, self.signal_channel]
         ref = data[:, self.ref_channel]
 
@@ -259,7 +279,6 @@ class LockInAmplifier(MeasurementModule):
             self.current_phase = 0.0
             self.current_x = 0.0
             self.current_y = 0.0
-            self.ref_freq = 0.0
             self.ref_freq = 0.0
             # Clear history if reference is lost to prevent stale averaging
             if self.history:
@@ -325,13 +344,13 @@ class LockInAmplifier(MeasurementModule):
             self.current_phase = 0.0
             self.current_x = 0.0
             self.current_y = 0.0
-            self.current_y = 0.0
             if self.history:
                 self.history.clear()
             return
 
-        harmonic_order = max(int(getattr(self, "harmonic_order", 1) or 1), 1)
-        demod_freq = ref_freq * harmonic_order
+        harmonic_num = max(int(getattr(self, "harmonic_numerator", 1) or 1), 1)
+        harmonic_den = max(int(getattr(self, "harmonic_denominator", 1) or 1), 1)
+        demod_freq = ref_freq * (harmonic_num / harmonic_den)
         n = len(sig)
         t = np.arange(n) / self.audio_engine.sample_rate
         # Window the projections to reduce spectral leakage (important for harmonic demodulation
@@ -343,30 +362,50 @@ class LockInAmplifier(MeasurementModule):
 
         # Build a reference phasor from the FUNDAMENTAL component of the reference channel.
         # For harmonic measurements, the reference channel often contains only the fundamental.
-        # Using the reference projection at the harmonic frequency would therefore be ~0 and
-        # destabilize both phase removal and any amplitude correction.
         osc_ref = np.exp(-1j * 2 * np.pi * ref_freq * t)
         ref_c_fund = 2 * np.mean(ref * w * osc_ref) / w_mean
-        ref_unit = ref_c_fund / (np.abs(ref_c_fund) + 1e-12)  # unit phasor
-        ref_unit_h = ref_unit**harmonic_order
+
+        # Exact Phase tracking for fractional harmonics:
+        # Calculate the phase of the fundamental in the current buffer
+        current_buffer_phase = np.angle(ref_c_fund)
+
+        # Phase unwrap using the expected phase advance from the absolute sample position
+        # dt is approx, but start_idx is exact. We can use difference in start_idx to predict phase jump.
+        if not hasattr(self, "_last_start_idx"):
+            self._last_start_idx = start_idx
+            self._unwrapped_ref_phase = current_buffer_phase
+
+        exact_dt = (start_idx - self._last_start_idx) / self.audio_engine.sample_rate
+        expected_phase_jump = 2 * np.pi * ref_freq * exact_dt
+
+        # Predict the current wrapped phase
+        predicted_phase = self._unwrapped_ref_phase + expected_phase_jump
+
+        # Find the integer number of wraps that makes the measured phase closest to the predicted phase
+        diff = current_buffer_phase - predicted_phase
+        wraps = np.round(diff / (2 * np.pi))
+        self._unwrapped_ref_phase = current_buffer_phase - wraps * 2 * np.pi
+        self._last_start_idx = start_idx
+
+        # The true phase of the fractional harmonic is scaled perfectly:
+        fractional_phase = self._unwrapped_ref_phase * (harmonic_num / harmonic_den)
+        ref_fractional_phasor = np.exp(1j * fractional_phase)
 
         # Complex signal amplitude (peak) at the DEMOD frequency (fundamental or harmonic)
         osc_demod = np.exp(-1j * 2 * np.pi * demod_freq * t)
         sig_c = 2 * np.mean(sig * w * osc_demod) / w_mean
 
         # Remove reference phase at the requested harmonic.
-        # For harmonic_order>1, we deliberately do NOT attempt a scalloping correction based on
-        # the reference channel, since it does not generally contain that harmonic.
         correction = 1.0
-        if harmonic_order == 1:
+        if harmonic_num == 1 and harmonic_den == 1:
             # Correct scalloping loss using the reference channel's time-domain peak estimate.
             # For a near-sinusoidal reference, ref_rms*sqrt(2) ≈ A_ref (peak), while |ref_c_fund| = A_ref*|H|.
             ref_amp_est = ref_rms * np.sqrt(2)
             ref_proj_mag = np.abs(ref_c_fund)
             correction = ref_amp_est / (ref_proj_mag + 1e-12)
 
-        # rel = A_sig * exp(j*(phi_sig - harmonic_order*phi_ref))
-        result = sig_c * np.conj(ref_unit_h) * correction
+        # Shift the signal phase back referencing to our exact unwrapped fractional oscillator
+        result = sig_c * np.conj(ref_fractional_phasor) * correction
 
         # 2.5. Post-mix IIR LPF (optional)
         # This is applied to the complex baseband result to improve out-of-band rejection
@@ -685,6 +724,7 @@ class LockInAmplifierWidget(QWidget):
                 tr("Slow (16384 samples)"),
                 tr("Very Slow (65536 samples)"),
                 tr("Very Slow 2x (131072 samples)"),
+                tr("Very Slow 4x (262144 samples)"),
             ]
         )
         self.time_combo.setCurrentIndex(1)
@@ -751,11 +791,22 @@ class LockInAmplifierWidget(QWidget):
         self.postmix_lpf_tau_combo.currentIndexChanged.connect(self.on_postmix_lpf_tau_changed)
         settings_layout.addRow(tr("LPF Time Constant:"), self.postmix_lpf_tau_combo)
 
-        self.harmonic_spin = QSpinBox()
-        self.harmonic_spin.setRange(1, 10)
-        self.harmonic_spin.setValue(1)
-        self.harmonic_spin.valueChanged.connect(lambda v: setattr(self.module, "harmonic_order", v))
-        settings_layout.addRow(tr("Harmonic:"), self.harmonic_spin)
+        harmonic_layout = QHBoxLayout()
+        self.harmonic_num_spin = QSpinBox()
+        self.harmonic_num_spin.setRange(1, 63)
+        self.harmonic_num_spin.setValue(1)
+        self.harmonic_num_spin.valueChanged.connect(lambda v: setattr(self.module, "harmonic_numerator", v))
+
+        harmonic_layout.addWidget(self.harmonic_num_spin)
+        harmonic_layout.addWidget(QLabel(" / "))
+
+        self.harmonic_den_spin = QSpinBox()
+        self.harmonic_den_spin.setRange(1, 63)
+        self.harmonic_den_spin.setValue(1)
+        self.harmonic_den_spin.valueChanged.connect(lambda v: setattr(self.module, "harmonic_denominator", v))
+
+        harmonic_layout.addWidget(self.harmonic_den_spin)
+        settings_layout.addRow(tr("Harmonic:"), harmonic_layout)
 
         settings_group.setLayout(settings_layout)
         manual_layout.addWidget(settings_group, stretch=1)
@@ -1214,6 +1265,8 @@ class LockInAmplifierWidget(QWidget):
             size = 65536
         elif idx == 4:
             size = 131072
+        elif idx == 5:
+            size = 262144
 
         self.module.set_buffer_size(size)
 

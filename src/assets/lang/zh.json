@@ -1097,6 +1097,7 @@
     "Vertical": "垂直",
     "Very Slow (65536 samples)": "超慢（65536个样本）",
     "Very Slow 2x (131072 samples)": "非常慢 2x (131072 采样)",
+    "Very Slow 4x (262144 samples)": "非常慢 4x (262144 采样)",
     "Virtual / Offline Mode": "虚拟 / 离线模式",
     "Virtual Audio (No Hardware)": "虚拟音频（无硬件）",
     "Virtual Loopback (Always On)": "虚拟回送 (始终开启)",
