@@ -199,6 +199,11 @@ class CalibrationManager:
             return self.frequency_calibration_1pps
         return self.frequency_calibration
 
+    def set_lockin_gain_offset(self, offset):
+        """Sets the gain offset for the lock-in amplifier in dB."""
+        self.lockin_gain_offset = float(offset)
+        self.save()
+
     def set_last_profile(self, name):
         """Sets the last selected profile name."""
         self.last_profile = name
