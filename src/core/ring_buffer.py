@@ -67,6 +67,12 @@ class RingBuffer:
         # Handle channel mismatch (e.g. input 4ch -> buffer 2ch)
         if n_channels > self._channels:
             data = data[:, :self._channels]
+        elif 1 < n_channels < self._channels:
+            # Handle input with fewer channels (but > 1) -> Pad with zeros
+            # Note: input 1ch (mono) is handled by broadcasting in assignment
+            padded = np.zeros((n_frames, self._channels), dtype=self._dtype)
+            padded[:, :n_channels] = data
+            data = padded
 
         # Handle overflow if writing more than capacity (only keep latest)
         if n_frames > self._capacity:
