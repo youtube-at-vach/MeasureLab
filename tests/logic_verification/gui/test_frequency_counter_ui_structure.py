@@ -39,7 +39,7 @@ class TestFrequencyCounterUIStructure(unittest.TestCase):
 
         except ImportError:
             cls.modules_patcher.stop()
-            raise unittest.SkipTest("Missing dependencies")
+            raise unittest.SkipTest("Missing dependencies") from None
 
     @classmethod
     def tearDownClass(cls):
