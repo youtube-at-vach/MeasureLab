@@ -581,13 +581,50 @@ class DistortionAnalyzerWidget(QWidget):
         self.timer.setInterval(100)  # 10Hz update
 
     def init_ui(self):
+        """Initialize the UI by creating left and right panels."""
         layout = QHBoxLayout()
 
-        # --- Left Panel: Controls & Meters ---
+        # Create Left Panel
+        left_panel = self._create_left_panel()
+        layout.addLayout(left_panel, 1)
+
+        # Create Right Panel
+        right_panel = self._create_right_panel()
+        layout.addLayout(right_panel, 3)
+
+        # Initial update of Actual Frequency
+        self.update_actual_frequency()
+
+        self.setLayout(layout)
+
+        # Initial update
+        self.on_unit_changed(self.unit_combo.currentText())
+        self.out_mode_combo.setCurrentIndex(1)  # Default to Sine Wave
+
+    def _create_left_panel(self) -> QVBoxLayout:
+        """Creates the left control panel."""
         left_panel = QVBoxLayout()
         left_panel.setSpacing(10)
 
         # 1. Mode Selection
+        left_panel.addWidget(self._create_mode_selection())
+
+        # 2. Settings Tabs
+        self.settings_tabs = self._create_settings_tabs()
+        left_panel.addWidget(self.settings_tabs)
+
+        # Action Buttons
+        left_panel.addLayout(self._create_action_buttons())
+
+        # 3. Meters (Real-time only)
+        self.meters_group = self._create_meters_group()
+        left_panel.addWidget(self.meters_group)
+
+        left_panel.addStretch()
+        return left_panel
+
+    def _create_mode_selection(self) -> QGroupBox:
+        """Creates the mode selection group box."""
         mode_group = QGroupBox(tr("Mode"))
         mode_layout = QVBoxLayout()
         self.mode_combo = QComboBox()
@@ -595,12 +632,18 @@ class DistortionAnalyzerWidget(QWidget):
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         mode_layout.addWidget(self.mode_combo)
         mode_group.setLayout(mode_layout)
-        left_panel.addWidget(mode_group)
+        return mode_group
 
-        # 2. Settings Tabs
-        self.settings_tabs = QTabWidget()
+    def _create_settings_tabs(self) -> QTabWidget:
+        """Creates the main settings tabs widget."""
+        settings_tabs = QTabWidget()
+        settings_tabs.addTab(self._create_signal_tab(), tr("Signal"))
+        settings_tabs.addTab(self._create_sweep_tab(), tr("Sweep"))
+        settings_tabs.addTab(self._create_common_settings_tab(), tr("Settings"))
+        return settings_tabs
 
-        # Page 1: Real-time Controls
+    def _create_signal_tab(self) -> QWidget:
+        """Creates the Signal Generator settings tab."""
         rt_widget = QWidget()
         rt_layout = QFormLayout()
 
@@ -683,9 +726,10 @@ class DistortionAnalyzerWidget(QWidget):
         rt_layout.addRow(tr("Amplitude:"), amp_layout)
 
         rt_widget.setLayout(rt_layout)
-        self.settings_tabs.addTab(rt_widget, tr("Signal"))
+        return rt_widget
 
-        # Page 2: Sweep Controls
+    def _create_sweep_tab(self) -> QWidget:
+        """Creates the Sweep settings tab."""
         sweep_widget = QWidget()
         sweep_layout = QFormLayout()
 
@@ -705,9 +749,10 @@ class DistortionAnalyzerWidget(QWidget):
         sweep_layout.addRow(tr("Steps:"), self.sweep_steps_spin)
 
         sweep_widget.setLayout(sweep_layout)
-        self.settings_tabs.addTab(sweep_widget, tr("Sweep"))
+        return sweep_widget
 
-        # Settings Tab
+    def _create_common_settings_tab(self) -> QWidget:
+        """Creates the common settings tab."""
         common_widget = QWidget()
         common_layout = QFormLayout()
 
@@ -735,24 +780,23 @@ class DistortionAnalyzerWidget(QWidget):
         common_layout.addRow(tr("Averaging:"), avg_row)
 
         common_widget.setLayout(common_layout)
-        self.settings_tabs.addTab(common_widget, tr("Settings"))
+        return common_widget
 
-        left_panel.addWidget(self.settings_tabs)
-
-        # Action Buttons
+    def _create_action_buttons(self) -> QVBoxLayout:
+        """Creates the start/stop action button."""
         btn_layout = QVBoxLayout()
         self.action_btn = QPushButton(tr("Start Measurement"))
         self.action_btn.setCheckable(True)
         self.action_btn.clicked.connect(self.on_action)
         self.action_btn.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         btn_layout.addWidget(self.action_btn)
+        return btn_layout
 
-        left_panel.addLayout(btn_layout)
-
-        # 3. Meters (Real-time only)
-        self.meters_group = QGroupBox(tr("Measurements"))
+    def _create_meters_group(self) -> QGroupBox:
+        """Creates the measurements display group."""
+        meters_group = QGroupBox(tr("Measurements"))
         self.meters_main_layout = QVBoxLayout()
-        self.meters_group.setLayout(self.meters_main_layout)
+        meters_group.setLayout(self.meters_main_layout)
 
         # View switcher
         self.meters_view_stack = QStackedWidget()
@@ -817,22 +861,26 @@ class DistortionAnalyzerWidget(QWidget):
         self.view_toggle_btn.clicked.connect(self.on_toggle_view)
         self.meters_main_layout.addWidget(self.view_toggle_btn)
 
-        left_panel.addWidget(self.meters_group)
+        return meters_group
 
-        left_panel.addStretch()
-        layout.addLayout(left_panel, 1)
-
-        # --- Right Panel: Plots & Tables ---
+    def _create_right_panel(self) -> QVBoxLayout:
+        """Creates the right panel with plots."""
         right_panel = QVBoxLayout()
-
         self.tabs = QTabWidget()
 
-        # Tab 1: Spectrum
+        self.tabs.addTab(self._create_spectrum_tab(), tr("Spectrum"))
+        self.tabs.addTab(self._create_harmonics_tab(), tr("Harmonics"))
+        self.tabs.addTab(self._create_sweep_result_tab(), tr("Sweep Results"))
+
+        right_panel.addWidget(self.tabs)
+        return right_panel
+
+    def _create_spectrum_tab(self) -> pg.PlotWidget:
+        """Creates the Spectrum tab content."""
         self.spectrum_plot = pg.PlotWidget()
         self.spectrum_plot.setLabel("left", tr("Amplitude"), units="dBFS")
         self.spectrum_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.spectrum_plot.setLogMode(x=True, y=False)
-        self.spectrum_plot.setYRange(-140, 0)
         self.spectrum_plot.setYRange(-140, 0)
         self.spectrum_plot.showGrid(x=True, y=True)
 
@@ -846,9 +894,10 @@ class DistortionAnalyzerWidget(QWidget):
         self.spectrum_plot.setXRange(np.log10(20), np.log10(20000))
 
         self.spectrum_curve = self.spectrum_plot.plot(pen="y")
-        self.tabs.addTab(self.spectrum_plot, tr("Spectrum"))
+        return self.spectrum_plot
 
-        # Tab 2: Harmonics (Table + Bar Graph)
+    def _create_harmonics_tab(self) -> QWidget:
+        """Creates the Harmonics tab content."""
         harmonics_widget = QWidget()
         harmonics_layout = QVBoxLayout(harmonics_widget)
 
@@ -871,10 +920,10 @@ class DistortionAnalyzerWidget(QWidget):
         self.harmonics_plot.addItem(self.harmonics_bar_item)
 
         harmonics_layout.addWidget(self.harmonics_plot, 1)  # Stretch factor 1
+        return harmonics_widget
 
-        self.tabs.addTab(harmonics_widget, tr("Harmonics"))
-
-        # Tab 3: Sweep Results
+    def _create_sweep_result_tab(self) -> pg.PlotWidget:
+        """Creates the Sweep Results tab content."""
         self.sweep_plot = pg.PlotWidget()
         self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
         self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")  # Dynamic label
@@ -887,25 +936,19 @@ class DistortionAnalyzerWidget(QWidget):
         # The user only requested "like Spectrum Analyzer", which implies Frequency domain.
         # We'll set it here, and handle mode changes if necessary.
         self.sweep_axis = self.sweep_plot.getPlotItem().getAxis("bottom")
+
+        # Re-use ticks definition if needed, but it's local in original.
+        # Let's redefine for clarity or use constant if we were doing more cleanup.
+        ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+        ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
+
         self.sweep_axis.setTicks([ticks_log])
 
         # Set Range (log domain) for Frequency Sweep default
         self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
 
         self.sweep_curve = self.sweep_plot.plot(pen="c")
-        self.tabs.addTab(self.sweep_plot, tr("Sweep Results"))
-
-        right_panel.addWidget(self.tabs)
-        layout.addLayout(right_panel, 3)
-
-        # Initial update of Actual Frequency
-        self.update_actual_frequency()
-
-        self.setLayout(layout)
-
-        # Initial update
-        self.on_unit_changed(self.unit_combo.currentText())
-        self.out_mode_combo.setCurrentIndex(1)  # Default to Sine Wave
+        return self.sweep_plot
 
     def sync_module_with_gui(self):
         """Synchronize the measurement module state with current GUI values."""
