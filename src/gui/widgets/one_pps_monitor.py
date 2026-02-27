@@ -216,17 +216,23 @@ class OnePPSMonitor(MeasurementModule):
                 # Since we want a rolling view, we just write to the ring buffer.
                 # If frames > buffer size, we just take the last part.
 
+                # Dynamic buffer resize check
+                # Ensure buffer holds at least 2 seconds of data
+                target_size = int(self.nominal_rate * 2.0)
+                if self.vis_buffer_size != target_size:
+                    with self._lock:
+                        self.vis_buffer_size = target_size
+                        self.vis_buffer = np.zeros(self.vis_buffer_size, dtype=np.float32)
+                        self.vis_write_pos = 0
+                        self.last_trig_waveform = None
+                        self._capture_trigger_index = -1
+
                 write_len = min(frames, self.vis_buffer_size)
                 src_data = sig[-write_len:].astype(np.float32)
 
-                # Check for buffer resize if rate changed drastically?
-                # For now assume fixed size enough for ~1s at 48k. 
-                # If 192k, it will be 0.25s, which might be too short for 1PPS.
-                # Let's dynamically resize if needed in future, but for now fixed is okay or we check nominal.
-
                 # Logic for ring buffer write
                 with self._lock:
-                     # Calculate split
+                    # Calculate split
                     remain = self.vis_buffer_size - self.vis_write_pos
                     if write_len <= remain:
                         self.vis_buffer[self.vis_write_pos : self.vis_write_pos + write_len] = src_data
