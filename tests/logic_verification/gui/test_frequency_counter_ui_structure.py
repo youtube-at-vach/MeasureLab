@@ -14,7 +14,6 @@ pytest.importorskip("PyQt6")
 try:
     from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QTabWidget
     from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget
-    from src.core.audio_engine import AudioEngine
 except ImportError:
     pytest.skip("Skipping GUI test due to missing dependencies", allow_module_level=True)
 
