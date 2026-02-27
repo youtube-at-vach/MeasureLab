@@ -756,7 +756,6 @@ def next_power_of_two(n):
     return 1 << (int(n) - 1).bit_length()
 
 
-
 class BitDepthDialog(QDialog):
     def __init__(self, audio_engine: AudioEngine, parent=None):
         super().__init__(parent)
@@ -810,9 +809,7 @@ class BitDepthDialog(QDialog):
         self.heatmap_plot.addItem(self.heatmap_img)
         # Colormap
         pos = np.array([0.0, 0.5, 1.0])
-        color = np.array(
-            [[0, 0, 0, 255], [0, 255, 0, 255], [255, 255, 0, 255]], dtype=np.ubyte
-        )
+        color = np.array([[0, 0, 0, 255], [0, 255, 0, 255], [255, 255, 0, 255]], dtype=np.ubyte)
         cmap = pg.ColorMap(pos, color)
         self.heatmap_img.setLookupTable(cmap.getLookupTable(0.0, 1.0))
 
@@ -945,6 +942,28 @@ class SettingsWidget(QWidget):
         main_layout.addWidget(self.tabs)
 
         # --- Tab 1: General ---
+        self.tabs.addTab(self._create_general_tab(), tr("General"))
+
+        # --- Tab 2: Audio ---
+        self.tabs.addTab(self._create_audio_tab(), tr("Audio"))
+
+        # --- Tab 3: Calibration ---
+        self.tabs.addTab(self._create_calibration_tab(), tr("Calibration"))
+
+        self.setLayout(main_layout)
+
+        # Initialize
+        self.refresh_devices()
+        self.update_buffer_duration()
+        self.update_in_sens_display()
+        self.update_out_gain_display()
+
+        self.update_spl_display()
+        self.update_adv_cal_display()
+        self.refresh_cal_profiles()
+        self._update_offline_ui_state()
+
+    def _create_general_tab(self) -> QWidget:
         general_tab = QWidget()
         general_layout = QVBoxLayout()
 
@@ -1042,9 +1061,9 @@ class SettingsWidget(QWidget):
 
         general_layout.addStretch()
         general_tab.setLayout(general_layout)
-        self.tabs.addTab(general_tab, tr("General"))
+        return general_tab
 
-        # --- Tab 2: Audio ---
+    def _create_audio_tab(self) -> QWidget:
         audio_tab = QWidget()
         audio_layout = QVBoxLayout()
 
@@ -1194,7 +1213,9 @@ class SettingsWidget(QWidget):
 
         # 64-bit Audio Engine
         self.audio_engine_64bit_check = QCheckBox(tr("64-bit Audio Engine (Float64)"))
-        self.audio_engine_64bit_check.setToolTip(tr("Enable 64-bit processing for ultra-low distortion measurements. Applies immediately."))
+        self.audio_engine_64bit_check.setToolTip(
+            tr("Enable 64-bit processing for ultra-low distortion measurements. Applies immediately.")
+        )
         self.audio_engine_64bit_check.setChecked(self.config_manager.is_audio_engine_64bit())
         self.audio_engine_64bit_check.toggled.connect(self.on_audio_engine_64bit_toggled)
         conf_layout.addRow(self.audio_engine_64bit_check)
@@ -1204,9 +1225,9 @@ class SettingsWidget(QWidget):
 
         audio_layout.addStretch()
         audio_tab.setLayout(audio_layout)
-        self.tabs.addTab(audio_tab, tr("Audio"))
+        return audio_tab
 
-        # --- Tab 3: Calibration ---
+    def _create_calibration_tab(self) -> QWidget:
         calibration_tab = QWidget()
         calibration_layout = QVBoxLayout()
 
@@ -1364,20 +1385,7 @@ class SettingsWidget(QWidget):
 
         calibration_layout.addStretch()
         calibration_tab.setLayout(calibration_layout)
-        self.tabs.addTab(calibration_tab, tr("Calibration"))
-
-        self.setLayout(main_layout)
-
-        # Initialize
-        self.refresh_devices()
-        self.update_buffer_duration()
-        self.update_in_sens_display()
-        self.update_out_gain_display()
-
-        self.update_spl_display()
-        self.update_adv_cal_display()
-        self.refresh_cal_profiles()
-        self._update_offline_ui_state()
+        return calibration_tab
 
     def _is_jack_available(self) -> bool:
         """Checks if JACK host API is available."""
@@ -1469,9 +1477,7 @@ class SettingsWidget(QWidget):
             progress.setValue(0)
 
             # Define sizes to warm up
-            sizes_to_warm = [
-                1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144
-            ]
+            sizes_to_warm = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
 
             if self.include_huge_check.isChecked():
                 sizes_to_warm.extend([524288, 1048576, 2097152, 4194304])
@@ -1483,7 +1489,7 @@ class SettingsWidget(QWidget):
                     break
                 # Only warming up float64
                 _ = manager.get_plan(size, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_FORWARD")
-                _ = manager.get_plan(size//2 + 1, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_BACKWARD")
+                _ = manager.get_plan(size // 2 + 1, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_BACKWARD")
                 progress.setValue(int(((i + 1) / total_sizes) * 100))
 
             manager.save_wisdom()
@@ -1647,7 +1653,7 @@ class SettingsWidget(QWidget):
         # Populate Host APIs
         # We need to map API index to name
         for i, api in enumerate(host_apis):
-            self.hostapi_combo.addItem(api['name'], i)
+            self.hostapi_combo.addItem(api["name"], i)
 
         # Determine current Host API from config or default
         current_api_index = self._get_current_host_api_index(host_apis)
@@ -1664,22 +1670,23 @@ class SettingsWidget(QWidget):
 
     def _get_current_host_api_index(self, host_apis):
         # Try to get from config
-        saved_api_name = self.config_manager.get_audio_config().get("input_hostapi") # active input host api
+        saved_api_name = self.config_manager.get_audio_config().get("input_hostapi")  # active input host api
         if not saved_api_name:
-             saved_api_name = self.config_manager.get_audio_config().get("output_hostapi")
+            saved_api_name = self.config_manager.get_audio_config().get("output_hostapi")
 
         if saved_api_name:
             for i, api in enumerate(host_apis):
-                if api['name'] == saved_api_name:
+                if api["name"] == saved_api_name:
                     return i
 
         # Fallback: Use the default host API
         try:
-             import sounddevice as sd
-             return sd.default.hostapi
+            import sounddevice as sd
+
+            return sd.default.hostapi
         except Exception as e:
-             self.logger.debug(f"Failed to get default hostapi: {e}")
-             return 0
+            self.logger.debug(f"Failed to get default hostapi: {e}")
+            return 0
 
     def on_hostapi_changed(self):
         self._populate_device_combos()
@@ -1716,7 +1723,7 @@ class SettingsWidget(QWidget):
         for i, dev in valid_devices:
             name = self._format_device_label(i, dev)
             if dev["max_input_channels"] > 0:
-                self.input_combo.addItem(name, i) # Store global device index as data
+                self.input_combo.addItem(name, i)  # Store global device index as data
             if dev["max_output_channels"] > 0:
                 self.output_combo.addItem(name, i)
 
@@ -1738,8 +1745,8 @@ class SettingsWidget(QWidget):
                 label = combo.itemText(i)
                 # Strict check first
                 if label.endswith(f": {name}"):
-                     combo.setCurrentIndex(i)
-                     return True
+                    combo.setCurrentIndex(i)
+                    return True
             return False
 
         current_in_id = self.audio_engine.input_device
@@ -1760,7 +1767,6 @@ class SettingsWidget(QWidget):
 
         self.input_combo.blockSignals(False)
         self.output_combo.blockSignals(False)
-
 
     def on_device_changed(self):
         input_idx = self.input_combo.currentData()
@@ -2076,8 +2082,6 @@ class SettingsWidget(QWidget):
             QMessageBox.information(self, tr("Success"), tr("Profile saved."))
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), str(e))
-
-
 
     def on_delete_profile(self):
         name = self.cal_profile_combo.currentText()
