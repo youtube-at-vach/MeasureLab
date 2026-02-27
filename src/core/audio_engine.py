@@ -369,58 +369,32 @@ class AudioEngine:
         if should_stop:
             self.stop_stream()
 
-    def _master_callback(self, indata, outdata, frames, time, status):
-        if status:
-            self.accumulated_status |= status
-
-        # Zero out master output buffer first
-        outdata.fill(0)
-
-        # Prepare logical input for clients
-        # Map Hardware Input -> Logical Input (Stereo usually, or as requested)
-
-        # If Loopback is enabled, use the last output buffer as input
-        # Works same for Virtual and Hardware:
-        # Virtual: indata is zeros. loopback copies stored last_out to logical_in.
-        # Hardware: indata is mic. loopback copies stored last_out to logical_in (ignoring mic).
-        # If Loopback is enabled OR we are in Offline Mode (where there is no other input),
-        # use the last output buffer as input.
-        use_loopback = self.loopback or self.offline_mode
+    def _prepare_logical_input(self, indata, frames, use_loopback):
+        """Prepares logical input buffer from hardware input or loopback."""
         if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
-            # We use the mixed output from the previous block
-            # last_output_buffer is (frames, logical_out_ch)
-            # We need to map it to logical_in (frames, 2)
-
-            # Assuming logical_out_ch is 2 (stereo) or 1 (mono)
-            # logical_in is usually stereo (2)
-
+            # Loopback logic: reuse last output
             lb_src = self.last_output_buffer
-            # Reuse logical input buffer if possible to avoid allocation
             if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
                 self._logical_in_buffer = np.zeros((frames, 2), dtype=self._get_dtype())
 
             logical_in = self._logical_in_buffer
-
             if lb_src.shape[1] >= 2:
                 logical_in[:, :2] = lb_src[:, :2]
             elif lb_src.shape[1] == 1:
                 logical_in[:, 0] = lb_src[:, 0]
                 logical_in[:, 1] = lb_src[:, 0]
             else:
-                # Should not happen, but ensure silence if shape is unexpected
                 logical_in.fill(0)
+            return logical_in
         else:
+            # Hardware Input logic
             in_mode = self._current_in_mode
-            # Standard Hardware Input Mapping
-
-            # Determine how many logical channels we need based on in_mode
             req_channels = 1 if in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
 
             if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, req_channels):
                 self._logical_in_buffer = np.zeros((frames, req_channels), dtype=self._get_dtype())
 
             logical_in = self._logical_in_buffer
-
             if in_mode == self.MODE_LEFT:
                 logical_in[:, 0] = indata[:, 0]
             elif in_mode == self.MODE_RIGHT:
@@ -433,26 +407,12 @@ class AudioEngine:
                     logical_in[:, 0:2] = indata[:, 0:2]
                 elif indata.shape[1] == 1:
                     logical_in[:, 0] = indata[:, 0]
-                    # We only have one channel, copy it to both to simulate stereo
                     logical_in[:, 1] = indata[:, 0]
+            return logical_in
 
-        out_mode = self._current_out_mode
-        # Create a temp output buffer for clients
-        logical_out_ch = 2 if out_mode == self.MODE_STEREO else 1
-
-        # Use cached callbacks (atomic read)
-        active_callbacks = self._cached_callbacks
-
-        if not active_callbacks:
-            # Even if no callbacks, we might need to update last_output_buffer (silence)
-            if use_loopback:
-                if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
-                    self.last_output_buffer = np.zeros((frames, logical_out_ch), dtype=self._get_dtype())
-                else:
-                    self.last_output_buffer.fill(0)
-            return
-
-        # Mix buffer
+    def _mix_clients(self, logical_in, frames, time, status, active_callbacks, logical_out_ch):
+        """Iterates active clients, executes callbacks, and mixes output."""
+        # Initialize or clear mix buffer
         if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch):
             mix_buffer = self._mix_buffer
             mix_buffer.fill(0)
@@ -472,70 +432,96 @@ class AudioEngine:
             try:
                 cb(logical_in, client_out, frames, time, status)
             except Exception as e:
-                # Optimization: Use non-blocking error tracking instead of print to avoid audio dropouts
                 self.last_callback_error = e
                 self.callback_error_count += 1
                 continue
 
-            # Sum to mix
             mix_buffer += client_out
 
-        # Apply TPDF Dithering
-        if self.dithering_enabled:
-            depth_str = str(self.dithering_bit_depth)
-            if "16" in depth_str:
-                bit_depth = 16
+        return mix_buffer
+
+    def _apply_dithering(self, mix_buffer):
+        """Applies TPDF dithering to the mix buffer in-place."""
+        depth_str = str(self.dithering_bit_depth)
+        bit_depth = 16 if "16" in depth_str else 24
+        lsb = 1.0 / (2 ** (bit_depth - 1))
+
+        # Use _client_buffer as temp buffer (guaranteed to be sized correctly here)
+        dither_buf = self._client_buffer
+
+        # 1. Generate R1
+        self._rng.random(out=dither_buf, dtype=self._get_dtype())
+        dither_buf *= lsb
+        mix_buffer += dither_buf
+
+        # 2. Generate R2 (subtract)
+        self._rng.random(out=dither_buf, dtype=self._get_dtype())
+        dither_buf *= lsb
+        mix_buffer -= dither_buf
+
+    def _update_loopback_buffer(self, source_buffer, frames, channels):
+        """Updates the loopback buffer from the given source (or clears if None)."""
+        if source_buffer is None:
+            # Fill with silence
+            if self.last_output_buffer is None or len(self.last_output_buffer) != frames:
+                self.last_output_buffer = np.zeros((frames, channels), dtype=self._get_dtype())
             else:
-                bit_depth = 24
+                self.last_output_buffer.fill(0)
+        else:
+            if self.last_output_buffer is None or self.last_output_buffer.shape != source_buffer.shape:
+                self.last_output_buffer = np.empty_like(source_buffer)
+            np.copyto(self.last_output_buffer, source_buffer)
 
-            # TPDF Dither
-            # LSB magnitude for given bit depth
-            # (Range is -1.0 to +1.0, so total range is 2.0. 
-            #  Wait, usually we think of normalized float as [-1, 1). 
-            #  2^(N-1) states in positive/negative side. 
-            #  LSB = 1.0 / (2**(bit_depth - 1)))
-            lsb = 1.0 / (2 ** (bit_depth - 1))
+    def _map_logical_to_hardware_output(self, mix_buffer, outdata, out_mode):
+        """Maps the logical mix buffer to the hardware output buffer."""
+        if self.mute_output:
+            return
 
-            # Triangular dither: random1 - random2
-            # Use _client_buffer as a temporary buffer to avoid allocation.
-            # _client_buffer is guaranteed to be initialized and correctly sized here
-            # because dithering only runs if there are active callbacks.
-            dither_buf = self._client_buffer
+        if out_mode == self.MODE_STEREO:
+            outdata[:, 0:2] = mix_buffer
+        elif out_mode == self.MODE_LEFT:
+            outdata[:, 0:1] = mix_buffer
+            if outdata.shape[1] > 1:
+                outdata[:, 1:] = 0
+        elif out_mode == self.MODE_RIGHT:
+            if outdata.shape[1] >= 2:
+                outdata[:, 1:2] = mix_buffer
+                outdata[:, 0] = 0
 
-            # 1. Generate R1
-            self._rng.random(out=dither_buf, dtype=self._get_dtype())
-            # 2. Add scaled R1 to mix
-            # mix += R1 * lsb
-            # To do this efficiently in-place without another buffer:
-            # We can scale dither_buf in-place, add it, then reuse dither_buf for R2.
-            dither_buf *= lsb
-            mix_buffer += dither_buf
+    def _master_callback(self, indata, outdata, frames, time, status):
+        if status:
+            self.accumulated_status |= status
 
-            # 3. Generate R2
-            self._rng.random(out=dither_buf, dtype=self._get_dtype())
-            # 4. Subtract scaled R2 from mix
-            dither_buf *= lsb
-            mix_buffer -= dither_buf
+        # Zero out master output buffer first
+        outdata.fill(0)
 
-        # Store for next loopback cycle
+        # 1. Prepare Inputs
+        use_loopback = self.loopback or self.offline_mode
+        logical_in = self._prepare_logical_input(indata, frames, use_loopback)
+
+        # 2. Prepare Output Configuration
+        out_mode = self._current_out_mode
+        logical_out_ch = 2 if out_mode == self.MODE_STEREO else 1
+        active_callbacks = self._cached_callbacks
+
+        # 3. Mix Clients
+        if not active_callbacks:
+            if use_loopback:
+                self._update_loopback_buffer(None, frames, logical_out_ch)
+            return
+
+        mix_buffer = self._mix_clients(logical_in, frames, time, status, active_callbacks, logical_out_ch)
+
+        # 4. Apply Effects (Dithering)
+        if self.dithering_enabled:
+            self._apply_dithering(mix_buffer)
+
+        # 5. Update Loopback
         if use_loopback:
-            if self.last_output_buffer is None or self.last_output_buffer.shape != mix_buffer.shape:
-                self.last_output_buffer = np.empty_like(mix_buffer)
-            np.copyto(self.last_output_buffer, mix_buffer)
+            self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
 
-        # Map Logical Output -> Hardware Output
-        if not self.mute_output:
-            if out_mode == self.MODE_STEREO:
-                outdata[:, 0:2] = mix_buffer
-            elif out_mode == self.MODE_LEFT:
-                outdata[:, 0:1] = mix_buffer
-                if outdata.shape[1] > 1:
-                    outdata[:, 1:] = 0
-            elif out_mode == self.MODE_RIGHT:
-                if outdata.shape[1] >= 2:
-                    outdata[:, 1:2] = mix_buffer
-                    outdata[:, 0] = 0
-        # If muted, outdata is already 0 filled at start of callback
+        # 6. Map to Hardware Output
+        self._map_logical_to_hardware_output(mix_buffer, outdata, out_mode)
 
     def _update_channel_modes(self):
         """
