@@ -333,7 +333,7 @@ class NoiseProfilerWidget(QWidget):
         self.reset_avg_btn.clicked.connect(self.on_reset_average)
         avg_layout.addWidget(self.reset_avg_btn)
 
-        self.avg_progress_label = QLabel("0 / 1000")
+        self.avg_progress_label = QLabel(tr("0 / 1000"))
         self.avg_progress_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         avg_layout.addWidget(self.avg_progress_label)
 

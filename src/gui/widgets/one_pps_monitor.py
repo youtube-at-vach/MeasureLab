@@ -736,15 +736,15 @@ class OnePPSMonitorWidget(QWidget):
 
 
         # Stats
-        self.lbl_count = QLabel(f"{tr('Count')}: -")
-        self.lbl_inst = QLabel(f"{tr('Inst')}: -")
-        self.lbl_cumul = QLabel(f"{tr('Cumul')}: -")
-        self.lbl_rate = QLabel(f"{tr('Rate')}: -")
+        self.lbl_count = QLabel(tr("Count") + ": -")
+        self.lbl_inst = QLabel(tr("Inst") + ": -")
+        self.lbl_cumul = QLabel(tr("Cumul") + ": -")
+        self.lbl_rate = QLabel(tr("Rate") + ": -")
 
-        self.lbl_mean = QLabel(f"{tr('Mean')}: -")
-        self.lbl_std = QLabel(f"{tr('Std Dev')}: -")
-        self.lbl_min = QLabel(f"{tr('Min')}: -")
-        self.lbl_max = QLabel(f"{tr('Max')}: -")
+        self.lbl_mean = QLabel(tr("Mean") + ": -")
+        self.lbl_std = QLabel(tr("Std Dev") + ": -")
+        self.lbl_min = QLabel(tr("Min") + ": -")
+        self.lbl_max = QLabel(tr("Max") + ": -")
 
 
         stats_group = QGroupBox(tr("Statistics"))

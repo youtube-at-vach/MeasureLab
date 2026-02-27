@@ -660,14 +660,14 @@ class SoundQualityAnalyzerWidget(QWidget):
         playback_layout = QHBoxLayout()
         playback_layout.setContentsMargins(5, 5, 5, 5)
 
-        self.play_btn = QPushButton("▶")
+        self.play_btn = QPushButton(tr("▶"))
         self.play_btn.setToolTip(tr("Play/Pause"))
         self.play_btn.setFixedWidth(40)
         self.play_btn.clicked.connect(self.toggle_playback)
         self.play_btn.setEnabled(False)
         playback_layout.addWidget(self.play_btn)
 
-        self.stop_btn = QPushButton("■")
+        self.stop_btn = QPushButton(tr("■"))
         self.stop_btn.setToolTip(tr("Stop"))
         self.stop_btn.setFixedWidth(40)
         self.stop_btn.clicked.connect(self.stop_playback)

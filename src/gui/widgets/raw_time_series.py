@@ -293,8 +293,8 @@ class RawTimeSeriesWidget(QWidget):
         ctrl.addWidget(self.chk_dc)
 
         self.lbl_dc_title = QLabel(tr("DC Offset (mean):"))
-        self.lbl_dc_ch1 = QLabel("CH1: -")
-        self.lbl_dc_ch2 = QLabel("CH2: -")
+        self.lbl_dc_ch1 = QLabel(tr("CH1") + ": -")
+        self.lbl_dc_ch2 = QLabel(tr("CH2") + ": -")
         ctrl.addWidget(self.lbl_dc_title)
         ctrl.addWidget(self.lbl_dc_ch1)
         ctrl.addWidget(self.lbl_dc_ch2)

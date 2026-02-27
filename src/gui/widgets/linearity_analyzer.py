@@ -580,11 +580,11 @@ class LinearityAnalyzerWidget(QWidget):
         stats_group = QGroupBox(tr("Statistics"))
         stats_layout = QFormLayout()
 
-        self.stat_ref_gain = QLabel("-- dB")
-        self.stat_max_error = QLabel("-- dB")
-        self.stat_linear_range = QLabel("-- dB")
-        self.stat_slope = QLabel("--")
-        self.stat_hysteresis = QLabel("--")
+        self.stat_ref_gain = QLabel(tr("-- dB"))
+        self.stat_max_error = QLabel(tr("-- dB"))
+        self.stat_linear_range = QLabel(tr("-- dB"))
+        self.stat_slope = QLabel(tr("--"))
+        self.stat_hysteresis = QLabel(tr("--"))
 
         stats_layout.addRow(tr("Ref Gain:"), self.stat_ref_gain)
         stats_layout.addRow(tr("Max Deviation:"), self.stat_max_error)
@@ -691,11 +691,11 @@ class LinearityAnalyzerWidget(QWidget):
             self.gain_curve.setData([], [])
 
             # Reset Stats
-            self.stat_ref_gain.setText("-- dB")
-            self.stat_max_error.setText("-- dB")
-            self.stat_linear_range.setText("-- dB")
-            self.stat_slope.setText("--")
-            self.stat_hysteresis.setText("--")
+            self.stat_ref_gain.setText(tr("-- dB"))
+            self.stat_max_error.setText(tr("-- dB"))
+            self.stat_linear_range.setText(tr("-- dB"))
+            self.stat_slope.setText(tr("--"))
+            self.stat_hysteresis.setText(tr("--"))
 
             worker = self.module.start_sweep()
             worker.progress.connect(self.progress.setValue)
@@ -899,7 +899,7 @@ class LinearityAnalyzerWidget(QWidget):
             if max_hyst is not None:
                 self.stat_hysteresis.setText(f"{max_hyst:.3f} dB")
             else:
-                self.stat_hysteresis.setText("--")
+                self.stat_hysteresis.setText(tr("--"))
         else:
             self.stat_hysteresis.setText(tr("N/A"))
 

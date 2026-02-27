@@ -647,7 +647,7 @@ class SoundLevelMeterWidget(QWidget):
             title = QLabel(title_text)
             title.setAlignment(Qt.AlignmentFlag.AlignCenter)
             title.setStyleSheet("font-weight: bold; font-size: 14pt; color: #eee;")
-            val_lbl = QLabel("--.-")
+            val_lbl = QLabel(tr("--.-"))
             val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             val_lbl.setStyleSheet(ln_font_style)
             v_box.addWidget(title)
@@ -685,7 +685,7 @@ class SoundLevelMeterWidget(QWidget):
             lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_desc.setStyleSheet("font-size: 11pt; color: #aaa;")
 
-            lbl_val = QLabel("--.-")
+            lbl_val = QLabel(tr("--.-"))
             lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_val.setStyleSheet("font-size: 28px; font-weight: bold; color: #ffaa00;")
 
@@ -718,11 +718,11 @@ class SoundLevelMeterWidget(QWidget):
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setStyleSheet("color: #aaa; font-size: 14pt; margin-top: 10px;")
 
-        lbl_val = QLabel("--.-")
+        lbl_val = QLabel(tr("--.-"))
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_val.setStyleSheet(f"color: {color}; font-size: 64px; font-weight: bold;")
 
-        lbl_unit = QLabel("dB")
+        lbl_unit = QLabel(tr("dB"))
         lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_unit.setStyleSheet(f"color: {color}; font-size: 18pt; margin-bottom: 15px;")
 

@@ -1311,7 +1311,7 @@ class SignalGeneratorWidget(QWidget):
         self.cal_ppm_spin.setToolTip(tr("Manual Frequency Calibration Adjustment"))
         self.cal_ppm_spin.valueChanged.connect(self.on_cal_ppm_changed)
 
-        self.cal_freq_label = QLabel("")
+        self.cal_freq_label = QLabel(tr(""))
         self.cal_freq_label.setStyleSheet("color: gray;")
 
         cal_layout.addWidget(self.cal_check)
