@@ -479,8 +479,6 @@ class FrequencyCounterWidget(QWidget):
         self.amp_label.setStyleSheet("color: #888;")
         display_layout.addWidget(self.amp_label)
 
-        layout.addWidget(display_frame)
-
         # --- Stats Display ---
         stats_layout = QHBoxLayout()
 
