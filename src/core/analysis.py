@@ -336,71 +336,155 @@ class AudioCalc:
         """
         N = len(signal)
         K = len(grid)
-        # Accumulators for sufficient statistics
-        # G terms: s2, c2, sc, s, c (sum of squares/products)
-        acc_G = np.zeros((K, 5), dtype=np.float64)
-        # v terms: sig_s, sig_c (dot products with signal)
-        acc_v = np.zeros((K, 2), dtype=np.float64)
+        if N < 2:
+            return grid[0] if K > 0 else 0.0
 
-        # Constant term for the '1' column
-        sum_sig = np.sum(signal)
+        # Optimization: Use analytical formulas for G matrix and
+        # optimized complex exponentials for v vector to avoid huge np.outer.
 
-        # Chunked processing to limit memory usage
+        # 1. Compute 'v' terms (dot products with signal)
+        # We need sum(signal * sin(wt)) and sum(signal * cos(wt))
+        # This is equivalent to imag/real parts of sum(signal * exp(j*w*t))
+
         chunk_size = 16384
+        dt = t[1] - t[0] if N > 1 else 1.0 # Assuming uniform sampling
         two_pi = 2 * np.pi
+        omega = grid * two_pi
+
+        # Precompute complex exponentials for one chunk relative to its start
+        # exp(j * w * t_rel) where t_rel = [0, dt, ..., (chunk-1)dt]
+        # Shape (K, chunk_size) - roughly 25MB for K=100
+        # If chunk_size is too big for cache, we might benefit from smaller chunks,
+        # but 16k is reasonable.
+
+        base_t = np.arange(chunk_size) * dt
+        E_base = np.exp(1j * np.outer(omega, base_t))
+
+        acc_v_complex = np.zeros(K, dtype=np.complex128)
 
         for i in range(0, N, chunk_size):
             end = min(i + chunk_size, N)
-            t_chunk = t[i:end]
+            current_len = end - i
             sig_chunk = signal[i:end]
 
-            # Compute phases: (K, chunk_len)
-            phases = np.outer(grid, t_chunk) * two_pi
+            # Slice E_base if strictly smaller than chunk_size (last chunk)
+            if current_len == chunk_size:
+                E_chunk = E_base
+            else:
+                E_chunk = E_base[:, :current_len]
 
-            s_chunk = np.sin(phases)
-            c_chunk = np.cos(phases)
+            # Dot product: sum(sig * exp(j * w * t_rel))
+            z = E_chunk @ sig_chunk
 
-            # Update G accumulators
-            acc_G[:, 0] += np.sum(s_chunk**2, axis=1)
-            acc_G[:, 1] += np.sum(c_chunk**2, axis=1)
-            acc_G[:, 2] += np.sum(s_chunk * c_chunk, axis=1)
-            acc_G[:, 3] += np.sum(s_chunk, axis=1)
-            acc_G[:, 4] += np.sum(c_chunk, axis=1)
+            # Rotate by phase offset of chunk start time
+            # t[i] is absolute time of chunk start
+            rotation = np.exp(1j * omega * t[i])
+            acc_v_complex += z * rotation
 
-            # Update v accumulators
-            acc_v[:, 0] += s_chunk @ sig_chunk
-            acc_v[:, 1] += c_chunk @ sig_chunk
+        sig_s = acc_v_complex.imag
+        sig_c = acc_v_complex.real
 
+        # 2. Compute 'G' terms (sufficient statistics of sine/cosine basis) analytically
+        # We need sums of: s^2, c^2, sc, s, c
+        # s = sin(wt), c = cos(wt)
+
+        # Geometric sum formula for exp(j*w*t):
+        # S_exp(w) = sum_{n=0}^{N-1} exp(j * w * n * dt)
+        #          = (1 - exp(j * w * N * dt)) / (1 - exp(j * w * dt))
+        # (Assuming t starts at 0. If t[0] != 0, multiply by exp(j*w*t[0]))
+
+        # Phi per sample
+        phi = omega * dt
+
+        # Avoid division by zero for DC (w=0). Grid > 0 checked by caller, but safety first.
+        # Mask valid frequencies (non-zero modulo 2pi/dt, but usually we deal with low freq)
+
+        # S_exp corresponds to sum(cos) + j*sum(sin)
+        # Note: If t doesn't start at 0, we must adjust.
+        # t = t[0] + n*dt. exp(jwt) = exp(jwt[0]) * exp(jwn*dt)
+
+        # Helper for geometric sum
+        # num = 1 - exp(j * N * phi)
+        # den = 1 - exp(j * phi)
+        # S = num / den
+
+        # Use numpy operations
+        # exp_j_phi = np.exp(1j * phi)
+        # exp_j_N_phi = np.exp(1j * N * phi)
+        # S_geom = (1 - exp_j_N_phi) / (1 - exp_j_phi)
+
+        # Using a numerically stable form for sin(N*x)/sin(x) might be better but complex form is usually fine for this SNR.
+        # Let's use the standard formula directly.
+
+        denom = 1 - np.exp(1j * phi)
+        # Handle small phi (Taylor expansion or limit) - but usually phi is not effectively 0 for audio freq.
+        # If w is very close to 0 or sampling rate multiple, denom ~ 0.
+        # For our use case (audio freq, 48kHz), this is rare for grid > 0.
+
+        # Safety for denom close to 0
+        epsilon = 1e-15
+        denom[np.abs(denom) < epsilon] = epsilon # Hack to avoid NaN, though results will be huge
+
+        S_geom = (1 - np.exp(1j * N * phi)) / denom
+
+        # Apply t[0] phase shift
+        S_exp = S_geom * np.exp(1j * omega * t[0])
+
+        sum_c = S_exp.real
+        sum_s = S_exp.imag
+
+        # For squared terms:
+        # sin^2(x) = (1 - cos(2x))/2
+        # cos^2(x) = (1 + cos(2x))/2
+        # sin(x)cos(x) = sin(2x)/2
+
+        # We need sum of exp(j * 2w * t)
+        phi2 = 2 * phi
+        denom2 = 1 - np.exp(1j * phi2)
+        denom2[np.abs(denom2) < epsilon] = epsilon
+
+        S_geom2 = (1 - np.exp(1j * N * phi2)) / denom2
+        S_exp2 = S_geom2 * np.exp(1j * 2 * omega * t[0])
+
+        sum_cos_2wt = S_exp2.real
+        sum_sin_2wt = S_exp2.imag
+
+        s2 = 0.5 * N - 0.5 * sum_cos_2wt
+        c2 = 0.5 * N + 0.5 * sum_cos_2wt
+        sc = 0.5 * sum_sin_2wt
+
+        # 3. Solve system for each frequency
         best_score = -1.0
-        best_coarse = grid[0] if len(grid) > 0 else 0.0
+        best_coarse = grid[0] if K > 0 else 0.0
 
-        # Reusing arrays for system solution
+        sum_sig = np.sum(signal)
+
+        # G = [[s2, sc, s_sum], [sc, c2, c_sum], [s_sum, c_sum, N]]
+        # v = [sig_s, sig_c, sum_sig]
+
+        # Reusing buffer for 3x3 system
         G = np.empty((3, 3), dtype=np.float64)
         v = np.empty(3, dtype=np.float64)
-
-        # Fill constant part of G
         G[2, 2] = N
         v[2] = sum_sig
 
         for k in range(K):
-            s2, c2, sc, s_sum, c_sum = acc_G[k]
-            sig_s, sig_c = acc_v[k]
+            G[0, 0] = s2[k]
+            G[0, 1] = sc[k]
+            G[0, 2] = sum_s[k]
+            G[1, 0] = sc[k]
+            G[1, 1] = c2[k]
+            G[1, 2] = sum_c[k]
+            G[2, 0] = sum_s[k]
+            G[2, 1] = sum_c[k]
 
-            G[0, 0] = s2
-            G[0, 1] = sc
-            G[0, 2] = s_sum
-            G[1, 0] = sc
-            G[1, 1] = c2
-            G[1, 2] = c_sum
-            G[2, 0] = s_sum
-            G[2, 1] = c_sum
-            # G[2, 2] is N (set outside loop)
-
-            v[0] = sig_s
-            v[1] = sig_c
-            # v[2] is sum_sig (set outside loop)
+            v[0] = sig_s[k]
+            v[1] = sig_c[k]
 
             try:
+                # Solve Gx = v
+                # We can explicitly solve 3x3 for speed if needed, but linalg.solve is robust.
+                # Since this loop is K times (e.g. 100-200), it's fast enough compared to the signal scan.
                 x = np.linalg.solve(G, v)
                 score = np.dot(x, v)
             except np.linalg.LinAlgError:
