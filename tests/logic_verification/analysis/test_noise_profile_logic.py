@@ -219,5 +219,42 @@ class TestNoiseProfileLogic(unittest.TestCase):
         # With non-linear handling, it should fallback to robust methods
         self.assertIn("white_density", results)
 
+    def test_log_integration_bug(self):
+        """
+        Test integration correctness with a logarithmic frequency axis (variable bin width).
+        """
+        # 1. Setup
+        # Create a Logarithmic Frequency Axis from 20Hz to 20kHz
+        f_start = 20.0
+        f_end = 20000.0
+        n_bins = 1000
+        freqs = np.geomspace(f_start, f_end, n_bins)
+
+        # constant PSD of 1.0 V^2/Hz (for simplicity)
+        # Magnitude (V/rtHz) = 1.0
+        mag = np.ones_like(freqs)
+
+        # 2. Expected Result (Analytical Integration)
+        # Power = Integral(PSD * df)
+        # Since PSD = 1.0, Power = f_end - f_start
+        expected_power = f_end - f_start
+        # expected_rms = np.sqrt(expected_power)
+
+        # 3. Actual Result using AudioCalc
+        # sampling_rate is just needed for some internal checks, set arbitrarily high
+        sampling_rate = 48000
+
+        results = AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
+
+        # Check noise_rms_20k (which integrates from 20 to 20k)
+        actual_rms = results["noise_rms_20k"]
+        actual_power = actual_rms ** 2
+
+        # 4. Analysis
+        ratio = actual_power / expected_power
+
+        # We accept a ratio close to 1.0. With 1000 bins, it should be reasonably accurate.
+        self.assertAlmostEqual(ratio, 1.0, delta=0.1, msg="Integration with log axis is significantly incorrect.")
+
 if __name__ == '__main__':
     unittest.main()
