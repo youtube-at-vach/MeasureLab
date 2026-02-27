@@ -210,7 +210,7 @@ class Oscilloscope(MeasurementModule):
         Calculate measurements (RMS, Vpp) for the given data, applying calibration.
         Returns a dict with 'l_rms', 'l_vpp', 'r_rms', 'r_vpp'.
         """
-        if data is None:
+        if data is None or len(data) == 0:
             return {"l_rms": 0.0, "l_vpp": 0.0, "r_rms": 0.0, "r_vpp": 0.0}
 
         # Apply Input Sensitivity (Calibration)
@@ -1169,7 +1169,7 @@ class OscilloscopeWidget(QWidget):
         window_duration = self.module.timebase
         data = self.module.get_display_data(window_duration)
 
-        if data is not None:
+        if data is not None and len(data) > 0:
             # Create time axis
             # Optimization: Cache time array
             current_len = len(data)
@@ -1394,7 +1394,7 @@ class OscilloscopeWidget(QWidget):
                     math_data = np.cumsum(A) * dt
                     math_data = math_data - np.mean(math_data)
 
-                if math_data is not None:
+                if math_data is not None and math_data.size > 0:
                     self.curve_math.setData(t, math_data)
                     # Auto-scale Math View
                     mn, mx = np.min(math_data), np.max(math_data)
