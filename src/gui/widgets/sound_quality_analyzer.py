@@ -1,10 +1,10 @@
 
-
 import logging
 import numpy as np
 import pyqtgraph as pg
 import scipy.signal as signal
 import soundfile as sf
+import os
 from PyQt6.QtCore import QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -913,7 +913,9 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         try:
             import csv
-            with open(path, mode='w', newline='', encoding='utf-8') as f:
+            # Secure file open with restrictive permissions (0o600)
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, mode='w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
 
                 # Write header
