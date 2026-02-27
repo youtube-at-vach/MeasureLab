@@ -521,6 +521,277 @@ class SignalGenerator(MeasurementModule):
 
         return np.zeros_like(phase_rad)
 
+    def _calculate_phase_from_freq(self, params: SignalParameters, f_inst_hz: np.ndarray, sample_rate: float):
+        """Integrate instantaneous frequency to phase (radians) with continuity across blocks."""
+        # Prevent negative frequencies from flipping waveforms in unexpected ways.
+        # Clamp to >= 0 Hz; users can set deviation to 0 if they want no FM.
+        if f_inst_hz.size == 0:
+            return np.zeros(0, dtype=float)
+
+        f_safe = np.maximum(f_inst_hz, 0.0)
+        dphi = (2.0 * np.pi * f_safe) / sample_rate
+
+        # phase[0] should start at current carrier phase.
+        phase0 = float(params._carrier_phase_rad)
+        phase = phase0 + np.cumsum(dphi) - dphi[0]
+
+        # Advance phase accumulator for next block.
+        params._carrier_phase_rad = float(phase0 + np.sum(dphi))
+        # Keep bounded to avoid numerical growth.
+        params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad, 2.0 * np.pi))
+        return phase
+
+    def _apply_am(self, x: np.ndarray, params: SignalParameters, t_global_eff: np.ndarray, sample_rate_eff: float) -> np.ndarray:
+        """Apply simple AM (DSB-LC) envelope: x(t) * (1 + m*sin(2π*f_am*t))."""
+        if not (params.am_enabled and params.am_frequency > 0 and params.am_depth != 0):
+            return x
+
+        m = float(np.clip(params.am_depth, 0.0, 100.0)) / 100.0
+        if m == 0.0:
+            return x
+
+        frames = len(x)
+        am_phase0 = float(params._am_phase_rad)
+        am_phase = am_phase0 + 2.0 * np.pi * float(params.am_frequency) * t_global_eff
+        params._am_phase_rad = float(
+            np.fmod(
+                am_phase0 + 2.0 * np.pi * float(params.am_frequency) * (frames / sample_rate_eff),
+                2.0 * np.pi,
+            )
+        )
+
+        env = 1.0 + m * np.sin(am_phase)
+        return x * env
+
+    def _apply_filters(self, x: np.ndarray, params: SignalParameters, sample_rate_eff: float) -> np.ndarray:
+        """Apply LPF/HPF if enabled."""
+        if scipy is None:
+            return x
+
+        y = x
+
+        # Apply LPF
+        if params.lpf_enabled:
+            sos = self._get_filter_sos(params, "low", sample_rate_eff)
+            if sos is not None:
+                if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
+                        params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0 # Start from 0
+
+                y, params._lpf_zi = scipy.signal.sosfilt(sos, y, zi=params._lpf_zi)
+
+        # Apply HPF
+        if params.hpf_enabled:
+            sos = self._get_filter_sos(params, "high", sample_rate_eff)
+            if sos is not None:
+                if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
+                        params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
+
+                y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
+
+        return y
+
+    def _generate_buffered_signal(self, params: SignalParameters, frames, base_sample_rate, t_global_eff, sample_rate_eff):
+        signal = np.zeros(frames)
+        # For burst, support per-channel fractional delay at readout time.
+        # This avoids rebuilding buffers and lets users adjust delay live.
+        if params.waveform == "burst" and getattr(params, "delay_ms", 0.0) != 0.0:
+            buf = params._buffer
+            buf_len = len(buf)
+            if buf_len > 0:
+                delay_samples = float(params.delay_ms) * float(base_sample_rate) / 1000.0
+                # Use remainder + explicit wrapping to avoid rare float edge cases
+                # where floor(idx) can equal buf_len.
+                idx = np.remainder(
+                    (float(params._buffer_index) + np.arange(frames, dtype=float) - delay_samples),
+                    float(buf_len),
+                )
+
+                floor_idx = np.floor(idx)
+                i0 = np.mod(floor_idx.astype(np.int64, copy=False), buf_len)
+                frac = (idx - floor_idx).astype(float, copy=False)
+                i1 = (i0 + 1) % buf_len
+
+                signal = (1.0 - frac) * buf[i0] + frac * buf[i1]
+                params._buffer_index = int((params._buffer_index + frames) % buf_len)
+                return signal * params.amplitude
+
+        # Buffer based generation
+        chunk_size = frames
+        buf_len = len(params._buffer)
+        current_idx = 0
+
+        while current_idx < chunk_size:
+            remaining = chunk_size - current_idx
+            available = buf_len - params._buffer_index
+
+            to_copy = min(remaining, available)
+            signal[current_idx : current_idx + to_copy] = params._buffer[
+                params._buffer_index : params._buffer_index + to_copy
+            ]
+
+            params._buffer_index += to_copy
+            current_idx += to_copy
+
+            if params._buffer_index >= buf_len:
+                params._buffer_index = 0
+
+        return signal * params.amplitude
+
+    def _generate_sweep_signal(self, params: SignalParameters, frames, t_global_eff, sample_rate_eff):
+        # Sweep generation
+        current_times_eff = params._sweep_time + t_global_eff
+        current_times_eff = np.mod(current_times_eff, params.sweep_duration)
+
+        # If FM is enabled, integrate instantaneous frequency (sweep + FM).
+        # Otherwise, preserve legacy analytic sweep phase.
+        if params.fm_enabled and params.fm_frequency > 0 and params.fm_deviation != 0:
+            if params.log_sweep:
+                # f(t) = f0 * exp(k t)
+                k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
+                f_base = (
+                    params.start_freq * np.exp(k * current_times_eff)
+                    if k != 0
+                    else np.full_like(current_times_eff, params.start_freq)
+                )
+            else:
+                # f(t) = f0 + k t
+                k = (params.end_freq - params.start_freq) / params.sweep_duration
+                f_base = params.start_freq + k * current_times_eff
+
+            # Modulator phase advances continuously across blocks.
+            mod_phase0 = float(params._fm_phase_rad)
+            mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t_global_eff
+            params._fm_phase_rad = float(
+                np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
+            )
+
+            f_inst = f_base + params.fm_deviation * np.sin(mod_phase)
+            phase = self._calculate_phase_from_freq(params, f_inst, sample_rate_eff)
+
+            # Optional ΦM (phase modulation) applied as additional phase term.
+            if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
+                pm_phase0 = float(params._pm_phase_rad)
+                pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global_eff
+                params._pm_phase_rad = float(
+                    np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
+                )
+                beta = float(np.radians(params.pm_deviation_deg))
+                phase = phase + beta * np.sin(pm_phase)
+
+            offset_rad = np.radians(params.phase_offset)
+            signal = params.amplitude * np.sin(phase + offset_rad)
+            params._sweep_time += frames / sample_rate_eff
+            return signal
+
+        if params.log_sweep:
+            k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
+            if k == 0:
+                phase = 2 * np.pi * params.start_freq * current_times_eff
+            else:
+                phase = 2 * np.pi * params.start_freq * (np.exp(k * current_times_eff) - 1) / k
+        else:
+            k = (params.end_freq - params.start_freq) / params.sweep_duration
+            phase = 2 * np.pi * (params.start_freq * current_times_eff + 0.5 * k * current_times_eff**2)
+
+        # Optional ΦM (phase modulation) for analytic sweep phase.
+        if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
+            pm_phase0 = float(params._pm_phase_rad)
+            pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global_eff
+            params._pm_phase_rad = float(
+                np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
+            )
+            beta = float(np.radians(params.pm_deviation_deg))
+            phase = phase + beta * np.sin(pm_phase)
+
+        signal = params.amplitude * np.sin(phase)
+        params._sweep_time += frames / sample_rate_eff
+        return signal
+
+    def _generate_standard_signal(self, params: SignalParameters, frames, t_global_eff, sample_rate_eff):
+        # Standard waveforms
+        # Optional ΦM (works for periodic waveforms only)
+        use_pm = bool(
+            params.pm_enabled
+            and params.pm_frequency > 0
+            and params.pm_deviation_deg != 0
+            and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
+        )
+
+        # Optional FM (works for periodic waveforms only)
+        use_fm = bool(
+            params.fm_enabled
+            and params.fm_frequency > 0
+            and params.fm_deviation != 0
+            and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
+        )
+
+        if use_fm:
+            # Modulator phase advances continuously across blocks.
+            t = t_global_eff
+            mod_phase0 = float(params._fm_phase_rad)
+            mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t
+            params._fm_phase_rad = float(
+                np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
+            )
+
+            f_inst = params.frequency + params.fm_deviation * np.sin(mod_phase)
+            phase = self._calculate_phase_from_freq(params, f_inst, sample_rate_eff)
+
+            if use_pm:
+                pm_phase0 = float(params._pm_phase_rad)
+                pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
+                params._pm_phase_rad = float(
+                    np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
+                )
+                beta = float(np.radians(params.pm_deviation_deg))
+                phase = phase + beta * np.sin(pm_phase)
+
+            signal = self._generate_wave_from_phase(params, phase)
+        else:
+            # Legacy fixed-frequency phase calculation
+            phase_t = (np.arange(frames) + params._phase) / sample_rate_eff
+            params._phase += frames
+
+            # If ΦM is enabled, construct explicit phase and use the phase-based definitions.
+            if use_pm:
+                t = t_global_eff
+                pm_phase0 = float(params._pm_phase_rad)
+                pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
+                params._pm_phase_rad = float(
+                    np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
+                )
+                beta = float(np.radians(params.pm_deviation_deg))
+                phase = 2.0 * np.pi * params.frequency * phase_t + beta * np.sin(pm_phase)
+
+                signal = self._generate_wave_from_phase(params, phase)
+                return signal
+
+            phase_rad = 2.0 * np.pi * params.frequency * phase_t
+            signal = self._generate_wave_from_phase(params, phase_rad)
+
+        return signal
+
+    def _generate_channel_signal(self, params: SignalParameters, frames, t_global, base_sample_rate):
+        cal_factor = self._get_cal_factor(params)
+
+        # Use effective parameters for clean continuous generation
+        sample_rate_eff = base_sample_rate / cal_factor if cal_factor > 0 else base_sample_rate
+        t_global_eff = t_global * cal_factor
+
+        signal = np.zeros(frames)
+
+        if params._buffer is not None:
+            signal = self._generate_buffered_signal(params, frames, base_sample_rate, t_global_eff, sample_rate_eff)
+        elif params.sweep_enabled:
+            signal = self._generate_sweep_signal(params, frames, t_global_eff, sample_rate_eff)
+        else:
+            signal = self._generate_standard_signal(params, frames, t_global_eff, sample_rate_eff)
+
+        signal = self._apply_am(signal, params, t_global_eff, sample_rate_eff)
+        signal = self._apply_filters(signal, params, sample_rate_eff)
+
+        return signal
+
     def start_generation(self):
         if self.is_playing:
             return
@@ -540,265 +811,6 @@ class SignalGenerator(MeasurementModule):
             params._hpf_zi = None
             self._prepare_buffer(params, base_sample_rate)
 
-        def _phase_from_instantaneous_frequency(params: SignalParameters, f_inst_hz: np.ndarray, sample_rate: float):
-            """Integrate instantaneous frequency to phase (radians) with continuity across blocks."""
-            # Prevent negative frequencies from flipping waveforms in unexpected ways.
-            # Clamp to >= 0 Hz; users can set deviation to 0 if they want no FM.
-            if f_inst_hz.size == 0:
-                return np.zeros(0, dtype=float)
-
-            f_safe = np.maximum(f_inst_hz, 0.0)
-            dphi = (2.0 * np.pi * f_safe) / sample_rate
-
-            # phase[0] should start at current carrier phase.
-            phase0 = float(params._carrier_phase_rad)
-            phase = phase0 + np.cumsum(dphi) - dphi[0]
-
-            # Advance phase accumulator for next block.
-            params._carrier_phase_rad = float(phase0 + np.sum(dphi))
-            # Keep bounded to avoid numerical growth.
-            params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad, 2.0 * np.pi))
-            return phase
-
-        def generate_channel_signal(params: SignalParameters, frames, t_global):
-            def _am_apply(x: np.ndarray, t_global_eff: np.ndarray, sample_rate_eff: float) -> np.ndarray:
-                """Apply simple AM (DSB-LC) envelope: x(t) * (1 + m*sin(2π*f_am*t))."""
-                if not (params.am_enabled and params.am_frequency > 0 and params.am_depth != 0):
-                    return x
-
-                m = float(np.clip(params.am_depth, 0.0, 100.0)) / 100.0
-                if m == 0.0:
-                    return x
-
-                am_phase0 = float(params._am_phase_rad)
-                am_phase = am_phase0 + 2.0 * np.pi * float(params.am_frequency) * t_global_eff
-                params._am_phase_rad = float(
-                    np.fmod(
-                        am_phase0 + 2.0 * np.pi * float(params.am_frequency) * (frames / sample_rate_eff),
-                        2.0 * np.pi,
-                    )
-                )
-
-                env = 1.0 + m * np.sin(am_phase)
-                return x * env
-
-            def _filter_apply(x: np.ndarray, sample_rate_eff: float) -> np.ndarray:
-                """Apply LPF/HPF if enabled."""
-                if scipy is None:
-                    return x
-
-                y = x
-
-                # Apply LPF
-                if params.lpf_enabled:
-                    sos = self._get_filter_sos(params, "low", sample_rate_eff)
-                    if sos is not None:
-                        if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
-                             params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0 # Start from 0
-
-                        y, params._lpf_zi = scipy.signal.sosfilt(sos, y, zi=params._lpf_zi)
-
-                # Apply HPF
-                if params.hpf_enabled:
-                    sos = self._get_filter_sos(params, "high", sample_rate_eff)
-                    if sos is not None:
-                        if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
-                             params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
-
-                        y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
-
-                return y
-
-            cal_factor = self._get_cal_factor(params)
-
-            # Use effective parameters for clean continuous generation
-            sample_rate_eff = base_sample_rate / cal_factor if cal_factor > 0 else base_sample_rate
-            t_global_eff = t_global * cal_factor
-
-            signal = np.zeros(frames)
-
-            if params._buffer is not None:
-                # For burst, support per-channel fractional delay at readout time.
-                # This avoids rebuilding buffers and lets users adjust delay live.
-                if params.waveform == "burst" and getattr(params, "delay_ms", 0.0) != 0.0:
-                    buf = params._buffer
-                    buf_len = len(buf)
-                    if buf_len > 0:
-                        delay_samples = float(params.delay_ms) * float(base_sample_rate) / 1000.0
-                        # Use remainder + explicit wrapping to avoid rare float edge cases
-                        # where floor(idx) can equal buf_len.
-                        idx = np.remainder(
-                            (float(params._buffer_index) + np.arange(frames, dtype=float) - delay_samples),
-                            float(buf_len),
-                        )
-
-                        floor_idx = np.floor(idx)
-                        i0 = np.mod(floor_idx.astype(np.int64, copy=False), buf_len)
-                        frac = (idx - floor_idx).astype(float, copy=False)
-                        i1 = (i0 + 1) % buf_len
-
-                        signal = (1.0 - frac) * buf[i0] + frac * buf[i1]
-                        params._buffer_index = int((params._buffer_index + frames) % buf_len)
-                        return _filter_apply(_am_apply(signal * params.amplitude, t_global_eff, sample_rate_eff), sample_rate_eff)
-
-                # Buffer based generation
-                chunk_size = frames
-                buf_len = len(params._buffer)
-                current_idx = 0
-
-                while current_idx < chunk_size:
-                    remaining = chunk_size - current_idx
-                    available = buf_len - params._buffer_index
-
-                    to_copy = min(remaining, available)
-                    signal[current_idx : current_idx + to_copy] = params._buffer[
-                        params._buffer_index : params._buffer_index + to_copy
-                    ]
-
-                    params._buffer_index += to_copy
-                    current_idx += to_copy
-
-                    if params._buffer_index >= buf_len:
-                        params._buffer_index = 0
-
-                return _filter_apply(_am_apply(signal * params.amplitude, t_global_eff, sample_rate_eff), sample_rate_eff)
-
-            if params.sweep_enabled:
-                # Sweep generation
-                current_times_eff = params._sweep_time + t_global_eff
-                current_times_eff = np.mod(current_times_eff, params.sweep_duration)
-
-                # If FM is enabled, integrate instantaneous frequency (sweep + FM).
-                # Otherwise, preserve legacy analytic sweep phase.
-                if params.fm_enabled and params.fm_frequency > 0 and params.fm_deviation != 0:
-                    if params.log_sweep:
-                        # f(t) = f0 * exp(k t)
-                        k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
-                        f_base = (
-                            params.start_freq * np.exp(k * current_times_eff)
-                            if k != 0
-                            else np.full_like(current_times_eff, params.start_freq)
-                        )
-                    else:
-                        # f(t) = f0 + k t
-                        k = (params.end_freq - params.start_freq) / params.sweep_duration
-                        f_base = params.start_freq + k * current_times_eff
-
-                    # Modulator phase advances continuously across blocks.
-                    mod_phase0 = float(params._fm_phase_rad)
-                    mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t_global_eff
-                    params._fm_phase_rad = float(
-                        np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
-                    )
-
-                    f_inst = f_base + params.fm_deviation * np.sin(mod_phase)
-                    phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate_eff)
-
-                    # Optional ΦM (phase modulation) applied as additional phase term.
-                    if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
-                        pm_phase0 = float(params._pm_phase_rad)
-                        pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global_eff
-                        params._pm_phase_rad = float(
-                            np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
-                        )
-                        beta = float(np.radians(params.pm_deviation_deg))
-                        phase = phase + beta * np.sin(pm_phase)
-
-                    offset_rad = np.radians(params.phase_offset)
-                    signal = params.amplitude * np.sin(phase + offset_rad)
-                    params._sweep_time += frames / sample_rate_eff
-                    return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
-
-                if params.log_sweep:
-                    k = np.log(params.end_freq / params.start_freq) / params.sweep_duration
-                    if k == 0:
-                        phase = 2 * np.pi * params.start_freq * current_times_eff
-                    else:
-                        phase = 2 * np.pi * params.start_freq * (np.exp(k * current_times_eff) - 1) / k
-                else:
-                    k = (params.end_freq - params.start_freq) / params.sweep_duration
-                    phase = 2 * np.pi * (params.start_freq * current_times_eff + 0.5 * k * current_times_eff**2)
-
-                # Optional ΦM (phase modulation) for analytic sweep phase.
-                if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
-                    pm_phase0 = float(params._pm_phase_rad)
-                    pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t_global_eff
-                    params._pm_phase_rad = float(
-                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
-                    )
-                    beta = float(np.radians(params.pm_deviation_deg))
-                    phase = phase + beta * np.sin(pm_phase)
-
-                signal = params.amplitude * np.sin(phase)
-                params._sweep_time += frames / sample_rate_eff
-                return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
-
-            # Standard waveforms
-            offset_rad = np.radians(params.phase_offset)
-
-            # Optional ΦM (works for periodic waveforms only)
-            use_pm = bool(
-                params.pm_enabled
-                and params.pm_frequency > 0
-                and params.pm_deviation_deg != 0
-                and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
-            )
-
-            # Optional FM (works for periodic waveforms only)
-            use_fm = bool(
-                params.fm_enabled
-                and params.fm_frequency > 0
-                and params.fm_deviation != 0
-                and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
-            )
-
-            if use_fm:
-                # Modulator phase advances continuously across blocks.
-                t = t_global_eff
-                mod_phase0 = float(params._fm_phase_rad)
-                mod_phase = mod_phase0 + 2.0 * np.pi * params.fm_frequency * t
-                params._fm_phase_rad = float(
-                    np.fmod(mod_phase0 + 2.0 * np.pi * params.fm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
-                )
-
-                f_inst = params.frequency + params.fm_deviation * np.sin(mod_phase)
-                phase = _phase_from_instantaneous_frequency(params, f_inst, sample_rate_eff)
-
-                if use_pm:
-                    pm_phase0 = float(params._pm_phase_rad)
-                    pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
-                    params._pm_phase_rad = float(
-                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
-                    )
-                    beta = float(np.radians(params.pm_deviation_deg))
-                    phase = phase + beta * np.sin(pm_phase)
-
-                signal = self._generate_wave_from_phase(params, phase)
-            else:
-                # Legacy fixed-frequency phase calculation
-                phase_t = (np.arange(frames) + params._phase) / sample_rate_eff
-                params._phase += frames
-
-                # If ΦM is enabled, construct explicit phase and use the phase-based definitions.
-                if use_pm:
-                    t = t_global_eff
-                    pm_phase0 = float(params._pm_phase_rad)
-                    pm_phase = pm_phase0 + 2.0 * np.pi * params.pm_frequency * t
-                    params._pm_phase_rad = float(
-                        np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
-                    )
-                    beta = float(np.radians(params.pm_deviation_deg))
-                    phase = 2.0 * np.pi * params.frequency * phase_t + beta * np.sin(pm_phase)
-
-                    signal = self._generate_wave_from_phase(params, phase)
-
-                    return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
-
-                phase_rad = 2.0 * np.pi * params.frequency * phase_t
-                signal = self._generate_wave_from_phase(params, phase_rad)
-
-            return _filter_apply(_am_apply(signal, t_global_eff, sample_rate_eff), sample_rate_eff)
-
         def callback(indata, outdata, frames, time, status):
             if status:
                 logger.debug(status)
@@ -808,7 +820,7 @@ class SignalGenerator(MeasurementModule):
 
             # Left Channel
             if self.output_mode in ["L", "STEREO"]:
-                sig_l = generate_channel_signal(self.params_L, frames, t)
+                sig_l = self._generate_channel_signal(self.params_L, frames, t, base_sample_rate)
                 if outdata.shape[1] >= 1:
                     outdata[:, 0] = sig_l
 
@@ -818,7 +830,7 @@ class SignalGenerator(MeasurementModule):
                 # The user requirement says "L and R separate signals".
                 # So we always use params_R for Right channel.
                 # If the user wants them same, they copy settings in UI.
-                sig_r = generate_channel_signal(self.params_R, frames, t)
+                sig_r = self._generate_channel_signal(self.params_R, frames, t, base_sample_rate)
                 if outdata.shape[1] >= 2:
                     outdata[:, 1] = sig_r
 
