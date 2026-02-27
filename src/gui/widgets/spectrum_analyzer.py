@@ -58,6 +58,11 @@ class SpectrumAnalyzer(MeasurementModule):
         self._avg_weighted_power = None
         self.overall_rms = 0.0
 
+        # Cache for octal smoothing bands
+        # Key: (len(freqs), freqs[-1], fraction)
+        # Value: (smoothed_freqs, band_indices_list)
+        self._smoothing_cache = {}
+
         self.callback_id = None
 
     @property
@@ -79,6 +84,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self._avg_cross_spectrum = None
         self._peak_magnitude = None
         self._avg_weighted_power = None
+        self._smoothing_cache = {}
 
     def start_analysis(self):
         if self.is_running:
@@ -245,37 +251,73 @@ class SpectrumAnalyzer(MeasurementModule):
         if fraction is None:
             return freqs, magnitude
 
-        # Define octave bands
-        # Start from a low frequency, e.g., 20Hz
-        f_min = 20
-        f_max = freqs[-1]
+        # Check cache
+        cache_key = (len(freqs), float(freqs[-1]), fraction)
+        cached_data = self._smoothing_cache.get(cache_key)
 
-        smoothed_freqs = []
-        smoothed_mags = []
+        if cached_data is None:
+            # --- Pre-calculate bands and indices (Slow Path) ---
+            f_min = 20
+            f_max = freqs[-1]
 
-        current_f = f_min
-        factor = 2 ** (1 / (2 * fraction))
-        step_factor = 2 ** (1 / fraction)
+            smoothed_freqs_list = []
+            band_indices = []  # List of (start_idx, end_idx)
 
-        while current_f < f_max:
-            lower = current_f / factor
-            upper = current_f * factor
+            current_f = f_min
+            factor = 2 ** (1 / (2 * fraction))
+            step_factor = 2 ** (1 / fraction)
 
-            idx_start = np.searchsorted(freqs, lower, side="left")
-            idx_end = np.searchsorted(freqs, upper, side="left")
+            # Pre-calculate band edges to vectorize searchsorted?
+            # Doing searchsorted inside loop is O(N_bands * log(N_bins))
+            # N_bands is small (~30-100), N_bins is large (~4096-1M).
+            # Vectorization is better but loop is acceptable for pre-calc.
 
-            if idx_end > idx_start:
-                linear_mags = 10 ** (magnitude[idx_start:idx_end] / 20)
-                # Use axis=0 to preserve channel dimension if present (Dual mode)
-                avg_linear = np.mean(linear_mags, axis=0)
-                avg_db = 20 * np.log10(avg_linear + 1e-12)
+            while current_f < f_max:
+                lower = current_f / factor
+                upper = current_f * factor
 
-                smoothed_freqs.append(current_f)
-                smoothed_mags.append(avg_db)
+                idx_start = np.searchsorted(freqs, lower, side="left")
+                idx_end = np.searchsorted(freqs, upper, side="left")
 
-            current_f *= step_factor
+                if idx_end > idx_start:
+                    smoothed_freqs_list.append(current_f)
+                    band_indices.append((idx_start, idx_end))
 
-        return np.array(smoothed_freqs), np.array(smoothed_mags)
+                current_f *= step_factor
+
+            smoothed_freqs = np.array(smoothed_freqs_list)
+            cached_data = (smoothed_freqs, band_indices)
+            self._smoothing_cache[cache_key] = cached_data
+
+        # --- Fast Path ---
+        smoothed_freqs, band_indices = cached_data
+
+        if len(band_indices) == 0:
+            return np.array([]), np.array([])
+
+        # Convert entire magnitude to linear once
+        # Magnitude is in dB (20*log10(linear))
+        # linear = 10^(mag/20)
+        linear_spectrum = 10 ** (magnitude / 20.0)
+
+        smoothed_mags_list = []
+
+        # Iterate over pre-calculated indices
+        # This is fast because we just slice and mean
+        for start, end in band_indices:
+            # Handle Dual Channel (N, 2) vs Single (N,)
+            if linear_spectrum.ndim == 2:
+                # Average over frequency bins (axis 0), keeping channels
+                avg_linear = np.mean(linear_spectrum[start:end], axis=0)
+            else:
+                avg_linear = np.mean(linear_spectrum[start:end])
+
+            smoothed_mags_list.append(avg_linear)
+
+        smoothed_mags_linear = np.array(smoothed_mags_list)
+        smoothed_mags_db = 20 * np.log10(smoothed_mags_linear + 1e-12)
+
+        return smoothed_freqs, smoothed_mags_db
 
     def compute_spectrum(self):
         """
