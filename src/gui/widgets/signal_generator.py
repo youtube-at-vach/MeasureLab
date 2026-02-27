@@ -709,8 +709,6 @@ class SignalGenerator(MeasurementModule):
 
     def _generate_standard_signal(self, params: SignalParameters, frames, t_global_eff, sample_rate_eff):
         # Standard waveforms
-        offset_rad = np.radians(params.phase_offset)
-
         # Optional ΦM (works for periodic waveforms only)
         use_pm = bool(
             params.pm_enabled
