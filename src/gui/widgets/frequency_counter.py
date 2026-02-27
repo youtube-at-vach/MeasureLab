@@ -443,13 +443,24 @@ class FrequencyCounterWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
+        self._init_display(layout)
+        self._init_controls(layout)
+        self._init_tabs(layout)
+
+        self.setLayout(layout)
+
+    def _init_display(self, layout):
         # --- Display Area ---
         display_frame = QFrame()
-        display_frame.setStyleSheet("background-color: #000; border: 2px solid #444; border-radius: 10px;")
+        display_frame.setStyleSheet(
+            "background-color: #000; border: 2px solid #444; border-radius: 10px;"
+        )
         display_layout = QVBoxLayout(display_frame)
 
         self.freq_label = QLabel(tr("0.00000 Hz"))
-        self.freq_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.freq_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         # Use a monospaced font if available, or just a clean sans-serif
         font = QFont()
         font.setFamilies(MONOSPACE_FONT_FAMILY.split(", "))
@@ -482,7 +493,9 @@ class FrequencyCounterWidget(QWidget):
         stats_layout.addWidget(self.allan_label)
 
         display_layout.addLayout(stats_layout)
+        layout.addWidget(display_frame)
 
+    def _init_controls(self, layout):
         # --- Controls ---
         controls_layout = QHBoxLayout()
 
@@ -492,7 +505,9 @@ class FrequencyCounterWidget(QWidget):
         self.gate_spin = QDoubleSpinBox()
         self.gate_spin.setRange(-120, 0)
         self.gate_spin.setValue(self.module.gate_threshold_db)
-        self.gate_spin.valueChanged.connect(lambda v: setattr(self.module, "gate_threshold_db", v))
+        self.gate_spin.valueChanged.connect(
+            lambda v: setattr(self.module, "gate_threshold_db", v)
+        )
         gate_layout.addWidget(self.gate_spin)
         controls_layout.addLayout(gate_layout)
 
@@ -539,6 +554,7 @@ class FrequencyCounterWidget(QWidget):
         controls_layout.addStretch()
         layout.addLayout(controls_layout)
 
+    def _init_tabs(self, layout):
         # --- Tabs ---
         self.tab_widget = QTabWidget()
         layout.addWidget(self.tab_widget)
@@ -576,7 +592,9 @@ class FrequencyCounterWidget(QWidget):
         self.jitter_ref_spin.setRange(0.0, 1_000_000_000.0)
         self.jitter_ref_spin.setDecimals(6)
         self.jitter_ref_spin.setValue(0.0)
-        self.jitter_ref_spin.setToolTip(tr("Reference frequency. Used when Baseline=Reference."))
+        self.jitter_ref_spin.setToolTip(
+            tr("Reference frequency. Used when Baseline=Reference.")
+        )
         jitter_controls_layout.addWidget(self.jitter_ref_spin)
 
         jitter_controls_layout.addWidget(QLabel(tr("X-axis:")))
@@ -612,10 +630,14 @@ class FrequencyCounterWidget(QWidget):
         jitter_stats_layout.addStretch()
         jitter_layout.addLayout(jitter_stats_layout)
 
-        self.jitter_plot = pg.PlotWidget(title=tr("Jitter Histogram (Modulation Domain)"))
+        self.jitter_plot = pg.PlotWidget(
+            title=tr("Jitter Histogram (Modulation Domain)")
+        )
         self.jitter_plot.showGrid(x=True, y=True)
         self.jitter_plot.setLabel("left", tr("Probability"), units="%")
-        self.jitter_hist_item = pg.BarGraphItem(x=[0.0], height=[0.0], width=1.0, brush="m")
+        self.jitter_hist_item = pg.BarGraphItem(
+            x=[0.0], height=[0.0], width=1.0, brush="m"
+        )
         self.jitter_plot.addItem(self.jitter_hist_item)
 
         # Optional: Normal distribution overlay as a probability-per-bin curve
@@ -629,12 +651,14 @@ class FrequencyCounterWidget(QWidget):
         self._update_jitter_plot_labels_for_display_mode()
 
         # Wire jitter controls
-        self.jitter_baseline_combo.currentIndexChanged.connect(self._on_jitter_settings_changed)
-        self.jitter_units_combo.currentIndexChanged.connect(self._on_jitter_settings_changed)
+        self.jitter_baseline_combo.currentIndexChanged.connect(
+            self._on_jitter_settings_changed
+        )
+        self.jitter_units_combo.currentIndexChanged.connect(
+            self._on_jitter_settings_changed
+        )
         self.jitter_ref_spin.valueChanged.connect(self._on_jitter_settings_changed)
         self._on_jitter_settings_changed()
-
-        self.setLayout(layout)
 
     def _format_frequency_text(self, freq_hz: float) -> str:
         return tr("{0:.5f} Hz").format(freq_hz)
