@@ -32,11 +32,11 @@ def benchmark_allocation():
     def allocate_fresh():
         M = np.empty((N, 3), dtype=dtype)
         M[:, 2] = 1.0
-        fitted = np.empty(N, dtype=dtype)
-        residual = np.empty(N, dtype=dtype)
+        _fitted = np.empty(N, dtype=dtype)
+        _residual = np.empty(N, dtype=dtype)
 
     def allocate_cached():
-        buffers = _get_shared_buffers_bench(N, dtype)
+        _buffers = _get_shared_buffers_bench(N, dtype)
 
     # Warm up cache
     allocate_cached()

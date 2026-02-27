@@ -1,8 +1,6 @@
 
 import time
 import numpy as np
-import scipy.signal
-import soundfile
 import sys
 import os
 
