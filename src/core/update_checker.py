@@ -10,6 +10,25 @@ from src.core.constants import UPDATE_CHECK_URL
 from src.core.version import __version__
 
 
+def is_newer_version(latest: str, current: str) -> bool:
+    """
+    Compares two version strings (e.g., "1.0.0" and "0.9.5").
+    Returns True if latest > current, False otherwise.
+    """
+    try:
+        l_parts = [int(x) for x in latest.split(".")]
+        c_parts = [int(x) for x in current.split(".")]
+
+        # Pad with zeros if lengths differ
+        length = max(len(l_parts), len(c_parts))
+        l_parts.extend([0] * (length - len(l_parts)))
+        c_parts.extend([0] * (length - len(c_parts)))
+
+        return l_parts > c_parts
+    except ValueError:
+        return False
+
+
 class UpdateChecker(QThread):
     update_available = pyqtSignal(str)  # Emits the new version string
 
@@ -36,7 +55,7 @@ class UpdateChecker(QThread):
                     clean_latest = latest_tag.lstrip("v")
                     clean_current = __version__.lstrip("v")
 
-                    if self._is_newer(clean_latest, clean_current):
+                    if is_newer_version(clean_latest, clean_current):
                         self.update_available.emit(latest_tag)
 
         except Exception as e:
@@ -44,15 +63,5 @@ class UpdateChecker(QThread):
             self.logger.error(f"Update check failed: {e}")
 
     def _is_newer(self, latest: str, current: str) -> bool:
-        try:
-            l_parts = [int(x) for x in latest.split(".")]
-            c_parts = [int(x) for x in current.split(".")]
-
-            # Pad with zeros if lengths differ
-            length = max(len(l_parts), len(c_parts))
-            l_parts.extend([0] * (length - len(l_parts)))
-            c_parts.extend([0] * (length - len(c_parts)))
-
-            return l_parts > c_parts
-        except ValueError:
-            return False
+        """Deprecated: Use is_newer_version instead."""
+        return is_newer_version(latest, current)
