@@ -6,9 +6,11 @@ import stat
 from unittest.mock import MagicMock, patch
 
 # 1. Import heavy dependencies
-import numpy as np
-import scipy.signal
-import pyqtgraph as pg
+# These imports are required to preload heavy libraries before mocking
+# to avoid potential reload issues or conflicts with mocked modules later.
+import numpy as np  # noqa: F401
+import scipy.signal  # noqa: F401
+import pyqtgraph as pg  # noqa: F401
 
 # Ensure QApplication exists
 from PyQt6.QtWidgets import QApplication
@@ -36,7 +38,7 @@ for m in modules_to_reload:
         del sys.modules[m]
 
 # 4. Import the target module
-from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget  # noqa: E402
 
 class TestSoundQualityAnalyzerPermissions(unittest.TestCase):
     def setUp(self):
