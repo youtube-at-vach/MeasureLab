@@ -13,7 +13,7 @@ if 'sounddevice' not in sys.modules:
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 try:
-    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
 except ImportError:
     pytest.skip("Skipping due to import errors", allow_module_level=True)
 
