@@ -127,7 +127,16 @@ class CalibrationManager:
             "last_profile": self.last_profile,
         }
         try:
-            with open(self.config_path, "w") as f:
+            # Use os.open to ensure secure permissions (600) on creation
+            fd = os.open(self.config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+
+            # Ensure permissions on existing files (best effort)
+            try:
+                os.chmod(self.config_path, 0o600)
+            except Exception as e:
+                self.logger.warning("Failed to set secure permissions for calibration file: %s", e)
+
+            with os.fdopen(fd, "w") as f:
                 json.dump(data, f, indent=4)
         except Exception as e:
             self.logger.error("Failed to save calibration: %s", e)
