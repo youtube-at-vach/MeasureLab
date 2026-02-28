@@ -1,5 +1,6 @@
 import functools
 import math
+import threading
 import numpy as np
 import scipy.signal
 import soundfile as sf
@@ -110,6 +111,52 @@ def _get_resample_filter(up, down, window_type=('kaiser', 5.0)):
     f_c = 1. / max_rate
     half_len = 10 * max_rate
     return firwin(2 * half_len + 1, f_c, window=window_type)
+
+
+# Thread-local storage for reused buffers
+_analysis_thread_local = threading.local()
+
+
+def _get_shared_buffers(N: int, dtype):
+    """
+    Returns thread-local shared buffers for optimization to verify allocations.
+    Returns (M, fitted_buffer, residual_buffer).
+    """
+    if not hasattr(_analysis_thread_local, "buffer_cache"):
+        _analysis_thread_local.buffer_cache = {}
+
+    cache = _analysis_thread_local.buffer_cache
+    # We only cache one set of buffers per thread to keep memory low,
+    # or we could cache a few. Given the use case, one matching set is usually enough.
+    # We key by (N, dtype).
+
+    # NOTE: dtype must be the actual dtype object or a consistent string/type representation.
+    # np.dtype('float64') == np.float64 is False in some contexts, but equality works.
+    # Let's ensure strict keying.
+
+    key = (N, np.dtype(dtype).str) # Use string representation for consistent hashing
+
+    if key in cache:
+        M, fitted_buffer, residual_buffer = cache[key]
+        # Restore the constant column which might have been modified by in-place operations
+        M[:, 2] = 1.0
+        return M, fitted_buffer, residual_buffer
+
+    # Allocate new
+    M = np.empty((N, 3), dtype=dtype)
+    M[:, 2] = 1.0  # Constant column
+    fitted_buffer = np.empty(N, dtype=dtype)
+    residual_buffer = np.empty(N, dtype=dtype)
+
+    # Ensure writeable
+    M.flags.writeable = True
+
+    # Store
+    # For now, let's just keep the last one.
+    cache.clear()
+    cache[key] = (M, fitted_buffer, residual_buffer)
+
+    return M, fitted_buffer, residual_buffer
 
 
 class AudioCalc:
@@ -313,7 +360,9 @@ class AudioCalc:
         # Fill pre-allocated M columns
         np.sin(w * t, out=M[:, 0])
         np.cos(w * t, out=M[:, 1])
-        # M[:, 2] is already 1.0
+        # M[:, 2] might have been overwritten by previous lstsq call?
+        # Explicitly restore it to be safe.
+        M[:, 2] = 1.0
 
         # Use Normal Equations
         try:
@@ -516,13 +565,8 @@ class AudioCalc:
 
         t = _get_time_array(N, sampling_rate)
 
-        # Pre-allocate arrays to avoid repeated allocation in loop
-        M = np.empty((N, 3), dtype=t.dtype)
-        M[:, 2] = 1.0  # The 'ones' column is constant
-
-        # Pre-allocate working buffers for fitting to avoid loop allocations
-        fitted_buffer = np.empty(N, dtype=t.dtype)
-        residual_buffer = np.empty(N, dtype=t.dtype)
+        # Get reused buffers to avoid allocation
+        M, fitted_buffer, residual_buffer = _get_shared_buffers(N, t.dtype)
 
         def get_residual_mse(f):
             return AudioCalc._sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer)
