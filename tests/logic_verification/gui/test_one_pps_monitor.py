@@ -52,6 +52,7 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
     def test_one_pps_logic(self):
         engine = MockAudioEngine()
         monitor = OnePPSMonitor(engine)
+        self.addCleanup(monitor.stop_analysis)
 
         # Configure
         monitor.threshold_fs = 0.5
@@ -107,6 +108,7 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
     def test_hysteresis(self):
         engine = MockAudioEngine()
         monitor = OnePPSMonitor(engine)
+        self.addCleanup(monitor.stop_analysis)
         monitor.threshold_fs = 0.5
         monitor.hysteresis_fs = 0.1 # High: 0.5, Low: 0.4
         monitor.start_analysis()
@@ -147,6 +149,7 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
         """Test that outliers are truly ignored and don't skew regression or history."""
         engine = MockAudioEngine()
         monitor = OnePPSMonitor(engine)
+        self.addCleanup(monitor.stop_analysis)
         monitor.threshold_fs = 0.5
         monitor.nominal_rate = 1000.0
 
@@ -186,6 +189,7 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
     def test_cumulative_precision(self):
         engine = MockAudioEngine()
         monitor = OnePPSMonitor(engine)
+        self.addCleanup(monitor.stop_analysis)
         monitor.nominal_rate = 1000.0
         monitor.start_analysis()
         monitor.warmup_count = 0
@@ -218,6 +222,7 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
     def test_mad_death_spiral(self):
         engine = MockAudioEngine()
         monitor = OnePPSMonitor(engine)
+        self.addCleanup(monitor.stop_analysis)
         monitor.threshold_fs = 0.5
         monitor.nominal_rate = 1000.0
 
@@ -348,12 +353,8 @@ def test_visualization_buffer(monitor):
 
     for i in range(0, frames, chunk_size):
         chunk = data[i:i+chunk_size]
-        # Need to handle queue put manually since we don't have callback registered in this test setup easily
-        # Actually OnePPSMonitor uses `process_buffer` internally from callback, or `data_queue` if threaded.
-        # But wait, `monitor` fixture uses `OnePPSMonitor` which spawns thread?
-        # `OnePPSMonitor` starts thread in `start_analysis`.
-        # Here `start_analysis` is NOT called.
-        # But `test_visualization_buffer` manually puts to queue.
+        # We manually feed the queue and run `_process_loop` synchronously in the main thread.
+        # `start_analysis()` is not called, so no background thread is spawned.
         monitor.data_queue.put((chunk, len(chunk)))
 
     monitor.data_queue.put(None) # Signal termination
