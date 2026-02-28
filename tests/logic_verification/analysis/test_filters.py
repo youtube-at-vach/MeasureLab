@@ -308,17 +308,11 @@ def test_notch_filter_edge_cases():
     signal = np.random.randn(1000)
 
     # Case: target <= 0
-    # Should probably not crash, or raise specific error?
-    # Current implementation doesn't check.
-    # But w0 will be <= 0.
-    # butter might raise error.
-    try:
-        AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
-    except ValueError:
-        pass
+    # Expected to bypass and return the original signal
+    filtered_negative = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
+    assert np.array_equal(filtered_negative, signal)
 
     # Case: target > nyquist
-    try:
-        AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate)
-    except ValueError:
-        pass
+    # Expected to bypass and return the original signal
+    filtered_nyquist = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate + 100.0)
+    assert np.array_equal(filtered_nyquist, signal)
