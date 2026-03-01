@@ -405,6 +405,47 @@ class TestConfigManagerLogic(unittest.TestCase):
 
         cm.shutdown()
 
+    @patch('src.core.config_manager.ConfigManager.save_config')
+    @patch('src.core.config_manager.ConfigManager._ensure_screenshot_dir')
+    def test_set_screenshot_output_dir(self, mock_ensure, mock_save):
+        """Test setting the screenshot output directory updates the config."""
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        # Ensure starting state
+        self.assertIn("screenshot", cm.config)
+
+        # Test setting a new directory
+        cm.set_screenshot_output_dir("/new/screenshot/path")
+        self.assertEqual(cm.config["screenshot"]["output_dir"], "/new/screenshot/path")
+        mock_ensure.assert_called_with(cm.config)
+        mock_save.assert_called()
+
+        # Test with missing 'screenshot' section
+        del cm.config["screenshot"]
+
+        mock_ensure.reset_mock()
+        mock_save.reset_mock()
+
+        cm.set_screenshot_output_dir("another/path")
+        self.assertIn("screenshot", cm.config)
+        self.assertEqual(cm.config["screenshot"]["output_dir"], "another/path")
+        mock_ensure.assert_called_with(cm.config)
+        mock_save.assert_called()
+
+        # Test with invalid 'screenshot' section (not a dict)
+        cm.config["screenshot"] = "invalid_string"
+
+        mock_ensure.reset_mock()
+        mock_save.reset_mock()
+
+        cm.set_screenshot_output_dir("fallback/path")
+        self.assertIsInstance(cm.config["screenshot"], dict)
+        self.assertEqual(cm.config["screenshot"]["output_dir"], "fallback/path")
+        mock_ensure.assert_called_with(cm.config)
+        mock_save.assert_called()
+
+        cm.shutdown()
+
 
 if __name__ == "__main__":
     unittest.main()
