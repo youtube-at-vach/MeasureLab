@@ -1343,69 +1343,67 @@ class SignalGeneratorWidget(QWidget):
         tabs.addTab(self._create_hpf_tab(), tr("HPF"))
         return tabs
 
-    def _create_lpf_tab(self):
+    def _create_filter_tab(
+        self,
+        prefix: str,
+        title: str,
+        enable_param: str,
+        freq_param: str,
+        order_param: str,
+        default_freq: float,
+    ):
         filter_widget = QWidget()
         layout = QVBoxLayout(filter_widget)
 
-        # LPF Group
-        lpf_group = QGroupBox(tr("Low Pass Filter (LPF)"))
-        lpf_group.setCheckable(True)
-        lpf_group.setChecked(False)
-        lpf_group.toggled.connect(lambda v: self.update_param("lpf_enabled", v))
-        self.lpf_group = lpf_group
+        group = QGroupBox(title)
+        group.setCheckable(True)
+        group.setChecked(False)
+        group.toggled.connect(lambda v, p=enable_param: self.update_param(p, v))
+        setattr(self, f"{prefix}_group", group)
 
-        lpf_layout = QFormLayout()
-        self.lpf_freq_spin = QDoubleSpinBox()
-        self.lpf_freq_spin.setRange(20, 20000)
-        self.lpf_freq_spin.setValue(20000)
-        self.lpf_freq_spin.setGroupSeparatorShown(True)
-        self.lpf_freq_spin.valueChanged.connect(lambda v: self.update_param("lpf_freq", v))
-        lpf_layout.addRow(tr("Cutoff Freq (Hz):"), self.lpf_freq_spin)
+        form_layout = QFormLayout()
 
-        self.lpf_order_spin = QSpinBox()
-        self.lpf_order_spin.setRange(1, 20)
-        self.lpf_order_spin.setValue(4)
-        self.lpf_order_spin.valueChanged.connect(lambda v: self.update_param("lpf_order", v))
-        lpf_layout.addRow(tr("Order:"), self.lpf_order_spin)
+        freq_spin = QDoubleSpinBox()
+        freq_spin.setRange(20, 20000)
+        freq_spin.setValue(default_freq)
+        freq_spin.setGroupSeparatorShown(True)
+        freq_spin.valueChanged.connect(lambda v, p=freq_param: self.update_param(p, v))
+        form_layout.addRow(tr("Cutoff Freq (Hz):"), freq_spin)
+        setattr(self, f"{prefix}_freq_spin", freq_spin)
 
-        lpf_group.setLayout(lpf_layout)
+        order_spin = QSpinBox()
+        order_spin.setRange(1, 20)
+        order_spin.setValue(4)
+        order_spin.valueChanged.connect(lambda v, p=order_param: self.update_param(p, v))
+        form_layout.addRow(tr("Order:"), order_spin)
+        setattr(self, f"{prefix}_order_spin", order_spin)
 
-        layout.addWidget(lpf_group)
+        group.setLayout(form_layout)
+
+        layout.addWidget(group)
         layout.addStretch()
 
         return filter_widget
+
+    def _create_lpf_tab(self):
+        return self._create_filter_tab(
+            prefix="lpf",
+            title=tr("Low Pass Filter (LPF)"),
+            enable_param="lpf_enabled",
+            freq_param="lpf_freq",
+            order_param="lpf_order",
+            default_freq=20000,
+        )
 
     def _create_hpf_tab(self):
-        filter_widget = QWidget()
-        layout = QVBoxLayout(filter_widget)
-
-        # HPF Group
-        hpf_group = QGroupBox(tr("High Pass Filter (HPF)"))
-        hpf_group.setCheckable(True)
-        hpf_group.setChecked(False)
-        hpf_group.toggled.connect(lambda v: self.update_param("hpf_enabled", v))
-        self.hpf_group = hpf_group
-
-        hpf_layout = QFormLayout()
-        self.hpf_freq_spin = QDoubleSpinBox()
-        self.hpf_freq_spin.setRange(20, 20000)
-        self.hpf_freq_spin.setValue(20)
-        self.hpf_freq_spin.setGroupSeparatorShown(True)
-        self.hpf_freq_spin.valueChanged.connect(lambda v: self.update_param("hpf_freq", v))
-        hpf_layout.addRow(tr("Cutoff Freq (Hz):"), self.hpf_freq_spin)
-
-        self.hpf_order_spin = QSpinBox()
-        self.hpf_order_spin.setRange(1, 20)
-        self.hpf_order_spin.setValue(4)
-        self.hpf_order_spin.valueChanged.connect(lambda v: self.update_param("hpf_order", v))
-        hpf_layout.addRow(tr("Order:"), self.hpf_order_spin)
-
-        hpf_group.setLayout(hpf_layout)
-
-        layout.addWidget(hpf_group)
-        layout.addStretch()
-
-        return filter_widget
+        return self._create_filter_tab(
+            prefix="hpf",
+            title=tr("High Pass Filter (HPF)"),
+            enable_param="hpf_enabled",
+            freq_param="hpf_freq",
+            order_param="hpf_order",
+            default_freq=20,
+        )
 
     def _create_sweep_tab(self):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
@@ -1438,85 +1436,100 @@ class SignalGeneratorWidget(QWidget):
         sweep_group.setLayout(sweep_layout)
         return sweep_group
 
+    def _create_modulation_tab(
+        self,
+        prefix: str,
+        title: str,
+        enable_param: str,
+        freq_param: str,
+        secondary_label: str,
+        secondary_param: str,
+        secondary_range: tuple,
+        secondary_decimals: int,
+        secondary_value: float,
+        secondary_step: float = 1.0,
+        secondary_suffix: str = "",
+    ):
+        group = QGroupBox(title)
+        group.setCheckable(True)
+        group.setChecked(False)
+        group.toggled.connect(lambda v, p=enable_param: self.update_param(p, v))
+        setattr(self, f"{prefix}_group", group)
+
+        layout = QFormLayout()
+
+        freq_spin = QDoubleSpinBox()
+        freq_spin.setRange(0.01, 20000.0)
+        freq_spin.setDecimals(3)
+        freq_spin.setValue(5.0)
+        freq_spin.valueChanged.connect(lambda v, p=freq_param: self.update_param(p, v))
+        layout.addRow(tr("Mod Freq (Hz):"), freq_spin)
+        setattr(self, f"{prefix}_freq_spin", freq_spin)
+
+        sec_spin = QDoubleSpinBox()
+        sec_spin.setRange(*secondary_range)
+        sec_spin.setDecimals(secondary_decimals)
+        if secondary_step != 1.0 or secondary_suffix == "%":
+             # setSingleStep is usually done explicitly if non-default, though default is 1.0
+             sec_spin.setSingleStep(secondary_step)
+
+        sec_spin.setValue(secondary_value)
+        if secondary_suffix:
+            sec_spin.setSuffix(secondary_suffix)
+        sec_spin.valueChanged.connect(lambda v, p=secondary_param: self.update_param(p, v))
+        layout.addRow(secondary_label, sec_spin)
+
+        # We handle variable names historically used (e.g. fm_dev_spin vs am_depth_spin)
+        # We can normalize them to _dev_spin or keep them distinct.
+        # am used `am_depth_spin`, fm/pm used `_dev_spin`.
+        if prefix == "am":
+            setattr(self, f"{prefix}_depth_spin", sec_spin)
+        else:
+            setattr(self, f"{prefix}_dev_spin", sec_spin)
+
+        group.setLayout(layout)
+        return group
+
     def _create_am_tab(self):
-        am_group = QGroupBox(tr("AM (Amplitude Modulation)"))
-        am_group.setCheckable(True)
-        am_group.setChecked(False)
-        am_group.toggled.connect(lambda v: self.update_param("am_enabled", v))
-        self.am_group = am_group
-
-        am_layout = QFormLayout()
-
-        self.am_freq_spin = QDoubleSpinBox()
-        self.am_freq_spin.setRange(0.01, 20000.0)
-        self.am_freq_spin.setDecimals(3)
-        self.am_freq_spin.setValue(5.0)
-        self.am_freq_spin.valueChanged.connect(lambda v: self.update_param("am_frequency", v))
-        am_layout.addRow(tr("Mod Freq (Hz):"), self.am_freq_spin)
-
-        self.am_depth_spin = QDoubleSpinBox()
-        self.am_depth_spin.setRange(0.0, 100.0)
-        self.am_depth_spin.setDecimals(1)
-        self.am_depth_spin.setSingleStep(1.0)
-        self.am_depth_spin.setValue(50.0)
-        self.am_depth_spin.setSuffix("%")
-        self.am_depth_spin.valueChanged.connect(lambda v: self.update_param("am_depth", v))
-        am_layout.addRow(tr("Depth (m):"), self.am_depth_spin)
-
-        am_group.setLayout(am_layout)
-        return am_group
+        return self._create_modulation_tab(
+            prefix="am",
+            title=tr("AM (Amplitude Modulation)"),
+            enable_param="am_enabled",
+            freq_param="am_frequency",
+            secondary_label=tr("Depth (m):"),
+            secondary_param="am_depth",
+            secondary_range=(0.0, 100.0),
+            secondary_decimals=1,
+            secondary_value=50.0,
+            secondary_step=1.0,
+            secondary_suffix="%",
+        )
 
     def _create_fm_tab(self):
-        fm_group = QGroupBox(tr("FM (Frequency Modulation)"))
-        fm_group.setCheckable(True)
-        fm_group.setChecked(False)
-        fm_group.toggled.connect(lambda v: self.update_param("fm_enabled", v))
-        self.fm_group = fm_group
-
-        fm_layout = QFormLayout()
-
-        self.fm_freq_spin = QDoubleSpinBox()
-        self.fm_freq_spin.setRange(0.01, 20000.0)
-        self.fm_freq_spin.setDecimals(3)
-        self.fm_freq_spin.setValue(5.0)
-        self.fm_freq_spin.valueChanged.connect(lambda v: self.update_param("fm_frequency", v))
-        fm_layout.addRow(tr("Mod Freq (Hz):"), self.fm_freq_spin)
-
-        self.fm_dev_spin = QDoubleSpinBox()
-        self.fm_dev_spin.setRange(0.0, 20000.0)
-        self.fm_dev_spin.setDecimals(3)
-        self.fm_dev_spin.setValue(100.0)
-        self.fm_dev_spin.valueChanged.connect(lambda v: self.update_param("fm_deviation", v))
-        fm_layout.addRow(tr("Deviation Δf (Hz):"), self.fm_dev_spin)
-
-        fm_group.setLayout(fm_layout)
-        return fm_group
+        return self._create_modulation_tab(
+            prefix="fm",
+            title=tr("FM (Frequency Modulation)"),
+            enable_param="fm_enabled",
+            freq_param="fm_frequency",
+            secondary_label=tr("Deviation Δf (Hz):"),
+            secondary_param="fm_deviation",
+            secondary_range=(0.0, 20000.0),
+            secondary_decimals=3,
+            secondary_value=100.0,
+        )
 
     def _create_pm_tab(self):
-        pm_group = QGroupBox(tr("ΦM (Phase Modulation)"))
-        pm_group.setCheckable(True)
-        pm_group.setChecked(False)
-        pm_group.toggled.connect(lambda v: self.update_param("pm_enabled", v))
-        self.pm_group = pm_group
-
-        pm_layout = QFormLayout()
-
-        self.pm_freq_spin = QDoubleSpinBox()
-        self.pm_freq_spin.setRange(0.01, 20000.0)
-        self.pm_freq_spin.setDecimals(3)
-        self.pm_freq_spin.setValue(5.0)
-        self.pm_freq_spin.valueChanged.connect(lambda v: self.update_param("pm_frequency", v))
-        pm_layout.addRow(tr("Mod Freq (Hz):"), self.pm_freq_spin)
-
-        self.pm_dev_spin = QDoubleSpinBox()
-        self.pm_dev_spin.setRange(0.0, 180.0)
-        self.pm_dev_spin.setDecimals(3)
-        self.pm_dev_spin.setValue(30.0)
-        self.pm_dev_spin.valueChanged.connect(lambda v: self.update_param("pm_deviation_deg", v))
-        pm_layout.addRow(tr("Deviation Δφ (deg):"), self.pm_dev_spin)
-
-        pm_group.setLayout(pm_layout)
-        return pm_group
+        return self._create_modulation_tab(
+            prefix="pm",
+            title=tr("ΦM (Phase Modulation)"),
+            enable_param="pm_enabled",
+            freq_param="pm_frequency",
+            secondary_label=tr("Deviation Δφ (deg):"),
+            secondary_param="pm_deviation_deg",
+            secondary_range=(0.0, 180.0),
+            secondary_decimals=3,
+            secondary_value=30.0,
+        )
 
     def get_active_params_list(self):
         if self.current_target == "L":
