@@ -4,18 +4,11 @@ Script to check for potential translation leaks (untranslated values) in languag
 This complements check_trn_keys.py by verifying the *content* of translations, not just the keys.
 """
 
-import json
 import glob
 import os
 import sys
 
-# Configuration
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LANG_DIR = os.path.join(PROJECT_ROOT, "src", "assets", "lang")
-
-def load_json(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+from translation_utils import LANG_DIR, load_json
 
 def main():
     print("=== Translation Content Check (Value Verification) ===\n")
