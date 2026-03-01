@@ -187,6 +187,33 @@ def test_output_gain_validation(cal_manager):
     with pytest.raises(ValueError, match="Invalid output gain"):
         cal_manager.set_output_gain(0.0)
 
+def test_set_lockin_gain_offset(cal_manager):
+    """Test setting lock-in gain offset updates value and calls save."""
+    from unittest.mock import patch
+    with patch.object(cal_manager, 'save') as mock_save:
+        # Test valid float
+        cal_manager.set_lockin_gain_offset(5.5)
+        assert cal_manager.lockin_gain_offset == 5.5
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Test valid int
+        cal_manager.set_lockin_gain_offset(10)
+        assert cal_manager.lockin_gain_offset == 10.0
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Test negative value
+        cal_manager.set_lockin_gain_offset(-3.2)
+        assert cal_manager.lockin_gain_offset == -3.2
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Test invalid string
+        with pytest.raises(ValueError):
+            cal_manager.set_lockin_gain_offset("invalid")
+        mock_save.assert_not_called()
+
 def test_frequency_map_persistence(cal_manager, tmp_path):
     """Test saving and loading frequency map."""
     map_path = tmp_path / "freq_map.json"
