@@ -1343,69 +1343,46 @@ class SignalGeneratorWidget(QWidget):
         tabs.addTab(self._create_hpf_tab(), tr("HPF"))
         return tabs
 
-    def _create_lpf_tab(self):
+    def _create_filter_tab(self, prefix: str, title: str, default_freq: float) -> QWidget:
         filter_widget = QWidget()
         layout = QVBoxLayout(filter_widget)
 
-        # LPF Group
-        lpf_group = QGroupBox(tr("Low Pass Filter (LPF)"))
-        lpf_group.setCheckable(True)
-        lpf_group.setChecked(False)
-        lpf_group.toggled.connect(lambda v: self.update_param("lpf_enabled", v))
-        self.lpf_group = lpf_group
+        group = QGroupBox(title)
+        group.setCheckable(True)
+        group.setChecked(False)
+        # Capture prefix in lambda default arg
+        group.toggled.connect(lambda v, p=prefix: self.update_param(f"{p}_enabled", v))
+        setattr(self, f"{prefix}_group", group)
 
-        lpf_layout = QFormLayout()
-        self.lpf_freq_spin = QDoubleSpinBox()
-        self.lpf_freq_spin.setRange(20, 20000)
-        self.lpf_freq_spin.setValue(20000)
-        self.lpf_freq_spin.setGroupSeparatorShown(True)
-        self.lpf_freq_spin.valueChanged.connect(lambda v: self.update_param("lpf_freq", v))
-        lpf_layout.addRow(tr("Cutoff Freq (Hz):"), self.lpf_freq_spin)
+        form_layout = QFormLayout()
 
-        self.lpf_order_spin = QSpinBox()
-        self.lpf_order_spin.setRange(1, 20)
-        self.lpf_order_spin.setValue(4)
-        self.lpf_order_spin.valueChanged.connect(lambda v: self.update_param("lpf_order", v))
-        lpf_layout.addRow(tr("Order:"), self.lpf_order_spin)
+        freq_spin = QDoubleSpinBox()
+        freq_spin.setRange(20, 20000)
+        freq_spin.setValue(default_freq)
+        freq_spin.setGroupSeparatorShown(True)
+        freq_spin.valueChanged.connect(lambda v, p=prefix: self.update_param(f"{p}_freq", v))
+        form_layout.addRow(tr("Cutoff Freq (Hz):"), freq_spin)
+        setattr(self, f"{prefix}_freq_spin", freq_spin)
 
-        lpf_group.setLayout(lpf_layout)
+        order_spin = QSpinBox()
+        order_spin.setRange(1, 20)
+        order_spin.setValue(4)
+        order_spin.valueChanged.connect(lambda v, p=prefix: self.update_param(f"{p}_order", v))
+        form_layout.addRow(tr("Order:"), order_spin)
+        setattr(self, f"{prefix}_order_spin", order_spin)
 
-        layout.addWidget(lpf_group)
+        group.setLayout(form_layout)
+
+        layout.addWidget(group)
         layout.addStretch()
 
         return filter_widget
+
+    def _create_lpf_tab(self):
+        return self._create_filter_tab("lpf", tr("Low Pass Filter (LPF)"), 20000.0)
 
     def _create_hpf_tab(self):
-        filter_widget = QWidget()
-        layout = QVBoxLayout(filter_widget)
-
-        # HPF Group
-        hpf_group = QGroupBox(tr("High Pass Filter (HPF)"))
-        hpf_group.setCheckable(True)
-        hpf_group.setChecked(False)
-        hpf_group.toggled.connect(lambda v: self.update_param("hpf_enabled", v))
-        self.hpf_group = hpf_group
-
-        hpf_layout = QFormLayout()
-        self.hpf_freq_spin = QDoubleSpinBox()
-        self.hpf_freq_spin.setRange(20, 20000)
-        self.hpf_freq_spin.setValue(20)
-        self.hpf_freq_spin.setGroupSeparatorShown(True)
-        self.hpf_freq_spin.valueChanged.connect(lambda v: self.update_param("hpf_freq", v))
-        hpf_layout.addRow(tr("Cutoff Freq (Hz):"), self.hpf_freq_spin)
-
-        self.hpf_order_spin = QSpinBox()
-        self.hpf_order_spin.setRange(1, 20)
-        self.hpf_order_spin.setValue(4)
-        self.hpf_order_spin.valueChanged.connect(lambda v: self.update_param("hpf_order", v))
-        hpf_layout.addRow(tr("Order:"), self.hpf_order_spin)
-
-        hpf_group.setLayout(hpf_layout)
-
-        layout.addWidget(hpf_group)
-        layout.addStretch()
-
-        return filter_widget
+        return self._create_filter_tab("hpf", tr("High Pass Filter (HPF)"), 20.0)
 
     def _create_sweep_tab(self):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
