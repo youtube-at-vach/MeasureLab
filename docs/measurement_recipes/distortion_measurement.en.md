@@ -34,6 +34,7 @@ First, perform a "loopback measurement" to measure the distortion of the audio i
     * **Frequency**: `1000 Hz` (standard)
     * **Amplitude**: around `-6 dBFS`
         * *Distortion changes depending on amplitude. Distortion tends to increase near the maximum level.*
+    * **Bin Center**: It is recommended to check this. It automatically snaps to the "FFT bin center frequency" that does not cause spectral leakage with the current FFT settings, enabling more accurate measurements.
 2. Press the **Start Measurement** button.
 
 ### Confirmation of Results
@@ -74,7 +75,7 @@ The value displayed at this time (probably around -150dB) is the measurement low
 
 ### When Even Higher Precision Measurement is Required
 
-If you want to measure ultra-high performance DACs and amplifiers that fall below -150dB, consider using the **[Lock-in THD Analyzer](../widgets/lockin_thd_analyzer.md)**. By using the lock-in method, it is possible to observe even deeper noise floors, but for normal measurements, this Distortion Analyzer provides sufficient performance.
+If you want to measure ultra-high performance DACs and amplifiers that fall below -150dB, consider using the **[LockinHarmonicAnalyzer](../widgets/lockin_harmonic_analyzer.md)**. By using the lock-in method, it is possible to observe even deeper noise floors, but for normal measurements, this Distortion Analyzer provides sufficient performance.
 
 ---
 
