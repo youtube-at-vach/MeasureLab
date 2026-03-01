@@ -976,10 +976,7 @@ class OscilloscopeWidget(QWidget):
             self.module.reset_persistence()
 
         # Sync slider
-        if text in self.timebase_keys:
-            idx = self.timebase_keys.index(text)
-            if self.timebase_slider.value() != idx:
-                self.timebase_slider.setValue(idx)
+        self._sync_slider_from_combo(text, self.timebase_keys, self.timebase_slider)
 
     def _sync_combo_from_slider(self, idx, keys, combo):
         """Helper to sync combo box when slider changes."""
@@ -988,6 +985,24 @@ class OscilloscopeWidget(QWidget):
             if combo.currentText() != key:
                 combo.setCurrentText(key)
 
+    def _sync_slider_from_combo(self, text, keys, slider):
+        """Helper to sync slider when combo box changes."""
+        if text in keys:
+            idx = keys.index(text)
+            if slider.value() != idx:
+                slider.setValue(idx)
+
+    def _handle_vscale_changed(self, text, attr_name, slider):
+        """Helper to handle vertical scale changes."""
+        if text not in self.vscale_options:
+            return
+        scale = float(self.vscale_options[text])
+        setattr(self.module, attr_name, scale)
+        if self.module.persistence_mode:
+            self.module.reset_persistence()
+
+        self._sync_slider_from_combo(text, self.vscale_keys, slider)
+
     def on_timebase_slider_changed(self, idx):
         self._sync_combo_from_slider(idx, self.timebase_keys, self.timebase_combo)
 
@@ -995,33 +1010,13 @@ class OscilloscopeWidget(QWidget):
         self._sync_combo_from_slider(idx, self.vscale_keys, self.vscale_combo_l)
 
     def on_vscale_left_changed(self, text):
-        if text not in self.vscale_options:
-            return
-        scale = float(self.vscale_options[text])
-        self.module.vscale_left = scale
-        if self.module.persistence_mode:
-            self.module.reset_persistence()
-
-        if text in self.vscale_keys:
-            idx = self.vscale_keys.index(text)
-            if self.vscale_slider_l.value() != idx:
-                self.vscale_slider_l.setValue(idx)
+        self._handle_vscale_changed(text, "vscale_left", self.vscale_slider_l)
 
     def on_vscale_right_slider_changed(self, idx):
         self._sync_combo_from_slider(idx, self.vscale_keys, self.vscale_combo_r)
 
     def on_vscale_right_changed(self, text):
-        if text not in self.vscale_options:
-            return
-        scale = float(self.vscale_options[text])
-        self.module.vscale_right = scale
-        if self.module.persistence_mode:
-            self.module.reset_persistence()
-
-        if text in self.vscale_keys:
-            idx = self.vscale_keys.index(text)
-            if self.vscale_slider_r.value() != idx:
-                self.vscale_slider_r.setValue(idx)
+        self._handle_vscale_changed(text, "vscale_right", self.vscale_slider_r)
 
     def on_trig_source_changed(self, index):
         self.module.trigger_source = index
