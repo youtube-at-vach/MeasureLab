@@ -621,9 +621,13 @@ class AudioEngine:
         """Stops the master audio stream."""
         with self.lock:
             if self.stream is not None:
-                self.stream.stop()
-                self.stream.close()
-                self.stream = None
+                try:
+                    self.stream.stop()
+                    self.stream.close()
+                except Exception as e:
+                    self.logger.error(f"Error stopping stream: {e}")
+                finally:
+                    self.stream = None
                 self.logger.debug("Master audio stream stopped")
 
     def _restart_stream(self):
