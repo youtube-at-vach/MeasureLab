@@ -15,14 +15,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
     * **Concept:** Evolves the Goniometer into a full 3D interactive visualization of phase, amplitude, and frequency, mapping spatial energy over a spherical coordinate system.
     * **Why:** Radically intuitive visualization of complex phase relationships and soundstage width in multi-channel or stereo signals.
 
-* **AI-Based Audio Anomaly Detection:**
-    * **Concept:** Real-time ML monitoring of audio streams to detect clicks, pops, dropouts, and digital artifacts.
-    * **Why:** Automates long-term reliability testing without human supervision.
-
-* **Digital Interface Analyzer (Jitter/Eye Metrics):**
-    * **Concept:** Dedicated analysis of digital signals (SPDIF/I2S) to extract Eye Height/Width and Total Jitter (TIE).
-    * **Why:** Quantitative data for signal integrity verification (requires specialized hardware).
-
 * **Headless / Web Remote Interface:**
     * **Concept:** Decouple GUI from the core engine to run on embedded devices (e.g., Raspberry Pi) with web/mobile viewing.
     * **Why:** Remote monitoring of equipment.
@@ -102,3 +94,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 * **Wow & Flutter Meter:** Deferred (Analog focus).
 * **Room Acoustics (RT60) & T/S Parameters:** Deferred (Acoustic/Electromechanical focus).
 * **EQ Designer & Polarity Tester:** Deferred.
+
+* **AI-Based Audio Anomaly Detection:** On hold (no suitable API/algorithm found yet).
+* **Digital Interface Analyzer (Jitter/Eye Metrics):** Requires wideband device (e.g., logic analyzer). Possible if such hardware is supported in the future.
