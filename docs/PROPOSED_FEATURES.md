@@ -92,3 +92,6 @@ The primary focus of this project is **Signal Measurement** (analyzing audio sig
 * **Loudspeaker Parameters (T/S):** Deferred (Electromechanical focus).
 * **EQ Designer:** Auto-calculate PEQ. Deferred.
 * **Polarity Tester:** Pulse-based detection. Deferred.
+
+
+<!-- trigger ci -->
