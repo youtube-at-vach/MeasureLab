@@ -472,9 +472,15 @@ class AudioCalc:
 
         # Safety for denom close to 0
         epsilon = 1e-15
-        denom[np.abs(denom) < epsilon] = epsilon # Hack to avoid NaN, though results will be huge
+        mask = np.abs(denom) < epsilon
+        safe_denom = np.where(mask, 1.0, denom)
 
-        S_geom = (1 - np.exp(1j * N * phi)) / denom
+        S_geom = (1 - np.exp(1j * N * phi)) / safe_denom
+
+        # Apply limit: lim_{phi->0} (1 - exp(j*N*phi)) / (1 - exp(j*phi)) = N * exp(j*(N-1)*phi/2)
+        if np.any(mask):
+            limit_val = N * np.exp(1j * (N - 1) * phi / 2)
+            S_geom = np.where(mask, limit_val, S_geom)
 
         # Apply t[0] phase shift
         S_exp = S_geom * np.exp(1j * omega * t[0])
@@ -490,9 +496,15 @@ class AudioCalc:
         # We need sum of exp(j * 2w * t)
         phi2 = 2 * phi
         denom2 = 1 - np.exp(1j * phi2)
-        denom2[np.abs(denom2) < epsilon] = epsilon
+        mask2 = np.abs(denom2) < epsilon
+        safe_denom2 = np.where(mask2, 1.0, denom2)
 
-        S_geom2 = (1 - np.exp(1j * N * phi2)) / denom2
+        S_geom2 = (1 - np.exp(1j * N * phi2)) / safe_denom2
+
+        # Apply limit for small phi2
+        if np.any(mask2):
+            limit_val2 = N * np.exp(1j * (N - 1) * phi2 / 2)
+            S_geom2 = np.where(mask2, limit_val2, S_geom2)
         S_exp2 = S_geom2 * np.exp(1j * 2 * omega * t[0])
 
         sum_cos_2wt = S_exp2.real
