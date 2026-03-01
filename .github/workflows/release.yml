@@ -87,7 +87,7 @@ jobs:
         }
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7.0.0
       with:
         name: checksums-windows
         path: dist/release/checksums_windows.txt
@@ -179,7 +179,7 @@ jobs:
         sha256sum ./* > checksums_linux.txt
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7.0.0
       with:
         name: checksums-linux
         path: dist/release/checksums_linux.txt
@@ -302,7 +302,7 @@ jobs:
         shasum -a 256 ./* > checksums_macos.txt
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7.0.0
       with:
         name: checksums-macos
         path: dist/release/checksums_macos.txt
@@ -331,7 +331,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Download Checksums
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: checksums-*
           merge-multiple: true
