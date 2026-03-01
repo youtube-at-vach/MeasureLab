@@ -316,3 +316,4 @@ def test_notch_filter_edge_cases():
     # Expected to bypass and return the original signal
     filtered_nyquist = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate + 100.0)
     assert np.array_equal(filtered_nyquist, signal)
+# Trigger CI
