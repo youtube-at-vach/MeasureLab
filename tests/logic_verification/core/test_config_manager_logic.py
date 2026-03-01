@@ -142,6 +142,40 @@ class TestConfigManagerLogic(unittest.TestCase):
 
         cm.shutdown()
 
+    def test_audio_engine_64bit_settings(self):
+        """Test getting and setting the 64-bit audio engine configuration."""
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        # Mock save_config so we don't write to disk repeatedly
+        cm.save_config = MagicMock()
+
+        # Check default value (should be False unless DEFAULT_CONFIG changes)
+        self.assertFalse(cm.is_audio_engine_64bit())
+
+        # Enable 64-bit engine
+        cm.set_audio_engine_64bit(True)
+        self.assertTrue(cm.is_audio_engine_64bit())
+        self.assertTrue(cm.config["audio"]["audio_engine_64bit"])
+        cm.save_config.assert_called_once()
+
+        # Disable 64-bit engine
+        cm.save_config.reset_mock()
+        cm.set_audio_engine_64bit(False)
+        self.assertFalse(cm.is_audio_engine_64bit())
+        self.assertFalse(cm.config["audio"]["audio_engine_64bit"])
+        cm.save_config.assert_called_once()
+
+        # Edge case: "audio" key is missing
+        cm.save_config.reset_mock()
+        del cm.config["audio"]
+        cm.set_audio_engine_64bit(True)
+        self.assertIn("audio", cm.config)
+        self.assertTrue(cm.config["audio"]["audio_engine_64bit"])
+        self.assertTrue(cm.is_audio_engine_64bit())
+        cm.save_config.assert_called_once()
+
+        cm.shutdown()
+
     # -------------------------------------------------------------------------
     # Language Detection (from test_config_manager_language.py)
     # -------------------------------------------------------------------------
