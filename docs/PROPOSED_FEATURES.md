@@ -1,6 +1,6 @@
 # Feature Proposals for MeasureLab
 
-**Project Direction Update (2025):**
+**Project Direction Update (2026):**
 The primary focus of this project is **Signal Measurement** (analyzing audio signals directly, e.g., DAC/Amp performance, signal integrity) rather than Acoustic Measurement (speakers/rooms).
 
 ---
