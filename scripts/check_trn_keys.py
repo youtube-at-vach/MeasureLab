@@ -1,29 +1,18 @@
+#!/usr/bin/env python3
 import argparse
-import ast
-import glob
-import json
 import os
 import sys
 
-# Configuration
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC_DIR = os.path.join(PROJECT_ROOT, "src")
-LANG_DIR = os.path.join(SRC_DIR, "assets", "lang")
-MAIN_GUI_FILE = os.path.join(PROJECT_ROOT, "main_gui.py")
+from translation_utils import (
+    LANG_DIR,
+    MAIN_GUI_FILE,
+    SRC_DIR,
+    extract_tr_keys,
+    get_json_files,
+    load_json,
+    save_json,
+)
 
-# Helpers
-def get_json_files():
-    return glob.glob(os.path.join(LANG_DIR, "*.json"))
-
-def load_json(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-def save_json(path, data):
-    """Save JSON file with proper formatting"""
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-        f.write('\n')  # Add trailing newline
 
 def find_duplicate_keys(path):
     """
@@ -33,11 +22,12 @@ def find_duplicate_keys(path):
     keys = set()
     duplicates = set()
     import re
+
     # Regex to find "key": at the start of a line (ignoring whitespace)
     # This assumes standard formatting like "key": "value"
     pattern = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:')
 
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         for _line_num, line in enumerate(f, 1):
             match = pattern.search(line)
             if match:
@@ -49,70 +39,6 @@ def find_duplicate_keys(path):
                 keys.add(key)
     return list(duplicates)
 
-class TrVisitor(ast.NodeVisitor):
-    def __init__(self):
-        self.keys = set()
-
-    def visit_Call(self, node):
-        func_name = ""
-        if isinstance(node.func, ast.Name):
-            func_name = node.func.id
-        elif isinstance(node.func, ast.Attribute):
-            func_name = node.func.attr
-
-        if func_name == 'tr':
-            if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
-                self.keys.add(node.args[0].value)
-
-        self.generic_visit(node)
-
-    def visit_Assign(self, node):
-        # Look for self._module_keys = [...] or _module_keys = [...]
-        target_name = None
-        for target in node.targets:
-            if isinstance(target, ast.Attribute) and target.attr == '_module_keys':
-                target_name = '_module_keys'
-            elif isinstance(target, ast.Name) and target.id == '_module_keys':
-                target_name = '_module_keys'
-
-        if target_name == '_module_keys':
-            if isinstance(node.value, ast.List):
-                for elt in node.value.elts:
-                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
-                        self.keys.add(elt.value)
-
-        self.generic_visit(node)
-
-    def visit_FunctionDef(self, node):
-        # Look for @property def name(self) -> str: return "..."
-        is_property = False
-        for decorator in node.decorator_list:
-            if isinstance(decorator, ast.Name) and decorator.id == 'property':
-                is_property = True
-                break
-            if isinstance(decorator, ast.Attribute) and decorator.attr == 'property':
-                is_property = True
-                break
-
-        if is_property and node.name == 'name':
-            # Look for return "some string"
-            for stmt in node.body:
-                if isinstance(stmt, ast.Return):
-                    if isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str):
-                        self.keys.add(stmt.value.value)
-
-        self.generic_visit(node)
-
-def extract_tr_keys(filepath):
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            tree = ast.parse(f.read(), filename=filepath)
-        visitor = TrVisitor()
-        visitor.visit(tree)
-        return visitor.keys
-    except Exception as e:
-        print(f"Error parsing {filepath}: {e}")
-        return set()
 
 def main():
     parser = argparse.ArgumentParser(description="Check translation keys consistency.")
@@ -123,7 +49,7 @@ def main():
     print("=== Translation Check Script ===")
 
     # 1. Load EN JSON (Source of Truth)
-    en_path = os.path.join(LANG_DIR, 'en.json')
+    en_path = os.path.join(LANG_DIR, "en.json")
     if not os.path.exists(en_path):
         print(f"Error: en.json not found at {en_path}")
         sys.exit(1)
@@ -180,15 +106,15 @@ def main():
         # Re-load en_keys after fix
         en_data = load_json(en_path)
         en_keys = set(en_data.keys())
-        unused_in_code = [] # Cleared after fix
+        unused_in_code = []  # Cleared after fix
 
     # 6. Check: Other JSONs have all keys from en.json
     json_files = get_json_files()
-    missing_translations = {} # filename -> list of missing keys
+    missing_translations = {}  # filename -> list of missing keys
 
     for jf in json_files:
         fname = os.path.basename(jf)
-        if fname == 'en.json':
+        if fname == "en.json":
             continue
 
         data = load_json(jf)
@@ -212,7 +138,7 @@ def main():
         has_error = True
         print(f"FAIL: {len(missing_in_en)} keys used in code but missing in en.json:")
         for k in sorted(missing_in_en):
-            print(f"  - \"{k}\"")
+            print(f'  - "{k}"')
     else:
         print("OK")
 
@@ -225,9 +151,9 @@ def main():
             print(f"FAIL: {len(unused_in_code)} keys defined in en.json but NOT used in code:")
 
         for k in sorted(unused_in_code)[:10]:
-            print(f"  - \"{k}\"")
+            print(f'  - "{k}"')
         if len(unused_in_code) > 10:
-            print(f"  ... and {len(unused_in_code)-10} more.")
+            print(f"  ... and {len(unused_in_code) - 10} more.")
     else:
         print("OK")
 
@@ -238,9 +164,9 @@ def main():
             print(f"FAIL: {fname} is missing {len(keys)} keys:")
             # Show first 10
             for k in sorted(keys)[:10]:
-                print(f"  - \"{k}\"")
+                print(f'  - "{k}"')
             if len(keys) > 10:
-                print(f"  ... and {len(keys)-10} more.")
+                print(f"  ... and {len(keys) - 10} more.")
     else:
         print("OK")
 
@@ -249,7 +175,7 @@ def main():
         for fname, keys in duplicates_map.items():
             print(f"WARNING: {fname} has duplicate keys:")
             for k in keys:
-                print(f"  - \"{k}\"")
+                print(f'  - "{k}"')
     else:
         print("OK")
 
@@ -260,6 +186,7 @@ def main():
     else:
         print("TEST PASSED")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
