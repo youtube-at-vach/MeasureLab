@@ -175,6 +175,23 @@ def test_conversions(cal_manager):
     # Check input offset helper
     assert np.isclose(cal_manager.get_input_offset_db(), expected_dbv)
 
+def test_set_input_sensitivity(cal_manager):
+    """Test setting input sensitivity updates value and calls save."""
+    from unittest.mock import patch
+    with patch.object(cal_manager, 'save') as mock_save:
+        # Test valid float
+        cal_manager.set_input_sensitivity(5.5)
+        assert cal_manager.input_sensitivity == 5.5
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Test valid int
+        cal_manager.set_input_sensitivity(10)
+        assert cal_manager.input_sensitivity == 10
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+
 def test_output_gain_validation(cal_manager):
     """Test validation for output gain setting."""
     cal_manager.set_output_gain(2.0)
