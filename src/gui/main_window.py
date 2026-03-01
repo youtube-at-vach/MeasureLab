@@ -180,7 +180,7 @@ class MainWindow(QMainWindow):
                 if found_in_id is not None:
                     in_id = found_in_id
                 else:
-                    self.logger.warning(f"Saved input device '{last_in}' not found, using default.")
+                    self.logger.info(f"Saved input device '{last_in}' not found, using default.")
 
             # Find Output Device
             if last_out:
@@ -188,7 +188,7 @@ class MainWindow(QMainWindow):
                 if found_out_id is not None:
                     out_id = found_out_id
                 else:
-                    self.logger.warning(f"Saved output device '{last_out}' not found, using default.")
+                    self.logger.info(f"Saved output device '{last_out}' not found, using default.")
 
         try:
             self.audio_engine.set_devices(in_id, out_id)
