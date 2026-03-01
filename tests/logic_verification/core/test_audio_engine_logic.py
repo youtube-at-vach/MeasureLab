@@ -108,6 +108,28 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.assertEqual(self.engine.input_channel_mode, "left")
         self.assertEqual(self.engine.output_channel_mode, "right")
 
+    def test_set_audio_engine_64bit(self):
+        # Mock _restart_stream to verify it's called
+        self.engine._restart_stream = MagicMock()
+
+        # Test enabling 64-bit precision
+        self.engine.set_audio_engine_64bit(True)
+
+        self.assertTrue(self.engine.audio_engine_64bit)
+        self.engine._restart_stream.assert_called_once()
+        self.engine.logger.info.assert_called_with("64-bit Audio Engine (float64) setting changed to: True")
+
+        # Reset mocks
+        self.engine._restart_stream.reset_mock()
+        self.engine.logger.info.reset_mock()
+
+        # Test disabling 64-bit precision
+        self.engine.set_audio_engine_64bit(False)
+
+        self.assertFalse(self.engine.audio_engine_64bit)
+        self.engine._restart_stream.assert_called_once()
+        self.engine.logger.info.assert_called_with("64-bit Audio Engine (float64) setting changed to: False")
+
     def test_set_channel_mode_no_restart_if_inactive(self):
         # Setup: stream is NOT active
         self.engine.stream = None
