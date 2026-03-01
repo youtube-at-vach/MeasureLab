@@ -146,6 +146,21 @@ class TestConfigManagerLogic(unittest.TestCase):
     # Language Detection (from test_config_manager_language.py)
     # -------------------------------------------------------------------------
 
+    @patch('src.core.config_manager.ConfigManager.save_config')
+    def test_set_language(self, mock_save_config):
+        """Test setting the language updates the config and calls save_config."""
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        mock_save_config.reset_mock()
+
+        cm.set_language('fr')
+
+        self.assertEqual(cm.config['language'], 'fr')
+        self.assertEqual(cm.get_language(), 'fr')
+        mock_save_config.assert_called_once()
+
+        cm.shutdown()
+
     @patch('src.core.config_manager.QLocale')
     @patch('src.core.config_manager.resource_path')
     @patch('src.core.config_manager.os.path.exists')
