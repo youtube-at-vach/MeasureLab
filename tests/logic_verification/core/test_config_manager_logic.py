@@ -335,5 +335,27 @@ class TestConfigManagerLogic(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
+    def test_set_dithering_enabled(self):
+        """Test enabling and disabling dithering updates the config."""
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        # Test setting True
+        cm.set_dithering_enabled(True)
+        self.assertTrue(cm.config["audio"]["dithering_enabled"])
+
+        # Test setting False
+        cm.set_dithering_enabled(False)
+        self.assertFalse(cm.config["audio"]["dithering_enabled"])
+
+        # Test with missing 'audio' section
+        if "audio" in cm.config:
+            del cm.config["audio"]
+
+        cm.set_dithering_enabled(True)
+        self.assertTrue(cm.config["audio"]["dithering_enabled"])
+
+        cm.shutdown()
+
+
 if __name__ == "__main__":
     unittest.main()
