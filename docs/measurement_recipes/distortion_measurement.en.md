@@ -74,7 +74,7 @@ The value displayed at this time (probably around -150dB) is the measurement low
 
 ### When Even Higher Precision Measurement is Required
 
-If you want to measure ultra-high performance DACs and amplifiers that fall below -150dB, consider using the **[Lock-in THD Analyzer](../widgets/lockin_thd_analyzer.md)**. By using the lock-in method, it is possible to observe even deeper noise floors, but for normal measurements, this Distortion Analyzer provides sufficient performance.
+If you want to measure ultra-high performance DACs and amplifiers that fall below -150dB, consider using the **[LockinHarmonicAnalyzer](../widgets/lockin_harmonic_analyzer.md)**. By using the lock-in method, it is possible to observe even deeper noise floors, but for normal measurements, this Distortion Analyzer provides sufficient performance.
 
 ---
 

@@ -74,7 +74,7 @@
 
 ### さらに高精度な測定が必要な場合
 
--150dB を下回るような極めて高性能な DAC やアンプを測定したい場合は、**[Lock-in THD Analyzer (ロックインTHDアナライザー)](../widgets/lockin_thd_analyzer.md)** の使用を検討してください。ロックイン方式を用いることで、さらに深いノイズフロアまで観測することが可能ですが、通常の測定であればこの Distortion Analyzer で十分な性能を発揮します。
+-150dB を下回るような極めて高性能な DAC やアンプを測定したい場合は、**[LockinHarmonicAnalyzer (ロックイン高調波アナライザー)](../widgets/lockin_harmonic_analyzer.md)** の使用を検討してください。ロックイン方式を用いることで、さらに深いノイズフロアまで観測することが可能ですが、通常の測定であればこの Distortion Analyzer で十分な性能を発揮します。
 
 ---
 
