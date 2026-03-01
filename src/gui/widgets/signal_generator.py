@@ -870,9 +870,9 @@ class SignalGenerator(MeasurementModule):
             # Check if the changed parameter affects buffer generation for this waveform
             needs_update = False
 
-            if params.waveform == "noise" and name in ["noise_color", "bin_center_snap", "fft_size"]:
+            if params.waveform == "noise" and name == "noise_color":
                 needs_update = True
-            elif params.waveform == "multitone" and name in ["multitone_count", "start_freq", "end_freq", "use_freq_cal", "bin_center_snap", "fft_size"]:
+            elif params.waveform == "multitone" and name in ["multitone_count", "start_freq", "end_freq", "use_freq_cal"]:
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
                 needs_update = True
