@@ -58,6 +58,24 @@ class TestAudioEngineLogic(unittest.TestCase):
 
         self.assertTrue(found_msg, f"Did not find 'Unregistered callback {cid}' in logs")
 
+    def test_stop_stream_exception(self):
+        # Create a mock stream that raises an exception when stopped
+        mock_stream = MagicMock()
+        mock_stream.stop.side_effect = Exception("Mock exception on stop")
+
+        self.engine.stream = mock_stream
+
+        # This should handle the exception and log it, rather than raising it to the caller
+        self.engine.stop_stream()
+
+        # Check if the logger was called with the exception
+        self.engine.logger.error.assert_called_once()
+        args, _ = self.engine.logger.error.call_args
+        self.assertIn("Mock exception on stop", args[0])
+
+        # Verify stream is set to None even when exception occurs
+        self.assertIsNone(self.engine.stream)
+
     def test_unregister_nonexistent(self):
         # Unregistering a non-existent callback should not crash and might not log "Unregistered callback"
         # or it handles it gracefully.
