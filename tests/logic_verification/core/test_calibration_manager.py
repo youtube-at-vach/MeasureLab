@@ -187,6 +187,28 @@ def test_output_gain_validation(cal_manager):
     with pytest.raises(ValueError, match="Invalid output gain"):
         cal_manager.set_output_gain(0.0)
 
+def test_set_frequency_calibration_source(cal_manager):
+    """Test setting the frequency calibration source updates the property and calls save."""
+    from unittest.mock import patch
+
+    with patch.object(cal_manager, 'save') as mock_save:
+        # Test setting to '1pps'
+        cal_manager.set_frequency_calibration_source("1pps")
+        assert cal_manager.frequency_calibration_source == "1pps"
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Test setting to 'basic'
+        cal_manager.set_frequency_calibration_source("basic")
+        assert cal_manager.frequency_calibration_source == "basic"
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Test setting to invalid source (should not update or save)
+        cal_manager.set_frequency_calibration_source("invalid")
+        assert cal_manager.frequency_calibration_source == "basic"
+        mock_save.assert_not_called()
+
 def test_frequency_map_persistence(cal_manager, tmp_path):
     """Test saving and loading frequency map."""
     map_path = tmp_path / "freq_map.json"
