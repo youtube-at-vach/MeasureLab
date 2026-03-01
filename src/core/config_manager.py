@@ -68,7 +68,7 @@ class ConfigManager:
         self.config_dir = os.path.dirname(os.path.abspath(self.config_path))
 
 
-        self.logger.info(f"Using config file at: {self.config_path}")
+        self.logger.debug(f"Using config file at: {self.config_path}")
 
         self._save_timer = None
         self._save_lock = threading.Lock()
@@ -158,14 +158,14 @@ class ConfigManager:
     def load_config(self):
         """Loads configuration from JSON file."""
         if not os.path.exists(self.config_path):
-            self.logger.info("No config file found, creating default.")
+            self.logger.debug("No config file found, creating default.")
             config = self._default_config()
 
             # Auto-detect language on first run
             detected_lang = self._detect_system_language()
             if detected_lang:
                 config["language"] = detected_lang
-                self.logger.info(f"Auto-detected language: {detected_lang}")
+                self.logger.debug(f"Auto-detected language: {detected_lang}")
 
             self._ensure_screenshot_dir(config)
             # Save the new default config to disk immediately

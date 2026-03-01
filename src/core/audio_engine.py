@@ -188,7 +188,7 @@ class AudioEngine:
     def set_audio_engine_64bit(self, enabled: bool):
         """Enable/disable 64-bit precision."""
         self.audio_engine_64bit = enabled
-        self.logger.info(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
+        self.logger.debug(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
         # Apply instantly by restarting active stream
         self._restart_stream()
 

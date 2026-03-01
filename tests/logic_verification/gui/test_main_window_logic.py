@@ -211,7 +211,7 @@ class TestMainWindowLogic(unittest.TestCase):
                 _load_module_class("Invalid Key")
 
     def test_logging_on_missing_device(self):
-        """Verify that logger.warning is called when a saved device is not found."""
+        """Verify that logger.info is called when a saved device is not found."""
 
         # Configure Config to return saved devices
         self.mock_config_manager.ConfigManager.return_value.get_audio_config.return_value = {
@@ -240,9 +240,9 @@ class TestMainWindowLogic(unittest.TestCase):
                 # Instantiate
                 MainWindow()
 
-                # Verify warnings
-                spy_logger.warning.assert_any_call("Saved input device 'Saved Mic' not found, using default.")
-                spy_logger.warning.assert_any_call("Saved output device 'Saved Speaker' not found, using default.")
+                # Verify info logging
+                spy_logger.info.assert_any_call("Saved input device 'Saved Mic' not found, using default.")
+                spy_logger.info.assert_any_call("Saved output device 'Saved Speaker' not found, using default.")
 
     def test_swallowed_exception_logging(self):
         """Verify that logger.error is called when set_devices fallback fails."""
