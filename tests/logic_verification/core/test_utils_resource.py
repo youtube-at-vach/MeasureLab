@@ -68,3 +68,22 @@ class TestResourcePath:
                 # Should fallback to base_path joined with relative path
                 result = resource_path("missing.png")
                 assert result == os.path.join(base_path, "missing.png")
+
+    def test_resource_path_exception_fallback(self):
+        """Test resource_path fallback when accessing sys._MEIPASS raises a generic Exception."""
+        base_path = "/app_error"
+        # Since AttributeError is a subclass of Exception, simply ensuring the attribute
+        # is missing triggers the fallback block in resource_path.
+        # test_dev_env_not_found already tests when the file is missing but we can make it explicit.
+
+        # We can simulate a direct Exception by mocking sys as an object with a property
+        class MockSys:
+            @property
+            def _MEIPASS(self):
+                raise Exception("Simulated error")
+
+        with patch("src.core.utils.sys", new=MockSys()):
+            with patch("os.path.abspath", return_value=base_path):
+                with patch("os.path.exists", return_value=False):
+                    result = resource_path("missing_after_exception.png")
+                    assert result == os.path.join(base_path, "missing_after_exception.png")
