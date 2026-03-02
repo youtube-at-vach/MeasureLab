@@ -231,6 +231,43 @@ def test_set_lockin_gain_offset(cal_manager):
             cal_manager.set_lockin_gain_offset("invalid")
         mock_save.assert_not_called()
 
+def test_set_frequency_calibration(cal_manager):
+    """Test setting frequency calibration updates value and calls save."""
+    from unittest.mock import patch
+    with patch.object(cal_manager, 'save') as mock_save:
+        cal_manager.set_frequency_calibration(1.0001)
+        assert cal_manager.frequency_calibration == 1.0001
+        mock_save.assert_called_once()
+
+def test_set_frequency_calibration_1pps(cal_manager):
+    """Test setting 1PPS frequency calibration updates value and calls save."""
+    from unittest.mock import patch
+    with patch.object(cal_manager, 'save') as mock_save:
+        cal_manager.set_frequency_calibration_1pps(0.9999)
+        assert cal_manager.frequency_calibration_1pps == 0.9999
+        mock_save.assert_called_once()
+
+def test_set_frequency_calibration_source(cal_manager):
+    """Test setting frequency calibration source updates value and calls save for valid inputs."""
+    from unittest.mock import patch
+    with patch.object(cal_manager, 'save') as mock_save:
+        # Valid source '1pps'
+        cal_manager.set_frequency_calibration_source("1pps")
+        assert cal_manager.frequency_calibration_source == "1pps"
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Valid source 'basic'
+        cal_manager.set_frequency_calibration_source("basic")
+        assert cal_manager.frequency_calibration_source == "basic"
+        mock_save.assert_called_once()
+        mock_save.reset_mock()
+
+        # Invalid source (should ignore and not save)
+        cal_manager.set_frequency_calibration_source("invalid")
+        assert cal_manager.frequency_calibration_source == "basic" # Remains unchanged
+        mock_save.assert_not_called()
+
 def test_frequency_map_persistence(cal_manager, tmp_path):
     """Test saving and loading frequency map."""
     map_path = tmp_path / "freq_map.json"
