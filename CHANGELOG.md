@@ -1,5 +1,30 @@
 # Changelog
 
+## [v0.5.4] - 2026-03-02
+
+### Added
+
+* **Lock-in Amplifier**: Added fractional harmonic support with separate numerator and denominator controls and exact phase tracking.
+* **Lock-in Amplifier**: Added "Very Slow 4x (262144 samples)" buffer size option and a method to set gain offset.
+* **Network Analyzer**: Added single-channel mode selection for display.
+* **Docs**: Updated documentation for LoopbackFinder, TransientAnalyzer, Lock-in Amplifier, NetworkAnalyzer, and updated PROPOSED_FEATURES.md.
+* **I18n**: Added missing translation strings across all language files ("Very Slow 4x", "Absolute", "Relative", "Single-Ch Mode:").
+
+### Changed
+
+* **Network Analyzer**: Enhanced normalization and latency compensation.
+* **Perf**: Optimized coarse frequency search algorithm, spectrum analyzer octave smoothing with caching, and `optimize_frequency` by reusing thread-local buffers.
+* **Refactor**: Major refactoring across UI widgets (SpectrumAnalyzer, SignalGenerator, SettingsWidget, DistortionAnalyzer, Oscilloscope) to reduce complexity and improve maintainability.
+* **Refactor**: Refactored `AudioEngine._master_callback` for better readability.
+
+### Fixed
+
+* **Security**: Fixed insecure file permissions for calibration configuration.
+* **UI**: Fixed a `ValueError` crash in the Oscilloscope when processing empty data.
+* **Core**: Fixed a `RingBuffer` crash caused by channel mismatch.
+* **Core**: Fixed an issue where test tones and measurements were not stopped immediately after calibration saves.
+* **Tests**: Cleaned up the test suite, removed redundant tests, fixed thread leaks in OnePPSMonitor tests, and improved mocking in UpdateChecker tests.
+
 ## [v0.5.3] - 2026-02-25
 
 ### Major
