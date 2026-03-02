@@ -19,6 +19,8 @@ class TestVersionComparison(unittest.TestCase):
         # Should return False on ValueError
         self.assertFalse(is_newer_version("invalid", "0.4.3"))
         self.assertFalse(is_newer_version("0.4.3", "invalid"))
+        self.assertFalse(is_newer_version("not.a.version", "0.4.3"))
+        self.assertFalse(is_newer_version("v1.a.b", "0.4.3"))
 
 
 class TestUpdateChecker(unittest.TestCase):
@@ -73,6 +75,12 @@ class TestUpdateChecker(unittest.TestCase):
             self.checker.run()
 
         self.assertTrue(any("Network error" in log for log in cm.output))
+
+    def test_deprecated_is_newer(self):
+        # Test the deprecated wrapper method to ensure it calls is_newer_version correctly
+        self.assertTrue(self.checker._is_newer("0.4.4", "0.4.3"))
+        self.assertFalse(self.checker._is_newer("0.4.3", "0.4.4"))
+        self.assertFalse(self.checker._is_newer("not.a.version", "0.4.3"))
 
 
 if __name__ == '__main__':
