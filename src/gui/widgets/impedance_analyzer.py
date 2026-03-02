@@ -1967,51 +1967,51 @@ class ImpedanceAnalyzerWidget(QWidget):
         xs = zs.imag
 
         # 1. Find Zero Crossings (Sign changes in Reactance)
-        # indices where sign changes between i and i+1
-        zero_crossings = []
+        # Vectorized implementation for finding zero crossings
+        x1 = xs[:-1]
+        x2 = xs[1:]
 
-        for i in range(len(xs) - 1):
-            x1 = xs[i]
-            x2 = xs[i + 1]
-
-            if (x1 <= 0 and x2 >= 0) or (x1 >= 0 and x2 <= 0):
-                # Found crossing
-                f1 = freqs[i]
-                f2 = freqs[i + 1]
-
-                # Linear Interpolation for X=0
-                # 0 = x1 + slope * (t) -> t = -x1 / (x2 - x1)
-                # f_res = f1 + t * (f2 - f1)
-
-                if x2 != x1:
-                    t = -x1 / (x2 - x1)
-                    res_freq = f1 + t * (f2 - f1)
-
-                    # Interpolate Z magnitude at this frequency as well
-                    z1 = zs[i]
-                    z2 = zs[i + 1]
-                    res_z_complex = z1 + t * (z2 - z1)  # Linear interp of complex
-                    res_z_mag = abs(res_z_complex)
-
-                    zero_crossings.append((res_freq, res_z_mag))
-                else:
-                    # Rare case x1=x2=0
-                    zero_crossings.append((f1, abs(zs[i])))
+        # Crossings occur when x1 and x2 have different signs, or one is exactly 0
+        crossings = ((x1 <= 0) & (x2 >= 0)) | ((x1 >= 0) & (x2 <= 0))
+        cross_indices = np.where(crossings)[0]
 
         # 2. Select Best Candidate
-        if not zero_crossings:
+        if len(cross_indices) == 0:
             # Fallback: Just return min(|Z|) if no crossing found (e.g. over-damped or out of range)
             mags = np.abs(zs)
             min_idx = np.argmin(mags)
             res_freq = freqs[min_idx]
             self.lbl_resonance_result.setText(f"{tr('Resonance:')} {res_freq:.4f} Hz (Min |Z|)")
         else:
+            # Vectorized Interpolation
+            x1_c = x1[cross_indices]
+            x2_c = x2[cross_indices]
+
+            f1_c = freqs[cross_indices]
+            f2_c = freqs[cross_indices + 1]
+
+            z1_c = zs[cross_indices]
+            z2_c = zs[cross_indices + 1]
+
+            denom = x2_c - x1_c
+            mask = denom != 0
+
+            # Linear Interpolation for X=0
+            # 0 = x1 + slope * (t) -> t = -x1 / (x2 - x1)
+            t = np.where(mask, -x1_c / np.where(mask, denom, 1.0), 0.0)
+
+            res_freqs = np.where(mask, f1_c + t * (f2_c - f1_c), f1_c)
+            res_z_complex = z1_c + t * (z2_c - z1_c)
+
+            # If x2 == x1 (mask is False), use abs(z1_c)
+            res_z_mags = np.where(mask, np.abs(res_z_complex), np.abs(z1_c))
+
             # Pick the crossing with the minimum Impedance Magnitude (Series Resonance)
             # (Parallel resonance would be Max |Z| at X=0)
             # Assumption: User looks for Series Resonance mostly or general resonance points.
-            # Let's pick min |Z| for now.
-            best_res = min(zero_crossings, key=lambda p: p[1])
-            res_freq = best_res[0]
+            min_idx = np.argmin(res_z_mags)
+            res_freq = res_freqs[min_idx]
+
             self.lbl_resonance_result.setText(f"{tr('Resonance:')} {res_freq:.4f} Hz")
 
         # 3. Visualize
