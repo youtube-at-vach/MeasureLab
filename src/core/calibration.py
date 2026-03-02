@@ -279,10 +279,6 @@ class CalibrationManager:
         #     = dBFS + 20 * log10(input_sensitivity)
         return dbfs + self.get_input_offset_db()
 
-    def dbfs_to_volts(self, dbfs):
-        """Converts dBFS to Volts (Peak)."""
-        return (10 ** (dbfs / 20)) * self.input_sensitivity
-
     def get_input_offset_db(self):
         """Returns the dB offset to add to dBFS to get dBV."""
         return 20 * np.log10(self.input_sensitivity)
