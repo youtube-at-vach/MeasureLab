@@ -218,12 +218,7 @@ class TransientAnalyzer(MeasurementModule):
         # Linear space for frequencies to match linear Y-axis of plot
         freqs = np.linspace(min_freq, max_freq, num_scales)
 
-        scales = []
-        for f in freqs:
-            s = pywt.frequency2scale(self.wavelet_name, f / self.fs)
-            scales.append(s)
-
-        scales = np.array(scales)
+        scales = pywt.frequency2scale(self.wavelet_name, freqs / self.fs)
 
         # Run CWT
         cwtmatr, frequencies = pywt.cwt(self.final_data, scales, self.wavelet_name, sampling_period=1.0 / self.fs)
