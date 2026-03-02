@@ -1,6 +1,5 @@
-
 import logging
-import time
+import threading
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
@@ -81,7 +80,7 @@ def calculate_hysteresis(x_data, gain_data, directions):
         idx_in_clean = np.clip(idx_in_clean, 0, len(xf_clean) - 1)
 
         # Check which ones are actual matches
-        matched_mask = (xf_clean[idx_in_clean] == xr_r)
+        matched_mask = xf_clean[idx_in_clean] == xr_r
 
         if np.any(matched_mask):
             # Get corresponding gains from Fwd
@@ -107,17 +106,13 @@ class LinearitySweepWorker(QThread):
         super().__init__()
         self.module = module
         self.is_running = True
+        self._stop_event = threading.Event()
 
     def wait_interruptible(self, duration: float, interval: float = 0.05):
-        """Waits for `duration` seconds in `interval` chunks, checking `is_running`."""
-        elapsed = 0.0
-        while elapsed < duration:
-            if not self.is_running:
-                return
-            remaining = duration - elapsed
-            sleep_time = min(remaining, interval)
-            time.sleep(sleep_time)
-            elapsed += sleep_time
+        """Waits for `duration` seconds, checking `is_running` efficiently using an Event."""
+        if not self.is_running:
+            return
+        self._stop_event.wait(duration)
 
     def run(self):
         try:
@@ -221,14 +216,14 @@ class LinearitySweepWorker(QThread):
                     # But here in LinearityAnalyzer, we just call static AudioCalc method.
                     # Let's stick to Magnitude Averaging for safety.
 
-                    mag_sum += mag # Treating as scalar magnitude accumulation
+                    mag_sum += mag  # Treating as scalar magnitude accumulation
 
                     # Sideband Noise Measurement
                     noise_freq = freq * 1.15
                     noise_mag, _ = AudioCalc.calculate_lockin_measurement(
                         sig, noise_freq, sample_rate, phase_ref=0, window_name="blackmanharris"
                     )
-                    noise_sum_sq += noise_mag ** 2
+                    noise_sum_sq += noise_mag**2
 
                 if not self.is_running:
                     break
@@ -260,7 +255,7 @@ class LinearitySweepWorker(QThread):
                     "measured_level": meas_db,
                     "gain": current_gain,
                     "linearity_error": lin_error,
-                    "phase": 0, # Phase meaningless with scalar averaging
+                    "phase": 0,  # Phase meaningless with scalar averaging
                     "snr": snr_db,
                     "direction": direction,
                 }
@@ -277,6 +272,7 @@ class LinearitySweepWorker(QThread):
 
     def stop(self):
         self.is_running = False
+        self._stop_event.set()
 
 
 class LinearityAnalyzer(MeasurementModule):
@@ -314,8 +310,6 @@ class LinearityAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Measure Linearity Error (Gain Accuracy vs Level)."
-
-
 
     def get_latest_buffer(self) -> np.ndarray:
         """Returns the current buffer contents ordered chronologically."""
@@ -458,7 +452,7 @@ class LinearityAnalyzerWidget(QWidget):
             "0.02 dB": 0.02,
             "0.01 dB": 0.01,
         }
-        self.current_zoom = 5.0 # Default matches old fixed value
+        self.current_zoom = 5.0  # Default matches old fixed value
 
         self.init_ui()
 
@@ -550,6 +544,7 @@ class LinearityAnalyzerWidget(QWidget):
 
         # Hysteresis Toggle
         from PyQt6.QtWidgets import QCheckBox
+
         self.hyst_check = QCheckBox(tr("Enable Hysteresis Sweep"))
         self.hyst_check.toggled.connect(lambda v: setattr(self.module, "hysteresis_mode", v))
         io_form.addRow(self.hyst_check)
@@ -608,7 +603,6 @@ class LinearityAnalyzerWidget(QWidget):
 
         plot_ctrl_group.setLayout(plot_ctrl_layout)
         results_layout.addWidget(plot_ctrl_group)
-
 
         results_layout.addStretch()
         self.tabs.addTab(results_tab, tr("Results"))
