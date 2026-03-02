@@ -324,6 +324,28 @@ class TestConfigManagerLogic(unittest.TestCase):
     # Path Resolution (from test_config_persistence.py)
     # -------------------------------------------------------------------------
 
+    def test_get_app_root_dir(self):
+        """Test getting the application root directory."""
+        # Case 1: Running from source (sys.frozen is False or not present)
+        # Mock sys.frozen to be False just in case
+        with patch.object(sys, 'frozen', False, create=True):
+            # Since get_app_root_dir uses __file__ of config_manager.py (which is in src/core)
+            # and goes 2 levels up, the expected result is the project root.
+            # We can mock __file__ to control the output deterministically.
+            mock_file_path = os.path.abspath(os.path.join('fake', 'project', 'src', 'core', 'config_manager.py'))
+            expected_dir = os.path.dirname(os.path.dirname(os.path.dirname(mock_file_path)))
+            with patch('src.core.config_manager.__file__', mock_file_path):
+                actual_dir = os.path.normpath(self.ConfigManager.get_app_root_dir())
+                self.assertEqual(actual_dir, expected_dir)
+
+        # Case 2: Running from PyInstaller (sys.frozen is True)
+        with patch.object(sys, 'frozen', True, create=True):
+            mock_executable = os.path.abspath(os.path.join('fake', 'path', 'to', 'executable', 'app.exe'))
+            expected_dir = os.path.dirname(mock_executable)
+            with patch.object(sys, 'executable', mock_executable):
+                actual_dir = os.path.normpath(self.ConfigManager.get_app_root_dir())
+                self.assertEqual(actual_dir, expected_dir)
+
     @patch("os.makedirs")
     @patch("sys.platform", "darwin")
     @patch("pathlib.Path.home")
