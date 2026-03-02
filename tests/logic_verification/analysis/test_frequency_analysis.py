@@ -78,5 +78,36 @@ class TestFrequencyAnalysis(unittest.TestCase):
         # RMS of sine amplitude 1 is 0.707 -> -3dB
         self.assertAlmostEqual(db, -3.0, delta=0.5)
 
+    def test_calculate_frequency_metrics_zero_division(self):
+        # Provide a signal that passes the gate and has coarse_freq > 10Hz,
+        # but triggers an exception inside optimize_frequency (e.g. ZeroDivisionError).
+        import unittest.mock as mock
+
+        sr = 48000
+        t = np.arange(1000) / sr
+        freq_target = 1000.0
+        signal = np.sin(2 * np.pi * freq_target * t)
+        gate = -60.0
+
+        with mock.patch('src.core.frequency_analysis.AudioCalc.optimize_frequency', side_effect=ZeroDivisionError):
+            freq, db = calculate_frequency_metrics(signal, sr, gate)
+
+            # The function should catch the exception and return the coarse frequency and correct db
+            self.assertIsNotNone(freq)
+            # 1kHz coarse frequency from 1000 samples @ 48kHz is ~960Hz or 1008Hz due to bins
+            # freqs = np.fft.rfftfreq(1000, 1/48000) -> bin size 48Hz. 1008Hz is bin 21.
+            self.assertTrue(900 < freq < 1100)
+            self.assertAlmostEqual(db, -3.0, delta=0.5)
+
+    def test_calculate_frequency_metrics_empty_array(self):
+        # Empty array causes a zero division initially which results in RuntimeWarning
+        # Then it causes a ValueError in get_cached_window because Nx=0
+        data = np.array([])
+        sr = 48000
+        gate = -60.0
+
+        with self.assertRaises(ValueError):
+            calculate_frequency_metrics(data, sr, gate)
+
 if __name__ == '__main__':
     unittest.main()
