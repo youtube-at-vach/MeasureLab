@@ -108,6 +108,20 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.assertEqual(self.engine.input_channel_mode, "left")
         self.assertEqual(self.engine.output_channel_mode, "right")
 
+    def test_set_mute_output(self):
+        # Test enabling mute
+        self.engine.set_mute_output(True)
+        self.assertTrue(self.engine.mute_output)
+        self.engine.logger.debug.assert_called_with("Set mute output: True")
+
+        # Reset mock
+        self.engine.logger.debug.reset_mock()
+
+        # Test disabling mute
+        self.engine.set_mute_output(False)
+        self.assertFalse(self.engine.mute_output)
+        self.engine.logger.debug.assert_called_with("Set mute output: False")
+
     def test_set_audio_engine_64bit(self):
         # Mock _restart_stream to verify it's called
         self.engine._restart_stream = MagicMock()
