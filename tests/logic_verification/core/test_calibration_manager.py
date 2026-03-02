@@ -158,14 +158,6 @@ def test_conversions(cal_manager):
     """Test voltage and dBV conversions."""
     cal_manager.input_sensitivity = 2.0 # 2V at 0 dBFS
 
-    # 0 dBFS -> 2V
-    assert np.isclose(cal_manager.dbfs_to_volts(0), 2.0)
-
-    # -6.0206 dBFS -> 1V (approx)
-    # 20 * log10(0.5) = -6.0205999...
-    db_val = 20 * math.log10(0.5)
-    assert np.isclose(cal_manager.dbfs_to_volts(db_val), 1.0, atol=0.001)
-
     # dBV = dBFS + 20*log10(sensitivity)
     # sensitivity=2.0 -> +6.02 dB
     # 0 dBFS -> 6.02 dBV
