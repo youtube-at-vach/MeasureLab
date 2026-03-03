@@ -192,7 +192,8 @@ class LockInSpectrumFinder(MeasurementModule):
             sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
 
             # 2. Decimate to reduce points
-            target_fs = max(zoom_span * 4, 10.0)
+            # 巨大な間引き率によるハングを防ぐため、100Hz以上のサンプリングレートを維持
+            target_fs = max(zoom_span * 4, 100.0)
             M = max(1, int(fs / target_fs))
 
             if M > 1:
@@ -206,6 +207,13 @@ class LockInSpectrumFinder(MeasurementModule):
 
             freqs_offset = np.linspace(-zoom_span, zoom_span, points)
             mags_db_all = np.zeros(points)
+            
+            # --- 窓関数の適用 (Hanning) ---
+            window = signal.windows.hann(N_dec)
+            sig_dec_win = sig_dec * window
+            window_coherent_gain = np.mean(window)
+            if window_coherent_gain == 0:
+                window_coherent_gain = 1.0
 
             chunk_size = 32
             for i in range(0, points, chunk_size):
@@ -217,8 +225,8 @@ class LockInSpectrumFinder(MeasurementModule):
                 mags_db_chunk = np.zeros(current_points)
                 for j in range(current_points):
                     f_off = freqs_offset[i + j]
-                    # Direct correlation on decimated baseband
-                    val = np.mean(sig_dec * np.exp(-1j * 2 * np.pi * f_off * t_dec))
+                    # Direct correlation on decimated baseband with windowing
+                    val = np.mean(sig_dec_win * np.exp(-1j * 2 * np.pi * f_off * t_dec)) / window_coherent_gain
                     amp_rms = np.abs(val) * np.sqrt(2.0)
                     mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
 
@@ -246,6 +254,11 @@ class LockInSpectrumFinder(MeasurementModule):
         # This spreads the load and allows for progressive UI updates (sliding line).
         chunk_size = 32
         mags_db_all = np.zeros(points)
+        
+        # --- 窓関数の適用 (Hanningの平方根) ---
+        window = np.hanning(N)
+        sqrt_win = np.sqrt(window)
+        sig_win = sig * sqrt_win
 
         for i in range(0, points, chunk_size):
             if not self.is_running:
@@ -257,7 +270,7 @@ class LockInSpectrumFinder(MeasurementModule):
             # Allocate Basis Matrix for the local chunk
             # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
             num_bases = 1 + current_points * 2
-            B = np.zeros((N, num_bases), dtype=np.float32)
+            B = np.zeros((N, num_bases), dtype=np.float64) # 高精度化 (float64)
             B[:, 0] = 1.0 # DC
 
             for j in range(current_points):
@@ -268,16 +281,19 @@ class LockInSpectrumFinder(MeasurementModule):
                 B[:, idx] = np.cos(phase)
                 B[:, idx + 1] = np.sin(phase)
 
+            # Bにも重みをかける
+            B_win = B * sqrt_win[:, np.newaxis]
+
             # Since B can be huge, we use Gram directly for speed:
-            gram = np.dot(B.T, B)
-            rhs = np.dot(B.T, sig)
+            gram = np.dot(B_win.T, B_win)
+            rhs = np.dot(B_win.T, sig_win)
 
             try:
                 # try speedy solve
                 coeff = np.linalg.solve(gram, rhs)
             except np.linalg.LinAlgError:
                 # fallback
-                coeff = np.linalg.lstsq(B, sig, rcond=None)[0]
+                coeff = np.linalg.lstsq(B_win, sig_win, rcond=None)[0]
 
             # Extract magnitudes for this chunk
             mags_db_chunk = np.zeros(current_points)
