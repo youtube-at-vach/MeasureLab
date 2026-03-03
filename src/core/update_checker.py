@@ -49,14 +49,16 @@ class UpdateChecker(QThread):
             with urllib.request.urlopen(req, timeout=5, context=context) as response:
                 if response.status == 200:
                     data = json.loads(response.read().decode())
-                    latest_tag = data.get("tag_name", "")
+                    version_str = data.get("version", "")
 
                     # Remove 'v' prefix if present for comparison
-                    clean_latest = latest_tag.lstrip("v")
+                    clean_latest = version_str.lstrip("v")
                     clean_current = __version__.lstrip("v")
 
                     if is_newer_version(clean_latest, clean_current):
-                        self.update_available.emit(latest_tag)
+                        # Ensure we emit a tag string with a 'v' for the release URL
+                        tag_name = f"v{clean_latest}"
+                        self.update_available.emit(tag_name)
 
         except Exception as e:
             # Log failure but do not annoy the user with error popups.
