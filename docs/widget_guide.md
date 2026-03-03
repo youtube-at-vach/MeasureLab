@@ -12,6 +12,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | :--- | :--- |
 | **まず音を出したい / 信号源がほしい** | [Signal Generator](widgets/signal_generator.md) |
 | **周波数成分（スペクトル）を見たい** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
+| **特定の周波数を極めて高い分解能で確認したい** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
 | **波形の形をそのまま見たい** | [Oscilloscope](widgets/oscilloscope.md) |
 | **アンプや部品の歪み(THD)を測りたい** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
 | **アンプ等の周波数特性(F特)を測りたい** | [Network Analyzer](widgets/network_analyzer.md) |
@@ -47,6 +48,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 
 * **[Spectrum Analyzer](widgets/spectrum_analyzer.md)**
     * FFTを用いて周波数成分（スペクトル）をリアルタイムに表示します。
+
+* **[Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md)**
+    * ロックイン検出を用いて、指定した周波数帯域を高分解能でスペクトル解析します。ノイズに埋もれた特定のピークの拡大観察などに最適です。
 
 * **[Sound Level Meter](widgets/sound_level_meter.md)**
     * 騒音計です。音圧レベル (SPL) や等価騒音レベル (Leq) を測定します。
