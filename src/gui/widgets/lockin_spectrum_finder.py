@@ -330,9 +330,12 @@ class LockInSpectrumFinderWidget(QWidget):
 
         # Mode Selection
         self.combo_mode = QComboBox()
-        self.combo_mode.addItems([tr("Basic"), tr("Zoom")])
-        self.combo_mode.setCurrentText(self.module.mode)
-        self.combo_mode.currentTextChanged.connect(self.on_mode_changed)
+        self.combo_mode.addItem(tr("Basic"), "Basic")
+        self.combo_mode.addItem(tr("Zoom"), "Zoom")
+        idx = self.combo_mode.findData(self.module.mode)
+        if idx >= 0:
+            self.combo_mode.setCurrentIndex(idx)
+        self.combo_mode.currentIndexChanged.connect(self.on_mode_changed)
         form.addRow(tr("Mode:"), self.combo_mode)
 
         # Buffer size
@@ -373,9 +376,12 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.lbl_spacing = QLabel(tr("Spacing:"))
         self.combo_spacing = QComboBox()
-        self.combo_spacing.addItems([tr("Log"), tr("Lin")])
-        self.combo_spacing.setCurrentText(self.module.spacing)
-        self.combo_spacing.currentTextChanged.connect(self.on_spacing_changed)
+        self.combo_spacing.addItem(tr("Log"), "Log")
+        self.combo_spacing.addItem(tr("Lin"), "Lin")
+        idx = self.combo_spacing.findData(self.module.spacing)
+        if idx >= 0:
+            self.combo_spacing.setCurrentIndex(idx)
+        self.combo_spacing.currentIndexChanged.connect(self.on_spacing_changed)
         form.addRow(self.lbl_spacing, self.combo_spacing)
 
         # Zoom Mode Fields
@@ -451,7 +457,7 @@ class LockInSpectrumFinderWidget(QWidget):
         
         current_val = str(self.module.buffer_size)
         
-        if self.module.mode == tr("Basic"):
+        if self.module.mode == "Basic":
             # Up to 512k (approx 500k)
             options = ["65536", "131072", "262144", "524288"]
         else:
@@ -478,13 +484,13 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_buffer.blockSignals(False)
 
     def _update_plot_log_mode(self):
-        if self.module.mode == tr("Basic") and self.module.spacing == tr("Log"):
+        if self.module.mode == "Basic" and self.module.spacing == "Log":
             self.plot.getPlotItem().setLogMode(x=True, y=False)
         else:
             self.plot.getPlotItem().setLogMode(x=False, y=False)
 
-    def on_mode_changed(self, text):
-        self.module.mode = text
+    def on_mode_changed(self, idx):
+        self.module.mode = self.combo_mode.itemData(idx)
         self._update_plot_log_mode()
         self._update_ui_visibility()
         self._update_buffer_options()
@@ -519,8 +525,8 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_stop_f_changed(self, val):
         self.module.stop_freq = val
 
-    def on_spacing_changed(self, text):
-        self.module.spacing = text
+    def on_spacing_changed(self, idx):
+        self.module.spacing = self.combo_spacing.itemData(idx)
         self._update_plot_log_mode()
 
     def on_zoom_center_changed(self, val):
@@ -557,7 +563,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.sweep_line.show()
         val = freqs[0]
-        if self.module.mode == tr("Basic") and self.module.spacing == tr("Log") and val > 0:
+        if self.module.mode == "Basic" and self.module.spacing == "Log" and val > 0:
             val = np.log10(val)
         self.sweep_line.setValue(val)
         self.lbl_status.setText(tr("Calculating... 0%"))
@@ -568,7 +574,7 @@ class LockInSpectrumFinderWidget(QWidget):
         if hasattr(self, 'sweep_line'):
             self.sweep_line.show()
             val = f_chunk[-1]
-            if self.module.mode == tr("Basic") and self.module.spacing == tr("Log") and val > 0:
+            if self.module.mode == "Basic" and self.module.spacing == "Log" and val > 0:
                 val = np.log10(val)
             self.sweep_line.setValue(val)
         pct = int((end_idx / len(self.current_freqs)) * 100)
