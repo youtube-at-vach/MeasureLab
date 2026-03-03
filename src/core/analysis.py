@@ -991,7 +991,7 @@ class AudioCalc:
 
         peak_indices = [
             idx_min + np.argmax(mag[idx_min:idx_max])
-            for idx_min, idx_max in zip(idx_mins, idx_maxs)
+            for idx_min, idx_max in zip(idx_mins, idx_maxs, strict=True)
             if idx_max > idx_min
         ]
 
