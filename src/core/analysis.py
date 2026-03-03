@@ -89,9 +89,7 @@ def _get_time_array(N: int, sampling_rate: float) -> np.ndarray:
 
 
 @functools.lru_cache(maxsize=32)
-def _get_reference_signals(
-    N: int, sampling_rate: float, frequency: float
-) -> tuple[np.ndarray, np.ndarray]:
+def _get_reference_signals(N: int, sampling_rate: float, frequency: float) -> tuple[np.ndarray, np.ndarray]:
     """
     Cached reference sine and cosine waves generation.
     Returns read-only arrays to prevent modification.
@@ -106,9 +104,9 @@ def _get_reference_signals(
 
 
 @functools.lru_cache(maxsize=32)
-def _get_resample_filter(up, down, window_type=('kaiser', 5.0)):
+def _get_resample_filter(up, down, window_type=("kaiser", 5.0)):
     max_rate = max(up, down)
-    f_c = 1. / max_rate
+    f_c = 1.0 / max_rate
     half_len = 10 * max_rate
     return firwin(2 * half_len + 1, f_c, window=window_type)
 
@@ -134,7 +132,7 @@ def _get_shared_buffers(N: int, dtype):
     # np.dtype('float64') == np.float64 is False in some contexts, but equality works.
     # Let's ensure strict keying.
 
-    key = (N, np.dtype(dtype).str) # Use string representation for consistent hashing
+    key = (N, np.dtype(dtype).str)  # Use string representation for consistent hashing
 
     if key in cache:
         M, fitted_buffer, residual_buffer = cache[key]
@@ -163,6 +161,7 @@ class AudioCalc:
     """
     Shared audio calculation utilities.
     """
+
     MAX_AUDIO_SAMPLES = 500_000_000
 
     @staticmethod
@@ -396,7 +395,7 @@ class AudioCalc:
         # This is equivalent to imag/real parts of sum(signal * exp(j*w*t))
 
         chunk_size = 16384
-        dt = t[1] - t[0] if N > 1 else 1.0 # Assuming uniform sampling
+        dt = t[1] - t[0] if N > 1 else 1.0  # Assuming uniform sampling
         two_pi = 2 * np.pi
         omega = grid * two_pi
 
@@ -409,7 +408,7 @@ class AudioCalc:
         base_t = np.arange(chunk_size) * dt
         E_base = np.exp(1j * np.outer(omega, base_t))
 
-        acc_v_complex = np.zeros(K, dtype=np.complex128)
+        acc_v_complex = None
 
         for i in range(0, N, chunk_size):
             end = min(i + chunk_size, N)
@@ -428,7 +427,14 @@ class AudioCalc:
             # Rotate by phase offset of chunk start time
             # t[i] is absolute time of chunk start
             rotation = np.exp(1j * omega * t[i])
-            acc_v_complex += z * rotation
+
+            if acc_v_complex is None:
+                acc_v_complex = z * rotation
+            else:
+                acc_v_complex += z * rotation
+
+        if acc_v_complex is None:
+            acc_v_complex = np.zeros(K, dtype=np.complex128)
 
         sig_s = acc_v_complex.imag
         sig_c = acc_v_complex.real
@@ -607,7 +613,7 @@ class AudioCalc:
         # Pass 2: Fine Search (Zoom in)
         zoom_width = step * 1.5
         bounds_fine = (max(0.1, best_coarse - zoom_width), best_coarse + zoom_width)
-        res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={'xatol': 1e-14})
+        res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={"xatol": 1e-14})
         best_freq = res_fine.x
 
         if return_full:
@@ -801,9 +807,7 @@ class AudioCalc:
     @staticmethod
     def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq):
         """Calculates THD+N and SINAD."""
-        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(
-            audio_data, sampling_rate, max_freq
-        )
+        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(audio_data, sampling_rate, max_freq)
         thdn_linear = 10 ** (thdn_db / 20)
 
         thdn_percent = thdn_linear * 100
@@ -848,13 +852,9 @@ class AudioCalc:
         }
 
     @staticmethod
-    def analyze_harmonics(
-        audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0
-    ):
+    def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
         # 0. Compute Spectrum
-        freqs, amplitude_spectrum, fft_result = AudioCalc._compute_spectrum(
-            audio_data, window_name, sampling_rate
-        )
+        freqs, amplitude_spectrum, fft_result = AudioCalc._compute_spectrum(audio_data, window_name, sampling_rate)
 
         # Determine search window
         search_window = AudioCalc._calculate_search_window(freqs, fundamental_freq)
@@ -878,14 +878,12 @@ class AudioCalc:
         )
 
         # 3. THD Calculation
-        thd_percent, thd_db = AudioCalc._calculate_thd(
-            max_amplitude, harmonic_amplitudes_linear, min_db
-        )
+        thd_percent, thd_db = AudioCalc._calculate_thd(max_amplitude, harmonic_amplitudes_linear, min_db)
 
         # 4. THD+N Calculation (Sine Fit)
         # Use raw audio_data (no window applied yet)
-        thdn_percent, thdn_db, sinad_db, fund_rms, res_rms = (
-            AudioCalc._calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq)
+        thdn_percent, thdn_db, sinad_db, fund_rms, res_rms = AudioCalc._calculate_thdn_and_sinad(
+            audio_data, sampling_rate, max_freq
         )
 
         return {
@@ -1338,7 +1336,9 @@ class AudioCalc:
         return peak_freq, peak_amp
 
     @staticmethod
-    def _calculate_a_weighted_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs=False, start_freq=0.0, stop_freq=0.0):
+    def _calculate_a_weighted_noise(
+        mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs=False, start_freq=0.0, stop_freq=0.0
+    ):
         # A-weighting Integration
         # Ra(f) = (12194^2 * f^4) / ((f^2 + 20.6^2) * sqrt((f^2 + 107.7^2)(f^2 + 737.9^2)) * (f^2 + 12194^2))
         # Gain = 20*log10(Ra(f)) + 2.00
@@ -1351,9 +1351,7 @@ class AudioCalc:
             weighting_sq = _compute_a_weighting_sq_curve_log(len(freqs), start_freq, stop_freq)
         else:
             # Fallback to content-based caching for arbitrary frequency arrays
-            weighting_sq = _get_a_weighting_curve_from_bytes(
-                freqs.tobytes(), str(freqs.dtype), freqs.shape
-            )
+            weighting_sq = _get_a_weighting_curve_from_bytes(freqs.tobytes(), str(freqs.dtype), freqs.shape)
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
         i_a_start = AudioCalc._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
@@ -1410,7 +1408,7 @@ class AudioCalc:
                 # Check if the last element matches the expected end in log domain
                 if abs(np.log(freqs[-1]) - expected_log_end_log) < 1e-4:
                     # Verify strictly using log domain
-                    with np.errstate(divide='ignore', invalid='ignore'):
+                    with np.errstate(divide="ignore", invalid="ignore"):
                         log_freqs = np.log(freqs)
                     log_steps = np.diff(log_freqs)
                     if len(log_steps) > 0:
@@ -1478,7 +1476,9 @@ class AudioCalc:
         results["peak_amp"] = peak_amp
 
         # A-weighting Integration
-        rms_a = AudioCalc._calculate_a_weighted_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs, start_freq, stop_freq)
+        rms_a = AudioCalc._calculate_a_weighted_noise(
+            mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs, start_freq, stop_freq
+        )
         results["noise_rms_a_weighted"] = rms_a
 
         return results
