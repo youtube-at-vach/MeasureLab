@@ -25,12 +25,12 @@ from src.measurement_modules.base import MeasurementModule
 logger = logging.getLogger(__name__)
 
 # Used for decoupling background thread results to GUI thread safely.
-class AnalyzerSignals(QObject):
+class FinderSignals(QObject):
     result_ready = pyqtSignal(object)
     sweep_started = pyqtSignal(object)
     progress_update = pyqtSignal(int, int, object, object)
 
-class LockInSpectrumAnalyzer(MeasurementModule):
+class LockInSpectrumFinder(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -53,7 +53,7 @@ class LockInSpectrumAnalyzer(MeasurementModule):
 
         # State
         self.callback_id = None
-        self.signals = AnalyzerSignals()
+        self.signals = FinderSignals()
         self.executor = ThreadPoolExecutor(max_workers=1)
         self._calculation_future = None
 
@@ -64,14 +64,14 @@ class LockInSpectrumAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Lock-in Spectrum Analyzer"
+        return "Lock-in Spectrum Finder"
 
     @property
     def description(self) -> str:
-        return "High-resolution spectrum analyzer using parallel lock-in detection (matrix projection)."
+        return "High-resolution spectrum finder using parallel lock-in detection (matrix projection)."
 
     def get_widget(self):
-        return LockInSpectrumAnalyzerWidget(self)
+        return LockInSpectrumFinderWidget(self)
 
     def start_analysis(self):
         if self.is_running:
@@ -300,8 +300,8 @@ class LockInSpectrumAnalyzer(MeasurementModule):
         if self.is_running:
             self.signals.result_ready.emit((freqs, mags_db_all))
 
-class LockInSpectrumAnalyzerWidget(QWidget):
-    def __init__(self, module: LockInSpectrumAnalyzer):
+class LockInSpectrumFinderWidget(QWidget):
+    def __init__(self, module: LockInSpectrumFinder):
         super().__init__()
         self.module = module
         self.init_ui()
