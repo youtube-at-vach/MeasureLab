@@ -16,11 +16,6 @@ from PyQt6.QtWidgets import (
 
 from src.core.localization import tr
 
-try:
-    from src.core.config_manager import ConfigManager
-except Exception:  # pragma: no cover
-    ConfigManager = None
-
 
 class IndependentWindow(QMainWindow):
     """
