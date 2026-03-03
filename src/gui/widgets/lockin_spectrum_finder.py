@@ -207,7 +207,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
             freqs_offset = np.linspace(-zoom_span, zoom_span, points)
             mags_db_all = np.zeros(points)
-            
+
             # --- 窓関数の適用 (Hanning) ---
             window = signal.windows.hann(N_dec)
             sig_dec_win = sig_dec * window
@@ -254,7 +254,7 @@ class LockInSpectrumFinder(MeasurementModule):
         # This spreads the load and allows for progressive UI updates (sliding line).
         chunk_size = 32
         mags_db_all = np.zeros(points)
-        
+
         # --- 窓関数の適用 (Hanningの平方根) ---
         window = np.hanning(N)
         sqrt_win = np.sqrt(window)
@@ -470,19 +470,19 @@ class LockInSpectrumFinderWidget(QWidget):
         """Update buffer size choices based on mode."""
         # Block signals to avoid triggering on_buffer_changed during refill
         self.combo_buffer.blockSignals(True)
-        
+
         current_val = str(self.module.buffer_size)
-        
+
         if self.module.mode == "Basic":
             # Up to 512k (approx 500k)
             options = ["65536", "131072", "262144", "524288"]
         else:
             # Up to 8M
             options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608"]
-            
+
         self.combo_buffer.clear()
         self.combo_buffer.addItems(options)
-        
+
         if current_val in options:
             self.combo_buffer.setCurrentText(current_val)
         else:
@@ -490,7 +490,7 @@ class LockInSpectrumFinderWidget(QWidget):
             new_val = options[-1]
             self.combo_buffer.setCurrentText(new_val)
             self.module.buffer_size = int(new_val)
-            
+
         # Re-connect/unblock signals
         try:
             self.combo_buffer.currentTextChanged.disconnect()
