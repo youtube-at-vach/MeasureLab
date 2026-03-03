@@ -32,7 +32,7 @@ class TestUpdateChecker(unittest.TestCase):
         # Mock response
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.read.return_value = b'{"tag_name": "v9.9.9"}'
+        mock_response.read.return_value = b'{"version": "9.9.9"}'
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         # Connect a mock slot to the signal
@@ -55,7 +55,7 @@ class TestUpdateChecker(unittest.TestCase):
         # Mock response with older version
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.read.return_value = b'{"tag_name": "v0.0.1"}'
+        mock_response.read.return_value = b'{"version": "0.0.1"}'
         mock_urlopen.return_value.__enter__.return_value = mock_response
 
         mock_slot = MagicMock()
