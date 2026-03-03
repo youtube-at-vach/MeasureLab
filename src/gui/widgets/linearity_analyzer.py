@@ -869,13 +869,10 @@ class LinearityAnalyzerWidget(QWidget):
 
         # Find first failure (Error > 0.5 OR SNR < Threshold)
         fail_idx = -1
-        for i in range(len(inputs_sorted)):
-            if abs(errors_sorted[i]) > limit:
-                fail_idx = i
-                break
-            if snr_sorted[i] < snr_threshold:
-                fail_idx = i
-                break
+        failures = (np.abs(errors_sorted) > limit) | (snr_sorted < snr_threshold)
+        fail_indices = np.where(failures)[0]
+        if fail_indices.size > 0:
+            fail_idx = fail_indices[0]
 
         if fail_idx != -1:
             if fail_idx > 0:
