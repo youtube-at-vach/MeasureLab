@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 # Used for decoupling background thread results to GUI thread safely.
 class AnalyzerSignals(QObject):
     result_ready = pyqtSignal(object)
+    sweep_started = pyqtSignal(object)
+    progress_update = pyqtSignal(int, int, object, object)
 
 class LockInSpectrumAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -166,6 +168,7 @@ class LockInSpectrumAnalyzer(MeasurementModule):
         """
         Background heavy lifting: Matrix projection
         """
+        import time
         N = len(sig)
         t = np.arange(N) / fs
 
@@ -176,54 +179,65 @@ class LockInSpectrumAnalyzer(MeasurementModule):
         else:
             freqs = np.linspace(start_f, stop_f, points)
 
-        # Allocate Basis Matrix
-        # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
-        num_bases = 1 + points * 2
-        B = np.zeros((N, num_bases), dtype=np.float32)
-        B[:, 0] = 1.0 # DC
+        self.signals.sweep_started.emit(freqs)
 
-        for i, f in enumerate(freqs):
-            omega = 2.0 * np.pi * f
-            phase = omega * t
-            idx = 1 + i * 2
-            B[:, idx] = np.cos(phase)
-            B[:, idx + 1] = np.sin(phase)
+        # To prevent CPU overallocation and buffer underruns, we process in chunks.
+        # This spreads the load and allows for progressive UI updates (sliding line).
+        chunk_size = 32
+        mags_db_all = np.zeros(points)
 
-        # Least squares solve B * x = sig
-        # Using linalg.solve on Gram matrix B^T B is faster but less numerically stable than lstsq,
-        # however, given sinusoidal basis over many periods, they are nearly orthogonal.
-        # Still lstsq is safer for overlapping or non-integer bins.
+        for i in range(0, points, chunk_size):
+            if not self.is_running:
+                break
+                
+            end_idx = min(i + chunk_size, points)
+            current_points = end_idx - i
+            
+            # Allocate Basis Matrix for the local chunk
+            # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
+            num_bases = 1 + current_points * 2
+            B = np.zeros((N, num_bases), dtype=np.float32)
+            B[:, 0] = 1.0 # DC
 
-        # Since B can be huge (262k x 513), let's use Gram directly for speed:
-        gram = np.dot(B.T, B)
-        rhs = np.dot(B.T, sig)
+            for j in range(current_points):
+                f = freqs[i + j]
+                omega = 2.0 * np.pi * f
+                phase = omega * t
+                idx = 1 + j * 2
+                B[:, idx] = np.cos(phase)
+                B[:, idx + 1] = np.sin(phase)
 
-        try:
-            # try speedy solve
-            coeff = np.linalg.solve(gram, rhs)
-        except np.linalg.LinAlgError:
-            # fallback
-            coeff = np.linalg.lstsq(B, sig, rcond=None)[0]
+            # Since B can be huge, we use Gram directly for speed:
+            gram = np.dot(B.T, B)
+            rhs = np.dot(B.T, sig)
 
-        # Extract magnitudes
-        mags_db = np.zeros(points)
+            try:
+                # try speedy solve
+                coeff = np.linalg.solve(gram, rhs)
+            except np.linalg.LinAlgError:
+                # fallback
+                coeff = np.linalg.lstsq(B, sig, rcond=None)[0]
 
-        X = coeff[1:]
-        for i in range(points):
-            idx = i * 2
-            I_comp = X[idx]
-            Q_comp = X[idx + 1]
-            amp = np.sqrt(I_comp**2 + Q_comp**2)
+            # Extract magnitudes for this chunk
+            mags_db_chunk = np.zeros(current_points)
+            X = coeff[1:]
+            for j in range(current_points):
+                I_comp = X[j * 2]
+                Q_comp = X[j * 2 + 1]
+                amp = np.sqrt(I_comp**2 + Q_comp**2)
+                amp_rms = amp / np.sqrt(2.0)
+                mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
 
-            # Usually B holds amplitude, so amp is peak amplitude
-            # RMS amplitude for sine is peak / sqrt(2)
-            amp_rms = amp / np.sqrt(2.0)
+            mags_db_all[i:end_idx] = mags_db_chunk
+            
+            # Emit result chunk back to GUI thread
+            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
+            
+            # Sleep briefly to ensure audio callback is not starved 
+            time.sleep(0.005)
 
-            db_val = 20 * np.log10(amp_rms + 1e-15) + cal_offset
-            mags_db[i] = db_val
-
-        # Emit result back to GUI thread
-        self.signals.result_ready.emit((freqs, mags_db))
+        if self.is_running:
+            self.signals.result_ready.emit((freqs, mags_db_all))
 
 class LockInSpectrumAnalyzerWidget(QWidget):
     def __init__(self, module: LockInSpectrumAnalyzer):
@@ -232,6 +246,8 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.init_ui()
 
         self.module.signals.result_ready.connect(self.on_result_ready)
+        self.module.signals.sweep_started.connect(self.on_sweep_started)
+        self.module.signals.progress_update.connect(self.on_progress_update)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_calculation)
@@ -255,7 +271,7 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.combo_buffer = QComboBox()
         self.combo_buffer.addItems(["65536", "131072", "262144", "524288"])
         self.combo_buffer.setCurrentText(str(self.module.buffer_size))
-        self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
+        self.combo_buffer.currentTextChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer Size:"), self.combo_buffer)
 
         # Input Channel
@@ -290,7 +306,7 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.combo_spacing = QComboBox()
         self.combo_spacing.addItems(["Log", "Lin"])
         self.combo_spacing.setCurrentText(self.module.spacing)
-        self.combo_spacing.currentIndexChanged.connect(self.on_spacing_changed)
+        self.combo_spacing.currentTextChanged.connect(self.on_spacing_changed)
         form.addRow(tr("Spacing:"), self.combo_spacing)
 
         settings_group.setLayout(form)
@@ -375,20 +391,47 @@ class LockInSpectrumAnalyzerWidget(QWidget):
 
         if filled < size:
             pct = int((filled / size) * 100)
-            self.lbl_status.setText(tr("Buffering... {}%").format(pct))
+            if self.module._calculation_future is None or self.module._calculation_future.done():
+                self.lbl_status.setText(tr("Buffering... {}%").format(pct))
             return
 
-        self.lbl_status.setText(tr("Calculating Matrix..."))
         # Trigger background computation
         self.module.trigger_calculation()
 
+    def on_sweep_started(self, freqs):
+        self.current_freqs = freqs.copy()
+        if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
+            self.current_mags = np.full(len(freqs), -180.0)
+            
+        if not hasattr(self, 'sweep_line'):
+            self.sweep_line = pg.InfiniteLine(angle=90, movable=False, pen='r')
+            self.plot.addItem(self.sweep_line)
+            
+        self.sweep_line.show()
+        val = freqs[0]
+        if self.module.spacing == "Log" and val > 0:
+            val = np.log10(val)
+        self.sweep_line.setValue(val)
+        self.lbl_status.setText(tr("Calculating Matrix... 0%"))
+
+    def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
+        self.current_mags[start_idx:end_idx] = m_chunk
+        self.curve.setData(self.current_freqs, self.current_mags)
+        if hasattr(self, 'sweep_line'):
+            self.sweep_line.show()
+            val = f_chunk[-1]
+            if self.module.spacing == "Log" and val > 0:
+                val = np.log10(val)
+            self.sweep_line.setValue(val)
+        pct = int((end_idx / len(self.current_freqs)) * 100)
+        self.lbl_status.setText(tr("Calculating Matrix... {}%").format(pct))
+
     def on_result_ready(self, result):
         freqs, mags_db = result
-
-        # update plot
-        if self.module.spacing == "Log":
-            # pyqtgraph expects linear x data when log mode is True, it applies log10 internally!
-            # so we just pass freqs.
-            pass
+        self.current_freqs = freqs
+        self.current_mags = mags_db
         self.curve.setData(freqs, mags_db)
+        if hasattr(self, 'sweep_line'):
+            self.sweep_line.hide()
         self.lbl_status.setText(tr("Spectrum Updated"))
+
