@@ -57,6 +57,11 @@ class LockInSpectrumAnalyzer(MeasurementModule):
         self.executor = ThreadPoolExecutor(max_workers=1)
         self._calculation_future = None
 
+        # Mode
+        self.mode = "Basic" # "Basic" or "Zoom"
+        self.zoom_center_freq = 1000.0
+        self.zoom_span = 10.0
+
     @property
     def name(self) -> str:
         return "Lock-in Spectrum Analyzer"
@@ -159,19 +164,75 @@ class LockInSpectrumAnalyzer(MeasurementModule):
         p_points = self.points
         p_spacing = self.spacing
         p_offset = self.audio_engine.calibration.get_input_offset_db()
+        p_mode = self.mode
+        p_zoom_center = self.zoom_center_freq
+        p_zoom_span = self.zoom_span
 
         self._calculation_future = self.executor.submit(
-            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, p_offset
+            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, p_offset, p_mode, p_zoom_center, p_zoom_span
         )
 
-    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, cal_offset):
+    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, cal_offset, 
+                        mode="Basic", zoom_center=1000.0, zoom_span=10.0):
         """
-        Background heavy lifting: Matrix projection
+        Background heavy lifting: Matrix projection or Zoom DDC
         """
         import time
         N = len(sig)
         t = np.arange(N) / fs
 
+        if mode == "Zoom":
+            import scipy.signal as signal
+            s_f = zoom_center - zoom_span
+            e_f = zoom_center + zoom_span
+            freqs = np.linspace(s_f, e_f, points)
+            self.signals.sweep_started.emit(freqs)
+
+            # 1. Baseband mixing (DDC)
+            sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
+
+            # 2. Decimate to reduce points
+            target_fs = max(zoom_span * 4, 10.0)
+            M = max(1, int(fs / target_fs))
+
+            if M > 1:
+                sig_dec = signal.resample_poly(sig_c, 1, M)
+            else:
+                sig_dec = sig_c
+
+            fs_dec = fs / M
+            N_dec = len(sig_dec)
+            t_dec = np.arange(N_dec) / fs_dec
+
+            freqs_offset = np.linspace(-zoom_span, zoom_span, points)
+            mags_db_all = np.zeros(points)
+
+            chunk_size = 32
+            for i in range(0, points, chunk_size):
+                if not self.is_running:
+                    break
+                end_idx = min(i + chunk_size, points)
+                current_points = end_idx - i
+
+                mags_db_chunk = np.zeros(current_points)
+                for j in range(current_points):
+                    f_off = freqs_offset[i + j]
+                    # Direct correlation on decimated baseband
+                    val = np.mean(sig_dec * np.exp(-1j * 2 * np.pi * f_off * t_dec))
+                    amp_rms = np.abs(val) * np.sqrt(2.0)
+                    mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
+
+                mags_db_all[i:end_idx] = mags_db_chunk
+
+                # Emit result chunk back to GUI thread
+                self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
+                time.sleep(0.005)
+
+            if self.is_running:
+                self.signals.result_ready.emit((freqs, mags_db_all))
+            return
+
+        # Basic Mode (Matrix Projection)
         if spacing == "Log":
             # Avoid log of 0 or negative
             s_f = max(0.1, start_f)
@@ -189,10 +250,10 @@ class LockInSpectrumAnalyzer(MeasurementModule):
         for i in range(0, points, chunk_size):
             if not self.is_running:
                 break
-                
+
             end_idx = min(i + chunk_size, points)
             current_points = end_idx - i
-            
+
             # Allocate Basis Matrix for the local chunk
             # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
             num_bases = 1 + current_points * 2
@@ -229,10 +290,10 @@ class LockInSpectrumAnalyzer(MeasurementModule):
                 mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
 
             mags_db_all[i:end_idx] = mags_db_chunk
-            
+
             # Emit result chunk back to GUI thread
             self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
-            
+
             # Sleep briefly to ensure audio callback is not starved 
             time.sleep(0.005)
 
@@ -267,11 +328,16 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.btn_toggle.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         form.addRow(self.btn_toggle)
 
+        # Mode Selection
+        self.combo_mode = QComboBox()
+        self.combo_mode.addItems(["Basic", "Zoom"])
+        self.combo_mode.setCurrentText(self.module.mode)
+        self.combo_mode.currentTextChanged.connect(self.on_mode_changed)
+        form.addRow(tr("Mode:"), self.combo_mode)
+
         # Buffer size
         self.combo_buffer = QComboBox()
-        self.combo_buffer.addItems(["65536", "131072", "262144", "524288"])
-        self.combo_buffer.setCurrentText(str(self.module.buffer_size))
-        self.combo_buffer.currentTextChanged.connect(self.on_buffer_changed)
+        self._update_buffer_options()
         form.addRow(tr("Buffer Size:"), self.combo_buffer)
 
         # Input Channel
@@ -289,25 +355,47 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.spin_points.valueChanged.connect(self.on_points_changed)
         form.addRow(tr("Basis Points:"), self.spin_points)
 
+        self.lbl_start_f = QLabel(tr("Start Freq:"))
         self.spin_start_f = QDoubleSpinBox()
         self.spin_start_f.setRange(1.0, 96000.0)
         self.spin_start_f.setValue(self.module.start_freq)
         self.spin_start_f.setSuffix(" Hz")
         self.spin_start_f.valueChanged.connect(self.on_start_f_changed)
-        form.addRow(tr("Start Freq:"), self.spin_start_f)
+        form.addRow(self.lbl_start_f, self.spin_start_f)
 
+        self.lbl_stop_f = QLabel(tr("Stop Freq:"))
         self.spin_stop_f = QDoubleSpinBox()
         self.spin_stop_f.setRange(10.0, 96000.0)
         self.spin_stop_f.setValue(self.module.stop_freq)
         self.spin_stop_f.setSuffix(" Hz")
         self.spin_stop_f.valueChanged.connect(self.on_stop_f_changed)
-        form.addRow(tr("Stop Freq:"), self.spin_stop_f)
+        form.addRow(self.lbl_stop_f, self.spin_stop_f)
 
+        self.lbl_spacing = QLabel(tr("Spacing:"))
         self.combo_spacing = QComboBox()
         self.combo_spacing.addItems(["Log", "Lin"])
         self.combo_spacing.setCurrentText(self.module.spacing)
         self.combo_spacing.currentTextChanged.connect(self.on_spacing_changed)
-        form.addRow(tr("Spacing:"), self.combo_spacing)
+        form.addRow(self.lbl_spacing, self.combo_spacing)
+
+        # Zoom Mode Fields
+        self.lbl_zoom_center = QLabel(tr("Zoom Center:"))
+        self.spin_zoom_center = QDoubleSpinBox()
+        self.spin_zoom_center.setRange(1.0, 96000.0)
+        self.spin_zoom_center.setValue(self.module.zoom_center_freq)
+        self.spin_zoom_center.setSuffix(" Hz")
+        self.spin_zoom_center.valueChanged.connect(self.on_zoom_center_changed)
+        form.addRow(self.lbl_zoom_center, self.spin_zoom_center)
+
+        self.lbl_zoom_span = QLabel(tr("Zoom Span (±):"))
+        self.spin_zoom_span = QDoubleSpinBox()
+        self.spin_zoom_span.setRange(0.1, 10000.0)
+        self.spin_zoom_span.setValue(self.module.zoom_span)
+        self.spin_zoom_span.setSuffix(" Hz")
+        self.spin_zoom_span.valueChanged.connect(self.on_zoom_span_changed)
+        form.addRow(self.lbl_zoom_span, self.spin_zoom_span)
+
+        self._update_ui_visibility()
 
         settings_group.setLayout(form)
         left_panel.addWidget(settings_group)
@@ -341,11 +429,65 @@ class LockInSpectrumAnalyzerWidget(QWidget):
 
         self.setLayout(layout)
 
+    def _update_ui_visibility(self):
+        is_zoom = self.module.mode == "Zoom"
+
+        self.lbl_start_f.setVisible(not is_zoom)
+        self.spin_start_f.setVisible(not is_zoom)
+        self.lbl_stop_f.setVisible(not is_zoom)
+        self.spin_stop_f.setVisible(not is_zoom)
+        self.lbl_spacing.setVisible(not is_zoom)
+        self.combo_spacing.setVisible(not is_zoom)
+
+        self.lbl_zoom_center.setVisible(is_zoom)
+        self.spin_zoom_center.setVisible(is_zoom)
+        self.lbl_zoom_span.setVisible(is_zoom)
+        self.spin_zoom_span.setVisible(is_zoom)
+
+    def _update_buffer_options(self):
+        """Update buffer size choices based on mode."""
+        # Block signals to avoid triggering on_buffer_changed during refill
+        self.combo_buffer.blockSignals(True)
+        
+        current_val = str(self.module.buffer_size)
+        
+        if self.module.mode == "Basic":
+            # Up to 512k (approx 500k)
+            options = ["65536", "131072", "262144", "524288"]
+        else:
+            # Up to 8M
+            options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608"]
+            
+        self.combo_buffer.clear()
+        self.combo_buffer.addItems(options)
+        
+        if current_val in options:
+            self.combo_buffer.setCurrentText(current_val)
+        else:
+            # Auto-cap at max available for this mode
+            new_val = options[-1]
+            self.combo_buffer.setCurrentText(new_val)
+            self.module.buffer_size = int(new_val)
+            
+        # Re-connect/unblock signals
+        try:
+            self.combo_buffer.currentTextChanged.disconnect()
+        except TypeError:
+            pass
+        self.combo_buffer.currentTextChanged.connect(self.on_buffer_changed)
+        self.combo_buffer.blockSignals(False)
+
     def _update_plot_log_mode(self):
-        if self.module.spacing == "Log":
+        if self.module.mode == "Basic" and self.module.spacing == "Log":
             self.plot.getPlotItem().setLogMode(x=True, y=False)
         else:
             self.plot.getPlotItem().setLogMode(x=False, y=False)
+
+    def on_mode_changed(self, text):
+        self.module.mode = text
+        self._update_plot_log_mode()
+        self._update_ui_visibility()
+        self._update_buffer_options()
 
     def on_toggle(self, checked):
         if checked:
@@ -381,6 +523,12 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.module.spacing = text
         self._update_plot_log_mode()
 
+    def on_zoom_center_changed(self, val):
+        self.module.zoom_center_freq = val
+
+    def on_zoom_span_changed(self, val):
+        self.module.zoom_span = val
+
     def check_calculation(self):
         if not self.module.is_running:
             return
@@ -402,17 +550,17 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         self.current_freqs = freqs.copy()
         if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
             self.current_mags = np.full(len(freqs), -180.0)
-            
+
         if not hasattr(self, 'sweep_line'):
             self.sweep_line = pg.InfiniteLine(angle=90, movable=False, pen='r')
             self.plot.addItem(self.sweep_line)
-            
+
         self.sweep_line.show()
         val = freqs[0]
-        if self.module.spacing == "Log" and val > 0:
+        if self.module.mode == "Basic" and self.module.spacing == "Log" and val > 0:
             val = np.log10(val)
         self.sweep_line.setValue(val)
-        self.lbl_status.setText(tr("Calculating Matrix... 0%"))
+        self.lbl_status.setText(tr("Calculating... 0%"))
 
     def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
         self.current_mags[start_idx:end_idx] = m_chunk
@@ -420,11 +568,11 @@ class LockInSpectrumAnalyzerWidget(QWidget):
         if hasattr(self, 'sweep_line'):
             self.sweep_line.show()
             val = f_chunk[-1]
-            if self.module.spacing == "Log" and val > 0:
+            if self.module.mode == "Basic" and self.module.spacing == "Log" and val > 0:
                 val = np.log10(val)
             self.sweep_line.setValue(val)
         pct = int((end_idx / len(self.current_freqs)) * 100)
-        self.lbl_status.setText(tr("Calculating Matrix... {}%").format(pct))
+        self.lbl_status.setText(tr("Calculating... {}%").format(pct))
 
     def on_result_ready(self, result):
         freqs, mags_db = result
