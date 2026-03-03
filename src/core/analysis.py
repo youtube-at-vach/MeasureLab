@@ -989,17 +989,11 @@ class AudioCalc:
         idx_mins = np.searchsorted(freqs, start_freqs, side="left")
         idx_maxs = np.searchsorted(freqs, end_freqs, side="right")
 
-        peak_indices = []
-        for i in range(len(tone_freqs_arr)):
-            idx_min = idx_mins[i]
-            idx_max = idx_maxs[i]
-
-            if idx_max > idx_min:
-                subset_mag = mag[idx_min:idx_max]
-                # argmax on empty slice raises error, but checked idx_max > idx_min
-                local_peak_idx_rel = np.argmax(subset_mag)
-                peak_idx = idx_min + local_peak_idx_rel
-                peak_indices.append(peak_idx)
+        peak_indices = [
+            idx_min + np.argmax(mag[idx_min:idx_max])
+            for idx_min, idx_max in zip(idx_mins, idx_maxs)
+            if idx_max > idx_min
+        ]
 
         # Mark bins around peak as tone
         # Blackman-Harris main lobe is approx +/- 4 bins
