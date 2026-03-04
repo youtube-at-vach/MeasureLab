@@ -514,47 +514,68 @@ class AudioCalc:
         c2 = 0.5 * N + 0.5 * sum_cos_2wt
         sc = 0.5 * sum_sin_2wt
 
-        # 3. Solve system for each frequency
-        best_score = -1.0
+        # 3. Solve system for each frequency using vectorized operations
         best_coarse = grid[0] if K > 0 else 0.0
+
+        if K == 0:
+            return best_coarse
 
         sum_sig = np.sum(signal)
 
-        # G = [[s2, sc, s_sum], [sc, c2, c_sum], [s_sum, c_sum, N]]
-        # v = [sig_s, sig_c, sum_sig]
+        G_batch = np.empty((K, 3, 3), dtype=np.float64)
+        v_batch = np.empty((K, 3, 1), dtype=np.float64)
 
-        # Reusing buffer for 3x3 system
-        G = np.empty((3, 3), dtype=np.float64)
-        v = np.empty(3, dtype=np.float64)
-        G[2, 2] = N
-        v[2] = sum_sig
+        G_batch[:, 0, 0] = s2
+        G_batch[:, 0, 1] = sc
+        G_batch[:, 0, 2] = sum_s
+        G_batch[:, 1, 0] = sc
+        G_batch[:, 1, 1] = c2
+        G_batch[:, 1, 2] = sum_c
+        G_batch[:, 2, 0] = sum_s
+        G_batch[:, 2, 1] = sum_c
+        G_batch[:, 2, 2] = N
 
-        for k in range(K):
-            G[0, 0] = s2[k]
-            G[0, 1] = sc[k]
-            G[0, 2] = sum_s[k]
-            G[1, 0] = sc[k]
-            G[1, 1] = c2[k]
-            G[1, 2] = sum_c[k]
-            G[2, 0] = sum_s[k]
-            G[2, 1] = sum_c[k]
+        v_batch[:, 0, 0] = sig_s
+        v_batch[:, 1, 0] = sig_c
+        v_batch[:, 2, 0] = sum_sig
 
-            v[0] = sig_s[k]
-            v[1] = sig_c[k]
+        try:
+            x_batch = np.linalg.solve(G_batch, v_batch)
+            scores = np.sum(x_batch * v_batch, axis=(1, 2))
+            best_idx = np.argmax(scores)
+            best_coarse = grid[best_idx]
+        except np.linalg.LinAlgError:
+            # Fallback to loop if singular matrices exist
+            best_score = -1.0
 
-            try:
-                # Solve Gx = v
-                # We can explicitly solve 3x3 for speed if needed, but linalg.solve is robust.
-                # Since this loop is K times (e.g. 100-200), it's fast enough compared to the signal scan.
-                x = np.linalg.solve(G, v)
-                score = np.dot(x, v)
-            except np.linalg.LinAlgError:
-                x, _, _, _ = np.linalg.lstsq(G, v, rcond=None)
-                score = np.dot(x, v)
+            G = np.empty((3, 3), dtype=np.float64)
+            v = np.empty(3, dtype=np.float64)
+            G[2, 2] = N
+            v[2] = sum_sig
 
-            if score > best_score:
-                best_score = score
-                best_coarse = grid[k]
+            for k in range(K):
+                G[0, 0] = s2[k]
+                G[0, 1] = sc[k]
+                G[0, 2] = sum_s[k]
+                G[1, 0] = sc[k]
+                G[1, 1] = c2[k]
+                G[1, 2] = sum_c[k]
+                G[2, 0] = sum_s[k]
+                G[2, 1] = sum_c[k]
+
+                v[0] = sig_s[k]
+                v[1] = sig_c[k]
+
+                try:
+                    x = np.linalg.solve(G, v)
+                    score = np.dot(x, v)
+                except np.linalg.LinAlgError:
+                    x, _, _, _ = np.linalg.lstsq(G, v, rcond=None)
+                    score = np.dot(x, v)
+
+                if score > best_score:
+                    best_score = score
+                    best_coarse = grid[k]
 
         return best_coarse
 
