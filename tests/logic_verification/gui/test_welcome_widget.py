@@ -1,109 +1,193 @@
+import unittest
+from unittest.mock import MagicMock, patch
 import sys
 import os
-from unittest.mock import patch
-import pytest
-from PyQt6.QtWidgets import QLabel
-from PyQt6.QtGui import QPixmap
+import importlib
 
-# Ensure src is in path
-sys.path.insert(0, os.getcwd())
+class TestWelcomeWidgetLogic(unittest.TestCase):
+    def setUp(self):
+        # Mocks for PyQt6
+        self.mock_qt_core = MagicMock()
+        self.mock_qt_widgets = MagicMock()
+        self.mock_qt_gui = MagicMock()
 
-from src.gui.widgets.welcome import WelcomeWidget
+        # We need a proper mock class for QWidget and QLabel so super().__init__() works
+        class MockQWidget:
+            def __init__(self, *args, **kwargs):
+                pass
+            def setLayout(self, layout):
+                pass
+            def setStyleSheet(self, style):
+                pass
+            def findChildren(self, type):
+                return []
 
-@pytest.fixture
-def mock_dependencies():
-    with patch('src.gui.widgets.welcome.resource_path') as mock_rp, \
-         patch('src.gui.widgets.welcome.os.path.exists') as mock_exists, \
-         patch('src.gui.widgets.welcome.QPixmap') as mock_pixmap, \
-         patch('src.gui.widgets.welcome.QTimer') as mock_timer, \
-         patch('src.gui.widgets.welcome.UpdateChecker'):
+        class MockQLabel(MockQWidget):
+            def __init__(self, *args, **kwargs):
+                super().__init__()
+            def setPixmap(self, pixmap):
+                pass
+            def setText(self, text):
+                pass
+            def setAlignment(self, alignment):
+                pass
+            def setStyleSheet(self, style):
+                pass
+            def setFont(self, font):
+                pass
+            def setTextFormat(self, fmt):
+                pass
+            def setCursor(self, cursor):
+                pass
+            def show(self):
+                pass
+            def hide(self):
+                pass
 
-        # Setup QPixmap mock to return a REAL QPixmap via side_effect
-        # This prevents TypeError in QLabel.setPixmap
-        mock_pixmap.side_effect = lambda *args: QPixmap()
+        class MockQPixmap:
+            def __init__(self, *args, **kwargs):
+                pass
+            def scaledToHeight(self, *args, **kwargs):
+                return self
 
-        yield mock_rp, mock_exists, mock_pixmap, mock_timer
+        self.mock_qt_widgets.QWidget = MockQWidget
 
-def test_welcome_image_primary_path(qtbot, mock_dependencies):
-    mock_rp, mock_exists, mock_pixmap, mock_timer = mock_dependencies
+        # Keep references to the specific created labels to verify assertions
+        self.created_labels = []
+        def create_label(*args, **kwargs):
+            lbl = MagicMock(spec=MockQLabel)
+            self.created_labels.append(lbl)
+            return lbl
 
-    # Setup happy path
-    primary_path = "/path/to/assets/welcome.png"
-    mock_rp.return_value = primary_path
+        self.mock_qt_widgets.QLabel = create_label
+        self.mock_qt_widgets.QVBoxLayout = MagicMock()
+        self.mock_qt_widgets.QHBoxLayout = MagicMock()
 
-    # os.path.exists behavior
-    def exists_side_effect(path):
-        return path == primary_path
-    mock_exists.side_effect = exists_side_effect
+        self.mock_pixmap_instance = MagicMock()
+        self.mock_qt_gui.QPixmap = MagicMock(return_value=self.mock_pixmap_instance)
+        self.mock_qt_gui.QDesktopServices = MagicMock()
 
-    widget = WelcomeWidget()
-    qtbot.addWidget(widget)
+        self.modules_patcher = patch.dict(sys.modules, {
+            "PyQt6": MagicMock(),
+            "PyQt6.QtCore": self.mock_qt_core,
+            "PyQt6.QtWidgets": self.mock_qt_widgets,
+            "PyQt6.QtGui": self.mock_qt_gui,
+            "certifi": MagicMock(),
+        })
+        self.modules_patcher.start()
 
-    # Verify QPixmap called with primary path
-    mock_pixmap.assert_called_with(primary_path)
+    def tearDown(self):
+        self.modules_patcher.stop()
+        if "src.gui.widgets.welcome" in sys.modules:
+            del sys.modules["src.gui.widgets.welcome"]
 
-    # Verify image label has pixmap set
-    labels = widget.findChildren(QLabel)
-    found_pixmap = False
-    for lbl in labels:
-        # Since we mocked QPixmap, lbl.pixmap() returns the mock if set
-        if lbl.pixmap() is not None:
-             found_pixmap = True
-             break
-    assert found_pixmap
+    def test_init_ui_primary_path_exists(self):
+        # Import inside the test to ensure the mocks are in place
+        import src.gui.widgets.welcome
+        importlib.reload(src.gui.widgets.welcome)
 
-def test_welcome_image_fallback_path(qtbot, mock_dependencies):
-    mock_rp, mock_exists, mock_pixmap, mock_timer = mock_dependencies
+        with patch.object(src.gui.widgets.welcome, 'UpdateChecker', MagicMock()), \
+             patch.object(src.gui.widgets.welcome, 'resource_path') as mock_resource_path, \
+             patch('os.path.exists') as mock_exists:
 
-    primary_path = "/path/to/assets/welcome.png"
-    mock_rp.return_value = primary_path
+            from src.gui.widgets.welcome import WelcomeWidget
 
-    # mimic fallback path
-    def exists_side_effect(path):
-        if path == primary_path:
-            return False
-        if "assets" in path and "welcome.png" in path: # Fallback path
-            return True
-        return False
+            primary_path = "/mock/primary/path/assets/welcome.png"
+            mock_resource_path.return_value = primary_path
 
-    mock_exists.side_effect = exists_side_effect
+            def mock_exists_side_effect(path):
+                return path == primary_path
+            mock_exists.side_effect = mock_exists_side_effect
 
-    widget = WelcomeWidget()
-    qtbot.addWidget(widget)
+            # Reset created labels list
+            self.created_labels.clear()
+            self.mock_qt_gui.QPixmap.reset_mock()
 
-    # Verify QPixmap called with fallback path
-    # Fallback path is calculated relative to __file__, so it's system dependent
-    # But we can verify it's NOT primary path
-    assert mock_pixmap.call_count == 1
-    args, _ = mock_pixmap.call_args
-    assert args[0] != primary_path
-    assert "welcome.png" in args[0]
+            widget = WelcomeWidget()
 
-    # Verify image label has pixmap set
-    labels = widget.findChildren(QLabel)
-    found_pixmap = False
-    for lbl in labels:
-        if lbl.pixmap() is not None:
-             found_pixmap = True
-             break
-    assert found_pixmap
+            # Verify resource_path was called
+            mock_resource_path.assert_called_with("src/assets/welcome.png")
 
-def test_welcome_image_not_found(qtbot, mock_dependencies):
-    mock_rp, mock_exists, mock_pixmap, mock_timer = mock_dependencies
+            # Verify QPixmap was instantiated with primary_path
+            self.mock_qt_gui.QPixmap.assert_called_with(primary_path)
 
-    mock_rp.return_value = "/invalid/path"
-    mock_exists.return_value = False
+            # Verify scaledToHeight was called on the pixmap
+            self.mock_pixmap_instance.scaledToHeight.assert_called_with(
+                400, self.mock_qt_core.Qt.TransformationMode.SmoothTransformation
+            )
 
-    widget = WelcomeWidget()
-    qtbot.addWidget(widget)
+            # Verify image label received the scaled pixmap
+            # The first label created is the image label
+            image_label = self.created_labels[0]
+            image_label.setPixmap.assert_called_with(self.mock_pixmap_instance.scaledToHeight.return_value)
+            image_label.setAlignment.assert_called_with(self.mock_qt_core.Qt.AlignmentFlag.AlignCenter)
+            image_label.setStyleSheet.assert_called_with("background-color: #1e1e1e;")
 
-    mock_pixmap.assert_not_called()
+    def test_init_ui_fallback_path_exists(self):
+        import src.gui.widgets.welcome
+        importlib.reload(src.gui.widgets.welcome)
 
-    # Verify text "Welcome Image Not Found"
-    labels = widget.findChildren(QLabel)
-    found = False
-    for lbl in labels:
-        if "Welcome Image Not Found" in lbl.text():
-            found = True
-            break
-    assert found
+        with patch.object(src.gui.widgets.welcome, 'UpdateChecker', MagicMock()), \
+             patch.object(src.gui.widgets.welcome, 'resource_path') as mock_resource_path, \
+             patch('os.path.exists') as mock_exists:
+
+            from src.gui.widgets.welcome import WelcomeWidget
+
+            primary_path = "/mock/primary/path/assets/welcome.png"
+            mock_resource_path.return_value = primary_path
+
+            # Since WelcomeWidget file is src/gui/widgets/welcome.py,
+            # os.path.dirname(os.path.dirname(os.path.dirname(__file__))) should be src/
+            expected_fallback_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(src.gui.widgets.welcome.__file__))),
+                "assets",
+                "welcome.png"
+            )
+
+            def mock_exists_side_effect(path):
+                if path == primary_path:
+                    return False
+                if path == expected_fallback_path:
+                    return True
+                return False
+            mock_exists.side_effect = mock_exists_side_effect
+
+            # Reset created labels list
+            self.created_labels.clear()
+            self.mock_qt_gui.QPixmap.reset_mock()
+
+            widget = WelcomeWidget()
+
+            # Verify QPixmap was instantiated with fallback_path
+            self.mock_qt_gui.QPixmap.assert_called_with(expected_fallback_path)
+
+    def test_init_ui_not_found(self):
+        import src.gui.widgets.welcome
+        importlib.reload(src.gui.widgets.welcome)
+
+        with patch.object(src.gui.widgets.welcome, 'UpdateChecker', MagicMock()), \
+             patch.object(src.gui.widgets.welcome, 'resource_path') as mock_resource_path, \
+             patch('os.path.exists') as mock_exists, \
+             patch.object(src.gui.widgets.welcome, 'tr', side_effect=lambda x: f"TR_{x}"):
+
+            from src.gui.widgets.welcome import WelcomeWidget
+
+            mock_resource_path.return_value = "/mock/invalid/path/welcome.png"
+            mock_exists.return_value = False
+
+            # Reset created labels list
+            self.created_labels.clear()
+            self.mock_qt_gui.QPixmap.reset_mock()
+
+            widget = WelcomeWidget()
+
+            # Verify QPixmap was not called
+            self.mock_qt_gui.QPixmap.assert_not_called()
+
+            # Verify fallback text was set on the label
+            image_label = self.created_labels[0]
+            image_label.setText.assert_called_with("TR_Welcome Image Not Found")
+            image_label.setAlignment.assert_called_with(self.mock_qt_core.Qt.AlignmentFlag.AlignCenter)
+
+if __name__ == '__main__':
+    unittest.main()
