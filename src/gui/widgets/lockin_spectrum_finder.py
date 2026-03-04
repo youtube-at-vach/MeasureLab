@@ -163,16 +163,15 @@ class LockInSpectrumFinder(MeasurementModule):
         p_stop = self.stop_freq
         p_points = self.points
         p_spacing = self.spacing
-        p_offset = self.audio_engine.calibration.get_input_offset_db()
         p_mode = self.mode
         p_zoom_center = self.zoom_center_freq
         p_zoom_span = self.zoom_span
 
         self._calculation_future = self.executor.submit(
-            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, p_offset, p_mode, p_zoom_center, p_zoom_span
+            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, p_mode, p_zoom_center, p_zoom_span
         )
 
-    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, cal_offset, 
+    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing,
                         mode="Basic", zoom_center=1000.0, zoom_span=10.0):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
@@ -226,7 +225,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 # Direct correlation on decimated baseband with windowing (vectorized)
                 vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
                 amp_rms = np.abs(vals) * np.sqrt(2.0)
-                mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15) + cal_offset
+                mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15)
 
                 mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -294,7 +293,7 @@ class LockInSpectrumFinder(MeasurementModule):
             X = coeff[1:]
             iq = X.reshape(-1, 2)
             amp_rms = np.hypot(iq[:, 0], iq[:, 1]) / np.sqrt(2.0)
-            mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15) + cal_offset
+            mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15)
 
             mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -323,6 +322,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def init_ui(self):
         layout = QHBoxLayout()
+        self.display_unit = "dBV"
 
         # LEFT: Controls
         left_panel = QVBoxLayout()
@@ -364,6 +364,14 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_input_ch.setCurrentIndex(self.module.input_channel)
         self.combo_input_ch.currentIndexChanged.connect(self.on_input_ch_changed)
         form.addRow(tr("Input Ch:"), self.combo_input_ch)
+
+        # Display unit
+        self.combo_display_unit = QComboBox()
+        self.combo_display_unit.addItem(tr("dBV"), "dBV")
+        self.combo_display_unit.addItem(tr("dBFS"), "dBFS")
+        self.combo_display_unit.setCurrentIndex(0)
+        self.combo_display_unit.currentIndexChanged.connect(self.on_display_unit_changed)
+        form.addRow(tr("Display Unit:"), self.combo_display_unit)
 
         # Grid settings
         self.spin_points = QSpinBox()
@@ -437,7 +445,7 @@ class LockInSpectrumFinderWidget(QWidget):
         right_panel = QVBoxLayout()
         self.plot = pg.PlotWidget(title=tr("Lock-in Spectrum"))
         self.plot.setLabel("bottom", tr("Frequency"), units="Hz")
-        self.plot.setLabel("left", tr("Amplitude"), units="dBFS")
+        self._update_plot_unit_label()
         self.plot.showGrid(x=True, y=True)
         self.plot.setYRange(-180, 10)
         self.curve = self.plot.plot(pen="y")
@@ -504,6 +512,24 @@ class LockInSpectrumFinderWidget(QWidget):
         else:
             self.plot.getPlotItem().setLogMode(x=False, y=False)
 
+    def _get_display_offset_db(self) -> float:
+        if self.display_unit == "dBV":
+            return self.module.audio_engine.calibration.get_input_offset_db()
+        return 0.0
+
+    def _update_plot_unit_label(self):
+        self.plot.setLabel("left", tr("Amplitude"), units=self.display_unit)
+
+    def _refresh_display_curve(self):
+        if not hasattr(self, "averaged_amps") or self.averaged_amps is None:
+            return
+        if not hasattr(self, "current_freqs"):
+            return
+
+        avg_dbfs = 20.0 * np.log10(self.averaged_amps + 1e-15)
+        self.current_mags = avg_dbfs + self._get_display_offset_db()
+        self.curve.setData(self.current_freqs, self.current_mags)
+
     def reset_averaging(self):
         self.averaged_amps = None
         self.frames_counted = 0
@@ -517,6 +543,11 @@ class LockInSpectrumFinderWidget(QWidget):
         self._update_ui_visibility()
         self._update_buffer_options()
         self.reset_averaging()
+
+    def on_display_unit_changed(self, idx):
+        self.display_unit = self.combo_display_unit.itemData(idx)
+        self._update_plot_unit_label()
+        self._refresh_display_curve()
 
     def on_toggle(self, checked):
         if checked:
@@ -592,7 +623,7 @@ class LockInSpectrumFinderWidget(QWidget):
             self.frames_counted = 0
 
         if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
-            self.current_mags = np.full(len(freqs), -180.0)
+            self.current_mags = np.full(len(freqs), -180.0 + self._get_display_offset_db())
 
         self.frames_counted += 1
 
@@ -625,7 +656,7 @@ class LockInSpectrumFinderWidget(QWidget):
             self.averaged_amps[start_idx:end_idx] = (1.0 - alpha) * self.averaged_amps[start_idx:end_idx] + alpha * a_chunk
 
         avg_db = 20.0 * np.log10(self.averaged_amps[start_idx:end_idx] + 1e-15)
-        self.current_mags[start_idx:end_idx] = avg_db
+        self.current_mags[start_idx:end_idx] = avg_db + self._get_display_offset_db()
         self.curve.setData(self.current_freqs, self.current_mags)
 
         if hasattr(self, 'sweep_line'):
