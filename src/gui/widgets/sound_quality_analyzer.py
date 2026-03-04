@@ -40,6 +40,11 @@ class AnalysisWorker(QThread):
     results_ready = pyqtSignal(object)
     error_occurred = pyqtSignal(str)
 
+    _roughness_sos_pre_cache = {}
+    _roughness_mod_sos_cache = {}
+    _fluctuation_sos_pre_cache = {}
+    _fluctuation_mod_sos_cache = {}
+
     def __init__(self, file_path, target_sr):
         super().__init__()
         self.file_path = file_path
@@ -350,27 +355,18 @@ class AnalysisWorker(QThread):
 
         # Let's use `scipy.signal.sosfilt` with a few Bark filters.
         # Center freqs for Barks 3, 7, 11, 15, 19 (~ 300, 840, 1480, 2500, 4800 Hz)
-
-        c_freqs = [300, 840, 1480, 2500, 4800, 9500]
-
         # Process chunks to save memory, but we need filter state.
         # To avoid complexity, process whole file if < 1 min, or chunk stream.
         # Assuming short files for now (Widget context).
-
-        # Pre-design filters (2nd order bandpass)
-        sos_list = []
-        for fc in c_freqs:
-            # Q factor ~ 2 (Wide enough to overlap Barks roughly)
-            if fc < sr / 2:
-                sos = signal.butter(2, [fc * 0.7, fc * 1.4], btype="bandpass", fs=sr, output="sos")
-                sos_list.append(sos)
 
         # Calculate envelope and modulation for each band
         # Sum of specific roughnesses.
 
         # Time weighting:
         # Modulation filter: Bandpass 20-150Hz.
-        mod_sos = signal.butter(2, [20, 150], btype="bandpass", fs=sr, output="sos")
+        if sr not in self._roughness_mod_sos_cache:
+            self._roughness_mod_sos_cache[sr] = signal.butter(2, [20, 150], btype="bandpass", fs=sr, output="sos")
+        mod_sos = self._roughness_mod_sos_cache[sr]
 
         # We need time series output, so we compute R(t)
         # This is getting heavy.
@@ -386,7 +382,10 @@ class AnalysisWorker(QThread):
 
         # 1. Hilbert Envelope of full signal (or filtered to 200Hz-15kHz)
         # Remove DC/Sub-bass which dominates envelope but doesn't cause roughness.
-        sos_pre = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
+        if sr not in self._roughness_sos_pre_cache:
+            self._roughness_sos_pre_cache[sr] = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
+        sos_pre = self._roughness_sos_pre_cache[sr]
+
         filtered = signal.sosfilt(sos_pre, audio)
 
         env = np.abs(signal.hilbert(filtered))
@@ -516,14 +515,20 @@ class AnalysisWorker(QThread):
         # Similar to roughness but for slower modulations (< 20Hz, peak around 4Hz)
 
         # 1. Hilbert Envelope of full signal
-        sos_pre = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
+        if sr not in self._fluctuation_sos_pre_cache:
+            self._fluctuation_sos_pre_cache[sr] = signal.butter(1, 200, btype="highpass", fs=sr, output="sos")
+        sos_pre = self._fluctuation_sos_pre_cache[sr]
+
         filtered = signal.sosfilt(sos_pre, audio)
 
         env = np.abs(signal.hilbert(filtered))
         env_ac = env - np.mean(env)
 
         # 2. Extract Modulation Signal (0.5-20 Hz)
-        mod_sos = signal.butter(2, [0.5, 20], btype="bandpass", fs=sr, output="sos")
+        if sr not in self._fluctuation_mod_sos_cache:
+            self._fluctuation_mod_sos_cache[sr] = signal.butter(2, [0.5, 20], btype="bandpass", fs=sr, output="sos")
+        mod_sos = self._fluctuation_mod_sos_cache[sr]
+
         mod_signal = signal.sosfilt(mod_sos, env_ac)
 
         # 3. RMS Calculation of Modulation vs Carrier
