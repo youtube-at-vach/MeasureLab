@@ -61,6 +61,9 @@ class LockInSpectrumFinder(MeasurementModule):
         self.mode = "Basic" # "Basic" or "Zoom"
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
+        
+        # Display
+        self.display_unit = "dBFS" # "dBFS", "dBV", "dB SPL"
 
     @property
     def name(self) -> str:
@@ -163,16 +166,20 @@ class LockInSpectrumFinder(MeasurementModule):
         p_stop = self.stop_freq
         p_points = self.points
         p_spacing = self.spacing
-        p_offset = self.audio_engine.calibration.get_input_offset_db()
+        p_unit = self.display_unit
+        p_offset_dbv = self.audio_engine.calibration.get_input_offset_db()
+        p_offset_spl = self.audio_engine.calibration.get_spl_offset_db()
         p_mode = self.mode
         p_zoom_center = self.zoom_center_freq
         p_zoom_span = self.zoom_span
 
         self._calculation_future = self.executor.submit(
-            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, p_offset, p_mode, p_zoom_center, p_zoom_span
+            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, 
+            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span
         )
 
-    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, cal_offset, 
+    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, 
+                        display_unit, offset_dbv, offset_spl,
                         mode="Basic", zoom_center=1000.0, zoom_span=10.0):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
@@ -225,8 +232,15 @@ class LockInSpectrumFinder(MeasurementModule):
                 exp_chunk = np.exp(phase)
                 # Direct correlation on decimated baseband with windowing (vectorized)
                 vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
-                amp_rms = np.abs(vals) * np.sqrt(2.0)
-                mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15) + cal_offset
+                amp = np.abs(vals) * 2.0
+                if display_unit in ["dBV", "dB SPL"]:
+                    amp /= np.sqrt(2.0)
+                
+                mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+                if display_unit == "dBV":
+                    mags_db_chunk += offset_dbv
+                elif display_unit == "dB SPL" and offset_spl is not None:
+                    mags_db_chunk += offset_spl
 
                 mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -293,8 +307,15 @@ class LockInSpectrumFinder(MeasurementModule):
             # Extract magnitudes for this chunk
             X = coeff[1:]
             iq = X.reshape(-1, 2)
-            amp_rms = np.hypot(iq[:, 0], iq[:, 1]) / np.sqrt(2.0)
-            mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15) + cal_offset
+            amp = np.hypot(iq[:, 0], iq[:, 1])
+            if display_unit in ["dBV", "dB SPL"]:
+                amp /= np.sqrt(2.0)
+            
+            mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+            if display_unit == "dBV":
+                mags_db_chunk += offset_dbv
+            elif display_unit == "dB SPL" and offset_spl is not None:
+                mags_db_chunk += offset_spl
 
             mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -372,6 +393,14 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_points.setSingleStep(32)
         self.spin_points.valueChanged.connect(self.on_points_changed)
         form.addRow(tr("Basis Points:"), self.spin_points)
+        
+        # Display Unit
+        self.lbl_unit = QLabel(tr("Display Unit:"))
+        self.combo_unit = QComboBox()
+        self.combo_unit.addItems(["dBFS", "dBV", "dB SPL"])
+        self.combo_unit.setCurrentText(self.module.display_unit)
+        self.combo_unit.currentTextChanged.connect(self.on_unit_changed)
+        form.addRow(self.lbl_unit, self.combo_unit)
 
         self.lbl_start_f = QLabel(tr("Start Freq:"))
         self.spin_start_f = QDoubleSpinBox()
@@ -437,7 +466,7 @@ class LockInSpectrumFinderWidget(QWidget):
         right_panel = QVBoxLayout()
         self.plot = pg.PlotWidget(title=tr("Lock-in Spectrum"))
         self.plot.setLabel("bottom", tr("Frequency"), units="Hz")
-        self.plot.setLabel("left", tr("Amplitude"), units="dBFS")
+        self.plot.setLabel("left", tr("Amplitude"), units=self.module.display_unit)
         self.plot.showGrid(x=True, y=True)
         self.plot.setYRange(-180, 10)
         self.curve = self.plot.plot(pen="y")
@@ -565,6 +594,11 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def on_zoom_span_changed(self, val):
         self.module.zoom_span = val
+        self.reset_averaging()
+
+    def on_unit_changed(self, text):
+        self.module.display_unit = text
+        self.plot.setLabel("left", tr("Amplitude"), units=text)
         self.reset_averaging()
 
     def check_calculation(self):
