@@ -89,7 +89,6 @@ class SoundLevelMeter(MeasurementModule):
     def description(self):
         return "Advanced sound pressure level meter with A/C/Z weighting and time constants."
 
-
     def get_widget(self):
         return SoundLevelMeterWidget(self)
 
@@ -222,16 +221,15 @@ class SoundLevelMeter(MeasurementModule):
 
         # 3. Apply standard Impulse logic on reduced data (Python loop)
         curr = self.current_sq_val
-        out_low = np.empty_like(sig_low)
 
-        # Performance critical loop (now 8x smaller)
-        for i in range(len(sig_low)):
-            s = sig_low[i]
-            if s > curr:
-                curr = alpha_rise * s + (1.0 - alpha_rise) * curr
-            else:
-                curr = alpha_fall * s + (1.0 - alpha_fall) * curr
-            out_low[i] = curr
+        # Performance critical loop (optimized using list comprehension)
+        cr = 1.0 - alpha_rise
+        cf = 1.0 - alpha_fall
+
+        # Convert to list for faster iteration and use walrus operator for state accumulation
+        sig_list = sig_low.tolist()
+        out_list = [curr := (alpha_rise * s + cr * curr if s > curr else alpha_fall * s + cf * curr) for s in sig_list]
+        out_low = np.array(out_list, dtype=sig_low.dtype)
 
         # 4. Upsample (Repeat)
         out_high = np.repeat(out_low, factor)
