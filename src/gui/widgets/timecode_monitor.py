@@ -93,10 +93,6 @@ class _TimecodeChannelState:
     last_output_latency_sec: float = 0.0
 
 
-
-
-
-
 class TimecodeMonitor(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -242,8 +238,6 @@ class TimecodeMonitor(MeasurementModule):
 
     def get_widget(self):
         return TimecodeMonitorWidget(self)
-
-
 
     def start_analysis(self):
         if self.is_running:
@@ -885,65 +879,69 @@ class TimecodeMonitor(MeasurementModule):
         if window <= 0:
             window = 0.8
 
-        samples = [(t, f) for (t, f) in list(ch.jam_history) if (float(now) - float(t)) <= window]
-        if len(samples) < int(min_samples):
-            samples = list(ch.jam_history)[-max(int(min_samples), 1) :]
-        if len(samples) < int(min_samples):
+        jam_hist = list(ch.jam_history)
+        if not jam_hist:
             return False
 
-        samples.sort(key=lambda x: float(x[0]))
+        samples_np = np.array(jam_hist, dtype=np.float64)
+        t_all = samples_np[:, 0]
+        f_all = samples_np[:, 1].astype(np.int64)
+
+        mask_window = (float(now) - t_all) <= window
+
+        if np.sum(mask_window) < int(min_samples):
+            n_keep = max(int(min_samples), 1)
+            t_samples = t_all[-n_keep:]
+            f_samples = f_all[-n_keep:]
+        else:
+            t_samples = t_all[mask_window]
+            f_samples = f_all[mask_window]
+
+        if len(t_samples) < int(min_samples):
+            return False
+
+        # Sort by time
+        sort_idx = np.argsort(t_samples)
+        t_samples = t_samples[sort_idx]
+        f_samples = f_samples[sort_idx]
+
         frames_per_day = int(24 * 3600 * nominal_fps)
-        unwrapped: list[tuple[float, int]] = []
-        prev = int(samples[0][1])
-        offset = 0
-        unwrapped.append((float(samples[0][0]), int(prev)))
-        for t, f in samples[1:]:
-            f_i = int(f)
-            if frames_per_day > 0:
-                d = f_i - prev
-                if d < -(frames_per_day // 2):
-                    offset += frames_per_day
-                elif d > (frames_per_day // 2):
-                    offset -= frames_per_day
-            f_u = int(f_i + offset)
-            unwrapped.append((float(t), f_u))
-            prev = f_i
+        if frames_per_day > 0:
+            diffs = np.diff(f_samples)
+            offsets = np.zeros_like(diffs, dtype=np.int64)
+            offsets[diffs < -(frames_per_day // 2)] = frames_per_day
+            offsets[diffs > (frames_per_day // 2)] = -frames_per_day
+            offset_cumsum = np.concatenate(([0], np.cumsum(offsets)))
+            f_u = f_samples + offset_cumsum
+        else:
+            f_u = f_samples
 
-        offsets = [float(f) - (float(fps) * float(t)) for (t, f) in unwrapped]
-        offsets.sort()
-        if not offsets:
+        o_arr = f_u.astype(np.float64) - (float(fps) * t_samples)
+        if len(o_arr) == 0:
             return False
-        mid = len(offsets) // 2
-        med = float(offsets[mid]) if (len(offsets) % 2 == 1) else float((offsets[mid - 1] + offsets[mid]) / 2.0)
 
-        abs_dev = [abs(o - med) for o in offsets]
-        abs_dev.sort()
-        mad_mid = len(abs_dev) // 2
-        mad = (
-            float(abs_dev[mad_mid])
-            if (len(abs_dev) % 2 == 1)
-            else float((abs_dev[mad_mid - 1] + abs_dev[mad_mid]) / 2.0)
-        )
+        med = np.median(o_arr)
+        abs_dev = np.abs(o_arr - med)
+        mad = np.median(abs_dev)
         if mad <= 1e-9:
             mad = 0.0
 
-        keep: list[tuple[float, int]] = []
-        for t, f in unwrapped:
-            o = float(f) - (float(fps) * float(t))
-            if mad == 0.0:
-                keep.append((float(t), int(f)))
-            else:
-                if abs(o - med) <= (3.0 * mad):
-                    keep.append((float(t), int(f)))
-        if len(keep) < int(min_samples):
-            keep = unwrapped
+        if mad == 0.0:
+            keep_mask = np.ones(len(o_arr), dtype=bool)
+        else:
+            keep_mask = abs_dev <= (3.0 * mad)
 
-        offsets2 = [float(f) - (float(fps) * float(t)) for (t, f) in keep]
-        offsets2.sort()
-        mid2 = len(offsets2) // 2
-        b = float(offsets2[mid2]) if (len(offsets2) % 2 == 1) else float((offsets2[mid2 - 1] + offsets2[mid2]) / 2.0)
+        if np.sum(keep_mask) < int(min_samples):
+            keep_t = t_samples
+            keep_f = f_u
+        else:
+            keep_t = t_samples[keep_mask]
+            keep_f = f_u[keep_mask]
 
-        t_last, f_last = keep[-1]
+        offsets2 = keep_f.astype(np.float64) - (float(fps) * keep_t)
+        b = float(np.median(offsets2))
+
+        f_last = int(keep_f[-1])
         if float(fps) <= 0:
             return False
         captured_at = (float(f_last) - float(b)) / float(fps)
@@ -1272,7 +1270,7 @@ class TimecodeMonitorWidget(QWidget):
             v.addLayout(header)
 
             tc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            # QFont constructor takes a single family name. 
+            # QFont constructor takes a single family name.
             # We use the first one from our stack and rely on Qt's internal fallback,
             # or pass the first one and then set the families list.
             font_families = [f.strip() for f in MONOSPACE_FONT_FAMILY.split(",")]
