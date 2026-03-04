@@ -179,7 +179,7 @@ class LockInSpectrumFinder(MeasurementModule):
         """
         import time
         N = len(sig)
-        t = np.arange(N) / fs
+        t = np.arange(N, dtype=np.float64) / fs
 
         if mode == "Zoom":
             import scipy.signal as signal
@@ -220,15 +220,13 @@ class LockInSpectrumFinder(MeasurementModule):
                 if not self.is_running:
                     break
                 end_idx = min(i + chunk_size, points)
-                current_points = end_idx - i
-
-                mags_db_chunk = np.zeros(current_points)
-                for j in range(current_points):
-                    f_off = freqs_offset[i + j]
-                    # Direct correlation on decimated baseband with windowing
-                    val = np.mean(sig_dec_win * np.exp(-1j * 2 * np.pi * f_off * t_dec)) / window_coherent_gain
-                    amp_rms = np.abs(val) * np.sqrt(2.0)
-                    mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
+                f_chunk = freqs_offset[i:end_idx]
+                phase = -2j * np.pi * np.outer(t_dec, f_chunk)
+                exp_chunk = np.exp(phase)
+                # Direct correlation on decimated baseband with windowing (vectorized)
+                vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
+                amp_rms = np.abs(vals) * np.sqrt(2.0)
+                mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15) + cal_offset
 
                 mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -259,6 +257,7 @@ class LockInSpectrumFinder(MeasurementModule):
         window = np.hanning(N)
         sqrt_win = np.sqrt(window)
         sig_win = sig * sqrt_win
+        two_pi_t = 2.0 * np.pi * t
 
         for i in range(0, points, chunk_size):
             if not self.is_running:
@@ -270,16 +269,12 @@ class LockInSpectrumFinder(MeasurementModule):
             # Allocate Basis Matrix for the local chunk
             # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
             num_bases = 1 + current_points * 2
-            B = np.zeros((N, num_bases), dtype=np.float64) # 高精度化 (float64)
+            B = np.empty((N, num_bases), dtype=np.float64) # 高精度化 (float64)
             B[:, 0] = 1.0 # DC
-
-            for j in range(current_points):
-                f = freqs[i + j]
-                omega = 2.0 * np.pi * f
-                phase = omega * t
-                idx = 1 + j * 2
-                B[:, idx] = np.cos(phase)
-                B[:, idx + 1] = np.sin(phase)
+            f_chunk = freqs[i:end_idx]
+            phase = np.outer(two_pi_t, f_chunk)
+            B[:, 1::2] = np.cos(phase)
+            B[:, 2::2] = np.sin(phase)
 
             # Bにも重みをかける
             B_win = B * sqrt_win[:, np.newaxis]
@@ -296,14 +291,10 @@ class LockInSpectrumFinder(MeasurementModule):
                 coeff = np.linalg.lstsq(B_win, sig_win, rcond=None)[0]
 
             # Extract magnitudes for this chunk
-            mags_db_chunk = np.zeros(current_points)
             X = coeff[1:]
-            for j in range(current_points):
-                I_comp = X[j * 2]
-                Q_comp = X[j * 2 + 1]
-                amp = np.sqrt(I_comp**2 + Q_comp**2)
-                amp_rms = amp / np.sqrt(2.0)
-                mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
+            iq = X.reshape(-1, 2)
+            amp_rms = np.hypot(iq[:, 0], iq[:, 1]) / np.sqrt(2.0)
+            mags_db_chunk = 20.0 * np.log10(amp_rms + 1e-15) + cal_offset
 
             mags_db_all[i:end_idx] = mags_db_chunk
 
