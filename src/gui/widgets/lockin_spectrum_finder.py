@@ -63,7 +63,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.zoom_span = 10.0
 
         # Analysis Settings
-        self.window_type = "blackmanharris" # "hann", "hamming", "blackmanharris"
+        self.window_type = "none" # "none", "hann", "hamming", "blackmanharris"
 
         # Display
         self.display_unit = "dBFS" # "dBFS", "dBV", "dB SPL"
@@ -182,9 +182,9 @@ class LockInSpectrumFinder(MeasurementModule):
             p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window
         )
 
-    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, 
+    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing,
                         display_unit, offset_dbv, offset_spl,
-                        mode="Basic", zoom_center=1000.0, zoom_span=10.0, window_type="blackmanharris"):
+                        mode="Basic", zoom_center=1000.0, zoom_span=10.0, window_type="none"):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
@@ -220,11 +220,16 @@ class LockInSpectrumFinder(MeasurementModule):
             mags_db_all = np.zeros(points)
 
             # --- 窓関数の適用 ---
-            window = signal.get_window(window_type, N_dec)
-            sig_dec_win = sig_dec * window
-            window_coherent_gain = np.mean(window)
-            if window_coherent_gain == 0:
+            if window_type == "none":
+                window = np.ones(N_dec, dtype=np.float64)
+                sig_dec_win = sig_dec
                 window_coherent_gain = 1.0
+            else:
+                window = signal.get_window(window_type, N_dec)
+                sig_dec_win = sig_dec * window
+                window_coherent_gain = np.mean(window)
+                if window_coherent_gain == 0:
+                    window_coherent_gain = 1.0
 
             chunk_size = 32
             for i in range(0, points, chunk_size):
@@ -274,7 +279,10 @@ class LockInSpectrumFinder(MeasurementModule):
         # --- 初期窓関数の適用 (指定された窓関数) ---
         # このNはsig全体の長さ
         import scipy.signal as signal
-        window_orig = signal.get_window(window_type, N)
+        if window_type == "none":
+            window_orig = np.ones(N, dtype=np.float64)
+        else:
+            window_orig = signal.get_window(window_type, N)
         sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
         sig_win_orig = sig * sqrt_win_orig
 
@@ -296,7 +304,10 @@ class LockInSpectrumFinder(MeasurementModule):
                 sig_dec = signal.resample_poly(sig, 1, M)
                 N_chunk = len(sig_dec)
                 fs_dec = fs / M
-                window_dec = signal.get_window(window_type, N_chunk)
+                if window_type == "none":
+                    window_dec = np.ones(N_chunk, dtype=np.float64)
+                else:
+                    window_dec = signal.get_window(window_type, N_chunk)
                 sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
                 sig_win = sig_dec * sqrt_win
                 t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
@@ -429,7 +440,7 @@ class LockInSpectrumFinderWidget(QWidget):
         # Window Function
         self.lbl_window = QLabel(tr("Window:"))
         self.combo_window = QComboBox()
-        self.combo_window.addItems(["blackmanharris", "hann", "hamming"])
+        self.combo_window.addItems(["none", "blackmanharris", "hann", "hamming"])
         self.combo_window.setCurrentText(self.module.window_type)
         self.combo_window.currentTextChanged.connect(self.on_window_changed)
         form.addRow(self.lbl_window, self.combo_window)
