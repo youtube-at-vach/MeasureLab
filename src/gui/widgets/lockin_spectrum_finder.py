@@ -6,6 +6,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import pyqtSignal, QObject, QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -61,6 +62,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.mode = "Basic" # "Basic" or "Zoom"
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
+        self.track_peak = False
 
         # Analysis Settings
         self.window_type = "none" # "none", "hann", "hamming", "blackmanharris"
@@ -266,6 +268,17 @@ class LockInSpectrumFinder(MeasurementModule):
             # Avoid log of 0 or negative
             s_f = max(0.1, start_f)
             freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
+        elif spacing == "Integer":
+            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
+            freqs = freqs[freqs >= 1.0] # Prevent 0 Hz
+            points = len(freqs)
+        elif spacing == "Int x Sync":
+            df = fs / N
+            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
+            freqs = freqs[freqs >= df] # Prevent 0 Hz and extremely low frequencies
+            if len(freqs) == 0:
+                freqs = np.array([df])
+            points = len(freqs)
         else:
             freqs = np.linspace(start_f, stop_f, points)
 
@@ -473,6 +486,8 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_spacing = QComboBox()
         self.combo_spacing.addItem(tr("Log"), "Log")
         self.combo_spacing.addItem(tr("Lin"), "Lin")
+        self.combo_spacing.addItem(tr("Integer"), "Integer")
+        self.combo_spacing.addItem(tr("Int x Sync"), "Int x Sync")
         idx = self.combo_spacing.findData(self.module.spacing)
         if idx >= 0:
             self.combo_spacing.setCurrentIndex(idx)
@@ -486,7 +501,16 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_zoom_center.setValue(self.module.zoom_center_freq)
         self.spin_zoom_center.setSuffix(" Hz")
         self.spin_zoom_center.valueChanged.connect(self.on_zoom_center_changed)
-        form.addRow(self.lbl_zoom_center, self.spin_zoom_center)
+
+        self.chk_track_peak = QCheckBox(tr("Track Peak"))
+        self.chk_track_peak.setChecked(self.module.track_peak)
+        self.chk_track_peak.stateChanged.connect(self.on_track_peak_changed)
+
+        hbox_zoom_center = QHBoxLayout()
+        hbox_zoom_center.setContentsMargins(0, 0, 0, 0)
+        hbox_zoom_center.addWidget(self.spin_zoom_center)
+        hbox_zoom_center.addWidget(self.chk_track_peak)
+        form.addRow(self.lbl_zoom_center, hbox_zoom_center)
 
         self.lbl_zoom_span = QLabel(tr("Zoom Span (±):"))
         self.spin_zoom_span = QDoubleSpinBox()
@@ -542,6 +566,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.lbl_zoom_center.setVisible(is_zoom)
         self.spin_zoom_center.setVisible(is_zoom)
+        self.chk_track_peak.setVisible(is_zoom)
         self.lbl_zoom_span.setVisible(is_zoom)
         self.spin_zoom_span.setVisible(is_zoom)
 
@@ -647,6 +672,9 @@ class LockInSpectrumFinderWidget(QWidget):
         self.module.zoom_span = val
         self.reset_averaging()
 
+    def on_track_peak_changed(self, state):
+        self.module.track_peak = bool(state)
+
     def on_window_changed(self, text):
         self.module.window_type = text
         self.reset_averaging()
@@ -746,3 +774,9 @@ class LockInSpectrumFinderWidget(QWidget):
         if self.spin_averages.value() > 1:
             avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
         self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
+
+        if self.module.mode == "Zoom" and self.module.track_peak:
+            peak_idx = int(np.argmax(self.current_mags))
+            new_center = float(self.current_freqs[peak_idx])
+            if abs(new_center - self.module.zoom_center_freq) > 1e-6:
+                self.spin_zoom_center.setValue(new_center)

@@ -52,12 +52,16 @@ You can select between two analysis modes based on your needs.
 * **Stop Freq**
     * Specifies the stopping frequency (Hz) for the analysis.
 * **Spacing**
-    * Choose the spacing of points between `Log` (logarithmic) or `Lin` (linear). The X-axis of the plot switches automatically to match this setting.
+    * Choose the spacing of points between `Log` (logarithmic), `Lin` (linear), `Integer` (rounded to nearest integer), or `Int x Sync` (integer multiple of the sample sync frequency). The X-axis of the plot switches automatically to match this setting.
+    * **Integer**: Ensures that all analysis frequencies are exact integers, making it easier to accurately capture peaks of artificially generated signals (which are often set to natural numbers like 1000Hz).
+    * **Int x Sync**: Rounds frequencies so they correspond exclusively to exact multiples of the analysis buffer resolution (`fs / buffer_size`). Ideal for precision tracking of signals generated synchronously with the measurement buffer.
 
 ### Zoom Mode Specific Settings
 
 * **Zoom Center**
     * Specifies the center frequency (Hz) for the zoom analysis.
+* **Track Peak**
+    * When checked, the center frequency is automatically updated to the frequency of the highest peak detected after each analysis sweep. This is useful for tracking drifting peaks or precisely converging on the true center frequency.
 * **Zoom Span (±)**
     * Specifies the analysis width (±Hz) from the center frequency. (e.g., if Center=1000Hz and Span=10Hz, it analyzes the range from 990Hz to 1010Hz).
 
