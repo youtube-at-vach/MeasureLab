@@ -501,11 +501,11 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_zoom_center.setValue(self.module.zoom_center_freq)
         self.spin_zoom_center.setSuffix(" Hz")
         self.spin_zoom_center.valueChanged.connect(self.on_zoom_center_changed)
-        
+
         self.chk_track_peak = QCheckBox(tr("Track Peak"))
         self.chk_track_peak.setChecked(self.module.track_peak)
         self.chk_track_peak.stateChanged.connect(self.on_track_peak_changed)
-        
+
         hbox_zoom_center = QHBoxLayout()
         hbox_zoom_center.setContentsMargins(0, 0, 0, 0)
         hbox_zoom_center.addWidget(self.spin_zoom_center)
