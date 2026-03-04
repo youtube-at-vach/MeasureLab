@@ -62,6 +62,12 @@ class LockInSpectrumFinder(MeasurementModule):
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
 
+        # Analysis Settings
+        self.window_type = "none" # "none", "hann", "hamming", "blackmanharris"
+
+        # Display
+        self.display_unit = "dBFS" # "dBFS", "dBV", "dB SPL"
+
     @property
     def name(self) -> str:
         return "Lock-in Spectrum Finder"
@@ -163,26 +169,31 @@ class LockInSpectrumFinder(MeasurementModule):
         p_stop = self.stop_freq
         p_points = self.points
         p_spacing = self.spacing
-        p_offset = self.audio_engine.calibration.get_input_offset_db()
+        p_unit = self.display_unit
+        p_offset_dbv = self.audio_engine.calibration.get_input_offset_db()
+        p_offset_spl = self.audio_engine.calibration.get_spl_offset_db()
         p_mode = self.mode
         p_zoom_center = self.zoom_center_freq
         p_zoom_span = self.zoom_span
+        p_window = self.window_type
 
         self._calculation_future = self.executor.submit(
-            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, p_offset, p_mode, p_zoom_center, p_zoom_span
+            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, 
+            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window
         )
 
-    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, cal_offset, 
-                        mode="Basic", zoom_center=1000.0, zoom_span=10.0):
+    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing,
+                        display_unit, offset_dbv, offset_spl,
+                        mode="Basic", zoom_center=1000.0, zoom_span=10.0, window_type="none"):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
         import time
+        import scipy.signal as signal
         N = len(sig)
-        t = np.arange(N) / fs
+        t = np.arange(N, dtype=np.float64) / fs
 
         if mode == "Zoom":
-            import scipy.signal as signal
             s_f = zoom_center - zoom_span
             e_f = zoom_center + zoom_span
             freqs = np.linspace(s_f, e_f, points)
@@ -208,27 +219,37 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs_offset = np.linspace(-zoom_span, zoom_span, points)
             mags_db_all = np.zeros(points)
 
-            # --- 窓関数の適用 (Hanning) ---
-            window = signal.windows.hann(N_dec)
-            sig_dec_win = sig_dec * window
-            window_coherent_gain = np.mean(window)
-            if window_coherent_gain == 0:
+            # --- 窓関数の適用 ---
+            if window_type == "none":
+                window = np.ones(N_dec, dtype=np.float64)
+                sig_dec_win = sig_dec
                 window_coherent_gain = 1.0
+            else:
+                window = signal.get_window(window_type, N_dec)
+                sig_dec_win = sig_dec * window
+                window_coherent_gain = np.mean(window)
+                if window_coherent_gain == 0:
+                    window_coherent_gain = 1.0
 
             chunk_size = 32
             for i in range(0, points, chunk_size):
                 if not self.is_running:
                     break
                 end_idx = min(i + chunk_size, points)
-                current_points = end_idx - i
+                f_chunk = freqs_offset[i:end_idx]
+                phase = t_dec[:, np.newaxis] * f_chunk
+                exp_chunk = np.exp(-2j * np.pi * phase)
+                # Direct correlation on decimated baseband with windowing (vectorized)
+                vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
+                amp = np.abs(vals) * 2.0
+                if display_unit in ["dBV", "dB SPL"]:
+                    amp /= np.sqrt(2.0)
 
-                mags_db_chunk = np.zeros(current_points)
-                for j in range(current_points):
-                    f_off = freqs_offset[i + j]
-                    # Direct correlation on decimated baseband with windowing
-                    val = np.mean(sig_dec_win * np.exp(-1j * 2 * np.pi * f_off * t_dec)) / window_coherent_gain
-                    amp_rms = np.abs(val) * np.sqrt(2.0)
-                    mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
+                mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+                if display_unit == "dBV":
+                    mags_db_chunk += offset_dbv
+                elif display_unit == "dB SPL" and offset_spl is not None:
+                    mags_db_chunk += offset_spl
 
                 mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -255,10 +276,15 @@ class LockInSpectrumFinder(MeasurementModule):
         chunk_size = 32
         mags_db_all = np.zeros(points)
 
-        # --- 窓関数の適用 (Hanningの平方根) ---
-        window = np.hanning(N)
-        sqrt_win = np.sqrt(window)
-        sig_win = sig * sqrt_win
+        # --- 初期窓関数の適用 (指定された窓関数) ---
+        # このNはsig全体の長さ
+        import scipy.signal as signal
+        if window_type == "none":
+            window_orig = np.ones(N, dtype=np.float64)
+        else:
+            window_orig = signal.get_window(window_type, N)
+        sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
+        sig_win_orig = sig * sqrt_win_orig
 
         for i in range(0, points, chunk_size):
             if not self.is_running:
@@ -266,23 +292,49 @@ class LockInSpectrumFinder(MeasurementModule):
 
             end_idx = min(i + chunk_size, points)
             current_points = end_idx - i
-
-            # Allocate Basis Matrix for the local chunk
-            # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
             num_bases = 1 + current_points * 2
-            B = np.zeros((N, num_bases), dtype=np.float64) # 高精度化 (float64)
-            B[:, 0] = 1.0 # DC
+            f_chunk = freqs[i:end_idx]
 
-            for j in range(current_points):
-                f = freqs[i + j]
-                omega = 2.0 * np.pi * f
-                phase = omega * t
-                idx = 1 + j * 2
-                B[:, idx] = np.cos(phase)
-                B[:, idx + 1] = np.sin(phase)
+            # --- Multi-rate downsampling ---
+            max_f = f_chunk[-1]
+            target_fs = max_f * 4.0
+            M = max(1, int(fs / target_fs))
 
-            # Bにも重みをかける
-            B_win = B * sqrt_win[:, np.newaxis]
+            if M > 1:
+                sig_dec = signal.resample_poly(sig, 1, M)
+                N_chunk = len(sig_dec)
+                fs_dec = fs / M
+                if window_type == "none":
+                    window_dec = np.ones(N_chunk, dtype=np.float64)
+                else:
+                    window_dec = signal.get_window(window_type, N_chunk)
+                sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
+                sig_win = sig_dec * sqrt_win
+                t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
+            else:
+                N_chunk = N
+                fs_dec = fs
+                sqrt_win = sqrt_win_orig
+                sig_win = sig_win_orig
+                t_chunk = t
+
+            two_pi_t = 2.0 * np.pi * t_chunk
+            phase = two_pi_t[:, np.newaxis] * f_chunk
+
+            # Allocate Windowed Basis Matrix for the local chunk
+            # [1, cos(w1), sin(w1), cos(w1), sin(w1), ...]
+            B_win = np.empty((N_chunk, num_bases), dtype=np.float64) # 高精度化 (float64)
+            B_win[:, 0] = sqrt_win # DC includes the window weight
+
+            # Compute and apply window weight directly in pre-allocated array
+            np.cos(phase, out=B_win[:, 1::2])
+            B_win[:, 1::2] *= sqrt_win[:, np.newaxis]
+
+            np.sin(phase, out=B_win[:, 2::2])
+            B_win[:, 2::2] *= sqrt_win[:, np.newaxis]
+
+            # Free memory immediately
+            del phase
 
             # Since B can be huge, we use Gram directly for speed:
             gram = np.dot(B_win.T, B_win)
@@ -296,14 +348,17 @@ class LockInSpectrumFinder(MeasurementModule):
                 coeff = np.linalg.lstsq(B_win, sig_win, rcond=None)[0]
 
             # Extract magnitudes for this chunk
-            mags_db_chunk = np.zeros(current_points)
             X = coeff[1:]
-            for j in range(current_points):
-                I_comp = X[j * 2]
-                Q_comp = X[j * 2 + 1]
-                amp = np.sqrt(I_comp**2 + Q_comp**2)
-                amp_rms = amp / np.sqrt(2.0)
-                mags_db_chunk[j] = 20 * np.log10(amp_rms + 1e-15) + cal_offset
+            iq = X.reshape(-1, 2)
+            amp = np.hypot(iq[:, 0], iq[:, 1])
+            if display_unit in ["dBV", "dB SPL"]:
+                amp /= np.sqrt(2.0)
+
+            mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+            if display_unit == "dBV":
+                mags_db_chunk += offset_dbv
+            elif display_unit == "dB SPL" and offset_spl is not None:
+                mags_db_chunk += offset_spl
 
             mags_db_all[i:end_idx] = mags_db_chunk
 
@@ -382,6 +437,22 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_points.valueChanged.connect(self.on_points_changed)
         form.addRow(tr("Basis Points:"), self.spin_points)
 
+        # Window Function
+        self.lbl_window = QLabel(tr("Window:"))
+        self.combo_window = QComboBox()
+        self.combo_window.addItems(["none", "blackmanharris", "hann", "hamming"])
+        self.combo_window.setCurrentText(self.module.window_type)
+        self.combo_window.currentTextChanged.connect(self.on_window_changed)
+        form.addRow(self.lbl_window, self.combo_window)
+
+        # Display Unit
+        self.lbl_unit = QLabel(tr("Display Unit:"))
+        self.combo_unit = QComboBox()
+        self.combo_unit.addItems(["dBFS", "dBV", "dB SPL"])
+        self.combo_unit.setCurrentText(self.module.display_unit)
+        self.combo_unit.currentTextChanged.connect(self.on_unit_changed)
+        form.addRow(self.lbl_unit, self.combo_unit)
+
         self.lbl_start_f = QLabel(tr("Start Freq:"))
         self.spin_start_f = QDoubleSpinBox()
         self.spin_start_f.setRange(1.0, 96000.0)
@@ -446,7 +517,7 @@ class LockInSpectrumFinderWidget(QWidget):
         right_panel = QVBoxLayout()
         self.plot = pg.PlotWidget(title=tr("Lock-in Spectrum"))
         self.plot.setLabel("bottom", tr("Frequency"), units="Hz")
-        self.plot.setLabel("left", tr("Amplitude"), units="dBFS")
+        self.plot.setLabel("left", tr("Amplitude"), units=self.module.display_unit)
         self.plot.showGrid(x=True, y=True)
         self.plot.setYRange(-180, 10)
         self.curve = self.plot.plot(pen="y")
@@ -576,6 +647,15 @@ class LockInSpectrumFinderWidget(QWidget):
         self.module.zoom_span = val
         self.reset_averaging()
 
+    def on_window_changed(self, text):
+        self.module.window_type = text
+        self.reset_averaging()
+
+    def on_unit_changed(self, text):
+        self.module.display_unit = text
+        self.plot.setLabel("left", tr("Amplitude"), units=text)
+        self.reset_averaging()
+
     def check_calculation(self):
         if not self.module.is_running:
             return
@@ -599,6 +679,13 @@ class LockInSpectrumFinderWidget(QWidget):
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
             self.averaged_amps = np.zeros(len(freqs))
             self.frames_counted = 0
+
+            # Reset X-axis plot range on new parameters
+            # Handle Log scale formatting internally for UI bounds
+            xmin, xmax = freqs[0], freqs[-1]
+            if self.module.mode == "Basic" and self.module.spacing == "Log" and xmin > 0:
+                xmin, xmax = np.log10(xmin), np.log10(xmax)
+            self.plot.setXRange(xmin, xmax, padding=0.0)
 
         if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
             self.current_mags = np.full(len(freqs), -180.0)

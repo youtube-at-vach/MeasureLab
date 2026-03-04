@@ -69,8 +69,6 @@ ALL_MODULE_KEYS = [
     MODULE_1PPS_MONITOR,
 ]
 
-# Modules that are hidden unless --experimental flag is passed
 EXPERIMENTAL_MODULE_KEYS = [
     MODULE_LOCK_IN_THD_ANALYZER,
-    MODULE_LOCKIN_SPECTRUM_FINDER,
 ]
