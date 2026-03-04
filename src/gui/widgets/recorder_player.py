@@ -94,9 +94,15 @@ class FileSaveWorker(QThread):
             samplerate = info.samplerate
             channels = info.channels
 
-            with sf.SoundFile(self.source_path, 'r') as f_in:
-                with sf.SoundFile(self.target_path, 'w', samplerate=samplerate,
-                                  channels=channels, format=self.format, subtype=self.subtype) as f_out:
+            with sf.SoundFile(self.source_path, "r") as f_in:
+                with sf.SoundFile(
+                    self.target_path,
+                    "w",
+                    samplerate=samplerate,
+                    channels=channels,
+                    format=self.format,
+                    subtype=self.subtype,
+                ) as f_out:
                     while f_in.tell() < f_in.frames:
                         data = f_in.read(WRITE_BLOCK_SIZE)
                         f_out.write(data)
@@ -144,7 +150,6 @@ class RecorderPlayer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Record and play audio files (WAV, MP3, FLAC, etc.)"
-
 
     def get_widget(self):
         if self.widget is None:
@@ -194,9 +199,10 @@ class RecorderPlayer(MeasurementModule):
             samplerate = info.samplerate
             channels = info.channels
 
-            with sf.SoundFile(self._temp_record_file, 'r') as f_in:
-                with sf.SoundFile(filepath, 'w', samplerate=samplerate,
-                                  channels=channels, format=format, subtype=subtype) as f_out:
+            with sf.SoundFile(self._temp_record_file, "r") as f_in:
+                with sf.SoundFile(
+                    filepath, "w", samplerate=samplerate, channels=channels, format=format, subtype=subtype
+                ) as f_out:
                     while f_in.tell() < f_in.frames:
                         data = f_in.read(WRITE_BLOCK_SIZE)
                         f_out.write(data)
@@ -245,8 +251,9 @@ class RecorderPlayer(MeasurementModule):
             samplerate = int(self.audio_engine.sample_rate)
 
             # Open file for writing. using 'FLOAT' subtype for high quality temp storage
-            with sf.SoundFile(self._temp_record_file, mode='w', samplerate=samplerate,
-                              channels=channels, subtype='FLOAT') as f:
+            with sf.SoundFile(
+                self._temp_record_file, mode="w", samplerate=samplerate, channels=channels, subtype="FLOAT"
+            ) as f:
                 f.write(first_chunk)
 
                 while True:
@@ -263,7 +270,7 @@ class RecorderPlayer(MeasurementModule):
         self._remove_temp_file()
 
         # Create new temp file
-        fd, self._temp_record_file = tempfile.mkstemp(suffix='.wav')
+        fd, self._temp_record_file = tempfile.mkstemp(suffix=".wav")
         os.close(fd)
 
         # Init queue and thread
@@ -298,24 +305,29 @@ class RecorderPlayer(MeasurementModule):
                 self.callback_id = None
 
     def audio_callback(self, indata, outdata, frames, time_info, status):
-        # Recording
-        if self.is_recording:
-            # Select channels based on input_mode
-            if self.input_mode == "Stereo":
-                rec_data = indata.copy()
-            elif self.input_mode == "Left":
-                rec_data = indata[:, 0:1]  # Keep 2D
-            elif self.input_mode == "Right":
-                if indata.shape[1] > 1:
-                    rec_data = indata[:, 1:2]
-                else:
-                    rec_data = np.zeros((frames, 1), dtype=indata.dtype)
+        self._handle_recording(indata, frames)
+        self._handle_playback(outdata, frames)
 
-            if self._write_queue:
-                self._write_queue.put(rec_data)
-            self.recorded_samples += frames
+    def _handle_recording(self, indata, frames):
+        if not self.is_recording:
+            return
 
-        # Playback
+        # Select channels based on input_mode
+        if self.input_mode == "Stereo":
+            rec_data = indata.copy()
+        elif self.input_mode == "Left":
+            rec_data = indata[:, 0:1]  # Keep 2D
+        elif self.input_mode == "Right":
+            if indata.shape[1] > 1:
+                rec_data = indata[:, 1:2]
+            else:
+                rec_data = np.zeros((frames, 1), dtype=indata.dtype)
+
+        if self._write_queue:
+            self._write_queue.put(rec_data)
+        self.recorded_samples += frames
+
+    def _handle_playback(self, outdata, frames):
         # Capture reference locally to ensure consistency during callback (avoid race if main thread swaps buffer)
         current_buffer = self.playback_buffer
 
