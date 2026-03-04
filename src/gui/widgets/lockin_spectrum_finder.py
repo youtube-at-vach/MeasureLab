@@ -354,6 +354,14 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_mode.currentIndexChanged.connect(self.on_mode_changed)
         form.addRow(tr("Mode:"), self.combo_mode)
 
+        # Averages (EMA)
+        self.lbl_averages = QLabel(tr("Averages:"))
+        self.spin_averages = QSpinBox()
+        self.spin_averages.setRange(1, 1000)
+        self.spin_averages.setValue(1)
+        self.spin_averages.valueChanged.connect(self.on_averages_changed)
+        form.addRow(self.lbl_averages, self.spin_averages)
+
         # Buffer size
         self.combo_buffer = QComboBox()
         self._update_buffer_options()
@@ -505,14 +513,23 @@ class LockInSpectrumFinderWidget(QWidget):
         else:
             self.plot.getPlotItem().setLogMode(x=False, y=False)
 
+    def reset_averaging(self):
+        self.averaged_amps = None
+        self.frames_counted = 0
+
+    def on_averages_changed(self, val):
+        self.reset_averaging()
+
     def on_mode_changed(self, idx):
         self.module.mode = self.combo_mode.itemData(idx)
         self._update_plot_log_mode()
         self._update_ui_visibility()
         self._update_buffer_options()
+        self.reset_averaging()
 
     def on_toggle(self, checked):
         if checked:
+            self.reset_averaging()
             self.module.start_analysis()
             self.timer.start()
             self.btn_toggle.setText(tr("Stop Analysis"))
@@ -525,31 +542,39 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def on_buffer_changed(self, text):
         self.module.buffer_size = int(text)
+        self.reset_averaging()
         if self.module.is_running:
             self.module.stop_analysis()
             self.module.start_analysis()
 
     def on_input_ch_changed(self, idx):
         self.module.input_channel = idx
+        self.reset_averaging()
 
     def on_points_changed(self, val):
         self.module.points = val
+        self.reset_averaging()
 
     def on_start_f_changed(self, val):
         self.module.start_freq = val
+        self.reset_averaging()
 
     def on_stop_f_changed(self, val):
         self.module.stop_freq = val
+        self.reset_averaging()
 
     def on_spacing_changed(self, idx):
         self.module.spacing = self.combo_spacing.itemData(idx)
         self._update_plot_log_mode()
+        self.reset_averaging()
 
     def on_zoom_center_changed(self, val):
         self.module.zoom_center_freq = val
+        self.reset_averaging()
 
     def on_zoom_span_changed(self, val):
         self.module.zoom_span = val
+        self.reset_averaging()
 
     def check_calculation(self):
         if not self.module.is_running:
@@ -570,8 +595,15 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def on_sweep_started(self, freqs):
         self.current_freqs = freqs.copy()
+
+        if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
+            self.averaged_amps = np.zeros(len(freqs))
+            self.frames_counted = 0
+
         if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
             self.current_mags = np.full(len(freqs), -180.0)
+
+        self.frames_counted += 1
 
         if not hasattr(self, 'sweep_line'):
             self.sweep_line = pg.InfiniteLine(angle=90, movable=False, pen='r')
@@ -585,8 +617,26 @@ class LockInSpectrumFinderWidget(QWidget):
         self.lbl_status.setText(tr("Calculating... 0%"))
 
     def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
-        self.current_mags[start_idx:end_idx] = m_chunk
+        if not hasattr(self, 'current_freqs') or not hasattr(self, 'current_mags'):
+            return
+
+        if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(self.current_freqs):
+            self.averaged_amps = np.zeros(len(self.current_freqs))
+            self.frames_counted = 1
+
+        alpha = 1.0 / min(self.spin_averages.value(), max(1, self.frames_counted))
+
+        a_chunk = 10.0 ** (m_chunk / 20.0)
+
+        if self.frames_counted <= 1:
+            self.averaged_amps[start_idx:end_idx] = a_chunk
+        else:
+            self.averaged_amps[start_idx:end_idx] = (1.0 - alpha) * self.averaged_amps[start_idx:end_idx] + alpha * a_chunk
+
+        avg_db = 20.0 * np.log10(self.averaged_amps[start_idx:end_idx] + 1e-15)
+        self.current_mags[start_idx:end_idx] = avg_db
         self.curve.setData(self.current_freqs, self.current_mags)
+
         if hasattr(self, 'sweep_line'):
             self.sweep_line.show()
             val = f_chunk[-1]
@@ -594,14 +644,18 @@ class LockInSpectrumFinderWidget(QWidget):
                 val = np.log10(val)
             self.sweep_line.setValue(val)
         pct = int((end_idx / len(self.current_freqs)) * 100)
-        self.lbl_status.setText(tr("Calculating... {}%").format(pct))
+        avg_text = ""
+        if self.spin_averages.value() > 1:
+            avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+        self.lbl_status.setText(tr("Calculating... {}%").format(pct) + avg_text)
 
     def on_result_ready(self, result):
         freqs, mags_db = result
-        self.current_freqs = freqs
-        self.current_mags = mags_db
-        self.curve.setData(freqs, mags_db)
+        self.curve.setData(self.current_freqs, self.current_mags)
         if hasattr(self, 'sweep_line'):
             self.sweep_line.hide()
-        self.lbl_status.setText(tr("Spectrum Updated"))
 
+        avg_text = ""
+        if self.spin_averages.value() > 1:
+            avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+        self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
