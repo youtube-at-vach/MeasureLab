@@ -659,4 +659,3 @@ class LockInSpectrumFinderWidget(QWidget):
         if self.spin_averages.value() > 1:
             avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
         self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
-
