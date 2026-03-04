@@ -38,23 +38,24 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
 | 14 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
 | 15 | **Lock-in Harmonic Analyzer** | Ultra-low distortion measurement module utilizing the principle of a lock-in amplifier. It performs multi-parallel IQ detection (up to 200th order) strictly tuned to the fundamental and harmonics to extract minute distortion with high precision. |
-| 16 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
-| 17 | **Inverse Filter** | Deconvolution tool that designs inverse characteristic FIR from calibration map and applies it to audio files. Supports regularization with gain limit, tap count/smoothing specification, response preview, and batch processing with output peak normalization. |
-| 18 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
-| 19 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
-| 20 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
-| 21 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
-| 22 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
-| 23 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
-| 24 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
-| 25 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
-| 26 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
-| 27 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
-| 28 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
-| 29 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
-| 30 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
-| 31 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
-| 32 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
+| 16 | **Lock-in Spectrum Finder** | High-resolution spectrum finder using parallel lock-in detection (matrix projection). |
+| 17 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
+| 18 | **Inverse Filter** | Deconvolution tool that designs inverse characteristic FIR from calibration map and applies it to audio files. Supports regularization with gain limit, tap count/smoothing specification, response preview, and batch processing with output peak normalization. |
+| 19 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
+| 20 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
+| 21 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
+| 22 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
+| 23 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
+| 24 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
+| 25 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
+| 26 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
+| 27 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
+| 28 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
+| 29 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
+| 30 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
+| 31 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
+| 32 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
+| 33 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 
 ### 🌍 Localization
 
