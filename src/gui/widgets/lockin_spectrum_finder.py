@@ -62,6 +62,9 @@ class LockInSpectrumFinder(MeasurementModule):
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
 
+        # Analysis Settings
+        self.window_type = "blackmanharris" # "hann", "hamming", "blackmanharris"
+
         # Display
         self.display_unit = "dBFS" # "dBFS", "dBV", "dB SPL"
 
@@ -172,15 +175,16 @@ class LockInSpectrumFinder(MeasurementModule):
         p_mode = self.mode
         p_zoom_center = self.zoom_center_freq
         p_zoom_span = self.zoom_span
+        p_window = self.window_type
 
         self._calculation_future = self.executor.submit(
             self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, 
-            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span
+            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window
         )
 
     def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing, 
                         display_unit, offset_dbv, offset_spl,
-                        mode="Basic", zoom_center=1000.0, zoom_span=10.0):
+                        mode="Basic", zoom_center=1000.0, zoom_span=10.0, window_type="blackmanharris"):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
@@ -215,8 +219,8 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs_offset = np.linspace(-zoom_span, zoom_span, points)
             mags_db_all = np.zeros(points)
 
-            # --- 窓関数の適用 (Hanning) ---
-            window = signal.windows.hann(N_dec)
+            # --- 窓関数の適用 ---
+            window = signal.get_window(window_type, N_dec)
             sig_dec_win = sig_dec * window
             window_coherent_gain = np.mean(window)
             if window_coherent_gain == 0:
@@ -267,10 +271,11 @@ class LockInSpectrumFinder(MeasurementModule):
         chunk_size = 32
         mags_db_all = np.zeros(points)
 
-        # --- 初期窓関数の適用 (Hanningの平方根) ---
+        # --- 初期窓関数の適用 (指定された窓関数) ---
         # このNはsig全体の長さ
-        window_orig = np.hanning(N)
-        sqrt_win_orig = np.sqrt(window_orig)
+        import scipy.signal as signal
+        window_orig = signal.get_window(window_type, N)
+        sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
         sig_win_orig = sig * sqrt_win_orig
 
         for i in range(0, points, chunk_size):
@@ -291,8 +296,8 @@ class LockInSpectrumFinder(MeasurementModule):
                 sig_dec = signal.resample_poly(sig, 1, M)
                 N_chunk = len(sig_dec)
                 fs_dec = fs / M
-                window_dec = np.hanning(N_chunk)
-                sqrt_win = np.sqrt(window_dec)
+                window_dec = signal.get_window(window_type, N_chunk)
+                sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
                 sig_win = sig_dec * sqrt_win
                 t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
             else:
@@ -306,7 +311,7 @@ class LockInSpectrumFinder(MeasurementModule):
             phase = two_pi_t[:, np.newaxis] * f_chunk
 
             # Allocate Windowed Basis Matrix for the local chunk
-            # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
+            # [1, cos(w1), sin(w1), cos(w1), sin(w1), ...]
             B_win = np.empty((N_chunk, num_bases), dtype=np.float64) # 高精度化 (float64)
             B_win[:, 0] = sqrt_win # DC includes the window weight
 
@@ -420,6 +425,14 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_points.setSingleStep(32)
         self.spin_points.valueChanged.connect(self.on_points_changed)
         form.addRow(tr("Basis Points:"), self.spin_points)
+
+        # Window Function
+        self.lbl_window = QLabel(tr("Window:"))
+        self.combo_window = QComboBox()
+        self.combo_window.addItems(["blackmanharris", "hann", "hamming"])
+        self.combo_window.setCurrentText(self.module.window_type)
+        self.combo_window.currentTextChanged.connect(self.on_window_changed)
+        form.addRow(self.lbl_window, self.combo_window)
 
         # Display Unit
         self.lbl_unit = QLabel(tr("Display Unit:"))
@@ -623,6 +636,10 @@ class LockInSpectrumFinderWidget(QWidget):
         self.module.zoom_span = val
         self.reset_averaging()
 
+    def on_window_changed(self, text):
+        self.module.window_type = text
+        self.reset_averaging()
+
     def on_unit_changed(self, text):
         self.module.display_unit = text
         self.plot.setLabel("left", tr("Amplitude"), units=text)
@@ -651,6 +668,13 @@ class LockInSpectrumFinderWidget(QWidget):
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
             self.averaged_amps = np.zeros(len(freqs))
             self.frames_counted = 0
+
+            # Reset X-axis plot range on new parameters
+            # Handle Log scale formatting internally for UI bounds
+            xmin, xmax = freqs[0], freqs[-1]
+            if self.module.mode == "Basic" and self.module.spacing == "Log" and xmin > 0:
+                xmin, xmax = np.log10(xmin), np.log10(xmax)
+            self.plot.setXRange(xmin, xmax, padding=0.0)
 
         if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
             self.current_mags = np.full(len(freqs), -180.0)
