@@ -448,34 +448,56 @@ class OnePPSMonitor(MeasurementModule):
             if read_idx + total_samps <= self.vis_buffer_size:
                 waveform = self.vis_buffer[read_idx : read_idx + total_samps].copy()
             else:
-                part1 = self.vis_buffer[read_idx:].copy()
-                part2 = self.vis_buffer[:total_samps - len(part1)].copy()
-                waveform = np.concatenate((part1, part2))
+                waveform = np.empty(total_samps, dtype=self.vis_buffer.dtype)
+                part1_len = self.vis_buffer_size - read_idx
+                waveform[:part1_len] = self.vis_buffer[read_idx:]
+                waveform[part1_len:] = self.vis_buffer[:total_samps - part1_len]
 
             self.last_trig_waveform = waveform
 
         self._capture_trigger_index = -1 # Done
 
 
-    def get_history_arrays(self):
-        """Returns (times, instant_ppm, cumulative_ppm) arrays correctly ordered."""
+    def get_history_arrays(self, out_t=None, out_ip=None, out_cp=None):
+        """Returns (times, instant_ppm, cumulative_ppm) arrays correctly ordered.
+        Optionally uses pre-allocated output arrays to avoid GC overhead."""
         with self._lock:
             if self.history_filled == 0:
+                if out_t is not None:
+                    return out_t[:0], out_ip[:0], out_cp[:0]
                 return np.array([]), np.array([]), np.array([])
 
             end = self.history_write_pos
             start = (end - self.history_filled) % self.max_history
 
+            if out_t is None or out_t.shape[0] < self.history_filled:
+                out_t = np.empty(self.history_filled, dtype=self.time_buffer.dtype)
+            if out_ip is None or out_ip.shape[0] < self.history_filled:
+                out_ip = np.empty(self.history_filled, dtype=self.instant_ppm_buffer.dtype)
+            if out_cp is None or out_cp.shape[0] < self.history_filled:
+                out_cp = np.empty(self.history_filled, dtype=self.cumulative_ppm_buffer.dtype)
+
+            t = out_t[:self.history_filled]
+            ip = out_ip[:self.history_filled]
+            cp = out_cp[:self.history_filled]
+
             if start < end:
                 # Contiguous
-                t = self.time_buffer[start:end].copy()
-                ip = self.instant_ppm_buffer[start:end].copy()
-                cp = self.cumulative_ppm_buffer[start:end].copy()
+                t[:] = self.time_buffer[start:end]
+                ip[:] = self.instant_ppm_buffer[start:end]
+                cp[:] = self.cumulative_ppm_buffer[start:end]
             else:
                 # Wrapped
-                t = np.concatenate((self.time_buffer[start:], self.time_buffer[:end]))
-                ip = np.concatenate((self.instant_ppm_buffer[start:], self.instant_ppm_buffer[:end]))
-                cp = np.concatenate((self.cumulative_ppm_buffer[start:], self.cumulative_ppm_buffer[:end]))
+                part1_len = self.max_history - start
+
+                t[:part1_len] = self.time_buffer[start:]
+                t[part1_len:] = self.time_buffer[:end]
+
+                ip[:part1_len] = self.instant_ppm_buffer[start:]
+                ip[part1_len:] = self.instant_ppm_buffer[:end]
+
+                cp[:part1_len] = self.cumulative_ppm_buffer[start:]
+                cp[part1_len:] = self.cumulative_ppm_buffer[:end]
 
             return t, ip, cp
 
@@ -495,6 +517,12 @@ class OnePPSMonitorWidget(QWidget):
         self.indicator_on_timer.setSingleShot(True)
         self.indicator_on_timer.timeout.connect(self._turn_off_indicator)
         self.indicator_on_timer.setInterval(100) # 100ms flash
+
+        # Pre-allocated buffers for plotting to prevent GC sweeps
+        max_h = self.module.max_history
+        self._plot_t = np.empty(max_h, dtype=np.float64)
+        self._plot_ip = np.empty(max_h, dtype=np.float64)
+        self._plot_cp = np.empty(max_h, dtype=np.float64)
 
     def _init_ui(self):
         layout = QHBoxLayout(self)
@@ -805,8 +833,15 @@ class OnePPSMonitorWidget(QWidget):
              QMessageBox.warning(self, tr("Error"), tr("Not enough data to calibrate. Please wait."))
              return
 
+        # Re-allocate plotting buffers if max_history is changed
+        if self._plot_t.shape[0] < self.module.max_history:
+             max_h = self.module.max_history
+             self._plot_t = np.empty(max_h, dtype=np.float64)
+             self._plot_ip = np.empty(max_h, dtype=np.float64)
+             self._plot_cp = np.empty(max_h, dtype=np.float64)
+
         # Get last cumulative PPM
-        t, ip, cp = self.module.get_history_arrays()
+        t, ip, cp = self.module.get_history_arrays(self._plot_t, self._plot_ip, self._plot_cp)
         if len(cp) == 0:
              QMessageBox.warning(self, tr("Error"), tr("No data available."))
              return
@@ -921,7 +956,14 @@ class OnePPSMonitorWidget(QWidget):
         if self.chk_sync_rate.isChecked():
              self._sync_sample_rate()
 
-        t, ip, cp = self.module.get_history_arrays()
+        # Re-allocate plotting buffers if max_history is changed
+        if self._plot_t.shape[0] < self.module.max_history:
+             max_h = self.module.max_history
+             self._plot_t = np.empty(max_h, dtype=np.float64)
+             self._plot_ip = np.empty(max_h, dtype=np.float64)
+             self._plot_cp = np.empty(max_h, dtype=np.float64)
+
+        t, ip, cp = self.module.get_history_arrays(self._plot_t, self._plot_ip, self._plot_cp)
         count = self.module.get_pulse_count()
         self.lbl_count.setText(f"{tr('Count')}: {count}")
 
