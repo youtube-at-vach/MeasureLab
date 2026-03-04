@@ -595,11 +595,11 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def on_sweep_started(self, freqs):
         self.current_freqs = freqs.copy()
-        
+
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
             self.averaged_amps = np.zeros(len(freqs))
             self.frames_counted = 0
-            
+
         if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
             self.current_mags = np.full(len(freqs), -180.0)
 
@@ -619,24 +619,24 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
         if not hasattr(self, 'current_freqs') or not hasattr(self, 'current_mags'):
             return
-            
+
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(self.current_freqs):
             self.averaged_amps = np.zeros(len(self.current_freqs))
             self.frames_counted = 1
 
         alpha = 1.0 / min(self.spin_averages.value(), max(1, self.frames_counted))
-        
+
         a_chunk = 10.0 ** (m_chunk / 20.0)
-        
+
         if self.frames_counted <= 1:
             self.averaged_amps[start_idx:end_idx] = a_chunk
         else:
             self.averaged_amps[start_idx:end_idx] = (1.0 - alpha) * self.averaged_amps[start_idx:end_idx] + alpha * a_chunk
-            
+
         avg_db = 20.0 * np.log10(self.averaged_amps[start_idx:end_idx] + 1e-15)
         self.current_mags[start_idx:end_idx] = avg_db
         self.curve.setData(self.current_freqs, self.current_mags)
-        
+
         if hasattr(self, 'sweep_line'):
             self.sweep_line.show()
             val = f_chunk[-1]
@@ -654,7 +654,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.curve.setData(self.current_freqs, self.current_mags)
         if hasattr(self, 'sweep_line'):
             self.sweep_line.hide()
-            
+
         avg_text = ""
         if self.spin_averages.value() > 1:
             avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
