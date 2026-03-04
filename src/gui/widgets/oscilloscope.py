@@ -543,6 +543,19 @@ class OscilloscopeWidget(QWidget):
         main_layout = QHBoxLayout()
 
         # --- Left Panel (Display) ---
+        left_layout = self._setup_left_panel()
+        main_layout.addLayout(left_layout, stretch=1)  # Give priority to plot
+
+        # --- Right Panel (Controls) ---
+        right_widget = self._setup_right_panel()
+
+        # Math Curve
+        self._setup_math_view()
+
+        main_layout.addWidget(right_widget)
+        self.setLayout(main_layout)
+
+    def _setup_left_panel(self):
         left_layout = QVBoxLayout()
 
         # Measurements
@@ -612,13 +625,10 @@ class OscilloscopeWidget(QWidget):
         self.persistence_img.setVisible(False)
         self.persistence_img.setZValue(0)  # Behind cursors
 
-        # Math Curve
-        self.curve_math = self.plot_widget.plot(pen=pg.mkPen("w", width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
-
         left_layout.addWidget(self.plot_widget)
-        main_layout.addLayout(left_layout, stretch=1)  # Give priority to plot
+        return left_layout
 
-        # --- Right Panel (Controls) ---
+    def _setup_right_panel(self):
         right_widget = QWidget()
         right_widget.setFixedWidth(250)  # Fixed width for controls
         right_layout = QVBoxLayout(right_widget)
@@ -665,7 +675,15 @@ class OscilloscopeWidget(QWidget):
 
         tools_tab_layout.addStretch()
 
-        # 1. General Controls
+        self._setup_general_controls(gen_layout)
+        self._setup_vertical_controls(vert_layout)
+        self._setup_trigger_controls(trig_layout)
+        self._setup_tools_controls(tools_layout)
+        self._setup_filter_controls(filter_layout)
+
+        return right_widget
+
+    def _setup_general_controls(self, gen_layout):
         # Start/Stop
         self.toggle_btn = QPushButton(tr("Start"))
         self.toggle_btn.setCheckable(True)
@@ -715,9 +733,7 @@ class OscilloscopeWidget(QWidget):
             self.timebase_slider.setValue(self.timebase_keys.index("10 ms"))
         gen_layout.addWidget(self.timebase_slider)
 
-        # gen_layout stretch is handled by controls_layout
-
-        # 2. Vertical Controls
+    def _setup_vertical_controls(self, vert_layout):
         self.vscale_options = {
             "0.01x": 0.01,
             "0.02x": 0.02,
@@ -785,9 +801,7 @@ class OscilloscopeWidget(QWidget):
         hbox_ch.addWidget(self.chk_right)
         vert_layout.addLayout(hbox_ch)
 
-        # per-tab stretch handled by controls_layout
-
-        # 3. Trigger Controls
+    def _setup_trigger_controls(self, trig_layout):
         hbox_src = QHBoxLayout()
         hbox_src.addWidget(QLabel(tr("Source:")))
         self.trig_source_combo = QComboBox()
@@ -822,9 +836,7 @@ class OscilloscopeWidget(QWidget):
         hbox_lvl.addWidget(self.trig_level_spin)
         trig_layout.addLayout(hbox_lvl)
 
-        # per-tab stretch handled by controls_layout
-
-        # 4. Tools
+    def _setup_tools_controls(self, tools_layout):
         hbox_math = QHBoxLayout()
         hbox_math.addWidget(QLabel(tr("Math:")))
         self.math_combo = QComboBox()
@@ -873,9 +885,7 @@ class OscilloscopeWidget(QWidget):
         persist_group.setLayout(persist_layout)
         tools_layout.addWidget(persist_group)
 
-        # per-tab stretch handled by tools_tab_layout
-
-        # 5. Filter Controls
+    def _setup_filter_controls(self, filter_layout):
         hbox_ft = QHBoxLayout()
         hbox_ft.addWidget(QLabel(tr("Type:")))
         self.filter_combo = QComboBox()
@@ -921,9 +931,7 @@ class OscilloscopeWidget(QWidget):
 
         filter_layout.addWidget(self.filter_stack)
 
-        # per-tab stretch handled by tools_tab_layout
-
-        # Math Curve
+    def _setup_math_view(self):
         # Create a new ViewBox for Math
         self.math_view = pg.ViewBox()
         self.plot_widget.plotItem.scene().addItem(self.math_view)
@@ -945,10 +953,6 @@ class OscilloscopeWidget(QWidget):
 
         self.curve_math = pg.PlotCurveItem(pen=pg.mkPen("w", width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
         self.math_view.addItem(self.curve_math)
-
-        main_layout.addWidget(right_widget)
-
-        self.setLayout(main_layout)
 
     def update_math_view_geometry(self):
         # This function ensures the math_view's geometry matches the main plot's viewbox
