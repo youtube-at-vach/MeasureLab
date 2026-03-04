@@ -266,6 +266,9 @@ class LockInSpectrumFinder(MeasurementModule):
             # Avoid log of 0 or negative
             s_f = max(0.1, start_f)
             freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
+        elif spacing == "Integer":
+            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
+            points = len(freqs)
         else:
             freqs = np.linspace(start_f, stop_f, points)
 
@@ -473,6 +476,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_spacing = QComboBox()
         self.combo_spacing.addItem(tr("Log"), "Log")
         self.combo_spacing.addItem(tr("Lin"), "Lin")
+        self.combo_spacing.addItem(tr("Integer"), "Integer")
         idx = self.combo_spacing.findData(self.module.spacing)
         if idx >= 0:
             self.combo_spacing.setCurrentIndex(idx)

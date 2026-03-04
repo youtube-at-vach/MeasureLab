@@ -52,7 +52,7 @@ You can select between two analysis modes based on your needs.
 * **Stop Freq**
     * Specifies the stopping frequency (Hz) for the analysis.
 * **Spacing**
-    * Choose the spacing of points between `Log` (logarithmic) or `Lin` (linear). The X-axis of the plot switches automatically to match this setting.
+    * Choose the spacing of points between `Log` (logarithmic), `Lin` (linear), or `Integer` (rounded to nearest integer). Selecting `Integer` ensures that all analysis frequencies are exact integers, making it easier to accurately capture peaks of artificially generated signals (which are often set to natural numbers like 1000Hz). The X-axis of the plot switches automatically to match this setting.
 
 ### Zoom Mode Specific Settings
 
