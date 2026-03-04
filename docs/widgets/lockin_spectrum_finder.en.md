@@ -5,6 +5,11 @@
 The **Lock-in Spectrum Finder** is a widget that uses the principles of lock-in detection (matrix projection) to calculate and display the spectrum of a specified frequency band with extremely high resolution.
 It is specialized for detecting weak signals at low noise floors or observing specific narrow bands where standard FFT-based spectrum analyzers lack sufficient resolution.
 
+> [!WARNING]
+> **Important Note on Measured Values**
+> This widget is specialized for "finding" the presence and frequency of weak signals buried in noise.
+> Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a **rough guide** for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
+
 ## Modes
 
 You can select between two analysis modes based on your needs.
@@ -29,9 +34,16 @@ You can select between two analysis modes based on your needs.
     * Larger sizes improve frequency resolution but reduce the calculation update rate (up to 512k in Basic mode, up to 8M in Zoom mode).
 * **Input Ch**
     * Select the channel to analyze (`Left (Ch 1)` or `Right (Ch 2)`).
+* **Averages**
+    * Specifies the number of Exponential Moving Averages (EMA) applied to the spectrum calculation results (1 to 1000). This suppresses measurement variations and improves plot accuracy.
 * **Basis Points**
     * Sets the number of points (bins) for which the spectrum is calculated (from 16 to 1024).
     * More points provide finer detail but increase computational load.
+* **Window**
+    * Select the window function used for analysis (`none`, `blackmanharris`, `hann`, `hamming`).
+* **Display Unit**
+    * Select the vertical axis display unit from `dBFS`, `dBV`, and `dB SPL`.
+    * Calibration values (Input offset or SPL offset) from Settings are applied when using `dBV` or `dB SPL`.
 
 ### Basic Mode Specific Settings
 
@@ -52,5 +64,5 @@ You can select between two analysis modes based on your needs.
 ## How to Read the Graph
 
 * **Horizontal Axis (Frequency)**: Represents the frequency (Hz).
-* **Vertical Axis (Amplitude)**: Represents the amplitude level (dBFS). If calibration has been applied, the input offset is included in this value.
-* During calculations, a red vertical line (sweep line) appears on the graph to indicate the current progress, and the spectrum is updated progressively.
+* **Vertical Axis (Amplitude)**: Represents the amplitude level in the specified unit (dBFS, dBV, or dB SPL). If calibration has been applied, offsets such as the input offset or microphone offset are included.
+* During calculations, a red vertical line (sweep line) appears on the graph to indicate the current progress, and the spectrum is updated progressively. If Averages is enabled, the current averaging count is also displayed alongside the progress.
