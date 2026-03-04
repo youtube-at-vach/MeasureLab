@@ -298,107 +298,113 @@ class RecorderPlayer(MeasurementModule):
                 self.callback_id = None
 
     def audio_callback(self, indata, outdata, frames, time_info, status):
-        # Recording
-        if self.is_recording:
-            # Select channels based on input_mode
-            if self.input_mode == "Stereo":
-                rec_data = indata.copy()
-            elif self.input_mode == "Left":
-                rec_data = indata[:, 0:1]  # Keep 2D
-            elif self.input_mode == "Right":
-                if indata.shape[1] > 1:
-                    rec_data = indata[:, 1:2]
-                else:
-                    rec_data = np.zeros((frames, 1), dtype=indata.dtype)
+        self._process_recording(indata, frames)
+        self._process_playback(outdata, frames)
 
-            if self._write_queue:
-                self._write_queue.put(rec_data)
-            self.recorded_samples += frames
+    def _process_recording(self, indata, frames):
+        if not self.is_recording:
+            return
 
-        # Playback
+        # Select channels based on input_mode
+        if self.input_mode == "Stereo":
+            rec_data = indata.copy()
+        elif self.input_mode == "Left":
+            rec_data = indata[:, 0:1]  # Keep 2D
+        elif self.input_mode == "Right":
+            if indata.shape[1] > 1:
+                rec_data = indata[:, 1:2]
+            else:
+                rec_data = np.zeros((frames, 1), dtype=indata.dtype)
+
+        if self._write_queue:
+            self._write_queue.put(rec_data)
+        self.recorded_samples += frames
+
+    def _process_playback(self, outdata, frames):
         # Capture reference locally to ensure consistency during callback (avoid race if main thread swaps buffer)
         current_buffer = self.playback_buffer
 
-        if self.is_playing and current_buffer is not None:
-            pb_len = len(current_buffer)
+        if not self.is_playing or current_buffer is None:
+            outdata.fill(0)
+            return
 
-            if pb_len == 0:
+        pb_len = len(current_buffer)
+
+        if pb_len == 0:
+            self.is_playing = False
+            outdata.fill(0)
+            return
+
+        # Sanity check for race conditions (e.g. buffer swapped to smaller one)
+        if self.playback_pos >= pb_len:
+            if self.loop_playback:
+                self.playback_pos = 0
+            else:
                 self.is_playing = False
                 outdata.fill(0)
                 return
 
-            # Sanity check for race conditions (e.g. buffer swapped to smaller one)
+        current_idx = 0
+
+        while current_idx < frames:
+            remaining = frames - current_idx
+            available = pb_len - self.playback_pos
+
+            # available is guaranteed > 0 here because of the check above and loop logic
+            to_copy = min(remaining, available)
+
+            # Get chunk from buffer
+            chunk = current_buffer[self.playback_pos : self.playback_pos + to_copy]
+
+            # Apply digital gain/attenuation in linear domain
+            if self.playback_gain_db != 0.0:
+                gain = 10 ** (self.playback_gain_db / 20.0)
+                chunk = chunk * gain
+
+            # Target slice in outdata
+            out_slice = outdata[current_idx : current_idx + to_copy]
+
+            file_ch = chunk.shape[1]
+            out_ch = out_slice.shape[1]
+
+            if self.output_mode == "Stereo":
+                if file_ch == 1:
+                    out_slice[:, 0] = chunk[:, 0]
+                    if out_ch > 1:
+                        out_slice[:, 1] = chunk[:, 0]
+                else:
+                    limit = min(file_ch, out_ch)
+                    out_slice[:, :limit] = chunk[:, :limit]
+            elif self.output_mode == "Left":
+                out_slice[:, 0] = chunk[:, 0]
+                if out_ch > 1:
+                    out_slice[:, 1] = 0
+            elif self.output_mode == "Right":
+                if out_ch > 1:
+                    out_slice[:, 1] = chunk[:, 0] if file_ch == 1 else chunk[:, 1] if file_ch > 1 else 0
+                    out_slice[:, 0] = 0
+            elif self.output_mode == "Mono":
+                # Mix down to mono and send to all outputs
+                if file_ch > 1:
+                    mono = np.mean(chunk, axis=1)
+                else:
+                    mono = chunk[:, 0]
+
+                out_slice[:, 0] = mono
+                if out_ch > 1:
+                    out_slice[:, 1] = mono
+
+            self.playback_pos += to_copy
+            current_idx += to_copy
+
             if self.playback_pos >= pb_len:
                 if self.loop_playback:
                     self.playback_pos = 0
                 else:
                     self.is_playing = False
-                    outdata.fill(0)
-                    return
-
-            current_idx = 0
-
-            while current_idx < frames:
-                remaining = frames - current_idx
-                available = pb_len - self.playback_pos
-
-                # available is guaranteed > 0 here because of the check above and loop logic
-                to_copy = min(remaining, available)
-
-                # Get chunk from buffer
-                chunk = current_buffer[self.playback_pos : self.playback_pos + to_copy]
-
-                # Apply digital gain/attenuation in linear domain
-                if self.playback_gain_db != 0.0:
-                    gain = 10 ** (self.playback_gain_db / 20.0)
-                    chunk = chunk * gain
-
-                # Target slice in outdata
-                out_slice = outdata[current_idx : current_idx + to_copy]
-
-                file_ch = chunk.shape[1]
-                out_ch = out_slice.shape[1]
-
-                if self.output_mode == "Stereo":
-                    if file_ch == 1:
-                        out_slice[:, 0] = chunk[:, 0]
-                        if out_ch > 1:
-                            out_slice[:, 1] = chunk[:, 0]
-                    else:
-                        limit = min(file_ch, out_ch)
-                        out_slice[:, :limit] = chunk[:, :limit]
-                elif self.output_mode == "Left":
-                    out_slice[:, 0] = chunk[:, 0]
-                    if out_ch > 1:
-                        out_slice[:, 1] = 0
-                elif self.output_mode == "Right":
-                    if out_ch > 1:
-                        out_slice[:, 1] = chunk[:, 0] if file_ch == 1 else chunk[:, 1] if file_ch > 1 else 0
-                        out_slice[:, 0] = 0
-                elif self.output_mode == "Mono":
-                    # Mix down to mono and send to all outputs
-                    if file_ch > 1:
-                        mono = np.mean(chunk, axis=1)
-                    else:
-                        mono = chunk[:, 0]
-
-                    out_slice[:, 0] = mono
-                    if out_ch > 1:
-                        out_slice[:, 1] = mono
-
-                self.playback_pos += to_copy
-                current_idx += to_copy
-
-                if self.playback_pos >= pb_len:
-                    if self.loop_playback:
-                        self.playback_pos = 0
-                    else:
-                        self.is_playing = False
-                        # Fill rest with zeros
-                        outdata[current_idx:] = 0
-                        break
-        else:
-            outdata.fill(0)
+                    # Fill rest with zeros
+                    outdata[current_idx:] = 0
+                    break
 
 
 class RecorderPlayerWidget(QWidget):
