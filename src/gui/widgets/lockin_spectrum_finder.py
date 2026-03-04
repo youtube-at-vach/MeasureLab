@@ -61,7 +61,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.mode = "Basic" # "Basic" or "Zoom"
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
-        
+
         # Display
         self.display_unit = "dBFS" # "dBFS", "dBV", "dB SPL"
 
@@ -185,11 +185,11 @@ class LockInSpectrumFinder(MeasurementModule):
         Background heavy lifting: Matrix projection or Zoom DDC
         """
         import time
+        import scipy.signal as signal
         N = len(sig)
         t = np.arange(N, dtype=np.float64) / fs
 
         if mode == "Zoom":
-            import scipy.signal as signal
             s_f = zoom_center - zoom_span
             e_f = zoom_center + zoom_span
             freqs = np.linspace(s_f, e_f, points)
@@ -228,14 +228,14 @@ class LockInSpectrumFinder(MeasurementModule):
                     break
                 end_idx = min(i + chunk_size, points)
                 f_chunk = freqs_offset[i:end_idx]
-                phase = -2j * np.pi * np.outer(t_dec, f_chunk)
-                exp_chunk = np.exp(phase)
+                phase = t_dec[:, np.newaxis] * f_chunk
+                exp_chunk = np.exp(-2j * np.pi * phase)
                 # Direct correlation on decimated baseband with windowing (vectorized)
                 vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
                 amp = np.abs(vals) * 2.0
                 if display_unit in ["dBV", "dB SPL"]:
                     amp /= np.sqrt(2.0)
-                
+
                 mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
                 if display_unit == "dBV":
                     mags_db_chunk += offset_dbv
@@ -267,11 +267,11 @@ class LockInSpectrumFinder(MeasurementModule):
         chunk_size = 32
         mags_db_all = np.zeros(points)
 
-        # --- 窓関数の適用 (Hanningの平方根) ---
-        window = np.hanning(N)
-        sqrt_win = np.sqrt(window)
-        sig_win = sig * sqrt_win
-        two_pi_t = 2.0 * np.pi * t
+        # --- 初期窓関数の適用 (Hanningの平方根) ---
+        # このNはsig全体の長さ
+        window_orig = np.hanning(N)
+        sqrt_win_orig = np.sqrt(window_orig)
+        sig_win_orig = sig * sqrt_win_orig
 
         for i in range(0, points, chunk_size):
             if not self.is_running:
@@ -279,19 +279,46 @@ class LockInSpectrumFinder(MeasurementModule):
 
             end_idx = min(i + chunk_size, points)
             current_points = end_idx - i
-
-            # Allocate Basis Matrix for the local chunk
-            # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
             num_bases = 1 + current_points * 2
-            B = np.empty((N, num_bases), dtype=np.float64) # 高精度化 (float64)
-            B[:, 0] = 1.0 # DC
             f_chunk = freqs[i:end_idx]
-            phase = np.outer(two_pi_t, f_chunk)
-            B[:, 1::2] = np.cos(phase)
-            B[:, 2::2] = np.sin(phase)
 
-            # Bにも重みをかける
-            B_win = B * sqrt_win[:, np.newaxis]
+            # --- Multi-rate downsampling ---
+            max_f = f_chunk[-1]
+            target_fs = max_f * 4.0
+            M = max(1, int(fs / target_fs))
+
+            if M > 1:
+                sig_dec = signal.resample_poly(sig, 1, M)
+                N_chunk = len(sig_dec)
+                fs_dec = fs / M
+                window_dec = np.hanning(N_chunk)
+                sqrt_win = np.sqrt(window_dec)
+                sig_win = sig_dec * sqrt_win
+                t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
+            else:
+                N_chunk = N
+                fs_dec = fs
+                sqrt_win = sqrt_win_orig
+                sig_win = sig_win_orig
+                t_chunk = t
+
+            two_pi_t = 2.0 * np.pi * t_chunk
+            phase = two_pi_t[:, np.newaxis] * f_chunk
+
+            # Allocate Windowed Basis Matrix for the local chunk
+            # [1, cos(w1), sin(w1), cos(w2), sin(w2), ...]
+            B_win = np.empty((N_chunk, num_bases), dtype=np.float64) # 高精度化 (float64)
+            B_win[:, 0] = sqrt_win # DC includes the window weight
+
+            # Compute and apply window weight directly in pre-allocated array
+            np.cos(phase, out=B_win[:, 1::2])
+            B_win[:, 1::2] *= sqrt_win[:, np.newaxis]
+
+            np.sin(phase, out=B_win[:, 2::2])
+            B_win[:, 2::2] *= sqrt_win[:, np.newaxis]
+
+            # Free memory immediately
+            del phase
 
             # Since B can be huge, we use Gram directly for speed:
             gram = np.dot(B_win.T, B_win)
@@ -310,7 +337,7 @@ class LockInSpectrumFinder(MeasurementModule):
             amp = np.hypot(iq[:, 0], iq[:, 1])
             if display_unit in ["dBV", "dB SPL"]:
                 amp /= np.sqrt(2.0)
-            
+
             mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
             if display_unit == "dBV":
                 mags_db_chunk += offset_dbv
@@ -393,7 +420,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_points.setSingleStep(32)
         self.spin_points.valueChanged.connect(self.on_points_changed)
         form.addRow(tr("Basis Points:"), self.spin_points)
-        
+
         # Display Unit
         self.lbl_unit = QLabel(tr("Display Unit:"))
         self.combo_unit = QComboBox()
