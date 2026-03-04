@@ -103,7 +103,7 @@ class TestWelcomeWidgetLogic(unittest.TestCase):
             self.created_labels.clear()
             self.mock_qt_gui.QPixmap.reset_mock()
 
-            widget = WelcomeWidget()
+            _ = WelcomeWidget()
 
             # Verify resource_path was called
             mock_resource_path.assert_called_with("src/assets/welcome.png")
@@ -156,7 +156,7 @@ class TestWelcomeWidgetLogic(unittest.TestCase):
             self.created_labels.clear()
             self.mock_qt_gui.QPixmap.reset_mock()
 
-            widget = WelcomeWidget()
+            _ = WelcomeWidget()
 
             # Verify QPixmap was instantiated with fallback_path
             self.mock_qt_gui.QPixmap.assert_called_with(expected_fallback_path)
@@ -179,7 +179,7 @@ class TestWelcomeWidgetLogic(unittest.TestCase):
             self.created_labels.clear()
             self.mock_qt_gui.QPixmap.reset_mock()
 
-            widget = WelcomeWidget()
+            _ = WelcomeWidget()
 
             # Verify QPixmap was not called
             self.mock_qt_gui.QPixmap.assert_not_called()
