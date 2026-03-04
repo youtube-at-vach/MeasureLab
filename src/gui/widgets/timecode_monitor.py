@@ -927,14 +927,12 @@ class TimecodeMonitor(MeasurementModule):
         if mad <= 1e-9:
             mad = 0.0
 
-        keep: list[tuple[float, int]] = []
-        for t, f in unwrapped:
-            o = float(f) - (float(fps) * float(t))
-            if mad == 0.0:
-                keep.append((float(t), int(f)))
-            else:
-                if abs(o - med) <= (3.0 * mad):
-                    keep.append((float(t), int(f)))
+        if mad == 0.0:
+            keep = [(float(t), int(f)) for t, f in unwrapped]
+        else:
+            threshold = 3.0 * mad
+            f_fps = float(fps)
+            keep = [(float(t), int(f)) for t, f in unwrapped if abs(float(f) - (f_fps * float(t)) - med) <= threshold]
         if len(keep) < int(min_samples):
             keep = unwrapped
 
