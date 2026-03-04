@@ -363,8 +363,6 @@ class AnalysisWorker(QThread):
         # Let's use `scipy.signal.sosfilt` with a few Bark filters.
         # Center freqs for Barks 3, 7, 11, 15, 19 (~ 300, 840, 1480, 2500, 4800 Hz)
 
-        c_freqs = [300, 840, 1480, 2500, 4800, 9500]
-
         # Process chunks to save memory, but we need filter state.
         # To avoid complexity, process whole file if < 1 min, or chunk stream.
         # Assuming short files for now (Widget context).
