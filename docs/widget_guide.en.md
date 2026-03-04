@@ -12,6 +12,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | :--- | :--- |
 | **Output sound / Need a signal source** | [Signal Generator](widgets/signal_generator.md) |
 | **View frequency components (spectrum)** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
+| **Check specific frequencies with extremely high resolution** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
 | **View original waveform shape** | [Oscilloscope](widgets/oscilloscope.md) |
 | **Measure distortion (THD) of amps or components** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
 | **Measure frequency response of amps, etc.** | [Network Analyzer](widgets/network_analyzer.md) |
@@ -41,6 +42,9 @@ Measures basic characteristics of audio signals (spectrum, level, frequency).
 
 * **[Spectrum Analyzer](widgets/spectrum_analyzer.md)**
     * Real-time display of frequency components (spectrum) using FFT.
+
+* **[Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md)**
+    * Uses lock-in detection to analyze the spectrum of a specified frequency band with high resolution. Ideal for magnifying specific peaks buried in noise.
 
 * **[Sound Level Meter](widgets/sound_level_meter.md)**
     * A sound level meter. Measures sound pressure level (SPL) and equivalent continuous sound level (Leq).
