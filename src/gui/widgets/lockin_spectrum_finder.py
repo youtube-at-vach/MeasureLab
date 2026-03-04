@@ -270,6 +270,14 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
         elif spacing == "Integer":
             freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
+            freqs = freqs[freqs >= 1.0] # Prevent 0 Hz
+            points = len(freqs)
+        elif spacing == "Int x Sync":
+            df = fs / N
+            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
+            freqs = freqs[freqs >= df] # Prevent 0 Hz and extremely low frequencies
+            if len(freqs) == 0:
+                freqs = np.array([df])
             points = len(freqs)
         else:
             freqs = np.linspace(start_f, stop_f, points)
@@ -479,6 +487,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_spacing.addItem(tr("Log"), "Log")
         self.combo_spacing.addItem(tr("Lin"), "Lin")
         self.combo_spacing.addItem(tr("Integer"), "Integer")
+        self.combo_spacing.addItem(tr("Int x Sync"), "Int x Sync")
         idx = self.combo_spacing.findData(self.module.spacing)
         if idx >= 0:
             self.combo_spacing.setCurrentIndex(idx)
