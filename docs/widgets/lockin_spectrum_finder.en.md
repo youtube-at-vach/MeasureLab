@@ -58,6 +58,8 @@ You can select between two analysis modes based on your needs.
 
 * **Zoom Center**
     * Specifies the center frequency (Hz) for the zoom analysis.
+* **Track Peak**
+    * When checked, the center frequency is automatically updated to the frequency of the highest peak detected after each analysis sweep. This is useful for tracking drifting peaks or precisely converging on the true center frequency.
 * **Zoom Span (±)**
     * Specifies the analysis width (±Hz) from the center frequency. (e.g., if Center=1000Hz and Span=10Hz, it analyzes the range from 990Hz to 1010Hz).
 
