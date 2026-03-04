@@ -543,6 +543,349 @@ class OscilloscopeWidget(QWidget):
         main_layout = QHBoxLayout()
 
         # --- Left Panel (Display) ---
+        left_layout = self._setup_left_panel()
+        main_layout.addLayout(left_layout, stretch=1)  # Give priority to plot
+
+        # --- Right Panel (Controls) ---
+        right_widget = self._setup_right_panel()
+
+        main_layout.addWidget(right_widget)
+
+        self.setLayout(main_layout)
+
+    def _setup_right_panel(self):
+        right_widget = QWidget()
+        right_widget.setFixedWidth(250)  # Fixed width for controls
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        tabs = QTabWidget()
+        right_layout.addWidget(tabs)
+
+        tab_controls = QWidget()
+        tab_tools_filter = QWidget()
+
+        tabs.addTab(tab_controls, tr("General"))
+        tabs.addTab(tab_tools_filter, tr("Tools"))
+
+        controls_layout = QVBoxLayout(tab_controls)
+        tools_tab_layout = QVBoxLayout(tab_tools_filter)
+
+        # General Controls Tab
+        self._setup_general_controls(controls_layout)
+        self._setup_vertical_controls(controls_layout)
+        self._setup_trigger_controls(controls_layout)
+        controls_layout.addStretch()
+
+        # Tools Controls Tab
+        self._setup_tools_controls(tools_tab_layout)
+        self._setup_filter_controls(tools_tab_layout)
+        tools_tab_layout.addStretch()
+
+        # We need to setup math view as well, which is tied to the plot
+        # But it logic-wise belongs to UI setup.
+        # It links to self.plot_widget, so we must call it after plot_widget is created.
+        self._setup_math_view()
+
+        return right_widget
+
+    def _setup_general_controls(self, parent_layout):
+        gen_group = QGroupBox(tr("General"))
+        gen_layout = QVBoxLayout()
+        gen_group.setLayout(gen_layout)
+        parent_layout.addWidget(gen_group)
+
+        # Start/Stop
+        self.toggle_btn = QPushButton(tr("Start"))
+        self.toggle_btn.setCheckable(True)
+        self.toggle_btn.clicked.connect(self.on_toggle)
+
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+        else:
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
+
+        gen_layout.addWidget(self.toggle_btn)
+
+        # Timebase
+        hbox_tb = QHBoxLayout()
+        hbox_tb.addWidget(QLabel(tr("Time/Div:")))
+        self.timebase_combo = QComboBox()
+        self.timebase_options = {
+            "10 us": 0.00001,
+            "20 us": 0.00002,
+            "50 us": 0.00005,
+            "100 us": 0.0001,
+            "200 us": 0.0002,
+            "500 us": 0.0005,
+            "1 ms": 0.001,
+            "2 ms": 0.002,
+            "5 ms": 0.005,
+            "10 ms": 0.01,
+            "20 ms": 0.02,
+            "50 ms": 0.05,
+            "100 ms": 0.1,
+        }
+        self.timebase_keys = list(self.timebase_options.keys())
+        self.timebase_combo.addItems(self.timebase_keys)
+        self.timebase_combo.setCurrentText("10 ms")
+        self.timebase_combo.currentTextChanged.connect(self.on_timebase_changed)
+        hbox_tb.addWidget(self.timebase_combo)
+        gen_layout.addLayout(hbox_tb)
+
+        # Timebase Slider
+        self.timebase_slider = QSlider(Qt.Orientation.Horizontal)
+        self.timebase_slider.setRange(0, len(self.timebase_keys) - 1)
+        self.timebase_slider.valueChanged.connect(self.on_timebase_slider_changed)
+        if "10 ms" in self.timebase_keys:
+            self.timebase_slider.setValue(self.timebase_keys.index("10 ms"))
+        gen_layout.addWidget(self.timebase_slider)
+
+    def _setup_vertical_controls(self, parent_layout):
+        vert_group = QGroupBox(tr("Vertical"))
+        vert_layout = QVBoxLayout()
+        vert_group.setLayout(vert_layout)
+        parent_layout.addWidget(vert_group)
+
+        self.vscale_options = {
+            "0.01x": 0.01,
+            "0.02x": 0.02,
+            "0.05x": 0.05,
+            "0.1x": 0.1,
+            "0.2x": 0.2,
+            "0.5x": 0.5,
+            "1.0x": 1.0,
+            "2.0x": 2.0,
+            "5.0x": 5.0,
+            "10.0x": 10.0,
+            "20.0x": 20.0,
+            "50.0x": 50.0,
+            "100.0x": 100.0,
+            "200.0x": 200.0,
+            "500.0x": 500.0,
+            "1000.0x": 1000.0,
+            "2000.0x": 2000.0,
+            "5000.0x": 5000.0,
+            "10000.0x": 10000.0,
+        }
+        self.vscale_keys = list(self.vscale_options.keys())
+
+        hbox_scale_l = QHBoxLayout()
+        hbox_scale_l.addWidget(QLabel(tr("Left") + " " + tr("Scale:")))
+        self.vscale_combo_l = QComboBox()
+        self.vscale_combo_l.addItems(self.vscale_keys)
+        self.vscale_combo_l.setCurrentText("1.0x")
+        self.vscale_combo_l.currentTextChanged.connect(self.on_vscale_left_changed)
+        hbox_scale_l.addWidget(self.vscale_combo_l)
+        vert_layout.addLayout(hbox_scale_l)
+
+        self.vscale_slider_l = QSlider(Qt.Orientation.Horizontal)
+        self.vscale_slider_l.setRange(0, len(self.vscale_keys) - 1)
+        self.vscale_slider_l.valueChanged.connect(self.on_vscale_left_slider_changed)
+        if "1.0x" in self.vscale_keys:
+            self.vscale_slider_l.setValue(self.vscale_keys.index("1.0x"))
+        vert_layout.addWidget(self.vscale_slider_l)
+
+        hbox_scale_r = QHBoxLayout()
+        hbox_scale_r.addWidget(QLabel(tr("Right") + " " + tr("Scale:")))
+        self.vscale_combo_r = QComboBox()
+        self.vscale_combo_r.addItems(self.vscale_keys)
+        self.vscale_combo_r.setCurrentText("1.0x")
+        self.vscale_combo_r.currentTextChanged.connect(self.on_vscale_right_changed)
+        hbox_scale_r.addWidget(self.vscale_combo_r)
+        vert_layout.addLayout(hbox_scale_r)
+
+        self.vscale_slider_r = QSlider(Qt.Orientation.Horizontal)
+        self.vscale_slider_r.setRange(0, len(self.vscale_keys) - 1)
+        self.vscale_slider_r.valueChanged.connect(self.on_vscale_right_slider_changed)
+        if "1.0x" in self.vscale_keys:
+            self.vscale_slider_r.setValue(self.vscale_keys.index("1.0x"))
+        vert_layout.addWidget(self.vscale_slider_r)
+
+        hbox_ch = QHBoxLayout()
+        self.chk_left = QCheckBox(tr("Left Ch"))
+        self.chk_left.setChecked(True)
+        self.chk_left.toggled.connect(lambda x: setattr(self.module, "show_left", x))
+        hbox_ch.addWidget(self.chk_left)
+
+        self.chk_right = QCheckBox(tr("Right Ch"))
+        self.chk_right.setChecked(True)
+        self.chk_right.toggled.connect(lambda x: setattr(self.module, "show_right", x))
+        hbox_ch.addWidget(self.chk_right)
+        vert_layout.addLayout(hbox_ch)
+
+    def _setup_trigger_controls(self, parent_layout):
+        trig_group = QGroupBox(tr("Trigger"))
+        trig_layout = QVBoxLayout()
+        trig_group.setLayout(trig_layout)
+        parent_layout.addWidget(trig_group)
+
+        hbox_src = QHBoxLayout()
+        hbox_src.addWidget(QLabel(tr("Source:")))
+        self.trig_source_combo = QComboBox()
+        self.trig_source_combo.addItems([tr("Left"), tr("Right")])
+        self.trig_source_combo.currentIndexChanged.connect(self.on_trig_source_changed)
+        hbox_src.addWidget(self.trig_source_combo)
+        trig_layout.addLayout(hbox_src)
+
+        hbox_slope = QHBoxLayout()
+        hbox_slope.addWidget(QLabel(tr("Slope:")))
+        self.trig_slope_combo = QComboBox()
+        self.trig_slope_combo.addItems([tr("Rising"), tr("Falling")])
+        self.trig_slope_combo.currentTextChanged.connect(self.on_trig_slope_changed)
+        hbox_slope.addWidget(self.trig_slope_combo)
+        trig_layout.addLayout(hbox_slope)
+
+        hbox_mode = QHBoxLayout()
+        hbox_mode.addWidget(QLabel(tr("Mode:")))
+        self.trig_mode_combo = QComboBox()
+        self.trig_mode_combo.addItems([tr("Auto"), tr("Normal"), tr("Single")])
+        self.trig_mode_combo.currentTextChanged.connect(self.on_trig_mode_changed)
+        hbox_mode.addWidget(self.trig_mode_combo)
+        trig_layout.addLayout(hbox_mode)
+
+        hbox_lvl = QHBoxLayout()
+        hbox_lvl.addWidget(QLabel(tr("Level:")))
+        self.trig_level_spin = QDoubleSpinBox()
+        self.trig_level_spin.setRange(-1.0, 1.0)
+        self.trig_level_spin.setSingleStep(0.1)
+        self.trig_level_spin.setValue(0.0)
+        self.trig_level_spin.valueChanged.connect(self.on_trig_level_changed)
+        hbox_lvl.addWidget(self.trig_level_spin)
+        trig_layout.addLayout(hbox_lvl)
+
+    def _setup_tools_controls(self, parent_layout):
+        tools_group = QGroupBox(tr("Tools"))
+        tools_layout = QVBoxLayout()
+        tools_group.setLayout(tools_layout)
+        parent_layout.addWidget(tools_group)
+
+        hbox_math = QHBoxLayout()
+        hbox_math.addWidget(QLabel(tr("Math:")))
+        self.math_combo = QComboBox()
+        self.math_combo.addItems(
+            [tr("Off"), tr("A + B"), tr("A - B"), tr("A * B"), tr("A / B"), tr("Derivative"), tr("Integral")]
+        )
+        self.math_combo.currentTextChanged.connect(self.on_math_changed)
+        hbox_math.addWidget(self.math_combo)
+        tools_layout.addLayout(hbox_math)
+
+        self.chk_cursors = QCheckBox(tr("Enable Cursors"))
+        self.chk_cursors.toggled.connect(self.on_cursors_toggled)
+        tools_layout.addWidget(self.chk_cursors)
+
+        self.chk_wave_meas = QCheckBox(tr("Enable Waveform Measurements"))
+        self.chk_wave_meas.toggled.connect(self.on_wave_meas_toggled)
+        tools_layout.addWidget(self.chk_wave_meas)
+
+        # Persistence Controls
+        persist_group = QGroupBox(tr("Persistence"))
+        persist_layout = QVBoxLayout()
+
+        self.chk_persist = QCheckBox(tr("Enable Persistence"))
+        self.chk_persist.setChecked(self.module.persistence_mode)
+        self.chk_persist.toggled.connect(self.on_persist_toggled)
+        persist_layout.addWidget(self.chk_persist)
+
+        hbox_decay = QHBoxLayout()
+        hbox_decay.addWidget(QLabel(tr("Decay:")))
+        self.decay_slider = QSlider(Qt.Orientation.Horizontal)
+        self.decay_slider.setRange(0, 99)
+        self.decay_slider.setValue(int(self.module.persistence_decay * 100))
+        self.decay_slider.valueChanged.connect(self.on_decay_changed)
+        hbox_decay.addWidget(self.decay_slider)
+        persist_layout.addLayout(hbox_decay)
+
+        hbox_intensity = QHBoxLayout()
+        hbox_intensity.addWidget(QLabel(tr("Intensity:")))
+        self.intensity_slider = QSlider(Qt.Orientation.Horizontal)
+        self.intensity_slider.setRange(1, 100)
+        self.intensity_slider.setValue(int(self.module.persistence_intensity * 100))
+        self.intensity_slider.valueChanged.connect(self.on_intensity_changed)
+        hbox_intensity.addWidget(self.intensity_slider)
+        persist_layout.addLayout(hbox_intensity)
+
+        persist_group.setLayout(persist_layout)
+        tools_layout.addWidget(persist_group)
+
+    def _setup_filter_controls(self, parent_layout):
+        filter_group = QGroupBox(tr("Filter"))
+        filter_layout = QVBoxLayout()
+        filter_group.setLayout(filter_layout)
+        parent_layout.addWidget(filter_group)
+
+        hbox_ft = QHBoxLayout()
+        hbox_ft.addWidget(QLabel(tr("Type:")))
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItems([tr("None"), tr("LPF"), tr("HPF"), tr("BPF")])
+        self.filter_combo.currentTextChanged.connect(self.on_filter_type_changed)
+        hbox_ft.addWidget(self.filter_combo)
+        filter_layout.addLayout(hbox_ft)
+
+        self.filter_stack = QStackedWidget()
+
+        # None Page
+        self.filter_stack.addWidget(QWidget())
+
+        # LPF/HPF Page
+        lpf_widget = QWidget()
+        lpf_layout = QFormLayout()
+        lpf_layout.setContentsMargins(0, 0, 0, 0)
+        self.cutoff_spin = QDoubleSpinBox()
+        self.cutoff_spin.setRange(10, 24000)
+        self.cutoff_spin.setValue(self.module.filter_cutoff)
+        self.cutoff_spin.valueChanged.connect(lambda v: setattr(self.module, "filter_cutoff", v))
+        lpf_layout.addRow(tr("Cutoff (Hz):"), self.cutoff_spin)
+        lpf_widget.setLayout(lpf_layout)
+        self.filter_stack.addWidget(lpf_widget)
+
+        # BPF Page
+        bpf_widget = QWidget()
+        bpf_layout = QFormLayout()
+        bpf_layout.setContentsMargins(0, 0, 0, 0)
+        self.bpf_low_spin = QDoubleSpinBox()
+        self.bpf_low_spin.setRange(10, 24000)
+        self.bpf_low_spin.setValue(self.module.filter_low)
+        self.bpf_low_spin.valueChanged.connect(lambda v: setattr(self.module, "filter_low", v))
+        bpf_layout.addRow(tr("Low (Hz):"), self.bpf_low_spin)
+
+        self.bpf_high_spin = QDoubleSpinBox()
+        self.bpf_high_spin.setRange(10, 24000)
+        self.bpf_high_spin.setValue(self.module.filter_high)
+        self.bpf_high_spin.valueChanged.connect(lambda v: setattr(self.module, "filter_high", v))
+        bpf_layout.addRow(tr("High (Hz):"), self.bpf_high_spin)
+        bpf_widget.setLayout(bpf_layout)
+        self.filter_stack.addWidget(bpf_widget)
+
+        filter_layout.addWidget(self.filter_stack)
+
+    def _setup_math_view(self):
+        # Create a new ViewBox for Math
+        self.math_view = pg.ViewBox()
+        self.plot_widget.plotItem.scene().addItem(self.math_view)
+        # Link X axis
+        self.math_view.setXLink(self.plot_widget.plotItem)
+
+        # Add Right Axis
+        # Remove default right axis if it exists, then add our custom one
+        if self.plot_widget.plotItem.getAxis("right") is not None:
+            self.plot_widget.plotItem.layout.removeItem(self.plot_widget.plotItem.getAxis("right"))
+        self.axis_math = pg.AxisItem("right")
+        self.axis_math.linkToView(self.math_view)
+        self.axis_math.setLabel(tr("Math"), color="#ffffff")
+        self.plot_widget.plotItem.layout.addItem(self.axis_math, 2, 2)  # Row 2, Col 2 for right axis
+        self.axis_math.hide()  # Hide by default
+
+        # Update View Geometry on resize
+        self.plot_widget.plotItem.vb.sigResized.connect(self.update_math_view_geometry)
+
+        self.curve_math = pg.PlotCurveItem(pen=pg.mkPen("w", width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
+        self.math_view.addItem(self.curve_math)
+
+    def _setup_left_panel(self):
         left_layout = QVBoxLayout()
 
         # Measurements
@@ -616,339 +959,8 @@ class OscilloscopeWidget(QWidget):
         self.curve_math = self.plot_widget.plot(pen=pg.mkPen("w", width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
 
         left_layout.addWidget(self.plot_widget)
-        main_layout.addLayout(left_layout, stretch=1)  # Give priority to plot
 
-        # --- Right Panel (Controls) ---
-        right_widget = QWidget()
-        right_widget.setFixedWidth(250)  # Fixed width for controls
-        right_layout = QVBoxLayout(right_widget)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-
-        tabs = QTabWidget()
-        right_layout.addWidget(tabs)
-
-        tab_controls = QWidget()
-        tab_tools_filter = QWidget()
-
-        tabs.addTab(tab_controls, tr("General"))
-        tabs.addTab(tab_tools_filter, tr("Tools"))
-
-        controls_layout = QVBoxLayout(tab_controls)
-        tools_tab_layout = QVBoxLayout(tab_tools_filter)
-
-        gen_group = QGroupBox(tr("General"))
-        gen_layout = QVBoxLayout()
-        gen_group.setLayout(gen_layout)
-        controls_layout.addWidget(gen_group)
-
-        vert_group = QGroupBox(tr("Vertical"))
-        vert_layout = QVBoxLayout()
-        vert_group.setLayout(vert_layout)
-        controls_layout.addWidget(vert_group)
-
-        trig_group = QGroupBox(tr("Trigger"))
-        trig_layout = QVBoxLayout()
-        trig_group.setLayout(trig_layout)
-        controls_layout.addWidget(trig_group)
-
-        controls_layout.addStretch()
-
-        tools_group = QGroupBox(tr("Tools"))
-        tools_layout = QVBoxLayout()
-        tools_group.setLayout(tools_layout)
-        tools_tab_layout.addWidget(tools_group)
-
-        filter_group = QGroupBox(tr("Filter"))
-        filter_layout = QVBoxLayout()
-        filter_group.setLayout(filter_layout)
-        tools_tab_layout.addWidget(filter_group)
-
-        tools_tab_layout.addStretch()
-
-        # 1. General Controls
-        # Start/Stop
-        self.toggle_btn = QPushButton(tr("Start"))
-        self.toggle_btn.setCheckable(True)
-        self.toggle_btn.clicked.connect(self.on_toggle)
-
-        # Theme handling
-        self.app = QApplication.instance()
-        if hasattr(self.app, "theme_manager"):
-            self.app.theme_manager.theme_changed.connect(self.apply_theme)
-            self.apply_theme(self.app.theme_manager.get_current_theme())
-        else:
-            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
-
-        gen_layout.addWidget(self.toggle_btn)
-
-        # Timebase
-        hbox_tb = QHBoxLayout()
-        hbox_tb.addWidget(QLabel(tr("Time/Div:")))
-        self.timebase_combo = QComboBox()
-        self.timebase_options = {
-            "10 us": 0.00001,
-            "20 us": 0.00002,
-            "50 us": 0.00005,
-            "100 us": 0.0001,
-            "200 us": 0.0002,
-            "500 us": 0.0005,
-            "1 ms": 0.001,
-            "2 ms": 0.002,
-            "5 ms": 0.005,
-            "10 ms": 0.01,
-            "20 ms": 0.02,
-            "50 ms": 0.05,
-            "100 ms": 0.1,
-        }
-        self.timebase_keys = list(self.timebase_options.keys())
-        self.timebase_combo.addItems(self.timebase_keys)
-        self.timebase_combo.setCurrentText("10 ms")
-        self.timebase_combo.currentTextChanged.connect(self.on_timebase_changed)
-        hbox_tb.addWidget(self.timebase_combo)
-        gen_layout.addLayout(hbox_tb)
-
-        # Timebase Slider
-        self.timebase_slider = QSlider(Qt.Orientation.Horizontal)
-        self.timebase_slider.setRange(0, len(self.timebase_keys) - 1)
-        self.timebase_slider.valueChanged.connect(self.on_timebase_slider_changed)
-        if "10 ms" in self.timebase_keys:
-            self.timebase_slider.setValue(self.timebase_keys.index("10 ms"))
-        gen_layout.addWidget(self.timebase_slider)
-
-        # gen_layout stretch is handled by controls_layout
-
-        # 2. Vertical Controls
-        self.vscale_options = {
-            "0.01x": 0.01,
-            "0.02x": 0.02,
-            "0.05x": 0.05,
-            "0.1x": 0.1,
-            "0.2x": 0.2,
-            "0.5x": 0.5,
-            "1.0x": 1.0,
-            "2.0x": 2.0,
-            "5.0x": 5.0,
-            "10.0x": 10.0,
-            "20.0x": 20.0,
-            "50.0x": 50.0,
-            "100.0x": 100.0,
-            "200.0x": 200.0,
-            "500.0x": 500.0,
-            "1000.0x": 1000.0,
-            "2000.0x": 2000.0,
-            "5000.0x": 5000.0,
-            "10000.0x": 10000.0,
-        }
-        self.vscale_keys = list(self.vscale_options.keys())
-
-        hbox_scale_l = QHBoxLayout()
-        hbox_scale_l.addWidget(QLabel(tr("Left") + " " + tr("Scale:")))
-        self.vscale_combo_l = QComboBox()
-        self.vscale_combo_l.addItems(self.vscale_keys)
-        self.vscale_combo_l.setCurrentText("1.0x")
-        self.vscale_combo_l.currentTextChanged.connect(self.on_vscale_left_changed)
-        hbox_scale_l.addWidget(self.vscale_combo_l)
-        vert_layout.addLayout(hbox_scale_l)
-
-        self.vscale_slider_l = QSlider(Qt.Orientation.Horizontal)
-        self.vscale_slider_l.setRange(0, len(self.vscale_keys) - 1)
-        self.vscale_slider_l.valueChanged.connect(self.on_vscale_left_slider_changed)
-        if "1.0x" in self.vscale_keys:
-            self.vscale_slider_l.setValue(self.vscale_keys.index("1.0x"))
-        vert_layout.addWidget(self.vscale_slider_l)
-
-        hbox_scale_r = QHBoxLayout()
-        hbox_scale_r.addWidget(QLabel(tr("Right") + " " + tr("Scale:")))
-        self.vscale_combo_r = QComboBox()
-        self.vscale_combo_r.addItems(self.vscale_keys)
-        self.vscale_combo_r.setCurrentText("1.0x")
-        self.vscale_combo_r.currentTextChanged.connect(self.on_vscale_right_changed)
-        hbox_scale_r.addWidget(self.vscale_combo_r)
-        vert_layout.addLayout(hbox_scale_r)
-
-        self.vscale_slider_r = QSlider(Qt.Orientation.Horizontal)
-        self.vscale_slider_r.setRange(0, len(self.vscale_keys) - 1)
-        self.vscale_slider_r.valueChanged.connect(self.on_vscale_right_slider_changed)
-        if "1.0x" in self.vscale_keys:
-            self.vscale_slider_r.setValue(self.vscale_keys.index("1.0x"))
-        vert_layout.addWidget(self.vscale_slider_r)
-
-        hbox_ch = QHBoxLayout()
-        self.chk_left = QCheckBox(tr("Left Ch"))
-        self.chk_left.setChecked(True)
-        self.chk_left.toggled.connect(lambda x: setattr(self.module, "show_left", x))
-        hbox_ch.addWidget(self.chk_left)
-
-        self.chk_right = QCheckBox(tr("Right Ch"))
-        self.chk_right.setChecked(True)
-        self.chk_right.toggled.connect(lambda x: setattr(self.module, "show_right", x))
-        hbox_ch.addWidget(self.chk_right)
-        vert_layout.addLayout(hbox_ch)
-
-        # per-tab stretch handled by controls_layout
-
-        # 3. Trigger Controls
-        hbox_src = QHBoxLayout()
-        hbox_src.addWidget(QLabel(tr("Source:")))
-        self.trig_source_combo = QComboBox()
-        self.trig_source_combo.addItems([tr("Left"), tr("Right")])
-        self.trig_source_combo.currentIndexChanged.connect(self.on_trig_source_changed)
-        hbox_src.addWidget(self.trig_source_combo)
-        trig_layout.addLayout(hbox_src)
-
-        hbox_slope = QHBoxLayout()
-        hbox_slope.addWidget(QLabel(tr("Slope:")))
-        self.trig_slope_combo = QComboBox()
-        self.trig_slope_combo.addItems([tr("Rising"), tr("Falling")])
-        self.trig_slope_combo.currentTextChanged.connect(self.on_trig_slope_changed)
-        hbox_slope.addWidget(self.trig_slope_combo)
-        trig_layout.addLayout(hbox_slope)
-
-        hbox_mode = QHBoxLayout()
-        hbox_mode.addWidget(QLabel(tr("Mode:")))
-        self.trig_mode_combo = QComboBox()
-        self.trig_mode_combo.addItems([tr("Auto"), tr("Normal"), tr("Single")])
-        self.trig_mode_combo.currentTextChanged.connect(self.on_trig_mode_changed)
-        hbox_mode.addWidget(self.trig_mode_combo)
-        trig_layout.addLayout(hbox_mode)
-
-        hbox_lvl = QHBoxLayout()
-        hbox_lvl.addWidget(QLabel(tr("Level:")))
-        self.trig_level_spin = QDoubleSpinBox()
-        self.trig_level_spin.setRange(-1.0, 1.0)
-        self.trig_level_spin.setSingleStep(0.1)
-        self.trig_level_spin.setValue(0.0)
-        self.trig_level_spin.valueChanged.connect(self.on_trig_level_changed)
-        hbox_lvl.addWidget(self.trig_level_spin)
-        trig_layout.addLayout(hbox_lvl)
-
-        # per-tab stretch handled by controls_layout
-
-        # 4. Tools
-        hbox_math = QHBoxLayout()
-        hbox_math.addWidget(QLabel(tr("Math:")))
-        self.math_combo = QComboBox()
-        self.math_combo.addItems(
-            [tr("Off"), tr("A + B"), tr("A - B"), tr("A * B"), tr("A / B"), tr("Derivative"), tr("Integral")]
-        )
-        self.math_combo.currentTextChanged.connect(self.on_math_changed)
-        hbox_math.addWidget(self.math_combo)
-        tools_layout.addLayout(hbox_math)
-
-        self.chk_cursors = QCheckBox(tr("Enable Cursors"))
-        self.chk_cursors.toggled.connect(self.on_cursors_toggled)
-        tools_layout.addWidget(self.chk_cursors)
-
-        self.chk_wave_meas = QCheckBox(tr("Enable Waveform Measurements"))
-        self.chk_wave_meas.toggled.connect(self.on_wave_meas_toggled)
-        tools_layout.addWidget(self.chk_wave_meas)
-
-        # Persistence Controls
-        persist_group = QGroupBox(tr("Persistence"))
-        persist_layout = QVBoxLayout()
-
-        self.chk_persist = QCheckBox(tr("Enable Persistence"))
-        self.chk_persist.setChecked(self.module.persistence_mode)
-        self.chk_persist.toggled.connect(self.on_persist_toggled)
-        persist_layout.addWidget(self.chk_persist)
-
-        hbox_decay = QHBoxLayout()
-        hbox_decay.addWidget(QLabel(tr("Decay:")))
-        self.decay_slider = QSlider(Qt.Orientation.Horizontal)
-        self.decay_slider.setRange(0, 99)
-        self.decay_slider.setValue(int(self.module.persistence_decay * 100))
-        self.decay_slider.valueChanged.connect(self.on_decay_changed)
-        hbox_decay.addWidget(self.decay_slider)
-        persist_layout.addLayout(hbox_decay)
-
-        hbox_intensity = QHBoxLayout()
-        hbox_intensity.addWidget(QLabel(tr("Intensity:")))
-        self.intensity_slider = QSlider(Qt.Orientation.Horizontal)
-        self.intensity_slider.setRange(1, 100)
-        self.intensity_slider.setValue(int(self.module.persistence_intensity * 100))
-        self.intensity_slider.valueChanged.connect(self.on_intensity_changed)
-        hbox_intensity.addWidget(self.intensity_slider)
-        persist_layout.addLayout(hbox_intensity)
-
-        persist_group.setLayout(persist_layout)
-        tools_layout.addWidget(persist_group)
-
-        # per-tab stretch handled by tools_tab_layout
-
-        # 5. Filter Controls
-        hbox_ft = QHBoxLayout()
-        hbox_ft.addWidget(QLabel(tr("Type:")))
-        self.filter_combo = QComboBox()
-        self.filter_combo.addItems([tr("None"), tr("LPF"), tr("HPF"), tr("BPF")])
-        self.filter_combo.currentTextChanged.connect(self.on_filter_type_changed)
-        hbox_ft.addWidget(self.filter_combo)
-        filter_layout.addLayout(hbox_ft)
-
-        self.filter_stack = QStackedWidget()
-
-        # None Page
-        self.filter_stack.addWidget(QWidget())
-
-        # LPF/HPF Page
-        lpf_widget = QWidget()
-        lpf_layout = QFormLayout()
-        lpf_layout.setContentsMargins(0, 0, 0, 0)
-        self.cutoff_spin = QDoubleSpinBox()
-        self.cutoff_spin.setRange(10, 24000)
-        self.cutoff_spin.setValue(self.module.filter_cutoff)
-        self.cutoff_spin.valueChanged.connect(lambda v: setattr(self.module, "filter_cutoff", v))
-        lpf_layout.addRow(tr("Cutoff (Hz):"), self.cutoff_spin)
-        lpf_widget.setLayout(lpf_layout)
-        self.filter_stack.addWidget(lpf_widget)
-
-        # BPF Page
-        bpf_widget = QWidget()
-        bpf_layout = QFormLayout()
-        bpf_layout.setContentsMargins(0, 0, 0, 0)
-        self.bpf_low_spin = QDoubleSpinBox()
-        self.bpf_low_spin.setRange(10, 24000)
-        self.bpf_low_spin.setValue(self.module.filter_low)
-        self.bpf_low_spin.valueChanged.connect(lambda v: setattr(self.module, "filter_low", v))
-        bpf_layout.addRow(tr("Low (Hz):"), self.bpf_low_spin)
-
-        self.bpf_high_spin = QDoubleSpinBox()
-        self.bpf_high_spin.setRange(10, 24000)
-        self.bpf_high_spin.setValue(self.module.filter_high)
-        self.bpf_high_spin.valueChanged.connect(lambda v: setattr(self.module, "filter_high", v))
-        bpf_layout.addRow(tr("High (Hz):"), self.bpf_high_spin)
-        bpf_widget.setLayout(bpf_layout)
-        self.filter_stack.addWidget(bpf_widget)
-
-        filter_layout.addWidget(self.filter_stack)
-
-        # per-tab stretch handled by tools_tab_layout
-
-        # Math Curve
-        # Create a new ViewBox for Math
-        self.math_view = pg.ViewBox()
-        self.plot_widget.plotItem.scene().addItem(self.math_view)
-        # Link X axis
-        self.math_view.setXLink(self.plot_widget.plotItem)
-
-        # Add Right Axis
-        # Remove default right axis if it exists, then add our custom one
-        if self.plot_widget.plotItem.getAxis("right") is not None:
-            self.plot_widget.plotItem.layout.removeItem(self.plot_widget.plotItem.getAxis("right"))
-        self.axis_math = pg.AxisItem("right")
-        self.axis_math.linkToView(self.math_view)
-        self.axis_math.setLabel(tr("Math"), color="#ffffff")
-        self.plot_widget.plotItem.layout.addItem(self.axis_math, 2, 2)  # Row 2, Col 2 for right axis
-        self.axis_math.hide()  # Hide by default
-
-        # Update View Geometry on resize
-        self.plot_widget.plotItem.vb.sigResized.connect(self.update_math_view_geometry)
-
-        self.curve_math = pg.PlotCurveItem(pen=pg.mkPen("w", width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
-        self.math_view.addItem(self.curve_math)
-
-        main_layout.addWidget(right_widget)
-
-        self.setLayout(main_layout)
+        return left_layout
 
     def update_math_view_geometry(self):
         # This function ensures the math_view's geometry matches the main plot's viewbox
@@ -1170,11 +1182,7 @@ class OscilloscopeWidget(QWidget):
             current_len = len(data)
             cached_duration, cached_len = self._time_array_cache_params
 
-            if (
-                self._time_array_cache is not None
-                and cached_duration == window_duration
-                and cached_len == current_len
-            ):
+            if self._time_array_cache is not None and cached_duration == window_duration and cached_len == current_len:
                 t = self._time_array_cache
             else:
                 t = np.linspace(0, window_duration, current_len)
@@ -1222,12 +1230,7 @@ class OscilloscopeWidget(QWidget):
                     fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
 
                     self.meas_l_auto_label.setText(
-                        tr("Freq")
-                        + f": {freq_str}  "
-                        + tr("Rise")
-                        + f": {rise_str}  "
-                        + tr("Fall")
-                        + f": {fall_str}"
+                        tr("Freq") + f": {freq_str}  " + tr("Rise") + f": {rise_str}  " + tr("Fall") + f": {fall_str}"
                     )
                 if self.module.show_right:
                     freq_hz = self.module.estimate_frequency_hz(t, r_data)
@@ -1238,12 +1241,7 @@ class OscilloscopeWidget(QWidget):
                     fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
 
                     self.meas_r_auto_label.setText(
-                        tr("Freq")
-                        + f": {freq_str}  "
-                        + tr("Rise")
-                        + f": {rise_str}  "
-                        + tr("Fall")
-                        + f": {fall_str}"
+                        tr("Freq") + f": {freq_str}  " + tr("Rise") + f": {rise_str}  " + tr("Fall") + f": {fall_str}"
                     )
 
             # Store for cursor interpolation
@@ -1271,14 +1269,10 @@ class OscilloscopeWidget(QWidget):
                 rng = [[0, window_duration], [self.VIEW_Y_MIN, self.VIEW_Y_MAX]]
 
                 if self.module.show_left:
-                    self.module._accumulate_heatmap(
-                        t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity
-                    )
+                    self.module._accumulate_heatmap(t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity)
 
                 if self.module.show_right:
-                    self.module._accumulate_heatmap(
-                        t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity
-                    )
+                    self.module._accumulate_heatmap(t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity)
 
                 # Compose Image
                 # L = Green, R = Red
