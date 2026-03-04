@@ -43,8 +43,6 @@ class TestRawTimeSeriesFormatting(unittest.TestCase):
 
         # We need to mock _init_ui to avoid actual pyqtgraph/Qt rendering issues in offscreen mode
         # The formatting functions don't depend on the UI being fully built
-        original_init = RawTimeSeriesWidget.__init__
-
         def mock_init(self_obj, module):
             # Just set the module, skip _init_ui and QTimer
             self_obj.module = module
