@@ -617,6 +617,13 @@ class LockInSpectrumFinderWidget(QWidget):
         self.lbl_status.setText(tr("Calculating... 0%"))
 
     def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
+        if not hasattr(self, 'current_freqs') or not hasattr(self, 'current_mags'):
+            return
+            
+        if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(self.current_freqs):
+            self.averaged_amps = np.zeros(len(self.current_freqs))
+            self.frames_counted = 1
+
         alpha = 1.0 / min(self.spin_averages.value(), max(1, self.frames_counted))
         
         a_chunk = 10.0 ** (m_chunk / 20.0)
