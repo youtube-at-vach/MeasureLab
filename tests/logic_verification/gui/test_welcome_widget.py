@@ -20,7 +20,19 @@ def mock_dependencies():
 
         # Setup QPixmap mock to return a REAL QPixmap via side_effect
         # This prevents TypeError in QLabel.setPixmap
-        mock_pixmap.side_effect = lambda *args: QPixmap()
+
+        # Keep track of original QPixmap
+        OriginalQPixmap = QPixmap
+
+        def create_pixmap(*args, **kwargs):
+            # Create a real pixmap so scaledToHeight returns a real pixmap
+            # and setPixmap doesn't complain about types.
+            p = OriginalQPixmap()
+            # We can still mock scaledToHeight if we want to trace it,
+            # but it's simpler to just let it be a real empty QPixmap.
+            return p
+
+        mock_pixmap.side_effect = create_pixmap
 
         yield mock_rp, mock_exists, mock_pixmap, mock_timer
 
@@ -46,7 +58,6 @@ def test_welcome_image_primary_path(qtbot, mock_dependencies):
     labels = widget.findChildren(QLabel)
     found_pixmap = False
     for lbl in labels:
-        # Since we mocked QPixmap, lbl.pixmap() returns the mock if set
         if lbl.pixmap() is not None:
              found_pixmap = True
              break
@@ -58,11 +69,18 @@ def test_welcome_image_fallback_path(qtbot, mock_dependencies):
     primary_path = "/path/to/assets/welcome.png"
     mock_rp.return_value = primary_path
 
+    import src.gui.widgets.welcome
+    expected_fallback_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(src.gui.widgets.welcome.__file__))),
+        "assets",
+        "welcome.png"
+    )
+
     # mimic fallback path
     def exists_side_effect(path):
         if path == primary_path:
             return False
-        if "assets" in path and "welcome.png" in path: # Fallback path
+        if path == expected_fallback_path:
             return True
         return False
 
@@ -72,12 +90,9 @@ def test_welcome_image_fallback_path(qtbot, mock_dependencies):
     qtbot.addWidget(widget)
 
     # Verify QPixmap called with fallback path
-    # Fallback path is calculated relative to __file__, so it's system dependent
-    # But we can verify it's NOT primary path
     assert mock_pixmap.call_count == 1
     args, _ = mock_pixmap.call_args
-    assert args[0] != primary_path
-    assert "welcome.png" in args[0]
+    assert args[0] == expected_fallback_path
 
     # Verify image label has pixmap set
     labels = widget.findChildren(QLabel)
@@ -94,8 +109,10 @@ def test_welcome_image_not_found(qtbot, mock_dependencies):
     mock_rp.return_value = "/invalid/path"
     mock_exists.return_value = False
 
-    widget = WelcomeWidget()
-    qtbot.addWidget(widget)
+    # We need to mock 'tr' specifically for this test to match the original file
+    with patch('src.gui.widgets.welcome.tr', return_value="Welcome Image Not Found"):
+        widget = WelcomeWidget()
+        qtbot.addWidget(widget)
 
     mock_pixmap.assert_not_called()
 
