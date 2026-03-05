@@ -353,7 +353,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         marker_freqs = []
         if include_targets:
-            marker_freqs = [f for f in DEFAULT_SCAN_LIST.keys() if start_f <= f <= stop_f]
+            marker_freqs = [f for f in DEFAULT_SCAN_LIST.keys() if start_f < f < stop_f]
             if marker_freqs:
                 # np.unique stably sorts and prevents duplicates
                 freqs = np.unique(np.concatenate([freqs, marker_freqs]))
