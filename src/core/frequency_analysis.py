@@ -17,6 +17,9 @@ def calculate_frequency_metrics(data, sr, gate_threshold_db, calibration_factor=
         tuple: (frequency_hz, amplitude_db)
                frequency_hz is None if below gate threshold.
     """
+    if data.size == 0:
+        raise ValueError("Empty audio data buffer")
+
     # 1. Check Amplitude (Gate)
     rms = np.sqrt(np.vdot(data, data) / data.size)
     db = 20 * np.log10(rms + 1e-12)
