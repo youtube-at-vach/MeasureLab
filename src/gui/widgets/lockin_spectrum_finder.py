@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
     QVBoxLayout,
     QWidget,
 )
@@ -30,16 +29,6 @@ from src.measurement_modules.base import MeasurementModule
 logger = logging.getLogger(__name__)
 
 DEFAULT_SCAN_LIST = {
-    50.0: "Mains Power (50Hz)",
-    60.0: "Mains Power (60Hz)",
-    100.0: "Rectified Mains (100Hz)",
-    120.0: "Rectified Mains (120Hz)",
-    150.0: "Mains 3rd Harmonic (150Hz)",
-    180.0: "Mains 3rd Harmonic (180Hz)",
-    200.0: "Mains 4th Harmonic (200Hz)",
-    240.0: "Mains 4th Harmonic (240Hz)",
-    250.0: "Mains 5th Harmonic (250Hz)",
-    300.0: "Mains 5th Harmonic (300Hz)",
     997.0: "Standard Test Tone (997Hz)",
     1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
     8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
@@ -75,6 +64,27 @@ DEFAULT_SCAN_LIST = {
     96000.0: "Hi-Res Audio (96kHz)",
     100000.0: "SMPS Noise (100kHz)"
 }
+
+def _get_mains_note(base: int, order: int) -> str:
+    freq = base * order
+    if order == 1:
+        return f"Mains Power ({base}Hz)"
+    elif order == 2:
+        return f"Rectified Mains ({freq}Hz)"
+    else:
+        suffix = "th"
+        if order == 3: suffix = "rd"
+        return f"Mains {order}{suffix} Harmonic ({freq}Hz)"
+
+# Generate mains harmonics up to 16th order
+for _order in range(1, 17):
+    for _base in (50, 60):
+        _f = float(_base * _order)
+        _note = _get_mains_note(_base, _order)
+        if _f in DEFAULT_SCAN_LIST:
+            DEFAULT_SCAN_LIST[_f] += f" / {_note}"
+        else:
+            DEFAULT_SCAN_LIST[_f] = _note
 
 
 # Used for decoupling background thread results to GUI thread safely.
@@ -348,7 +358,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 b = float(frac[1]) / float(frac[0])
             except:
                 b = 3.0
-            
+
             n_start = int(np.floor(b * np.log2(start_f / octave_ref)))
             n_stop = int(np.ceil(b * np.log2(stop_f / octave_ref)))
             n_vals = np.arange(n_start, n_stop + 1)
@@ -366,7 +376,7 @@ class LockInSpectrumFinder(MeasurementModule):
             if marker_freqs:
                 # np.unique stably sorts and prevents duplicates
                 freqs = np.unique(np.concatenate([freqs, marker_freqs]))
-        
+
         points = len(freqs)
 
         self.signals.sweep_started.emit((freqs, marker_freqs))
@@ -634,15 +644,15 @@ class LockInSpectrumFinderWidget(QWidget):
         self._update_ui_visibility()
 
         settings_group.setLayout(form)
-        
+
         self.tabs = QTabWidget()
         self.tabs.addTab(settings_group, tr("Settings"))
-        
+
         # Targets Tab
         target_tab = QWidget()
         target_layout = QVBoxLayout(target_tab)
         target_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.table_targets = QTableWidget(len(DEFAULT_SCAN_LIST), 2)
         self.table_targets.setHorizontalHeaderLabels([tr("Frequency (Hz)"), tr("Cause / Note")])
         self.table_targets.horizontalHeader().setStretchLastSection(True)
@@ -650,11 +660,11 @@ class LockInSpectrumFinderWidget(QWidget):
         self.table_targets.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table_targets.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_targets.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
-        
+
         for i, (freq, note) in enumerate(sorted(DEFAULT_SCAN_LIST.items())):
             self.table_targets.setItem(i, 0, QTableWidgetItem(f"{freq:.1f}"))
             self.table_targets.setItem(i, 1, QTableWidgetItem(tr(note)))
-            
+
         target_layout.addWidget(self.table_targets)
         self.table_targets.cellDoubleClicked.connect(self.on_target_double_clicked)
         self.tabs.addTab(target_tab, tr("Scan Targets"))
@@ -704,7 +714,7 @@ class LockInSpectrumFinderWidget(QWidget):
     def _get_marker_tooltip(self, x, y, data):
         if not data:
             return ""
-        
+
         freq = data.get("freq", 0.0)
         mag = data.get("mag", -180.0)
         phase = data.get("phase_deg", 0.0)
@@ -917,7 +927,7 @@ class LockInSpectrumFinderWidget(QWidget):
                     phase = float(self.current_phases[i]) if hasattr(self, 'current_phases') else 0.0
                     note = DEFAULT_SCAN_LIST.get(mf, "Unknown")
                     unit = self.module.display_unit
-                    
+
                     # Store rich data in the item
                     data_obj = {
                         "freq": mf,
@@ -964,7 +974,7 @@ class LockInSpectrumFinderWidget(QWidget):
         avg_db = 20.0 * np.log10(self.averaged_amps[start_idx:end_idx] + 1e-15)
         self.current_mags[start_idx:end_idx] = avg_db
         self.curve.setData(self.current_freqs, self.current_mags)
-        
+
         self._update_scatter_plot()
 
         if hasattr(self, 'sweep_line'):
@@ -1004,7 +1014,7 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_octave_ref_changed(self, val):
         self.module.octave_ref_freq = val
         self.reset_averaging()
-        
+
     def on_target_double_clicked(self, row, column):
         item = self.table_targets.item(row, 0)
         if item:
@@ -1017,7 +1027,7 @@ class LockInSpectrumFinderWidget(QWidget):
         data = points[0].data()
         freq = float(data["freq"])
         self._transition_to_zoom(freq)
-        
+
     def _transition_to_zoom(self, freq):
         idx = self.combo_mode.findData("Zoom")
         if idx >= 0:
