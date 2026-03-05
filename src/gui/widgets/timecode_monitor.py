@@ -1467,17 +1467,28 @@ class TimecodeMonitorWidget(QWidget):
         self._update_ltc_offset_label()
 
         # Generator: show the currently-output LTC timecode (small display).
-        for k in ("L", "R"):
-            lbl = self._gen_out_labels.get(k)
-            ch = self.module.channels.get(k)
-            if lbl is None or ch is None:
-                continue
+        labels = self._gen_out_labels
+        channels = self.module.channels
 
-            if bool(getattr(ch, "generator_enabled", False)):
-                tc_raw = str(getattr(ch.gen, "gen_current_tc", "--:--:--:--") or "--:--:--:--")
-                lbl.setText(tr("Gen Out: {0}").format(tc_raw))
+        lbl_l = labels.get("L")
+        ch_l = channels.get("L")
+        if lbl_l is not None and ch_l is not None:
+            if getattr(ch_l, "generator_enabled", False):
+                gen = ch_l.gen
+                tc = str(getattr(gen, "gen_current_tc", "--:--:--:--") or "--:--:--:--")
+                lbl_l.setText(tr("Gen Out: {0}").format(tc))
             else:
-                lbl.setText(tr("Gen Out: --:--:--:--"))
+                lbl_l.setText(tr("Gen Out: --:--:--:--"))
+
+        lbl_r = labels.get("R")
+        ch_r = channels.get("R")
+        if lbl_r is not None and ch_r is not None:
+            if getattr(ch_r, "generator_enabled", False):
+                gen = ch_r.gen
+                tc = str(getattr(gen, "gen_current_tc", "--:--:--:--") or "--:--:--:--")
+                lbl_r.setText(tr("Gen Out: {0}").format(tc))
+            else:
+                lbl_r.setText(tr("Gen Out: --:--:--:--"))
 
         if getattr(self, "_jam_tab_index", None) is not None and self.tabs.currentIndex() == self._jam_tab_index:
             now = time.time()
