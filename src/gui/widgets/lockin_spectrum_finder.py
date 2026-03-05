@@ -713,9 +713,9 @@ class LockInSpectrumFinderWidget(QWidget):
 
         text = (
             f"<b>{tr(note)}</b><br>"
-            f"Frequency: {freq:.1f} Hz<br>"
-            f"Magnitude: {mag:.2f} {unit}<br>"
-            f"Phase: {phase:.1f}°"
+            f"{tr('Frequency:')} {freq:.1f} Hz<br>"
+            f"{tr('Magnitude:')} {mag:.2f} {unit}<br>"
+            f"{tr('Phase:')} {phase:.1f}°"
         )
         return text
 
@@ -976,7 +976,7 @@ class LockInSpectrumFinderWidget(QWidget):
         pct = int((end_idx / len(self.current_freqs)) * 100)
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
         self.lbl_status.setText(tr("Calculating... {}%").format(pct) + avg_text)
 
     def on_result_ready(self, result):
@@ -988,7 +988,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
         self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
 
         if self.module.mode == "Zoom" and self.module.track_peak:
