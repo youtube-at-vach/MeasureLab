@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import pyqtgraph as pg
-import scipy.signal
+from scipy.signal import butter, lfilter, sosfilt
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -166,14 +166,14 @@ class SoundLevelMeter(MeasurementModule):
 
         # Design separately to avoid wide-bandpass issues
         # Highpass 20Hz (Always apply)
-        sos_hp = scipy.signal.butter(4, 20, btype="highpass", fs=sr, output="sos")
+        sos_hp = butter(4, 20, btype="highpass", fs=sr, output="sos")
 
         if upper_freq >= nyquist * 0.95:
             # Just Highpass
             self.bw_filter = sos_hp
         else:
             # Highpass + Lowpass cascade
-            sos_lp = scipy.signal.butter(4, upper_freq, btype="lowpass", fs=sr, output="sos")
+            sos_lp = butter(4, upper_freq, btype="lowpass", fs=sr, output="sos")
             self.bw_filter = np.vstack((sos_hp, sos_lp))
 
         self.bw_filter_state = np.zeros((self.bw_filter.shape[0], 2))
@@ -301,11 +301,11 @@ class SoundLevelMeter(MeasurementModule):
 
         # Apply Bandwidth Filter (HighSens/Wide/Normal)
         if self.bw_filter is not None and self.bw_filter_state is not None:
-            sig, self.bw_filter_state = scipy.signal.sosfilt(self.bw_filter, sig, zi=self.bw_filter_state)
+            sig, self.bw_filter_state = sosfilt(self.bw_filter, sig, zi=self.bw_filter_state)
 
         # Apply Frequency Weighting
         if self.sos_filter is not None and self.filter_state is not None:
-            sig, self.filter_state = scipy.signal.sosfilt(self.sos_filter, sig, zi=self.filter_state)
+            sig, self.filter_state = sosfilt(self.sos_filter, sig, zi=self.filter_state)
 
         # Square signal for power
         sq_sig = sig**2
@@ -329,7 +329,7 @@ class SoundLevelMeter(MeasurementModule):
             # initial state
             zi = [self.current_sq_val * (1 - alpha)]
 
-            filtered_sq, zf = scipy.signal.lfilter([alpha], [1, -(1 - alpha)], sq_sig, zi=zi)
+            filtered_sq, zf = lfilter([alpha], [1, -(1 - alpha)], sq_sig, zi=zi)
 
             self.current_sq_val = filtered_sq[-1]
             block_vals = filtered_sq
