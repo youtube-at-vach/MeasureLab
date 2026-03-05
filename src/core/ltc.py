@@ -334,27 +334,20 @@ class LTCDecoder:
         return False
 
     def _decode_frame_bits(self, bits):
-        def val(start, vid_len):
-            v = 0
-            for i in range(vid_len):
-                if bits[start + i]:
-                    v |= 1 << i
-            return v
-
-        ff_ones = val(0, 4)
-        ff_tens = val(8, 2)
+        ff_ones = bits[0] | (bits[1] << 1) | (bits[2] << 2) | (bits[3] << 3)
+        ff_tens = bits[8] | (bits[9] << 1)
         ff = ff_tens * 10 + ff_ones
 
-        ss_ones = val(16, 4)
-        ss_tens = val(24, 3)
+        ss_ones = bits[16] | (bits[17] << 1) | (bits[18] << 2) | (bits[19] << 3)
+        ss_tens = bits[24] | (bits[25] << 1) | (bits[26] << 2)
         ss = ss_tens * 10 + ss_ones
 
-        mm_ones = val(32, 4)
-        mm_tens = val(40, 3)
+        mm_ones = bits[32] | (bits[33] << 1) | (bits[34] << 2) | (bits[35] << 3)
+        mm_tens = bits[40] | (bits[41] << 1) | (bits[42] << 2)
         mm = mm_tens * 10 + mm_ones
 
-        hh_ones = val(48, 4)
-        hh_tens = val(56, 2)
+        hh_ones = bits[48] | (bits[49] << 1) | (bits[50] << 2) | (bits[51] << 3)
+        hh_tens = bits[56] | (bits[57] << 1)
         hh = hh_tens * 10 + hh_ones
 
         self.decoded_tc = f"{hh:02}:{mm:02}:{ss:02}:{ff:02}"
