@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-import scipy.signal
+from scipy.signal import butter, lfilter, remez, sosfilt
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -95,7 +95,7 @@ class UltrasoundModulator(MeasurementModule):
                 self._filter_sos = None
                 self._filter_zi = None
             else:
-                new_sos = scipy.signal.butter(4, self.lpf_cutoff, fs=fs, output="sos")
+                new_sos = butter(4, self.lpf_cutoff, fs=fs, output="sos")
 
                 # Try to preserve state to avoid clicks
                 preserve_state = False
@@ -123,7 +123,7 @@ class UltrasoundModulator(MeasurementModule):
                 width = 800.0
                 bands = [width, fs / 2 - width]
                 try:
-                    self._hilbert_coeffs = scipy.signal.remez(numtaps, bands, [1], type="hilbert", fs=fs)
+                    self._hilbert_coeffs = remez(numtaps, bands, [1], type="hilbert", fs=fs)
                 except Exception as e:
                     logger.warning(f"Error designing Hilbert filter: {e}. Fallback to basic.")
                     # Fallback to precomputed coefficients
@@ -279,9 +279,9 @@ class UltrasoundModulator(MeasurementModule):
                 # If m is (frames, 2), axis=-1 is channels. We want to filter along frames (axis 0).
 
                 if channels == 1:
-                    m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
+                    m, self._filter_zi = sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
                 else:
-                    m, self._filter_zi = scipy.signal.sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
+                    m, self._filter_zi = sosfilt(self._filter_sos, m, zi=self._filter_zi, axis=0)
 
             # 4. Carrier
             # Same carrier for both channels usually.
@@ -340,7 +340,7 @@ class UltrasoundModulator(MeasurementModule):
                         self._hilbert_zi = np.zeros(target_h_zi_shape)
 
                     # Filter for Image (Quadrature) component
-                    m_q, self._hilbert_zi = scipy.signal.lfilter(
+                    m_q, self._hilbert_zi = lfilter(
                         self._hilbert_coeffs, 1.0, m, axis=0, zi=self._hilbert_zi
                     )
                     # If mono, m_q is 1D. If stereo, 2D.
@@ -361,7 +361,7 @@ class UltrasoundModulator(MeasurementModule):
                     if self._delay_zi is None or self._delay_zi.shape != target_d_zi_shape:
                         self._delay_zi = np.zeros(target_d_zi_shape)
 
-                    m_i, self._delay_zi = scipy.signal.lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
+                    m_i, self._delay_zi = lfilter(b_delay, 1.0, m, axis=0, zi=self._delay_zi)
 
                     # Carrier generation for SSB
                     # We have carrier = cos(wt). We need sin(wt).
