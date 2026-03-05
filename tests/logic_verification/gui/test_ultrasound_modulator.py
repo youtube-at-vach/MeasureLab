@@ -26,7 +26,7 @@ class TestUltrasoundModulator(unittest.TestCase):
 
     def test_update_filter_remez_success(self):
         # Test that coefficients are generated when remez succeeds
-        with patch('scipy.signal.remez') as mock_remez:
+        with patch('src.gui.widgets.ultrasound_modulator.remez') as mock_remez:
             mock_remez.return_value = np.ones(65)
             self.modulator._update_filter(48000)
             self.assertTrue(np.array_equal(self.modulator._hilbert_coeffs, np.ones(65)))
@@ -34,7 +34,7 @@ class TestUltrasoundModulator(unittest.TestCase):
 
     def test_update_filter_remez_failure_fallback(self):
         # Test fallback when remez fails
-        with patch('scipy.signal.remez') as mock_remez:
+        with patch('src.gui.widgets.ultrasound_modulator.remez') as mock_remez:
             mock_remez.side_effect = ValueError("Convergence failed")
 
             with self.assertLogs('src.gui.widgets.ultrasound_modulator', level='WARNING') as cm:
@@ -45,7 +45,7 @@ class TestUltrasoundModulator(unittest.TestCase):
             self.assertEqual(len(self.modulator._hilbert_coeffs), 65)
 
     def test_update_filter_remez_failure_fallback_coeffs(self):
-         with patch('scipy.signal.remez') as mock_remez:
+         with patch('src.gui.widgets.ultrasound_modulator.remez') as mock_remez:
             mock_remez.side_effect = ValueError("Convergence failed")
             self.modulator._update_filter(48000)
 
