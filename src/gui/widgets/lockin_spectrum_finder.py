@@ -73,7 +73,8 @@ def _get_mains_note(base: int, order: int) -> str:
         return f"Rectified Mains ({freq}Hz)"
     else:
         suffix = "th"
-        if order == 3: suffix = "rd"
+        if order == 3:
+            suffix = "rd"
         return f"Mains {order}{suffix} Harmonic ({freq}Hz)"
 
 # Generate mains harmonics up to 16th order
@@ -920,7 +921,7 @@ class LockInSpectrumFinderWidget(QWidget):
         pts = []
         for mf in self.current_marker_freqs:
             idx = np.searchsorted(self.current_freqs, mf)
-            def check_and_add(i):
+            def check_and_add(i, mf=mf):
                 if 0 <= i < len(self.current_freqs) and np.isclose(self.current_freqs[i], mf, atol=1e-3):
                     y = self.current_mags[i]
                     x = mf
