@@ -36,6 +36,8 @@ DEFAULT_SCAN_LIST = {
     120.0: "Rectified Mains (120Hz)",
     150.0: "Mains 3rd Harmonic (150Hz)",
     180.0: "Mains 3rd Harmonic (180Hz)",
+    200.0: "Mains 4th Harmonic (200Hz)",
+    240.0: "Mains 4th Harmonic (240Hz)",
     997.0: "Standard Test Tone (997Hz)",
     1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
     8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
