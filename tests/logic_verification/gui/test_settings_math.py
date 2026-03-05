@@ -1,4 +1,3 @@
-import pytest
 from src.gui.widgets.settings import next_power_of_two
 
 def test_next_power_of_two_positive_integers():
