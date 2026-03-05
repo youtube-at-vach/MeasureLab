@@ -1,5 +1,37 @@
 # Changelog
 
+## [v0.5.5] - 2026-03-05
+
+### Added
+
+* **Analyzer**: Introduced Lock-in Spectrum Finder module (promoted from experimental).
+* **Analyzer**: Added configurable display units (dBFS, dBV, dB SPL) for Lock-in Spectrum Finder amplitude computation.
+* **Analyzer**: Added Exponential Moving Average (EMA) to the Lock-in Spectrum Finder.
+* **Analyzer**: Added Peak Tracking feature to Lock-in Spectrum Finder zoom mode.
+* **Analyzer**: Added "Int x Sync" and "Integer" frequency spacing options for Lock-in Spectrum Finder.
+* **Analyzer**: Added selectable window functions (Rectangular, Hanning, Blackman-Harris, Flat Top) to Lock-in Spectrum Finder.
+* **UI**: Expanded available buffer size options for non-basic modes in Lock-in Spectrum Finder.
+
+### Changed
+
+* **Perf**: Improved multitone peak search performance using list comprehensions.
+* **Perf**: Optimized loop in linearity analyzer with vectorized operations.
+* **Perf**: Vectorized timecode monitor jam capture algorithm.
+* **Perf**: Optimized A-weighting impulse noise calculation.
+* **Perf**: Optimized coarse frequency search by vectorizing linear equation solves.
+* **Perf**: Optimized frequency array slice `argmax` for Lock-in Spectrum Finder.
+* **Perf**: Cached static filter computations in sound quality analyzer.
+* **Refactor**: Replaced `lockin_spectrum_analyzer.py` with `lockin_spectrum_finder.py`.
+* **Refactor**: Improved Lock-in Spectrum Finder calculation accuracy with multi-rate downsampling, float64 precision, and optimized basis matrix.
+* **Docs**: Added comprehensive documentation for Lock-in Spectrum Finder widget.
+* **Docs**: Added tests for logic verification elements like `next_power_of_two` and `RawTimeSeriesWidget`.
+
+### Fixed
+
+* **Core**: Fixed unused variable lint error in sound quality analyzer.
+* **Core**: Initialized averaging arrays to prevent attribute errors in progress updates.
+* **I18n**: Fixed missing and duplicated translation keys.
+
 ## [v0.5.4] - 2026-03-02
 
 ### Added
