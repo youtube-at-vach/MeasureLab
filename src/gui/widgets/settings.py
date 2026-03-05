@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-import scipy.signal
+from scipy.signal import butter, sosfilt, sosfilt_zi
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -262,7 +262,7 @@ class SplCalibrationDialog(QDialog):
         if not (0 < low_norm < high_norm < 1):
             raise ValueError(tr("Measurement bandwidth is outside the valid range for this sample rate."))
 
-        sos = scipy.signal.butter(4, [low_norm, high_norm], btype="bandpass", output="sos")
+        sos = butter(4, [low_norm, high_norm], btype="bandpass", output="sos")
         zi = np.zeros((sos.shape[0], 2), dtype=np.float64)
         return sos, zi
 
@@ -313,7 +313,7 @@ class SplCalibrationDialog(QDialog):
             raise ValueError("Invalid bandpass settings")
 
         # Use SOS for numerical stability, especially at very low normalized frequencies.
-        bpf_sos = scipy.signal.butter(4, [low, high], btype="bandpass", output="sos")
+        bpf_sos = butter(4, [low, high], btype="bandpass", output="sos")
         self._bpf_sos = bpf_sos
         # Streaming state for sosfilt: shape (n_sections, 2)
         self._bpf_zi = np.zeros((bpf_sos.shape[0], 2), dtype=np.float64)
@@ -324,7 +324,7 @@ class SplCalibrationDialog(QDialog):
             sim_zi = np.zeros((bpf_sos.shape[0], 2), dtype=np.float64)
             n = int(max(1, sr * 2.0))
             x = sim_pink.generate(n).astype(np.float64)
-            y, _ = scipy.signal.sosfilt(bpf_sos, x, zi=sim_zi)
+            y, _ = sosfilt(bpf_sos, x, zi=sim_zi)
             discard = int(min(n - 1, sr * 0.5))
             y2 = y[discard:]
             rms = float(np.sqrt(np.mean(y2 * y2) + 1e-24))
@@ -335,7 +335,7 @@ class SplCalibrationDialog(QDialog):
 
         # C-weighting for input measurement
         self._c_sos = AudioCalc.design_c_weighting(sr)
-        self._c_zi = scipy.signal.sosfilt_zi(self._c_sos).astype(np.float64)
+        self._c_zi = sosfilt_zi(self._c_sos).astype(np.float64)
 
         # Measurement bandwidth (input side)
         meas_band = self._get_measurement_band_hz()
@@ -387,7 +387,7 @@ class SplCalibrationDialog(QDialog):
         def callback(indata, outdata, frames, time, status):
             # --- Output: band-limited pink noise ---
             pink = self._pink.generate(frames).astype(np.float64)
-            y, self._bpf_zi = scipy.signal.sosfilt(self._bpf_sos, pink, zi=self._bpf_zi)
+            y, self._bpf_zi = sosfilt(self._bpf_sos, pink, zi=self._bpf_zi)
 
             # Scale so that output RMS ~= target FS RMS.
             ref = float(self._noise_ref_rms or 1.0)
@@ -406,8 +406,8 @@ class SplCalibrationDialog(QDialog):
             if indata.shape[1] > 0:
                 x = indata[:, 0].astype(np.float64)
                 if self._measure_bw_sos is not None and self._measure_bw_zi is not None:
-                    x, self._measure_bw_zi = scipy.signal.sosfilt(self._measure_bw_sos, x, zi=self._measure_bw_zi)
-                xw, self._c_zi = scipy.signal.sosfilt(self._c_sos, x, zi=self._c_zi)
+                    x, self._measure_bw_zi = sosfilt(self._measure_bw_sos, x, zi=self._measure_bw_zi)
+                xw, self._c_zi = sosfilt(self._c_sos, x, zi=self._c_zi)
                 p = float(np.mean(xw * xw) + 1e-24)
 
                 # EMA on power for stable reading
