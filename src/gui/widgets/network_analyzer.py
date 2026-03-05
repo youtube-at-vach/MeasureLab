@@ -3,7 +3,7 @@ import threading
 
 import numpy as np
 import pyqtgraph as pg
-import scipy.signal
+from scipy.signal import chirp as signal_chirp, coherence, correlate, correlation_lags, fftconvolve, savgol_filter, windows
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -182,7 +182,7 @@ class NetworkAnalyzer(MeasurementModule):
         duration = 0.5
 
         t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-        chirp = scipy.signal.chirp(t, f0=20, t1=duration, f1=10000, method="logarithmic")
+        chirp = signal_chirp(t, f0=20, t1=duration, f1=10000, method="logarithmic")
         chirp *= self.get_output_amplitude()
 
         try:
@@ -196,8 +196,8 @@ class NetworkAnalyzer(MeasurementModule):
             rec_data = self.run_play_rec(out_data, input_channels=1)
             recorded = rec_data[:, 0]
 
-            correlation = scipy.signal.correlate(recorded, chirp, mode="full")
-            lags = scipy.signal.correlation_lags(len(recorded), len(chirp), mode="full")
+            correlation = correlate(recorded, chirp, mode="full")
+            lags = correlation_lags(len(recorded), len(chirp), mode="full")
             lag = lags[np.argmax(correlation)]
 
             latency_samples = lag
@@ -268,7 +268,7 @@ class NetworkAnalyzer(MeasurementModule):
 
             # Find delay to align
             sig = rec_data[:, align_ch]
-            ir = scipy.signal.fftconvolve(sig, inv_filter, mode="full")
+            ir = fftconvolve(sig, inv_filter, mode="full")
             peak_idx = np.argmax(np.abs(ir))
 
             if accumulated_data is None:
@@ -324,7 +324,7 @@ class NetworkAnalyzer(MeasurementModule):
         phase = (w1 * T / L) * (np.exp(t * L / T) - 1)
         chirp = self.get_output_amplitude() * np.sin(phase)
 
-        window = scipy.signal.windows.tukey(num_samples, alpha=0.05)
+        window = windows.tukey(num_samples, alpha=0.05)
         chirp *= window
 
         inv_envelope = np.exp(t * L / T)
@@ -332,7 +332,7 @@ class NetworkAnalyzer(MeasurementModule):
         inv_filter *= window
         inv_filter = np.flip(inv_filter)
 
-        test_conv = scipy.signal.fftconvolve(chirp, inv_filter, mode="full")
+        test_conv = fftconvolve(chirp, inv_filter, mode="full")
         norm_factor = np.max(np.abs(test_conv))
         if norm_factor > 1e-9:
             inv_filter /= norm_factor
@@ -342,7 +342,7 @@ class NetworkAnalyzer(MeasurementModule):
     def _process_sweep_data(self, rec_data, inv_filter, chirp, sample_rate, worker):
         """Processes the recorded sweep data to calculate magnitude and phase response, IR SNR, and Coherence."""
         def get_ir(signal):
-            return scipy.signal.fftconvolve(signal, inv_filter, mode="full")
+            return fftconvolve(signal, inv_filter, mode="full")
 
         ir_snr_db = None
 
@@ -398,7 +398,7 @@ class NetworkAnalyzer(MeasurementModule):
             phase_deg = (phase_deg + 180) % 360 - 180
 
             # Coherence
-            f_coh, coh = scipy.signal.coherence(meas_sig, ref_sig, fs=sample_rate, nperseg=8192)
+            f_coh, coh = coherence(meas_sig, ref_sig, fs=sample_rate, nperseg=8192)
             coh_interp = np.interp(valid_freqs, f_coh, coh)
 
         else:
@@ -474,7 +474,7 @@ class NetworkAnalyzer(MeasurementModule):
 
             # Coherence against ideal chirp
             min_len = min(len(sig), len(chirp))
-            f_coh, coh = scipy.signal.coherence(sig[:min_len], chirp[:min_len], fs=sample_rate, nperseg=8192)
+            f_coh, coh = coherence(sig[:min_len], chirp[:min_len], fs=sample_rate, nperseg=8192)
             coh_interp = np.interp(valid_freqs, f_coh, coh)
 
         if ir_snr_db is not None:
@@ -1031,11 +1031,11 @@ class NetworkAnalyzerWidget(QWidget):
         if window < 3:
             return mags, phases
 
-        mags_smooth = scipy.signal.savgol_filter(mags, window_length=window, polyorder=2)
+        mags_smooth = savgol_filter(mags, window_length=window, polyorder=2)
 
         # Unwrap before smoothing phase to avoid discontinuities, then re-wrap to [-180, 180].
         phase_unwrapped = np.unwrap(np.radians(phases))
-        phase_smooth_rad = scipy.signal.savgol_filter(phase_unwrapped, window_length=window, polyorder=2)
+        phase_smooth_rad = savgol_filter(phase_unwrapped, window_length=window, polyorder=2)
         phase_smooth = np.degrees(phase_smooth_rad)
         phase_smooth = (phase_smooth + 180) % 360 - 180
 
@@ -1213,7 +1213,7 @@ class NetworkAnalyzerWidget(QWidget):
                 max_len = len(cohs_to_plot) if len(cohs_to_plot) % 2 == 1 else len(cohs_to_plot) - 1
                 window = min(window, max_len)
                 if window >= 3:
-                    cohs_to_plot = scipy.signal.savgol_filter(cohs_to_plot, window_length=window, polyorder=2)
+                    cohs_to_plot = savgol_filter(cohs_to_plot, window_length=window, polyorder=2)
                     cohs_to_plot = np.clip(cohs_to_plot, 0, 1)
 
             log_freqs = np.log10(freqs_to_plot)
