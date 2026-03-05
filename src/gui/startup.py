@@ -80,15 +80,18 @@ class WrappingSplashScreen(QSplashScreen):
         self._message = message
         self._alignment = alignment
         self._color = color
-        # Call super to trigger repaint, but we'll override drawContents
-        super().showMessage(message, alignment, color)
+        # Trigger a repaint so paintEvent uses the updated message
+        self.repaint()
 
-    def drawContents(self, painter: QPainter | None):
-        if painter is None:
-            return
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        # Draw the original pixmap as background
+        painter.drawPixmap(0, 0, self.pixmap())
+
         painter.setPen(self._color)
         # Add padding around the edges
         margin = 20
         rect = self.rect().adjusted(margin, margin, -margin, -margin)
         # Draw text with word wrap
         painter.drawText(rect, self._alignment | Qt.TextFlag.TextWordWrap, self._message)
+        painter.end()
