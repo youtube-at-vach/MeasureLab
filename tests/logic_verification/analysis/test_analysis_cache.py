@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 
 from src.core.analysis import get_cached_window, _get_butter_sos
