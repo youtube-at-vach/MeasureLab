@@ -10,6 +10,15 @@ It is specialized for detecting weak signals at low noise floors or observing sp
 > This widget is specialized for "finding" the presence and frequency of weak signals buried in noise.
 > Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a **rough guide** for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
 
+## Usage Comparison with Other Widgets
+
+This widget is specialized for "finding" weak signals within a specific narrow band. For effective measurement, use it in combination with the following widgets depending on your goals:
+
+* **[Spectrum Analyzer](spectrum_analyzer.md)**
+    If you want to quickly grasp the frequency components and noise distribution over a wide frequency band, use the Spectrum Analyzer first. When you find a minor peak or noise that you want to examine in more detail with extremely high resolution, switch to this widget (especially utilizing the Zoom mode) for a deeper analysis.
+* **[Lock-in Amplifier](lock_in_amplifier.md)**
+    Once you have identified the exact frequency of the target signal using this widget, use the Lock-in Amplifier. By perfectly synchronizing (locking) to the identified frequency, you can measure the actual accurate amplitude and phase, and evaluate long-term stability.
+
 ## Modes
 
 You can select between two analysis modes based on your needs.

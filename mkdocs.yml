@@ -96,6 +96,7 @@ nav:
   - Lock In Amplifier: widgets/lock_in_amplifier.md
   - Lock In Frequency Counter: widgets/lock_in_frequency_counter.md
   - Lock-in Harmonic Analyzer: widgets/lockin_harmonic_analyzer.md
+  - Lock-in Spectrum Finder: widgets/lockin_spectrum_finder.md
   - Loopback Finder: widgets/loopback_finder.md
   - Lufs Meter: widgets/lufs_meter.md
   - Network Analyzer: widgets/network_analyzer.md
