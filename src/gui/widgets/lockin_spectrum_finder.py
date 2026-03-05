@@ -74,10 +74,11 @@ DEFAULT_SCAN_LIST = {
 
 
 # Used for decoupling background thread results to GUI thread safely.
+# Used for decoupling background thread results to GUI thread safely.
 class FinderSignals(QObject):
     result_ready = pyqtSignal(object)
     sweep_started = pyqtSignal(object)
-    progress_update = pyqtSignal(int, int, object, object)
+    progress_update = pyqtSignal(int, int, object, object, object)
 
 class LockInSpectrumFinder(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -311,11 +312,15 @@ class LockInSpectrumFinder(MeasurementModule):
 
                 mags_db_all[i:end_idx] = mags_db_chunk
 
+                # Compute Phase
+                phases = np.angle(vals)
+
                 # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
+                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx], mags_db_chunk, phases)
                 time.sleep(0.005)
 
             if self.is_running:
+                # phases unmerged across chunks back to main for zoom (optional completeness)
                 self.signals.result_ready.emit((freqs, mags_db_all))
             return
 
@@ -453,8 +458,12 @@ class LockInSpectrumFinder(MeasurementModule):
 
             mags_db_all[i:end_idx] = mags_db_chunk
 
+            # iq[:,0] is cos component, iq[:,1] is sin component
+            # Standard phase from complex is angle(cos - j*sin)
+            phases = np.arctan2(-iq[:, 1], iq[:, 0])
+
             # Emit result chunk back to GUI thread
-            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
+            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk, phases)
 
             # Sleep briefly to ensure audio callback is not starved 
             time.sleep(0.005)
@@ -669,7 +678,14 @@ class LockInSpectrumFinderWidget(QWidget):
         self.plot.setYRange(-180, 10)
         self.curve = self.plot.plot(pen="y")
 
-        self.scatter = pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 200), hoverable=True, hoverSize=15)
+        self.scatter = pg.ScatterPlotItem(
+            size=10, 
+            pen=pg.mkPen(None), 
+            brush=pg.mkBrush(255, 0, 0, 200), 
+            hoverable=True, 
+            hoverSize=15,
+            tip=self._get_marker_tooltip
+        )
         self.plot.addItem(self.scatter)
         self.scatter.sigClicked.connect(self.on_scatter_clicked)
 
@@ -680,6 +696,24 @@ class LockInSpectrumFinderWidget(QWidget):
         layout.addLayout(right_panel, 3)
 
         self.setLayout(layout)
+
+    def _get_marker_tooltip(self, x, y, data):
+        if not data:
+            return ""
+        
+        freq = data.get("freq", 0.0)
+        mag = data.get("mag", -180.0)
+        phase = data.get("phase_deg", 0.0)
+        note = data.get("note", "")
+        unit = data.get("unit", "")
+
+        text = (
+            f"<b>{tr(note)}</b><br>"
+            f"Frequency: {freq:.1f} Hz<br>"
+            f"Magnitude: {mag:.2f} {unit}<br>"
+            f"Phase: {phase:.1f}°"
+        )
+        return text
 
     def _update_ui_visibility(self):
         is_zoom = self.module.mode == "Zoom"
@@ -876,10 +910,23 @@ class LockInSpectrumFinderWidget(QWidget):
                 if 0 <= i < len(self.current_freqs) and np.isclose(self.current_freqs[i], mf, atol=1e-3):
                     y = self.current_mags[i]
                     x = mf
+                    phase = float(self.current_phases[i]) if hasattr(self, 'current_phases') else 0.0
+                    note = DEFAULT_SCAN_LIST.get(mf, "Unknown")
+                    unit = self.module.display_unit
+                    
+                    # Store rich data in the item
+                    data_obj = {
+                        "freq": mf,
+                        "mag": y,
+                        "phase_deg": np.degrees(phase),
+                        "note": note,
+                        "unit": unit
+                    }
+
                     if self.module.mode == "Scan" and self.module.spacing == "Log" and x > 0:
                         x = np.log10(x)
                     if y > -170:
-                        pts.append({'pos': (x, y), 'data': mf})
+                        pts.append({'pos': (x, y), 'data': data_obj})
                     return True
                 return False
 
@@ -888,13 +935,18 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.scatter.setData(pts)
 
-    def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
+    def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk, p_chunk):
         if not hasattr(self, 'current_freqs') or not hasattr(self, 'current_mags'):
             return
+
+        if not hasattr(self, 'current_phases') or len(self.current_phases) != len(self.current_freqs):
+            self.current_phases = np.zeros(len(self.current_freqs))
 
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(self.current_freqs):
             self.averaged_amps = np.zeros(len(self.current_freqs))
             self.frames_counted = 1
+
+        self.current_phases[start_idx:end_idx] = p_chunk
 
         alpha = 1.0 / min(self.spin_averages.value(), max(1, self.frames_counted))
 
@@ -958,7 +1010,8 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_scatter_clicked(self, plot, points):
         if not points:
             return
-        freq = float(points[0].data())
+        data = points[0].data()
+        freq = float(data["freq"])
         self._transition_to_zoom(freq)
         
     def _transition_to_zoom(self, freq):
