@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.5.6] - 2026-03-06
+
+### Added
+
+* **Analyzer**: Added phase calculation and display to Lock-in Spectrum Finder, including rich scatter plot tooltips.
+* **Analyzer**: Added target management features to Lock-in Spectrum Finder, with octave spacing options, predefined targets, and a dedicated UI tab.
+* **Analyzer**: Dynamically generate mains harmonic frequencies up to the 16th order in `DEFAULT_SCAN_LIST`.
+* **I18n**: Added comprehensive localization strings for scan targets, octave bands, phase, magnitude, and average text across all languages.
+
+### Changed
+
+* **Refactor**: Replaced `QHBoxLayout` with `QGridLayout` for target control buttons to improve UI layout in Lock-in Spectrum Finder.
+
+### Fixed
+
+* **Core**: Fixed potential closure issue in `check_and_add` by explicitly capturing `mf`.
+* **UI**: Changed marker frequency range to be exclusive of start and stop frequencies to prevent out-of-bounds errors.
+
 ## [v0.5.5] - 2026-03-05
 
 ### Added

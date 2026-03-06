@@ -23,8 +23,8 @@ This widget is specialized for "finding" weak signals within a specific narrow b
 
 You can select between two analysis modes based on your needs.
 
-* **Basic Mode**
-    * Calculates the spectrum from a specified start frequency to a stop frequency using logarithmic (Log) or linear (Lin) spacing.
+* **Scan Mode**
+    * Calculates the spectrum from a specified start frequency to a stop frequency.
     * Best used when you want to view a highly accurate spectrum across a broad bandwidth.
 * **Zoom Mode**
     * Calculates the spectrum with ultra-high resolution only around a specific center frequency (span).
@@ -54,16 +54,29 @@ You can select between two analysis modes based on your needs.
     * Select the vertical axis display unit from `dBFS`, `dBV`, and `dB SPL`.
     * Calibration values (Input offset or SPL offset) from Settings are applied when using `dBV` or `dB SPL`.
 
-### Basic Mode Specific Settings
+### Scan Mode Specific Settings
 
 * **Start Freq**
     * Specifies the starting frequency (Hz) for the analysis.
 * **Stop Freq**
     * Specifies the stopping frequency (Hz) for the analysis.
 * **Spacing**
-    * Choose the spacing of points between `Log` (logarithmic), `Lin` (linear), `Integer` (rounded to nearest integer), or `Int x Sync` (integer multiple of the sample sync frequency). The X-axis of the plot switches automatically to match this setting.
+    * Choose the spacing of points between `Log` (logarithmic), `Lin` (linear), `Integer` (rounded to nearest integer), `Int x Sync` (integer multiple of the sample sync frequency), or `Octave` bands (from `1/3 Octave` down to `1/96 Octave`). The X-axis of the plot switches automatically to match this setting.
     * **Integer**: Ensures that all analysis frequencies are exact integers, making it easier to accurately capture peaks of artificially generated signals (which are often set to natural numbers like 1000Hz).
     * **Int x Sync**: Rounds frequencies so they correspond exclusively to exact multiples of the analysis buffer resolution (`fs / buffer_size`). Ideal for precision tracking of signals generated synchronously with the measurement buffer.
+    * **Octave Bands**: Calculates frequencies strictly based on the specified fractional octave bands relative to the **Octave Ref Freq**.
+* **Scan Targets:**
+    * **Include Scan Targets**: When checked, the frequencies defined in the **Scan Targets** tab are automatically added to the analysis, guaranteeing that important frequencies (e.g., mains harmonics up to the 16th order) are accurately measured regardless of the base spacing settings.
+    * **Octave Ref Freq**: Reference frequency for Octave band calculations.
+
+### Scan Targets Tab
+
+The **Scan Targets** tab provides target management features for specific frequencies.
+
+* **Predefined Targets**: By default, it includes common frequencies like power line fundamentals and their harmonics up to the 16th order.
+* **Add / Delete**: You can manually add or remove specific target frequencies with custom notes.
+* **Import / Export**: Save and load target lists as JSON files.
+* **Zoom to Selected**: Quickly transitions to Zoom Mode centered on the selected target frequency.
 
 ### Zoom Mode Specific Settings
 
@@ -78,4 +91,5 @@ You can select between two analysis modes based on your needs.
 
 * **Horizontal Axis (Frequency)**: Represents the frequency (Hz).
 * **Vertical Axis (Amplitude)**: Represents the amplitude level in the specified unit (dBFS, dBV, or dB SPL). If calibration has been applied, offsets such as the input offset or microphone offset are included.
+* **Scatter Plot Tooltips**: Clicking on the red target markers in the plot will display a rich tooltip showing the exact Frequency, Magnitude, Phase, and any associated cause/note for that target.
 * During calculations, a red vertical line (sweep line) appears on the graph to indicate the current progress, and the spectrum is updated progressively. If Averages is enabled, the current averaging count is also displayed alongside the progress.
