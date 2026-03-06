@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
@@ -699,7 +700,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.table_targets.cellDoubleClicked.connect(self.on_target_double_clicked)
 
         # Add target control buttons
-        btn_layout = QHBoxLayout()
+        btn_layout = QGridLayout()
         self.btn_add_target = QPushButton(tr("Add"))
         self.btn_add_target.clicked.connect(self.on_add_target)
         self.btn_del_target = QPushButton(tr("Delete"))
@@ -713,13 +714,12 @@ class LockInSpectrumFinderWidget(QWidget):
         self.btn_reset_targets = QPushButton(tr("Reset Defaults"))
         self.btn_reset_targets.clicked.connect(self.on_reset_targets)
 
-        btn_layout.addWidget(self.btn_add_target)
-        btn_layout.addWidget(self.btn_del_target)
-        btn_layout.addWidget(self.btn_zoom_target)
-        btn_layout.addStretch()
-        btn_layout.addWidget(self.btn_import_targets)
-        btn_layout.addWidget(self.btn_export_targets)
-        btn_layout.addWidget(self.btn_reset_targets)
+        btn_layout.addWidget(self.btn_add_target, 0, 0)
+        btn_layout.addWidget(self.btn_del_target, 0, 1)
+        btn_layout.addWidget(self.btn_zoom_target, 0, 2)
+        btn_layout.addWidget(self.btn_import_targets, 1, 0)
+        btn_layout.addWidget(self.btn_export_targets, 1, 1)
+        btn_layout.addWidget(self.btn_reset_targets, 1, 2)
 
         target_layout.addLayout(btn_layout)
 
