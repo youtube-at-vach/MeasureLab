@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,10 +11,13 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
+    QMessageBox,
     QPushButton,
     QSpinBox,
     QTabWidget,
@@ -23,47 +28,11 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.audio_engine import AudioEngine
+from src.core.config_manager import ConfigManager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_SCAN_LIST = {
-    997.0: "Standard Test Tone (997Hz)",
-    1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
-    8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
-    11025.0: "Audio Sample Rate (11.025kHz)",
-    15625.0: "CRT Horizontal Scan (PAL/SECAM 15.625kHz)",
-    15734.0: "CRT Horizontal Scan (NTSC 15.734kHz)",
-    16000.0: "Audio Sample Rate (16kHz)",
-    19000.0: "FM Pilot Tone (19kHz)",
-    20000.0: "Upper Hearing Limit / SMPS Noise (20kHz)",
-    22050.0: "Audio Sample Rate (22.05kHz)",
-    24000.0: "Audio Sample Rate Base (24kHz)",
-    25000.0: "SMPS Noise (25kHz)",
-    30000.0: "SMPS Noise (30kHz)",
-    31250.0: "CRT Monitor Scan (31.25kHz) / MIDI Baud Rate",
-    31468.0: "CRT Monitor Scan / VGA (31.468kHz)",
-    31500.0: "LCD / CRT Monitor Scan (31.5kHz)",
-    32000.0: "Audio Sample Rate (32kHz)",
-    32768.0: "RTC Crystal Oscillator (32.768kHz)",
-    37900.0: "CRT Monitor Scan (37.9kHz)",
-    38000.0: "FM Stereo Subcarrier (38kHz)",
-    40000.0: "Ultrasonic Transducer / SMPS Noise (40kHz)",
-    44100.0: "CD Audio (44.1kHz)",
-    46875.0: "CRT Monitor Scan (46.875kHz)",
-    47202.0: "CRT Monitor Scan (47.202kHz)",
-    48000.0: "DAT/Video Audio (48kHz)",
-    48400.0: "CRT Monitor Scan (48.4kHz)",
-    50000.0: "SMPS Noise (50kHz)",
-    57000.0: "RDS / RBDS (57kHz)",
-    60000.0: "SMPS Noise (60kHz)",
-    62936.0: "CRT Monitor Scan (62.936kHz)",
-    80000.0: "SMPS Noise (80kHz)",
-    88200.0: "Hi-Res Audio (88.2kHz)",
-    96000.0: "Hi-Res Audio (96kHz)",
-    100000.0: "SMPS Noise (100kHz)"
-}
 
 def _get_mains_note(base: int, order: int) -> str:
     freq = base * order
@@ -77,16 +46,52 @@ def _get_mains_note(base: int, order: int) -> str:
             suffix = "rd"
         return f"Mains {order}{suffix} Harmonic ({freq}Hz)"
 
-# Generate mains harmonics up to 16th order
-for _order in range(1, 17):
-    for _base in (50, 60):
-        _f = float(_base * _order)
-        _note = _get_mains_note(_base, _order)
-        if _f in DEFAULT_SCAN_LIST:
-            DEFAULT_SCAN_LIST[_f] += f" / {_note}"
-        else:
-            DEFAULT_SCAN_LIST[_f] = _note
-
+def _get_default_targets() -> dict:
+    targets = {
+        997.0: "Standard Test Tone (997Hz)",
+        1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
+        8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
+        11025.0: "Audio Sample Rate (11.025kHz)",
+        15625.0: "CRT Horizontal Scan (PAL/SECAM 15.625kHz)",
+        15734.0: "CRT Horizontal Scan (NTSC 15.734kHz)",
+        16000.0: "Audio Sample Rate (16kHz)",
+        19000.0: "FM Pilot Tone (19kHz)",
+        20000.0: "Upper Hearing Limit / SMPS Noise (20kHz)",
+        22050.0: "Audio Sample Rate (22.05kHz)",
+        24000.0: "Audio Sample Rate Base (24kHz)",
+        25000.0: "SMPS Noise (25kHz)",
+        30000.0: "SMPS Noise (30kHz)",
+        31250.0: "CRT Monitor Scan (31.25kHz) / MIDI Baud Rate",
+        31468.0: "CRT Monitor Scan / VGA (31.468kHz)",
+        31500.0: "LCD / CRT Monitor Scan (31.5kHz)",
+        32000.0: "Audio Sample Rate (32kHz)",
+        32768.0: "RTC Crystal Oscillator (32.768kHz)",
+        37900.0: "CRT Monitor Scan (37.9kHz)",
+        38000.0: "FM Stereo Subcarrier (38kHz)",
+        40000.0: "Ultrasonic Transducer / SMPS Noise (40kHz)",
+        44100.0: "CD Audio (44.1kHz)",
+        46875.0: "CRT Monitor Scan (46.875kHz)",
+        47202.0: "CRT Monitor Scan (47.202kHz)",
+        48000.0: "DAT/Video Audio (48kHz)",
+        48400.0: "CRT Monitor Scan (48.4kHz)",
+        50000.0: "SMPS Noise (50kHz)",
+        57000.0: "RDS / RBDS (57kHz)",
+        60000.0: "SMPS Noise (60kHz)",
+        62936.0: "CRT Monitor Scan (62.936kHz)",
+        80000.0: "SMPS Noise (80kHz)",
+        88200.0: "Hi-Res Audio (88.2kHz)",
+        96000.0: "Hi-Res Audio (96kHz)",
+        100000.0: "SMPS Noise (100kHz)"
+    }
+    for _order in range(1, 17):
+        for _base in (50, 60):
+            _f = float(_base * _order)
+            _note = _get_mains_note(_base, _order)
+            if _f in targets:
+                targets[_f] += f" / {_note}"
+            else:
+                targets[_f] = _note
+    return targets
 
 # Used for decoupling background thread results to GUI thread safely.
 # Used for decoupling background thread results to GUI thread safely.
@@ -131,6 +136,7 @@ class LockInSpectrumFinder(MeasurementModule):
         # Scan Mode Specifics
         self.include_scan_targets = True
         self.octave_ref_freq = 1000.0
+        self.current_targets = self._load_user_targets()
 
         # Analysis Settings
         self.window_type = "none" # "none", "hann", "hamming", "blackmanharris"
@@ -146,8 +152,32 @@ class LockInSpectrumFinder(MeasurementModule):
     def description(self) -> str:
         return "High-resolution spectrum finder using parallel lock-in detection (matrix projection)."
 
+    def _load_user_targets(self) -> dict:
+        path = ""
+        try:
+            path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return {float(k): v for k, v in data.items()}
+        except Exception as e:
+            logger.error(f"Failed to load user targets from {path}: {e}")
+        return _get_default_targets()
+
+    def save_user_targets(self, targets: dict):
+        self.current_targets = targets
+        path = ""
+        try:
+            path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({str(k): v for k, v in targets.items()}, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Failed to save user targets back to {path}: {e}")
+
     def get_widget(self):
         return LockInSpectrumFinderWidget(self)
+
 
     def start_analysis(self):
         if self.is_running:
@@ -248,17 +278,18 @@ class LockInSpectrumFinder(MeasurementModule):
         p_window = self.window_type
         p_include_targets = self.include_scan_targets
         p_octave_ref = self.octave_ref_freq
+        p_targets = self.current_targets.copy()
 
         self._calculation_future = self.executor.submit(
             self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, 
             p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window,
-            p_include_targets, p_octave_ref
+            p_include_targets, p_octave_ref, p_targets
         )
 
     def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing,
                         display_unit, offset_dbv, offset_spl,
                         mode="Scan", zoom_center=1000.0, zoom_span=10.0, window_type="none",
-                        include_targets=True, octave_ref=1000.0):
+                        include_targets=True, octave_ref=1000.0, targets=None):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
@@ -357,7 +388,7 @@ class LockInSpectrumFinder(MeasurementModule):
             try:
                 frac = spacing.split(" ")[0].split("/")
                 b = float(frac[1]) / float(frac[0])
-            except:
+            except Exception:
                 b = 3.0
 
             n_start = int(np.floor(b * np.log2(start_f / octave_ref)))
@@ -372,8 +403,8 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs = np.linspace(start_f, stop_f, points)
 
         marker_freqs = []
-        if include_targets:
-            marker_freqs = [f for f in DEFAULT_SCAN_LIST.keys() if start_f < f < stop_f]
+        if include_targets and targets:
+            marker_freqs = [f for f in targets.keys() if start_f < f < stop_f]
             if marker_freqs:
                 # np.unique stably sorts and prevents duplicates
                 freqs = np.unique(np.concatenate([freqs, marker_freqs]))
@@ -654,7 +685,7 @@ class LockInSpectrumFinderWidget(QWidget):
         target_layout = QVBoxLayout(target_tab)
         target_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.table_targets = QTableWidget(len(DEFAULT_SCAN_LIST), 2)
+        self.table_targets = QTableWidget(0, 2)
         self.table_targets.setHorizontalHeaderLabels([tr("Frequency (Hz)"), tr("Cause / Note")])
         self.table_targets.horizontalHeader().setStretchLastSection(True)
         self.table_targets.verticalHeader().setVisible(False)
@@ -662,12 +693,36 @@ class LockInSpectrumFinderWidget(QWidget):
         self.table_targets.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_targets.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
 
-        for i, (freq, note) in enumerate(sorted(DEFAULT_SCAN_LIST.items())):
-            self.table_targets.setItem(i, 0, QTableWidgetItem(f"{freq:.1f}"))
-            self.table_targets.setItem(i, 1, QTableWidgetItem(tr(note)))
+        self._populate_targets_table()
 
         target_layout.addWidget(self.table_targets)
         self.table_targets.cellDoubleClicked.connect(self.on_target_double_clicked)
+
+        # Add target control buttons
+        btn_layout = QHBoxLayout()
+        self.btn_add_target = QPushButton(tr("Add"))
+        self.btn_add_target.clicked.connect(self.on_add_target)
+        self.btn_del_target = QPushButton(tr("Delete"))
+        self.btn_del_target.clicked.connect(self.on_delete_target)
+        self.btn_import_targets = QPushButton(tr("Import Targets"))
+        self.btn_import_targets.clicked.connect(self.on_import_targets)
+        self.btn_export_targets = QPushButton(tr("Export Targets"))
+        self.btn_export_targets.clicked.connect(self.on_export_targets)
+        self.btn_zoom_target = QPushButton(tr("Zoom to Selected"))
+        self.btn_zoom_target.clicked.connect(self.on_zoom_target)
+        self.btn_reset_targets = QPushButton(tr("Reset Defaults"))
+        self.btn_reset_targets.clicked.connect(self.on_reset_targets)
+
+        btn_layout.addWidget(self.btn_add_target)
+        btn_layout.addWidget(self.btn_del_target)
+        btn_layout.addWidget(self.btn_zoom_target)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.btn_import_targets)
+        btn_layout.addWidget(self.btn_export_targets)
+        btn_layout.addWidget(self.btn_reset_targets)
+
+        target_layout.addLayout(btn_layout)
+
         self.tabs.addTab(target_tab, tr("Scan Targets"))
 
         left_panel.addWidget(self.tabs)
@@ -926,7 +981,7 @@ class LockInSpectrumFinderWidget(QWidget):
                     y = self.current_mags[i]
                     x = mf
                     phase = float(self.current_phases[i]) if hasattr(self, 'current_phases') else 0.0
-                    note = DEFAULT_SCAN_LIST.get(mf, "Unknown")
+                    note = self.module.current_targets.get(mf, "Unknown")
                     unit = self.module.display_unit
 
                     # Store rich data in the item
@@ -1034,3 +1089,78 @@ class LockInSpectrumFinderWidget(QWidget):
         if idx >= 0:
             self.combo_mode.setCurrentIndex(idx)
         self.spin_zoom_center.setValue(freq)
+
+    def _populate_targets_table(self):
+        targets = self.module.current_targets
+        self.table_targets.setRowCount(len(targets))
+        for i, (freq, note) in enumerate(sorted(targets.items())):
+            self.table_targets.setItem(i, 0, QTableWidgetItem(f"{freq:.1f}"))
+            self.table_targets.setItem(i, 1, QTableWidgetItem(tr(note)))
+
+    def on_add_target(self):
+        freq, ok_f = QInputDialog.getDouble(self, tr("Add Target"), tr("Frequency (Hz):"), 1000.0, 0.1, 192000.0, 1)
+        if not ok_f:
+            return
+        note, ok_n = QInputDialog.getText(self, tr("Add Target"), tr("Note:"))
+        if not ok_n:
+            return
+
+        self.module.current_targets[freq] = note
+        self.module.save_user_targets(self.module.current_targets)
+        self._populate_targets_table()
+        self.reset_averaging()
+
+    def on_delete_target(self):
+        row = self.table_targets.currentRow()
+        if row < 0:
+            return
+
+        item = self.table_targets.item(row, 0)
+        if item:
+            freq = float(item.text())
+            if freq in self.module.current_targets:
+                del self.module.current_targets[freq]
+                self.module.save_user_targets(self.module.current_targets)
+                self._populate_targets_table()
+                self.reset_averaging()
+
+    def on_zoom_target(self):
+        row = self.table_targets.currentRow()
+        if row < 0:
+            return
+        item = self.table_targets.item(row, 0)
+        if item:
+            freq = float(item.text())
+            self._transition_to_zoom(freq)
+
+    def on_import_targets(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("Import Targets"), "", "JSON Files (*.json)")
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                new_targets = {float(k): str(v) for k, v in data.items()}
+                self.module.save_user_targets(new_targets)
+                self._populate_targets_table()
+                self.reset_averaging()
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to import targets:')}\n{e}")
+
+    def on_export_targets(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, tr("Export Targets"), "scan_targets.json", "JSON Files (*.json)")
+        if file_path:
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    data = {str(k): v for k, v in self.module.current_targets.items()}
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+                QMessageBox.information(self, tr("Success"), tr("Targets exported successfully."))
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to export targets:')}\n{e}")
+
+    def on_reset_targets(self):
+        reply = QMessageBox.question(self, tr("Reset Defaults"), tr("Are you sure you want to reset targets to default?"),
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.module.save_user_targets(_get_default_targets())
+            self._populate_targets_table()
+            self.reset_averaging()

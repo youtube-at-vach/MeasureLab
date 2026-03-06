@@ -1202,5 +1202,15 @@
     "⬆︎Update available: {0}": "⬆︎Update available: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEROUS - HIGH INTENSITY 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 CAUTION - ULTRASOUND ACTIVE 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢",
+    "Add": "Add",
+    "Add Target": "Add Target",
+    "Are you sure you want to reset targets to default?": "Are you sure you want to reset targets to default?",
+    "Export Targets": "Export Targets",
+    "Failed to export targets:": "Failed to export targets:",
+    "Failed to import targets:": "Failed to import targets:",
+    "Import Targets": "Import Targets",
+    "Reset Defaults": "Reset Defaults",
+    "Targets exported successfully.": "Targets exported successfully.",
+    "Zoom to Selected": "Zoom to Selected"
 }
