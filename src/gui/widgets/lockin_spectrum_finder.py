@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -9,27 +11,95 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
+    QMessageBox,
     QPushButton,
     QSpinBox,
+    QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from src.core.audio_engine import AudioEngine
+from src.core.config_manager import ConfigManager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
+def _get_mains_note(base: int, order: int) -> str:
+    freq = base * order
+    if order == 1:
+        return f"Mains Power ({base}Hz)"
+    elif order == 2:
+        return f"Rectified Mains ({freq}Hz)"
+    else:
+        suffix = "th"
+        if order == 3:
+            suffix = "rd"
+        return f"Mains {order}{suffix} Harmonic ({freq}Hz)"
+
+def _get_default_targets() -> dict:
+    targets = {
+        997.0: "Standard Test Tone (997Hz)",
+        1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
+        8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
+        11025.0: "Audio Sample Rate (11.025kHz)",
+        15625.0: "CRT Horizontal Scan (PAL/SECAM 15.625kHz)",
+        15734.0: "CRT Horizontal Scan (NTSC 15.734kHz)",
+        16000.0: "Audio Sample Rate (16kHz)",
+        19000.0: "FM Pilot Tone (19kHz)",
+        20000.0: "Upper Hearing Limit / SMPS Noise (20kHz)",
+        22050.0: "Audio Sample Rate (22.05kHz)",
+        24000.0: "Audio Sample Rate Base (24kHz)",
+        25000.0: "SMPS Noise (25kHz)",
+        30000.0: "SMPS Noise (30kHz)",
+        31250.0: "CRT Monitor Scan (31.25kHz) / MIDI Baud Rate",
+        31468.0: "CRT Monitor Scan / VGA (31.468kHz)",
+        31500.0: "LCD / CRT Monitor Scan (31.5kHz)",
+        32000.0: "Audio Sample Rate (32kHz)",
+        32768.0: "RTC Crystal Oscillator (32.768kHz)",
+        37900.0: "CRT Monitor Scan (37.9kHz)",
+        38000.0: "FM Stereo Subcarrier (38kHz)",
+        40000.0: "Ultrasonic Transducer / SMPS Noise (40kHz)",
+        44100.0: "CD Audio (44.1kHz)",
+        46875.0: "CRT Monitor Scan (46.875kHz)",
+        47202.0: "CRT Monitor Scan (47.202kHz)",
+        48000.0: "DAT/Video Audio (48kHz)",
+        48400.0: "CRT Monitor Scan (48.4kHz)",
+        50000.0: "SMPS Noise (50kHz)",
+        57000.0: "RDS / RBDS (57kHz)",
+        60000.0: "SMPS Noise (60kHz)",
+        62936.0: "CRT Monitor Scan (62.936kHz)",
+        80000.0: "SMPS Noise (80kHz)",
+        88200.0: "Hi-Res Audio (88.2kHz)",
+        96000.0: "Hi-Res Audio (96kHz)",
+        100000.0: "SMPS Noise (100kHz)"
+    }
+    for _order in range(1, 17):
+        for _base in (50, 60):
+            _f = float(_base * _order)
+            _note = _get_mains_note(_base, _order)
+            if _f in targets:
+                targets[_f] += f" / {_note}"
+            else:
+                targets[_f] = _note
+    return targets
+
+# Used for decoupling background thread results to GUI thread safely.
 # Used for decoupling background thread results to GUI thread safely.
 class FinderSignals(QObject):
     result_ready = pyqtSignal(object)
     sweep_started = pyqtSignal(object)
-    progress_update = pyqtSignal(int, int, object, object)
+    progress_update = pyqtSignal(int, int, object, object, object)
 
 class LockInSpectrumFinder(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -59,10 +129,15 @@ class LockInSpectrumFinder(MeasurementModule):
         self._calculation_future = None
 
         # Mode
-        self.mode = "Basic" # "Basic" or "Zoom"
+        self.mode = "Scan" # "Scan" or "Zoom"
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
         self.track_peak = False
+
+        # Scan Mode Specifics
+        self.include_scan_targets = True
+        self.octave_ref_freq = 1000.0
+        self.current_targets = self._load_user_targets()
 
         # Analysis Settings
         self.window_type = "none" # "none", "hann", "hamming", "blackmanharris"
@@ -78,8 +153,32 @@ class LockInSpectrumFinder(MeasurementModule):
     def description(self) -> str:
         return "High-resolution spectrum finder using parallel lock-in detection (matrix projection)."
 
+    def _load_user_targets(self) -> dict:
+        path = ""
+        try:
+            path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return {float(k): v for k, v in data.items()}
+        except Exception as e:
+            logger.error(f"Failed to load user targets from {path}: {e}")
+        return _get_default_targets()
+
+    def save_user_targets(self, targets: dict):
+        self.current_targets = targets
+        path = ""
+        try:
+            path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({str(k): v for k, v in targets.items()}, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Failed to save user targets back to {path}: {e}")
+
     def get_widget(self):
         return LockInSpectrumFinderWidget(self)
+
 
     def start_analysis(self):
         if self.is_running:
@@ -178,15 +277,20 @@ class LockInSpectrumFinder(MeasurementModule):
         p_zoom_center = self.zoom_center_freq
         p_zoom_span = self.zoom_span
         p_window = self.window_type
+        p_include_targets = self.include_scan_targets
+        p_octave_ref = self.octave_ref_freq
+        p_targets = self.current_targets.copy()
 
         self._calculation_future = self.executor.submit(
             self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, 
-            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window
+            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window,
+            p_include_targets, p_octave_ref, p_targets
         )
 
     def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing,
                         display_unit, offset_dbv, offset_spl,
-                        mode="Basic", zoom_center=1000.0, zoom_span=10.0, window_type="none"):
+                        mode="Scan", zoom_center=1000.0, zoom_span=10.0, window_type="none",
+                        include_targets=True, octave_ref=1000.0, targets=None):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
@@ -199,7 +303,7 @@ class LockInSpectrumFinder(MeasurementModule):
             s_f = zoom_center - zoom_span
             e_f = zoom_center + zoom_span
             freqs = np.linspace(s_f, e_f, points)
-            self.signals.sweep_started.emit(freqs)
+            self.signals.sweep_started.emit((freqs, []))
 
             # 1. Baseband mixing (DDC)
             sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
@@ -255,15 +359,19 @@ class LockInSpectrumFinder(MeasurementModule):
 
                 mags_db_all[i:end_idx] = mags_db_chunk
 
+                # Compute Phase
+                phases = np.angle(vals)
+
                 # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
+                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx], mags_db_chunk, phases)
                 time.sleep(0.005)
 
             if self.is_running:
+                # phases unmerged across chunks back to main for zoom (optional completeness)
                 self.signals.result_ready.emit((freqs, mags_db_all))
             return
 
-        # Basic Mode (Matrix Projection)
+        # Scan Mode (Matrix Projection)
         if spacing == "Log":
             # Avoid log of 0 or negative
             s_f = max(0.1, start_f)
@@ -271,18 +379,40 @@ class LockInSpectrumFinder(MeasurementModule):
         elif spacing == "Integer":
             freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
             freqs = freqs[freqs >= 1.0] # Prevent 0 Hz
-            points = len(freqs)
         elif spacing == "Int x Sync":
             df = fs / N
             freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
             freqs = freqs[freqs >= df] # Prevent 0 Hz and extremely low frequencies
             if len(freqs) == 0:
                 freqs = np.array([df])
-            points = len(freqs)
-        else:
+        elif spacing.endswith("Octave"):
+            try:
+                frac = spacing.split(" ")[0].split("/")
+                b = float(frac[1]) / float(frac[0])
+            except Exception:
+                b = 3.0
+
+            n_start = int(np.floor(b * np.log2(start_f / octave_ref)))
+            n_stop = int(np.ceil(b * np.log2(stop_f / octave_ref)))
+            n_vals = np.arange(n_start, n_stop + 1)
+            freqs = octave_ref * (2.0 ** (n_vals / b))
+            # Clip bounds exactly
+            freqs = freqs[(freqs >= start_f) & (freqs <= stop_f)]
+            if len(freqs) == 0:
+                freqs = np.array([start_f, stop_f])
+        else: # "Lin"
             freqs = np.linspace(start_f, stop_f, points)
 
-        self.signals.sweep_started.emit(freqs)
+        marker_freqs = []
+        if include_targets and targets:
+            marker_freqs = [f for f in targets.keys() if start_f < f < stop_f]
+            if marker_freqs:
+                # np.unique stably sorts and prevents duplicates
+                freqs = np.unique(np.concatenate([freqs, marker_freqs]))
+
+        points = len(freqs)
+
+        self.signals.sweep_started.emit((freqs, marker_freqs))
 
         # To prevent CPU overallocation and buffer underruns, we process in chunks.
         # This spreads the load and allows for progressive UI updates (sliding line).
@@ -375,8 +505,12 @@ class LockInSpectrumFinder(MeasurementModule):
 
             mags_db_all[i:end_idx] = mags_db_chunk
 
+            # iq[:,0] is cos component, iq[:,1] is sin component
+            # Standard phase from complex is angle(cos - j*sin)
+            phases = np.arctan2(-iq[:, 1], iq[:, 0])
+
             # Emit result chunk back to GUI thread
-            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk)
+            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk, phases)
 
             # Sleep briefly to ensure audio callback is not starved 
             time.sleep(0.005)
@@ -414,7 +548,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         # Mode Selection
         self.combo_mode = QComboBox()
-        self.combo_mode.addItem(tr("Basic"), "Basic")
+        self.combo_mode.addItem(tr("Scan"), "Scan")
         self.combo_mode.addItem(tr("Zoom"), "Zoom")
         idx = self.combo_mode.findData(self.module.mode)
         if idx >= 0:
@@ -468,7 +602,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.lbl_start_f = QLabel(tr("Start Freq:"))
         self.spin_start_f = QDoubleSpinBox()
-        self.spin_start_f.setRange(1.0, 96000.0)
+        self.spin_start_f.setRange(1.0, 192000.0)
         self.spin_start_f.setValue(self.module.start_freq)
         self.spin_start_f.setSuffix(" Hz")
         self.spin_start_f.valueChanged.connect(self.on_start_f_changed)
@@ -476,7 +610,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.lbl_stop_f = QLabel(tr("Stop Freq:"))
         self.spin_stop_f = QDoubleSpinBox()
-        self.spin_stop_f.setRange(10.0, 96000.0)
+        self.spin_stop_f.setRange(10.0, 192000.0)
         self.spin_stop_f.setValue(self.module.stop_freq)
         self.spin_stop_f.setSuffix(" Hz")
         self.spin_stop_f.valueChanged.connect(self.on_stop_f_changed)
@@ -488,16 +622,36 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_spacing.addItem(tr("Lin"), "Lin")
         self.combo_spacing.addItem(tr("Integer"), "Integer")
         self.combo_spacing.addItem(tr("Int x Sync"), "Int x Sync")
+        self.combo_spacing.addItem(tr("1/3 Octave"), "1/3 Octave")
+        self.combo_spacing.addItem(tr("1/6 Octave"), "1/6 Octave")
+        self.combo_spacing.addItem(tr("1/12 Octave"), "1/12 Octave")
+        self.combo_spacing.addItem(tr("1/24 Octave"), "1/24 Octave")
+        self.combo_spacing.addItem(tr("1/48 Octave"), "1/48 Octave")
+        self.combo_spacing.addItem(tr("1/96 Octave"), "1/96 Octave")
         idx = self.combo_spacing.findData(self.module.spacing)
         if idx >= 0:
             self.combo_spacing.setCurrentIndex(idx)
         self.combo_spacing.currentIndexChanged.connect(self.on_spacing_changed)
         form.addRow(self.lbl_spacing, self.combo_spacing)
 
+        # Add Include Scan Targets Option
+        self.chk_include_targets = QCheckBox(tr("Include Scan Targets"))
+        self.chk_include_targets.setChecked(self.module.include_scan_targets)
+        self.chk_include_targets.stateChanged.connect(self.on_include_targets_changed)
+        form.addRow(tr("Scan Targets:"), self.chk_include_targets)
+
+        self.lbl_octave_ref = QLabel(tr("Octave Ref Freq:"))
+        self.spin_octave_ref = QDoubleSpinBox()
+        self.spin_octave_ref.setRange(1.0, 192000.0)
+        self.spin_octave_ref.setValue(self.module.octave_ref_freq)
+        self.spin_octave_ref.setSuffix(" Hz")
+        self.spin_octave_ref.valueChanged.connect(self.on_octave_ref_changed)
+        form.addRow(self.lbl_octave_ref, self.spin_octave_ref)
+
         # Zoom Mode Fields
         self.lbl_zoom_center = QLabel(tr("Zoom Center:"))
         self.spin_zoom_center = QDoubleSpinBox()
-        self.spin_zoom_center.setRange(1.0, 96000.0)
+        self.spin_zoom_center.setRange(1.0, 192000.0)
         self.spin_zoom_center.setValue(self.module.zoom_center_freq)
         self.spin_zoom_center.setSuffix(" Hz")
         self.spin_zoom_center.valueChanged.connect(self.on_zoom_center_changed)
@@ -523,7 +677,55 @@ class LockInSpectrumFinderWidget(QWidget):
         self._update_ui_visibility()
 
         settings_group.setLayout(form)
-        left_panel.addWidget(settings_group)
+
+        self.tabs = QTabWidget()
+        self.tabs.addTab(settings_group, tr("Settings"))
+
+        # Targets Tab
+        target_tab = QWidget()
+        target_layout = QVBoxLayout(target_tab)
+        target_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.table_targets = QTableWidget(0, 2)
+        self.table_targets.setHorizontalHeaderLabels([tr("Frequency (Hz)"), tr("Cause / Note")])
+        self.table_targets.horizontalHeader().setStretchLastSection(True)
+        self.table_targets.verticalHeader().setVisible(False)
+        self.table_targets.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table_targets.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table_targets.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+
+        self._populate_targets_table()
+
+        target_layout.addWidget(self.table_targets)
+        self.table_targets.cellDoubleClicked.connect(self.on_target_double_clicked)
+
+        # Add target control buttons
+        btn_layout = QGridLayout()
+        self.btn_add_target = QPushButton(tr("Add"))
+        self.btn_add_target.clicked.connect(self.on_add_target)
+        self.btn_del_target = QPushButton(tr("Delete"))
+        self.btn_del_target.clicked.connect(self.on_delete_target)
+        self.btn_import_targets = QPushButton(tr("Import Targets"))
+        self.btn_import_targets.clicked.connect(self.on_import_targets)
+        self.btn_export_targets = QPushButton(tr("Export Targets"))
+        self.btn_export_targets.clicked.connect(self.on_export_targets)
+        self.btn_zoom_target = QPushButton(tr("Zoom to Selected"))
+        self.btn_zoom_target.clicked.connect(self.on_zoom_target)
+        self.btn_reset_targets = QPushButton(tr("Reset Defaults"))
+        self.btn_reset_targets.clicked.connect(self.on_reset_targets)
+
+        btn_layout.addWidget(self.btn_add_target, 0, 0)
+        btn_layout.addWidget(self.btn_del_target, 0, 1)
+        btn_layout.addWidget(self.btn_zoom_target, 0, 2)
+        btn_layout.addWidget(self.btn_import_targets, 1, 0)
+        btn_layout.addWidget(self.btn_export_targets, 1, 1)
+        btn_layout.addWidget(self.btn_reset_targets, 1, 2)
+
+        target_layout.addLayout(btn_layout)
+
+        self.tabs.addTab(target_tab, tr("Scan Targets"))
+
+        left_panel.addWidget(self.tabs)
 
         # Status Label
         ov_group = QGroupBox(tr("Status"))
@@ -546,6 +748,17 @@ class LockInSpectrumFinderWidget(QWidget):
         self.plot.setYRange(-180, 10)
         self.curve = self.plot.plot(pen="y")
 
+        self.scatter = pg.ScatterPlotItem(
+            size=10, 
+            pen=pg.mkPen(None), 
+            brush=pg.mkBrush(255, 0, 0, 200), 
+            hoverable=True, 
+            hoverSize=15,
+            tip=self._get_marker_tooltip
+        )
+        self.plot.addItem(self.scatter)
+        self.scatter.sigClicked.connect(self.on_scatter_clicked)
+
         # Initialize Log mode visual
         self._update_plot_log_mode()
 
@@ -553,6 +766,24 @@ class LockInSpectrumFinderWidget(QWidget):
         layout.addLayout(right_panel, 3)
 
         self.setLayout(layout)
+
+    def _get_marker_tooltip(self, x, y, data):
+        if not data:
+            return ""
+
+        freq = data.get("freq", 0.0)
+        mag = data.get("mag", -180.0)
+        phase = data.get("phase_deg", 0.0)
+        note = data.get("note", "")
+        unit = data.get("unit", "")
+
+        text = (
+            f"<b>{tr(note)}</b><br>"
+            f"{tr('Frequency:')} {freq:.1f} Hz<br>"
+            f"{tr('Magnitude:')} {mag:.2f} {unit}<br>"
+            f"{tr('Phase:')} {phase:.1f}°"
+        )
+        return text
 
     def _update_ui_visibility(self):
         is_zoom = self.module.mode == "Zoom"
@@ -563,6 +794,9 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_stop_f.setVisible(not is_zoom)
         self.lbl_spacing.setVisible(not is_zoom)
         self.combo_spacing.setVisible(not is_zoom)
+        self.chk_include_targets.setVisible(not is_zoom)
+        self.lbl_octave_ref.setVisible(not is_zoom)
+        self.spin_octave_ref.setVisible(not is_zoom)
 
         self.lbl_zoom_center.setVisible(is_zoom)
         self.spin_zoom_center.setVisible(is_zoom)
@@ -577,7 +811,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         current_val = str(self.module.buffer_size)
 
-        if self.module.mode == "Basic":
+        if self.module.mode == "Scan":
             # Up to 512k (approx 500k)
             options = ["65536", "131072", "262144", "524288"]
         else:
@@ -604,7 +838,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_buffer.blockSignals(False)
 
     def _update_plot_log_mode(self):
-        if self.module.mode == "Basic" and self.module.spacing == "Log":
+        if self.module.mode == "Scan" and self.module.spacing == "Log":
             self.plot.getPlotItem().setLogMode(x=True, y=False)
         else:
             self.plot.getPlotItem().setLogMode(x=False, y=False)
@@ -701,8 +935,10 @@ class LockInSpectrumFinderWidget(QWidget):
         # Trigger background computation
         self.module.trigger_calculation()
 
-    def on_sweep_started(self, freqs):
+    def on_sweep_started(self, payload):
+        freqs, marker_freqs = payload
         self.current_freqs = freqs.copy()
+        self.current_marker_freqs = marker_freqs
 
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
             self.averaged_amps = np.zeros(len(freqs))
@@ -711,7 +947,7 @@ class LockInSpectrumFinderWidget(QWidget):
             # Reset X-axis plot range on new parameters
             # Handle Log scale formatting internally for UI bounds
             xmin, xmax = freqs[0], freqs[-1]
-            if self.module.mode == "Basic" and self.module.spacing == "Log" and xmin > 0:
+            if self.module.mode == "Scan" and self.module.spacing == "Log" and xmin > 0:
                 xmin, xmax = np.log10(xmin), np.log10(xmax)
             self.plot.setXRange(xmin, xmax, padding=0.0)
 
@@ -726,18 +962,61 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.sweep_line.show()
         val = freqs[0]
-        if self.module.mode == "Basic" and self.module.spacing == "Log" and val > 0:
+        if self.module.mode == "Scan" and self.module.spacing == "Log" and val > 0:
             val = np.log10(val)
         self.sweep_line.setValue(val)
+        self.scatter.setData([]) # clear markers
         self.lbl_status.setText(tr("Calculating... 0%"))
 
-    def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk):
+    def _update_scatter_plot(self):
+        if not hasattr(self, 'current_marker_freqs') or not self.current_marker_freqs:
+            self.scatter.setData([])
+            return
+
+        pts = []
+        for mf in self.current_marker_freqs:
+            idx = np.searchsorted(self.current_freqs, mf)
+            def check_and_add(i, mf=mf):
+                if 0 <= i < len(self.current_freqs) and np.isclose(self.current_freqs[i], mf, atol=1e-3):
+                    y = self.current_mags[i]
+                    x = mf
+                    phase = float(self.current_phases[i]) if hasattr(self, 'current_phases') else 0.0
+                    note = self.module.current_targets.get(mf, "Unknown")
+                    unit = self.module.display_unit
+
+                    # Store rich data in the item
+                    data_obj = {
+                        "freq": mf,
+                        "mag": y,
+                        "phase_deg": np.degrees(phase),
+                        "note": note,
+                        "unit": unit
+                    }
+
+                    if self.module.mode == "Scan" and self.module.spacing == "Log" and x > 0:
+                        x = np.log10(x)
+                    if y > -170:
+                        pts.append({'pos': (x, y), 'data': data_obj})
+                    return True
+                return False
+
+            if not check_and_add(idx):
+                check_and_add(idx-1)
+
+        self.scatter.setData(pts)
+
+    def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk, p_chunk):
         if not hasattr(self, 'current_freqs') or not hasattr(self, 'current_mags'):
             return
+
+        if not hasattr(self, 'current_phases') or len(self.current_phases) != len(self.current_freqs):
+            self.current_phases = np.zeros(len(self.current_freqs))
 
         if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(self.current_freqs):
             self.averaged_amps = np.zeros(len(self.current_freqs))
             self.frames_counted = 1
+
+        self.current_phases[start_idx:end_idx] = p_chunk
 
         alpha = 1.0 / min(self.spin_averages.value(), max(1, self.frames_counted))
 
@@ -752,27 +1031,30 @@ class LockInSpectrumFinderWidget(QWidget):
         self.current_mags[start_idx:end_idx] = avg_db
         self.curve.setData(self.current_freqs, self.current_mags)
 
+        self._update_scatter_plot()
+
         if hasattr(self, 'sweep_line'):
             self.sweep_line.show()
             val = f_chunk[-1]
-            if self.module.mode == "Basic" and self.module.spacing == "Log" and val > 0:
+            if self.module.mode == "Scan" and self.module.spacing == "Log" and val > 0:
                 val = np.log10(val)
             self.sweep_line.setValue(val)
         pct = int((end_idx / len(self.current_freqs)) * 100)
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
         self.lbl_status.setText(tr("Calculating... {}%").format(pct) + avg_text)
 
     def on_result_ready(self, result):
         freqs, mags_db = result
         self.curve.setData(self.current_freqs, self.current_mags)
+        self._update_scatter_plot()
         if hasattr(self, 'sweep_line'):
             self.sweep_line.hide()
 
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [Avg: {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
         self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
 
         if self.module.mode == "Zoom" and self.module.track_peak:
@@ -780,3 +1062,105 @@ class LockInSpectrumFinderWidget(QWidget):
             new_center = float(self.current_freqs[peak_idx])
             if abs(new_center - self.module.zoom_center_freq) > 1e-6:
                 self.spin_zoom_center.setValue(new_center)
+
+    def on_include_targets_changed(self, state):
+        self.module.include_scan_targets = bool(state)
+        self.reset_averaging()
+
+    def on_octave_ref_changed(self, val):
+        self.module.octave_ref_freq = val
+        self.reset_averaging()
+
+    def on_target_double_clicked(self, row, column):
+        item = self.table_targets.item(row, 0)
+        if item:
+            freq = float(item.text())
+            self._transition_to_zoom(freq)
+
+    def on_scatter_clicked(self, plot, points):
+        if not points:
+            return
+        data = points[0].data()
+        freq = float(data["freq"])
+        self._transition_to_zoom(freq)
+
+    def _transition_to_zoom(self, freq):
+        idx = self.combo_mode.findData("Zoom")
+        if idx >= 0:
+            self.combo_mode.setCurrentIndex(idx)
+        self.spin_zoom_center.setValue(freq)
+
+    def _populate_targets_table(self):
+        targets = self.module.current_targets
+        self.table_targets.setRowCount(len(targets))
+        for i, (freq, note) in enumerate(sorted(targets.items())):
+            self.table_targets.setItem(i, 0, QTableWidgetItem(f"{freq:.1f}"))
+            self.table_targets.setItem(i, 1, QTableWidgetItem(tr(note)))
+
+    def on_add_target(self):
+        freq, ok_f = QInputDialog.getDouble(self, tr("Add Target"), tr("Frequency (Hz):"), 1000.0, 0.1, 192000.0, 1)
+        if not ok_f:
+            return
+        note, ok_n = QInputDialog.getText(self, tr("Add Target"), tr("Note:"))
+        if not ok_n:
+            return
+
+        self.module.current_targets[freq] = note
+        self.module.save_user_targets(self.module.current_targets)
+        self._populate_targets_table()
+        self.reset_averaging()
+
+    def on_delete_target(self):
+        row = self.table_targets.currentRow()
+        if row < 0:
+            return
+
+        item = self.table_targets.item(row, 0)
+        if item:
+            freq = float(item.text())
+            if freq in self.module.current_targets:
+                del self.module.current_targets[freq]
+                self.module.save_user_targets(self.module.current_targets)
+                self._populate_targets_table()
+                self.reset_averaging()
+
+    def on_zoom_target(self):
+        row = self.table_targets.currentRow()
+        if row < 0:
+            return
+        item = self.table_targets.item(row, 0)
+        if item:
+            freq = float(item.text())
+            self._transition_to_zoom(freq)
+
+    def on_import_targets(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("Import Targets"), "", "JSON Files (*.json)")
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                new_targets = {float(k): str(v) for k, v in data.items()}
+                self.module.save_user_targets(new_targets)
+                self._populate_targets_table()
+                self.reset_averaging()
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to import targets:')}\n{e}")
+
+    def on_export_targets(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, tr("Export Targets"), "scan_targets.json", "JSON Files (*.json)")
+        if file_path:
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    data = {str(k): v for k, v in self.module.current_targets.items()}
+                    json.dump(data, f, indent=4, ensure_ascii=False)
+                QMessageBox.information(self, tr("Success"), tr("Targets exported successfully."))
+            except Exception as e:
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to export targets:')}\n{e}")
+
+    def on_reset_targets(self):
+        reply = QMessageBox.question(self, tr("Reset Defaults"), tr("Are you sure you want to reset targets to default?"),
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.module.save_user_targets(_get_default_targets())
+            self._populate_targets_table()
+            self.reset_averaging()
