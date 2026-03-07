@@ -124,6 +124,34 @@ def test_spl_invalid_input(cal_manager):
     with pytest.raises(ValueError, match="Invalid SPL calibration values"):
         cal_manager.set_spl_calibration("invalid", 80.0)
 
+def test_dbfs_to_spl(cal_manager):
+    """Test dbfs_to_spl logic for various inputs and edge cases."""
+    # When offset is not set, it should return None
+    assert cal_manager.spl_offset_db is None
+    assert cal_manager.dbfs_to_spl(-20.0) is None
+
+    # Set up calibration (e.g. 80 dB SPL measured at -20 dBFS => offset = 100 dB)
+    cal_manager.set_spl_calibration(-20.0, 80.0)
+    assert cal_manager.spl_offset_db == 100.0
+
+    # Test with standard floats
+    assert cal_manager.dbfs_to_spl(-20.0) == 80.0
+    assert cal_manager.dbfs_to_spl(0.0) == 100.0
+    assert cal_manager.dbfs_to_spl(-100.0) == 0.0
+
+    # Test with integers
+    assert cal_manager.dbfs_to_spl(-20) == 80.0
+
+    # Test with strings that can be parsed as floats
+    assert cal_manager.dbfs_to_spl("-20.0") == 80.0
+
+    # Test ignoring the profile parameter
+    assert cal_manager.dbfs_to_spl(-20.0, profile="dummy") == 80.0
+
+    # Test invalid inputs
+    with pytest.raises(ValueError):
+        cal_manager.dbfs_to_spl("invalid")
+
 def test_profile_management(cal_manager):
     """Test creating, loading, and deleting profiles."""
     cal_manager.input_sensitivity = 0.5
