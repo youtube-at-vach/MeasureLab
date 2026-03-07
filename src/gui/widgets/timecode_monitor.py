@@ -835,24 +835,6 @@ class TimecodeMonitor(MeasurementModule):
         self.jam_memories[s] = mem
         return True
 
-    def jam_capture_auto(self, key: str) -> int:
-        if key not in self.channels:
-            return -1
-
-        free_idx = None
-        oldest_idx = 0
-        oldest_ts = float("inf")
-        for i, m in enumerate(self.jam_memories):
-            if not m.valid and free_idx is None:
-                free_idx = i
-            if m.valid and float(m.captured_at) < oldest_ts:
-                oldest_ts = float(m.captured_at)
-                oldest_idx = i
-
-        idx = int(free_idx) if free_idx is not None else int(oldest_idx)
-        ok = self.jam_capture(key, idx)
-        return idx if ok else -1
-
     def jam_capture_precise(self, key: str, slot: int, window_seconds: float = 0.8, min_samples: int = 12) -> bool:
         if key not in self.channels:
             return False
