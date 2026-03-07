@@ -201,7 +201,120 @@ class OnePPSMonitor(MeasurementModule):
                 return self.last_trig_waveform.copy()
             return None
 
+    def _update_vis_buffer(self, sig, frames):
+        """Updates the visualization ring buffer with new signal data."""
+        write_len = min(frames, self.vis_buffer_size)
+        src_data = sig[-write_len:].astype(np.float32)
+
+        with self._lock:
+             # Calculate split
+            remain = self.vis_buffer_size - self.vis_write_pos
+            if write_len <= remain:
+                self.vis_buffer[self.vis_write_pos : self.vis_write_pos + write_len] = src_data
+                self.vis_write_pos = (self.vis_write_pos + write_len) % self.vis_buffer_size
+            else:
+                # Split write
+                part1 = remain
+                part2 = write_len - remain
+                self.vis_buffer[self.vis_write_pos : self.vis_buffer_size] = src_data[:part1]
+                self.vis_buffer[0 : part2] = src_data[part1:]
+                self.vis_write_pos = part2
+
+    def _check_and_capture_waveform(self, current_head):
+        """Checks if enough post-trigger samples are available to capture the waveform."""
+        if self._capture_trigger_index != -1:
+             required_post = int(self.vis_window_post * self.nominal_rate)
+             if (current_head - self._capture_trigger_index) >= required_post:
+                  self._capture_waveform(required_post, current_head)
+
+    def _process_rising_edge(self, abs_pos, expected_interval, reg_state):
+        """
+        Handles the logic when a rising edge is detected:
+        Calculates interval, applies MAD filter, updates regression and history.
+        """
+        reg_n, reg_sx, reg_sy, reg_sxx, reg_sxy = reg_state
+
+        if self._first_trigger_sample_index == -1:
+            self._first_trigger_sample_index = abs_pos
+            self._last_trigger_sample_index = abs_pos
+
+            # Initialize regression
+            reg_n = 1
+            reg_sx = 0.0
+            reg_sy = 0.0
+            reg_sxx = 0.0
+            reg_sxy = 0.0
+
+            # Count first pulse (even if not used for interval yet)
+            self._pulses_detected += 1
+        else:
+            # Instantaneous calculation
+            delta = abs_pos - self._last_trigger_sample_index
+            is_gross_outlier = False
+            accepted = True
+
+            # 1. MAD/Median Filter
+            if self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
+                window = np.array(self._filter_window)
+                med = np.median(window)
+                mad = np.median(np.abs(window - med))
+                mad = max(mad, 1e-9)
+                sigma = 1.4826 * mad
+                thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0) # at least 1 sample
+
+                if abs(delta - med) > thresh_val:
+                    accepted = False
+
+            if accepted:
+                self._pulses_detected += 1
+                self._filter_window.append(delta)
+                if len(self._filter_window) > self.filter_window_size:
+                    self._filter_window.pop(0)
+
+                # 2. Instantaneous Result
+                error_samples = delta - expected_interval
+                instant_ppm = (error_samples / expected_interval) * 1e6 if expected_interval != 0 else 0
+
+                y_val = abs_pos - self._first_trigger_sample_index
+                x_val = round(y_val / expected_interval)
+
+                reg_n += 1
+                reg_sx += x_val
+                reg_sy += y_val
+                reg_sxx += x_val * x_val
+                reg_sxy += x_val * y_val
+
+                # Slope Calculation
+                denom = (reg_n * reg_sxx - reg_sx * reg_sx)
+                if denom != 0:
+                    slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
+                    cumulative_ppm = ((slope - expected_interval) / expected_interval) * 1e6
+                else:
+                    cumulative_ppm = 0.0
+
+                # Store result
+                if self._pulses_detected > self.warmup_count:
+                    with self._lock:
+                        idx = self.history_write_pos
+                        self.instant_ppm_buffer[idx] = instant_ppm
+                        self.cumulative_ppm_buffer[idx] = cumulative_ppm
+                        self.time_buffer[idx] = time.time() - self._start_time
+
+                        self.history_write_pos = (idx + 1) % self.max_history
+                        self.history_filled = min(self.history_filled + 1, self.max_history)
+
+            # Update Trigger State
+            if not is_gross_outlier:
+                self._last_trigger_sample_index = abs_pos
+
+        return reg_n, reg_sx, reg_sy, reg_sxx, reg_sxy
+
     def _process_loop(self):
+        """
+        Runs in background thread. Fetches buffers from the RingBuffer,
+        detects edges (threshold crossing + minimal hysteresis),
+        and calculates the time interval between 1PPS pulses.
+        """
         while self.is_running:
             try:
                 item = self.data_queue.get(timeout=0.1)
@@ -210,34 +323,7 @@ class OnePPSMonitor(MeasurementModule):
 
                 sig, frames = item
 
-                # Update Visualization Buffer
-                # We do this under lock to prevent tearing when reading? 
-                # Actually, for visualization, tearing is acceptable usually, but let's be safe-ish or just atomic write.
-                # Since we want a rolling view, we just write to the ring buffer.
-                # If frames > buffer size, we just take the last part.
-
-                write_len = min(frames, self.vis_buffer_size)
-                src_data = sig[-write_len:].astype(np.float32)
-
-                # Check for buffer resize if rate changed drastically?
-                # For now assume fixed size enough for ~1s at 48k. 
-                # If 192k, it will be 0.25s, which might be too short for 1PPS.
-                # Let's dynamically resize if needed in future, but for now fixed is okay or we check nominal.
-
-                # Logic for ring buffer write
-                with self._lock:
-                     # Calculate split
-                    remain = self.vis_buffer_size - self.vis_write_pos
-                    if write_len <= remain:
-                        self.vis_buffer[self.vis_write_pos : self.vis_write_pos + write_len] = src_data
-                        self.vis_write_pos = (self.vis_write_pos + write_len) % self.vis_buffer_size
-                    else:
-                        # Split write
-                        part1 = remain
-                        part2 = write_len - remain
-                        self.vis_buffer[self.vis_write_pos : self.vis_buffer_size] = src_data[:part1]
-                        self.vis_buffer[0 : part2] = src_data[part1:]
-                        self.vis_write_pos = part2
+                self._update_vis_buffer(sig, frames)
 
                 # Processing Logic
                 # Optimization: If signal is way below threshold everywhere, skip.
@@ -246,17 +332,8 @@ class OnePPSMonitor(MeasurementModule):
                     if self._triggered:
                          self._triggered = False
 
-                    # Still need to handle waveform capture if active
-                    # Still need to handle waveform capture if active
-                    if self._capture_trigger_index != -1:
-                         # Current head is self._total_samples_processed + frames (since we skipped loop)
-                         # We skip processing loop, but frames are counted.
-                         # Check if enough samples:
-                         current_head = self._total_samples_processed + frames
-                         required_post = int(self.vis_window_post * self.nominal_rate)
-                         if (current_head - self._capture_trigger_index) >= required_post:
-                              self._capture_waveform(required_post, current_head)
-
+                    current_head = self._total_samples_processed + frames
+                    self._check_and_capture_waveform(current_head)
                     continue
 
                 th_high = self.threshold_fs
@@ -267,11 +344,7 @@ class OnePPSMonitor(MeasurementModule):
                 expected_interval = sample_rate / self.target_pps if self.target_pps > 0 else sample_rate
 
                 # Local copies for speed
-                reg_n = self._reg_n
-                reg_sx = self._reg_sx
-                reg_sy = self._reg_sy
-                reg_sxx = self._reg_sxx
-                reg_sxy = self._reg_sxy
+                reg_state = (self._reg_n, self._reg_sx, self._reg_sy, self._reg_sxx, self._reg_sxy)
 
                 for i in range(frames):
                     s = sig[i]
@@ -281,147 +354,19 @@ class OnePPSMonitor(MeasurementModule):
                         if s >= th_high:
                             self._triggered = True
 
-                            # --- Triggered Visualization Capture ---
-                            # Capture window around this point
-                            # We are at 'abs_pos'. The 'sig' we are processing is in the buffer?
-                            # 'sig[i]' is current sample. 
-                            # We need to extract from buffer where we just wrote.
-                            # Since we write 'sig' to buffer at the start of loop, 'sig[i]' corresponds to
-                            # the latest data.
-                            # 'vis_write_pos' points to NEXT write.
-                            # Current sample 'sig[i]' is at (vis_write_pos - (frames - i)) % size
-
-                            # Let's simplify: We just detected a trigger.
-                            # We want [-pre, +post] window. If we have enough post data?
-                            # No, we are processing real-time. We don't have post data yet.
-                            # So we just mark the trigger time/index.
-                            # AND we can immediately extract the PRE-trigger part from buffer.
-                            # BUT we need to wait for POST-trigger part.
-                            # So, let's just record "samples_since_trigger = 0" and "capturing = True"
-
-
-                            # --- Triggered Visualization Capture ---
                             if self._capture_trigger_index == -1:
                                 self._capture_trigger_index = abs_pos
 
-                            # Rising edge detected
-
-                            # First pulse logic
-                            if self._first_trigger_sample_index == -1:
-                                self._first_trigger_sample_index = abs_pos
-                                self._last_trigger_sample_index = abs_pos
-
-                                # Initialize regression
-                                reg_n = 1
-                                reg_sx = 0.0
-                                reg_sy = 0.0
-                                reg_sxx = 0.0
-                                reg_sxy = 0.0
-
-                                # Count first pulse (even if not used for interval yet)
-                                self._pulses_detected += 1
-
-                            else:
-                                # Instantaneous calculation
-                                delta = abs_pos - self._last_trigger_sample_index
-
-                                # 0. Gate Filter (Hard Rejection) - REMOVED
-                                # We no longer reject based on 50% deviation.
-                                # is_gross_outlier = abs(delta - nominal) > gate_threshold
-                                is_gross_outlier = False
-
-                                accepted = True
-
-                                # 1. MAD/Median Filter
-                                if accepted and self.filter_enabled and len(self._filter_window) >= self.filter_window_size:
-                                    window = np.array(self._filter_window)
-                                    med = np.median(window)
-                                    mad = np.median(np.abs(window - med))
-                                    # If MAD is 0 (perfect signal), use a tiny epsilon to avoid div by zero logic or too strict
-                                    mad = max(mad, 1e-9)
-
-                                    sigma = 1.4826 * mad
-                                    thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0) # at least 1 sample
-
-                                    if abs(delta - med) > thresh_val:
-                                        accepted = False
-
-                                if accepted:
-                                    self._pulses_detected += 1
-                                    self._filter_window.append(delta)
-                                    if len(self._filter_window) > self.filter_window_size:
-                                        self._filter_window.pop(0)
-
-                                    # 2. Instantaneous Result
-                                    error_samples = delta - expected_interval
-                                    # PPM = (Error / Expected) * 1e6
-                                    # Seconds Error = Error / Sample_Rate
-                                    instant_ppm = (error_samples / expected_interval) * 1e6 if expected_interval != 0 else 0
-
-                                    # x = Pulse Count (approx seconds)
-                                    # y = Actual Sample Position relative to first
-                                    y_val = abs_pos - self._first_trigger_sample_index
-
-                                    # x is the index of the pulse.
-                                    # Since we might have missed pulses, let's estimate index from y_val
-                                    x_val = round(y_val / expected_interval)
-
-                                    reg_n += 1
-                                    reg_sx += x_val
-                                    reg_sy += y_val
-                                    reg_sxx += x_val * x_val
-                                    reg_sxy += x_val * y_val
-
-                                    # Slope Calculation
-                                    denom = (reg_n * reg_sxx - reg_sx * reg_sx)
-                                    if denom != 0:
-                                        slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
-                                        # Slope is Samples per Pulse.
-                                        # Nominal Samples per Pulse is expected_interval.
-                                        # PPM Error = (measured_slope - expected) / expected
-                                        cumulative_ppm = ((slope - expected_interval) / expected_interval) * 1e6
-                                    else:
-                                        cumulative_ppm = 0.0
-
-                                    # Store result
-                                    if self._pulses_detected > self.warmup_count:
-                                        with self._lock:
-                                            idx = self.history_write_pos
-                                            self.instant_ppm_buffer[idx] = instant_ppm
-                                            self.cumulative_ppm_buffer[idx] = cumulative_ppm
-                                            self.time_buffer[idx] = time.time() - self._start_time
-
-                                            self.history_write_pos = (idx + 1) % self.max_history
-                                            self.history_filled = min(self.history_filled + 1, self.max_history)
-
-
-                                # 4. Update Trigger State
-                                # FIX for "Death Spiral":
-                                # Even if rejected by MAD, we MUST update the trigger index if it passed the Gate Filter.
-                                # Because if we don't, the NEXT delta will be double, and will be rejected by everything.
-                                # Passing Gate Filter means it IS the pulse for this second, just maybe jittery.
-                                if not is_gross_outlier:
-                                    self._last_trigger_sample_index = abs_pos
+                            reg_state = self._process_rising_edge(abs_pos, expected_interval, reg_state)
 
                     if s <= th_low:
                         self._triggered = False
 
-                # Handle Waveform Capture (If not skipped by optimization)
-                # Handle Waveform Capture (If not skipped by optimization)
-                if self._capture_trigger_index != -1:
-                    current_head = self._total_samples_processed + frames
-                    required_post = int(self.vis_window_post * self.nominal_rate)
-
-                    if (current_head - self._capture_trigger_index) >= required_post:
-                        self._capture_waveform(required_post, current_head)
-
+                current_head = self._total_samples_processed + frames
+                self._check_and_capture_waveform(current_head)
 
                 # Save back regression state
-                self._reg_n = reg_n
-                self._reg_sx = reg_sx
-                self._reg_sy = reg_sy
-                self._reg_sxx = reg_sxx
-                self._reg_sxy = reg_sxy
+                self._reg_n, self._reg_sx, self._reg_sy, self._reg_sxx, self._reg_sxy = reg_state
 
                 self._total_samples_processed += frames
 
