@@ -123,6 +123,12 @@ def test_spl_invalid_input(cal_manager):
     """Test invalid input for SPL calibration."""
     with pytest.raises(ValueError, match="Invalid SPL calibration values"):
         cal_manager.set_spl_calibration("invalid", 80.0)
+    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
+        cal_manager.set_spl_calibration(-20.0, "invalid")
+    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
+        cal_manager.set_spl_calibration(None, 80.0)
+    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
+        cal_manager.set_spl_calibration(-20.0, None)
 
 def test_profile_management(cal_manager):
     """Test creating, loading, and deleting profiles."""
