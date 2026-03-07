@@ -774,10 +774,6 @@ class HRTFPlayerWidget(QWidget):
             if hasattr(self, "pos_indicator"):
                 self.pos_indicator.setData(x=[az], y=[el])
 
-    def on_point_clicked(self, plot, points):
-        # Legacy/Scatter click
-        pass
-
     def on_load_music(self):
         fname, _ = QFileDialog.getOpenFileName(
             self, tr("Open Music File"), "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)"
