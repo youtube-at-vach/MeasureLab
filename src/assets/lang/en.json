@@ -1169,7 +1169,7 @@
     "Unlocked ({0:.1f} Hz, Coh: {1:.2f})": "Unlocked ({0:.1f} Hz, Coh: {1:.2f})",
     "Unstable ({0:.1f} Hz, Coh: {1:.2f})": "Unstable ({0:.1f} Hz, Coh: {1:.2f})",
     "Update Rate:": "Update Rate:",
-    "Update Scan Targets": "Update Scan Targets",
+    "Apply Mains Settings": "Apply Mains Settings",
     "Upper Hearing Limit / SMPS Noise (20kHz)": "Upper Hearing Limit / SMPS Noise (20kHz)",
     "Use 64-bit integers for accumulation (zero precision loss)": "Use 64-bit integers for accumulation (zero precision loss)",
     "V Phase:": "V Phase:",

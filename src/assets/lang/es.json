@@ -1169,7 +1169,7 @@
     "Unlocked ({0:.1f} Hz, Coh: {1:.2f})": "Desbloqueado ({0:.1f} Hz, Coh: {1:.2f})",
     "Unstable ({0:.1f} Hz, Coh: {1:.2f})": "Inestable ({0:.1f} Hz, Coh: {1:.2f})",
     "Update Rate:": "Tasa de actualización:",
-    "Update Scan Targets": "Actualizar objetivos de escaneo",
+    "Apply Mains Settings": "Aplicar ajustes de red eléctrica",
     "Upper Hearing Limit / SMPS Noise (20kHz)": "Upper Hearing Limit / SMPS Noise (20kHz)",
     "Use 64-bit integers for accumulation (zero precision loss)": "Usar enteros de 64 bits para la acumulación (sin pérdida de precisión)",
     "V Phase:": "Fase V:",

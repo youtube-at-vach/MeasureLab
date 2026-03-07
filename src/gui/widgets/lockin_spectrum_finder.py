@@ -221,52 +221,35 @@ class LockInSpectrumFinder(MeasurementModule):
 
     def update_mains_targets(self):
         """Regenerate targets based on current mains settings, merging with custom ones.
-        Also purges unselected frequency harmonics while preserving overlaps.
+        Removes previously generated mains harmonics and applies new ones, preserving custom targets.
         """
-        defaults = _get_default_targets(self.mains_freq, self.mains_harmonics_count)
-
-        # Determine which frequencies to purge
-        purge_bases = []
-        keep_bases = []
-        if self.mains_freq == 50.0:
-            purge_bases = [60.0]
-            keep_bases = [50.0]
-        elif self.mains_freq == 60.0:
-            purge_bases = [50.0]
-            keep_bases = [60.0]
-        else:  # Both
-            keep_bases = [50.0, 60.0]
-
-        # 1. Identify harmonics of the purge frequencies (up to 100th to be safe)
-        purge_freqs = set()
-        for b in purge_bases:
-            for o in range(1, 101):
-                purge_freqs.add(float(b * o))
-
-        # 2. Identify harmonics of the keep frequencies
-        keep_freqs = set()
-        for b in keep_bases:
-            for o in range(1, self.mains_harmonics_count + 1):
-                keep_freqs.add(float(b * o))
-
-        # 3. Purge from current_targets
+        # 1. Clean up old mains targets from current targets
         to_delete = []
-        for f in self.current_targets.keys():
-            if f in purge_freqs and f not in keep_freqs:
-                # Only delete if it's purely a "purge" harmonic and not a "keep" harmonic
-                to_delete.append(f)
+        for f, note in list(self.current_targets.items()):
+            if "Mains" in note:
+                # Split by ' / ' and keep parts that don't look like mains harmonics
+                parts = [p.strip() for p in note.split(" / ") if "Mains" not in p]
+                if parts:
+                    self.current_targets[f] = " / ".join(parts)
+                else:
+                    to_delete.append(f)
 
         for f in to_delete:
             del self.current_targets[f]
 
-        # 4. Merge defaults (which now only contain keep_bases)
-        for f, note in defaults.items():
+        # 2. Get the new default targets, which include the desired mains harmonics
+        new_defaults = _get_default_targets(self.mains_freq, self.mains_harmonics_count)
+
+        # 3. Merge new mains harmonics into current_targets
+        for f, note in new_defaults.items():
             if f not in self.current_targets:
                 self.current_targets[f] = note
             else:
-                # If it's already there, ensure mains note is included
-                if "Mains" in note and "Mains" not in self.current_targets[f]:
-                    self.current_targets[f] += f" / {note}"
+                # Just merge the mains parts to avoid duplicating base default notes
+                mains_parts = [p.strip() for p in note.split(" / ") if "Mains" in p]
+                for mp in mains_parts:
+                    if mp not in self.current_targets[f]:
+                        self.current_targets[f] += f" / {mp}"
 
         self.save_user_targets(self.current_targets)
 
@@ -881,7 +864,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_mains_harmonics.valueChanged.connect(self.on_mains_harmonics_changed)
         mains_form.addRow(tr("Number of Harmonics:"), self.spin_mains_harmonics)
 
-        self.btn_apply_mains = QPushButton(tr("Update Scan Targets"))
+        self.btn_apply_mains = QPushButton(tr("Apply Mains Settings"))
         self.btn_apply_mains.clicked.connect(self.on_apply_mains)
         mains_form.addRow(self.btn_apply_mains)
 

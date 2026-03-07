@@ -1169,7 +1169,7 @@
     "Unlocked ({0:.1f} Hz, Coh: {1:.2f})": "잠금 해제 ({0:.1f} Hz, 일관성: {1:.2f})",
     "Unstable ({0:.1f} Hz, Coh: {1:.2f})": "불안정 ({0:.1f} Hz, 일관성: {1:.2f})",
     "Update Rate:": "업데이트 속도:",
-    "Update Scan Targets": "스캔 타겟 업데이트",
+    "Apply Mains Settings": "전원 설정 적용",
     "Upper Hearing Limit / SMPS Noise (20kHz)": "Upper Hearing Limit / SMPS Noise (20kHz)",
     "Use 64-bit integers for accumulation (zero precision loss)": "누적에 64비트 정수 사용 (정밀도 손실 없음)",
     "V Phase:": "V 위상:",
