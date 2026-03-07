@@ -22,7 +22,7 @@ from scipy.signal import butter, sosfiltfilt
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
-from src.core.utils import format_si
+from src.core.utils import format_si, amplitude_to_linear, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -450,25 +450,17 @@ class LockInTHDWidget(QWidget):
         gain = self.module.audio_engine.calibration.output_gain
 
         self.amp_spin.blockSignals(True)
+        val = linear_to_amplitude(amp_linear, unit, gain)
         if unit == "dBFS":
-            val = 20 * np.log10(amp_linear + 1e-12)
             self.amp_spin.setRange(-120, 6)
             self.amp_spin.setSingleStep(1.0)
         elif unit == "dBV":
-            v_peak = amp_linear * gain
-            v_rms = v_peak / np.sqrt(2)
-            val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(0.5)
         elif unit == "dBu":
-            v_peak = amp_linear * gain
-            v_rms = v_peak / np.sqrt(2)
-            val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(0.5)
         else:  # Vrms
-            v_peak = amp_linear * gain
-            val = v_peak / np.sqrt(2)
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.01)
 
@@ -479,21 +471,8 @@ class LockInTHDWidget(QWidget):
         unit = self.amp_unit_combo.currentText()
         gain = self.module.audio_engine.calibration.output_gain
 
-        if unit == "dBFS":
-            amp_linear = 10 ** (val / 20)
-        elif unit == "dBV":
-            v_rms = 10 ** (val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            amp_linear = v_peak / gain
-        elif unit == "dBu":
-            v_rms = 0.7746 * 10 ** (val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            amp_linear = v_peak / gain
-        else:  # Vrms
-            v_peak = val * np.sqrt(2)
-            amp_linear = v_peak / gain
+        amp_linear = amplitude_to_linear(val, unit, gain)
 
-        amp_linear = max(0.0, min(1.0, amp_linear))
         self.module.gen_amplitude = amp_linear
 
     def on_freq_changed(self, val):

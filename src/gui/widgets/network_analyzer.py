@@ -25,6 +25,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.utils import amplitude_to_linear, linear_to_amplitude
 
 
 class NetworkAnalyzerSignals(QObject):
@@ -867,42 +868,29 @@ class NetworkAnalyzerWidget(QWidget):
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setSuffix("")
-            self.amp_spin.setValue(amp_0_1)
         elif unit == "dBFS":
             self.amp_spin.setRange(-120, 0)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setSuffix(" dB")
-            val = 20 * np.log10(amp_0_1 + 1e-12)
-            self.amp_spin.setValue(val)
         elif unit == "dBV":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
-            val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setSuffix(" dB")
-            self.amp_spin.setValue(val)
         elif unit == "dBu":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
-            val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
             self.amp_spin.setSuffix(" dB")
-            self.amp_spin.setValue(val)
         elif unit == "Vrms":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setSuffix(" V")
-            self.amp_spin.setValue(v_rms)
         elif unit == "Vpeak":
-            v_peak = amp_0_1 * gain
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
             self.amp_spin.setSuffix(" V")
-            self.amp_spin.setValue(v_peak)
+
+        val = linear_to_amplitude(amp_0_1, unit, gain)
+        self.amp_spin.setValue(val)
 
         self.amp_spin.blockSignals(False)
 
@@ -913,30 +901,7 @@ class NetworkAnalyzerWidget(QWidget):
         except Exception:
             gain = 1.0
 
-        amp_0_1 = 0.0
-
-        if unit == "Amplitude":
-            amp_0_1 = val
-        elif unit == "dBFS":
-            amp_0_1 = 10 ** (val / 20)
-        elif unit == "dBV":
-            v_rms = 10 ** (val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            amp_0_1 = v_peak / gain
-        elif unit == "dBu":
-            v_rms = 0.7746 * 10 ** (val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            amp_0_1 = v_peak / gain
-        elif unit == "Vrms":
-            v_peak = val * np.sqrt(2)
-            amp_0_1 = v_peak / gain
-        elif unit == "Vpeak":
-            amp_0_1 = val / gain
-
-        if amp_0_1 > 1.0:
-            amp_0_1 = 1.0
-        elif amp_0_1 < 0.0:
-            amp_0_1 = 0.0
+        amp_0_1 = amplitude_to_linear(val, unit, gain)
 
         self.module.amplitude = amp_0_1
 
@@ -1118,21 +1083,16 @@ class NetworkAnalyzerWidget(QWidget):
                 y_values = base_db
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="dBFS")
             elif unit == "dBV":
-                v_peak = mags_linear * input_sensitivity
-                v_rms = v_peak / np.sqrt(2)
-                y_values = 20 * np.log10(v_rms + 1e-12)
+                y_values = linear_to_amplitude(mags_linear, unit, input_sensitivity)
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="dBV")
             elif unit == "dBu":
-                v_peak = mags_linear * input_sensitivity
-                v_rms = v_peak / np.sqrt(2)
-                y_values = 20 * np.log10((v_rms + 1e-12) / 0.7746)
+                y_values = linear_to_amplitude(mags_linear, unit, input_sensitivity)
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="dBu")
             elif unit == "Vrms":
-                v_peak = mags_linear * input_sensitivity
-                y_values = v_peak / np.sqrt(2)
+                y_values = linear_to_amplitude(mags_linear, unit, input_sensitivity)
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="V")
             elif unit == "Vpeak":
-                y_values = mags_linear * input_sensitivity
+                y_values = linear_to_amplitude(mags_linear, unit, input_sensitivity)
                 self.mag_plot.setLabel("left", tr("Magnitude"), units="V")
             else:
                 y_values = base_db
