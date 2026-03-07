@@ -49,7 +49,12 @@ def _get_mains_note(base: int, order: int) -> str:
         return f"Mains {order}{suffix} Harmonic ({freq}Hz)"
 
 
-def _get_default_targets(mains_freq: float | None = None, mains_harmonics: int = 16) -> dict:
+def _get_default_targets(
+    mains_freq: float | None = None,
+    mains_harmonics: int = 16,
+    include_musical_scale: bool = False,
+    a4_freq: float = 440.0,
+) -> dict:
     targets = {
         997.0: "Standard Test Tone (997Hz)",
         1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
@@ -98,6 +103,21 @@ def _get_default_targets(mains_freq: float | None = None, mains_harmonics: int =
                     targets[_f] += f" / {_note}"
             else:
                 targets[_f] = _note
+
+    if include_musical_scale:
+        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        for p in range(12, 128):  # C0 to G9
+            freq = round(a4_freq * (2.0 ** ((p - 69) / 12.0)), 2)
+            if 10.0 <= freq <= 192000.0:
+                octave = (p // 12) - 1
+                name = note_names[p % 12]
+                note_str = f"Note {name}{octave} ({freq}Hz)"
+                if freq in targets:
+                    if note_str not in targets[freq]:
+                        targets[freq] += f" / {note_str}"
+                else:
+                    targets[freq] = note_str
+
     return targets
 
 
@@ -145,6 +165,15 @@ class LockInSpectrumFinder(MeasurementModule):
         # Scan Mode Specifics
         self.include_scan_targets = True
         self.octave_ref_freq = 1000.0
+
+        # Mains Power Settings
+        self.mains_freq = None  # None means both 50 and 60 Hz
+        self.mains_harmonics_count = 16
+
+        # Musical Scale Settings
+        self.include_musical_scale = False
+        self.a4_freq = 440.0
+
         self.current_targets = self._load_user_targets()
         self._module_keys = [
             "Standard Test Tone (997Hz)",
@@ -192,10 +221,6 @@ class LockInSpectrumFinder(MeasurementModule):
         # Analysis Settings
         self.window_type = "none"  # "none", "hann", "hamming", "blackmanharris"
 
-        # Mains Power Settings
-        self.mains_freq = None  # None means both 50 and 60 Hz
-        self.mains_harmonics_count = 16
-
         # Display
         self.display_unit = "dBFS"  # "dBFS", "dBV", "dB SPL"
 
@@ -217,18 +242,22 @@ class LockInSpectrumFinder(MeasurementModule):
                 return {float(k): v for k, v in data.items()}
         except Exception as e:
             logger.error(f"Failed to load user targets from {path}: {e}")
-        return _get_default_targets(self.mains_freq, self.mains_harmonics_count)
+        return _get_default_targets(
+            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq
+        )
 
-    def update_mains_targets(self):
-        """Regenerate targets based on current mains settings, merging with custom ones.
-        Removes previously generated mains harmonics and applies new ones, preserving custom targets.
+    def update_generator_targets(self):
+        """Regenerate targets based on current generator settings, merging with custom ones.
+        Removes previously generated targets and applies new ones, preserving custom targets.
         """
-        # 1. Clean up old mains targets from current targets
+        # 1. Clean up old generated targets from current targets
         to_delete = []
         for f, note in list(self.current_targets.items()):
-            if "Mains" in note:
-                # Split by ' / ' and keep parts that don't look like mains harmonics
-                parts = [p.strip() for p in note.split(" / ") if "Mains" not in p]
+            if "Mains" in note or "Note " in note:
+                # Split by ' / ' and keep parts that don't look like generated targets
+                parts = [
+                    p.strip() for p in note.split(" / ") if "Mains" not in p and not p.strip().startswith("Note ")
+                ]
                 if parts:
                     self.current_targets[f] = " / ".join(parts)
                 else:
@@ -237,19 +266,21 @@ class LockInSpectrumFinder(MeasurementModule):
         for f in to_delete:
             del self.current_targets[f]
 
-        # 2. Get the new default targets, which include the desired mains harmonics
-        new_defaults = _get_default_targets(self.mains_freq, self.mains_harmonics_count)
+        # 2. Get the new default targets, which include the desired generated targets
+        new_defaults = _get_default_targets(
+            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq
+        )
 
-        # 3. Merge new mains harmonics into current_targets
+        # 3. Merge new targets into current_targets
         for f, note in new_defaults.items():
             if f not in self.current_targets:
                 self.current_targets[f] = note
             else:
-                # Just merge the mains parts to avoid duplicating base default notes
-                mains_parts = [p.strip() for p in note.split(" / ") if "Mains" in p]
-                for mp in mains_parts:
-                    if mp not in self.current_targets[f]:
-                        self.current_targets[f] += f" / {mp}"
+                # Just merge the generated parts to avoid duplicating base default notes
+                gen_parts = [p.strip() for p in note.split(" / ") if "Mains" in p or p.strip().startswith("Note ")]
+                for gp in gen_parts:
+                    if gp not in self.current_targets[f]:
+                        self.current_targets[f] += f" / {gp}"
 
         self.save_user_targets(self.current_targets)
 
@@ -844,9 +875,13 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.tabs.addTab(target_tab, tr("Scan Targets"))
 
-        # Mains Setup Tab
-        mains_tab = QWidget()
-        mains_form = QFormLayout(mains_tab)
+        # Target Generators Tab
+        gen_tab = QWidget()
+        gen_layout = QVBoxLayout(gen_tab)
+        
+        # Mains Power Group
+        mains_group = QGroupBox(tr("Mains Power"))
+        mains_form = QFormLayout()
 
         self.combo_mains_freq = QComboBox()
         self.combo_mains_freq.addItem(tr("Both (50/60 Hz)"), None)
@@ -864,12 +899,36 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_mains_harmonics.valueChanged.connect(self.on_mains_harmonics_changed)
         mains_form.addRow(tr("Number of Harmonics:"), self.spin_mains_harmonics)
 
-        self.btn_apply_mains = QPushButton(tr("Apply Mains Settings"))
-        self.btn_apply_mains.clicked.connect(self.on_apply_mains)
-        mains_form.addRow(self.btn_apply_mains)
+        mains_group.setLayout(mains_form)
+        gen_layout.addWidget(mains_group)
+        
+        # Musical Scale Group
+        scale_group = QGroupBox(tr("Musical Scale (Equal Temperament)"))
+        scale_form = QFormLayout()
+        
+        self.chk_musical_scale = QCheckBox(tr("Include Musical Scale"))
+        self.chk_musical_scale.setChecked(self.module.include_musical_scale)
+        self.chk_musical_scale.stateChanged.connect(self.on_musical_scale_changed)
+        scale_form.addRow(self.chk_musical_scale)
+        
+        self.spin_a4_freq = QDoubleSpinBox()
+        self.spin_a4_freq.setRange(400.0, 500.0)
+        self.spin_a4_freq.setDecimals(2)
+        self.spin_a4_freq.setValue(self.module.a4_freq)
+        self.spin_a4_freq.setSuffix(" Hz")
+        self.spin_a4_freq.valueChanged.connect(self.on_a4_freq_changed)
+        scale_form.addRow(tr("A4 Reference Frequency:"), self.spin_a4_freq)
+        
+        scale_group.setLayout(scale_form)
+        gen_layout.addWidget(scale_group)
+        
+        gen_layout.addStretch()
 
-        mains_tab.setLayout(mains_form)
-        self.tabs.addTab(mains_tab, tr("Mains Setup"))
+        self.btn_apply_gen = QPushButton(tr("Apply Generation Settings"))
+        self.btn_apply_gen.clicked.connect(self.on_apply_gen)
+        gen_layout.addWidget(self.btn_apply_gen)
+
+        self.tabs.addTab(gen_tab, tr("Target Generators"))
 
         left_panel.addWidget(self.tabs)
 
@@ -1319,7 +1378,12 @@ class LockInSpectrumFinderWidget(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             self.module.save_user_targets(
-                _get_default_targets(self.module.mains_freq, self.module.mains_harmonics_count)
+                _get_default_targets(
+                    self.module.mains_freq,
+                    self.module.mains_harmonics_count,
+                    self.module.include_musical_scale,
+                    self.module.a4_freq,
+                )
             )
             self._populate_targets_table()
             self.reset_averaging()
@@ -1330,8 +1394,14 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_mains_harmonics_changed(self, val):
         self.module.mains_harmonics_count = val
 
-    def on_apply_mains(self):
-        self.module.update_mains_targets()
+    def on_musical_scale_changed(self, state):
+        self.module.include_musical_scale = bool(state)
+
+    def on_a4_freq_changed(self, val):
+        self.module.a4_freq = val
+
+    def on_apply_gen(self):
+        self.module.update_generator_targets()
         self._populate_targets_table()
         self.reset_averaging()
-        QMessageBox.information(self, tr("Success"), tr("Scan targets updated with mains harmonics."))
+        QMessageBox.information(self, tr("Success"), tr("Scan targets updated with generator settings."))
