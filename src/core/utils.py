@@ -2,6 +2,8 @@ import math
 import os
 import sys
 
+import numpy as np
+
 _SI_PREFIXES = {
     -24: "y",
     -21: "z",
@@ -100,8 +102,6 @@ def resource_path(relative_path):
                 return os.path.join(base_path, "src", relative_path)
 
     return os.path.join(base_path, relative_path)
-
-import numpy as np
 
 def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
     """
