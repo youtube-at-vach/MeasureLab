@@ -35,6 +35,7 @@ from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
+
 def _get_mains_note(base: int, order: int) -> str:
     freq = base * order
     if order == 1:
@@ -47,7 +48,8 @@ def _get_mains_note(base: int, order: int) -> str:
             suffix = "rd"
         return f"Mains {order}{suffix} Harmonic ({freq}Hz)"
 
-def _get_default_targets() -> dict:
+
+def _get_default_targets(mains_freq: float | None = None, mains_harmonics: int = 16) -> dict:
     targets = {
         997.0: "Standard Test Tone (997Hz)",
         1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
@@ -82,17 +84,22 @@ def _get_default_targets() -> dict:
         80000.0: "SMPS Noise (80kHz)",
         88200.0: "Hi-Res Audio (88.2kHz)",
         96000.0: "Hi-Res Audio (96kHz)",
-        100000.0: "SMPS Noise (100kHz)"
+        100000.0: "SMPS Noise (100kHz)",
     }
-    for _order in range(1, 17):
-        for _base in (50, 60):
+
+    bases = [50.0, 60.0] if mains_freq is None else [mains_freq]
+
+    for _order in range(1, mains_harmonics + 1):
+        for _base in bases:
             _f = float(_base * _order)
-            _note = _get_mains_note(_base, _order)
+            _note = _get_mains_note(int(_base), _order)
             if _f in targets:
-                targets[_f] += f" / {_note}"
+                if _note not in targets[_f]:
+                    targets[_f] += f" / {_note}"
             else:
                 targets[_f] = _note
     return targets
+
 
 # Used for decoupling background thread results to GUI thread safely.
 # Used for decoupling background thread results to GUI thread safely.
@@ -100,6 +107,7 @@ class FinderSignals(QObject):
     result_ready = pyqtSignal(object)
     sweep_started = pyqtSignal(object)
     progress_update = pyqtSignal(int, int, object, object, object)
+
 
 class LockInSpectrumFinder(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -117,10 +125,10 @@ class LockInSpectrumFinder(MeasurementModule):
         self.points = 256
         self.start_freq = 20.0
         self.stop_freq = 20000.0
-        self.spacing = "Log" # "Lin" or "Log"
+        self.spacing = "Log"  # "Lin" or "Log"
 
         # Audio params
-        self.input_channel = 0 # 0: Left, 1: Right
+        self.input_channel = 0  # 0: Left, 1: Right
 
         # State
         self.callback_id = None
@@ -129,7 +137,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self._calculation_future = None
 
         # Mode
-        self.mode = "Scan" # "Scan" or "Zoom"
+        self.mode = "Scan"  # "Scan" or "Zoom"
         self.zoom_center_freq = 1000.0
         self.zoom_span = 10.0
         self.track_peak = False
@@ -138,12 +146,58 @@ class LockInSpectrumFinder(MeasurementModule):
         self.include_scan_targets = True
         self.octave_ref_freq = 1000.0
         self.current_targets = self._load_user_targets()
+        self._module_keys = [
+            "Standard Test Tone (997Hz)",
+            "Standard Test Tone (1kHz) / USB Frame (1ms)",
+            "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
+            "Audio Sample Rate (11.025kHz)",
+            "CRT Horizontal Scan (PAL/SECAM 15.625kHz)",
+            "CRT Horizontal Scan (NTSC 15.734kHz)",
+            "Audio Sample Rate (16kHz)",
+            "FM Pilot Tone (19kHz)",
+            "Upper Hearing Limit / SMPS Noise (20kHz)",
+            "Audio Sample Rate (22.05kHz)",
+            "Audio Sample Rate Base (24kHz)",
+            "SMPS Noise (25kHz)",
+            "SMPS Noise (30kHz)",
+            "CRT Monitor Scan (31.25kHz) / MIDI Baud Rate",
+            "CRT Monitor Scan / VGA (31.468kHz)",
+            "LCD / CRT Monitor Scan (31.5kHz)",
+            "Audio Sample Rate (32kHz)",
+            "RTC Crystal Oscillator (32.768kHz)",
+            "CRT Monitor Scan (37.9kHz)",
+            "FM Stereo Subcarrier (38kHz)",
+            "Ultrasonic Transducer / SMPS Noise (40kHz)",
+            "CD Audio (44.1kHz)",
+            "CRT Monitor Scan (46.875kHz)",
+            "CRT Monitor Scan (47.202kHz)",
+            "DAT/Video Audio (48kHz)",
+            "CRT Monitor Scan (48.4kHz)",
+            "SMPS Noise (50kHz)",
+            "RDS / RBDS (57kHz)",
+            "SMPS Noise (60kHz)",
+            "CRT Monitor Scan (62.936kHz)",
+            "SMPS Noise (80kHz)",
+            "Hi-Res Audio (88.2kHz)",
+            "Hi-Res Audio (96kHz)",
+            "SMPS Noise (100kHz)",
+            "Mains Power (50Hz)",
+            "Mains Power (60Hz)",
+            "Rectified Mains (100Hz)",
+            "Rectified Mains (120Hz)",
+            # Note: 3rd+ harmonics generated via f"Mains {order}{suffix} Harmonic ({freq}Hz)"
+            # are harder to track but usually follow a pattern.
+        ]
 
         # Analysis Settings
-        self.window_type = "none" # "none", "hann", "hamming", "blackmanharris"
+        self.window_type = "none"  # "none", "hann", "hamming", "blackmanharris"
+
+        # Mains Power Settings
+        self.mains_freq = None  # None means both 50 and 60 Hz
+        self.mains_harmonics_count = 16
 
         # Display
-        self.display_unit = "dBFS" # "dBFS", "dBV", "dB SPL"
+        self.display_unit = "dBFS"  # "dBFS", "dBV", "dB SPL"
 
     @property
     def name(self) -> str:
@@ -163,7 +217,41 @@ class LockInSpectrumFinder(MeasurementModule):
                 return {float(k): v for k, v in data.items()}
         except Exception as e:
             logger.error(f"Failed to load user targets from {path}: {e}")
-        return _get_default_targets()
+        return _get_default_targets(self.mains_freq, self.mains_harmonics_count)
+
+    def update_mains_targets(self):
+        """Regenerate targets based on current mains settings, merging with custom ones.
+        Removes previously generated mains harmonics and applies new ones, preserving custom targets.
+        """
+        # 1. Clean up old mains targets from current targets
+        to_delete = []
+        for f, note in list(self.current_targets.items()):
+            if "Mains" in note:
+                # Split by ' / ' and keep parts that don't look like mains harmonics
+                parts = [p.strip() for p in note.split(" / ") if "Mains" not in p]
+                if parts:
+                    self.current_targets[f] = " / ".join(parts)
+                else:
+                    to_delete.append(f)
+
+        for f in to_delete:
+            del self.current_targets[f]
+
+        # 2. Get the new default targets, which include the desired mains harmonics
+        new_defaults = _get_default_targets(self.mains_freq, self.mains_harmonics_count)
+
+        # 3. Merge new mains harmonics into current_targets
+        for f, note in new_defaults.items():
+            if f not in self.current_targets:
+                self.current_targets[f] = note
+            else:
+                # Just merge the mains parts to avoid duplicating base default notes
+                mains_parts = [p.strip() for p in note.split(" / ") if "Mains" in p]
+                for mp in mains_parts:
+                    if mp not in self.current_targets[f]:
+                        self.current_targets[f] += f" / {mp}"
+
+        self.save_user_targets(self.current_targets)
 
     def save_user_targets(self, targets: dict):
         self.current_targets = targets
@@ -178,7 +266,6 @@ class LockInSpectrumFinder(MeasurementModule):
 
     def get_widget(self):
         return LockInSpectrumFinderWidget(self)
-
 
     def start_analysis(self):
         if self.is_running:
@@ -195,7 +282,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 outdata.fill(0)
                 return
 
-            outdata.fill(0) # Not generating any signal currently
+            outdata.fill(0)  # Not generating any signal currently
 
             if indata.shape[1] >= 2:
                 new_data = indata[:, :2]
@@ -251,7 +338,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         data = self.get_data_snapshot()
         if data is None:
-            return # Not filled yet
+            return  # Not filled yet
 
         # Clear buffer immediately to start collecting next chunk while calculating
         self.clear_buffer()
@@ -282,20 +369,50 @@ class LockInSpectrumFinder(MeasurementModule):
         p_targets = self.current_targets.copy()
 
         self._calculation_future = self.executor.submit(
-            self._do_calculation, sig, fs, p_start, p_stop, p_points, p_spacing, 
-            p_unit, p_offset_dbv, p_offset_spl, p_mode, p_zoom_center, p_zoom_span, p_window,
-            p_include_targets, p_octave_ref, p_targets
+            self._do_calculation,
+            sig,
+            fs,
+            p_start,
+            p_stop,
+            p_points,
+            p_spacing,
+            p_unit,
+            p_offset_dbv,
+            p_offset_spl,
+            p_mode,
+            p_zoom_center,
+            p_zoom_span,
+            p_window,
+            p_include_targets,
+            p_octave_ref,
+            p_targets,
         )
 
-    def _do_calculation(self, sig, fs, start_f, stop_f, points, spacing,
-                        display_unit, offset_dbv, offset_spl,
-                        mode="Scan", zoom_center=1000.0, zoom_span=10.0, window_type="none",
-                        include_targets=True, octave_ref=1000.0, targets=None):
+    def _do_calculation(
+        self,
+        sig,
+        fs,
+        start_f,
+        stop_f,
+        points,
+        spacing,
+        display_unit,
+        offset_dbv,
+        offset_spl,
+        mode="Scan",
+        zoom_center=1000.0,
+        zoom_span=10.0,
+        window_type="none",
+        include_targets=True,
+        octave_ref=1000.0,
+        targets=None,
+    ):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
         import time
         import scipy.signal as signal
+
         N = len(sig)
         t = np.arange(N, dtype=np.float64) / fs
 
@@ -378,11 +495,11 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
         elif spacing == "Integer":
             freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
-            freqs = freqs[freqs >= 1.0] # Prevent 0 Hz
+            freqs = freqs[freqs >= 1.0]  # Prevent 0 Hz
         elif spacing == "Int x Sync":
             df = fs / N
             freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
-            freqs = freqs[freqs >= df] # Prevent 0 Hz and extremely low frequencies
+            freqs = freqs[freqs >= df]  # Prevent 0 Hz and extremely low frequencies
             if len(freqs) == 0:
                 freqs = np.array([df])
         elif spacing.endswith("Octave"):
@@ -400,7 +517,7 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs = freqs[(freqs >= start_f) & (freqs <= stop_f)]
             if len(freqs) == 0:
                 freqs = np.array([start_f, stop_f])
-        else: # "Lin"
+        else:  # "Lin"
             freqs = np.linspace(start_f, stop_f, points)
 
         marker_freqs = []
@@ -422,6 +539,7 @@ class LockInSpectrumFinder(MeasurementModule):
         # --- 初期窓関数の適用 (指定された窓関数) ---
         # このNはsig全体の長さ
         import scipy.signal as signal
+
         if window_type == "none":
             window_orig = np.ones(N, dtype=np.float64)
         else:
@@ -466,8 +584,8 @@ class LockInSpectrumFinder(MeasurementModule):
 
             # Allocate Windowed Basis Matrix for the local chunk
             # [1, cos(w1), sin(w1), cos(w1), sin(w1), ...]
-            B_win = np.empty((N_chunk, num_bases), dtype=np.float64) # 高精度化 (float64)
-            B_win[:, 0] = sqrt_win # DC includes the window weight
+            B_win = np.empty((N_chunk, num_bases), dtype=np.float64)  # 高精度化 (float64)
+            B_win[:, 0] = sqrt_win  # DC includes the window weight
 
             # Compute and apply window weight directly in pre-allocated array
             np.cos(phase, out=B_win[:, 1::2])
@@ -512,11 +630,12 @@ class LockInSpectrumFinder(MeasurementModule):
             # Emit result chunk back to GUI thread
             self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk, phases)
 
-            # Sleep briefly to ensure audio callback is not starved 
+            # Sleep briefly to ensure audio callback is not starved
             time.sleep(0.005)
 
         if self.is_running:
             self.signals.result_ready.emit((freqs, mags_db_all))
+
 
 class LockInSpectrumFinderWidget(QWidget):
     def __init__(self, module: LockInSpectrumFinder):
@@ -530,7 +649,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_calculation)
-        self.timer.setInterval(100) # Check every 100ms
+        self.timer.setInterval(100)  # Check every 100ms
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -725,6 +844,33 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.tabs.addTab(target_tab, tr("Scan Targets"))
 
+        # Mains Setup Tab
+        mains_tab = QWidget()
+        mains_form = QFormLayout(mains_tab)
+
+        self.combo_mains_freq = QComboBox()
+        self.combo_mains_freq.addItem(tr("Both (50/60 Hz)"), None)
+        self.combo_mains_freq.addItem("50 Hz", 50.0)
+        self.combo_mains_freq.addItem("60 Hz", 60.0)
+        idx = self.combo_mains_freq.findData(self.module.mains_freq)
+        if idx >= 0:
+            self.combo_mains_freq.setCurrentIndex(idx)
+        self.combo_mains_freq.currentIndexChanged.connect(self.on_mains_freq_changed)
+        mains_form.addRow(tr("Mains Frequency:"), self.combo_mains_freq)
+
+        self.spin_mains_harmonics = QSpinBox()
+        self.spin_mains_harmonics.setRange(1, 100)
+        self.spin_mains_harmonics.setValue(self.module.mains_harmonics_count)
+        self.spin_mains_harmonics.valueChanged.connect(self.on_mains_harmonics_changed)
+        mains_form.addRow(tr("Number of Harmonics:"), self.spin_mains_harmonics)
+
+        self.btn_apply_mains = QPushButton(tr("Apply Mains Settings"))
+        self.btn_apply_mains.clicked.connect(self.on_apply_mains)
+        mains_form.addRow(self.btn_apply_mains)
+
+        mains_tab.setLayout(mains_form)
+        self.tabs.addTab(mains_tab, tr("Mains Setup"))
+
         left_panel.addWidget(self.tabs)
 
         # Status Label
@@ -749,12 +895,12 @@ class LockInSpectrumFinderWidget(QWidget):
         self.curve = self.plot.plot(pen="y")
 
         self.scatter = pg.ScatterPlotItem(
-            size=10, 
-            pen=pg.mkPen(None), 
-            brush=pg.mkBrush(255, 0, 0, 200), 
-            hoverable=True, 
+            size=10,
+            pen=pg.mkPen(None),
+            brush=pg.mkBrush(255, 0, 0, 200),
+            hoverable=True,
             hoverSize=15,
-            tip=self._get_marker_tooltip
+            tip=self._get_marker_tooltip,
         )
         self.plot.addItem(self.scatter)
         self.scatter.sigClicked.connect(self.on_scatter_clicked)
@@ -940,7 +1086,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.current_freqs = freqs.copy()
         self.current_marker_freqs = marker_freqs
 
-        if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
+        if not hasattr(self, "averaged_amps") or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
             self.averaged_amps = np.zeros(len(freqs))
             self.frames_counted = 0
 
@@ -951,13 +1097,13 @@ class LockInSpectrumFinderWidget(QWidget):
                 xmin, xmax = np.log10(xmin), np.log10(xmax)
             self.plot.setXRange(xmin, xmax, padding=0.0)
 
-        if not hasattr(self, 'current_mags') or len(self.current_mags) != len(freqs):
+        if not hasattr(self, "current_mags") or len(self.current_mags) != len(freqs):
             self.current_mags = np.full(len(freqs), -180.0)
 
         self.frames_counted += 1
 
-        if not hasattr(self, 'sweep_line'):
-            self.sweep_line = pg.InfiniteLine(angle=90, movable=False, pen='r')
+        if not hasattr(self, "sweep_line"):
+            self.sweep_line = pg.InfiniteLine(angle=90, movable=False, pen="r")
             self.plot.addItem(self.sweep_line)
 
         self.sweep_line.show()
@@ -965,54 +1111,53 @@ class LockInSpectrumFinderWidget(QWidget):
         if self.module.mode == "Scan" and self.module.spacing == "Log" and val > 0:
             val = np.log10(val)
         self.sweep_line.setValue(val)
-        self.scatter.setData([]) # clear markers
+        self.scatter.setData([])  # clear markers
         self.lbl_status.setText(tr("Calculating... 0%"))
 
     def _update_scatter_plot(self):
-        if not hasattr(self, 'current_marker_freqs') or not self.current_marker_freqs:
+        if not hasattr(self, "current_marker_freqs") or not self.current_marker_freqs:
             self.scatter.setData([])
             return
 
         pts = []
         for mf in self.current_marker_freqs:
             idx = np.searchsorted(self.current_freqs, mf)
+
             def check_and_add(i, mf=mf):
                 if 0 <= i < len(self.current_freqs) and np.isclose(self.current_freqs[i], mf, atol=1e-3):
                     y = self.current_mags[i]
                     x = mf
-                    phase = float(self.current_phases[i]) if hasattr(self, 'current_phases') else 0.0
+                    phase = float(self.current_phases[i]) if hasattr(self, "current_phases") else 0.0
                     note = self.module.current_targets.get(mf, "Unknown")
                     unit = self.module.display_unit
 
                     # Store rich data in the item
-                    data_obj = {
-                        "freq": mf,
-                        "mag": y,
-                        "phase_deg": np.degrees(phase),
-                        "note": note,
-                        "unit": unit
-                    }
+                    data_obj = {"freq": mf, "mag": y, "phase_deg": np.degrees(phase), "note": note, "unit": unit}
 
                     if self.module.mode == "Scan" and self.module.spacing == "Log" and x > 0:
                         x = np.log10(x)
                     if y > -170:
-                        pts.append({'pos': (x, y), 'data': data_obj})
+                        pts.append({"pos": (x, y), "data": data_obj})
                     return True
                 return False
 
             if not check_and_add(idx):
-                check_and_add(idx-1)
+                check_and_add(idx - 1)
 
         self.scatter.setData(pts)
 
     def on_progress_update(self, start_idx, end_idx, f_chunk, m_chunk, p_chunk):
-        if not hasattr(self, 'current_freqs') or not hasattr(self, 'current_mags'):
+        if not hasattr(self, "current_freqs") or not hasattr(self, "current_mags"):
             return
 
-        if not hasattr(self, 'current_phases') or len(self.current_phases) != len(self.current_freqs):
+        if not hasattr(self, "current_phases") or len(self.current_phases) != len(self.current_freqs):
             self.current_phases = np.zeros(len(self.current_freqs))
 
-        if not hasattr(self, 'averaged_amps') or self.averaged_amps is None or len(self.averaged_amps) != len(self.current_freqs):
+        if (
+            not hasattr(self, "averaged_amps")
+            or self.averaged_amps is None
+            or len(self.averaged_amps) != len(self.current_freqs)
+        ):
             self.averaged_amps = np.zeros(len(self.current_freqs))
             self.frames_counted = 1
 
@@ -1025,7 +1170,9 @@ class LockInSpectrumFinderWidget(QWidget):
         if self.frames_counted <= 1:
             self.averaged_amps[start_idx:end_idx] = a_chunk
         else:
-            self.averaged_amps[start_idx:end_idx] = (1.0 - alpha) * self.averaged_amps[start_idx:end_idx] + alpha * a_chunk
+            self.averaged_amps[start_idx:end_idx] = (1.0 - alpha) * self.averaged_amps[
+                start_idx:end_idx
+            ] + alpha * a_chunk
 
         avg_db = 20.0 * np.log10(self.averaged_amps[start_idx:end_idx] + 1e-15)
         self.current_mags[start_idx:end_idx] = avg_db
@@ -1033,7 +1180,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self._update_scatter_plot()
 
-        if hasattr(self, 'sweep_line'):
+        if hasattr(self, "sweep_line"):
             self.sweep_line.show()
             val = f_chunk[-1]
             if self.module.mode == "Scan" and self.module.spacing == "Log" and val > 0:
@@ -1042,19 +1189,23 @@ class LockInSpectrumFinderWidget(QWidget):
         pct = int((end_idx / len(self.current_freqs)) * 100)
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = (
+                f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            )
         self.lbl_status.setText(tr("Calculating... {}%").format(pct) + avg_text)
 
     def on_result_ready(self, result):
         freqs, mags_db = result
         self.curve.setData(self.current_freqs, self.current_mags)
         self._update_scatter_plot()
-        if hasattr(self, 'sweep_line'):
+        if hasattr(self, "sweep_line"):
             self.sweep_line.hide()
 
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = (
+                f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            )
         self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
 
         if self.module.mode == "Zoom" and self.module.track_peak:
@@ -1137,7 +1288,7 @@ class LockInSpectrumFinderWidget(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(self, tr("Import Targets"), "", "JSON Files (*.json)")
         if file_path:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 new_targets = {float(k): str(v) for k, v in data.items()}
                 self.module.save_user_targets(new_targets)
@@ -1147,10 +1298,12 @@ class LockInSpectrumFinderWidget(QWidget):
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to import targets:')}\n{e}")
 
     def on_export_targets(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, tr("Export Targets"), "scan_targets.json", "JSON Files (*.json)")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, tr("Export Targets"), "scan_targets.json", "JSON Files (*.json)"
+        )
         if file_path:
             try:
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     data = {str(k): v for k, v in self.module.current_targets.items()}
                     json.dump(data, f, indent=4, ensure_ascii=False)
                 QMessageBox.information(self, tr("Success"), tr("Targets exported successfully."))
@@ -1158,9 +1311,27 @@ class LockInSpectrumFinderWidget(QWidget):
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to export targets:')}\n{e}")
 
     def on_reset_targets(self):
-        reply = QMessageBox.question(self, tr("Reset Defaults"), tr("Are you sure you want to reset targets to default?"),
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            tr("Reset Defaults"),
+            tr("Are you sure you want to reset targets to default?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
-            self.module.save_user_targets(_get_default_targets())
+            self.module.save_user_targets(
+                _get_default_targets(self.module.mains_freq, self.module.mains_harmonics_count)
+            )
             self._populate_targets_table()
             self.reset_averaging()
+
+    def on_mains_freq_changed(self, idx):
+        self.module.mains_freq = self.combo_mains_freq.itemData(idx)
+
+    def on_mains_harmonics_changed(self, val):
+        self.module.mains_harmonics_count = val
+
+    def on_apply_mains(self):
+        self.module.update_mains_targets()
+        self._populate_targets_table()
+        self.reset_averaging()
+        QMessageBox.information(self, tr("Success"), tr("Scan targets updated with mains harmonics."))
