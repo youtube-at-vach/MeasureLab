@@ -30,6 +30,7 @@ from scipy.signal import hilbert
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.utils import amplitude_to_linear, linear_to_amplitude
 
 
 logger = logging.getLogger(__name__)
@@ -1150,35 +1151,7 @@ class LockInAmplifierWidget(QWidget):
 
     def calculate_linear_amplitude(self, val, unit):
         gain = self.module.audio_engine.calibration.output_gain
-        amp_linear = 0.0
-
-        if unit == "Linear (0-1)":
-            amp_linear = val
-        elif unit == "dBFS":
-            amp_linear = 10 ** (val / 20)
-        elif unit == "dBV":
-            # val = 20 * log10(Vrms)
-            v_rms = 10 ** (val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            amp_linear = v_peak / gain
-        elif unit == "dBu":
-            # val = 20 * log10(Vrms / 0.7746)
-            v_rms = 0.7746 * 10 ** (val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            amp_linear = v_peak / gain
-        elif unit == "Vrms":
-            v_peak = val * np.sqrt(2)
-            amp_linear = v_peak / gain
-        elif unit == "Vpeak":
-            amp_linear = val / gain
-
-        # Clamp
-        if amp_linear > 1.0:
-            amp_linear = 1.0
-        elif amp_linear < 0.0:
-            amp_linear = 0.0
-
-        return amp_linear
+        return amplitude_to_linear(val, unit, gain)
 
     def on_amp_spin_changed(self, val):
         unit = self.gen_unit_combo.currentText()
@@ -1197,37 +1170,24 @@ class LockInAmplifierWidget(QWidget):
         if unit == "Linear (0-1)":
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
-            self.amp_spin.setValue(amp_0_1)
         elif unit == "dBFS":
             self.amp_spin.setRange(-120, 0)
             self.amp_spin.setSingleStep(1.0)
-            val = 20 * np.log10(amp_0_1 + 1e-12)
-            self.amp_spin.setValue(val)
         elif unit == "dBV":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
-            val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
-            self.amp_spin.setValue(val)
         elif unit == "dBu":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
-            val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
-            self.amp_spin.setValue(val)
         elif unit == "Vrms":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / np.sqrt(2)
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
-            self.amp_spin.setValue(v_rms)
         elif unit == "Vpeak":
-            v_peak = amp_0_1 * gain
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
-            self.amp_spin.setValue(v_peak)
+
+        val = linear_to_amplitude(amp_0_1, unit, gain)
+        self.amp_spin.setValue(val)
 
         self.amp_spin.blockSignals(False)
 
@@ -1700,22 +1660,7 @@ class LockInAmplifierWidget(QWidget):
         plot_mags = []
 
         for mag in self.fra_raw_mags:
-            y_val = 0.0
-            if unit == "dBFS":
-                y_val = 20 * np.log10(mag + 1e-12)
-            elif unit == "dBV":
-                v_peak = mag * sensitivity
-                v_rms = v_peak / np.sqrt(2)
-                y_val = 20 * np.log10(v_rms + 1e-12)
-            elif unit == "dBu":
-                v_peak = mag * sensitivity
-                v_rms = v_peak / np.sqrt(2)
-                y_val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
-            elif unit == "Vrms":
-                v_peak = mag * sensitivity
-                y_val = v_peak / np.sqrt(2)
-            elif unit == "Vpeak":
-                y_val = mag * sensitivity
+            y_val = linear_to_amplitude(mag, unit, sensitivity)
             plot_mags.append(y_val)
 
         # Update Axis Label
@@ -1896,24 +1841,8 @@ class LockInAmplifierWidget(QWidget):
         target_unit = self.abs_cal_unit_combo.currentText()
         sensitivity = self.module.audio_engine.calibration.input_sensitivity
 
-        target_dbfs = 0.0
-        if target_unit == "dBFS":
-            target_dbfs = target_val
-        elif target_unit == "dBV":
-            # val = 20log(Vrms)
-            # Vrms = 10^(val/20)
-            # Vpeak = Vrms * sqrt(2)
-            # dBFS = 20log(Vpeak / sensitivity)
-            v_rms = 10 ** (target_val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            target_dbfs = 20 * np.log10(v_peak / sensitivity)
-        elif target_unit == "dBu":
-            v_rms = 0.7746 * 10 ** (target_val / 20)
-            v_peak = v_rms * np.sqrt(2)
-            target_dbfs = 20 * np.log10(v_peak / sensitivity)
-        elif target_unit == "Vrms":
-            v_peak = target_val * np.sqrt(2)
-            target_dbfs = 20 * np.log10(v_peak / sensitivity)
+        target_linear = amplitude_to_linear(target_val, target_unit, sensitivity)
+        target_dbfs = 20 * np.log10(target_linear + 1e-12)
 
         # Calculate Error
         # Current (Displayed) = Target + Error

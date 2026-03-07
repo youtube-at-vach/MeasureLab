@@ -86,5 +86,55 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(format_si(val, "s", sig_figs=4), "123.5 ns")
         self.assertEqual(format_si(val, "s", sig_figs=5), "123.46 ns")
 
+    def test_amplitude_to_linear(self):
+        # Linear (0-1) / Amplitude
+        import numpy as np
+        from src.core import utils
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(0.5, "Linear (0-1)"), 0.5))
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(0.5, "Amplitude"), 0.5))
+
+        # dBFS
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBFS"), 1.0))
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(-20, "dBFS"), 0.1))
+
+        # dBV
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBV", gain=np.sqrt(2)), 1.0)) # 1 Vrms -> sqrt(2) Vpeak -> 1.0 Linear
+
+        # dBu
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBu", gain=0.7746 * np.sqrt(2)), 1.0))
+
+        # Vrms
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(1.0, "Vrms", gain=np.sqrt(2)), 1.0))
+
+        # Vpeak
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(1.0, "Vpeak", gain=1.0), 1.0))
+
+        # Clamping
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(2.0, "Linear (0-1)"), 1.0))
+        self.assertTrue(np.isclose(utils.amplitude_to_linear(-0.5, "Linear (0-1)"), 0.0))
+
+    def test_linear_to_amplitude(self):
+        import numpy as np
+        from src.core import utils
+        # Linear (0-1) / Amplitude
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(0.5, "Linear (0-1)"), 0.5))
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(0.5, "Amplitude"), 0.5))
+
+        # dBFS
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "dBFS"), 0.0))
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(0.1, "dBFS"), -20.0, atol=1e-5))
+
+        # dBV
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "dBV", gain=np.sqrt(2)), 0.0, atol=1e-5))
+
+        # dBu
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "dBu", gain=0.7746 * np.sqrt(2)), 0.0, atol=1e-5))
+
+        # Vrms
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "Vrms", gain=np.sqrt(2)), 1.0))
+
+        # Vpeak
+        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "Vpeak", gain=1.0), 1.0))
+
 if __name__ == '__main__':
     unittest.main()

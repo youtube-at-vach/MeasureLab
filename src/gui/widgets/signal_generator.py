@@ -31,6 +31,7 @@ except ImportError:
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.fft_manager import WARMUP_SIZES, MEDIUM_SIZES
+from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -1872,37 +1873,24 @@ class SignalGeneratorWidget(QWidget):
         if unit == "Linear (0-1)":
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
-            self.amp_spin.setValue(amp_0_1)
         elif unit == "dBFS":
             self.amp_spin.setRange(-120, 0)
             self.amp_spin.setSingleStep(1.0)
-            val = 20 * np.log10(amp_0_1 + 1e-12)
-            self.amp_spin.setValue(val)
         elif unit == "dBV":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / cf
-            val = 20 * np.log10(v_rms + 1e-12)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
-            self.amp_spin.setValue(val)
         elif unit == "dBu":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / cf
-            val = 20 * np.log10((v_rms + 1e-12) / 0.7746)
             self.amp_spin.setRange(-120, 20)
             self.amp_spin.setSingleStep(1.0)
-            self.amp_spin.setValue(val)
         elif unit == "Vrms":
-            v_peak = amp_0_1 * gain
-            v_rms = v_peak / cf
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
-            self.amp_spin.setValue(v_rms)
         elif unit == "Vpeak":
-            v_peak = amp_0_1 * gain
             self.amp_spin.setRange(0, 100)
             self.amp_spin.setSingleStep(0.1)
-            self.amp_spin.setValue(v_peak)
+
+        val = linear_to_amplitude(amp_0_1, unit, gain, cf)
+        self.amp_spin.setValue(val)
 
         self.amp_spin.blockSignals(False)
 
@@ -1913,30 +1901,9 @@ class SignalGeneratorWidget(QWidget):
     def on_amp_spin_changed(self, val):
         unit = self.unit_combo.currentText()
         gain = self.module.audio_engine.calibration.output_gain
-        amp_0_1 = 0.0
 
-        if unit == "Linear (0-1)":
-            amp_0_1 = val
-        elif unit == "dBFS":
-            amp_0_1 = 10 ** (val / 20)
-        elif unit == "dBV":
-            v_rms = 10 ** (val / 20)
-            v_peak = v_rms * self._get_current_crest_factor()
-            amp_0_1 = v_peak / gain
-        elif unit == "dBu":
-            v_rms = 0.7746 * 10 ** (val / 20)
-            v_peak = v_rms * self._get_current_crest_factor()
-            amp_0_1 = v_peak / gain
-        elif unit == "Vrms":
-            v_peak = val * self._get_current_crest_factor()
-            amp_0_1 = v_peak / gain
-        elif unit == "Vpeak":
-            amp_0_1 = val / gain
-
-        if amp_0_1 > 1.0:
-            amp_0_1 = 1.0
-        elif amp_0_1 < 0.0:
-            amp_0_1 = 0.0
+        cf = self._get_current_crest_factor()
+        amp_0_1 = amplitude_to_linear(val, unit, gain, cf)
 
         self.update_param("amplitude", amp_0_1)
 

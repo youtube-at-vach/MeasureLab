@@ -100,3 +100,59 @@ def resource_path(relative_path):
                 return os.path.join(base_path, "src", relative_path)
 
     return os.path.join(base_path, relative_path)
+
+import numpy as np
+
+def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
+    """
+    Convert a given amplitude value in a specific unit to linear scale (0-1).
+    """
+    amp_linear = 0.0
+    if unit in ("Linear (0-1)", "Amplitude"):
+        amp_linear = val
+    elif unit == "dBFS":
+        amp_linear = 10 ** (val / 20)
+    elif unit == "dBV":
+        v_rms = 10 ** (val / 20)
+        v_peak = v_rms * crest_factor
+        amp_linear = v_peak / gain
+    elif unit == "dBu":
+        v_rms = 0.7746 * 10 ** (val / 20)
+        v_peak = v_rms * crest_factor
+        amp_linear = v_peak / gain
+    elif unit == "Vrms":
+        v_peak = val * crest_factor
+        amp_linear = v_peak / gain
+    elif unit == "Vpeak":
+        amp_linear = val / gain
+
+    if amp_linear > 1.0:
+        amp_linear = 1.0
+    elif amp_linear < 0.0:
+        amp_linear = 0.0
+
+    return amp_linear
+
+def linear_to_amplitude(amp_linear: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
+    """
+    Convert a linear amplitude (0-1) to a specific unit.
+    """
+    if unit in ("Linear (0-1)", "Amplitude"):
+        return amp_linear
+    elif unit == "dBFS":
+        return 20 * np.log10(amp_linear + 1e-12)
+    elif unit == "dBV":
+        v_peak = amp_linear * gain
+        v_rms = v_peak / crest_factor
+        return 20 * np.log10(v_rms + 1e-12)
+    elif unit == "dBu":
+        v_peak = amp_linear * gain
+        v_rms = v_peak / crest_factor
+        return 20 * np.log10((v_rms + 1e-12) / 0.7746)
+    elif unit == "Vrms":
+        v_peak = amp_linear * gain
+        return v_peak / crest_factor
+    elif unit == "Vpeak":
+        return amp_linear * gain
+
+    return 0.0
