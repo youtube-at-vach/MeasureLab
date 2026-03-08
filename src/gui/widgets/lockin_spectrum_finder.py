@@ -290,7 +290,8 @@ class LockInSpectrumFinder(MeasurementModule):
         try:
             path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump({str(k): v for k, v in targets.items()}, f, indent=4, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save user targets back to {path}: {e}")
@@ -1362,7 +1363,8 @@ class LockInSpectrumFinderWidget(QWidget):
         )
         if file_path:
             try:
-                with open(file_path, "w", encoding="utf-8") as f:
+                fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
                     data = {str(k): v for k, v in self.module.current_targets.items()}
                     json.dump(data, f, indent=4, ensure_ascii=False)
                 QMessageBox.information(self, tr("Success"), tr("Targets exported successfully."))
