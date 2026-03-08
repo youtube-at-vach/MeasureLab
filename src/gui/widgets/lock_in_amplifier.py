@@ -522,6 +522,15 @@ class FRASweepWorker(QThread):
         self.settle_time = settle_time
         self.is_cancelled = False
 
+    def _interruptible_sleep(self, seconds: float):
+        """Sleeps for the given duration while remaining responsive to cancellation."""
+        end_time = time.time() + seconds
+        while time.time() < end_time:
+            if self.is_cancelled:
+                break
+            # Sleep in small 10ms increments to allow quick cancellation
+            self.msleep(10)
+
     def run(self):
         if self.log_sweep:
             freqs = np.logspace(np.log10(self.start_f), np.log10(self.end_f), self.steps)
@@ -531,7 +540,7 @@ class FRASweepWorker(QThread):
         # Ensure module is running
         if not self.module.is_running:
             self.module.start_analysis()
-            time.sleep(0.5)  # Wait for start
+            self._interruptible_sleep(0.5)  # Wait for start
 
         for i, f in enumerate(freqs):
             if self.is_cancelled:
@@ -541,7 +550,7 @@ class FRASweepWorker(QThread):
             self.module.reset_postmix_lpf()
 
             # Wait for settling
-            time.sleep(self.settle_time)
+            self._interruptible_sleep(self.settle_time)
 
             # Measurement Loop
             # We need to capture 'averaging_count' buffers
@@ -561,7 +570,7 @@ class FRASweepWorker(QThread):
             # We need to wait for the audio callback to update the buffer.
 
             # First, wait for one full buffer fill to ensure we are past the settling time completely
-            time.sleep(wait_time)
+            self._interruptible_sleep(wait_time)
 
             for _ in range(self.module.averaging_count):
                 if self.is_cancelled:
@@ -570,7 +579,7 @@ class FRASweepWorker(QThread):
                 # Wait for next buffer update
                 # Since we don't have precise synchronization with callback here,
                 # we sleep for the buffer duration.
-                time.sleep(wait_time)
+                self._interruptible_sleep(wait_time)
 
                 # Process the current buffer state
                 self.module.process_data()
