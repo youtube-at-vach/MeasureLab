@@ -955,6 +955,9 @@ class AudioCalc:
         amp_f2 = AudioCalc._find_peak(mag, freqs, f2)
         total_amp = amp_f1 + amp_f2
 
+        if amp_f1 <= 0 or amp_f2 <= 0:
+            return {"imd": 0.0, "details": "Carriers not found"}
+
         if total_amp < 1e-6:
             return {"imd": 0.0, "imd_db": -100.0}
 
