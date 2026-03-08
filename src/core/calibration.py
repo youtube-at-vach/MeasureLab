@@ -210,8 +210,11 @@ class CalibrationManager:
 
     def set_lockin_gain_offset(self, offset):
         """Sets the gain offset for the lock-in amplifier in dB."""
-        self.lockin_gain_offset = float(offset)
-        self.save()
+        try:
+            self.lockin_gain_offset = float(offset)
+            self.save()
+        except (ValueError, TypeError):
+            pass
 
     def set_last_profile(self, name):
         """Sets the last selected profile name."""

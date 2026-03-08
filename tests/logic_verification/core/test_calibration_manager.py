@@ -294,9 +294,12 @@ def test_set_lockin_gain_offset(cal_manager):
         mock_save.assert_called_once()
         mock_save.reset_mock()
 
-        # Test invalid string
-        with pytest.raises(ValueError):
-            cal_manager.set_lockin_gain_offset("invalid")
+        # Test invalid string (fails safely)
+        cal_manager.set_lockin_gain_offset("invalid")
+        mock_save.assert_not_called()
+
+        # Test invalid type (fails safely)
+        cal_manager.set_lockin_gain_offset(None)
         mock_save.assert_not_called()
 
 def test_set_frequency_calibration(cal_manager):
