@@ -1473,8 +1473,8 @@ class ImpedanceAnalyzerWidget(QWidget):
 
                 # Update plot only when a new point is appended.
                 self.refresh_plot_data()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Manual time-series capture failed: {e}")
 
     def start_sweep(self, mode):
         if self.sweep_worker is not None and self.sweep_worker.isRunning():
