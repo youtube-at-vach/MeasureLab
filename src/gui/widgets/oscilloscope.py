@@ -50,7 +50,8 @@ class Oscilloscope(MeasurementModule):
         self.is_running = False
         # Buffer enough for low frequency analysis, but we'll display a subset
         self.buffer_size = 8192
-        self.input_data = np.zeros((self.buffer_size, 2))
+        # Double the buffer size to avoid wrap-around concatenation
+        self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
         # Settings
@@ -154,7 +155,7 @@ class Oscilloscope(MeasurementModule):
             return
 
         self.is_running = True
-        self.input_data = np.zeros((self.buffer_size, 2))
+        self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
         # Reset transfer buffer
@@ -189,7 +190,9 @@ class Oscilloscope(MeasurementModule):
         # Now process new_data into input_data (display buffer)
         if n_frames > self.buffer_size:
             # Just take the last part
-            self.input_data[:] = new_data[-self.buffer_size :]
+            last_part = new_data[-self.buffer_size :]
+            self.input_data[: self.buffer_size] = last_part
+            self.input_data[self.buffer_size :] = last_part
             self.write_index = 0
         else:
             # Wrapped write
@@ -197,11 +200,19 @@ class Oscilloscope(MeasurementModule):
             end_idx = idx + n_frames
             if end_idx <= self.buffer_size:
                 self.input_data[idx:end_idx] = new_data
+                self.input_data[idx + self.buffer_size : end_idx + self.buffer_size] = new_data
             else:
                 # Split
                 part1_len = self.buffer_size - idx
-                self.input_data[idx:] = new_data[:part1_len]
-                self.input_data[: n_frames - part1_len] = new_data[part1_len:]
+
+                # Write to end of primary buffer and start of mirror buffer
+                self.input_data[idx : self.buffer_size] = new_data[:part1_len]
+                self.input_data[idx + self.buffer_size :] = new_data[:part1_len]
+
+                # Write to start of primary buffer and start of mirror buffer
+                part2_len = n_frames - part1_len
+                self.input_data[:part2_len] = new_data[part1_len:]
+                self.input_data[self.buffer_size : self.buffer_size + part2_len] = new_data[part1_len:]
 
             self.write_index = (idx + n_frames) % self.buffer_size
 
@@ -248,13 +259,7 @@ class Oscilloscope(MeasurementModule):
         idx = (self.write_index + start_offset) % self.buffer_size
         end_idx = idx + length
 
-        if end_idx <= self.buffer_size:
-            return self.input_data[idx:end_idx].copy()
-        else:
-            # Wrapped
-            part1_len = self.buffer_size - idx
-            part2_len = length - part1_len
-            return np.concatenate((self.input_data[idx:], self.input_data[:part2_len]), axis=0)
+        return self.input_data[idx:end_idx].copy()
 
     def get_display_data(self, window_duration):
         """

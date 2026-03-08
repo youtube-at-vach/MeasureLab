@@ -142,7 +142,7 @@ class TestOscilloscopeLogic(unittest.TestCase):
         from src.gui.widgets.oscilloscope import Oscilloscope
         self.scope = Oscilloscope(self.engine)
         self.scope.buffer_size = 100
-        self.scope.input_data = np.zeros((self.scope.buffer_size, 2))
+        self.scope.input_data = np.zeros((self.scope.buffer_size * 2, 2))
 
     def test_get_display_data_basic(self):
         # Pulse at sample 50
@@ -169,6 +169,8 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.scope.write_index = 50
         # Pulse at logical index 80 -> physical 30
         self.scope.input_data[30:35, 0] = 1.0
+        # Also mirror
+        self.scope.input_data[30 + self.scope.buffer_size : 35 + self.scope.buffer_size, 0] = 1.0
 
         self.scope.trigger_source = 0
         self.scope.trigger_mode = "Normal"
@@ -197,6 +199,12 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.scope.input_data[0, 0] = 1.0
         self.scope.input_data[1, 0] = 1.0
         self.scope.input_data[2, 0] = 1.0
+        # Also mirror
+        self.scope.input_data[98 + self.scope.buffer_size, 0] = 1.0
+        self.scope.input_data[99 + self.scope.buffer_size, 0] = 1.0
+        self.scope.input_data[0 + self.scope.buffer_size, 0] = 1.0
+        self.scope.input_data[1 + self.scope.buffer_size, 0] = 1.0
+        self.scope.input_data[2 + self.scope.buffer_size, 0] = 1.0
 
         self.scope.trigger_source = 0
         self.scope.trigger_mode = "Normal"
@@ -222,7 +230,7 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.scope.single_shot_fired = False
 
         self.scope.buffer_size = 10000
-        self.scope.input_data = np.full((self.scope.buffer_size, 2), -1.0) # Reset buffer
+        self.scope.input_data = np.full((self.scope.buffer_size * 2, 2), -1.0) # Reset buffer
 
         # Searches window [7472, 9520] for 48000Hz, 10ms window
         crossing_prev = 7700
@@ -361,8 +369,11 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
         # Verify input_data has data
         self.assertEqual(self.osc.write_index, 100)
         self.assertTrue(np.allclose(self.osc.input_data[0:100], 0.5))
+        # Also mirror
+        self.assertTrue(np.allclose(self.osc.input_data[self.osc.buffer_size : self.osc.buffer_size + 100], 0.5))
         # The rest should be 0
-        self.assertTrue(np.all(self.osc.input_data[100:] == 0))
+        self.assertTrue(np.all(self.osc.input_data[100:self.osc.buffer_size] == 0))
+        self.assertTrue(np.all(self.osc.input_data[self.osc.buffer_size + 100:] == 0))
 
 
 class TestOscilloscopeWidgetLogic(unittest.TestCase):
