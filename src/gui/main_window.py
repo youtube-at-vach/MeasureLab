@@ -430,11 +430,12 @@ class MainWindow(QMainWindow):
                         self.logger.warning(f"Failed to sync output destination for {key}: {e}")
             else:
                 self._replace_container_contents(container, QLabel(tr("No GUI for {0}").format(key)))
-        except Exception as e:
+        except (ImportError, AttributeError, RuntimeError, ValueError, KeyError) as e:
             self._replace_container_contents(
                 container,
-                QLabel(tr("Failed to load module {0}: {1}").format(tr(key), str(e))),
+                QLabel(tr("Error loading {0}: {1}").format(key, e)),
             )
+            self.logger.error(f"Failed to load module {key}: {e}", exc_info=True)
 
     def preload_all_modules(self, progress_callback=None):
         """Preload Settings and all modules.
