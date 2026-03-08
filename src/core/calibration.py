@@ -315,7 +315,8 @@ class CalibrationManager:
         data: list of [freq, mag_db, phase_deg]
         """
         try:
-            with open(path, "w") as f:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
                 json.dump(data, f, indent=4)
             self.frequency_map = sorted(data, key=lambda x: x[0])
             self._update_map_cache()
