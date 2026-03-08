@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 from PyQt6.QtCore import QEvent, QObject, Qt
@@ -13,6 +14,7 @@ class TopLevelWindowLogger(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.logger = logging.getLogger(__name__)
         self._trace_enabled = os.environ.get("MEASURELAB_DEBUG_WINDOWS_TRACE", "").strip() not in (
             "",
             "0",
@@ -36,10 +38,10 @@ class TopLevelWindowLogger(QObject):
         self._traced_ids.add(oid)
 
         try:
-            print("[window-trace] begin")
+            self.logger.info("[window-trace] begin")
             for line in traceback.format_stack(limit=40):
-                print(line.rstrip("\n"))
-            print("[window-trace] end")
+                self.logger.info(line.rstrip("\n"))
+            self.logger.info("[window-trace] end")
         except Exception:
             pass
 
@@ -51,7 +53,7 @@ class TopLevelWindowLogger(QObject):
                     g = obj.geometry()
                     title = obj.windowTitle()
                     name = obj.__class__.__name__
-                    print(
+                    self.logger.info(
                         f"[window] {name} title='{title}' event={int(et)} "
                         f"geom=({g.x()},{g.y()},{g.width()}x{g.height()}) visible={obj.isVisible()}"
                     )
