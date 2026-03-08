@@ -430,7 +430,7 @@ class MainWindow(QMainWindow):
                         self.logger.warning(f"Failed to sync output destination for {key}: {e}")
             else:
                 self._replace_container_contents(container, QLabel(tr("No GUI for {0}").format(key)))
-        except Exception as e:
+        except (ImportError, RuntimeError, ValueError, KeyError, TypeError) as e:
             self._replace_container_contents(
                 container,
                 QLabel(tr("Failed to load module {0}: {1}").format(tr(key), str(e))),
