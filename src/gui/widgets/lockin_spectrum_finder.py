@@ -878,7 +878,7 @@ class LockInSpectrumFinderWidget(QWidget):
         # Target Generators Tab
         gen_tab = QWidget()
         gen_layout = QVBoxLayout(gen_tab)
-        
+
         # Mains Power Group
         mains_group = QGroupBox(tr("Mains Power"))
         mains_form = QFormLayout()
@@ -901,16 +901,16 @@ class LockInSpectrumFinderWidget(QWidget):
 
         mains_group.setLayout(mains_form)
         gen_layout.addWidget(mains_group)
-        
+
         # Musical Scale Group
         scale_group = QGroupBox(tr("Musical Scale (Equal Temperament)"))
         scale_form = QFormLayout()
-        
+
         self.chk_musical_scale = QCheckBox(tr("Include Musical Scale"))
         self.chk_musical_scale.setChecked(self.module.include_musical_scale)
         self.chk_musical_scale.stateChanged.connect(self.on_musical_scale_changed)
         scale_form.addRow(self.chk_musical_scale)
-        
+
         self.spin_a4_freq = QDoubleSpinBox()
         self.spin_a4_freq.setRange(400.0, 500.0)
         self.spin_a4_freq.setDecimals(2)
@@ -918,10 +918,10 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_a4_freq.setSuffix(" Hz")
         self.spin_a4_freq.valueChanged.connect(self.on_a4_freq_changed)
         scale_form.addRow(tr("A4 Reference Frequency:"), self.spin_a4_freq)
-        
+
         scale_group.setLayout(scale_form)
         gen_layout.addWidget(scale_group)
-        
+
         gen_layout.addStretch()
 
         self.btn_apply_gen = QPushButton(tr("Apply Generation Settings"))
