@@ -573,8 +573,8 @@ class AudioEngine:
 
             if hostapi_name and "jack" in str(hostapi_name).lower():
                 return sd.JackSettings(client_name=self.jack_client_name)
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.debug(f"Failed to query audio devices for JACK settings: {e}")
         return None
 
     def _start_master_stream(self):
