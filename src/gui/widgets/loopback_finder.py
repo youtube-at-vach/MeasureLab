@@ -178,14 +178,22 @@ class LoopbackFinder(MeasurementModule):
         if progress_callback:
             progress_callback(0, tr("Starting connection..."))
 
+        import threading
+
+        stream_finished = threading.Event()
+
         try:
             with sd.Stream(
-                device=device_id, samplerate=sample_rate, channels=(max_in, max_out), dtype="float32", callback=callback
+                device=device_id,
+                samplerate=sample_rate,
+                channels=(max_in, max_out),
+                dtype="float32",
+                callback=callback,
+                finished_callback=stream_finished.set,
             ) as stream:
-                import time
-
                 while stream.active:
-                    time.sleep(0.1)
+                    if stream_finished.wait(0.1):
+                        break
                     if check_stop and check_stop():
                         stream.abort()
                         break
@@ -259,7 +267,6 @@ class LoopbackFinderWidget(QWidget):
         self.status_label.setText(tr("Ready"))
 
     def start_scan(self):
-
         # Stop main engine if running
         if self.module.audio_engine.stream and self.module.audio_engine.stream.active:
             self.module.audio_engine.stop_stream()
