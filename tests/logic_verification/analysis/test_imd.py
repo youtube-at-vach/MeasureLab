@@ -77,6 +77,31 @@ class TestIMDAnalysis(unittest.TestCase):
         self.assertEqual(result['imd'], 0.0)
         self.assertEqual(result['imd_db'], -100.0)
 
+    def test_calculate_imd_ccif_clean(self):
+        """Test CCIF IMD calculation with a clean signal (should be ~0)."""
+        f1 = 19000.0
+        f2 = 20000.0
+        amp = 0.25
+
+        signal = amp * np.sin(2 * np.pi * f1 * self.t) + \
+                 amp * np.sin(2 * np.pi * f2 * self.t)
+
+        mag = self._get_mag(signal)
+
+        res = AudioCalc.calculate_imd_ccif(mag, self.freqs, f1, f2)
+
+        self.assertLess(res['imd'], 0.001)
+        self.assertLess(res['imd_db'], -80.0)
+
+    def test_calculate_imd_ccif_no_signal(self):
+        """Test CCIF IMD calculation with silence."""
+        signal = np.zeros_like(self.t)
+        mag = self._get_mag(signal)
+        res = AudioCalc.calculate_imd_ccif(mag, self.freqs, 19000.0, 20000.0)
+        self.assertEqual(res['imd'], 0.0)
+        self.assertEqual(res['details'], "Carriers not found")
+        self.assertNotIn('imd_db', res)
+
     def test_calculate_imd_ccif(self):
         """Test CCIF IMD Calculation logic (from manual check)."""
         # CCIF: 19kHz and 20kHz, 1:1 amplitude
