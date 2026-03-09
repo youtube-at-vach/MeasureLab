@@ -455,9 +455,6 @@ class FrequencyCounterWidget(QWidget):
         font.setFamilies(MONOSPACE_FONT_FAMILY.split(", "))
         font.setPointSize(72)
         font.setWeight(QFont.Weight.Bold)
-        # StyleHint.Typewriter or StyleHint.Monospace can still cause warnings on some platforms
-        # if the OS mapping for generic "Monospace" is missing.
-        # By setting explicit families first, we avoid the costly fallback search.
         self.freq_label.setFont(font)
         self.freq_label.setStyleSheet("color: #00ff00;")  # Green LED style
         display_layout.addWidget(self.freq_label)
