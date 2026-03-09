@@ -8,6 +8,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import pyqtSignal, QObject, QTimer
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
@@ -855,6 +856,17 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_zoom_span.valueChanged.connect(self.on_zoom_span_changed)
         form.addRow(self.lbl_zoom_span, self.spin_zoom_span)
 
+        self.lbl_resolution = QLabel(tr("Resolution:"))
+        self.lbl_resolution_info = QLabel("")
+        self.lbl_resolution_info.setStyleSheet("font-family: monospace; font-weight: bold;")
+        # Color will be set by apply_theme
+        form.addRow(self.lbl_resolution, self.lbl_resolution_info)
+
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         self._update_ui_visibility()
 
         settings_group.setLayout(form)
@@ -1092,6 +1104,24 @@ class LockInSpectrumFinderWidget(QWidget):
         self.chk_track_peak.setVisible(is_zoom)
         self.lbl_zoom_span.setVisible(is_zoom)
         self.spin_zoom_span.setVisible(is_zoom)
+        self.lbl_resolution.setVisible(is_zoom)
+        self.lbl_resolution_info.setVisible(is_zoom)
+
+    def apply_theme(self, theme_name):
+        """Match colors to Spectrum Analyzer etc."""
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        if theme_name == "dark":
+            # Cyan for dark theme (matches Spectrum Analyzer cursor)
+            color = "#00ffff"
+        else:
+            # Blue for light theme (matches Spectrum Analyzer cursor)
+            color = "#0000aa"
+
+        self.lbl_resolution_info.setStyleSheet(
+            f"font-family: monospace; color: {color}; font-weight: bold;"
+        )
 
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""
@@ -1105,7 +1135,7 @@ class LockInSpectrumFinderWidget(QWidget):
             options = ["65536", "131072", "262144", "524288"]
         else:
             # Up to 8M
-            options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608"]
+            options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608", "16777216"]
 
         self.combo_buffer.clear()
         self.combo_buffer.addItems(options)
@@ -1336,6 +1366,21 @@ class LockInSpectrumFinderWidget(QWidget):
                 f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
             )
         self.lbl_status.setText(tr("Calculating... {}%").format(pct) + avg_text)
+
+        if self.module.mode == "Zoom":
+            T = self.module.buffer_size / self.module.audio_engine.sample_rate
+            k_factors = {
+                "none": 1.0,
+                "hann": 2.0,
+                "hamming": 2.0,
+                "blackmanharris": 4.0
+            }
+            k = k_factors.get(self.module.window_type, 1.0)
+            rbw = k / T
+            step_hz = (2.0 * self.module.zoom_span) / max(1, self.module.points - 1)
+            self.lbl_resolution_info.setText(
+                tr("RBW: {0:.2f} Hz | Step: {1:.3f} Hz").format(rbw, step_hz)
+            )
 
     def on_result_ready(self, result):
         freqs, mags_db = result
