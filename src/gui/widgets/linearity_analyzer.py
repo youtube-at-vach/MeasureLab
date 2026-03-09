@@ -315,10 +315,9 @@ class LinearityAnalyzer(MeasurementModule):
         """Returns the current buffer contents ordered chronologically."""
         # Capture current state
         idx = self.input_index
-        data = self.input_data.copy()
 
         # Reconstruct ordered buffer: Oldest data (from idx to end) + Newest data (from 0 to idx)
-        return np.concatenate((data[idx:], data[:idx]))
+        return np.concatenate((self.input_data[idx:], self.input_data[:idx]))
 
     def get_latest_buffer_into(self, out: np.ndarray) -> None:
         """Writes the current buffer contents ordered chronologically into `out`."""
