@@ -1196,7 +1196,7 @@
     "Virtual Audio (No Hardware)": "虚拟音频（无硬件）",
     "Virtual Loopback (Always On)": "虚拟回送 (始终开启)",
     "Voltage:": "电压:",
-    "Volume:": "Volume:",
+    "Volume (Gain):": "音量 (增益):",
     "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)": "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)",
     "Waiting for data...": "等待数据...",
     "Warming Up... ({0}/{1})": "预热中... ({0}/{1})",

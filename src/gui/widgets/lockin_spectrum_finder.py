@@ -991,11 +991,12 @@ class LockInSpectrumFinderWidget(QWidget):
         sonification_form.addRow(tr("Manual Tuner:"), self.spin_sonification_freq)
 
         self.spin_sonification_vol = QDoubleSpinBox()
-        self.spin_sonification_vol.setRange(0.0, 100.0)
-        self.spin_sonification_vol.setValue(self.module.sonifier.master_volume * 100.0)
-        self.spin_sonification_vol.setSuffix(" %")
+        self.spin_sonification_vol.setRange(-120.0, 80.0)
+        self.spin_sonification_vol.setSingleStep(1.0)
+        self.spin_sonification_vol.setValue(self.module.sonifier.master_volume_db)
+        self.spin_sonification_vol.setSuffix(" dB")
         self.spin_sonification_vol.valueChanged.connect(self.on_audio_volume_changed)
-        sonification_form.addRow(tr("Volume:"), self.spin_sonification_vol)
+        sonification_form.addRow(tr("Volume (Gain):"), self.spin_sonification_vol)
 
         self.combo_sonification_ch = QComboBox()
         self.combo_sonification_ch.addItem(tr("Left (Ch 1)"), 0)
@@ -1502,7 +1503,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.module.sonifier.set_manual_freq(val)
 
     def on_audio_volume_changed(self, val):
-        self.module.sonifier.set_volume(val / 100.0)
+        self.module.sonifier.set_volume(val)
 
     def on_audio_channel_changed(self, idx):
         ch = self.combo_sonification_ch.itemData(idx)
