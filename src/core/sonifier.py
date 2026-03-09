@@ -4,20 +4,17 @@ import numpy as np
 
 
 class PeakToneSonifier:
-    """Sonifies detected peaks either as a chord or as differential layered cues."""
+    """Sonifies detected peaks as a chord with smooth transitions."""
 
     AUDIBLE_MIN_FREQ = 220.0
     AUDIBLE_MAX_FREQ = 1760.0
-    MAX_SUPPORTED_PEAKS = 16
-    MAX_BELL_VOICES = 8
+    MAX_SUPPORTED_PEAKS = 5
     DEFAULT_TONE_PEAK = 0.12
     MODE_CHORD = "chord"
-    MODE_DIFF_LAYERS = "diff_layers"
-    SPATIAL_DIFF_FLOOR_DB = 1.5
-    BELL_DIFF_FLOOR_DB = 4.0
-    CLICK_DIFF_FLOOR_DB = 2.5
-    BELL_DURATION_SEC = 0.24
-    CLICK_DURATION_SEC = 0.028
+
+    # Smoothing time constants
+    AMP_SMOOTH_TC = 0.05  # seconds
+    FREQ_SMOOTH_TC = 0.05  # seconds
 
     def __init__(self, sample_rate=48000):
         self.sample_rate = sample_rate
@@ -28,27 +25,15 @@ class PeakToneSonifier:
         self.tone_peak = self.DEFAULT_TONE_PEAK
         self.mode = self.MODE_CHORD
 
-        self._active_freqs = np.zeros(0, dtype=np.float64)
-        self._phase_state = np.zeros(self.MAX_SUPPORTED_PEAKS, dtype=np.float64)
+        # Oscillator Bank
+        # Each oscillator has: [frequency, target_frequency, amplitude, target_amplitude, phase]
+        self._oscillators = np.zeros((self.MAX_SUPPORTED_PEAKS, 5), dtype=np.float64)
+        # 0: current_freq
+        # 1: target_freq
+        # 2: current_amp
+        # 3: target_amp
+        # 4: phase
 
-        self._spatial_freqs = np.zeros(0, dtype=np.float64)
-        self._spatial_levels = np.zeros(0, dtype=np.float64)
-        self._spatial_pans = np.zeros(0, dtype=np.float64)
-        self._spatial_phases = np.zeros(self.MAX_SUPPORTED_PEAKS, dtype=np.float64)
-
-        self._bell_freqs = np.zeros(self.MAX_BELL_VOICES, dtype=np.float64)
-        self._bell_levels = np.zeros(self.MAX_BELL_VOICES, dtype=np.float64)
-        self._bell_pans = np.zeros(self.MAX_BELL_VOICES, dtype=np.float64)
-        self._bell_phases = np.zeros(self.MAX_BELL_VOICES, dtype=np.float64)
-        self._bell_ages = np.zeros(self.MAX_BELL_VOICES, dtype=np.int64)
-
-        self._click_remaining = 0
-        self._click_phase = 0.0
-        self._click_level = 0.0
-        self._click_polarity = 1.0
-
-        self._prev_freqs = np.zeros(0, dtype=np.float64)
-        self._prev_mags = np.zeros(0, dtype=np.float64)
         self.lock = threading.Lock()
 
     def set_sample_rate(self, sr):
@@ -71,36 +56,14 @@ class PeakToneSonifier:
 
     def set_max_peaks(self, peaks):
         with self.lock:
+            old_max = self.max_peaks
             self.max_peaks = max(1, min(self.MAX_SUPPORTED_PEAKS, int(peaks)))
-
-    def set_mode(self, mode):
-        mode = str(mode)
-        if mode not in {self.MODE_CHORD, self.MODE_DIFF_LAYERS}:
-            mode = self.MODE_CHORD
-
-        with self.lock:
-            if self.mode == mode:
-                return
-            self.mode = mode
-            self._reset_state()
+            if self.max_peaks < old_max:
+                # Instantly silence oscillators that are now out of range
+                self._oscillators[self.max_peaks :, 3] = 0.0
 
     def _reset_state(self):
-        self._active_freqs = np.zeros(0, dtype=np.float64)
-        self._phase_state.fill(0.0)
-        self._spatial_freqs = np.zeros(0, dtype=np.float64)
-        self._spatial_levels = np.zeros(0, dtype=np.float64)
-        self._spatial_pans = np.zeros(0, dtype=np.float64)
-        self._spatial_phases.fill(0.0)
-        self._bell_freqs.fill(0.0)
-        self._bell_levels.fill(0.0)
-        self._bell_pans.fill(0.0)
-        self._bell_phases.fill(0.0)
-        self._bell_ages.fill(0)
-        self._click_remaining = 0
-        self._click_phase = 0.0
-        self._click_level = 0.0
-        self._prev_freqs = np.zeros(0, dtype=np.float64)
-        self._prev_mags = np.zeros(0, dtype=np.float64)
+        self._oscillators.fill(0.0)
 
     def _fold_to_audible_band(self, freq_hz):
         freq = float(max(1.0, freq_hz))
@@ -111,312 +74,62 @@ class PeakToneSonifier:
         return freq
 
     def update_spectrum(self, freqs_hz, mags_db, peak_freqs_hz):
+        """Update targets of the oscillator bank based on detected peaks."""
         if not self.enabled:
             return
 
-        freqs = np.asarray(freqs_hz, dtype=np.float64)
-        mags = np.asarray(mags_db, dtype=np.float64)
-        peaks = [float(freq) for freq in peak_freqs_hz[: self.MAX_SUPPORTED_PEAKS] if freq is not None]
+        # 1. Prepare and fold new peak frequencies
+        new_peaks = [self._fold_to_audible_band(f) for f in peak_freqs_hz[: self.max_peaks] if f is not None]
 
         with self.lock:
-            if self.mode == self.MODE_CHORD:
-                self._update_chord_state(peaks)
-                return
+            # 2. Track peaks and assign to oscillators
+            # We want to match existing oscillators to new peaks to prevent jumps.
+            assigned_peaks = [False] * len(new_peaks)
+            used_oscillators = [False] * self.MAX_SUPPORTED_PEAKS
 
-            self._update_diff_state(freqs, mags)
+            # First pass: Exact or very close match
+            for i in range(self.max_peaks):
+                curr_f = self._oscillators[i, 0]
+                if self._oscillators[i, 2] < 1e-4: # Silent oscillator
+                    continue
 
-    def _update_chord_state(self, peak_freqs_hz):
-        if peak_freqs_hz:
-            cleaned_arr = np.asarray([self._fold_to_audible_band(freq) for freq in peak_freqs_hz], dtype=np.float64)
-        else:
-            cleaned_arr = np.zeros(0, dtype=np.float64)
+                best_peak_idx = -1
+                best_dist = 0.2 # 20% relative distance max for "tracking"
 
-        limit = min(self.max_peaks, len(cleaned_arr))
-        new_freqs = cleaned_arr[:limit]
-        self._active_freqs = new_freqs
-        self._spatial_freqs = np.zeros(0, dtype=np.float64)
-        self._spatial_levels = np.zeros(0, dtype=np.float64)
-        self._spatial_pans = np.zeros(0, dtype=np.float64)
-        self._bell_levels.fill(0.0)
-        self._click_remaining = 0
-        self._click_level = 0.0
+                for j, p_f in enumerate(new_peaks):
+                    if assigned_peaks[j]:
+                        continue
+                    dist = abs(p_f - curr_f) / max(1.0, curr_f)
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_peak_idx = j
 
-    def _update_diff_state(self, freqs, mags):
-        if len(freqs) == 0 or len(mags) == 0 or len(freqs) != len(mags):
-            self._clear_diff_layers()
-            self._prev_freqs = freqs.copy()
-            self._prev_mags = mags.copy()
-            return
+                if best_peak_idx != -1:
+                    self._oscillators[i, 1] = new_peaks[best_peak_idx]
+                    self._oscillators[i, 3] = 1.0 # Target amplitude is fully on
+                    assigned_peaks[best_peak_idx] = True
+                    used_oscillators[i] = True
 
-        if len(self._prev_freqs) != len(freqs) or not np.allclose(self._prev_freqs, freqs, rtol=0.0, atol=1e-9):
-            self._clear_diff_layers()
-            self._prev_freqs = freqs.copy()
-            self._prev_mags = mags.copy()
-            return
+            # Second pass: Assign remaining peaks to silent oscillators
+            for j, p_f in enumerate(new_peaks):
+                if assigned_peaks[j]:
+                    continue
 
-        delta = mags - self._prev_mags
-        abs_delta = np.abs(delta)
-        pos_delta = np.clip(delta, 0.0, None)
+                # Find a silent oscillator
+                for i in range(self.max_peaks):
+                    if not used_oscillators[i] and self._oscillators[i, 2] < 1e-4:
+                        if self._oscillators[i, 2] == 0.0:
+                            self._oscillators[i, 0] = p_f # Start exactly at freq
+                        self._oscillators[i, 1] = p_f
+                        self._oscillators[i, 3] = 1.0
+                        used_oscillators[i] = True
+                        assigned_peaks[j] = True
+                        break
 
-        spatial_idx = self._select_diff_indices(abs_delta, self.SPATIAL_DIFF_FLOOR_DB)
-        if spatial_idx:
-            max_diff = max(self.SPATIAL_DIFF_FLOOR_DB, float(np.max(abs_delta[spatial_idx])))
-            freq_span = max(1e-9, float(freqs[-1] - freqs[0]))
-            self._spatial_freqs = np.asarray(
-                [self._fold_to_audible_band(float(freqs[idx])) for idx in spatial_idx],
-                dtype=np.float64,
-            )
-            self._spatial_levels = np.asarray(
-                [min(1.0, max(0.08, float(abs_delta[idx]) / max_diff)) for idx in spatial_idx],
-                dtype=np.float64,
-            )
-            self._spatial_pans = np.asarray(
-                [((float(freqs[idx]) - float(freqs[0])) / freq_span) * 2.0 - 1.0 for idx in spatial_idx],
-                dtype=np.float64,
-            )
-        else:
-            self._spatial_freqs = np.zeros(0, dtype=np.float64)
-            self._spatial_levels = np.zeros(0, dtype=np.float64)
-            self._spatial_pans = np.zeros(0, dtype=np.float64)
-
-        bell_idx = self._select_peak_bell_indices(freqs, mags, pos_delta)
-        for idx in bell_idx:
-            pan = 0.0
-            if freqs[-1] > freqs[0]:
-                pan = (((float(freqs[idx]) - float(freqs[0])) / float(freqs[-1] - freqs[0])) * 2.0) - 1.0
-            level = min(1.0, max(0.2, float(pos_delta[idx]) / 12.0))
-            self._trigger_bell(float(freqs[idx]), level, pan)
-
-        click_metric = float(np.max(abs_delta)) if len(abs_delta) > 0 else 0.0
-        if click_metric >= self.CLICK_DIFF_FLOOR_DB:
-            self._trigger_click(click_metric)
-
-        self._prev_freqs = freqs.copy()
-        self._prev_mags = mags.copy()
-
-    def _clear_diff_layers(self):
-        self._spatial_freqs = np.zeros(0, dtype=np.float64)
-        self._spatial_levels = np.zeros(0, dtype=np.float64)
-        self._spatial_pans = np.zeros(0, dtype=np.float64)
-        self._spatial_phases.fill(0.0)
-        self._bell_levels.fill(0.0)
-        self._bell_ages.fill(0)
-        self._click_remaining = 0
-        self._click_level = 0.0
-
-    def _select_diff_indices(self, diff_db, floor_db):
-        if len(diff_db) == 0:
-            return []
-
-        ranked = self._rank_local_maxima(diff_db)
-        if not ranked:
-            return []
-
-        cutoff = max(float(floor_db), float(np.percentile(diff_db, 80)))
-        selected = [idx for idx in ranked if float(diff_db[idx]) >= cutoff]
-        if not selected and float(diff_db[ranked[0]]) >= floor_db:
-            selected = [ranked[0]]
-
-        return selected[: self.max_peaks]
-
-    def _select_peak_bell_indices(self, freqs, mags, pos_delta):
-        if len(freqs) == 0 or len(mags) == 0 or len(pos_delta) == 0:
-            return []
-
-        peak_candidates = []
-        for idx in self._rank_local_maxima(mags):
-            if float(pos_delta[idx]) >= self.BELL_DIFF_FLOOR_DB:
-                peak_candidates.append(idx)
-
-        if not peak_candidates:
-            return []
-
-        cutoff = max(self.BELL_DIFF_FLOOR_DB, float(np.percentile(pos_delta[peak_candidates], 70)))
-        selected = [idx for idx in peak_candidates if float(pos_delta[idx]) >= cutoff]
-        return selected[: min(self.max_peaks, self.MAX_BELL_VOICES)]
-
-    def _rank_local_maxima(self, values):
-        if len(values) == 0:
-            return []
-        if len(values) <= 2:
-            return list(np.argsort(values)[::-1])
-
-        maxima = []
-        for idx in range(len(values)):
-            left = values[idx - 1] if idx > 0 else -np.inf
-            right = values[idx + 1] if idx < len(values) - 1 else -np.inf
-            if values[idx] >= left and values[idx] >= right:
-                maxima.append(idx)
-
-        if not maxima:
-            maxima = list(range(len(values)))
-        return sorted(maxima, key=lambda idx: float(values[idx]), reverse=True)
-
-    def _trigger_bell(self, freq_hz, level, pan):
-        slot = int(np.argmin(self._bell_levels))
-        self._bell_freqs[slot] = self._fold_to_audible_band(freq_hz * 2.0)
-        self._bell_levels[slot] = float(level)
-        self._bell_pans[slot] = float(np.clip(pan, -1.0, 1.0))
-        self._bell_phases[slot] = 0.0
-        self._bell_ages[slot] = 0
-
-    def _trigger_click(self, metric):
-        duration = max(8, int(round(self.CLICK_DURATION_SEC * self.sample_rate)))
-        self._click_remaining = max(self._click_remaining, duration)
-        self._click_level = max(self._click_level, min(1.0, max(0.2, (float(metric) - 2.0) / 10.0)))
-        self._click_polarity *= -1.0
-
-    def _write_wave(self, outdata, out_ch, wave):
-        channels = outdata.shape[1]
-        outdata.fill(0.0)
-        if out_ch == 0:
-            outdata[:, 0] = wave
-        elif out_ch == 1:
-            if channels > 1:
-                outdata[:, 1] = wave
-            else:
-                outdata[:, 0] = wave
-        else:
-            for channel in range(channels):
-                outdata[:, channel] = wave
-
-    def _write_stereo_wave(self, outdata, out_ch, left, right):
-        channels = outdata.shape[1]
-        outdata.fill(0.0)
-        if out_ch == 0:
-            outdata[:, 0] = left + right
-            return
-        if out_ch == 1:
-            if channels > 1:
-                outdata[:, 1] = left + right
-            else:
-                outdata[:, 0] = left + right
-            return
-
-        if channels > 1:
-            outdata[:, 0] = left
-            outdata[:, 1] = right
-        else:
-            outdata[:, 0] = 0.5 * (left + right)
-
-    def _process_chord_mode(self, outdata, sr, out_ch, freqs, phase_state, tone_peak):
-        frames = len(outdata)
-        tone_count = len(freqs)
-        gain = tone_peak / max(1.0, np.sqrt(float(tone_count)))
-        frame_idx = np.arange(frames, dtype=np.float64)
-
-        if tone_count == 1:
-            phase = phase_state[0] + frame_idx * ((2.0 * np.pi * freqs[0]) / sr)
-            wave = np.sin(phase) * gain
-            next_phase = phase[-1] + (2.0 * np.pi * freqs[0] / sr)
-            updated_phases = np.array([next_phase % (2.0 * np.pi)], dtype=np.float64)
-        else:
-            wave = np.zeros(frames, dtype=np.float64)
-            updated_phases = np.zeros(tone_count, dtype=np.float64)
-            for idx, freq in enumerate(freqs):
-                phase = phase_state[idx] + frame_idx * ((2.0 * np.pi * freq) / sr)
-                wave += np.sin(phase)
-                updated_phases[idx] = (phase[-1] + (2.0 * np.pi * freq / sr)) % (2.0 * np.pi)
-            wave *= gain
-
-        self._write_wave(outdata, out_ch, wave)
-
-        with self.lock:
-            self._phase_state[:tone_count] = updated_phases
-
-    def _process_diff_mode(
-        self,
-        outdata,
-        sr,
-        out_ch,
-        spatial_freqs,
-        spatial_levels,
-        spatial_pans,
-        spatial_phases,
-        bell_freqs,
-        bell_levels,
-        bell_pans,
-        bell_phases,
-        bell_ages,
-        click_remaining,
-        click_phase,
-        click_level,
-        click_polarity,
-        tone_peak,
-    ):
-        frames = len(outdata)
-        frame_idx = np.arange(frames, dtype=np.float64)
-        left = np.zeros(frames, dtype=np.float64)
-        right = np.zeros(frames, dtype=np.float64)
-
-        spatial_count = len(spatial_freqs)
-        if spatial_count > 0:
-            base_gain = tone_peak * 0.55 / max(1.0, np.sqrt(float(spatial_count)))
-            for idx, freq in enumerate(spatial_freqs):
-                phase = spatial_phases[idx] + frame_idx * ((2.0 * np.pi * freq) / sr)
-                wave = np.sin(phase) * (base_gain * float(spatial_levels[idx]))
-                pan = float(np.clip(spatial_pans[idx], -1.0, 1.0))
-                left += wave * np.sqrt(0.5 * (1.0 - pan))
-                right += wave * np.sqrt(0.5 * (1.0 + pan))
-                spatial_phases[idx] = (phase[-1] + (2.0 * np.pi * freq / sr)) % (2.0 * np.pi)
-
-        bell_duration = max(8, int(round(self.BELL_DURATION_SEC * sr)))
-        for idx in range(len(bell_levels)):
-            level = float(bell_levels[idx])
-            if level <= 0.0:
-                continue
-
-            age0 = int(bell_ages[idx])
-            remaining = bell_duration - age0
-            if remaining <= 0:
-                bell_levels[idx] = 0.0
-                bell_ages[idx] = 0
-                continue
-
-            chunk = min(frames, remaining)
-            sample_idx = np.arange(chunk, dtype=np.float64)
-            age = age0 + sample_idx
-            env = np.exp(-4.5 * (age / bell_duration)) * np.sin(np.pi * np.clip((age + 0.5) / bell_duration, 0.0, 1.0))
-            phase = bell_phases[idx] + sample_idx * ((2.0 * np.pi * bell_freqs[idx]) / sr)
-            bell = (np.sin(phase) + 0.35 * np.sin(2.4 * phase)) * env * tone_peak * 0.75 * level
-            pan = float(np.clip(bell_pans[idx], -1.0, 1.0))
-            left[:chunk] += bell * np.sqrt(0.5 * (1.0 - pan))
-            right[:chunk] += bell * np.sqrt(0.5 * (1.0 + pan))
-            bell_phases[idx] = (phase[-1] + (2.0 * np.pi * bell_freqs[idx] / sr)) % (2.0 * np.pi)
-            bell_ages[idx] = age0 + chunk
-            if bell_ages[idx] >= bell_duration:
-                bell_levels[idx] = 0.0
-                bell_ages[idx] = 0
-
-        if click_remaining > 0 and click_level > 0.0:
-            chunk = min(frames, click_remaining)
-            sample_idx = np.arange(chunk, dtype=np.float64)
-            total_click = max(1, int(round(self.CLICK_DURATION_SEC * sr)))
-            pos = sample_idx / total_click
-            env = np.exp(-9.0 * pos)
-            phase = click_phase + sample_idx * ((2.0 * np.pi * 3200.0) / sr)
-            click = (np.sin(phase) + 0.45 * np.sin(2.7 * phase)) * env * tone_peak * 0.9 * click_level * click_polarity
-            left[:chunk] += click
-            right[:chunk] += click
-            click_phase = (phase[-1] + (2.0 * np.pi * 3200.0 / sr)) % (2.0 * np.pi)
-            click_remaining -= chunk
-            if click_remaining <= 0:
-                click_remaining = 0
-                click_level = 0.0
-                click_phase = 0.0
-
-        left = np.tanh(left)
-        right = np.tanh(right)
-        self._write_stereo_wave(outdata, out_ch, left, right)
-
-        with self.lock:
-            self._spatial_phases[: len(spatial_freqs)] = spatial_phases[: len(spatial_freqs)]
-            self._bell_phases[:] = bell_phases
-            self._bell_levels[:] = bell_levels
-            self._bell_ages[:] = bell_ages
-            self._click_remaining = click_remaining
-            self._click_phase = click_phase
-            self._click_level = click_level
+            # Third pass: Set remaining active but unmatched oscillators to target 0 amplitude
+            for i in range(self.MAX_SUPPORTED_PEAKS):
+                if not used_oscillators[i]:
+                    self._oscillators[i, 3] = 0.0
 
     def process(self, outdata):
         with self.lock:
@@ -426,55 +139,91 @@ class PeakToneSonifier:
 
             sr = self.sample_rate
             out_ch = self.output_channel
-            mode = self.mode
-            freqs = self._active_freqs.copy()
-            phase_state = self._phase_state.copy()
-            spatial_freqs = self._spatial_freqs.copy()
-            spatial_levels = self._spatial_levels.copy()
-            spatial_pans = self._spatial_pans.copy()
-            spatial_phases = self._spatial_phases.copy()
-            bell_freqs = self._bell_freqs.copy()
-            bell_levels = self._bell_levels.copy()
-            bell_pans = self._bell_pans.copy()
-            bell_phases = self._bell_phases.copy()
-            bell_ages = self._bell_ages.copy()
-            click_remaining = self._click_remaining
-            click_phase = self._click_phase
-            click_level = self._click_level
-            click_polarity = self._click_polarity
-            tone_peak = self.tone_peak * self.master_volume
+            master_gain = self.tone_peak * self.master_volume
+            num_oscillators = self.MAX_SUPPORTED_PEAKS
+
+            # Copy state to local variables for processing
+            state = self._oscillators.copy()
 
         if sr <= 0:
             outdata.fill(0.0)
             return
 
-        if mode == self.MODE_DIFF_LAYERS:
-            if len(spatial_freqs) == 0 and not np.any(bell_levels > 0.0) and click_remaining <= 0:
-                outdata.fill(0.0)
-                return
-            self._process_diff_mode(
-                outdata,
-                sr,
-                out_ch,
-                spatial_freqs,
-                spatial_levels,
-                spatial_pans,
-                spatial_phases,
-                bell_freqs,
-                bell_levels,
-                bell_pans,
-                bell_phases,
-                bell_ages,
-                click_remaining,
-                click_phase,
-                click_level,
-                click_polarity,
-                tone_peak,
-            )
-            return
+        frames = len(outdata)
+        mixed_wave = np.zeros(frames, dtype=np.float64)
 
-        if len(freqs) == 0:
-            outdata.fill(0.0)
-            return
+        # We'll determine the normalizing gain based on the number of active/fading oscillators
+        # but for simplicity, we use sqrt(active_count) or fixed if preferred.
+        # Let's count how many oscillators have significant amplitude or target amplitude.
+        active_count = np.count_nonzero((state[:, 2] > 1e-4) | (state[:, 3] > 1e-4))
+        gain_multiplier = master_gain / max(1.0, np.sqrt(float(active_count)))
 
-        self._process_chord_mode(outdata, sr, out_ch, freqs, phase_state, tone_peak)
+        # Pre-calculate sampling period
+        dt = 1.0 / sr
+        two_pi = 2.0 * np.pi
+
+        for i in range(num_oscillators):
+            curr_f, target_f, curr_a, target_a, phase = state[i]
+
+            if curr_a < 1e-5 and target_a < 1e-5:
+                continue
+
+            # Simple linear ramp for frequency and amplitude across the buffer
+            # This is an approximation. A true exponential smoothing would be per-sample.
+            # But linear ramp across a small buffer (e.g. 10ms-50ms) is usually seamless enough.
+
+            # Per-sample phase increment and gain
+            # We use half-buffer interpolation or just linear end-to-end.
+
+            # Calculate next state values (smoothing)
+            # Using exponential smoothing logic: y = y + (target - y) * alpha
+            # Alpha for a whole buffer: 1 - exp(-buffer_time / smoothing_tc)
+            buffer_time = frames * dt
+
+            alpha_a = 1.0 - np.exp(-buffer_time / self.AMP_SMOOTH_TC)
+            alpha_f = 1.0 - np.exp(-buffer_time / self.FREQ_SMOOTH_TC)
+
+            next_a = curr_a + (target_a - curr_a) * alpha_a
+            next_f = curr_f + (target_f - curr_f) * alpha_f
+
+            # Generate sample arrays for gains and frequencies
+            t_array = np.arange(frames, dtype=np.float64)
+            progress = t_array / frames
+
+            # Interpolated amplitude
+            amps = curr_a + (next_a - curr_a) * progress
+
+            # Accumulated phase: phase(t) = phase(0) + sum(2*pi*f(i)*dt)
+            # Since f(i) is linear, sum is based on arithmetic progression:
+            # phase(n) = phase(0) + 2*pi*dt * [n*curr_f + (next_f - curr_f)/frames * sum(0..n-1)]
+            # sum(0..n-1) = (n-1)*n / 2
+
+            phases = phase + (two_pi * dt) * (t_array * curr_f + (next_f - curr_f) * (t_array * (t_array - 1)) / (2.0 * frames))
+
+            # Oscillation
+            mixed_wave += np.sin(phases) * amps
+
+            # Update state for next block
+            state[i, 0] = next_f
+            state[i, 2] = next_a
+            state[i, 4] = (phases[-1] + two_pi * next_f * dt) % two_pi
+
+        mixed_wave *= gain_multiplier
+
+        # Write to output channels
+        channels = outdata.shape[1]
+        outdata.fill(0.0)
+        if out_ch == 0:
+            outdata[:, 0] = mixed_wave
+        elif out_ch == 1:
+            if channels > 1:
+                outdata[:, 1] = mixed_wave
+            else:
+                outdata[:, 0] = mixed_wave
+        else:
+            for channel in range(channels):
+                outdata[:, channel] = mixed_wave
+
+        # Save back the state
+        with self.lock:
+            self._oscillators = state

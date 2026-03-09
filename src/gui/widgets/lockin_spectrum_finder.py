@@ -1005,14 +1005,6 @@ class LockInSpectrumFinderWidget(QWidget):
         self.chk_sonification_enable.stateChanged.connect(self.on_audio_enable_toggled)
         sonification_form.addRow(self.chk_sonification_enable)
 
-        self.combo_sonification_mode = QComboBox()
-        self.combo_sonification_mode.addItem(tr("Chord Tones"), self.module.sonifier.MODE_CHORD)
-        self.combo_sonification_mode.addItem(tr("Differential Layers"), self.module.sonifier.MODE_DIFF_LAYERS)
-        idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
-        if idx >= 0:
-            self.combo_sonification_mode.setCurrentIndex(idx)
-        self.combo_sonification_mode.currentIndexChanged.connect(self.on_audio_mode_changed)
-        sonification_form.addRow(tr("Playback Mode:"), self.combo_sonification_mode)
 
         self.spin_sonification_peaks = QSpinBox()
         self.spin_sonification_peaks.setRange(1, self.module.sonifier.MAX_SUPPORTED_PEAKS)
@@ -1525,10 +1517,6 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_audio_enable_toggled(self, state):
         self.module.sonifier.set_enabled(bool(state))
 
-    def on_audio_mode_changed(self, idx):
-        mode = self.combo_sonification_mode.itemData(idx)
-        if mode is not None:
-            self.module.sonifier.set_mode(mode)
 
     def on_audio_peaks_changed(self, val):
         self.module.sonifier.set_max_peaks(val)
