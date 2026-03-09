@@ -124,6 +124,9 @@ def capture_widgets(targets=None):
         if targets and module_name not in targets:
             continue
 
+        if module_name == 'detachable_wrapper':
+            continue
+
         file_path = os.path.join(widgets_dir, filename)
 
         print(f"Processing {module_name}...")
