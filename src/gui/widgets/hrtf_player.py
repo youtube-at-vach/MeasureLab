@@ -273,13 +273,6 @@ class HRTFPlayer(MeasurementModule):
         source_sr = self.hrtf_data.sampling_rate
         target_sr = self.audio_engine.sample_rate
 
-        # AudioCalc.resample handles equality check efficiently
-        # However, resampling an impulse response changes the gain of the convolution
-        # proportional to the ratio of sample rates. We must correct for this.
-        # Scale factor: source_sr / target_sr
-        # e.g. Upsampling (Source < Target): Convolution sums more taps -> Gain increases.
-        # We need to attenuate by Source/Target.
-
         if source_sr == target_sr:
             # Return a copy to ensure we don't accidentally modify the source via a view later
             return raw_pair.copy()
