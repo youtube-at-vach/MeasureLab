@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import tr
-from src.core.sonifier import Sonifier
+from src.core.sonifier import PeakToneSonifier
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -227,7 +227,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.display_unit = "dBFS"  # "dBFS", "dBV", "dB SPL"
 
         # Sonifier
-        self.sonifier = Sonifier(sample_rate=self.audio_engine.sample_rate)
+        self.sonifier = PeakToneSonifier(sample_rate=self.audio_engine.sample_rate)
 
     @property
     def name(self) -> str:
@@ -444,6 +444,28 @@ class LockInSpectrumFinder(MeasurementModule):
         )
         self._analysis_warmed_up = True
 
+    def _select_peak_freqs(self, freqs: np.ndarray, mags_db: np.ndarray) -> list[float]:
+        if len(freqs) == 0 or len(mags_db) == 0:
+            return []
+
+        if len(freqs) <= 2:
+            order = np.argsort(mags_db)[::-1]
+            return [float(freqs[i]) for i in order[: self.sonifier.max_peaks]]
+
+        candidate_idx = []
+        for idx in range(len(mags_db)):
+            left = mags_db[idx - 1] if idx > 0 else -np.inf
+            right = mags_db[idx + 1] if idx < len(mags_db) - 1 else -np.inf
+            if mags_db[idx] >= left and mags_db[idx] >= right:
+                candidate_idx.append(idx)
+
+        if not candidate_idx:
+            candidate_idx = list(range(len(mags_db)))
+
+        ranked = sorted(candidate_idx, key=lambda i: mags_db[i], reverse=True)
+        top_idx = ranked[: self.sonifier.max_peaks]
+        return [float(freqs[i]) for i in top_idx]
+
     def _do_calculation(
         self,
         sig,
@@ -535,24 +557,12 @@ class LockInSpectrumFinder(MeasurementModule):
                 # Compute Phase
                 phases = np.angle(vals)
 
-                # Update sonifier: pick the strongest signal in the chunk
-                if len(mags_db_chunk) > 0:
-                    max_idx = np.argmax(mags_db_chunk)
-                    chunk_freq = zoom_center + f_chunk[max_idx]
-                    chunk_mag = mags_db_chunk[max_idx]
-                    self.sonifier.update_parameters(chunk_freq, chunk_mag)
-
-                    manual_freq = float(self.sonifier.manual_freq)
-                    manual_offset = manual_freq - zoom_center
-                    if f_chunk[0] <= manual_offset <= f_chunk[-1]:
-                        tuner_idx = int(np.argmin(np.abs(f_chunk - manual_offset)))
-                        self.sonifier.update_manual_tuner_mag(mags_db_chunk[tuner_idx])
-
                 # Emit result chunk back to GUI thread
                 self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
                 time.sleep(0.005)
 
             if self.is_running:
+                self.sonifier.update_peaks(self._select_peak_freqs(freqs, mags_db_all))
                 # phases unmerged across chunks back to main for zoom (optional completeness)
                 self.signals.result_ready.emit((freqs, mags_db_all))
             return
@@ -699,19 +709,6 @@ class LockInSpectrumFinder(MeasurementModule):
             # Standard phase from complex is angle(cos - j*sin)
             phases = np.arctan2(-iq[:, 1], iq[:, 0])
 
-            # Update sonifier: pick the strongest signal in the chunk
-            if len(mags_db_chunk) > 0:
-                max_idx = np.argmax(mags_db_chunk)
-                chunk_freq = f_chunk[max_idx]
-                chunk_mag = mags_db_chunk[max_idx]
-                self.sonifier.update_parameters(chunk_freq, chunk_mag)
-
-                # Check if manual tuning freq is in this chunk (approximate)
-                mf = self.sonifier.manual_freq
-                if mf >= f_chunk[0] and mf <= f_chunk[-1]:
-                    idx = int(np.argmin(np.abs(f_chunk - mf)))
-                    self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
-
             # Emit result chunk back to GUI thread
             self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
 
@@ -719,6 +716,7 @@ class LockInSpectrumFinder(MeasurementModule):
             time.sleep(0.005)
 
         if self.is_running:
+            self.sonifier.update_peaks(self._select_peak_freqs(freqs, mags_db_all))
             self.signals.result_ready.emit((freqs, mags_db_all))
 
 
@@ -996,22 +994,17 @@ class LockInSpectrumFinderWidget(QWidget):
         self.chk_sonification_enable.stateChanged.connect(self.on_audio_enable_toggled)
         sonification_form.addRow(self.chk_sonification_enable)
 
-        self.combo_sonification_mode = QComboBox()
-        self.combo_sonification_mode.addItem(tr("Level Monitor (Fixed Pitch)"), self.module.sonifier.MODE_LEVEL_MONITOR)
-        self.combo_sonification_mode.addItem(tr("Frequency Mapping (Variable Pitch)"), self.module.sonifier.MODE_FREQUENCY_MAPPING)
-        self.combo_sonification_mode.addItem(tr("Manual Tuner"), self.module.sonifier.MODE_MANUAL_TUNER)
-        idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
-        if idx >= 0:
-            self.combo_sonification_mode.setCurrentIndex(idx)
-        self.combo_sonification_mode.currentIndexChanged.connect(self.on_audio_mode_changed)
-        sonification_form.addRow(tr("Sonification Mode:"), self.combo_sonification_mode)
+        self.lbl_sonification_info = QLabel(
+            tr("Plays the strongest sweep peaks as fixed-level tones synchronized with the moving analysis line.")
+        )
+        self.lbl_sonification_info.setWordWrap(True)
+        sonification_form.addRow(self.lbl_sonification_info)
 
-        self.spin_sonification_freq = QDoubleSpinBox()
-        self.spin_sonification_freq.setRange(1.0, 192000.0)
-        self.spin_sonification_freq.setValue(self.module.sonifier.manual_freq)
-        self.spin_sonification_freq.setSuffix(" Hz")
-        self.spin_sonification_freq.valueChanged.connect(self.on_audio_manual_freq_changed)
-        sonification_form.addRow(tr("Manual Tuner:"), self.spin_sonification_freq)
+        self.spin_sonification_peaks = QSpinBox()
+        self.spin_sonification_peaks.setRange(1, self.module.sonifier.MAX_SUPPORTED_PEAKS)
+        self.spin_sonification_peaks.setValue(self.module.sonifier.max_peaks)
+        self.spin_sonification_peaks.valueChanged.connect(self.on_audio_peaks_changed)
+        sonification_form.addRow(tr("Peak Count:"), self.spin_sonification_peaks)
 
         self.spin_sonification_vol = QDoubleSpinBox()
         self.spin_sonification_vol.setRange(0.0, 100.0)
@@ -1518,13 +1511,8 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_audio_enable_toggled(self, state):
         self.module.sonifier.set_enabled(bool(state))
 
-    def on_audio_mode_changed(self, idx):
-        mode = self.combo_sonification_mode.itemData(idx)
-        if mode:
-            self.module.sonifier.set_mode(mode)
-
-    def on_audio_manual_freq_changed(self, val):
-        self.module.sonifier.set_manual_freq(val)
+    def on_audio_peaks_changed(self, val):
+        self.module.sonifier.set_max_peaks(val)
 
     def on_audio_volume_changed(self, val):
         self.module.sonifier.set_volume(val / 100.0)

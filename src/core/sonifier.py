@@ -1,56 +1,29 @@
-import numpy as np
 import threading
-import logging
 
-logger = logging.getLogger(__name__)
+import numpy as np
 
-class Sonifier:
+
+class PeakToneSonifier:
     """
-    Real-time sine wave synthesizer for power noise sonification.
-    Implements parameter smoothing (linear interpolation for frequency and amplitude)
-    to prevent audio pops and glitches.
+    Lightweight sonifier that plays a few detected peak frequencies
+    at a fixed level. Updates happen outside the audio callback.
     """
 
-    MODE_LEVEL_MONITOR = "Level Monitor"
-    MODE_FREQUENCY_MAPPING = "Frequency Mapping"
-    MODE_MANUAL_TUNER = "Manual Tuner"
-    SONIFICATION_ABSOLUTE_MUTE_FLOOR_DB = -150.0
-    SONIFICATION_MAX_PEAK = 0.28
-    SONIFICATION_MIN_AUDIBLE_PEAK = 0.02
-    SONIFICATION_CURVE_EXPONENT = 0.6
-    SONIFICATION_MIN_DYNAMIC_RANGE_DB = 12.0
-    SONIFICATION_MAX_DYNAMIC_RANGE_DB = 48.0
-    SONIFICATION_FLOOR_ATTACK = 0.30
-    SONIFICATION_FLOOR_RELEASE = 0.03
-    SONIFICATION_PEAK_ATTACK = 0.25
-    SONIFICATION_PEAK_RELEASE = 0.02
-    SONIFICATION_FLOOR_MARGIN_DB = 3.0
-    SONIFICATION_PEAK_MARGIN_DB = 3.0
+    AUDIBLE_MIN_FREQ = 220.0
+    AUDIBLE_MAX_FREQ = 1760.0
+    MAX_SUPPORTED_PEAKS = 8
+    DEFAULT_TONE_PEAK = 0.12
 
     def __init__(self, sample_rate=48000):
         self.sample_rate = sample_rate
         self.enabled = False
-        self.mode = self.MODE_LEVEL_MONITOR
+        self.master_volume = 0.5
+        self.output_channel = 2
+        self.max_peaks = 1
+        self.tone_peak = self.DEFAULT_TONE_PEAK
 
-        # Audio parameters
-        self.master_volume = 0.5  # 0.0 to 1.0
-        self.manual_freq = 1000.0 # Hz
-        self.output_channel = 2   # 0: Left, 1: Right, 2: Both
-
-        # Internal state for synthesis
-        self.current_phase = 0.0
-        self.current_freq = 800.0
-        self.current_amp = 0.0
-
-        # Target state set by the analyzer
-        self.target_freq = 800.0
-        self.target_amp = 0.0
-        self._adaptive_floor_db = -110.0
-        self._adaptive_peak_db = -90.0
-        self._have_level_context = False
-
-        # We need a lock because update_parameters is called from the worker thread,
-        # and process is called from the audio callback thread.
+        self._active_freqs = np.zeros(0, dtype=np.float64)
+        self._phase_state = np.zeros(self.MAX_SUPPORTED_PEAKS, dtype=np.float64)
         self.lock = threading.Lock()
 
     def set_sample_rate(self, sr):
@@ -59,173 +32,100 @@ class Sonifier:
 
     def set_enabled(self, enabled):
         with self.lock:
-            self.enabled = enabled
-            if not enabled:
-                self.target_amp = 0.0
-                self._have_level_context = False
-
-    def set_mode(self, mode):
-        with self.lock:
-            self.mode = mode
+            self.enabled = bool(enabled)
+            if not self.enabled:
+                self._active_freqs = np.zeros(0, dtype=np.float64)
 
     def set_volume(self, volume):
         with self.lock:
-            self.master_volume = max(0.0, min(1.0, volume))
-
-    def set_manual_freq(self, freq):
-        with self.lock:
-            self.manual_freq = max(1.0, freq)
+            self.master_volume = max(0.0, min(1.0, float(volume)))
 
     def set_output_channel(self, channel):
         with self.lock:
-            self.output_channel = channel
+            self.output_channel = int(channel)
 
-    def _update_level_context(self, mag_db):
-        observed_db = float(max(self.SONIFICATION_ABSOLUTE_MUTE_FLOOR_DB, mag_db))
+    def set_max_peaks(self, peaks):
+        with self.lock:
+            self.max_peaks = max(1, min(self.MAX_SUPPORTED_PEAKS, int(peaks)))
 
-        if not self._have_level_context:
-            self._adaptive_floor_db = observed_db - self.SONIFICATION_FLOOR_MARGIN_DB
-            self._adaptive_peak_db = observed_db + self.SONIFICATION_PEAK_MARGIN_DB
-            self._have_level_context = True
-            return
+    def _fold_to_audible_band(self, freq_hz):
+        freq = float(max(1.0, freq_hz))
+        while freq < self.AUDIBLE_MIN_FREQ:
+            freq *= 2.0
+        while freq > self.AUDIBLE_MAX_FREQ:
+            freq *= 0.5
+        return freq
 
-        floor_target = observed_db - self.SONIFICATION_FLOOR_MARGIN_DB
-        peak_target = observed_db + self.SONIFICATION_PEAK_MARGIN_DB
-
-        floor_alpha = (
-            self.SONIFICATION_FLOOR_ATTACK
-            if floor_target < self._adaptive_floor_db
-            else self.SONIFICATION_FLOOR_RELEASE
-        )
-        peak_alpha = (
-            self.SONIFICATION_PEAK_ATTACK
-            if peak_target > self._adaptive_peak_db
-            else self.SONIFICATION_PEAK_RELEASE
-        )
-
-        self._adaptive_floor_db += (floor_target - self._adaptive_floor_db) * floor_alpha
-        self._adaptive_peak_db += (peak_target - self._adaptive_peak_db) * peak_alpha
-
-        dynamic_range = self._adaptive_peak_db - self._adaptive_floor_db
-        if dynamic_range < self.SONIFICATION_MIN_DYNAMIC_RANGE_DB:
-            self._adaptive_peak_db = self._adaptive_floor_db + self.SONIFICATION_MIN_DYNAMIC_RANGE_DB
-        elif dynamic_range > self.SONIFICATION_MAX_DYNAMIC_RANGE_DB:
-            self._adaptive_floor_db = self._adaptive_peak_db - self.SONIFICATION_MAX_DYNAMIC_RANGE_DB
-
-    def _map_mag_to_target_amp(self, mag_db):
-        if mag_db <= self.SONIFICATION_ABSOLUTE_MUTE_FLOOR_DB:
-            return 0.0
-
-        self._update_level_context(mag_db)
-
-        floor_db = self._adaptive_floor_db
-        peak_db = self._adaptive_peak_db
-        clamped_db = max(floor_db, min(peak_db, mag_db))
-
-        if clamped_db <= floor_db:
-            return 0.0
-
-        normalized_amp = (clamped_db - floor_db) / max(1e-9, peak_db - floor_db)
-        shaped_amp = normalized_amp ** self.SONIFICATION_CURVE_EXPONENT
-        peak_amp = self.SONIFICATION_MIN_AUDIBLE_PEAK + (
-            self.SONIFICATION_MAX_PEAK - self.SONIFICATION_MIN_AUDIBLE_PEAK
-        ) * shaped_amp
-        return min(self.SONIFICATION_MAX_PEAK, peak_amp)
-
-    def update_parameters(self, scan_freq, mag_db):
-        """
-        Called by the analyzer to update the sonification targets.
-        mag_db is expected to be typical FFT magnitudes (e.g. -120 to 0).
-        """
+    def update_peaks(self, peak_freqs_hz):
         if not self.enabled:
             return
 
-        with self.lock:
-            self.target_amp = self._map_mag_to_target_amp(mag_db) * self.master_volume
+        cleaned = []
+        for freq in peak_freqs_hz[: self.MAX_SUPPORTED_PEAKS]:
+            if freq is None:
+                continue
+            cleaned.append(self._fold_to_audible_band(freq))
 
-            if self.mode == self.MODE_LEVEL_MONITOR:
-                self.target_freq = 800.0
-            elif self.mode == self.MODE_FREQUENCY_MAPPING:
-                # Limit freq to prevent aliasing/annoying high pitches
-                self.target_freq = max(20.0, min(15000.0, scan_freq))
-            elif self.mode == self.MODE_MANUAL_TUNER:
-                self.target_freq = self.manual_freq
-                # If we are in manual tuner mode and the scan frequency is far from the
-                # manual frequency, we should probably ignore the magnitude update.
-                # However, this method is called per chunk. The caller should pass the mag
-                # for the specific frequency we care about.
-                # For simplicity, we just take whatever is given if it's close.
-                pass
-
-    def update_manual_tuner_mag(self, mag_db):
-        """
-        Specific update for manual tuner when we extract magnitude at exactly the manual freq.
-        """
-        if not self.enabled or self.mode != self.MODE_MANUAL_TUNER:
-            return
+        if cleaned:
+            cleaned_arr = np.asarray(cleaned, dtype=np.float64)
+        else:
+            cleaned_arr = np.zeros(0, dtype=np.float64)
 
         with self.lock:
-            self.target_amp = self._map_mag_to_target_amp(mag_db) * self.master_volume
-            self.target_freq = self.manual_freq
+            limit = min(self.max_peaks, len(cleaned_arr))
+            new_freqs = cleaned_arr[:limit]
+            if len(new_freqs) == len(self._active_freqs) and np.array_equal(new_freqs, self._active_freqs):
+                return
+            self._active_freqs = new_freqs
 
     def process(self, outdata):
-        """
-        Fills the given audio buffer `outdata` with the synthesized sine wave.
-        outdata shape: (frames, channels)
-        """
         frames = len(outdata)
         channels = outdata.shape[1]
 
         with self.lock:
-            if not self.enabled and self.current_amp < 1e-5:
-                # Ensure outdata is zeroed
+            if not self.enabled or len(self._active_freqs) == 0:
                 outdata.fill(0.0)
                 return
 
-            # Capture parameters to avoid holding lock during computation
-            target_f = self.target_freq
-            target_a = self.target_amp if self.enabled else 0.0
-            start_f = self.current_freq
-            start_a = self.current_amp
-            start_phase = self.current_phase
             sr = self.sample_rate
             out_ch = self.output_channel
+            freqs = self._active_freqs.copy()
+            phase_state = self._phase_state.copy()
+            tone_peak = self.tone_peak * self.master_volume
 
         if sr <= 0:
             outdata.fill(0.0)
             return
 
-        # Generate ramps for frequency and amplitude to prevent clicks
-        freq_ramp = np.linspace(start_f, target_f, frames, endpoint=False)
-        amp_ramp = np.linspace(start_a, target_a, frames, endpoint=False)
+        tone_count = len(freqs)
+        gain = tone_peak / max(1.0, np.sqrt(float(tone_count)))
+        frame_idx = np.arange(frames, dtype=np.float64)
 
-        # Compute instantaneous phase
-        # phase_inc = 2 * pi * f / sr
-        phase_inc = 2.0 * np.pi * freq_ramp / sr
+        if tone_count == 1:
+            phase = phase_state[0] + frame_idx * ((2.0 * np.pi * freqs[0]) / sr)
+            wave = np.sin(phase) * gain
+            next_phase = phase[-1] + (2.0 * np.pi * freqs[0] / sr)
+            updated_phases = np.array([next_phase % (2.0 * np.pi)], dtype=np.float64)
+        else:
+            wave = np.zeros(frames, dtype=np.float64)
+            updated_phases = np.zeros(tone_count, dtype=np.float64)
+            for idx, freq in enumerate(freqs):
+                phase = phase_state[idx] + frame_idx * ((2.0 * np.pi * freq) / sr)
+                wave += np.sin(phase)
+                updated_phases[idx] = (phase[-1] + (2.0 * np.pi * freq / sr)) % (2.0 * np.pi)
+            wave *= gain
 
-        # Cumulative sum of phase increments
-        phase = start_phase + np.cumsum(phase_inc)
-
-        # Generate sine wave
-        wave = np.sin(phase) * amp_ramp
-
-        # Fill output buffer
         outdata.fill(0.0)
-
-        if out_ch == 0:  # Left
+        if out_ch == 0:
             outdata[:, 0] = wave
-        elif out_ch == 1:  # Right
+        elif out_ch == 1:
             if channels > 1:
                 outdata[:, 1] = wave
             else:
                 outdata[:, 0] = wave
-        else:  # Both
+        else:
             for c in range(channels):
                 outdata[:, c] = wave
 
-        # Update state for next block
         with self.lock:
-            # Modulo phase to keep it small
-            self.current_phase = phase[-1] % (2.0 * np.pi)
-            self.current_freq = target_f
-            self.current_amp = target_a
+            self._phase_state[:tone_count] = updated_phases
