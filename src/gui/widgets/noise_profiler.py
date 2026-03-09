@@ -658,8 +658,17 @@ class NoiseProfilerWidget(QWidget):
                 hum_freqs = [h[0] for h in results["hum_components"]]
                 hum_vals = []
                 for f in hum_freqs:
-                    idx = np.argmin(np.abs(freqs - f))
-                    hum_vals.append(mag_plot[idx])
+                    idx = np.searchsorted(freqs, f)
+                    if idx == 0:
+                        closest_idx = 0
+                    elif idx == len(freqs):
+                        closest_idx = len(freqs) - 1
+                    else:
+                        if abs(freqs[idx] - f) < abs(freqs[idx - 1] - f):
+                            closest_idx = idx
+                        else:
+                            closest_idx = idx - 1
+                    hum_vals.append(mag_plot[closest_idx])
                 self.hum_curve.setData(hum_freqs, hum_vals)
 
                 # White Noise Floor
@@ -712,8 +721,17 @@ class NoiseProfilerWidget(QWidget):
                 hum_freqs = [h[0] for h in results["hum_components"]]
                 hum_vals = []
                 for f in hum_freqs:
-                    idx = np.argmin(np.abs(freqs - f))
-                    hum_vals.append(mag_plot[idx])
+                    idx = np.searchsorted(freqs, f)
+                    if idx == 0:
+                        closest_idx = 0
+                    elif idx == len(freqs):
+                        closest_idx = len(freqs) - 1
+                    else:
+                        if abs(freqs[idx] - f) < abs(freqs[idx - 1] - f):
+                            closest_idx = idx
+                        else:
+                            closest_idx = idx - 1
+                    hum_vals.append(mag_plot[closest_idx])
                 self.hum_curve.setData(hum_freqs, hum_vals)
 
                 # White Noise Floor
