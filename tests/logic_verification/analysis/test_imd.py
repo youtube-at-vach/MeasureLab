@@ -163,6 +163,83 @@ class TestIMDAnalysis(unittest.TestCase):
 
         self.assertAlmostEqual(res['imd'], 7.071, places=3)
 
+    def test_calculate_imd_ccif_exact(self):
+        """Test CCIF IMD calculation with exact, known distortion amplitudes."""
+        freqs = np.linspace(0, 24000, 24001)
+        mag = np.zeros_like(freqs)
+
+        f1 = 19000.0
+        f2 = 20000.0
+
+        idx_f1 = 19000
+        idx_f2 = 20000
+
+        # Inject carriers
+        mag[idx_f1] = 1.0
+        mag[idx_f2] = 1.0
+
+        # Inject distortion
+        # d2 = abs(f2 - f1) = 1000
+        # d3_low = abs(2*f1 - f2) = 18000
+        # d3_high = abs(2*f2 - f1) = 21000
+        idx_d2 = 1000
+        idx_d3_low = 18000
+        idx_d3_high = 21000
+
+        amp_d2 = 0.05
+        amp_d3_low = 0.03
+        amp_d3_high = 0.04
+
+        mag[idx_d2] = amp_d2
+        mag[idx_d3_low] = amp_d3_low
+        mag[idx_d3_high] = amp_d3_high
+
+        res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
+
+        # Expected Calculation:
+        # Total Amp = 2.0
+        # Distortion sum sq = 0.05^2 + 0.03^2 + 0.04^2 = 0.0025 + 0.0009 + 0.0016 = 0.005
+        # Distortion RMS = sqrt(0.005) = 0.070710678
+        # IMD = 0.070710678 / 2.0 = 0.035355339 (3.5355%)
+        # IMD dB = 20 * log10(0.035355339) = -29.03089987 dB
+
+        expected_imd_percent = 3.5355339
+        expected_imd_db = -29.03089987
+
+        self.assertAlmostEqual(res['imd'], expected_imd_percent, places=5)
+        self.assertAlmostEqual(res['imd_db'], expected_imd_db, places=5)
+
+    def test_calculate_imd_ccif_missing_carriers(self):
+        """Test CCIF IMD calculation when carriers are missing."""
+        freqs = np.linspace(0, 24000, 24001)
+        mag = np.zeros_like(freqs)
+
+        f1 = 19000.0
+        f2 = 20000.0
+
+        # Inject only one carrier
+        mag[19000] = 1.0
+
+        res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
+        self.assertEqual(res['imd'], 0.0)
+        self.assertEqual(res['details'], "Carriers not found")
+
+    def test_calculate_imd_ccif_low_total_amp(self):
+        """Test CCIF IMD calculation when total amplitude is too low."""
+        freqs = np.linspace(0, 24000, 24001)
+        mag = np.zeros_like(freqs)
+
+        f1 = 19000.0
+        f2 = 20000.0
+
+        # Inject very small carriers
+        mag[19000] = 1e-7
+        mag[20000] = 1e-7
+
+        res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
+        self.assertEqual(res['imd'], 0.0)
+        self.assertEqual(res['imd_db'], -100.0)
+
     def test_calculate_pim_clean(self):
         """Test PIM calculation with clean carriers (should be very low)."""
         # Synthetic spectrum
