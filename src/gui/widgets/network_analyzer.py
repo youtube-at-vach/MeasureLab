@@ -4,7 +4,7 @@ import threading
 import numpy as np
 import pyqtgraph as pg
 from scipy.signal import chirp as signal_chirp, coherence, correlate, correlation_lags, fftconvolve, savgol_filter, windows
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -509,6 +509,11 @@ class NetworkAnalyzerWidget(QWidget):
         self.phases = []
         self.cohs = []
 
+        # Decouple plot updates
+        self.update_timer = QTimer()
+        self._needs_plot_update = False
+        self.update_timer.timeout.connect(self._on_update_timer)
+
     def init_ui(self):
         layout = QHBoxLayout()
 
@@ -943,20 +948,31 @@ class NetworkAnalyzerWidget(QWidget):
             self.mags = []
             self.phases = []
             self.cohs = []
+            self._needs_plot_update = False
             self.mag_curve.setData([], [])
             self.phase_curve.setData([], [])
             self.gd_curve.setData([], [])
             self.coh_curve.setData([], [])
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
             self.start_btn.setText(tr("Stop Sweep"))
+            self.update_timer.start(50)
             self.module.start_sweep()
         else:
             self.module.stop_sweep()
+            self.update_timer.stop()
+            self.refresh_plots()
             self.start_btn.setText(tr("Start Sweep"))
 
     def on_sweep_finished(self):
+        self.update_timer.stop()
+        self.refresh_plots()
         self.start_btn.setChecked(False)
         self.start_btn.setText(tr("Start Sweep"))
+
+    def _on_update_timer(self):
+        if self._needs_plot_update:
+            self.refresh_plots()
+            self._needs_plot_update = False
 
     def update_gd_views(self):
         # Keep the GD view aligned with the main view
@@ -973,7 +989,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.mags.append(mag)
         self.phases.append(phase)
         self.cohs.append(coh)
-        self.refresh_plots()
+        self._needs_plot_update = True
 
     def _apply_smoothing(self, freqs, mags, phases, mode):
         # Apply simple Savitzky-Golay smoothing in the display domain; leave data unchanged when disabled.
