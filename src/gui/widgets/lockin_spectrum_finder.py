@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import tr
+from src.core.sonifier import Sonifier
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -224,6 +225,9 @@ class LockInSpectrumFinder(MeasurementModule):
         # Display
         self.display_unit = "dBFS"  # "dBFS", "dBV", "dB SPL"
 
+        # Sonifier
+        self.sonifier = Sonifier(sample_rate=self.audio_engine.sample_rate)
+
     @property
     def name(self) -> str:
         return "Lock-in Spectrum Finder"
@@ -314,7 +318,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 outdata.fill(0)
                 return
 
-            outdata.fill(0)  # Not generating any signal currently
+            self.sonifier.process(outdata)
 
             if indata.shape[1] >= 2:
                 new_data = indata[:, :2]
@@ -511,8 +515,19 @@ class LockInSpectrumFinder(MeasurementModule):
                 # Compute Phase
                 phases = np.angle(vals)
 
+                # Update sonifier: pick the strongest signal in the chunk
+                if len(mags_db_chunk) > 0:
+                    max_idx = np.argmax(mags_db_chunk)
+                    chunk_freq = zoom_center + f_chunk[max_idx]
+                    chunk_mag = mags_db_chunk[max_idx]
+                    self.sonifier.update_parameters(chunk_freq, chunk_mag)
+
+                    # Update manual tuner specifically if the manual freq is in this range
+                    # In zoom mode, manual tuner might just track the max
+                    self.sonifier.update_manual_tuner_mag(chunk_mag)
+
                 # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx], mags_db_chunk, phases)
+                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
                 time.sleep(0.005)
 
             if self.is_running:
@@ -659,8 +674,23 @@ class LockInSpectrumFinder(MeasurementModule):
             # Standard phase from complex is angle(cos - j*sin)
             phases = np.arctan2(-iq[:, 1], iq[:, 0])
 
+            # Update sonifier: pick the strongest signal in the chunk
+            if len(mags_db_chunk) > 0:
+                max_idx = np.argmax(mags_db_chunk)
+                chunk_freq = f_chunk[max_idx]
+                chunk_mag = mags_db_chunk[max_idx]
+                self.sonifier.update_parameters(chunk_freq, chunk_mag)
+
+                # Check if manual tuning freq is in this chunk (approximate)
+                mf = self.sonifier.manual_freq
+                if mf >= f_chunk[0] and mf <= f_chunk[-1]:
+                    # Find closest index
+                    idx = np.searchsorted(f_chunk, mf)
+                    if idx < len(f_chunk):
+                        self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
+
             # Emit result chunk back to GUI thread
-            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk, phases)
+            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
 
             # Sleep briefly to ensure audio callback is not starved
             time.sleep(0.005)
@@ -930,6 +960,58 @@ class LockInSpectrumFinderWidget(QWidget):
         gen_layout.addWidget(self.btn_apply_gen)
 
         self.tabs.addTab(gen_tab, tr("Target Generators"))
+
+        # Audio Sonification Tab
+        sonification_tab = QWidget()
+        sonification_layout = QVBoxLayout(sonification_tab)
+
+        sonification_group = QGroupBox(tr("Audio Sonification"))
+        sonification_form = QFormLayout()
+
+        self.chk_sonification_enable = QCheckBox(tr("Enable Sonification"))
+        self.chk_sonification_enable.setChecked(self.module.sonifier.enabled)
+        self.chk_sonification_enable.stateChanged.connect(self.on_audio_enable_toggled)
+        sonification_form.addRow(self.chk_sonification_enable)
+
+        self.combo_sonification_mode = QComboBox()
+        self.combo_sonification_mode.addItem(tr("Level Monitor (Fixed Pitch)"), self.module.sonifier.MODE_LEVEL_MONITOR)
+        self.combo_sonification_mode.addItem(tr("Frequency Mapping (Variable Pitch)"), self.module.sonifier.MODE_FREQUENCY_MAPPING)
+        self.combo_sonification_mode.addItem(tr("Manual Tuner"), self.module.sonifier.MODE_MANUAL_TUNER)
+        idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
+        if idx >= 0:
+            self.combo_sonification_mode.setCurrentIndex(idx)
+        self.combo_sonification_mode.currentIndexChanged.connect(self.on_audio_mode_changed)
+        sonification_form.addRow(tr("Sonification Mode:"), self.combo_sonification_mode)
+
+        self.spin_sonification_freq = QDoubleSpinBox()
+        self.spin_sonification_freq.setRange(1.0, 192000.0)
+        self.spin_sonification_freq.setValue(self.module.sonifier.manual_freq)
+        self.spin_sonification_freq.setSuffix(" Hz")
+        self.spin_sonification_freq.valueChanged.connect(self.on_audio_manual_freq_changed)
+        sonification_form.addRow(tr("Manual Tuner:"), self.spin_sonification_freq)
+
+        self.spin_sonification_vol = QDoubleSpinBox()
+        self.spin_sonification_vol.setRange(0.0, 100.0)
+        self.spin_sonification_vol.setValue(self.module.sonifier.master_volume * 100.0)
+        self.spin_sonification_vol.setSuffix(" %")
+        self.spin_sonification_vol.valueChanged.connect(self.on_audio_volume_changed)
+        sonification_form.addRow(tr("Volume:"), self.spin_sonification_vol)
+
+        self.combo_sonification_ch = QComboBox()
+        self.combo_sonification_ch.addItem(tr("Left (Ch 1)"), 0)
+        self.combo_sonification_ch.addItem(tr("Right (Ch 2)"), 1)
+        self.combo_sonification_ch.addItem(tr("Both"), 2)
+        idx = self.combo_sonification_ch.findData(self.module.sonifier.output_channel)
+        if idx >= 0:
+            self.combo_sonification_ch.setCurrentIndex(idx)
+        self.combo_sonification_ch.currentIndexChanged.connect(self.on_audio_channel_changed)
+        sonification_form.addRow(tr("Output Channel:"), self.combo_sonification_ch)
+
+        sonification_group.setLayout(sonification_form)
+        sonification_layout.addWidget(sonification_group)
+        sonification_layout.addStretch()
+
+        self.tabs.addTab(sonification_tab, tr("Audio Sonification"))
 
         left_panel.addWidget(self.tabs)
 
@@ -1407,3 +1489,22 @@ class LockInSpectrumFinderWidget(QWidget):
         self._populate_targets_table()
         self.reset_averaging()
         QMessageBox.information(self, tr("Success"), tr("Scan targets updated with generator settings."))
+
+    def on_audio_enable_toggled(self, state):
+        self.module.sonifier.set_enabled(bool(state))
+
+    def on_audio_mode_changed(self, idx):
+        mode = self.combo_sonification_mode.itemData(idx)
+        if mode:
+            self.module.sonifier.set_mode(mode)
+
+    def on_audio_manual_freq_changed(self, val):
+        self.module.sonifier.set_manual_freq(val)
+
+    def on_audio_volume_changed(self, val):
+        self.module.sonifier.set_volume(val / 100.0)
+
+    def on_audio_channel_changed(self, idx):
+        ch = self.combo_sonification_ch.itemData(idx)
+        if ch is not None:
+            self.module.sonifier.set_output_channel(ch)
