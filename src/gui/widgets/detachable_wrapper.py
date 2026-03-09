@@ -33,9 +33,6 @@ class IndependentWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.closed.emit()
-        # We accept the close event, effectively hiding/destroying the window.
-        # The wrapper should have already removed the widget by handling the signal
-        # or we rely on the wrapper to reparent it immediately.
         event.accept()
 
 
