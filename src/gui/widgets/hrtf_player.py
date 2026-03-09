@@ -281,7 +281,7 @@ class HRTFPlayer(MeasurementModule):
         # We need to attenuate by Source/Target.
 
         if source_sr == target_sr:
-            # return a copy to ensure we don't accidentally modify the source via a view later
+            # Return a copy to ensure we don't accidentally modify the source via a view later
             return raw_pair.copy()
 
         resampled = AudioCalc.resample(raw_pair, source_sr, target_sr)
