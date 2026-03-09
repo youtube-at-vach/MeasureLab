@@ -141,6 +141,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
         self.buffer_filled_samples = 0
+        self._analysis_warmed_up = False
 
         # Analysis parameters
         self.points = 256
@@ -307,6 +308,8 @@ class LockInSpectrumFinder(MeasurementModule):
         if self.is_running:
             return
         self.is_running = True
+        self._analysis_warmed_up = False
+        self.sonifier.set_sample_rate(self.audio_engine.sample_rate)
 
         with self.lock:
             self.input_data = np.zeros((self.buffer_size, 2))
@@ -356,10 +359,27 @@ class LockInSpectrumFinder(MeasurementModule):
             self.input_buffer_pos = 0
             self.buffer_filled_samples = 0
 
-    def get_data_snapshot(self):
+    def _get_min_analysis_samples(self) -> int:
+        fs = max(1, int(self.audio_engine.sample_rate))
+
+        if self.mode == "Zoom":
+            warmup = max(4096, int(fs * 0.10))
+        else:
+            warmup = max(8192, int(fs * 0.25))
+
+        return min(self.buffer_size, warmup)
+
+    def get_data_snapshot(self, min_samples: int | None = None):
         with self.lock:
-            if self.buffer_filled_samples < self.buffer_size:
+            filled = self.buffer_filled_samples
+            if min_samples is None:
+                min_samples = self.buffer_size
+
+            if filled < min_samples:
                 return None
+            if filled < self.buffer_size:
+                return self.input_data[:filled].copy()
+
             data = self.input_data.copy()
             pos = self.input_buffer_pos
 
@@ -372,18 +392,17 @@ class LockInSpectrumFinder(MeasurementModule):
         if not self.is_running:
             return
 
-        data = self.get_data_snapshot()
-        if data is None:
-            return  # Not filled yet
-
-        # Clear buffer immediately to start collecting next chunk while calculating
-        self.clear_buffer()
-
         # Don't queue multiple if one is still running
         if self._calculation_future is not None and not self._calculation_future.done():
-            # A calculation is already in progress, drop this frame or wait.
-            # Dropping is safer to prevent queue explosion.
             return
+
+        min_samples = self.buffer_size if self._analysis_warmed_up else self._get_min_analysis_samples()
+        data = self.get_data_snapshot(min_samples=min_samples)
+        if data is None:
+            return
+
+        # Clear buffer only after we know the snapshot will be used.
+        self.clear_buffer()
 
         sig = data[:, self.input_channel]
         fs = self.audio_engine.sample_rate
@@ -423,6 +442,7 @@ class LockInSpectrumFinder(MeasurementModule):
             p_octave_ref,
             p_targets,
         )
+        self._analysis_warmed_up = True
 
     def _do_calculation(
         self,
@@ -522,9 +542,11 @@ class LockInSpectrumFinder(MeasurementModule):
                     chunk_mag = mags_db_chunk[max_idx]
                     self.sonifier.update_parameters(chunk_freq, chunk_mag)
 
-                    # Update manual tuner specifically if the manual freq is in this range
-                    # In zoom mode, manual tuner might just track the max
-                    self.sonifier.update_manual_tuner_mag(chunk_mag)
+                    manual_freq = float(self.sonifier.manual_freq)
+                    manual_offset = manual_freq - zoom_center
+                    if f_chunk[0] <= manual_offset <= f_chunk[-1]:
+                        tuner_idx = int(np.argmin(np.abs(f_chunk - manual_offset)))
+                        self.sonifier.update_manual_tuner_mag(mags_db_chunk[tuner_idx])
 
                 # Emit result chunk back to GUI thread
                 self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
@@ -594,6 +616,10 @@ class LockInSpectrumFinder(MeasurementModule):
         sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
         sig_win_orig = sig * sqrt_win_orig
 
+        decimation_cache = {
+            1: (sig_win_orig, sqrt_win_orig, N, fs, t),
+        }
+
         for i in range(0, points, chunk_size):
             if not self.is_running:
                 break
@@ -608,7 +634,8 @@ class LockInSpectrumFinder(MeasurementModule):
             target_fs = max_f * 4.0
             M = max(1, int(fs / target_fs))
 
-            if M > 1:
+            cached = decimation_cache.get(M)
+            if cached is None:
                 sig_dec = signal.resample_poly(sig, 1, M)
                 N_chunk = len(sig_dec)
                 fs_dec = fs / M
@@ -619,12 +646,10 @@ class LockInSpectrumFinder(MeasurementModule):
                 sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
                 sig_win = sig_dec * sqrt_win
                 t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
-            else:
-                N_chunk = N
-                fs_dec = fs
-                sqrt_win = sqrt_win_orig
-                sig_win = sig_win_orig
-                t_chunk = t
+                cached = (sig_win, sqrt_win, N_chunk, fs_dec, t_chunk)
+                decimation_cache[M] = cached
+
+            sig_win, sqrt_win, N_chunk, fs_dec, t_chunk = cached
 
             two_pi_t = 2.0 * np.pi * t_chunk
             phase = two_pi_t[:, np.newaxis] * f_chunk
@@ -684,10 +709,8 @@ class LockInSpectrumFinder(MeasurementModule):
                 # Check if manual tuning freq is in this chunk (approximate)
                 mf = self.sonifier.manual_freq
                 if mf >= f_chunk[0] and mf <= f_chunk[-1]:
-                    # Find closest index
-                    idx = np.searchsorted(f_chunk, mf)
-                    if idx < len(f_chunk):
-                        self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
+                    idx = int(np.argmin(np.abs(f_chunk - mf)))
+                    self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
 
             # Emit result chunk back to GUI thread
             self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
@@ -1214,8 +1237,10 @@ class LockInSpectrumFinderWidget(QWidget):
             filled = self.module.buffer_filled_samples
             size = self.module.buffer_size
 
-        if filled < size:
-            pct = int((filled / size) * 100)
+        target_samples = size if self.module._analysis_warmed_up else self.module._get_min_analysis_samples()
+
+        if filled < target_samples:
+            pct = int((filled / max(1, target_samples)) * 100)
             if self.module._calculation_future is None or self.module._calculation_future.done():
                 self.lbl_status.setText(tr("Buffering... {}%").format(pct))
             return

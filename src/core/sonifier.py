@@ -14,6 +14,18 @@ class Sonifier:
     MODE_LEVEL_MONITOR = "Level Monitor"
     MODE_FREQUENCY_MAPPING = "Frequency Mapping"
     MODE_MANUAL_TUNER = "Manual Tuner"
+    SONIFICATION_ABSOLUTE_MUTE_FLOOR_DB = -150.0
+    SONIFICATION_MAX_PEAK = 0.28
+    SONIFICATION_MIN_AUDIBLE_PEAK = 0.02
+    SONIFICATION_CURVE_EXPONENT = 0.6
+    SONIFICATION_MIN_DYNAMIC_RANGE_DB = 12.0
+    SONIFICATION_MAX_DYNAMIC_RANGE_DB = 48.0
+    SONIFICATION_FLOOR_ATTACK = 0.30
+    SONIFICATION_FLOOR_RELEASE = 0.03
+    SONIFICATION_PEAK_ATTACK = 0.25
+    SONIFICATION_PEAK_RELEASE = 0.02
+    SONIFICATION_FLOOR_MARGIN_DB = 3.0
+    SONIFICATION_PEAK_MARGIN_DB = 3.0
 
     def __init__(self, sample_rate=48000):
         self.sample_rate = sample_rate
@@ -33,6 +45,9 @@ class Sonifier:
         # Target state set by the analyzer
         self.target_freq = 800.0
         self.target_amp = 0.0
+        self._adaptive_floor_db = -110.0
+        self._adaptive_peak_db = -90.0
+        self._have_level_context = False
 
         # We need a lock because update_parameters is called from the worker thread,
         # and process is called from the audio callback thread.
@@ -47,6 +62,7 @@ class Sonifier:
             self.enabled = enabled
             if not enabled:
                 self.target_amp = 0.0
+                self._have_level_context = False
 
     def set_mode(self, mode):
         with self.lock:
@@ -64,6 +80,58 @@ class Sonifier:
         with self.lock:
             self.output_channel = channel
 
+    def _update_level_context(self, mag_db):
+        observed_db = float(max(self.SONIFICATION_ABSOLUTE_MUTE_FLOOR_DB, mag_db))
+
+        if not self._have_level_context:
+            self._adaptive_floor_db = observed_db - self.SONIFICATION_FLOOR_MARGIN_DB
+            self._adaptive_peak_db = observed_db + self.SONIFICATION_PEAK_MARGIN_DB
+            self._have_level_context = True
+            return
+
+        floor_target = observed_db - self.SONIFICATION_FLOOR_MARGIN_DB
+        peak_target = observed_db + self.SONIFICATION_PEAK_MARGIN_DB
+
+        floor_alpha = (
+            self.SONIFICATION_FLOOR_ATTACK
+            if floor_target < self._adaptive_floor_db
+            else self.SONIFICATION_FLOOR_RELEASE
+        )
+        peak_alpha = (
+            self.SONIFICATION_PEAK_ATTACK
+            if peak_target > self._adaptive_peak_db
+            else self.SONIFICATION_PEAK_RELEASE
+        )
+
+        self._adaptive_floor_db += (floor_target - self._adaptive_floor_db) * floor_alpha
+        self._adaptive_peak_db += (peak_target - self._adaptive_peak_db) * peak_alpha
+
+        dynamic_range = self._adaptive_peak_db - self._adaptive_floor_db
+        if dynamic_range < self.SONIFICATION_MIN_DYNAMIC_RANGE_DB:
+            self._adaptive_peak_db = self._adaptive_floor_db + self.SONIFICATION_MIN_DYNAMIC_RANGE_DB
+        elif dynamic_range > self.SONIFICATION_MAX_DYNAMIC_RANGE_DB:
+            self._adaptive_floor_db = self._adaptive_peak_db - self.SONIFICATION_MAX_DYNAMIC_RANGE_DB
+
+    def _map_mag_to_target_amp(self, mag_db):
+        if mag_db <= self.SONIFICATION_ABSOLUTE_MUTE_FLOOR_DB:
+            return 0.0
+
+        self._update_level_context(mag_db)
+
+        floor_db = self._adaptive_floor_db
+        peak_db = self._adaptive_peak_db
+        clamped_db = max(floor_db, min(peak_db, mag_db))
+
+        if clamped_db <= floor_db:
+            return 0.0
+
+        normalized_amp = (clamped_db - floor_db) / max(1e-9, peak_db - floor_db)
+        shaped_amp = normalized_amp ** self.SONIFICATION_CURVE_EXPONENT
+        peak_amp = self.SONIFICATION_MIN_AUDIBLE_PEAK + (
+            self.SONIFICATION_MAX_PEAK - self.SONIFICATION_MIN_AUDIBLE_PEAK
+        ) * shaped_amp
+        return min(self.SONIFICATION_MAX_PEAK, peak_amp)
+
     def update_parameters(self, scan_freq, mag_db):
         """
         Called by the analyzer to update the sonification targets.
@@ -73,21 +141,7 @@ class Sonifier:
             return
 
         with self.lock:
-            # Convert magnitude to linear amplitude.
-            # Base it on a typical noise floor, e.g., -100 dBFS -> 0 amplitude
-            # -20 dBFS -> max amplitude
-            noise_floor_db = -100.0
-            max_level_db = -20.0
-
-            clamped_db = max(noise_floor_db, min(max_level_db, mag_db))
-
-            # Map dB to linear scale for sonification volume (0.0 to 1.0)
-            normalized_amp = (clamped_db - noise_floor_db) / (max_level_db - noise_floor_db)
-
-            # Apply non-linear curve for more natural volume perception (e.g., cubic)
-            target_linear_amp = normalized_amp ** 3
-
-            self.target_amp = target_linear_amp * self.master_volume
+            self.target_amp = self._map_mag_to_target_amp(mag_db) * self.master_volume
 
             if self.mode == self.MODE_LEVEL_MONITOR:
                 self.target_freq = 800.0
@@ -111,12 +165,7 @@ class Sonifier:
             return
 
         with self.lock:
-            noise_floor_db = -100.0
-            max_level_db = -20.0
-            clamped_db = max(noise_floor_db, min(max_level_db, mag_db))
-            normalized_amp = (clamped_db - noise_floor_db) / (max_level_db - noise_floor_db)
-            target_linear_amp = normalized_amp ** 3
-            self.target_amp = target_linear_amp * self.master_volume
+            self.target_amp = self._map_mag_to_target_amp(mag_db) * self.master_volume
             self.target_freq = self.manual_freq
 
     def process(self, outdata):

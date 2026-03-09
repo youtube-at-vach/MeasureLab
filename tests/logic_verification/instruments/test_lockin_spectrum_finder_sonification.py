@@ -18,6 +18,7 @@ class MockCalibration:
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
+        self.block_size = 1024
         self.calibration = MockCalibration()
         self.callbacks = {}
         self.next_id = 0
@@ -91,3 +92,47 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
         self.assertTrue(mock_sonifier.update_manual_tuner_mag.called)
 
         self.finder.sonifier = original_sonifier
+
+    def test_start_analysis_syncs_sonifier_sample_rate(self):
+        self.finder.stop_analysis()
+        self.audio_engine.sample_rate = 96000
+
+        self.finder.start_analysis()
+
+        self.assertEqual(self.finder.sonifier.sample_rate, 96000)
+
+    def test_trigger_calculation_allows_initial_partial_buffer(self):
+        self.finder.buffer_size = 262144
+        self.finder.input_data = np.zeros((self.finder.buffer_size, 2), dtype=np.float32)
+        self.finder.input_buffer_pos = 0
+        self.finder.buffer_filled_samples = 0
+        self.finder._analysis_warmed_up = False
+
+        min_samples = self.finder._get_min_analysis_samples()
+        self.finder.input_data[:min_samples, 0] = 1.0
+        self.finder.buffer_filled_samples = min_samples
+        self.finder.input_buffer_pos = min_samples
+
+        self.finder.executor = MagicMock()
+        self.finder.executor.submit.return_value = MagicMock(done=lambda: False)
+
+        self.finder.trigger_calculation()
+
+        self.finder.executor.submit.assert_called_once()
+        submitted_sig = self.finder.executor.submit.call_args.args[1]
+        self.assertEqual(len(submitted_sig), min_samples)
+        self.assertEqual(self.finder.buffer_filled_samples, 0)
+        self.assertTrue(self.finder._analysis_warmed_up)
+
+    def test_trigger_calculation_keeps_buffer_while_worker_busy(self):
+        self.finder.buffer_size = 32768
+        self.finder.input_data = np.ones((self.finder.buffer_size, 2), dtype=np.float32)
+        self.finder.input_buffer_pos = 0
+        self.finder.buffer_filled_samples = self.finder.buffer_size
+        self.finder._analysis_warmed_up = True
+        self.finder._calculation_future = MagicMock(done=lambda: False)
+
+        self.finder.trigger_calculation()
+
+        self.assertEqual(self.finder.buffer_filled_samples, self.finder.buffer_size)
+        np.testing.assert_array_equal(self.finder.input_data, np.ones((self.finder.buffer_size, 2), dtype=np.float32))
