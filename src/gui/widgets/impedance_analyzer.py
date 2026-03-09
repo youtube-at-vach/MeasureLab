@@ -282,12 +282,12 @@ class ImpedanceAnalyzer(MeasurementModule):
             try:
                 self.reset_postmix_lpf()
             except Exception:
-                pass
+                logger.error("Failed to reset post-mix LPF on demodulation frequency change", exc_info=True)
             try:
                 self.history_v.clear()
                 self.history_i.clear()
             except Exception:
-                pass
+                logger.error("Failed to clear history on demodulation frequency change", exc_info=True)
             self._last_demod_freq = f0
 
         # Reference present check (avoid unstable division)
