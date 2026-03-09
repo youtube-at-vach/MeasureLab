@@ -117,7 +117,7 @@ class ImpedanceAnalyzer(MeasurementModule):
     def gen_frequency(self, value: float):
         try:
             f = float(value)
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, IndexError):
             return
         if not np.isfinite(f):
             return
@@ -545,7 +545,7 @@ class ImpedanceAnalyzer(MeasurementModule):
                 z = complex(z_list[0], z_list[1])
                 new_cal[f] = z
             except (ValueError, TypeError, IndexError):
-                logger.debug("Failed to parse calibration point", exc_info=True)
+                logger.error("Failed to deserialize calibration point %s: %s", f_str, z_list, exc_info=True)
         return new_cal
 
 
@@ -692,7 +692,7 @@ class ImpedanceResultsWidget(QWidget):
             if not np.isfinite(x):
                 return "-"
             return f"{x:.{int(sig_figs)}g}"
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, IndexError):
             return "-"
 
     def init_ui(self):
@@ -1072,7 +1072,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         def _on_base_buffer_changed(text: str):
             try:
                 base = int(text)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, IndexError):
                 return
             self.module.set_base_buffer_size(base)
 

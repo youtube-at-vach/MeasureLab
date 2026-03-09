@@ -1,8 +1,11 @@
 
 import re
 import os
+import hashlib
 from mkdocs.structure.pages import Page
 from mkdocs.config.defaults import MkDocsConfig
+
+EXPECTED_KATEX_HASH = "9f45307c5794ed247a0d095f3a62e52ef2215a67b2327203a7fd919959ae79d1"
 
 try:
     from py_mini_racer import MiniRacer
@@ -24,10 +27,19 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
         print(f"Warning: Katex JS not found at {js_path}")
         return html
 
+    with open(js_path, "rb") as f:
+        js_content_bytes = f.read()
+
+    file_hash = hashlib.sha256(js_content_bytes).hexdigest()
+
+    if file_hash != EXPECTED_KATEX_HASH:
+        print(f"Security Warning: Katex JS file hash mismatch at {js_path}. Expected {EXPECTED_KATEX_HASH}, got {file_hash}.")
+        return html
+
     ctx = MiniRacer()
-    with open(js_path, "r", encoding="utf-8") as f:
-        js_content = f.read()
-        ctx.eval(js_content)
+    ctx.set_hard_memory_limit(50 * 1024 * 1024)
+    js_content = js_content_bytes.decode("utf-8")
+    ctx.eval(js_content)
 
     def replace_math(match):
         match.group(1) # span or div
