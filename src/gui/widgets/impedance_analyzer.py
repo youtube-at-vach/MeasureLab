@@ -161,12 +161,12 @@ class ImpedanceAnalyzer(MeasurementModule):
         try:
             self.reset_postmix_lpf()
         except Exception:
-            pass
+            logger.error("Failed to reset post-mix LPF on buffer size change", exc_info=True)
         try:
             self.history_v.clear()
             self.history_i.clear()
         except Exception:
-            pass
+            logger.error("Failed to clear history on buffer size change", exc_info=True)
 
         with self._buffer_lock:
             self.buffer_size = new_size
