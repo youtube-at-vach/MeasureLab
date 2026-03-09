@@ -527,7 +527,7 @@ class LockInSpectrumFinder(MeasurementModule):
                     self.sonifier.update_manual_tuner_mag(chunk_mag)
 
                 # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx], mags_db_chunk, phases)
+                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
                 time.sleep(0.005)
 
             if self.is_running:
@@ -690,7 +690,7 @@ class LockInSpectrumFinder(MeasurementModule):
                         self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
 
             # Emit result chunk back to GUI thread
-            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx], mags_db_chunk, phases)
+            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
 
             # Sleep briefly to ensure audio callback is not starved
             time.sleep(0.005)

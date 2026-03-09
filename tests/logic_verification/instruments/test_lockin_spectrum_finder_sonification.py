@@ -2,27 +2,12 @@ import unittest
 import numpy as np
 from unittest.mock import MagicMock
 
-# Mock out PySide6/PyQt6 dependencies in the gui logic before importing
-import sys
-sys.modules['pyqtgraph'] = MagicMock()
-from PyQt6.QtCore import QObject
-from PyQt6.QtWidgets import QWidget
-sys.modules['PyQt6.QtCore'] = MagicMock()
-sys.modules['PyQt6.QtWidgets'] = MagicMock()
+# Use real imports to avoid global sys.modules pollution, or mock locally if needed.
+# PyQt/PyQtGraph is heavy but we are running in an environment where we can import it.
+# For headless environments, QT_QPA_PLATFORM=offscreen should be used.
 
-# Instead of fully mocking, we can just mock what we need
 from src.gui.widgets.lockin_spectrum_finder import LockInSpectrumFinder
 from src.core.sonifier import Sonifier
-
-# Fix mock for QObject so FinderSignals can be instantiated
-class MockFinderSignals:
-    def __init__(self):
-        self.result_ready = MagicMock()
-        self.sweep_started = MagicMock()
-        self.progress_update = MagicMock()
-
-import src.gui.widgets.lockin_spectrum_finder as lsf
-lsf.FinderSignals = MockFinderSignals
 
 class MockCalibration:
     def get_input_offset_db(self):
