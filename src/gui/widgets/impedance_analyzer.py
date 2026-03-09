@@ -863,8 +863,8 @@ class ImpedanceResultsWidget(QWidget):
                 self.val_buffer.setText(f"{bs} samples ({dt_ms:.1f} ms)")
             elif buffer_size is not None:
                 self.val_buffer.setText(f"{int(buffer_size)} samples")
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError):
+            logger.error("Failed to update buffer display text", exc_info=True)
 
         # Basic Z
         z_mag = float(abs(z))
@@ -1318,7 +1318,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             try:
                 self.manual_ts_check.setEnabled(True)
             except (AttributeError, RuntimeError):
-                pass
+                logger.error("Failed to update manual time-series check state on start", exc_info=True)
 
             # If time-series view is enabled, reset capture at start.
             if hasattr(self, "manual_ts_check") and self.manual_ts_check.isChecked():
@@ -1353,7 +1353,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 self.manual_ts_check.setEnabled(False)
                 self.manual_ts_check.blockSignals(False)
             except (AttributeError, RuntimeError):
-                pass
+                logger.error("Failed to force-disable time-series on manual measurement end", exc_info=True)
 
             # Keep plot consistent with current selection/data.
             self.update_plot_mode()
@@ -1493,7 +1493,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             self.toggle_btn.blockSignals(False)
             self.toggle_btn.setEnabled(False)
         except (AttributeError, RuntimeError):
-            pass
+            logger.error("Failed to update toggle button state during sweep start", exc_info=True)
 
         # Time-series is manual-only; force it off during sweep/calibration.
         try:
@@ -1502,7 +1502,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             self.manual_ts_check.setEnabled(False)
             self.manual_ts_check.blockSignals(False)
         except (AttributeError, RuntimeError):
-            pass
+            logger.error("Failed to update manual time-series check state during sweep start", exc_info=True)
         self._manual_ts_t0 = None
         self._manual_ts_warmup_until = None
         self._manual_ts_next_capture_at = None
@@ -1931,8 +1931,8 @@ class ImpedanceAnalyzerWidget(QWidget):
                     buffer_size=self.module.buffer_size,
                     sample_rate=self.module.audio_engine.sample_rate,
                 )
-            except Exception:
-                pass
+            except (AttributeError, RuntimeError):
+                logger.error("Failed to update live numeric readout during sweep", exc_info=True)
 
     def on_sweep_finished(self):
         if self.cal_mode == "open":
@@ -1952,8 +1952,8 @@ class ImpedanceAnalyzerWidget(QWidget):
         # Re-enable manual control button (manual updates remain stopped unless user presses Start Measurement).
         try:
             self.toggle_btn.setEnabled(True)
-        except Exception:
-            pass
+        except (AttributeError, RuntimeError):
+            logger.error("Failed to re-enable manual control button on sweep finish", exc_info=True)
 
         if self.cal_mode is None and self.chk_resonance.isChecked():
             self.calculate_resonance()
