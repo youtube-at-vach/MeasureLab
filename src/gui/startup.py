@@ -29,7 +29,7 @@ class TopLevelWindowLogger(QObject):
 
         try:
             oid = int(obj.winId()) if obj.winId() else id(obj)
-        except Exception:
+        except (AttributeError, RuntimeError):
             oid = id(obj)
 
         if oid in self._traced_ids:
@@ -43,7 +43,7 @@ class TopLevelWindowLogger(QObject):
                 self.logger.info(line.rstrip("\n"))
             self.logger.info("[window-trace] end")
         except Exception:
-            pass
+            self.logger.error("Error during window trace", exc_info=True)
 
     def eventFilter(self, obj, event):
         try:
@@ -62,7 +62,7 @@ class TopLevelWindowLogger(QObject):
                     if et == QEvent.Type.Show and not title:
                         if 0 < g.width() <= 650 and 0 < g.height() <= 120:
                             self._maybe_trace(obj)
-        except Exception:
+        except (AttributeError, RuntimeError):
             pass
 
         return super().eventFilter(obj, event)
