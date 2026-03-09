@@ -1196,7 +1196,7 @@
     "Virtual Audio (No Hardware)": "Virtuelles Audio (Keine Hardware)",
     "Virtual Loopback (Always On)": "Virtueller Loopback (Immer aktiv)",
     "Voltage:": "Spannung:",
-    "Volume:": "Volume:",
+    "Volume (Gain):": "Lautstärke (Verstärkung):",
     "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)": "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)",
     "Waiting for data...": "Warte auf Daten...",
     "Warming Up... ({0}/{1})": "Aufwärmen... ({0}/{1})",
