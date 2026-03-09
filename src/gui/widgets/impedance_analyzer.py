@@ -667,7 +667,7 @@ class ImpedanceResultsWidget(QWidget):
             sig = p - s + 1
             sig = max(int(min_figs), min(int(max_figs), int(sig)))
             return sig
-        except (ValueError, TypeError, IndexError):
+        except (ValueError, TypeError, AttributeError):
             return int(default)
 
     def _phase_places_from_std(self, phase_std_deg: float | None, default: int, max_places: int = 4) -> int:
@@ -683,7 +683,7 @@ class ImpedanceResultsWidget(QWidget):
             places = -int(np.floor(np.log10(std)))
             places = max(0, min(int(max_places), int(places)))
             return places
-        except (ValueError, TypeError, IndexError):
+        except (ValueError, TypeError, AttributeError):
             return int(default)
 
     def _fmt_dimless(self, value: float, sig_figs: int = 5) -> str:
@@ -1062,7 +1062,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.base_buffer_combo.addItems(["4096", "8192", "16384"])
         try:
             current_base = int(getattr(self.module, "base_buffer_size", 4096) or 4096)
-        except (ValueError, TypeError, IndexError):
+        except (ValueError, TypeError, AttributeError):
             current_base = 4096
         if current_base in (4096, 8192, 16384):
             self.base_buffer_combo.setCurrentText(str(current_base))
@@ -1279,7 +1279,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             if self.sweep_worker is not None and self.sweep_worker.isRunning():
                 return False
             return True
-        except (ValueError, TypeError, IndexError):
+        except (AttributeError, RuntimeError):
             return False
 
     def on_manual_ts_toggled(self, enabled: bool):
@@ -1296,7 +1296,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
                 avg = int(getattr(self.module, "averaging_count", 1) or 1)
                 warmup_s = max(0.25, buf_s * max(1, avg))
-            except (ValueError, TypeError, IndexError):
+            except (AttributeError, ValueError, TypeError, ZeroDivisionError):
                 warmup_s = 1.0
             self._manual_ts_warmup_until = now + float(warmup_s)
             self._manual_ts_next_capture_at = self._manual_ts_warmup_until
@@ -1332,7 +1332,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                     buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
                     avg = int(getattr(self.module, "averaging_count", 1) or 1)
                     warmup_s = max(0.25, buf_s * max(1, avg))
-                except (ValueError, TypeError, IndexError):
+                except (AttributeError, ValueError, TypeError, ZeroDivisionError):
                     warmup_s = 1.0
                 self._manual_ts_warmup_until = now + float(warmup_s)
                 self._manual_ts_next_capture_at = self._manual_ts_warmup_until
@@ -1403,7 +1403,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                                 continue
                             try:
                                 z_samp.append(self.module.apply_calibration(zr, float(self.module.gen_frequency)))
-                            except (ValueError, TypeError, IndexError):
+                            except (ValueError, TypeError, ZeroDivisionError):
                                 z_samp.append(zr)
                         z_samp = np.asarray(z_samp, dtype=np.complex128)
                     else:
@@ -1416,7 +1416,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                         phases = np.angle(z_samp)
                         phases = np.unwrap(phases)
                         z_phase_std_deg = float(np.degrees(np.std(phases)))
-        except (ValueError, TypeError, IndexError):
+        except (ValueError, TypeError, AttributeError):
             z_mag_std = None
             z_phase_std_deg = None
 
@@ -1445,7 +1445,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                     buf_s = float(self.module.buffer_size) / sr if sr > 0 else 0.0
                     avg = int(getattr(self.module, "averaging_count", 1) or 1)
                     min_interval_s = max(1.0, buf_s * max(1, avg))
-                except (ValueError, TypeError, IndexError):
+                except (AttributeError, ValueError, TypeError, ZeroDivisionError):
                     min_interval_s = 1.0
 
                 # Initialize warm-up / first capture scheduling.
