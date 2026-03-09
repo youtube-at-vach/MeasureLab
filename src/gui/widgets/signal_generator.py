@@ -449,7 +449,7 @@ class SignalGenerator(MeasurementModule):
                     params._lpf_cache_key = None
                     return None
 
-                sos = scipy.signal.butter(order, freq, btype="low", fs=sample_rate, output='sos')
+                sos = scipy.signal.butter(order, freq, btype="low", fs=sample_rate, output="sos")
                 params._lpf_sos = sos
                 params._lpf_cache_key = current_key
                 return sos
@@ -469,7 +469,7 @@ class SignalGenerator(MeasurementModule):
                     params._hpf_cache_key = None
                     return None
 
-                sos = scipy.signal.butter(order, freq, btype="high", fs=sample_rate, output='sos')
+                sos = scipy.signal.butter(order, freq, btype="high", fs=sample_rate, output="sos")
                 params._hpf_sos = sos
                 params._hpf_cache_key = current_key
                 return sos
@@ -542,7 +542,9 @@ class SignalGenerator(MeasurementModule):
         params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad, 2.0 * np.pi))
         return phase
 
-    def _apply_am(self, x: np.ndarray, params: SignalParameters, t_global_eff: np.ndarray, sample_rate_eff: float) -> np.ndarray:
+    def _apply_am(
+        self, x: np.ndarray, params: SignalParameters, t_global_eff: np.ndarray, sample_rate_eff: float
+    ) -> np.ndarray:
         """Apply simple AM (DSB-LC) envelope: x(t) * (1 + m*sin(2π*f_am*t))."""
         if not (params.am_enabled and params.am_frequency > 0 and params.am_depth != 0):
             return x
@@ -576,7 +578,7 @@ class SignalGenerator(MeasurementModule):
             sos = self._get_filter_sos(params, "low", sample_rate_eff)
             if sos is not None:
                 if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
-                        params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0 # Start from 0
+                    params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0  # Start from 0
 
                 y, params._lpf_zi = scipy.signal.sosfilt(sos, y, zi=params._lpf_zi)
 
@@ -585,13 +587,15 @@ class SignalGenerator(MeasurementModule):
             sos = self._get_filter_sos(params, "high", sample_rate_eff)
             if sos is not None:
                 if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
-                        params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
+                    params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
 
                 y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
 
         return y
 
-    def _generate_buffered_signal(self, params: SignalParameters, frames, base_sample_rate, t_global_eff, sample_rate_eff):
+    def _generate_buffered_signal(
+        self, params: SignalParameters, frames, base_sample_rate, t_global_eff, sample_rate_eff
+    ):
         signal = np.zeros(frames)
         # For burst, support per-channel fractional delay at readout time.
         # This avoids rebuilding buffers and lets users adjust delay live.
@@ -873,11 +877,22 @@ class SignalGenerator(MeasurementModule):
 
             if params.waveform == "noise" and name == "noise_color":
                 needs_update = True
-            elif params.waveform == "multitone" and name in ["multitone_count", "start_freq", "end_freq", "use_freq_cal"]:
+            elif params.waveform == "multitone" and name in [
+                "multitone_count",
+                "start_freq",
+                "end_freq",
+                "use_freq_cal",
+            ]:
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
                 needs_update = True
-            elif params.waveform == "burst" and name in ["frequency", "burst_on_cycles", "burst_off_cycles", "burst_windowed", "use_freq_cal"]:
+            elif params.waveform == "burst" and name in [
+                "frequency",
+                "burst_on_cycles",
+                "burst_off_cycles",
+                "burst_windowed",
+                "use_freq_cal",
+            ]:
                 needs_update = True
             elif params.waveform == "prbs" and name in ["prbs_order", "prbs_seed"]:
                 needs_update = True
@@ -1297,14 +1312,15 @@ class SignalGeneratorWidget(QWidget):
 
         # Validator for custom input
         from PyQt6.QtGui import QIntValidator
+
         self.fft_size_combo.setValidator(QIntValidator(2, 10000000))
 
         # Initial state: disabled unless checked (handled in logic or load_params)
-        self.fft_size_combo.setEnabled(False) 
+        self.fft_size_combo.setEnabled(False)
 
         snap_layout.addWidget(self.snap_check)
         snap_layout.addWidget(QLabel(tr("Window Width:")))
-        snap_layout.addWidget(self.fft_size_combo, 1) # Stretch
+        snap_layout.addWidget(self.fft_size_combo, 1)  # Stretch
 
         # We assume the user wants this associated with "Frequency Snap" label or similar?
         # Or just "Bin Snap"
@@ -1738,7 +1754,7 @@ class SignalGeneratorWidget(QWidget):
                 current_freq = self.freq_spin.value()
                 self.on_freq_spin_changed(current_freq)
         except ValueError:
-            pass
+            logger.warning(f"Invalid FFT size provided: {text}")
 
     def on_wave_changed(self, _index):
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
@@ -1782,7 +1798,7 @@ class SignalGeneratorWidget(QWidget):
         snapped_freq = k * bin_width
 
         # Ensure we don't snap to 0 if the user didn't intend to (though 0 is a valid bin center DC)
-        # But for audio signal generator, usually we want > 0. 
+        # But for audio signal generator, usually we want > 0.
         # But let's respect the math. If freq is close to 0, it snaps to DC.
 
         return snapped_freq
@@ -1816,15 +1832,15 @@ class SignalGeneratorWidget(QWidget):
         self.freq_slider.blockSignals(True)
 
         self.freq_spin.setValue(snapped_freq)
-        # We don't necessarily update the slider value back from snapped freq here 
-        # because it might make the slider 'jumpy' while dragging. 
+        # We don't necessarily update the slider value back from snapped freq here
+        # because it might make the slider 'jumpy' while dragging.
         # But to be consistent with the spin box, we probably should if the snap is large.
-        # For smooth checking, maybe only update slider if we released handle? 
+        # For smooth checking, maybe only update slider if we released handle?
         # For now, let's keep slider smooth but actual param snapped.
         # Actually, if we don't update slider, it might be out of sync.
         # Let's update it.
         if snapped_freq != freq:
-             self.freq_slider.setValue(self._freq_to_slider(snapped_freq if snapped_freq > 0 else 20))
+            self.freq_slider.setValue(self._freq_to_slider(snapped_freq if snapped_freq > 0 else 20))
 
         self.freq_spin.blockSignals(False)
         self.freq_slider.blockSignals(False)
