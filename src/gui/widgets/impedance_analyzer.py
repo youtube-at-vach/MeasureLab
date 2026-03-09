@@ -160,12 +160,12 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Reset state that depends on integration time/buffer.
         try:
             self.reset_postmix_lpf()
-        except Exception:
+        except (AttributeError, RuntimeError):
             logger.error("Failed to reset post-mix LPF on buffer size change", exc_info=True)
         try:
             self.history_v.clear()
             self.history_i.clear()
-        except Exception:
+        except (AttributeError, RuntimeError):
             logger.error("Failed to clear history on buffer size change", exc_info=True)
 
         with self._buffer_lock:
@@ -281,12 +281,12 @@ class ImpedanceAnalyzer(MeasurementModule):
         if last_f is None or abs(float(last_f) - f0) > 1e-9:
             try:
                 self.reset_postmix_lpf()
-            except Exception:
+            except (AttributeError, RuntimeError):
                 logger.error("Failed to reset post-mix LPF on demodulation frequency change", exc_info=True)
             try:
                 self.history_v.clear()
                 self.history_i.clear()
-            except Exception:
+            except (AttributeError, RuntimeError):
                 logger.error("Failed to clear history on demodulation frequency change", exc_info=True)
             self._last_demod_freq = f0
 
