@@ -1,5 +1,8 @@
 import pytest
 from unittest.mock import patch, mock_open
+
+pytest.importorskip("mkdocs")
+
 from mkdocs.structure.pages import Page
 from mkdocs.structure.files import File
 from mkdocs.config.defaults import MkDocsConfig
