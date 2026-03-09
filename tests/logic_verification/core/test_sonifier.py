@@ -7,7 +7,7 @@ def test_sonifier_initialization():
     assert s.sample_rate == 48000
     assert not s.enabled
     assert s.mode == Sonifier.MODE_LEVEL_MONITOR
-    assert s.master_volume == 0.5
+    assert s.master_volume_db == 0.0
     assert s.output_channel == 2
 
 def test_sonifier_setters():
@@ -18,8 +18,8 @@ def test_sonifier_setters():
     s.set_mode(Sonifier.MODE_FREQUENCY_MAPPING)
     assert s.mode == Sonifier.MODE_FREQUENCY_MAPPING
 
-    s.set_volume(0.8)
-    assert s.master_volume == 0.8
+    s.set_volume(-10.0)
+    assert s.master_volume_db == -10.0
 
     s.set_manual_freq(500.0)
     assert s.manual_freq == 500.0
@@ -89,3 +89,13 @@ def test_sonifier_manual_tuner():
     s.process(outdata)
 
     assert s.current_freq == 777.0
+
+def test_sonifier_at_140dbfs():
+    s = Sonifier()
+    s.set_enabled(True)
+    s.set_volume(60.0) # +60dB boost
+    s.update_parameters(scan_freq=1000.0, mag_db=-140.0)
+    # -140 + 60 = -80.
+    # normalized_amp = (-80 - (-100)) / (-20 - (-100)) = 20 / 80 = 0.25
+    # target_amp = 0.25**3 = 0.015625
+    assert np.isclose(s.target_amp, 0.25**3)

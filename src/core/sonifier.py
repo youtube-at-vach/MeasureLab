@@ -21,7 +21,7 @@ class Sonifier:
         self.mode = self.MODE_LEVEL_MONITOR
 
         # Audio parameters
-        self.master_volume = 0.5  # 0.0 to 1.0
+        self.master_volume_db = 0.0  # dB offset for sensitivity
         self.manual_freq = 1000.0 # Hz
         self.output_channel = 2   # 0: Left, 1: Right, 2: Both
 
@@ -52,9 +52,9 @@ class Sonifier:
         with self.lock:
             self.mode = mode
 
-    def set_volume(self, volume):
+    def set_volume(self, volume_db):
         with self.lock:
-            self.master_volume = max(0.0, min(1.0, volume))
+            self.master_volume_db = max(-120.0, min(80.0, volume_db))
 
     def set_manual_freq(self, freq):
         with self.lock:
@@ -73,13 +73,15 @@ class Sonifier:
             return
 
         with self.lock:
-            # Convert magnitude to linear amplitude.
+            # Shift magnitude by master volume dB to allow "hearing" small signals
+            effective_mag = mag_db + self.master_volume_db
+
             # Base it on a typical noise floor, e.g., -100 dBFS -> 0 amplitude
             # -20 dBFS -> max amplitude
             noise_floor_db = -100.0
             max_level_db = -20.0
 
-            clamped_db = max(noise_floor_db, min(max_level_db, mag_db))
+            clamped_db = max(noise_floor_db, min(max_level_db, effective_mag))
 
             # Map dB to linear scale for sonification volume (0.0 to 1.0)
             normalized_amp = (clamped_db - noise_floor_db) / (max_level_db - noise_floor_db)
@@ -87,7 +89,7 @@ class Sonifier:
             # Apply non-linear curve for more natural volume perception (e.g., cubic)
             target_linear_amp = normalized_amp ** 3
 
-            self.target_amp = target_linear_amp * self.master_volume
+            self.target_amp = target_linear_amp
 
             if self.mode == self.MODE_LEVEL_MONITOR:
                 self.target_freq = 800.0
@@ -111,12 +113,13 @@ class Sonifier:
             return
 
         with self.lock:
+            effective_mag = mag_db + self.master_volume_db
             noise_floor_db = -100.0
             max_level_db = -20.0
-            clamped_db = max(noise_floor_db, min(max_level_db, mag_db))
+            clamped_db = max(noise_floor_db, min(max_level_db, effective_mag))
             normalized_amp = (clamped_db - noise_floor_db) / (max_level_db - noise_floor_db)
             target_linear_amp = normalized_amp ** 3
-            self.target_amp = target_linear_amp * self.master_volume
+            self.target_amp = target_linear_amp
             self.target_freq = self.manual_freq
 
     def process(self, outdata):

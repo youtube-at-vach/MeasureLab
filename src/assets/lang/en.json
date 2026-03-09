@@ -1197,6 +1197,7 @@
     "Virtual Loopback (Always On)": "Virtual Loopback (Always On)",
     "Voltage:": "Voltage:",
     "Volume:": "Volume:",
+    "Volume (Gain):": "Volume (Gain):",
     "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)": "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)",
     "Waiting for data...": "Waiting for data...",
     "Warming Up... ({0}/{1})": "Warming Up... ({0}/{1})",

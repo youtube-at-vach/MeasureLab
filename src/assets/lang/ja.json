@@ -1197,6 +1197,7 @@
     "Virtual Loopback (Always On)": "仮想ループバック（常時有効）",
     "Voltage:": "電圧:",
     "Volume:": "音量:",
+    "Volume (Gain):": "音量 (ゲイン):",
     "WAV (*.wav);;FLAC (*.flac);;OGG (*.ogg)": "WAVファイル (*.wav);;FLACファイル (*.flac);;OGGファイル (*.ogg)",
     "Waiting for data...": "データ待機中...",
     "Warming Up... ({0}/{1})": "ウォームアップ中... ({0}/{1})",
