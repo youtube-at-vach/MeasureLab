@@ -468,12 +468,13 @@ class LockInSpectrumFinder(MeasurementModule):
 
     def _update_sonifier_peaks(self, freqs: np.ndarray, mags_db: np.ndarray):
         if len(freqs) == 0:
-            self.sonifier.update_peaks([])
+            self.sonifier.update_spectrum([], [], [])
             return
 
-        self.sonifier.update_peaks(
+        self.sonifier.update_spectrum(
+            freqs,
+            mags_db,
             self._select_peak_freqs(freqs, mags_db),
-            spectrum_range=(float(freqs[0]), float(freqs[-1])),
         )
 
     def _do_calculation(
@@ -1004,15 +1005,9 @@ class LockInSpectrumFinderWidget(QWidget):
         self.chk_sonification_enable.stateChanged.connect(self.on_audio_enable_toggled)
         sonification_form.addRow(self.chk_sonification_enable)
 
-        self.lbl_sonification_info = QLabel(
-            ""
-        )
-        self.lbl_sonification_info.setWordWrap(True)
-        sonification_form.addRow(self.lbl_sonification_info)
-
         self.combo_sonification_mode = QComboBox()
         self.combo_sonification_mode.addItem(tr("Chord Tones"), self.module.sonifier.MODE_CHORD)
-        self.combo_sonification_mode.addItem(tr("Rhythmic Beeps"), self.module.sonifier.MODE_SWEEP_BEEPS)
+        self.combo_sonification_mode.addItem(tr("Differential Layers"), self.module.sonifier.MODE_DIFF_LAYERS)
         idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
         if idx >= 0:
             self.combo_sonification_mode.setCurrentIndex(idx)
@@ -1047,7 +1042,6 @@ class LockInSpectrumFinderWidget(QWidget):
         sonification_layout.addStretch()
 
         self.tabs.addTab(sonification_tab, tr("Audio Sonification"))
-        self._update_audio_sonification_info()
 
         left_panel.addWidget(self.tabs)
 
@@ -1535,7 +1529,6 @@ class LockInSpectrumFinderWidget(QWidget):
         mode = self.combo_sonification_mode.itemData(idx)
         if mode is not None:
             self.module.sonifier.set_mode(mode)
-            self._update_audio_sonification_info()
 
     def on_audio_peaks_changed(self, val):
         self.module.sonifier.set_max_peaks(val)
@@ -1547,15 +1540,3 @@ class LockInSpectrumFinderWidget(QWidget):
         ch = self.combo_sonification_ch.itemData(idx)
         if ch is not None:
             self.module.sonifier.set_output_channel(ch)
-
-    def _update_audio_sonification_info(self):
-        mode = self.module.sonifier.mode
-        if mode == self.module.sonifier.MODE_SWEEP_BEEPS:
-            text = tr(
-                "Queues short and long beeps at a steady tempo inspired by Morse timing. Playback stays readable even when scan updates are irregular."
-            )
-        else:
-            text = tr(
-                "Plays the strongest sweep peaks as simultaneous tones synchronized with the moving analysis line. More peaks increase CPU load."
-            )
-        self.lbl_sonification_info.setText(text)
