@@ -176,7 +176,11 @@ class ConfigManager:
         try:
             with open(self.config_path, "r") as f:
                 loaded = json.load(f)
-        except (OSError, json.JSONDecodeError) as e:
+
+            if not isinstance(loaded, dict):
+                raise ValueError("Config root is not a dictionary")
+
+        except (OSError, json.JSONDecodeError, ValueError) as e:
             self.logger.error(f"Failed to load config: {e}")
             config = self._default_config()
             self._ensure_screenshot_dir(config)
