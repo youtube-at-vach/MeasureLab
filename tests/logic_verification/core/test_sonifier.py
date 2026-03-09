@@ -108,3 +108,29 @@ def test_peak_tone_sonifier_fade_out():
     s.process(np.zeros((1024, 2)))
     amp_after = s._oscillators[0, 2]
     assert amp_after < amp_before
+
+
+def test_peak_tone_sonifier_watchdog_gating():
+    import time
+    s = PeakToneSonifier(sample_rate=48000)
+    s.set_enabled(True)
+    s.update_spectrum([1000.0], [0.0], [1000.0])
+    
+    # Run to establish sound
+    for _ in range(10):
+        s.process(np.zeros((512, 2)))
+    
+    assert s._oscillators[0, 2] > 0.1
+    assert s._oscillators[0, 3] == 1.0 # Target is ON
+    
+    # Wait longer than WATCHDOG_TIMEOUT (0.5s)
+    time.sleep(0.6)
+    
+    # Process: Watchdog should trigger and set target_amp to 0
+    s.process(np.zeros((512, 2)))
+    assert s._oscillators[0, 3] == 0.0
+    
+    # Amplitudes should now be decreasing
+    amp_before = s._oscillators[0, 2]
+    s.process(np.zeros((512, 2)))
+    assert s._oscillators[0, 2] < amp_before

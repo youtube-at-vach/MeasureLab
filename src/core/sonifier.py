@@ -1,10 +1,11 @@
 import threading
+import time
 
 import numpy as np
 
 
 class PeakToneSonifier:
-    """Sonifies detected peaks as a chord with smooth transitions."""
+    """Sonifies detected peaks as a chord with smooth transitions and CPU optimizations."""
 
     AUDIBLE_MIN_FREQ = 220.0
     AUDIBLE_MAX_FREQ = 1760.0
@@ -15,6 +16,9 @@ class PeakToneSonifier:
     # Smoothing time constants
     AMP_SMOOTH_TC = 0.05  # seconds
     FREQ_SMOOTH_TC = 0.05  # seconds
+
+    # Safety Watchdog
+    WATCHDOG_TIMEOUT = 0.5 # seconds
 
     def __init__(self, sample_rate=48000):
         self.sample_rate = sample_rate
@@ -34,6 +38,7 @@ class PeakToneSonifier:
         # 3: target_amp
         # 4: phase
 
+        self._last_update_time = 0.0
         self.lock = threading.Lock()
 
     def set_sample_rate(self, sr):
@@ -45,6 +50,8 @@ class PeakToneSonifier:
             self.enabled = bool(enabled)
             if not self.enabled:
                 self._reset_state()
+            else:
+                self._last_update_time = time.time()
 
     def set_volume(self, volume):
         with self.lock:
@@ -78,12 +85,14 @@ class PeakToneSonifier:
         if not self.enabled:
             return
 
+        # Record activity for watchdog
+        self._last_update_time = time.time()
+
         # 1. Prepare and fold new peak frequencies
         new_peaks = [self._fold_to_audible_band(f) for f in peak_freqs_hz[: self.max_peaks] if f is not None]
 
         with self.lock:
             # 2. Track peaks and assign to oscillators
-            # We want to match existing oscillators to new peaks to prevent jumps.
             assigned_peaks = [False] * len(new_peaks)
             used_oscillators = [False] * self.MAX_SUPPORTED_PEAKS
 
@@ -106,7 +115,7 @@ class PeakToneSonifier:
 
                 if best_peak_idx != -1:
                     self._oscillators[i, 1] = new_peaks[best_peak_idx]
-                    self._oscillators[i, 3] = 1.0 # Target amplitude is fully on
+                    self._oscillators[i, 3] = 1.0 
                     assigned_peaks[best_peak_idx] = True
                     used_oscillators[i] = True
 
@@ -115,11 +124,10 @@ class PeakToneSonifier:
                 if assigned_peaks[j]:
                     continue
 
-                # Find a silent oscillator
                 for i in range(self.max_peaks):
                     if not used_oscillators[i] and self._oscillators[i, 2] < 1e-4:
                         if self._oscillators[i, 2] == 0.0:
-                            self._oscillators[i, 0] = p_f # Start exactly at freq
+                            self._oscillators[i, 0] = p_f 
                         self._oscillators[i, 1] = p_f
                         self._oscillators[i, 3] = 1.0
                         used_oscillators[i] = True
@@ -142,7 +150,10 @@ class PeakToneSonifier:
             master_gain = self.tone_peak * self.master_volume
             num_oscillators = self.MAX_SUPPORTED_PEAKS
 
-            # Copy state to local variables for processing
+            # Watchdog check: If no update for 0.5s, trigger fade out
+            if time.time() - self._last_update_time > self.WATCHDOG_TIMEOUT:
+                self._oscillators[:, 3] = 0.0
+
             state = self._oscillators.copy()
 
         if sr <= 0:
@@ -152,65 +163,63 @@ class PeakToneSonifier:
         frames = len(outdata)
         mixed_wave = np.zeros(frames, dtype=np.float64)
 
-        # We'll determine the normalizing gain based on the number of active/fading oscillators
-        # but for simplicity, we use sqrt(active_count) or fixed if preferred.
-        # Let's count how many oscillators have significant amplitude or target amplitude.
-        active_count = np.count_nonzero((state[:, 2] > 1e-4) | (state[:, 3] > 1e-4))
-        gain_multiplier = master_gain / max(1.0, np.sqrt(float(active_count)))
+        active_mask = (state[:, 2] > 1e-5) | (state[:, 3] > 1e-5)
+        active_count = np.count_nonzero(active_mask)
+        if active_count == 0:
+            outdata.fill(0.0)
+            return
 
-        # Pre-calculate sampling period
+        gain_multiplier = master_gain / max(1.0, np.sqrt(float(active_count)))
         dt = 1.0 / sr
         two_pi = 2.0 * np.pi
+        two_pi_dt = two_pi * dt
+
+        # Pre-allocate time index array
+        t_array = np.arange(frames, dtype=np.float64)
+        progress = t_array / frames
 
         for i in range(num_oscillators):
-            curr_f, target_f, curr_a, target_a, phase = state[i]
-
-            if curr_a < 1e-5 and target_a < 1e-5:
+            if not active_mask[i]:
                 continue
 
-            # Simple linear ramp for frequency and amplitude across the buffer
-            # This is an approximation. A true exponential smoothing would be per-sample.
-            # But linear ramp across a small buffer (e.g. 10ms-50ms) is usually seamless enough.
+            curr_f, target_f, curr_a, target_a, phase = state[i]
 
-            # Per-sample phase increment and gain
-            # We use half-buffer interpolation or just linear end-to-end.
-
-            # Calculate next state values (smoothing)
-            # Using exponential smoothing logic: y = y + (target - y) * alpha
-            # Alpha for a whole buffer: 1 - exp(-buffer_time / smoothing_tc)
             buffer_time = frames * dt
-
             alpha_a = 1.0 - np.exp(-buffer_time / self.AMP_SMOOTH_TC)
             alpha_f = 1.0 - np.exp(-buffer_time / self.FREQ_SMOOTH_TC)
 
             next_a = curr_a + (target_a - curr_a) * alpha_a
             next_f = curr_f + (target_f - curr_f) * alpha_f
 
-            # Generate sample arrays for gains and frequencies
-            t_array = np.arange(frames, dtype=np.float64)
-            progress = t_array / frames
+            # Optimization: Skip if amplitude is effectively zero
+            if curr_a < 1e-6 and next_a < 1e-6:
+                state[i, 0] = next_f
+                state[i, 2] = 0.0
+                continue
 
-            # Interpolated amplitude
-            amps = curr_a + (next_a - curr_a) * progress
+            # Optimization: Use fast phase calculation if frequency is static
+            if abs(next_f - curr_f) < 1e-3:
+                phases = phase + two_pi_dt * curr_f * t_array
+                next_f = curr_f # Keep it exactly static
+            else:
+                # Linear frequency sweep: phase = 2*pi * integral( (f0 + (f1-f0)*t/T) dt )
+                # = 2*pi * (f0*t + 0.5*(f1-f0)*t^2/T)
+                phases = phase + (two_pi_dt) * (t_array * curr_f + (next_f - curr_f) * (t_array * (t_array - 1)) / (2.0 * frames))
 
-            # Accumulated phase: phase(t) = phase(0) + sum(2*pi*f(i)*dt)
-            # Since f(i) is linear, sum is based on arithmetic progression:
-            # phase(n) = phase(0) + 2*pi*dt * [n*curr_f + (next_f - curr_f)/frames * sum(0..n-1)]
-            # sum(0..n-1) = (n-1)*n / 2
+            # Optimization: Skip amplitude interpolation if gain is static
+            if abs(next_a - curr_a) < 1e-4:
+                mixed_wave += np.sin(phases) * curr_a
+            else:
+                amps = curr_a + (next_a - curr_a) * progress
+                mixed_wave += np.sin(phases) * amps
 
-            phases = phase + (two_pi * dt) * (t_array * curr_f + (next_f - curr_f) * (t_array * (t_array - 1)) / (2.0 * frames))
-
-            # Oscillation
-            mixed_wave += np.sin(phases) * amps
-
-            # Update state for next block
+            # Update state
             state[i, 0] = next_f
             state[i, 2] = next_a
-            state[i, 4] = (phases[-1] + two_pi * next_f * dt) % two_pi
+            state[i, 4] = (phases[-1] + two_pi_dt * next_f) % two_pi
 
         mixed_wave *= gain_multiplier
 
-        # Write to output channels
         channels = outdata.shape[1]
         outdata.fill(0.0)
         if out_ch == 0:
@@ -224,6 +233,5 @@ class PeakToneSonifier:
             for channel in range(channels):
                 outdata[:, channel] = mixed_wave
 
-        # Save back the state
         with self.lock:
             self._oscillators = state
