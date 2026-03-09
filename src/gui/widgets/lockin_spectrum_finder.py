@@ -466,6 +466,16 @@ class LockInSpectrumFinder(MeasurementModule):
         top_idx = ranked[: self.sonifier.max_peaks]
         return [float(freqs[i]) for i in top_idx]
 
+    def _update_sonifier_peaks(self, freqs: np.ndarray, mags_db: np.ndarray):
+        if len(freqs) == 0:
+            self.sonifier.update_peaks([])
+            return
+
+        self.sonifier.update_peaks(
+            self._select_peak_freqs(freqs, mags_db),
+            spectrum_range=(float(freqs[0]), float(freqs[-1])),
+        )
+
     def _do_calculation(
         self,
         sig,
@@ -562,7 +572,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 time.sleep(0.005)
 
             if self.is_running:
-                self.sonifier.update_peaks(self._select_peak_freqs(freqs, mags_db_all))
+                self._update_sonifier_peaks(freqs, mags_db_all)
                 # phases unmerged across chunks back to main for zoom (optional completeness)
                 self.signals.result_ready.emit((freqs, mags_db_all))
             return
@@ -716,7 +726,7 @@ class LockInSpectrumFinder(MeasurementModule):
             time.sleep(0.005)
 
         if self.is_running:
-            self.sonifier.update_peaks(self._select_peak_freqs(freqs, mags_db_all))
+            self._update_sonifier_peaks(freqs, mags_db_all)
             self.signals.result_ready.emit((freqs, mags_db_all))
 
 
@@ -995,10 +1005,19 @@ class LockInSpectrumFinderWidget(QWidget):
         sonification_form.addRow(self.chk_sonification_enable)
 
         self.lbl_sonification_info = QLabel(
-            tr("Plays the strongest sweep peaks as fixed-level tones synchronized with the moving analysis line.")
+            ""
         )
         self.lbl_sonification_info.setWordWrap(True)
         sonification_form.addRow(self.lbl_sonification_info)
+
+        self.combo_sonification_mode = QComboBox()
+        self.combo_sonification_mode.addItem(tr("Chord Tones"), self.module.sonifier.MODE_CHORD)
+        self.combo_sonification_mode.addItem(tr("Rhythmic Beeps"), self.module.sonifier.MODE_SWEEP_BEEPS)
+        idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
+        if idx >= 0:
+            self.combo_sonification_mode.setCurrentIndex(idx)
+        self.combo_sonification_mode.currentIndexChanged.connect(self.on_audio_mode_changed)
+        sonification_form.addRow(tr("Playback Mode:"), self.combo_sonification_mode)
 
         self.spin_sonification_peaks = QSpinBox()
         self.spin_sonification_peaks.setRange(1, self.module.sonifier.MAX_SUPPORTED_PEAKS)
@@ -1028,6 +1047,7 @@ class LockInSpectrumFinderWidget(QWidget):
         sonification_layout.addStretch()
 
         self.tabs.addTab(sonification_tab, tr("Audio Sonification"))
+        self._update_audio_sonification_info()
 
         left_panel.addWidget(self.tabs)
 
@@ -1511,6 +1531,12 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_audio_enable_toggled(self, state):
         self.module.sonifier.set_enabled(bool(state))
 
+    def on_audio_mode_changed(self, idx):
+        mode = self.combo_sonification_mode.itemData(idx)
+        if mode is not None:
+            self.module.sonifier.set_mode(mode)
+            self._update_audio_sonification_info()
+
     def on_audio_peaks_changed(self, val):
         self.module.sonifier.set_max_peaks(val)
 
@@ -1521,3 +1547,15 @@ class LockInSpectrumFinderWidget(QWidget):
         ch = self.combo_sonification_ch.itemData(idx)
         if ch is not None:
             self.module.sonifier.set_output_channel(ch)
+
+    def _update_audio_sonification_info(self):
+        mode = self.module.sonifier.mode
+        if mode == self.module.sonifier.MODE_SWEEP_BEEPS:
+            text = tr(
+                "Queues short and long beeps at a steady tempo inspired by Morse timing. Playback stays readable even when scan updates are irregular."
+            )
+        else:
+            text = tr(
+                "Plays the strongest sweep peaks as simultaneous tones synchronized with the moving analysis line. More peaks increase CPU load."
+            )
+        self.lbl_sonification_info.setText(text)
