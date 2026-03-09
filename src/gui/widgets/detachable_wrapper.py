@@ -31,10 +31,6 @@ class IndependentWindow(QMainWindow):
         self.resize(800, 600)
         self.setCentralWidget(widget)
 
-        # When this window is closed, we need to make sure the widget isn't deleted
-        # if we want to reattach it. But setCentralWidget ownership rules are tricky.
-        # Ideally, the wrapper will reclaim the widget before this window is fully destroyed.
-
     def closeEvent(self, event):
         self.closed.emit()
         # We accept the close event, effectively hiding/destroying the window.
