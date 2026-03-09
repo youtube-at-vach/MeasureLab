@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import tr
-from src.core.sonifier import PeakToneSonifier
+from src.core.sonifier import Sonifier
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,6 @@ class LockInSpectrumFinder(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
         self.buffer_filled_samples = 0
-        self._analysis_warmed_up = False
 
         # Analysis parameters
         self.points = 256
@@ -227,7 +226,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.display_unit = "dBFS"  # "dBFS", "dBV", "dB SPL"
 
         # Sonifier
-        self.sonifier = PeakToneSonifier(sample_rate=self.audio_engine.sample_rate)
+        self.sonifier = Sonifier(sample_rate=self.audio_engine.sample_rate)
 
     @property
     def name(self) -> str:
@@ -308,8 +307,6 @@ class LockInSpectrumFinder(MeasurementModule):
         if self.is_running:
             return
         self.is_running = True
-        self._analysis_warmed_up = False
-        self.sonifier.set_sample_rate(self.audio_engine.sample_rate)
 
         with self.lock:
             self.input_data = np.zeros((self.buffer_size, 2))
@@ -359,27 +356,10 @@ class LockInSpectrumFinder(MeasurementModule):
             self.input_buffer_pos = 0
             self.buffer_filled_samples = 0
 
-    def _get_min_analysis_samples(self) -> int:
-        fs = max(1, int(self.audio_engine.sample_rate))
-
-        if self.mode == "Zoom":
-            warmup = max(4096, int(fs * 0.10))
-        else:
-            warmup = max(8192, int(fs * 0.25))
-
-        return min(self.buffer_size, warmup)
-
-    def get_data_snapshot(self, min_samples: int | None = None):
+    def get_data_snapshot(self):
         with self.lock:
-            filled = self.buffer_filled_samples
-            if min_samples is None:
-                min_samples = self.buffer_size
-
-            if filled < min_samples:
+            if self.buffer_filled_samples < self.buffer_size:
                 return None
-            if filled < self.buffer_size:
-                return self.input_data[:filled].copy()
-
             data = self.input_data.copy()
             pos = self.input_buffer_pos
 
@@ -392,17 +372,18 @@ class LockInSpectrumFinder(MeasurementModule):
         if not self.is_running:
             return
 
+        data = self.get_data_snapshot()
+        if data is None:
+            return  # Not filled yet
+
+        # Clear buffer immediately to start collecting next chunk while calculating
+        self.clear_buffer()
+
         # Don't queue multiple if one is still running
         if self._calculation_future is not None and not self._calculation_future.done():
+            # A calculation is already in progress, drop this frame or wait.
+            # Dropping is safer to prevent queue explosion.
             return
-
-        min_samples = self.buffer_size if self._analysis_warmed_up else self._get_min_analysis_samples()
-        data = self.get_data_snapshot(min_samples=min_samples)
-        if data is None:
-            return
-
-        # Clear buffer only after we know the snapshot will be used.
-        self.clear_buffer()
 
         sig = data[:, self.input_channel]
         fs = self.audio_engine.sample_rate
@@ -441,40 +422,6 @@ class LockInSpectrumFinder(MeasurementModule):
             p_include_targets,
             p_octave_ref,
             p_targets,
-        )
-        self._analysis_warmed_up = True
-
-    def _select_peak_freqs(self, freqs: np.ndarray, mags_db: np.ndarray) -> list[float]:
-        if len(freqs) == 0 or len(mags_db) == 0:
-            return []
-
-        if len(freqs) <= 2:
-            order = np.argsort(mags_db)[::-1]
-            return [float(freqs[i]) for i in order[: self.sonifier.max_peaks]]
-
-        candidate_idx = []
-        for idx in range(len(mags_db)):
-            left = mags_db[idx - 1] if idx > 0 else -np.inf
-            right = mags_db[idx + 1] if idx < len(mags_db) - 1 else -np.inf
-            if mags_db[idx] >= left and mags_db[idx] >= right:
-                candidate_idx.append(idx)
-
-        if not candidate_idx:
-            candidate_idx = list(range(len(mags_db)))
-
-        ranked = sorted(candidate_idx, key=lambda i: mags_db[i], reverse=True)
-        top_idx = ranked[: self.sonifier.max_peaks]
-        return [float(freqs[i]) for i in top_idx]
-
-    def _update_sonifier_peaks(self, freqs: np.ndarray, mags_db: np.ndarray):
-        if len(freqs) == 0:
-            self.sonifier.update_spectrum([], [], [])
-            return
-
-        self.sonifier.update_spectrum(
-            freqs,
-            mags_db,
-            self._select_peak_freqs(freqs, mags_db),
         )
 
     def _do_calculation(
@@ -568,12 +515,22 @@ class LockInSpectrumFinder(MeasurementModule):
                 # Compute Phase
                 phases = np.angle(vals)
 
+                # Update sonifier: pick the strongest signal in the chunk
+                if len(mags_db_chunk) > 0:
+                    max_idx = np.argmax(mags_db_chunk)
+                    chunk_freq = zoom_center + f_chunk[max_idx]
+                    chunk_mag = mags_db_chunk[max_idx]
+                    self.sonifier.update_parameters(chunk_freq, chunk_mag)
+
+                    # Update manual tuner specifically if the manual freq is in this range
+                    # In zoom mode, manual tuner might just track the max
+                    self.sonifier.update_manual_tuner_mag(chunk_mag)
+
                 # Emit result chunk back to GUI thread
                 self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
                 time.sleep(0.005)
 
             if self.is_running:
-                self._update_sonifier_peaks(freqs, mags_db_all)
                 # phases unmerged across chunks back to main for zoom (optional completeness)
                 self.signals.result_ready.emit((freqs, mags_db_all))
             return
@@ -637,10 +594,6 @@ class LockInSpectrumFinder(MeasurementModule):
         sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
         sig_win_orig = sig * sqrt_win_orig
 
-        decimation_cache = {
-            1: (sig_win_orig, sqrt_win_orig, N, fs, t),
-        }
-
         for i in range(0, points, chunk_size):
             if not self.is_running:
                 break
@@ -655,8 +608,7 @@ class LockInSpectrumFinder(MeasurementModule):
             target_fs = max_f * 4.0
             M = max(1, int(fs / target_fs))
 
-            cached = decimation_cache.get(M)
-            if cached is None:
+            if M > 1:
                 sig_dec = signal.resample_poly(sig, 1, M)
                 N_chunk = len(sig_dec)
                 fs_dec = fs / M
@@ -667,10 +619,12 @@ class LockInSpectrumFinder(MeasurementModule):
                 sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
                 sig_win = sig_dec * sqrt_win
                 t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
-                cached = (sig_win, sqrt_win, N_chunk, fs_dec, t_chunk)
-                decimation_cache[M] = cached
-
-            sig_win, sqrt_win, N_chunk, fs_dec, t_chunk = cached
+            else:
+                N_chunk = N
+                fs_dec = fs
+                sqrt_win = sqrt_win_orig
+                sig_win = sig_win_orig
+                t_chunk = t
 
             two_pi_t = 2.0 * np.pi * t_chunk
             phase = two_pi_t[:, np.newaxis] * f_chunk
@@ -720,6 +674,21 @@ class LockInSpectrumFinder(MeasurementModule):
             # Standard phase from complex is angle(cos - j*sin)
             phases = np.arctan2(-iq[:, 1], iq[:, 0])
 
+            # Update sonifier: pick the strongest signal in the chunk
+            if len(mags_db_chunk) > 0:
+                max_idx = np.argmax(mags_db_chunk)
+                chunk_freq = f_chunk[max_idx]
+                chunk_mag = mags_db_chunk[max_idx]
+                self.sonifier.update_parameters(chunk_freq, chunk_mag)
+
+                # Check if manual tuning freq is in this chunk (approximate)
+                mf = self.sonifier.manual_freq
+                if mf >= f_chunk[0] and mf <= f_chunk[-1]:
+                    # Find closest index
+                    idx = np.searchsorted(f_chunk, mf)
+                    if idx < len(f_chunk):
+                        self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
+
             # Emit result chunk back to GUI thread
             self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
 
@@ -727,7 +696,6 @@ class LockInSpectrumFinder(MeasurementModule):
             time.sleep(0.005)
 
         if self.is_running:
-            self._update_sonifier_peaks(freqs, mags_db_all)
             self.signals.result_ready.emit((freqs, mags_db_all))
 
 
@@ -1005,12 +973,22 @@ class LockInSpectrumFinderWidget(QWidget):
         self.chk_sonification_enable.stateChanged.connect(self.on_audio_enable_toggled)
         sonification_form.addRow(self.chk_sonification_enable)
 
+        self.combo_sonification_mode = QComboBox()
+        self.combo_sonification_mode.addItem(tr("Level Monitor (Fixed Pitch)"), self.module.sonifier.MODE_LEVEL_MONITOR)
+        self.combo_sonification_mode.addItem(tr("Frequency Mapping (Variable Pitch)"), self.module.sonifier.MODE_FREQUENCY_MAPPING)
+        self.combo_sonification_mode.addItem(tr("Manual Tuner"), self.module.sonifier.MODE_MANUAL_TUNER)
+        idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
+        if idx >= 0:
+            self.combo_sonification_mode.setCurrentIndex(idx)
+        self.combo_sonification_mode.currentIndexChanged.connect(self.on_audio_mode_changed)
+        sonification_form.addRow(tr("Sonification Mode:"), self.combo_sonification_mode)
 
-        self.spin_sonification_peaks = QSpinBox()
-        self.spin_sonification_peaks.setRange(1, self.module.sonifier.MAX_SUPPORTED_PEAKS)
-        self.spin_sonification_peaks.setValue(self.module.sonifier.max_peaks)
-        self.spin_sonification_peaks.valueChanged.connect(self.on_audio_peaks_changed)
-        sonification_form.addRow(tr("Peak Count:"), self.spin_sonification_peaks)
+        self.spin_sonification_freq = QDoubleSpinBox()
+        self.spin_sonification_freq.setRange(1.0, 192000.0)
+        self.spin_sonification_freq.setValue(self.module.sonifier.manual_freq)
+        self.spin_sonification_freq.setSuffix(" Hz")
+        self.spin_sonification_freq.valueChanged.connect(self.on_audio_manual_freq_changed)
+        sonification_form.addRow(tr("Manual Tuner:"), self.spin_sonification_freq)
 
         self.spin_sonification_vol = QDoubleSpinBox()
         self.spin_sonification_vol.setRange(0.0, 100.0)
@@ -1236,10 +1214,8 @@ class LockInSpectrumFinderWidget(QWidget):
             filled = self.module.buffer_filled_samples
             size = self.module.buffer_size
 
-        target_samples = size if self.module._analysis_warmed_up else self.module._get_min_analysis_samples()
-
-        if filled < target_samples:
-            pct = int((filled / max(1, target_samples)) * 100)
+        if filled < size:
+            pct = int((filled / size) * 100)
             if self.module._calculation_future is None or self.module._calculation_future.done():
                 self.lbl_status.setText(tr("Buffering... {}%").format(pct))
             return
@@ -1517,9 +1493,13 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_audio_enable_toggled(self, state):
         self.module.sonifier.set_enabled(bool(state))
 
+    def on_audio_mode_changed(self, idx):
+        mode = self.combo_sonification_mode.itemData(idx)
+        if mode:
+            self.module.sonifier.set_mode(mode)
 
-    def on_audio_peaks_changed(self, val):
-        self.module.sonifier.set_max_peaks(val)
+    def on_audio_manual_freq_changed(self, val):
+        self.module.sonifier.set_manual_freq(val)
 
     def on_audio_volume_changed(self, val):
         self.module.sonifier.set_volume(val / 100.0)

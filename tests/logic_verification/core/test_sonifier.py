@@ -1,136 +1,91 @@
 import numpy as np
-from src.core.sonifier import PeakToneSonifier
 
+from src.core.sonifier import Sonifier
 
-def test_peak_tone_sonifier_initialization():
-    s = PeakToneSonifier(sample_rate=48000)
+def test_sonifier_initialization():
+    s = Sonifier(sample_rate=48000)
     assert s.sample_rate == 48000
     assert not s.enabled
+    assert s.mode == Sonifier.MODE_LEVEL_MONITOR
     assert s.master_volume == 0.5
     assert s.output_channel == 2
-    assert s.max_peaks == 1
 
-
-def test_peak_tone_sonifier_setters():
-    s = PeakToneSonifier()
+def test_sonifier_setters():
+    s = Sonifier()
     s.set_enabled(True)
     assert s.enabled
+
+    s.set_mode(Sonifier.MODE_FREQUENCY_MAPPING)
+    assert s.mode == Sonifier.MODE_FREQUENCY_MAPPING
 
     s.set_volume(0.8)
     assert s.master_volume == 0.8
 
+    s.set_manual_freq(500.0)
+    assert s.manual_freq == 500.0
+
     s.set_output_channel(0)
     assert s.output_channel == 0
 
-    s.set_max_peaks(3)
-    assert s.max_peaks == 3
+def test_sonifier_process_disabled():
+    s = Sonifier()
+    outdata = np.ones((1024, 2))
+    s.process(outdata)
+    # Since it's disabled and amp is 0, it should zero the buffer
+    assert np.all(outdata == 0.0)
 
-
-def test_peak_tone_sonifier_process_outputs_tone():
-    s = PeakToneSonifier(sample_rate=48000)
+def test_sonifier_process_enabled_level_monitor():
+    s = Sonifier(sample_rate=48000)
     s.set_enabled(True)
-    s.update_spectrum([1000.0], [0.0], [1000.0])
+    s.set_mode(Sonifier.MODE_LEVEL_MONITOR)
+
+    # Update with some noise
+    s.update_parameters(scan_freq=1000.0, mag_db=-50.0)
 
     outdata = np.zeros((1024, 2))
     s.process(outdata)
 
-    # Initial amp is 0, target is 1, so it should start producing sound soon
+    # Target freq should be 800.0
+    assert s.current_freq == 800.0
+
+    # Should not be all zeros
     assert np.any(outdata != 0.0)
 
-
-def test_peak_tone_sonifier_folds_to_audible_band():
-    s = PeakToneSonifier(sample_rate=48000)
-    s.set_enabled(True)
-    s.set_max_peaks(2)
-    s.update_spectrum([32000.0, 40.0], [0.0, 0.0], [32000.0, 40.0])
-
-    # Check target frequencies in oscillators
-    target_freqs = s._oscillators[:2, 1]
-    assert np.all(target_freqs >= s.AUDIBLE_MIN_FREQ)
-    assert np.all(target_freqs <= s.AUDIBLE_MAX_FREQ)
-
-
-def test_peak_tone_sonifier_smooth_amplitude_transition():
-    s = PeakToneSonifier(sample_rate=48000)
-    s.set_enabled(True)
-    s.update_spectrum([1000.0], [0.0], [1000.0])
-    
-    # First block: should fade in from 0
+    # Test output channel routing (Left only)
+    s.set_output_channel(0)
     outdata = np.zeros((1024, 2))
     s.process(outdata)
-    block1_max = np.max(np.abs(outdata))
-    
-    # Second block: should continue to increase in amplitude
-    outdata.fill(0.0)
-    s.process(outdata)
-    block2_max = np.max(np.abs(outdata))
-    
-    assert block2_max > block1_max
+    assert np.any(outdata[:, 0] != 0.0)
+    assert np.all(outdata[:, 1] == 0.0)
 
-
-def test_peak_tone_sonifier_peak_tracking():
-    s = PeakToneSonifier(sample_rate=48000)
-    s.set_enabled(True)
-    s.update_spectrum([1000.0], [0.0], [1000.0])
-    
-    # Process once to establish frequency
+    # Right only
+    s.set_output_channel(1)
     outdata = np.zeros((1024, 2))
     s.process(outdata)
-    
-    initial_f = s._oscillators[0, 0]
-    assert abs(initial_f - 1000.0) < 50.0 # Significant progress towards 1000
-    
-    # Update with a nearby peak (1100)
-    s.update_spectrum([1100.0], [0.0], [1100.0])
-    
-    # Check that it's tracking (same oscillator index)
-    assert s._oscillators[0, 1] == 1100.0
-    assert s._oscillators[0, 3] == 1.0
+    assert np.all(outdata[:, 0] == 0.0)
+    assert np.any(outdata[:, 1] != 0.0)
 
-
-def test_peak_tone_sonifier_fade_out():
-    s = PeakToneSonifier(sample_rate=48000)
+def test_sonifier_frequency_mapping():
+    s = Sonifier(sample_rate=48000)
     s.set_enabled(True)
-    s.update_spectrum([1000.0], [0.0], [1000.0])
-    
-    # Run long enough to reach some amplitude
-    for _ in range(20):
-        s.process(np.zeros((1024, 2)))
-        
-    amp_before = s._oscillators[0, 2]
-    assert amp_before > 0.5
-    
-    # Remove peak
-    s.update_spectrum([], [], [])
-    assert s._oscillators[0, 3] == 0.0 # Target amp is now 0
-    
-    # Process and check fade out
-    s.process(np.zeros((1024, 2)))
-    amp_after = s._oscillators[0, 2]
-    assert amp_after < amp_before
+    s.set_mode(Sonifier.MODE_FREQUENCY_MAPPING)
 
+    s.update_parameters(scan_freq=1234.5, mag_db=-20.0) # Max amp
 
-def test_peak_tone_sonifier_watchdog_gating():
-    import time
-    s = PeakToneSonifier(sample_rate=48000)
+    outdata = np.zeros((1024, 2))
+    s.process(outdata)
+
+    assert s.current_freq == 1234.5
+
+def test_sonifier_manual_tuner():
+    s = Sonifier(sample_rate=48000)
     s.set_enabled(True)
-    s.update_spectrum([1000.0], [0.0], [1000.0])
-    
-    # Run to establish sound
-    for _ in range(10):
-        s.process(np.zeros((512, 2)))
-    
-    assert s._oscillators[0, 2] > 0.1
-    assert s._oscillators[0, 3] == 1.0 # Target is ON
-    
-    # Wait longer than WATCHDOG_TIMEOUT (0.5s)
-    time.sleep(0.6)
-    
-    # Process: Watchdog should trigger and set target_amp to 0
-    s.process(np.zeros((512, 2)))
-    assert s._oscillators[0, 3] == 0.0
-    
-    # Amplitudes should now be decreasing
-    amp_before = s._oscillators[0, 2]
-    s.process(np.zeros((512, 2)))
-    assert s._oscillators[0, 2] < amp_before
+    s.set_mode(Sonifier.MODE_MANUAL_TUNER)
+    s.set_manual_freq(777.0)
+
+    s.update_manual_tuner_mag(mag_db=-40.0)
+
+    outdata = np.zeros((1024, 2))
+    s.process(outdata)
+
+    assert s.current_freq == 777.0
