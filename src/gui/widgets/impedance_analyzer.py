@@ -545,7 +545,7 @@ class ImpedanceAnalyzer(MeasurementModule):
                 z = complex(z_list[0], z_list[1])
                 new_cal[f] = z
             except (ValueError, TypeError, IndexError):
-                pass
+                logger.error("Failed to deserialize calibration point %s: %s", f_str, z_list, exc_info=True)
         return new_cal
 
 
