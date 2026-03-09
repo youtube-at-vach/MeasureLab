@@ -1317,7 +1317,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             # Allow time-series option only while manual measurement is running.
             try:
                 self.manual_ts_check.setEnabled(True)
-            except Exception:
+            except (AttributeError, RuntimeError):
                 pass
 
             # If time-series view is enabled, reset capture at start.
@@ -1352,7 +1352,7 @@ class ImpedanceAnalyzerWidget(QWidget):
                 self.manual_ts_check.setChecked(False)
                 self.manual_ts_check.setEnabled(False)
                 self.manual_ts_check.blockSignals(False)
-            except Exception:
+            except (AttributeError, RuntimeError):
                 pass
 
             # Keep plot consistent with current selection/data.
@@ -1492,7 +1492,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             self.toggle_btn.setText(tr("Start Measurement"))
             self.toggle_btn.blockSignals(False)
             self.toggle_btn.setEnabled(False)
-        except Exception:
+        except (AttributeError, RuntimeError):
             pass
 
         # Time-series is manual-only; force it off during sweep/calibration.
@@ -1501,7 +1501,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             self.manual_ts_check.setChecked(False)
             self.manual_ts_check.setEnabled(False)
             self.manual_ts_check.blockSignals(False)
-        except Exception:
+        except (AttributeError, RuntimeError):
             pass
         self._manual_ts_t0 = None
         self._manual_ts_warmup_until = None
