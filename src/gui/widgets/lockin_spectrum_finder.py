@@ -1105,7 +1105,7 @@ class LockInSpectrumFinderWidget(QWidget):
             options = ["65536", "131072", "262144", "524288"]
         else:
             # Up to 8M
-            options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608"]
+            options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608", "16777216"]
 
         self.combo_buffer.clear()
         self.combo_buffer.addItems(options)
