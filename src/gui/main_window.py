@@ -451,8 +451,8 @@ class MainWindow(QMainWindow):
                 return
             try:
                 progress_callback(msg)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.warning(f"Progress callback failed: {e}")
 
         report(tr("Loading Settings..."))
         QApplication.processEvents()
