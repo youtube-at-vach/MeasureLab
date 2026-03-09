@@ -471,7 +471,7 @@ class MainWindow(QMainWindow):
         try:
             self.audio_engine.stop_stream()
         except Exception:
-            pass
+            self.logger.exception("Failed to stop audio stream on close")
         super().closeEvent(event)
 
     def update_status(self):
