@@ -63,7 +63,7 @@ class TopLevelWindowLogger(QObject):
                         if 0 < g.width() <= 650 and 0 < g.height() <= 120:
                             self._maybe_trace(obj)
         except (AttributeError, RuntimeError):
-            pass
+            self.logger.error("Error in event filter", exc_info=True)
 
         return super().eventFilter(obj, event)
 
