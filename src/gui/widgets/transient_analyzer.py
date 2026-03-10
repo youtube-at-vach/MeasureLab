@@ -5,6 +5,7 @@ import pyqtgraph as pg
 import pywt
 from PyQt6.QtCore import QRectF, Qt, QTimer
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
@@ -504,9 +505,8 @@ class TransientAnalyzerWidget(QWidget):
 
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setText(tr("Analyzing..."))
-        QTimer.singleShot(10, self._perform_analysis)
+        QApplication.processEvents()
 
-    def _perform_analysis(self):
         try:
             times, freqs, mag = self.module.analyze()
 
