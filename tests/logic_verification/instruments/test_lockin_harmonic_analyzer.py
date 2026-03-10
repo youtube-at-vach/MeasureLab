@@ -110,3 +110,44 @@ def test_lockin_harmonic_analyzer_coherent_bin_centered_mode():
     assert analyzer.harmonics_amp[1] < 5e-3
 
     analyzer.stop_analysis()
+
+
+def test_lockin_harmonic_analyzer_clear_buffer():
+    engine = MockAudioEngine()
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    # Set some initial dummy data to verify it gets cleared
+    analyzer.input_data.fill(1.0)
+    analyzer.input_buffer_pos = 100
+    analyzer.buffer_filled_samples = 100
+
+    analyzer.measured_freq = 1000.0
+    analyzer.thd_value = 1.0
+    analyzer.thd_db = -40.0
+    analyzer.thdn_value = 1.5
+    analyzer.thdn_db = -38.0
+    analyzer.residual_rms = 0.5
+
+    analyzer.residual_history.extend([1, 2, 3])
+    analyzer.harmonics_amp.fill(0.5)
+    analyzer.harmonics_phase_deg.fill(45.0)
+
+    # Call clear_buffer
+    analyzer.clear_buffer()
+
+    # Verify input buffer states are reset
+    assert np.all(analyzer.input_data == 0)
+    assert analyzer.input_buffer_pos == 0
+    assert analyzer.buffer_filled_samples == 0
+
+    # Verify results are reset
+    assert analyzer.measured_freq == 0.0
+    assert analyzer.thd_value == 0.0
+    assert analyzer.thd_db == -300.0  # DISTORTION_DB_FLOOR
+    assert analyzer.thdn_value == 0.0
+    assert analyzer.thdn_db == -300.0 # DISTORTION_DB_FLOOR
+    assert analyzer.residual_rms == 0.0
+
+    assert len(analyzer.residual_history) == 0
+    assert np.all(analyzer.harmonics_amp == 0)
+    assert np.all(analyzer.harmonics_phase_deg == 0)
