@@ -165,23 +165,33 @@ class SoundLevelMeter(MeasurementModule):
 
         if upper_freq >= nyquist * 0.95:
             # Just Highpass
-            self.bw_filter = sos_hp
+            new_bw_filter = sos_hp
         else:
             # Highpass + Lowpass cascade
             sos_lp = butter(4, upper_freq, btype="lowpass", fs=sr, output="sos")
-            self.bw_filter = np.vstack((sos_hp, sos_lp))
+            new_bw_filter = np.vstack((sos_hp, sos_lp))
 
-        self.bw_filter_state = np.zeros((self.bw_filter.shape[0], 2))
+        new_bw_state = np.zeros((new_bw_filter.shape[0], 2))
 
         if self.freq_weighting == "Z":
-            self.sos_filter = None
-            self.filter_state = None
+            new_sos_filter = None
+            new_filter_state = None
         elif self.freq_weighting == "A":
-            self.sos_filter = AudioCalc.design_a_weighting(sr)
-            self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
+            new_sos_filter = AudioCalc.design_a_weighting(sr)
+            new_filter_state = np.zeros((new_sos_filter.shape[0], 2))
         elif self.freq_weighting == "C":
-            self.sos_filter = AudioCalc.design_c_weighting(sr)
-            self.filter_state = np.zeros((self.sos_filter.shape[0], 2))
+            new_sos_filter = AudioCalc.design_c_weighting(sr)
+            new_filter_state = np.zeros((new_sos_filter.shape[0], 2))
+
+        # Assign atomically to prevent race condition in the audio callback
+        self.bw_filter_state = new_bw_state
+        self.bw_filter = new_bw_filter
+        if self.freq_weighting != "Z":
+            self.filter_state = new_filter_state
+            self.sos_filter = new_sos_filter
+        else:
+            self.filter_state = None
+            self.sos_filter = None
 
     def _apply_impulse_weighting(self, sq_sig, sr):
         """
@@ -295,12 +305,23 @@ class SoundLevelMeter(MeasurementModule):
         # Let's assume 1.0 FS = 0 dB for internal math, then add global offset.
 
         # Apply Bandwidth Filter (HighSens/Wide/Normal)
-        if self.bw_filter is not None and self.bw_filter_state is not None:
-            sig, self.bw_filter_state = sosfilt(self.bw_filter, sig, zi=self.bw_filter_state)
+        bw_filt = self.bw_filter
+        bw_state = self.bw_filter_state
+        if bw_filt is not None and bw_state is not None:
+            try:
+                sig, self.bw_filter_state = sosfilt(bw_filt, sig, zi=bw_state)
+            except ValueError:
+                # Shape mismatch due to a thread context switch changing bw_filter mid-callback
+                pass
 
         # Apply Frequency Weighting
-        if self.sos_filter is not None and self.filter_state is not None:
-            sig, self.filter_state = sosfilt(self.sos_filter, sig, zi=self.filter_state)
+        freq_filt = self.sos_filter
+        freq_state = self.filter_state
+        if freq_filt is not None and freq_state is not None:
+            try:
+                sig, self.filter_state = sosfilt(freq_filt, sig, zi=freq_state)
+            except ValueError:
+                pass
 
         # Square signal for power
         sq_sig = sig**2
