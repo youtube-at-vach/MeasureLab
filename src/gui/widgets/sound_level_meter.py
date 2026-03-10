@@ -6,7 +6,6 @@ from scipy.signal import butter, lfilter, sosfilt
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
-    QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -34,7 +33,6 @@ class SoundLevelMeter(MeasurementModule):
         self.time_weighting = "FAST"  # FAST, SLOW, IMPULSE, 10ms
         self.channel = 0  # 0 for Left, 1 for Right
         self.target_duration = None  # None means continuous
-        self.sampling_period = 0.1  # seconds
         self.start_time = None
         self.bandwidth_mode = "20Hz - 20kHz (Wide)"  # Default
 
@@ -114,9 +112,6 @@ class SoundLevelMeter(MeasurementModule):
             self.target_duration = float(val)
         # Don't reset immediately, applies to next start? Or reset if running?
         # Usually settings apply to next run.
-
-    def set_sampling_period(self, period):
-        self.sampling_period = period
 
     def set_bandwidth_mode(self, mode):
         # mode: String from combobox
@@ -564,16 +559,6 @@ class SoundLevelMeterWidget(QWidget):
         )
         self.combo_duration.currentTextChanged.connect(self.module.set_target_duration)
         settings_layout.addWidget(self.combo_duration)
-
-        # Sampling Period
-        settings_layout.addWidget(QLabel(tr("Lp Interval:")))
-        self.spin_interval = QDoubleSpinBox()
-        self.spin_interval.setRange(0.01, 10.0)
-        self.spin_interval.setSingleStep(0.1)
-        self.spin_interval.setValue(0.1)
-        self.spin_interval.setSuffix(" s")
-        self.spin_interval.valueChanged.connect(self.module.set_sampling_period)
-        settings_layout.addWidget(self.spin_interval)
 
         settings_group.setLayout(settings_layout)
         sidebar_layout.addWidget(settings_group)
