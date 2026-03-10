@@ -29,7 +29,6 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Offline Null Comparator:**
     * **Concept:** File-based reference vs. DUT comparison.
 
-
 ### 🛠️ Extensions to Existing Widgets
 
 * **Network Analyzer: Amplifier Stability Margins:**
