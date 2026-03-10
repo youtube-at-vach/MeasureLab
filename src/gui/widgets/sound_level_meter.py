@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import pyqtgraph as pg
-from scipy.signal import butter, lfilter, sosfilt
+from scipy.signal import lfilter, sosfilt
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -36,7 +36,6 @@ class SoundLevelMeter(MeasurementModule):
         self.target_duration = None  # None means continuous
         self.sampling_period = 0.1  # seconds
         self.start_time = None
-        self.bandwidth_mode = "20Hz - 20kHz (Wide)"  # Default
 
         # State variables
         self.leq_integrator = 0.0
@@ -55,8 +54,6 @@ class SoundLevelMeter(MeasurementModule):
         # Filters
         self.sos_filter = None
         self.filter_state = None
-        self.bw_filter = None
-        self.bw_filter_state = None
 
         # Time weighting constants (tau)
         self.TIME_CONSTANTS = {
@@ -118,11 +115,6 @@ class SoundLevelMeter(MeasurementModule):
     def set_sampling_period(self, period):
         self.sampling_period = period
 
-    def set_bandwidth_mode(self, mode):
-        # mode: String from combobox
-        self.bandwidth_mode = mode
-        self._update_filters()
-
     def reset_measurements(self):
         self.leq_integrator = 0.0
         self.leq_samples = 0
@@ -149,34 +141,6 @@ class SoundLevelMeter(MeasurementModule):
         sr = self.audio_engine.sample_rate
         if not sr:
             return
-
-        # Bandwidth Filter Design
-        # 20Hz is common lower bound.
-        # Upper: 12.5k, 20k, 8k
-        upper_freq = 20000
-        if "12.5kHz" in self.bandwidth_mode:
-            upper_freq = 12500
-        elif "8kHz" in self.bandwidth_mode:
-            upper_freq = 8000
-        elif "20kHz" in self.bandwidth_mode:
-            upper_freq = 20000
-
-        # Ensure upper freq is below Nyquist
-        nyquist = sr / 2.0
-
-        # Design separately to avoid wide-bandpass issues
-        # Highpass 20Hz (Always apply)
-        sos_hp = butter(4, 20, btype="highpass", fs=sr, output="sos")
-
-        if upper_freq >= nyquist * 0.95:
-            # Just Highpass
-            self.bw_filter = sos_hp
-        else:
-            # Highpass + Lowpass cascade
-            sos_lp = butter(4, upper_freq, btype="lowpass", fs=sr, output="sos")
-            self.bw_filter = np.vstack((sos_hp, sos_lp))
-
-        self.bw_filter_state = np.zeros((self.bw_filter.shape[0], 2))
 
         if self.freq_weighting == "Z":
             self.sos_filter = None
@@ -298,10 +262,6 @@ class SoundLevelMeter(MeasurementModule):
         # For robustness, let's calculate in FS and add offset in display.
         # Ah, but integrators need linear values.
         # Let's assume 1.0 FS = 0 dB for internal math, then add global offset.
-
-        # Apply Bandwidth Filter (HighSens/Wide/Normal)
-        if self.bw_filter is not None and self.bw_filter_state is not None:
-            sig, self.bw_filter_state = sosfilt(self.bw_filter, sig, zi=self.bw_filter_state)
 
         # Apply Frequency Weighting
         if self.sos_filter is not None and self.filter_state is not None:
@@ -548,13 +508,6 @@ class SoundLevelMeterWidget(QWidget):
         self.combo_time.addItems(["FAST", "SLOW", "IMPULSE", "10ms"])
         self.combo_time.currentTextChanged.connect(self.module.set_time_weighting)
         settings_layout.addWidget(self.combo_time)
-
-        # Bandwidth
-        settings_layout.addWidget(QLabel(tr("Bandwidth:")))
-        self.combo_bw = QComboBox()
-        self.combo_bw.addItems(["20Hz - 20kHz", "20Hz - 12.5kHz", "20Hz - 8kHz"])
-        self.combo_bw.currentTextChanged.connect(self.module.set_bandwidth_mode)
-        settings_layout.addWidget(self.combo_bw)
 
         # Duration
         settings_layout.addWidget(QLabel(tr("Duration:")))

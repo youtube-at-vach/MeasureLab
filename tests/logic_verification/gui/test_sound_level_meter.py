@@ -165,25 +165,6 @@ class TestSoundLevelMeterWeighting:
             assert abs(measured_db - expected_db) < tol, \
                 f"C-Weighting failed at {freq}Hz: Expected {expected_db}, got {measured_db:.2f}"
 
-    def test_bw_filter_response(self, slm):
-        """Verify bandwidth filter response (20Hz-20kHz)."""
-        slm._update_filters() # Default is 20-20k (Wide)
-        sos = slm.bw_filter
-        assert sos is not None
-
-        fs = slm.audio_engine.sample_rate
-
-        # Check 100Hz (should be near 0dB)
-        w, h = scipy.signal.sosfreqz(sos, worN=[100], fs=fs)
-        measured_db = 20 * np.log10(np.abs(h[0]) + 1e-12)
-        print(f"DEBUG: BW Filter at 100Hz: {measured_db:.2f} dB")
-        assert abs(measured_db) < 0.5, f"BW Filter 100Hz gain error: {measured_db}"
-
-        # Check 1kHz
-        w, h = scipy.signal.sosfreqz(sos, worN=[1000], fs=fs)
-        measured_db = 20 * np.log10(np.abs(h[0]) + 1e-12)
-        assert abs(measured_db) < 0.1
-
     def test_z_weighting_response(self, slm):
         """Verify Z-weighting is flat (no filter)."""
         slm.set_freq_weighting('Z')
