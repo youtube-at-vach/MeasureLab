@@ -130,6 +130,7 @@ class RecorderPlayer(MeasurementModule):
 
         # Disk Streaming
         self._temp_record_file = None
+        self._temp_record_fd = None
         self._write_queue = None
         self._writer_thread = None
 
@@ -222,6 +223,13 @@ class RecorderPlayer(MeasurementModule):
         self._check_stop_callback()
 
     def _remove_temp_file(self):
+        if self._temp_record_fd is not None:
+            try:
+                os.close(self._temp_record_fd)
+            except OSError:
+                pass
+            self._temp_record_fd = None
+
         if self._temp_record_file and os.path.exists(self._temp_record_file):
             try:
                 os.remove(self._temp_record_file)
@@ -245,15 +253,27 @@ class RecorderPlayer(MeasurementModule):
             # Wait for first chunk to determine channels
             first_chunk = self._write_queue.get()
             if first_chunk is None:
+                # If we exit before opening the file, ensure the fd is closed
+                if self._temp_record_fd is not None:
+                    try:
+                        os.close(self._temp_record_fd)
+                        self._temp_record_fd = None
+                    except OSError:
+                        pass
                 return
 
             channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
             samplerate = int(self.audio_engine.sample_rate)
 
             # Open file for writing. using 'FLOAT' subtype for high quality temp storage
+            # Use the secure file descriptor instead of the filepath to prevent TOCTOU
+            # The format argument is required when using a file descriptor
             with sf.SoundFile(
-                self._temp_record_file, mode="w", samplerate=samplerate, channels=channels, subtype="FLOAT"
+                self._temp_record_fd, mode="w", samplerate=samplerate, channels=channels, subtype="FLOAT", format="WAV", closefd=True
             ) as f:
+                # SoundFile now owns the fd and will close it
+                self._temp_record_fd = None
+
                 f.write(first_chunk)
 
                 while True:
@@ -269,9 +289,8 @@ class RecorderPlayer(MeasurementModule):
         # Cleanup previous temp file
         self._remove_temp_file()
 
-        # Create new temp file
-        fd, self._temp_record_file = tempfile.mkstemp(suffix=".wav")
-        os.close(fd)
+        # Create new temp file and store file descriptor to avoid TOCTOU vulnerability
+        self._temp_record_fd, self._temp_record_file = tempfile.mkstemp(suffix=".wav")
 
         # Init queue and thread
         self._write_queue = queue.Queue()
