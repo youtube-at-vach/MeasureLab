@@ -329,29 +329,6 @@ class AudioCalc:
         return AudioCalc._apply_filter(signal, sampling_rate, 27, get_sos)
 
     @staticmethod
-    def notch_filter(signal, sampling_rate, target_frequency, quality_factor=30):
-        # Check signal length to ensure padding works (3 * (2 * 2 + 1) = 15)
-        def get_sos(nyquist):
-            if target_frequency <= 0 or target_frequency >= nyquist:
-                return None
-
-            w0 = target_frequency / nyquist
-            bandwidth = w0 / quality_factor
-
-            # Validate resulting filter poles
-            w_low = w0 - bandwidth / 2
-            w_high = w0 + bandwidth / 2
-
-            if w_low <= 0 or w_high >= 1:
-                return None
-
-            # Wn must be a tuple to be hashable for lru_cache
-            Wn = (w_low, w_high)
-            return _get_butter_sos(2, Wn, "bandstop")
-
-        return AudioCalc._apply_filter(signal, sampling_rate, 15, get_sos)
-
-    @staticmethod
     def _sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer):
         """
         Calculates the residual MSE for a single frequency f using Sine Fitting.

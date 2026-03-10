@@ -82,30 +82,6 @@ def test_bandpass_filter_invalid_bounds():
     filtered = AudioCalc.bandpass_filter(signal, sampling_rate, lowcut=1000.0, highcut=1000.0)
     assert np.allclose(filtered, 0)
 
-def test_notch_filter_safety():
-    """Verify safety with invalid notch parameters."""
-    sampling_rate = 48000
-    signal = np.random.randn(1000)
-
-    # Case 1: Target > Nyquist
-    # Should return original signal (bypass)
-    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=30000.0)
-    assert np.array_equal(filtered, signal)
-
-    # Case 2: Target <= 0
-    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
-    assert np.array_equal(filtered, signal)
-
-    # Case 3: Bandwidth causes Nyquist violation
-    # Target 23900, Q=0.1 -> Bandwidth very large, upper > 24000
-    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=23900.0, quality_factor=0.1)
-    assert np.array_equal(filtered, signal)
-
-    # Case 4: Bandwidth causes DC violation
-    # Target 100, Q=0.1 -> Bandwidth very large, lower < 0
-    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=100.0, quality_factor=0.1)
-    assert np.array_equal(filtered, signal)
-
 def test_bandpass_filter_nyquist_handling():
     """Verify behavior near Nyquist frequency."""
     sampling_rate = 48000
@@ -253,67 +229,4 @@ def test_highpass_filter_edge_cases():
     filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=-100.0)
     assert len(filtered) == len(signal)
     # Should not crash
-
-
-def test_notch_filter_attenuation():
-    """Verify that the target frequency is attenuated."""
-    sampling_rate = 48000
-    duration = 0.2
-    t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
-
-    # Target freq: 1000 Hz
-    target_signal = np.sin(2 * np.pi * 1000 * t)
-    # Other freq: 500 Hz (far enough from 1000 Hz)
-    other_signal = np.sin(2 * np.pi * 500 * t)
-
-    # Filter at 1000 Hz
-    filtered_target = AudioCalc.notch_filter(target_signal, sampling_rate, target_frequency=1000.0, quality_factor=30)
-    filtered_other = AudioCalc.notch_filter(other_signal, sampling_rate, target_frequency=1000.0, quality_factor=30)
-
-    # Check RMS values
-    trim = int(sampling_rate * 0.05) # More trim for notch settling?
-
-    def get_rms(sig):
-        return np.sqrt(np.mean(sig[trim:-trim]**2))
-
-    rms_target = get_rms(filtered_target)
-    rms_other = get_rms(filtered_other)
-
-    orig_rms_target = np.sqrt(np.mean(target_signal**2))
-    orig_rms_other = np.sqrt(np.mean(other_signal**2))
-
-    # Expect significant attenuation for target freq (>20dB)
-    assert rms_target < orig_rms_target * 0.1, f"Target frequency not attenuated enough: {rms_target} vs {orig_rms_target}"
-    # Expect preservation for other freq
-    assert rms_other > orig_rms_other * 0.9, f"Other frequency attenuated too much: {rms_other} vs {orig_rms_other}"
-
-
-def test_notch_filter_short_signal():
-    """Verify that signals shorter than 16 samples are returned as is."""
-    sampling_rate = 48000
-
-    # Test with exactly 15 samples
-    signal = np.zeros(15)
-    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=1000.0)
-    assert np.array_equal(filtered, signal)
-
-    # Test with shorter signal
-    signal = np.zeros(10)
-    filtered = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=1000.0)
-    assert np.array_equal(filtered, signal)
-
-def test_notch_filter_edge_cases():
-    """Verify behavior with edge cases."""
-    sampling_rate = 48000
-    signal = np.random.randn(1000)
-
-    # Case: target <= 0
-    # Expected to bypass and return the original signal
-    filtered_negative = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=-100.0)
-    assert np.array_equal(filtered_negative, signal)
-
-    # Case: target > nyquist
-    # Expected to bypass and return the original signal
-    filtered_nyquist = AudioCalc.notch_filter(signal, sampling_rate, target_frequency=sampling_rate + 100.0)
-    assert np.array_equal(filtered_nyquist, signal)
 # Trigger CI
