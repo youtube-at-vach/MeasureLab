@@ -290,7 +290,9 @@ class RecorderPlayer(MeasurementModule):
         self._remove_temp_file()
 
         # Create new temp file and store file descriptor to avoid TOCTOU vulnerability
-        self._temp_record_fd, self._temp_record_file = tempfile.mkstemp(suffix=".wav")
+        fd, self._temp_record_file = tempfile.mkstemp(suffix=".wav")
+        # Keep the file descriptor open and store it for sf.SoundFile to use
+        self._temp_record_fd = fd
 
         # Init queue and thread
         self._write_queue = queue.Queue()
