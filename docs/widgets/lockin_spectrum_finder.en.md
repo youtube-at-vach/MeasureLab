@@ -78,6 +78,26 @@ The **Scan Targets** tab provides target management features for specific freque
 * **Import / Export**: Save and load target lists as JSON files.
 * **Zoom to Selected**: Quickly transitions to Zoom Mode centered on the selected target frequency.
 
+### Target Generators Tab
+
+The **Target Generators** tab allows you to configure rules to automatically generate scan targets.
+
+* **Mains Power**: Generates target frequencies for the fundamental mains frequency (50/60 Hz or both) and its harmonics up to a specified order.
+* **Musical Scale (Equal Temperament)**: Generates target frequencies corresponding to standard musical notes (C0 to G9) based on a configurable A4 reference frequency (default 440 Hz).
+* **Apply Generation Settings**: Press this button to generate and add these targets to your current target list in the **Scan Targets** tab.
+
+### Audio Sonification Tab
+
+The **Audio Sonification** tab provides an audio output corresponding to detected signals, effectively letting you "hear" the power noise or other narrow-band signals.
+
+* **Enable Sonification**: Toggles the audio output feature.
+* **Sonification Mode**:
+    * **Level Monitor (Fixed Pitch)**: Emits a continuous tone where the volume represents the magnitude of the strongest signal in the current analysis chunk.
+    * **Frequency Mapping (Variable Pitch)**: Emits a tone where both pitch and volume track the strongest detected frequency and its magnitude.
+    * **Manual Tuner**: Emits a tone based on a manually specified frequency, allowing you to listen to a specific narrow band.
+* **Manual Tuner / Volume (Gain)**: Adjusts the manual target frequency and the master sonification gain (adjustable in dB down to -120 dB allowing observation of very weak signals).
+* **Output Channel**: Routes the sonification audio to the Left, Right, or Both channels.
+
 ### Zoom Mode Specific Settings
 
 * **Zoom Center**

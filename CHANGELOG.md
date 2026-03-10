@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.5.7] - 2026-03-10
+
+### Added
+
+* **Analyzer**: Added Resolution Bandwidth (RBW) and step size display styling improvements to the Lock-in Spectrum Finder's zoom mode.
+* **Analyzer**: Added Musical Scale target generator and mains harmonics target management to the Lock-in Spectrum Finder.
+* **Analyzer**: Introduced Power Noise Sonification enhancements with volume controls (dB gain) and a watchdog timer to the Lock-in Spectrum Finder.
+* **I18n**: Added comprehensive Japanese translation updates and synchronized translation keys across all languages for the Sonification feature.
+* **Docs**: Updated README files with information about the GPT-5.4 AI model.
+
+### Changed
+
+* **Refactor**: Reworked sonifier volume control to use dB gain and unified the oscillator bank.
+* **Tests**: Expanded test coverage for dBFS, dBV, and SPL conversions in CalibrationManager, as well as impedance analyzer and lock-in harmonic analyzer features.
+
+### Fixed
+
+* **Security**: Fixed TOCTOU (Time-Of-Check to Time-Of-Use) vulnerabilities in recording temp file creation (`RecorderPlayer`).
+* **Core**: Removed unused `jam_capture_auto` method and unused annotations imports.
+
 ## [v0.5.6] - 2026-03-06
 
 ### Added
