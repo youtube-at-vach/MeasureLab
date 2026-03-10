@@ -512,7 +512,7 @@ class NetworkAnalyzerWidget(QWidget):
         # Decouple plot updates
         self.update_timer = QTimer()
         self._needs_plot_update = False
-        self.update_timer.timeout.connect(self._on_update_timer)
+        self.update_timer.timeout.connect(self.on_update_timer)
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -969,7 +969,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.start_btn.setChecked(False)
         self.start_btn.setText(tr("Start Sweep"))
 
-    def _on_update_timer(self):
+    def on_update_timer(self):
         if self._needs_plot_update:
             self.refresh_plots()
             self._needs_plot_update = False
