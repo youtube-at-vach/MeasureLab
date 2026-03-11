@@ -57,55 +57,61 @@ def _get_default_targets(
     include_musical_scale: bool = False,
     a4_freq: float = 440.0,
     musical_scale_type: str = "12TET",
+    include_mains_power: bool = True,
+    include_default_presets: bool = True,
 ) -> dict:
-    targets = {
-        997.0: "Standard Test Tone (997Hz)",
-        1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
-        8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
-        11025.0: "Audio Sample Rate (11.025kHz)",
-        15625.0: "CRT Horizontal Scan (PAL/SECAM 15.625kHz)",
-        15734.0: "CRT Horizontal Scan (NTSC 15.734kHz)",
-        16000.0: "Audio Sample Rate (16kHz)",
-        19000.0: "FM Pilot Tone (19kHz)",
-        20000.0: "Upper Hearing Limit / SMPS Noise (20kHz)",
-        22050.0: "Audio Sample Rate (22.05kHz)",
-        24000.0: "Audio Sample Rate Base (24kHz)",
-        25000.0: "SMPS Noise (25kHz)",
-        30000.0: "SMPS Noise (30kHz)",
-        31250.0: "CRT Monitor Scan (31.25kHz) / MIDI Baud Rate",
-        31468.0: "CRT Monitor Scan / VGA (31.468kHz)",
-        31500.0: "LCD / CRT Monitor Scan (31.5kHz)",
-        32000.0: "Audio Sample Rate (32kHz)",
-        32768.0: "RTC Crystal Oscillator (32.768kHz)",
-        37900.0: "CRT Monitor Scan (37.9kHz)",
-        38000.0: "FM Stereo Subcarrier (38kHz)",
-        40000.0: "Ultrasonic Transducer / SMPS Noise (40kHz)",
-        44100.0: "CD Audio (44.1kHz)",
-        46875.0: "CRT Monitor Scan (46.875kHz)",
-        47202.0: "CRT Monitor Scan (47.202kHz)",
-        48000.0: "DAT/Video Audio (48kHz)",
-        48400.0: "CRT Monitor Scan (48.4kHz)",
-        50000.0: "SMPS Noise (50kHz)",
-        57000.0: "RDS / RBDS (57kHz)",
-        60000.0: "SMPS Noise (60kHz)",
-        62936.0: "CRT Monitor Scan (62.936kHz)",
-        80000.0: "SMPS Noise (80kHz)",
-        88200.0: "Hi-Res Audio (88.2kHz)",
-        96000.0: "Hi-Res Audio (96kHz)",
-        100000.0: "SMPS Noise (100kHz)",
-    }
+    targets = {}
 
-    bases = [50.0, 60.0] if mains_freq is None else [mains_freq]
+    if include_default_presets:
+        targets = {
+            997.0: "Standard Test Tone (997Hz)",
+            1000.0: "Standard Test Tone (1kHz) / USB Frame (1ms)",
+            8000.0: "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
+            11025.0: "Audio Sample Rate (11.025kHz)",
+            15625.0: "CRT Horizontal Scan (PAL/SECAM 15.625kHz)",
+            15734.0: "CRT Horizontal Scan (NTSC 15.734kHz)",
+            16000.0: "Audio Sample Rate (16kHz)",
+            19000.0: "FM Pilot Tone (19kHz)",
+            20000.0: "Upper Hearing Limit / SMPS Noise (20kHz)",
+            22050.0: "Audio Sample Rate (22.05kHz)",
+            24000.0: "Audio Sample Rate Base (24kHz)",
+            25000.0: "SMPS Noise (25kHz)",
+            30000.0: "SMPS Noise (30kHz)",
+            31250.0: "CRT Monitor Scan (31.25kHz) / MIDI Baud Rate",
+            31468.0: "CRT Monitor Scan / VGA (31.468kHz)",
+            31500.0: "LCD / CRT Monitor Scan (31.5kHz)",
+            32000.0: "Audio Sample Rate (32kHz)",
+            32768.0: "RTC Crystal Oscillator (32.768kHz)",
+            37900.0: "CRT Monitor Scan (37.9kHz)",
+            38000.0: "FM Stereo Subcarrier (38kHz)",
+            40000.0: "Ultrasonic Transducer / SMPS Noise (40kHz)",
+            44100.0: "CD Audio (44.1kHz)",
+            46875.0: "CRT Monitor Scan (46.875kHz)",
+            47202.0: "CRT Monitor Scan (47.202kHz)",
+            48000.0: "DAT/Video Audio (48kHz)",
+            48400.0: "CRT Monitor Scan (48.4kHz)",
+            50000.0: "SMPS Noise (50kHz)",
+            57000.0: "RDS / RBDS (57kHz)",
+            60000.0: "SMPS Noise (60kHz)",
+            62936.0: "CRT Monitor Scan (62.936kHz)",
+            80000.0: "SMPS Noise (80kHz)",
+            88200.0: "Hi-Res Audio (88.2kHz)",
+            96000.0: "Hi-Res Audio (96kHz)",
+            100000.0: "SMPS Noise (100kHz)",
+        }
 
-    for _order in range(1, mains_harmonics + 1):
-        for _base in bases:
-            _f = float(_base * _order)
-            _note = _get_mains_note(int(_base), _order)
-            if _f in targets:
-                if _note not in targets[_f]:
-                    targets[_f] += f" / {_note}"
-            else:
-                targets[_f] = _note
+    if include_mains_power:
+        bases = [50.0, 60.0] if mains_freq is None else [mains_freq]
+
+        for _order in range(1, mains_harmonics + 1):
+            for _base in bases:
+                _f = float(_base * _order)
+                _note = _get_mains_note(int(_base), _order)
+                if _f in targets:
+                    if _note not in targets[_f]:
+                        targets[_f] += f" / {_note}"
+                else:
+                    targets[_f] = _note
 
     if include_musical_scale:
         if musical_scale_type == "24TET":
@@ -227,6 +233,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.octave_ref_freq = 1000.0
 
         # Mains Power Settings
+        self.include_mains_power = True
         self.mains_freq = None  # None means both 50 and 60 Hz
         self.mains_harmonics_count = 16
 
@@ -234,6 +241,9 @@ class LockInSpectrumFinder(MeasurementModule):
         self.include_musical_scale = False
         self.musical_scale_type = "12TET"
         self.a4_freq = 440.0
+
+        # Default Presets Setting
+        self.include_default_presets = True
 
         self.current_targets = self._load_user_targets()
         self._module_keys = [
@@ -312,6 +322,8 @@ class LockInSpectrumFinder(MeasurementModule):
             self.include_musical_scale,
             self.a4_freq,
             self.musical_scale_type,
+            self.include_mains_power,
+            self.include_default_presets,
         )
 
     def update_generator_targets(self):
@@ -320,14 +332,29 @@ class LockInSpectrumFinder(MeasurementModule):
         """
         # 1. Clean up old generated targets from current targets
         to_delete = []
+
+        default_preset_dict = _get_default_targets(
+            include_mains_power=False, include_musical_scale=False, include_default_presets=True
+        )
+        default_preset_values = set(default_preset_dict.values())
+
         for f, note in list(self.current_targets.items()):
-            if "Mains" in note or "Note " in note:
-                # Split by ' / ' and keep parts that don't look like generated targets
-                parts = [p.strip() for p in note.split(" / ") if "Mains" not in p and not p.strip().startswith("Note ")]
-                if parts:
-                    self.current_targets[f] = " / ".join(parts)
+            parts = [p.strip() for p in note.split(" / ")]
+            new_parts = []
+            for p in parts:
+                is_mains = "Mains" in p
+                is_note = p.startswith("Note ")
+                is_preset = p in default_preset_values
+
+                if is_mains or is_note or is_preset:
+                    continue  # Remove
                 else:
-                    to_delete.append(f)
+                    new_parts.append(p)
+
+            if new_parts:
+                self.current_targets[f] = " / ".join(new_parts)
+            else:
+                to_delete.append(f)
 
         for f in to_delete:
             del self.current_targets[f]
@@ -339,6 +366,8 @@ class LockInSpectrumFinder(MeasurementModule):
             self.include_musical_scale,
             self.a4_freq,
             self.musical_scale_type,
+            self.include_mains_power,
+            self.include_default_presets,
         )
 
         # 3. Merge new targets into current_targets
@@ -347,7 +376,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 self.current_targets[f] = note
             else:
                 # Just merge the generated parts to avoid duplicating base default notes
-                gen_parts = [p.strip() for p in note.split(" / ") if "Mains" in p or p.strip().startswith("Note ")]
+                gen_parts = [p.strip() for p in note.split(" / ")]
                 for gp in gen_parts:
                     if gp not in self.current_targets[f]:
                         self.current_targets[f] += f" / {gp}"
@@ -1007,6 +1036,11 @@ class LockInSpectrumFinderWidget(QWidget):
         mains_group = QGroupBox(tr("Mains Power"))
         mains_form = QFormLayout()
 
+        self.chk_mains_power = QCheckBox(tr("Include Mains Power"))
+        self.chk_mains_power.setChecked(self.module.include_mains_power)
+        self.chk_mains_power.stateChanged.connect(self.on_mains_power_changed)
+        mains_form.addRow(self.chk_mains_power)
+
         self.combo_mains_freq = QComboBox()
         self.combo_mains_freq.addItem(tr("Both (50/60 Hz)"), None)
         self.combo_mains_freq.addItem("50 Hz", 50.0)
@@ -1055,6 +1089,18 @@ class LockInSpectrumFinderWidget(QWidget):
 
         scale_group.setLayout(scale_form)
         gen_layout.addWidget(scale_group)
+
+        # Presets Group
+        presets_group = QGroupBox(tr("Other Presets"))
+        presets_form = QFormLayout()
+
+        self.chk_default_presets = QCheckBox(tr("Include Default Presets (Sample Rates, SMPS, etc.)"))
+        self.chk_default_presets.setChecked(self.module.include_default_presets)
+        self.chk_default_presets.stateChanged.connect(self.on_default_presets_changed)
+        presets_form.addRow(self.chk_default_presets)
+
+        presets_group.setLayout(presets_form)
+        gen_layout.addWidget(presets_group)
 
         gen_layout.addStretch()
 
@@ -1614,6 +1660,8 @@ class LockInSpectrumFinderWidget(QWidget):
                     self.module.include_musical_scale,
                     self.module.a4_freq,
                     self.module.musical_scale_type,
+                    self.module.include_mains_power,
+                    self.module.include_default_presets,
                 )
             )
             self._populate_targets_table()
@@ -1633,6 +1681,14 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def on_a4_freq_changed(self, val):
         self.module.a4_freq = val
+
+    def on_mains_power_changed(self, state):
+        self.module.include_mains_power = bool(state)
+        self.combo_mains_freq.setEnabled(self.module.include_mains_power)
+        self.spin_mains_harmonics.setEnabled(self.module.include_mains_power)
+
+    def on_default_presets_changed(self, state):
+        self.module.include_default_presets = bool(state)
 
     def on_apply_gen(self):
         self.module.update_generator_targets()
