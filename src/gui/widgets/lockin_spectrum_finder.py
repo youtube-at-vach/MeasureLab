@@ -583,6 +583,13 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs = freqs[freqs >= df]  # Prevent 0 Hz and extremely low frequencies
             if len(freqs) == 0:
                 freqs = np.array([df])
+        elif spacing == "Scan List Only":
+            if targets:
+                freqs = np.array(sorted([f for f in targets.keys() if start_f <= f <= stop_f]))
+            else:
+                freqs = np.array([])
+            if len(freqs) == 0:
+                freqs = np.array([start_f, stop_f])
         elif spacing.endswith("Octave"):
             try:
                 frac = spacing.split(" ")[0].split("/")
@@ -602,9 +609,9 @@ class LockInSpectrumFinder(MeasurementModule):
             freqs = np.linspace(start_f, stop_f, points)
 
         marker_freqs = []
-        if include_targets and targets:
-            marker_freqs = [f for f in targets.keys() if start_f < f < stop_f]
-            if marker_freqs:
+        if (include_targets or spacing == "Scan List Only") and targets:
+            marker_freqs = [f for f in targets.keys() if start_f <= f <= stop_f]
+            if marker_freqs and spacing != "Scan List Only":
                 # np.unique stably sorts and prevents duplicates
                 freqs = np.unique(np.concatenate([freqs, marker_freqs]))
 
@@ -837,6 +844,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_spacing.addItem(tr("Lin"), "Lin")
         self.combo_spacing.addItem(tr("Integer"), "Integer")
         self.combo_spacing.addItem(tr("Int x Sync"), "Int x Sync")
+        self.combo_spacing.addItem(tr("Scan List Only"), "Scan List Only")
         self.combo_spacing.addItem(tr("1/3 Octave"), "1/3 Octave")
         self.combo_spacing.addItem(tr("1/6 Octave"), "1/6 Octave")
         self.combo_spacing.addItem(tr("1/12 Octave"), "1/12 Octave")
