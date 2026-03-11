@@ -1273,7 +1273,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         if self.module.mode == "Scan":
             # Up to 512k (approx 500k)
-            options = ["65536", "131072", "262144", "524288"]
+            options = ["32768", "65536", "131072", "262144", "524288"]
         else:
             # Up to 8M
             options = ["65536", "131072", "262144", "524288", "1048576", "2097152", "4194304", "8388608", "16777216"]
