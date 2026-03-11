@@ -411,26 +411,17 @@ class AudioCalc:
         base_t = np.arange(chunk_size) * dt
         E_base = np.exp(1j * np.outer(omega, base_t))
 
-        acc_v_complex = np.zeros(K, dtype=np.complex128)
-
-        for i in range(0, N, chunk_size):
+        def _compute_chunk(i):
             end = min(i + chunk_size, N)
             current_len = end - i
             sig_chunk = signal[i:end]
+            E_chunk = E_base if current_len == chunk_size else E_base[:, :current_len]
+            return (E_chunk @ sig_chunk) * np.exp(1j * omega * t[i])
 
-            # Slice E_base if strictly smaller than chunk_size (last chunk)
-            if current_len == chunk_size:
-                E_chunk = E_base
-            else:
-                E_chunk = E_base[:, :current_len]
-
-            # Dot product: sum(sig * exp(j * w * t_rel))
-            z = E_chunk @ sig_chunk
-
-            # Rotate by phase offset of chunk start time
-            # t[i] is absolute time of chunk start
-            rotation = np.exp(1j * omega * t[i])
-            acc_v_complex += z * rotation
+        acc_v_complex = sum(
+            (_compute_chunk(i) for i in range(0, N, chunk_size)),
+            np.zeros(K, dtype=np.complex128)
+        )
 
         sig_s = acc_v_complex.imag
         sig_c = acc_v_complex.real
