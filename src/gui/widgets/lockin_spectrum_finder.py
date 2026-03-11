@@ -336,7 +336,10 @@ class LockInSpectrumFinder(MeasurementModule):
         default_preset_dict = _get_default_targets(
             include_mains_power=False, include_musical_scale=False, include_default_presets=True
         )
-        default_preset_values = set(default_preset_dict.values())
+        default_preset_parts = set()
+        for v in default_preset_dict.values():
+            for vp in v.split(" / "):
+                default_preset_parts.add(vp.strip())
 
         for f, note in list(self.current_targets.items()):
             parts = [p.strip() for p in note.split(" / ")]
@@ -344,7 +347,7 @@ class LockInSpectrumFinder(MeasurementModule):
             for p in parts:
                 is_mains = "Mains" in p
                 is_note = p.startswith("Note ")
-                is_preset = p in default_preset_values
+                is_preset = p in default_preset_parts
 
                 if is_mains or is_note or is_preset:
                     continue  # Remove
