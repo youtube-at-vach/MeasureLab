@@ -132,8 +132,14 @@ def test_lockin_harmonic_analyzer_clear_buffer():
     analyzer.harmonics_amp.fill(0.5)
     analyzer.harmonics_phase_deg.fill(45.0)
 
+    # ensure state like is_running is preserved
+    analyzer.is_running = True
+
     # Call clear_buffer
     analyzer.clear_buffer()
+
+    # Verify state not affected by clear_buffer is preserved
+    assert analyzer.is_running is True
 
     # Verify input buffer states are reset
     assert np.all(analyzer.input_data == 0)
