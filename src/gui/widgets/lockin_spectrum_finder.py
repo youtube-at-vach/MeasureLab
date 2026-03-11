@@ -109,7 +109,32 @@ def _get_default_targets(
 
     if include_musical_scale:
         if musical_scale_type == "24TET":
-            note_names = ["C", "C+", "C#", "C#+", "D", "D+", "D#", "D#+", "E", "E+", "F", "F+", "F#", "F#+", "G", "G+", "G#", "G#+", "A", "A+", "A#", "A#+", "B", "B+"]
+            note_names = [
+                "C",
+                "C+",
+                "C#",
+                "C#+",
+                "D",
+                "D+",
+                "D#",
+                "D#+",
+                "E",
+                "E+",
+                "F",
+                "F+",
+                "F#",
+                "F#+",
+                "G",
+                "G+",
+                "G#",
+                "G#+",
+                "A",
+                "A+",
+                "A#",
+                "A#+",
+                "B",
+                "B+",
+            ]
             for q in range(24, 256):  # C0 to G9 equivalent
                 freq = round(a4_freq * (2.0 ** ((q - 138) / 24.0)), 2)
                 if 10.0 <= freq <= 192000.0:
@@ -124,7 +149,7 @@ def _get_default_targets(
         elif musical_scale_type == "Just Intonation":
             note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
             # 5-limit tuning ratios relative to C
-            ratios = [1.0, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8]
+            ratios = [1.0, 16 / 15, 9 / 8, 6 / 5, 5 / 4, 4 / 3, 45 / 32, 3 / 2, 8 / 5, 5 / 3, 9 / 5, 15 / 8]
             root_freq = a4_freq * 3.0 / 5.0
             for p in range(12, 128):
                 octave = (p // 12) - 1
@@ -138,7 +163,7 @@ def _get_default_targets(
                             targets[freq] += f" / {note_str}"
                     else:
                         targets[freq] = note_str
-        else: # 12TET
+        else:  # 12TET
             note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
             for p in range(12, 128):  # C0 to G9
                 freq = round(a4_freq * (2.0 ** ((p - 69) / 12.0)), 2)
@@ -198,6 +223,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # Scan Mode Specifics
         self.include_scan_targets = True
+        self.list_only_log_axis = True
         self.octave_ref_freq = 1000.0
 
         # Mains Power Settings
@@ -281,7 +307,11 @@ class LockInSpectrumFinder(MeasurementModule):
         except Exception as e:
             logger.error(f"Failed to load user targets from {path}: {e}")
         return _get_default_targets(
-            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq, self.musical_scale_type
+            self.mains_freq,
+            self.mains_harmonics_count,
+            self.include_musical_scale,
+            self.a4_freq,
+            self.musical_scale_type,
         )
 
     def update_generator_targets(self):
@@ -293,9 +323,7 @@ class LockInSpectrumFinder(MeasurementModule):
         for f, note in list(self.current_targets.items()):
             if "Mains" in note or "Note " in note:
                 # Split by ' / ' and keep parts that don't look like generated targets
-                parts = [
-                    p.strip() for p in note.split(" / ") if "Mains" not in p and not p.strip().startswith("Note ")
-                ]
+                parts = [p.strip() for p in note.split(" / ") if "Mains" not in p and not p.strip().startswith("Note ")]
                 if parts:
                     self.current_targets[f] = " / ".join(parts)
                 else:
@@ -306,7 +334,11 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # 2. Get the new default targets, which include the desired generated targets
         new_defaults = _get_default_targets(
-            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq, self.musical_scale_type
+            self.mains_freq,
+            self.mains_harmonics_count,
+            self.include_musical_scale,
+            self.a4_freq,
+            self.musical_scale_type,
         )
 
         # 3. Merge new targets into current_targets
@@ -561,7 +593,9 @@ class LockInSpectrumFinder(MeasurementModule):
                     self.sonifier.update_manual_tuner_mag(chunk_mag)
 
                 # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
+                self.signals.progress_update.emit(
+                    i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy()
+                )
                 time.sleep(0.005)
 
             if self.is_running:
@@ -857,6 +891,12 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_spacing.currentIndexChanged.connect(self.on_spacing_changed)
         form.addRow(self.lbl_spacing, self.combo_spacing)
 
+        # Log Axis for List Only
+        self.chk_log_axis = QCheckBox(tr("Logarithmic X-Axis (List Only)"))
+        self.chk_log_axis.setChecked(self.module.list_only_log_axis)
+        self.chk_log_axis.stateChanged.connect(self.on_log_axis_changed)
+        form.addRow(tr("List Only Scale:"), self.chk_log_axis)
+
         # Add Include Scan Targets Option
         self.chk_include_targets = QCheckBox(tr("Include Scan Targets"))
         self.chk_include_targets.setChecked(self.module.include_scan_targets)
@@ -1038,7 +1078,9 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.combo_sonification_mode = QComboBox()
         self.combo_sonification_mode.addItem(tr("Level Monitor (Fixed Pitch)"), self.module.sonifier.MODE_LEVEL_MONITOR)
-        self.combo_sonification_mode.addItem(tr("Frequency Mapping (Variable Pitch)"), self.module.sonifier.MODE_FREQUENCY_MAPPING)
+        self.combo_sonification_mode.addItem(
+            tr("Frequency Mapping (Variable Pitch)"), self.module.sonifier.MODE_FREQUENCY_MAPPING
+        )
         self.combo_sonification_mode.addItem(tr("Manual Tuner"), self.module.sonifier.MODE_MANUAL_TUNER)
         idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
         if idx >= 0:
@@ -1146,6 +1188,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_stop_f.setVisible(not is_zoom)
         self.lbl_spacing.setVisible(not is_zoom)
         self.combo_spacing.setVisible(not is_zoom)
+        self.chk_log_axis.setVisible(not is_zoom and self.module.spacing == "Scan List Only")
         self.chk_include_targets.setVisible(not is_zoom)
         self.lbl_octave_ref.setVisible(not is_zoom)
         self.spin_octave_ref.setVisible(not is_zoom)
@@ -1170,9 +1213,7 @@ class LockInSpectrumFinderWidget(QWidget):
             # Blue for light theme (matches Spectrum Analyzer cursor)
             color = "#0000aa"
 
-        self.lbl_resolution_info.setStyleSheet(
-            f"font-family: monospace; color: {color}; font-weight: bold;"
-        )
+        self.lbl_resolution_info.setStyleSheet(f"font-family: monospace; color: {color}; font-weight: bold;")
 
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""
@@ -1207,8 +1248,17 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_buffer.currentTextChanged.connect(self.on_buffer_changed)
         self.combo_buffer.blockSignals(False)
 
+    def _is_log_scale_active(self):
+        if self.module.mode != "Scan":
+            return False
+        if self.module.spacing == "Log" or self.module.spacing.endswith("Octave"):
+            return True
+        if self.module.spacing == "Scan List Only" and self.module.list_only_log_axis:
+            return True
+        return False
+
     def _update_plot_log_mode(self):
-        if self.module.mode == "Scan" and self.module.spacing == "Log":
+        if self._is_log_scale_active():
             self.plot.getPlotItem().setLogMode(x=True, y=False)
         else:
             self.plot.getPlotItem().setLogMode(x=False, y=False)
@@ -1266,6 +1316,12 @@ class LockInSpectrumFinderWidget(QWidget):
     def on_spacing_changed(self, idx):
         self.module.spacing = self.combo_spacing.itemData(idx)
         self._update_plot_log_mode()
+        self._update_ui_visibility()
+        self.reset_averaging()
+
+    def on_log_axis_changed(self, state):
+        self.module.list_only_log_axis = bool(state)
+        self._update_plot_log_mode()
         self.reset_averaging()
 
     def on_zoom_center_changed(self, val):
@@ -1317,7 +1373,7 @@ class LockInSpectrumFinderWidget(QWidget):
             # Reset X-axis plot range on new parameters
             # Handle Log scale formatting internally for UI bounds
             xmin, xmax = freqs[0], freqs[-1]
-            if self.module.mode == "Scan" and self.module.spacing == "Log" and xmin > 0:
+            if self._is_log_scale_active() and xmin > 0:
                 xmin, xmax = np.log10(xmin), np.log10(xmax)
             self.plot.setXRange(xmin, xmax, padding=0.0)
 
@@ -1332,7 +1388,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.sweep_line.show()
         val = freqs[0]
-        if self.module.mode == "Scan" and self.module.spacing == "Log" and val > 0:
+        if self._is_log_scale_active() and val > 0:
             val = np.log10(val)
         self.sweep_line.setValue(val)
         self.scatter.setData([])  # clear markers
@@ -1358,7 +1414,7 @@ class LockInSpectrumFinderWidget(QWidget):
                     # Store rich data in the item
                     data_obj = {"freq": mf, "mag": y, "phase_deg": np.degrees(phase), "note": note, "unit": unit}
 
-                    if self.module.mode == "Scan" and self.module.spacing == "Log" and x > 0:
+                    if self._is_log_scale_active() and x > 0:
                         x = np.log10(x)
                     if y > -170:
                         pts.append({"pos": (x, y), "data": data_obj})
@@ -1407,7 +1463,7 @@ class LockInSpectrumFinderWidget(QWidget):
         if hasattr(self, "sweep_line"):
             self.sweep_line.show()
             val = f_chunk[-1]
-            if self.module.mode == "Scan" and self.module.spacing == "Log" and val > 0:
+            if self._is_log_scale_active() and val > 0:
                 val = np.log10(val)
             self.sweep_line.setValue(val)
         pct = int((end_idx / len(self.current_freqs)) * 100)
@@ -1420,18 +1476,11 @@ class LockInSpectrumFinderWidget(QWidget):
 
         if self.module.mode == "Zoom":
             T = self.module.buffer_size / self.module.audio_engine.sample_rate
-            k_factors = {
-                "none": 1.0,
-                "hann": 2.0,
-                "hamming": 2.0,
-                "blackmanharris": 4.0
-            }
+            k_factors = {"none": 1.0, "hann": 2.0, "hamming": 2.0, "blackmanharris": 4.0}
             k = k_factors.get(self.module.window_type, 1.0)
             rbw = k / T
             step_hz = (2.0 * self.module.zoom_span) / max(1, self.module.points - 1)
-            self.lbl_resolution_info.setText(
-                tr("RBW: {0:.2f} Hz | Step: {1:.3f} Hz").format(rbw, step_hz)
-            )
+            self.lbl_resolution_info.setText(tr("RBW: {0:.2f} Hz | Step: {1:.3f} Hz").format(rbw, step_hz))
 
     def on_result_ready(self, result):
         freqs, mags_db = result
