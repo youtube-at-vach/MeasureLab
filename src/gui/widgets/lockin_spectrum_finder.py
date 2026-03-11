@@ -56,6 +56,7 @@ def _get_default_targets(
     mains_harmonics: int = 16,
     include_musical_scale: bool = False,
     a4_freq: float = 440.0,
+    musical_scale_type: str = "12TET",
 ) -> dict:
     targets = {
         997.0: "Standard Test Tone (997Hz)",
@@ -107,18 +108,49 @@ def _get_default_targets(
                 targets[_f] = _note
 
     if include_musical_scale:
-        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        for p in range(12, 128):  # C0 to G9
-            freq = round(a4_freq * (2.0 ** ((p - 69) / 12.0)), 2)
-            if 10.0 <= freq <= 192000.0:
+        if musical_scale_type == "24TET":
+            note_names = ["C", "C+", "C#", "C#+", "D", "D+", "D#", "D#+", "E", "E+", "F", "F+", "F#", "F#+", "G", "G+", "G#", "G#+", "A", "A+", "A#", "A#+", "B", "B+"]
+            for q in range(24, 256):  # C0 to G9 equivalent
+                freq = round(a4_freq * (2.0 ** ((q - 138) / 24.0)), 2)
+                if 10.0 <= freq <= 192000.0:
+                    octave = (q // 24) - 1
+                    name = note_names[q % 24]
+                    note_str = f"Note {name}{octave} ({freq}Hz)"
+                    if freq in targets:
+                        if note_str not in targets[freq]:
+                            targets[freq] += f" / {note_str}"
+                    else:
+                        targets[freq] = note_str
+        elif musical_scale_type == "Just Intonation":
+            note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+            # 5-limit tuning ratios relative to C
+            ratios = [1.0, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8]
+            root_freq = a4_freq * 3.0 / 5.0
+            for p in range(12, 128):
                 octave = (p // 12) - 1
-                name = note_names[p % 12]
-                note_str = f"Note {name}{octave} ({freq}Hz)"
-                if freq in targets:
-                    if note_str not in targets[freq]:
-                        targets[freq] += f" / {note_str}"
-                else:
-                    targets[freq] = note_str
+                ratio = ratios[p % 12]
+                freq = round(root_freq * (2.0 ** (octave - 4)) * ratio, 2)
+                if 10.0 <= freq <= 192000.0:
+                    name = note_names[p % 12]
+                    note_str = f"Note {name}{octave} ({freq}Hz)"
+                    if freq in targets:
+                        if note_str not in targets[freq]:
+                            targets[freq] += f" / {note_str}"
+                    else:
+                        targets[freq] = note_str
+        else: # 12TET
+            note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+            for p in range(12, 128):  # C0 to G9
+                freq = round(a4_freq * (2.0 ** ((p - 69) / 12.0)), 2)
+                if 10.0 <= freq <= 192000.0:
+                    octave = (p // 12) - 1
+                    name = note_names[p % 12]
+                    note_str = f"Note {name}{octave} ({freq}Hz)"
+                    if freq in targets:
+                        if note_str not in targets[freq]:
+                            targets[freq] += f" / {note_str}"
+                    else:
+                        targets[freq] = note_str
 
     return targets
 
@@ -174,6 +206,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # Musical Scale Settings
         self.include_musical_scale = False
+        self.musical_scale_type = "12TET"
         self.a4_freq = 440.0
 
         self.current_targets = self._load_user_targets()
@@ -248,7 +281,7 @@ class LockInSpectrumFinder(MeasurementModule):
         except Exception as e:
             logger.error(f"Failed to load user targets from {path}: {e}")
         return _get_default_targets(
-            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq
+            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq, self.musical_scale_type
         )
 
     def update_generator_targets(self):
@@ -273,7 +306,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # 2. Get the new default targets, which include the desired generated targets
         new_defaults = _get_default_targets(
-            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq
+            self.mains_freq, self.mains_harmonics_count, self.include_musical_scale, self.a4_freq, self.musical_scale_type
         )
 
         # 3. Merge new targets into current_targets
@@ -954,6 +987,16 @@ class LockInSpectrumFinderWidget(QWidget):
         self.chk_musical_scale.stateChanged.connect(self.on_musical_scale_changed)
         scale_form.addRow(self.chk_musical_scale)
 
+        self.combo_scale_type = QComboBox()
+        self.combo_scale_type.addItem(tr("12-Tone Equal Temperament (12TET)"), "12TET")
+        self.combo_scale_type.addItem(tr("24-Tone Equal Temperament (24TET)"), "24TET")
+        self.combo_scale_type.addItem(tr("Just Intonation (5-limit)"), "Just Intonation")
+        idx = self.combo_scale_type.findData(self.module.musical_scale_type)
+        if idx >= 0:
+            self.combo_scale_type.setCurrentIndex(idx)
+        self.combo_scale_type.currentIndexChanged.connect(self.on_scale_type_changed)
+        scale_form.addRow(tr("Scale Type:"), self.combo_scale_type)
+
         self.spin_a4_freq = QDoubleSpinBox()
         self.spin_a4_freq.setRange(400.0, 500.0)
         self.spin_a4_freq.setDecimals(2)
@@ -1513,6 +1556,7 @@ class LockInSpectrumFinderWidget(QWidget):
                     self.module.mains_harmonics_count,
                     self.module.include_musical_scale,
                     self.module.a4_freq,
+                    self.module.musical_scale_type,
                 )
             )
             self._populate_targets_table()
@@ -1526,6 +1570,9 @@ class LockInSpectrumFinderWidget(QWidget):
 
     def on_musical_scale_changed(self, state):
         self.module.include_musical_scale = bool(state)
+
+    def on_scale_type_changed(self, idx):
+        self.module.musical_scale_type = self.combo_scale_type.itemData(idx)
 
     def on_a4_freq_changed(self, val):
         self.module.a4_freq = val
