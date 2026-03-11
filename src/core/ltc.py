@@ -232,33 +232,32 @@ class LTCDecoder:
         if self._last_sign is None:
             self._last_sign = bool(signs[0])
 
-        crossing_positions = []
+        crossings = []
 
         # Boundary crossing between last sample of previous chunk and first sample of this chunk.
         if bool(signs[0]) != bool(self._last_sign):
-            crossing_positions.append(0)
+            crossings.append(np.array([0], dtype=np.int64))
 
         # Intra-chunk crossings: position i means crossing between i-1 and i.
         intra = np.nonzero(signs[1:] != signs[:-1])[0]
         if intra.size:
-            crossing_positions.extend((intra + 1).tolist())
+            crossings.append(intra + 1)
 
-        if crossing_positions:
-            crossing_positions.sort()
+        if crossings:
+            crossing_positions = np.concatenate(crossings)
+            # Intra chunk crossings are already sorted and 0 is before them,
+            # so no need to sort. But just to be safe, we can leave it sorted or assume it is.
+            crossing_positions = np.sort(crossing_positions)
 
-            # Convert crossing positions into pulse widths.
-            prev_pos = None
-            for pos in crossing_positions:
-                if prev_pos is None:
-                    d = pos + self.samples_since_last_zc
-                else:
-                    d = pos - prev_pos
+            # Combine the first position with the samples from the previous chunk
+            # and calculate consecutive differences between all other positions.
+            diffs = np.diff(crossing_positions, prepend=-self.samples_since_last_zc)
 
+            for i in range(len(crossing_positions)):
+                d = diffs[i]
                 if d > 0 and self._process_pulse(float(d)):
-                    self.last_frame_offset_in_chunk = int(pos)
+                    self.last_frame_offset_in_chunk = int(crossing_positions[i])
                     decoded_any = True
-
-                prev_pos = pos
 
             # Residual samples since the last crossing within this chunk.
             last_pos = crossing_positions[-1]
