@@ -155,7 +155,7 @@ class Oscilloscope(MeasurementModule):
             return
 
         self.is_running = True
-        self.input_data = np.zeros((self.buffer_size * 2, 2))
+        self.input_data.fill(0)
         self.write_index = 0
 
         # Reset transfer buffer
