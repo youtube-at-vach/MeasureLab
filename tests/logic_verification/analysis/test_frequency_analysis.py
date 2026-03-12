@@ -53,6 +53,27 @@ class TestFrequencyAnalysis(unittest.TestCase):
         # For random walk FM, slope is +0.5
         self.assertAlmostEqual(slope, 0.5, delta=0.2)
 
+    def test_allan_deviation_known_values(self):
+        """Test calculate_allan_deviation with a known simple sequence."""
+        # Simple predictable sequence
+        data = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+        dt = 1.0
+        taus, devs = calculate_allan_deviation(data, dt)
+
+        # For m=1: diffs = [1, 1, 1, 1, 1, 1, 1]
+        # sigma = sqrt(0.5 * mean(1^2)) = sqrt(0.5) ≈ 0.7071
+        # For m=2: y = [1.5, 3.5, 5.5, 7.5], diffs = [2, 2, 2]
+        # sigma = sqrt(0.5 * mean(2^2)) = sqrt(2) ≈ 1.414
+        # For m=4: y = [2.5, 6.5], diffs = [4]
+        # sigma = sqrt(0.5 * mean(4^2)) = sqrt(8) ≈ 2.828
+
+        expected_taus = [1.0, 2.0, 4.0]
+        expected_devs = [np.sqrt(0.5), np.sqrt(2.0), np.sqrt(8.0)]
+
+        self.assertEqual(taus, expected_taus)
+        for d, e in zip(devs, expected_devs):
+            self.assertAlmostEqual(d, e, places=4)
+
     def test_calculate_frequency_metrics_gate(self):
         # Silence
         data = np.zeros(1000)
