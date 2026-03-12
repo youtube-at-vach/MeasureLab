@@ -181,6 +181,11 @@ class AudioEngine:
         self.dithering_bit_depth = "24"
         self._rng = np.random.default_rng()
 
+        # Caching
+        self._device_list_cache = None
+        self._host_apis_cache = None
+        self._last_cache_time = 0
+
     def _get_dtype(self):
         """Returns the appropriate numpy dtype based on precision settings."""
         return "float64" if self.audio_engine_64bit else "float32"
@@ -249,6 +254,9 @@ class AudioEngine:
         # Re-initialize PortAudio
         try:
             sd._initialize()
+            self._device_list_cache = None
+            self._host_apis_cache = None
+            self._last_cache_time = 0
             self.logger.debug("Audio backend refreshed successfully.")
         except Exception as e:
             self.logger.error(f"Error re-initializing PortAudio: {e}")
@@ -265,13 +273,19 @@ class AudioEngine:
         # or return a specific virtual device list if needed.
         # For now, let's keep standard behavior so user can see hardware even if offline is checked (though controls disabled).
 
-        devices = sd.query_devices()
-
-        # Try to attach host API names; fall back to raw device dicts on error.
-        try:
-            hostapis = sd.query_hostapis()
-        except Exception:
-            hostapis = None
+        now = time.time()
+        if self._device_list_cache is not None and self._host_apis_cache is not None and (now - self._last_cache_time) < 2.0:
+            devices = self._device_list_cache
+            hostapis = self._host_apis_cache
+        else:
+            devices = sd.query_devices()
+            try:
+                hostapis = sd.query_hostapis()
+            except Exception:
+                hostapis = None
+            self._device_list_cache = devices
+            self._host_apis_cache = hostapis
+            self._last_cache_time = now
 
         enriched = []
         for dev in devices:
@@ -294,8 +308,14 @@ class AudioEngine:
 
     def get_host_apis(self):
         """Returns a list of available host APIs."""
+        now = time.time()
+        if self._host_apis_cache is not None and (now - self._last_cache_time) < 2.0:
+            return list(self._host_apis_cache)
         try:
-            return list(sd.query_hostapis())
+            hostapis = sd.query_hostapis()
+            self._host_apis_cache = hostapis
+            self._last_cache_time = now
+            return list(hostapis)
         except Exception:
             return []
 
@@ -562,14 +582,28 @@ class AudioEngine:
                 # Fallback to default output device.
                 dev_id = sd.default.device[1]
 
-            # Validate device ID range
-            devices = sd.query_devices()
+            # Use cached devices/hostapis to avoid redundant OS queries
+            now = time.time()
+            if self._device_list_cache is not None and self._host_apis_cache is not None and (now - self._last_cache_time) < 2.0:
+                devices = self._device_list_cache
+                hostapis = self._host_apis_cache
+            else:
+                devices = sd.query_devices()
+                try:
+                    hostapis = sd.query_hostapis()
+                except Exception:
+                    hostapis = None
+                self._device_list_cache = devices
+                self._host_apis_cache = hostapis
+                self._last_cache_time = now
+
             if dev_id is not None and 0 <= dev_id < len(devices):
                 device_info = devices[dev_id]
                 hostapi_idx = device_info.get("hostapi")
-                if hostapi_idx is not None:
-                    hostapi_info = sd.query_hostapis(hostapi_idx)
-                    hostapi_name = hostapi_info.get("name")
+                if hostapi_idx is not None and hostapis is not None:
+                    if 0 <= int(hostapi_idx) < len(hostapis):
+                        hostapi_info = hostapis[int(hostapi_idx)]
+                        hostapi_name = hostapi_info.get("name")
 
             if hostapi_name and "jack" in str(hostapi_name).lower():
                 return sd.JackSettings(client_name=self.jack_client_name)
