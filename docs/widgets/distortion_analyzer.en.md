@@ -54,7 +54,7 @@ Measures by continuously changing the frequency from low to high tones.
 
 * **Use Case**: Used to investigate changes in characteristics for each frequency, such as "good at bass but distorts at high frequencies."
 * **Settings**: Set Start (starting frequency), End (ending frequency), and Steps (number of measurement points).
-* **Sweep Results**: Results are plotted on a graph.
+* **Sweep Results**: Results are plotted on a graph. The Y-axis unit can be selected from `dB` or `Percent (%)`, and when displayed in percent, it automatically scales to an approximately logarithmic view.
 
 #### Amplitude Sweep
 
@@ -62,6 +62,7 @@ Measures by changing the volume from small to large.
 
 * **Use Case**: Ideal for finding the maximum output of an amplifier (how far you can raise it before it starts to distort = clipping point).
 * **Settings**: Set Start (starting volume) and End (ending volume) in dBFS units.
+* **Sweep Results**: Results are plotted on a graph. The Y-axis unit can be selected from `dB` or `Percent (%)`, and when displayed in percent, it automatically scales to an approximately logarithmic view.
 
 ## Settings
 

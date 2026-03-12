@@ -40,7 +40,7 @@ You can select between two analysis modes based on your needs.
     * Select between `Basic` or `Zoom`.
 * **Buffer Size**
     * Specifies the amount of data captured and processed at once.
-    * Larger sizes improve frequency resolution but reduce the calculation update rate (up to 512k in Basic mode, up to 8M in Zoom mode).
+    * Larger sizes improve frequency resolution but reduce the calculation update rate (up to 512k in Basic mode, up to 16M in Zoom mode).
 * **Input Ch**
     * Select the channel to analyze (`Left (Ch 1)` or `Right (Ch 2)`).
 * **Averages**
@@ -61,7 +61,8 @@ You can select between two analysis modes based on your needs.
 * **Stop Freq**
     * Specifies the stopping frequency (Hz) for the analysis.
 * **Spacing**
-    * Choose the spacing of points between `Log` (logarithmic), `Lin` (linear), `Integer` (rounded to nearest integer), `Int x Sync` (integer multiple of the sample sync frequency), or `Octave` bands (from `1/3 Octave` down to `1/96 Octave`). The X-axis of the plot switches automatically to match this setting.
+    * Choose the spacing of points between `Log` (logarithmic), `Lin` (linear), `Integer` (rounded to nearest integer), `Int x Sync` (integer multiple of the sample sync frequency), `Octave` bands (from `1/3 Octave` down to `1/96 Octave`), or `Scan List Only`. The X-axis of the plot switches automatically to match this setting.
+    * **Scan List Only**: Calculates the spectrum only at the target frequencies defined in the `Scan Targets` tab. You can enable the `Log X-Axis` option to view the plot on a logarithmic scale.
     * **Integer**: Ensures that all analysis frequencies are exact integers, making it easier to accurately capture peaks of artificially generated signals (which are often set to natural numbers like 1000Hz).
     * **Int x Sync**: Rounds frequencies so they correspond exclusively to exact multiples of the analysis buffer resolution (`fs / buffer_size`). Ideal for precision tracking of signals generated synchronously with the measurement buffer.
     * **Octave Bands**: Calculates frequencies strictly based on the specified fractional octave bands relative to the **Octave Ref Freq**.
@@ -82,8 +83,8 @@ The **Scan Targets** tab provides target management features for specific freque
 
 The **Target Generators** tab allows you to configure rules to automatically generate scan targets.
 
-* **Mains Power**: Generates target frequencies for the fundamental mains frequency (50/60 Hz or both) and its harmonics up to a specified order.
-* **Musical Scale (Equal Temperament)**: Generates target frequencies corresponding to standard musical notes (C0 to G9) based on a configurable A4 reference frequency (default 440 Hz).
+* **Mains Power**: Generates target frequencies for the fundamental mains frequency (50Hz / 60Hz or both), common equipment switching frequencies, and their harmonics up to a specified order.
+* **Musical Scale**: Generates target frequencies corresponding to standard musical notes (C0 to G9) based on a configurable A4 reference frequency (default 440 Hz). You can select from different musical temperaments such as `12-Tone Equal Temperament`, `24-Tone Equal Temperament`, and `Just Intonation`.
 * **Apply Generation Settings**: Press this button to generate and add these targets to your current target list in the **Scan Targets** tab.
 
 ### Audio Sonification Tab
@@ -106,6 +107,8 @@ The **Audio Sonification** tab provides an audio output corresponding to detecte
     * When checked, the center frequency is automatically updated to the frequency of the highest peak detected after each analysis sweep. This is useful for tracking drifting peaks or precisely converging on the true center frequency.
 * **Zoom Span (±)**
     * Specifies the analysis width (±Hz) from the center frequency. (e.g., if Center=1000Hz and Span=10Hz, it analyzes the range from 990Hz to 1010Hz).
+* **Resolution (RBW & Step)**
+    * Displayed only in Zoom mode. You can check the actual Resolution Bandwidth (RBW) and the frequency step between points in real-time (in Hz), calculated based on the current settings (sample rate, buffer size, window function, and basis points).
 
 ## How to Read the Graph
 
