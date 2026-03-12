@@ -1,6 +1,6 @@
 import time
 import sounddevice as sd
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Import the AudioEngine we want to benchmark
 from src.core.audio_engine import AudioEngine
