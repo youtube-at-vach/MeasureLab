@@ -137,6 +137,10 @@ def test_spl_invalid_input(cal_manager):
     with pytest.raises(ValueError, match="Invalid SPL calibration values"):
         cal_manager.set_spl_calibration("abc", "def")
 
+def test_get_spl_offset_db_none(cal_manager):
+    """Test get_spl_offset_db returns None when not calibrated."""
+    assert cal_manager.get_spl_offset_db() is None
+
 def test_dbfs_to_spl(cal_manager):
     """Test dbfs_to_spl logic for various inputs and edge cases."""
     # When offset is not set, it should return None
