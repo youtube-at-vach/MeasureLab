@@ -1,7 +1,5 @@
-import json
 import os
-
-LANG_DIR = "src/assets/lang"
+from translation_utils import LANG_DIR, load_json, save_json
 
 # Define translations for missing keys
 TRANSLATIONS = {
@@ -239,14 +237,6 @@ TRANSLATIONS = {
     }
 }
 
-def load_json(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-def save_json(path, data):
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-        f.write('\n')  # Add trailing newline
 
 def main():
     print("=== Fixing Translation Leaks ===")
