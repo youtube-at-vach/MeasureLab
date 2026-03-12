@@ -70,9 +70,8 @@ class TestFrequencyAnalysis(unittest.TestCase):
         expected_taus = [1.0, 2.0, 4.0]
         expected_devs = [np.sqrt(0.5), np.sqrt(2.0), np.sqrt(8.0)]
 
-        self.assertEqual(taus, expected_taus)
-        for d, e in zip(devs, expected_devs):
-            self.assertAlmostEqual(d, e, places=4)
+        np.testing.assert_allclose(taus, expected_taus)
+        np.testing.assert_allclose(devs, expected_devs, rtol=1e-4)
 
     def test_calculate_frequency_metrics_gate(self):
         # Silence
