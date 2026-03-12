@@ -749,6 +749,11 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_steps_spin.setValue(30)
         sweep_layout.addRow(tr("Steps:"), self.sweep_steps_spin)
 
+        self.sweep_y_unit_combo = QComboBox()
+        self.sweep_y_unit_combo.addItems(["dB", "Percent (%)"])
+        self.sweep_y_unit_combo.currentIndexChanged.connect(self._on_sweep_y_unit_changed)
+        sweep_layout.addRow(tr("Y-Axis Unit:"), self.sweep_y_unit_combo)
+
         sweep_widget.setLayout(sweep_layout)
         return sweep_widget
 
@@ -923,23 +928,44 @@ class DistortionAnalyzerWidget(QWidget):
         harmonics_layout.addWidget(self.harmonics_plot, 1)  # Stretch factor 1
         return harmonics_widget
 
+    def _on_sweep_y_unit_changed(self, idx):
+        self._update_sweep_y_axis_format()
+
+        # Replot if data exists
+        if self.module.sweep_results:
+            # Re-trigger plotting
+            self.on_sweep_result(None)
+
+    def _update_sweep_y_axis_format(self):
+        y_axis = self.sweep_plot.getPlotItem().getAxis("left")
+
+        if self.sweep_y_unit_combo.currentText() == "Percent (%)":
+            self.sweep_plot.setLabel("left", tr("THD+N"), units="%")
+            # We must maintain x-axis log mode based on the current mode
+            x_log = self.mode_combo.currentIndex() == 1
+            self.sweep_plot.setLogMode(x=x_log, y=True)
+            self.sweep_plot.setYRange(np.log10(0.0001), np.log10(100))
+
+            # Setup log ticks for Percent
+            percent_ticks = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+            ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
+            y_axis.setTicks([ticks_log])
+        else:
+            self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
+            x_log = self.mode_combo.currentIndex() == 1
+            self.sweep_plot.setLogMode(x=x_log, y=False)
+            self.sweep_plot.setYRange(-140, 0)
+            y_axis.setTicks(None) # Reset to standard ticks
+
     def _create_sweep_result_tab(self) -> pg.PlotWidget:
         """Creates the Sweep Results tab content."""
         self.sweep_plot = pg.PlotWidget()
-        self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
         self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")  # Dynamic label
-        self.sweep_plot.setLogMode(x=True, y=False)
-        self.sweep_plot.setYRange(-140, 0)
         self.sweep_plot.showGrid(x=True, y=True)
 
         # Custom Axis Ticks for Sweep (Frequency Mode)
-        # Note: If mode changes to Amplitude Sweep, we might need to reset this?
-        # The user only requested "like Spectrum Analyzer", which implies Frequency domain.
-        # We'll set it here, and handle mode changes if necessary.
         self.sweep_axis = self.sweep_plot.getPlotItem().getAxis("bottom")
 
-        # Re-use ticks definition if needed, but it's local in original.
-        # Let's redefine for clarity or use constant if we were doing more cleanup.
         ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
         ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
 
@@ -949,6 +975,8 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
 
         self.sweep_curve = self.sweep_plot.plot(pen="c")
+
+        self._update_sweep_y_axis_format()
         return self.sweep_plot
 
     def sync_module_with_gui(self):
@@ -1015,7 +1043,6 @@ class DistortionAnalyzerWidget(QWidget):
                 self.sweep_start_spin.setValue(20)
                 self.sweep_end_spin.setValue(20000)
                 self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")
-                self.sweep_plot.setLogMode(x=True, y=False)
                 # Restore custom ticks for frequency
                 ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
                 ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
@@ -1027,12 +1054,12 @@ class DistortionAnalyzerWidget(QWidget):
                 self.sweep_start_spin.setValue(-60)
                 self.sweep_end_spin.setValue(0)
                 self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBFS")
-                self.sweep_plot.setLogMode(x=False, y=False)
                 # Reset ticks to auto for amplitude
                 self.sweep_axis.setTicks(None)
-                # X-axis matches initial measurement range, fixed Y-axis
+                # X-axis matches initial measurement range
                 self.sweep_plot.setXRange(-60, 0)
-                self.sweep_plot.setYRange(-140, 0)
+
+            self._update_sweep_y_axis_format()
 
     def on_out_mode_changed(self, idx):
         # 0: Off, 1: Sine, 2: SMPTE, 3: CCIF
@@ -1163,7 +1190,8 @@ class DistortionAnalyzerWidget(QWidget):
                 self.sweep_plot.setXRange(np.log10(start), np.log10(end))
         else:
             self.sweep_plot.setXRange(start, end)
-        self.sweep_plot.setYRange(-140, 0)
+
+        self._update_sweep_y_axis_format()
 
         if sweep_type == "frequency":
             if start <= 0 or end <= 0:
@@ -1198,11 +1226,19 @@ class DistortionAnalyzerWidget(QWidget):
             self.view_toggle_btn.setText(tr("Show Detailed"))
 
     def on_sweep_result(self, result):
-        self.module.sweep_results.append(result)
+        if result is not None:
+            self.module.sweep_results.append(result)
+
+        if not self.module.sweep_results:
+            return
 
         # Update Plot
         x_data = [r["sweep_param"] for r in self.module.sweep_results]
-        y_data = [r["thdn_db"] for r in self.module.sweep_results]
+
+        if self.sweep_y_unit_combo.currentText() == "Percent (%)":
+            y_data = [max(r["thdn_percent"], 1e-6) for r in self.module.sweep_results]
+        else:
+            y_data = [r["thdn_db"] for r in self.module.sweep_results]
 
         x_plot = np.array(x_data)
 
