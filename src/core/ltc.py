@@ -245,18 +245,14 @@ class LTCDecoder:
 
         if crossings:
             crossing_positions = np.concatenate(crossings)
-            # Intra chunk crossings are already sorted and 0 is before them,
-            # so no need to sort. But just to be safe, we can leave it sorted or assume it is.
-            crossing_positions = np.sort(crossing_positions)
 
             # Combine the first position with the samples from the previous chunk
             # and calculate consecutive differences between all other positions.
             diffs = np.diff(crossing_positions, prepend=-self.samples_since_last_zc)
 
-            for i in range(len(crossing_positions)):
-                d = diffs[i]
+            for pos, d in zip(crossing_positions.tolist(), diffs.tolist(), strict=False):
                 if d > 0 and self._process_pulse(float(d)):
-                    self.last_frame_offset_in_chunk = int(crossing_positions[i])
+                    self.last_frame_offset_in_chunk = int(pos)
                     decoded_any = True
 
             # Residual samples since the last crossing within this chunk.
