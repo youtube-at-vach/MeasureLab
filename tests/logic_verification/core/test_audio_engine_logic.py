@@ -208,7 +208,9 @@ class TestAudioEngineLogic(unittest.TestCase):
         ]
 
         # Mock hostapi query return
-        mock_hostapis.return_value = {"name": "JACK Audio Connection Kit"} # Hostapi 0 is JACK
+        # Since the AudioEngine optimization expects a list of hostapis when calling query_hostapis() without index,
+        # we return a list containing the mock dict at index 0.
+        mock_hostapis.return_value = [{"name": "JACK Audio Connection Kit"}] # Hostapi 0 is JACK
 
         # Call method
         settings = self.engine._get_jack_settings()
