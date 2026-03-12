@@ -100,13 +100,12 @@ class TestFrequencyAnalysis(unittest.TestCase):
             self.assertAlmostEqual(db, -3.0, delta=0.5)
 
     def test_calculate_frequency_metrics_empty_array(self):
-        # Empty array causes a zero division initially which results in RuntimeWarning
-        # Then it causes a ValueError in get_cached_window because Nx=0
+        # Empty array should raise ValueError immediately with specific message
         data = np.array([])
         sr = 48000
         gate = -60.0
 
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "Empty audio data buffer"):
             calculate_frequency_metrics(data, sr, gate)
 
 if __name__ == '__main__':
