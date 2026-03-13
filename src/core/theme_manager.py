@@ -11,6 +11,7 @@ import logging
 import platform
 import darkdetect
 from typing import Any
+from src.core.config_manager import ConfigManager
 
 from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtGui import QColor, QPalette
@@ -26,6 +27,7 @@ class ThemeManager(QObject):
     def __init__(self, app: QApplication):
         super().__init__()
         self.app = app
+        self.config_manager = ConfigManager()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.current_theme = "system"
 

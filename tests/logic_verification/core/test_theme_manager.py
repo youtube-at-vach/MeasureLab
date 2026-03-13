@@ -70,6 +70,8 @@ class TestThemeManager(unittest.TestCase):
             'PyQt6.QtCore': MagicMock(),
             'PyQt6.QtGui': MagicMock(),
             'PyQt6.QtWidgets': MagicMock(),
+            'numpy': MagicMock(),
+            'scipy': MagicMock(),
         })
         self.modules_patcher.start()
 
