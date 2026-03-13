@@ -1,5 +1,11 @@
+import os
+import sys
 import timeit
+
 import numpy as np
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+from src.core.analysis import AudioCalc
 
 # We will create a dummy environment that mimics the inputs to _calculate_hum_noise
 def setup_dummy_data():
@@ -18,7 +24,6 @@ def setup_dummy_data():
 mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq = setup_dummy_data()
 
 # We need the AudioCalc import for _get_freq_index
-from src.core.analysis import AudioCalc
 
 def original_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
     def get_power_in_band(f_center, width=5.0):
@@ -84,7 +89,7 @@ if __name__ == "__main__":
     # Validation check
     assert np.isclose(o_val[0], n_val[0], rtol=1e-9), f"{o_val[0]} != {n_val[0]}"
     assert o_val[1] == n_val[1]
-    for o_c, n_c in zip(o_val[2], n_val[2]):
+    for o_c, n_c in zip(o_val[2], n_val[2], strict=True):
         assert np.isclose(o_c[0], n_c[0], rtol=1e-9)
         assert np.isclose(o_c[1], n_c[1], rtol=1e-9)
 
