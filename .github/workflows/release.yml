@@ -46,7 +46,7 @@ jobs:
 
     - name: Build (onefile) with PyInstaller
       run: |
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onefile --workpath build/onefile main_gui.py
+        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --hidden-import darkdetect --hidden-import darkdetect --distpath dist/onefile --workpath build/onefile main_gui.py
 
     - name: Verify Windows Executable (GUI Self-Test)
       run: |
@@ -55,7 +55,7 @@ jobs:
 
     - name: Build (onedir) with PyInstaller
       run: |
-        pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
+        pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --hidden-import darkdetect --hidden-import darkdetect --distpath dist/onedir --workpath build/onedir main_gui.py
         copy scripts/enable_asio.bat dist/onedir/MeasureLab/
         copy scripts/disable_asio.bat dist/onedir/MeasureLab/
         copy scripts/README_ASIO.txt dist/onedir/MeasureLab/
@@ -140,7 +140,7 @@ jobs:
     - name: Build standalone binary with PyInstaller
       run: |
         mkdir -p libs
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all pyfftw --hidden-import pyfftw main_gui.py
+        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all pyfftw --hidden-import pyfftw --hidden-import darkdetect --hidden-import darkdetect main_gui.py
 
     - name: Build Documentation
       env:
@@ -262,7 +262,7 @@ jobs:
           --collect-all backports \
           --collect-all soundfile \
           --collect-all pyfftw \
-          --hidden-import pyfftw \
+          --hidden-import pyfftw --hidden-import darkdetect --hidden-import darkdetect \
           --distpath dist \
           --workpath build \
           --target-architecture arm64 \

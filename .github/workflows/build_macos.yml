@@ -67,7 +67,7 @@ jobs:
           --collect-all backports \
           --collect-all soundfile \
           --collect-all pyfftw \
-          --hidden-import pyfftw \
+          --hidden-import pyfftw --hidden-import darkdetect --hidden-import darkdetect \
           --distpath dist \
           --workpath build \
           --target-architecture arm64 \
