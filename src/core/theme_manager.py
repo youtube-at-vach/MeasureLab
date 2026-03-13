@@ -9,7 +9,6 @@ Provides theme detection and switching functionality with support for:
 
 import logging
 import platform
-import darkdetect
 from typing import Any
 from src.core.config_manager import ConfigManager
 
@@ -80,6 +79,7 @@ class ThemeManager(QObject):
         """
         theme_setting = self.config_manager.get_theme()
         if theme_setting == "system":
+            import darkdetect
             return "dark" if darkdetect.isDark() else "light"
         return theme_setting
 
