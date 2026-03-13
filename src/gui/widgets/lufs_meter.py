@@ -518,7 +518,7 @@ class LufsMeterWidget(QWidget):
         stats_grid = QGridLayout(stats_tab)
 
         # Headers
-        stats_grid.addWidget(QLabel(tr("")), 0, 0)
+        stats_grid.addWidget(QLabel(""), 0, 0)
         stats_grid.addWidget(QLabel(tr("Current")), 0, 1)
         stats_grid.addWidget(QLabel(tr("Min")), 0, 2)
         stats_grid.addWidget(QLabel(tr("Max")), 0, 3)
