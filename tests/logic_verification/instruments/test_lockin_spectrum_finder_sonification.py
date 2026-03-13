@@ -94,7 +94,6 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
 
     def test_save_user_targets_secure_permissions(self):
         """Test that save_user_targets uses secure permissions for directory creation."""
-        import os
         from unittest.mock import patch
 
         targets = {1000.0: "Test Note"}
