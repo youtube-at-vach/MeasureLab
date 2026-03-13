@@ -391,7 +391,7 @@ class LockInSpectrumFinder(MeasurementModule):
         path = ""
         try:
             path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump({str(k): v for k, v in targets.items()}, f, indent=4, ensure_ascii=False)

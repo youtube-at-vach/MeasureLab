@@ -91,3 +91,23 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
         self.assertTrue(mock_sonifier.update_manual_tuner_mag.called)
 
         self.finder.sonifier = original_sonifier
+
+    def test_save_user_targets_secure_permissions(self):
+        """Test that save_user_targets uses secure permissions for directory creation."""
+        from unittest.mock import patch
+
+        targets = {1000.0: "Test Note"}
+
+        with patch("os.makedirs") as mock_makedirs, \
+             patch("os.open") as mock_open, \
+             patch("os.fdopen") as mock_fdopen:
+
+            # Setup mock so we don't actually write to disk
+            mock_open.return_value = 123
+            mock_fdopen.return_value.__enter__.return_value = MagicMock()
+
+            self.finder.save_user_targets(targets)
+
+            mock_makedirs.assert_called_once()
+            _, kwargs = mock_makedirs.call_args
+            self.assertEqual(kwargs.get("mode"), 0o700, "Directory must be created with mode 0o700")
