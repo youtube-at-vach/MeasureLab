@@ -9,6 +9,7 @@ Provides theme detection and switching functionality with support for:
 
 import logging
 import platform
+import darkdetect
 from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -71,8 +72,14 @@ class ThemeManager(QObject):
         self.theme_changed.emit(theme_name)
 
     def get_current_theme(self) -> str:
-        """Returns the current theme setting ('system', 'light', or 'dark')."""
-        return self.current_theme
+        """
+        Returns the currently active theme ('dark' or 'light').
+        If the setting is 'system', it resolves to the actual system theme.
+        """
+        theme_setting = self.config_manager.get_theme()
+        if theme_setting == "system":
+            return "dark" if darkdetect.isDark() else "light"
+        return theme_setting
 
     def get_effective_theme(self) -> str:
         """

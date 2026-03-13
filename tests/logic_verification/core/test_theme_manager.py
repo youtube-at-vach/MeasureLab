@@ -4,6 +4,7 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 import importlib
+import darkdetect
 
 # Add project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
@@ -417,6 +418,33 @@ class TestThemeManager(unittest.TestCase):
                 # If it WAS called, check it wasn't Macintosh
                 args = self.mock_app.setStyle.call_args
                 self.assertNotEqual(args[0][0], "Macintosh")
+
+
+
+    @patch("darkdetect.isDark")
+    def test_get_current_theme(self, mock_isDark):
+        tm = self.ThemeManager(self.mock_app)
+
+        # Requires instantiating ThemeManager with a mock ConfigManager
+        mock_config = MagicMock()
+        tm.config_manager = mock_config
+
+        # Test explicit dark
+        mock_config.get_theme.return_value = "dark"
+        self.assertEqual(tm.get_current_theme(), "dark")
+
+        # Test explicit light
+        mock_config.get_theme.return_value = "light"
+        self.assertEqual(tm.get_current_theme(), "light")
+
+        # Test system resolving to dark
+        mock_config.get_theme.return_value = "system"
+        mock_isDark.return_value = True
+        self.assertEqual(tm.get_current_theme(), "dark")
+
+        # Test system resolving to light
+        mock_isDark.return_value = False
+        self.assertEqual(tm.get_current_theme(), "light")
 
 if __name__ == '__main__':
     unittest.main()
