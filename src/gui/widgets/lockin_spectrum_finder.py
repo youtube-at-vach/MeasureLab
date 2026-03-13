@@ -2,11 +2,10 @@ import json
 import logging
 import os
 import threading
-from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import pyqtSignal, QObject, QTimer
+from PyQt6.QtCore import pyqtSignal, QObject, QTimer, QThread, pyqtSlot
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -188,13 +187,318 @@ def _get_default_targets(
 
 # Used for decoupling background thread results to GUI thread safely.
 # Used for decoupling background thread results to GUI thread safely.
+
+
+class FinderWorker(QObject):
+    progress_update = pyqtSignal(int, int, object, object, object)
+    result_ready = pyqtSignal(object)
+    sweep_started = pyqtSignal(object)
+    start_calc_signal = pyqtSignal(object)
+
+    def __init__(self, sonifier):
+        super().__init__()
+        self.sonifier = sonifier
+        self._is_running = False
+        self._state = None
+
+    @pyqtSlot(object)
+    def start_calculation(self, params):
+        if self._is_running:
+            return
+        self._is_running = True
+
+        sig = params['sig']
+        fs = params['fs']
+        start_f = params['start_f']
+        stop_f = params['stop_f']
+        points = params['points']
+        spacing = params['spacing']
+        display_unit = params['display_unit']
+        offset_dbv = params['offset_dbv']
+        offset_spl = params['offset_spl']
+        mode = params['mode']
+        zoom_center = params['zoom_center']
+        zoom_span = params['zoom_span']
+        window_type = params['window_type']
+        include_targets = params['include_targets']
+        octave_ref = params['octave_ref']
+        targets = params['targets']
+
+        import scipy.signal as signal
+
+        N = len(sig)
+        t = np.arange(N, dtype=np.float64) / fs
+
+        self._state = {
+            "sig": sig,
+            "fs": fs,
+            "start_f": start_f,
+            "stop_f": stop_f,
+            "points": points,
+            "spacing": spacing,
+            "display_unit": display_unit,
+            "offset_dbv": offset_dbv,
+            "offset_spl": offset_spl,
+            "mode": mode,
+            "zoom_center": zoom_center,
+            "zoom_span": zoom_span,
+            "window_type": window_type,
+            "targets": targets,
+            "chunk_size": 32,
+            "N": N,
+            "t": t,
+            "i": 0,
+        }
+
+        if mode == "Zoom":
+            s_f = zoom_center - zoom_span
+            e_f = zoom_center + zoom_span
+            self._state["freqs"] = np.linspace(s_f, e_f, points)
+            self.sweep_started.emit((self._state["freqs"], []))
+
+            sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
+            target_fs = max(zoom_span * 4, 100.0)
+            M = max(1, int(fs / target_fs))
+
+            if M > 1:
+                sig_dec = signal.resample_poly(sig_c, 1, M)
+            else:
+                sig_dec = sig_c
+
+            fs_dec = fs / M
+            N_dec = len(sig_dec)
+            self._state["t_dec"] = np.arange(N_dec) / fs_dec
+            self._state["freqs_offset"] = np.linspace(-zoom_span, zoom_span, points)
+            self._state["mags_db_all"] = np.zeros(points)
+            self._state["N_dec"] = N_dec
+
+            if window_type == "none":
+                self._state["window"] = np.ones(N_dec, dtype=np.float64)
+                self._state["sig_dec_win"] = sig_dec
+                self._state["window_coherent_gain"] = 1.0
+            else:
+                self._state["window"] = signal.get_window(window_type, N_dec)
+                self._state["sig_dec_win"] = sig_dec * self._state["window"]
+                window_coherent_gain = np.mean(self._state["window"])
+                self._state["window_coherent_gain"] = window_coherent_gain if window_coherent_gain != 0 else 1.0
+
+            QTimer.singleShot(0, self._process_zoom_chunk)
+
+        else:  # Scan
+            if spacing == "Log":
+                s_f = max(0.1, start_f)
+                freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
+            elif spacing == "Integer":
+                freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
+                freqs = freqs[freqs >= 1.0]
+            elif spacing == "Int x Sync":
+                df = fs / N
+                freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
+                freqs = freqs[freqs >= df]
+                if len(freqs) == 0:
+                    freqs = np.array([df])
+            elif spacing == "Scan List Only":
+                if targets:
+                    freqs = np.array(sorted([f for f in targets.keys() if start_f <= f <= stop_f]))
+                else:
+                    freqs = np.array([])
+                if len(freqs) == 0:
+                    freqs = np.array([start_f, stop_f])
+            elif spacing.endswith("Octave"):
+                try:
+                    frac = spacing.split(" ")[0].split("/")
+                    b = float(frac[1]) / float(frac[0])
+                except Exception:
+                    b = 3.0
+                n_start = int(np.floor(b * np.log2(start_f / octave_ref)))
+                n_stop = int(np.ceil(b * np.log2(stop_f / octave_ref)))
+                n_vals = np.arange(n_start, n_stop + 1)
+                freqs = octave_ref * (2.0 ** (n_vals / b))
+                freqs = freqs[(freqs >= start_f) & (freqs <= stop_f)]
+                if len(freqs) == 0:
+                    freqs = np.array([start_f, stop_f])
+            else:
+                freqs = np.linspace(start_f, stop_f, points)
+
+            marker_freqs = []
+            if (include_targets or spacing == "Scan List Only") and targets:
+                marker_freqs = [f for f in targets.keys() if start_f <= f <= stop_f]
+                if marker_freqs and spacing != "Scan List Only":
+                    freqs = np.unique(np.concatenate([freqs, marker_freqs]))
+
+            points = len(freqs)
+            self._state["freqs"] = freqs
+            self._state["points"] = points
+
+            self.sweep_started.emit((freqs, marker_freqs))
+            self._state["mags_db_all"] = np.zeros(points)
+
+            if window_type == "none":
+                self._state["window_orig"] = np.ones(N, dtype=np.float64)
+            else:
+                self._state["window_orig"] = signal.get_window(window_type, N)
+            self._state["sqrt_win_orig"] = np.sqrt(np.maximum(self._state["window_orig"], 0.0))
+            self._state["sig_win_orig"] = sig * self._state["sqrt_win_orig"]
+
+            QTimer.singleShot(0, self._process_scan_chunk)
+
+    @pyqtSlot()
+    def abort(self):
+        self._is_running = False
+
+    def _process_zoom_chunk(self):
+        if not self._is_running:
+            return
+
+        s = self._state
+        i = s["i"]
+        points = s["points"]
+        chunk_size = s["chunk_size"]
+
+        end_idx = min(i + chunk_size, points)
+        f_chunk = s["freqs_offset"][i:end_idx]
+        phase = s["t_dec"][:, np.newaxis] * f_chunk
+        exp_chunk = np.exp(-2j * np.pi * phase)
+        vals = (s["sig_dec_win"] @ exp_chunk) / (s["N_dec"] * s["window_coherent_gain"])
+        amp = np.abs(vals) * 2.0
+
+        if s["display_unit"] in ["dBV", "dB SPL"]:
+            amp /= np.sqrt(2.0)
+
+        mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+        if s["display_unit"] == "dBV":
+            mags_db_chunk += s["offset_dbv"]
+        elif s["display_unit"] == "dB SPL" and s["offset_spl"] is not None:
+            mags_db_chunk += s["offset_spl"]
+
+        s["mags_db_all"][i:end_idx] = mags_db_chunk
+        phases = np.angle(vals)
+
+        if len(mags_db_chunk) > 0:
+            max_idx = np.argmax(mags_db_chunk)
+            chunk_freq = s["zoom_center"] + f_chunk[max_idx]
+            chunk_mag = mags_db_chunk[max_idx]
+            self.sonifier.update_parameters(chunk_freq, chunk_mag)
+            self.sonifier.update_manual_tuner_mag(chunk_mag)
+
+        self.progress_update.emit(i, end_idx, s["freqs_offset"][i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
+
+        s["i"] = end_idx
+        if end_idx < points:
+            QTimer.singleShot(5, self._process_zoom_chunk)
+        else:
+            self._is_running = False
+            self.result_ready.emit((s["freqs"], s["mags_db_all"]))
+
+    def _process_scan_chunk(self):
+        if not self._is_running:
+            return
+
+        import scipy.signal as signal
+
+        s = self._state
+        i = s["i"]
+        points = s["points"]
+        chunk_size = s["chunk_size"]
+
+        end_idx = min(i + chunk_size, points)
+        current_points = end_idx - i
+        num_bases = 1 + current_points * 2
+        f_chunk = s["freqs"][i:end_idx]
+
+        max_f = f_chunk[-1]
+        target_fs = max_f * 4.0
+        M = max(1, int(s["fs"] / target_fs))
+
+        if M > 1:
+            sig_dec = signal.resample_poly(s["sig"], 1, M)
+            N_chunk = len(sig_dec)
+            fs_dec = s["fs"] / M
+            if s["window_type"] == "none":
+                window_dec = np.ones(N_chunk, dtype=np.float64)
+            else:
+                window_dec = signal.get_window(s["window_type"], N_chunk)
+            sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
+            sig_win = sig_dec * sqrt_win
+            t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
+        else:
+            N_chunk = s["N"]
+            sqrt_win = s["sqrt_win_orig"]
+            sig_win = s["sig_win_orig"]
+            t_chunk = s["t"]
+
+        two_pi_t = 2.0 * np.pi * t_chunk
+        phase = two_pi_t[:, np.newaxis] * f_chunk
+
+        B_win = np.empty((N_chunk, num_bases), dtype=np.float64)
+        B_win[:, 0] = sqrt_win
+
+        np.cos(phase, out=B_win[:, 1::2])
+        B_win[:, 1::2] *= sqrt_win[:, np.newaxis]
+
+        np.sin(phase, out=B_win[:, 2::2])
+        B_win[:, 2::2] *= sqrt_win[:, np.newaxis]
+
+        del phase
+
+        gram = np.dot(B_win.T, B_win)
+        rhs = np.dot(B_win.T, sig_win)
+
+        try:
+            coeff = np.linalg.solve(gram, rhs)
+        except np.linalg.LinAlgError:
+            coeff = np.linalg.lstsq(B_win, sig_win, rcond=None)[0]
+
+        X = coeff[1:]
+        iq = X.reshape(-1, 2)
+        amp = np.hypot(iq[:, 0], iq[:, 1])
+        if s["display_unit"] in ["dBV", "dB SPL"]:
+            amp /= np.sqrt(2.0)
+
+        mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+        if s["display_unit"] == "dBV":
+            mags_db_chunk += s["offset_dbv"]
+        elif s["display_unit"] == "dB SPL" and s["offset_spl"] is not None:
+            mags_db_chunk += s["offset_spl"]
+
+        s["mags_db_all"][i:end_idx] = mags_db_chunk
+        phases = np.arctan2(-iq[:, 1], iq[:, 0])
+
+        if len(mags_db_chunk) > 0:
+            max_idx = np.argmax(mags_db_chunk)
+            chunk_freq = f_chunk[max_idx]
+            chunk_mag = mags_db_chunk[max_idx]
+            self.sonifier.update_parameters(chunk_freq, chunk_mag)
+
+            mf = self.sonifier.manual_freq
+            if mf >= f_chunk[0] and mf <= f_chunk[-1]:
+                idx = np.searchsorted(f_chunk, mf)
+                if idx < len(f_chunk):
+                    self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
+
+        self.progress_update.emit(i, end_idx, s["freqs"][i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
+
+        s["i"] = end_idx
+        if end_idx < s["points"]:
+            QTimer.singleShot(5, self._process_scan_chunk)
+        else:
+            self._is_running = False
+            self.result_ready.emit((s["freqs"], s["mags_db_all"]))
+
+
 class FinderSignals(QObject):
     result_ready = pyqtSignal(object)
     sweep_started = pyqtSignal(object)
+    start_calc_signal = pyqtSignal(object)
     progress_update = pyqtSignal(int, int, object, object, object)
 
 
 class LockInSpectrumFinder(MeasurementModule):
+    def cleanup(self):
+        if hasattr(self, "worker_thread"):
+            self.worker_thread.quit()
+            self.worker_thread.wait()
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -218,8 +522,15 @@ class LockInSpectrumFinder(MeasurementModule):
         # State
         self.callback_id = None
         self.signals = FinderSignals()
-        self.executor = ThreadPoolExecutor(max_workers=1)
-        self._calculation_future = None
+        self.worker_thread = QThread()
+        self.worker = FinderWorker(None)
+        self.worker.moveToThread(self.worker_thread)
+        self.worker.progress_update.connect(self.signals.progress_update)
+        self.worker.result_ready.connect(self._on_worker_result_ready)
+        self.worker.sweep_started.connect(self.signals.sweep_started)
+        self.signals.start_calc_signal.connect(self.worker.start_calculation)
+        self.worker_thread.start()
+        self._is_calculating = False
 
         # Mode
         self.mode = "Scan"  # "Scan" or "Zoom"
@@ -297,6 +608,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # Sonifier
         self.sonifier = Sonifier(sample_rate=self.audio_engine.sample_rate)
+        self.worker.sonifier = self.sonifier
 
     @property
     def name(self) -> str:
@@ -447,6 +759,10 @@ class LockInSpectrumFinder(MeasurementModule):
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
+        # Abort any background calculation
+        import PyQt6.QtCore as QtCore
+
+        QtCore.QMetaObject.invokeMethod(self.worker, "abort", QtCore.Qt.ConnectionType.QueuedConnection)
 
     def clear_buffer(self):
         with self.lock:
@@ -478,10 +794,10 @@ class LockInSpectrumFinder(MeasurementModule):
         self.clear_buffer()
 
         # Don't queue multiple if one is still running
-        if self._calculation_future is not None and not self._calculation_future.done():
-            # A calculation is already in progress, drop this frame or wait.
-            # Dropping is safer to prevent queue explosion.
+        if self._is_calculating or self.worker._is_running:
             return
+
+        self._is_calculating = True
 
         sig = data[:, self.input_channel]
         fs = self.audio_engine.sample_rate
@@ -502,306 +818,19 @@ class LockInSpectrumFinder(MeasurementModule):
         p_octave_ref = self.octave_ref_freq
         p_targets = self.current_targets.copy()
 
-        self._calculation_future = self.executor.submit(
-            self._do_calculation,
-            sig,
-            fs,
-            p_start,
-            p_stop,
-            p_points,
-            p_spacing,
-            p_unit,
-            p_offset_dbv,
-            p_offset_spl,
-            p_mode,
-            p_zoom_center,
-            p_zoom_span,
-            p_window,
-            p_include_targets,
-            p_octave_ref,
-            p_targets,
-        )
+        params = {
+            'sig': sig, 'fs': fs, 'start_f': p_start, 'stop_f': p_stop,
+            'points': p_points, 'spacing': p_spacing, 'display_unit': p_unit,
+            'offset_dbv': p_offset_dbv, 'offset_spl': p_offset_spl, 'mode': p_mode,
+            'zoom_center': p_zoom_center, 'zoom_span': p_zoom_span,
+            'window_type': p_window, 'include_targets': p_include_targets,
+            'octave_ref': p_octave_ref, 'targets': p_targets
+        }
+        self.signals.start_calc_signal.emit(params)
 
-    def _do_calculation(
-        self,
-        sig,
-        fs,
-        start_f,
-        stop_f,
-        points,
-        spacing,
-        display_unit,
-        offset_dbv,
-        offset_spl,
-        mode="Scan",
-        zoom_center=1000.0,
-        zoom_span=10.0,
-        window_type="none",
-        include_targets=True,
-        octave_ref=1000.0,
-        targets=None,
-    ):
-        """
-        Background heavy lifting: Matrix projection or Zoom DDC
-        """
-        import time
-        import scipy.signal as signal
-
-        N = len(sig)
-        t = np.arange(N, dtype=np.float64) / fs
-
-        if mode == "Zoom":
-            s_f = zoom_center - zoom_span
-            e_f = zoom_center + zoom_span
-            freqs = np.linspace(s_f, e_f, points)
-            self.signals.sweep_started.emit((freqs, []))
-
-            # 1. Baseband mixing (DDC)
-            sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
-
-            # 2. Decimate to reduce points
-            # 巨大な間引き率によるハングを防ぐため、100Hz以上のサンプリングレートを維持
-            target_fs = max(zoom_span * 4, 100.0)
-            M = max(1, int(fs / target_fs))
-
-            if M > 1:
-                sig_dec = signal.resample_poly(sig_c, 1, M)
-            else:
-                sig_dec = sig_c
-
-            fs_dec = fs / M
-            N_dec = len(sig_dec)
-            t_dec = np.arange(N_dec) / fs_dec
-
-            freqs_offset = np.linspace(-zoom_span, zoom_span, points)
-            mags_db_all = np.zeros(points)
-
-            # --- 窓関数の適用 ---
-            if window_type == "none":
-                window = np.ones(N_dec, dtype=np.float64)
-                sig_dec_win = sig_dec
-                window_coherent_gain = 1.0
-            else:
-                window = signal.get_window(window_type, N_dec)
-                sig_dec_win = sig_dec * window
-                window_coherent_gain = np.mean(window)
-                if window_coherent_gain == 0:
-                    window_coherent_gain = 1.0
-
-            chunk_size = 32
-            for i in range(0, points, chunk_size):
-                if not self.is_running:
-                    break
-                end_idx = min(i + chunk_size, points)
-                f_chunk = freqs_offset[i:end_idx]
-                phase = t_dec[:, np.newaxis] * f_chunk
-                exp_chunk = np.exp(-2j * np.pi * phase)
-                # Direct correlation on decimated baseband with windowing (vectorized)
-                vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
-                amp = np.abs(vals) * 2.0
-                if display_unit in ["dBV", "dB SPL"]:
-                    amp /= np.sqrt(2.0)
-
-                mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
-                if display_unit == "dBV":
-                    mags_db_chunk += offset_dbv
-                elif display_unit == "dB SPL" and offset_spl is not None:
-                    mags_db_chunk += offset_spl
-
-                mags_db_all[i:end_idx] = mags_db_chunk
-
-                # Compute Phase
-                phases = np.angle(vals)
-
-                # Update sonifier: pick the strongest signal in the chunk
-                if len(mags_db_chunk) > 0:
-                    max_idx = np.argmax(mags_db_chunk)
-                    chunk_freq = zoom_center + f_chunk[max_idx]
-                    chunk_mag = mags_db_chunk[max_idx]
-                    self.sonifier.update_parameters(chunk_freq, chunk_mag)
-
-                    # Update manual tuner specifically if the manual freq is in this range
-                    # In zoom mode, manual tuner might just track the max
-                    self.sonifier.update_manual_tuner_mag(chunk_mag)
-
-                # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(
-                    i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy()
-                )
-                time.sleep(0.005)
-
-            if self.is_running:
-                # phases unmerged across chunks back to main for zoom (optional completeness)
-                self.signals.result_ready.emit((freqs, mags_db_all))
-            return
-
-        # Scan Mode (Matrix Projection)
-        if spacing == "Log":
-            # Avoid log of 0 or negative
-            s_f = max(0.1, start_f)
-            freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
-        elif spacing == "Integer":
-            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
-            freqs = freqs[freqs >= 1.0]  # Prevent 0 Hz
-        elif spacing == "Int x Sync":
-            df = fs / N
-            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
-            freqs = freqs[freqs >= df]  # Prevent 0 Hz and extremely low frequencies
-            if len(freqs) == 0:
-                freqs = np.array([df])
-        elif spacing == "Scan List Only":
-            if targets:
-                freqs = np.array(sorted([f for f in targets.keys() if start_f <= f <= stop_f]))
-            else:
-                freqs = np.array([])
-            if len(freqs) == 0:
-                freqs = np.array([start_f, stop_f])
-        elif spacing.endswith("Octave"):
-            try:
-                frac = spacing.split(" ")[0].split("/")
-                b = float(frac[1]) / float(frac[0])
-            except Exception:
-                b = 3.0
-
-            n_start = int(np.floor(b * np.log2(start_f / octave_ref)))
-            n_stop = int(np.ceil(b * np.log2(stop_f / octave_ref)))
-            n_vals = np.arange(n_start, n_stop + 1)
-            freqs = octave_ref * (2.0 ** (n_vals / b))
-            # Clip bounds exactly
-            freqs = freqs[(freqs >= start_f) & (freqs <= stop_f)]
-            if len(freqs) == 0:
-                freqs = np.array([start_f, stop_f])
-        else:  # "Lin"
-            freqs = np.linspace(start_f, stop_f, points)
-
-        marker_freqs = []
-        if (include_targets or spacing == "Scan List Only") and targets:
-            marker_freqs = [f for f in targets.keys() if start_f <= f <= stop_f]
-            if marker_freqs and spacing != "Scan List Only":
-                # np.unique stably sorts and prevents duplicates
-                freqs = np.unique(np.concatenate([freqs, marker_freqs]))
-
-        points = len(freqs)
-
-        self.signals.sweep_started.emit((freqs, marker_freqs))
-
-        # To prevent CPU overallocation and buffer underruns, we process in chunks.
-        # This spreads the load and allows for progressive UI updates (sliding line).
-        chunk_size = 32
-        mags_db_all = np.zeros(points)
-
-        # --- 初期窓関数の適用 (指定された窓関数) ---
-        # このNはsig全体の長さ
-        import scipy.signal as signal
-
-        if window_type == "none":
-            window_orig = np.ones(N, dtype=np.float64)
-        else:
-            window_orig = signal.get_window(window_type, N)
-        sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
-        sig_win_orig = sig * sqrt_win_orig
-
-        for i in range(0, points, chunk_size):
-            if not self.is_running:
-                break
-
-            end_idx = min(i + chunk_size, points)
-            current_points = end_idx - i
-            num_bases = 1 + current_points * 2
-            f_chunk = freqs[i:end_idx]
-
-            # --- Multi-rate downsampling ---
-            max_f = f_chunk[-1]
-            target_fs = max_f * 4.0
-            M = max(1, int(fs / target_fs))
-
-            if M > 1:
-                sig_dec = signal.resample_poly(sig, 1, M)
-                N_chunk = len(sig_dec)
-                fs_dec = fs / M
-                if window_type == "none":
-                    window_dec = np.ones(N_chunk, dtype=np.float64)
-                else:
-                    window_dec = signal.get_window(window_type, N_chunk)
-                sqrt_win = np.sqrt(np.maximum(window_dec, 0.0))
-                sig_win = sig_dec * sqrt_win
-                t_chunk = np.arange(N_chunk, dtype=np.float64) / fs_dec
-            else:
-                N_chunk = N
-                fs_dec = fs
-                sqrt_win = sqrt_win_orig
-                sig_win = sig_win_orig
-                t_chunk = t
-
-            two_pi_t = 2.0 * np.pi * t_chunk
-            phase = two_pi_t[:, np.newaxis] * f_chunk
-
-            # Allocate Windowed Basis Matrix for the local chunk
-            # [1, cos(w1), sin(w1), cos(w1), sin(w1), ...]
-            B_win = np.empty((N_chunk, num_bases), dtype=np.float64)  # 高精度化 (float64)
-            B_win[:, 0] = sqrt_win  # DC includes the window weight
-
-            # Compute and apply window weight directly in pre-allocated array
-            np.cos(phase, out=B_win[:, 1::2])
-            B_win[:, 1::2] *= sqrt_win[:, np.newaxis]
-
-            np.sin(phase, out=B_win[:, 2::2])
-            B_win[:, 2::2] *= sqrt_win[:, np.newaxis]
-
-            # Free memory immediately
-            del phase
-
-            # Since B can be huge, we use Gram directly for speed:
-            gram = np.dot(B_win.T, B_win)
-            rhs = np.dot(B_win.T, sig_win)
-
-            try:
-                # try speedy solve
-                coeff = np.linalg.solve(gram, rhs)
-            except np.linalg.LinAlgError:
-                # fallback
-                coeff = np.linalg.lstsq(B_win, sig_win, rcond=None)[0]
-
-            # Extract magnitudes for this chunk
-            X = coeff[1:]
-            iq = X.reshape(-1, 2)
-            amp = np.hypot(iq[:, 0], iq[:, 1])
-            if display_unit in ["dBV", "dB SPL"]:
-                amp /= np.sqrt(2.0)
-
-            mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
-            if display_unit == "dBV":
-                mags_db_chunk += offset_dbv
-            elif display_unit == "dB SPL" and offset_spl is not None:
-                mags_db_chunk += offset_spl
-
-            mags_db_all[i:end_idx] = mags_db_chunk
-
-            # iq[:,0] is cos component, iq[:,1] is sin component
-            # Standard phase from complex is angle(cos - j*sin)
-            phases = np.arctan2(-iq[:, 1], iq[:, 0])
-
-            # Update sonifier: pick the strongest signal in the chunk
-            if len(mags_db_chunk) > 0:
-                max_idx = np.argmax(mags_db_chunk)
-                chunk_freq = f_chunk[max_idx]
-                chunk_mag = mags_db_chunk[max_idx]
-                self.sonifier.update_parameters(chunk_freq, chunk_mag)
-
-                # Check if manual tuning freq is in this chunk (approximate)
-                mf = self.sonifier.manual_freq
-                if mf >= f_chunk[0] and mf <= f_chunk[-1]:
-                    # Find closest index
-                    idx = np.searchsorted(f_chunk, mf)
-                    if idx < len(f_chunk):
-                        self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
-
-            # Emit result chunk back to GUI thread
-            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
-
-            # Sleep briefly to ensure audio callback is not starved
-            time.sleep(0.005)
-
+    def _on_worker_result_ready(self, result):
+        freqs, mags_db_all = result
+        self._is_calculating = False
         if self.is_running:
             self.signals.result_ready.emit((freqs, mags_db_all))
 
@@ -1403,7 +1432,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         if filled < size:
             pct = int((filled / size) * 100)
-            if self.module._calculation_future is None or self.module._calculation_future.done():
+            if not self.module._is_calculating:
                 self.lbl_status.setText(tr("Buffering... {}%").format(pct))
             return
 

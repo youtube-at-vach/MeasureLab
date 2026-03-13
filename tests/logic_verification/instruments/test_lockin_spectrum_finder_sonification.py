@@ -33,6 +33,9 @@ class MockAudioEngine:
             del self.callbacks[cid]
 
 class TestLockInSpectrumFinderSonification(unittest.TestCase):
+    def tearDown(self):
+        self.finder.cleanup()
+
     def setUp(self):
         self.audio_engine = MockAudioEngine()
         self.finder = LockInSpectrumFinder(self.audio_engine)
@@ -70,19 +73,30 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
         mock_sonifier = MagicMock(spec=Sonifier)
         mock_sonifier.manual_freq = 1000.0
         self.finder.sonifier = mock_sonifier
+        self.finder.worker.sonifier = mock_sonifier
 
         # Run calculation
-        self.finder._do_calculation(
-            sig=sig,
-            fs=fs,
-            start_f=900.0,
-            stop_f=1100.0,
-            points=10,
-            spacing="Lin",
-            display_unit="dBFS",
-            offset_dbv=0.0,
-            offset_spl=0.0
-        )
+        params = {
+            'sig': sig, 'fs': fs, 'start_f': 900.0, 'stop_f': 1100.0,
+            'points': 10, 'spacing': "Lin", 'display_unit': "dBFS",
+            'offset_dbv': 0.0, 'offset_spl': 0.0, 'mode': "Scan",
+            'zoom_center': 1000.0, 'zoom_span': 10.0,
+            'window_type': "none", 'include_targets': True,
+            'octave_ref': 1000.0, 'targets': None
+        }
+        self.finder.worker.start_calculation(params)
+
+        from PyQt6.QtCore import QCoreApplication
+        app = QCoreApplication.instance()
+        if app is None:
+            from PyQt6.QtWidgets import QApplication
+            app = QApplication([])
+        import time
+        start_time = time.time()
+        while self.finder.worker._is_running and time.time() - start_time < 2.0:
+            app.processEvents()
+
+
 
         # Verify update_parameters was called at least once
         self.assertTrue(mock_sonifier.update_parameters.called)
