@@ -1,5 +1,6 @@
 import importlib
 import logging
+import time
 from typing import Optional
 
 from PyQt6.QtCore import QTimer
@@ -240,8 +241,7 @@ class MainWindow(QMainWindow):
         """Initialize module registry arrays."""
         # Module registry (keep keys identical to module.name strings)
         self._module_keys = [
-            k for k in ALL_MODULE_KEYS 
-            if self.enable_experimental or k not in EXPERIMENTAL_MODULE_KEYS
+            k for k in ALL_MODULE_KEYS if self.enable_experimental or k not in EXPERIMENTAL_MODULE_KEYS
         ]
         self.modules = [None] * len(self._module_keys)
         self.module_widgets = [None] * len(self._module_keys)
@@ -353,9 +353,7 @@ class MainWindow(QMainWindow):
             (
                 i
                 for i, d in enumerate(devices)
-                if is_valid_device(d)
-                and d["name"] == name
-                and (not hostapi or d.get("hostapi_name") == hostapi)
+                if is_valid_device(d) and d["name"] == name and (not hostapi or d.get("hostapi_name") == hostapi)
             ),
             None,
         )
@@ -366,11 +364,7 @@ class MainWindow(QMainWindow):
         # Pass 2: Loose match
         if hostapi:
             return next(
-                (
-                    i
-                    for i, d in enumerate(devices)
-                    if is_valid_device(d) and d["name"] == name
-                ),
+                (i for i, d in enumerate(devices) if is_valid_device(d) and d["name"] == name),
                 None,
             )
 
@@ -460,11 +454,21 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
 
         total = len(self._module_keys)
+        last_event_time = time.monotonic()
         for i, key in enumerate(self._module_keys, start=1):
             report(tr("Loading {0} ({1}/{2})...").format(tr(key), i, total))
-            QApplication.processEvents()
+
+            current_time = time.monotonic()
+            if current_time - last_event_time > 0.05:
+                QApplication.processEvents()
+                last_event_time = current_time
+
             self._ensure_module_loaded(i - 1)
-            QApplication.processEvents()
+
+            current_time = time.monotonic()
+            if current_time - last_event_time > 0.05:
+                QApplication.processEvents()
+                last_event_time = current_time
 
     def closeEvent(self, event):
         # Ensure PortAudio stream is closed (important in resident mode).
