@@ -767,6 +767,13 @@ class DistortionAnalyzerWidget(QWidget):
         self.dummy_load_label = QLabel(tr("Load"))
         sweep_layout.addRow(self.dummy_load_label, self.dummy_load_spin)
 
+        # Warning Label for Calibration
+        self.x_unit_warning_label = QLabel(tr("Output calibration (gain) is required for accurate dBV/W results."))
+        self.x_unit_warning_label.setStyleSheet("color: #ffaa55; font-size: 11px; margin-top: 5px;")
+        self.x_unit_warning_label.setWordWrap(True)
+        self.x_unit_warning_label.setVisible(False)
+        sweep_layout.addRow(self.x_unit_warning_label)
+
         self.sweep_y_unit_combo = QComboBox()
         self.sweep_y_unit_combo.addItems(["dB", "Percent (%)"])
         self.sweep_y_unit_combo.currentIndexChanged.connect(self._on_sweep_y_unit_changed)
@@ -1320,11 +1327,25 @@ class DistortionAnalyzerWidget(QWidget):
 
     def _update_sweep_x_controls(self):
         is_amplitude = self.mode_combo.currentIndex() == 2
+        unit = self._get_sweep_x_unit()
+        
         self.sweep_x_unit_label.setVisible(is_amplitude)
         self.sweep_x_unit_combo.setVisible(is_amplitude)
         self.dummy_load_label.setVisible(is_amplitude)
         self.dummy_load_spin.setVisible(is_amplitude)
-        self.dummy_load_spin.setEnabled(is_amplitude and self._get_sweep_x_unit() == "W")
+        self.dummy_load_spin.setEnabled(is_amplitude and unit == "W")
+        
+        # Warning Visibility
+        needs_cal = unit in ("dBV", "W")
+        self.x_unit_warning_label.setVisible(is_amplitude and needs_cal)
+
+        # Tooltips
+        if is_amplitude:
+            self.sweep_x_unit_combo.setToolTip(tr("Select the unit for the X-axis sweep range."))
+            if unit == "W":
+                self.dummy_load_spin.setToolTip(tr("Specify the load resistance to calculate power (W)."))
+            else:
+                self.dummy_load_spin.setToolTip("")
 
     def _get_sweep_x_unit(self) -> str:
         if self.mode_combo.currentIndex() == 1:
