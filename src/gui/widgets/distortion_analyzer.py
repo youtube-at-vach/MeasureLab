@@ -1328,13 +1328,13 @@ class DistortionAnalyzerWidget(QWidget):
     def _update_sweep_x_controls(self):
         is_amplitude = self.mode_combo.currentIndex() == 2
         unit = self._get_sweep_x_unit()
-        
+
         self.sweep_x_unit_label.setVisible(is_amplitude)
         self.sweep_x_unit_combo.setVisible(is_amplitude)
         self.dummy_load_label.setVisible(is_amplitude)
         self.dummy_load_spin.setVisible(is_amplitude)
         self.dummy_load_spin.setEnabled(is_amplitude and unit == "W")
-        
+
         # Warning Visibility
         needs_cal = unit in ("dBV", "W")
         self.x_unit_warning_label.setVisible(is_amplitude and needs_cal)
