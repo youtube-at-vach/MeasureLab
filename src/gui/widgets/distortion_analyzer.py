@@ -601,6 +601,7 @@ class DistortionAnalyzerWidget(QWidget):
         # Initial update
         self.on_unit_changed(self.unit_combo.currentText())
         self.out_mode_combo.setCurrentIndex(1)  # Default to Sine Wave
+        self._update_sweep_x_controls()
 
     def _create_left_panel(self) -> QVBoxLayout:
         """Creates the left control panel."""
@@ -748,6 +749,30 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_steps_spin.setRange(2, 1000)
         self.sweep_steps_spin.setValue(30)
         sweep_layout.addRow(tr("Steps:"), self.sweep_steps_spin)
+
+        self.sweep_x_unit_combo = QComboBox()
+        self.sweep_x_unit_combo.addItem(tr("dBFS"), "dBFS")
+        self.sweep_x_unit_combo.addItem(tr("dBV"), "dBV")
+        self.sweep_x_unit_combo.addItem(tr("W"), "W")
+        self.sweep_x_unit_combo.currentIndexChanged.connect(self._on_sweep_x_unit_changed)
+        self.sweep_x_unit_label = QLabel(tr("X-Axis:"))
+        sweep_layout.addRow(self.sweep_x_unit_label, self.sweep_x_unit_combo)
+
+        self.dummy_load_spin = QDoubleSpinBox()
+        self.dummy_load_spin.setRange(0.01, 100000.0)
+        self.dummy_load_spin.setDecimals(2)
+        self.dummy_load_spin.setValue(8.0)
+        self.dummy_load_spin.setSuffix(" Ω")
+        self.dummy_load_spin.valueChanged.connect(self._on_dummy_load_changed)
+        self.dummy_load_label = QLabel(tr("Load"))
+        sweep_layout.addRow(self.dummy_load_label, self.dummy_load_spin)
+
+        # Warning Label for Calibration
+        self.x_unit_warning_label = QLabel(tr("Output calibration (gain) is required for accurate dBV/W results."))
+        self.x_unit_warning_label.setStyleSheet("color: #ffaa55; font-size: 11px; margin-top: 5px;")
+        self.x_unit_warning_label.setWordWrap(True)
+        self.x_unit_warning_label.setVisible(False)
+        sweep_layout.addRow(self.x_unit_warning_label)
 
         self.sweep_y_unit_combo = QComboBox()
         self.sweep_y_unit_combo.addItems(["dB", "Percent (%)"])
@@ -936,13 +961,26 @@ class DistortionAnalyzerWidget(QWidget):
             # Re-trigger plotting
             self.on_sweep_result(None)
 
+    def _on_sweep_x_unit_changed(self, idx):
+        self._update_sweep_x_controls()
+        self._update_sweep_x_axis_format()
+        self._update_sweep_y_axis_format()
+
+        if self.module.sweep_results:
+            self.on_sweep_result(None)
+
+    def _on_dummy_load_changed(self, val):
+        self._update_sweep_x_axis_format()
+        if self.module.sweep_results:
+            self.on_sweep_result(None)
+
     def _update_sweep_y_axis_format(self):
         y_axis = self.sweep_plot.getPlotItem().getAxis("left")
 
         if self.sweep_y_unit_combo.currentText() == "Percent (%)":
             self.sweep_plot.setLabel("left", tr("THD+N"), units="%")
             # We must maintain x-axis log mode based on the current mode
-            x_log = self.mode_combo.currentIndex() == 1
+            x_log = self._is_sweep_x_log()
             self.sweep_plot.setLogMode(x=x_log, y=True)
             self.sweep_plot.setYRange(np.log10(0.0001), np.log10(100))
 
@@ -952,7 +990,7 @@ class DistortionAnalyzerWidget(QWidget):
             y_axis.setTicks([ticks_log])
         else:
             self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
-            x_log = self.mode_combo.currentIndex() == 1
+            x_log = self._is_sweep_x_log()
             self.sweep_plot.setLogMode(x=x_log, y=False)
             self.sweep_plot.setYRange(-140, 0)
             y_axis.setTicks(None) # Reset to standard ticks
@@ -976,6 +1014,7 @@ class DistortionAnalyzerWidget(QWidget):
 
         self.sweep_curve = self.sweep_plot.plot(pen="c")
 
+        self._update_sweep_x_axis_format()
         self._update_sweep_y_axis_format()
         return self.sweep_plot
 
@@ -1025,6 +1064,7 @@ class DistortionAnalyzerWidget(QWidget):
         # Reset sweep data and plot when changing from/to sweep modes
         self.module.sweep_results = []
         self.sweep_curve.setData([], [])
+        self._update_sweep_x_controls()
 
         if idx == 0:  # Real-time
             self.settings_tabs.setCurrentIndex(0)
@@ -1042,22 +1082,13 @@ class DistortionAnalyzerWidget(QWidget):
                 self.sweep_end_spin.setSuffix(" Hz")
                 self.sweep_start_spin.setValue(20)
                 self.sweep_end_spin.setValue(20000)
-                self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")
-                # Restore custom ticks for frequency
-                ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-                ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
-                self.sweep_axis.setTicks([ticks_log])
-                self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
+                self._update_sweep_x_axis_format()
             else:  # Amplitude Sweep
                 self.sweep_start_spin.setSuffix(" dBFS")
                 self.sweep_end_spin.setSuffix(" dBFS")
                 self.sweep_start_spin.setValue(-60)
                 self.sweep_end_spin.setValue(0)
-                self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBFS")
-                # Reset ticks to auto for amplitude
-                self.sweep_axis.setTicks(None)
-                # X-axis matches initial measurement range
-                self.sweep_plot.setXRange(-60, 0)
+                self._update_sweep_x_axis_format()
 
             self._update_sweep_y_axis_format()
 
@@ -1189,7 +1220,11 @@ class DistortionAnalyzerWidget(QWidget):
             if start > 0 and end > 0:
                 self.sweep_plot.setXRange(np.log10(start), np.log10(end))
         else:
-            self.sweep_plot.setXRange(start, end)
+            x_min, x_max = self._get_sweep_x_range(start, end)
+            if self._is_sweep_x_log():
+                self.sweep_plot.setXRange(np.log10(x_min), np.log10(x_max))
+            else:
+                self.sweep_plot.setXRange(x_min, x_max)
 
         self._update_sweep_y_axis_format()
 
@@ -1233,17 +1268,23 @@ class DistortionAnalyzerWidget(QWidget):
             return
 
         # Update Plot
-        x_data = [r["sweep_param"] for r in self.module.sweep_results]
+        x_data = [self._convert_sweep_x_value(r["sweep_param"]) for r in self.module.sweep_results]
 
         if self.sweep_y_unit_combo.currentText() == "Percent (%)":
             y_data = [max(r["thdn_percent"], 1e-6) for r in self.module.sweep_results]
         else:
             y_data = [r["thdn_db"] for r in self.module.sweep_results]
 
-        x_plot = np.array(x_data)
+        x_plot = np.array(x_data, dtype=float)
+        y_plot = np.array(y_data, dtype=float)
+        finite_mask = np.isfinite(x_plot) & np.isfinite(y_plot)
+        if not np.any(finite_mask):
+            return
+        x_plot = x_plot[finite_mask]
+        y_plot = y_plot[finite_mask]
 
         self.sweep_curve.setSymbol("o")
-        self.sweep_curve.setData(x_plot, y_data)
+        self.sweep_curve.setData(x_plot, y_plot)
 
     def on_sweep_finished(self):
         self.stop_sweep()
@@ -1284,6 +1325,99 @@ class DistortionAnalyzerWidget(QWidget):
         self.module.average_count = val
         self.module.reset_averaging_state()
 
+    def _update_sweep_x_controls(self):
+        is_amplitude = self.mode_combo.currentIndex() == 2
+        unit = self._get_sweep_x_unit()
+
+        self.sweep_x_unit_label.setVisible(is_amplitude)
+        self.sweep_x_unit_combo.setVisible(is_amplitude)
+        self.dummy_load_label.setVisible(is_amplitude)
+        self.dummy_load_spin.setVisible(is_amplitude)
+        self.dummy_load_spin.setEnabled(is_amplitude and unit == "W")
+
+        # Warning Visibility
+        needs_cal = unit in ("dBV", "W")
+        self.x_unit_warning_label.setVisible(is_amplitude and needs_cal)
+
+        # Tooltips
+        if is_amplitude:
+            self.sweep_x_unit_combo.setToolTip(tr("Select the unit for the X-axis sweep range."))
+            if unit == "W":
+                self.dummy_load_spin.setToolTip(tr("Specify the load resistance to calculate power (W)."))
+            else:
+                self.dummy_load_spin.setToolTip("")
+
+    def _get_sweep_x_unit(self) -> str:
+        if self.mode_combo.currentIndex() == 1:
+            return "Hz"
+        return self.sweep_x_unit_combo.currentData() or self.sweep_x_unit_combo.currentText()
+
+    def _is_sweep_x_log(self) -> bool:
+        if self.mode_combo.currentIndex() == 1:
+            return True
+        return self._get_sweep_x_unit() == "W"
+
+    def _dbfs_to_dbv(self, dbfs: float) -> float:
+        gain = self.module.audio_engine.calibration.output_gain or 1.0
+        amp_linear = 10 ** (dbfs / 20)
+        return linear_to_amplitude(amp_linear, "dBV", gain)
+
+    def _dbfs_to_power_w(self, dbfs: float) -> float:
+        resistance = max(self.dummy_load_spin.value(), 1e-6)
+        gain = self.module.audio_engine.calibration.output_gain or 1.0
+        amp_linear = 10 ** (dbfs / 20)
+        v_peak = amp_linear * gain
+        v_rms = v_peak / np.sqrt(2)
+        return (v_rms * v_rms) / resistance
+
+    def _convert_sweep_x_value(self, sweep_param: float) -> float:
+        if self.mode_combo.currentIndex() == 1:
+            return sweep_param
+
+        unit = self._get_sweep_x_unit()
+        if unit == "dBV":
+            return self._dbfs_to_dbv(sweep_param)
+        if unit == "W":
+            return max(self._dbfs_to_power_w(sweep_param), 1e-15)
+        return sweep_param
+
+    def _get_sweep_x_range(self, start_dbfs: float, end_dbfs: float) -> tuple[float, float]:
+        x_start = self._convert_sweep_x_value(start_dbfs)
+        x_end = self._convert_sweep_x_value(end_dbfs)
+        x_min = min(x_start, x_end)
+        x_max = max(x_start, x_end)
+        if self._is_sweep_x_log():
+            x_min = max(x_min, 1e-15)
+            x_max = max(x_max, x_min * 1.0001)
+        return x_min, x_max
+
+    def _update_sweep_x_axis_format(self):
+        if self.mode_combo.currentIndex() == 1:
+            self.sweep_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+            ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+            ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
+            self.sweep_axis.setTicks([ticks_log])
+            self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
+            return
+
+        unit = self._get_sweep_x_unit()
+        x_min, x_max = self._get_sweep_x_range(self.sweep_start_spin.value(), self.sweep_end_spin.value())
+        if unit == "dBV":
+            self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBV")
+            self.sweep_axis.setTicks(None)
+            self.sweep_plot.setXRange(x_min, x_max)
+        elif unit == "W":
+            self.sweep_plot.setLabel("bottom", tr("Power"), units="W")
+            decade_start = int(np.floor(np.log10(x_min)))
+            decade_end = int(np.ceil(np.log10(x_max)))
+            ticks = [10 ** d for d in range(decade_start, decade_end + 1)]
+            ticks_log = [(np.log10(t), f"{t:g} W") for t in ticks]
+            self.sweep_axis.setTicks([ticks_log])
+            self.sweep_plot.setXRange(np.log10(x_min), np.log10(x_max))
+        else:
+            self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBFS")
+            self.sweep_axis.setTicks(None)
+            self.sweep_plot.setXRange(x_min, x_max)
     def _format_percent(self, value):
         if value == 0:
             return tr("{0} %").format(f"{value:.5f}")
