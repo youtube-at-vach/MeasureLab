@@ -10,6 +10,9 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Generative AI Non-Linearity Cloner:** AI model trained via specialized excitation signals to replicate exact dynamic non-linearities/phase of analog gear.
 * **Brainwave (EEG) Perceptual Correlator:** Syncing auditory test signals with real-time EEG metrics to measure perceived distortion versus mathematical distortion.
 * **Headless / Web Remote Interface:** Decouple GUI for embedded (Raspberry Pi) web/mobile remote monitoring.
+* **AI Component Degradation Predictor:** Analyzes harmonic drift over time to predict capacitor aging or thermal degradation in analog circuits before catastrophic failure.
+* **Augmented Reality (AR) Probe Visualizer:** Overlaying signal paths, voltage levels, and distortion heatmaps directly onto a physical PCB view using a smartphone/webcam in real-time.
+* **Real-time Active Distortion Nulling:** Synthesizing inverse distortion signals in real-time to cancel out inherent DAC/Amp non-linearities, pushing physical hardware beyond its specified limits.
 
 ---
 
@@ -42,6 +45,12 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
     * **Extension:** Measure Capacitance, Inductance, and Resistance per meter.
 * **Network Analyzer: Impulse Response & Coherence:**
     * **Extension:** Time-domain IR and 0.0-1.0 Coherence plot.
+* **Signal Generator & Spectrum Analyzer: J-Test Jitter Analysis:**
+    * **Extension:** Add standard J-Test signal (fs/4 + low level toggle) to Generator and high-resolution zoomed view to Analyzer.
+    * **Why:** Industry standard for evaluating DAC clock jitter without needing dedicated hardware analyzers.
+* **Distortion Analyzer / Noise Profiler: AES17 Dynamic Range Mode:**
+    * **Extension:** Add -60dBFS excitation and CCIR-2k weighting filter to automate standard DAC Dynamic Range measurements.
+    * **Why:** Essential for modern DAC evaluation, currently requires manual calculation from noise floors.
 
 ---
 
@@ -56,43 +65,28 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## ⏸️ Under Review / On Hold
 
-* **Holographic Audio Topography:** 3D spherical evolution of Goniometer visualizing phase, amplitude, and frequency mapping.
-    * **Status:** On Hold
-    * **Reason:** While interesting, current standard PC specifications cannot smoothly drive 3D rendering yet.
-* **3D Spectral Waterfall:** Spectrogram extension adding Z-axis depth for resonance decay.
-    * **Status:** On Hold
-    * **Reason:** For room reverberation measurements, other advanced external software (like REW) already exist.
-* **Plugin / Scripting System:** Python hooks for custom DSP audio buffer processing.
-    * **Status:** On Hold
-    * **Reason:** The core architecture needs to be finalized first. The future direction of the software is currently unclear.
-* **AI Circuit Topology Reverse Engineer:** Analyzes extreme complex test signal responses (e.g., dynamic IMD) to predict internal topology.
-    * **Status:** Under Investigation
-    * **Reason:** Implementation feasibility is currently being researched as there are no concrete technical prospects yet.
-* **Multimeter (AC Voltmeter):** Dedicated digital multimeter widget (Vrms, Vpeak, Crest Factor, Freq, Phase).
-    * **Status:** Under Consideration
-    * **Reason:** Very useful, but too limited if used solely as an AC meter. We are exploring alternative approaches.
-* **Spectrum Analyzer: Cepstrum Analysis:** "Cepstrum" mode for pitch and harmonic structure analysis.
-    * **Status:** Under Consideration
-    * **Reason:** Highly promising, but since the horizontal axis is not frequency, we are considering adding it to a separate, dedicated vibration analysis widget instead.
+* **Holographic Audio Topography:** On Hold (Current PC specs cannot smoothly drive 3D rendering).
+* **3D Spectral Waterfall:** On Hold (Room acoustic tools like REW already exist).
+* **Plugin / Scripting System:** On Hold (Core architecture needs finalization first).
+* **AI Circuit Topology Reverse Engineer:** Under Investigation (Feasibility research ongoing).
+* **Multimeter (AC Voltmeter):** Under Consideration (Exploring broader approaches).
+* **Spectrum Analyzer: Cepstrum Analysis:** Under Consideration (May move to a dedicated vibration analysis widget).
 
 ---
 
 ## ❌ Cancelled / Not Needed
 
-* **Step Response Analyzer:** Transient analysis via band-limited steps to measure Rise/Fall Time and Overshoot for DAC filters.
-    * **Status:** Not Needed
-    * **Reason:** Its functionality can be largely substituted by the boxcar averager. Additionally, standard sound devices have I/O response issues due to anti-aliasing filters. While simple waveform viewing is fine, quantifying exact rise/fall times could lead to misleading interpretations.
-* **Spectrum Analyzer: THD Hot-Tracking:** Dynamically tag and track fundamental and harmonics in real-time.
-    * **Status:** Cancelled
-    * **Reason:** There is already a dedicated distortion meter. Implementing this would overly complicate processing, and we want to ensure comfortable real-time operation even on low-spec PCs.
+* **Step Response Analyzer:** Cancelled (Substitutable by Boxcar averager; anti-aliasing filters distort step responses).
+* **Spectrum Analyzer: THD Hot-Tracking:** Cancelled (Dedicated distortion meter exists; real-time performance concerns).
+* **Multi-Channel Phase/Delay Matrix:** Cancelled (Substitutable by `Network Analyzer` and `Oscilloscope` phase correlation features).
 
 ---
 
 ## 💤 Deferred / Reference (Not Planned)
 
-* **DC Stability & Drift Logger:** Hardware is AC Coupled.
-* **Wow & Flutter Meter:** Analog focus, deferred.
-* **Room Acoustics (RT60) & T/S Parameters:** Acoustic focus, deferred.
+* **DC Stability & Drift Logger:** Deferred (Hardware is AC Coupled).
+* **Wow & Flutter Meter:** Deferred (Analog focus).
+* **Room Acoustics (RT60) & T/S Parameters:** Deferred (Acoustic focus).
 * **EQ Designer & Polarity Tester:** Deferred.
-* **AI-Based Audio Anomaly Detection:** No suitable API/algo found.
-* **Digital Interface Analyzer (Jitter/Eye):** Requires wideband logic analyzer hardware.
+* **AI-Based Audio Anomaly Detection:** Deferred (No suitable API/algo).
+* **Digital Interface Analyzer (Jitter/Eye):** Deferred (Requires logic analyzer hardware).
