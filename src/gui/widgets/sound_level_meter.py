@@ -44,7 +44,10 @@ class SoundLevelMeter(MeasurementModule):
         self.lpeak = -np.inf
 
         # LN Statistics
-        self.ln_history = []
+        self.ln_history_capacity = 360000  # 10 hours at 0.1s rate
+        self.ln_history = np.zeros(self.ln_history_capacity, dtype=np.float32)
+        self.ln_history_ptr = 0
+        self.ln_history_count = 0
         self.last_sample_time = 0.0
         self.LN_SAMPLING_PERIOD = 0.1  # Fixed 0.1s for statistics as requested
 
@@ -126,7 +129,8 @@ class SoundLevelMeter(MeasurementModule):
         self.lpeak = -np.inf
 
         # Reset LN Statistics
-        self.ln_history = []
+        self.ln_history_ptr = 0
+        self.ln_history_count = 0
         self.last_sample_time = time.time()
 
         # Reset Results
@@ -401,7 +405,10 @@ class SoundLevelMeter(MeasurementModule):
             # But "Lave" might effectively be Leq.
             # Let's store LINEAR power to support accurate Leq/Lave calculation of the subset,
             # and convert to dB for sorting/percentiles.
-            self.ln_history.append(lp_inst)
+            self.ln_history[self.ln_history_ptr] = lp_inst
+            self.ln_history_ptr = (self.ln_history_ptr + 1) % self.ln_history_capacity
+            if self.ln_history_count < self.ln_history_capacity:
+                self.ln_history_count += 1
             self.last_sample_time = current_time
 
         # Store for display (Atomic update preferred)
@@ -425,10 +432,10 @@ class SoundLevelMeter(MeasurementModule):
 
     def calculate_ln_statistics(self):
         """Calculate LN statistics from history. Called by GUI."""
-        if not self.ln_history:
+        if self.ln_history_count == 0:
             return {}
 
-        data_linear = np.array(self.ln_history)
+        data_linear = self.ln_history[:self.ln_history_count]
         data_db = 10 * np.log10(data_linear + 1e-12)
 
         # Percentiles (Ln is level EXCEEDED n% of time)
@@ -464,10 +471,10 @@ class SoundLevelMeter(MeasurementModule):
                    probabilities: Normalized count (pdf) or absolute count?
                                   Let's return normalized probability (sum=100% or 1.0)
         """
-        if not self.ln_history:
+        if self.ln_history_count == 0:
             return np.array([]), np.array([])
 
-        data_linear = np.array(self.ln_history)
+        data_linear = self.ln_history[:self.ln_history_count]
         data_db = 10 * np.log10(data_linear + 1e-12)
 
         # Determine range
@@ -785,7 +792,7 @@ class SoundLevelMeterWidget(QWidget):
         is_hist_tab = self.tabs.widget(current_idx) == self.tab_hist
         is_stats_tab = self.tabs.widget(current_idx) == self.tab_stats
 
-        if (is_hist_tab or is_stats_tab) and self.module.ln_history:
+        if (is_hist_tab or is_stats_tab) and self.module.ln_history_count > 0:
             # We can optimize by not calculating every GUI frame (50ms), maybe every 250ms?
             if time.monotonic() - self.last_ln_update_time >= 0.25:
                 self.last_ln_update_time = time.monotonic()
