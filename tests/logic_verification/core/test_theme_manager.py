@@ -125,6 +125,31 @@ class TestThemeManager(unittest.TestCase):
         self.assertEqual(tm.current_theme, "system")
         self.assertEqual(tm.app, self.mock_app)
 
+    @patch.dict('sys.modules', {'darkdetect': MagicMock()})
+    def test_get_current_theme_with_config(self):
+        """Test that get_current_theme resolves 'system' using config_manager and darkdetect."""
+        import darkdetect
+
+        mock_config = MagicMock()
+        tm = self.ThemeManager(self.mock_app, config_manager=mock_config)
+
+        # 1. Test when theme is explicitly "light"
+        mock_config.get_theme.return_value = "light"
+        self.assertEqual(tm.get_current_theme(), "light")
+
+        # 2. Test when theme is explicitly "dark"
+        mock_config.get_theme.return_value = "dark"
+        self.assertEqual(tm.get_current_theme(), "dark")
+
+        # 3. Test when theme is "system" and system is dark
+        mock_config.get_theme.return_value = "system"
+        darkdetect.isDark.return_value = True
+        self.assertEqual(tm.get_current_theme(), "dark")
+
+        # 4. Test when theme is "system" and system is light
+        darkdetect.isDark.return_value = False
+        self.assertEqual(tm.get_current_theme(), "light")
+
     def test_set_theme_light(self):
         tm = self.ThemeManager(self.mock_app)
 
