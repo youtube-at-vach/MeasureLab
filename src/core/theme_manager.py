@@ -79,11 +79,7 @@ class ThemeManager(QObject):
         if self.config_manager is not None:
             theme_setting = self.config_manager.get_theme()
             if theme_setting == "system":
-                try:
-                    import darkdetect
-                    return "dark" if darkdetect.isDark() else "light"
-                except ImportError:
-                    return self._detect_system_theme()
+                return self._detect_system_theme()
             return theme_setting
 
         # Fallback if no config_manager is provided (e.g. legacy/testing)
