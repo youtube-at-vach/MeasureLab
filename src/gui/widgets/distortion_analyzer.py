@@ -1410,8 +1410,10 @@ class DistortionAnalyzerWidget(QWidget):
         x_min = min(x_start, x_end)
         x_max = max(x_start, x_end)
         # Ensure values are finite
-        if not np.isfinite(x_min): x_min = 1e-15
-        if not np.isfinite(x_max): x_max = 1.0
+        if not np.isfinite(x_min):
+            x_min = 1e-15
+        if not np.isfinite(x_max):
+            x_max = 1.0
         if self._is_sweep_x_log():
             x_min = max(x_min, 1e-15)
             x_max = max(x_max, x_min * 1.0001)
