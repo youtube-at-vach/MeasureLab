@@ -125,6 +125,35 @@ class TestThemeManager(unittest.TestCase):
         self.assertEqual(tm.current_theme, "system")
         self.assertEqual(tm.app, self.mock_app)
 
+    def test_get_current_theme_with_config(self):
+        """Test that get_current_theme resolves 'system' using config_manager and internal Qt detection."""
+        mock_config = MagicMock()
+        tm = self.ThemeManager(self.mock_app, config_manager=mock_config)
+
+        # 1. Test when theme is explicitly "light"
+        mock_config.get_theme.return_value = "light"
+        self.assertEqual(tm.get_current_theme(), "light")
+
+        # 2. Test when theme is explicitly "dark"
+        mock_config.get_theme.return_value = "dark"
+        self.assertEqual(tm.get_current_theme(), "dark")
+
+        # 3. Test when theme is "system" and system is dark
+        mock_config.get_theme.return_value = "system"
+
+        # Mocking Qt style hints to return Dark theme
+        mock_qt = MagicMock()
+        mock_qt.ColorScheme.Dark = 2
+        self.mock_qt_core.Qt = mock_qt
+        self.mock_style_hints.colorScheme.return_value = 2
+
+        self.assertEqual(tm.get_current_theme(), "dark")
+
+        # 4. Test when theme is "system" and system is light
+        mock_qt.ColorScheme.Light = 1
+        self.mock_style_hints.colorScheme.return_value = 1
+        self.assertEqual(tm.get_current_theme(), "light")
+
     def test_set_theme_light(self):
         tm = self.ThemeManager(self.mock_app)
 

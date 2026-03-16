@@ -22,9 +22,10 @@ class ThemeManager(QObject):
     # Signal emitted when theme changes
     theme_changed = pyqtSignal(str)  # theme_name: 'light', 'dark', 'system'
 
-    def __init__(self, app: QApplication):
+    def __init__(self, app: QApplication, config_manager=None):
         super().__init__()
         self.app = app
+        self.config_manager = config_manager
         self.logger = logging.getLogger(self.__class__.__name__)
         self.current_theme = "system"
 
@@ -71,7 +72,17 @@ class ThemeManager(QObject):
         self.theme_changed.emit(theme_name)
 
     def get_current_theme(self) -> str:
-        """Returns the current theme setting ('system', 'light', or 'dark')."""
+        """
+        Returns the currently active theme ('dark' or 'light').
+        If the setting is 'system', it resolves to the actual system theme.
+        """
+        if self.config_manager is not None:
+            theme_setting = self.config_manager.get_theme()
+            if theme_setting == "system":
+                return self._detect_system_theme()
+            return theme_setting
+
+        # Fallback if no config_manager is provided (e.g. legacy/testing)
         return self.current_theme
 
     def get_effective_theme(self) -> str:
