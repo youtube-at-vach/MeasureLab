@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.5.8] - 2026-03-16
+
+### Added
+
+* **Analyzer**: Added percentage Y-axis option to Distortion Analyzer sweeps.
+* **Analyzer**: Added support for dBV and Watt units in Distortion Analyzer amplitude sweeps, including a calibration warning for these units.
+* **Analyzer**: Introduced 24-tone equal temperament (24TET) and Just Intonation musical scales to Lock-in Spectrum Finder.
+* **Analyzer**: Added logarithmic X-axis option for "Scan List Only" mode in Lock-in Spectrum Finder.
+* **Analyzer**: Added 32768 buffer size option for scan mode in Lock-in Spectrum Finder.
+* **Docs**: Updated README files with information about the GPT-5.2 Codex AI model.
+* **Docs**: Updated `PROPOSED_FEATURES.md` with categorized sections for better organization of future ideas.
+
+### Changed
+
+* **Perf**: Optimized GUI event loop during module preloading by throttling `QApplication.processEvents()`.
+* **Perf**: Optimized `hum_components` calculation and LTC decoder array iterations.
+* **Perf**: Optimized audio engine device queries to reduce redundant system calls.
+* **Refactor**: Improved translation key extraction and centralized localization file sorting for better maintainability.
+
+### Fixed
+
+* **Security**: Enforced restrictive permissions on directory creation in Lock-in Spectrum Finder.
+* **Audio**: Fixed potential `sosfilt` errors by ensuring atomic filter parameter updates and adding exception handling.
+* **UI**: Fixed false-positive dead code warnings in Network Analyzer and Transient Analyzer.
+* **I18n**: Fixed leftover English placeholders and translation leaks across multiple languages.
+
 ## [v0.5.7] - 2026-03-10
 
 ### Added
