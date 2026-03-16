@@ -1251,6 +1251,8 @@
     "dB SPL": "dB SPL",
     "dBFS": "dBFS",
     "dBV": "dBV",
+    "dBW": "dBW",
+    "Vrms": "Vrms",
     "dV: {0:.3f}V": "dV: {0:.3f}V",
     "ppm": "ppm",
     "{0:.1f}": "{0:.1f}",

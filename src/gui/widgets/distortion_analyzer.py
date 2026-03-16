@@ -753,7 +753,9 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_x_unit_combo = QComboBox()
         self.sweep_x_unit_combo.addItem(tr("dBFS"), "dBFS")
         self.sweep_x_unit_combo.addItem(tr("dBV"), "dBV")
+        self.sweep_x_unit_combo.addItem(tr("Vrms"), "Vrms")
         self.sweep_x_unit_combo.addItem(tr("W"), "W")
+        self.sweep_x_unit_combo.addItem(tr("dBW"), "dBW")
         self.sweep_x_unit_combo.currentIndexChanged.connect(self._on_sweep_x_unit_changed)
         self.sweep_x_unit_label = QLabel(tr("X-Axis:"))
         sweep_layout.addRow(self.sweep_x_unit_label, self.sweep_x_unit_combo)
@@ -1241,6 +1243,12 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_worker.finished.connect(self.on_sweep_finished)
         self.sweep_worker.start()
 
+    def _update_sweep_chart(self):
+        if not self.sweep_data:
+            self.sweep_curve.setData([], [])
+            self.sweep_points.clear()
+            return
+
     def stop_sweep(self):
         if self.sweep_worker:
             self.sweep_worker.stop()
@@ -1333,17 +1341,17 @@ class DistortionAnalyzerWidget(QWidget):
         self.sweep_x_unit_combo.setVisible(is_amplitude)
         self.dummy_load_label.setVisible(is_amplitude)
         self.dummy_load_spin.setVisible(is_amplitude)
-        self.dummy_load_spin.setEnabled(is_amplitude and unit == "W")
+        self.dummy_load_spin.setEnabled(is_amplitude and unit in ("W", "dBW"))
 
         # Warning Visibility
-        needs_cal = unit in ("dBV", "W")
+        needs_cal = unit in ("dBV", "Vrms", "W", "dBW")
         self.x_unit_warning_label.setVisible(is_amplitude and needs_cal)
 
         # Tooltips
         if is_amplitude:
             self.sweep_x_unit_combo.setToolTip(tr("Select the unit for the X-axis sweep range."))
-            if unit == "W":
-                self.dummy_load_spin.setToolTip(tr("Specify the load resistance to calculate power (W)."))
+            if unit in ("W", "dBW"):
+                self.dummy_load_spin.setToolTip(tr("Specify the load resistance to calculate power."))
             else:
                 self.dummy_load_spin.setToolTip("")
 
@@ -1355,7 +1363,8 @@ class DistortionAnalyzerWidget(QWidget):
     def _is_sweep_x_log(self) -> bool:
         if self.mode_combo.currentIndex() == 1:
             return True
-        return self._get_sweep_x_unit() == "W"
+        unit = self._get_sweep_x_unit()
+        return unit in ("W", "Vrms")
 
     def _dbfs_to_dbv(self, dbfs: float) -> float:
         gain = self.module.audio_engine.calibration.output_gain or 1.0
@@ -1370,6 +1379,16 @@ class DistortionAnalyzerWidget(QWidget):
         v_rms = v_peak / np.sqrt(2)
         return (v_rms * v_rms) / resistance
 
+    def _dbfs_to_vrms(self, dbfs: float) -> float:
+        gain = self.module.audio_engine.calibration.output_gain or 1.0
+        amp_linear = 10 ** (dbfs / 20)
+        v_peak = amp_linear * gain
+        return v_peak / np.sqrt(2)
+
+    def _dbfs_to_dbw(self, dbfs: float) -> float:
+        p_w = self._dbfs_to_power_w(dbfs)
+        return 10 * np.log10(p_w + 1e-15)
+
     def _convert_sweep_x_value(self, sweep_param: float) -> float:
         if self.mode_combo.currentIndex() == 1:
             return sweep_param
@@ -1377,8 +1396,12 @@ class DistortionAnalyzerWidget(QWidget):
         unit = self._get_sweep_x_unit()
         if unit == "dBV":
             return self._dbfs_to_dbv(sweep_param)
+        if unit == "Vrms":
+            return self._dbfs_to_vrms(sweep_param)
         if unit == "W":
             return max(self._dbfs_to_power_w(sweep_param), 1e-15)
+        if unit == "dBW":
+            return self._dbfs_to_dbw(sweep_param)
         return sweep_param
 
     def _get_sweep_x_range(self, start_dbfs: float, end_dbfs: float) -> tuple[float, float]:
@@ -1386,9 +1409,15 @@ class DistortionAnalyzerWidget(QWidget):
         x_end = self._convert_sweep_x_value(end_dbfs)
         x_min = min(x_start, x_end)
         x_max = max(x_start, x_end)
+        # Ensure values are finite
+        if not np.isfinite(x_min): x_min = 1e-15
+        if not np.isfinite(x_max): x_max = 1.0
         if self._is_sweep_x_log():
             x_min = max(x_min, 1e-15)
             x_max = max(x_max, x_min * 1.0001)
+        else:
+            if x_min == x_max:
+                x_max = x_min + 1.0
         return x_min, x_max
 
     def _update_sweep_x_axis_format(self):
@@ -1406,6 +1435,10 @@ class DistortionAnalyzerWidget(QWidget):
             self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBV")
             self.sweep_axis.setTicks(None)
             self.sweep_plot.setXRange(x_min, x_max)
+        elif unit == "Vrms":
+            self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="Vrms")
+            self.sweep_axis.setTicks(None)
+            self.sweep_plot.setXRange(np.log10(x_min), np.log10(x_max))
         elif unit == "W":
             self.sweep_plot.setLabel("bottom", tr("Power"), units="W")
             decade_start = int(np.floor(np.log10(x_min)))
@@ -1414,6 +1447,10 @@ class DistortionAnalyzerWidget(QWidget):
             ticks_log = [(np.log10(t), f"{t:g} W") for t in ticks]
             self.sweep_axis.setTicks([ticks_log])
             self.sweep_plot.setXRange(np.log10(x_min), np.log10(x_max))
+        elif unit == "dBW":
+            self.sweep_plot.setLabel("bottom", tr("Power"), units="dBW")
+            self.sweep_axis.setTicks(None)
+            self.sweep_plot.setXRange(x_min, x_max)
         else:
             self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBFS")
             self.sweep_axis.setTicks(None)
