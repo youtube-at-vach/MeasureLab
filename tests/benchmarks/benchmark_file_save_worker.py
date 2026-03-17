@@ -2,11 +2,10 @@ import time
 import tracemalloc
 import numpy as np
 import os
-import sys
 import tempfile
 import soundfile as sf
 import shutil
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
     print(f"Benchmarking FileSaveWorker with {duration_sec}s of audio...")
@@ -57,7 +56,7 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
                     # But actually we might want to convert. If we have to convert we must use sf.
                     # Wait, the prompt says "Utilizing shutil.copyfileobj or larger chunks is often preferred."
                     pass
-            except Exception as e:
+            except Exception:
                 pass
 
     class MockFileSaveWorker_Block_Large:
@@ -164,7 +163,7 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
     fd, temp_file = tempfile.mkstemp(suffix=".wav")
     os.close(fd)
 
-    frames = duration_sec * sr
+    duration_sec * sr
     with sf.SoundFile(temp_file, mode="w", samplerate=sr, channels=channels, subtype="FLOAT", format="WAV") as f:
         chunk_size = sr * 10
         for _ in range(duration_sec // 10):
