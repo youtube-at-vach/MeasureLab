@@ -27,8 +27,10 @@ class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
         self.checker = UpdateChecker()
 
+    @patch('certifi.where', return_value='/dummy/path')
+    @patch('ssl.create_default_context')
     @patch('urllib.request.urlopen')
-    def test_update_check_found(self, mock_urlopen):
+    def test_update_check_found(self, mock_urlopen, mock_ssl, mock_certifi):
         # Mock response
         mock_response = MagicMock()
         mock_response.status = 200
@@ -50,8 +52,10 @@ class TestUpdateChecker(unittest.TestCase):
         # Verify signal emission
         mock_slot.assert_called_once_with("v9.9.9")
 
+    @patch('certifi.where', return_value='/dummy/path')
+    @patch('ssl.create_default_context')
     @patch('urllib.request.urlopen')
-    def test_update_check_not_found(self, mock_urlopen):
+    def test_update_check_not_found(self, mock_urlopen, mock_ssl, mock_certifi):
         # Mock response with older version
         mock_response = MagicMock()
         mock_response.status = 200
@@ -65,8 +69,10 @@ class TestUpdateChecker(unittest.TestCase):
 
         mock_slot.assert_not_called()
 
+    @patch('certifi.where', return_value='/dummy/path')
+    @patch('ssl.create_default_context')
     @patch('urllib.request.urlopen')
-    def test_update_check_failure_logs_error(self, mock_urlopen):
+    def test_update_check_failure_logs_error(self, mock_urlopen, mock_ssl, mock_certifi):
         # Mock side effect to raise exception
         mock_urlopen.side_effect = Exception("Network error")
 
@@ -75,6 +81,40 @@ class TestUpdateChecker(unittest.TestCase):
             self.checker.run()
 
         self.assertTrue(any("Network error" in log for log in cm.output))
+
+    @patch('certifi.where', return_value='/dummy/path')
+    @patch('ssl.create_default_context')
+    @patch('urllib.request.urlopen')
+    def test_update_check_invalid_json(self, mock_urlopen, mock_ssl, mock_certifi):
+        # Mock response with invalid JSON
+        mock_response = MagicMock()
+        mock_response.status = 200
+        mock_response.read.return_value = b'{"version": "9.9.9"'  # Missing closing brace
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        # Verify logging
+        with self.assertLogs('UpdateChecker', level='ERROR') as cm:
+            self.checker.run()
+
+        self.assertTrue(any("Update check failed" in log for log in cm.output))
+        self.assertTrue(any("Expecting ',' delimiter" in log or "Unterminated string" in log or "Expecting property name" in log or "JSONDecodeError" in log for log in cm.output))
+
+    @patch('certifi.where', return_value='/dummy/path')
+    @patch('ssl.create_default_context')
+    @patch('urllib.request.urlopen')
+    def test_update_check_non_200_status(self, mock_urlopen, mock_ssl, mock_certifi):
+        # Mock response with non-200 status
+        mock_response = MagicMock()
+        mock_response.status = 404
+        mock_response.read.return_value = b'Not Found'
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        mock_slot = MagicMock()
+        self.checker.update_available.connect(mock_slot)
+
+        self.checker.run()
+
+        mock_slot.assert_not_called()
 
     def test_deprecated_is_newer(self):
         # Test the deprecated wrapper method to ensure it calls is_newer_version correctly
