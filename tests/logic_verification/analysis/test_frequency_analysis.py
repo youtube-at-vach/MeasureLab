@@ -128,5 +128,41 @@ class TestFrequencyAnalysis(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Empty audio data buffer"):
             calculate_frequency_metrics(data, sr, gate)
 
+    def test_calculate_frequency_metrics_low_freq(self):
+        # Low frequency sine (<= 10Hz) should return coarse estimate
+        sr = 48000
+        t = np.arange(1000) / sr
+        freq_target = 5.0  # 5 Hz
+        signal = np.sin(2 * np.pi * freq_target * t)
+        gate = -60.0
+
+        freq, db = calculate_frequency_metrics(signal, sr, gate)
+
+        self.assertIsNotNone(freq)
+        # Should be coarse frequency, roughly 0 Hz because of 1000 samples / 48000 Hz = 48 Hz per bin.
+        # So 5 Hz is in bin 0 (0 Hz). Coarse frequency should be 0.
+        self.assertEqual(freq, 0.0)
+        # We don't need a strict check on db for this specific fallback path test,
+        # just that it returns the calculated db properly
+        self.assertIsInstance(db, float)
+        self.assertTrue(-20 < db < 0)
+
+    def test_calculate_frequency_metrics_optimization_error(self):
+        # Test error path explicitly to ensure fallback to coarse freq
+        import unittest.mock as mock
+
+        sr = 48000
+        t = np.arange(1000) / sr
+        freq_target = 1000.0
+        signal = np.sin(2 * np.pi * freq_target * t)
+        gate = -60.0
+
+        # Test generic Exception in optimize_frequency
+        with mock.patch('src.core.frequency_analysis.AudioCalc.optimize_frequency', side_effect=Exception("Optimization Failed")):
+            freq, db = calculate_frequency_metrics(signal, sr, gate)
+            self.assertIsNotNone(freq)
+            self.assertTrue(900 < freq < 1100)
+            self.assertAlmostEqual(db, -3.0, delta=0.5)
+
 if __name__ == '__main__':
     unittest.main()
