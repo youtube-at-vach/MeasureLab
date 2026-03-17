@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 import numpy as np
 from src.core.analysis import AudioCalc
 
@@ -91,6 +92,21 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         # coeffs and M might be None or empty
         if M is not None:
             self.assertEqual(len(M), 0)
+
+    @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
+    def test_perform_coarse_search_linalg_error(self, mock_solve):
+        """Test _perform_coarse_search when np.linalg.solve raises LinAlgError."""
+        signal = np.sin(2 * np.pi * self.freq * self.t)
+        grid = np.array([990.0, 1000.0, 1010.0])
+
+        # Call the method which should catch the error and fallback to lstsq
+        best_coarse = AudioCalc._perform_coarse_search(signal, self.t, grid)
+
+        # Ensure it didn't crash and returned a valid grid frequency
+        self.assertIn(best_coarse, grid)
+        self.assertAlmostEqual(best_coarse, self.freq, places=2)
+        # Verify that solve was actually called and mocked
+        self.assertTrue(mock_solve.called)
 
 if __name__ == '__main__':
     unittest.main()
