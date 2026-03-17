@@ -618,7 +618,19 @@ class AudioCalc:
         zoom_width = step * 1.5
         bounds_fine = (max(0.1, best_coarse - zoom_width), best_coarse + zoom_width)
         res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={"xatol": 1e-14})
-        best_freq = res_fine.x
+
+        # Pass 3: Candidate Selection (Fix for exact frequencies like Bin Center mode)
+        # minimize_scalar has a tolerance and may stop prematurely on extremely flat error surfaces,
+        # degrading the mathematical perfection of the initial guess. We pick the best candidate:
+        candidates = {}
+        for cand in [freq_guess, best_coarse, res_fine.x]:
+            if cand > 0 and np.isfinite(cand):
+                candidates[cand] = get_residual_mse(cand)
+
+        if candidates:
+            best_freq = min(candidates, key=candidates.get)
+        else:
+            best_freq = res_fine.x
 
         if return_full:
             # Re-compute coeffs for the best frequency
