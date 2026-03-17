@@ -983,6 +983,18 @@ class AudioCalc:
         tone_freqs_arr = np.asarray(tone_freqs)
         widths = np.maximum(10.0, tone_freqs_arr * window_width_pct)
 
+        # Limit width to avoid overlapping with adjacent tones
+        if len(tone_freqs_arr) > 1:
+            diffs = np.diff(tone_freqs_arr)
+            max_widths = np.empty_like(tone_freqs_arr)
+            max_widths[0] = diffs[0] / 2.0
+            max_widths[-1] = diffs[-1] / 2.0
+            if len(tone_freqs_arr) > 2:
+                max_widths[1:-1] = np.minimum(diffs[:-1], diffs[1:]) / 2.0
+
+            # Apply the limit, slightly smaller than half-distance to prevent any touching
+            widths = np.clip(widths, 1.0, max_widths * 0.95)
+
         start_freqs = tone_freqs_arr - widths
         end_freqs = tone_freqs_arr + widths
 
