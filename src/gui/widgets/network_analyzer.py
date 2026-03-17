@@ -53,6 +53,11 @@ class PlayRecSession:
 
     def start(self):
         self.callback_id = self.audio_engine.register_callback(self._callback)
+        # Prevent indefinite hang if audio engine failed to start the stream
+        if self.audio_engine.stream is None and not getattr(self.audio_engine, "offline_mode", False):
+            self.error = "Audio stream failed to start. Check ASIO settings (Sample Rate / Block Size)."
+            self.is_complete = True
+            self.completion_event.set()
 
     def stop(self):
         if self.callback_id is not None:
@@ -60,7 +65,9 @@ class PlayRecSession:
             self.callback_id = None
 
     def wait(self, timeout=None):
-        return self.completion_event.wait(timeout)
+        self.completion_event.wait(timeout)
+        if self.error:
+            raise RuntimeError(str(self.error))
 
     def _callback(self, indata, outdata, frames, time, status):
         with self.lock:
@@ -68,25 +75,32 @@ class PlayRecSession:
                 outdata.fill(0)
                 return
 
-            remaining = self.total_frames - self.current_frame
-            chunk = min(frames, remaining)
+            try:
+                remaining = self.total_frames - self.current_frame
+                chunk = min(frames, remaining)
 
-            # Output
-            outdata[:chunk, :] = self.output_data[self.current_frame : self.current_frame + chunk, :]
-            if chunk < frames:
-                outdata[chunk:, :] = 0
+                # Output (Robust shape matching)
+                ch_out = min(outdata.shape[1], self.output_data.shape[1])
+                outdata[:chunk, :ch_out] = self.output_data[self.current_frame : self.current_frame + chunk, :ch_out]
+                if ch_out < outdata.shape[1]:
+                    outdata[:chunk, ch_out:] = 0
+                if chunk < frames:
+                    outdata[chunk:, :] = 0
 
-            # Input
-            if indata.shape[1] > 0:
-                # Capture requested number of channels
-                ch_to_copy = min(self.input_channels, indata.shape[1])
-                self.input_data[self.current_frame : self.current_frame + chunk, :ch_to_copy] = indata[
-                    :chunk, :ch_to_copy
-                ]
+                # Input (Robust shape matching)
+                if indata.shape[1] > 0:
+                    ch_to_copy = min(self.input_channels, indata.shape[1])
+                    self.input_data[self.current_frame : self.current_frame + chunk, :ch_to_copy] = indata[
+                        :chunk, :ch_to_copy
+                    ]
 
-            self.current_frame += chunk
+                self.current_frame += chunk
 
-            if self.current_frame >= self.total_frames:
+                if self.current_frame >= self.total_frames:
+                    self.is_complete = True
+                    self.completion_event.set()
+            except Exception as e:
+                self.error = f"Audio Callback Error: {e}"
                 self.is_complete = True
                 self.completion_event.set()
 
