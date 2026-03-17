@@ -991,7 +991,7 @@ class AudioCalc:
             max_widths[-1] = diffs[-1] / 2.0
             if len(tone_freqs_arr) > 2:
                 max_widths[1:-1] = np.minimum(diffs[:-1], diffs[1:]) / 2.0
-            
+
             # Apply the limit, slightly smaller than half-distance to prevent any touching
             widths = np.clip(widths, 1.0, max_widths * 0.95)
 
