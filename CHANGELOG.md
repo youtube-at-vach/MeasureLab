@@ -2,6 +2,10 @@
 
 ## [v0.5.8] - 2026-03-16
 
+> [!IMPORTANT]
+> **Notice regarding version v0.5.8 replacement (2026-03-17)**
+> A calculation bug was discovered in the initial release of v0.5.8 (commit `44779df5827c452d6e35c9ebf4b2c0de8f86d2f2`). This version has been updated with a fix. Please ensure you are using the corrected version.
+
 ### Added
 
 * **Analyzer**: Added percentage Y-axis option to Distortion Analyzer sweeps.
