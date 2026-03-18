@@ -210,6 +210,14 @@ class MainWindow(QMainWindow):
             # Apply PipeWire/JACK resident mode after devices + format are configured.
             self.audio_engine.set_pipewire_jack_resident(self.config_manager.get_pipewire_jack_resident())
 
+            # Apply virtual/offline mode
+            is_offline = self.config_manager.is_offline_mode()
+            self.audio_engine.set_offline_mode(is_offline)
+            
+            # Apply dithering settings
+            self.audio_engine.dithering_enabled = self.config_manager.is_dithering_enabled()
+            self.audio_engine.dithering_bit_depth = self.config_manager.get_dithering_bit_depth()
+
             # Apply 64-bit engine mode
             is_64bit = audio_cfg.get("audio_engine_64bit", False)
             self.audio_engine.set_audio_engine_64bit(is_64bit)
