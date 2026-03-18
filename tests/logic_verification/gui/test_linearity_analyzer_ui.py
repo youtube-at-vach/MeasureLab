@@ -46,3 +46,5 @@ def test_tolerance_lines_presence(qtbot):
     # Assert that we found them
     assert found_plus_1, "Did not find +1.0 dB tolerance line"
     assert found_minus_1, "Did not find -1.0 dB tolerance line"
+
+    widget.close()
