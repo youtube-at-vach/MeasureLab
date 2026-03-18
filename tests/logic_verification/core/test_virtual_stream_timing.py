@@ -58,22 +58,23 @@ class TestVirtualStreamTiming(unittest.TestCase):
             t0 + 0.02,       # 2nd loop t
         ]
 
-        # Stop loop after 2nd iteration (when sleep is called)
-        def sleep_side_effect(duration):
-            if mock_time.sleep.call_count >= 1:
+        # Stop loop after 2nd iteration (when wait is called)
+        self.stream._stop_event.wait = MagicMock()
+        def wait_side_effect(duration):
+            if self.stream._stop_event.wait.call_count >= 1:
                 self.stream.active = False
-            return None
+            return True
 
-        mock_time.sleep.side_effect = sleep_side_effect
+        self.stream._stop_event.wait.side_effect = wait_side_effect
 
         self.stream.active = True
         self.stream._run_loop()
 
-        # Check sleep calls
-        # 1st loop: to_sleep negative, no sleep.
-        # 2nd loop: to_sleep = 0.08. Sleep called.
-        mock_time.sleep.assert_called_once()
-        args, _ = mock_time.sleep.call_args
+        # Check wait calls
+        # 1st loop: to_sleep negative, no wait.
+        # 2nd loop: to_sleep = 0.08. Wait called.
+        self.stream._stop_event.wait.assert_called_once()
+        args, _ = self.stream._stop_event.wait.call_args
         self.assertAlmostEqual(args[0], 0.08, places=5)
 
         # Callback called twice
@@ -100,18 +101,19 @@ class TestVirtualStreamTiming(unittest.TestCase):
             t0 + 0.51,       # 2nd loop t
         ]
 
-        def sleep_side_effect(duration):
+        self.stream._stop_event.wait = MagicMock()
+        def wait_side_effect(duration):
             self.stream.active = False
-            return None
+            return True
 
-        mock_time.sleep.side_effect = sleep_side_effect
+        self.stream._stop_event.wait.side_effect = wait_side_effect
 
         self.stream.active = True
         self.stream._run_loop()
 
-        # Verify sleep called in 2nd loop with corrected time
-        mock_time.sleep.assert_called_once()
-        args, _ = mock_time.sleep.call_args
+        # Verify wait called in 2nd loop with corrected time
+        self.stream._stop_event.wait.assert_called_once()
+        args, _ = self.stream._stop_event.wait.call_args
         self.assertAlmostEqual(args[0], 0.09, places=5)
 
         self.assertEqual(self.callback.call_count, 2)
@@ -121,7 +123,6 @@ class TestVirtualStreamTiming(unittest.TestCase):
         """Verify loop continues after callback exception."""
         t0 = 1000.0
         mock_time.time.return_value = t0
-        mock_time.sleep.return_value = None
 
         # Callback raises exception on first call, succeeds on second
         self.callback.side_effect = [ValueError("Test Error"), None]
@@ -131,11 +132,13 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # Loop 1: sleep not called (init). callback called (1).
         # Loop 2: sleep called. call_count is 1. Set active=False. callback called (2).
         # Loop terminates.
-        def sleep_side_effect(duration):
+        self.stream._stop_event.wait = MagicMock()
+        def wait_side_effect(duration):
             if self.callback.call_count >= 1:
                 self.stream.active = False
+            return True
 
-        mock_time.sleep.side_effect = sleep_side_effect
+        self.stream._stop_event.wait.side_effect = wait_side_effect
 
         self.stream.active = True
         self.stream._run_loop()
