@@ -103,9 +103,10 @@ class FileSaveWorker(QThread):
                     format=self.format,
                     subtype=self.subtype,
                 ) as f_out:
-                    while f_in.tell() < f_in.frames:
-                        data = f_in.read(WRITE_BLOCK_SIZE)
-                        f_out.write(data)
+                    # Use sf.blocks for efficient chunked reading/writing
+                    # 1MB blocks to maximize throughput
+                    for block in f_in.blocks(blocksize=1048576):
+                        f_out.write(block)
 
             self.finished.emit(True, f"Saved: {self.target_path}")
         except Exception as e:
@@ -204,9 +205,10 @@ class RecorderPlayer(MeasurementModule):
                 with sf.SoundFile(
                     filepath, "w", samplerate=samplerate, channels=channels, format=format, subtype=subtype
                 ) as f_out:
-                    while f_in.tell() < f_in.frames:
-                        data = f_in.read(WRITE_BLOCK_SIZE)
-                        f_out.write(data)
+                    # Use sf.blocks for efficient chunked reading/writing
+                    # 1MB blocks to maximize throughput
+                    for block in f_in.blocks(blocksize=1048576):
+                        f_out.write(block)
 
             return True, f"Saved: {filepath}"
         except Exception as e:
