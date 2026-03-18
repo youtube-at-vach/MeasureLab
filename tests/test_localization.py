@@ -1,0 +1,137 @@
+import unittest
+from unittest.mock import patch, mock_open
+
+from src.core.localization import LocalizationManager, tr, get_manager
+
+class TestLocalizationManager(unittest.TestCase):
+    """Test the LocalizationManager functionality."""
+
+    @patch("src.core.localization.resource_path")
+    @patch("os.path.exists")
+    @patch("os.listdir")
+    def test_initialization_and_scan(self, mock_listdir, mock_exists, mock_resource_path):
+        """Test that LocalizationManager scans the correct directory and handles files properly."""
+        mock_resource_path.return_value = "/fake/lang/path"
+        mock_exists.return_value = True
+        mock_listdir.return_value = ["en.json", "jp.json", "ignore.txt"]
+
+        manager = LocalizationManager()
+
+        self.assertEqual(manager.language, "en")
+        self.assertIn("en", manager.available_languages)
+        self.assertIn("jp", manager.available_languages)
+        self.assertNotIn("ignore", manager.available_languages)
+        self.assertEqual(manager.available_languages["en"], "en.json")
+        self.assertEqual(manager.available_languages["jp"], "jp.json")
+
+    @patch("src.core.localization.resource_path")
+    @patch("os.path.exists")
+    def test_missing_directory_fallback(self, mock_exists, mock_resource_path):
+        """Test fallback behavior when the translation directory does not exist."""
+        mock_resource_path.return_value = "/fake/lang/path"
+        mock_exists.return_value = False
+
+        manager = LocalizationManager()
+
+        # Should automatically fall back to providing 'en'
+        self.assertIn("en", manager.available_languages)
+        self.assertEqual(manager.available_languages["en"], "en.json")
+        self.assertEqual(len(manager.available_languages), 1)
+
+    @patch("src.core.localization.resource_path")
+    @patch("os.path.exists")
+    @patch("os.listdir")
+    def test_load_language_success(self, mock_listdir, mock_exists, mock_resource_path):
+        """Test loading a valid language updates translations and sets current language."""
+        mock_resource_path.side_effect = lambda x: x
+        mock_exists.return_value = True
+        mock_listdir.return_value = ["en.json", "fr.json"]
+
+        mock_json_content = '{"greeting": "bonjour"}'
+
+        with patch("builtins.open", mock_open(read_data=mock_json_content)):
+            manager = LocalizationManager()
+            manager.load_language("fr")
+
+            self.assertEqual(manager.language, "fr")
+            self.assertEqual(manager.translations, {"greeting": "bonjour"})
+
+    @patch("src.core.localization.resource_path")
+    @patch("os.path.exists")
+    @patch("os.listdir")
+    def test_load_language_fallback(self, mock_listdir, mock_exists, mock_resource_path):
+        """Test loading an unavailable language defaults back to English."""
+        mock_resource_path.side_effect = lambda x: x
+        mock_exists.return_value = True
+        mock_listdir.return_value = ["en.json"]
+
+        mock_json_content = '{"greeting": "hello"}'
+
+        with patch("builtins.open", mock_open(read_data=mock_json_content)):
+            manager = LocalizationManager()
+            manager.load_language("jp")  # jp is not in listdir
+
+            self.assertEqual(manager.language, "en")
+            self.assertEqual(manager.translations, {"greeting": "hello"})
+
+    @patch("src.core.localization.resource_path")
+    @patch("os.path.exists")
+    @patch("os.listdir")
+    def test_load_language_invalid_json(self, mock_listdir, mock_exists, mock_resource_path):
+        """Test behavior when the language JSON file contains invalid data."""
+        mock_resource_path.side_effect = lambda x: x
+        mock_exists.return_value = True
+        mock_listdir.return_value = ["en.json"]
+
+        # Provide invalid JSON
+        mock_json_content = '{"greeting": "hello"'
+
+        with patch("builtins.open", mock_open(read_data=mock_json_content)):
+            manager = LocalizationManager()
+
+            with patch.object(manager.logger, 'error') as mock_error:
+                manager.load_language("en")
+
+                self.assertEqual(manager.translations, {})
+                self.assertTrue(mock_error.called)
+                args, _ = mock_error.call_args
+                self.assertIn("Failed to load language en", args[0])
+
+    @patch("src.core.localization.resource_path")
+    @patch("os.path.exists")
+    def test_get_translation(self, mock_exists, mock_resource_path):
+        mock_exists.return_value = False
+        """Test fetching a translation key."""
+        manager = LocalizationManager()
+        manager.translations = {"title": "Application Title", "version": "1.0"}
+
+        # Existing key
+        self.assertEqual(manager.get("title"), "Application Title")
+        # Missing key, no default
+        self.assertEqual(manager.get("missing_key"), "missing_key")
+        # Missing key, with default
+        self.assertEqual(manager.get("missing_key", "Default Value"), "Default Value")
+
+    def test_global_tr_function(self):
+        """Test the global tr() shortcut uses the singleton manager properly."""
+        from src.core.localization import _loc_manager
+
+        # Save state
+        old_translations = _loc_manager.translations
+
+        try:
+            _loc_manager.translations = {"test_key": "test_value"}
+            self.assertEqual(tr("test_key"), "test_value")
+            self.assertEqual(tr("nonexistent"), "nonexistent")
+            self.assertEqual(tr("nonexistent", "fallback"), "fallback")
+        finally:
+            _loc_manager.translations = old_translations
+
+    def test_get_manager_function(self):
+        """Test the get_manager() global shortcut."""
+        from src.core.localization import _loc_manager
+        self.assertIs(get_manager(), _loc_manager)
+
+
+if __name__ == "__main__":
+    unittest.main()
