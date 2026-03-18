@@ -94,6 +94,23 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
             self.assertEqual(len(M), 0)
 
     @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
+    def test_sine_fit_residual_linalg_error(self, mock_solve):
+        """Test _sine_fit_residual when np.linalg.solve raises LinAlgError."""
+        signal = np.sin(2 * np.pi * self.freq * self.t)
+        M = np.empty((self.N, 3), dtype=np.float64)
+        fitted_buffer = np.empty(self.N, dtype=np.float64)
+        residual_buffer = np.empty(self.N, dtype=np.float64)
+
+        # Call the method which should catch the error and fallback to lstsq
+        mse = AudioCalc._sine_fit_residual(self.freq, signal, self.t, M, fitted_buffer, residual_buffer)
+
+        # Verify that solve was actually called and mocked
+        self.assertTrue(mock_solve.called)
+        # Ensure it didn't crash and returned a valid MSE (should be near 0 for exact match)
+        self.assertTrue(mse >= 0.0)
+        self.assertAlmostEqual(mse, 0.0, places=4)
+
+    @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
     def test_perform_coarse_search_linalg_error(self, mock_solve):
         """Test _perform_coarse_search when np.linalg.solve raises LinAlgError."""
         signal = np.sin(2 * np.pi * self.freq * self.t)
