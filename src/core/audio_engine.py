@@ -76,15 +76,15 @@ class VirtualStream:
             # Sleep until next Tick
             to_sleep = next_call_time - t
             if to_sleep > 0:
-                time.sleep(to_sleep)
+                self._stop_event.wait(to_sleep)
 
             next_call_time += interval
 
             # Call callback
             try:
                 # status=0 for all good
-                # We need a proper CData struct for time if we strictly follow sd type, 
-                # but usually python callbacks just access attributes. 
+                # We need a proper CData struct for time if we strictly follow sd type,
+                # but usually python callbacks just access attributes.
                 # Let's mock a simple object if needed, or just pass an object.
                 # sd.Stream callback signature: (indata, outdata, frames, time, status)
                 # time is CData {inputBufferAdcTime, outputBufferDacTime, ...}
@@ -98,13 +98,13 @@ class VirtualStream:
                 self.callback(indata, outdata, self.blocksize, _DummyTime(t, interval), status)
 
                 # In Virtual Mode, `indata` is usually zeros, UNLESS the callback filled it?
-                # master_callback expects indata from "Hardware". 
+                # master_callback expects indata from "Hardware".
                 # In our loopback logic enforced in master_callback:
                 # "If Loopback is enabled, use the last output buffer as input"
                 # So master_callback logic handles the copying from outdata -> internal buffer.
-                # So we just pass fresh zero indata every time. 
-                # BUT, `outdata` is written to by master_callback. 
-                # Next iteration `indata` is still zeros. 
+                # So we just pass fresh zero indata every time.
+                # BUT, `outdata` is written to by master_callback.
+                # Next iteration `indata` is still zeros.
                 # The Loopback logic in master_callback uses `self.last_output_buffer` which persists on `self`.
                 # So we are good.
 
@@ -269,12 +269,16 @@ class AudioEngine:
         """
         # If offline mode, maybe return a dummy list or let UI handle it?
         # The plan says "Disable/Hide Input and Output Device selectors" in UI.
-        # So we can keep this standard for when not in offline mode, 
+        # So we can keep this standard for when not in offline mode,
         # or return a specific virtual device list if needed.
         # For now, let's keep standard behavior so user can see hardware even if offline is checked (though controls disabled).
 
         now = time.time()
-        if self._device_list_cache is not None and self._host_apis_cache is not None and (now - self._last_cache_time) < 2.0:
+        if (
+            self._device_list_cache is not None
+            and self._host_apis_cache is not None
+            and (now - self._last_cache_time) < 2.0
+        ):
             devices = self._device_list_cache
             hostapis = self._host_apis_cache
         else:
@@ -584,7 +588,11 @@ class AudioEngine:
 
             # Use cached devices/hostapis to avoid redundant OS queries
             now = time.time()
-            if self._device_list_cache is not None and self._host_apis_cache is not None and (now - self._last_cache_time) < 2.0:
+            if (
+                self._device_list_cache is not None
+                and self._host_apis_cache is not None
+                and (now - self._last_cache_time) < 2.0
+            ):
                 devices = self._device_list_cache
                 hostapis = self._host_apis_cache
             else:
@@ -627,7 +635,7 @@ class AudioEngine:
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
                     channels=(hw_in_ch, hw_out_ch),
-                    callback=self._master_callback
+                    callback=self._master_callback,
                 )
                 self.stream.start()
                 self.logger.debug(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
@@ -645,7 +653,9 @@ class AudioEngine:
                     extra_settings=extra_settings,
                 )
                 self.stream.start()
-                self.logger.debug(f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})")
+                self.logger.debug(
+                    f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
+                )
         except Exception as e:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.
@@ -720,7 +730,7 @@ class AudioEngine:
                 # specific check for VirtualStream which might not have latency attr or it is just simulated
                 if isinstance(self.stream, VirtualStream):
                     # For virtual stream, latency is essentially one block? Or zero?
-                    # Let's say it's 0 for now as it is instantaneous in simulation, 
+                    # Let's say it's 0 for now as it is instantaneous in simulation,
                     # or block_size / sample_rate if we want to simulate buffering.
                     # Logic: VirtualStream reads zeros instantly.
                     return 0.0
@@ -735,9 +745,8 @@ class AudioEngine:
 
         # Fallback if reported latency is effectively zero (common in some backends or if unavailable)
         if latency <= 1e-6:
-             # Use block size / sample rate as estimate
-             if self.sample_rate > 0:
-                 latency = float(self.block_size) / float(self.sample_rate)
+            # Use block size / sample rate as estimate
+            if self.sample_rate > 0:
+                latency = float(self.block_size) / float(self.sample_rate)
 
         return latency
-
