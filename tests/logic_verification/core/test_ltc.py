@@ -1,7 +1,6 @@
 import collections
 
 import numpy as np
-import pytest
 
 from src.core.ltc import LTCDecoder, LTCEncoder
 
