@@ -1,0 +1,223 @@
+import unittest
+from unittest.mock import MagicMock
+import time
+import numpy as np
+
+import sys
+
+# Mock sounddevice early before importing AudioEngine
+sys.modules["sounddevice"] = MagicMock()
+
+from src.core.audio_engine import AudioEngine, VirtualStream, _DummyTime  # noqa: E402
+
+
+class TestDummyTime(unittest.TestCase):
+    def test_dummy_time_initialization(self):
+        t = 100.0
+        interval = 0.5
+        dt = _DummyTime(t, interval)
+        self.assertEqual(dt.inputBufferAdcTime, 100.0)
+        self.assertEqual(dt.outputBufferDacTime, 100.5)
+        self.assertEqual(dt.currentTime, 100.0)
+
+
+class TestVirtualStream(unittest.TestCase):
+    def setUp(self):
+        self.callback_mock = MagicMock()
+        self.samplerate = 48000
+        self.blocksize = 1024
+
+        # Test with single int channel
+        self.stream_int = VirtualStream(
+            samplerate=self.samplerate, blocksize=self.blocksize, channels=2, callback=self.callback_mock
+        )
+
+        # Test with tuple channels
+        self.stream_tuple = VirtualStream(
+            samplerate=self.samplerate, blocksize=self.blocksize, channels=(2, 2), callback=self.callback_mock
+        )
+
+    def test_initialization(self):
+        self.assertEqual(self.stream_int.channels, (2, 2))
+        self.assertEqual(self.stream_tuple.channels, (2, 2))
+        self.assertFalse(self.stream_int.active)
+
+    def test_start_stop_close(self):
+        self.assertFalse(self.stream_int.active)
+
+        # Test start
+        self.stream_int.start()
+        self.assertTrue(self.stream_int.active)
+        self.assertIsNotNone(self.stream_int._thread)
+        self.assertTrue(self.stream_int._thread.is_alive())
+
+        # Calling start again shouldn't do anything bad
+        self.stream_int.start()
+        self.assertTrue(self.stream_int.active)
+
+        # Test stop
+        self.stream_int.stop()
+        self.assertFalse(self.stream_int.active)
+        self.assertTrue(self.stream_int._stop_event.is_set())
+
+        # Calling stop again shouldn't do anything bad
+        self.stream_int.stop()
+        self.assertFalse(self.stream_int.active)
+
+        # Test close
+        self.stream_int.start()
+        self.assertTrue(self.stream_int.active)
+        self.stream_int.close()
+        self.assertFalse(self.stream_int.active)
+
+    def test_run_loop_callback_invocation(self):
+        # We start and immediately stop the stream to let it run briefly
+        self.stream_tuple.start()
+        time.sleep(0.1)  # Let it run for a bit
+        self.stream_tuple.stop()
+
+        # The callback should have been called
+        self.assertTrue(self.callback_mock.called)
+
+        # Verify callback arguments
+        args, kwargs = self.callback_mock.call_args
+        indata, outdata, frames, t, status = args
+
+        self.assertEqual(frames, self.blocksize)
+        self.assertIsInstance(indata, np.ndarray)
+        self.assertIsInstance(outdata, np.ndarray)
+        self.assertEqual(indata.shape, (self.blocksize, 2))
+        self.assertEqual(outdata.shape, (self.blocksize, 2))
+        self.assertIsInstance(t, _DummyTime)
+
+
+class TestAudioEngineBasicSettings(unittest.TestCase):
+    def setUp(self):
+        self.engine = AudioEngine()
+        self.engine.logger = MagicMock()
+        self.engine._restart_stream = MagicMock()
+        self.engine._start_master_stream = MagicMock()
+
+    def test_set_offline_mode(self):
+        self.assertFalse(self.engine.offline_mode)
+
+        # Enable
+        self.engine.set_offline_mode(True)
+        self.assertTrue(self.engine.offline_mode)
+        # Should restart stream if active, but stream is not active here
+        self.engine.is_active = MagicMock(return_value=False)
+        self.engine._restart_stream.assert_not_called()
+
+        # Mock active stream
+        self.engine.is_active = MagicMock(return_value=True)
+        # Disable
+        self.engine.set_offline_mode(False)
+        self.assertFalse(self.engine.offline_mode)
+        self.engine._restart_stream.assert_called_once()
+
+        self.engine._restart_stream.reset_mock()
+        # Set to same value (False -> False) shouldn't restart
+        self.engine.set_offline_mode(False)
+        self.assertFalse(self.engine.offline_mode)
+        self.engine._restart_stream.assert_not_called()
+
+    def test_set_loopback(self):
+        self.assertFalse(self.engine.loopback)
+        self.engine.set_loopback(True)
+        self.assertTrue(self.engine.loopback)
+        self.engine.set_loopback(False)
+        self.assertFalse(self.engine.loopback)
+
+    def test_set_pipewire_jack_resident(self):
+        self.assertFalse(self.engine.pipewire_jack_resident)
+
+        # Enable resident mode
+        self.engine.set_pipewire_jack_resident(True)
+        self.assertTrue(self.engine.pipewire_jack_resident)
+        self.engine._start_master_stream.assert_called_once()
+
+        # Disable resident mode without clients
+        self.engine.callbacks = {}
+        self.engine.stop_stream = MagicMock()
+        self.engine.set_pipewire_jack_resident(False)
+        self.assertFalse(self.engine.pipewire_jack_resident)
+        self.engine.stop_stream.assert_called_once()
+
+        # Disable resident mode with clients
+        self.engine.stop_stream.reset_mock()
+        self.engine.callbacks = {1: MagicMock()}
+        self.engine.set_pipewire_jack_resident(False)
+        self.assertFalse(self.engine.pipewire_jack_resident)
+        self.engine.stop_stream.assert_not_called()
+
+    def test_get_status(self):
+        # Set some properties
+        self.engine.offline_mode = True
+        self.engine.input_channel_mode = "stereo"
+        self.engine.output_channel_mode = "left"
+        self.engine.sample_rate = 96000
+        self.engine.input_device = 1
+        self.engine.output_device = 2
+
+        # Mock stream properties
+        self.engine.is_active = MagicMock(return_value=True)
+        self.engine.stream = MagicMock()
+        self.engine.stream.cpu_load = 0.45
+
+        # Add a callback
+        self.engine.callbacks = {1: MagicMock(), 2: MagicMock()}
+
+        # Mock some errors/status
+        import sounddevice as sd
+
+        self.engine.accumulated_status = sd.CallbackFlags()
+        self.engine.callback_error_count = 5
+        self.engine.last_callback_error = "Test Error"
+
+        status = self.engine.get_status()
+
+        self.assertTrue(status["active"])
+        self.assertTrue(status["offline_mode"])
+        self.assertEqual(status["input_channels"], "stereo")
+        self.assertEqual(status["output_channels"], "left")
+        self.assertEqual(status["sample_rate"], 96000)
+        self.assertEqual(status["cpu_load"], 0.45)
+        self.assertEqual(status["active_clients"], 2)
+        self.assertEqual(status["input_device"], 1)
+        self.assertEqual(status["output_device"], 2)
+        self.assertEqual(status["error_count"], 5)
+        self.assertEqual(status["last_error"], "Test Error")
+
+        # Verify stats are reset after get_status
+        self.assertEqual(self.engine.callback_error_count, 0)
+        self.assertIsNone(self.engine.last_callback_error)
+
+    def test_get_input_latency(self):
+        # Test with no stream
+        self.engine.stream = None
+        self.engine.sample_rate = 48000
+        self.engine.block_size = 1024
+        # Should fallback to block_size / sample_rate
+        expected_fallback = 1024.0 / 48000.0
+        self.assertAlmostEqual(self.engine.get_input_latency(), expected_fallback)
+
+        # Test with VirtualStream (should be 0.0)
+        self.engine.stream = VirtualStream(48000, 1024, 2, MagicMock())
+        self.assertEqual(self.engine.get_input_latency(), 0.0)
+
+        # Test with real stream (mocked) tuple latency
+        self.engine.stream = MagicMock()
+        self.engine.stream.latency = (0.015, 0.025)
+        self.assertAlmostEqual(self.engine.get_input_latency(), 0.015)
+
+        # Test with real stream float latency
+        self.engine.stream.latency = 0.012
+        self.assertAlmostEqual(self.engine.get_input_latency(), 0.012)
+
+        # Test with stream where latency raises exception
+        type(self.engine.stream).latency = unittest.mock.PropertyMock(side_effect=Exception("Failed"))
+        self.assertAlmostEqual(self.engine.get_input_latency(), expected_fallback)
+
+
+if __name__ == "__main__":
+    unittest.main()
