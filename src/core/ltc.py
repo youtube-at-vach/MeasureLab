@@ -1,4 +1,5 @@
 from typing import Optional
+import collections
 
 import numpy as np
 
@@ -179,7 +180,7 @@ class LTCDecoder:
         # 80 bits per frame.
         self.pulse_avg = (sample_rate / fps) / 160.0
 
-        self.decoded_bits: list[int] = []
+        self.decoded_bits: collections.deque[int] = collections.deque(maxlen=160)
         self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
@@ -202,7 +203,7 @@ class LTCDecoder:
         # 80 bits per frame.
         self.pulse_avg = (sample_rate / fps) / 160.0
 
-        self.decoded_bits = []
+        self.decoded_bits.clear()
         self.sync_val = 0
         self.decoded_tc = "--:--:--:--"
         self.locked = False
@@ -307,8 +308,6 @@ class LTCDecoder:
 
     def _push_bit(self, bit: int):
         self.decoded_bits.append(bit)
-        if len(self.decoded_bits) > 160:
-            self.decoded_bits.pop(0)
         self.sync_val = ((self.sync_val << 1) | bit) & 0xFFFF
 
     def _check_sync(self) -> bool:
@@ -321,7 +320,7 @@ class LTCDecoder:
 
             if self.sync_val == 0x3FFD:
                 if len(self.decoded_bits) >= 80:
-                    frame_bits = self.decoded_bits[-80:]
+                    frame_bits = list(self.decoded_bits)[-80:]
                     self._decode_frame_bits(frame_bits)
                     return True
         return False
