@@ -106,8 +106,13 @@ Please download the latest version from the **Releases** page.
 - **macOS (arm64)**: Download `MeasureLab-<version>-macos-arm64.dmg` (or `.app`).
     - **Note: Currently only arm64 (Apple Silicon) and macOS 11.0 or later are supported.**
     - **Important: Bypassing Gatekeeper**
-    - Since this app is currently unsigned, the normal procedure will display "cannot be opened because the developer cannot be verified".
-    - To launch the app, **"Right-click (or Control + Click) and select 'Open'"**. A confirmation dialog will appear, select "Open" again to run.
+    - Since this app is currently unsigned, macOS Gatekeeper may only offer to "Move to Bin" or "Cancel". To bypass this:
+        1. Open the `.dmg` and locate **MeasureLab.app**.
+        2. **Right-click (or Control + Click)** the app icon and select **"Open"**.
+        3. A similar dialog will appear, but this time it should include an **"Open"** button. Click it.
+    - **If the "Open" option still doesn't appear:**
+        - Go to **System Settings > Privacy & Security**. Scroll down to find the message stating "MeasureLab.app was blocked..." and click **"Open Anyway"**.
+        - Alternatively, manually remove the quarantine flag via Terminal: `xattr -d com.apple.quarantine /path/to/MeasureLab.app` (You can drag the app icon into the terminal window to paste its path).
 
 #### Linux (Optional): Notes on using JACK / PipeWire
 
