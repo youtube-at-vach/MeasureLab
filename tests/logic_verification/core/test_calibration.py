@@ -1,5 +1,4 @@
 import os
-import json
 import math
 import pytest
 import numpy as np
