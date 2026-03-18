@@ -138,9 +138,9 @@ class RingBuffer:
                 # and writer continued writing.
                 data = self._buffer[start_idx : start_idx + chunk1].copy()
             else:
-                data = np.concatenate(
-                    (self._buffer[start_idx:], self._buffer[:chunk2])
-                )
+                data = np.empty((to_read, self._channels), dtype=self._dtype)
+                data[:chunk1] = self._buffer[start_idx:]
+                data[chunk1:] = self._buffer[:chunk2]
 
             self._read_index = read + to_read
             return data
