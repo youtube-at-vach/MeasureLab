@@ -213,7 +213,7 @@ class MainWindow(QMainWindow):
             # Apply virtual/offline mode
             is_offline = self.config_manager.is_offline_mode()
             self.audio_engine.set_offline_mode(is_offline)
-            
+
             # Apply dithering settings
             self.audio_engine.dithering_enabled = self.config_manager.is_dithering_enabled()
             self.audio_engine.dithering_bit_depth = self.config_manager.get_dithering_bit_depth()
