@@ -1,13 +1,14 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import time
 import numpy as np
 
 import sys
-# Mock sounddevice early before importing AudioEngine
-sys.modules['sounddevice'] = MagicMock()
 
-from src.core.audio_engine import AudioEngine, VirtualStream, _DummyTime
+# Mock sounddevice early before importing AudioEngine
+sys.modules["sounddevice"] = MagicMock()
+
+from src.core.audio_engine import AudioEngine, VirtualStream, _DummyTime  # noqa: E402
 
 
 class TestDummyTime(unittest.TestCase):
@@ -28,18 +29,12 @@ class TestVirtualStream(unittest.TestCase):
 
         # Test with single int channel
         self.stream_int = VirtualStream(
-            samplerate=self.samplerate,
-            blocksize=self.blocksize,
-            channels=2,
-            callback=self.callback_mock
+            samplerate=self.samplerate, blocksize=self.blocksize, channels=2, callback=self.callback_mock
         )
 
         # Test with tuple channels
         self.stream_tuple = VirtualStream(
-            samplerate=self.samplerate,
-            blocksize=self.blocksize,
-            channels=(2, 2),
-            callback=self.callback_mock
+            samplerate=self.samplerate, blocksize=self.blocksize, channels=(2, 2), callback=self.callback_mock
         )
 
     def test_initialization(self):
@@ -78,7 +73,7 @@ class TestVirtualStream(unittest.TestCase):
     def test_run_loop_callback_invocation(self):
         # We start and immediately stop the stream to let it run briefly
         self.stream_tuple.start()
-        time.sleep(0.1) # Let it run for a bit
+        time.sleep(0.1)  # Let it run for a bit
         self.stream_tuple.stop()
 
         # The callback should have been called
@@ -174,6 +169,7 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
 
         # Mock some errors/status
         import sounddevice as sd
+
         self.engine.accumulated_status = sd.CallbackFlags()
         self.engine.callback_error_count = 5
         self.engine.last_callback_error = "Test Error"
@@ -223,5 +219,5 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertAlmostEqual(self.engine.get_input_latency(), expected_fallback)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
