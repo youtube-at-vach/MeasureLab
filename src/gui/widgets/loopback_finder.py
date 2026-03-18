@@ -26,27 +26,35 @@ class LoopbackWorker(QThread):
     error = pyqtSignal(str)
     finished_testing = pyqtSignal()
 
-    def __init__(self, module, device_id, sample_rate=48000):
+    def __init__(self, ctx):
         super().__init__()
-        self.module = module
-        self.device_id = device_id
-        self.sample_rate = sample_rate
+        self.ctx = ctx
         self.is_running = True
 
     def run(self):
         try:
-            self.module.perform_scan(
-                self.device_id, self.sample_rate, progress_callback=self.report_progress, check_stop=self.check_stop
-            )
+            stream = self.ctx["stream"]
+            stream_finished = self.ctx["stream_finished"]
+            stream_error = self.ctx["stream_error"]
+
+            with stream:
+                while stream.active:
+                    if stream_finished.wait(0.1):
+                        break
+                    if not self.is_running:
+                        stream.abort()
+                        break
+
+            if stream_error[0]:
+                raise Exception(f"Callback error: {stream_error[0]}")
+
+            self.result.emit(self.ctx["found_paths"])
             self.finished_testing.emit()
         except Exception as e:
             self.error.emit(str(e))
 
     def report_progress(self, value, message):
         self.progress.emit(value, message)
-
-    def check_stop(self):
-        return not self.is_running
 
     def stop(self):
         self.is_running = False
@@ -65,7 +73,7 @@ class LoopbackFinder(MeasurementModule):
     def description(self) -> str:
         return "Detects active loopback paths between output and input channels."
 
-    def perform_scan(self, device_id, sample_rate, progress_callback=None, check_stop=None):
+    def prepare_scan(self, device_id, sample_rate, progress_callback=None):
         if isinstance(device_id, tuple):
             input_device, output_device = device_id
             in_info = sd.query_devices(input_device)
@@ -105,10 +113,10 @@ class LoopbackFinder(MeasurementModule):
         settle_passed = 0
 
         rec_buffer = np.zeros((step_frames, max_in), dtype=np.float32)
-        stream_error = None
+        stream_error = [None]
 
         def callback(indata, outdata, frames, time_info, status):
-            nonlocal current_out_ch, current_frame, settle_passed, rec_buffer, stream_error
+            nonlocal current_out_ch, current_frame, settle_passed, rec_buffer
             try:
                 outdata.fill(0)
 
@@ -172,7 +180,7 @@ class LoopbackFinder(MeasurementModule):
             except sd.CallbackStop:
                 raise
             except Exception as e:
-                stream_error = e
+                stream_error[0] = e
                 raise sd.CallbackAbort() from e
 
         if progress_callback:
@@ -183,29 +191,23 @@ class LoopbackFinder(MeasurementModule):
         stream_finished = threading.Event()
 
         try:
-            with sd.Stream(
+            stream = sd.Stream(
                 device=device_id,
                 samplerate=sample_rate,
                 channels=(max_in, max_out),
                 dtype="float32",
                 callback=callback,
                 finished_callback=stream_finished.set,
-            ) as stream:
-                while stream.active:
-                    if stream_finished.wait(0.1):
-                        break
-                    if check_stop and check_stop():
-                        stream.abort()
-                        break
+            )
         except Exception as e:
             raise Exception(f"Stream error: {str(e)}") from e
 
-        if stream_error:
-            raise Exception(f"Callback error: {stream_error}")
-
-        if self.worker:
-            self.worker.result.emit(found_paths)
-        return found_paths
+        return {
+            "stream": stream,
+            "stream_finished": stream_finished,
+            "stream_error": stream_error,
+            "found_paths": found_paths,
+        }
 
     def get_widget(self):
         return LoopbackFinderWidget(self)
@@ -273,20 +275,23 @@ class LoopbackFinderWidget(QWidget):
 
         # Get current device from engine
         # Note: AudioEngine stores device IDs.
-        # We need to make sure we use the configured device.
-        # Assuming input and output are on the same device for loopback test usually,
-        # or we test the output device loopbacked to input device.
-        # The legacy tool took one device ID.
-        # Let's use the Output device ID from settings, and assume we record from Input device ID.
-        # Wait, sd.playrec takes 'device'. If it's a tuple (in, out), that works.
-
         input_device = self.module.audio_engine.input_device
         output_device = self.module.audio_engine.output_device
-
-        # If they are different, we pass (input, output) tuple to playrec
         device_arg = (input_device, output_device)
 
-        self.module.worker = LoopbackWorker(self.module, device_arg, self.module.audio_engine.sample_rate)
+        # Temporary worker to allow progress_callback binding
+        temp_worker = LoopbackWorker(None)
+
+        try:
+            ctx = self.module.prepare_scan(
+                device_arg, self.module.audio_engine.sample_rate, progress_callback=temp_worker.report_progress
+            )
+            temp_worker.ctx = ctx
+            self.module.worker = temp_worker
+        except Exception as e:
+            self.show_error(str(e))
+            return
+
         self.module.worker.progress.connect(self.update_progress)
         self.module.worker.result.connect(self.show_results)
         self.module.worker.error.connect(self.show_error)

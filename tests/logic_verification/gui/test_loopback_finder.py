@@ -58,6 +58,27 @@ class TestLoopbackFinder(unittest.TestCase):
         if "src.gui.widgets.loopback_finder" in sys.modules:
             del sys.modules["src.gui.widgets.loopback_finder"]
 
+    def _run_prepared_scan(self, ctx, check_stop=None):
+        stream = ctx["stream"]
+        stream_finished = ctx["stream_finished"]
+        stream_error = ctx["stream_error"]
+
+        try:
+            with stream:
+                while stream.active:
+                    if stream_finished.wait(0.1):
+                        break
+                    if check_stop and check_stop():
+                        stream.abort()
+                        break
+        except Exception:
+            pass
+
+        if stream_error[0]:
+            raise Exception(f"Callback error: {stream_error[0]}")
+
+        return ctx["found_paths"]
+
     def test_perform_scan_success(self):
         # Setup mocks
         sd = sys.modules["sounddevice"]
@@ -126,7 +147,8 @@ class TestLoopbackFinder(unittest.TestCase):
         sd.Stream.side_effect = stream_side_effect
         sd.CallbackStop = Exception
 
-        results = self.finder.perform_scan(device_id=0, sample_rate=sample_rate)
+        ctx = self.finder.prepare_scan(device_id=0, sample_rate=sample_rate)
+        results = self._run_prepared_scan(ctx)
 
         # Expect loopback: Out 1 -> In 1 (indices 0->0)
         # Because we continuously injected signal into input 0!
@@ -177,7 +199,8 @@ class TestLoopbackFinder(unittest.TestCase):
         sd.Stream.side_effect = stream_side_effect
         sd.CallbackStop = Exception
 
-        results = self.finder.perform_scan(device_id=0, sample_rate=48000)
+        ctx = self.finder.prepare_scan(device_id=0, sample_rate=48000)
+        results = self._run_prepared_scan(ctx)
 
         self.assertEqual(len(results), 0)
 
@@ -187,7 +210,7 @@ class TestLoopbackFinder(unittest.TestCase):
         sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 0}
 
         with self.assertRaises(Exception) as cm:
-            self.finder.perform_scan(device_id=0, sample_rate=48000)
+            self.finder.prepare_scan(device_id=0, sample_rate=48000)
         self.assertIn("does not support both input and output", str(cm.exception))
 
     def test_perform_scan_playrec_error(self):
@@ -198,7 +221,7 @@ class TestLoopbackFinder(unittest.TestCase):
         sd.Stream.side_effect = Exception("Audio Error")
 
         with self.assertRaises(Exception) as cm:
-            self.finder.perform_scan(device_id=0, sample_rate=48000)
+            self.finder.prepare_scan(device_id=0, sample_rate=48000)
         self.assertIn("Stream error", str(cm.exception))
 
     def test_perform_scan_stop(self):
@@ -223,7 +246,8 @@ class TestLoopbackFinder(unittest.TestCase):
         # Stop immediately
         check_stop = MagicMock(return_value=True)
 
-        results = self.finder.perform_scan(device_id=0, sample_rate=48000, check_stop=check_stop)
+        ctx = self.finder.prepare_scan(device_id=0, sample_rate=48000)
+        results = self._run_prepared_scan(ctx, check_stop=check_stop)
 
         # Should break immediately, so no results
         self.assertEqual(len(results), 0)
@@ -270,7 +294,8 @@ class TestLoopbackFinder(unittest.TestCase):
 
         progress_cb = MagicMock()
 
-        self.finder.perform_scan(device_id=0, sample_rate=48000, progress_callback=progress_cb)
+        ctx = self.finder.prepare_scan(device_id=0, sample_rate=48000, progress_callback=progress_cb)
+        self._run_prepared_scan(ctx)
 
         # Connection message + 2 channels = 3 calls
         self.assertEqual(progress_cb.call_count, 3)
@@ -308,7 +333,8 @@ class TestLoopbackFinder(unittest.TestCase):
         sample_rate = 48000
 
         # Should not raise
-        self.finder.perform_scan(device_id, sample_rate)
+        ctx = self.finder.prepare_scan(device_id, sample_rate)
+        self._run_prepared_scan(ctx)
 
         # Verify calls
         sd.query_devices.assert_any_call(1)
