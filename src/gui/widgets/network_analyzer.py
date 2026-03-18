@@ -161,6 +161,17 @@ class NetworkAnalyzer(MeasurementModule):
 
         self.reference_trace = None
 
+        self._dummy_callback_id = None
+        self.signals.sweep_finished.connect(self._cleanup_dummy_callback)
+
+    def _dummy_callback(self, indata, outdata, frames, time, status):
+        pass
+
+    def _cleanup_dummy_callback(self):
+        if self._dummy_callback_id is not None:
+            self.audio_engine.unregister_callback(self._dummy_callback_id)
+            self._dummy_callback_id = None
+
     @property
     def name(self) -> str:
         return "Network Analyzer"
@@ -230,19 +241,30 @@ class NetworkAnalyzer(MeasurementModule):
     def start_sweep(self):
         if self.worker and self.worker.isRunning():
             return
+
+        if self._dummy_callback_id is None:
+            self._dummy_callback_id = self.audio_engine.register_callback(self._dummy_callback)
+
         self.worker = FastSweepWorker(self)
         self.worker.start()
 
     def start_calibration(self):
         if self.calibration_worker and self.calibration_worker.isRunning():
             return
+
+        if self._dummy_callback_id is None:
+            self._dummy_callback_id = self.audio_engine.register_callback(self._dummy_callback)
+
         self.calibration_worker = CalibrationWorker(self)
+        self.calibration_worker.finished.connect(self._cleanup_dummy_callback)
         self.calibration_worker.start()
 
     def stop_sweep(self):
         if self.worker:
             self.worker.stop()
             self.worker.wait()
+
+        self._cleanup_dummy_callback()
 
     def _prepare_output_buffer(self, signal):
         """Prepares stereo output buffer based on routing."""
