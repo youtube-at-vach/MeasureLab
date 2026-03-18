@@ -93,6 +93,26 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         if M is not None:
             self.assertEqual(len(M), 0)
 
+    def test_perform_coarse_search_linalg_error_batch_only(self):
+        """Test _perform_coarse_search when np.linalg.solve raises LinAlgError only on the batch."""
+        signal = np.sin(2 * np.pi * self.freq * self.t)
+        grid = np.array([990.0, 1000.0, 1010.0])
+
+        real_solve = np.linalg.solve
+
+        def side_effect_func(a, b, *args, **kwargs):
+            if len(a.shape) == 3:
+                raise np.linalg.LinAlgError("Batch solve failed")
+            return real_solve(a, b, *args, **kwargs)
+
+        with patch('numpy.linalg.solve', side_effect=side_effect_func) as mock_solve:
+            # Call the method which should catch the error and fallback to loop, then succeed
+            best_coarse = AudioCalc._perform_coarse_search(signal, self.t, grid)
+
+            self.assertIn(best_coarse, grid)
+            self.assertAlmostEqual(best_coarse, self.freq, places=2)
+            self.assertGreater(mock_solve.call_count, 1)
+
     @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
     def test_sine_fit_residual_linalg_error(self, mock_solve):
         """Test _sine_fit_residual when np.linalg.solve raises LinAlgError."""
@@ -112,7 +132,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
 
     @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
     def test_perform_coarse_search_linalg_error(self, mock_solve):
-        """Test _perform_coarse_search when np.linalg.solve raises LinAlgError."""
+        """Test _perform_coarse_search when np.linalg.solve always raises LinAlgError."""
         signal = np.sin(2 * np.pi * self.freq * self.t)
         grid = np.array([990.0, 1000.0, 1010.0])
 
@@ -124,6 +144,30 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         self.assertAlmostEqual(best_coarse, self.freq, places=2)
         # Verify that solve was actually called and mocked
         self.assertTrue(mock_solve.called)
+
+    @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
+    def test_calculate_residual_linalg_error(self, mock_solve):
+        """Test _calculate_residual when np.linalg.solve raises LinAlgError."""
+        # _calculate_residual is called internally during fine optimization
+        signal = np.sin(2 * np.pi * self.freq * self.t)
+
+        # We start with a good guess so fine optimization will run
+        best_freq = AudioCalc.optimize_frequency(signal, self.sr, self.freq)
+        self.assertAlmostEqual(best_freq, self.freq, places=2)
+        self.assertTrue(mock_solve.called)
+
+    @patch('numpy.linalg.lstsq', side_effect=np.linalg.LinAlgError)
+    def test_optimize_frequency_return_full_linalg_error(self, mock_lstsq):
+        """Test optimize_frequency final lstsq raising LinAlgError with return_full=True."""
+        signal = np.sin(2 * np.pi * self.freq * self.t)
+
+        # When return_full=True, it computes lstsq at the end
+        best_freq, coeffs, M = AudioCalc.optimize_frequency(signal, self.sr, self.freq, return_full=True)
+
+        self.assertAlmostEqual(best_freq, self.freq, places=2)
+        self.assertIsNotNone(coeffs)
+        self.assertIsNotNone(M)
+        self.assertTrue(mock_lstsq.called)
 
 if __name__ == '__main__':
     unittest.main()
