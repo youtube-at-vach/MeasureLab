@@ -63,3 +63,7 @@ Saves the current measurement result as a "reference" to compare with subsequent
 
 * **Store Reference**: Saves the current graph as a reference.
 * **Apply Reference**: Subtracts the saved reference from the current measurement result. Useful for checking relative changes or "flattening" a response.
+
+## Troubleshooting
+
+* **Audio stream failed to start. Check ASIO settings**: This error message indicates that the audio stream failed to start. Please verify that the ASIO settings (Sample Rate and Block Size) match your audio interface's configuration.
