@@ -704,6 +704,10 @@ class LockInSpectrumFinder(MeasurementModule):
         sqrt_win_orig = np.sqrt(np.maximum(window_orig, 0.0))
         sig_win_orig = sig * sqrt_win_orig
 
+        # Pre-allocate buffer outside the loop to avoid repeated large allocations
+        max_chunk_bases = 1 + chunk_size * 2
+        B_win_buffer = np.empty((N, max_chunk_bases), dtype=np.float64)
+
         for i in range(0, points, chunk_size):
             if not self.is_running:
                 break
@@ -741,7 +745,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
             # Allocate Windowed Basis Matrix for the local chunk
             # [1, cos(w1), sin(w1), cos(w1), sin(w1), ...]
-            B_win = np.empty((N_chunk, num_bases), dtype=np.float64)  # 高精度化 (float64)
+            B_win = B_win_buffer[:N_chunk, :num_bases]
             B_win[:, 0] = sqrt_win  # DC includes the window weight
 
             # Compute and apply window weight directly in pre-allocated array
