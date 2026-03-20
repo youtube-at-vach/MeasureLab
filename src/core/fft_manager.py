@@ -303,8 +303,8 @@ class FFTManager:
             if self.wisdom_path.exists():
                 try:
                     self.wisdom_path.unlink()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to delete wisdom file: {e}")
 
         sizes_to_optimize = WARMUP_SIZES
         if exhaustive:
