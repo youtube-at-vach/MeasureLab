@@ -1973,13 +1973,13 @@ class SignalGeneratorWidget(QWidget):
             self.amp_spin.setRange(0, 1.0)
             self.amp_spin.setSingleStep(0.1)
         elif unit == "dBFS":
-            self.amp_spin.setRange(-120, 0)
+            self.amp_spin.setRange(-180, 0)
             self.amp_spin.setSingleStep(1.0)
         elif unit == "dBV":
-            self.amp_spin.setRange(-120, 20)
+            self.amp_spin.setRange(-180, 20)
             self.amp_spin.setSingleStep(1.0)
         elif unit == "dBu":
-            self.amp_spin.setRange(-120, 20)
+            self.amp_spin.setRange(-180, 20)
             self.amp_spin.setSingleStep(1.0)
         elif unit == "Vrms":
             self.amp_spin.setRange(0, 100)
