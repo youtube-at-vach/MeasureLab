@@ -589,6 +589,7 @@ class LockInSpectrumFinder(MeasurementModule):
                     window_coherent_gain = 1.0
 
             chunk_size = 32
+            is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
             for i in range(0, points, chunk_size):
                 if not self.is_running:
                     break
@@ -599,7 +600,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 # Direct correlation on decimated baseband with windowing (vectorized)
                 vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
                 amp = np.abs(vals) * 2.0
-                if display_unit in ["dBV", "dB SPL"]:
+                if is_dbv_or_spl:
                     amp /= np.sqrt(2.0)
 
                 mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
@@ -690,6 +691,8 @@ class LockInSpectrumFinder(MeasurementModule):
         chunk_size = 32
         mags_db_all = np.zeros(points)
 
+        is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
+
         # --- 初期窓関数の適用 (指定された窓関数) ---
         # このNはsig全体の長さ
         import scipy.signal as signal
@@ -766,7 +769,7 @@ class LockInSpectrumFinder(MeasurementModule):
             X = coeff[1:]
             iq = X.reshape(-1, 2)
             amp = np.hypot(iq[:, 0], iq[:, 1])
-            if display_unit in ["dBV", "dB SPL"]:
+            if is_dbv_or_spl:
                 amp /= np.sqrt(2.0)
 
             mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
