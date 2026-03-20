@@ -516,7 +516,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         }
         # Secure file creation with 600 permissions
         fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with open(fd, "w") as f:
+        with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=4)
 
     def load_calibration(self, filename):
