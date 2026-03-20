@@ -67,7 +67,7 @@ class SignalParameters:
     sweep_duration: float = 5.0
     log_sweep: bool = True
 
-    # Filter Parameters (BPF/LPF/HPF)
+    # Filter Parameters (BPF/LPF/HPF/Notch)
     lpf_enabled: bool = False
     lpf_freq: float = 20000.0
     lpf_order: int = 4
@@ -75,6 +75,10 @@ class SignalParameters:
     hpf_enabled: bool = False
     hpf_freq: float = 20.0
     hpf_order: int = 4
+
+    notch_enabled: bool = False
+    notch_freq: float = 1000.0
+    notch_q: float = 30.0
 
     # Advanced Signal Parameters
     multitone_count: int = 10
@@ -119,12 +123,15 @@ class SignalParameters:
     # Filter state
     _lpf_zi: Optional[np.ndarray] = None
     _hpf_zi: Optional[np.ndarray] = None
+    _notch_zi: Optional[np.ndarray] = None
 
     # Filter cache
     _lpf_sos: Optional[np.ndarray] = None
     _lpf_cache_key: Optional[Tuple] = None
     _hpf_sos: Optional[np.ndarray] = None
     _hpf_cache_key: Optional[Tuple] = None
+    _notch_sos: Optional[np.ndarray] = None
+    _notch_cache_key: Optional[Tuple] = None
 
 
 class SignalGenerator(MeasurementModule):
@@ -474,6 +481,27 @@ class SignalGenerator(MeasurementModule):
                 params._hpf_cache_key = current_key
                 return sos
 
+            elif filter_type == "notch":
+                freq = params.notch_freq
+                q = params.notch_q
+                current_key = (freq, q, sample_rate, "notch")
+
+                if params._notch_sos is not None and params._notch_cache_key == current_key:
+                    return params._notch_sos
+
+                nyquist = sample_rate / 2.0
+                if freq <= 0 or freq >= nyquist or q <= 0:
+                    params._notch_sos = None
+                    params._notch_cache_key = None
+                    return None
+
+                b, a = scipy.signal.iirnotch(freq, q, fs=sample_rate)
+                sos = scipy.signal.tf2sos(b, a)
+
+                params._notch_sos = sos
+                params._notch_cache_key = current_key
+                return sos
+
             return None
 
         except Exception:
@@ -590,6 +618,15 @@ class SignalGenerator(MeasurementModule):
                     params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
 
                 y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
+
+        # Apply Notch
+        if params.notch_enabled:
+            sos = self._get_filter_sos(params, "notch", sample_rate_eff)
+            if sos is not None:
+                if params._notch_zi is None or params._notch_zi.shape != (sos.shape[0], 2):
+                    params._notch_zi = scipy.signal.sosfilt_zi(sos) * 0.0
+
+                y, params._notch_zi = scipy.signal.sosfilt(sos, y, zi=params._notch_zi)
 
         return y
 
@@ -814,6 +851,7 @@ class SignalGenerator(MeasurementModule):
             params._am_phase_rad = 0.0
             params._lpf_zi = None
             params._hpf_zi = None
+            params._notch_zi = None
             self._prepare_buffer(params, base_sample_rate)
 
         def callback(indata, outdata, frames, time, status):
@@ -1358,6 +1396,7 @@ class SignalGeneratorWidget(QWidget):
         tabs.addTab(self._create_pm_tab(), tr("ΦM"))
         tabs.addTab(self._create_lpf_tab(), tr("LPF"))
         tabs.addTab(self._create_hpf_tab(), tr("HPF"))
+        tabs.addTab(self._create_notch_tab(), tr("Notch"))
         return tabs
 
     def _create_filter_tab(self, prefix: str, title: str, default_freq: float) -> QWidget:
@@ -1400,6 +1439,40 @@ class SignalGeneratorWidget(QWidget):
 
     def _create_hpf_tab(self):
         return self._create_filter_tab("hpf", tr("High Pass Filter (HPF)"), 20.0)
+
+    def _create_notch_tab(self):
+        filter_widget = QWidget()
+        layout = QVBoxLayout(filter_widget)
+
+        group = QGroupBox(tr("Notch Filter"))
+        group.setCheckable(True)
+        group.setChecked(False)
+        group.toggled.connect(lambda v: self.update_param("notch_enabled", v))
+        self.notch_group = group
+
+        form_layout = QFormLayout()
+
+        freq_spin = QDoubleSpinBox()
+        freq_spin.setRange(20, 20000)
+        freq_spin.setValue(1000.0)
+        freq_spin.setGroupSeparatorShown(True)
+        freq_spin.valueChanged.connect(lambda v: self.update_param("notch_freq", v))
+        form_layout.addRow(tr("Frequency (Hz):"), freq_spin)
+        self.notch_freq_spin = freq_spin
+
+        q_spin = QDoubleSpinBox()
+        q_spin.setRange(0.1, 100.0)
+        q_spin.setValue(30.0)
+        q_spin.valueChanged.connect(lambda v: self.update_param("notch_q", v))
+        form_layout.addRow(tr("Quality Factor (Q):"), q_spin)
+        self.notch_q_spin = q_spin
+
+        group.setLayout(form_layout)
+
+        layout.addWidget(group)
+        layout.addStretch()
+
+        return filter_widget
 
     def _create_sweep_tab(self):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
@@ -1580,6 +1653,10 @@ class SignalGeneratorWidget(QWidget):
         self.hpf_freq_spin.setValue(params.hpf_freq)
         self.hpf_order_spin.setValue(params.hpf_order)
 
+        self.notch_group.setChecked(getattr(params, "notch_enabled", False))
+        self.notch_freq_spin.setValue(getattr(params, "notch_freq", 1000.0))
+        self.notch_q_spin.setValue(getattr(params, "notch_q", 30.0))
+
         self.am_group.setChecked(getattr(params, "am_enabled", False))
         self.am_freq_spin.setValue(getattr(params, "am_frequency", 5.0))
         self.am_depth_spin.setValue(getattr(params, "am_depth", 50.0))
@@ -1634,6 +1711,9 @@ class SignalGeneratorWidget(QWidget):
             self.hpf_group,
             self.hpf_freq_spin,
             self.hpf_order_spin,
+            self.notch_group,
+            self.notch_freq_spin,
+            self.notch_q_spin,
             self.am_group,
             self.am_freq_spin,
             self.am_depth_spin,
@@ -1691,6 +1771,9 @@ class SignalGeneratorWidget(QWidget):
         dst.hpf_enabled = src.hpf_enabled
         dst.hpf_freq = src.hpf_freq
         dst.hpf_order = src.hpf_order
+        dst.notch_enabled = getattr(src, "notch_enabled", False)
+        dst.notch_freq = getattr(src, "notch_freq", 1000.0)
+        dst.notch_q = getattr(src, "notch_q", 30.0)
         dst.multitone_count = src.multitone_count
         dst.mls_order = src.mls_order
         dst.burst_on_cycles = src.burst_on_cycles
