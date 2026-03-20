@@ -11,3 +11,4 @@ netCDF4
 pyfftw
 pytest-json-report
 
+requests
