@@ -75,7 +75,7 @@ class SignalParameters:
     hpf_enabled: bool = False
     hpf_freq: float = 20.0
     hpf_order: int = 4
-    
+
     notch_enabled: bool = False
     notch_freq: float = 1000.0
     notch_q: float = 30.0
@@ -485,19 +485,19 @@ class SignalGenerator(MeasurementModule):
                 freq = params.notch_freq
                 q = params.notch_q
                 current_key = (freq, q, sample_rate, "notch")
-                
+
                 if params._notch_sos is not None and params._notch_cache_key == current_key:
                     return params._notch_sos
-                
+
                 nyquist = sample_rate / 2.0
                 if freq <= 0 or freq >= nyquist or q <= 0:
                     params._notch_sos = None
                     params._notch_cache_key = None
                     return None
-                    
+
                 b, a = scipy.signal.iirnotch(freq, q, fs=sample_rate)
                 sos = scipy.signal.tf2sos(b, a)
-                
+
                 params._notch_sos = sos
                 params._notch_cache_key = current_key
                 return sos
