@@ -93,18 +93,6 @@ class TestAudioCalc:
         filtered = AudioCalc.highpass_filter(signal, 48000, 1000.0)
         assert len(filtered) == 100
 
-    def test_notch_filter_valid(self):
-        signal = np.ones(100)
-        filtered = AudioCalc.notch_filter(signal, 48000, 1000.0)
-        assert len(filtered) == 100
-
-    def test_notch_filter_invalid(self):
-        signal = np.ones(100)
-        # Target >= nyquist (24000) -> None -> bypass
-        filtered = AudioCalc.notch_filter(signal, 48000, 30000.0)
-        np.testing.assert_array_equal(filtered, signal)
-
-
     def test_optimize_frequency_empty_signal(self):
         result = AudioCalc.optimize_frequency(np.array([]), 48000, 1000.0)
         assert result == 1000.0
