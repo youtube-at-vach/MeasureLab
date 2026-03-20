@@ -1192,7 +1192,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         # --- Wiring Diagram Button (Bottom of Left Panel) ---
         # Add a button to show the connection diagram in a popup
         self.btn_wiring = QPushButton(tr("Show Connection Diagram"))
-        self.btn_wiring.clicked.connect(self.show_wiring_dialog)
+        self.btn_wiring.clicked.connect(self.on_show_wiring_dialog)
         self.btn_wiring.setStyleSheet("margin-top: 10px;")
         left_layout.addWidget(self.btn_wiring)
 
@@ -1579,7 +1579,7 @@ class ImpedanceAnalyzerWidget(QWidget):
             else:
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load calibration: ") + msg)
 
-    def show_wiring_dialog(self):
+    def on_show_wiring_dialog(self):
         dialog = QDialog(self)
         dialog.setWindowTitle(tr("Connection Diagram"))
         dialog.resize(800, 600)
