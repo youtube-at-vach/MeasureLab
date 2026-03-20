@@ -1,8 +1,5 @@
-import json
+import requests  # type: ignore
 import logging
-import urllib.request
-import ssl
-import certifi
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
@@ -40,25 +37,21 @@ class UpdateChecker(QThread):
         try:
             url = UPDATE_CHECK_URL
 
-            req = urllib.request.Request(url)
-            req.add_header("User-Agent", f"MeasureLab/{__version__}")
+            headers = {"User-Agent": f"MeasureLab/{__version__}"}
+            response = requests.get(url, headers=headers, timeout=5)
 
-            # Create SSL context that uses certifi's CA bundle
-            context = ssl.create_default_context(cafile=certifi.where())
+            if response.status_code == 200:
+                data = response.json()
+                version_str = data.get("version", "")
 
-            with urllib.request.urlopen(req, timeout=5, context=context) as response:
-                if response.status == 200:
-                    data = json.loads(response.read().decode())
-                    version_str = data.get("version", "")
+                # Remove 'v' prefix if present for comparison
+                clean_latest = version_str.lstrip("v")
+                clean_current = __version__.lstrip("v")
 
-                    # Remove 'v' prefix if present for comparison
-                    clean_latest = version_str.lstrip("v")
-                    clean_current = __version__.lstrip("v")
-
-                    if is_newer_version(clean_latest, clean_current):
-                        # Ensure we emit a tag string with a 'v' for the release URL
-                        tag_name = f"v{clean_latest}"
-                        self.update_available.emit(tag_name)
+                if is_newer_version(clean_latest, clean_current):
+                    # Ensure we emit a tag string with a 'v' for the release URL
+                    tag_name = f"v{clean_latest}"
+                    self.update_available.emit(tag_name)
 
         except Exception as e:
             # Log failure but do not annoy the user with error popups.
