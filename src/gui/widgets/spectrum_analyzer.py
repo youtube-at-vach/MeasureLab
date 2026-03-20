@@ -272,18 +272,25 @@ class SpectrumAnalyzer(MeasurementModule):
             # N_bands is small (~30-100), N_bins is large (~4096-1M).
             # Vectorization is better but loop is acceptable for pre-calc.
 
+            centers = []
+            bounds = []
+
             while current_f < f_max:
-                lower = current_f / factor
-                upper = current_f * factor
-
-                idx_start = np.searchsorted(freqs, lower, side="left")
-                idx_end = np.searchsorted(freqs, upper, side="left")
-
-                if idx_end > idx_start:
-                    smoothed_freqs_list.append(current_f)
-                    band_indices.append((idx_start, idx_end))
-
+                centers.append(current_f)
+                bounds.append(current_f / factor)
+                bounds.append(current_f * factor)
                 current_f *= step_factor
+
+            indices = np.searchsorted(freqs, bounds, side="left")
+
+            idx = 0
+            for c in centers:
+                idx_start = indices[idx]
+                idx_end = indices[idx + 1]
+                if idx_end > idx_start:
+                    smoothed_freqs_list.append(c)
+                    band_indices.append((idx_start, idx_end))
+                idx += 2
 
             smoothed_freqs = np.array(smoothed_freqs_list)
             cached_data = (smoothed_freqs, band_indices)
