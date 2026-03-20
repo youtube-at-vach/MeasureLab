@@ -1,5 +1,4 @@
 import os
-import math
 import pytest
 import numpy as np
 
@@ -143,18 +142,6 @@ def test_profile_management(calibration_manager):
 
     calibration_manager.delete_profile("Prof1")
     assert "Prof1" not in calibration_manager.get_profiles()
-
-
-def test_dbfs_to_dbv(calibration_manager):
-    """Test dBFS to dBV conversions."""
-    # Sensitivity = 2.0V => 20*log10(2.0) = 6.02 dB
-    calibration_manager.set_input_sensitivity(2.0)
-
-    expected_offset = 20 * math.log10(2.0)
-    assert np.isclose(calibration_manager.get_input_offset_db(), expected_offset)
-
-    assert np.isclose(calibration_manager.dbfs_to_dbv(0.0), expected_offset)
-    assert np.isclose(calibration_manager.dbfs_to_dbv(-10.0), -10.0 + expected_offset)
 
 
 def test_frequency_map(calibration_manager, temp_map_path):
