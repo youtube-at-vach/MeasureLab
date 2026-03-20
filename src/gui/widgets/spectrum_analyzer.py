@@ -326,404 +326,230 @@ class SpectrumAnalyzer(MeasurementModule):
 
         return smoothed_freqs, smoothed_mags_db
 
-    def compute_spectrum(self):
-        """
-        Compute the spectrum from the latest data.
-        Returns a dictionary with results.
-        """
-        data = self.get_latest_data()
-        if data is None:
-            return None
+    def _compute_multitaper(self, data, freqs, sample_rate):
+        """Helper to calculate spectrum using multitaper method."""
+        windows = get_dpss_windows(len(data))  # (K, N)
+        K = windows.shape[0]
 
-        # Frequency axis
-        sample_rate = self.audio_engine.sample_rate
-        freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
+        rms_power_spectrum = None
+        energy_norm_factor = 1.0
+        magnitude = None
 
-        # Calculate Weighting Curve
-        weighting_db = self.compute_weighting(freqs, self.weighting)
+        if self.analysis_mode == "Spectrum" or self.analysis_mode == "PSD":
+            # Calculate PSD for each channel and each window
+            psd_accum_0 = np.zeros(len(freqs))
+            psd_accum_1 = np.zeros(len(freqs))
+
+            for k in range(K):
+                w = windows[k]
+                fft_0 = fft_manager.rfft(data[:, 0] * w)
+                psd_accum_0 += np.abs(fft_0) ** 2
+
+                fft_1 = fft_manager.rfft(data[:, 1] * w)
+                psd_accum_1 += np.abs(fft_1) ** 2
+
+            psd_0 = psd_accum_0 / K
+            psd_1 = psd_accum_1 / K
+
+            # Apply Channel Selection
+            if self.channel_mode == "Left":
+                psd_target, psd_second = psd_0, None
+            elif self.channel_mode == "Right":
+                psd_target, psd_second = psd_1, None
+            elif self.channel_mode == "Dual":
+                psd_target, psd_second = psd_0, psd_1
+            else:  # Average or default
+                psd_target, psd_second = (psd_0 + psd_1) / 2, None
+
+            # Capture raw power spectrum for Overall RMS
+            if psd_second is not None:
+                rms_power_spectrum = np.column_stack((psd_target, psd_second))
+            else:
+                rms_power_spectrum = psd_target
+
+            # Energy normalization for Multitaper (sum(w^2)=1)
+            energy_norm_factor = 1.0 / len(data)
+
+            # Convert to Magnitude (Linear)
+            if self.analysis_mode == "PSD":
+                norm_factor_sq = 2 / sample_rate
+            else:
+                norm_factor_sq = 1 / len(data)
+
+            magnitudes = [np.sqrt(psd_target * norm_factor_sq)]
+            if psd_second is not None:
+                magnitudes.append(np.sqrt(psd_second * norm_factor_sq))
+
+            mag_linear = magnitudes[0] if len(magnitudes) == 1 else np.column_stack(magnitudes)
+
+            # Peak -> RMS conversion if Physical Units or SPL
+            if self.analysis_mode == "Spectrum" and self.display_unit in ["dBV", "dB SPL"]:
+                mag_linear /= np.sqrt(2)
+
+            # Temporal Averaging
+            if self._avg_magnitude is None or self._avg_magnitude.shape != mag_linear.shape:
+                self._avg_magnitude = mag_linear
+            else:
+                alpha = self.averaging
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_linear
+
+            magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
+
+        elif self.analysis_mode == "Cross Spectrum":
+            cs_accum = np.zeros(len(freqs), dtype=complex)
+
+            for k in range(K):
+                w = windows[k]
+                fft_0 = fft_manager.rfft(data[:, 0] * w)
+                fft_1 = fft_manager.rfft(data[:, 1] * w)
+                cs_accum += fft_0 * np.conj(fft_1)
+
+            cs_avg = cs_accum / K
+
+            # Complex Temporal Averaging
+            if self._avg_cross_spectrum is None or self._avg_cross_spectrum.shape != cs_avg.shape:
+                self._avg_cross_spectrum = cs_avg
+            else:
+                alpha = self.averaging
+                self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * cs_avg
+
+            mag_linear = np.sqrt(np.abs(self._avg_cross_spectrum)) / np.sqrt(len(data))
+
+            if self.display_unit in ["dBV", "dB SPL"]:
+                mag_linear /= np.sqrt(2)
+
+            magnitude = 20 * np.log10(mag_linear + 1e-12)
+
+        # Apply API/SPL adjustments
+        if self.display_unit == "dBV":
+            magnitude += self.audio_engine.calibration.get_input_offset_db()
+        elif self.display_unit == "dB SPL":
+            spl_offset = self.audio_engine.calibration.get_spl_offset_db()
+            if spl_offset is not None:
+                magnitude += spl_offset
+
+        return magnitude, rms_power_spectrum, energy_norm_factor
+
+    def _compute_standard(self, data, sample_rate):
+        """Helper to calculate spectrum using standard windowing method."""
+        window_name = {"rect": "boxcar", "hanning": "hann"}.get(self.window_type, self.window_type)
+        window = get_cached_window(window_name, len(data), fftbins=False)
+        window_correction = 1.0 / np.mean(window)
+        windowed_data = data * window[:, np.newaxis]
+
+        # FFT
+        fft_data = np.column_stack((
+            fft_manager.rfft(windowed_data[:, 0]),
+            fft_manager.rfft(windowed_data[:, 1])
+        ))
+
+        norm_factor = (2.0 / len(data)) * window_correction
+        S2 = np.sum(window**2)
+        energy_norm_factor = 1.0 / (len(data) * S2)
+
+        raw_sq = np.abs(fft_data)**2
+        if self.channel_mode == "Left":
+            rms_power_spectrum = raw_sq[:, 0]
+        elif self.channel_mode == "Right":
+            rms_power_spectrum = raw_sq[:, 1]
+        elif self.channel_mode == "Dual":
+            rms_power_spectrum = raw_sq
+        else:
+            rms_power_spectrum = np.mean(raw_sq, axis=1)
 
         magnitude = None
 
-        # Variables for Overall RMS calculation (Linear Power Spectrum)
-        rms_power_spectrum = None
-        energy_norm_factor = 1.0
+        if self.analysis_mode == "Spectrum":
+            mag_stereo = np.abs(fft_data)
 
-        if self.multitaper_enabled:
-            # --- Multitaper Method ---
-            # Get DPSS windows
-            windows = get_dpss_windows(len(data))  # (K, N)
-            K = windows.shape[0]
-
-            if self.analysis_mode == "Spectrum" or self.analysis_mode == "PSD":
-                # --- Spectrum or PSD Mode ---
-                # Calculate PSD for each channel and each window
-                # psd = |FFT(x*w)|^2
-
-                psd_accum_0 = np.zeros(len(freqs))
-                psd_accum_1 = np.zeros(len(freqs))
-
-                for k in range(K):
-                    w = windows[k]
-
-                    # Channel 0
-                    fft_0 = fft_manager.rfft(data[:, 0] * w)
-                    psd_accum_0 += np.abs(fft_0) ** 2
-
-                    # Channel 1
-                    fft_1 = fft_manager.rfft(data[:, 1] * w)
-                    psd_accum_1 += np.abs(fft_1) ** 2
-
-                # Average over K windows
-                psd_0 = psd_accum_0 / K
-                psd_1 = psd_accum_1 / K
-
-                # Apply Channel Selection
-                if self.channel_mode == "Left":
-                    psd_target = psd_0
-                    psd_second = None
-                elif self.channel_mode == "Right":
-                    psd_target = psd_1
-                    psd_second = None
-                elif self.channel_mode == "Average":
-                    psd_target = (psd_0 + psd_1) / 2
-                    psd_second = None
-                elif self.channel_mode == "Dual":
-                    psd_target = psd_0
-                    psd_second = psd_1
-                else:
-                    psd_target = (psd_0 + psd_1) / 2
-                    psd_second = None
-
-                # Capture raw power spectrum for Overall RMS
-                # psd_target is already |FFT|^2 (averaged).
-                if psd_second is not None:
-                    rms_power_spectrum = np.column_stack((psd_target, psd_second))
-                else:
-                    rms_power_spectrum = psd_target
-
-                # Energy normalization for Multitaper (sum(w^2)=1)
-                energy_norm_factor = 1.0 / len(data)
-
-                # Convert to Magnitude (Linear)
-                if self.analysis_mode == "PSD":
-                    # PSD (V/rtHz)
-                    # mag = sqrt(PSD * 2 / fs)
-                    # Note: PSD here is Power per Bin (approx A^2*N)
-                    # Correct normalization to V/rtHz:
-                    # using the formula from previous implementation: sqrt(PSD * 2 / fs)
-                    norm_factor_sq = 2 / sample_rate
-                else:
-                    # Spectrum (Peak Amplitude)
-                    # mag = sqrt(PSD) / sqrt(N)
-                    norm_factor_sq = 1 / len(data)
-
-                magnitudes = []
-
-                # Target
-                mag_target = np.sqrt(psd_target * norm_factor_sq)
-                magnitudes.append(mag_target)
-
-                # Second (if Dual)
-                if psd_second is not None:
-                    mag_second = np.sqrt(psd_second * norm_factor_sq)
-                    magnitudes.append(mag_second)
-
-                # Combine
-                if len(magnitudes) == 1:
-                    mag_linear = magnitudes[0]
-                else:
-                    mag_linear = np.column_stack(magnitudes)
-
-                # Peak -> RMS conversion if Physical Units or SPL
-                # For PSD, we already handle it differently.
-                if self.analysis_mode == "Spectrum" and self.display_unit in ["dBV", "dB SPL"]:
-                    mag_linear /= np.sqrt(2)
-
-                # Temporal Averaging
-                if self._avg_magnitude is None or self._avg_magnitude.shape != mag_linear.shape:
-                    self._avg_magnitude = mag_linear
-                else:
-                    alpha = self.averaging
-                    self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_linear
-
-                magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
-
-                # Apply API/SPL adjustments
-                if self.display_unit == "dBV":
-                    offset = self.audio_engine.calibration.get_input_offset_db()
-                    magnitude += offset
-                elif self.display_unit == "dB SPL":
-                    spl_offset = self.audio_engine.calibration.get_spl_offset_db()
-                    if spl_offset is not None:
-                        magnitude += spl_offset
-
-            elif self.analysis_mode == "Cross Spectrum":
-                # Average Cross Spectrum over K windows
-                cs_accum = np.zeros(len(freqs), dtype=complex)
-
-                for k in range(K):
-                    w = windows[k]
-                    fft_0 = fft_manager.rfft(data[:, 0] * w)
-                    fft_1 = fft_manager.rfft(data[:, 1] * w)
-                    cs_accum += fft_0 * np.conj(fft_1)
-
-                cs_avg = cs_accum / K
-
-                # Complex Temporal Averaging
-                if self._avg_cross_spectrum is None or self._avg_cross_spectrum.shape != cs_avg.shape:
-                    self._avg_cross_spectrum = cs_avg
-                else:
-                    alpha = self.averaging
-                    self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * cs_avg
-
-                avg_cs = self._avg_cross_spectrum
-
-                # Normalize and Magnitude
-                mag_linear = np.sqrt(np.abs(avg_cs)) / np.sqrt(len(data))
-
-                if self.display_unit in ["dBV", "dB SPL"]:
-                    mag_linear /= np.sqrt(2)
-
-                magnitude = 20 * np.log10(mag_linear + 1e-12)
-
-                # Apply API/SPL adjustments
-                if self.display_unit == "dBV":
-                    offset = self.audio_engine.calibration.get_input_offset_db()
-                    magnitude += offset
-                elif self.display_unit == "dB SPL":
-                    spl_offset = self.audio_engine.calibration.get_spl_offset_db()
-                    if spl_offset is not None:
-                        magnitude += spl_offset
-
-        else:
-            # --- Standard Method ---
-            # Apply window
-            if self.window_type == "rect":
-                window_name = "boxcar"
-            elif self.window_type == "hanning":
-                window_name = "hann"
-            else:
-                window_name = self.window_type
-
-            # Use cached window (symmetric to match numpy behavior)
-            window = get_cached_window(window_name, len(data), fftbins=False)
-
-            # Calculate Window Correction Factor (Amplitude Correction)
-            # Factor = 1 / mean(window)
-            # This compensates for the coherent gain loss due to windowing
-            window_correction = 1.0 / np.mean(window)
-
-            # Broadcast window to stereo
-            windowed_data = data * window[:, np.newaxis]
-
-            # FFT
-            # rfft on axis 0
-            # Use fft_manager (handles 1D, so we process channels separately)
-            f0 = fft_manager.rfft(windowed_data[:, 0])
-            f1 = fft_manager.rfft(windowed_data[:, 1])
-            fft_data = np.column_stack((f0, f1))
-
-            # Normalization Factor for Peak Amplitude
-            # 2/N for one-sided spectrum (DC and Nyquist need special handling but usually ignored for general audio display)
-            # * window_correction
-            norm_factor = (2.0 / len(data)) * window_correction
-
-            # --- Overall RMS Logic (Standard) ---
-            # Calculate S2 (Energy correction factor denominator)
-            # S2 = sum(w^2)
-            S2 = np.sum(window**2)
-            energy_norm_factor = 1.0 / (len(data) * S2)
-
-            # Raw Power Spectrum for RMS (|FFT|^2)
-            raw_sq = np.abs(fft_data)**2
             if self.channel_mode == "Left":
-                rms_power_spectrum = raw_sq[:, 0]
+                mag_mono, mag_second = mag_stereo[:, 0], None
             elif self.channel_mode == "Right":
-                rms_power_spectrum = raw_sq[:, 1]
-            elif self.channel_mode == "Average":
-                # For "Average" channel mode, we average the POWER of L and R
-                rms_power_spectrum = np.mean(raw_sq, axis=1)
+                mag_mono, mag_second = mag_stereo[:, 1], None
             elif self.channel_mode == "Dual":
-                rms_power_spectrum = raw_sq
+                mag_mono, mag_second = mag_stereo[:, 0], mag_stereo[:, 1]
             else:
-                rms_power_spectrum = np.mean(raw_sq, axis=1)
-            # -----------------------------------
+                mag_mono, mag_second = np.mean(mag_stereo, axis=1), None
 
-            if self.analysis_mode == "Spectrum":
-                # Standard Spectrum
-                mag_stereo = np.abs(fft_data)
+            mag_mono = mag_mono * norm_factor
+            if mag_second is not None:
+                mag_second = mag_second * norm_factor
 
-                # Channel Selection Logic
-                if self.channel_mode == "Left":
-                    mag_mono = mag_stereo[:, 0]
-                    mag_second = None
-                elif self.channel_mode == "Right":
-                    mag_mono = mag_stereo[:, 1]
-                    mag_second = None
-                elif self.channel_mode == "Average":
-                    mag_mono = np.mean(mag_stereo, axis=1)
-                    mag_second = None
-                elif self.channel_mode == "Dual":
-                    mag_mono = mag_stereo[:, 0]  # Left
-                    mag_second = mag_stereo[:, 1]  # Right
-                else:
-                    mag_mono = np.mean(mag_stereo, axis=1)
-                    mag_second = None
-
-                # Normalize to Peak Amplitude
-                mag_mono = mag_mono * norm_factor
+            if self.display_unit in ["dBV", "dB SPL"]:
+                mag_mono /= np.sqrt(2)
                 if mag_second is not None:
-                    mag_second = mag_second * norm_factor
+                    mag_second /= np.sqrt(2)
 
-                # If Physical Units (dBV) or SPL are used, we want RMS reading for sine waves
-                # to match the "Overall" RMS reading.
-                # Peak to RMS for sine is 1/sqrt(2)
-                if self.display_unit in ["dBV", "dB SPL"]:
-                    mag_mono /= np.sqrt(2)
-                    if mag_second is not None:
-                        mag_second /= np.sqrt(2)
+            current_mag = np.column_stack((mag_mono, mag_second)) if mag_second is not None else mag_mono
 
-                # Averaging
-                current_mag = mag_mono
-                if mag_second is not None:
-                    current_mag = np.column_stack((mag_mono, mag_second))
+            if self._avg_magnitude is None or self._avg_magnitude.shape != current_mag.shape:
+                self._avg_magnitude = current_mag
+            else:
+                alpha = self.averaging
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * current_mag
 
-                if self._avg_magnitude is None or self._avg_magnitude.shape != current_mag.shape:
-                    self._avg_magnitude = current_mag
-                else:
-                    alpha = self.averaging
-                    self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * current_mag
+            magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
 
-                magnitude_linear = self._avg_magnitude
-                magnitude = 20 * np.log10(magnitude_linear + 1e-12)
+        elif self.analysis_mode == "PSD":
+            sum_w = np.sum(window)
+            psd_factor = sum_w / np.sqrt(2 * sample_rate * S2)
 
-                # Apply dBV / SPL offsets
-                if self.display_unit == "dBV":
-                    offset = self.audio_engine.calibration.get_input_offset_db()
-                    magnitude += offset
-                elif self.display_unit == "dB SPL":
-                    spl_offset = self.audio_engine.calibration.get_spl_offset_db()
-                    if spl_offset is not None:
-                        magnitude += spl_offset
+            mag_stereo = np.abs(fft_data) * norm_factor * psd_factor
 
-            elif self.analysis_mode == "PSD":
-                # Power Spectral Density (Voltage Noise Density)
-                sum_w = np.sum(window)
-                sum_w2 = np.sum(window**2)
-                fs = sample_rate
+            if self.channel_mode == "Left":
+                mag_mono = mag_stereo[:, 0]
+            elif self.channel_mode == "Right":
+                mag_mono = mag_stereo[:, 1]
+            elif self.channel_mode == "Dual":
+                mag_mono = mag_stereo
+            else:
+                mag_mono = np.sqrt(np.mean(mag_stereo**2, axis=1))
 
-                # Conversion factor from Peak Amplitude to V/rtHz
-                psd_factor = sum_w / np.sqrt(2 * fs * sum_w2)
+            if self._avg_magnitude is None or self._avg_magnitude.shape != mag_mono.shape:
+                self._avg_magnitude = mag_mono
+            else:
+                alpha = self.averaging
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_mono
 
-                mag_stereo = np.abs(fft_data)
+            magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
 
-                # Apply standard normalization first to get Peak Amplitude
-                mag_stereo = mag_stereo * norm_factor
+        elif self.analysis_mode == "Cross Spectrum":
+            Sxy = fft_data[:, 0] * np.conj(fft_data[:, 1]) * (norm_factor**2)
 
-                # Apply PSD factor
-                mag_stereo = mag_stereo * psd_factor
+            if self._avg_cross_spectrum is None or len(self._avg_cross_spectrum) != len(Sxy):
+                self._avg_cross_spectrum = Sxy
+            else:
+                alpha = self.averaging
+                self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * Sxy
 
-                # Channel Selection
-                if self.channel_mode == "Left":
-                    mag_mono = mag_stereo[:, 0]
-                elif self.channel_mode == "Right":
-                    mag_mono = mag_stereo[:, 1]
-                elif self.channel_mode == "Average":
-                    # Average the Power (V^2/Hz), then sqrt
-                    # mag_stereo is V/rtHz. Square to get V^2/Hz.
-                    pow_stereo = mag_stereo**2
-                    avg_pow = np.mean(pow_stereo, axis=1)
-                    mag_mono = np.sqrt(avg_pow)
-                elif self.channel_mode == "Dual":
-                    mag_mono = mag_stereo
-                else:
-                    mag_mono = mag_stereo[:, 0]
+            magnitude_linear = np.sqrt(np.abs(self._avg_cross_spectrum))
+            if self.display_unit in ["dBV", "dB SPL"]:
+                magnitude_linear /= np.sqrt(2)
 
-                # Averaging
-                if self._avg_magnitude is None or self._avg_magnitude.shape != mag_mono.shape:
-                    self._avg_magnitude = mag_mono
-                else:
-                    alpha = self.averaging
-                    self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_mono
+            magnitude = 20 * np.log10(magnitude_linear + 1e-12)
 
-                magnitude_linear = self._avg_magnitude
-                magnitude = 20 * np.log10(magnitude_linear + 1e-12)
+        # Apply API/SPL adjustments
+        if self.display_unit == "dBV":
+            magnitude += self.audio_engine.calibration.get_input_offset_db()
+        elif self.display_unit == "dB SPL":
+            spl_offset = self.audio_engine.calibration.get_spl_offset_db()
+            if spl_offset is not None:
+                magnitude += spl_offset
 
-                # Apply API/SPL adjustments
-                if self.display_unit == "dBV":
-                    offset = self.audio_engine.calibration.get_input_offset_db()
-                    magnitude += offset
-                elif self.display_unit == "dB SPL":
-                    spl_offset = self.audio_engine.calibration.get_spl_offset_db()
-                    if spl_offset is not None:
-                        magnitude += spl_offset
+        return magnitude, rms_power_spectrum, energy_norm_factor
 
-            elif self.analysis_mode == "Cross Spectrum":
-                # Cross Spectrum
-                F1 = fft_data[:, 0]
-                F2 = fft_data[:, 1]
-                Sxy = F1 * np.conj(F2)
-
-                # Normalize
-                Sxy = Sxy * (norm_factor**2)
-
-                # Complex Averaging
-                if self._avg_cross_spectrum is None or len(self._avg_cross_spectrum) != len(Sxy):
-                    self._avg_cross_spectrum = Sxy
-                else:
-                    alpha = self.averaging
-                    self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * Sxy
-
-                # Magnitude
-                avg_Sxy = self._avg_cross_spectrum
-                magnitude_linear = np.sqrt(np.abs(avg_Sxy))
-
-                if self.display_unit in ["dBV", "dB SPL"]:
-                    magnitude_linear /= np.sqrt(2)
-
-                magnitude = 20 * np.log10(magnitude_linear + 1e-12)
-
-                # Apply API/SPL adjustments
-                if self.display_unit == "dBV":
-                    offset = self.audio_engine.calibration.get_input_offset_db()
-                    magnitude += offset
-                elif self.display_unit == "dB SPL":
-                    spl_offset = self.audio_engine.calibration.get_spl_offset_db()
-                    if spl_offset is not None:
-                        magnitude += spl_offset
-
-        # Apply Weighting
-        if magnitude.ndim == 2 and weighting_db.ndim == 1:
-            magnitude += weighting_db[:, np.newaxis]
-        else:
-            magnitude += weighting_db
-
-        # Calculate Accurate Overall Weighted RMS
+    def _calculate_overall_rms(self, freqs, rms_power_spectrum, energy_norm_factor, weighting_db):
+        """Helper to calculate the overall weighted RMS."""
         overall_weighted_db = -120.0
-
         if rms_power_spectrum is not None:
-            # Convert weighting to Linear Squared (Power Gain)
             w_lin_sq = 10 ** (weighting_db / 10.0)
-
-            # Apply weighting to raw power spectrum
-            if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1:
-                p_weighted = rms_power_spectrum * w_lin_sq[:, np.newaxis]
-            else:
-                p_weighted = rms_power_spectrum * w_lin_sq
-
-            # Sum bins in range 20Hz - 20kHz
+            p_weighted = rms_power_spectrum * (w_lin_sq[:, np.newaxis] if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1 else w_lin_sq)
             mask = (freqs >= 20) & (freqs <= 20000)
 
             if np.any(mask):
-                if p_weighted.ndim == 2:
-                    sum_p = 2 * np.sum(p_weighted[mask])
-                else:
-                    sum_p = 2 * np.sum(p_weighted[mask])
-
-                # Apply Energy Normalization (1 / (N * S2)) or (1/N)
+                sum_p = 2 * np.sum(p_weighted[mask])
                 current_frame_power = sum_p * energy_norm_factor
 
-                # Temporal Averaging of Power (Exponential Smoothing)
                 if self._avg_weighted_power is None:
                     self._avg_weighted_power = current_frame_power
                 else:
@@ -733,18 +559,288 @@ class SpectrumAnalyzer(MeasurementModule):
                     else:
                         self._avg_weighted_power = current_frame_power
 
-                # Calculate RMS
                 overall_rms_linear = np.sqrt(self._avg_weighted_power)
                 overall_weighted_db = 20 * np.log10(overall_rms_linear + 1e-12)
 
-                # Apply Calibration Offsets to final dB value
                 if self.display_unit == "dBV":
-                    offset = self.audio_engine.calibration.get_input_offset_db()
-                    overall_weighted_db += offset
+                    overall_weighted_db += self.audio_engine.calibration.get_input_offset_db()
                 elif self.display_unit == "dB SPL":
                     spl_offset = self.audio_engine.calibration.get_spl_offset_db()
                     if spl_offset is not None:
                         overall_weighted_db += spl_offset
+
+        return overall_weighted_db
+
+    def _compute_multitaper(self, data, freqs, sample_rate):
+        """Helper to calculate spectrum using multitaper method."""
+        windows = get_dpss_windows(len(data))  # (K, N)
+        K = windows.shape[0]
+
+        rms_power_spectrum = None
+        energy_norm_factor = 1.0
+        magnitude = None
+
+        if self.analysis_mode == "Spectrum" or self.analysis_mode == "PSD":
+            # Calculate PSD for each channel and each window
+            psd_accum_0 = np.zeros(len(freqs))
+            psd_accum_1 = np.zeros(len(freqs))
+
+            for k in range(K):
+                w = windows[k]
+                fft_0 = fft_manager.rfft(data[:, 0] * w)
+                psd_accum_0 += np.abs(fft_0) ** 2
+
+                fft_1 = fft_manager.rfft(data[:, 1] * w)
+                psd_accum_1 += np.abs(fft_1) ** 2
+
+            psd_0 = psd_accum_0 / K
+            psd_1 = psd_accum_1 / K
+
+            # Apply Channel Selection
+            if self.channel_mode == "Left":
+                psd_target, psd_second = psd_0, None
+            elif self.channel_mode == "Right":
+                psd_target, psd_second = psd_1, None
+            elif self.channel_mode == "Dual":
+                psd_target, psd_second = psd_0, psd_1
+            else:  # Average or default
+                psd_target, psd_second = (psd_0 + psd_1) / 2, None
+
+            # Capture raw power spectrum for Overall RMS
+            if psd_second is not None:
+                rms_power_spectrum = np.column_stack((psd_target, psd_second))
+            else:
+                rms_power_spectrum = psd_target
+
+            # Energy normalization for Multitaper (sum(w^2)=1)
+            energy_norm_factor = 1.0 / len(data)
+
+            # Convert to Magnitude (Linear)
+            if self.analysis_mode == "PSD":
+                norm_factor_sq = 2 / sample_rate
+            else:
+                norm_factor_sq = 1 / len(data)
+
+            magnitudes = [np.sqrt(psd_target * norm_factor_sq)]
+            if psd_second is not None:
+                magnitudes.append(np.sqrt(psd_second * norm_factor_sq))
+
+            mag_linear = magnitudes[0] if len(magnitudes) == 1 else np.column_stack(magnitudes)
+
+            # Peak -> RMS conversion if Physical Units or SPL
+            if self.analysis_mode == "Spectrum" and self.display_unit in ["dBV", "dB SPL"]:
+                mag_linear /= np.sqrt(2)
+
+            # Temporal Averaging
+            if self._avg_magnitude is None or self._avg_magnitude.shape != mag_linear.shape:
+                self._avg_magnitude = mag_linear
+            else:
+                alpha = self.averaging
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_linear
+
+            magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
+
+        elif self.analysis_mode == "Cross Spectrum":
+            cs_accum = np.zeros(len(freqs), dtype=complex)
+
+            for k in range(K):
+                w = windows[k]
+                fft_0 = fft_manager.rfft(data[:, 0] * w)
+                fft_1 = fft_manager.rfft(data[:, 1] * w)
+                cs_accum += fft_0 * np.conj(fft_1)
+
+            cs_avg = cs_accum / K
+
+            # Complex Temporal Averaging
+            if self._avg_cross_spectrum is None or self._avg_cross_spectrum.shape != cs_avg.shape:
+                self._avg_cross_spectrum = cs_avg
+            else:
+                alpha = self.averaging
+                self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * cs_avg
+
+            mag_linear = np.sqrt(np.abs(self._avg_cross_spectrum)) / np.sqrt(len(data))
+
+            if self.display_unit in ["dBV", "dB SPL"]:
+                mag_linear /= np.sqrt(2)
+
+            magnitude = 20 * np.log10(mag_linear + 1e-12)
+
+        # Apply API/SPL adjustments
+        if self.display_unit == "dBV":
+            magnitude += self.audio_engine.calibration.get_input_offset_db()
+        elif self.display_unit == "dB SPL":
+            spl_offset = self.audio_engine.calibration.get_spl_offset_db()
+            if spl_offset is not None:
+                magnitude += spl_offset
+
+        return magnitude, rms_power_spectrum, energy_norm_factor
+
+    def _compute_standard(self, data, sample_rate):
+        """Helper to calculate spectrum using standard windowing method."""
+        window_name = {"rect": "boxcar", "hanning": "hann"}.get(self.window_type, self.window_type)
+        window = get_cached_window(window_name, len(data), fftbins=False)
+        window_correction = 1.0 / np.mean(window)
+        windowed_data = data * window[:, np.newaxis]
+
+        # FFT
+        fft_data = np.column_stack((
+            fft_manager.rfft(windowed_data[:, 0]),
+            fft_manager.rfft(windowed_data[:, 1])
+        ))
+
+        norm_factor = (2.0 / len(data)) * window_correction
+        S2 = np.sum(window**2)
+        energy_norm_factor = 1.0 / (len(data) * S2)
+
+        raw_sq = np.abs(fft_data)**2
+        if self.channel_mode == "Left":
+            rms_power_spectrum = raw_sq[:, 0]
+        elif self.channel_mode == "Right":
+            rms_power_spectrum = raw_sq[:, 1]
+        elif self.channel_mode == "Dual":
+            rms_power_spectrum = raw_sq
+        else:
+            rms_power_spectrum = np.mean(raw_sq, axis=1)
+
+        magnitude = None
+
+        if self.analysis_mode == "Spectrum":
+            mag_stereo = np.abs(fft_data)
+
+            if self.channel_mode == "Left":
+                mag_mono, mag_second = mag_stereo[:, 0], None
+            elif self.channel_mode == "Right":
+                mag_mono, mag_second = mag_stereo[:, 1], None
+            elif self.channel_mode == "Dual":
+                mag_mono, mag_second = mag_stereo[:, 0], mag_stereo[:, 1]
+            else:
+                mag_mono, mag_second = np.mean(mag_stereo, axis=1), None
+
+            mag_mono = mag_mono * norm_factor
+            if mag_second is not None:
+                mag_second = mag_second * norm_factor
+
+            if self.display_unit in ["dBV", "dB SPL"]:
+                mag_mono /= np.sqrt(2)
+                if mag_second is not None:
+                    mag_second /= np.sqrt(2)
+
+            current_mag = np.column_stack((mag_mono, mag_second)) if mag_second is not None else mag_mono
+
+            if self._avg_magnitude is None or self._avg_magnitude.shape != current_mag.shape:
+                self._avg_magnitude = current_mag
+            else:
+                alpha = self.averaging
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * current_mag
+
+            magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
+
+        elif self.analysis_mode == "PSD":
+            sum_w = np.sum(window)
+            psd_factor = sum_w / np.sqrt(2 * sample_rate * S2)
+
+            mag_stereo = np.abs(fft_data) * norm_factor * psd_factor
+
+            if self.channel_mode == "Left":
+                mag_mono = mag_stereo[:, 0]
+            elif self.channel_mode == "Right":
+                mag_mono = mag_stereo[:, 1]
+            elif self.channel_mode == "Dual":
+                mag_mono = mag_stereo
+            else:
+                mag_mono = np.sqrt(np.mean(mag_stereo**2, axis=1))
+
+            if self._avg_magnitude is None or self._avg_magnitude.shape != mag_mono.shape:
+                self._avg_magnitude = mag_mono
+            else:
+                alpha = self.averaging
+                self._avg_magnitude = alpha * self._avg_magnitude + (1 - alpha) * mag_mono
+
+            magnitude = 20 * np.log10(self._avg_magnitude + 1e-12)
+
+        elif self.analysis_mode == "Cross Spectrum":
+            Sxy = fft_data[:, 0] * np.conj(fft_data[:, 1]) * (norm_factor**2)
+
+            if self._avg_cross_spectrum is None or len(self._avg_cross_spectrum) != len(Sxy):
+                self._avg_cross_spectrum = Sxy
+            else:
+                alpha = self.averaging
+                self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * Sxy
+
+            magnitude_linear = np.sqrt(np.abs(self._avg_cross_spectrum))
+            if self.display_unit in ["dBV", "dB SPL"]:
+                magnitude_linear /= np.sqrt(2)
+
+            magnitude = 20 * np.log10(magnitude_linear + 1e-12)
+
+        # Apply API/SPL adjustments
+        if self.display_unit == "dBV":
+            magnitude += self.audio_engine.calibration.get_input_offset_db()
+        elif self.display_unit == "dB SPL":
+            spl_offset = self.audio_engine.calibration.get_spl_offset_db()
+            if spl_offset is not None:
+                magnitude += spl_offset
+
+        return magnitude, rms_power_spectrum, energy_norm_factor
+
+    def _calculate_overall_rms(self, freqs, rms_power_spectrum, energy_norm_factor, weighting_db):
+        """Helper to calculate the overall weighted RMS."""
+        overall_weighted_db = -120.0
+        if rms_power_spectrum is not None:
+            w_lin_sq = 10 ** (weighting_db / 10.0)
+            p_weighted = rms_power_spectrum * (w_lin_sq[:, np.newaxis] if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1 else w_lin_sq)
+            mask = (freqs >= 20) & (freqs <= 20000)
+
+            if np.any(mask):
+                sum_p = 2 * np.sum(p_weighted[mask])
+                current_frame_power = sum_p * energy_norm_factor
+
+                if self._avg_weighted_power is None:
+                    self._avg_weighted_power = current_frame_power
+                else:
+                    alpha = self.averaging
+                    if np.isscalar(current_frame_power) and np.isscalar(self._avg_weighted_power):
+                        self._avg_weighted_power = alpha * self._avg_weighted_power + (1 - alpha) * current_frame_power
+                    else:
+                        self._avg_weighted_power = current_frame_power
+
+                overall_rms_linear = np.sqrt(self._avg_weighted_power)
+                overall_weighted_db = 20 * np.log10(overall_rms_linear + 1e-12)
+
+                if self.display_unit == "dBV":
+                    overall_weighted_db += self.audio_engine.calibration.get_input_offset_db()
+                elif self.display_unit == "dB SPL":
+                    spl_offset = self.audio_engine.calibration.get_spl_offset_db()
+                    if spl_offset is not None:
+                        overall_weighted_db += spl_offset
+
+        return overall_weighted_db
+
+    def compute_spectrum(self):
+        """
+        Compute the spectrum from the latest data.
+        Returns a dictionary with results.
+        """
+        data = self.get_latest_data()
+        if data is None:
+            return None
+
+        sample_rate = self.audio_engine.sample_rate
+        freqs = fft_manager.rfftfreq(len(data), 1 / sample_rate)
+        weighting_db = self.compute_weighting(freqs, self.weighting)
+
+        if self.multitaper_enabled:
+            magnitude, rms_power_spectrum, energy_norm_factor = self._compute_multitaper(data, freqs, sample_rate)
+        else:
+            magnitude, rms_power_spectrum, energy_norm_factor = self._compute_standard(data, sample_rate)
+
+        # Apply Weighting to Magnitude array
+        if magnitude.ndim == 2 and weighting_db.ndim == 1:
+            magnitude += weighting_db[:, np.newaxis]
+        else:
+            magnitude += weighting_db
+
+        overall_weighted_db = self._calculate_overall_rms(freqs, rms_power_spectrum, energy_norm_factor, weighting_db)
 
         # Peak Hold
         if self.peak_hold:
@@ -759,7 +855,6 @@ class SpectrumAnalyzer(MeasurementModule):
             "overall_weighted_db": overall_weighted_db,
             "peak_magnitude": self._peak_magnitude
         }
-
 
 class SpectrumAnalyzerWidget(QWidget):
     def __init__(self, module: SpectrumAnalyzer):
