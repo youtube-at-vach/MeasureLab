@@ -65,7 +65,7 @@ jobs:
           --exclude-module matplotlib \
           --collect-all backports \
           --collect-all soundfile \
-          --collect-data pyfftw \
+          --collect-all pyfftw \
           --collect-binaries pyfftw \
           --hidden-import pyfftw \
           --distpath dist \
