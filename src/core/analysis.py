@@ -1151,11 +1151,13 @@ class AudioCalc:
 
         # Sum harmonics
         max_i = min(10, int(sampling_rate / (2 * base_freq)))
-        p_h_list = [get_power_in_band(base_freq * i) for i in range(1, max_i + 1)]
-
-        hum_power = sum(p_h_list)
-        p_h_sqrt = np.sqrt(p_h_list).tolist()
-        hum_components = [(base_freq * i, p) for i, p in enumerate(p_h_sqrt, start=1)]
+        hum_power = 0.0
+        hum_components = []
+        for i in range(1, max_i + 1):
+            freq = base_freq * i
+            power = get_power_in_band(freq)
+            hum_power += power
+            hum_components.append((freq, math.sqrt(power)))
 
         return np.sqrt(hum_power), base_freq, hum_components
 
