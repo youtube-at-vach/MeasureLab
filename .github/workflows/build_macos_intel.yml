@@ -24,7 +24,7 @@ jobs:
 
     - name: Install System Dependencies
       run: |
-        brew install create-dmg portaudio fftw libsndfile
+        brew install create-dmg
 
     - name: Install Python Dependencies
       run: |
