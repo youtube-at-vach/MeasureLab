@@ -1,5 +1,29 @@
 # Changelog
 
+## [v0.5.9] - 2026-03-21
+
+### Added
+
+* **Tests**: Extensive test coverage improvements across Core and GUI modules including Calibration, Analysis, AudioEngine, and Localization.
+
+### Changed
+
+* **Perf**: Optimized `RingBuffer.read()` to avoid `np.concatenate` for reduced object allocation.
+* **Perf**: Optimized recorder by saving in 1MB chunked blocks.
+* **Perf**: Optimized software LTC decoding using `collections.deque`.
+* **Perf**: Pre-calculated `np.searchsorted` in spectrum analyzer for faster UI rendering.
+* **Core**: Replaced `time.sleep` with threading `Event` in Audio Engine for more accurate virtual stream timing.
+* **Core**: Replaced `urllib` with `requests` for robust TLS connections in `UpdateChecker`.
+* **Refactor**: Cleaned up legacy configuration parameters and removed unused internal API functions.
+* **Docs**: Added troubleshooting steps for ASIO stream start failures in Network Analyzer.
+
+### Fixed
+
+* **Audio**: Added robust error handling for ASIO stream initialization and callback processing, using dummy callbacks to maintain active engines during Network Analyzer sweeps.
+* **Signal Generator**: Limited multitone width processing to prevent overlap with adjacent tones.
+* **I18n**: Fixed missing translation entries.
+* **Build**: Fixed PyInstaller concurrency conflict in Windows CI.
+
 ## [v0.5.8] - 2026-03-16
 
 > [!IMPORTANT]
