@@ -66,6 +66,7 @@ jobs:
           --collect-all backports \
           --collect-all soundfile \
           --collect-all pyfftw \
+          --hidden-import pyfftw \
           --distpath dist \
           --workpath build \
           --target-architecture x86_64 \
