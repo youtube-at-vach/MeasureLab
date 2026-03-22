@@ -1,10 +1,14 @@
 import pytest
+
 np = pytest.importorskip("numpy")
 
 try:
     from src.core.analysis import AudioCalc
 except ImportError:
-    pytest.skip("skipping tests because src.core.analysis could not be imported (missing scipy?)", allow_module_level=True)
+    pytest.skip(
+        "skipping tests because src.core.analysis could not be imported (missing scipy?)", allow_module_level=True
+    )
+
 
 def test_bandpass_filter_short_signal():
     """Verify that signals shorter than 52 samples are returned as is."""
@@ -27,6 +31,7 @@ def test_bandpass_filter_short_signal():
     assert len(filtered) == 52
     assert np.allclose(filtered, np.zeros(52))
 
+
 def test_bandpass_filter_attenuation():
     """Verify that frequencies outside the passband are attenuated."""
     sampling_rate = 48000
@@ -47,10 +52,10 @@ def test_bandpass_filter_attenuation():
     filtered_pass = AudioCalc.bandpass_filter(passband_signal, sampling_rate, lowcut=200.0, highcut=2000.0)
 
     # Check RMS values (ignore initial transient by trimming)
-    trim = int(sampling_rate * 0.01) # 10ms trim
+    trim = int(sampling_rate * 0.01)  # 10ms trim
 
     def get_rms(sig):
-        return np.sqrt(np.mean(sig[trim:-trim]**2))
+        return np.sqrt(np.mean(sig[trim:-trim] ** 2))
 
     rms_low = get_rms(filtered_low)
     rms_high = get_rms(filtered_high)
@@ -68,6 +73,7 @@ def test_bandpass_filter_attenuation():
     # Expect preservation for in-band signals (allow small loss/ripple)
     assert rms_pass > orig_rms_pass * 0.9, f"Passband signal attenuated too much: {rms_pass} vs {orig_rms_pass}"
 
+
 def test_bandpass_filter_invalid_bounds():
     """Verify behavior with invalid bounds."""
     sampling_rate = 48000
@@ -81,6 +87,7 @@ def test_bandpass_filter_invalid_bounds():
     # Case 2: lowcut = highcut
     filtered = AudioCalc.bandpass_filter(signal, sampling_rate, lowcut=1000.0, highcut=1000.0)
     assert np.allclose(filtered, 0)
+
 
 def test_bandpass_filter_nyquist_handling():
     """Verify behavior near Nyquist frequency."""
@@ -103,6 +110,7 @@ def test_bandpass_filter_nyquist_handling():
     assert len(filtered_neg) == len(signal)
     assert not np.array_equal(filtered_neg, signal)
 
+
 def test_lowpass_filter_attenuation():
     """Verify that frequencies above the cutoff are attenuated."""
     sampling_rate = 48000
@@ -122,7 +130,7 @@ def test_lowpass_filter_attenuation():
     trim = int(sampling_rate * 0.01)
 
     def get_rms(sig):
-        return np.sqrt(np.mean(sig[trim:-trim]**2))
+        return np.sqrt(np.mean(sig[trim:-trim] ** 2))
 
     rms_low = get_rms(filtered_low)
     rms_high = get_rms(filtered_high)
@@ -186,7 +194,7 @@ def test_highpass_filter_attenuation():
     trim = int(sampling_rate * 0.01)
 
     def get_rms(sig):
-        return np.sqrt(np.mean(sig[trim:-trim]**2))
+        return np.sqrt(np.mean(sig[trim:-trim] ** 2))
 
     rms_low = get_rms(filtered_low)
     rms_high = get_rms(filtered_high)

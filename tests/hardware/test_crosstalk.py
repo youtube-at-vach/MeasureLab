@@ -10,6 +10,7 @@ pytestmark = pytest.mark.hardware
 
 logger = logging.getLogger(__name__)
 
+
 def pytest_generate_tests(metafunc):
     """
     Generate test cases based on --hardware-mode option.
@@ -21,22 +22,24 @@ def pytest_generate_tests(metafunc):
 
         if mode == "typical":
             # Typical: 1kHz
-            metafunc.parametrize("crosstalk_params", [
-                {"freq": 1000.0, "name": "1kHz"}
-            ])
+            metafunc.parametrize("crosstalk_params", [{"freq": 1000.0, "name": "1kHz"}])
         else:
             # Limit: 100Hz, 1kHz, 10kHz
-            metafunc.parametrize("crosstalk_params", [
-                {"freq": 100.0, "name": "100Hz"},
-                {"freq": 1000.0, "name": "1kHz"},
-                {"freq": 10000.0, "name": "10kHz"}
-            ])
+            metafunc.parametrize(
+                "crosstalk_params",
+                [
+                    {"freq": 100.0, "name": "100Hz"},
+                    {"freq": 1000.0, "name": "1kHz"},
+                    {"freq": 10000.0, "name": "10kHz"},
+                ],
+            )
+
 
 class TestCrosstalkHardware:
     @pytest.fixture(autouse=True)
     def setup_teardown(self):
         self.engine = AudioEngine()
-        self.engine.set_offline_mode(False) # Ensure online
+        self.engine.set_offline_mode(False)  # Ensure online
 
         # Generator state
         self._phase = 0.0
@@ -45,7 +48,7 @@ class TestCrosstalkHardware:
         self.sample_rate = 48000
         self.buffer_size = 65536
 
-        self.active_channel = 0 # 0=Left, 1=Right
+        self.active_channel = 0  # 0=Left, 1=Right
 
         # Input buffer
         self.input_data = np.zeros((self.buffer_size, 2))
@@ -73,8 +76,8 @@ class TestCrosstalkHardware:
         if new_data is not None:
             new_frames = len(new_data)
             if new_frames >= self.buffer_size:
-                 self.input_data[:] = new_data[-self.buffer_size :]
-                 self.input_index = 0
+                self.input_data[:] = new_data[-self.buffer_size :]
+                self.input_index = 0
             else:
                 remaining = self.buffer_size - self.input_index
                 if new_frames <= remaining:
@@ -90,7 +93,7 @@ class TestCrosstalkHardware:
 
         # Output Generation
         t = (np.arange(frames) + self._phase) / self.sample_rate
-        self._phase += frames # Keep phase continuous
+        self._phase += frames  # Keep phase continuous
 
         sig = self.gen_amplitude * np.sin(2 * np.pi * self.test_frequency * t)
 
@@ -139,7 +142,7 @@ class TestCrosstalkHardware:
 
         print(f"\nStarting Crosstalk Test: {test_freq} Hz @ {output_level_db} dBFS")
 
-        channels = [0, 1] # Left, Right
+        channels = [0, 1]  # Left, Right
         results = {}
 
         # Buffer Refresh Wait Calculation
@@ -147,7 +150,7 @@ class TestCrosstalkHardware:
         wait_for_new_data = max(0.05, buffer_duration * 1.1)
 
         for source_ch in channels:
-            target_ch = 1 - source_ch # The other channel
+            target_ch = 1 - source_ch  # The other channel
 
             # Set Active Channel
             self.active_channel = source_ch

@@ -6,7 +6,7 @@ import time
 import numpy as np
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.core.audio_engine import AudioEngine
 from src.gui.widgets.lock_in_amplifier import LockInAmplifier
@@ -30,9 +30,9 @@ def run_sweep(start_freq, end_freq, steps, duration_per_step, use_software_loopb
 
     # Configure Lock-in
     lockin.gen_amplitude = 0.5
-    lockin.averaging_count = 10 # Average over 10 buffers
+    lockin.averaging_count = 10  # Average over 10 buffers
     lockin.buffer_size = int(buffer_size)
-    lockin.output_channel = 2 # Stereo output (Signal on both L and R)
+    lockin.output_channel = 2  # Stereo output (Signal on both L and R)
 
     # Start Analysis
     lockin.start_analysis()
@@ -56,7 +56,7 @@ def run_sweep(start_freq, end_freq, steps, duration_per_step, use_software_loopb
             # We need to wait at least (buffer_size / sample_rate) * averaging_count
             # Plus some margin for the filter to settle
             buffer_duration = lockin.buffer_size / engine.sample_rate
-            min_wait = buffer_duration * 2 # Initial settle
+            min_wait = buffer_duration * 2  # Initial settle
             wait_time = max(duration_per_step, min_wait)
 
             time.sleep(wait_time)
@@ -66,8 +66,8 @@ def run_sweep(start_freq, end_freq, steps, duration_per_step, use_software_loopb
 
             # Collect data
             for _ in range(lockin.averaging_count):
-                 time.sleep(buffer_duration * 1.1) # Wait slightly more than buffer duration
-                 lockin.process_data()
+                time.sleep(buffer_duration * 1.1)  # Wait slightly more than buffer duration
+                lockin.process_data()
 
             # Read measurement
             mag = lockin.current_magnitude
@@ -84,12 +84,7 @@ def run_sweep(start_freq, end_freq, steps, duration_per_step, use_software_loopb
             # phase / gain: show ~7 decimals
             print(f"{f:<12.2f} | {mag:<12.4f} | {phase:<16.7f} | {gain_err_db:<16.7f}")
 
-            results.append({
-                'freq': f,
-                'mag': mag,
-                'phase': phase,
-                'gain_err_db': gain_err_db
-            })
+            results.append({"freq": f, "mag": mag, "phase": phase, "gain_err_db": gain_err_db})
 
     except KeyboardInterrupt:
         print("\nSweep interrupted.")
@@ -98,6 +93,7 @@ def run_sweep(start_freq, end_freq, steps, duration_per_step, use_software_loopb
         engine.stop_stream()
 
     return results
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Lock-in Amplifier Performance Test")

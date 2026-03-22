@@ -1,4 +1,3 @@
-
 import sys
 import os
 import unittest
@@ -6,16 +5,20 @@ from unittest.mock import MagicMock, patch
 import importlib
 
 # Add project root to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 
 # Mock classes to simulate Qt behavior
 class MockQObject:
     """Mock for PyQt6.QtCore.QObject."""
+
     def __init__(self, *args, **kwargs):
         pass
 
+
 class MockQColor:
     """Mock for PyQt6.QtGui.QColor."""
+
     def __init__(self, *args):
         self.r = args[0] if len(args) > 0 else 0
         self.g = args[1] if len(args) > 1 else 0
@@ -26,8 +29,10 @@ class MockQColor:
         # For our tests, we can just return a value if we want, or calculate
         return (self.r + self.g + self.b) // 3
 
+
 class MockQPalette:
     """Mock for PyQt6.QtGui.QPalette."""
+
     class ColorRole:
         Window = 0
         WindowText = 1
@@ -61,20 +66,24 @@ class MockQPalette:
             self.colors[role] = color
 
     def color(self, role):
-        return self.colors.get(role, MockQColor(255, 255, 255)) # Default to light
+        return self.colors.get(role, MockQColor(255, 255, 255))  # Default to light
+
 
 class TestThemeManager(unittest.TestCase):
     def setUp(self):
         # prepare sys.modules patcher
-        self.modules_patcher = patch.dict(sys.modules, {
-            'PyQt6.QtCore': MagicMock(),
-            'PyQt6.QtGui': MagicMock(),
-            'PyQt6.QtWidgets': MagicMock(),
-        })
+        self.modules_patcher = patch.dict(
+            sys.modules,
+            {
+                "PyQt6.QtCore": MagicMock(),
+                "PyQt6.QtGui": MagicMock(),
+                "PyQt6.QtWidgets": MagicMock(),
+            },
+        )
         self.modules_patcher.start()
 
         # Configure mocks
-        self.mock_qt_core = sys.modules['PyQt6.QtCore']
+        self.mock_qt_core = sys.modules["PyQt6.QtCore"]
         self.mock_qt_core.QObject = MockQObject
         # pyqtSignal is called at class definition time. We return a Mock that produces another Mock when instantiated.
         # But actually pyqtSignal() returns a descriptor.
@@ -84,30 +93,30 @@ class TestThemeManager(unittest.TestCase):
         self.mock_signal_instance = MagicMock()
         self.mock_qt_core.pyqtSignal = MagicMock(return_value=self.mock_signal_instance)
 
-        self.mock_qt_gui = sys.modules['PyQt6.QtGui']
+        self.mock_qt_gui = sys.modules["PyQt6.QtGui"]
         self.mock_qt_gui.QColor = MockQColor
         self.mock_qt_gui.QPalette = MockQPalette
 
-        self.mock_qt_widgets = sys.modules['PyQt6.QtWidgets']
+        self.mock_qt_widgets = sys.modules["PyQt6.QtWidgets"]
         self.mock_qt_widgets.QApplication = MagicMock()
         self.mock_qt_widgets.QStyleFactory = MagicMock()
         # Default styles
         self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Windows", "WindowsVista"]
 
         # Import/Reload module under test
-        if 'src.core.theme_manager' in sys.modules:
-            importlib.reload(sys.modules['src.core.theme_manager'])
+        if "src.core.theme_manager" in sys.modules:
+            importlib.reload(sys.modules["src.core.theme_manager"])
         else:
-            importlib.import_module('src.core.theme_manager')
+            importlib.import_module("src.core.theme_manager")
 
-        self.module_under_test = sys.modules['src.core.theme_manager']
+        self.module_under_test = sys.modules["src.core.theme_manager"]
         self.ThemeManager = self.module_under_test.ThemeManager
 
         # Setup common app mock
         self.mock_app = MagicMock()
         # Setup default style hints
         self.mock_style_hints = MagicMock()
-        self.mock_style_hints.colorScheme.return_value = 1 # Light
+        self.mock_style_hints.colorScheme.return_value = 1  # Light
         # Setup supports_color_scheme check: hasattr(style_hints, "colorScheme") needs to be True
         # Since it's a MagicMock, hasattr usually returns True for any attribute access unless configured otherwise.
         self.mock_app.styleHints.return_value = self.mock_style_hints
@@ -117,8 +126,8 @@ class TestThemeManager(unittest.TestCase):
 
     def tearDown(self):
         self.modules_patcher.stop()
-        if 'src.core.theme_manager' in sys.modules:
-            del sys.modules['src.core.theme_manager']
+        if "src.core.theme_manager" in sys.modules:
+            del sys.modules["src.core.theme_manager"]
 
     def test_initialization(self):
         tm = self.ThemeManager(self.mock_app)
@@ -206,7 +215,7 @@ class TestThemeManager(unittest.TestCase):
         mock_qt.ColorScheme.Light = 1
         self.mock_qt_core.Qt = mock_qt
 
-        self.mock_style_hints.colorScheme.return_value = 2 # Dark
+        self.mock_style_hints.colorScheme.return_value = 2  # Dark
 
         tm = self.ThemeManager(self.mock_app)
         tm.set_theme("system")
@@ -227,7 +236,7 @@ class TestThemeManager(unittest.TestCase):
         mock_qt.ColorScheme.Light = 1
         self.mock_qt_core.Qt = mock_qt
 
-        self.mock_style_hints.colorScheme.return_value = 1 # Light
+        self.mock_style_hints.colorScheme.return_value = 1  # Light
 
         tm = self.ThemeManager(self.mock_app)
         tm.set_theme("system")
@@ -283,7 +292,7 @@ class TestThemeManager(unittest.TestCase):
     def test_windows_fusion_workaround(self):
         """Test that Fusion style is forced on Windows when switching to dark theme."""
         # Mock platform.system to return 'Windows'
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             tm = self.ThemeManager(self.mock_app)
 
             # Setup: Current style is "WindowsVista"
@@ -306,7 +315,7 @@ class TestThemeManager(unittest.TestCase):
 
     def test_windows_restore_style(self):
         """Test that original style is restored on Windows when switching back to light theme."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             # Setup initial style as WindowsVista
             style_mock = MagicMock()
             style_mock.objectName.return_value = "WindowsVista"
@@ -368,7 +377,7 @@ class TestThemeManager(unittest.TestCase):
         self.mock_qt_widgets.QStyleFactory.keys.reset_mock()
 
         # Trigger method that uses available styles
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             # Setup style mock
             style_mock = MagicMock()
             style_mock.objectName.return_value = "WindowsVista"
@@ -380,11 +389,10 @@ class TestThemeManager(unittest.TestCase):
         # Should NOT call keys() again
         self.mock_qt_widgets.QStyleFactory.keys.assert_not_called()
 
-
     def test_macos_fusion_workaround(self):
         """Test that Fusion style is forced on macOS (Darwin) when switching to dark theme."""
         # Mock platform.system to return 'Darwin'
-        with patch('platform.system', return_value='Darwin'):
+        with patch("platform.system", return_value="Darwin"):
             # Setup available styles has "Fusion"
             self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
 
@@ -405,7 +413,7 @@ class TestThemeManager(unittest.TestCase):
 
     def test_macos_always_fusion_style(self):
         """Test that Fusion style is used on macOS for both light and dark themes."""
-        with patch('platform.system', return_value='Darwin'):
+        with patch("platform.system", return_value="Darwin"):
             # Setup available styles has "Fusion" and "Macintosh"
             self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Macintosh"]
 
@@ -447,5 +455,6 @@ class TestThemeManager(unittest.TestCase):
                 args = self.mock_app.setStyle.call_args
                 self.assertNotEqual(args[0][0], "Macintosh")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

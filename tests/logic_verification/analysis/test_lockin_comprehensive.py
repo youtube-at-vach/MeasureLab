@@ -61,9 +61,7 @@ class TestLockInComprehensive(unittest.TestCase):
         self.assertAlmostEqual(phase, 0.0, places=1)
 
         # 2. Reference phase 0 -> Measured phase should be 30
-        mag, phase = AudioCalc.calculate_lockin_measurement(
-            signal, self.freq, self.fs, phase_ref=0.0
-        )
+        mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs, phase_ref=0.0)
         self.assertAlmostEqual(mag, 1.0, places=4)
         self.assertAlmostEqual(phase, 30.0, places=1)
 
@@ -101,17 +99,15 @@ class TestLockInComprehensive(unittest.TestCase):
         signal = 1.0 * np.sin(2 * np.pi * self.freq * self.t)
 
         # Boxcar (Rectangular)
-        mag, phase = AudioCalc.calculate_lockin_measurement(
-            signal, self.freq, self.fs, window_name="boxcar"
-        )
+        mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs, window_name="boxcar")
         self.assertAlmostEqual(mag, 1.0, places=4)
         self.assertAlmostEqual(phase, 0.0, places=1)
 
         # Blackman
-        mag, phase = AudioCalc.calculate_lockin_measurement(
-            signal, self.freq, self.fs, window_name="blackman"
-        )
-        self.assertAlmostEqual(mag, 1.0, places=3) # Windowing introduces some spectral leakage/gain variation if not perfectly aligned
+        mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs, window_name="blackman")
+        self.assertAlmostEqual(
+            mag, 1.0, places=3
+        )  # Windowing introduces some spectral leakage/gain variation if not perfectly aligned
         self.assertAlmostEqual(phase, 0.0, places=1)
 
     def test_frequency_mismatch(self):
@@ -121,9 +117,7 @@ class TestLockInComprehensive(unittest.TestCase):
         signal = 1.0 * np.sin(2 * np.pi * signal_freq * self.t)
 
         # Use boxcar window for perfect cancellation over 1 second (1 Hz difference)
-        mag, phase = AudioCalc.calculate_lockin_measurement(
-            signal, self.freq, self.fs, window_name="boxcar"
-        )
+        mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs, window_name="boxcar")
 
         # 1 Hz difference over 1 second means exactly 1 full cycle phase drift.
         # Boxcar window should average this to 0.
@@ -132,11 +126,8 @@ class TestLockInComprehensive(unittest.TestCase):
         # Test with Hann window and 2 Hz difference (orthogonal to Hann window main lobe)
         signal_freq_2 = 1002.0
         signal_2 = 1.0 * np.sin(2 * np.pi * signal_freq_2 * self.t)
-        mag_hann, _ = AudioCalc.calculate_lockin_measurement(
-            signal_2, self.freq, self.fs, window_name="hann"
-        )
+        mag_hann, _ = AudioCalc.calculate_lockin_measurement(signal_2, self.freq, self.fs, window_name="hann")
         self.assertLess(mag_hann, 0.001, "Should reject 2Hz offset with Hann window over 1s")
-
 
     def test_short_signal(self):
         """Verify behavior with short signal."""
@@ -146,7 +137,7 @@ class TestLockInComprehensive(unittest.TestCase):
 
         mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs)
         # With very short signal, windowing effects are significant, but basic functionality should hold.
-        self.assertAlmostEqual(mag, 1.0, delta=0.1) # Allow more deviation
+        self.assertAlmostEqual(mag, 1.0, delta=0.1)  # Allow more deviation
 
     def test_empty_signal(self):
         """Verify behavior with empty signal."""
@@ -154,6 +145,7 @@ class TestLockInComprehensive(unittest.TestCase):
         mag, phase = AudioCalc.calculate_lockin_measurement(signal, self.freq, self.fs)
         self.assertEqual(mag, 0.0)
         self.assertEqual(phase, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

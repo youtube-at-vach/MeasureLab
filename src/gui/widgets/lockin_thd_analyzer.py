@@ -74,7 +74,6 @@ class LockInTHDAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "High-precision THD+N measurement using lock-in fundamental removal."
 
-
     def get_widget(self):
         return LockInTHDWidget(self)
 

@@ -103,6 +103,7 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+
 def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
     """
     Convert a given amplitude value in a specific unit to linear scale (0-1).
@@ -132,6 +133,7 @@ def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: 
         amp_linear = 0.0
 
     return amp_linear
+
 
 def linear_to_amplitude(amp_linear: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
     """

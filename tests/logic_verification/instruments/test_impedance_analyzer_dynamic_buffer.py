@@ -4,15 +4,16 @@ import sys
 import os
 
 # Ensure src is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 # Mock sounddevice
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 try:
     from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
 except ImportError:
     ImpedanceAnalyzer = None
+
 
 class TestImpedanceAnalyzerDynamicBuffer(unittest.TestCase):
     def setUp(self):
@@ -70,8 +71,8 @@ class TestImpedanceAnalyzerDynamicBuffer(unittest.TestCase):
         """Invalid frequencies should return 1 to avoid errors."""
         self.assertEqual(self.analyzer._desired_buffer_multiplier(0.0), 1)
         self.assertEqual(self.analyzer._desired_buffer_multiplier(-100.0), 1)
-        self.assertEqual(self.analyzer._desired_buffer_multiplier(float('inf')), 1)
-        self.assertEqual(self.analyzer._desired_buffer_multiplier(float('nan')), 1)
+        self.assertEqual(self.analyzer._desired_buffer_multiplier(float("inf")), 1)
+        self.assertEqual(self.analyzer._desired_buffer_multiplier(float("nan")), 1)
 
     def test_custom_configuration(self):
         """Verify logic respects configuration changes."""
@@ -126,5 +127,6 @@ class TestImpedanceAnalyzerDynamicBuffer(unittest.TestCase):
         self.analyzer.audio_engine.sample_rate = 0
         self.assertEqual(self.analyzer._desired_buffer_multiplier(50.0), 1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

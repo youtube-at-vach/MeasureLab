@@ -5,7 +5,7 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 
 # Add project root to sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 # Import for optimization tests (will be used by TestFFTOptimization)
 try:
@@ -15,27 +15,28 @@ except ImportError:
     fft_manager = None
     HAS_PYFFTW = False
 
+
 class TestFFTWarmup(unittest.TestCase):
     def setUp(self):
         self.mock_numpy = MagicMock()
-        self.mock_numpy.float32 = 'float32'
-        self.mock_numpy.float64 = 'float64'
-        self.mock_numpy.complex64 = 'complex64'
-        self.mock_numpy.complex128 = 'complex128'
+        self.mock_numpy.float32 = "float32"
+        self.mock_numpy.float64 = "float64"
+        self.mock_numpy.complex64 = "complex64"
+        self.mock_numpy.complex128 = "complex128"
         self.mock_pyfftw = MagicMock()
 
         # Patch sys.modules manually
         self.original_modules = sys.modules.copy()
-        sys.modules['numpy'] = self.mock_numpy
-        sys.modules['pyfftw'] = self.mock_pyfftw
+        sys.modules["numpy"] = self.mock_numpy
+        sys.modules["pyfftw"] = self.mock_pyfftw
 
         # Make sure src.core.fft_manager is not in sys.modules so we can re-import it with mocks
-        if 'src.core.fft_manager' in sys.modules:
-            del sys.modules['src.core.fft_manager']
+        if "src.core.fft_manager" in sys.modules:
+            del sys.modules["src.core.fft_manager"]
 
     def tearDown(self):
         # Restore sys.modules state for cleanliness
-        to_restore = ['numpy', 'pyfftw', 'src.core.fft_manager']
+        to_restore = ["numpy", "pyfftw", "src.core.fft_manager"]
 
         for mod in to_restore:
             # Remove our mock/module if it wasn't there originally
@@ -55,9 +56,7 @@ class TestFFTWarmup(unittest.TestCase):
         self.assertTrue(src.core.fft_manager.HAS_PYFFTW, "HAS_PYFFTW should be True with mock")
 
         # Mock load_wisdom/save_wisdom on the class itself before instantiation
-        with patch.object(FFTManager, 'load_wisdom'), \
-             patch.object(FFTManager, 'save_wisdom'):
-
+        with patch.object(FFTManager, "load_wisdom"), patch.object(FFTManager, "save_wisdom"):
             manager = FFTManager()
 
             # Mock get_plan to track calls.
@@ -85,6 +84,7 @@ class TestFFTWarmup(unittest.TestCase):
                 print("\n".join(missing_calls))
                 self.fail("Missing warmup calls")
 
+
 class TestFFTManagerWindows(unittest.TestCase):
     def setUp(self):
         self.mock_scipy = MagicMock()
@@ -98,18 +98,21 @@ class TestFFTManagerWindows(unittest.TestCase):
         self.mock_scipy.signal = self.mock_signal
 
         self.mock_numpy = MagicMock()
-        self.mock_numpy.float32 = 'float32'
-        self.mock_numpy.float64 = 'float64'
-        self.mock_numpy.complex64 = 'complex64'
-        self.mock_numpy.complex128 = 'complex128'
+        self.mock_numpy.float32 = "float32"
+        self.mock_numpy.float64 = "float64"
+        self.mock_numpy.complex64 = "complex64"
+        self.mock_numpy.complex128 = "complex128"
 
         # Patch sys.modules to simulate scipy and numpy presence
-        self.modules_patcher = patch.dict(sys.modules, {
-            'scipy': self.mock_scipy,
-            'scipy.signal': self.mock_signal,
-            'scipy.signal.windows': self.mock_windows,
-            'numpy': self.mock_numpy
-        })
+        self.modules_patcher = patch.dict(
+            sys.modules,
+            {
+                "scipy": self.mock_scipy,
+                "scipy.signal": self.mock_signal,
+                "scipy.signal.windows": self.mock_windows,
+                "numpy": self.mock_numpy,
+            },
+        )
         self.modules_patcher.start()
 
         # Reset mock_dpss for each test
@@ -117,10 +120,11 @@ class TestFFTManagerWindows(unittest.TestCase):
 
         # Import the function under test
         # Ensure clean import by removing from sys.modules if present
-        if 'src.core.fft_manager' in sys.modules:
-            del sys.modules['src.core.fft_manager']
+        if "src.core.fft_manager" in sys.modules:
+            del sys.modules["src.core.fft_manager"]
 
         from src.core.fft_manager import get_dpss_windows
+
         self.get_dpss_windows = get_dpss_windows
 
         # Clear cache to ensure clean state
@@ -176,6 +180,7 @@ class TestFFTManagerWindows(unittest.TestCase):
         self.get_dpss_windows(N, NW)
 
         self.mock_dpss.assert_called_with(N, NW, 4)
+
 
 class TestFFTOptimization(unittest.TestCase):
     def test_rfft_out_param(self):
@@ -296,7 +301,7 @@ class TestFFTOptimization(unittest.TestCase):
             self.skipTest("FFTManager not available")
 
         # We need to simulate HAS_PYFFTW = False
-        with patch('src.core.fft_manager.HAS_PYFFTW', False):
+        with patch("src.core.fft_manager.HAS_PYFFTW", False):
             N = 1024
             data = np.random.random(N).astype(np.float64)
 
@@ -311,5 +316,6 @@ class TestFFTOptimization(unittest.TestCase):
             res_nc_2 = fft_manager.rfft(data, copy=False)
             self.assertIsNot(res_nc, res_nc_2)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

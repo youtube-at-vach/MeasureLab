@@ -1,4 +1,3 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
@@ -6,38 +5,52 @@ import numpy as np
 import os
 import tempfile
 
+
 class TestRecorderMemory(unittest.TestCase):
     def setUp(self):
         # Create a mock for QtCore that has a proper QThread class
         qt_core = MagicMock()
+
         class MockQThread:
-            def __init__(self, parent=None): pass
-            def run(self): pass
-            def start(self): self.run()
-            def wait(self): pass
+            def __init__(self, parent=None):
+                pass
+
+            def run(self):
+                pass
+
+            def start(self):
+                self.run()
+
+            def wait(self):
+                pass
+
             finished = MagicMock()
 
         qt_core.QThread = MockQThread
         qt_core.pyqtSignal = lambda *args, **kwargs: MagicMock()
 
         # Patch sys.modules to mock sounddevice and PyQt6
-        self.modules_patcher = patch.dict(sys.modules, {
-            'sounddevice': MagicMock(),
-            'PyQt6.QtCore': qt_core,
-            'PyQt6.QtWidgets': MagicMock(),
-            'scipy': MagicMock(),
-            'scipy.signal': MagicMock()
-        })
+        self.modules_patcher = patch.dict(
+            sys.modules,
+            {
+                "sounddevice": MagicMock(),
+                "PyQt6.QtCore": qt_core,
+                "PyQt6.QtWidgets": MagicMock(),
+                "scipy": MagicMock(),
+                "scipy.signal": MagicMock(),
+            },
+        )
         self.modules_patcher.start()
 
         # Import RecorderPlayer locally to ensure it uses the mocked modules
-        if 'src.gui.widgets.recorder_player' in sys.modules:
-            del sys.modules['src.gui.widgets.recorder_player']
+        if "src.gui.widgets.recorder_player" in sys.modules:
+            del sys.modules["src.gui.widgets.recorder_player"]
         # Also clean up modules that might have imported real scipy/qt
-        if 'src.core.analysis' in sys.modules:
-            del sys.modules['src.core.analysis']
+        if "src.core.analysis" in sys.modules:
+            del sys.modules["src.core.analysis"]
 
         from src.gui.widgets.recorder_player import RecorderPlayer, FileSaveWorker
+
         self.RecorderPlayer = RecorderPlayer
         self.FileSaveWorker = FileSaveWorker
 
@@ -94,6 +107,7 @@ class TestRecorderMemory(unittest.TestCase):
         # Create a dummy source file
         source_path = os.path.join(self.temp_dir.name, "source.wav")
         import soundfile as sf
+
         sf.write(source_path, np.zeros((100, 2)), 48000)
 
         target_path = os.path.join(self.temp_dir.name, "target.wav")
@@ -107,5 +121,6 @@ class TestRecorderMemory(unittest.TestCase):
         self.assertTrue(os.path.exists(target_path))
         self.assertEqual(os.path.getsize(target_path), os.path.getsize(source_path))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

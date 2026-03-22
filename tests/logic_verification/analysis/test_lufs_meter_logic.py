@@ -9,6 +9,7 @@ from scipy import signal
 # If we are in a headless environment, standard PyQt6 imports should work if installed.
 from src.gui.widgets.lufs_meter import LufsMeter
 
+
 class MockAudioEngine:
     def __init__(self, sample_rate=48000):
         self.sample_rate = sample_rate
@@ -23,11 +24,13 @@ class MockAudioEngine:
     def unregister_callback(self, callback_id):
         self._callback = None
 
+
 @pytest.fixture
 def lufs_meter():
     engine = MockAudioEngine()
     meter = LufsMeter(engine)
     return meter
+
 
 def generate_sine_wave(freq, peak_dbfs, duration, sr):
     """Generate stereo sine wave at given dBFS peak level."""
@@ -37,6 +40,7 @@ def generate_sine_wave(freq, peak_dbfs, duration, sr):
     sig = peak_amp * np.sin(2 * np.pi * freq * t)
     # Stereo
     return np.column_stack((sig, sig))
+
 
 def test_initialization_and_filters(lufs_meter):
     """Verify filter initialization and coefficients."""
@@ -62,6 +66,7 @@ def test_initialization_and_filters(lufs_meter):
 
     assert abs(gain_db - 0.691) < 0.1, f"K-weighting gain at 1kHz expected ~0.691 dB, got {gain_db:.3f} dB"
 
+
 def test_lufs_calculation_basic(lufs_meter):
     """Test _to_lufs conversion logic."""
     # Test silence
@@ -75,6 +80,7 @@ def test_lufs_calculation_basic(lufs_meter):
     # Test known value: Mean Square 0.1 (-10 dB power) -> -10.691 LUFS
     # 10 * log10(0.1) = -10.0 -> -10.691
     assert abs(lufs_meter._to_lufs(0.1) - (-10.691)) < 1e-6
+
 
 def test_momentary_lufs_accuracy(lufs_meter):
     """Verify momentary LUFS with a steady 1kHz sine wave."""
@@ -97,12 +103,14 @@ def test_momentary_lufs_accuracy(lufs_meter):
     chunk_size = 1024
     frames = len(indata)
     for i in range(0, frames, chunk_size):
-        chunk = indata[i:i+chunk_size]
+        chunk = indata[i : i + chunk_size]
         callback(chunk, None, len(chunk), None, None)
 
     # Check momentary LUFS
-    assert abs(lufs_meter.momentary_lufs - target_lufs) < 0.2, \
+    assert abs(lufs_meter.momentary_lufs - target_lufs) < 0.2, (
         f"Expected {target_lufs} LUFS, got {lufs_meter.momentary_lufs}"
+    )
+
 
 def test_integration_and_gating(lufs_meter):
     """Verify integrated loudness calculation with gating."""
@@ -117,7 +125,7 @@ def test_integration_and_gating(lufs_meter):
     indata_signal = generate_sine_wave(1000, peak_db, 1.0, sr)
 
     for i in range(0, len(indata_signal), chunk_size):
-        chunk = indata_signal[i:i+chunk_size]
+        chunk = indata_signal[i : i + chunk_size]
         callback(chunk, None, len(chunk), None, None)
 
     lufs_meter.update_integrated_lufs_if_dirty()
@@ -128,7 +136,7 @@ def test_integration_and_gating(lufs_meter):
     indata_silence = np.zeros((int(1.0 * sr), 2), dtype=np.float32)
 
     for i in range(0, len(indata_silence), chunk_size):
-        chunk = indata_silence[i:i+chunk_size]
+        chunk = indata_silence[i : i + chunk_size]
         callback(chunk, None, len(chunk), None, None)
 
     lufs_meter.update_integrated_lufs_if_dirty()
@@ -142,7 +150,7 @@ def test_integration_and_gating(lufs_meter):
     indata_signal_2 = generate_sine_wave(1000, peak_db_2, 1.0, sr)
 
     for i in range(0, len(indata_signal_2), chunk_size):
-        chunk = indata_signal_2[i:i+chunk_size]
+        chunk = indata_signal_2[i : i + chunk_size]
         callback(chunk, None, len(chunk), None, None)
 
     lufs_meter.update_integrated_lufs_if_dirty()
@@ -150,10 +158,11 @@ def test_integration_and_gating(lufs_meter):
     # Expected integrated: Average of 1s at -23 LUFS and 1s at -20 LUFS
     # Note: Transition blocks (signal <-> silence) are included if > gate,
     # pulling the average down slightly.
-    expected_lufs_simplified = 10 * np.log10((10**(-23/10) + 10**(-20/10)) / 2)
+    expected_lufs_simplified = 10 * np.log10((10 ** (-23 / 10) + 10 ** (-20 / 10)) / 2)
 
     # Tolerance increased to 1.0 dB to account for transition blocks
     assert abs(lufs_meter.integrated_lufs - expected_lufs_simplified) < 1.0
+
 
 def test_reset_logic(lufs_meter):
     """Verify reset functionality."""
@@ -176,6 +185,7 @@ def test_reset_logic(lufs_meter):
     callback(indata, None, len(indata), None, None)
     lufs_meter.update_integrated_lufs_if_dirty()
     assert lufs_meter.integrated_lufs > -90.0
+
 
 def test_get_integrated_seconds(lufs_meter):
     """Verify duration tracking."""

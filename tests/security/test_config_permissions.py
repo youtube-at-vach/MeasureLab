@@ -5,6 +5,7 @@ import tempfile
 import shutil
 from src.core.config_manager import ConfigManager
 
+
 class TestConfigPermissions(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
@@ -12,7 +13,7 @@ class TestConfigPermissions(unittest.TestCase):
         self.cm = ConfigManager(config_filename=self.config_path)
 
     def tearDown(self):
-        if hasattr(self, 'cm'):
+        if hasattr(self, "cm"):
             self.cm.shutdown()
         shutil.rmtree(self.test_dir)
 
@@ -31,7 +32,7 @@ class TestConfigPermissions(unittest.TestCase):
         # On Windows, os.chmod only handles the read-only bit, so 0o600 checks might be platform dependent.
         # However, checking that group/other have NO permissions is the key.
 
-        if os.name == 'posix':
+        if os.name == "posix":
             # Check strictly for 0o600 (or stricter)
             # Mask 0o077 checks for any permission for group/other
             self.assertEqual(mode & 0o077, 0, "File has permissions for group or other")
@@ -45,5 +46,6 @@ class TestConfigPermissions(unittest.TestCase):
             # but we should still implement best effort.
             pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

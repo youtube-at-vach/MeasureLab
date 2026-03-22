@@ -1,13 +1,15 @@
 import time
 import threading
 
+
 def benchmark_sleep():
     start = time.time()
 
     is_active = True
+
     def mock_stream_runner():
         nonlocal is_active
-        time.sleep(0.05) # Simulate some stream processing
+        time.sleep(0.05)  # Simulate some stream processing
         is_active = False
 
     threading.Thread(target=mock_stream_runner).start()
@@ -17,12 +19,14 @@ def benchmark_sleep():
 
     return time.time() - start
 
+
 def benchmark_event():
     start = time.time()
 
     stream_finished = threading.Event()
+
     def mock_stream_runner():
-        time.sleep(0.05) # Simulate some stream processing
+        time.sleep(0.05)  # Simulate some stream processing
         stream_finished.set()
 
     threading.Thread(target=mock_stream_runner).start()
@@ -32,6 +36,7 @@ def benchmark_event():
             break
 
     return time.time() - start
+
 
 if __name__ == "__main__":
     # Warmup

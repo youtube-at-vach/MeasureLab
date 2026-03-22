@@ -7,12 +7,15 @@ import numpy as np
 # Common Mocks for Widget Tests
 # -----------------------------------------------------------------------------
 
+
 class MockQWidget(MagicMock):
     def __init__(self, *args, **kwargs):
         super().__init__()
         pass
+
     def _get_child_mock(self, **kw):
         return MagicMock(**kw)
+
 
 class MockAudioEngine:
     def __init__(self):
@@ -30,9 +33,11 @@ class MockAudioEngine:
     def unregister_callback(self, cid):
         pass
 
+
 # -----------------------------------------------------------------------------
 # Test Cases
 # -----------------------------------------------------------------------------
+
 
 class TestOscilloscopeStaticMethods(unittest.TestCase):
     """Tests for static helper methods in Oscilloscope class."""
@@ -67,6 +72,7 @@ class TestOscilloscopeStaticMethods(unittest.TestCase):
 
     def test_estimate_frequency_hz(self):
         from src.gui.widgets.oscilloscope import Oscilloscope
+
         sr = 48000
         f = 1000.0
         t = np.arange(sr // 10) / sr  # 0.1s
@@ -77,6 +83,7 @@ class TestOscilloscopeStaticMethods(unittest.TestCase):
 
     def test_estimate_rise_fall_times(self):
         from src.gui.widgets.oscilloscope import Oscilloscope
+
         # Create a clean low->high ramp of 25us so 10-90% should be 20us.
         dt = 1e-6
         t = np.arange(0.0, 200e-6, dt)
@@ -108,6 +115,7 @@ class TestOscilloscopeStaticMethods(unittest.TestCase):
 
     def test_frequency_estimation_edge_cases(self):
         from src.gui.widgets.oscilloscope import Oscilloscope
+
         # Insufficient data
         t = np.array([0, 1, 2])
         y = np.array([0, 1, 0])
@@ -140,6 +148,7 @@ class TestOscilloscopeLogic(unittest.TestCase):
         # We need to mock AudioEngine
         self.engine = MockAudioEngine()
         from src.gui.widgets.oscilloscope import Oscilloscope
+
         self.scope = Oscilloscope(self.engine)
         self.scope.buffer_size = 100
         self.scope.input_data = np.zeros((self.scope.buffer_size * 2, 2))
@@ -212,7 +221,7 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.scope.trigger_slope = "Rising"
 
         self.engine.sample_rate = 1000
-        window_duration = 0.01 # 10 samples
+        window_duration = 0.01  # 10 samples
 
         data = self.scope.get_display_data(window_duration)
 
@@ -223,14 +232,14 @@ class TestOscilloscopeLogic(unittest.TestCase):
     def test_single_mode_stops_capture(self):
         self.engine.sample_rate = 48000
         self.scope.trigger_source = 0
-        self.scope.trigger_slope = 'Rising'
+        self.scope.trigger_slope = "Rising"
         self.scope.trigger_level = 0.0
-        self.scope.trigger_mode = 'Single'
+        self.scope.trigger_mode = "Single"
         self.scope.single_shot_armed = True
         self.scope.single_shot_fired = False
 
         self.scope.buffer_size = 10000
-        self.scope.input_data = np.full((self.scope.buffer_size * 2, 2), -1.0) # Reset buffer
+        self.scope.input_data = np.full((self.scope.buffer_size * 2, 2), -1.0)  # Reset buffer
 
         # Searches window [7472, 9520] for 48000Hz, 10ms window
         crossing_prev = 7700
@@ -253,35 +262,36 @@ class TestOscilloscopeLogic(unittest.TestCase):
         # 1. Test with default sensitivity (1.0)
         t = np.linspace(0, 1, 1000)
         data = np.zeros((1000, 2))
-        data[:, 0] = 0.5 * np.sin(2 * np.pi * 50 * t) # Left
-        data[:, 1] = 0.2 * np.sin(2 * np.pi * 50 * t) # Right
+        data[:, 0] = 0.5 * np.sin(2 * np.pi * 50 * t)  # Left
+        data[:, 1] = 0.2 * np.sin(2 * np.pi * 50 * t)  # Right
 
         meas = self.scope.get_measurements(data)
 
         expected_l_rms = 0.5 / np.sqrt(2)
         expected_r_rms = 0.2 / np.sqrt(2)
 
-        self.assertAlmostEqual(meas['l_rms'], expected_l_rms, places=3)
-        self.assertAlmostEqual(meas['l_vpp'], 1.0, places=3) # 0.5 to -0.5 -> 1.0 Vpp
-        self.assertAlmostEqual(meas['r_rms'], expected_r_rms, places=3)
+        self.assertAlmostEqual(meas["l_rms"], expected_l_rms, places=3)
+        self.assertAlmostEqual(meas["l_vpp"], 1.0, places=3)  # 0.5 to -0.5 -> 1.0 Vpp
+        self.assertAlmostEqual(meas["r_rms"], expected_r_rms, places=3)
 
         # 2. Test with sensitivity = 2.0 (1.0 FS = 2.0 Volts)
         self.engine.calibration.input_sensitivity = 2.0
         meas_cal = self.scope.get_measurements(data)
 
         # RMS should double
-        self.assertAlmostEqual(meas_cal['l_rms'], expected_l_rms * 2.0, places=3)
-        self.assertAlmostEqual(meas_cal['l_vpp'], 2.0, places=3)
+        self.assertAlmostEqual(meas_cal["l_rms"], expected_l_rms * 2.0, places=3)
+        self.assertAlmostEqual(meas_cal["l_vpp"], 2.0, places=3)
 
     def test_measurements_none_data(self):
         meas = self.scope.get_measurements(None)
-        self.assertEqual(meas['l_rms'], 0.0)
+        self.assertEqual(meas["l_rms"], 0.0)
 
 
 class TestOscilloscopeAllocation(unittest.TestCase):
     def setUp(self):
         self.mock_engine = MockAudioEngine()
         from src.gui.widgets.oscilloscope import Oscilloscope
+
         self.osc = Oscilloscope(self.mock_engine)
 
     def test_no_allocation_in_callback(self):
@@ -311,10 +321,16 @@ class TestOscilloscopeAllocation(unittest.TestCase):
             cb(indata, outdata, frames, 0.0, None)
 
             # Verify transfer buffer object hasn't changed (reallocation check)
-            self.assertEqual(id(self.osc.transfer_buffer), initial_transfer_id,
-                             "Transfer buffer should not be reallocated in callback")
-            self.assertEqual(id(self.osc.transfer_buffer._buffer), initial_internal_buffer_id,
-                             "Internal buffer should not be reallocated")
+            self.assertEqual(
+                id(self.osc.transfer_buffer),
+                initial_transfer_id,
+                "Transfer buffer should not be reallocated in callback",
+            )
+            self.assertEqual(
+                id(self.osc.transfer_buffer._buffer),
+                initial_internal_buffer_id,
+                "Internal buffer should not be reallocated",
+            )
 
         # Verify that data was actually written to transfer buffer
         # Write count should be 10 * 1024
@@ -325,6 +341,7 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
     def setUp(self):
         self.mock_engine = MockAudioEngine()
         from src.gui.widgets.oscilloscope import Oscilloscope
+
         self.osc = Oscilloscope(self.mock_engine)
 
     def test_oscilloscope_queue_data_flow(self):
@@ -372,8 +389,8 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
         # Also mirror
         self.assertTrue(np.allclose(self.osc.input_data[self.osc.buffer_size : self.osc.buffer_size + 100], 0.5))
         # The rest should be 0
-        self.assertTrue(np.all(self.osc.input_data[100:self.osc.buffer_size] == 0))
-        self.assertTrue(np.all(self.osc.input_data[self.osc.buffer_size + 100:] == 0))
+        self.assertTrue(np.all(self.osc.input_data[100 : self.osc.buffer_size] == 0))
+        self.assertTrue(np.all(self.osc.input_data[self.osc.buffer_size + 100 :] == 0))
 
 
 class TestOscilloscopeWidgetLogic(unittest.TestCase):
@@ -397,6 +414,7 @@ class TestOscilloscopeWidgetLogic(unittest.TestCase):
         # Mock QRectF
         def rect_side_effect(x, y, w, h):
             return (x, y, w, h)
+
         self.patched_modules["PyQt6.QtCore"].QRectF = MagicMock(side_effect=rect_side_effect)
         self.patched_modules["pyqtgraph"].QtCore.QRectF = MagicMock(side_effect=rect_side_effect)
 
@@ -467,5 +485,6 @@ class TestOscilloscopeWidgetLogic(unittest.TestCase):
         # We expect (0, -1.1, 0.01, 2.2)
         widget.persistence_img.setRect.assert_called_with((0, -1.1, 0.01, 2.2))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

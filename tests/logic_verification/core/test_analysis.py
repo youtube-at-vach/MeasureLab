@@ -4,24 +4,25 @@ import pytest
 
 from src.core.analysis import AudioCalc
 
+
 class TestAudioCalc:
     """Tests for the AudioCalc class in src/core/analysis.py"""
 
-    @patch('src.core.analysis.sf.info')
+    @patch("src.core.analysis.sf.info")
     def test_validate_audio_file_size_valid(self, mock_info):
         mock_info.return_value = MagicMock(frames=1000, channels=2)
         is_valid, msg = AudioCalc.validate_audio_file_size("dummy.wav")
         assert is_valid is True
         assert msg == ""
 
-    @patch('src.core.analysis.sf.info')
+    @patch("src.core.analysis.sf.info")
     def test_validate_audio_file_size_invalid(self, mock_info):
         mock_info.return_value = MagicMock(frames=AudioCalc.MAX_AUDIO_SAMPLES, channels=2)
         is_valid, msg = AudioCalc.validate_audio_file_size("dummy.wav")
         assert is_valid is False
         assert "File too large" in msg
 
-    @patch('src.core.analysis.sf.info')
+    @patch("src.core.analysis.sf.info")
     def test_validate_audio_file_size_error(self, mock_info):
         mock_info.side_effect = Exception("Test Error")
         is_valid, msg = AudioCalc.validate_audio_file_size("dummy.wav")
@@ -46,11 +47,10 @@ class TestAudioCalc:
         # Values should still be roughly 1.0 (with some edge effects)
         np.testing.assert_allclose(result[10:-10], 1.0, rtol=1e-2)
 
-
     def test_design_a_weighting_valid(self):
         sos = AudioCalc.design_a_weighting(48000)
         assert sos is not None
-        assert sos.shape == (3, 6) # 3 cascaded biquads
+        assert sos.shape == (3, 6)  # 3 cascaded biquads
 
     def test_design_a_weighting_invalid(self):
         with pytest.raises(ValueError, match="Invalid sample rate"):
@@ -59,7 +59,7 @@ class TestAudioCalc:
     def test_design_c_weighting_valid(self):
         sos = AudioCalc.design_c_weighting(48000)
         assert sos is not None
-        assert sos.shape == (2, 6) # 2 cascaded biquads
+        assert sos.shape == (2, 6)  # 2 cascaded biquads
 
     def test_design_c_weighting_invalid(self):
         with pytest.raises(ValueError, match="Invalid sample rate"):
@@ -154,7 +154,7 @@ class TestAudioCalc:
 
     def test_calculate_multitone_tdn(self):
         freqs = np.linspace(0, 24000, 24001)
-        mag = np.ones_like(freqs) * 0.01 # Noise floor
+        mag = np.ones_like(freqs) * 0.01  # Noise floor
         tone_freqs = [1000.0, 2000.0, 3000.0]
         for f in tone_freqs:
             mag[int(f)] = 1.0
@@ -166,8 +166,8 @@ class TestAudioCalc:
     def test_calculate_spdr(self):
         freqs = np.linspace(0, 24000, 24001)
         mag = np.zeros_like(freqs)
-        mag[1000] = 1.0 # Fundamental
-        mag[5000] = 0.01 # Spur
+        mag[1000] = 1.0  # Fundamental
+        mag[5000] = 0.01  # Spur
 
         results = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
         assert "spdr_db" in results
@@ -188,7 +188,7 @@ class TestAudioCalc:
     def test_calculate_noise_profile(self):
         freqs = np.linspace(0, 24000, 24001)
         mag = np.ones_like(freqs) * 0.001
-        mag[50] = 0.1 # Hum
+        mag[50] = 0.1  # Hum
 
         results = AudioCalc.calculate_noise_profile(mag, freqs, 48000)
         assert "hum_rms" in results

@@ -3,45 +3,46 @@ import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
 
+
 # Mock modules to avoid GUI dependency issues
 class MockQThread:
     def __init__(self):
         pass
 
+
 class TestInverseFilterWorker(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Patch sys.modules safely using patch.dict
-        cls.modules_patcher = patch.dict(sys.modules, {
-            'PyQt6.QtCore': MagicMock(),
-            'PyQt6.QtWidgets': MagicMock(),
-            'pyqtgraph': MagicMock()
-        })
+        cls.modules_patcher = patch.dict(
+            sys.modules, {"PyQt6.QtCore": MagicMock(), "PyQt6.QtWidgets": MagicMock(), "pyqtgraph": MagicMock()}
+        )
         cls.modules_patcher.start()
 
         # Setup specific mocks
-        sys.modules['PyQt6.QtCore'].QThread = MockQThread
-        sys.modules['PyQt6.QtCore'].pyqtSignal = MagicMock()
-        sys.modules['PyQt6.QtCore'].Qt = MagicMock()
+        sys.modules["PyQt6.QtCore"].QThread = MockQThread
+        sys.modules["PyQt6.QtCore"].pyqtSignal = MagicMock()
+        sys.modules["PyQt6.QtCore"].Qt = MagicMock()
 
         # Import the worker inside the patched environment
         global ProcessingWorker
-        if 'src.gui.widgets.inverse_filter' in sys.modules:
-            del sys.modules['src.gui.widgets.inverse_filter']
+        if "src.gui.widgets.inverse_filter" in sys.modules:
+            del sys.modules["src.gui.widgets.inverse_filter"]
         from src.gui.widgets.inverse_filter import ProcessingWorker
 
     @classmethod
     def tearDownClass(cls):
         cls.modules_patcher.stop()
         # Clean up the imported module so subsequent tests re-import correctly if needed
-        if 'src.gui.widgets.inverse_filter' in sys.modules:
-            del sys.modules['src.gui.widgets.inverse_filter']
+        if "src.gui.widgets.inverse_filter" in sys.modules:
+            del sys.modules["src.gui.widgets.inverse_filter"]
+
     def setUp(self):
         self.mock_calibration = [(100, 1.0, 0.0), (1000, 1.0, 0.0)]
 
-    @patch('src.gui.widgets.inverse_filter.sf')
-    @patch('src.gui.widgets.inverse_filter.signal')
-    @patch('src.gui.widgets.inverse_filter.fft_manager')
+    @patch("src.gui.widgets.inverse_filter.sf")
+    @patch("src.gui.widgets.inverse_filter.signal")
+    @patch("src.gui.widgets.inverse_filter.fft_manager")
     def test_large_file_uses_chunked_processing(self, mock_fft, mock_signal, mock_sf):
         """Verify that large files trigger chunked processing path."""
         # Setup huge file simulation (3GB)
@@ -61,8 +62,8 @@ class TestInverseFilterWorker(unittest.TestCase):
         mock_sf.SoundFile.return_value.__enter__.return_value = mock_infile
 
         # Mocks for reads
-        dummy_chunk = np.zeros((100, channels), dtype='float32')
-        empty_chunk = np.zeros((0, channels), dtype='float32')
+        dummy_chunk = np.zeros((100, channels), dtype="float32")
+        empty_chunk = np.zeros((0, channels), dtype="float32")
 
         # side_effect for read:
         # 1. Preview (RMS estimation check)
@@ -70,12 +71,12 @@ class TestInverseFilterWorker(unittest.TestCase):
         # 3. Chunk 2 (EOF)
         mock_infile.read.side_effect = [dummy_chunk, dummy_chunk, empty_chunk]
 
-        mock_fft.irfft.return_value = np.zeros(8192, dtype='float32')
-        mock_signal.windows.hamming.return_value = np.zeros(8192, dtype='float32')
+        mock_fft.irfft.return_value = np.zeros(8192, dtype="float32")
+        mock_signal.windows.hamming.return_value = np.zeros(8192, dtype="float32")
 
         def fftconvolve_side_effect(in1, in2, mode=None):
             length = len(in1) + len(in2) - 1
-            return np.zeros(length, dtype='float32')
+            return np.zeros(length, dtype="float32")
 
         mock_signal.fftconvolve.side_effect = fftconvolve_side_effect
 
@@ -86,7 +87,7 @@ class TestInverseFilterWorker(unittest.TestCase):
             max_gain_db=20,
             taps=8192,
             smoothing=0,
-            normalize_rms=False
+            normalize_rms=False,
         )
 
         worker.progress = MagicMock()
@@ -102,7 +103,7 @@ class TestInverseFilterWorker(unittest.TestCase):
 
         for call in calls:
             args, kwargs = call
-            frames = kwargs.get('frames')
+            frames = kwargs.get("frames")
             if frames and frames > 0:
                 has_chunked_read = True
             if not frames or frames == -1:
@@ -111,9 +112,9 @@ class TestInverseFilterWorker(unittest.TestCase):
         self.assertTrue(has_chunked_read, "Should have used chunked reading")
         self.assertFalse(has_full_read, "Should not have tried to read full file")
 
-    @patch('src.gui.widgets.inverse_filter.sf')
-    @patch('src.gui.widgets.inverse_filter.signal')
-    @patch('src.gui.widgets.inverse_filter.fft_manager')
+    @patch("src.gui.widgets.inverse_filter.sf")
+    @patch("src.gui.widgets.inverse_filter.signal")
+    @patch("src.gui.widgets.inverse_filter.fft_manager")
     def test_small_file_uses_fast_path(self, mock_fft, mock_signal, mock_sf):
         """Verify that small files use fast path (load all)."""
         # Setup small file (1MB)
@@ -132,14 +133,14 @@ class TestInverseFilterWorker(unittest.TestCase):
         mock_infile.channels = channels
         mock_sf.SoundFile.return_value.__enter__.return_value = mock_infile
 
-        full_data = np.zeros((frames, channels), dtype='float32')
+        full_data = np.zeros((frames, channels), dtype="float32")
         mock_infile.read.return_value = full_data
 
-        mock_fft.irfft.return_value = np.zeros(8192, dtype='float32')
-        mock_signal.windows.hamming.return_value = np.zeros(8192, dtype='float32')
+        mock_fft.irfft.return_value = np.zeros(8192, dtype="float32")
+        mock_signal.windows.hamming.return_value = np.zeros(8192, dtype="float32")
 
         # oaconvolve mock for fast path
-        mock_signal.oaconvolve.return_value = np.zeros((frames, channels), dtype='float32')
+        mock_signal.oaconvolve.return_value = np.zeros((frames, channels), dtype="float32")
 
         worker = ProcessingWorker(
             input_path="dummy_small.wav",
@@ -148,7 +149,7 @@ class TestInverseFilterWorker(unittest.TestCase):
             max_gain_db=20,
             taps=8192,
             smoothing=0,
-            normalize_rms=False
+            normalize_rms=False,
         )
 
         worker.progress = MagicMock()
@@ -166,7 +167,7 @@ class TestInverseFilterWorker(unittest.TestCase):
 
         for call in calls:
             args, kwargs = call
-            frames = kwargs.get('frames')
+            frames = kwargs.get("frames")
             if frames and frames > 0:
                 has_chunked_read = True
             else:
@@ -175,5 +176,6 @@ class TestInverseFilterWorker(unittest.TestCase):
         self.assertTrue(has_full_read, "Should have used full reading")
         self.assertFalse(has_chunked_read, "Should not have used chunked reading")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

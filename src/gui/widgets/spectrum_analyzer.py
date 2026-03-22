@@ -438,16 +438,13 @@ class SpectrumAnalyzer(MeasurementModule):
         windowed_data = data * window[:, np.newaxis]
 
         # FFT
-        fft_data = np.column_stack((
-            fft_manager.rfft(windowed_data[:, 0]),
-            fft_manager.rfft(windowed_data[:, 1])
-        ))
+        fft_data = np.column_stack((fft_manager.rfft(windowed_data[:, 0]), fft_manager.rfft(windowed_data[:, 1])))
 
         norm_factor = (2.0 / len(data)) * window_correction
         S2 = np.sum(window**2)
         energy_norm_factor = 1.0 / (len(data) * S2)
 
-        raw_sq = np.abs(fft_data)**2
+        raw_sq = np.abs(fft_data) ** 2
         if self.channel_mode == "Left":
             rms_power_spectrum = raw_sq[:, 0]
         elif self.channel_mode == "Right":
@@ -543,7 +540,9 @@ class SpectrumAnalyzer(MeasurementModule):
         overall_weighted_db = -120.0
         if rms_power_spectrum is not None:
             w_lin_sq = 10 ** (weighting_db / 10.0)
-            p_weighted = rms_power_spectrum * (w_lin_sq[:, np.newaxis] if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1 else w_lin_sq)
+            p_weighted = rms_power_spectrum * (
+                w_lin_sq[:, np.newaxis] if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1 else w_lin_sq
+            )
             mask = (freqs >= 20) & (freqs <= 20000)
 
             if np.any(mask):
@@ -683,16 +682,13 @@ class SpectrumAnalyzer(MeasurementModule):
         windowed_data = data * window[:, np.newaxis]
 
         # FFT
-        fft_data = np.column_stack((
-            fft_manager.rfft(windowed_data[:, 0]),
-            fft_manager.rfft(windowed_data[:, 1])
-        ))
+        fft_data = np.column_stack((fft_manager.rfft(windowed_data[:, 0]), fft_manager.rfft(windowed_data[:, 1])))
 
         norm_factor = (2.0 / len(data)) * window_correction
         S2 = np.sum(window**2)
         energy_norm_factor = 1.0 / (len(data) * S2)
 
-        raw_sq = np.abs(fft_data)**2
+        raw_sq = np.abs(fft_data) ** 2
         if self.channel_mode == "Left":
             rms_power_spectrum = raw_sq[:, 0]
         elif self.channel_mode == "Right":
@@ -788,7 +784,9 @@ class SpectrumAnalyzer(MeasurementModule):
         overall_weighted_db = -120.0
         if rms_power_spectrum is not None:
             w_lin_sq = 10 ** (weighting_db / 10.0)
-            p_weighted = rms_power_spectrum * (w_lin_sq[:, np.newaxis] if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1 else w_lin_sq)
+            p_weighted = rms_power_spectrum * (
+                w_lin_sq[:, np.newaxis] if rms_power_spectrum.ndim == 2 and w_lin_sq.ndim == 1 else w_lin_sq
+            )
             mask = (freqs >= 20) & (freqs <= 20000)
 
             if np.any(mask):
@@ -853,8 +851,9 @@ class SpectrumAnalyzer(MeasurementModule):
             "freqs": freqs,
             "magnitude": magnitude,
             "overall_weighted_db": overall_weighted_db,
-            "peak_magnitude": self._peak_magnitude
+            "peak_magnitude": self._peak_magnitude,
         }
+
 
 class SpectrumAnalyzerWidget(QWidget):
     def __init__(self, module: SpectrumAnalyzer):
@@ -942,12 +941,12 @@ class SpectrumAnalyzerWidget(QWidget):
         if idx >= 0:
             self.window_combo.setCurrentIndex(idx)
         else:
-             # Fallback for "hanning" vs "hann" if needed, though get_available_windows uses "hann"
-             # SpectrumAnalyzer init uses "hanning", let's standardise on what's in the list
-             if self.module.window_type == "hanning":
-                 idx = self.window_combo.findText("hann")
-                 if idx >= 0:
-                     self.window_combo.setCurrentIndex(idx)
+            # Fallback for "hanning" vs "hann" if needed, though get_available_windows uses "hann"
+            # SpectrumAnalyzer init uses "hanning", let's standardise on what's in the list
+            if self.module.window_type == "hanning":
+                idx = self.window_combo.findText("hann")
+                if idx >= 0:
+                    self.window_combo.setCurrentIndex(idx)
 
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         row1_layout.addWidget(self.window_combo)

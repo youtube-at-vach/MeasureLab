@@ -1,4 +1,3 @@
-
 import re
 import os
 import hashlib
@@ -12,6 +11,7 @@ try:
 except ImportError:
     MiniRacer = None
 
+
 def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     if MiniRacer is None:
         print("Warning: py_mini_racer not installed. Math rendering skipped.")
@@ -19,9 +19,9 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
 
     # Initialize JS environment logic
     # We load the JS file from the docs assets
-    # Note: during build, docs/assets might be source or destination. 
+    # Note: during build, docs/assets might be source or destination.
     # We should look in the project docs dir.
-    js_path = os.path.join(config['docs_dir'], 'assets', 'js', 'katex.min.js')
+    js_path = os.path.join(config["docs_dir"], "assets", "js", "katex.min.js")
 
     if not os.path.exists(js_path):
         print(f"Warning: Katex JS not found at {js_path}")
@@ -33,7 +33,9 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     file_hash = hashlib.sha256(js_content_bytes).hexdigest()
 
     if file_hash != EXPECTED_KATEX_HASH:
-        print(f"Security Warning: Katex JS file hash mismatch at {js_path}. Expected {EXPECTED_KATEX_HASH}, got {file_hash}.")
+        print(
+            f"Security Warning: Katex JS file hash mismatch at {js_path}. Expected {EXPECTED_KATEX_HASH}, got {file_hash}."
+        )
         return html
 
     ctx = MiniRacer()
@@ -42,8 +44,8 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
     ctx.eval(js_content)
 
     def replace_math(match):
-        match.group(1) # span or div
-        content = match.group(2) # content inside tags including delimiters
+        match.group(1)  # span or div
+        content = match.group(2)  # content inside tags including delimiters
 
         # Arithmatex generic output wraps content in \(...\) or \[...\]
         # We need to extract the raw TeX.
@@ -61,9 +63,9 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
             # Fallback or unknown format
             return match.group(0)
 
-        # Unescape HTML entities if necessary? 
+        # Unescape HTML entities if necessary?
         # Markdown parsing might convert & to &amp;, < to &lt;, etc.
-        # KaTeX expects raw TeX. 
+        # KaTeX expects raw TeX.
         # Simple unescape for common issues:
         tex = tex.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
 
@@ -71,10 +73,7 @@ def on_page_content(html: str, page: Page, config: MkDocsConfig, **kwargs):
             # Render using KaTeX
             # We construct a JS call
             # options: { displayMode: true/false, throwOnError: false }
-            options = {
-                "displayMode": display_mode,
-                "throwOnError": False
-            }
+            options = {"displayMode": display_mode, "throwOnError": False}
             # MiniRacer call handles basic types
             rendered = ctx.call("katex.renderToString", tex, options)
             return rendered

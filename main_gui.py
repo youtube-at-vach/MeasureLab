@@ -32,7 +32,7 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     # Configure logging early
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Load language early so the splash text matches user settings.
     # Keep this lightweight: just read config + load translations.
@@ -52,7 +52,7 @@ def main():
         app.installEventFilter(app._measurelab_window_logger)
 
     # Startup splash (loading screen): show immediately while MainWindow initializes.
-    pixmap = QPixmap(resource_path('src/assets/welcome.png'))
+    pixmap = QPixmap(resource_path("src/assets/welcome.png"))
     if pixmap.isNull():
         pixmap = QPixmap(624, 360)
         pixmap.fill(Qt.GlobalColor.black)

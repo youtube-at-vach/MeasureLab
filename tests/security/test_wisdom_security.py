@@ -12,11 +12,12 @@ logging.basicConfig(level=logging.INFO)
 
 from src.core import fft_manager  # noqa: E402
 
+
 class TestWisdomSecurity(unittest.TestCase):
     def setUp(self):
         # Patch src.core.fft_manager.pyfftw
         # create=True ensures it works even if pyfftw is not installed in the test env
-        self.pyfftw_patcher = patch('src.core.fft_manager.pyfftw', create=True)
+        self.pyfftw_patcher = patch("src.core.fft_manager.pyfftw", create=True)
         self.mock_pyfftw = self.pyfftw_patcher.start()
 
         # Configure the mock
@@ -55,6 +56,7 @@ class TestWisdomSecurity(unittest.TestCase):
             # If it fails, check if it was pickle (the failure mode before fix)
             try:
                 import pickle
+
                 pickle.loads(content)
                 self.fail("Saved file is a pickle stream! Should be JSON.")
             except Exception:
@@ -73,8 +75,8 @@ class TestWisdomSecurity(unittest.TestCase):
         """Test that wisdom can be loaded from JSON."""
         # Create a valid JSON wisdom file
         data = [
-            base64.b64encode(b"loaded_wisdom_1").decode('ascii'),
-            base64.b64encode(b"loaded_wisdom_2").decode('ascii')
+            base64.b64encode(b"loaded_wisdom_1").decode("ascii"),
+            base64.b64encode(b"loaded_wisdom_2").decode("ascii"),
         ]
         with open(self.manager.wisdom_path, "w") as f:
             json.dump(data, f)
@@ -101,11 +103,12 @@ class TestWisdomSecurity(unittest.TestCase):
 
     def test_malicious_pickle_ignored(self):
         """Test that a malicious pickle payload is rejected and not executed."""
+
         # Create a mock malicious class
         class Malicious:
             def __reduce__(self):
                 # This would execute if unpickled
-                return (os.system, ('echo malicious code executed',))
+                return (os.system, ("echo malicious code executed",))
 
         # Create a malicious pickle file
         with open(self.manager.wisdom_path, "wb") as f:
@@ -120,5 +123,6 @@ class TestWisdomSecurity(unittest.TestCase):
         # And verify import_wisdom was NOT called
         self.mock_pyfftw.import_wisdom.assert_not_called()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

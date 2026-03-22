@@ -8,6 +8,7 @@ sys.path.append(os.getcwd())
 
 from src.core.config_manager import ConfigManager
 
+
 def test_screenshot_directory_is_secure():
     """
     Verify that the screenshot directory is created with restrictive permissions (0o700).
@@ -26,7 +27,7 @@ def test_screenshot_directory_is_secure():
         assert os.path.exists(screenshot_dir), "Screenshot directory should exist"
 
         # Check permissions
-        if os.name == 'posix':
+        if os.name == "posix":
             mode = os.stat(screenshot_dir).st_mode
             permissions = stat.S_IMODE(mode)
 

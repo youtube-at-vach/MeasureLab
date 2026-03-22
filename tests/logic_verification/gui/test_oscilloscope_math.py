@@ -13,7 +13,7 @@ if "sounddevice" not in sys.modules:
     sys.modules["sounddevice"] = MagicMock()
 
 # Set offscreen
-os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 try:
     from PyQt6.QtWidgets import QApplication
@@ -21,6 +21,7 @@ try:
 except ImportError as e:
     print(f"Import Error: {e}")
     pytest.skip(f"Skipping GUI test due to missing dependencies: {e}", allow_module_level=True)
+
 
 class TestOscilloscopeMath(unittest.TestCase):
     def setUp(self):
@@ -66,5 +67,6 @@ class TestOscilloscopeMath(unittest.TestCase):
         except Exception as e:
             self.fail(f"update_plot raised unexpected exception: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -1,8 +1,8 @@
-
 import time
 import numpy as np
 from src.core.analysis import AudioCalc
 from src.core.fft_manager import fft_manager
+
 
 def benchmark_analysis():
     # Setup parameters matching AdvancedDistortionMeter
@@ -20,10 +20,10 @@ def benchmark_analysis():
 
     # Create a signal with these tones + some noise
     t = np.arange(buffer_size) / sr
-    signal = np.random.normal(0, 0.0001, buffer_size) # Noise floor
+    signal = np.random.normal(0, 0.0001, buffer_size)  # Noise floor
 
     for f in mim_freqs:
-        signal += 0.05 * np.sin(2 * np.pi * f * t) # Tones
+        signal += 0.05 * np.sin(2 * np.pi * f * t)  # Tones
 
     # Benchmark Loop
     iterations = 50
@@ -43,7 +43,7 @@ def benchmark_analysis():
 
     end_time = time.time()
     avg_time = (end_time - start_time) / iterations
-    print(f"Average analysis time (MIM): {avg_time*1000:.2f} ms")
+    print(f"Average analysis time (MIM): {avg_time * 1000:.2f} ms")
 
     # Benchmark PIM
     # PIM involves calculating products
@@ -61,7 +61,8 @@ def benchmark_analysis():
 
     end_time = time.time()
     avg_time = (end_time - start_time) / iterations
-    print(f"Average analysis time (PIM): {avg_time*1000:.2f} ms")
+    print(f"Average analysis time (PIM): {avg_time * 1000:.2f} ms")
+
 
 if __name__ == "__main__":
     benchmark_analysis()

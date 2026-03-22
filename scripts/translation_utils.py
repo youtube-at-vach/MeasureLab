@@ -8,6 +8,7 @@ SRC_DIR = os.path.join(PROJECT_ROOT, "src")
 LANG_DIR = os.path.join(SRC_DIR, "assets", "lang")
 MAIN_GUI_FILE = os.path.join(PROJECT_ROOT, "main_gui.py")
 
+
 class TrVisitor(ast.NodeVisitor):
     def __init__(self):
         self.keys = set()
@@ -19,7 +20,7 @@ class TrVisitor(ast.NodeVisitor):
         elif isinstance(node.func, ast.Attribute):
             func_name = node.func.attr
 
-        if func_name == 'tr':
+        if func_name == "tr":
             if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
                 self.keys.add(node.args[0].value)
 
@@ -29,12 +30,12 @@ class TrVisitor(ast.NodeVisitor):
         # Look for self._module_keys = [...] or _module_keys = [...]
         target_name = None
         for target in node.targets:
-            if isinstance(target, ast.Attribute) and target.attr == '_module_keys':
-                target_name = '_module_keys'
-            elif isinstance(target, ast.Name) and target.id == '_module_keys':
-                target_name = '_module_keys'
+            if isinstance(target, ast.Attribute) and target.attr == "_module_keys":
+                target_name = "_module_keys"
+            elif isinstance(target, ast.Name) and target.id == "_module_keys":
+                target_name = "_module_keys"
 
-        if target_name == '_module_keys':
+        if target_name == "_module_keys":
             if isinstance(node.value, ast.List):
                 for elt in node.value.elts:
                     if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
@@ -46,14 +47,14 @@ class TrVisitor(ast.NodeVisitor):
         # Look for @property def name(self) -> str: return "..."
         is_property = False
         for decorator in node.decorator_list:
-            if isinstance(decorator, ast.Name) and decorator.id == 'property':
+            if isinstance(decorator, ast.Name) and decorator.id == "property":
                 is_property = True
                 break
-            if isinstance(decorator, ast.Attribute) and decorator.attr == 'property':
+            if isinstance(decorator, ast.Attribute) and decorator.attr == "property":
                 is_property = True
                 break
 
-        if is_property and node.name == 'name':
+        if is_property and node.name == "name":
             # Look for return "some string"
             for stmt in node.body:
                 if isinstance(stmt, ast.Return):
@@ -65,7 +66,7 @@ class TrVisitor(ast.NodeVisitor):
 
 def extract_tr_keys(filepath):
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=filepath)
         visitor = TrVisitor()
         visitor.visit(tree)
@@ -74,17 +75,19 @@ def extract_tr_keys(filepath):
         print(f"Error parsing {filepath}: {e}")
         return set()
 
+
 def load_json(path):
     """Load JSON file preserving order"""
     if not os.path.exists(path):
         return {}
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def save_json(path, data):
     """Save JSON file with proper formatting"""
     # Sort keys alphabetically to ensure deterministic output
     sorted_data = dict(sorted(data.items()))
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(sorted_data, f, ensure_ascii=False, indent=4)
-        f.write('\n')  # Add trailing newline
+        f.write("\n")  # Add trailing newline

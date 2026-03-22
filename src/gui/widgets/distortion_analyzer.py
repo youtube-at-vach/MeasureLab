@@ -1,4 +1,3 @@
-
 from collections import deque
 
 import numpy as np
@@ -252,7 +251,7 @@ class DistortionAnalyzer(MeasurementModule):
         # Compute average
         # Ensure all shapes match (should be consistent if buffer size doesn't change)
         if not self._spectrum_history:
-             return mag_linear
+            return mag_linear
 
         # Simple mean
         # Stack and mean allows for fast computation
@@ -284,8 +283,6 @@ class DistortionAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "THD, THD+N, and SINAD measurements."
 
-
-
     def get_widget(self):
         return DistortionAnalyzerWidget(self)
 
@@ -311,7 +308,7 @@ class DistortionAnalyzer(MeasurementModule):
                     # Phase Accumulator Logic for continuity
                     phase_inc = 2 * np.pi * self.gen_frequency / sample_rate
                     phases = self._phase_accumulator + phase_inc * (np.arange(frames) + 1)
-                    phases %= (2 * np.pi)
+                    phases %= 2 * np.pi
                     self._phase_accumulator = phases[-1]
                     sine_wave = self.gen_amplitude * np.sin(phases)
 
@@ -387,7 +384,6 @@ class DistortionAnalyzer(MeasurementModule):
         self.capture_ready = False
         self.capture_requested = True
 
-
     @staticmethod
     def calculate_metrics(data, settings):
         """
@@ -426,6 +422,7 @@ class DistortionAnalyzer(MeasurementModule):
             results["type"] = "harmonics"
             results["basic_wave"]["target_frequency"] = target_freq
             return results
+
 
 class SweepWorker(QThread):
     result_ready = pyqtSignal(dict)
@@ -504,13 +501,15 @@ class SweepWorker(QThread):
 
                 # In sweep mode, gen_frequency is already set to the actual frequency (snapped or not)
                 # But we want to preserve the sweep parameter 'val' as the target
-                results = AudioCalc.analyze_harmonics(data, self.module.gen_frequency, self.module.window_type, sample_rate)
+                results = AudioCalc.analyze_harmonics(
+                    data, self.module.gen_frequency, self.module.window_type, sample_rate
+                )
 
                 # Add target frequency to results if we are snapping
                 if self.module.snap_to_bin_center and self.sweep_type == "frequency":
-                     results["basic_wave"]["target_frequency"] = val
+                    results["basic_wave"]["target_frequency"] = val
                 else:
-                     results["basic_wave"]["target_frequency"] = self.module.gen_frequency
+                    results["basic_wave"]["target_frequency"] = self.module.gen_frequency
 
                 final_result = self.module._apply_result_averaging(results)
 
@@ -995,7 +994,7 @@ class DistortionAnalyzerWidget(QWidget):
             x_log = self._is_sweep_x_log()
             self.sweep_plot.setLogMode(x=x_log, y=False)
             self.sweep_plot.setYRange(-140, 0)
-            y_axis.setTicks(None) # Reset to standard ticks
+            y_axis.setTicks(None)  # Reset to standard ticks
 
     def _create_sweep_result_tab(self) -> pg.PlotWidget:
         """Creates the Sweep Results tab content."""
@@ -1305,7 +1304,7 @@ class DistortionAnalyzerWidget(QWidget):
             bin_idx = round(target_freq / bin_width)
             actual_freq = bin_idx * bin_width
             if actual_freq <= 0:
-                 actual_freq = bin_width # Prevent 0Hz
+                actual_freq = bin_width  # Prevent 0Hz
             self.actual_freq_label.setText(f"{actual_freq:.3f} Hz")
             self.module.gen_frequency = actual_freq
         else:
@@ -1445,7 +1444,7 @@ class DistortionAnalyzerWidget(QWidget):
             self.sweep_plot.setLabel("bottom", tr("Power"), units="W")
             decade_start = int(np.floor(np.log10(x_min)))
             decade_end = int(np.ceil(np.log10(x_max)))
-            ticks = [10 ** d for d in range(decade_start, decade_end + 1)]
+            ticks = [10**d for d in range(decade_start, decade_end + 1)]
             ticks_log = [(np.log10(t), f"{t:g} W") for t in ticks]
             self.sweep_axis.setTicks([ticks_log])
             self.sweep_plot.setXRange(np.log10(x_min), np.log10(x_max))
@@ -1457,6 +1456,7 @@ class DistortionAnalyzerWidget(QWidget):
             self.sweep_plot.setLabel("bottom", tr("Amplitude"), units="dBFS")
             self.sweep_axis.setTicks(None)
             self.sweep_plot.setXRange(x_min, x_max)
+
     def _format_percent(self, value):
         if value == 0:
             return tr("{0} %").format(f"{value:.5f}")
@@ -1479,7 +1479,7 @@ class DistortionAnalyzerWidget(QWidget):
             "window_type": self.module.window_type,
             "sample_rate": sample_rate,
             "gen_frequency": self.module.gen_frequency,
-            "target_frequency": self.freq_spin.value(), # Pass target separately
+            "target_frequency": self.freq_spin.value(),  # Pass target separately
             "imd_f1": self.module.imd_f1,
             "imd_f2": self.module.imd_f2,
         }
@@ -1499,11 +1499,11 @@ class DistortionAnalyzerWidget(QWidget):
         # fft_data length is N/2+1
         fft_data = results.get("fft_data")
         if fft_data is not None:
-             n_fft = (len(fft_data) - 1) * 2
+            n_fft = (len(fft_data) - 1) * 2
         elif results.get("mag_linear") is not None:
-             n_fft = (len(results["mag_linear"]) - 1) * 2
+            n_fft = (len(results["mag_linear"]) - 1) * 2
         else:
-             n_fft = self.module.buffer_size # Fallback
+            n_fft = self.module.buffer_size  # Fallback
 
         if res_type == "imd":
             res = self.module._apply_imd_averaging(results)

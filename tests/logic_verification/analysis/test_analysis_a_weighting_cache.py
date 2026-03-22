@@ -1,14 +1,20 @@
 import unittest
 import numpy as np
-from src.core.analysis import AudioCalc, _compute_a_weighting_sq_curve, _get_a_weighting_curve_from_bytes, _compute_a_weighting_sq_curve_log
+from src.core.analysis import (
+    AudioCalc,
+    _compute_a_weighting_sq_curve,
+    _get_a_weighting_curve_from_bytes,
+    _compute_a_weighting_sq_curve_log,
+)
+
 
 class TestAWeightingCache(unittest.TestCase):
     def test_a_weighting_standard_fft(self):
         # Case where cache should be used (freqs[0]==0)
         sampling_rate = 48000.0
         n_bins = 1000
-        freqs = np.linspace(0, sampling_rate/2, n_bins)
-        mag = np.ones_like(freqs) # Flat magnitude
+        freqs = np.linspace(0, sampling_rate / 2, n_bins)
+        mag = np.ones_like(freqs)  # Flat magnitude
 
         # Run method
         results = AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
@@ -23,19 +29,19 @@ class TestAWeightingCache(unittest.TestCase):
         weighting_linear = Ra * 1.2589
         mag_a = mag * weighting_linear
 
-        i_a_start = np.searchsorted(freqs, 20.0, side='left')
-        i_a_end = np.searchsorted(freqs, 20000.0, side='right')
+        i_a_start = np.searchsorted(freqs, 20.0, side="left")
+        i_a_end = np.searchsorted(freqs, 20000.0, side="right")
         bin_width = freqs[1] - freqs[0]
-        expected_rms = np.sqrt(np.sum(mag_a[i_a_start:i_a_end]**2) * bin_width)
+        expected_rms = np.sqrt(np.sum(mag_a[i_a_start:i_a_end] ** 2) * bin_width)
 
-        self.assertAlmostEqual(results['noise_rms_a_weighted'], expected_rms, places=6)
+        self.assertAlmostEqual(results["noise_rms_a_weighted"], expected_rms, places=6)
 
     def test_a_weighting_non_standard(self):
         # Case where linear cache should be used (freqs[0] != 0 but linear)
         sampling_rate = 48000.0
         n_bins = 1000
         # Start from 20Hz
-        freqs = np.linspace(20, sampling_rate/2, n_bins)
+        freqs = np.linspace(20, sampling_rate / 2, n_bins)
         mag = np.ones_like(freqs)
 
         results = AudioCalc.calculate_noise_profile(mag, freqs, sampling_rate)
@@ -50,12 +56,12 @@ class TestAWeightingCache(unittest.TestCase):
         weighting_linear = Ra * 1.2589
         mag_a = mag * weighting_linear
 
-        i_a_start = np.searchsorted(freqs, 20.0, side='left')
-        i_a_end = np.searchsorted(freqs, 20000.0, side='right')
+        i_a_start = np.searchsorted(freqs, 20.0, side="left")
+        i_a_end = np.searchsorted(freqs, 20000.0, side="right")
         bin_width = freqs[1] - freqs[0]
-        expected_rms = np.sqrt(np.sum(mag_a[i_a_start:i_a_end]**2) * bin_width)
+        expected_rms = np.sqrt(np.sum(mag_a[i_a_start:i_a_end] ** 2) * bin_width)
 
-        self.assertAlmostEqual(results['noise_rms_a_weighted'], expected_rms, places=6)
+        self.assertAlmostEqual(results["noise_rms_a_weighted"], expected_rms, places=6)
 
     def test_cache_hit(self):
         # Verify that the cache info updates
@@ -63,7 +69,7 @@ class TestAWeightingCache(unittest.TestCase):
 
         sampling_rate = 48000.0
         n_bins = 500
-        freqs = np.linspace(0, sampling_rate/2, n_bins)
+        freqs = np.linspace(0, sampling_rate / 2, n_bins)
         mag = np.ones_like(freqs)
 
         # First call
@@ -84,7 +90,7 @@ class TestAWeightingCache(unittest.TestCase):
         sampling_rate = 48000.0
         n_bins = 500
         # Start from 20Hz (linear step)
-        freqs = np.linspace(20, sampling_rate/2, n_bins)
+        freqs = np.linspace(20, sampling_rate / 2, n_bins)
         mag = np.ones_like(freqs)
 
         # First call
@@ -110,7 +116,7 @@ class TestAWeightingCache(unittest.TestCase):
         sampling_rate = 48000.0
         n_bins = 500
         start_freq = 20.0
-        stop_freq = sampling_rate/2
+        stop_freq = sampling_rate / 2
         freqs = np.geomspace(start_freq, stop_freq, n_bins)
         mag = np.ones_like(freqs)
 
@@ -144,6 +150,7 @@ class TestAWeightingCache(unittest.TestCase):
         info2 = _get_a_weighting_curve_from_bytes.cache_info()
 
         self.assertEqual(info2.hits, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

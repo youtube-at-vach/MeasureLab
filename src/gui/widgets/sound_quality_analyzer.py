@@ -1,5 +1,3 @@
-
-
 import functools
 import logging
 import numpy as np
@@ -153,7 +151,8 @@ class AnalysisWorker(QThread):
                 if self._is_cancelled:
                     return
                 self.progress_update.emit(
-                    int((current_step / total_steps) * 100), tr("Calculating Fluctuation Strength ({})...").format(ch_names[i])
+                    int((current_step / total_steps) * 100),
+                    tr("Calculating Fluctuation Strength ({})...").format(ch_names[i]),
                 )
                 f_res = self._calc_fluctuation_strength(audio, analysis_sr)
                 ch_res.update(f_res)
@@ -163,7 +162,8 @@ class AnalysisWorker(QThread):
                 if self._is_cancelled:
                     return
                 self.progress_update.emit(
-                    int((current_step / total_steps) * 100), tr("Calculating Articulation Index ({})...").format(ch_names[i])
+                    int((current_step / total_steps) * 100),
+                    tr("Calculating Articulation Index ({})...").format(ch_names[i]),
                 )
                 a_res = self._calc_articulation_index(audio, analysis_sr)
                 ch_res.update(a_res)
@@ -567,16 +567,32 @@ class AnalysisWorker(QThread):
         # 1/3 Octave ISO center bands relevant to speech
         center_freqs = [200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000]
         # French-Steinberg approx weights
-        weights = [0.012, 0.030, 0.030, 0.042, 0.042, 0.060, 0.060, 0.072, 0.090, 0.111, 0.111, 0.104, 0.082, 0.070, 0.054]
+        weights = [
+            0.012,
+            0.030,
+            0.030,
+            0.042,
+            0.042,
+            0.060,
+            0.060,
+            0.072,
+            0.090,
+            0.111,
+            0.111,
+            0.104,
+            0.082,
+            0.070,
+            0.054,
+        ]
         weights = np.array(weights)
 
         # Band boundaries
-        factor = 2**(1/6)
+        factor = 2 ** (1 / 6)
         lower_edges = [fc / factor for fc in center_freqs]
         upper_edges = [fc * factor for fc in center_freqs]
 
         ai_series = np.zeros(Zxx.shape[1])
-        noise_floor_db = -60.0 # Assumed nominal noise
+        noise_floor_db = -60.0  # Assumed nominal noise
 
         band_levels = []
         for low, high in zip(lower_edges, upper_edges, strict=True):
@@ -615,8 +631,6 @@ class SoundQualityAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Offline analysis of sound quality metrics (Loudness, Sharpness, Roughness)."
-
-
 
     def get_widget(self):
         return SoundQualityAnalyzerWidget(self)
@@ -721,19 +735,21 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         self.summary_table = QTableWidget()
         self.summary_table.setColumnCount(7)
-        self.summary_table.setHorizontalHeaderLabels([
-            tr("Channel"),
-            tr("Integrated\nLoudness (LUFS)"),
-            tr("Mean Sharpness\n(acum)"),
-            tr("Mean Roughness\n(asper)"),
-            tr("Mean Tonality\n(0-1)"),
-            tr("Mean Fluctuation\n(vacil)"),
-            tr("Mean AI\n(0-1)")
-        ])
+        self.summary_table.setHorizontalHeaderLabels(
+            [
+                tr("Channel"),
+                tr("Integrated\nLoudness (LUFS)"),
+                tr("Mean Sharpness\n(acum)"),
+                tr("Mean Roughness\n(asper)"),
+                tr("Mean Tonality\n(0-1)"),
+                tr("Mean Fluctuation\n(vacil)"),
+                tr("Mean AI\n(0-1)"),
+            ]
+        )
 
         # Table configuration
         self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.summary_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Read-only
+        self.summary_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # Read-only
         self.summary_table.setAlternatingRowColors(True)
         self.summary_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.summary_table.verticalHeader().setVisible(False)
@@ -801,7 +817,14 @@ class SoundQualityAnalyzerWidget(QWidget):
 
     def clear_plots(self):
         # Clear all separate layouts
-        for layout in [self.layout_loudness, self.layout_sharpness, self.layout_roughness, self.layout_tonality, self.layout_fluctuation, self.layout_ai]:
+        for layout in [
+            self.layout_loudness,
+            self.layout_sharpness,
+            self.layout_roughness,
+            self.layout_tonality,
+            self.layout_fluctuation,
+            self.layout_ai,
+        ]:
             if layout is not None:
                 while layout.count():
                     item = layout.takeAt(0)
@@ -896,7 +919,7 @@ class SoundQualityAnalyzerWidget(QWidget):
                 QTableWidgetItem(f"{m_r:.2f}"),
                 QTableWidgetItem(f"{m_t:.2f}"),
                 QTableWidgetItem(f"{m_f:.2f}"),
-                QTableWidgetItem(f"{m_a:.2f}")
+                QTableWidgetItem(f"{m_a:.2f}"),
             ]
 
             # Center text for data columns
@@ -909,35 +932,48 @@ class SoundQualityAnalyzerWidget(QWidget):
         if not self.analysis_results:
             return
 
-        path, _ = QFileDialog.getSaveFileName(self, tr("Export Metrics to CSV"), "sound_quality_metrics.csv", "CSV Files (*.csv);;All Files (*)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, tr("Export Metrics to CSV"), "sound_quality_metrics.csv", "CSV Files (*.csv);;All Files (*)"
+        )
         if not path:
             return
 
         try:
             import csv
-            with open(path, mode='w', newline='', encoding='utf-8') as f:
+
+            with open(path, mode="w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
 
                 # Write header
-                writer.writerow([
-                    "Channel", "Integrated Loudness (LUFS)", "Mean Sharpness (acum)", 
-                    "Mean Roughness (asper)", "Mean Tonality (0-1)", 
-                    "Mean Fluctuation (vacil)", "Mean AI (0-1)"
-                ])
+                writer.writerow(
+                    [
+                        "Channel",
+                        "Integrated Loudness (LUFS)",
+                        "Mean Sharpness (acum)",
+                        "Mean Roughness (asper)",
+                        "Mean Tonality (0-1)",
+                        "Mean Fluctuation (vacil)",
+                        "Mean AI (0-1)",
+                    ]
+                )
 
                 # Write data rows
                 for ch in self.analysis_results.get("channels", []):
-                    writer.writerow([
-                        ch["name"],
-                        f"{ch['integrated_lufs']:.1f}",
-                        f"{ch['mean_sharpness']:.2f}",
-                        f"{ch['mean_roughness']:.2f}",
-                        f"{ch['mean_tonality']:.2f}",
-                        f"{ch['mean_fluctuation']:.2f}",
-                        f"{ch['mean_ai']:.2f}"
-                    ])
+                    writer.writerow(
+                        [
+                            ch["name"],
+                            f"{ch['integrated_lufs']:.1f}",
+                            f"{ch['mean_sharpness']:.2f}",
+                            f"{ch['mean_roughness']:.2f}",
+                            f"{ch['mean_tonality']:.2f}",
+                            f"{ch['mean_fluctuation']:.2f}",
+                            f"{ch['mean_ai']:.2f}",
+                        ]
+                    )
 
-            QMessageBox.information(self, tr("Export Successful"), tr("Successfully exported metrics to:\n{}").format(path))
+            QMessageBox.information(
+                self, tr("Export Successful"), tr("Successfully exported metrics to:\n{}").format(path)
+            )
         except Exception as e:
             QMessageBox.critical(self, tr("Export Failed"), tr("Failed to export metrics.\nError: {}").format(str(e)))
 

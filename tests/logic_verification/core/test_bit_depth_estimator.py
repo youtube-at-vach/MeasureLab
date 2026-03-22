@@ -2,24 +2,29 @@ import pytest
 import numpy as np
 from src.core.bit_depth_estimator import BitDepthEstimator
 
+
 @pytest.fixture
 def estimator():
     return BitDepthEstimator()
 
+
 def test_initial_state(estimator):
     """Verify that initially the estimator returns None."""
     assert estimator.analyze() is None
+
 
 def test_insufficient_data(estimator):
     """Verify that estimator returns None if less than 2 samples are added."""
     estimator.add_samples(np.array([0.5]))
     assert estimator.analyze() is None
 
+
 def test_reset(estimator):
     """Verify that reset clears the buffer."""
     estimator.add_samples(np.array([0.1, 0.2]))
     estimator.reset()
     assert estimator.analyze() is None
+
 
 def test_bit_depth_16bit(estimator):
     """Verify 16-bit depth estimation."""
@@ -37,6 +42,7 @@ def test_bit_depth_16bit(estimator):
     # Expect ~16.0
     assert abs(results["bit_depth"] - 16.0) < 0.1
 
+
 def test_bit_depth_24bit(estimator):
     """Verify 24-bit depth estimation."""
     step = 2.0 / (2**24)
@@ -50,6 +56,7 @@ def test_bit_depth_24bit(estimator):
     # Expect ~24.0
     assert abs(results["bit_depth"] - 24.0) < 0.1
 
+
 def test_silence(estimator):
     """Verify behavior with digital silence (all zeros)."""
     silence = np.zeros(1000)
@@ -61,6 +68,7 @@ def test_silence(estimator):
     assert results["delta_hist"] is None
     # Bit distribution should be all zeros (for 0 input)
     np.testing.assert_array_equal(results["bit_distribution"], np.zeros(32))
+
 
 def test_bit_distribution(estimator):
     """Verify bit distribution calculation with known patterns."""
@@ -96,6 +104,7 @@ def test_bit_distribution(estimator):
     assert bit_dist[31] == 1.0
     np.testing.assert_allclose(bit_dist[1:31], 0.0)
 
+
 def test_histogram(estimator):
     """Verify histogram structure."""
     # Create random noise to ensure distribution
@@ -113,6 +122,7 @@ def test_histogram(estimator):
     assert bin_edges[0] == -13
     assert bin_edges[-1] == 0
 
+
 def test_high_bit_depth_limit(estimator):
     """Verify bit depth estimation near the implementation limit."""
     # The implementation filters diffs <= 1e-12.
@@ -123,12 +133,13 @@ def test_high_bit_depth_limit(estimator):
     # log2(1.1e-12) ~ -39.7
     # 1 - (-39.7) ~ 40.7
 
-    signal = np.array([0, small_step, 2*small_step])
+    signal = np.array([0, small_step, 2 * small_step])
     estimator.add_samples(signal)
     results = estimator.analyze()
 
     assert results["bit_depth"] > 40.0
     assert results["bit_depth"] < 41.0
+
 
 def test_clamping_low(estimator):
     """Verify bit depth clamping at 0."""

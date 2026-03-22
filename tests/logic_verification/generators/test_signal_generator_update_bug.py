@@ -7,9 +7,11 @@ sys.modules["sounddevice"] = mock_sd
 
 import unittest  # noqa: E402
 import numpy as np  # noqa: E402
+
 # Now we can safely import modules that use sounddevice
 from src.gui.widgets.signal_generator import SignalGenerator  # noqa: E402
 from src.core.audio_engine import AudioEngine  # noqa: E402
+
 
 class TestSignalGeneratorUpdateBug(unittest.TestCase):
     def setUp(self):

@@ -7,6 +7,7 @@ import soundfile as sf
 import shutil
 from unittest.mock import MagicMock
 
+
 def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
     print(f"Benchmarking FileSaveWorker with {duration_sec}s of audio...")
 
@@ -69,7 +70,7 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
 
         def run(self):
             try:
-                WRITE_BLOCK_SIZE = 1048576 # 1M frames
+                WRITE_BLOCK_SIZE = 1048576  # 1M frames
                 info = sf.info(self.source_path)
                 samplerate = info.samplerate
                 channels = info.channels
@@ -137,9 +138,9 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
 
                 if target_format == info.format and target_subtype == info.subtype:
                     # Direct binary copy!
-                    with open(self.source_path, 'rb') as f_in:
-                        with open(self.target_path, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out, length=1024*1024)
+                    with open(self.source_path, "rb") as f_in:
+                        with open(self.target_path, "wb") as f_out:
+                            shutil.copyfileobj(f_in, f_out, length=1024 * 1024)
                 else:
                     # Fallback to soundfile copy
                     with sf.SoundFile(self.source_path, "r") as f_in:
@@ -158,7 +159,6 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
             except Exception as e:
                 self.finished.emit(False, str(e))
 
-
     # Generate large dummy temp file manually
     fd, temp_file = tempfile.mkstemp(suffix=".wav")
     os.close(fd)
@@ -170,7 +170,7 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
             data = np.random.rand(chunk_size, channels).astype(np.float32)
             f.write(data)
 
-    print(f"Created temp file: {temp_file} ({os.path.getsize(temp_file)/1024/1024:.2f} MB)")
+    print(f"Created temp file: {temp_file} ({os.path.getsize(temp_file) / 1024 / 1024:.2f} MB)")
 
     filepath = "benchmark_output.wav"
 
@@ -200,6 +200,7 @@ def benchmark_save_worker(duration_sec=600, sr=48000, channels=2):
         os.remove(filepath)
     if os.path.exists(temp_file):
         os.remove(temp_file)
+
 
 if __name__ == "__main__":
     benchmark_save_worker(duration_sec=600)

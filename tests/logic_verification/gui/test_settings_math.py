@@ -1,5 +1,6 @@
 from src.gui.widgets.settings import next_power_of_two
 
+
 def test_next_power_of_two_positive_integers():
     """Test standard power of two calculation for positive integers."""
     assert next_power_of_two(1) == 1
@@ -16,6 +17,7 @@ def test_next_power_of_two_positive_integers():
     assert next_power_of_two(1024) == 1024
     assert next_power_of_two(1025) == 2048
 
+
 def test_next_power_of_two_non_positive():
     """Test edge cases for zero and negative numbers which fallback to 256."""
     assert next_power_of_two(0) == 256
@@ -23,6 +25,7 @@ def test_next_power_of_two_non_positive():
     assert next_power_of_two(-100) == 256
     assert next_power_of_two(0.0) == 256
     assert next_power_of_two(-5.5) == 256
+
 
 def test_next_power_of_two_floats():
     """
@@ -37,6 +40,7 @@ def test_next_power_of_two_floats():
     assert next_power_of_two(3.1) == 4
     assert next_power_of_two(3.9) == 4
     assert next_power_of_two(4.0) == 4
+
 
 def test_next_power_of_two_large_numbers():
     """Test with larger buffer sizes used in audio processing."""

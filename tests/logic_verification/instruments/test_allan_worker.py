@@ -5,10 +5,17 @@ import numpy as np
 
 # Prepare mocks
 mock_qt_core = MagicMock()
+
+
 class MockQRunnable:
-    def __init__(self): pass
+    def __init__(self):
+        pass
+
+
 class MockQObject:
-    def __init__(self): pass
+    def __init__(self):
+        pass
+
 
 mock_qt_core.QRunnable = MockQRunnable
 mock_qt_core.QObject = MockQObject
@@ -22,6 +29,7 @@ mock_modules = {
     "pyqtgraph": MagicMock(),
 }
 
+
 @pytest.fixture(autouse=True)
 def mock_gui_deps():
     with patch.dict(sys.modules, mock_modules):
@@ -29,6 +37,7 @@ def mock_gui_deps():
         if "src.gui.widgets.frequency_counter" in sys.modules:
             del sys.modules["src.gui.widgets.frequency_counter"]
         yield
+
 
 def test_worker_logic_basic():
     # Import inside the test/fixture context
@@ -38,7 +47,7 @@ def test_worker_logic_basic():
     noise = np.random.normal(1000, 1.0, 1000)
     history = list(noise)
 
-    worker = AllanWorker(history, update_interval_ms=100, display_mode='frequency')
+    worker = AllanWorker(history, update_interval_ms=100, display_mode="frequency")
 
     # Check signals
     # Since we reload module, AllanWorkerSignals class is recreated.
@@ -56,18 +65,22 @@ def test_worker_logic_basic():
     assert len(taus) > 5
     assert len(devs) > 5
 
+
 def test_worker_empty_history():
     from src.gui.widgets.frequency_counter import AllanWorker
-    worker = AllanWorker([], 100, 'frequency')
+
+    worker = AllanWorker([], 100, "frequency")
 
     worker.run()
 
     worker.signals.result.emit.assert_called_once_with([], [])
 
+
 def test_worker_period_mode():
     from src.gui.widgets.frequency_counter import AllanWorker
+
     freqs = [100.0] * 100
-    worker = AllanWorker(freqs, 100, 'period')
+    worker = AllanWorker(freqs, 100, "period")
 
     worker.run()
 

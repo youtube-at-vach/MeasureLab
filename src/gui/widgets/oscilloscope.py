@@ -1179,11 +1179,7 @@ class OscilloscopeWidget(QWidget):
             current_len = len(data)
             cached_duration, cached_len = self._time_array_cache_params
 
-            if (
-                self._time_array_cache is not None
-                and cached_duration == window_duration
-                and cached_len == current_len
-            ):
+            if self._time_array_cache is not None and cached_duration == window_duration and cached_len == current_len:
                 t = self._time_array_cache
             else:
                 t = np.linspace(0, window_duration, current_len)
@@ -1231,12 +1227,7 @@ class OscilloscopeWidget(QWidget):
                     fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
 
                     self.meas_l_auto_label.setText(
-                        tr("Freq")
-                        + f": {freq_str}  "
-                        + tr("Rise")
-                        + f": {rise_str}  "
-                        + tr("Fall")
-                        + f": {fall_str}"
+                        tr("Freq") + f": {freq_str}  " + tr("Rise") + f": {rise_str}  " + tr("Fall") + f": {fall_str}"
                     )
                 if self.module.show_right:
                     freq_hz = self.module.estimate_frequency_hz(t, r_data)
@@ -1247,12 +1238,7 @@ class OscilloscopeWidget(QWidget):
                     fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
 
                     self.meas_r_auto_label.setText(
-                        tr("Freq")
-                        + f": {freq_str}  "
-                        + tr("Rise")
-                        + f": {rise_str}  "
-                        + tr("Fall")
-                        + f": {fall_str}"
+                        tr("Freq") + f": {freq_str}  " + tr("Rise") + f": {rise_str}  " + tr("Fall") + f": {fall_str}"
                     )
 
             # Store for cursor interpolation
@@ -1280,14 +1266,10 @@ class OscilloscopeWidget(QWidget):
                 rng = [[0, window_duration], [self.VIEW_Y_MIN, self.VIEW_Y_MAX]]
 
                 if self.module.show_left:
-                    self.module._accumulate_heatmap(
-                        t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity
-                    )
+                    self.module._accumulate_heatmap(t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity)
 
                 if self.module.show_right:
-                    self.module._accumulate_heatmap(
-                        t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity
-                    )
+                    self.module._accumulate_heatmap(t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity)
 
                 # Compose Image
                 # L = Green, R = Red

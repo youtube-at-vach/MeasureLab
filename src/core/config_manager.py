@@ -40,7 +40,6 @@ DEFAULT_CONFIG = {
 }
 
 
-
 # Mapping of Windows-specific language names to ISO 639-1 codes
 # Windows getlocale() often returns full English names like "Japanese_Japan"
 WINDOWS_LOCALE_MAP = {
@@ -56,6 +55,7 @@ WINDOWS_LOCALE_MAP = {
     # Add more as needed
 }
 
+
 class ConfigManager:
     _instances: weakref.WeakSet["ConfigManager"] = weakref.WeakSet()
     _atexit_registered = False
@@ -66,7 +66,6 @@ class ConfigManager:
         # Determine the best path for the configuration file
         self.config_path = self._resolve_config_path(config_filename)
         self.config_dir = os.path.dirname(os.path.abspath(self.config_path))
-
 
         self.logger.debug(f"Using config file at: {self.config_path}")
 
@@ -83,7 +82,7 @@ class ConfigManager:
     @staticmethod
     def get_app_root_dir() -> str:
         """Returns the application root directory (executable dir or source root)."""
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # PyInstaller
             return os.path.dirname(sys.executable)
         else:
@@ -292,8 +291,8 @@ class ConfigManager:
 
         try:
             os.makedirs(out_dir, mode=0o700, exist_ok=True)
-            # Only attempt chmod if we own the directory/it's new, but strict permissioning 
-            # might be too aggressive for public folders like Desktop. 
+            # Only attempt chmod if we own the directory/it's new, but strict permissioning
+            # might be too aggressive for public folders like Desktop.
             # keeping it simple: just try to create it.
             pass
         except Exception as exc:  # PermissionError, OSError

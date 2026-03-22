@@ -10,14 +10,16 @@ sys.path.insert(0, os.getcwd())
 
 from src.gui.widgets.welcome import WelcomeWidget
 
+
 @pytest.fixture
 def mock_dependencies():
-    with patch('src.gui.widgets.welcome.resource_path') as mock_rp, \
-         patch('src.gui.widgets.welcome.os.path.exists') as mock_exists, \
-         patch('src.gui.widgets.welcome.QPixmap') as mock_pixmap, \
-         patch('src.gui.widgets.welcome.QTimer') as mock_timer, \
-         patch('src.gui.widgets.welcome.UpdateChecker'):
-
+    with (
+        patch("src.gui.widgets.welcome.resource_path") as mock_rp,
+        patch("src.gui.widgets.welcome.os.path.exists") as mock_exists,
+        patch("src.gui.widgets.welcome.QPixmap") as mock_pixmap,
+        patch("src.gui.widgets.welcome.QTimer") as mock_timer,
+        patch("src.gui.widgets.welcome.UpdateChecker"),
+    ):
         # Setup QPixmap mock to return a REAL QPixmap via side_effect
         # This prevents TypeError in QLabel.setPixmap
 
@@ -36,6 +38,7 @@ def mock_dependencies():
 
         yield mock_rp, mock_exists, mock_pixmap, mock_timer
 
+
 def test_welcome_image_primary_path(qtbot, mock_dependencies):
     mock_rp, mock_exists, mock_pixmap, mock_timer = mock_dependencies
 
@@ -46,6 +49,7 @@ def test_welcome_image_primary_path(qtbot, mock_dependencies):
     # os.path.exists behavior
     def exists_side_effect(path):
         return path == primary_path
+
     mock_exists.side_effect = exists_side_effect
 
     widget = WelcomeWidget()
@@ -59,9 +63,10 @@ def test_welcome_image_primary_path(qtbot, mock_dependencies):
     found_pixmap = False
     for lbl in labels:
         if lbl.pixmap() is not None:
-             found_pixmap = True
-             break
+            found_pixmap = True
+            break
     assert found_pixmap
+
 
 def test_welcome_image_fallback_path(qtbot, mock_dependencies):
     mock_rp, mock_exists, mock_pixmap, mock_timer = mock_dependencies
@@ -70,10 +75,9 @@ def test_welcome_image_fallback_path(qtbot, mock_dependencies):
     mock_rp.return_value = primary_path
 
     import src.gui.widgets.welcome
+
     expected_fallback_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(src.gui.widgets.welcome.__file__))),
-        "assets",
-        "welcome.png"
+        os.path.dirname(os.path.dirname(os.path.dirname(src.gui.widgets.welcome.__file__))), "assets", "welcome.png"
     )
 
     # mimic fallback path
@@ -99,9 +103,10 @@ def test_welcome_image_fallback_path(qtbot, mock_dependencies):
     found_pixmap = False
     for lbl in labels:
         if lbl.pixmap() is not None:
-             found_pixmap = True
-             break
+            found_pixmap = True
+            break
     assert found_pixmap
+
 
 def test_welcome_image_not_found(qtbot, mock_dependencies):
     mock_rp, mock_exists, mock_pixmap, mock_timer = mock_dependencies
@@ -110,7 +115,7 @@ def test_welcome_image_not_found(qtbot, mock_dependencies):
     mock_exists.return_value = False
 
     # We need to mock 'tr' specifically for this test to match the original file
-    with patch('src.gui.widgets.welcome.tr', return_value="Welcome Image Not Found"):
+    with patch("src.gui.widgets.welcome.tr", return_value="Welcome Image Not Found"):
         widget = WelcomeWidget()
         qtbot.addWidget(widget)
 

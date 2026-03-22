@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from src.core.ring_buffer import RingBuffer
 
+
 class TestRingBuffer(unittest.TestCase):
     def test_initialization(self):
         rb = RingBuffer(100, 2)
@@ -63,8 +64,8 @@ class TestRingBuffer(unittest.TestCase):
         # Write 15 samples (capacity 10) - sequential writes
         # This tests reader handling overflow
         data = np.arange(15, dtype=np.float32).reshape(-1, 1)
-        rb.write(data[:8]) # Write 8
-        rb.write(data[8:]) # Write 7 (Total 15)
+        rb.write(data[:8])  # Write 8
+        rb.write(data[8:])  # Write 7 (Total 15)
 
         # Should have overwritten old data.
         # Capacity is 10.
@@ -150,6 +151,7 @@ class TestRingBuffer(unittest.TestCase):
         read_data = rb.read(10)
         self.assertEqual(read_data.shape, (5, 1))
         self.assertEqual(rb.available(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

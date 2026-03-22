@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from src.core.analysis import AudioCalc, get_cached_window
 from src.core.fft_manager import fft_manager
 
+
 def benchmark_distortion_analysis():
     sample_rate = 48000
     buffer_size = 16384
@@ -39,7 +40,7 @@ def benchmark_distortion_analysis():
     end_time = time.perf_counter()
     avg_time = (end_time - start_time) / iterations
 
-    print(f"Average execution time for analyze_harmonics: {avg_time*1000:.2f} ms")
+    print(f"Average execution time for analyze_harmonics: {avg_time * 1000:.2f} ms")
 
     # Benchmark IMD SMPTE
     # Signal for IMD
@@ -71,7 +72,8 @@ def benchmark_distortion_analysis():
 
     end_time = time.perf_counter()
     avg_time_imd = (end_time - start_time) / iterations
-    print(f"Average execution time for IMD (including FFT): {avg_time_imd*1000:.2f} ms")
+    print(f"Average execution time for IMD (including FFT): {avg_time_imd * 1000:.2f} ms")
+
 
 if __name__ == "__main__":
     benchmark_distortion_analysis()

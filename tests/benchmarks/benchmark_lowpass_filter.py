@@ -1,8 +1,8 @@
-
 import time
 import numpy as np
 from scipy.signal import sosfiltfilt
 from src.core.analysis import AudioCalc, _get_butter_sos
+
 
 def lowpass_filter_optimized(signal, sampling_rate, cutoff=20000.0):
     nyquist = 0.5 * sampling_rate
@@ -11,10 +11,11 @@ def lowpass_filter_optimized(signal, sampling_rate, cutoff=20000.0):
     sos = _get_butter_sos(8, cutoff, "lowpass", fs=sampling_rate)
     return sosfiltfilt(sos, signal)
 
+
 def benchmark_lowpass():
     # Setup
     sr = 48000
-    duration = 1.0 # 1 second
+    duration = 1.0  # 1 second
     signal = np.random.randn(int(sr * duration))
     cutoff = 20000.0
 
@@ -43,6 +44,7 @@ def benchmark_lowpass():
     print(f"Improvement: {original_time - optimized_time:.6f} s")
     if optimized_time > 0:
         print(f"Speedup: {original_time / optimized_time:.2f}x")
+
 
 if __name__ == "__main__":
     benchmark_lowpass()

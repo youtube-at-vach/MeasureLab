@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from src.core.analysis import AudioCalc
 
+
 class TestMultitoneTDN(unittest.TestCase):
     def setUp(self):
         # Create a frequency axis: 0 to 1000 Hz, 1 Hz resolution
@@ -29,8 +30,8 @@ class TestMultitoneTDN(unittest.TestCase):
 
         result = AudioCalc.calculate_multitone_tdn(self.mag, self.freqs, [500])
 
-        self.assertAlmostEqual(result['tdn'], 10.0, places=4) # TDN is in percent
-        self.assertAlmostEqual(result['tdn_db'], -20.0, places=4)
+        self.assertAlmostEqual(result["tdn"], 10.0, places=4)  # TDN is in percent
+        self.assertAlmostEqual(result["tdn_db"], -20.0, places=4)
 
     def test_calculate_multitone_tdn_multiple_tones(self):
         """
@@ -51,7 +52,7 @@ class TestMultitoneTDN(unittest.TestCase):
         result = AudioCalc.calculate_multitone_tdn(self.mag, self.freqs, [200, 800])
 
         expected_tdn = np.sqrt(0.01 / 2.0)
-        self.assertAlmostEqual(result['tdn'], expected_tdn * 100, places=4)
+        self.assertAlmostEqual(result["tdn"], expected_tdn * 100, places=4)
 
     def test_calculate_multitone_tdn_no_noise(self):
         """
@@ -60,8 +61,8 @@ class TestMultitoneTDN(unittest.TestCase):
         self.mag[500] = 1.0
         result = AudioCalc.calculate_multitone_tdn(self.mag, self.freqs, [500])
 
-        self.assertEqual(result['tdn'], 0.0)
-        self.assertEqual(result['tdn_db'], -100.0)
+        self.assertEqual(result["tdn"], 0.0)
+        self.assertEqual(result["tdn_db"], -100.0)
 
     def test_calculate_multitone_tdn_no_signal(self):
         """
@@ -70,8 +71,8 @@ class TestMultitoneTDN(unittest.TestCase):
         result = AudioCalc.calculate_multitone_tdn(self.mag, self.freqs, [500])
 
         # If tone energy is 0, it should return 0 TDN, -100 dB (as per implementation)
-        self.assertEqual(result['tdn'], 0.0)
-        self.assertEqual(result['tdn_db'], -100.0)
+        self.assertEqual(result["tdn"], 0.0)
+        self.assertEqual(result["tdn_db"], -100.0)
 
     def test_calculate_multitone_tdn_nearby_noise(self):
         """
@@ -94,7 +95,7 @@ class TestMultitoneTDN(unittest.TestCase):
         result = AudioCalc.calculate_multitone_tdn(self.mag, self.freqs, [500])
 
         expected_tdn = np.sqrt(0.01 / 1.25)
-        self.assertAlmostEqual(result['tdn'], expected_tdn * 100, places=4)
+        self.assertAlmostEqual(result["tdn"], expected_tdn * 100, places=4)
 
     def test_with_synthetic_fft(self):
         """
@@ -121,7 +122,7 @@ class TestMultitoneTDN(unittest.TestCase):
         # Use simple numpy rfft
         fft_res = np.fft.rfft(full_signal)
         mag = np.abs(fft_res)
-        freqs = np.fft.rfftfreq(len(full_signal), 1/sr)
+        freqs = np.fft.rfftfreq(len(full_signal), 1 / sr)
 
         # Analyze
         result = AudioCalc.calculate_multitone_tdn(mag, freqs, [1000, 2000])
@@ -145,7 +146,8 @@ class TestMultitoneTDN(unittest.TestCase):
 
         # Allow some tolerance because windowing/spectral leakage might affect bin separation
         # and noise is random.
-        self.assertTrue(0.5 < result['tdn'] < 2.0, f"Expected TDN around 1.26%, got {result['tdn']}%")
+        self.assertTrue(0.5 < result["tdn"] < 2.0, f"Expected TDN around 1.26%, got {result['tdn']}%")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

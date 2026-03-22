@@ -3,6 +3,7 @@ import numpy as np
 from scipy.signal import get_window
 from src.core.analysis import AudioCalc
 
+
 class TestDistortionLogic(unittest.TestCase):
     def setUp(self):
         self.sr = 48000
@@ -41,30 +42,27 @@ class TestDistortionLogic(unittest.TestCase):
         # Run analysis
         # Using a Hann window as it's common for harmonic analysis
         result = AudioCalc.analyze_harmonics(
-            audio_data=signal,
-            fundamental_freq=fundamental_freq,
-            window_name='hann',
-            sampling_rate=sampling_rate
+            audio_data=signal, fundamental_freq=fundamental_freq, window_name="hann", sampling_rate=sampling_rate
         )
 
         # Assertions
         # Check if the fundamental was found correctly
-        self.assertAlmostEqual(result['basic_wave']['frequency'], fundamental_freq, delta=1.0)
-        self.assertAlmostEqual(result['basic_wave']['max_amplitude'], fundamental_amp, delta=0.01)
+        self.assertAlmostEqual(result["basic_wave"]["frequency"], fundamental_freq, delta=1.0)
+        self.assertAlmostEqual(result["basic_wave"]["max_amplitude"], fundamental_amp, delta=0.01)
 
         # Check the main result: THD
-        self.assertAlmostEqual(result['thd_percent'], expected_thd_percent, places=1)
+        self.assertAlmostEqual(result["thd_percent"], expected_thd_percent, places=1)
 
         # Optional: Check individual harmonics
-        harmonics = result['harmonics']
+        harmonics = result["harmonics"]
         # 2nd harmonic
-        self.assertAlmostEqual(harmonics[0]['amplitude_linear'], h2_amp, delta=0.01)
+        self.assertAlmostEqual(harmonics[0]["amplitude_linear"], h2_amp, delta=0.01)
         # 3rd harmonic
-        self.assertAlmostEqual(harmonics[1]['amplitude_linear'], h3_amp, delta=0.01)
+        self.assertAlmostEqual(harmonics[1]["amplitude_linear"], h3_amp, delta=0.01)
         # 4th harmonic should be near zero
-        self.assertAlmostEqual(harmonics[2]['amplitude_linear'], 0.0, delta=0.01)
+        self.assertAlmostEqual(harmonics[2]["amplitude_linear"], 0.0, delta=0.01)
         # 5th harmonic
-        self.assertAlmostEqual(harmonics[3]['amplitude_linear'], h5_amp, delta=0.01)
+        self.assertAlmostEqual(harmonics[3]["amplitude_linear"], h5_amp, delta=0.01)
 
     # From test_thdn_edge_cases.py
     def test_thdn_sine_fit_small_n(self):
@@ -119,7 +117,7 @@ class TestDistortionLogic(unittest.TestCase):
         noise_rms_target = signal_rms / (10 ** (target_snr_db / 20))
 
         # Generate noise
-        np.random.seed(42) # Deterministic
+        np.random.seed(42)  # Deterministic
         noise = np.random.normal(0, noise_rms_target, size=len(signal))
 
         # Combine
@@ -128,14 +126,14 @@ class TestDistortionLogic(unittest.TestCase):
         thdn_db, fund_rms, meas_noise_rms = AudioCalc.calculate_thdn_sine_fit(noisy_signal, self.sr, freq)
 
         # Verify Fundamental RMS
-        self.assertAlmostEqual(fund_rms, signal_rms, delta=signal_rms * 0.01) # 1% tolerance
+        self.assertAlmostEqual(fund_rms, signal_rms, delta=signal_rms * 0.01)  # 1% tolerance
 
         # Verify Noise RMS
         # Note: Filter (20Hz-20kHz) removes some noise power.
         # White noise bandwidth is SR/2 = 24kHz.
         # Passband is ~20kHz.
         # Expected measured noise should be slightly less: noise_rms_target * sqrt(20000/24000)
-        expected_meas_noise = noise_rms_target * np.sqrt(20000/24000)
+        expected_meas_noise = noise_rms_target * np.sqrt(20000 / 24000)
 
         # Allow 10% tolerance on noise measurement due to randomness and filter characteristics
         self.assertAlmostEqual(meas_noise_rms, expected_meas_noise, delta=expected_meas_noise * 0.15)
@@ -143,7 +141,7 @@ class TestDistortionLogic(unittest.TestCase):
         # Verify THD+N dB
         # THD+N = 20 * log10(Meas_Noise_RMS / Meas_Fund_RMS)
         expected_thdn = 20 * np.log10(expected_meas_noise / signal_rms)
-        self.assertAlmostEqual(thdn_db, expected_thdn, delta=1.5) # Within 1.5 dB
+        self.assertAlmostEqual(thdn_db, expected_thdn, delta=1.5)  # Within 1.5 dB
 
     def test_frequency_optimization_robustness(self):
         """Verify algorithm finds correct frequency even with poor initial guess."""
@@ -158,7 +156,7 @@ class TestDistortionLogic(unittest.TestCase):
         # If optimization works, THD+N should be very low (similar to pure sine case)
         # If it fails, residual will be large -> high THD+N
         self.assertLess(thdn_db, -80.0)
-        self.assertAlmostEqual(fund_rms, 1.0/np.sqrt(2), places=4)
+        self.assertAlmostEqual(fund_rms, 1.0 / np.sqrt(2), places=4)
 
     def test_dc_offset_handling(self):
         """Verify how DC offset is handled."""
@@ -170,7 +168,7 @@ class TestDistortionLogic(unittest.TestCase):
         thdn_db, fund_rms, noise_rms = AudioCalc.calculate_thdn_sine_fit(signal, self.sr, freq)
 
         # Expected fundamental RMS (including DC): sqrt(RMS_sine^2 + DC^2)
-        expected_rms = np.sqrt((1.0/np.sqrt(2))**2 + dc_offset**2)
+        expected_rms = np.sqrt((1.0 / np.sqrt(2)) ** 2 + dc_offset**2)
 
         self.assertAlmostEqual(fund_rms, expected_rms, places=4)
 
@@ -208,76 +206,76 @@ class TestDistortionLogic(unittest.TestCase):
         """Test MIM (Multitone Intermodulation Distortion)."""
         sr = 48000
         N = 32768
-        freqs = np.fft.rfftfreq(N, 1/sr)
+        freqs = np.fft.rfftfreq(N, 1 / sr)
 
         # Generate Multitone (3 tones)
         tones = [100, 1000, 5000]
         sig = np.zeros(N)
         t = np.arange(N) / sr
         for f in tones:
-            sig += 0.1 * np.sin(2*np.pi*f*t)
+            sig += 0.1 * np.sin(2 * np.pi * f * t)
 
         # Add noise
         noise = np.random.normal(0, 0.0001, N)
         sig += noise
 
-        window = get_window('blackmanharris', N)
+        window = get_window("blackmanharris", N)
         fft_res = np.fft.rfft(sig * window)
         mag = np.abs(fft_res) * 2 / np.sum(window)
 
         res = AudioCalc.calculate_multitone_tdn(mag, freqs, tones)
 
         # Expected TD+N should be reasonably low (noise floor -80dB relative to signal)
-        self.assertLess(res['tdn_db'], -40, "TD+N too high (expected low noise)")
+        self.assertLess(res["tdn_db"], -40, "TD+N too high (expected low noise)")
 
     def test_spdr(self):
         """Test SPDR (Spurious-Free Dynamic Range)."""
         sr = 48000
         N = 32768
-        freqs = np.fft.rfftfreq(N, 1/sr)
+        freqs = np.fft.rfftfreq(N, 1 / sr)
 
         # Fundamental 1kHz
         t = np.arange(N) / sr
-        sig = 1.0 * np.sin(2*np.pi*1000*t)
+        sig = 1.0 * np.sin(2 * np.pi * 1000 * t)
 
         # Spur at 2.5kHz, -60dB
-        sig += 0.001 * np.sin(2*np.pi*2500*t)
+        sig += 0.001 * np.sin(2 * np.pi * 2500 * t)
 
-        window = get_window('blackmanharris', N)
+        window = get_window("blackmanharris", N)
         fft_res = np.fft.rfft(sig * window)
         mag = np.abs(fft_res) * 2 / np.sum(window)
 
         res = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
 
-        self.assertAlmostEqual(res['spdr_db'], 60, delta=1, msg=f"Expected ~60dB, got {res['spdr_db']:.2f}")
+        self.assertAlmostEqual(res["spdr_db"], 60, delta=1, msg=f"Expected ~60dB, got {res['spdr_db']:.2f}")
 
     def test_pim(self):
         """Test PIM (Passive Intermodulation) - simulated with math."""
         sr = 48000
         N = 32768
-        freqs = np.fft.rfftfreq(N, 1/sr)
+        freqs = np.fft.rfftfreq(N, 1 / sr)
 
         f1 = 1800
         f2 = 2100
         t = np.arange(N) / sr
 
         # Carriers
-        sig = 0.5 * np.sin(2*np.pi*f1*t) + 0.5 * np.sin(2*np.pi*f2*t)
+        sig = 0.5 * np.sin(2 * np.pi * f1 * t) + 0.5 * np.sin(2 * np.pi * f2 * t)
 
         # IM3 Lower: 2f1 - f2 = 3600 - 2100 = 1500
         # IM3 Upper: 2f2 - f1 = 4200 - 1800 = 2400
         # Add IM3 at -80dBc (relative to 0.5) => 0.00005
-        sig += 0.00005 * np.sin(2*np.pi*1500*t)
-        sig += 0.00005 * np.sin(2*np.pi*2400*t)
+        sig += 0.00005 * np.sin(2 * np.pi * 1500 * t)
+        sig += 0.00005 * np.sin(2 * np.pi * 2400 * t)
 
-        window = get_window('blackmanharris', N)
+        window = get_window("blackmanharris", N)
         fft_res = np.fft.rfft(sig * window)
         mag = np.abs(fft_res) * 2 / np.sum(window)
 
         res = AudioCalc.calculate_pim(mag, freqs, f1, f2)
 
         # Combined RMS of two -80dBc signals is -77dBc (3dB increase)
-        self.assertAlmostEqual(res['pim_db'], -77, delta=2, msg=f"Expected ~-77dB, got {res['pim_db']:.2f}")
+        self.assertAlmostEqual(res["pim_db"], -77, delta=2, msg=f"Expected ~-77dB, got {res['pim_db']:.2f}")
 
     def test_calculate_thdn_sine_fit_empty(self):
         """Test calculate_thdn_sine_fit with empty signal."""
@@ -288,6 +286,7 @@ class TestDistortionLogic(unittest.TestCase):
         self.assertEqual(thdn, -140.0)
         self.assertEqual(fund, 0.0)
         self.assertEqual(noise, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,7 @@ import scipy.stats
 from unittest.mock import patch
 from src.core.generators import PinkNoise
 
+
 class TestPinkNoise(unittest.TestCase):
     """Tests for the PinkNoise generator logic."""
 
@@ -54,15 +55,16 @@ class TestPinkNoise(unittest.TestCase):
 
         # Log-log scale
         log_f = np.log10(f_sub)
-        log_P = 10 * np.log10(Pxx_sub + 1e-12) # Power in dB
+        log_P = 10 * np.log10(Pxx_sub + 1e-12)  # Power in dB
 
         # Linear regression to find slope
         slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(log_f, log_P)
 
         # Pink noise should have a slope of -10 dB/decade
         # We allow a tolerance because it's a stochastic process and an approximation filter
-        self.assertAlmostEqual(slope, -10.0, delta=1.0,
-                               msg=f"Spectral slope {slope:.2f} dB/dec should be close to -10 dB/dec")
+        self.assertAlmostEqual(
+            slope, -10.0, delta=1.0, msg=f"Spectral slope {slope:.2f} dB/dec should be close to -10 dB/dec"
+        )
 
     def test_statefulness(self):
         """Verify that internal state updates across calls."""
@@ -70,7 +72,7 @@ class TestPinkNoise(unittest.TestCase):
 
         # Mock random.randn to return a known constant sequence (e.g., all 1.0)
         # This makes the filter deterministic for testing state evolution
-        with patch('numpy.random.randn') as mock_randn:
+        with patch("numpy.random.randn") as mock_randn:
             mock_randn.return_value = np.ones(10, dtype=np.float32)
 
             # First call
@@ -88,8 +90,10 @@ class TestPinkNoise(unittest.TestCase):
 
             # Check that state has evolved further
             state_after_second = [pn.b0, pn.b1, pn.b2, pn.b3, pn.b4, pn.b5, pn.b6]
-            self.assertNotEqual(state_after_first, state_after_second,
-                                "State should continue to evolve on subsequent calls")
+            self.assertNotEqual(
+                state_after_first, state_after_second, "State should continue to evolve on subsequent calls"
+            )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

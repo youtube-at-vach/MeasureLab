@@ -4,6 +4,7 @@ import importlib.util
 from unittest.mock import MagicMock, patch
 from collections import deque
 
+
 class TestTimecodeCalibration(unittest.TestCase):
     def setUp(self):
         # Create mocks
@@ -17,7 +18,7 @@ class TestTimecodeCalibration(unittest.TestCase):
             "PyQt6.QtCore": MagicMock(),
             "PyQt6.QtGui": MagicMock(),
             "PyQt6.QtWidgets": MagicMock(),
-            "src.core.localization": self.mock_loc
+            "src.core.localization": self.mock_loc,
         }
 
         # Mock numpy if not present
@@ -40,6 +41,7 @@ class TestTimecodeCalibration(unittest.TestCase):
 
         # Now import
         from src.gui.widgets.timecode_monitor import TimecodeMonitor
+
         self.TimecodeMonitor = TimecodeMonitor
 
     def tearDown(self):
@@ -70,12 +72,12 @@ class TestTimecodeCalibration(unittest.TestCase):
         monitor._cal_samples = deque(samples)
 
         # Mock time.time to return a time shortly after start (no timeout)
-        with patch('time.time', return_value=1001.0):
+        with patch("time.time", return_value=1001.0):
             result = monitor.calibration_poll()
 
         self.assertIsNotNone(result)
-        self.assertTrue(result['ok'])
-        self.assertEqual(result['samples'], 30)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["samples"], 30)
 
         # Verify result calculation
         # We expect diffs to be the last 30 items: 70..99
@@ -89,27 +91,28 @@ class TestTimecodeCalibration(unittest.TestCase):
         # (84+85)/2.0 = 84.5. round(84.5) -> 84.
         expected_delay = 84
 
-        self.assertEqual(result['total_delay_frames'], expected_delay)
+        self.assertEqual(result["total_delay_frames"], expected_delay)
 
         # Case 2: Not enough samples
-        monitor._cal_active = True # reset active (it was set False by success)
-        monitor._cal_samples = deque(samples[:10]) # 10 items
+        monitor._cal_active = True  # reset active (it was set False by success)
+        monitor._cal_samples = deque(samples[:10])  # 10 items
 
-        with patch('time.time', return_value=1001.0):
+        with patch("time.time", return_value=1001.0):
             result = monitor.calibration_poll()
 
         self.assertIsNone(result)
 
         # Case 3: Timeout
         monitor._cal_active = True
-        monitor._cal_result = None # Reset result
+        monitor._cal_result = None  # Reset result
 
-        with patch('time.time', return_value=1010.0): # > 8.0s after 1000.0
+        with patch("time.time", return_value=1010.0):  # > 8.0s after 1000.0
             result = monitor.calibration_poll()
 
         self.assertIsNotNone(result)
-        self.assertFalse(result['ok'])
-        self.assertEqual(result['reason'], "timeout")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "timeout")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

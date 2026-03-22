@@ -6,9 +6,10 @@ import os
 # Add src to path if not already there
 # Current dir: tests/logic_verification/analysis
 # Root is ../../../
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../")))
 
 from src.core.frequency_analysis import calculate_allan_deviation, calculate_frequency_metrics
+
 
 class TestFrequencyAnalysis(unittest.TestCase):
     def test_allan_deviation_white_noise(self):
@@ -109,7 +110,7 @@ class TestFrequencyAnalysis(unittest.TestCase):
         signal = np.sin(2 * np.pi * freq_target * t)
         gate = -60.0
 
-        with mock.patch('src.core.frequency_analysis.AudioCalc.optimize_frequency', side_effect=ZeroDivisionError):
+        with mock.patch("src.core.frequency_analysis.AudioCalc.optimize_frequency", side_effect=ZeroDivisionError):
             freq, db = calculate_frequency_metrics(signal, sr, gate)
 
             # The function should catch the exception and return the coarse frequency and correct db
@@ -158,11 +159,14 @@ class TestFrequencyAnalysis(unittest.TestCase):
         gate = -60.0
 
         # Test generic Exception in optimize_frequency
-        with mock.patch('src.core.frequency_analysis.AudioCalc.optimize_frequency', side_effect=Exception("Optimization Failed")):
+        with mock.patch(
+            "src.core.frequency_analysis.AudioCalc.optimize_frequency", side_effect=Exception("Optimization Failed")
+        ):
             freq, db = calculate_frequency_metrics(signal, sr, gate)
             self.assertIsNotNone(freq)
             self.assertTrue(900 < freq < 1100)
             self.assertAlmostEqual(db, -3.0, delta=0.5)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

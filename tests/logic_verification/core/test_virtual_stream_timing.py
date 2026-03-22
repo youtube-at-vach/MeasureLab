@@ -27,10 +27,11 @@ except ImportError:
     np = mock_np
 
 # Mock sounddevice if not present
-if 'sounddevice' not in sys.modules:
-    sys.modules['sounddevice'] = MagicMock()
+if "sounddevice" not in sys.modules:
+    sys.modules["sounddevice"] = MagicMock()
 
 from src.core.audio_engine import VirtualStream
+
 
 class TestVirtualStreamTiming(unittest.TestCase):
     def setUp(self):
@@ -42,7 +43,7 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # Mock logger to avoid clutter
         self.stream.logger = MagicMock()
 
-    @patch('src.core.audio_engine.time')
+    @patch("src.core.audio_engine.time")
     def test_run_loop_normal_timing(self, mock_time):
         """Verify normal timing loop logic."""
         t0 = 1000.0
@@ -53,13 +54,14 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # 3. Loop 2: t = t0 + 0.02. to_sleep = 1000.1 - 1000.02 = 0.08. Sleep(0.08). next_call_time += 0.1 -> 1000.2.
 
         mock_time.time.side_effect = [
-            t0,              # init next_call_time
-            t0 + 0.01,       # 1st loop t
-            t0 + 0.02,       # 2nd loop t
+            t0,  # init next_call_time
+            t0 + 0.01,  # 1st loop t
+            t0 + 0.02,  # 2nd loop t
         ]
 
         # Stop loop after 2nd iteration (when wait is called)
         self.stream._stop_event.wait = MagicMock()
+
         def wait_side_effect(duration):
             if self.stream._stop_event.wait.call_count >= 1:
                 self.stream.active = False
@@ -80,7 +82,7 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # Callback called twice
         self.assertEqual(self.callback.call_count, 2)
 
-    @patch('src.core.audio_engine.time')
+    @patch("src.core.audio_engine.time")
     def test_run_loop_drift_correction(self, mock_time):
         """Verify drift correction logic."""
         t0 = 1000.0
@@ -96,12 +98,13 @@ class TestVirtualStreamTiming(unittest.TestCase):
         #    to_sleep = 1000.6 - 1000.51 = 0.09. Sleep(0.09).
 
         mock_time.time.side_effect = [
-            t0,              # init
-            t0 + 0.5,        # 1st loop t (lag)
-            t0 + 0.51,       # 2nd loop t
+            t0,  # init
+            t0 + 0.5,  # 1st loop t (lag)
+            t0 + 0.51,  # 2nd loop t
         ]
 
         self.stream._stop_event.wait = MagicMock()
+
         def wait_side_effect(duration):
             self.stream.active = False
             return True
@@ -118,7 +121,7 @@ class TestVirtualStreamTiming(unittest.TestCase):
 
         self.assertEqual(self.callback.call_count, 2)
 
-    @patch('src.core.audio_engine.time')
+    @patch("src.core.audio_engine.time")
     def test_run_loop_callback_exception(self, mock_time):
         """Verify loop continues after callback exception."""
         t0 = 1000.0
@@ -133,6 +136,7 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # Loop 2: sleep called. call_count is 1. Set active=False. callback called (2).
         # Loop terminates.
         self.stream._stop_event.wait = MagicMock()
+
         def wait_side_effect(duration):
             if self.callback.call_count >= 1:
                 self.stream.active = False
@@ -148,7 +152,7 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # Verify error logged
         self.stream.logger.error.assert_called()
 
-    @patch('src.core.audio_engine.time')
+    @patch("src.core.audio_engine.time")
     def test_callback_arguments(self, mock_time):
         """Verify callback arguments."""
         t0 = 1000.0
@@ -177,5 +181,6 @@ class TestVirtualStreamTiming(unittest.TestCase):
 
         self.assertEqual(self.callback.call_count, 1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

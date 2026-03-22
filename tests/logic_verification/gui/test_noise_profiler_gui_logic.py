@@ -10,7 +10,8 @@ sys.path.insert(0, os.getcwd())
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
 
 # Set offscreen to avoid display issues
-os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 
 def test_noise_profiler_widget_update(qtbot):
     # Mock AudioEngine
@@ -21,7 +22,7 @@ def test_noise_profiler_widget_update(qtbot):
 
     # Initialize Module
     module = NoiseProfiler(mock_engine)
-    module.start_analysis() # Sets is_running = True
+    module.start_analysis()  # Sets is_running = True
 
     # Fill input_data with random noise
     # Buffer size is 16384
@@ -37,6 +38,7 @@ def test_noise_profiler_widget_update(qtbot):
         widget.update_analysis()
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         pytest.fail(f"update_analysis raised exception: {e}")
 

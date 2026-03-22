@@ -7,14 +7,23 @@ import os
 # We go up three levels from 'tests/logic_verification/gui' to reach the project root
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
+
 class TestMainGuiException(unittest.TestCase):
     def setUp(self):
         # Clean up sys.modules to avoid pollution
         self.patched_modules = {}
-        for mod in ["PyQt6", "PyQt6.QtCore", "PyQt6.QtGui", "PyQt6.QtWidgets",
-                    "src.gui.main_window", "src.gui.startup",
-                    "src.core.config_manager", "src.core.localization",
-                    "src.core.utils", "src.core.fft_manager"]:
+        for mod in [
+            "PyQt6",
+            "PyQt6.QtCore",
+            "PyQt6.QtGui",
+            "PyQt6.QtWidgets",
+            "src.gui.main_window",
+            "src.gui.startup",
+            "src.core.config_manager",
+            "src.core.localization",
+            "src.core.utils",
+            "src.core.fft_manager",
+        ]:
             self.patched_modules[mod] = sys.modules.get(mod)
             sys.modules[mod] = MagicMock()
 
@@ -22,8 +31,8 @@ class TestMainGuiException(unittest.TestCase):
             if mod == "src.core.config_manager":
                 sys.modules[mod].ConfigManager = MagicMock()
             if mod == "src.gui.startup":
-                 sys.modules[mod].TopLevelWindowLogger = MagicMock()
-                 sys.modules[mod].WrappingSplashScreen = MagicMock()
+                sys.modules[mod].TopLevelWindowLogger = MagicMock()
+                sys.modules[mod].WrappingSplashScreen = MagicMock()
 
     def tearDown(self):
         # Restore sys.modules
@@ -62,6 +71,7 @@ class TestMainGuiException(unittest.TestCase):
 
                 # Check if our simulated exception message is in the logs
                 self.assertTrue(any("Simulated Config Load Failure" in o for o in cm.output))
+
 
 if __name__ == "__main__":
     unittest.main()

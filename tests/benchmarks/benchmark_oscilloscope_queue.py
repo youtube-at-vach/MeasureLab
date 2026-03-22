@@ -3,10 +3,11 @@ import time
 from unittest.mock import MagicMock
 
 # Mock sounddevice before importing anything that uses it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 import numpy as np  # noqa: E402
 from src.gui.widgets.oscilloscope import Oscilloscope  # noqa: E402
+
 
 class MockAudioEngine:
     def __init__(self):
@@ -20,6 +21,7 @@ class MockAudioEngine:
 
     def unregister_callback(self, callback_id):
         self.callback = None
+
 
 def benchmark_oscilloscope_queue():
     audio_engine = MockAudioEngine()
@@ -54,6 +56,7 @@ def benchmark_oscilloscope_queue():
     print(f"Rate: {n_blocks / duration:.2f} blocks/sec")
 
     osc.stop_analysis()
+
 
 if __name__ == "__main__":
     benchmark_oscilloscope_queue()

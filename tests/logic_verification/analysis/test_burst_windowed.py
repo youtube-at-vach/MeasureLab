@@ -4,7 +4,7 @@ import sys
 import numpy as np
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
 
@@ -14,15 +14,17 @@ class MockEngine:
         self.sample_rate = sr
         self.register_callback = lambda cb: 1
         self.unregister_callback = lambda _id: None
+
         class _Cal:
             output_gain = 1.0
+
         self.calibration = _Cal()
 
 
 def test_windowed_burst_starts_and_ends_near_zero():
     sg = SignalGenerator(MockEngine())
     p = SignalParameters()
-    p.waveform = 'burst'
+    p.waveform = "burst"
     p.frequency = 2500.0
     p.burst_on_cycles = 100
     p.burst_off_cycles = 100

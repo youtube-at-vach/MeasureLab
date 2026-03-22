@@ -5,12 +5,13 @@ import os
 from unittest.mock import MagicMock
 
 # Mock sounddevice before importing anything that uses it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.gui.widgets.signal_generator import SignalGenerator  # noqa: E402
+
 
 class TestSignalGeneratorBug(unittest.TestCase):
     def setUp(self):
@@ -21,7 +22,7 @@ class TestSignalGeneratorBug(unittest.TestCase):
 
     def test_waveform_change_during_playback_sine_to_noise(self):
         # 1. Start with Sine
-        self.sg.params_L.waveform = 'sine'
+        self.sg.params_L.waveform = "sine"
         self.sg.params_L.frequency = 1000.0
         self.sg.start_generation()
 
@@ -41,7 +42,7 @@ class TestSignalGeneratorBug(unittest.TestCase):
 
         # 3. Change to Noise during playback
         # Simulate what UI does: use update_waveform
-        self.sg.update_waveform(self.sg.params_L, 'noise', 48000)
+        self.sg.update_waveform(self.sg.params_L, "noise", 48000)
 
         # 4. Check output
         outdata.fill(0)
@@ -58,7 +59,7 @@ class TestSignalGeneratorBug(unittest.TestCase):
     def test_waveform_change_during_playback_noise_to_sine(self):
         # 1. Start with Noise
         # Use update_waveform to ensure buffer is prepared (simulating correct usage)
-        self.sg.update_waveform(self.sg.params_L, 'noise', 48000)
+        self.sg.update_waveform(self.sg.params_L, "noise", 48000)
         self.sg.start_generation()
 
         # Buffer should be generated
@@ -74,7 +75,7 @@ class TestSignalGeneratorBug(unittest.TestCase):
         self.assertFalse(np.all(outdata[:, 0] == 0))
 
         # 3. Switch to Sine
-        self.sg.update_waveform(self.sg.params_L, 'sine', 48000)
+        self.sg.update_waveform(self.sg.params_L, "sine", 48000)
 
         # 4. Check output
         outdata.fill(0)
@@ -86,5 +87,6 @@ class TestSignalGeneratorBug(unittest.TestCase):
         # Easy check: if _buffer is None, buffer is cleared.
         self.assertIsNone(self.sg.params_L._buffer, "Buffer should be cleared after switching to Sine")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

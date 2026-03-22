@@ -16,6 +16,7 @@ from translation_utils import (
     save_json,
 )
 
+
 def main():
     print("=== Translation Update Script ===\n")
 
@@ -43,7 +44,7 @@ def main():
     print(f"Found {len(code_keys)} unique keys in {file_count} files.\n")
 
     # 2. Update en.json (Source of Truth)
-    en_path = os.path.join(LANG_DIR, 'en.json')
+    en_path = os.path.join(LANG_DIR, "en.json")
     en_data = load_json(en_path)
 
     en_added = 0
@@ -74,7 +75,7 @@ def main():
 
     for lang_path in lang_files:
         filename = os.path.basename(lang_path)
-        if filename == 'en.json':
+        if filename == "en.json":
             continue
 
         print(f"Updating {filename}...")
@@ -86,7 +87,7 @@ def main():
         # Add missing keys (use English as placeholder)
         for key in en_data.keys():
             if key not in lang_data:
-                lang_data[key] = en_data[key] # Use English value
+                lang_data[key] = en_data[key]  # Use English value
                 added += 1
                 # print(f"  Added: '{key}'")
 
@@ -104,6 +105,7 @@ def main():
             print(f"✓ {filename} is up to date.")
 
     print("\n=== Update Complete ===")
+
 
 if __name__ == "__main__":
     main()

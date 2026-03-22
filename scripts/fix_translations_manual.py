@@ -12,7 +12,7 @@ TRANSLATIONS = {
         "ko": "주기:",
         "pt": "Período:",
         "ru": "Период:",
-        "zh": "周期:"
+        "zh": "周期:",
     },
     "Math": {
         "de": "Mathe",
@@ -22,7 +22,7 @@ TRANSLATIONS = {
         "ko": "수학",
         "pt": "Matemática",
         "ru": "Математика",
-        "zh": "数学"
+        "zh": "数学",
     },
     "Math:": {
         "de": "Mathe:",
@@ -32,7 +32,7 @@ TRANSLATIONS = {
         "ko": "수학:",
         "pt": "Matemática:",
         "ru": "Математика:",
-        "zh": "数学:"
+        "zh": "数学:",
     },
     "Math ({0})": {
         "de": "Mathe ({0})",
@@ -42,7 +42,7 @@ TRANSLATIONS = {
         "ko": "수학 ({0})",
         "pt": "Matemática ({0})",
         "ru": "Математика ({0})",
-        "zh": "数学 ({0})"
+        "zh": "数学 ({0})",
     },
     "Latency": {
         "de": "Latenz",
@@ -52,7 +52,7 @@ TRANSLATIONS = {
         "ko": "지연 시간",
         "pt": "Latência",
         "ru": "Задержка",
-        "zh": "延迟"
+        "zh": "延迟",
     },
     "Cursors: Off": {
         "de": "Cursor: Aus",
@@ -62,7 +62,7 @@ TRANSLATIONS = {
         "ko": "커서: 끄기",
         "pt": "Cursores: Desligado",
         "ru": "Курсоры: Выкл",
-        "zh": "光标: 关闭"
+        "zh": "光标: 关闭",
     },
     "FFT size:": {
         "de": "FFT-Größe:",
@@ -72,7 +72,7 @@ TRANSLATIONS = {
         "ko": "FFT 크기:",
         "pt": "Tamanho FFT:",
         "ru": "Размер БПФ:",
-        "zh": "FFT 大小:"
+        "zh": "FFT 大小:",
     },
     "In: {0} | Out: {1}": {
         "de": "Ein: {0} | Aus: {1}",
@@ -82,7 +82,7 @@ TRANSLATIONS = {
         "ko": "입력: {0} | 출력: {1}",
         "pt": "Ent: {0} | Saída: {1}",
         "ru": "Вх: {0} | Вых: {1}",
-        "zh": "输入: {0} | 输出: {1}"
+        "zh": "输入: {0} | 输出: {1}",
     },
     "In: - | Out: -": {
         "de": "Ein: - | Aus: -",
@@ -92,7 +92,7 @@ TRANSLATIONS = {
         "ko": "입력: - | 출력: -",
         "pt": "Ent: - | Saída: -",
         "ru": "Вх: - | Вых: -",
-        "zh": "输入: - | 输出: -"
+        "zh": "输入: - | 输出: -",
     },
     "Gen Out: {0}": {
         "de": "Gen Aus: {0}",
@@ -102,7 +102,7 @@ TRANSLATIONS = {
         "ko": "Gen 출력: {0}",
         "pt": "Saída Gen: {0}",
         "ru": "Вых. Ген.: {0}",
-        "zh": "发生器输出: {0}"
+        "zh": "发生器输出: {0}",
     },
     "Gen Out: --:--:--:--": {
         "de": "Gen Aus: --:--:--:--",
@@ -112,7 +112,7 @@ TRANSLATIONS = {
         "ko": "Gen 출력: --:--:--:--",
         "pt": "Saída Gen: --:--:--:--",
         "ru": "Вых. Ген.: --:--:--:--",
-        "zh": "发生器输出: --:--:--:--"
+        "zh": "发生器输出: --:--:--:--",
     },
     "America/New_York": {
         "de": "Amerika/New_York",
@@ -122,7 +122,7 @@ TRANSLATIONS = {
         "ko": "아메리카/뉴욕",
         "pt": "América/Nova_Iorque",
         "ru": "Америка/Нью_Йорк",
-        "zh": "美洲/纽约"
+        "zh": "美洲/纽约",
     },
     "Asia/Tokyo": {
         "de": "Asien/Tokio",
@@ -132,7 +132,7 @@ TRANSLATIONS = {
         "ko": "아시아/도쿄",
         "pt": "Ásia/Tóquio",
         "ru": "Азия/Токио",
-        "zh": "亚洲/东京"
+        "zh": "亚洲/东京",
     },
     "Europe/London": {
         "de": "Europa/London",
@@ -142,7 +142,7 @@ TRANSLATIONS = {
         "ko": "유럽/런던",
         "pt": "Europa/Londres",
         "ru": "Европа/Лондон",
-        "zh": "欧洲/伦敦"
+        "zh": "欧洲/伦敦",
     },
     "Loading {0} ({1}/{2})...": {
         "de": "Laden von {0} ({1}/{2})...",
@@ -152,7 +152,7 @@ TRANSLATIONS = {
         "ko": "{0} 로드 중 ({1}/{2})...",
         "pt": "A carregar {0} ({1}/{2})...",
         "ru": "Загрузка {0} ({1}/{2})...",
-        "zh": "正在加载 {0} ({1}/{2})..."
+        "zh": "正在加载 {0} ({1}/{2})...",
     },
     "Warming Up... ({0}/{1})": {
         "de": "Aufwärmen... ({0}/{1})",
@@ -162,7 +162,7 @@ TRANSLATIONS = {
         "ko": "워밍업 중... ({0}/{1})",
         "pt": "Aquecendo... ({0}/{1})",
         "ru": "Разогрев... ({0}/{1})",
-        "zh": "预热中... ({0}/{1})"
+        "zh": "预热中... ({0}/{1})",
     },
     # New Leaks Fixed
     "Calculating Articulation Index ({})...": {
@@ -173,7 +173,7 @@ TRANSLATIONS = {
         "ko": "명료도 지수 (AI) 계산 중 ({})...",
         "pt": "Calculando Índice de Articulação ({})...",
         "ru": "Вычисление индекса артикуляции ({})...",
-        "zh": "正在计算清晰度指数 ({})..."
+        "zh": "正在计算清晰度指数 ({})...",
     },
     "Calculating Fluctuation Strength ({})...": {
         "de": "Berechne Schwankungsstärke ({})...",
@@ -183,7 +183,7 @@ TRANSLATIONS = {
         "ko": "변동 강도 계산 중 ({})...",
         "pt": "Calculando Força de Flutuação ({})...",
         "ru": "Вычисление силы флуктуации ({})...",
-        "zh": "正在计算波动强度 ({})..."
+        "zh": "正在计算波动强度 ({})...",
     },
     "Export Failed": {
         "de": "Export fehlgeschlagen",
@@ -193,7 +193,7 @@ TRANSLATIONS = {
         "ko": "내보내기 실패",
         "pt": "Falha na exportação",
         "ru": "Ошибка экспорта",
-        "zh": "导出失败"
+        "zh": "导出失败",
     },
     "Export Metrics to CSV": {
         "de": "Metriken als CSV exportieren",
@@ -203,7 +203,7 @@ TRANSLATIONS = {
         "ko": "CSV로 측정항목 내보내기",
         "pt": "Exportar métricas para CSV",
         "ru": "Экспорт метрик в CSV",
-        "zh": "导出指标到 CSV"
+        "zh": "导出指标到 CSV",
     },
     "Export Successful": {
         "de": "Export erfolgreich",
@@ -213,7 +213,7 @@ TRANSLATIONS = {
         "ko": "내보내기 성공",
         "pt": "Exportação bem-sucedida",
         "ru": "Экспорт успешен",
-        "zh": "导出成功"
+        "zh": "导出成功",
     },
     "File && Analysis": {
         "de": "Datei && Analyse",
@@ -223,7 +223,7 @@ TRANSLATIONS = {
         "ko": "파일 && 분석",
         "pt": "Arquivo && Análise",
         "ru": "Файл && Анализ",
-        "zh": "文件 && 分析"
+        "zh": "文件 && 分析",
     },
     "Successfully exported metrics to:\n{}": {
         "de": "Metriken erfolgreich exportiert nach:\n{}",
@@ -233,8 +233,8 @@ TRANSLATIONS = {
         "ko": "측정항목을 다음으로 성공적으로 내보냈습니다:\n{}",
         "pt": "Métricas exportadas com sucesso para:\n{}",
         "ru": "Метрики успешно экспортированы в:\n{}",
-        "zh": "成功导出指标至:\n{}"
-    }
+        "zh": "成功导出指标至:\n{}",
+    },
 }
 
 
@@ -242,7 +242,7 @@ def main():
     print("=== Fixing Translation Leaks ===")
 
     # Get all language files
-    lang_files = [f for f in os.listdir(LANG_DIR) if f.endswith('.json') and f != 'en.json']
+    lang_files = [f for f in os.listdir(LANG_DIR) if f.endswith(".json") and f != "en.json"]
 
     for lang_file in lang_files:
         lang_code = os.path.splitext(lang_file)[0]
@@ -266,13 +266,13 @@ def main():
                             data[key] = new_value
                             updated_count += 1
                         elif data[key] != new_value:
-                             # Check if it's the known untranslated state (English)
-                             # Since we don't have en.json here easily, we rely on the fact that TRANSLATIONS has the correction.
-                             # But we should be careful not to overwrite valid manual translations if they differ slightly.
-                             # Let's trust the TRANSLATIONS dict as the source of truth for these specific problematic keys.
-                             print(f"  Updating '{key}': '{data[key]}' -> '{new_value}'")
-                             data[key] = new_value
-                             updated_count += 1
+                            # Check if it's the known untranslated state (English)
+                            # Since we don't have en.json here easily, we rely on the fact that TRANSLATIONS has the correction.
+                            # But we should be careful not to overwrite valid manual translations if they differ slightly.
+                            # Let's trust the TRANSLATIONS dict as the source of truth for these specific problematic keys.
+                            print(f"  Updating '{key}': '{data[key]}' -> '{new_value}'")
+                            data[key] = new_value
+                            updated_count += 1
                     else:
                         print(f"  Warning: No translation for '{key}' in language '{lang_code}'")
 
@@ -284,6 +284,7 @@ def main():
 
         except Exception as e:
             print(f"Error processing {lang_file}: {e}")
+
 
 if __name__ == "__main__":
     main()

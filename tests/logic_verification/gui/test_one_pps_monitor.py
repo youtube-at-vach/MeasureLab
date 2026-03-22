@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import MagicMock
 
 # Ensure we can import src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 from PyQt6.QtWidgets import QLabel, QDoubleSpinBox
 import pyqtgraph as pg
@@ -18,11 +18,13 @@ from src.gui.widgets.one_pps_monitor import OnePPSMonitor, OnePPSMonitorWidget
 # Helpers
 # -----------------------------------------------------------------------------
 
+
 def wait_for_monitor(monitor, timeout=2.0):
     start = time.time()
     while not monitor.data_queue.empty() and (time.time() - start) < timeout:
         time.sleep(0.01)
     time.sleep(0.1)
+
 
 class MockAudioEngine:
     def __init__(self):
@@ -44,9 +46,11 @@ class MockAudioEngine:
         if cid in self.callbacks:
             del self.callbacks[cid]
 
+
 # -----------------------------------------------------------------------------
 # Comprehensive Logic Tests
 # -----------------------------------------------------------------------------
+
 
 class TestOnePPSMonitorLogic(unittest.TestCase):
     def test_one_pps_logic(self):
@@ -81,7 +85,7 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
         block_size = 1024
 
         for i in range(0, total_len, block_size):
-            chunk = sig[i:i+block_size]
+            chunk = sig[i : i + block_size]
             # Make it stereo
             indata = np.column_stack((chunk, chunk))
             outdata = np.zeros_like(indata)
@@ -99,18 +103,18 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
         assert len(ip) >= 2
 
         # First interval: ~48000 -> ~0 error -> ~0 ppm
-        assert abs(ip[0]) < 1.0 # Allow small jitter due to interpolation
+        assert abs(ip[0]) < 1.0  # Allow small jitter due to interpolation
 
         # Second interval: ~48005 -> 5 error -> (5/48000)*1e6 = 104.166...
         expected_ppm = (5 / 48000.0) * 1e6
-        assert abs(ip[1] - expected_ppm) < 2.0 # Allow small jitter
+        assert abs(ip[1] - expected_ppm) < 2.0  # Allow small jitter
 
     def test_hysteresis(self):
         engine = MockAudioEngine()
         monitor = OnePPSMonitor(engine)
         self.addCleanup(monitor.stop_analysis)
         monitor.threshold_fs = 0.5
-        monitor.hysteresis_fs = 0.1 # High: 0.5, Low: 0.4
+        monitor.hysteresis_fs = 0.1  # High: 0.5, Low: 0.4
         monitor.start_analysis()
         monitor.warmup_count = 0
 
@@ -125,14 +129,24 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
         # Pulse 1 at 3. Pulse 2 at 10. Delta = 7.
         monitor.nominal_rate = 7.0
 
-        sig = np.array([
-            0.0, 0.45, 0.45,   # Max 0.45. State Low.
-            0.55, 0.6,         # Max 0.6. State -> High (Trigger 1 at approx idx 3.5)
-            0.45, 0.45,        # Min 0.45. State High ( > 0.4). No Reset.
-            0.55, 0.6,         # Max 0.6. State High. No Trigger.
-            0.35, 0.0,         # Min 0.0. State -> Low. Reset.
-            0.55, 0.6          # Max 0.6. State -> High (Trigger 2 at approx idx 10.5)
-        ], dtype=np.float32)
+        sig = np.array(
+            [
+                0.0,
+                0.45,
+                0.45,  # Max 0.45. State Low.
+                0.55,
+                0.6,  # Max 0.6. State -> High (Trigger 1 at approx idx 3.5)
+                0.45,
+                0.45,  # Min 0.45. State High ( > 0.4). No Reset.
+                0.55,
+                0.6,  # Max 0.6. State High. No Trigger.
+                0.35,
+                0.0,  # Min 0.0. State -> Low. Reset.
+                0.55,
+                0.6,  # Max 0.6. State -> High (Trigger 2 at approx idx 10.5)
+            ],
+            dtype=np.float32,
+        )
 
         indata = np.column_stack((sig, sig))
         outdata = np.zeros_like(indata)
@@ -251,17 +265,21 @@ class TestOnePPSMonitorLogic(unittest.TestCase):
 
         assert len(ip) > 4
 
+
 # -----------------------------------------------------------------------------
 # GUI Features Tests
 # -----------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_audio_engine_fixture():
     return MockAudioEngine()
 
+
 @pytest.fixture
 def monitor(mock_audio_engine_fixture):
     return OnePPSMonitor(mock_audio_engine_fixture)
+
 
 @pytest.fixture
 def widget(monitor, qtbot):
@@ -269,13 +287,14 @@ def widget(monitor, qtbot):
     qtbot.addWidget(widget)
     return widget
 
+
 def test_initialization(widget):
     """Test that the widget initializes correctly with new features."""
     assert widget.lbl_indicator is not None
     assert isinstance(widget.lbl_indicator, QLabel)
 
     # Check tabs
-    assert widget.tabs.count() == 3 # Settings, Waveform, Display
+    assert widget.tabs.count() == 3  # Settings, Waveform, Display
     assert widget.tabs.tabText(1) == "Waveform"
 
     # Check Waveform tab components
@@ -289,11 +308,12 @@ def test_initialization(widget):
     assert isinstance(hyst_spin, QDoubleSpinBox)
 
     # Check Target PPS components
-    assert hasattr(widget, 'combo_pps_preset')
+    assert hasattr(widget, "combo_pps_preset")
     assert widget.combo_pps_preset.itemText(0) == "1 PPS"
     assert widget.combo_pps_preset.currentIndex() == 0
     assert not widget.spin_pps.isEnabled()
     assert widget.spin_pps.value() == 1.0
+
 
 def test_waveform_controls(widget, monitor):
     """Test that controls in Waveform tab update the module directly."""
@@ -310,6 +330,7 @@ def test_waveform_controls(widget, monitor):
     assert monitor.hysteresis_fs == 0.1
     # Low line = 0.6 - 0.1 = 0.5
     assert abs(widget.line_thresh_low.value() - 0.5) < 1e-6
+
 
 def test_pulse_indicator_logic(widget, monitor, qtbot):
     """Test the pulse indicator logic."""
@@ -329,6 +350,7 @@ def test_pulse_indicator_logic(widget, monitor, qtbot):
     # But waitSignal waits for signal EMIT. The slot `_turn_off_indicator` is connected to timeout.
     # So after timeout, the slot should have run.
     assert "gray" in widget.lbl_indicator.styleSheet()
+
 
 def test_visualization_buffer(monitor):
     """Test the visualization buffer logic in the module."""
@@ -352,12 +374,12 @@ def test_visualization_buffer(monitor):
     monitor.is_running = True
 
     for i in range(0, frames, chunk_size):
-        chunk = data[i:i+chunk_size]
+        chunk = data[i : i + chunk_size]
         # We manually feed the queue and run `_process_loop` synchronously in the main thread.
         # `start_analysis()` is not called, so no background thread is spawned.
         monitor.data_queue.put((chunk, len(chunk)))
 
-    monitor.data_queue.put(None) # Signal termination
+    monitor.data_queue.put(None)  # Signal termination
     monitor._process_loop()
 
     # Check buffer
@@ -377,6 +399,7 @@ def test_visualization_buffer(monitor):
     assert latest[peak_idx] == 1.0
 
     monitor.is_running = False
+
 
 def test_update_plot_crash(widget, qtbot):
     """Regression test: _update_plot should not crash if history is empty but waveform is present."""
@@ -403,6 +426,7 @@ def test_update_plot_crash(widget, qtbot):
     except Exception as e:
         pytest.fail(f"_update_plot raised unexpected exception: {e}")
 
+
 def test_target_pps_preset_logic(widget, monitor):
     """Test that the PPS preset combo box controls the spin box."""
     # 1. Switch to "Other..."
@@ -418,6 +442,7 @@ def test_target_pps_preset_logic(widget, monitor):
     assert not widget.spin_pps.isEnabled()
     assert widget.spin_pps.value() == 1.0
     assert monitor.target_pps == 1.0
+
 
 def test_target_pps_feature(widget, monitor, qtbot):
     """Test the Target PPS feature."""
@@ -448,13 +473,14 @@ def test_target_pps_feature(widget, monitor, qtbot):
     if len(ip) > 2:
         assert abs(ip[-1]) < 1e-6
 
+
 def test_no_outlier_gate(monitor):
     """Test that large deviations are NOT rejected."""
     monitor.is_running = True
-    monitor.target_pps = 1.0 # 1Hz -> 48000 samples
+    monitor.target_pps = 1.0  # 1Hz -> 48000 samples
 
     signal = np.zeros(80000, dtype=np.float32)
-    signal[100] = 1.0 # First pulse (warmup)
+    signal[100] = 1.0  # First pulse (warmup)
 
     # pulse 2 at index 100 + 76800 = 76900
     signal[76900] = 1.0
@@ -466,5 +492,6 @@ def test_no_outlier_gate(monitor):
     # Both pulses should be detected
     assert monitor.get_pulse_count() == 2
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -9,24 +9,22 @@ from mkdocs.config.defaults import MkDocsConfig
 import docs.hooks.render_math as render_math
 
 # A valid dummy hash for testing
-DUMMY_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" # SHA-256 of empty string
+DUMMY_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"  # SHA-256 of empty string
+
 
 @pytest.fixture
 def dummy_page():
-    file = File(
-        path="index.md",
-        src_dir="docs",
-        dest_dir="site",
-        use_directory_urls=False
-    )
+    file = File(path="index.md", src_dir="docs", dest_dir="site", use_directory_urls=False)
     page = Page(title="Test", file=file, config=MkDocsConfig())
     return page
+
 
 @pytest.fixture
 def dummy_config():
     config = MkDocsConfig()
-    config['docs_dir'] = 'docs'
+    config["docs_dir"] = "docs"
     return config
+
 
 def test_math_renderer_hash_mismatch(dummy_page, dummy_config):
     html_input = '<span class="arithmatex">\\( 1+1 \\)</span>'
@@ -42,6 +40,7 @@ def test_math_renderer_hash_mismatch(dummy_page, dummy_config):
 
     # Since the hash mismatches, the original HTML should be returned
     assert result == html_input
+
 
 def test_math_renderer_hash_match(dummy_page, dummy_config):
     html_input = '<span class="arithmatex">\\( 1+1 \\)</span>'
@@ -62,6 +61,7 @@ def test_math_renderer_hash_match(dummy_page, dummy_config):
 
     # It should have called the replace logic, since the hash matched
     assert result == "rendered_math"
+
 
 def test_math_renderer_memory_limit_set(dummy_page, dummy_config):
     html_input = '<span class="arithmatex">\\( 1+1 \\)</span>'

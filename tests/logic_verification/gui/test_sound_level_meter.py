@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import MagicMock
 from src.gui.widgets.sound_level_meter import SoundLevelMeter
 
+
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
@@ -16,6 +17,7 @@ class MockAudioEngine:
     def unregister_callback(self, callback_id):
         pass
 
+
 @pytest.fixture
 def slm():
     engine = MockAudioEngine()
@@ -23,24 +25,25 @@ def slm():
     slm.set_channel(0)
     return slm
 
+
 class TestSoundLevelMeterLogic:
     def test_sound_level_meter_impulse_logic(self):
         engine = MockAudioEngine()
         slm = SoundLevelMeter(engine)
 
         # Use Z weighting to avoid A-weighting complications (though 1kHz is 0dB)
-        slm.set_freq_weighting('Z')
+        slm.set_freq_weighting("Z")
         # Bandwidth filter is still active (20Hz highpass), so we need AC signal.
 
         # Test IMPULSE weighting
-        slm.set_time_weighting('IMPULSE')
+        slm.set_time_weighting("IMPULSE")
         slm.start_analysis()
 
         sr = 48000
         frames = 1024
 
         # 1kHz sine wave
-        t = np.linspace(0, frames/sr, frames, endpoint=False)
+        t = np.linspace(0, frames / sr, frames, endpoint=False)
         sig_1k = np.sin(2 * np.pi * 1000 * t)
         # Stack for stereo
         indata_sine = np.column_stack((sig_1k, sig_1k))
@@ -78,12 +81,12 @@ class TestSoundLevelMeterLogic:
         engine = MockAudioEngine()
         slm = SoundLevelMeter(engine)
 
-        slm.set_time_weighting('FAST')
+        slm.set_time_weighting("FAST")
         slm.start_analysis()
 
         sr = 48000
         frames = 1024
-        t = np.linspace(0, frames/sr, frames, endpoint=False)
+        t = np.linspace(0, frames / sr, frames, endpoint=False)
         sig_1k = np.sin(2 * np.pi * 1000 * t)
         indata_sine = np.column_stack((sig_1k, sig_1k))
 
@@ -94,10 +97,11 @@ class TestSoundLevelMeterLogic:
 
         slm.stop_analysis()
 
+
 class TestSoundLevelMeterWeighting:
     def test_a_weighting_response(self, slm):
         """Verify A-weighting frequency response against IEC 61672 standard values."""
-        slm.set_freq_weighting('A')
+        slm.set_freq_weighting("A")
         # Force update filters
         slm._update_filters()
 
@@ -116,7 +120,7 @@ class TestSoundLevelMeterWeighting:
             2000: 1.2,
             4000: 1.0,
             8000: -1.1,
-            16000: -6.6
+            16000: -6.6,
         }
 
         fs = slm.audio_engine.sample_rate
@@ -132,12 +136,13 @@ class TestSoundLevelMeterWeighting:
             if abs(measured_db - expected_db) >= tol:
                 print(f"DEBUG: Freq {freq}Hz, Expected {expected_db}, Got {measured_db:.2f}")
 
-            assert abs(measured_db - expected_db) < tol, \
+            assert abs(measured_db - expected_db) < tol, (
                 f"A-Weighting failed at {freq}Hz: Expected {expected_db}, got {measured_db:.2f}"
+            )
 
     def test_c_weighting_response(self, slm):
         """Verify C-weighting frequency response against IEC 61672 standard values."""
-        slm.set_freq_weighting('C')
+        slm.set_freq_weighting("C")
         slm._update_filters()
 
         sos = slm.sos_filter
@@ -152,7 +157,7 @@ class TestSoundLevelMeterWeighting:
             2000: -0.2,
             4000: -0.8,
             8000: -3.0,
-            16000: -8.5
+            16000: -8.5,
         }
 
         fs = slm.audio_engine.sample_rate
@@ -162,12 +167,13 @@ class TestSoundLevelMeterWeighting:
             measured_db = 20 * np.log10(np.abs(h[0]) + 1e-12)
 
             tol = 4.0 if freq >= 16000 else 1.0
-            assert abs(measured_db - expected_db) < tol, \
+            assert abs(measured_db - expected_db) < tol, (
                 f"C-Weighting failed at {freq}Hz: Expected {expected_db}, got {measured_db:.2f}"
+            )
 
     def test_bw_filter_response(self, slm):
         """Verify bandwidth filter response (20Hz-20kHz)."""
-        slm._update_filters() # Default is 20-20k (Wide)
+        slm._update_filters()  # Default is 20-20k (Wide)
         sos = slm.bw_filter
         assert sos is not None
 
@@ -186,7 +192,7 @@ class TestSoundLevelMeterWeighting:
 
     def test_z_weighting_response(self, slm):
         """Verify Z-weighting is flat (no filter)."""
-        slm.set_freq_weighting('Z')
+        slm.set_freq_weighting("Z")
         slm._update_filters()
 
         # Z weighting usually means flat, so filter might be None or Identity
@@ -195,12 +201,12 @@ class TestSoundLevelMeterWeighting:
 
     def test_filter_application_via_callback(self, slm):
         """Verify that the frequency weighting is applied during signal processing."""
-        slm.set_freq_weighting('A')
-        slm.set_time_weighting('FAST')
+        slm.set_freq_weighting("A")
+        slm.set_time_weighting("FAST")
         slm.start_analysis()
 
         sr = slm.audio_engine.sample_rate
-        duration = 2.0 # seconds (increased to ensure full settling of filters and time weighting)
+        duration = 2.0  # seconds (increased to ensure full settling of filters and time weighting)
         frames = int(sr * duration)
         t = np.linspace(0, duration, frames, endpoint=False)
 
@@ -211,7 +217,7 @@ class TestSoundLevelMeterWeighting:
         # Process in chunks
         chunk_size = 1024
         for i in range(0, frames, chunk_size):
-            chunk = indata_1k[i:i+chunk_size]
+            chunk = indata_1k[i : i + chunk_size]
             if len(chunk) < chunk_size:
                 break
             slm.callback(chunk, None, len(chunk), None, None)
@@ -228,7 +234,7 @@ class TestSoundLevelMeterWeighting:
         indata_100 = np.column_stack((sig_100, sig_100))
 
         for i in range(0, frames, chunk_size):
-            chunk = indata_100[i:i+chunk_size]
+            chunk = indata_100[i : i + chunk_size]
             if len(chunk) < chunk_size:
                 break
             slm.callback(chunk, None, len(chunk), None, None)
@@ -240,5 +246,6 @@ class TestSoundLevelMeterWeighting:
         # Expected: 0 - (-19.1) = 19.1
 
         # Tolerance 1.5 dB because of settling time
-        assert abs(diff - 19.1) < 1.5, \
+        assert abs(diff - 19.1) < 1.5, (
             f"Callback A-weighting check failed. 1kHz: {level_1k_db}, 100Hz: {level_100_db}, Diff: {diff}"
+        )

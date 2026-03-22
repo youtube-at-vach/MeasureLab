@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.gui.widgets.signal_generator import SignalGenerator
 
@@ -20,7 +20,7 @@ def test_burst_delay_ms_integer_samples_aligns_channels():
     # Use a long "burst" with no off time so it behaves like a continuous sine
     # within the tested window (avoids envelope edge effects).
     for p in (sg.params_L, sg.params_R):
-        p.waveform = 'burst'
+        p.waveform = "burst"
         p.frequency = 2500.0
         p.amplitude = 1.0
         p.burst_on_cycles = 1000

@@ -3,7 +3,7 @@ import re
 import sys
 
 
-def extract_changelog(version, changelog_path='CHANGELOG.md'):
+def extract_changelog(version, changelog_path="CHANGELOG.md"):
     """
     Extracts the changelog section for a specific version.
 
@@ -21,7 +21,7 @@ def extract_changelog(version, changelog_path='CHANGELOG.md'):
         return None
 
     try:
-        with open(changelog_path, 'r', encoding='utf-8') as f:
+        with open(changelog_path, "r", encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         print(f"Error reading {changelog_path}: {e}", file=sys.stderr)
@@ -29,13 +29,13 @@ def extract_changelog(version, changelog_path='CHANGELOG.md'):
 
     # prepare candidate version forms to try (with/without leading 'v')
     candidates = []
-    v_stripped = original_version.lstrip('vV')
+    v_stripped = original_version.lstrip("vV")
     candidates.append(v_stripped)
     # if user gave version without v, also try with v
-    if not original_version.lower().startswith('v'):
-        candidates.append('v' + v_stripped)
+    if not original_version.lower().startswith("v"):
+        candidates.append("v" + v_stripped)
     # if user gave version with v, also try without
-    if original_version.lower().startswith('v') and v_stripped not in candidates:
+    if original_version.lower().startswith("v") and v_stripped not in candidates:
         candidates.append(v_stripped)
 
     # Build a flexible regex that allows:
@@ -43,7 +43,7 @@ def extract_changelog(version, changelog_path='CHANGELOG.md'):
     #  - optional whitespace between ## and version
     #  - optional 'v' prefix (we already include candidates, but keep pattern tolerant)
     #  - consume header line (which may include date) then capture until next "## " or EOF
-    pattern_template = r'^##\s*\[?\s*{ver}\s*\]?.*?\n(.*?)(?=^##\s|\Z)'
+    pattern_template = r"^##\s*\[?\s*{ver}\s*\]?.*?\n(.*?)(?=^##\s|\Z)"
 
     for cand in candidates:
         pat = pattern_template.format(ver=re.escape(cand))
@@ -54,8 +54,7 @@ def extract_changelog(version, changelog_path='CHANGELOG.md'):
 
     # as a last resort, try a looser search: header that contains the version anywhere on the header line
     loose_pattern = re.compile(
-        r'^##.*' + re.escape(v_stripped) + r'.*?\n(.*?)(?=^##\s|\Z)',
-        re.MULTILINE | re.DOTALL | re.IGNORECASE
+        r"^##.*" + re.escape(v_stripped) + r".*?\n(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL | re.IGNORECASE
     )
     loose_match = loose_pattern.search(content)
     if loose_match:
@@ -63,21 +62,23 @@ def extract_changelog(version, changelog_path='CHANGELOG.md'):
 
     return None
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python extract_changelog.py <version> [changelog_path]", file=sys.stderr)
         sys.exit(1)
 
     version = sys.argv[1]
-    changelog_path = sys.argv[2] if len(sys.argv) > 2 else 'CHANGELOG.md'
+    changelog_path = sys.argv[2] if len(sys.argv) > 2 else "CHANGELOG.md"
 
     content = extract_changelog(version, changelog_path)
 
     if content:
         # Ensure UTF-8 output on Windows
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             import io
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
         print(content)
     else:
         # no output (workflow can detect empty)

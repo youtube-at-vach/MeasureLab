@@ -1,9 +1,16 @@
-
 import threading
 
 import numpy as np
 import pyqtgraph as pg
-from scipy.signal import chirp as signal_chirp, coherence, correlate, correlation_lags, fftconvolve, savgol_filter, windows
+from scipy.signal import (
+    chirp as signal_chirp,
+    coherence,
+    correlate,
+    correlation_lags,
+    fftconvolve,
+    savgol_filter,
+    windows,
+)
 from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -105,7 +112,6 @@ class PlayRecSession:
                 self.completion_event.set()
 
 
-
 class CalibrationWorker(QThread):
     def __init__(self, analyzer):
         super().__init__()
@@ -179,8 +185,6 @@ class NetworkAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Bode Plot (Gain & Phase) with XFER support"
-
-
 
     def get_widget(self):
         return NetworkAnalyzerWidget(self)
@@ -378,6 +382,7 @@ class NetworkAnalyzer(MeasurementModule):
 
     def _process_sweep_data(self, rec_data, inv_filter, chirp, sample_rate, worker):
         """Processes the recorded sweep data to calculate magnitude and phase response, IR SNR, and Coherence."""
+
         def get_ir(signal):
             return fftconvolve(signal, inv_filter, mode="full")
 
@@ -525,8 +530,6 @@ class NetworkAnalyzer(MeasurementModule):
             self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i], coh_interp[i])
 
 
-
-
 class NetworkAnalyzerWidget(QWidget):
     def __init__(self, module: NetworkAnalyzer):
         super().__init__()
@@ -572,7 +575,6 @@ class NetworkAnalyzerWidget(QWidget):
         form = QFormLayout()
 
         # Sweep Mode removed, Fast Chirp is standard
-
 
         # Routing
         self.out_combo = QComboBox()
@@ -783,7 +785,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.coh_view.setYRange(0, 1.05, padding=0)
 
         self.coh_view.setLogMode(False, False)
-        self.coh_curve = pg.PlotCurveItem(pen="c") # Cyan for visibility
+        self.coh_curve = pg.PlotCurveItem(pen="c")  # Cyan for visibility
         self.coh_view.addItem(self.coh_curve)
 
         self.mag_plot.plotItem.vb.sigResized.connect(self.update_coh_views)
@@ -821,8 +823,6 @@ class NetworkAnalyzerWidget(QWidget):
         layout.addLayout(plot_layout)
         self.setLayout(layout)
         self.on_routing_changed(self.in_combo.currentIndex())
-
-
 
     def on_routing_changed(self, index):
         self.module.input_mode = self.in_combo.currentData()

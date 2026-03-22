@@ -15,7 +15,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 # Mock sounddevice if not available or fails to initialize (no PortAudio)
 try:
-    import sounddevice # noqa: F401
+    import sounddevice  # noqa: F401
 except Exception:
     sd = MagicMock()
     sd.query_devices.return_value = []
@@ -41,16 +41,17 @@ def hardware_config():
     Returns a dictionary with audio settings.
     """
     import json
+
     config_path = _REPO_ROOT / "config.json"
 
     default_config = {
         "audio": {
-            "input_device": "system", 
+            "input_device": "system",
             "output_device": "system",
             "sample_rate": 48000,
             "block_size": 1024,
             "input_channels": "stereo",
-            "output_channels": "stereo"
+            "output_channels": "stereo",
         }
     }
 
@@ -66,6 +67,7 @@ def hardware_config():
 
     return default_config["audio"]
 
+
 def pytest_addoption(parser):
     parser.addoption(
         "--hardware",
@@ -80,8 +82,6 @@ def pytest_addoption(parser):
         choices=["typical", "limit"],
         help="hardware test mode: typical (fixed params) or limit (matrix test)",
     )
-
-
 
 
 def pytest_collection_modifyitems(config, items):
@@ -108,7 +108,9 @@ def pytest_configure(config):
     if config.getoption("--hardware"):
         # Check if --json-report option exists (plugin installed)
         if not hasattr(config.option, "json_report"):
-            print("WARNING: --hardware flag used but pytest-json-report plugin seems missing (no --json-report option).")
+            print(
+                "WARNING: --hardware flag used but pytest-json-report plugin seems missing (no --json-report option)."
+            )
             return
 
         # Enable json-report if not explicitly disabled or configured?
@@ -122,12 +124,12 @@ def pytest_configure(config):
         # Verify if user already passed --json-report-file
         # If not set (None) or set to default hidden file, enforce 'report.json'
         # The plugin default is typically none or .report.json depending on version
-        current_file = getattr(config.option, 'json_report_file', None)
-        if not current_file or current_file == '.report.json':
-             config.option.json_report_file = 'report.json'
+        current_file = getattr(config.option, "json_report_file", None)
+        if not current_file or current_file == ".report.json":
+            config.option.json_report_file = "report.json"
 
         # Set default indentation for readability if not specified
-        if not getattr(config.option, 'json_report_indent', None):
+        if not getattr(config.option, "json_report_indent", None):
             config.option.json_report_indent = 4
 
 
@@ -139,7 +141,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         return
 
     # Check if report.json exists
-    report_file = getattr(config.option, 'json_report_file', 'report.json')
+    report_file = getattr(config.option, "json_report_file", "report.json")
     if not os.path.exists(report_file):
         terminalreporter.write_line(f"Warning: {report_file} not found. Cannot generate measurement report.")
         return
@@ -147,7 +149,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     import json
 
     try:
-        with open(report_file, 'r') as f:
+        with open(report_file, "r") as f:
             full_report = json.load(f)
     except Exception as e:
         terminalreporter.write_line(f"Error reading {report_file}: {e}")
@@ -155,32 +157,28 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
     simplified_tests = []
 
-    for test in full_report.get('tests', []):
+    for test in full_report.get("tests", []):
         # We only care about tests with user_properties (metrics)
-        if 'user_properties' not in test:
+        if "user_properties" not in test:
             continue
 
         # Extract properties
-        props = {k: v for d in test['user_properties'] for k, v in d.items()}
+        props = {k: v for d in test["user_properties"] for k, v in d.items()}
 
         # Determine test ID and Type
         # Default ID is the function name
-        nodeid = test.get('nodeid', '')
-        func_name = nodeid.split('::')[-1] if '::' in nodeid else nodeid
+        nodeid = test.get("nodeid", "")
+        func_name = nodeid.split("::")[-1] if "::" in nodeid else nodeid
 
         # Default Type from props or basic mapping
-        test_type = props.get('test_type', func_name)
+        test_type = props.get("test_type", func_name)
 
         # Remove metadata from metrics
         metrics = props.copy()
-        if 'test_type' in metrics:
-            del metrics['test_type']
+        if "test_type" in metrics:
+            del metrics["test_type"]
 
-        test_entry = {
-            "id": func_name,
-            "type": test_type,
-            "metrics": metrics
-        }
+        test_entry = {"id": func_name, "type": test_type, "metrics": metrics}
 
         simplified_tests.append(test_entry)
 
@@ -220,14 +218,14 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             "input_device": input_dev,
             "output_device": output_dev,
             "input_hostapi": input_hostapi,
-            "output_hostapi": output_hostapi
+            "output_hostapi": output_hostapi,
         },
-        "tests": simplified_tests
+        "tests": simplified_tests,
     }
 
     out_file = "measurement_report.json"
     try:
-        with open(out_file, 'w') as f:
+        with open(out_file, "w") as f:
             json.dump(final_report, f, indent=2)
         terminalreporter.write_line(f"\nGenerated simplified measurement report: {out_file}")
     except Exception as e:

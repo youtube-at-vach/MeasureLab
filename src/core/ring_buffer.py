@@ -66,7 +66,7 @@ class RingBuffer:
 
         # Handle channel mismatch (e.g. input 4ch -> buffer 2ch)
         if n_channels > self._channels:
-            data = data[:, :self._channels]
+            data = data[:, : self._channels]
         elif 1 < n_channels < self._channels:
             # Handle input with fewer channels (but > 1) -> Pad with zeros
             # Note: input 1ch (mono) is handled by broadcasting in assignment
@@ -76,7 +76,7 @@ class RingBuffer:
 
         # Handle overflow if writing more than capacity (only keep latest)
         if n_frames > self._capacity:
-            data = data[-self._capacity:]
+            data = data[-self._capacity :]
             n_frames = self._capacity
 
         with self._lock:
@@ -127,7 +127,7 @@ class RingBuffer:
                 to_read = available
 
             if to_read <= 0:
-                 return np.empty((0, self._channels), dtype=self._dtype)
+                return np.empty((0, self._channels), dtype=self._dtype)
 
             start_idx = read % self._capacity
             chunk1 = min(to_read, self._capacity - start_idx)

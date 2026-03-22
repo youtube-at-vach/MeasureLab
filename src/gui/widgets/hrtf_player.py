@@ -1,4 +1,3 @@
-
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -111,7 +110,7 @@ class SOFALoader:
             # 2. ILD (Interaural Level Difference)
             # RMS dB difference (Vectorized)
             # Mean square along the sample axis (axis 2)
-            ms = np.mean(ir_data ** 2, axis=2)  # (M, 2)
+            ms = np.mean(ir_data**2, axis=2)  # (M, 2)
             rms = np.sqrt(ms) + 1e-12
             # Right/Left ratio in dB
             ilds = 20 * np.log10(rms[:, 1] / rms[:, 0])
@@ -126,7 +125,7 @@ class SOFALoader:
 
             # Masking and summing
             masked_spectra = spectra[:, :, mask]
-            energies = np.sum(masked_spectra ** 2, axis=2)  # (M, 2)
+            energies = np.sum(masked_spectra**2, axis=2)  # (M, 2)
             avg_e = np.mean(energies, axis=1)  # (M,)
             energy_high = 10 * np.log10(avg_e + 1e-12)
 
@@ -203,8 +202,6 @@ class HRTFPlayer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Visualize and Audition HRTF (SOFA) files."
-
-
 
     def get_widget(self):
         return HRTFPlayerWidget(self)

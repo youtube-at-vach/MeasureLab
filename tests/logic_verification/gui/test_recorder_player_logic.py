@@ -1,4 +1,3 @@
-
 import unittest
 from unittest.mock import MagicMock
 import sys
@@ -7,10 +6,11 @@ import queue
 import os
 
 # Mock sounddevice before importing AudioEngine
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: E402
 from src.core.audio_engine import AudioEngine  # noqa: E402
+
 
 class TestRecorderPlayerLogic(unittest.TestCase):
     def setUp(self):
@@ -112,7 +112,7 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         self.player.output_mode = "Mono"
 
         frames = 100
-        channels = 2 # Playback buffer is stereo
+        channels = 2  # Playback buffer is stereo
 
         playback_data = np.random.rand(frames, channels).astype(np.float32)
         self.player.playback_buffer = playback_data
@@ -176,7 +176,7 @@ class TestRecorderPlayerLogic(unittest.TestCase):
     def test_playback_gain(self):
         self.player.is_playing = True
         self.player.output_mode = "Stereo"
-        self.player.playback_gain_db = -6.0 # Half amplitude roughly (actually 10^(-6/20) approx 0.501)
+        self.player.playback_gain_db = -6.0  # Half amplitude roughly (actually 10^(-6/20) approx 0.501)
 
         frames = 100
         channels = 2
@@ -213,7 +213,7 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         # Expected output: buffer repeated twice
         expected = np.concatenate([playback_data, playback_data], axis=0)
         np.testing.assert_array_equal(outdata, expected)
-        self.assertEqual(self.player.playback_pos, 0) # Should be back at 0 after exactly 2 loops?
+        self.assertEqual(self.player.playback_pos, 0)  # Should be back at 0 after exactly 2 loops?
         # Wait, if frames_req is exactly multiple of frames_buf, loop logic:
         # 1st loop: copies 50, pos becomes 50 -> reset to 0
         # 2nd loop: copies 50, pos becomes 50 -> reset to 0
@@ -263,5 +263,6 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         # Queue should be empty (or None, but we inited it in setUp)
         self.assertTrue(self.player._write_queue.empty())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

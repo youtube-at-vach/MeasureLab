@@ -4,21 +4,26 @@ import numpy as np
 from unittest.mock import MagicMock
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 from src.gui.widgets.bnim_meter import BNIMMeter
+
 
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
+
     def register_callback(self, cb):
         return 1
+
     def unregister_callback(self, cid):
         pass
+
 
 def _first_idx_above(x: np.ndarray, thresh: float) -> int:
     idx = np.flatnonzero(np.abs(x) > thresh)
     return int(idx[0]) if idx.size else -1
+
 
 class TestBNIMProcessing:
     def test_bnim_processing(self):
@@ -81,7 +86,7 @@ class TestBNIMProcessing:
         peak_itd_ms = bnim.itd_axis[np.argmax(itd_pattern)]
 
         # Peak should be at 0ms
-        assert abs(peak_itd_ms) < 0.1 # Relaxed slightly for resolution
+        assert abs(peak_itd_ms) < 0.1  # Relaxed slightly for resolution
 
         bnim.stop_analysis()
 
@@ -93,26 +98,26 @@ class TestBNIMProcessing:
         # Enable ILD for this test
         bnim.enable_ild = True
         bnim.ild_strength = 0.6
-        bnim.decay = 0.0 # Instant update
+        bnim.decay = 0.0  # Instant update
 
         # Generate random stereo noise
         np.random.seed(42)
         noise_L = np.random.randn(bnim.fft_size).astype(np.float32)
-        noise_R = np.random.randn(bnim.fft_size).astype(np.float32) * 0.5 # Make R quieter to have ILD
+        noise_R = np.random.randn(bnim.fft_size).astype(np.float32) * 0.5  # Make R quieter to have ILD
 
         # Pass 1: Normal (L, R)
         with bnim._buffer_lock:
-            bnim.audio_buffer[-bnim.fft_size:, 0] = noise_L
-            bnim.audio_buffer[-bnim.fft_size:, 1] = noise_R
-            bnim._buffer_seq += 1 # Force update
+            bnim.audio_buffer[-bnim.fft_size :, 0] = noise_L
+            bnim.audio_buffer[-bnim.fft_size :, 1] = noise_R
+            bnim._buffer_seq += 1  # Force update
 
         bnim.process_buffer()
         map_normal = bnim.neural_map.copy()
 
         # Pass 2: Swapped (R, L)
         with bnim._buffer_lock:
-            bnim.audio_buffer[-bnim.fft_size:, 0] = noise_R
-            bnim.audio_buffer[-bnim.fft_size:, 1] = noise_L
+            bnim.audio_buffer[-bnim.fft_size :, 0] = noise_R
+            bnim.audio_buffer[-bnim.fft_size :, 1] = noise_L
             bnim._buffer_seq += 1
 
         bnim.process_buffer()
@@ -136,7 +141,7 @@ class TestBNIMProcessing:
         bnim = BNIMMeter(engine)
         bnim.start_analysis()
         bnim.enable_ild = True
-        bnim.ild_strength = 1.0 # Strong ILD effect
+        bnim.ild_strength = 1.0  # Strong ILD effect
         bnim.decay = 0.0
 
         # Create signal where L is much louder than R
@@ -147,8 +152,8 @@ class TestBNIMProcessing:
         R_data = noise * 0.1
 
         with bnim._buffer_lock:
-            bnim.audio_buffer[-bnim.fft_size:, 0] = L_data
-            bnim.audio_buffer[-bnim.fft_size:, 1] = R_data
+            bnim.audio_buffer[-bnim.fft_size :, 0] = L_data
+            bnim.audio_buffer[-bnim.fft_size :, 1] = R_data
             bnim._buffer_seq += 1
 
         bnim.process_buffer()
@@ -159,10 +164,12 @@ class TestBNIMProcessing:
         right_energy = np.sum(bnim.neural_map[:, mid_idx:])
 
         # Expect Left Energy > Right Energy
-        assert left_energy > right_energy, \
+        assert left_energy > right_energy, (
             f"Expected Left Energy > Right Energy for L > R signal. L={left_energy}, R={right_energy}"
+        )
 
         bnim.stop_analysis()
+
 
 class TestBNIMClickPlaySignal:
     def test_bnim_click_play_build_and_callback_delay(self):
@@ -202,7 +209,6 @@ class TestBNIMClickPlaySignal:
         # Allow a couple samples slack due to thresholding and Hann onset
         assert (i_l - i_r) >= int(expected) - 3
 
-
     def test_bnim_click_play_ild_ratio(self):
         mock_engine = MagicMock()
         mock_engine.sample_rate = 48000
@@ -233,7 +239,6 @@ class TestBNIMClickPlaySignal:
         assert ratio > 0.06
         assert ratio < 0.16
 
-
     def test_bnim_click_play_loop_wraps_within_block(self):
         mock_engine = MagicMock()
         mock_engine.sample_rate = 48000
@@ -260,7 +265,6 @@ class TestBNIMClickPlaySignal:
         tail = outdata[-200:, 0]
         assert np.any(np.abs(tail) > 1e-6)
 
-
     def test_bnim_click_play_loop_live_update_rebuilds_buffer(self):
         mock_engine = MagicMock()
         mock_engine.sample_rate = 48000
@@ -275,7 +279,13 @@ class TestBNIMClickPlaySignal:
         m.play_off_cycles = 0
         m.play_ild_atten_db = 0.0
 
-        m.trigger_click_test_playback(freq_hz=1000.0, itd_ms=0.8, on_cycles=m.play_on_cycles, off_cycles=m.play_off_cycles, ild_atten_db=m.play_ild_atten_db)
+        m.trigger_click_test_playback(
+            freq_hz=1000.0,
+            itd_ms=0.8,
+            on_cycles=m.play_on_cycles,
+            off_cycles=m.play_off_cycles,
+            ild_atten_db=m.play_ild_atten_db,
+        )
 
         with m._play_lock:
             n0 = len(m._play_buffer)
@@ -288,6 +298,7 @@ class TestBNIMClickPlaySignal:
             n1 = len(m._play_buffer)
 
         assert n1 > n0
+
 
 class TestBNIMFractionalDelay:
     """Tests for BNIMMeter._fractional_delay_zero_padded static method."""

@@ -10,6 +10,7 @@ pytestmark = pytest.mark.hardware
 
 logger = logging.getLogger(__name__)
 
+
 def pytest_generate_tests(metafunc):
     """
     Generate test cases based on --hardware-mode option.
@@ -21,28 +22,23 @@ def pytest_generate_tests(metafunc):
 
         if mode == "typical":
             # Typical: -5 to -90 dBFS, fewer steps, moderate averaging
-            metafunc.parametrize("linearity_params", [{
-                "start_db": -5.0,
-                "end_db": -90.0,
-                "steps": 20,
-                "averaging": 3,
-                "mode_name": "typical"
-            }])
+            metafunc.parametrize(
+                "linearity_params",
+                [{"start_db": -5.0, "end_db": -90.0, "steps": 20, "averaging": 3, "mode_name": "typical"}],
+            )
         else:
             # Limit: -5 to -120 dBFS, more steps, higher averaging
-            metafunc.parametrize("linearity_params", [{
-                "start_db": -5.0,
-                "end_db": -90.0,
-                "steps": 30,
-                "averaging": 10,
-                "mode_name": "limit"
-            }])
+            metafunc.parametrize(
+                "linearity_params",
+                [{"start_db": -5.0, "end_db": -90.0, "steps": 30, "averaging": 10, "mode_name": "limit"}],
+            )
+
 
 class TestLinearityHardware:
     @pytest.fixture(autouse=True)
     def setup_teardown(self):
         self.engine = AudioEngine()
-        self.engine.set_offline_mode(False) # Ensure online
+        self.engine.set_offline_mode(False)  # Ensure online
 
         # Generator state
         self._phase = 0.0
@@ -77,8 +73,8 @@ class TestLinearityHardware:
         if new_data is not None:
             new_frames = len(new_data)
             if new_frames >= self.buffer_size:
-                 self.input_data[:] = new_data[-self.buffer_size :]
-                 self.input_index = 0
+                self.input_data[:] = new_data[-self.buffer_size :]
+                self.input_index = 0
             else:
                 remaining = self.buffer_size - self.input_index
                 if new_frames <= remaining:
@@ -94,7 +90,7 @@ class TestLinearityHardware:
 
         # Output Generation
         t = (np.arange(frames) + self._phase) / self.sample_rate
-        self._phase += frames # Keep phase continuous
+        self._phase += frames  # Keep phase continuous
 
         sig = self.gen_amplitude * np.sin(2 * np.pi * self.test_frequency * t)
 
@@ -134,7 +130,6 @@ class TestLinearityHardware:
 
         # Start Audio
         self.callback_id = self.engine.register_callback(self._audio_callback)
-
 
         # Test Params
         start_db = linearity_params["start_db"]
@@ -198,14 +193,13 @@ class TestLinearityHardware:
             if abs(lin_error) > abs(max_linearity_error):
                 max_linearity_error = lin_error
 
-            print(f"  In: {level_db:.1f} dBFS | Meas: {meas_db:.2f} dBFS | Gain: {current_gain:.2f} dB | Err: {lin_error:.2f} dB")
+            print(
+                f"  In: {level_db:.1f} dBFS | Meas: {meas_db:.2f} dBFS | Gain: {current_gain:.2f} dB | Err: {lin_error:.2f} dB"
+            )
 
-            results.append({
-                "input_level": level_db,
-                "measured_level": meas_db,
-                "gain": current_gain,
-                "error": lin_error
-            })
+            results.append(
+                {"input_level": level_db, "measured_level": meas_db, "gain": current_gain, "error": lin_error}
+            )
 
         # Record Properties
         record_property("max_linearity_error_db", float(max_linearity_error))
@@ -219,13 +213,13 @@ class TestLinearityHardware:
         # Find closest point to -60
         error_at_60 = None
         for res in results:
-             if abs(res["input_level"] - -60.0) < 2.0:
-                 error_at_60 = res["error"]
-                 break
+            if abs(res["input_level"] - -60.0) < 2.0:
+                error_at_60 = res["error"]
+                break
 
         if error_at_60 is not None:
             record_property("error_at_n60db", float(error_at_60))
             if abs(error_at_60) > 1.0:
-                 print(f"Warning: Linearity error at -60dBFS is high: {error_at_60:.2f} dB")
+                print(f"Warning: Linearity error at -60dBFS is high: {error_at_60:.2f} dB")
 
         # For Limit mode, we might expect degradation at -110/-120, but it shouldn't crash.

@@ -5,19 +5,23 @@ import sys
 import os
 
 # Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 from PyQt6.QtWidgets import QApplication
 from src.gui.widgets.ultrasound_modulator import UltrasoundModulator, UltrasoundModulatorWidget
 import src.gui.widgets.ultrasound_modulator as um_module
 
+
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
+
     def register_callback(self, cb):
         return 1
+
     def unregister_callback(self, id):
         pass
+
 
 class TestUltrasoundModulator(unittest.TestCase):
     def setUp(self):
@@ -26,7 +30,7 @@ class TestUltrasoundModulator(unittest.TestCase):
 
     def test_update_filter_remez_success(self):
         # Test that coefficients are generated when remez succeeds
-        with patch('src.gui.widgets.ultrasound_modulator.remez') as mock_remez:
+        with patch("src.gui.widgets.ultrasound_modulator.remez") as mock_remez:
             mock_remez.return_value = np.ones(65)
             self.modulator._update_filter(48000)
             self.assertTrue(np.array_equal(self.modulator._hilbert_coeffs, np.ones(65)))
@@ -34,10 +38,10 @@ class TestUltrasoundModulator(unittest.TestCase):
 
     def test_update_filter_remez_failure_fallback(self):
         # Test fallback when remez fails
-        with patch('src.gui.widgets.ultrasound_modulator.remez') as mock_remez:
+        with patch("src.gui.widgets.ultrasound_modulator.remez") as mock_remez:
             mock_remez.side_effect = ValueError("Convergence failed")
 
-            with self.assertLogs('src.gui.widgets.ultrasound_modulator', level='WARNING') as cm:
+            with self.assertLogs("src.gui.widgets.ultrasound_modulator", level="WARNING") as cm:
                 self.modulator._update_filter(48000)
 
             self.assertTrue(any("Error designing Hilbert filter" in output for output in cm.output))
@@ -45,17 +49,20 @@ class TestUltrasoundModulator(unittest.TestCase):
             self.assertEqual(len(self.modulator._hilbert_coeffs), 65)
 
     def test_update_filter_remez_failure_fallback_coeffs(self):
-         with patch('src.gui.widgets.ultrasound_modulator.remez') as mock_remez:
+        with patch("src.gui.widgets.ultrasound_modulator.remez") as mock_remez:
             mock_remez.side_effect = ValueError("Convergence failed")
             self.modulator._update_filter(48000)
 
             # Verify it uses the fallback coefficients
-            fallback = getattr(um_module, '_FALLBACK_HILBERT_COEFFS', None)
+            fallback = getattr(um_module, "_FALLBACK_HILBERT_COEFFS", None)
             if fallback is not None:
                 self.assertTrue(np.array_equal(self.modulator._hilbert_coeffs, np.array(fallback)))
             else:
                 # If we can't access the constant, at least check it's not zeros
-                self.assertFalse(np.all(self.modulator._hilbert_coeffs == 0), "Fallback coefficients should not be all zeros")
+                self.assertFalse(
+                    np.all(self.modulator._hilbert_coeffs == 0), "Fallback coefficients should not be all zeros"
+                )
+
 
 class TestUltrasoundSSB(unittest.TestCase):
     def setUp(self):
@@ -74,6 +81,7 @@ class TestUltrasoundSSB(unittest.TestCase):
 
         # Capture the callback
         callback_fn = None
+
         def register(cb):
             nonlocal callback_fn
             callback_fn = cb
@@ -85,7 +93,7 @@ class TestUltrasoundSSB(unittest.TestCase):
         self.assertIsNotNone(callback_fn)
 
         fs = 48000
-        duration = 0.5 # seconds
+        duration = 0.5  # seconds
         frames = int(fs * duration)
 
         # Input signal: 1kHz sine wave
@@ -100,7 +108,7 @@ class TestUltrasoundSSB(unittest.TestCase):
         while cursor < frames:
             n = min(chunk_size, frames - cursor)
             indata = np.zeros((n, 2), dtype=np.float32)
-            indata[:, 0] = input_sig[cursor:cursor+n]
+            indata[:, 0] = input_sig[cursor : cursor + n]
 
             outdata = np.zeros((n, 2), dtype=np.float32)
 
@@ -113,12 +121,12 @@ class TestUltrasoundSSB(unittest.TestCase):
 
         # Analyze Spectrum
         # Skip beginning to avoid filter transient
-        skip = fs//4
+        skip = fs // 4
         stable_output = output_sig[skip:]
 
         # FFT
         fft_out = np.abs(np.fft.rfft(stable_output))
-        freqs = np.fft.rfftfreq(len(stable_output), d=1/fs)
+        freqs = np.fft.rfftfreq(len(stable_output), d=1 / fs)
 
         # Expected: Peak at Carrier + Signal = 10k + 1k = 11kHz.
         # Suppressed: Carrier - Signal = 9kHz.
@@ -142,11 +150,12 @@ class TestUltrasoundSSB(unittest.TestCase):
         # 20dB = ratio 10.
         self.assertGreater(suppression_ratio, 5.0, "Sideband should be suppressed")
 
+
 class TestUltrasoundModulatorLogic(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
-            cls.app = QApplication(sys.argv + ['-platform', 'offscreen'])
+            cls.app = QApplication(sys.argv + ["-platform", "offscreen"])
         else:
             cls.app = QApplication.instance()
 
@@ -190,7 +199,7 @@ class TestUltrasoundModulatorLogic(unittest.TestCase):
             val_neg = widget._freq_to_slider(-100.0, 2000.0, 96000.0)
             self.assertEqual(val_neg, 0, "Negative frequency should map to slider 0")
         except (ValueError, OverflowError) as e:
-             self.fail(f"Negative frequency caused crash: {e}")
+            self.fail(f"Negative frequency caused crash: {e}")
 
     def test_slider_to_freq_robustness(self):
         """Test conversion of slider position to frequency handles edge cases."""
@@ -198,7 +207,7 @@ class TestUltrasoundModulatorLogic(unittest.TestCase):
         widget = UltrasoundModulatorWidget(mod)
 
         # 1. Valid
-        f = widget._slider_to_freq(500, 100.0, 10000.0) # Mid point log scale
+        f = widget._slider_to_freq(500, 100.0, 10000.0)  # Mid point log scale
         # log(100)=2, log(10000)=4. Mid=3 -> 1000Hz.
         self.assertAlmostEqual(f, 1000.0, delta=1.0)
 
@@ -209,6 +218,7 @@ class TestUltrasoundModulatorLogic(unittest.TestCase):
             self.assertTrue(f > 0, "Frequency must be positive")
         except (ValueError, OverflowError, RuntimeWarning) as e:
             self.fail(f"Zero min_f caused crash: {e}")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 
+
 class TestCalibrationAlignment(unittest.TestCase):
     def test_calibration_alignment(self):
         """Verify that Frequency Counter and 1PPS Monitor calibration logic align."""
@@ -23,7 +24,9 @@ class TestCalibrationAlignment(unittest.TestCase):
         pps_factor = 1.0 + current_ppm / 1e6
 
         # Check if factors align
-        np.testing.assert_allclose(fc_factor, pps_factor, rtol=1e-6, err_msg=f"Discrepancy: {fc_factor} vs {pps_factor}")
+        np.testing.assert_allclose(
+            fc_factor, pps_factor, rtol=1e-6, err_msg=f"Discrepancy: {fc_factor} vs {pps_factor}"
+        )
 
         # 3. Check UI Display Logic Alignment
         # In OnePPSMonitorWidget: ppm = (cal - 1.0) * 1e6
@@ -32,7 +35,10 @@ class TestCalibrationAlignment(unittest.TestCase):
         fc_ui_ppm = (fc_factor - 1.0) * 1e6
 
         # Check if UI display values align
-        np.testing.assert_allclose(pps_ui_ppm, fc_ui_ppm, atol=1e-3, err_msg=f"UI Display Discrepancy: {pps_ui_ppm} vs {fc_ui_ppm}")
+        np.testing.assert_allclose(
+            pps_ui_ppm, fc_ui_ppm, atol=1e-3, err_msg=f"UI Display Discrepancy: {pps_ui_ppm} vs {fc_ui_ppm}"
+        )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

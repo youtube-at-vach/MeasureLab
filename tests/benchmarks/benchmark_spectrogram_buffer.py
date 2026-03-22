@@ -5,20 +5,24 @@ from unittest.mock import MagicMock
 import numpy as np
 
 # Mock sounddevice before importing anything else that might import it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 # Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.gui.widgets.spectrogram import Spectrogram  # noqa: E402
+
 
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 44100
+
     def register_callback(self, cb):
         return 1
+
     def unregister_callback(self, id):
         pass
+
 
 def benchmark_get_latest_samples():
     engine = MockAudioEngine()
@@ -59,6 +63,7 @@ def benchmark_get_latest_samples():
 
     print(f"Time per call: {avg_time:.2f} us")
     print(f"Total time for {iterations} calls: {total_time:.4f} s")
+
 
 if __name__ == "__main__":
     benchmark_get_latest_samples()

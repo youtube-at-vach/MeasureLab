@@ -14,6 +14,7 @@ mock_modules = {
 with patch.dict(sys.modules, mock_modules):
     from src.core.analysis import AudioCalc
 
+
 class TestWeightingDesign(unittest.TestCase):
     def test_design_c_weighting_validity(self):
         """Test that the function returns valid SOS coefficients."""
@@ -48,12 +49,16 @@ class TestWeightingDesign(unittest.TestCase):
 
         # 2. Gain at 20 Hz (approx -6.2 dB)
         gain_20 = gain_db[0]
-        self.assertAlmostEqual(gain_20, -6.2, delta=0.5, msg=f"Gain at 20Hz ({gain_20:.2f} dB) should be approx -6.2 dB")
+        self.assertAlmostEqual(
+            gain_20, -6.2, delta=0.5, msg=f"Gain at 20Hz ({gain_20:.2f} dB) should be approx -6.2 dB"
+        )
 
         # 3. Gain at 20 kHz (approx -11.2 dB)
         # At 192k, warping is minimal.
         gain_20k = gain_db[2]
-        self.assertAlmostEqual(gain_20k, -11.2, delta=0.5, msg=f"Gain at 20kHz ({gain_20k:.2f} dB) should be approx -11.2 dB")
+        self.assertAlmostEqual(
+            gain_20k, -11.2, delta=0.5, msg=f"Gain at 20kHz ({gain_20k:.2f} dB) should be approx -11.2 dB"
+        )
 
     def test_design_a_weighting_validity(self):
         """Test that A-weighting design returns valid SOS."""
@@ -93,6 +98,7 @@ class TestWeightingDesign(unittest.TestCase):
             AudioCalc.design_c_weighting(0)
         with self.assertRaises(ValueError):
             AudioCalc.design_a_weighting(-100)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,3 @@
-
 import bisect
 import json
 import logging
@@ -194,8 +193,6 @@ class ImpedanceAnalyzer(MeasurementModule):
     @property
     def description(self) -> str:
         return tr("Measure Impedance (Z) using Dual Lock-in Amplifier.")
-
-
 
     def get_widget(self):
         return ImpedanceAnalyzerWidget(self)

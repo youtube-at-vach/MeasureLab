@@ -22,9 +22,9 @@ def pytest_generate_tests(metafunc):
 
         if mode == "typical":
             # Typical: 31 tones, standard buffer, -6dBFS
-            metafunc.parametrize("mim_params", [
-                {"tone_count": 31, "buffer_size": 65536, "duration_sec": 5.0, "amp_dbfs": -12.0}
-            ])
+            metafunc.parametrize(
+                "mim_params", [{"tone_count": 31, "buffer_size": 65536, "duration_sec": 5.0, "amp_dbfs": -12.0}]
+            )
         else:
             # Limit: Matrix
             amplitudes = [-24.0, -18.0, -12.0, -6.0, 0.0]
@@ -33,12 +33,14 @@ def pytest_generate_tests(metafunc):
             cases = []
             for tc in tone_counts:
                 for amp in amplitudes:
-                    cases.append({
-                        "tone_count": tc,
-                        "buffer_size": 65536,
-                        "duration_sec": 5.0, # 5s is enough for capture
-                        "amp_dbfs": amp
-                    })
+                    cases.append(
+                        {
+                            "tone_count": tc,
+                            "buffer_size": 65536,
+                            "duration_sec": 5.0,  # 5s is enough for capture
+                            "amp_dbfs": amp,
+                        }
+                    )
 
             metafunc.parametrize("mim_params", cases)
 
@@ -111,21 +113,21 @@ class TestMultitoneDistortion:
 
         # Helper to wait for capture
         def wait_for_capture(timeout=10.0):
-             start = time.time()
-             while time.time() - start < timeout:
-                 if self.meter.state == self.meter.STATE_DONE:
-                     return True
-                 time.sleep(0.01)
-             return False
+            start = time.time()
+            while time.time() - start < timeout:
+                if self.meter.state == self.meter.STATE_DONE:
+                    return True
+                time.sleep(0.01)
+            return False
 
         if not wait_for_capture():
-             pytest.fail("Warm-up capture timed out")
+            pytest.fail("Warm-up capture timed out")
 
         # 2. Actual Measurement
         self.meter.reset_measurement()
 
         if not wait_for_capture():
-             pytest.fail("Measurement capture timed out")
+            pytest.fail("Measurement capture timed out")
 
         # Retrieve buffer
         rec_buffer = self.meter.recording_buffer
@@ -143,10 +145,10 @@ class TestMultitoneDistortion:
         # Re-use logic from AnalysisWorker/DistortionAnalyzer
         # 1. Compute Spectrum
         # Use "boxcar" (rectangular) window for Coherent Sampling
-        freqs, mag_linear, fft_res = AudioCalc._compute_spectrum(rec_buffer, "boxcar", sr) 
-        # Note: MIM uses Coherent sampling with Rectangular window usually, 
+        freqs, mag_linear, fft_res = AudioCalc._compute_spectrum(rec_buffer, "boxcar", sr)
+        # Note: MIM uses Coherent sampling with Rectangular window usually,
         # effectively no window if buffer is multiple of period.
-        # AdvancedDistortionMeter uses random phase multitone locked to bin centers. 
+        # AdvancedDistortionMeter uses random phase multitone locked to bin centers.
         # So "rectangular" (uniform) window key might be needed or just passed as None/boxcar?
         # AudioCalc._compute_spectrum takes window_name. "boxcar" or "rectangular"?
         # scipy.signal.get_window supports "boxcar".
@@ -154,9 +156,9 @@ class TestMultitoneDistortion:
         # 2. Get expected frequencies
         # We need to access the generated frequencies from the meter
         if self.meter._mim_freqs is None:
-             # Should have been generated during start_analysis -> _update_output_buffer
-             # But _update_output_buffer is called in start_analysis.
-             pass
+            # Should have been generated during start_analysis -> _update_output_buffer
+            # But _update_output_buffer is called in start_analysis.
+            pass
 
         mim_freqs = self.meter._mim_freqs
 

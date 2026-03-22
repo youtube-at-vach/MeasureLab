@@ -215,9 +215,7 @@ def run_dynamic_reserve_sweep(
         phase = float(lockin.current_phase)
         phase_err = _wrap_deg_180(phase - expected_phase_deg)
 
-        mag_err_db = (
-            20.0 * math.log10(mag / expected_mag) if (mag > 1e-15 and expected_mag > 0) else float("inf")
-        )
+        mag_err_db = 20.0 * math.log10(mag / expected_mag) if (mag > 1e-15 and expected_mag > 0) else float("inf")
 
         passes = abs(mag_err_db) <= mag_tol_db
         if phase_tol_deg is not None:
@@ -377,7 +375,10 @@ def run_diagnose(args: argparse.Namespace) -> int:
     print(f"f_ref={float(args.f_ref)} Hz, f_int={float(args.f_int)} Hz")
     print(f"a_sig={float(args.a_sig)} (peak), a_ref={float(args.a_ref)} (peak), a_int_stop={float(args.a_int_stop)}")
     print(f"avg={int(args.avg)}, estimate_ref={bool(args.estimate_ref)}, clip={bool(args.clip)}")
-    print(f"tol: |mag_err| <= {float(args.mag_tol_db)} dB" + ("" if phase_tol is None else f", |phase_err| <= {phase_tol} deg"))
+    print(
+        f"tol: |mag_err| <= {float(args.mag_tol_db)} dB"
+        + ("" if phase_tol is None else f", |phase_err| <= {phase_tol} deg")
+    )
     print("")
 
     # 1) Baseline
@@ -453,9 +454,27 @@ def run_diagnose(args: argparse.Namespace) -> int:
     dr_near = _dr_value(_estimate_dr_single(**{**base_kwargs, "f_int": float(base_kwargs["f_ref"]) + 0.5 * df}))
     # Window improvement heuristic: compare in a sidelobe-ish case (10.5 bins).
     f_int_side = float(base_kwargs["f_ref"]) + 10.5 * df
-    dr_win_rect = _dr_value(_estimate_dr_single(**{**base_kwargs, "f_int": f_int_side, "window": "rect", "window_scope": "both", "window_normalize": True}))
-    dr_win_hann = _dr_value(_estimate_dr_single(**{**base_kwargs, "f_int": f_int_side, "window": "hann", "window_scope": "both", "window_normalize": True}))
-    dr_win_blackman = _dr_value(_estimate_dr_single(**{**base_kwargs, "f_int": f_int_side, "window": "blackman", "window_scope": "both", "window_normalize": True}))
+    dr_win_rect = _dr_value(
+        _estimate_dr_single(
+            **{**base_kwargs, "f_int": f_int_side, "window": "rect", "window_scope": "both", "window_normalize": True}
+        )
+    )
+    dr_win_hann = _dr_value(
+        _estimate_dr_single(
+            **{**base_kwargs, "f_int": f_int_side, "window": "hann", "window_scope": "both", "window_normalize": True}
+        )
+    )
+    dr_win_blackman = _dr_value(
+        _estimate_dr_single(
+            **{
+                **base_kwargs,
+                "f_int": f_int_side,
+                "window": "blackman",
+                "window_scope": "both",
+                "window_normalize": True,
+            }
+        )
+    )
     dr_ref_off = _dr_value(r_ref_off)
     dr_ref_on = _dr_value(r_ref_on)
     dr_avg1 = _dr_value(_estimate_dr_single(**{**base_kwargs, "averaging_count": 1}))
@@ -466,7 +485,9 @@ def run_diagnose(args: argparse.Namespace) -> int:
     if dr_coh is not None and dr_near is not None and (dr_coh - dr_near) > 20:
         likely.append("Window leakage / finite integration is dominating (non-coherent interferer).")
         if dr_win_hann is not None and dr_win_rect is not None and (dr_win_hann - dr_win_rect) > 6:
-            likely.append("Windowing (Hann/Blackman) improves DR in the hard case; consider applying a window in demod.")
+            likely.append(
+                "Windowing (Hann/Blackman) improves DR in the hard case; consider applying a window in demod."
+            )
         elif dr_win_blackman is not None and dr_win_rect is not None and (dr_win_blackman - dr_win_rect) > 6:
             likely.append("Windowing (Blackman) improves DR in the hard case; consider applying a window in demod.")
     if dr_ref_off is not None and dr_ref_on is not None and (dr_ref_off - dr_ref_on) > 10:
@@ -753,7 +774,9 @@ def main() -> int:
         print(f"preset={mode}")
     if bool(args.dr100):
         print("preset=dr100")
-    print(f"tol: |mag_err| <= {args.mag_tol_db} dB" + ("" if phase_tol is None else f", |phase_err| <= {phase_tol} deg"))
+    print(
+        f"tol: |mag_err| <= {args.mag_tol_db} dB" + ("" if phase_tol is None else f", |phase_err| <= {phase_tol} deg")
+    )
     print("")
 
     hdr = f"{'a_int':>10} | {'mag':>10} | {'mag_err(dB)':>11} | {'phase_err(deg)':>13} | {'pass':>5}"

@@ -146,11 +146,7 @@ def test_profile_management(calibration_manager):
 
 def test_frequency_map(calibration_manager, temp_map_path):
     """Test loading, saving, and querying frequency maps."""
-    map_data = [
-        [10.0, -1.0, 45.0],
-        [100.0, 0.0, 0.0],
-        [1000.0, 1.0, -45.0]
-    ]
+    map_data = [[10.0, -1.0, 45.0], [100.0, 0.0, 0.0], [1000.0, 1.0, -45.0]]
 
     assert calibration_manager.save_frequency_map(temp_map_path, map_data) is True
 

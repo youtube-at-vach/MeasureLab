@@ -119,7 +119,6 @@ class BoxcarAverager(MeasurementModule):
 
         self.last_accumulation_time = time.time()
 
-
         self.callback_id = self.audio_engine.register_callback(self._callback)
 
     def stop_analysis(self):
@@ -182,7 +181,7 @@ class BoxcarAverager(MeasurementModule):
 
             # Convert to int64 in separate buffer
             # This is critical to avoid precision loss of large float values in accumulator
-            np.copyto(int_buf, buf, casting='unsafe')
+            np.copyto(int_buf, buf, casting="unsafe")
 
             # Add integer buffer to accumulator
             target_slice += int_buf
@@ -430,7 +429,7 @@ class BoxcarAverager(MeasurementModule):
                     abs_ptr += take
 
                     if self.capture_idx >= period:
-                        self.capture_active = False # Or True if we want immediate re-trigger?
+                        self.capture_active = False  # Or True if we want immediate re-trigger?
                         # For Free Run, we want immediate re-trigger.
                         # But effectively we just completed a block.
                         self.count += 1
@@ -564,7 +563,6 @@ class BoxcarAveragerWidget(QWidget):
 
         self.export_worker = None
 
-
     def init_ui(self):
         layout = QVBoxLayout()
 
@@ -638,10 +636,10 @@ class BoxcarAveragerWidget(QWidget):
         settings_layout.addWidget(self.period_spin, 1, 1)
 
         # Block
-        self.block_samples_spin = QDoubleSpinBox() # Using Double to allow large numbers, though we enforce int
-        self.block_samples_spin.setRange(1, 100_000_000) # Up to very large blocks
+        self.block_samples_spin = QDoubleSpinBox()  # Using Double to allow large numbers, though we enforce int
+        self.block_samples_spin.setRange(1, 100_000_000)  # Up to very large blocks
         self.block_samples_spin.setDecimals(0)
-        self.block_samples_spin.setValue(4800) 
+        self.block_samples_spin.setValue(4800)
         self.block_samples_spin.setSuffix(" spl")
         self.block_samples_spin.valueChanged.connect(self.on_block_samples_changed)
         settings_layout.addWidget(QLabel(tr("Block:")), 1, 2)
@@ -731,7 +729,6 @@ class BoxcarAveragerWidget(QWidget):
 
         layout.addLayout(bottom_layout)
 
-
         # Plot
         self.plot = pg.PlotWidget(title=tr("Averaged Signal"))
         self.plot.setLabel("left", tr("Amplitude"))
@@ -816,7 +813,6 @@ class BoxcarAveragerWidget(QWidget):
             QMessageBox.information(self, tr("Success"), msg)
         else:
             QMessageBox.critical(self, tr("Error"), tr("Failed to export:\n{0}").format(msg))
-
 
     def on_channel_changed(self, idx):
         val = self.channel_combo.itemData(idx)

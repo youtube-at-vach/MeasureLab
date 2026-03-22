@@ -3,12 +3,14 @@ from PyQt6.QtWidgets import QApplication
 from unittest.mock import patch
 from src.gui.widgets.impedance_analyzer import ImpedanceResultsWidget
 
+
 @pytest.fixture
 def qapp():
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
     yield app
+
 
 def test_impedance_results_widget_toggle_details(qapp, qtbot):
     widget = ImpedanceResultsWidget()
@@ -26,7 +28,7 @@ def test_impedance_results_widget_toggle_details(qapp, qtbot):
 
     # Toggle to true via clicking the button
     # Mocking tr for language-agnostic testing
-    with patch('src.gui.widgets.impedance_analyzer.tr', side_effect=lambda x: x):
+    with patch("src.gui.widgets.impedance_analyzer.tr", side_effect=lambda x: x):
         widget.detail_btn.click()
         assert widget.is_detailed is True
         assert widget.detail_widget.isVisible() is True

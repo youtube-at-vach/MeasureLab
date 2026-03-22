@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import json
 
+
 class TestImpedanceAnalyzerSecurity(unittest.TestCase):
     def setUp(self):
         # Create a temporary directory for test files
@@ -39,19 +40,19 @@ class TestImpedanceAnalyzerSecurity(unittest.TestCase):
 
         # Modules to patch in sys.modules
         self.modules_to_patch = {
-            'PyQt6': self.mock_pyqt,
-            'PyQt6.QtCore': self.mock_pyqt,
-            'PyQt6.QtGui': self.mock_pyqt,
-            'PyQt6.QtWidgets': self.mock_pyqt,
-            'pyqtgraph': self.mock_pg,
-            'sounddevice': self.mock_sd,
-            'src.core.localization': self.mock_loc,
-            'numpy': self.mock_numpy,
-            'scipy': self.mock_scipy,
-            'scipy.signal': self.mock_scipy.signal,
-            'scipy.optimize': self.mock_scipy.optimize,
-            'soundfile': self.mock_sf,
-            'src.core.fft_manager': self.mock_fft_manager,
+            "PyQt6": self.mock_pyqt,
+            "PyQt6.QtCore": self.mock_pyqt,
+            "PyQt6.QtGui": self.mock_pyqt,
+            "PyQt6.QtWidgets": self.mock_pyqt,
+            "pyqtgraph": self.mock_pg,
+            "sounddevice": self.mock_sd,
+            "src.core.localization": self.mock_loc,
+            "numpy": self.mock_numpy,
+            "scipy": self.mock_scipy,
+            "scipy.signal": self.mock_scipy.signal,
+            "scipy.optimize": self.mock_scipy.optimize,
+            "soundfile": self.mock_sf,
+            "src.core.fft_manager": self.mock_fft_manager,
         }
 
         # Manual patching of sys.modules
@@ -62,11 +63,12 @@ class TestImpedanceAnalyzerSecurity(unittest.TestCase):
             sys.modules[name] = mock_obj
 
         # Force reload of the module under test to ensure it uses the mocked dependencies
-        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
-            del sys.modules['src.gui.widgets.impedance_analyzer']
+        if "src.gui.widgets.impedance_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.impedance_analyzer"]
 
         try:
             import src.gui.widgets.impedance_analyzer
+
             self.ImpedanceAnalyzer = src.gui.widgets.impedance_analyzer.ImpedanceAnalyzer
         except ImportError as e:
             self.fail(f"Could not import ImpedanceAnalyzer even with mocks: {e}")
@@ -89,15 +91,15 @@ class TestImpedanceAnalyzerSecurity(unittest.TestCase):
                 del sys.modules[name]
 
         # Clean up the module from sys.modules
-        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
-            del sys.modules['src.gui.widgets.impedance_analyzer']
+        if "src.gui.widgets.impedance_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.impedance_analyzer"]
 
     def test_save_calibration_permissions(self):
         """Test that save_calibration creates files with secure permissions (0o600)."""
         # Setup dummy calibration data
-        self.analyzer.cal_open = {100.0: 10+10j}
-        self.analyzer.cal_short = {100.0: 1+1j}
-        self.analyzer.cal_load = {100.0: 50+0j}
+        self.analyzer.cal_open = {100.0: 10 + 10j}
+        self.analyzer.cal_short = {100.0: 1 + 1j}
+        self.analyzer.cal_load = {100.0: 50 + 0j}
         self.analyzer.load_standard_real = 50.0
 
         # Save the calibration
@@ -107,15 +109,14 @@ class TestImpedanceAnalyzerSecurity(unittest.TestCase):
         self.assertTrue(os.path.exists(self.test_file))
 
         # Check permissions on POSIX systems
-        if os.name == 'posix':
+        if os.name == "posix":
             st = os.stat(self.test_file)
             permissions = st.st_mode & 0o777
             # We expect strict 0o600 permissions
-            self.assertEqual(permissions, 0o600,
-                             f"File permissions should be 0o600, but got {oct(permissions)}")
+            self.assertEqual(permissions, 0o600, f"File permissions should be 0o600, but got {oct(permissions)}")
 
         # Verify content integrity
-        with open(self.test_file, 'r') as f:
+        with open(self.test_file, "r") as f:
             data = json.load(f)
             self.assertIn("cal_open", data)
             self.assertIn("100.0", data["cal_open"])

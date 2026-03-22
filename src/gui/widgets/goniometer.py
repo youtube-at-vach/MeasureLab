@@ -1,4 +1,3 @@
-
 from typing import Tuple
 
 import numpy as np
@@ -62,8 +61,6 @@ class Goniometer(MeasurementModule):
     @property
     def description(self) -> str:
         return "Stereo image visualizer (Lissajous) and Phase Correlation."
-
-
 
     def get_widget(self):
         return GoniometerWidget(self)

@@ -5,7 +5,8 @@ import sys
 import os
 
 # Add repo root to path to import src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
 
 def benchmark():
     N = 10_000_000
@@ -64,7 +65,8 @@ def benchmark():
 
     print(f"Baseline Peak Memory:  {peak_base / 1024 / 1024:.2f} MB")
     print(f"Optimized Peak Memory: {peak_opt / 1024 / 1024:.2f} MB")
-    print(f"Memory Reduction: {100 * (1 - peak_opt/peak_base):.1f}%")
+    print(f"Memory Reduction: {100 * (1 - peak_opt / peak_base):.1f}%")
+
 
 if __name__ == "__main__":
     benchmark()

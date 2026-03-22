@@ -5,7 +5,8 @@ import os
 import numpy as np
 
 # Ensure repo root is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 
 class TestNoiseProfilerLogicBase(unittest.TestCase):
     def setUp(self):
@@ -30,27 +31,31 @@ class TestNoiseProfilerLogicBase(unittest.TestCase):
 
         # 2. Patch sys.modules
         # We mock dependencies that might be missing or that we want to control
-        self.modules_patcher = patch.dict(sys.modules, {
-            'PyQt6': self.mock_qt,
-            'PyQt6.QtCore': self.mock_qt.QtCore,
-            'PyQt6.QtWidgets': self.mock_qt.QtWidgets,
-            'pyqtgraph': MagicMock(),
-            'sounddevice': MagicMock(),
-            'soundfile': MagicMock(),
-            'scipy': MagicMock(),
-            'scipy.signal': MagicMock(),
-            'scipy.optimize': MagicMock(),
-            'scipy.signal.windows': MagicMock(),
-            'pywt': MagicMock()
-        })
+        self.modules_patcher = patch.dict(
+            sys.modules,
+            {
+                "PyQt6": self.mock_qt,
+                "PyQt6.QtCore": self.mock_qt.QtCore,
+                "PyQt6.QtWidgets": self.mock_qt.QtWidgets,
+                "pyqtgraph": MagicMock(),
+                "sounddevice": MagicMock(),
+                "soundfile": MagicMock(),
+                "scipy": MagicMock(),
+                "scipy.signal": MagicMock(),
+                "scipy.optimize": MagicMock(),
+                "scipy.signal.windows": MagicMock(),
+                "pywt": MagicMock(),
+            },
+        )
         self.modules_patcher.start()
 
         # 3. Force re-import of the module under test
         # This ensures it uses our Mocks, even if it was previously imported by another test
-        if 'src.gui.widgets.noise_profiler' in sys.modules:
-            del sys.modules['src.gui.widgets.noise_profiler']
+        if "src.gui.widgets.noise_profiler" in sys.modules:
+            del sys.modules["src.gui.widgets.noise_profiler"]
 
         import src.gui.widgets.noise_profiler
+
         self.module_pkg = src.gui.widgets.noise_profiler
         self.NoiseProfiler = self.module_pkg.NoiseProfiler
         self.NoiseAnalysisWorker = self.module_pkg.NoiseAnalysisWorker
@@ -61,8 +66,9 @@ class TestNoiseProfilerLogicBase(unittest.TestCase):
 
         # 2. Clean up module from sys.modules
         # This prevents our mocked version from polluting subsequent tests
-        if 'src.gui.widgets.noise_profiler' in sys.modules:
-            del sys.modules['src.gui.widgets.noise_profiler']
+        if "src.gui.widgets.noise_profiler" in sys.modules:
+            del sys.modules["src.gui.widgets.noise_profiler"]
+
 
 class TestNoiseProfilerAverage(TestNoiseProfilerLogicBase):
     def setUp(self):
@@ -97,6 +103,7 @@ class TestNoiseProfilerAverage(TestNoiseProfilerLogicBase):
         self.assertEqual(self.profiler.current_avg_count, 3)
         np.testing.assert_array_almost_equal(self.profiler._avg_magnitude, np.ones(513) * 2.0)
 
+
 class TestNoiseProfilerProcess(TestNoiseProfilerLogicBase):
     def setUp(self):
         super().setUp()
@@ -118,12 +125,12 @@ class TestNoiseProfilerProcess(TestNoiseProfilerLogicBase):
         # or just check that it runs without error.
 
         # Let's mock fft_manager.rfftfreq and rfft to return numpy arrays so logic continues
-        with patch('src.core.fft_manager.fft_manager') as mock_fft:
+        with patch("src.core.fft_manager.fft_manager") as mock_fft:
             mock_fft.rfft.return_value = np.zeros(513)
             mock_fft.rfftfreq.return_value = np.zeros(513)
 
             # Also mock get_cached_window to return correct size (default buffer size 1024)
-            with patch('src.gui.widgets.noise_profiler.get_cached_window') as mock_window:
+            with patch("src.gui.widgets.noise_profiler.get_cached_window") as mock_window:
                 mock_window.return_value = np.ones(1024)
                 output = self.profiler.process_data(0, "dBV", False)
 
@@ -139,6 +146,7 @@ class TestNoiseProfilerProcess(TestNoiseProfilerLogicBase):
         self.profiler.input_data = np.zeros((100, 2))
         output = self.profiler.process_data(0, "dBV", False)
         self.assertIsNone(output)
+
 
 class TestNoiseProfilerLogging(TestNoiseProfilerLogicBase):
     def test_worker_exception_logging(self):
@@ -156,13 +164,14 @@ class TestNoiseProfilerLogging(TestNoiseProfilerLogicBase):
 
         # Mock the logger
         # Note: We need to patch the logger in the *re-imported* module
-        with patch.object(self.module_pkg, 'logger') as mock_logger:
+        with patch.object(self.module_pkg, "logger") as mock_logger:
             worker.run()
 
             # Now this should work because worker.signals.error is a MagicMock, so .emit is a MagicMock
             worker.signals.error.emit.assert_called_once_with("Simulated Crash")
 
             assert mock_logger.error.called
+
 
 class TestNoiseProfilerRingBuffer(TestNoiseProfilerLogicBase):
     def setUp(self):
@@ -175,9 +184,11 @@ class TestNoiseProfilerRingBuffer(TestNoiseProfilerLogicBase):
         self.profiler.set_buffer_size(10)
 
         self.callback = None
+
         def register_side_effect(cb):
             self.callback = cb
             return 1
+
         self.mock_engine.register_callback.side_effect = register_side_effect
 
         self.profiler.start_analysis()
@@ -208,5 +219,6 @@ class TestNoiseProfilerRingBuffer(TestNoiseProfilerLogicBase):
         self.assertEqual(self.profiler.buffer_ptr, 0)
         np.testing.assert_array_equal(self.profiler.input_data, np.ones((10, 2)) * 3)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

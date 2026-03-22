@@ -4,9 +4,10 @@ import sys
 import os
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 from src.core.analysis import _get_time_array, _get_reference_signals
+
 
 class TestTimeArray(unittest.TestCase):
     def test_get_time_array_basic(self):
@@ -76,5 +77,6 @@ class TestTimeArray(unittest.TestCase):
         self.assertIs(s1, s2)
         self.assertIs(c1, c2)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import importlib
 
+
 # --- Mock Infrastructure ---
 class MockArray:
     def __init__(self, shape, fill_value=0.0):
@@ -44,6 +45,7 @@ class MockArray:
     def copy(self):
         return MockArray(self.shape)
 
+
 class TestRecorderPlayerRace(unittest.TestCase):
     def setUp(self):
         self.mock_np = MagicMock()
@@ -52,18 +54,18 @@ class TestRecorderPlayerRace(unittest.TestCase):
         self.mock_np.mean.return_value = MockArray((1,))
 
         self.mock_modules = {
-            'numpy': self.mock_np,
-            'scipy': MagicMock(),
-            'scipy.signal': MagicMock(),
-            'scipy.optimize': MagicMock(),
-            'sounddevice': MagicMock(),
-            'soundfile': MagicMock(),
-            'src.core.calibration': MagicMock(),
-            'PyQt6': MagicMock(),
-            'PyQt6.QtCore': MagicMock(),
-            'PyQt6.QtWidgets': MagicMock(),
-            'src.core.audio_engine': MagicMock(),
-            'src.core.localization': MagicMock(),
+            "numpy": self.mock_np,
+            "scipy": MagicMock(),
+            "scipy.signal": MagicMock(),
+            "scipy.optimize": MagicMock(),
+            "sounddevice": MagicMock(),
+            "soundfile": MagicMock(),
+            "src.core.calibration": MagicMock(),
+            "PyQt6": MagicMock(),
+            "PyQt6.QtCore": MagicMock(),
+            "PyQt6.QtWidgets": MagicMock(),
+            "src.core.audio_engine": MagicMock(),
+            "src.core.localization": MagicMock(),
         }
 
         self.patcher = patch.dict(sys.modules, self.mock_modules)
@@ -71,6 +73,7 @@ class TestRecorderPlayerRace(unittest.TestCase):
 
         # Import and reload the module to ensure it uses the mocks
         import src.gui.widgets.recorder_player
+
         importlib.reload(src.gui.widgets.recorder_player)
         self.module = src.gui.widgets.recorder_player
 

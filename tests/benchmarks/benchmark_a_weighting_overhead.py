@@ -4,14 +4,15 @@ import sys
 import os
 
 # Adjust path to import src
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.core.analysis import AudioCalc
+
 
 def benchmark():
     fs = 48000
     N = 65536
-    freqs_full = np.fft.rfftfreq(N, d=1/fs)
+    freqs_full = np.fft.rfftfreq(N, d=1 / fs)
 
     print(f"Benchmark Config: fs={fs}, N={N}")
 
@@ -25,14 +26,14 @@ def benchmark():
 
     # Case 2: Sliced array (starts > 0)
     # Using slice indices to ensure perfect linearity in floating point representation if relevant
-    idx_start = int(20 / (fs/N))
-    idx_end = int(20000 / (fs/N))
+    idx_start = int(20 / (fs / N))
+    idx_end = int(20000 / (fs / N))
     freqs_sliced = freqs_full[idx_start:idx_end]
     mag_sliced = np.zeros_like(freqs_sliced)
 
     start = time.time()
     for _ in range(100):
-         AudioCalc.calculate_noise_profile(mag_sliced, freqs_sliced, fs)
+        AudioCalc.calculate_noise_profile(mag_sliced, freqs_sliced, fs)
     end = time.time()
     print(f"Sliced array (starts > 0): {end - start:.4f}s")
 
@@ -45,7 +46,7 @@ def benchmark():
 
     start = time.time()
     for _ in range(100):
-         AudioCalc.calculate_noise_profile(mag_log, freqs_log, fs)
+        AudioCalc.calculate_noise_profile(mag_log, freqs_log, fs)
     end = time.time()
     print(f"Log spaced (Logarithmic): {end - start:.4f}s")
 
@@ -57,9 +58,10 @@ def benchmark():
 
     start = time.time()
     for _ in range(100):
-         AudioCalc.calculate_noise_profile(mag_rand, freqs_rand, fs)
+        AudioCalc.calculate_noise_profile(mag_rand, freqs_rand, fs)
     end = time.time()
     print(f"Random (Arbitrary): {end - start:.4f}s")
+
 
 if __name__ == "__main__":
     benchmark()

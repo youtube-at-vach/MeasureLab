@@ -1,4 +1,3 @@
-
 from collections import deque
 import time
 
@@ -128,7 +127,7 @@ class LockInFrequencyCounter(MeasurementModule):
 
         # NCO Statistics / Kalman Filter
         # nco_avg_count now controls the Process Noise Q (Smoothness/Stiffness) AND Display Averaging
-        self.nco_avg_count = 10 
+        self.nco_avg_count = 10
         self.kf = KalmanFilter1D(process_noise=1e-10, measurement_noise=1e-6)
 
         # Buffer to estimate Measurement Noise R adaptively
@@ -139,14 +138,13 @@ class LockInFrequencyCounter(MeasurementModule):
 
         self.update_kalman_params()
 
-        self.nco_mean = 1000.0 # Instant KF estimate
-        self.nco_std = 0.0     # KF Uncertainty
+        self.nco_mean = 1000.0  # Instant KF estimate
+        self.nco_std = 0.0  # KF Uncertainty
 
-        self.nco_display_mean = 1000.0 # Averaged KF estimate for UI
-        self.nco_display_std = 0.0     # Std Dev of the averaging window
+        self.nco_display_mean = 1000.0  # Averaged KF estimate for UI
+        self.nco_display_std = 0.0  # Std Dev of the averaging window
 
         # Stability Stats
-
 
         # Internal State
         self._nco_phase_rad = 0.0
@@ -185,8 +183,6 @@ class LockInFrequencyCounter(MeasurementModule):
     @property
     def description(self) -> str:
         return tr("Precision Frequency & Phase Drift Measurement using Lock-in Principle.")
-
-
 
     def get_widget(self):
         return LockInFrequencyCounterWidget(self)
@@ -268,7 +264,7 @@ class LockInFrequencyCounter(MeasurementModule):
                 sig = 0.5 * np.cos(phases)
 
                 if self.ref_channel == 1:
-                     outdata[:, 1] = sig
+                    outdata[:, 1] = sig
                 else:
                     outdata[:, 0] = sig
 
@@ -336,7 +332,7 @@ class LockInFrequencyCounter(MeasurementModule):
         seg_len = int(round(num_cycles * period_2f))
 
         if seg_len > stride:
-             seg_len = stride
+            seg_len = stride
 
         # Calculate Phase for each segment
         seg_phases = []
@@ -507,6 +503,7 @@ class LockInFrequencyCounterWidget(QWidget):
 
         # Lock / FLL
         from PyQt6.QtWidgets import QCheckBox
+
         self.lock_check = QCheckBox(tr("Lock NCO to Signal (FLL)"))
         self.lock_check.toggled.connect(self.on_lock_toggled)
         controls_layout.addWidget(self.lock_check)
@@ -664,7 +661,7 @@ class LockInFrequencyCounterWidget(QWidget):
         form_pid.addRow(tr("Derivative (Kd):"), self.kd_spin)
 
         settings_layout.addWidget(group_pid)
-        settings_layout.addStretch() # Push everything up
+        settings_layout.addStretch()  # Push everything up
 
         self.tabs.addTab(self.tab_settings, tr("Settings"))
 
@@ -693,7 +690,7 @@ class LockInFrequencyCounterWidget(QWidget):
     def on_ref_mode_changed(self, idx):
         modes = ["internal", "loopback"]
         self.module.ref_mode = modes[idx]
-        is_loopback = (idx == 1)
+        is_loopback = idx == 1
         self.output_ch_combo.setEnabled(is_loopback)
 
     def on_output_channel_changed(self, idx):
@@ -753,14 +750,14 @@ class LockInFrequencyCounterWidget(QWidget):
                 # Use a simple moving average convolution
                 kernel = np.ones(smoothing_window) / smoothing_window
 
-                f_smoothed = np.convolve(f_data, kernel, mode='valid')
-                p_smoothed = np.convolve(p_data, kernel, mode='valid')
+                f_smoothed = np.convolve(f_data, kernel, mode="valid")
+                p_smoothed = np.convolve(p_data, kernel, mode="valid")
 
                 # The 'valid' mode reduces the output size by window-1.
                 # We need to slice the time axis to match the end of the smoothed data
                 # (which corresponds to the latest times).
                 # t_data should be sliced from [window-1:]
-                t_plot = t_data[smoothing_window - 1:]
+                t_plot = t_data[smoothing_window - 1 :]
 
                 self.curve_freq.setData(t_plot, f_smoothed)
                 self.curve_phase.setData(t_plot, p_smoothed)

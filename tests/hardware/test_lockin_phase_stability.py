@@ -99,7 +99,7 @@ class TestLockinPhaseStability:
 
                 # Check for signal
                 if not getattr(self.lockin, "signal_present", False):
-                    # In real loopback, signal should be present. 
+                    # In real loopback, signal should be present.
                     # If not, it might be just skipping a frame or setting up.
                     # We continue but don't record potentially bad data?
                     # Or we just rely on the buffer duration wait.
@@ -120,7 +120,7 @@ class TestLockinPhaseStability:
             pytest.fail("Not enough data points collected")
 
         phases_unwrapped_deg = np.array(phases)
-        # Note: LockInFrequencyCounter.current_phase_deg is accumulated phase, 
+        # Note: LockInFrequencyCounter.current_phase_deg is accumulated phase,
         # so it is already unwrapped.
 
         t = np.array(timestamps)
@@ -157,7 +157,7 @@ class TestLockinPhaseStability:
         # For "Long Term Stability", maybe we look at how much the slope changes?
         # Or just reports the metrics as defined in previous test.
 
-        metric_long_term_deg = np.std(phases_unwrapped_deg) 
+        metric_long_term_deg = np.std(phases_unwrapped_deg)
         # This value is dominated by the slope if freq offset is non-zero.
         # Let's keep the logic from previous test for consistency if that was intentional.
         # Previous test: phase_total_std_deg = np.std(phases_unwrapped_deg)
@@ -171,9 +171,8 @@ class TestLockinPhaseStability:
         print(f"\nResults ({duration_sec}s):")
         print(f"  Freq Offset:     {measured_freq_offset_hz:.6f} Hz")
         print(f"  Phase RMS (Jit): {phase_jitter_rms_deg:.6f} deg")
-        print(f"  TIE (Short):     {tie_rms_jitter_sec * 1e9:.3f} ns (Jitter)") 
+        print(f"  TIE (Short):     {tie_rms_jitter_sec * 1e9:.3f} ns (Jitter)")
         print(f"  TIE (Long):      {tie_rms_total_sec * 1e9:.3f} ns (Total)")
-
 
         record_property("test_type", "Phase Stability")
         record_property("duration_sec", duration_sec)

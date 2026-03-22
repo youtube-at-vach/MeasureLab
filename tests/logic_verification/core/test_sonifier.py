@@ -2,6 +2,7 @@ import numpy as np
 
 from src.core.sonifier import Sonifier
 
+
 def test_sonifier_initialization():
     s = Sonifier(sample_rate=48000)
     assert s.sample_rate == 48000
@@ -9,6 +10,7 @@ def test_sonifier_initialization():
     assert s.mode == Sonifier.MODE_LEVEL_MONITOR
     assert s.master_volume_db == 0.0
     assert s.output_channel == 2
+
 
 def test_sonifier_setters():
     s = Sonifier()
@@ -27,12 +29,14 @@ def test_sonifier_setters():
     s.set_output_channel(0)
     assert s.output_channel == 0
 
+
 def test_sonifier_process_disabled():
     s = Sonifier()
     outdata = np.ones((1024, 2))
     s.process(outdata)
     # Since it's disabled and amp is 0, it should zero the buffer
     assert np.all(outdata == 0.0)
+
 
 def test_sonifier_process_enabled_level_monitor():
     s = Sonifier(sample_rate=48000)
@@ -65,17 +69,19 @@ def test_sonifier_process_enabled_level_monitor():
     assert np.all(outdata[:, 0] == 0.0)
     assert np.any(outdata[:, 1] != 0.0)
 
+
 def test_sonifier_frequency_mapping():
     s = Sonifier(sample_rate=48000)
     s.set_enabled(True)
     s.set_mode(Sonifier.MODE_FREQUENCY_MAPPING)
 
-    s.update_parameters(scan_freq=1234.5, mag_db=-20.0) # Max amp
+    s.update_parameters(scan_freq=1234.5, mag_db=-20.0)  # Max amp
 
     outdata = np.zeros((1024, 2))
     s.process(outdata)
 
     assert s.current_freq == 1234.5
+
 
 def test_sonifier_manual_tuner():
     s = Sonifier(sample_rate=48000)
@@ -90,10 +96,11 @@ def test_sonifier_manual_tuner():
 
     assert s.current_freq == 777.0
 
+
 def test_sonifier_at_140dbfs():
     s = Sonifier()
     s.set_enabled(True)
-    s.set_volume(60.0) # +60dB boost
+    s.set_volume(60.0)  # +60dB boost
     s.update_parameters(scan_freq=1000.0, mag_db=-140.0)
     # -140 + 60 = -80.
     # normalized_amp = (-80 - (-100)) / (-20 - (-100)) = 20 / 80 = 0.25

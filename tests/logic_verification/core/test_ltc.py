@@ -163,16 +163,16 @@ def test_ltc_decoder_check_sync_and_decode():
     # Timecode 12:34:56:12
     # BCD encoding
     # Frames: 12 (0010 0001)
-    ff_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] # 16 bits
+    ff_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]  # 16 bits
     # Seconds: 56 (0110 0101)
-    ss_bits = [0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0] # 16 bits
+    ss_bits = [0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0]  # 16 bits
     # Minutes: 34 (0100 0011)
-    mm_bits = [0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0] # 16 bits
+    mm_bits = [0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0]  # 16 bits
     # Hours: 12 (0010 0001)
-    hh_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0] # 16 bits
+    hh_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]  # 16 bits
     # Sync Word: 0x3FFD (0011 1111 1111 1101) reversed as per bit order?
     # No, sync pattern in bit 64-79: 0011 1111 1111 1101 = 0x3FFD
-    sync_bits = [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1] # 16 bits
+    sync_bits = [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1]  # 16 bits
 
     all_bits = ff_bits + ss_bits + mm_bits + hh_bits + sync_bits
 

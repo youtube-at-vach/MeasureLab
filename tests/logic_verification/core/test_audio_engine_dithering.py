@@ -4,14 +4,16 @@ import sys
 import numpy as np
 import importlib
 
+
 class TestAudioEngineDithering(unittest.TestCase):
     def setUp(self):
         # Patch sys.modules to mock sounddevice
-        self.patcher = patch.dict(sys.modules, {'sounddevice': MagicMock()})
+        self.patcher = patch.dict(sys.modules, {"sounddevice": MagicMock()})
         self.patcher.start()
 
         # Import and reload AudioEngine to use the mock
         import src.core.audio_engine
+
         importlib.reload(src.core.audio_engine)
         self.AudioEngineClass = src.core.audio_engine.AudioEngine
 
@@ -22,8 +24,8 @@ class TestAudioEngineDithering(unittest.TestCase):
 
         # Prepare dummy callback for tests
         self.frames = 1024
-        self.indata = np.zeros((self.frames, 2), dtype='float32')
-        self.outdata = np.zeros((self.frames, 2), dtype='float32')
+        self.indata = np.zeros((self.frames, 2), dtype="float32")
+        self.outdata = np.zeros((self.frames, 2), dtype="float32")
 
         # Register a callback that outputs silence (zeros)
         # This ensures that any output is purely from the dithering process
@@ -96,7 +98,7 @@ class TestAudioEngineDithering(unittest.TestCase):
 
         # Test "16-bit" string
         self.engine.dithering_bit_depth = "16-bit"
-        self.outdata.fill(0) # Reset buffer
+        self.outdata.fill(0)  # Reset buffer
         self.engine._master_callback(self.indata, self.outdata, self.frames, None, 0)
         max_val_16 = np.max(np.abs(self.outdata))
 
@@ -106,7 +108,7 @@ class TestAudioEngineDithering(unittest.TestCase):
 
         # Test "32-bit float" (should fallback to 24-bit logic as per code)
         self.engine.dithering_bit_depth = "32-bit float"
-        self.outdata.fill(0) # Reset buffer
+        self.outdata.fill(0)  # Reset buffer
         self.engine._master_callback(self.indata, self.outdata, self.frames, None, 0)
         max_val_32 = np.max(np.abs(self.outdata))
 
@@ -117,5 +119,6 @@ class TestAudioEngineDithering(unittest.TestCase):
         # Compare magnitudes to be sure
         self.assertGreater(max_val_16, max_val_32 * 100, "16-bit dither should be much larger than 24-bit dither")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

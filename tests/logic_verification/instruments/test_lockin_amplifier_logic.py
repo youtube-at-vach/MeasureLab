@@ -3,10 +3,11 @@ import sys
 from unittest.mock import MagicMock
 
 # Mock sounddevice before importing anything that uses it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 import numpy as np  # noqa: E402
 from src.gui.widgets.lock_in_amplifier import LockInAmplifier  # noqa: E402
+
 
 class MockCalibration:
     def __init__(self):
@@ -16,6 +17,7 @@ class MockCalibration:
 
     def get_frequency_correction(self, freq):
         return 0.0, 0.0
+
 
 class MockAudioEngine:
     def __init__(self):
@@ -34,11 +36,12 @@ class MockAudioEngine:
         if cid in self.callbacks:
             del self.callbacks[cid]
 
+
 class TestLockInBuffer(unittest.TestCase):
     def setUp(self):
         self.audio_engine = MockAudioEngine()
         self.lockin = LockInAmplifier(self.audio_engine)
-        self.lockin.set_buffer_size(100) # Small buffer for easier testing
+        self.lockin.set_buffer_size(100)  # Small buffer for easier testing
         self.lockin.start_analysis()
         self.callback = self.audio_engine.callbacks[self.lockin.callback_id]
 
@@ -92,10 +95,12 @@ class TestLockInBuffer(unittest.TestCase):
         # Check reconstruction
         ordered, s_idx = self.lockin.get_ordered_input_data()
 
-        expected = np.concatenate((
-            np.ones((80, 2)) * 1, # 80 samples of 1s
-            np.ones((20, 2)) * 2  # 20 samples of 2s
-        ))
+        expected = np.concatenate(
+            (
+                np.ones((80, 2)) * 1,  # 80 samples of 1s
+                np.ones((20, 2)) * 2,  # 20 samples of 2s
+            )
+        )
 
         np.testing.assert_array_equal(ordered, expected)
 
@@ -117,6 +122,7 @@ class TestLockInBuffer(unittest.TestCase):
 
         ordered, s_idx = self.lockin.get_ordered_input_data()
         np.testing.assert_array_equal(ordered, expected_internal)
+
 
 if __name__ == "__main__":
     unittest.main()

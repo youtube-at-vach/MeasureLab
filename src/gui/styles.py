@@ -1,6 +1,7 @@
 """
 Common stylesheet definitions for GUI widgets.
 """
+
 import sys
 
 # Cross-platform Monospace Font Family
@@ -13,7 +14,6 @@ elif sys.platform == "win32":
 else:
     # Linux and others: Use lowercase "monospace" as the primary/fallback
     MONOSPACE_FONT_FAMILY = "monospace, Courier New, Courier"
-
 
 
 # Toggle Button Styles (Start/Stop)
