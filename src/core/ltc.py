@@ -233,20 +233,13 @@ class LTCDecoder:
         if self._last_sign is None:
             self._last_sign = bool(signs[0])
 
-        crossings = []
+        signs_with_last = np.empty(signs.size + 1, dtype=bool)
+        signs_with_last[0] = self._last_sign
+        signs_with_last[1:] = signs
 
-        # Boundary crossing between last sample of previous chunk and first sample of this chunk.
-        if bool(signs[0]) != bool(self._last_sign):
-            crossings.append(np.array([0], dtype=np.int64))
+        crossing_positions = np.nonzero(signs_with_last[1:] != signs_with_last[:-1])[0]
 
-        # Intra-chunk crossings: position i means crossing between i-1 and i.
-        intra = np.nonzero(signs[1:] != signs[:-1])[0]
-        if intra.size:
-            crossings.append(intra + 1)
-
-        if crossings:
-            crossing_positions = np.concatenate(crossings)
-
+        if crossing_positions.size > 0:
             # Combine the first position with the samples from the previous chunk
             # and calculate consecutive differences between all other positions.
             diffs = np.diff(crossing_positions, prepend=-self.samples_since_last_zc)
