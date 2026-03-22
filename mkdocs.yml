@@ -64,6 +64,8 @@ plugins:
           nav_translations:
             ウィジット: Widgets
             測定レシピ: Measurement Recipes
+            公式リポジトリ: Official Repository
+            リリースページ: Release Page
   - with-pdf:
       author: MeasureLab maintainers
       copyright: Unlicense
