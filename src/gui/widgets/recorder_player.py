@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
-    QProgressBar,
     QProgressDialog,
     QPushButton,
     QSlider,
@@ -436,7 +435,7 @@ class RecorderPlayer(MeasurementModule):
                 # Avoid destructive read-modify-write if the UI thread mutated play position during this loop iteration
                 if self.playback_pos == pos:
                     self.playback_pos = pos + to_copy
-                
+
                 current_idx += to_copy
 
                 if self.playback_pos >= pb_len:
@@ -605,7 +604,7 @@ class RecorderPlayerWidget(QWidget):
             target_pos = int((self.pos_slider.value() / 1000.0) * total_samples)
             target_pos = max(0, min(total_samples, target_pos))
             self.module.playback_pos = target_pos
-            
+
             sr = self.module.audio_engine.sample_rate
             self.time_label.setText(f"{target_pos / sr:.2f} / {total_samples / sr:.2f} s")
 
@@ -804,11 +803,11 @@ class RecorderPlayerWidget(QWidget):
                 # Handle possible float division by zero just in case
                 sr = max(1, self.module.audio_engine.sample_rate)
                 progress = int(1000 * pos / total)
-                
+
                 self.pos_slider.blockSignals(True)
                 self.pos_slider.setValue(progress)
                 self.pos_slider.blockSignals(False)
-                
+
                 self.time_label.setText(f"{pos / sr:.2f} / {total / sr:.2f} s")
 
         # Update Recording UI
