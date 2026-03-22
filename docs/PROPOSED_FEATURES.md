@@ -7,12 +7,15 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Generative AI Non-Linearity Cloner:** AI model trained via specialized excitation signals to replicate exact dynamic non-linearities/phase of analog gear.
-* **Brainwave (EEG) Perceptual Correlator:** Syncing auditory test signals with real-time EEG metrics to measure perceived distortion versus mathematical distortion.
-* **Headless / Web Remote Interface:** Decouple GUI for embedded (Raspberry Pi) web/mobile remote monitoring.
-* **AI Component Degradation Predictor:** Analyzes harmonic drift over time to predict capacitor aging or thermal degradation in analog circuits before catastrophic failure.
-* **Augmented Reality (AR) Probe Visualizer:** Overlaying signal paths, voltage levels, and distortion heatmaps directly onto a physical PCB view using a smartphone/webcam in real-time.
-* **Real-time Active Distortion Nulling:** Synthesizing inverse distortion signals in real-time to cancel out inherent DAC/Amp non-linearities, pushing physical hardware beyond its specified limits.
+* **Psychoacoustic AI-MOS Predictor:** AI model that predicts Mean Opinion Score (MOS) directly from DAC/Amp output without human listeners.
+* **Digital Twin Synthesizer:** Create a virtual, real-time running model of the measured analog component based on lock-in harmonic analysis.
+* **Quantum Jitter Tomography:** Using QRNG excitation to measure absolute system determinism and micro-jitter.
+* **Generative AI Non-Linearity Cloner:** AI model trained via specialized excitation signals to replicate exact dynamic non-linearities.
+* **Brainwave (EEG) Perceptual Correlator:** Syncing auditory test signals with real-time EEG metrics.
+* **Headless / Web Remote Interface:** Decouple GUI for embedded web/mobile remote monitoring.
+* **AI Component Degradation Predictor:** Analyzes harmonic drift over time to predict component aging.
+* **Augmented Reality (AR) Probe Visualizer:** Overlaying signal paths and distortion heatmaps onto a PCB view.
+* **Real-time Active Distortion Nulling:** Synthesizing inverse distortion signals to cancel inherent non-linearities.
 
 ---
 
@@ -20,73 +23,51 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
-* **Dynamics Processor Profiler:**
-    * **Concept:** Measures static I/O transfer curves and time-domain dynamic attack/release times of compressors and limiters.
-    * **Why:** The existing Linearity Analyzer only checks static levels; it cannot measure time-constants (Attack/Release).
-* **Bit-Perfect Verifier:**
-    * **Concept:** PRBS or watermark generator/analyzer to verify 100% bit-accurate loopback transmission.
-    * **Why:** Proves zero OS-level resampling/attenuation.
-* **Realtime Null Comparator:**
-    * **Concept:** Real-time channel inversion with sub-sample delay/gain matching for difference listening.
-    * **Why:** Auditory verification of chain transparency.
-* **Offline Null Comparator:**
-    * **Concept:** File-based reference vs. DUT comparison.
+* **Test Sequence Automator:**
+    * **Concept:** A macro engine to script and automate test sequences across multiple widgets.
+    * **Why:** Enables unattended 2D/3D parameter sweeps.
+* **Dynamics Processor Profiler:** Measures static I/O transfer curves and time-domain attack/release.
+* **Bit-Perfect Verifier:** PRBS/watermark generator to verify 100% bit-accurate loopback.
+* **Realtime/Offline Null Comparator:** Channel inversion with sub-sample delay/gain matching for difference listening.
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **Network Analyzer: Amplifier Stability Margins:**
-    * **Extension:** Calculate and display Gain Margin (dB) and Phase Margin (degrees) from Bode plots.
-    * **Why:** Critical for evaluating custom amplifier stability under complex loads.
-* **Frequency Counter: Phase Noise Plot:**
-    * **Extension:** FFT-based phase deviation plot (dBc/Hz).
-* **Signal Generator: Psychoacoustic Masking Tones:**
-    * **Extension:** Pure tone + narrow-band noise generation modes.
-* **Impedance Analyzer: Cable Tester Mode:**
-    * **Extension:** Measure Capacitance, Inductance, and Resistance per meter.
-* **Network Analyzer: Impulse Response & Coherence:**
-    * **Extension:** Time-domain IR and 0.0-1.0 Coherence plot.
-* **Signal Generator & Spectrum Analyzer: J-Test Jitter Analysis:**
-    * **Extension:** Add standard J-Test signal (fs/4 + low level toggle) to Generator and high-resolution zoomed view to Analyzer.
-    * **Why:** Industry standard for evaluating DAC clock jitter without needing dedicated hardware analyzers.
-* **Distortion Analyzer / Noise Profiler: AES17 Dynamic Range Mode:**
-    * **Extension:** Add -60dBFS excitation and CCIR-2k weighting filter to automate standard DAC Dynamic Range measurements.
-    * **Why:** Essential for modern DAC evaluation, currently requires manual calculation from noise floors.
+* **Oscilloscope: CMRR/PSRR Mode:**
+    * **Extension:** Dedicated Common-Mode and Power Supply Rejection Ratio calculations.
+* **Spectrum Analyzer: DAC Filter Classifier:**
+    * **Extension:** Automatically classify DAC reconstruction filters (Brickwall, Minimum Phase, etc.) via impulse response pre/post-ringing analysis.
+* **Frequency Counter: Thermal Drift Logger:**
+    * **Extension:** Long-term logging of clock frequency to evaluate oscillator temperature stability.
+* **Network Analyzer: Amplifier Stability Margins:** Calculate Gain/Phase Margin from Bode plots.
+* **Frequency Counter: Phase Noise Plot:** FFT-based phase deviation plot (dBc/Hz).
+* **Signal Generator: Psychoacoustic Masking Tones:** Pure tone + narrow-band noise generation.
+* **Impedance Analyzer: Cable Tester Mode:** Measure Capacitance/Inductance/Resistance per meter.
+* **Network Analyzer: Impulse Response & Coherence:** Time-domain IR and Coherence plot.
+* **Distortion/Spectrum Analyzer: J-Test & AES17:** Industry standard jitter/dynamic range automated modes.
 
 ---
 
 ## ✅ Already Implemented
 
-* **Quantization / Bit Depth Analyzer** (Settings)
-* **Crosstalk & Multitone Analyzer** (`NetworkAnalyzer` / `AdvancedDistortionMeter`)
-* **Oscilloscope Persistence / Eye Pattern** (`Oscilloscope`)
-* **Linearity Analyzer**
+* Quantization / Bit Depth Analyzer
+* Crosstalk & Multitone Analyzer
+* Oscilloscope Persistence / Eye Pattern
+* Linearity Analyzer
 
 ---
 
 ## ⏸️ Under Review / On Hold
 
-* **Holographic Audio Topography:** On Hold (Current PC specs cannot smoothly drive 3D rendering).
-* **3D Spectral Waterfall:** On Hold (Room acoustic tools like REW already exist).
-* **Plugin / Scripting System:** On Hold (Core architecture needs finalization first).
-* **AI Circuit Topology Reverse Engineer:** Under Investigation (Feasibility research ongoing).
-* **Multimeter (AC Voltmeter):** Under Consideration (Exploring broader approaches).
-* **Spectrum Analyzer: Cepstrum Analysis:** Under Consideration (May move to a dedicated vibration analysis widget).
+* Holographic Audio Topography, 3D Spectral Waterfall, Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
 
 ---
 
 ## ❌ Cancelled / Not Needed
 
-* **Step Response Analyzer:** Cancelled (Substitutable by Boxcar averager; anti-aliasing filters distort step responses).
-* **Spectrum Analyzer: THD Hot-Tracking:** Cancelled (Dedicated distortion meter exists; real-time performance concerns).
-* **Multi-Channel Phase/Delay Matrix:** Cancelled (Substitutable by `Network Analyzer` and `Oscilloscope` phase correlation features).
+* Step Response Analyzer, Spectrum Analyzer: THD Hot-Tracking, Multi-Channel Phase/Delay Matrix.
 
 ---
 
 ## 💤 Deferred / Reference (Not Planned)
 
-* **DC Stability & Drift Logger:** Deferred (Hardware is AC Coupled).
-* **Wow & Flutter Meter:** Deferred (Analog focus).
-* **Room Acoustics (RT60) & T/S Parameters:** Deferred (Acoustic focus).
-* **EQ Designer & Polarity Tester:** Deferred.
-* **AI-Based Audio Anomaly Detection:** Deferred (No suitable API/algo).
-* **Digital Interface Analyzer (Jitter/Eye):** Deferred (Requires logic analyzer hardware).
+* DC Stability & Drift Logger, Wow & Flutter Meter, Room Acoustics (RT60) & T/S Parameters, EQ Designer, AI-Based Audio Anomaly Detection, Digital Interface Analyzer.
