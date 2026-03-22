@@ -271,7 +271,13 @@ class RecorderPlayer(MeasurementModule):
             # Use the secure file descriptor instead of the filepath to prevent TOCTOU
             # The format argument is required when using a file descriptor
             with sf.SoundFile(
-                self._temp_record_fd, mode="w", samplerate=samplerate, channels=channels, subtype="FLOAT", format="WAV", closefd=True
+                self._temp_record_fd,
+                mode="w",
+                samplerate=samplerate,
+                channels=channels,
+                subtype="FLOAT",
+                format="WAV",
+                closefd=True,
             ) as f:
                 # SoundFile now owns the fd and will close it
                 self._temp_record_fd = None
@@ -446,6 +452,8 @@ class RecorderPlayerWidget(QWidget):
         self.save_worker = None
         self.progress_dialog = None
 
+        self._was_playing = False
+
         # Update timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
@@ -525,8 +533,12 @@ class RecorderPlayerWidget(QWidget):
         self.save_btn.clicked.connect(self.on_save)
         self.save_btn.setEnabled(False)
 
+        self.sync_check = QCheckBox(tr("Sync Play/Record"))
+        self.sync_check.setToolTip(tr("Synchronize starting and stopping of playback and recording"))
+
         rec_ctrl_layout.addWidget(self.rec_btn)
         rec_ctrl_layout.addWidget(self.save_btn)
+        rec_ctrl_layout.addWidget(self.sync_check)
         rec_layout.addLayout(rec_ctrl_layout)
 
         # Info
@@ -619,8 +631,22 @@ class RecorderPlayerWidget(QWidget):
     def on_play_toggle(self):
         if self.module.is_playing:
             self.module.stop_playback()
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and self.module.is_recording:
+                self.rec_btn.setChecked(False)
+                self.module.stop_recording()
+                self.rec_btn.setText(tr("Record"))
+                self.rec_btn.setStyleSheet("")
+                self.save_btn.setEnabled(True)
         else:
             self.module.start_playback()
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and not self.module.is_recording:
+                self.rec_btn.setChecked(True)
+                self.module.start_recording()
+                self.rec_btn.setText(tr("Stop Recording"))
+                self.rec_btn.setStyleSheet("background-color: #ffcccc; color: red; font-weight: bold;")
+                self.save_btn.setEnabled(False)
 
     def on_loop_toggle(self, checked):
         self.module.loop_playback = checked
@@ -638,11 +664,17 @@ class RecorderPlayerWidget(QWidget):
             self.rec_btn.setText(tr("Stop Recording"))
             self.rec_btn.setStyleSheet("background-color: #ffcccc; color: red; font-weight: bold;")
             self.save_btn.setEnabled(False)
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and not self.module.is_playing:
+                self.module.start_playback()
         else:
             self.module.stop_recording()
             self.rec_btn.setText(tr("Record"))
             self.rec_btn.setStyleSheet("")
             self.save_btn.setEnabled(True)
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and self.module.is_playing:
+                self.module.stop_playback()
 
     def on_save(self):
         fname, selected_filter = QFileDialog.getSaveFileName(
@@ -700,6 +732,20 @@ class RecorderPlayerWidget(QWidget):
                     self.pb_progress.setValue(progress)
         else:
             self.play_btn.setText(tr("Play"))
+
+            if (
+                getattr(self, "_was_playing", False)
+                and hasattr(self, "sync_check")
+                and self.sync_check.isChecked()
+                and self.module.is_recording
+            ):
+                self.rec_btn.setChecked(False)
+                self.module.stop_recording()
+                self.rec_btn.setText(tr("Record"))
+                self.rec_btn.setStyleSheet("")
+                self.save_btn.setEnabled(True)
+
+        self._was_playing = self.module.is_playing
 
         # Update Recording UI
         if self.module.is_recording:

@@ -1294,5 +1294,7 @@
     "⬆︎Update available: {0}": "⬆︎Update available: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEROUS - HIGH INTENSITY 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 CAUTION - ULTRASOUND ACTIVE 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢",
+    "Sync Play/Record": "Sync Play/Record",
+    "Synchronize starting and stopping of playback and recording": "Synchronize starting and stopping of playback and recording"
 }
