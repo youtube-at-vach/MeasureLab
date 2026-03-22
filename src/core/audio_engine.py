@@ -398,8 +398,9 @@ class AudioEngine:
         if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
             # Loopback logic: reuse last output
             lb_src = self.last_output_buffer
-            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
-                self._logical_in_buffer = np.zeros((frames, 2), dtype=self._get_dtype())
+            dtype = self._get_dtype()
+            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2) or self._logical_in_buffer.dtype != dtype:
+                self._logical_in_buffer = np.empty((frames, 2), dtype=dtype)
 
             logical_in = self._logical_in_buffer
             if lb_src.shape[1] >= 2:
@@ -415,8 +416,9 @@ class AudioEngine:
             in_mode = self._current_in_mode
             req_channels = 1 if in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
 
-            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, req_channels):
-                self._logical_in_buffer = np.zeros((frames, req_channels), dtype=self._get_dtype())
+            dtype = self._get_dtype()
+            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, req_channels) or self._logical_in_buffer.dtype != dtype:
+                self._logical_in_buffer = np.empty((frames, req_channels), dtype=dtype)
 
             logical_in = self._logical_in_buffer
             if in_mode == self.MODE_LEFT:
@@ -437,16 +439,17 @@ class AudioEngine:
     def _mix_clients(self, logical_in, frames, time, status, active_callbacks, logical_out_ch):
         """Iterates active clients, executes callbacks, and mixes output."""
         # Initialize or clear mix buffer
-        if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch):
+        dtype = self._get_dtype()
+        if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch) and self._mix_buffer.dtype == dtype:
             mix_buffer = self._mix_buffer
             mix_buffer.fill(0)
         else:
-            mix_buffer = np.zeros((frames, logical_out_ch), dtype=self._get_dtype())
+            mix_buffer = np.zeros((frames, logical_out_ch), dtype=dtype)
             self._mix_buffer = mix_buffer
 
         for cb in active_callbacks:
             # Temp buffer for this client
-            if self._client_buffer is not None and self._client_buffer.shape == (frames, logical_out_ch):
+            if self._client_buffer is not None and self._client_buffer.shape == (frames, logical_out_ch) and self._client_buffer.dtype == dtype:
                 client_out = self._client_buffer
                 client_out.fill(0)
             else:
@@ -628,6 +631,14 @@ class AudioEngine:
 
         # Reset loopback buffer
         self.last_output_buffer = None
+
+        # Pre-allocate hot-path NumPy buffers
+        dtype = self._get_dtype()
+        frames = self.block_size
+        req_channels = 1 if self._current_in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
+        self._logical_in_buffer = np.empty((frames, req_channels), dtype=dtype)
+        self._mix_buffer = np.zeros((frames, hw_out_ch), dtype=dtype)
+        self._client_buffer = np.zeros((frames, hw_out_ch), dtype=dtype)
 
         try:
             if self.offline_mode:
