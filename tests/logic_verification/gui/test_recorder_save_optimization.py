@@ -6,11 +6,6 @@ import numpy as np
 import os
 import soundfile as sf
 import tempfile
-import scipy.signal  # noqa: F401
-try:
-    from src.core.analysis import AudioCalc  # noqa: F401
-except ImportError:
-    pass
 
 class TestRecorderSaveOptimization(unittest.TestCase):
     def setUp(self):
