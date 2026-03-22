@@ -4,6 +4,8 @@ hooks:
 site_name: MeasureLab オペレーションマニュアル
 site_description: 測定ツールの操作マニュアル
 site_author: ''
+repo_name: youtube-at-vach/MeasureLab
+repo_url: https://github.com/youtube-at-vach/MeasureLab
 theme:
   name: material
   language: ja
@@ -120,4 +122,6 @@ nav:
   - Distortion Measurement: measurement_recipes/distortion_measurement.md
   - Speaker Impedance: measurement_recipes/speaker_impedance.md
   - measurement_recipes/lockin_amplifier.md
+- 公式リポジトリ: https://github.com/youtube-at-vach/MeasureLab
+- リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
 - appendix.md
