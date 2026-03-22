@@ -1,4 +1,3 @@
-
 import time
 import numpy as np
 import sys
@@ -8,6 +7,7 @@ import os
 sys.path.append(os.getcwd())
 
 from src.core.analysis import AudioCalc
+
 
 def benchmark_optimize_frequency():
     sr = 48000
@@ -29,7 +29,8 @@ def benchmark_optimize_frequency():
 
     print(f"N={N}, Iterations={iterations}")
     print(f"Total time: {end_time - start_time:.4f}s")
-    print(f"Avg time per call: {(end_time - start_time)/iterations*1000:.4f}ms")
+    print(f"Avg time per call: {(end_time - start_time) / iterations * 1000:.4f}ms")
+
 
 if __name__ == "__main__":
     benchmark_optimize_frequency()

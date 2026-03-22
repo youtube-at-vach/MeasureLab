@@ -1,4 +1,3 @@
-
 import pytest
 from unittest.mock import MagicMock
 
@@ -11,6 +10,7 @@ try:
     from src.core.audio_engine import AudioEngine
 except ImportError:
     pytest.skip("Skipping due to import errors (likely missing GUI libs)", allow_module_level=True)
+
 
 def test_tolerance_lines_presence(qtbot):
     """Verifies that tolerance lines are added to the error plot."""

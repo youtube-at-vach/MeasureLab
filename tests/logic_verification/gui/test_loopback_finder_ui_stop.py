@@ -3,10 +3,20 @@ import unittest
 from unittest.mock import MagicMock
 import importlib
 
+
 class TestLoopbackFinderWidgetStopScan(unittest.TestCase):
     def setUp(self):
         # Patch modules needed by the GUI module
-        self._patched_modules = ["PyQt6.QtCore", "PyQt6.QtWidgets", "sounddevice", "numpy", "src.core.audio_engine", "src.core.fft_manager", "src.core.localization", "src.measurement_modules.base"]
+        self._patched_modules = [
+            "PyQt6.QtCore",
+            "PyQt6.QtWidgets",
+            "sounddevice",
+            "numpy",
+            "src.core.audio_engine",
+            "src.core.fft_manager",
+            "src.core.localization",
+            "src.measurement_modules.base",
+        ]
         self._original_modules = {}
 
         for mod in self._patched_modules:
@@ -16,6 +26,7 @@ class TestLoopbackFinderWidgetStopScan(unittest.TestCase):
 
         # Specific mocks for PyQt6 to support class definitions
         mock_qt_core = sys.modules["PyQt6.QtCore"]
+
         class MockBase:
             def __init__(self, *args, **kwargs):
                 pass
@@ -25,8 +36,23 @@ class TestLoopbackFinderWidgetStopScan(unittest.TestCase):
 
         # Mock QWidget and layout elements
         mock_qt_widgets = sys.modules["PyQt6.QtWidgets"]
-        for widget in ["QWidget", "QVBoxLayout", "QHBoxLayout", "QLabel", "QPushButton", "QProgressBar", "QTableWidget", "QHeaderView"]:
-            setattr(mock_qt_widgets, widget, type(widget, (MockBase,), {"addWidget": MagicMock(), "addLayout": MagicMock(), "setLayout": MagicMock()}))
+        for widget in [
+            "QWidget",
+            "QVBoxLayout",
+            "QHBoxLayout",
+            "QLabel",
+            "QPushButton",
+            "QProgressBar",
+            "QTableWidget",
+            "QHeaderView",
+        ]:
+            setattr(
+                mock_qt_widgets,
+                widget,
+                type(
+                    widget, (MockBase,), {"addWidget": MagicMock(), "addLayout": MagicMock(), "setLayout": MagicMock()}
+                ),
+            )
 
         # Mock localization
         mock_localization = sys.modules["src.core.localization"]
@@ -98,6 +124,7 @@ class TestLoopbackFinderWidgetStopScan(unittest.TestCase):
 
         # Verify scan_finished was called despite no worker
         widget.scan_finished.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

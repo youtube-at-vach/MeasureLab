@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
 
+
 def test_jack_detection(qtbot):
     """
     Verify JACK detection logic.
@@ -13,8 +14,8 @@ def test_jack_detection(qtbot):
     mock_engine = MagicMock()
     # Initial state: JACK is available
     mock_engine.get_host_apis.return_value = [
-        {'name': 'ALSA', 'index': 0},
-        {'name': 'JACK Audio Connection Kit', 'index': 1}
+        {"name": "ALSA", "index": 0},
+        {"name": "JACK Audio Connection Kit", "index": 1},
     ]
     mock_engine.input_device = 0
     mock_engine.output_device = 0
@@ -22,7 +23,7 @@ def test_jack_detection(qtbot):
     mock_engine.block_size = 1024
     mock_engine.input_channel_mode = "stereo"
     mock_engine.output_channel_mode = "stereo"
-    mock_engine.list_devices.return_value = [] # Avoid crash in refresh_devices loop
+    mock_engine.list_devices.return_value = []  # Avoid crash in refresh_devices loop
 
     mock_engine.calibration = MagicMock()
     mock_engine.calibration.input_sensitivity = 1.0
@@ -44,14 +45,14 @@ def test_jack_detection(qtbot):
     mock_config.get_audio_config.return_value = {}
 
     # Mock Localization Manager
-    with patch('src.gui.widgets.settings.get_manager') as mock_get_man:
+    with patch("src.gui.widgets.settings.get_manager") as mock_get_man:
         mock_man_instance = MagicMock()
         mock_man_instance.available_languages = {"en": "English"}
         mock_man_instance.language = "en"
         mock_get_man.return_value = mock_man_instance
 
         # Patch internal method to avoid sounddevice import issues during init
-        with patch.object(SettingsWidget, '_get_current_host_api_index', return_value=0):
+        with patch.object(SettingsWidget, "_get_current_host_api_index", return_value=0):
             # Create widget
             widget = SettingsWidget(mock_engine, mock_config)
             qtbot.addWidget(widget)
@@ -62,15 +63,15 @@ def test_jack_detection(qtbot):
             assert widget._is_jack_available() is True
 
             # Test: JACK is NOT available
-            mock_engine.get_host_apis.return_value = [{'name': 'ALSA', 'index': 0}]
+            mock_engine.get_host_apis.return_value = [{"name": "ALSA", "index": 0}]
             assert widget._is_jack_available() is False
 
             # Verify UI update calls
             # Test UI behavior: Refresh button should be disabled if JACK is present?
             # Re-set JACK present
             mock_engine.get_host_apis.return_value = [
-                {'name': 'ALSA', 'index': 0},
-                {'name': 'JACK Audio Connection Kit', 'index': 1}
+                {"name": "ALSA", "index": 0},
+                {"name": "JACK Audio Connection Kit", "index": 1},
             ]
 
             # Trigger update
@@ -82,7 +83,7 @@ def test_jack_detection(qtbot):
             assert widget.refresh_btn.isEnabled() is False
 
             # Remove JACK
-            mock_engine.get_host_apis.return_value = [{'name': 'ALSA', 'index': 0}]
+            mock_engine.get_host_apis.return_value = [{"name": "ALSA", "index": 0}]
             widget._update_offline_ui_state()
 
             # Logic: offline=False, jack=False -> Enabled=True

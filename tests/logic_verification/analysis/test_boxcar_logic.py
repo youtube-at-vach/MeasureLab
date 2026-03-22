@@ -9,6 +9,7 @@ sys.path.append(os.getcwd())
 
 from src.gui.widgets.boxcar_averager import BoxcarAverager
 
+
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
@@ -20,6 +21,7 @@ class MockAudioEngine:
     def unregister_callback(self, cid):
         pass
 
+
 def _feed(boxcar: BoxcarAverager, frames: int, start_value: int):
     """Helper to feed deterministic input to boxcar."""
     left = np.arange(start_value, start_value + frames, dtype=float)
@@ -28,6 +30,7 @@ def _feed(boxcar: BoxcarAverager, frames: int, start_value: int):
     outdata = np.zeros_like(indata)
     boxcar._callback(indata, outdata, frames, 0, None)
     boxcar.process()
+
 
 def _mls16_expected(n: int, seed: int = 0xACE1) -> np.ndarray:
     reg = seed & 0xFFFF
@@ -42,8 +45,8 @@ def _mls16_expected(n: int, seed: int = 0xACE1) -> np.ndarray:
             reg ^= 0xB400
     return out
 
-class TestBoxcarLogic(unittest.TestCase):
 
+class TestBoxcarLogic(unittest.TestCase):
     # From test_boxcar_crash.py
     def test_boxcar_int64_nan_handling(self):
         """Test that int64 accumulation handles NaN/Inf without crashing."""
@@ -154,12 +157,12 @@ class TestBoxcarLogic(unittest.TestCase):
         boxcar = BoxcarAverager(engine)
 
         # Setup
-        boxcar.mode = 'External Reference'
-        boxcar.ref_channel = 1 # Right
-        boxcar.input_channel = 'Left'
+        boxcar.mode = "External Reference"
+        boxcar.ref_channel = 1  # Right
+        boxcar.input_channel = "Left"
         boxcar.period_samples = 100
         boxcar.trigger_level = 0.0
-        boxcar.trigger_edge = 'Rising'
+        boxcar.trigger_edge = "Rising"
 
         boxcar.start_analysis()
 
@@ -173,14 +176,14 @@ class TestBoxcarLogic(unittest.TestCase):
         ref[450:550] = 1.0
         ref[650:750] = 1.0
         ref[850:950] = 1.0
-        ref -= 0.5 # Center at 0
+        ref -= 0.5  # Center at 0
 
         # Sig: Ramp 0 to 1 over 100 samples starting at trigger
         sig = np.zeros(frames)
 
         # Fill signal segments corresponding to triggers
         for start in [50, 250, 450, 650, 850]:
-            sig[start:start+100] = np.linspace(0, 1, 100)
+            sig[start : start + 100] = np.linspace(0, 1, 100)
 
         data = np.column_stack((sig, ref))
 
@@ -191,7 +194,7 @@ class TestBoxcarLogic(unittest.TestCase):
         # Process
         boxcar.process()
 
-        self.assertEqual(boxcar.count, 5) # Should have captured 5 windows
+        self.assertEqual(boxcar.count, 5)  # Should have captured 5 windows
 
         # Check Accumulator
         # Should be sum of 5 ramps -> 5 * linspace(0, 1, 100)
@@ -416,5 +419,6 @@ class TestBoxcarLogic(unittest.TestCase):
         boxcar._callback(indata, out2, frames, 0, None)
         np.testing.assert_allclose(out2[:, 0], expected, rtol=0, atol=1e-12)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

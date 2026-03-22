@@ -104,9 +104,7 @@ class FrequencyWorker(QRunnable):
 
     def run(self):
         try:
-            freq, db = calculate_frequency_metrics(
-                self.data, self.sr, self.gate_threshold_db, self.calibration_factor
-            )
+            freq, db = calculate_frequency_metrics(self.data, self.sr, self.gate_threshold_db, self.calibration_factor)
             self.signals.result.emit(freq, db)
         except Exception as e:
             # On error, we should probably emit something safe or just log

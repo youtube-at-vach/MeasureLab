@@ -27,6 +27,7 @@ def pytest_generate_tests(metafunc):
             metafunc.parametrize("buffer_size", [16384, 65536, 131072, 262144, 524288])
             metafunc.parametrize("averaging_count", [1, 2, 5, 10, 20])
 
+
 class TestLockinAccuracy:
     @pytest.fixture(autouse=True)
     def setup_teardown(self):

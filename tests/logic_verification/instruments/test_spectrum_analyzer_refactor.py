@@ -1,4 +1,3 @@
-
 import sys
 import os
 import pytest
@@ -6,16 +5,17 @@ from unittest.mock import MagicMock
 import numpy as np
 
 # Mock sounddevice if missing
-if 'sounddevice' not in sys.modules:
-    sys.modules['sounddevice'] = MagicMock()
+if "sounddevice" not in sys.modules:
+    sys.modules["sounddevice"] = MagicMock()
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 try:
     from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer
 except ImportError:
     pytest.skip("Skipping due to import errors", allow_module_level=True)
+
 
 class TestSpectrumAnalyzerRefactor:
     @pytest.fixture
@@ -32,13 +32,13 @@ class TestSpectrumAnalyzerRefactor:
         return sa
 
     def test_constants(self, sa):
-        assert hasattr(sa, 'LARGE_BUFFER_THRESHOLD')
+        assert hasattr(sa, "LARGE_BUFFER_THRESHOLD")
         assert sa.LARGE_BUFFER_THRESHOLD == 500000
 
     def test_apply_octave_smoothing_method(self, sa):
         # Create a simple spectrum
         freqs = np.linspace(20, 20000, 1000)
-        magnitude = -20 * np.ones_like(freqs) # -20 dB flat
+        magnitude = -20 * np.ones_like(freqs)  # -20 dB flat
 
         # Test 1/3 octave
         smoothed_freqs, smoothed_mags = sa.apply_octave_smoothing(freqs, magnitude, 3)
@@ -51,7 +51,7 @@ class TestSpectrumAnalyzerRefactor:
     def test_get_latest_data_rolling_mode(self, sa):
         # Set small buffer size to trigger rolling mode
         sa.set_buffer_size(100)
-        sa.input_data[:] = 1.0 # Fill with ones
+        sa.input_data[:] = 1.0  # Fill with ones
         sa.write_head = 50
 
         # Modify part of buffer to check rotation
@@ -63,7 +63,7 @@ class TestSpectrumAnalyzerRefactor:
         data = sa.get_latest_data()
 
         assert len(data) == 100
-        assert np.all(data[:50] == 2.0) # Oldest data (written most recently? No, write_head points to NEXT write)
+        assert np.all(data[:50] == 2.0)  # Oldest data (written most recently? No, write_head points to NEXT write)
         # Wait, ring buffer logic:
         # write_head points to where next sample goes.
         # So sample at write_head is the OLDEST sample in the buffer (overwritten longest ago? No, it's the start of the circular buffer)
@@ -104,17 +104,17 @@ class TestSpectrumAnalyzerRefactor:
         data = sa.get_latest_data()
         assert data is not None
         assert len(data) == 600000
-        assert sa.write_head == 0 # Should reset
+        assert sa.write_head == 0  # Should reset
 
     def test_compute_spectrum(self, sa):
         # Prepare data
         sa.set_buffer_size(1024)
-        t = np.linspace(0, 1024/48000, 1024, endpoint=False)
+        t = np.linspace(0, 1024 / 48000, 1024, endpoint=False)
         # 1kHz Sine wave
         sig = np.sin(2 * np.pi * 1000 * t)
         sa.input_data[:, 0] = sig
         sa.input_data[:, 1] = sig
-        sa.write_head = 0 # Full buffer effectively (idx=0 takes whole buffer)
+        sa.write_head = 0  # Full buffer effectively (idx=0 takes whole buffer)
 
         results = sa.compute_spectrum()
 
@@ -144,7 +144,7 @@ class TestSpectrumAnalyzerRefactor:
         assert -5.0 < results["overall_weighted_db"] < -1.0
 
     def test_compute_spectrum_not_enough_data(self, sa):
-        sa.set_buffer_size(600000) # Snapshot mode
+        sa.set_buffer_size(600000)  # Snapshot mode
         sa.write_head = 100
         results = sa.compute_spectrum()
         assert results is None

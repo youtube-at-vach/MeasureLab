@@ -7,14 +7,11 @@ import tempfile
 import soundfile as sf
 from unittest.mock import MagicMock, patch
 
+
 def benchmark_save(duration_sec=120, sr=48000, channels=2):
     print(f"Benchmarking saving with {duration_sec}s of audio...")
 
-    mocks = {
-        'sounddevice': MagicMock(),
-        'PyQt6.QtCore': MagicMock(),
-        'PyQt6.QtWidgets': MagicMock()
-    }
+    mocks = {"sounddevice": MagicMock(), "PyQt6.QtCore": MagicMock(), "PyQt6.QtWidgets": MagicMock()}
 
     with patch.dict(sys.modules, mocks):
         from src.gui.widgets.recorder_player import RecorderPlayer
@@ -37,7 +34,7 @@ def benchmark_save(duration_sec=120, sr=48000, channels=2):
         with sf.SoundFile(temp_file, mode="w", samplerate=sr, channels=channels, subtype="FLOAT", format="WAV") as f:
             f.write(data)
 
-        print(f"Created temp file: {temp_file} ({os.path.getsize(temp_file)/1024/1024:.2f} MB)")
+        print(f"Created temp file: {temp_file} ({os.path.getsize(temp_file) / 1024 / 1024:.2f} MB)")
 
         filepath = "benchmark_output.wav"
         if os.path.exists(filepath):
@@ -65,6 +62,7 @@ def benchmark_save(duration_sec=120, sr=48000, channels=2):
             os.remove(filepath)
         if os.path.exists(temp_file):
             os.remove(temp_file)
+
 
 if __name__ == "__main__":
     benchmark_save(duration_sec=300)

@@ -22,7 +22,7 @@ def benchmark():
     end_time = time.time()
 
     avg_time = (end_time - start_time) / iterations
-    print(f"Average time per call: {avg_time*1000:.4f} ms")
+    print(f"Average time per call: {avg_time * 1000:.4f} ms")
 
 
 if __name__ == "__main__":

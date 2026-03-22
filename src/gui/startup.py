@@ -72,13 +72,19 @@ class WrappingSplashScreen(QSplashScreen):
     """
     Custom QSplashScreen that supports text wrapping and padding.
     """
+
     def __init__(self, pixmap):
         super().__init__(pixmap)
         self._message = ""
         self._alignment = Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter
         self._color = Qt.GlobalColor.black
 
-    def showMessage(self, message, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, color=Qt.GlobalColor.black):
+    def showMessage(
+        self,
+        message,
+        alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+        color=Qt.GlobalColor.black,
+    ):
         self._message = message
         self._alignment = alignment
         self._color = color

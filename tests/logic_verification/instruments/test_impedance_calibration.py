@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 import sys
 
+
 class TestImpedanceCalibration(unittest.TestCase):
     def setUp(self):
         # Setup mocks
@@ -13,13 +14,13 @@ class TestImpedanceCalibration(unittest.TestCase):
 
         # Modules to patch in sys.modules
         self.modules_to_patch = {
-            'PyQt6': self.mock_pyqt,
-            'PyQt6.QtCore': self.mock_pyqt,
-            'PyQt6.QtGui': self.mock_pyqt,
-            'PyQt6.QtWidgets': self.mock_pyqt,
-            'pyqtgraph': self.mock_pg,
-            'sounddevice': self.mock_sd,
-            'src.core.localization': self.mock_loc,
+            "PyQt6": self.mock_pyqt,
+            "PyQt6.QtCore": self.mock_pyqt,
+            "PyQt6.QtGui": self.mock_pyqt,
+            "PyQt6.QtWidgets": self.mock_pyqt,
+            "pyqtgraph": self.mock_pg,
+            "sounddevice": self.mock_sd,
+            "src.core.localization": self.mock_loc,
         }
 
         # Manual patching of sys.modules to avoid patch.dict issues with C-extensions
@@ -30,11 +31,12 @@ class TestImpedanceCalibration(unittest.TestCase):
             sys.modules[name] = mock_obj
 
         # Force reload of the module under test to ensure it uses the mocked dependencies
-        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
-            del sys.modules['src.gui.widgets.impedance_analyzer']
+        if "src.gui.widgets.impedance_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.impedance_analyzer"]
 
         try:
             import src.gui.widgets.impedance_analyzer
+
             self.ImpedanceAnalyzer = src.gui.widgets.impedance_analyzer.ImpedanceAnalyzer
         except ImportError:
             self.fail("Could not import ImpedanceAnalyzer even with mocks")
@@ -61,16 +63,12 @@ class TestImpedanceCalibration(unittest.TestCase):
                 del sys.modules[name]
 
         # Clean up the module from sys.modules so subsequent tests reload it with real dependencies
-        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
-            del sys.modules['src.gui.widgets.impedance_analyzer']
+        if "src.gui.widgets.impedance_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.impedance_analyzer"]
 
     def test_get_interpolated_cal_value(self):
         """Test interpolation logic with known points."""
-        cal_dict = {
-            100.0: 10 + 10j,
-            200.0: 20 + 20j,
-            300.0: 30 + 30j
-        }
+        cal_dict = {100.0: 10 + 10j, 200.0: 20 + 20j, 300.0: 30 + 30j}
 
         # Exact match
         val = self.analyzer._get_interpolated_cal_value(cal_dict, 100.0)
@@ -126,7 +124,7 @@ class TestImpedanceCalibration(unittest.TestCase):
 
         self.analyzer.cal_open = {freq: z_open}
         self.analyzer.cal_short = {freq: z_short}
-        self.analyzer.cal_load = {} # Ensure no load cal
+        self.analyzer.cal_load = {}  # Ensure no load cal
 
         z_meas = 100 + 0j
 
@@ -201,5 +199,6 @@ class TestImpedanceCalibration(unittest.TestCase):
         result = self.analyzer.apply_calibration(z_meas, freq)
         self.assertEqual(result, z_meas)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -15,6 +15,7 @@ except ImportError:
     # Fallback if other dependencies (e.g. logging?) fail, though unlikely for core
     pass
 
+
 class TestCalibrationProfiles(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.TemporaryDirectory()
@@ -32,12 +33,12 @@ class TestCalibrationProfiles(unittest.TestCase):
         cm.save_profile("Test Profile", "Test Device")
 
         # Check file content
-        with open(self.config_path, 'r') as f:
+        with open(self.config_path, "r") as f:
             data = json.load(f)
-            self.assertIn('profiles', data)
-            self.assertIn('Test Profile', data['profiles'])
-            self.assertEqual(data['profiles']['Test Profile']['device_name'], "Test Device")
-            self.assertEqual(data['profiles']['Test Profile']['input_sensitivity'], 0.5)
+            self.assertIn("profiles", data)
+            self.assertIn("Test Profile", data["profiles"])
+            self.assertEqual(data["profiles"]["Test Profile"]["device_name"], "Test Device")
+            self.assertEqual(data["profiles"]["Test Profile"]["input_sensitivity"], 0.5)
 
         # Modify current values
         cm.input_sensitivity = 1.0
@@ -60,9 +61,10 @@ class TestCalibrationProfiles(unittest.TestCase):
 
         self.assertNotIn("Delete Me", cm.get_profiles())
 
-        with open(self.config_path, 'r') as f:
+        with open(self.config_path, "r") as f:
             data = json.load(f)
-            self.assertNotIn("Delete Me", data['profiles'])
+            self.assertNotIn("Delete Me", data["profiles"])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

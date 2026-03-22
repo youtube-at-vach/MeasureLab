@@ -22,7 +22,7 @@ class TestFrequencyCalibration(unittest.TestCase):
         self.mock_audio_engine.calibration.get_active_frequency_calibration.return_value = 1.0
 
         self.counter = FrequencyCounter(self.mock_audio_engine)
-        self.counter.is_running = True # Enable processing
+        self.counter.is_running = True  # Enable processing
 
     def test_calibration_applied(self):
         # Setup
@@ -41,7 +41,7 @@ class TestFrequencyCalibration(unittest.TestCase):
         # might be slightly off due to float precision (e.g. 1000.0000004).
         # We relax the assertion to 5 decimal places to handle both mocked and real scenarios.
 
-        with unittest.mock.patch('src.core.analysis.AudioCalc.optimize_frequency') as mock_opt:
+        with unittest.mock.patch("src.core.analysis.AudioCalc.optimize_frequency") as mock_opt:
             mock_opt.return_value = 1000.0
 
             # Case 1: Factor 1.0
@@ -63,5 +63,6 @@ class TestFrequencyCalibration(unittest.TestCase):
             # 5 places check: 1000.00100 vs 1000.001 is fine.
             self.assertAlmostEqual(freq, 1000.001, places=5)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

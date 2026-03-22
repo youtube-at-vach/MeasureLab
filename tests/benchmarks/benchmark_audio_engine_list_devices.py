@@ -5,6 +5,7 @@ from unittest.mock import patch
 # Import the AudioEngine we want to benchmark
 from src.core.audio_engine import AudioEngine
 
+
 def run_benchmark():
     engine = AudioEngine()
 
@@ -27,17 +28,17 @@ def run_benchmark():
         mock_hostapis = [{"name": "ALSA"}, {"name": "PulseAudio"}, {"name": "JACK"}]
 
         def fake_query_devices():
-            time.sleep(0.005) # simulate OS delay
+            time.sleep(0.005)  # simulate OS delay
             return mock_devices
 
         def fake_query_hostapis(idx=None):
-            time.sleep(0.002) # simulate OS delay
+            time.sleep(0.002)  # simulate OS delay
             if idx is not None:
                 return mock_hostapis[idx]
             return mock_hostapis
 
-        with patch('sounddevice.query_devices', side_effect=fake_query_devices):
-            with patch('sounddevice.query_hostapis', side_effect=fake_query_hostapis):
+        with patch("sounddevice.query_devices", side_effect=fake_query_devices):
+            with patch("sounddevice.query_hostapis", side_effect=fake_query_hostapis):
                 print("Running without cache (simulated)...")
                 # clear cache
                 engine._device_list_cache = None
@@ -93,6 +94,7 @@ def run_benchmark():
         improvement = (uncached_time - cached_time) / uncached_time * 100
         speedup = uncached_time / cached_time
         print(f"Improvement: {improvement:.2f}% (Speedup: {speedup:.2f}x)")
+
 
 if __name__ == "__main__":
     run_benchmark()

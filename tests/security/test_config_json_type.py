@@ -5,6 +5,7 @@ import tempfile
 import shutil
 from src.core.config_manager import ConfigManager
 
+
 class TestConfigJsonType(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
@@ -38,5 +39,6 @@ class TestConfigJsonType(unittest.TestCase):
 
         cm.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,7 @@ from pathlib import Path
 # Since this file is in tests/logic_verification/core/, we need to go up 3 levels to reach project root.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
+
 class TestConfigManagerLogic(unittest.TestCase):
     """
     Consolidated tests for ConfigManager logic including:
@@ -21,15 +22,13 @@ class TestConfigManagerLogic(unittest.TestCase):
 
     def setUp(self):
         # Patch sys.modules to mock PyQt6 dependencies BEFORE importing ConfigManager
-        self.modules_patcher = patch.dict(sys.modules, {
-            "PyQt6": MagicMock(),
-            "PyQt6.QtCore": MagicMock()
-        })
+        self.modules_patcher = patch.dict(sys.modules, {"PyQt6": MagicMock(), "PyQt6.QtCore": MagicMock()})
         self.modules_patcher.start()
 
         # Import ConfigManager inside setUp to ensure mocks are active
         # and avoid top-level import errors or linter E402
         from src.core.config_manager import ConfigManager, DEFAULT_CONFIG
+
         self.ConfigManager = ConfigManager
         self.DEFAULT_CONFIG = DEFAULT_CONFIG
 
@@ -39,17 +38,17 @@ class TestConfigManagerLogic(unittest.TestCase):
 
         # Mock logger to avoid cluttering output
         self.mock_logger = MagicMock()
-        self.logger_patcher = patch('src.core.config_manager.logging.getLogger', return_value=self.mock_logger)
+        self.logger_patcher = patch("src.core.config_manager.logging.getLogger", return_value=self.mock_logger)
         self.logger_patcher.start()
 
         # Clear singleton instances
-        if hasattr(self.ConfigManager, '_instances'):
+        if hasattr(self.ConfigManager, "_instances"):
             self.ConfigManager._instances.clear()
 
     def tearDown(self):
         self.logger_patcher.stop()
         self.temp_dir.cleanup()
-        if hasattr(self.ConfigManager, '_instances'):
+        if hasattr(self.ConfigManager, "_instances"):
             self.ConfigManager._instances.clear()
 
         # Stop module patching
@@ -59,7 +58,7 @@ class TestConfigManagerLogic(unittest.TestCase):
     # Basic Merge Logic (from test_config_manager.py)
     # -------------------------------------------------------------------------
 
-    @patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+    @patch("src.core.config_manager.ConfigManager._get_default_screenshot_dir", return_value="screenshots")
     def test_merge_with_defaults(self, mock_get_default):
         """Test merging loaded config with defaults."""
         cm = self.ConfigManager(config_filename=self.config_path)
@@ -119,7 +118,7 @@ class TestConfigManagerLogic(unittest.TestCase):
 
         cm.shutdown()
 
-    @patch('src.core.config_manager.ConfigManager._get_default_screenshot_dir', return_value="screenshots")
+    @patch("src.core.config_manager.ConfigManager._get_default_screenshot_dir", return_value="screenshots")
     def test_load_config_errors(self, mock_get_default):
         """Test error handling during load_config."""
         cm = self.ConfigManager(config_filename=self.config_path)
@@ -180,26 +179,26 @@ class TestConfigManagerLogic(unittest.TestCase):
     # Language Detection (from test_config_manager_language.py)
     # -------------------------------------------------------------------------
 
-    @patch('src.core.config_manager.ConfigManager.save_config')
+    @patch("src.core.config_manager.ConfigManager.save_config")
     def test_set_language(self, mock_save_config):
         """Test setting the language updates the config and calls save_config."""
         cm = self.ConfigManager(config_filename=self.config_path)
 
         mock_save_config.reset_mock()
 
-        cm.set_language('fr')
+        cm.set_language("fr")
 
-        self.assertEqual(cm.config['language'], 'fr')
-        self.assertEqual(cm.get_language(), 'fr')
+        self.assertEqual(cm.config["language"], "fr")
+        self.assertEqual(cm.get_language(), "fr")
         mock_save_config.assert_called_once()
 
         cm.shutdown()
 
-    @patch('src.core.config_manager.QLocale')
-    @patch('src.core.config_manager.resource_path')
-    @patch('src.core.config_manager.os.path.exists')
-    @patch('src.core.config_manager.locale.getdefaultlocale')
-    @patch('src.core.config_manager.locale.getlocale')
+    @patch("src.core.config_manager.QLocale")
+    @patch("src.core.config_manager.resource_path")
+    @patch("src.core.config_manager.os.path.exists")
+    @patch("src.core.config_manager.locale.getdefaultlocale")
+    @patch("src.core.config_manager.locale.getlocale")
     def test_detect_system_language(self, mock_get, mock_default, mock_exists, mock_resource_path, mock_qlocale):
         """Test system language detection logic."""
         cm = self.ConfigManager(config_filename=self.config_path)
@@ -208,28 +207,28 @@ class TestConfigManagerLogic(unittest.TestCase):
         mock_resource_path.side_effect = lambda x: f"/path/to/{x}"
 
         # Case: Standard locale (ja_JP -> ja)
-        mock_qlocale.system.return_value.name.return_value = 'ja_JP'
-        mock_get.return_value = ('ja_JP', 'UTF-8')
-        mock_exists.side_effect = lambda p: p == '/path/to/src/assets/lang/ja.json'
+        mock_qlocale.system.return_value.name.return_value = "ja_JP"
+        mock_get.return_value = ("ja_JP", "UTF-8")
+        mock_exists.side_effect = lambda p: p == "/path/to/src/assets/lang/ja.json"
 
         lang = cm._detect_system_language()
-        self.assertEqual(lang, 'ja')
+        self.assertEqual(lang, "ja")
 
         # Case: Windows locale mapping (Japanese_Japan -> ja)
-        mock_qlocale.system.return_value.name.return_value = 'xx_YY' # Fallback trigger
-        mock_get.return_value = ('Japanese_Japan', '932')
-        mock_exists.side_effect = lambda p: p == '/path/to/src/assets/lang/ja.json'
+        mock_qlocale.system.return_value.name.return_value = "xx_YY"  # Fallback trigger
+        mock_get.return_value = ("Japanese_Japan", "932")
+        mock_exists.side_effect = lambda p: p == "/path/to/src/assets/lang/ja.json"
 
         lang = cm._detect_system_language()
-        self.assertEqual(lang, 'ja')
+        self.assertEqual(lang, "ja")
 
         # Case: Fallback to getdefaultlocale
         mock_get.return_value = (None, None)
-        mock_default.return_value = ('fr_FR', 'UTF-8')
-        mock_exists.side_effect = lambda p: p == '/path/to/src/assets/lang/fr.json'
+        mock_default.return_value = ("fr_FR", "UTF-8")
+        mock_exists.side_effect = lambda p: p == "/path/to/src/assets/lang/fr.json"
 
         lang = cm._detect_system_language()
-        self.assertEqual(lang, 'fr')
+        self.assertEqual(lang, "fr")
 
         # Case: No locale found
         mock_get.return_value = (None, None)
@@ -253,11 +252,11 @@ class TestConfigManagerLogic(unittest.TestCase):
     # Lifecycle & Saving (from test_config_manager_lifecycle.py)
     # -------------------------------------------------------------------------
 
-    @patch('src.core.config_manager.resource_path', side_effect=lambda x: x)
-    @patch('src.core.config_manager.os.path.exists')
-    @patch('src.core.config_manager.os.makedirs')
-    @patch('src.core.config_manager.locale.getlocale')
-    @patch('src.core.config_manager.QLocale')
+    @patch("src.core.config_manager.resource_path", side_effect=lambda x: x)
+    @patch("src.core.config_manager.os.path.exists")
+    @patch("src.core.config_manager.os.makedirs")
+    @patch("src.core.config_manager.locale.getlocale")
+    @patch("src.core.config_manager.QLocale")
     def test_lifecycle_and_defaults(self, mock_qlocale, mock_getlocale, mock_makedirs, mock_exists, mock_resource_path):
         """Test lifecycle: loading defaults when file missing, auto-detect language."""
 
@@ -268,22 +267,23 @@ class TestConfigManagerLogic(unittest.TestCase):
             if "src/assets/lang" in path:
                 return True
             return False
+
         mock_exists.side_effect = exists_side_effect
 
-        mock_getlocale.return_value = ('en_US', 'UTF-8')
-        mock_qlocale.system.return_value.name.return_value = 'en_US'
+        mock_getlocale.return_value = ("en_US", "UTF-8")
+        mock_qlocale.system.return_value.name.return_value = "en_US"
 
         cm = self.ConfigManager(config_filename=self.config_path)
 
         # Check defaults loaded
-        self.assertEqual(cm.config['audio']['sample_rate'], 48000)
-        self.assertEqual(cm.config['language'], 'en')
+        self.assertEqual(cm.config["audio"]["sample_rate"], 48000)
+        self.assertEqual(cm.config["language"], "en")
 
         cm.shutdown()
 
-    @patch('src.core.config_manager.threading.Timer')
-    @patch('src.core.config_manager.os.path.exists', return_value=False)
-    @patch('src.core.config_manager.os.makedirs')
+    @patch("src.core.config_manager.threading.Timer")
+    @patch("src.core.config_manager.os.path.exists", return_value=False)
+    @patch("src.core.config_manager.os.makedirs")
     def test_save_config_debounced(self, mock_makedirs, mock_exists, mock_timer_cls):
         """Test that save_config starts a timer."""
         cm = self.ConfigManager(config_filename=self.config_path)
@@ -298,11 +298,11 @@ class TestConfigManagerLogic(unittest.TestCase):
         mock_timer_inst.cancel.assert_called_once()
         cm.shutdown()
 
-    @patch('src.core.config_manager.os.path.exists', return_value=False)
-    @patch('src.core.config_manager.os.makedirs')
-    @patch('src.core.config_manager.os.open')
-    @patch('src.core.config_manager.os.fdopen')
-    @patch('src.core.config_manager.os.chmod')
+    @patch("src.core.config_manager.os.path.exists", return_value=False)
+    @patch("src.core.config_manager.os.makedirs")
+    @patch("src.core.config_manager.os.open")
+    @patch("src.core.config_manager.os.fdopen")
+    @patch("src.core.config_manager.os.chmod")
     def test_save_config_force_sync(self, mock_chmod, mock_fdopen, mock_open_func, mock_makedirs, mock_exists):
         """Test that force_sync writes immediately."""
         mock_open_func.return_value = 123
@@ -310,12 +310,12 @@ class TestConfigManagerLogic(unittest.TestCase):
         mock_fdopen.return_value.__enter__.return_value = mock_file_handle
 
         cm = self.ConfigManager(config_filename=self.config_path)
-        cm.config['audio']['sample_rate'] = 88200
+        cm.config["audio"]["sample_rate"] = 88200
         cm.save_config(force_sync=True)
 
         expected_flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
         mock_open_func.assert_called_with(cm.config_path, expected_flags, 0o600)
-        mock_fdopen.assert_called_with(123, 'w')
+        mock_fdopen.assert_called_with(123, "w")
         mock_chmod.assert_called_with(cm.config_path, 0o600)
 
         cm.shutdown()
@@ -328,21 +328,21 @@ class TestConfigManagerLogic(unittest.TestCase):
         """Test getting the application root directory."""
         # Case 1: Running from source (sys.frozen is False or not present)
         # Mock sys.frozen to be False just in case
-        with patch.object(sys, 'frozen', False, create=True):
+        with patch.object(sys, "frozen", False, create=True):
             # Since get_app_root_dir uses __file__ of config_manager.py (which is in src/core)
             # and goes 2 levels up, the expected result is the project root.
             # We can mock __file__ to control the output deterministically.
-            mock_file_path = os.path.abspath(os.path.join('fake', 'project', 'src', 'core', 'config_manager.py'))
+            mock_file_path = os.path.abspath(os.path.join("fake", "project", "src", "core", "config_manager.py"))
             expected_dir = os.path.dirname(os.path.dirname(os.path.dirname(mock_file_path)))
-            with patch('src.core.config_manager.__file__', mock_file_path):
+            with patch("src.core.config_manager.__file__", mock_file_path):
                 actual_dir = os.path.normpath(self.ConfigManager.get_app_root_dir())
                 self.assertEqual(actual_dir, expected_dir)
 
         # Case 2: Running from PyInstaller (sys.frozen is True)
-        with patch.object(sys, 'frozen', True, create=True):
-            mock_executable = os.path.abspath(os.path.join('fake', 'path', 'to', 'executable', 'app.exe'))
+        with patch.object(sys, "frozen", True, create=True):
+            mock_executable = os.path.abspath(os.path.join("fake", "path", "to", "executable", "app.exe"))
             expected_dir = os.path.dirname(mock_executable)
-            with patch.object(sys, 'executable', mock_executable):
+            with patch.object(sys, "executable", mock_executable):
                 actual_dir = os.path.normpath(self.ConfigManager.get_app_root_dir())
                 self.assertEqual(actual_dir, expected_dir)
 
@@ -355,7 +355,7 @@ class TestConfigManagerLogic(unittest.TestCase):
         # Clear existing instance to force re-init with new platform
         self.ConfigManager._instances.clear()
 
-        cm = self.ConfigManager() # No filename provided, uses default path logic
+        cm = self.ConfigManager()  # No filename provided, uses default path logic
         expected_path = "/Users/testuser/Library/Application Support/MeasureLab/config.json"
         self.assertEqual(os.path.abspath(cm.config_path), os.path.abspath(expected_path))
 
@@ -449,8 +449,8 @@ class TestConfigManagerLogic(unittest.TestCase):
 
         cm.shutdown()
 
-    @patch('src.core.config_manager.ConfigManager.save_config')
-    @patch('src.core.config_manager.ConfigManager._ensure_screenshot_dir')
+    @patch("src.core.config_manager.ConfigManager.save_config")
+    @patch("src.core.config_manager.ConfigManager._ensure_screenshot_dir")
     def test_set_screenshot_output_dir(self, mock_ensure, mock_save):
         """Test setting the screenshot output directory updates the config."""
         cm = self.ConfigManager(config_filename=self.config_path)

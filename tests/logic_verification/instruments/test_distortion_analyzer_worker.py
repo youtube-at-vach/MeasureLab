@@ -10,12 +10,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 # Mock sounddevice before importing anything that uses it
 sys.modules["sounddevice"] = MagicMock()
 
+
 class TestRealtimeAnalysisWorker(unittest.TestCase):
     def setUp(self):
         # Patch modules where RealtimeAnalysisWorker will be imported from
-        self.audio_calc_patcher = patch('src.gui.widgets.distortion_analyzer.AudioCalc')
-        self.fft_manager_patcher = patch('src.gui.widgets.distortion_analyzer.fft_manager')
-        self.get_window_patcher = patch('src.gui.widgets.distortion_analyzer.get_cached_window')
+        self.audio_calc_patcher = patch("src.gui.widgets.distortion_analyzer.AudioCalc")
+        self.fft_manager_patcher = patch("src.gui.widgets.distortion_analyzer.fft_manager")
+        self.get_window_patcher = patch("src.gui.widgets.distortion_analyzer.get_cached_window")
 
         self.mock_audio_calc = self.audio_calc_patcher.start()
         self.mock_fft_manager = self.fft_manager_patcher.start()
@@ -50,7 +51,7 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
             "gen_frequency": 1000,
             "imd_f1": 60,
             "imd_f2": 7000,
-            "buffer_size": 1024
+            "buffer_size": 1024,
         }
 
         # Setup mocks
@@ -81,7 +82,7 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
             "gen_frequency": 1000,
             "imd_f1": 60,
             "imd_f2": 7000,
-            "buffer_size": 1024
+            "buffer_size": 1024,
         }
 
         # Setup mocks
@@ -98,6 +99,7 @@ class TestRealtimeAnalysisWorker(unittest.TestCase):
         result = args[0]
         self.assertEqual(result["imd"], 0.05)
         self.assertEqual(result.get("type"), "imd")
+
 
 if __name__ == "__main__":
     unittest.main()

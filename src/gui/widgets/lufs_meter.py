@@ -1,4 +1,3 @@
-
 import threading
 import time
 
@@ -106,8 +105,6 @@ class LufsMeter(MeasurementModule):
     @property
     def description(self) -> str:
         return "Real-time Loudness (LUFS) and Stereo Level Meter"
-
-
 
     def get_widget(self):
         return LufsMeterWidget(self)

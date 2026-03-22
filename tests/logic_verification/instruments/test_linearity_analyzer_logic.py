@@ -1,16 +1,16 @@
-
 import sys
 import numpy as np
 from unittest.mock import MagicMock, patch
 
 # Ensure sounddevice is mocked if not present
 try:
-    import sounddevice # noqa: F401
+    import sounddevice  # noqa: F401
 except ImportError:
     sys.modules["sounddevice"] = MagicMock()
 
 from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, calculate_hysteresis, LinearitySweepWorker
 from src.core.audio_engine import AudioEngine
+
 
 def test_linearity_analyzer_mono_input():
     """Verifies that mono input is correctly duplicated to stereo in the input buffer."""
@@ -44,6 +44,7 @@ def test_linearity_analyzer_mono_input():
     assert np.allclose(last_samples[:, 0], val), "Left channel not matching mono input"
     assert np.allclose(last_samples[:, 1], val), "Right channel not matching mono input"
 
+
 def test_linearity_analyzer_stereo_input():
     """Verifies that stereo input is correctly mapped to the input buffer."""
     # Setup
@@ -59,8 +60,8 @@ def test_linearity_analyzer_stereo_input():
     # Create stereo data (N, 2)
     frames = 100
     stereo_data = np.zeros((frames, 2), dtype=np.float32)
-    stereo_data[:, 0] = 0.8 # Left
-    stereo_data[:, 1] = 0.3 # Right
+    stereo_data[:, 0] = 0.8  # Left
+    stereo_data[:, 1] = 0.3  # Right
     out_data = np.zeros((frames, 2), dtype=np.float32)
 
     # Call callback
@@ -71,6 +72,7 @@ def test_linearity_analyzer_stereo_input():
     last_samples = buffer[-frames:]
 
     assert np.allclose(last_samples, stereo_data), "Stereo input was not preserved correctly"
+
 
 def test_linearity_analyzer_ring_buffer_wrap():
     """Verifies that the ring buffer logic correctly handles wrapping around."""
@@ -113,8 +115,8 @@ def test_calculate_hysteresis_standard():
     """Verifies that the hysteresis calculation is correct and robust."""
     # Setup synthetic results
     # Forward sweep: 0 to -10 dB
-    x_fwd = np.linspace(0, -10, 11) # 0, -1, ..., -10
-    g_fwd = np.zeros_like(x_fwd) # Gain 0
+    x_fwd = np.linspace(0, -10, 11)  # 0, -1, ..., -10
+    g_fwd = np.zeros_like(x_fwd)  # Gain 0
 
     # Reverse sweep: -10 to 0 dB
     x_rev = x_fwd[::-1]
@@ -144,11 +146,11 @@ def test_calculate_hysteresis_no_match():
     g_fwd = [0.0, 0.0]
 
     x_rev = [-1.0000001, 0.0]
-    g_rev = [0.5, 0.0] # 0.5 diff at -1.0
+    g_rev = [0.5, 0.0]  # 0.5 diff at -1.0
 
     x_data = x_fwd + x_rev
     gain_data = g_fwd + g_rev
-    directions = ["fwd"]*2 + ["rev"]*2
+    directions = ["fwd"] * 2 + ["rev"] * 2
 
     hyst = calculate_hysteresis(x_data, gain_data, directions)
 
@@ -161,12 +163,12 @@ def test_calculate_hysteresis_disjoint():
     x_fwd = [0.0, -1.0]
     g_fwd = [0.0, 0.0]
 
-    x_rev = [-2.0, -3.0] # No overlap
+    x_rev = [-2.0, -3.0]  # No overlap
     g_rev = [0.5, 0.5]
 
     x_data = x_fwd + x_rev
     gain_data = g_fwd + g_rev
-    directions = ["fwd"]*2 + ["rev"]*2
+    directions = ["fwd"] * 2 + ["rev"] * 2
 
     hyst = calculate_hysteresis(x_data, gain_data, directions)
 
@@ -200,7 +202,7 @@ def test_calculate_hysteresis_duplicates():
 
     x_data = x_fwd + x_rev
     gain_data = g_fwd + g_rev
-    directions = ["fwd"]*len(x_fwd) + ["rev"]*len(x_rev)
+    directions = ["fwd"] * len(x_fwd) + ["rev"] * len(x_rev)
 
     hyst = calculate_hysteresis(x_data, gain_data, directions)
 
@@ -215,7 +217,7 @@ def test_calculate_hysteresis_empty_fwd():
 
     x_data = x_rev
     gain_data = g_rev
-    directions = ["rev"]*2
+    directions = ["rev"] * 2
 
     # Logic: if "rev" in dirs... but x_fwd is empty.
     # The function splits by mask. x_fwd will be empty.
@@ -258,7 +260,7 @@ def test_snr_calculation_on_silence():
     # Mock AudioCalc to return 0 magnitude (silence)
     # We need to patch src.gui.widgets.linearity_analyzer.AudioCalc
     # because the module imports it.
-    with patch('src.gui.widgets.linearity_analyzer.AudioCalc') as MockAudioCalc:
+    with patch("src.gui.widgets.linearity_analyzer.AudioCalc") as MockAudioCalc:
         # calculate_lockin_measurement returns (mag, phase)
         # First call is signal, Second call is noise
         # We want signal=0, noise=1e-9 (small but non-zero to avoid div/0 in noise check)
@@ -270,8 +272,8 @@ def test_snr_calculation_on_silence():
             return 0.0, 0.0
 
         MockAudioCalc.calculate_lockin_measurement.side_effect = [
-            (0.0, 0.0), # Signal: Magnitude 0
-            (1e-9, 0.0) # Noise: Magnitude 1e-9
+            (0.0, 0.0),  # Signal: Magnitude 0
+            (1e-9, 0.0),  # Noise: Magnitude 1e-9
         ]
 
         # We capture the emitted result
@@ -280,12 +282,12 @@ def test_snr_calculation_on_silence():
 
         # Run (synchronously for test, bypassing Thread.start)
         # We override sleep to speed up
-        with patch('time.sleep', return_value=None):
+        with patch("time.sleep", return_value=None):
             worker.run()
 
         assert len(results) > 0, "No results emitted"
         result = results[0]
-        snr = result['snr']
+        snr = result["snr"]
 
         print(f"Calculated SNR: {snr}")
 

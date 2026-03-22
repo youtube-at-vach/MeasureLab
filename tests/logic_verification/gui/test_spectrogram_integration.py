@@ -22,7 +22,8 @@ except ImportError:
     pytest.skip("Required modules not found", allow_module_level=True)
 
 # Set offscreen to avoid display issues
-os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+
 
 def test_spectrogram_widget_update():
     # Ensure QApplication exists
@@ -47,7 +48,7 @@ def test_spectrogram_widget_update():
 
     # Fill audio buffer with some data so update_spectrogram has something to process
     # audio_buffer shape is (fft_size*2, 2)
-    t = np.linspace(0, 1024/48000, 1024, endpoint=False)
+    t = np.linspace(0, 1024 / 48000, 1024, endpoint=False)
     sine = 0.5 * np.sin(2 * np.pi * 1000 * t)
     # Put sine wave at the end of buffer
     module.audio_buffer[-1024:, 0] = sine
@@ -90,5 +91,5 @@ def test_spectrogram_widget_update():
     # Clean up
     module.stop_analysis()
     # We don't need to explicitly close widget as it wasn't shown
-    if hasattr(widget, 'threadpool'):
+    if hasattr(widget, "threadpool"):
         widget.threadpool.waitForDone(1000)

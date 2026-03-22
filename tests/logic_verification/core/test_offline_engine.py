@@ -3,6 +3,7 @@ import numpy as np
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 
+
 def test_offline_mode(tmp_path):
     config_file = tmp_path / "test_config.json"
     config = ConfigManager(str(config_file))

@@ -2,6 +2,7 @@ import time
 import sys
 import os
 
+
 def benchmark_print_vs_pass():
     iterations = 10000
 
@@ -22,7 +23,7 @@ def benchmark_print_vs_pass():
             # Current implementation
             # We redirect to devnull to avoid spam but keep the print call overhead
             original_stdout = sys.stdout
-            sys.stdout = open(os.devnull, 'w')
+            sys.stdout = open(os.devnull, "w")
             try:
                 print(f"Error in audio callback: {e}")
             finally:
@@ -70,6 +71,7 @@ def benchmark_print_vs_pass():
         print(f"Speedup (print vs pass): {print_duration / pass_duration:.2f}x")
     if flag_duration > 0:
         print(f"Speedup (print vs flag): {print_duration / flag_duration:.2f}x")
+
 
 if __name__ == "__main__":
     benchmark_print_vs_pass()

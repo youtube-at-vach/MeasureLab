@@ -6,9 +6,10 @@ pytest.importorskip("PyQt6")
 
 try:
     from src.gui.widgets.linearity_analyzer import LinearityAnalyzer, LinearityAnalyzerWidget
-    from PyQt6.QtWidgets import QMessageBox # noqa: F401
+    from PyQt6.QtWidgets import QMessageBox  # noqa: F401
 except ImportError:
     pytest.skip("Skipping GUI test due to import errors", allow_module_level=True)
+
 
 @pytest.fixture
 def mock_engine():
@@ -17,6 +18,7 @@ def mock_engine():
     engine.calibration = MagicMock()
     return engine
 
+
 def test_error_message_box(qtbot, mock_engine):
     """Verifies that on_error displays a critical message box."""
     module = LinearityAnalyzer(mock_engine)
@@ -24,7 +26,7 @@ def test_error_message_box(qtbot, mock_engine):
     qtbot.addWidget(widget)
 
     # Patch QMessageBox.critical in the module where it's used
-    with patch('src.gui.widgets.linearity_analyzer.QMessageBox.critical') as mock_critical:
+    with patch("src.gui.widgets.linearity_analyzer.QMessageBox.critical") as mock_critical:
         test_msg = "Test Error Message"
         widget.on_error(test_msg)
 

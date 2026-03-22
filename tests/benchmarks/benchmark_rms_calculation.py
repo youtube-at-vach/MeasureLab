@@ -4,9 +4,10 @@ import sys
 import os
 
 # Add src to path if not already there
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.core.frequency_analysis import calculate_frequency_metrics
+
 
 def benchmark_rms():
     # Setup large data array to make memory allocation significant
@@ -25,7 +26,9 @@ def benchmark_rms():
 
     iterations = 1000
 
-    print(f"Benchmarking RMS calculation within calculate_frequency_metrics with {N} samples over {iterations} iterations...")
+    print(
+        f"Benchmarking RMS calculation within calculate_frequency_metrics with {N} samples over {iterations} iterations..."
+    )
 
     start_time = time.time()
     for _ in range(iterations):
@@ -33,7 +36,7 @@ def benchmark_rms():
     end_time = time.time()
 
     avg_time = (end_time - start_time) / iterations
-    print(f"Average time per call: {avg_time*1000:.4f} ms")
+    print(f"Average time per call: {avg_time * 1000:.4f} ms")
 
     # Direct comparison of the math
     print("\nDirect Math Comparison (1000 iterations):")
@@ -43,17 +46,18 @@ def benchmark_rms():
         np.sqrt(np.mean(data**2))
     end_time = time.time()
     mean_sq_time = (end_time - start_time) / iterations
-    print(f"np.mean(data**2): {mean_sq_time*1000:.4f} ms")
+    print(f"np.mean(data**2): {mean_sq_time * 1000:.4f} ms")
 
     start_time = time.time()
     for _ in range(iterations):
         np.sqrt(np.vdot(data, data) / data.size)
     end_time = time.time()
     vdot_time = (end_time - start_time) / iterations
-    print(f"np.vdot(data, data): {vdot_time*1000:.4f} ms")
+    print(f"np.vdot(data, data): {vdot_time * 1000:.4f} ms")
 
     improvement = (mean_sq_time - vdot_time) / mean_sq_time * 100
     print(f"Improvement: {improvement:.2f}%")
+
 
 if __name__ == "__main__":
     benchmark_rms()

@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from src.core.ring_buffer import RingBuffer
 
+
 class TestRingBufferMismatch(unittest.TestCase):
     def test_stereo_to_quad_write(self):
         # Buffer is 4-channel
@@ -28,6 +29,7 @@ class TestRingBufferMismatch(unittest.TestCase):
 
         # Check last 2 channels are 0.0 (padded)
         np.testing.assert_array_equal(read_data[:, 2:], np.zeros((10, 2), dtype=np.float32))
+
 
 if __name__ == "__main__":
     unittest.main()

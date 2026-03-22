@@ -1,13 +1,16 @@
-
 from collections import deque
+
 
 # Mock AudioEngine if needed
 class MockAudioEngine:
     sample_rate = 48000
+
     def register_callback(self, cb):
         return 1
+
     def unregister_callback(self, cid):
         pass
+
 
 def test_deque_optimization():
     # We need to ensure we can import TimecodeMonitor
@@ -35,6 +38,7 @@ def test_deque_optimization():
 
     assert isinstance(ch.jam_history, deque)
     assert ch.jam_history.maxlen == 256
+
 
 if __name__ == "__main__":
     pass

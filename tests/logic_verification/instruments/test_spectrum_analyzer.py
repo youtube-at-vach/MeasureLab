@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
 # AudioEngine not imported as class, only mocked
 
+
 class TestSpectrumAnalyzer:
     """Consolidated tests for SpectrumAnalyzer logic and widget integration."""
 
@@ -84,9 +85,9 @@ class TestSpectrumAnalyzer:
         # Fill buffer directly for testing update_plot
         sa_module.input_data[:, 0] = sig
         sa_module.input_data[:, 1] = sig
-        sa_module.write_head = 0 # Rolling mode uses full buffer if head is 0
+        sa_module.write_head = 0  # Rolling mode uses full buffer if head is 0
 
-        sa_module.is_running = True # Needed for update_plot to run
+        sa_module.is_running = True  # Needed for update_plot to run
         sa_module.analysis_mode = "Spectrum"
         sa_module.multitaper_enabled = False
         sa_module.display_unit = "dBFS"
@@ -96,7 +97,7 @@ class TestSpectrumAnalyzer:
             text = sa_widget.overall_label.text()
             # "Overall: -3.0 dBFS(Z)"
             try:
-                val_str = text.split(" ")[1] # "-3.0"
+                val_str = text.split(" ")[1]  # "-3.0"
                 return float(val_str)
             except (IndexError, ValueError):
                 return None

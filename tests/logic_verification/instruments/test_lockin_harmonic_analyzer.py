@@ -38,8 +38,8 @@ def test_lockin_harmonic_analyzer_math():
 
     # Signal
     sig = 1.0 * np.sin(2 * np.pi * f0 * t)
-    sig += 0.1 * np.sin(2 * np.pi * 2 * f0 * t + np.pi/4)
-    sig += 0.01 * np.cos(2 * np.pi * 3 * f0 * t) # cos = sin(+pi/2), amplitude 0.01
+    sig += 0.1 * np.sin(2 * np.pi * 2 * f0 * t + np.pi / 4)
+    sig += 0.01 * np.cos(2 * np.pi * 3 * f0 * t)  # cos = sin(+pi/2), amplitude 0.01
 
     # Reference (pure fundamental)
     ref = 1.0 * np.sin(2 * np.pi * f0 * t)
@@ -151,7 +151,7 @@ def test_lockin_harmonic_analyzer_clear_buffer():
     assert analyzer.thd_value == 0.0
     assert analyzer.thd_db == -300.0  # DISTORTION_DB_FLOOR
     assert analyzer.thdn_value == 0.0
-    assert analyzer.thdn_db == -300.0 # DISTORTION_DB_FLOOR
+    assert analyzer.thdn_db == -300.0  # DISTORTION_DB_FLOOR
     assert analyzer.residual_rms == 0.0
 
     assert len(analyzer.residual_history) == 0

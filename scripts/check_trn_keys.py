@@ -12,9 +12,11 @@ from translation_utils import (
     save_json,
 )
 
+
 # Helpers
 def get_json_files():
     return glob.glob(os.path.join(LANG_DIR, "*.json"))
+
 
 def find_duplicate_keys(path):
     """
@@ -24,11 +26,12 @@ def find_duplicate_keys(path):
     keys = set()
     duplicates = set()
     import re
+
     # Regex to find "key": at the start of a line (ignoring whitespace)
     # This assumes standard formatting like "key": "value"
     pattern = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:')
 
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         for _line_num, line in enumerate(f, 1):
             match = pattern.search(line)
             if match:
@@ -40,6 +43,7 @@ def find_duplicate_keys(path):
                 keys.add(key)
     return list(duplicates)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Check translation keys consistency.")
     parser.add_argument("--lax", action="store_true", help="Do not fail even if unused keys are found in en.json")
@@ -49,7 +53,7 @@ def main():
     print("=== Translation Check Script ===")
 
     # 1. Load EN JSON (Source of Truth)
-    en_path = os.path.join(LANG_DIR, 'en.json')
+    en_path = os.path.join(LANG_DIR, "en.json")
     if not os.path.exists(en_path):
         print(f"Error: en.json not found at {en_path}")
         sys.exit(1)
@@ -106,15 +110,15 @@ def main():
         # Re-load en_keys after fix
         en_data = load_json(en_path)
         en_keys = set(en_data.keys())
-        unused_in_code = [] # Cleared after fix
+        unused_in_code = []  # Cleared after fix
 
     # 6. Check: Other JSONs have all keys from en.json
     json_files = get_json_files()
-    missing_translations = {} # filename -> list of missing keys
+    missing_translations = {}  # filename -> list of missing keys
 
     for jf in json_files:
         fname = os.path.basename(jf)
-        if fname == 'en.json':
+        if fname == "en.json":
             continue
 
         data = load_json(jf)
@@ -138,7 +142,7 @@ def main():
         has_error = True
         print(f"FAIL: {len(missing_in_en)} keys used in code but missing in en.json:")
         for k in sorted(missing_in_en):
-            print(f"  - \"{k}\"")
+            print(f'  - "{k}"')
     else:
         print("OK")
 
@@ -151,9 +155,9 @@ def main():
             print(f"FAIL: {len(unused_in_code)} keys defined in en.json but NOT used in code:")
 
         for k in sorted(unused_in_code)[:10]:
-            print(f"  - \"{k}\"")
+            print(f'  - "{k}"')
         if len(unused_in_code) > 10:
-            print(f"  ... and {len(unused_in_code)-10} more.")
+            print(f"  ... and {len(unused_in_code) - 10} more.")
     else:
         print("OK")
 
@@ -164,9 +168,9 @@ def main():
             print(f"FAIL: {fname} is missing {len(keys)} keys:")
             # Show first 10
             for k in sorted(keys)[:10]:
-                print(f"  - \"{k}\"")
+                print(f'  - "{k}"')
             if len(keys) > 10:
-                print(f"  ... and {len(keys)-10} more.")
+                print(f"  ... and {len(keys) - 10} more.")
     else:
         print("OK")
 
@@ -175,7 +179,7 @@ def main():
         for fname, keys in duplicates_map.items():
             print(f"WARNING: {fname} has duplicate keys:")
             for k in keys:
-                print(f"  - \"{k}\"")
+                print(f'  - "{k}"')
     else:
         print("OK")
 
@@ -186,6 +190,7 @@ def main():
     else:
         print("TEST PASSED")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

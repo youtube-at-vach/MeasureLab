@@ -5,10 +5,11 @@ import pytest
 import os
 
 # Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 from PyQt6.QtWidgets import QApplication
 from src.gui.widgets.transient_analyzer import TransientAnalyzer
+
 
 class MockAudioEngine:
     def __init__(self):
@@ -24,11 +25,12 @@ class MockAudioEngine:
         if cid in self.callbacks:
             del self.callbacks[cid]
 
+
 class TestTransientAnalyzerAnalysis(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not QApplication.instance():
-            cls.app = QApplication(sys.argv + ['-platform', 'offscreen'])
+            cls.app = QApplication(sys.argv + ["-platform", "offscreen"])
         else:
             cls.app = QApplication.instance()
 
@@ -69,7 +71,7 @@ class TestTransientAnalyzerAnalysis(unittest.TestCase):
         # Check dimensions
         self.assertIsNotNone(times)
         self.assertEqual(len(times), len(sig))
-        self.assertEqual(len(freqs), 120) # Hardcoded num_scales in analyze()
+        self.assertEqual(len(freqs), 120)  # Hardcoded num_scales in analyze()
         self.assertEqual(mag.shape, (120, len(sig)))
 
         # Check content: Frequency detection
@@ -94,6 +96,7 @@ class TestTransientAnalyzerAnalysis(unittest.TestCase):
         self.assertTrue(np.all(freqs >= 500))
         self.assertTrue(np.all(freqs <= 1500))
         self.assertEqual(len(freqs), 120)
+
 
 class TestTransientAnalyzerTrigger:
     @pytest.fixture
@@ -189,7 +192,7 @@ class TestTransientAnalyzerTrigger:
     def test_find_trigger_index_prev_no_crossing(self, analyzer):
         # Prev sample set, but no crossing between prev and sig[0].
         analyzer._prev_trigger_sample = 0.0
-        sig = np.array([0.2, 0.3]) # Still below 0.5
+        sig = np.array([0.2, 0.3])  # Still below 0.5
         assert analyzer._find_trigger_index(sig) is None
 
     def test_find_trigger_index_prev_crossing_rising_exact(self, analyzer):
@@ -207,5 +210,6 @@ class TestTransientAnalyzerTrigger:
         idx = analyzer._find_trigger_index(sig)
         assert idx == 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

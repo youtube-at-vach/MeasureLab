@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 try:
     import numpy as np
 except ImportError:
+
     class MockNumpyArray:
         def __init__(self, data):
             self.data = data
@@ -30,9 +31,9 @@ except ImportError:
             return fp[-1]
 
         for i in range(len(xp) - 1):
-            if xp[i] <= x <= xp[i+1]:
-                t = (x - xp[i]) / (xp[i+1] - xp[i])
-                return fp[i] + t * (fp[i+1] - fp[i])
+            if xp[i] <= x <= xp[i + 1]:
+                t = (x - xp[i]) / (xp[i + 1] - xp[i])
+                return fp[i] + t * (fp[i + 1] - fp[i])
         return 0.0
 
     mock_np = MagicMock()
@@ -53,12 +54,14 @@ import json  # noqa: E402
 from src.core.calibration import CalibrationManager  # noqa: E402
 import tempfile  # noqa: E402
 
+
 @pytest.fixture
 def cal_manager(tmp_path):
     """Fixture that provides a CalibrationManager instance with a temporary config path."""
     config_path = tmp_path / "calibration.json"
     cm = CalibrationManager(str(config_path))
     return cm
+
 
 def test_initialization(cal_manager):
     """Test default values upon initialization."""
@@ -71,6 +74,7 @@ def test_initialization(cal_manager):
     assert cal_manager.spl_offset_db is None
     assert cal_manager.profiles == {}
     assert cal_manager.last_profile is None
+
 
 def test_save_load(cal_manager):
     """Test saving and loading calibration data."""
@@ -87,6 +91,7 @@ def test_save_load(cal_manager):
     assert new_cm.output_gain_is_calibrated is True
     assert new_cm.frequency_calibration_1pps == 0.999
 
+
 def test_load_missing_file(cal_manager):
     """Test loading when file does not exist (should use defaults)."""
     if os.path.exists(cal_manager.config_path):
@@ -94,6 +99,7 @@ def test_load_missing_file(cal_manager):
 
     cal_manager.load()
     assert cal_manager.input_sensitivity == 1.0
+
 
 def test_load_corrupted_file(cal_manager):
     """Test loading when file contains invalid JSON."""
@@ -103,6 +109,7 @@ def test_load_corrupted_file(cal_manager):
     # Should catch exception and keep defaults
     cal_manager.load()
     assert cal_manager.input_sensitivity == 1.0
+
 
 def test_spl_calibration(cal_manager):
     """Test SPL calibration logic."""
@@ -118,6 +125,7 @@ def test_spl_calibration(cal_manager):
     cal_manager.save()
     new_cm = CalibrationManager(cal_manager.config_path)
     assert new_cm.spl_offset_db == 100.0
+
 
 def test_spl_invalid_input(cal_manager):
     """Test invalid input for SPL calibration."""
@@ -137,9 +145,11 @@ def test_spl_invalid_input(cal_manager):
     with pytest.raises(ValueError, match="Invalid SPL calibration values"):
         cal_manager.set_spl_calibration("abc", "def")
 
+
 def test_get_spl_offset_db_none(cal_manager):
     """Test get_spl_offset_db returns None when not calibrated."""
     assert cal_manager.get_spl_offset_db() is None
+
 
 def test_dbfs_to_spl(cal_manager):
     """Test dbfs_to_spl logic for various inputs and edge cases."""
@@ -169,6 +179,7 @@ def test_dbfs_to_spl(cal_manager):
     with pytest.raises(ValueError):
         cal_manager.dbfs_to_spl("invalid")
 
+
 def test_profile_management(cal_manager):
     """Test creating, loading, and deleting profiles."""
     cal_manager.input_sensitivity = 0.5
@@ -188,33 +199,38 @@ def test_profile_management(cal_manager):
     cal_manager.delete_profile("test_profile")
     assert "test_profile" not in cal_manager.get_profiles()
 
+
 def test_delete_non_existent_profile(cal_manager):
     """Test deleting a profile that doesn't exist (should not raise error)."""
     # Ensure it handles missing profiles gracefully
     cal_manager.delete_profile("ghost_profile")
     assert "ghost_profile" not in cal_manager.get_profiles()
 
+
 def test_load_non_existent_profile(cal_manager):
     """Test loading a profile that doesn't exist."""
     with pytest.raises(ValueError, match="Profile 'fake' not found"):
         cal_manager.load_profile("fake")
 
+
 def test_conversions(cal_manager):
     """Test voltage and dBV conversions."""
-    cal_manager.input_sensitivity = 2.0 # 2V at 0 dBFS
+    cal_manager.input_sensitivity = 2.0  # 2V at 0 dBFS
 
     # dBV = dBFS + 20*log10(sensitivity)
     # sensitivity=2.0 -> +6.02 dB
     # 0 dBFS -> 6.02 dBV
-    expected_dbv = 20*math.log10(2.0)
+    expected_dbv = 20 * math.log10(2.0)
 
     # Check input offset helper
     assert np.isclose(cal_manager.get_input_offset_db(), expected_dbv)
 
+
 def test_set_input_sensitivity(cal_manager):
     """Test setting input sensitivity updates value and calls save."""
     from unittest.mock import patch
-    with patch.object(cal_manager, 'save') as mock_save:
+
+    with patch.object(cal_manager, "save") as mock_save:
         # Test valid float
         cal_manager.set_input_sensitivity(5.5)
         assert cal_manager.input_sensitivity == 5.5
@@ -240,10 +256,12 @@ def test_output_gain_validation(cal_manager):
     with pytest.raises(ValueError, match="Invalid output gain"):
         cal_manager.set_output_gain(0.0)
 
+
 def test_set_lockin_gain_offset(cal_manager):
     """Test setting lock-in gain offset updates value and calls save."""
     from unittest.mock import patch
-    with patch.object(cal_manager, 'save') as mock_save:
+
+    with patch.object(cal_manager, "save") as mock_save:
         # Test valid float
         cal_manager.set_lockin_gain_offset(5.5)
         assert cal_manager.lockin_gain_offset == 5.5
@@ -270,26 +288,32 @@ def test_set_lockin_gain_offset(cal_manager):
         cal_manager.set_lockin_gain_offset(None)
         mock_save.assert_not_called()
 
+
 def test_set_frequency_calibration(cal_manager):
     """Test setting frequency calibration updates value and calls save."""
     from unittest.mock import patch
-    with patch.object(cal_manager, 'save') as mock_save:
+
+    with patch.object(cal_manager, "save") as mock_save:
         cal_manager.set_frequency_calibration(1.0001)
         assert cal_manager.frequency_calibration == 1.0001
         mock_save.assert_called_once()
 
+
 def test_set_frequency_calibration_1pps(cal_manager):
     """Test setting 1PPS frequency calibration updates value and calls save."""
     from unittest.mock import patch
-    with patch.object(cal_manager, 'save') as mock_save:
+
+    with patch.object(cal_manager, "save") as mock_save:
         cal_manager.set_frequency_calibration_1pps(0.9999)
         assert cal_manager.frequency_calibration_1pps == 0.9999
         mock_save.assert_called_once()
 
+
 def test_set_frequency_calibration_source(cal_manager):
     """Test setting frequency calibration source updates value and calls save for valid inputs."""
     from unittest.mock import patch
-    with patch.object(cal_manager, 'save') as mock_save:
+
+    with patch.object(cal_manager, "save") as mock_save:
         # Valid source '1pps'
         cal_manager.set_frequency_calibration_source("1pps")
         assert cal_manager.frequency_calibration_source == "1pps"
@@ -304,8 +328,9 @@ def test_set_frequency_calibration_source(cal_manager):
 
         # Invalid source (should ignore and not save)
         cal_manager.set_frequency_calibration_source("invalid")
-        assert cal_manager.frequency_calibration_source == "basic" # Remains unchanged
+        assert cal_manager.frequency_calibration_source == "basic"  # Remains unchanged
         mock_save.assert_not_called()
+
 
 def test_frequency_map_persistence(cal_manager, tmp_path):
     """Test saving and loading frequency map."""
@@ -319,15 +344,12 @@ def test_frequency_map_persistence(cal_manager, tmp_path):
     assert len(cal_manager.frequency_map) == 2
     assert cal_manager.frequency_map[0] == [100, 1.0, 0]
 
+
 def test_frequency_correction_interpolation(cal_manager, tmp_path):
     """Test frequency correction interpolation."""
     map_path = tmp_path / "freq_map.json"
     # Freq, Mag (dB), Phase (deg)
-    data = [
-        [100, 10.0, 45.0],
-        [1000, 0.0, 0.0],
-        [10000, -10.0, -45.0]
-    ]
+    data = [[100, 10.0, 45.0], [1000, 0.0, 0.0], [10000, -10.0, -45.0]]
     cal_manager.save_frequency_map(str(map_path), data)
     cal_manager.load_frequency_map(str(map_path))
 
@@ -351,6 +373,7 @@ def test_frequency_correction_interpolation(cal_manager, tmp_path):
     mag, phase = cal_manager.get_frequency_correction(20000)
     assert mag == -10.0
 
+
 def test_frequency_map_load_external(cal_manager, tmp_path):
     """Test that loading files outside the config directory is allowed."""
     # Create a file in a separate temp directory that is not a child of tmp_path
@@ -363,6 +386,7 @@ def test_frequency_map_load_external(cal_manager, tmp_path):
         # Should be allowed (restriction removed)
         assert cal_manager.load_frequency_map(unsafe_map) is True
 
+
 def test_no_frequency_map(cal_manager):
     """Test behavior when no frequency map is loaded."""
     # Ensure it's empty
@@ -372,6 +396,7 @@ def test_no_frequency_map(cal_manager):
     mag, phase = cal_manager.get_frequency_correction(1000)
     assert mag == 0.0
     assert phase == 0.0
+
 
 def test_frequency_map_reload_cache_update(cal_manager, tmp_path):
     """Test that reloading a frequency map updates the cache."""
@@ -398,116 +423,82 @@ def test_frequency_map_reload_cache_update(cal_manager, tmp_path):
     mag, _ = cal_manager.get_frequency_correction(100)
     assert mag == 20.0
 
+
 # --- Legacy Support Tests ---
+
 
 @pytest.fixture
 def legacy_config_path(tmp_path):
     return tmp_path / "legacy_calibration.json"
 
+
 def test_legacy_speaker_priority(legacy_config_path):
     """Verify that if 'speaker' key exists in spl_calibration, its offset_db is used."""
-    data = {
-        "spl_calibration": {
-            "speaker": {
-                "offset_db": 10.5
-            },
-            "subwoofer": {
-                "offset_db": -5.0
-            }
-        }
-    }
+    data = {"spl_calibration": {"speaker": {"offset_db": 10.5}, "subwoofer": {"offset_db": -5.0}}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
 
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db == 10.5
 
+
 def test_legacy_subwoofer_fallback(legacy_config_path):
     """Verify that if 'speaker' is missing but 'subwoofer' exists, its offset_db is used."""
-    data = {
-        "spl_calibration": {
-            "subwoofer": {
-                "offset_db": -5.0
-            }
-        }
-    }
+    data = {"spl_calibration": {"subwoofer": {"offset_db": -5.0}}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
 
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db == -5.0
 
+
 def test_legacy_arbitrary_key_fallback(legacy_config_path):
     """Verify that if neither 'speaker' nor 'subwoofer' exists, the first available key's offset_db is used."""
-    data = {
-        "spl_calibration": {
-            "unknown_device": {
-                "offset_db": 3.3
-            }
-        }
-    }
+    data = {"spl_calibration": {"unknown_device": {"offset_db": 3.3}}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
 
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db == 3.3
 
+
 def test_legacy_invalid_format(legacy_config_path):
     """Verify behavior with broken JSON structure or invalid values (should result in None)."""
     # Case 1: spl_calibration is not a dict
-    data = {
-        "spl_calibration": "invalid"
-    }
+    data = {"spl_calibration": "invalid"}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db is None
 
     # Case 2: offset_db is invalid
-    data = {
-        "spl_calibration": {
-            "speaker": {
-                "offset_db": "not_a_number"
-            }
-        }
-    }
+    data = {"spl_calibration": {"speaker": {"offset_db": "not_a_number"}}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db is None
 
     # Case 3: entry is not a dict
-    data = {
-        "spl_calibration": {
-            "speaker": "not_a_dict"
-        }
-    }
+    data = {"spl_calibration": {"speaker": "not_a_dict"}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db is None
 
+
 def test_legacy_precedence(legacy_config_path):
     """Verify that if the new format spl_offset_db is present at the top level, it takes precedence over the legacy format."""
-    data = {
-        "spl_offset_db": 20.0,
-        "spl_calibration": {
-            "speaker": {
-                "offset_db": 10.0
-            }
-        }
-    }
+    data = {"spl_offset_db": 20.0, "spl_calibration": {"speaker": {"offset_db": 10.0}}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
 
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db == 20.0
 
+
 def test_legacy_empty_dict(legacy_config_path):
     """Verify behavior when spl_calibration is an empty dict."""
-    data = {
-        "spl_calibration": {}
-    }
+    data = {"spl_calibration": {}}
     with open(legacy_config_path, "w") as f:
         json.dump(data, f)
     cm = CalibrationManager(str(legacy_config_path))

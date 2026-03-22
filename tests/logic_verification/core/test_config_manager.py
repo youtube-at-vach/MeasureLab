@@ -7,16 +7,15 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
+
 class TestConfigManager(unittest.TestCase):
     def setUp(self):
         # Patch sys.modules to mock PyQt6 dependencies BEFORE importing ConfigManager
-        self.modules_patcher = patch.dict(sys.modules, {
-            "PyQt6": MagicMock(),
-            "PyQt6.QtCore": MagicMock()
-        })
+        self.modules_patcher = patch.dict(sys.modules, {"PyQt6": MagicMock(), "PyQt6.QtCore": MagicMock()})
         self.modules_patcher.start()
 
         from src.core.config_manager import ConfigManager, DEFAULT_CONFIG
+
         self.ConfigManager = ConfigManager
         self.DEFAULT_CONFIG = DEFAULT_CONFIG
 
@@ -24,10 +23,10 @@ class TestConfigManager(unittest.TestCase):
         self.config_path = os.path.join(self.temp_dir.name, "config.json")
 
         self.mock_logger = MagicMock()
-        self.logger_patcher = patch('src.core.config_manager.logging.getLogger', return_value=self.mock_logger)
+        self.logger_patcher = patch("src.core.config_manager.logging.getLogger", return_value=self.mock_logger)
         self.logger_patcher.start()
 
-        if hasattr(self.ConfigManager, '_instances'):
+        if hasattr(self.ConfigManager, "_instances"):
             self.ConfigManager._instances.clear()
 
     def tearDown(self):
@@ -47,7 +46,7 @@ class TestConfigManager(unittest.TestCase):
             in_ch="mono",
             out_ch="stereo",
             input_hostapi="ALSA",
-            output_hostapi="ALSA"
+            output_hostapi="ALSA",
         )
         audio_cfg = cm.get_audio_config()
         self.assertEqual(audio_cfg["input_device"], "In1")
@@ -135,18 +134,21 @@ class TestConfigManager(unittest.TestCase):
                 self.assertEqual(cm.get_screenshot_output_dir(), "/default/dir")
 
     def test_resolve_config_path_oserror(self):
-        with patch('src.core.config_manager.ConfigManager.get_user_data_dir', return_value='/invalid/dir'):
-            with patch('os.makedirs', side_effect=OSError("Permission denied")):
-                with patch('os.getcwd', return_value='/fallback/cwd'):
+        with patch("src.core.config_manager.ConfigManager.get_user_data_dir", return_value="/invalid/dir"):
+            with patch("os.makedirs", side_effect=OSError("Permission denied")):
+                with patch("os.getcwd", return_value="/fallback/cwd"):
                     cm = self.ConfigManager(config_filename="config.json")
-                    self.assertEqual(cm.config_path, os.path.join('/fallback/cwd', 'config.json'))
+                    self.assertEqual(cm.config_path, os.path.join("/fallback/cwd", "config.json"))
                     self.mock_logger.warning.assert_called()
 
     def test_flush_all(self):
         cm1 = self.ConfigManager(config_filename=os.path.join(self.temp_dir.name, "c1.json"))
         cm2 = self.ConfigManager(config_filename=os.path.join(self.temp_dir.name, "c2.json"))
 
-        with patch.object(cm1, 'shutdown') as mock_sd1, patch.object(cm2, 'shutdown', side_effect=Exception("Error")) as mock_sd2:
+        with (
+            patch.object(cm1, "shutdown") as mock_sd1,
+            patch.object(cm2, "shutdown", side_effect=Exception("Error")) as mock_sd2,
+        ):
             self.ConfigManager._flush_all()
             mock_sd1.assert_called_once()
             mock_sd2.assert_called_once()
@@ -162,7 +164,7 @@ class TestConfigManager(unittest.TestCase):
     def test_flush_config_chmod_error(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
-        with patch('os.chmod', side_effect=Exception("Chmod error")):
+        with patch("os.chmod", side_effect=Exception("Chmod error")):
             cm._flush_config()
             self.mock_logger.warning.assert_called_with("Failed to set secure permissions for config file: Chmod error")
 
@@ -170,13 +172,18 @@ class TestConfigManager(unittest.TestCase):
         cm = self.ConfigManager(config_filename=self.config_path)
         cfg = {"screenshot": {"output_dir": "test"}}
 
-        with patch.object(cm, '_resolve_path', side_effect=Exception("Resolve error")):
-            with patch.object(cm, '_get_default_screenshot_dir', return_value='/default/shot'):
-                with patch('os.makedirs', side_effect=PermissionError("No perm")):
+        with patch.object(cm, "_resolve_path", side_effect=Exception("Resolve error")):
+            with patch.object(cm, "_get_default_screenshot_dir", return_value="/default/shot"):
+                with patch("os.makedirs", side_effect=PermissionError("No perm")):
                     out = cm._ensure_screenshot_dir(cfg)
-                    self.assertEqual(out, '/default/shot')
-                    self.mock_logger.warning.assert_any_call("Error resolving screenshot path: Resolve error. Reverting to default.")
-                    self.mock_logger.warning.assert_any_call("Unable to ensure screenshot directory at /default/shot: No perm")
+                    self.assertEqual(out, "/default/shot")
+                    self.mock_logger.warning.assert_any_call(
+                        "Error resolving screenshot path: Resolve error. Reverting to default."
+                    )
+                    self.mock_logger.warning.assert_any_call(
+                        "Unable to ensure screenshot directory at /default/shot: No perm"
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ import numpy as np
 import sys
 from scipy.signal import get_window
 
+
 class TestImpedanceAnalyzerWindow(unittest.TestCase):
     def setUp(self):
         # Define mocks
@@ -15,13 +16,13 @@ class TestImpedanceAnalyzerWindow(unittest.TestCase):
 
         # Modules to patch
         self.modules_to_patch = {
-            'PyQt6': self.mock_pyqt,
-            'PyQt6.QtCore': self.mock_pyqt,
-            'PyQt6.QtGui': self.mock_pyqt,
-            'PyQt6.QtWidgets': self.mock_pyqt,
-            'pyqtgraph': self.mock_pg,
-            'sounddevice': self.mock_sd,
-            'src.core.localization': self.mock_loc,
+            "PyQt6": self.mock_pyqt,
+            "PyQt6.QtCore": self.mock_pyqt,
+            "PyQt6.QtGui": self.mock_pyqt,
+            "PyQt6.QtWidgets": self.mock_pyqt,
+            "pyqtgraph": self.mock_pg,
+            "sounddevice": self.mock_sd,
+            "src.core.localization": self.mock_loc,
         }
 
         self.original_modules = {}
@@ -31,11 +32,12 @@ class TestImpedanceAnalyzerWindow(unittest.TestCase):
             sys.modules[name] = mock_obj
 
         # Force reload of the module under test to ensure it uses the mocked dependencies
-        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
-            del sys.modules['src.gui.widgets.impedance_analyzer']
+        if "src.gui.widgets.impedance_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.impedance_analyzer"]
 
         try:
             import src.gui.widgets.impedance_analyzer
+
             self.ImpedanceAnalyzer = src.gui.widgets.impedance_analyzer.ImpedanceAnalyzer
         except ImportError:
             self.skipTest("ImpedanceAnalyzer could not be imported")
@@ -48,7 +50,7 @@ class TestImpedanceAnalyzerWindow(unittest.TestCase):
 
         # Populate input data
         with self.analyzer._buffer_lock:
-            self.analyzer.input_data = np.ones((self.buffer_size, 2)) # Constant DC
+            self.analyzer.input_data = np.ones((self.buffer_size, 2))  # Constant DC
 
     def tearDown(self):
         # Restore sys.modules
@@ -59,10 +61,10 @@ class TestImpedanceAnalyzerWindow(unittest.TestCase):
                 del sys.modules[name]
 
         # Cleanup module cache
-        if 'src.gui.widgets.impedance_analyzer' in sys.modules:
-            del sys.modules['src.gui.widgets.impedance_analyzer']
+        if "src.gui.widgets.impedance_analyzer" in sys.modules:
+            del sys.modules["src.gui.widgets.impedance_analyzer"]
 
-    @patch('src.gui.widgets.impedance_analyzer.get_cached_window')
+    @patch("src.gui.widgets.impedance_analyzer.get_cached_window")
     def test_process_data_uses_cached_window(self, mock_get_window):
         # Setup mock return value to be a real window so math works
         # Use periodic hann window as expected by get_cached_window
@@ -91,5 +93,6 @@ class TestImpedanceAnalyzerWindow(unittest.TestCase):
 
         np.testing.assert_allclose(w, expected, atol=1e-10)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

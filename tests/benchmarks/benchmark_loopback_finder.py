@@ -4,17 +4,18 @@ import unittest.mock
 import numpy as np
 from unittest.mock import patch
 
+
 def run_benchmark():
     # Mock dependencies before import
     # We use patch.dict to ensure cleanup
     mocks = {
-        'sounddevice': unittest.mock.Mock(),
-        'PyQt6': unittest.mock.Mock(),
-        'PyQt6.QtCore': unittest.mock.Mock(),
-        'PyQt6.QtWidgets': unittest.mock.Mock(),
-        'src.core.localization': unittest.mock.Mock(),
+        "sounddevice": unittest.mock.Mock(),
+        "PyQt6": unittest.mock.Mock(),
+        "PyQt6.QtCore": unittest.mock.Mock(),
+        "PyQt6.QtWidgets": unittest.mock.Mock(),
+        "src.core.localization": unittest.mock.Mock(),
     }
-    mocks['src.core.localization'].tr = lambda x, default=None: x
+    mocks["src.core.localization"].tr = lambda x, default=None: x
 
     with patch.dict(sys.modules, mocks):
         # Import inside patched context
@@ -102,10 +103,10 @@ def run_benchmark():
             out_b, in_b, mag_b = res_base[i]
             out_o, in_o, mag_o = res_opt[i]
             if out_b != out_o or in_b != in_o or not np.isclose(mag_b, mag_o):
-                 print(f"FAILED: Result mismatch at index {i}!")
-                 print(f"Base: {res_base[i]}")
-                 print(f"Opt:  {res_opt[i]}")
-                 sys.exit(1)
+                print(f"FAILED: Result mismatch at index {i}!")
+                print(f"Base: {res_base[i]}")
+                print(f"Opt:  {res_opt[i]}")
+                sys.exit(1)
 
         print("Verification PASSED.")
 
@@ -126,6 +127,7 @@ def run_benchmark():
         if baseline_time > 0:
             improvement = (baseline_time - optimized_time) / baseline_time * 100
             print(f"Improvement: {improvement:.2f}%")
+
 
 if __name__ == "__main__":
     run_benchmark()

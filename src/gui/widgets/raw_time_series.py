@@ -1,4 +1,3 @@
-
 import threading
 
 import numpy as np
@@ -58,8 +57,6 @@ class RawTimeSeries(MeasurementModule):
     @property
     def description(self) -> str:
         return "Long-span scrolling time series monitor."
-
-
 
     def get_widget(self):
         return RawTimeSeriesWidget(self)

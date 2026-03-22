@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QTabWidget, QComboBox, QCheckBox, QLineEdit, QSpinBo
 from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
 
+
 def test_settings_widget_structure(qtbot):
     """
     Verify the structure of SettingsWidget to ensure all components are initialized correctly.
@@ -12,7 +13,7 @@ def test_settings_widget_structure(qtbot):
     """
     # Mock AudioEngine
     mock_engine = MagicMock()
-    mock_engine.get_host_apis.return_value = [{'name': 'ALSA', 'index': 0}]
+    mock_engine.get_host_apis.return_value = [{"name": "ALSA", "index": 0}]
     mock_engine.list_devices.return_value = []
     mock_engine.input_device = 0
     mock_engine.output_device = 0
@@ -44,14 +45,14 @@ def test_settings_widget_structure(qtbot):
     mock_config.is_audio_engine_64bit.return_value = False
 
     # Mock Localization Manager
-    with patch('src.gui.widgets.settings.get_manager') as mock_get_man:
+    with patch("src.gui.widgets.settings.get_manager") as mock_get_man:
         mock_man_instance = MagicMock()
         mock_man_instance.available_languages = {"en": "English"}
         mock_man_instance.language = "en"
         mock_get_man.return_value = mock_man_instance
 
         # Patch internal method to avoid sounddevice import issues during init
-        with patch.object(SettingsWidget, '_get_current_host_api_index', return_value=0):
+        with patch.object(SettingsWidget, "_get_current_host_api_index", return_value=0):
             # Create widget
             widget = SettingsWidget(mock_engine, mock_config)
             qtbot.addWidget(widget)
@@ -65,55 +66,55 @@ def test_settings_widget_structure(qtbot):
             assert tabs.tabText(2) == "Calibration"
 
             # 2. Verify General Tab Components
-            assert hasattr(widget, 'lang_combo')
+            assert hasattr(widget, "lang_combo")
             assert isinstance(widget.lang_combo, QComboBox)
-            assert hasattr(widget, 'theme_combo')
+            assert hasattr(widget, "theme_combo")
             assert isinstance(widget.theme_combo, QComboBox)
-            assert hasattr(widget, 'screenshot_dir_edit')
+            assert hasattr(widget, "screenshot_dir_edit")
             assert isinstance(widget.screenshot_dir_edit, QLineEdit)
-            assert hasattr(widget, 'regen_fft_btn')
+            assert hasattr(widget, "regen_fft_btn")
             assert isinstance(widget.regen_fft_btn, QPushButton)
 
             # 3. Verify Audio Tab Components
-            assert hasattr(widget, 'hostapi_combo')
+            assert hasattr(widget, "hostapi_combo")
             assert isinstance(widget.hostapi_combo, QComboBox)
-            assert hasattr(widget, 'input_combo')
+            assert hasattr(widget, "input_combo")
             assert isinstance(widget.input_combo, QComboBox)
-            assert hasattr(widget, 'output_combo')
+            assert hasattr(widget, "output_combo")
             assert isinstance(widget.output_combo, QComboBox)
-            assert hasattr(widget, 'sr_combo')
+            assert hasattr(widget, "sr_combo")
             assert isinstance(widget.sr_combo, QComboBox)
-            assert hasattr(widget, 'bs_combo')
+            assert hasattr(widget, "bs_combo")
             assert isinstance(widget.bs_combo, QComboBox)
-            assert hasattr(widget, 'in_ch_combo')
+            assert hasattr(widget, "in_ch_combo")
             assert isinstance(widget.in_ch_combo, QComboBox)
-            assert hasattr(widget, 'out_ch_combo')
+            assert hasattr(widget, "out_ch_combo")
             assert isinstance(widget.out_ch_combo, QComboBox)
-            assert hasattr(widget, 'offline_check')
+            assert hasattr(widget, "offline_check")
             assert isinstance(widget.offline_check, QCheckBox)
-            assert hasattr(widget, 'offline_rate_spin')
+            assert hasattr(widget, "offline_rate_spin")
             assert isinstance(widget.offline_rate_spin, QSpinBox)
-            assert hasattr(widget, 'pipewire_jack_resident_check')
+            assert hasattr(widget, "pipewire_jack_resident_check")
             assert isinstance(widget.pipewire_jack_resident_check, QCheckBox)
-            assert hasattr(widget, 'dithering_check')
+            assert hasattr(widget, "dithering_check")
             assert isinstance(widget.dithering_check, QCheckBox)
-            assert hasattr(widget, 'audio_engine_64bit_check')
+            assert hasattr(widget, "audio_engine_64bit_check")
             assert isinstance(widget.audio_engine_64bit_check, QCheckBox)
 
             # 4. Verify Calibration Tab Components
-            assert hasattr(widget, 'cal_profile_combo')
+            assert hasattr(widget, "cal_profile_combo")
             assert isinstance(widget.cal_profile_combo, QComboBox)
-            assert hasattr(widget, 'cal_profile_name_edit')
+            assert hasattr(widget, "cal_profile_name_edit")
             assert isinstance(widget.cal_profile_name_edit, QLineEdit)
-            assert hasattr(widget, 'in_sens_edit')
+            assert hasattr(widget, "in_sens_edit")
             assert isinstance(widget.in_sens_edit, QLineEdit)
-            assert hasattr(widget, 'out_gain_edit')
+            assert hasattr(widget, "out_gain_edit")
             assert isinstance(widget.out_gain_edit, QLineEdit)
-            assert hasattr(widget, 'spl_offset_edit')
+            assert hasattr(widget, "spl_offset_edit")
             assert isinstance(widget.spl_offset_edit, QLineEdit)
-            assert hasattr(widget, 'show_adv_cal_check')
+            assert hasattr(widget, "show_adv_cal_check")
             assert isinstance(widget.show_adv_cal_check, QCheckBox)
 
             # Verify advanced calibration group is hidden initially
-            assert hasattr(widget, 'adv_cal_group')
+            assert hasattr(widget, "adv_cal_group")
             assert widget.adv_cal_group.isVisible() is False

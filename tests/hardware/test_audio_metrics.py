@@ -7,6 +7,7 @@ from src.gui.widgets.distortion_analyzer import DistortionAnalyzer
 # Mark entire module as hardware tests
 pytestmark = pytest.mark.hardware
 
+
 def pytest_generate_tests(metafunc):
     """
     Generate test cases based on --hardware-mode option.
@@ -23,9 +24,10 @@ def pytest_generate_tests(metafunc):
         else:
             # Limit mode (Matrix test)
             # Amplitude sweep from -12dB to 0dB in 1dB steps
-            db_values = list(range(-12, 1)) 
+            db_values = list(range(-12, 1))
             metafunc.parametrize("target_dbfs", db_values)
             metafunc.parametrize("averaging_count", [10])
+
 
 class TestAudioHardwareMetrics:
     @pytest.fixture(autouse=True)
@@ -33,7 +35,7 @@ class TestAudioHardwareMetrics:
         """Setup and teardown for hardware tests."""
         self.engine = AudioEngine()
         # Ensure we are in a known state
-        self.engine.set_offline_mode(False) 
+        self.engine.set_offline_mode(False)
 
         # Instantiate the analyzer
         self.analyzer = DistortionAnalyzer(self.engine)
@@ -62,7 +64,7 @@ class TestAudioHardwareMetrics:
 
         # Wait a bit for the stream to stabilize before collecting data?
         # The analyzer logic handles initial startup, but we might get some zeros.
-        time.sleep(0.5) 
+        time.sleep(0.5)
 
         print(f"Starting measurement loop for {duration_sec}s...")
 
@@ -85,7 +87,7 @@ class TestAudioHardwareMetrics:
                     "gen_frequency": self.analyzer.gen_frequency,
                     "imd_f1": self.analyzer.imd_f1,
                     "imd_f2": self.analyzer.imd_f2,
-                    "target_frequency": self.analyzer.gen_frequency # Assuming fixed freq
+                    "target_frequency": self.analyzer.gen_frequency,  # Assuming fixed freq
                 }
 
                 try:
@@ -105,11 +107,10 @@ class TestAudioHardwareMetrics:
                     print(f"Calculation error: {e}")
 
             # Analysis rate (approx 10Hz)
-            time.sleep(0.1) 
+            time.sleep(0.1)
 
         print(f"Captured {len(results_list)} results.")
         return results_list
-
 
     def test_thdn_1khz(self, target_dbfs, averaging_count, record_property, hardware_config):
         """
@@ -135,15 +136,15 @@ class TestAudioHardwareMetrics:
         # Configure Analyzer
         self.analyzer.signal_type = "sine"
         self.analyzer.gen_frequency = freq
-        self.analyzer.gen_amplitude = 10**(target_dbfs/20.0)
+        self.analyzer.gen_amplitude = 10 ** (target_dbfs / 20.0)
         self.analyzer.average_count = averaging_count
         self.analyzer.window_type = "blackmanharris"
-        self.analyzer.output_enabled = True # Essential for signal generation!
+        self.analyzer.output_enabled = True  # Essential for signal generation!
 
         # Run Measurement
         # Duration: wait long enough to get statistically significant samples
         settling_time = max(1.0, averaging_count * 0.1)
-        test_duration = settling_time + 2.0 
+        test_duration = settling_time + 2.0
 
         print(f"\nTesting THD+N: {target_dbfs} dBFS, Avg {averaging_count}")
 
@@ -152,10 +153,10 @@ class TestAudioHardwareMetrics:
         # Analysis of results
         samples_to_analyze = 10
         if len(results) < samples_to_analyze:
-                samples_to_analyze = len(results) // 2
+            samples_to_analyze = len(results) // 2
 
         if not results:
-             pytest.fail("No results captured.")
+            pytest.fail("No results captured.")
 
         recent_results = results[-samples_to_analyze:]
         thdn_values = [r["thdn_db"] for r in recent_results]
@@ -182,10 +183,9 @@ class TestAudioHardwareMetrics:
 
         # Assertions (Soft check, outputting warning if it fails but not crashing unless critical)
         if target_dbfs > -10:
-                if mean_thdn > -60.0:
-                    print(f"  FAILED: THD+N {mean_thdn:.2f} dB is too high. Target around -80dB.")
-                assert mean_thdn < -60.0, f"THD+N too high at {target_dbfs}dBFS: {mean_thdn:.2f} dB"
-
+            if mean_thdn > -60.0:
+                print(f"  FAILED: THD+N {mean_thdn:.2f} dB is too high. Target around -80dB.")
+            assert mean_thdn < -60.0, f"THD+N too high at {target_dbfs}dBFS: {mean_thdn:.2f} dB"
 
     def test_imd_smpte(self, target_dbfs, averaging_count, record_property, hardware_config):
         """
@@ -204,7 +204,7 @@ class TestAudioHardwareMetrics:
         self.analyzer.signal_type = "smpte"
         self.analyzer.imd_f1 = 60.0
         self.analyzer.imd_f2 = 7000.0
-        self.analyzer.gen_amplitude = 10**(target_dbfs/20.0)
+        self.analyzer.gen_amplitude = 10 ** (target_dbfs / 20.0)
         self.analyzer.average_count = averaging_count
         self.analyzer.output_enabled = True
 
@@ -218,10 +218,10 @@ class TestAudioHardwareMetrics:
 
         samples_to_analyze = 10
         if len(results) < samples_to_analyze:
-                samples_to_analyze = len(results) // 2
+            samples_to_analyze = len(results) // 2
 
         if not results:
-             pytest.fail("No results captured.")
+            pytest.fail("No results captured.")
 
         recent_results = results[-samples_to_analyze:]
         imd_values = [r["imd_db"] for r in recent_results]

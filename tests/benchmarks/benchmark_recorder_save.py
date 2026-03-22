@@ -5,14 +5,11 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
+
 def benchmark_save(duration_sec=10, chunk_size=1024):
     print(f"Benchmarking save_recording with {duration_sec}s of audio...")
 
-    mocks = {
-        'sounddevice': MagicMock(),
-        'PyQt6.QtCore': MagicMock(),
-        'PyQt6.QtWidgets': MagicMock()
-    }
+    mocks = {"sounddevice": MagicMock(), "PyQt6.QtCore": MagicMock(), "PyQt6.QtWidgets": MagicMock()}
 
     with patch.dict(sys.modules, mocks):
         # Import inside patched context
@@ -56,6 +53,7 @@ def benchmark_save(duration_sec=10, chunk_size=1024):
         # Cleanup
         if os.path.exists(filepath):
             os.remove(filepath)
+
 
 if __name__ == "__main__":
     benchmark_save(duration_sec=120)

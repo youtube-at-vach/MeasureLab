@@ -1,4 +1,3 @@
-
 import logging
 import threading
 import time
@@ -136,8 +135,6 @@ class LockInAmplifier(MeasurementModule):
     @property
     def description(self) -> str:
         return "Dual-phase lock-in detection."
-
-
 
     def get_widget(self):
         return LockInAmplifierWidget(self)
@@ -960,10 +957,10 @@ class LockInAmplifierWidget(QWidget):
         self.fra_cursor_label.setStyleSheet("font-size: 13px; color: #ccffcc;")
         self.fra_cursor_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         # Allow multi-line
-        self.fra_cursor_label.setWordWrap(True) 
+        self.fra_cursor_label.setWordWrap(True)
         fra_right_layout.addWidget(self.fra_cursor_label)
 
-        # Add a small spacer/stretch if needed, relying on plot stretch 
+        # Add a small spacer/stretch if needed, relying on plot stretch
         # But putting stretch in VBox might push things too far apart if not careful.
         # Just Plot below is fine.
 
@@ -975,13 +972,25 @@ class LockInAmplifierWidget(QWidget):
         self.fra_plot.addLegend()
 
         # Cursors (Hidden by default)
-        self.fra_cursor_1 = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen("y", width=1, style=Qt.PenStyle.DashLine), label="1", labelOpts={'position':0.9, 'color': (255,255,0), 'movable': True})
+        self.fra_cursor_1 = pg.InfiniteLine(
+            angle=90,
+            movable=True,
+            pen=pg.mkPen("y", width=1, style=Qt.PenStyle.DashLine),
+            label="1",
+            labelOpts={"position": 0.9, "color": (255, 255, 0), "movable": True},
+        )
         self.fra_cursor_1.setHoverPen(pg.mkPen("y", width=2))
         self.fra_cursor_1.sigPositionChanged.connect(self.update_fra_cursors)
         self.fra_cursor_1.setVisible(False)
         self.fra_plot.addItem(self.fra_cursor_1)
 
-        self.fra_cursor_2 = pg.InfiniteLine(angle=90, movable=True, pen=pg.mkPen("m", width=1, style=Qt.PenStyle.DashLine), label="2", labelOpts={'position':0.9, 'color': (255,0,255), 'movable': True})
+        self.fra_cursor_2 = pg.InfiniteLine(
+            angle=90,
+            movable=True,
+            pen=pg.mkPen("m", width=1, style=Qt.PenStyle.DashLine),
+            label="2",
+            labelOpts={"position": 0.9, "color": (255, 0, 255), "movable": True},
+        )
         self.fra_cursor_2.setHoverPen(pg.mkPen("m", width=2))
         self.fra_cursor_2.sigPositionChanged.connect(self.update_fra_cursors)
         self.fra_cursor_2.setVisible(False)
@@ -1546,8 +1555,8 @@ class LockInAmplifierWidget(QWidget):
             view_range = self.fra_plot.viewRange()[0]
             min_x, max_x = view_range
 
-            # Handle log scale visualization logic if needed, 
-            # but InfiniteLine works on the axis values. 
+            # Handle log scale visualization logic if needed,
+            # but InfiniteLine works on the axis values.
             # If the axis is log-mapped manually (which it is: setLogMode(False) but data is logged),
             # we need to check if we are in log mode or linear mode for the plot.
             # However, looking at on_fra_result, `fra_log_freqs` stores X values.
@@ -1604,15 +1613,15 @@ class LockInAmplifierWidget(QWidget):
 
         # Calculate Deltas
         d_f = abs(f2 - f1)
-        d_m_db = abs(m2_db - m1_db) # User requested Delta Amplitude (dB). Usually magnitude difference.
+        d_m_db = abs(m2_db - m1_db)  # User requested Delta Amplitude (dB). Usually magnitude difference.
         d_p = abs(p2 - p1)
-        # Unwrap phase delta if needed? Usually just difference is fine. 
-        # If wrapped, 350 and 10 might be 20 deg diff or 340. 
+        # Unwrap phase delta if needed? Usually just difference is fine.
+        # If wrapped, 350 and 10 might be 20 deg diff or 340.
         # Standard subtract is simplest unless requested otherwise.
 
         # Format Freq
         if d_f >= 1000:
-            d_f_str = f"{d_f/1000:.3f} kHz"
+            d_f_str = f"{d_f / 1000:.3f} kHz"
         else:
             d_f_str = f"{d_f:.1f} Hz"
 
@@ -1628,7 +1637,7 @@ class LockInAmplifierWidget(QWidget):
 
         def fmt_cur_html(f, m_db, p):
             if f >= 1000:
-                f_s = f"{f/1000:.3f} kHz"
+                f_s = f"{f / 1000:.3f} kHz"
             else:
                 f_s = f"{f:.3f} Hz"
             return f"<b>{f_s}</b>, {m_db:.4f} dB, {p:.3f} deg"
@@ -1694,7 +1703,7 @@ class LockInAmplifierWidget(QWidget):
 
         # Set cursor to max frequency initially or just update
         if self.fra_log_freqs:
-             self.update_fra_cursors()
+            self.update_fra_cursors()
 
     # --- Calibration Methods ---
 
@@ -1972,7 +1981,7 @@ class LockInAmplifierWidget(QWidget):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        self._is_dark_theme = (theme_name == "dark")
+        self._is_dark_theme = theme_name == "dark"
 
         if self._is_dark_theme:
             # Dark Theme

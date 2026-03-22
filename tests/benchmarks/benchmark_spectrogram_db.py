@@ -1,6 +1,6 @@
-
 import time
 import numpy as np
+
 
 def run_benchmark():
     fft_sizes = [8192, 32768, 65536]
@@ -35,6 +35,7 @@ def run_benchmark():
 
         improvement = (duration_original - duration_optimized) / duration_original * 100
         print(f"Improvement: {improvement:.2f}%")
+
 
 if __name__ == "__main__":
     run_benchmark()

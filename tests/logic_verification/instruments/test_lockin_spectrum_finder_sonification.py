@@ -9,11 +9,14 @@ from unittest.mock import MagicMock
 from src.gui.widgets.lockin_spectrum_finder import LockInSpectrumFinder
 from src.core.sonifier import Sonifier
 
+
 class MockCalibration:
     def get_input_offset_db(self):
         return 0.0
+
     def get_spl_offset_db(self):
         return 0.0
+
 
 class MockAudioEngine:
     def __init__(self):
@@ -31,6 +34,7 @@ class MockAudioEngine:
     def unregister_callback(self, cid):
         if cid in self.callbacks:
             del self.callbacks[cid]
+
 
 class TestLockInSpectrumFinderSonification(unittest.TestCase):
     def setUp(self):
@@ -81,7 +85,7 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
             spacing="Lin",
             display_unit="dBFS",
             offset_dbv=0.0,
-            offset_spl=0.0
+            offset_spl=0.0,
         )
 
         # Verify update_parameters was called at least once
@@ -98,10 +102,7 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
 
         targets = {1000.0: "Test Note"}
 
-        with patch("os.makedirs") as mock_makedirs, \
-             patch("os.open") as mock_open, \
-             patch("os.fdopen") as mock_fdopen:
-
+        with patch("os.makedirs") as mock_makedirs, patch("os.open") as mock_open, patch("os.fdopen") as mock_fdopen:
             # Setup mock so we don't actually write to disk
             mock_open.return_value = 123
             mock_fdopen.return_value.__enter__.return_value = MagicMock()

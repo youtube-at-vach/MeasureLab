@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
-    QProgressBar,
     QProgressDialog,
     QPushButton,
     QSlider,
@@ -217,6 +216,9 @@ class RecorderPlayer(MeasurementModule):
     def start_playback(self):
         if self.playback_buffer is None:
             return
+        # If at the end, restart
+        if self.playback_pos >= len(self.playback_buffer):
+            self.playback_pos = 0
         self.is_playing = True
         self._ensure_callback()
 
@@ -271,7 +273,13 @@ class RecorderPlayer(MeasurementModule):
             # Use the secure file descriptor instead of the filepath to prevent TOCTOU
             # The format argument is required when using a file descriptor
             with sf.SoundFile(
-                self._temp_record_fd, mode="w", samplerate=samplerate, channels=channels, subtype="FLOAT", format="WAV", closefd=True
+                self._temp_record_fd,
+                mode="w",
+                samplerate=samplerate,
+                channels=channels,
+                subtype="FLOAT",
+                format="WAV",
+                closefd=True,
             ) as f:
                 # SoundFile now owns the fd and will close it
                 self._temp_record_fd = None
@@ -362,26 +370,29 @@ class RecorderPlayer(MeasurementModule):
                 outdata.fill(0)
                 return
 
-            # Sanity check for race conditions (e.g. buffer swapped to smaller one)
-            if self.playback_pos >= pb_len:
-                if self.loop_playback:
-                    self.playback_pos = 0
-                else:
-                    self.is_playing = False
-                    outdata.fill(0)
-                    return
-
             current_idx = 0
 
             while current_idx < frames:
-                remaining = frames - current_idx
-                available = pb_len - self.playback_pos
+                # Snap current position to avoid race conditions with UI thread seeking
+                pos = self.playback_pos
 
-                # available is guaranteed > 0 here because of the check above and loop logic
+                # Sanity check for bounds or end of playback
+                if pos >= pb_len:
+                    if self.loop_playback:
+                        pos = 0
+                        self.playback_pos = 0
+                    else:
+                        self.is_playing = False
+                        outdata[current_idx:] = 0
+                        break
+
+                remaining = frames - current_idx
+                available = pb_len - pos
+
                 to_copy = min(remaining, available)
 
-                # Get chunk from buffer
-                chunk = current_buffer[self.playback_pos : self.playback_pos + to_copy]
+                # Get chunk from buffer safely
+                chunk = current_buffer[pos : pos + to_copy]
 
                 # Apply digital gain/attenuation in linear domain
                 if self.playback_gain_db != 0.0:
@@ -421,7 +432,10 @@ class RecorderPlayer(MeasurementModule):
                     if out_ch > 1:
                         out_slice[:, 1] = mono
 
-                self.playback_pos += to_copy
+                # Avoid destructive read-modify-write if the UI thread mutated play position during this loop iteration
+                if self.playback_pos == pos:
+                    self.playback_pos = pos + to_copy
+
                 current_idx += to_copy
 
                 if self.playback_pos >= pb_len:
@@ -429,8 +443,8 @@ class RecorderPlayer(MeasurementModule):
                         self.playback_pos = 0
                     else:
                         self.is_playing = False
-                        # Fill rest with zeros
-                        outdata[current_idx:] = 0
+                        if current_idx < frames:
+                            outdata[current_idx:] = 0
                         break
         else:
             outdata.fill(0)
@@ -445,6 +459,8 @@ class RecorderPlayerWidget(QWidget):
         self.load_worker = None
         self.save_worker = None
         self.progress_dialog = None
+
+        self._was_playing = False
 
         # Update timer
         self.timer = QTimer()
@@ -477,10 +493,20 @@ class RecorderPlayerWidget(QWidget):
         ctrl_layout.addWidget(self.loop_check)
         pb_layout.addLayout(ctrl_layout)
 
-        # Progress
-        self.pb_progress = QProgressBar()
-        self.pb_progress.setTextVisible(True)
-        pb_layout.addWidget(self.pb_progress)
+        # Position Slider
+        pos_layout = QHBoxLayout()
+        self.time_label = QLabel("0.00 / 0.00 s")
+        pos_layout.addWidget(self.time_label)
+
+        self.pos_slider = QSlider(Qt.Orientation.Horizontal)
+        self.pos_slider.setRange(0, 1000)
+        self.pos_slider.setEnabled(False)
+        self.pos_slider.sliderPressed.connect(self.on_slider_pressed)
+        self.pos_slider.sliderReleased.connect(self.on_slider_released)
+        self.pos_slider.sliderMoved.connect(self.on_slider_moved)
+        self.pos_slider.valueChanged.connect(self.on_slider_value_changed)
+        pos_layout.addWidget(self.pos_slider)
+        pb_layout.addLayout(pos_layout)
 
         # Output Mode
         out_layout = QHBoxLayout()
@@ -525,8 +551,12 @@ class RecorderPlayerWidget(QWidget):
         self.save_btn.clicked.connect(self.on_save)
         self.save_btn.setEnabled(False)
 
+        self.sync_check = QCheckBox(tr("Sync Play/Record"))
+        self.sync_check.setToolTip(tr("Synchronize starting and stopping of playback and recording"))
+
         rec_ctrl_layout.addWidget(self.rec_btn)
         rec_ctrl_layout.addWidget(self.save_btn)
+        rec_ctrl_layout.addWidget(self.sync_check)
         rec_layout.addLayout(rec_ctrl_layout)
 
         # Info
@@ -549,6 +579,34 @@ class RecorderPlayerWidget(QWidget):
 
         layout.addStretch()
         self.setLayout(layout)
+
+    def on_slider_pressed(self):
+        self._is_slider_dragging = True
+
+    def on_slider_released(self):
+        self._is_slider_dragging = False
+        self._seek_to_slider()
+
+    def on_slider_moved(self, value):
+        if self.module.playback_buffer is not None:
+            total_samples = len(self.module.playback_buffer)
+            target_pos = int((value / 1000.0) * total_samples)
+            sr = self.module.audio_engine.sample_rate
+            self.time_label.setText(f"{target_pos / sr:.2f} / {total_samples / sr:.2f} s")
+
+    def on_slider_value_changed(self, value):
+        if not getattr(self, "_is_slider_dragging", False):
+            self._seek_to_slider()
+
+    def _seek_to_slider(self):
+        if self.module.playback_buffer is not None:
+            total_samples = len(self.module.playback_buffer)
+            target_pos = int((self.pos_slider.value() / 1000.0) * total_samples)
+            target_pos = max(0, min(total_samples, target_pos))
+            self.module.playback_pos = target_pos
+
+            sr = self.module.audio_engine.sample_rate
+            self.time_label.setText(f"{target_pos / sr:.2f} / {total_samples / sr:.2f} s")
 
     def on_load(self):
         fname, _ = QFileDialog.getOpenFileName(
@@ -603,7 +661,14 @@ class RecorderPlayerWidget(QWidget):
         if success:
             self.module.set_playback_data(data)
             self.file_label.setText(msg)
-            self.pb_progress.setValue(0)
+            self.pos_slider.setEnabled(True)
+            self.pos_slider.blockSignals(True)
+            self.pos_slider.setValue(0)
+            self.pos_slider.blockSignals(False)
+            if self.module.playback_buffer is not None:
+                sr = self.module.audio_engine.sample_rate
+                total = len(self.module.playback_buffer)
+                self.time_label.setText(f"0.00 / {total / sr:.2f} s")
         else:
             if msg != "Cancelled":  # Don't show error if user cancelled
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load file:\n{0}").format(msg))
@@ -619,8 +684,22 @@ class RecorderPlayerWidget(QWidget):
     def on_play_toggle(self):
         if self.module.is_playing:
             self.module.stop_playback()
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and self.module.is_recording:
+                self.rec_btn.setChecked(False)
+                self.module.stop_recording()
+                self.rec_btn.setText(tr("Record"))
+                self.rec_btn.setStyleSheet("")
+                self.save_btn.setEnabled(True)
         else:
             self.module.start_playback()
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and not self.module.is_recording:
+                self.rec_btn.setChecked(True)
+                self.module.start_recording()
+                self.rec_btn.setText(tr("Stop Recording"))
+                self.rec_btn.setStyleSheet("background-color: #ffcccc; color: red; font-weight: bold;")
+                self.save_btn.setEnabled(False)
 
     def on_loop_toggle(self, checked):
         self.module.loop_playback = checked
@@ -638,11 +717,17 @@ class RecorderPlayerWidget(QWidget):
             self.rec_btn.setText(tr("Stop Recording"))
             self.rec_btn.setStyleSheet("background-color: #ffcccc; color: red; font-weight: bold;")
             self.save_btn.setEnabled(False)
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and not self.module.is_playing:
+                self.module.start_playback()
         else:
             self.module.stop_recording()
             self.rec_btn.setText(tr("Record"))
             self.rec_btn.setStyleSheet("")
             self.save_btn.setEnabled(True)
+
+            if hasattr(self, "sync_check") and self.sync_check.isChecked() and self.module.is_playing:
+                self.module.stop_playback()
 
     def on_save(self):
         fname, selected_filter = QFileDialog.getSaveFileName(
@@ -693,13 +778,37 @@ class RecorderPlayerWidget(QWidget):
         # Update Playback UI
         if self.module.is_playing:
             self.play_btn.setText(tr("Stop"))
-            if self.module.playback_buffer is not None:
-                total = len(self.module.playback_buffer)
-                if total > 0:
-                    progress = int(100 * self.module.playback_pos / total)
-                    self.pb_progress.setValue(progress)
         else:
             self.play_btn.setText(tr("Play"))
+
+            if (
+                getattr(self, "_was_playing", False)
+                and hasattr(self, "sync_check")
+                and self.sync_check.isChecked()
+                and self.module.is_recording
+            ):
+                self.rec_btn.setChecked(False)
+                self.module.stop_recording()
+                self.rec_btn.setText(tr("Record"))
+                self.rec_btn.setStyleSheet("")
+                self.save_btn.setEnabled(True)
+
+        self._was_playing = self.module.is_playing
+
+        # Always update slider if file loaded and not dragging
+        if self.module.playback_buffer is not None and not getattr(self, "_is_slider_dragging", False):
+            total = len(self.module.playback_buffer)
+            if total > 0:
+                pos = self.module.playback_pos
+                # Handle possible float division by zero just in case
+                sr = max(1, self.module.audio_engine.sample_rate)
+                progress = int(1000 * pos / total)
+
+                self.pos_slider.blockSignals(True)
+                self.pos_slider.setValue(progress)
+                self.pos_slider.blockSignals(False)
+
+                self.time_label.setText(f"{pos / sr:.2f} / {total / sr:.2f} s")
 
         # Update Recording UI
         if self.module.is_recording:

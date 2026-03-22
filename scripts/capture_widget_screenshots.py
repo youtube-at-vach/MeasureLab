@@ -1,4 +1,3 @@
-
 import sys
 import os
 import importlib.util
@@ -6,12 +5,13 @@ import inspect
 from PyQt6.QtWidgets import QApplication, QWidget
 
 # Add project root to path
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
 from src.measurement_modules.base import MeasurementModule  # noqa: E402
 
 # --- Mocks ---
+
 
 class MockCalibrationManager:
     def __init__(self):
@@ -28,13 +28,14 @@ class MockCalibrationManager:
     def get_spl_offset_db(self):
         return 0.0
 
+
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
         self.callbacks = {}
         self.calibration = MockCalibrationManager()
-        self.input_channel_mode = 'stereo'
-        self.output_channel_mode = 'stereo'
+        self.input_channel_mode = "stereo"
+        self.output_channel_mode = "stereo"
 
     def register_callback(self, cb):
         return 1
@@ -43,31 +44,29 @@ class MockAudioEngine:
         pass
 
     def get_status(self):
-        return {
-            "active": False,
-            "sample_rate": 48000,
-            "cpu_load": 0.0,
-            "active_clients": 0
-        }
+        return {"active": False, "sample_rate": 48000, "cpu_load": 0.0, "active_clients": 0}
+
 
 # --- Main Script ---
+
 
 def setup_app():
     # Set QPA to offscreen if not already set, for headless environments
     if "QT_QPA_PLATFORM" not in os.environ:
-         os.environ["QT_QPA_PLATFORM"] = "offscreen"
+        os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
     app = QApplication.instance()
     if not app:
         app = QApplication(sys.argv)
     return app
 
+
 def find_widget_pair(module):
     """
     Finds a (MeasurementModule subclass, QWidget subclass) pair in the module.
-    Heuristic: 
+    Heuristic:
     1. Find strictly one MeasurementModule subclass (The 'Backend').
-    2. Find a QWidget subclass that takes 'module' as an init argument 
+    2. Find a QWidget subclass that takes 'module' as an init argument
        OR has 'Widget' in its name and isn't the module itself.
     """
     module_class = None
@@ -98,16 +97,17 @@ def find_widget_pair(module):
                 # Assign if it's the first QWidget subclass we find, or if it contains 'Widget' in name
                 if not widget_class or "Widget" in name:
                     widget_class = obj
-                    if "Widget" in name: # Prefer those with Widget in name
+                    if "Widget" in name:  # Prefer those with Widget in name
                         break
 
     return module_class, widget_class
 
+
 def capture_widgets(targets=None):
     app = setup_app()
 
-    widgets_dir = os.path.join(PROJECT_ROOT, 'src', 'gui', 'widgets')
-    output_dir = os.path.join(PROJECT_ROOT, 'docs', 'assets', 'widgets')
+    widgets_dir = os.path.join(PROJECT_ROOT, "src", "gui", "widgets")
+    output_dir = os.path.join(PROJECT_ROOT, "docs", "assets", "widgets")
     os.makedirs(output_dir, exist_ok=True)
 
     mock_engine = MockAudioEngine()
@@ -117,14 +117,14 @@ def capture_widgets(targets=None):
 
     # Iterate over python files
     for filename in sorted(os.listdir(widgets_dir)):
-        if not filename.endswith('.py') or filename == '__init__.py':
+        if not filename.endswith(".py") or filename == "__init__.py":
             continue
 
         module_name = filename[:-3]
         if targets and module_name not in targets:
             continue
 
-        if module_name == 'detachable_wrapper':
+        if module_name == "detachable_wrapper":
             continue
 
         file_path = os.path.join(widgets_dir, filename)
@@ -161,7 +161,7 @@ def capture_widgets(targets=None):
             widget.setWindowTitle(f"Screenshot: {module_name}")
             # Ensure decent size - some widgets conform to content, others might be small
             # setting a fixed width is good for documentation consistency
-            widget.resize(1000, 600) 
+            widget.resize(1000, 600)
 
             # If the widget is very tall, we might want to resize strictly?
             # Let's trust sizeHint or resize to a sensible default.
@@ -189,6 +189,7 @@ def capture_widgets(targets=None):
         except Exception as e:
             print(f"  -> ERROR: {e}")
             import traceback
+
             traceback.print_exc()
             fail_count += 1
 
@@ -196,10 +197,14 @@ def capture_widgets(targets=None):
 
     print(f"\nFinished. Success: {success_count}, Failed: {fail_count}")
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Capture screenshots of widgets.")
-    parser.add_argument('targets', nargs='*', help='Specific widget names to capture (e.g. linearity_analyzer). If empty, captures all.')
+    parser.add_argument(
+        "targets", nargs="*", help="Specific widget names to capture (e.g. linearity_analyzer). If empty, captures all."
+    )
     args = parser.parse_args()
 
     capture_widgets(targets=args.targets)

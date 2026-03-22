@@ -1,15 +1,14 @@
-
 import os
 import sys
 from unittest.mock import MagicMock, patch
 
 # Mock sounddevice BEFORE importing any module that uses it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 import numpy as np  # noqa: E402
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.gui.widgets.advanced_distortion_meter import AdvancedDistortionMeter  # noqa: E402
 
@@ -52,7 +51,7 @@ def test_mim_generation_correctness():
     # Run optimized version
     # We need to mock np.random.uniform to return our fixed phases
     # The code calls np.random.uniform(0, 2*pi, count)
-    with patch('numpy.random.uniform', return_value=fixed_phases):
+    with patch("numpy.random.uniform", return_value=fixed_phases):
         optimized_signal = adm._generate_mim(frames, sample_rate)
 
     # Run reference version

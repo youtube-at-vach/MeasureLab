@@ -1,4 +1,3 @@
-
 import threading
 import time
 import queue
@@ -63,7 +62,7 @@ class OnePPSMonitor(MeasurementModule):
         # Triggered Waveform Visualization
         self.vis_window_pre = 0.5
         self.vis_window_post = 0.5
-        self.vis_buffer_size = 96000 # 2 seconds circular buffer to hold history for pre-trigger
+        self.vis_buffer_size = 96000  # 2 seconds circular buffer to hold history for pre-trigger
         self.vis_buffer = np.zeros(self.vis_buffer_size, dtype=np.float32)
         self.vis_write_pos = 0
 
@@ -106,8 +105,6 @@ class OnePPSMonitor(MeasurementModule):
 
     def get_widget(self):
         return OnePPSMonitorWidget(self)
-
-
 
     def start_analysis(self):
         if self.is_running:
@@ -176,7 +173,6 @@ class OnePPSMonitor(MeasurementModule):
         with self._lock:
             return self._pulses_detected
 
-
     def stop_analysis(self):
         if not self.is_running:
             return
@@ -207,7 +203,7 @@ class OnePPSMonitor(MeasurementModule):
         src_data = sig[-write_len:].astype(np.float32)
 
         with self._lock:
-             # Calculate split
+            # Calculate split
             remain = self.vis_buffer_size - self.vis_write_pos
             if write_len <= remain:
                 self.vis_buffer[self.vis_write_pos : self.vis_write_pos + write_len] = src_data
@@ -217,15 +213,15 @@ class OnePPSMonitor(MeasurementModule):
                 part1 = remain
                 part2 = write_len - remain
                 self.vis_buffer[self.vis_write_pos : self.vis_buffer_size] = src_data[:part1]
-                self.vis_buffer[0 : part2] = src_data[part1:]
+                self.vis_buffer[0:part2] = src_data[part1:]
                 self.vis_write_pos = part2
 
     def _check_and_capture_waveform(self, current_head):
         """Checks if enough post-trigger samples are available to capture the waveform."""
         if self._capture_trigger_index != -1:
-             required_post = int(self.vis_window_post * self.nominal_rate)
-             if (current_head - self._capture_trigger_index) >= required_post:
-                  self._capture_waveform(required_post, current_head)
+            required_post = int(self.vis_window_post * self.nominal_rate)
+            if (current_head - self._capture_trigger_index) >= required_post:
+                self._capture_waveform(required_post, current_head)
 
     def _process_rising_edge(self, abs_pos, expected_interval, reg_state):
         """
@@ -260,7 +256,7 @@ class OnePPSMonitor(MeasurementModule):
                 mad = np.median(np.abs(window - med))
                 mad = max(mad, 1e-9)
                 sigma = 1.4826 * mad
-                thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0) # at least 1 sample
+                thresh_val = max(sigma * self.filter_tolerance_sigma, 1.0)  # at least 1 sample
 
                 if abs(delta - med) > thresh_val:
                     accepted = False
@@ -285,7 +281,7 @@ class OnePPSMonitor(MeasurementModule):
                 reg_sxy += x_val * y_val
 
                 # Slope Calculation
-                denom = (reg_n * reg_sxx - reg_sx * reg_sx)
+                denom = reg_n * reg_sxx - reg_sx * reg_sx
                 if denom != 0:
                     slope = (reg_n * reg_sxy - reg_sx * reg_sy) / denom
                     cumulative_ppm = ((slope - expected_interval) / expected_interval) * 1e6
@@ -330,7 +326,7 @@ class OnePPSMonitor(MeasurementModule):
                 if np.max(sig) < (self.threshold_fs - self.hysteresis_fs):
                     self._total_samples_processed += frames
                     if self._triggered:
-                         self._triggered = False
+                        self._triggered = False
 
                     current_head = self._total_samples_processed + frames
                     self._check_and_capture_waveform(current_head)
@@ -394,13 +390,12 @@ class OnePPSMonitor(MeasurementModule):
                 waveform = self.vis_buffer[read_idx : read_idx + total_samps].copy()
             else:
                 part1 = self.vis_buffer[read_idx:].copy()
-                part2 = self.vis_buffer[:total_samps - len(part1)].copy()
+                part2 = self.vis_buffer[: total_samps - len(part1)].copy()
                 waveform = np.concatenate((part1, part2))
 
             self.last_trig_waveform = waveform
 
-        self._capture_trigger_index = -1 # Done
-
+        self._capture_trigger_index = -1  # Done
 
     def get_history_arrays(self):
         """Returns (times, instant_ppm, cumulative_ppm) arrays correctly ordered."""
@@ -433,13 +428,13 @@ class OnePPSMonitorWidget(QWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._update_plot)
-        self.timer.setInterval(200) # Update GUI 5 times a second
+        self.timer.setInterval(200)  # Update GUI 5 times a second
 
         self.last_pulse_count = 0
         self.indicator_on_timer = QTimer()
         self.indicator_on_timer.setSingleShot(True)
         self.indicator_on_timer.timeout.connect(self._turn_off_indicator)
-        self.indicator_on_timer.setInterval(100) # 100ms flash
+        self.indicator_on_timer.setInterval(100)  # 100ms flash
 
     def _init_ui(self):
         layout = QHBoxLayout(self)
@@ -454,17 +449,16 @@ class OnePPSMonitorWidget(QWidget):
 
         # Curves
         self.curve_instant = self.plot_widget.plot(
-            pen=pg.mkPen('y', width=1, style=Qt.PenStyle.DotLine), 
-            symbol='o', symbolBrush='y', symbolSize=3, 
-            name=tr("Instantaneous")
+            pen=pg.mkPen("y", width=1, style=Qt.PenStyle.DotLine),
+            symbol="o",
+            symbolBrush="y",
+            symbolSize=3,
+            name=tr("Instantaneous"),
         )
-        self.curve_cumulative = self.plot_widget.plot(
-            pen=pg.mkPen('c', width=2), 
-            name=tr("Cumulative Avg")
-        )
+        self.curve_cumulative = self.plot_widget.plot(pen=pg.mkPen("c", width=2), name=tr("Cumulative Avg"))
 
         # Zero line
-        self.zero_line = pg.InfiniteLine(angle=0, pen=pg.mkPen('w', style=Qt.PenStyle.SolidLine, alpha=0.5))
+        self.zero_line = pg.InfiniteLine(angle=0, pen=pg.mkPen("w", style=Qt.PenStyle.SolidLine, alpha=0.5))
         self.plot_widget.addItem(self.zero_line)
 
         plot_layout.addWidget(self.plot_widget)
@@ -491,6 +485,7 @@ class OnePPSMonitorWidget(QWidget):
 
         # Tabs
         from PyQt6.QtWidgets import QTabWidget
+
         self.tabs = QTabWidget()
         ctrl_layout.addWidget(self.tabs)
 
@@ -503,7 +498,7 @@ class OnePPSMonitorWidget(QWidget):
         rate_vbox = QVBoxLayout(rate_group)
 
         self.chk_sync_rate = QCheckBox(tr("Sync with Audio Engine"))
-        self.chk_sync_rate.setChecked(True) # Default to True
+        self.chk_sync_rate.setChecked(True)  # Default to True
         self.chk_sync_rate.toggled.connect(self._on_sync_toggled)
         rate_vbox.addWidget(self.chk_sync_rate)
 
@@ -534,12 +529,10 @@ class OnePPSMonitorWidget(QWidget):
         self.spin_pps.setValue(1.0)
         self.spin_pps.setSingleStep(0.1)
         self.spin_pps.setSuffix(" Hz")
-        self.spin_pps.setEnabled(False) # Disabled by default (1 PPS selected)
+        self.spin_pps.setEnabled(False)  # Disabled by default (1 PPS selected)
         self.spin_pps.valueChanged.connect(self._on_pps_changed)
         pps_group.addWidget(self.spin_pps)
         vbox_settings.addLayout(pps_group)
-
-
 
         # Outlier Filter Group
         filter_group = QGroupBox(tr("Outlier Rejection"))
@@ -551,6 +544,7 @@ class OnePPSMonitorWidget(QWidget):
 
         # Window size
         from PyQt6.QtWidgets import QSpinBox
+
         filter_row = QHBoxLayout()
         filter_row.addWidget(QLabel(tr("Window:")))
         self.spin_window = QSpinBox()
@@ -589,11 +583,21 @@ class OnePPSMonitorWidget(QWidget):
         self.plot_waveform.setYRange(-1.1, 1.1)
         # Set X range to show pre/post trigger
         self.plot_waveform.setXRange(-0.5, 0.5)
-        self.curve_waveform = self.plot_waveform.plot(pen='y')
+        self.curve_waveform = self.plot_waveform.plot(pen="y")
 
         # Threshold Lines
-        self.line_thresh_high = pg.InfiniteLine(angle=0, pen=pg.mkPen('g', width=1), label=tr("Thresh"), labelOpts={'position':0.9, 'color': (200,255,200)})
-        self.line_thresh_low = pg.InfiniteLine(angle=0, pen=pg.mkPen('r', width=1, style=Qt.PenStyle.DashLine), label=tr("Hyst"), labelOpts={'position':0.9, 'color': (255,200,200)})
+        self.line_thresh_high = pg.InfiniteLine(
+            angle=0,
+            pen=pg.mkPen("g", width=1),
+            label=tr("Thresh"),
+            labelOpts={"position": 0.9, "color": (200, 255, 200)},
+        )
+        self.line_thresh_low = pg.InfiniteLine(
+            angle=0,
+            pen=pg.mkPen("r", width=1, style=Qt.PenStyle.DashLine),
+            label=tr("Hyst"),
+            labelOpts={"position": 0.9, "color": (255, 200, 200)},
+        )
         self.plot_waveform.addItem(self.line_thresh_high)
         self.plot_waveform.addItem(self.line_thresh_low)
 
@@ -679,7 +683,6 @@ class OnePPSMonitorWidget(QWidget):
 
         vbox_display.addWidget(cal_group)
 
-
         # Stats
         self.lbl_count = QLabel(f"{tr('Count')}: -")
         self.lbl_inst = QLabel(f"{tr('Inst')}: -")
@@ -690,7 +693,6 @@ class OnePPSMonitorWidget(QWidget):
         self.lbl_std = QLabel(f"{tr('Std Dev')}: -")
         self.lbl_min = QLabel(f"{tr('Min')}: -")
         self.lbl_max = QLabel(f"{tr('Max')}: -")
-
 
         stats_group = QGroupBox(tr("Statistics"))
         stats_vbox = QVBoxLayout(stats_group)
@@ -741,22 +743,22 @@ class OnePPSMonitorWidget(QWidget):
         # 1. Get current Cumulative PPM
         # We need a valid measurement
         if not self.module.is_running:
-             QMessageBox.warning(self, tr("Error"), tr("Monitor is not running."))
-             return
+            QMessageBox.warning(self, tr("Error"), tr("Monitor is not running."))
+            return
 
         # Check if we have enough history/warmup
         count = self.module.get_pulse_count()
         if count < self.module.warmup_count * 2:
-             QMessageBox.warning(self, tr("Error"), tr("Not enough data to calibrate. Please wait."))
-             return
+            QMessageBox.warning(self, tr("Error"), tr("Not enough data to calibrate. Please wait."))
+            return
 
         # Get last cumulative PPM
         t, ip, cp = self.module.get_history_arrays()
         if len(cp) == 0:
-             QMessageBox.warning(self, tr("Error"), tr("No data available."))
-             return
+            QMessageBox.warning(self, tr("Error"), tr("No data available."))
+            return
 
-        current_ppm = cp[-1] # This is the "measured error" in ppm
+        current_ppm = cp[-1]  # This is the "measured error" in ppm
 
         # 2. Calculate new calibration factor
         # The logic is: We measured 'current_ppm' error with the CURRENT system.
@@ -783,7 +785,7 @@ class OnePPSMonitorWidget(QWidget):
         # ppm = (Actual_Rate / Nominal_Rate - 1) * 1e6
         # Corrected_Rate = Nominal_Rate * (1 + ppm/1e6)
         # So we multiply measured frequency by (1 + ppm/1e6) to get true frequency.
-        new_factor = (1.0 + current_ppm / 1e6)
+        new_factor = 1.0 + current_ppm / 1e6
 
         # 3. Confirmation Dialog
         ret = QMessageBox.question(
@@ -795,7 +797,7 @@ class OnePPSMonitorWidget(QWidget):
                 "Note: This does not affect the Frequency Counter calibration.\n\n"
                 "Save this calibration?"
             ).format(current_ppm),
-             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if ret == QMessageBox.StandardButton.Yes:
@@ -834,10 +836,10 @@ class OnePPSMonitorWidget(QWidget):
         self.module.target_pps = val
 
     def _on_pps_preset_changed(self, index):
-        if index == 0: # 1 PPS
+        if index == 0:  # 1 PPS
             self.spin_pps.setValue(1.0)
             self.spin_pps.setEnabled(False)
-        else: # Other...
+        else:  # Other...
             self.spin_pps.setEnabled(True)
 
     def _on_thresh_wave_changed(self, val):
@@ -864,7 +866,7 @@ class OnePPSMonitorWidget(QWidget):
     def _update_plot(self):
         # Poll for sample rate changes if sync is enabled
         if self.chk_sync_rate.isChecked():
-             self._sync_sample_rate()
+            self._sync_sample_rate()
 
         t, ip, cp = self.module.get_history_arrays()
         count = self.module.get_pulse_count()
@@ -878,67 +880,65 @@ class OnePPSMonitorWidget(QWidget):
 
         # Waveform Update (only if tab is visible)
         if self.tabs.currentWidget().layout() is not None and self.plot_waveform.isVisible():
-             # Basic visibility check, can be improved checking current tab index
-             # Tab 1.5 is index 1 (Settings=0, Waveform=1, Display=2)
-             if self.tabs.currentIndex() == 1:
+            # Basic visibility check, can be improved checking current tab index
+            # Tab 1.5 is index 1 (Settings=0, Waveform=1, Display=2)
+            if self.tabs.currentIndex() == 1:
                 wave_data = self.module.get_latest_waveform()
                 if wave_data is not None:
+                    lat = self.module.audio_engine.get_input_latency()
+                    self.lbl_latency_val.setText(f"({tr('Lat')}: {lat * 1000:.1f} ms)")
 
-                     lat = self.module.audio_engine.get_input_latency()
-                     self.lbl_latency_val.setText(f"({tr('Lat')}: {lat*1000:.1f} ms)")
+                    # Create time axis
+                    # trigger is at index corresponding to 'vis_window_pre'
+                    # 0.1s pre means trigger is at index 4800 (if 48k)
+                    n = len(wave_data)
+                    # t = (np.arange(n) - (self.module.vis_window_pre * self.module.nominal_rate)) / self.module.nominal_rate
+                    # More robust:
+                    pre_samps = int(self.module.vis_window_pre * self.module.nominal_rate)
+                    t_wave = (np.arange(n) - pre_samps) / self.module.nominal_rate
 
-                     # Create time axis
-                     # trigger is at index corresponding to 'vis_window_pre'
-                     # 0.1s pre means trigger is at index 4800 (if 48k)
-                     n = len(wave_data)
-                     # t = (np.arange(n) - (self.module.vis_window_pre * self.module.nominal_rate)) / self.module.nominal_rate
-                     # More robust:
-                     pre_samps = int(self.module.vis_window_pre * self.module.nominal_rate)
-                     t_wave = (np.arange(n) - pre_samps) / self.module.nominal_rate
+                    # Latency Compensation
+                    if self.chk_latency_comp.isChecked():
+                        # Subtract input latency to shift time 'back'
+                        # (e.g. if event happened 10ms ago but we just got it, the timestamp t=0 is "now", so event is at -10ms)
+                        # Wait, our t=0 is the TRIGGER point in the buffer.
+                        # The buffer is filled by callback.
+                        # If latency is L, the signal at index i actually arrived at the ADC L seconds before it was written/processed?
+                        # Input Latency = Time between ADC capture and Callback.
+                        # So the sample at index i was captured at (Time_Current - Latency - (Indices_from_end / Rate)).
+                        # Our specific Trigger Point is at t=0 relative to the captured buffer window.
+                        # If we want "Time relative to Pulse Arrival at ADC",
+                        # The Pulse Arrived at ADC, then Latency later it Arrived at Callback.
+                        # Step 1: Detect Pulse in Buffer. Trigger Index T.
+                        # This Index T corresponds to some time.
+                        # If we say T is t=0.
+                        # Using the latency compensation means we want to show... what?
+                        # The user likely wants to know the "absolute time" or just shift it so it matches something?
+                        # User said: "shift drawing range by buffer latency".
+                        # If we shift X axis by -Latency, then t=0 (Trigger) becomes t=-Latency.
+                        # This means "The trigger event happened -Latency seconds ago relative to the timestamp of the data block"?
+                        # Actually usually in audio apps, "Compensate Latency" means aligning recording with playback.
+                        # Here we are just plotting.
+                        # If the user wants to see "When did the pulse happen at the connector?",
+                        # And our t=0 is "When did the software see the pulse?".
+                        # The software sees it 'Latency' seconds LATE.
+                        # So the Pulse actually happened at t = -Latency relative to Software Time.
+                        # So if we plot X axis, the Pulse (Peak) is at X=0 in Software Time.
+                        # In "Connector Time", the Pulse is at X=0, but the Software Time 0 is actually +Latency?
+                        # Let's simple shift: t_adjusted = t_wave - latency?
+                        # If t_wave=0 (Trigger), t_adjusted = -Latency.
+                        # So the peak moves to -Latency.
+                        # This seems correct if t=0 implies "When software processed it".
+                        # Use audio_engine.get_input_latency()
 
-                     # Latency Compensation
-                     if self.chk_latency_comp.isChecked():
-                         # Subtract input latency to shift time 'back' 
-                         # (e.g. if event happened 10ms ago but we just got it, the timestamp t=0 is "now", so event is at -10ms)
-                         # Wait, our t=0 is the TRIGGER point in the buffer.
-                         # The buffer is filled by callback. 
-                         # If latency is L, the signal at index i actually arrived at the ADC L seconds before it was written/processed?
-                         # Input Latency = Time between ADC capture and Callback.
-                         # So the sample at index i was captured at (Time_Current - Latency - (Indices_from_end / Rate)).
-                         # Our specific Trigger Point is at t=0 relative to the captured buffer window.
-                         # If we want "Time relative to Pulse Arrival at ADC", 
-                         # The Pulse Arrived at ADC, then Latency later it Arrived at Callback.
-                         # Step 1: Detect Pulse in Buffer. Trigger Index T.
-                         # This Index T corresponds to some time.
-                         # If we say T is t=0.
-                         # Using the latency compensation means we want to show... what?
-                         # The user likely wants to know the "absolute time" or just shift it so it matches something?
-                         # User said: "shift drawing range by buffer latency".
-                         # If we shift X axis by -Latency, then t=0 (Trigger) becomes t=-Latency.
-                         # This means "The trigger event happened -Latency seconds ago relative to the timestamp of the data block"?
-                         # Actually usually in audio apps, "Compensate Latency" means aligning recording with playback.
-                         # Here we are just plotting.
-                         # If the user wants to see "When did the pulse happen at the connector?",
-                         # And our t=0 is "When did the software see the pulse?".
-                         # The software sees it 'Latency' seconds LATE.
-                         # So the Pulse actually happened at t = -Latency relative to Software Time.
-                         # So if we plot X axis, the Pulse (Peak) is at X=0 in Software Time.
-                         # In "Connector Time", the Pulse is at X=0, but the Software Time 0 is actually +Latency?
-                         # Let's simple shift: t_adjusted = t_wave - latency?
-                         # If t_wave=0 (Trigger), t_adjusted = -Latency.
-                         # So the peak moves to -Latency.
-                         # This seems correct if t=0 implies "When software processed it".
-                         # Use audio_engine.get_input_latency()
+                        manual_offset_sec = self.spin_manual_latency.value() / 1000.0
 
-                         manual_offset_sec = self.spin_manual_latency.value() / 1000.0
+                        # Total shift = Latency + Manual Offset
+                        t_wave -= lat + manual_offset_sec
 
-                         # Total shift = Latency + Manual Offset
-                         t_wave -= (lat + manual_offset_sec)
-
-                     self.curve_waveform.setData(t_wave, wave_data)
+                    self.curve_waveform.setData(t_wave, wave_data)
 
         if len(t) > 0:
-
             # Unit Conversion
             unit = self.combo_unit.currentText()
             if unit == "Seconds":
@@ -947,7 +947,7 @@ class OnePPSMonitorWidget(QWidget):
                 unit_label = "s"
 
                 def fmt(v):
-                    return pg.siFormat(v, suffix='s', precision=3)
+                    return pg.siFormat(v, suffix="s", precision=3)
             else:
                 scale = 1.0
                 unit_label = "ppm"
@@ -990,7 +990,6 @@ class OnePPSMonitorWidget(QWidget):
             self.lbl_max.setText(f"{tr('Max')}: {fmt(max_val)}")
         else:
             if self.module.is_running:
-                 self.lbl_inst.setText(tr("Warming Up... ({0}/{1})").format(count, self.module.warmup_count))
-                 self.lbl_cumul.setText("-")
-                 self.lbl_rate.setText("-")
-
+                self.lbl_inst.setText(tr("Warming Up... ({0}/{1})").format(count, self.module.warmup_count))
+                self.lbl_cumul.setText("-")
+                self.lbl_rate.setText("-")

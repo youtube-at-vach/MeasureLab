@@ -3,6 +3,7 @@ import sys
 from unittest.mock import patch
 from src.core.utils import resource_path
 
+
 class TestResourcePath:
     """Tests for the resource_path utility function."""
 
@@ -47,12 +48,14 @@ class TestResourcePath:
         with patch("os.path.abspath", return_value=base_path):
             # Scenario 2: File does NOT exist in base_path, but exists in src/
             with patch("os.path.exists") as mock_exists:
+
                 def side_effect(p):
                     if p == os.path.join(base_path, "test.png"):
                         return False
                     if p == os.path.join(base_path, "src", "test.png"):
                         return True
                     return False
+
                 mock_exists.side_effect = side_effect
 
                 result = resource_path("test.png")

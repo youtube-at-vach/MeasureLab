@@ -51,7 +51,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         # Input Routing Defaults
         self.signal_channel = 0  # 0: Left
-        self.ref_channel = 1     # 1: Right
+        self.ref_channel = 1  # 1: Right
 
         # Harmonic Analysis Specs
         self.max_harmonic = 10
@@ -335,7 +335,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             # Therefore: I_comp = A*sin(phi), Q_comp = A*cos(phi)
             # So phi = arctan(sin/cos) = arctan(I/Q)
             # numpy.arctan2(y, x) -> y=I_comp, x=Q_comp
-            phase = np.arctan2(I_comp, Q_comp) # rad
+            phase = np.arctan2(I_comp, Q_comp)  # rad
 
             # Wrap phase to standard [-pi, pi]
             phase_deg = np.degrees(phase)
@@ -345,14 +345,14 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             self.harmonics_phase_deg[n - 1] = phase_deg
 
             if n > 1:
-                sum_sq_harmonics += (amp / np.sqrt(2))**2
+                sum_sq_harmonics += (amp / np.sqrt(2)) ** 2
 
             # Reconstruct for THD+N by directly using the projections and basis functions
             # I_comp * cos(n * wt) + Q_comp * sin(n * wt)
             reconstructed_sig += I_comp * B[:, b_idx] + Q_comp * B[:, b_idx + 1]
 
         # 4. THD Calculations
-        fund_rms_sq = (self.harmonics_amp[0] / np.sqrt(2))**2
+        fund_rms_sq = (self.harmonics_amp[0] / np.sqrt(2)) ** 2
 
         if fund_rms_sq > 1e-15:
             # purely Harmonic Distortion (THD)
@@ -390,6 +390,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.residual_rms = 0.0
         self.residual_history.clear()
 
+
 class LockInHarmonicWidget(QWidget):
     def __init__(self, module: LockInHarmonicAnalyzer):
         super().__init__()
@@ -425,7 +426,7 @@ class LockInHarmonicWidget(QWidget):
         # Buffer size
         self.combo_buffer = QComboBox()
         self._update_buffer_labels()
-        self.combo_buffer.setCurrentIndex(2) # Default 262144
+        self.combo_buffer.setCurrentIndex(2)  # Default 262144
         self.combo_buffer.currentIndexChanged.connect(self.on_buffer_changed)
         form.addRow(tr("Buffer (Integ. Time):"), self.combo_buffer)
 
@@ -498,12 +499,7 @@ class LockInHarmonicWidget(QWidget):
         # Harmonic Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels([
-            tr("Harmonic"),
-            tr("Amp (dBFS)"),
-            tr("Level (dBc)"),
-            tr("Phase (deg)")
-        ])
+        self.table.setHorizontalHeaderLabels([tr("Harmonic"), tr("Amp (dBFS)"), tr("Level (dBc)"), tr("Phase (deg)")])
         self.table.setRowCount(self.module.max_harmonic)
         for i in range(self.module.max_harmonic):
             self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
@@ -517,7 +513,7 @@ class LockInHarmonicWidget(QWidget):
         self.plot_bar.showGrid(y=True)
         self.plot_bar.setYRange(-200, 0)
         x_indices = np.arange(1, self.module.max_harmonic + 1)
-        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(len(x_indices)), width=0.6, brush='b')
+        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(len(x_indices)), width=0.6, brush="b")
         self.plot_bar.addItem(self.bar_items)
         self.tabs.addTab(self.plot_bar, tr("Harmonics Plot"))
 
@@ -559,7 +555,7 @@ class LockInHarmonicWidget(QWidget):
         # Re-create plot items
         self.plot_bar.removeItem(self.bar_items)
         x_indices = np.arange(1, val + 1)
-        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(val), width=0.6, brush='b')
+        self.bar_items = pg.BarGraphItem(x=x_indices, y0=-200, height=np.zeros(val), width=0.6, brush="b")
         self.plot_bar.addItem(self.bar_items)
         self.module.clear_buffer()
 
@@ -597,7 +593,7 @@ class LockInHarmonicWidget(QWidget):
 
         if self.harmonic_spin.maximum() != limit:
             self.harmonic_spin.setMaximum(limit)
-            # If current value exceeds new limit, it will be automatically clamped by QSpinBox, 
+            # If current value exceeds new limit, it will be automatically clamped by QSpinBox,
             # and valueChanged will trigger module update.
 
     def _update_buffer_labels(self):
@@ -610,13 +606,13 @@ class LockInHarmonicWidget(QWidget):
         sizes = [65536, 131072, 262144, 524288]
         current_idx = self.combo_buffer.currentIndex()
         if current_idx < 0:
-             current_idx = 2 # Default to 262144
+            current_idx = 2  # Default to 262144
 
         self.combo_buffer.blockSignals(True)
         self.combo_buffer.clear()
         for s in sizes:
             time_sec = s / fs
-            self.combo_buffer.addItem(tr("{:,} ({:.1f}s@{}k)").format(s, time_sec, fs//1000))
+            self.combo_buffer.addItem(tr("{:,} ({:.1f}s@{}k)").format(s, time_sec, fs // 1000))
         self.combo_buffer.setCurrentIndex(current_idx)
         self.combo_buffer.blockSignals(False)
 
@@ -656,7 +652,9 @@ class LockInHarmonicWidget(QWidget):
         self.lbl_thd.setText(tr("{} dB ({})").format(f"{thd_db:.3f}", self._format_percent(thd_pct)))
         self.lbl_thdn.setText(tr("{} dB ({})").format(f"{thdn_db:.3f}", self._format_percent(thdn_pct)))
 
-        fund_dbfs = 20 * np.log10((self.module.harmonics_amp[0]/np.sqrt(2)) + 1e-15) + 3 # Adjusting RMS to peak for dBFS? Usually dBFS is peak. We calc peak.
+        fund_dbfs = (
+            20 * np.log10((self.module.harmonics_amp[0] / np.sqrt(2)) + 1e-15) + 3
+        )  # Adjusting RMS to peak for dBFS? Usually dBFS is peak. We calc peak.
         fund_peak = self.module.harmonics_amp[0]
         fund_dbfs = 20 * np.log10(fund_peak + 1e-15)
         self.lbl_fund.setText(tr("Fundamental: {} dBFS").format(f"{fund_dbfs:.2f}"))

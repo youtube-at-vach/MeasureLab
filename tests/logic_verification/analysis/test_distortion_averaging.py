@@ -5,10 +5,17 @@ import numpy as np
 
 # Mock GUI dependencies BEFORE import
 mock_qt_core = MagicMock()
+
+
 class MockQObject:
-    def __init__(self): pass
+    def __init__(self):
+        pass
+
+
 class MockQThread:
-    def __init__(self): pass
+    def __init__(self):
+        pass
+
 
 mock_qt_core.QObject = MockQObject
 mock_qt_core.QThread = MockQThread
@@ -26,6 +33,7 @@ mock_modules = {
     "pyqtgraph": MagicMock(),
 }
 
+
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
@@ -37,6 +45,7 @@ class MockAudioEngine:
 
     def unregister_callback(self, cid):
         pass
+
 
 class TestDistortionAveraging(unittest.TestCase):
     def setUp(self):
@@ -68,49 +77,38 @@ class TestDistortionAveraging(unittest.TestCase):
                 "raw_harmonics": harmonics,
                 "fft_data": np.zeros(10),
                 "thd_percent": thd_linear * 100,
-                "thdn_percent": thdn_linear * 100
+                "thdn_percent": thdn_linear * 100,
             }
 
         # Case 1: No Averaging, Invalid (THD+N < THD)
         analyzer.average_count = 1  # Verify logic handles count=1 too
 
         # THD = 1%, THD+N = 0.5% (Impossible)
-        results_invalid_no_avg = make_results(
-            fund_rms=1.0,
-            res_rms=0.005,
-            harmonics=np.array([0.01])
-        )
+        results_invalid_no_avg = make_results(fund_rms=1.0, res_rms=0.005, harmonics=np.array([0.01]))
 
         out_1 = analyzer._apply_result_averaging(results_invalid_no_avg)
-        self.assertFalse(out_1.get('thd_valid'), "Case 1 failed: Should be invalid")
+        self.assertFalse(out_1.get("thd_valid"), "Case 1 failed: Should be invalid")
 
         # Case 2: Averaging ON, Valid
-        analyzer.average_count = 5 # Set some averaging
+        analyzer.average_count = 5  # Set some averaging
         analyzer.reset_averaging_state()
 
         # THD = 1%, THD+N = 1.41% (Valid)
         # Noise = Distortion level => RMS = sqrt(dist^2 + noise^2)
-        results_valid_avg = make_results(
-            fund_rms=1.0,
-            res_rms=np.sqrt(0.01**2 + 0.01**2),
-            harmonics=np.array([0.01])
-        )
+        results_valid_avg = make_results(fund_rms=1.0, res_rms=np.sqrt(0.01**2 + 0.01**2), harmonics=np.array([0.01]))
 
         # Feed twice to start averaging
         out_2 = analyzer._apply_result_averaging(results_valid_avg)
-        self.assertTrue(out_2.get('thd_valid'), "Case 2 failed: Should be valid")
+        self.assertTrue(out_2.get("thd_valid"), "Case 2 failed: Should be valid")
 
         # Case 3: Averaging ON, Invalid
         analyzer.reset_averaging_state()
         # THD = 1%, THD+N = 0.5% (Impossible)
-        results_invalid_avg = make_results(
-            fund_rms=1.0,
-            res_rms=0.005,
-            harmonics=np.array([0.01])
-        )
+        results_invalid_avg = make_results(fund_rms=1.0, res_rms=0.005, harmonics=np.array([0.01]))
 
         out_3 = analyzer._apply_result_averaging(results_invalid_avg)
-        self.assertFalse(out_3.get('thd_valid'), "Case 3 failed: Should be invalid")
+        self.assertFalse(out_3.get("thd_valid"), "Case 3 failed: Should be invalid")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

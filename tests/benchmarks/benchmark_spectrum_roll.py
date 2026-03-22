@@ -1,6 +1,6 @@
-
 import time
 import numpy as np
+
 
 def benchmark_roll_vs_concat():
     # Sizes relevant to "Normal Rolling Mode" (< 500,000)
@@ -33,7 +33,10 @@ def benchmark_roll_vs_concat():
         # Verify correctness
         np.testing.assert_array_equal(data_roll, data_concat)
 
-        print(f"{buffer_size:<15} | {roll_duration:.4f}       | {concat_duration:.4f}       | {roll_duration / concat_duration:.2f}x")
+        print(
+            f"{buffer_size:<15} | {roll_duration:.4f}       | {concat_duration:.4f}       | {roll_duration / concat_duration:.2f}x"
+        )
+
 
 if __name__ == "__main__":
     benchmark_roll_vs_concat()

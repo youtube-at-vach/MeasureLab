@@ -5,10 +5,10 @@ import numpy as np
 from unittest.mock import MagicMock
 
 # Ensure src is in path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 # Mock sounddevice before importing anything that uses it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 # Mock QApplication to avoid "QApplication was not created in the main() thread" issues if any widget is touched
 # But ImpedanceAnalyzer logic class shouldn't need it.
@@ -19,6 +19,7 @@ try:
 except ImportError as e:
     print(f"Import failed: {e}")
     sys.exit(1)
+
 
 def benchmark():
     print("Benchmarking ImpedanceAnalyzer.process_data window creation...")
@@ -37,7 +38,7 @@ def benchmark():
         return
 
     # Setup parameters
-    buffer_size = 8192 # Use a reasonably large buffer to make window creation significant
+    buffer_size = 8192  # Use a reasonably large buffer to make window creation significant
     analyzer.buffer_size = buffer_size
     analyzer.set_base_buffer_size(buffer_size)
 
@@ -72,7 +73,8 @@ def benchmark():
 
     print(f"Total time: {total_time:.4f} s")
     print(f"Average time per iteration: {avg_time:.6f} s")
-    print(f"Throughput: {1/avg_time:.2f} calls/s")
+    print(f"Throughput: {1 / avg_time:.2f} calls/s")
+
 
 if __name__ == "__main__":
     benchmark()

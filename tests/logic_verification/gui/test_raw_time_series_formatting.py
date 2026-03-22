@@ -13,7 +13,7 @@ if "sounddevice" not in sys.modules:
     sys.modules["sounddevice"] = MagicMock()
 
 # Set offscreen
-os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 try:
     from PyQt6.QtWidgets import QApplication
@@ -22,12 +22,13 @@ except ImportError as e:
     print(f"Import Error: {e}")
     pytest.skip(f"Skipping GUI test due to missing dependencies: {e}", allow_module_level=True)
 
+
 class TestRawTimeSeriesFormatting(unittest.TestCase):
     def setUp(self):
         # Ensure QApplication exists
         self.app = QApplication.instance()
         if self.app is None:
-            self.app = QApplication(sys.argv + ['-platform', 'offscreen'])
+            self.app = QApplication(sys.argv + ["-platform", "offscreen"])
 
         # Create a mock module so we don't need to instantiate the real RawTimeSeries
         self.mock_module = MagicMock()
@@ -48,7 +49,7 @@ class TestRawTimeSeriesFormatting(unittest.TestCase):
             self_obj.module = module
             self_obj._last_frame = None
 
-        with unittest.mock.patch.object(RawTimeSeriesWidget, '__init__', mock_init):
+        with unittest.mock.patch.object(RawTimeSeriesWidget, "__init__", mock_init):
             self.widget = RawTimeSeriesWidget(self.mock_module)
 
     def test_get_unit_factor(self):
@@ -83,9 +84,9 @@ class TestRawTimeSeriesFormatting(unittest.TestCase):
         self.assertEqual(self.widget._format_amplitude(None), "-")
 
         # Inf/NaN
-        self.assertEqual(self.widget._format_amplitude(float('inf')), "-")
-        self.assertEqual(self.widget._format_amplitude(float('nan')), "-")
-        self.assertEqual(self.widget._format_amplitude(-float('inf')), "-")
+        self.assertEqual(self.widget._format_amplitude(float("inf")), "-")
+        self.assertEqual(self.widget._format_amplitude(float("nan")), "-")
+        self.assertEqual(self.widget._format_amplitude(-float("inf")), "-")
 
     def test_format_amplitude_volts(self):
         self.mock_module.show_volts = True
@@ -136,5 +137,6 @@ class TestRawTimeSeriesFormatting(unittest.TestCase):
         self.assertEqual(len(t_out), 34)
         np.testing.assert_array_equal(t_out[:3], np.array([0, 3, 6]))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

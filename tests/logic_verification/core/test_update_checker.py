@@ -28,7 +28,7 @@ class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
         self.checker = UpdateChecker()
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_update_check_found(self, mock_get):
         # Mock response
         mock_response = MagicMock()
@@ -50,7 +50,7 @@ class TestUpdateChecker(unittest.TestCase):
         # Verify signal emission
         mock_slot.assert_called_once_with("v9.9.9")
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_update_check_not_found(self, mock_get):
         # Mock response with older version
         mock_response = MagicMock()
@@ -65,18 +65,18 @@ class TestUpdateChecker(unittest.TestCase):
 
         mock_slot.assert_not_called()
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_update_check_failure_logs_error(self, mock_get):
         # Mock side effect to raise exception
         mock_get.side_effect = Exception("Network error")
 
         # Verify logging
-        with self.assertLogs('UpdateChecker', level='ERROR') as cm:
+        with self.assertLogs("UpdateChecker", level="ERROR") as cm:
             self.checker.run()
 
         self.assertTrue(any("Network error" in log for log in cm.output))
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_update_check_invalid_json(self, mock_get):
         # Mock response with invalid JSON
         mock_response = MagicMock()
@@ -85,13 +85,21 @@ class TestUpdateChecker(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Verify logging
-        with self.assertLogs('UpdateChecker', level='ERROR') as cm:
+        with self.assertLogs("UpdateChecker", level="ERROR") as cm:
             self.checker.run()
 
         self.assertTrue(any("Update check failed" in log for log in cm.output))
-        self.assertTrue(any("Expecting ',' delimiter" in log or "Unterminated string" in log or "Expecting property name" in log or "JSONDecodeError" in log for log in cm.output))
+        self.assertTrue(
+            any(
+                "Expecting ',' delimiter" in log
+                or "Unterminated string" in log
+                or "Expecting property name" in log
+                or "JSONDecodeError" in log
+                for log in cm.output
+            )
+        )
 
-    @patch('requests.get')
+    @patch("requests.get")
     def test_update_check_non_200_status(self, mock_get):
         # Mock response with non-200 status
         mock_response = MagicMock()
@@ -113,5 +121,5 @@ class TestUpdateChecker(unittest.TestCase):
         self.assertFalse(self.checker._is_newer("not.a.version", "0.4.3"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

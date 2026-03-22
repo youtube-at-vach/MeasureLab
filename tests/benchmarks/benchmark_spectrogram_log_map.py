@@ -1,6 +1,7 @@
 import time
 import numpy as np
 
+
 def benchmark_log_map():
     # Parameters
     history_length = 500
@@ -34,7 +35,7 @@ def benchmark_log_map():
         display_buffer = buffer[:, indices]  # noqa: F841
     end_time = time.perf_counter()
     baseline_time = end_time - start_time
-    print(f"Baseline (Full Copy): {baseline_time:.4f} s ({baseline_time/iterations*1000:.4f} ms/frame)")
+    print(f"Baseline (Full Copy): {baseline_time:.4f} s ({baseline_time / iterations * 1000:.4f} ms/frame)")
 
     # --- Optimized: Incremental Update ---
     # We only update one row per frame
@@ -42,7 +43,7 @@ def benchmark_log_map():
     new_row = np.random.rand(n_bins).astype(np.float32)
 
     # Pre-populate log buffer
-    log_buffer = buffer[:, indices].copy() # Ensure it's writable/owned
+    log_buffer = buffer[:, indices].copy()  # Ensure it's writable/owned
 
     start_time = time.perf_counter()
     for _ in range(iterations):
@@ -60,9 +61,10 @@ def benchmark_log_map():
 
     end_time = time.perf_counter()
     opt_time = end_time - start_time
-    print(f"Optimized (Incremental): {opt_time:.4f} s ({opt_time/iterations*1000:.4f} ms/frame)")
+    print(f"Optimized (Incremental): {opt_time:.4f} s ({opt_time / iterations * 1000:.4f} ms/frame)")
 
     print(f"Speedup: {baseline_time / opt_time:.2f}x")
+
 
 if __name__ == "__main__":
     benchmark_log_map()

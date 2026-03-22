@@ -4,19 +4,21 @@ import sys
 import importlib
 import numpy as np
 
+
 class TestAudioEngineLogic(unittest.TestCase):
     def setUp(self):
         # Patch sys.modules to mock sounddevice
-        self.patcher = patch.dict(sys.modules, {'sounddevice': MagicMock()})
+        self.patcher = patch.dict(sys.modules, {"sounddevice": MagicMock()})
         self.patcher.start()
 
         # Import and reload AudioEngine to use the mock
         import src.core.audio_engine
+
         importlib.reload(src.core.audio_engine)
         self.AudioEngineClass = src.core.audio_engine.AudioEngine
 
         self.engine = self.AudioEngineClass()
-        self.engine.stream = MagicMock() # Pretend stream is created so we don't hit _start_master_stream logic logic
+        self.engine.stream = MagicMock()  # Pretend stream is created so we don't hit _start_master_stream logic logic
         self.engine.logger = MagicMock()
 
     def tearDown(self):
@@ -190,8 +192,8 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.assertEqual(hw_in, 2)
         self.assertEqual(hw_out, 2)
 
-    @patch('sounddevice.query_devices')
-    @patch('sounddevice.query_hostapis')
+    @patch("sounddevice.query_devices")
+    @patch("sounddevice.query_hostapis")
     def test_get_jack_settings_with_jack(self, mock_hostapis, mock_devices):
         # NOTE: patching 'sounddevice.query_devices' patches the attribute on the mock object in sys.modules
 
@@ -202,72 +204,69 @@ class TestAudioEngineLogic(unittest.TestCase):
         # Mock device query return.
         # Now _get_jack_settings calls sd.query_devices() with no args to get a list, then indexes it.
         # We need a list where index 1 has "hostapi": 0.
-        mock_devices.return_value = [
-            {"hostapi": 0, "name": "Dummy0"},
-            {"hostapi": 0, "name": "Dummy1"}
-        ]
+        mock_devices.return_value = [{"hostapi": 0, "name": "Dummy0"}, {"hostapi": 0, "name": "Dummy1"}]
 
         # Mock hostapi query return
         # Since the AudioEngine optimization expects a list of hostapis when calling query_hostapis() without index,
         # we return a list containing the mock dict at index 0.
-        mock_hostapis.return_value = [{"name": "JACK Audio Connection Kit"}] # Hostapi 0 is JACK
+        mock_hostapis.return_value = [{"name": "JACK Audio Connection Kit"}]  # Hostapi 0 is JACK
 
         # Call method
         settings = self.engine._get_jack_settings()
 
         # Verify it returns a JackSettings object
         import sounddevice as sd
+
         # sd is the mock
         sd.JackSettings.assert_called_with(client_name="TestClient")
         self.assertEqual(settings, sd.JackSettings.return_value)
 
-    @patch('sounddevice.query_devices')
-    @patch('sounddevice.query_hostapis')
+    @patch("sounddevice.query_devices")
+    @patch("sounddevice.query_hostapis")
     def test_get_jack_settings_no_jack(self, mock_hostapis, mock_devices):
         self.engine.output_device = 1
 
-        mock_devices.return_value = [
-            {"hostapi": 0, "name": "Dummy0"},
-            {"hostapi": 0, "name": "Dummy1"}
-        ]
-        mock_hostapis.return_value = {"name": "ALSA"} # Not JACK
+        mock_devices.return_value = [{"hostapi": 0, "name": "Dummy0"}, {"hostapi": 0, "name": "Dummy1"}]
+        mock_hostapis.return_value = {"name": "ALSA"}  # Not JACK
 
         settings = self.engine._get_jack_settings()
 
         self.assertIsNone(settings)
 
-    @patch('sounddevice.query_devices')
+    @patch("sounddevice.query_devices")
     def test_get_jack_settings_no_device(self, mock_devices):
         self.engine.output_device = None
 
         import sounddevice as sd
+
         # Mock sd.default.device to return [0, 1]
         type(sd.default).device = unittest.mock.PropertyMock(return_value=[0, 1])
 
         # Mock device 1 as non-JACK
-        mock_devices.return_value = [
-            {"hostapi": 0, "name": "Dummy0"},
-            {"hostapi": 0, "name": "Dummy1"}
-        ]
+        mock_devices.return_value = [{"hostapi": 0, "name": "Dummy0"}, {"hostapi": 0, "name": "Dummy1"}]
 
         settings = self.engine._get_jack_settings()
         self.assertIsNone(settings)
+
 
 class TestAudioEngineChannelMapping(unittest.TestCase):
     def setUp(self):
         # Mock sounddevice before importing AudioEngine
         self.mock_sd = MagicMock()
-        self.mock_sd.query_devices.return_value = [{'name': 'default', 'hostapi': 0, 'max_input_channels': 2, 'max_output_channels': 2}]
-        self.mock_sd.query_hostapis.return_value = [{'name': 'ALSA'}]
+        self.mock_sd.query_devices.return_value = [
+            {"name": "default", "hostapi": 0, "max_input_channels": 2, "max_output_channels": 2}
+        ]
+        self.mock_sd.query_hostapis.return_value = [{"name": "ALSA"}]
         self.mock_sd.default.device = [0, 0]
         self.mock_sd.CallbackFlags.return_value = 0
 
         # Patch sys.modules
-        self.patcher = patch.dict(sys.modules, {'sounddevice': self.mock_sd})
+        self.patcher = patch.dict(sys.modules, {"sounddevice": self.mock_sd})
         self.patcher.start()
 
         import importlib
         import src.core.audio_engine
+
         # Reload to ensure it picks up the mocked sounddevice
         importlib.reload(src.core.audio_engine)
         self.engine = src.core.audio_engine.AudioEngine()
@@ -304,7 +303,7 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
 
         if self.mock_sd.Stream.called:
             args, kwargs = self.mock_sd.Stream.call_args
-            return kwargs.get('callback')
+            return kwargs.get("callback")
         return None
 
     def test_input_mapping_left(self):
@@ -312,10 +311,10 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
         self.engine.output_channel_mode = "stereo"
 
         # Prepare input: Channel 0 has 0.5, Channel 1 has 0.8
-        indata = np.zeros((self.frames, 2), dtype='float32')
+        indata = np.zeros((self.frames, 2), dtype="float32")
         indata[:, 0] = 0.5
         indata[:, 1] = 0.8
-        outdata = np.zeros((self.frames, 2), dtype='float32')
+        outdata = np.zeros((self.frames, 2), dtype="float32")
 
         master_callback = self._get_master_callback()
         self.assertIsNotNone(master_callback)
@@ -331,10 +330,10 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
         self.engine.input_channel_mode = "right"
         self.engine.output_channel_mode = "stereo"
 
-        indata = np.zeros((self.frames, 2), dtype='float32')
+        indata = np.zeros((self.frames, 2), dtype="float32")
         indata[:, 0] = 0.5
         indata[:, 1] = 0.8
-        outdata = np.zeros((self.frames, 2), dtype='float32')
+        outdata = np.zeros((self.frames, 2), dtype="float32")
 
         master_callback = self._get_master_callback()
         self.assertIsNotNone(master_callback)
@@ -349,10 +348,10 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
         self.engine.input_channel_mode = "stereo"
         self.engine.output_channel_mode = "stereo"
 
-        indata = np.zeros((self.frames, 2), dtype='float32')
+        indata = np.zeros((self.frames, 2), dtype="float32")
         indata[:, 0] = 0.5
         indata[:, 1] = 0.8
-        outdata = np.zeros((self.frames, 2), dtype='float32')
+        outdata = np.zeros((self.frames, 2), dtype="float32")
 
         master_callback = self._get_master_callback()
         self.assertIsNotNone(master_callback)
@@ -368,8 +367,8 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
         self.engine.input_channel_mode = "stereo"
         self.engine.output_channel_mode = "left"
 
-        indata = np.zeros((self.frames, 2), dtype='float32')
-        outdata = np.zeros((self.frames, 2), dtype='float32')
+        indata = np.zeros((self.frames, 2), dtype="float32")
+        outdata = np.zeros((self.frames, 2), dtype="float32")
 
         master_callback = self._get_master_callback()
         self.assertIsNotNone(master_callback)
@@ -384,8 +383,8 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
         self.engine.input_channel_mode = "stereo"
         self.engine.output_channel_mode = "right"
 
-        indata = np.zeros((self.frames, 2), dtype='float32')
-        outdata = np.zeros((self.frames, 2), dtype='float32')
+        indata = np.zeros((self.frames, 2), dtype="float32")
+        outdata = np.zeros((self.frames, 2), dtype="float32")
 
         master_callback = self._get_master_callback()
         self.assertIsNotNone(master_callback)
@@ -396,5 +395,6 @@ class TestAudioEngineChannelMapping(unittest.TestCase):
         np.testing.assert_allclose(outdata[:, 0], 0.0)
         np.testing.assert_allclose(outdata[:, 1], 1.0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

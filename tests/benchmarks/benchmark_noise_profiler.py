@@ -1,4 +1,3 @@
-
 import time
 import numpy as np
 import sys
@@ -15,6 +14,7 @@ sys.modules["sounddevice"] = mock_sd
 
 from src.core.audio_engine import AudioEngine  # noqa: E402
 from src.gui.widgets.noise_profiler import NoiseProfiler  # noqa: E402
+
 
 def benchmark_process_data():
     # Setup
@@ -54,9 +54,10 @@ def benchmark_process_data():
     avg_time = total_time / iterations
 
     print(f"Total time for {iterations} iterations: {total_time:.4f}s")
-    print(f"Average time per iteration: {avg_time*1000:.2f}ms")
+    print(f"Average time per iteration: {avg_time * 1000:.2f}ms")
 
     return avg_time
+
 
 if __name__ == "__main__":
     benchmark_process_data()

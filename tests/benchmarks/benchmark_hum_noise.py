@@ -7,12 +7,13 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from src.core.analysis import AudioCalc
 
+
 # We will create a dummy environment that mimics the inputs to _calculate_hum_noise
 def setup_dummy_data():
     np.random.seed(42)
     N = 48000
     sampling_rate = 48000.0
-    freqs = np.fft.rfftfreq(N, 1/sampling_rate)
+    freqs = np.fft.rfftfreq(N, 1 / sampling_rate)
     mag = np.abs(np.fft.rfft(np.random.randn(N))) / N * 2
     mag_sq = mag**2
     freq_step = freqs[1] - freqs[0]
@@ -21,9 +22,11 @@ def setup_dummy_data():
     start_freq = 0.0
     return mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
 
+
 mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq = setup_dummy_data()
 
 # We need the AudioCalc import for _get_freq_index
+
 
 def original_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
     def get_power_in_band(f_center, width=5.0):
@@ -55,6 +58,7 @@ def original_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_lin
 
     return np.sqrt(hum_power), base_freq, hum_components
 
+
 def optimized_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
     def get_power_in_band(f_center, width=5.0):
         f_start = f_center - width
@@ -82,9 +86,14 @@ def optimized_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_li
 
     return np.sqrt(hum_power), base_freq, hum_components
 
+
 if __name__ == "__main__":
-    o_val = original_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq)
-    n_val = optimized_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq)
+    o_val = original_calculate_hum_noise(
+        mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
+    )
+    n_val = optimized_calculate_hum_noise(
+        mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
+    )
 
     # Validation check
     assert np.isclose(o_val[0], n_val[0], rtol=1e-9), f"{o_val[0]} != {n_val[0]}"
@@ -94,8 +103,18 @@ if __name__ == "__main__":
         assert np.isclose(o_c[1], n_c[1], rtol=1e-9)
 
     num = 10000
-    t_orig = timeit.timeit(lambda: original_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq), number=num)
-    t_opt = timeit.timeit(lambda: optimized_calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq), number=num)
+    t_orig = timeit.timeit(
+        lambda: original_calculate_hum_noise(
+            mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
+        ),
+        number=num,
+    )
+    t_opt = timeit.timeit(
+        lambda: optimized_calculate_hum_noise(
+            mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
+        ),
+        number=num,
+    )
 
     print(f"Original:  {t_orig:.4f}s")
     print(f"Optimized: {t_opt:.4f}s")

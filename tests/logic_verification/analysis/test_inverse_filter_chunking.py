@@ -2,11 +2,12 @@ import unittest
 import numpy as np
 from scipy import signal
 
+
 class TestInverseFilterChunking(unittest.TestCase):
     def test_chunked_convolution_logic(self):
         # Parameters
         N = 10000
-        M = 101 # Odd kernel length
+        M = 101  # Odd kernel length
         chunk_size = 1024
 
         # Random input and kernel
@@ -15,7 +16,7 @@ class TestInverseFilterChunking(unittest.TestCase):
         h = np.random.randn(M).astype(np.float32)
 
         # Reference: standard mode='same' convolution
-        expected = signal.convolve(x, h, mode='same')
+        expected = signal.convolve(x, h, mode="same")
 
         # Chunked Implementation
         # We want to match expected
@@ -42,7 +43,7 @@ class TestInverseFilterChunking(unittest.TestCase):
 
             # Convolve chunk with kernel (full mode)
             # Using fftconvolve for speed, but standard convolve is fine for test
-            conv_chunk = signal.convolve(chunk, h, mode='full')
+            conv_chunk = signal.convolve(chunk, h, mode="full")
 
             # Add overlap
             L = len(chunk)
@@ -87,10 +88,10 @@ class TestInverseFilterChunking(unittest.TestCase):
 
         # Check bounds
         if end > len(full_linear_conv):
-             # Should not happen if math is right: len is N + M - 1
-             # end is N + (M-1)/2.
-             # N + (M-1)/2 < N + M - 1  (since M >= 1)
-             pass
+            # Should not happen if math is right: len is N + M - 1
+            # end is N + (M-1)/2.
+            # N + (M-1)/2 < N + M - 1  (since M >= 1)
+            pass
 
         result = full_linear_conv[start:end]
 
@@ -98,5 +99,6 @@ class TestInverseFilterChunking(unittest.TestCase):
         np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
         print("Test Passed: Chunked logic matches mode='same'")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

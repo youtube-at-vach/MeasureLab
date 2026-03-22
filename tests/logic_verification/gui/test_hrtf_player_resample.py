@@ -3,16 +3,19 @@ import pytest
 from unittest.mock import MagicMock
 from src.gui.widgets.hrtf_player import HRTFPlayer, HRTFData
 
+
 @pytest.fixture
 def mock_audio_engine():
     engine = MagicMock()
     engine.sample_rate = 48000.0  # Target SR
     return engine
 
+
 @pytest.fixture
 def hrtf_player(mock_audio_engine):
     player = HRTFPlayer(mock_audio_engine)
     return player
+
 
 def test_get_resampled_pair_same_sr(hrtf_player):
     # Setup Mock HRTF Data
@@ -35,12 +38,13 @@ def test_get_resampled_pair_same_sr(hrtf_player):
     resampled[0, 0] = 999.0
     assert ir_data[0, 0, 0] == 1.0
 
+
 def test_get_resampled_pair_resample_gain_correction(hrtf_player):
     # Test gain correction
     # Source: 24000, Target: 48000 (Upsample 2x)
     # Correction factor should be 24000/48000 = 0.5
 
-    M, R, N = 1, 2, 1000 # Use larger N to avoid edge effects
+    M, R, N = 1, 2, 1000  # Use larger N to avoid edge effects
     ir_data = np.ones((M, R, N))
 
     hrtf_player.hrtf_data = MagicMock(spec=HRTFData)
@@ -57,12 +61,13 @@ def test_get_resampled_pair_resample_gain_correction(hrtf_player):
 
     assert np.allclose(middle, 0.5, atol=0.01)
 
+
 def test_callback_cache_usage(hrtf_player):
     # Setup
     M, R, N = 2, 2, 100
     ir_data = np.zeros((M, R, N))
     hrtf_player.hrtf_data = MagicMock(spec=HRTFData)
-    hrtf_player.hrtf_data.source_positions = np.array([[0,0,1], [90,0,1]])
+    hrtf_player.hrtf_data.source_positions = np.array([[0, 0, 1], [90, 0, 1]])
     hrtf_player.hrtf_data.ir_data = ir_data
     hrtf_player.hrtf_data.sampling_rate = 48000.0
 

@@ -5,26 +5,30 @@ import numpy as np
 from unittest.mock import MagicMock, patch
 
 # Add project root to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
 # Mock sounddevice to avoid import errors or audio device initialization
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker, SpectrogramWidget  # noqa: E402
 from src.core.fft_manager import WARMUP_SIZES  # noqa: E402
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
+
 # Shared Mock AudioEngine
 class MockAudioEngine:
     def __init__(self):
-        self.sample_rate = 48000 # Default
+        self.sample_rate = 48000  # Default
         self.block_size = 1024
         self.buffer_size = 1024
+
     def register_callback(self, cb):
         return 1
+
     def unregister_callback(self, cb_id):
         pass
+
 
 class TestSpectrogramBuffer(unittest.TestCase):
     def setUp(self):
@@ -109,7 +113,7 @@ class TestSpectrogramProcessing(unittest.TestCase):
     def test_spectrogram_worker_logic(self):
         """Verify that SpectrogramWorker correctly computes FFT and dB magnitude."""
         # 1000 Hz at 48kHz
-        t = np.linspace(0, 1024/48000, 1024, endpoint=False)
+        t = np.linspace(0, 1024 / 48000, 1024, endpoint=False)
         freq = 1000
         sine = 0.5 * np.sin(2 * np.pi * freq * t)
 
@@ -181,31 +185,51 @@ class TestSpectrogramProcessing(unittest.TestCase):
 
 # Mock Qt for Optimization and Style tests
 mock_qt_core = MagicMock()
+
+
 class MockQObject:
-    def __init__(self): pass
+    def __init__(self):
+        pass
+
+
 class MockQWidget:
-    def __init__(self, *args, **kwargs): pass
-    def update(self): pass
-    def setStyleSheet(self, style): pass
-    def setLayout(self, layout): pass
-    def setVisible(self, val): pass
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def update(self):
+        pass
+
+    def setStyleSheet(self, style):
+        pass
+
+    def setLayout(self, layout):
+        pass
+
+    def setVisible(self, val):
+        pass
+
 
 class MockQThreadPool:
     def start(self, runnable):
         runnable.run()
 
+
 mock_qt_core.QObject = MockQObject
 mock_qt_core.QRunnable = MockQObject
 mock_qt_core.QThreadPool = MockQThreadPool
 
+
 class MockSignal:
     def __init__(self):
         self.callbacks = []
+
     def connect(self, cb):
         self.callbacks.append(cb)
+
     def emit(self, *args):
         for cb in self.callbacks:
             cb(*args)
+
 
 mock_qt_core.pyqtSignal = lambda *args: MockSignal()
 
@@ -222,6 +246,7 @@ mock_modules = {
     "PyQt6.QtWidgets": mock_qt_widgets,
     "pyqtgraph": MagicMock(),
 }
+
 
 class TestSpectrogramOptimization(unittest.TestCase):
     def setUp(self):
@@ -241,19 +266,22 @@ class TestSpectrogramOptimization(unittest.TestCase):
 
         # Patch Worker init to give unique signals per instance
         original_init = SpectrogramWorker.__init__
+
         def new_init(self, *args, **kwargs):
             original_init(self, *args, **kwargs)
+
             class InstanceSignals:
                 result = MockSignal()
+
             self.signals = InstanceSignals()
 
-        with patch.object(SpectrogramWorker, '__init__', new_init):
+        with patch.object(SpectrogramWorker, "__init__", new_init):
             audio_engine = MockAudioEngine()
             module = Spectrogram(audio_engine)
             widget = SpectrogramWidget(module)
             module.audio_buffer[:] = np.random.random(module.audio_buffer.shape)
 
-            module.sweep_speed_index = 1 # Medium, target=4
+            module.sweep_speed_index = 1  # Medium, target=4
             module.start_analysis()
 
             # First update
@@ -321,6 +349,7 @@ class TestSpectrogramStyle(unittest.TestCase):
             widget.apply_theme("light")
             widget.toggle_btn.setStyleSheet.assert_called_with(STYLE_TOGGLE_BTN_LIGHT)
 
+
 class TestSpectrogramColormaps(unittest.TestCase):
     def test_spectrogram_colormaps_exist(self):
         """
@@ -331,8 +360,17 @@ class TestSpectrogramColormaps(unittest.TestCase):
         # Note: 'greyscale' was removed in a previous step, so we don't test for it unless it's added back.
         # Current list in code: ["viridis", "plasma", "inferno", "magma", "turbo", "thermal", "flame", "yellowy", "bipolar", "spectrum", "cyclic"]
         used_colormaps = [
-            "viridis", "plasma", "inferno", "magma", "turbo",
-            "thermal", "flame", "yellowy", "bipolar", "spectrum", "cyclic"
+            "viridis",
+            "plasma",
+            "inferno",
+            "magma",
+            "turbo",
+            "thermal",
+            "flame",
+            "yellowy",
+            "bipolar",
+            "spectrum",
+            "cyclic",
         ]
 
         missing_colormaps = []
@@ -342,12 +380,13 @@ class TestSpectrogramColormaps(unittest.TestCase):
 
         assert not missing_colormaps, f"The following colormaps are missing in pyqtgraph: {missing_colormaps}"
 
+
 class TestSpectrogramLogBuffer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Create QApplication if it doesn't exist
         if not QApplication.instance():
-            cls.app = QApplication(sys.argv + ['-platform', 'offscreen'])
+            cls.app = QApplication(sys.argv + ["-platform", "offscreen"])
         else:
             cls.app = QApplication.instance()
 
@@ -412,7 +451,7 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
         np.testing.assert_array_almost_equal(self.widget.log_spectrogram_buffer[idx_v1], buffer_before[idx_v1])
 
         # 3. Parameter Change (Min Freq) -> Should Reset Buffer
-        self.widget.min_freq_spin.setValue(500) # Change freq
+        self.widget.min_freq_spin.setValue(500)  # Change freq
         self.widget.on_freq_range_changed()
 
         # Trigger update again
@@ -442,5 +481,6 @@ class TestSpectrogramLogBuffer(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(self.widget.log_spectrogram_buffer[idx_v2], expected_row_v2_new_map)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,3 @@
-
 import unittest
 from unittest.mock import MagicMock, patch
 import sys
@@ -6,26 +5,27 @@ import numpy as np
 import os
 import soundfile as sf
 import tempfile
+
 try:
     from src.core.analysis import AudioCalc  # noqa: F401
 except ImportError:
     pass
 
+
 class TestRecorderSaveOptimization(unittest.TestCase):
     def setUp(self):
         # Patch sys.modules to mock sounddevice and PyQt6
-        self.modules_patcher = patch.dict(sys.modules, {
-            'sounddevice': MagicMock(),
-            'PyQt6.QtCore': MagicMock(),
-            'PyQt6.QtWidgets': MagicMock()
-        })
+        self.modules_patcher = patch.dict(
+            sys.modules, {"sounddevice": MagicMock(), "PyQt6.QtCore": MagicMock(), "PyQt6.QtWidgets": MagicMock()}
+        )
         self.modules_patcher.start()
 
         # Import RecorderPlayer locally to ensure it uses the mocked modules
-        if 'src.gui.widgets.recorder_player' in sys.modules:
-            del sys.modules['src.gui.widgets.recorder_player']
+        if "src.gui.widgets.recorder_player" in sys.modules:
+            del sys.modules["src.gui.widgets.recorder_player"]
 
         from src.gui.widgets.recorder_player import RecorderPlayer
+
         self.RecorderPlayer = RecorderPlayer
 
         self.audio_engine = MagicMock()
@@ -70,7 +70,7 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         filepath = os.path.join(self.temp_dir.name, "test_output.wav")
 
         # Use FLOAT subtype to avoid quantization noise for exact verification
-        success, msg = self.player.save_recording(filepath, subtype='FLOAT')
+        success, msg = self.player.save_recording(filepath, subtype="FLOAT")
 
         self.assertTrue(success, f"Save failed: {msg}")
         self.assertTrue(os.path.exists(filepath), "File was not created")
@@ -87,7 +87,7 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         frames_per_chunk = 100
         channels = 1
 
-        self.player.input_mode = "Right" # Force mono or specific channel?
+        self.player.input_mode = "Right"  # Force mono or specific channel?
         # Actually input_mode="Right" selects channel 1 (if stereo input).
         # But here we provide mono input to callback?
         # audio_callback logic:
@@ -107,7 +107,7 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         filepath = os.path.join(self.temp_dir.name, "test_mono.wav")
 
         # Use FLOAT subtype to avoid quantization noise
-        success, msg = self.player.save_recording(filepath, subtype='FLOAT')
+        success, msg = self.player.save_recording(filepath, subtype="FLOAT")
 
         self.assertTrue(success, f"Save failed: {msg}")
 
@@ -117,5 +117,6 @@ class TestRecorderSaveOptimization(unittest.TestCase):
         self.assertEqual(loaded_data.shape, (frames_per_chunk, 1))
         np.testing.assert_allclose(loaded_data, chunk, atol=1e-7)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

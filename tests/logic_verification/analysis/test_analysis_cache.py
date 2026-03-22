@@ -2,6 +2,7 @@ import numpy as np
 
 from src.core.analysis import get_cached_window, _get_butter_sos
 
+
 def test_get_cached_window_basic_functionality():
     """Verify that get_cached_window returns the correct window shape and type."""
     # Test hann window
@@ -23,6 +24,7 @@ def test_get_cached_window_basic_functionality():
     # Test different dtype
     window_f32 = get_cached_window("hann", nx, dtype=np.float32)
     assert window_f32.dtype == np.float32
+
 
 def test_get_cached_window_caching_behavior():
     """Verify that get_cached_window actually caches the results."""
@@ -52,6 +54,7 @@ def test_get_cached_window_caching_behavior():
     assert info3.misses > info2.misses
     assert win1 is not win3
 
+
 def test_get_butter_sos_basic_functionality():
     """Verify that _get_butter_sos returns valid SOS coefficients."""
     # 4th order lowpass at 1kHz for 48kHz sample rate
@@ -72,6 +75,7 @@ def test_get_butter_sos_basic_functionality():
     assert sos_fs.shape == (2, 6)
     # They should be mathematically equivalent
     assert np.allclose(sos, sos_fs)
+
 
 def test_get_butter_sos_caching_behavior():
     """Verify that _get_butter_sos caches the returned coefficients."""

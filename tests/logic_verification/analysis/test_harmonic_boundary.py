@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from src.core.analysis import AudioCalc
 
+
 class TestHarmonicBoundary(unittest.TestCase):
     def test_harmonic_near_nyquist(self):
         # Setup: Freqs up to 100Hz.
@@ -42,10 +43,10 @@ class TestHarmonicBoundary(unittest.TestCase):
         # Check if harmonic 2 is found
         found_harmonic_2 = False
         for h in results:
-            if h['order'] == 2:
-                if h['amplitude_linear'] > 0:
+            if h["order"] == 2:
+                if h["amplitude_linear"] > 0:
                     found_harmonic_2 = True
-                    self.assertAlmostEqual(h['amplitude_linear'], 0.5)
+                    self.assertAlmostEqual(h["amplitude_linear"], 0.5)
 
         if not found_harmonic_2:
             print("\nBug reproduced: 2nd harmonic near Nyquist was not detected.")
@@ -54,5 +55,6 @@ class TestHarmonicBoundary(unittest.TestCase):
 
         self.assertTrue(found_harmonic_2, "Harmonic near Nyquist should be detected")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

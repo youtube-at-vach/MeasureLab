@@ -435,7 +435,7 @@ class SoundLevelMeter(MeasurementModule):
         if self.ln_history_count == 0:
             return {}
 
-        data_linear = self.ln_history[:self.ln_history_count]
+        data_linear = self.ln_history[: self.ln_history_count]
         data_db = 10 * np.log10(data_linear + 1e-12)
 
         # Percentiles (Ln is level EXCEEDED n% of time)
@@ -474,7 +474,7 @@ class SoundLevelMeter(MeasurementModule):
         if self.ln_history_count == 0:
             return np.array([]), np.array([])
 
-        data_linear = self.ln_history[:self.ln_history_count]
+        data_linear = self.ln_history[: self.ln_history_count]
         data_db = 10 * np.log10(data_linear + 1e-12)
 
         # Determine range

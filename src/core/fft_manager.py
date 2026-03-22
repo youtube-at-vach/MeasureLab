@@ -87,7 +87,7 @@ class FFTManager:
             wisdom = pyfftw.export_wisdom()
 
             # Convert tuple of bytes to list of base64 strings
-            data = [base64.b64encode(item).decode('ascii') for item in wisdom]
+            data = [base64.b64encode(item).decode("ascii") for item in wisdom]
 
             with open(self.wisdom_path, "w") as f:
                 json.dump(data, f)
@@ -329,8 +329,6 @@ class FFTManager:
 
         if callback:
             callback(tr("Done {0}/{1}").format(total + 1, total + 1))
-
-
 
     def get_available_windows(self):
         """

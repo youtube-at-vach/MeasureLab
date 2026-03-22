@@ -2,6 +2,7 @@ import time
 import itertools
 from collections import deque
 
+
 def benchmark():
     # Setup
     cal_samples = deque()
@@ -17,7 +18,7 @@ def benchmark():
     for _ in range(iterations):
         samples = list(cal_samples)
         if len(samples) >= need:
-             samples[-need:]
+            samples[-need:]
     end_time = time.perf_counter()
     baseline_duration = end_time - start_time
     print(f"Baseline (full copy + slice): {baseline_duration:.6f} seconds")
@@ -47,6 +48,7 @@ def benchmark():
     print(f"Optimization 4 (reversed+islice): {opt4_duration:.6f} seconds")
 
     print(f"Speedup vs Baseline (Opt 4): {baseline_duration / opt4_duration:.2f}x")
+
 
 if __name__ == "__main__":
     benchmark()

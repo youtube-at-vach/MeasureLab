@@ -7,11 +7,12 @@ from unittest.mock import MagicMock, patch
 
 # Mock sounddevice before importing anything that uses it
 try:
-    import sounddevice # noqa: F401
+    import sounddevice  # noqa: F401
 except (ImportError, OSError):
-    sys.modules['sounddevice'] = MagicMock()
+    sys.modules["sounddevice"] = MagicMock()
 
 from src.gui.widgets.signal_generator import SignalGenerator, SignalParameters
+
 
 class TestSignalGeneratorChannels(unittest.TestCase):
     """Tests for channel independence and routing logic."""
@@ -32,23 +33,23 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         args, _ = mock_engine.register_callback.call_args
         callback = args[0]
 
-        frames = 480 # 10ms
+        frames = 480  # 10ms
         outdata = np.zeros((frames, 2))
 
         # Case 1: 0 vs 90 degrees (Orthogonal)
-        sg.params_L.waveform = 'sine'
+        sg.params_L.waveform = "sine"
         sg.params_L.frequency = 1000
         sg.params_L.amplitude = 1.0
         sg.params_L.phase_offset = 0.0
-        sg.params_L._phase = 0 # Internal reset
+        sg.params_L._phase = 0  # Internal reset
 
-        sg.params_R.waveform = 'sine'
+        sg.params_R.waveform = "sine"
         sg.params_R.frequency = 1000
         sg.params_R.amplitude = 1.0
         sg.params_R.phase_offset = 90.0
-        sg.params_R._phase = 0 # Internal reset
+        sg.params_R._phase = 0  # Internal reset
 
-        sg.output_mode = 'STEREO'
+        sg.output_mode = "STEREO"
 
         callback(None, outdata, frames, None, None)
 
@@ -83,12 +84,12 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         sg = SignalGenerator(mock_engine)
 
         # Configure L: Sine 1000Hz
-        sg.params_L.waveform = 'sine'
+        sg.params_L.waveform = "sine"
         sg.params_L.frequency = 1000.0
         sg.params_L.amplitude = 1.0
 
         # Configure R: Square 500Hz
-        sg.params_R.waveform = 'square'
+        sg.params_R.waveform = "square"
         sg.params_R.frequency = 500.0
         sg.params_R.amplitude = 0.5
 
@@ -121,13 +122,13 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         np.testing.assert_allclose(sig_r, expected_r, atol=1e-5, err_msg="Right Channel (Square 500Hz) mismatch")
 
         # Test Output Routing
-        sg.output_mode = 'L'
+        sg.output_mode = "L"
         outdata.fill(0)
         callback(None, outdata, frames, None, None)
         assert np.all(outdata[:, 1] == 0), "Routing L: Right channel should be silent"
         assert not np.all(outdata[:, 0] == 0), "Routing L: Left channel should have signal"
 
-        sg.output_mode = 'R'
+        sg.output_mode = "R"
         outdata.fill(0)
         callback(None, outdata, frames, None, None)
         assert np.all(outdata[:, 0] == 0), "Routing R: Left channel should be silent"
@@ -143,7 +144,7 @@ class TestSignalGeneratorNoiseSpectral(unittest.TestCase):
         self.mock_engine.calibration.output_gain = 1.0
         self.sg = SignalGenerator(self.mock_engine)
         self.params = SignalParameters()
-        self.params.waveform = 'noise'
+        self.params.waveform = "noise"
 
     def _get_spectral_slope(self, noise, sample_rate, low_cutoff=100, high_cutoff=10000):
         # Compute Power Spectral Density using Welch's method
@@ -159,49 +160,49 @@ class TestSignalGeneratorNoiseSpectral(unittest.TestCase):
 
         # Log-log scale
         log_f = np.log10(f_sub)
-        log_P = 10 * np.log10(Pxx_sub + 1e-12) # 10*log10 for Power in dB
+        log_P = 10 * np.log10(Pxx_sub + 1e-12)  # 10*log10 for Power in dB
 
         # Linear regression
         slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(log_f, log_P)
         return slope
 
     def test_white_noise_spectral(self):
-        self.params.noise_color = 'white'
+        self.params.noise_color = "white"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=1.0)
         slope = self._get_spectral_slope(noise, 48000)
         # White noise: Flat power spectrum. Slope ~ 0 dB/dec
         self.assertAlmostEqual(slope, 0, delta=1.5, msg=f"White noise slope {slope:.2f} should be ~0")
 
     def test_pink_noise_spectral(self):
-        self.params.noise_color = 'pink'
+        self.params.noise_color = "pink"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=1.0)
         slope = self._get_spectral_slope(noise, 48000)
         # Pink noise: 1/f power. -10 dB/dec
         self.assertAlmostEqual(slope, -10, delta=1.5, msg=f"Pink noise slope {slope:.2f} should be ~-10")
 
     def test_brown_noise_spectral(self):
-        self.params.noise_color = 'brown'
+        self.params.noise_color = "brown"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=1.0)
         slope = self._get_spectral_slope(noise, 48000)
         # Brown noise: 1/f^2 power. -20 dB/dec
         self.assertAlmostEqual(slope, -20, delta=1.5, msg=f"Brown noise slope {slope:.2f} should be ~-20")
 
     def test_blue_noise_spectral(self):
-        self.params.noise_color = 'blue'
+        self.params.noise_color = "blue"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=1.0)
         slope = self._get_spectral_slope(noise, 48000)
         # Blue noise: f power. +10 dB/dec
         self.assertAlmostEqual(slope, 10, delta=1.5, msg=f"Blue noise slope {slope:.2f} should be ~+10")
 
     def test_violet_noise_spectral(self):
-        self.params.noise_color = 'violet'
+        self.params.noise_color = "violet"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=1.0)
         slope = self._get_spectral_slope(noise, 48000)
         # Violet noise: f^2 power. +20 dB/dec
         self.assertAlmostEqual(slope, 20, delta=1.5, msg=f"Violet noise slope {slope:.2f} should be ~+20")
 
     def test_grey_noise_spectral(self):
-        self.params.noise_color = 'grey'
+        self.params.noise_color = "grey"
         # Increase duration to 5.0s to reduce variance in spectral estimation
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=5.0)
 
@@ -215,19 +216,27 @@ class TestSignalGeneratorNoiseSpectral(unittest.TestCase):
         P_3k = 10 * np.log10(Pxx[idx_3k] + 1e-12)
         P_10k = 10 * np.log10(Pxx[idx_10k] + 1e-12)
 
-        self.assertGreater(P_100, P_3k + 8, f"Low freq (100Hz={P_100:.1f}dB) should be significantly louder than mid freq (3kHz={P_3k:.1f}dB) for Grey noise")
+        self.assertGreater(
+            P_100,
+            P_3k + 8,
+            f"Low freq (100Hz={P_100:.1f}dB) should be significantly louder than mid freq (3kHz={P_3k:.1f}dB) for Grey noise",
+        )
         # Relax tolerance slightly due to stochastic nature (-1.0 instead of +1.0)
-        self.assertGreater(P_10k, P_3k - 1.0, f"High freq (10kHz={P_10k:.1f}dB) should be louder than mid freq (3kHz={P_3k:.1f}dB) for Grey noise")
+        self.assertGreater(
+            P_10k,
+            P_3k - 1.0,
+            f"High freq (10kHz={P_10k:.1f}dB) should be louder than mid freq (3kHz={P_3k:.1f}dB) for Grey noise",
+        )
 
     def test_normalization(self):
-        self.params.noise_color = 'white'
+        self.params.noise_color = "white"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=1.0)
         max_amp = np.max(np.abs(noise))
         self.assertLessEqual(max_amp, 1.0 + 1e-6, "Noise buffer should be normalized <= 1.0")
         self.assertGreater(max_amp, 0.5, "Noise buffer should be reasonably loud (normalized to peak 1)")
 
     def test_short_duration(self):
-        self.params.noise_color = 'white'
+        self.params.noise_color = "white"
         noise = self.sg._generate_noise_buffer(self.params, 48000, duration=0.1)
         expected_len = int(48000 * 0.1)
         self.assertEqual(len(noise), expected_len, "Buffer length mismatch for short duration")
@@ -329,7 +338,7 @@ class TestSignalGeneratorMLS(unittest.TestCase):
         mock_engine = MagicMock()
         sg = SignalGenerator(mock_engine)
         params = SignalParameters()
-        params.waveform = 'mls'
+        params.waveform = "mls"
 
         for order in [10, 15]:
             params.mls_order = order
@@ -337,17 +346,21 @@ class TestSignalGeneratorMLS(unittest.TestCase):
             # 1. Get reference signal using actual scipy (assuming it is installed in test env)
             try:
                 import scipy.signal
+
                 ref_seq, _ = scipy.signal.max_len_seq(order)
                 ref_signal = ref_seq.astype(float) * 2 - 1
             except ImportError:
                 self.skipTest("Scipy not installed, cannot verify fallback against reference implementation.")
 
             # 2. Force fallback by mocking max_len_seq to raise Exception
-            with patch('scipy.signal.max_len_seq', side_effect=RuntimeError("Forced failure for testing fallback")), \
-                 patch('src.gui.widgets.signal_generator.logger') as mock_logger:
-
+            with (
+                patch("scipy.signal.max_len_seq", side_effect=RuntimeError("Forced failure for testing fallback")),
+                patch("src.gui.widgets.signal_generator.logger") as mock_logger,
+            ):
                 fallback_signal = sg._generate_mls(params, 48000)
-                mock_logger.warning.assert_called_with("scipy.signal.max_len_seq not found/failed, using optimized fallback")
+                mock_logger.warning.assert_called_with(
+                    "scipy.signal.max_len_seq not found/failed, using optimized fallback"
+                )
 
             # 3. Verify
             expected_len = 2**order - 1
@@ -391,7 +404,7 @@ class TestSignalGeneratorMultitone(unittest.TestCase):
         mock_engine.calibration.output_gain = 1.0
         sg = SignalGenerator(mock_engine)
 
-        sg.params_L.waveform = 'multitone'
+        sg.params_L.waveform = "multitone"
         sg.params_L.multitone_count = 31
         sg.params_L.start_freq = 20.0
         sg.params_L.end_freq = 20000.0
@@ -453,7 +466,7 @@ class TestSignalGeneratorFilterCache(unittest.TestCase):
         self.sg.params_L.lpf_freq = 1000.0
         self.sg.params_L.lpf_order = 4
 
-        with patch('scipy.signal.butter') as mock_butter:
+        with patch("scipy.signal.butter") as mock_butter:
             mock_butter.return_value = np.zeros((2, 6))
 
             # First call
@@ -476,7 +489,7 @@ class TestSignalGeneratorFilterCache(unittest.TestCase):
         self.sg.params_L.hpf_freq = 1000.0
         self.sg.params_L.hpf_order = 4
 
-        with patch('scipy.signal.butter') as mock_butter:
+        with patch("scipy.signal.butter") as mock_butter:
             mock_butter.return_value = np.zeros((2, 6))
 
             # First call
@@ -500,7 +513,7 @@ class TestSignalGeneratorFilterCache(unittest.TestCase):
         self.sg.params_L.hpf_enabled = True
         self.sg.params_L.hpf_freq = 2000.0
 
-        with patch('scipy.signal.butter') as mock_butter:
+        with patch("scipy.signal.butter") as mock_butter:
             mock_butter.return_value = np.zeros((2, 6))
 
             # Calculate LPF
@@ -521,5 +534,6 @@ class TestSignalGeneratorFilterCache(unittest.TestCase):
             self.sg._get_filter_sos(self.sg.params_L, "high", 48000)
             mock_butter.assert_not_called()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

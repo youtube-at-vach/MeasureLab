@@ -5,27 +5,31 @@ from unittest.mock import MagicMock
 import numpy as np
 
 # Mock sounddevice before importing anything else that might import it
-sys.modules['sounddevice'] = MagicMock()
+sys.modules["sounddevice"] = MagicMock()
 
 # Add src to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.gui.widgets.sound_level_meter import SoundLevelMeter  # noqa: E402
+
 
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
+
     def register_callback(self, cb):
         return 1
+
     def unregister_callback(self, id):
         pass
+
 
 def benchmark_slm_history():
     engine = MockAudioEngine()
     slm = SoundLevelMeter(engine)
 
-    slm.set_freq_weighting('Z')
-    slm.set_time_weighting('FAST')
+    slm.set_freq_weighting("Z")
+    slm.set_time_weighting("FAST")
     slm.start_analysis()
 
     # Fill up ln_history to simulate long running app
@@ -65,7 +69,10 @@ def benchmark_slm_history():
     end_time_stats = time.perf_counter()
 
     stats_time = end_time_stats - start_time_stats
-    print(f"Stats calculation time for {stats_iterations} calls (array size {slm.ln_history_count}): {stats_time:.4f} s")
+    print(
+        f"Stats calculation time for {stats_iterations} calls (array size {slm.ln_history_count}): {stats_time:.4f} s"
+    )
+
 
 if __name__ == "__main__":
     benchmark_slm_history()

@@ -1,13 +1,13 @@
-
 import timeit
 import numpy as np
 import sys
 import os
 
 # Add repo root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from src.core.analysis import get_cached_window
+
 
 def baseline_method(window_type, length):
     if window_type == "rect":
@@ -15,16 +15,15 @@ def baseline_method(window_type, length):
     else:
         return getattr(np, window_type)(length)
 
+
 def optimized_method(window_type, length):
     # Mapping
-    scipy_map = {
-        "hanning": "hann",
-        "rect": "boxcar"
-    }
+    scipy_map = {"hanning": "hann", "rect": "boxcar"}
     scipy_name = scipy_map.get(window_type, window_type)
 
     # Use cached window with fftbins=False to match numpy symmetric
     return get_cached_window(scipy_name, length, fftbins=False)
+
 
 def benchmark():
     length = 4096
@@ -53,7 +52,8 @@ def benchmark():
             print("  WARNING: Results do not match!")
             print(f"  Max Diff: {np.max(np.abs(w_base - w_opt))}")
         else:
-             print("  Correctness: Verified (Identical)")
+            print("  Correctness: Verified (Identical)")
+
 
 if __name__ == "__main__":
     benchmark()

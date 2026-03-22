@@ -1,4 +1,3 @@
-
 import logging
 import os
 
@@ -45,8 +44,6 @@ class InverseFilter(MeasurementModule):
     @property
     def description(self) -> str:
         return "Apply inverse calibration filter to audio files."
-
-
 
     def get_widget(self):
         return InverseFilterWidget(self)
@@ -254,7 +251,9 @@ class ProcessingWorker(QThread):
                                 out_preview = signal.oaconvolve(preview_data, kernel, mode="same")
                                 output_rms_sq = np.mean(np.square(out_preview))
                             else:
-                                input_rms_sq = np.mean(np.square(preview_data)) # Average across channels? Or per channel? Usually average power.
+                                input_rms_sq = np.mean(
+                                    np.square(preview_data)
+                                )  # Average across channels? Or per channel? Usually average power.
                                 # Simple average power
                                 out_preview = signal.oaconvolve(preview_data[:, 0], kernel, mode="same")
                                 output_rms_sq = np.mean(np.square(out_preview))
@@ -288,7 +287,7 @@ class ProcessingWorker(QThread):
                                 conv_res = signal.fftconvolve(ch_data, kernel, mode="full")
 
                                 # Add overlap from previous block
-                                conv_res[:M-1] += overlap_buffer[:, ch]
+                                conv_res[: M - 1] += overlap_buffer[:, ch]
 
                                 # Save new overlap (last M-1 samples)
                                 overlap_buffer[:, ch] = conv_res[current_chunk_len:]

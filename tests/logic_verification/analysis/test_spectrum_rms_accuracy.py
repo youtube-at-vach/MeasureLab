@@ -6,13 +6,26 @@ import re
 
 # Mock GUI dependencies
 mock_qt_core = MagicMock()
+
+
 class MockQObject:
-    def __init__(self): pass
+    def __init__(self):
+        pass
+
+
 class MockQWidget:
-    def __init__(self, *args, **kwargs): pass
-    def update(self): pass
-    def setStyleSheet(self, style): pass
-    def setLayout(self, layout): pass
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def update(self):
+        pass
+
+    def setStyleSheet(self, style):
+        pass
+
+    def setLayout(self, layout):
+        pass
+
 
 mock_qt_core.QObject = MockQObject
 mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
@@ -50,6 +63,7 @@ mock_modules = {
     "sounddevice": MagicMock(),
 }
 
+
 @pytest.fixture(autouse=True)
 def mock_deps():
     with patch.dict(sys.modules, mock_modules):
@@ -57,6 +71,7 @@ def mock_deps():
         if "src.gui.widgets.spectrum_analyzer" in sys.modules:
             del sys.modules["src.gui.widgets.spectrum_analyzer"]
         yield
+
 
 def test_spectrum_rms_sine_accuracy():
     from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
@@ -120,6 +135,7 @@ def test_spectrum_rms_sine_accuracy():
 
     # Check accuracy
     assert val == pytest.approx(-3.01, abs=0.2)
+
 
 def test_spectrum_rms_silence():
     from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget

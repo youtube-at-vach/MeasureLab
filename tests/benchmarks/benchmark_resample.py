@@ -2,6 +2,7 @@ import time
 import numpy as np
 from src.core.analysis import AudioCalc
 
+
 def benchmark():
     source_sr = 44100
     target_sr = 48000
@@ -21,7 +22,8 @@ def benchmark():
     end_time = time.time()
 
     avg_time = (end_time - start_time) / iterations
-    print(f"Resample {source_sr}->{target_sr} ({duration}s): {avg_time*1000:.4f} ms per call")
+    print(f"Resample {source_sr}->{target_sr} ({duration}s): {avg_time * 1000:.4f} ms per call")
+
 
 if __name__ == "__main__":
     benchmark()

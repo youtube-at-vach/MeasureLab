@@ -1,6 +1,6 @@
-
 from PyQt6.QtCore import Qt
 from src.gui.widgets.welcome import WelcomeWidget
+
 
 def test_update_label_prevents_xss(qtbot):
     """

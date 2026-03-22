@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Sonifier:
     """
     Real-time sine wave synthesizer for power noise sonification.
@@ -22,8 +23,8 @@ class Sonifier:
 
         # Audio parameters
         self.master_volume_db = 0.0  # dB offset for sensitivity
-        self.manual_freq = 1000.0 # Hz
-        self.output_channel = 2   # 0: Left, 1: Right, 2: Both
+        self.manual_freq = 1000.0  # Hz
+        self.output_channel = 2  # 0: Left, 1: Right, 2: Both
 
         # Internal state for synthesis
         self.current_phase = 0.0
@@ -87,7 +88,7 @@ class Sonifier:
             normalized_amp = (clamped_db - noise_floor_db) / (max_level_db - noise_floor_db)
 
             # Apply non-linear curve for more natural volume perception (e.g., cubic)
-            target_linear_amp = normalized_amp ** 3
+            target_linear_amp = normalized_amp**3
 
             self.target_amp = target_linear_amp
 
@@ -118,7 +119,7 @@ class Sonifier:
             max_level_db = -20.0
             clamped_db = max(noise_floor_db, min(max_level_db, effective_mag))
             normalized_amp = (clamped_db - noise_floor_db) / (max_level_db - noise_floor_db)
-            target_linear_amp = normalized_amp ** 3
+            target_linear_amp = normalized_amp**3
             self.target_amp = target_linear_amp
             self.target_freq = self.manual_freq
 

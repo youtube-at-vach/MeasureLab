@@ -3,6 +3,7 @@ from unittest.mock import patch, mock_open
 
 from src.core.localization import LocalizationManager, tr, get_manager
 
+
 class TestLocalizationManager(unittest.TestCase):
     """Test the LocalizationManager functionality."""
 
@@ -89,7 +90,7 @@ class TestLocalizationManager(unittest.TestCase):
         with patch("builtins.open", mock_open(read_data=mock_json_content)):
             manager = LocalizationManager()
 
-            with patch.object(manager.logger, 'error') as mock_error:
+            with patch.object(manager.logger, "error") as mock_error:
                 manager.load_language("en")
 
                 self.assertEqual(manager.translations, {})
@@ -130,6 +131,7 @@ class TestLocalizationManager(unittest.TestCase):
     def test_get_manager_function(self):
         """Test the get_manager() global shortcut."""
         from src.core.localization import _loc_manager
+
         self.assertIs(get_manager(), _loc_manager)
 
 

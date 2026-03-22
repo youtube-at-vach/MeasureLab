@@ -7,6 +7,7 @@ sys.path.append(os.getcwd())
 
 from src.core.utils import format_si
 
+
 class TestUtils(unittest.TestCase):
     def test_format_si_basic(self):
         """Test basic SI formatting functionality."""
@@ -46,11 +47,11 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(format_si(None, "Hz"), "-")
 
         # Inf
-        self.assertEqual(format_si(float('inf'), "Hz"), "-")
-        self.assertEqual(format_si(float('-inf'), "Hz"), "-")
+        self.assertEqual(format_si(float("inf"), "Hz"), "-")
+        self.assertEqual(format_si(float("-inf"), "Hz"), "-")
 
         # NaN
-        self.assertEqual(format_si(float('nan'), "Hz"), "-")
+        self.assertEqual(format_si(float("nan"), "Hz"), "-")
 
     def test_format_si_rounding_up(self):
         """Test rounding that bumps the prefix (e.g. 999.9 m -> 1.0 k)."""
@@ -90,6 +91,7 @@ class TestUtils(unittest.TestCase):
         # Linear (0-1) / Amplitude
         import numpy as np
         from src.core import utils
+
         self.assertTrue(np.isclose(utils.amplitude_to_linear(0.5, "Linear (0-1)"), 0.5))
         self.assertTrue(np.isclose(utils.amplitude_to_linear(0.5, "Amplitude"), 0.5))
 
@@ -98,7 +100,9 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.isclose(utils.amplitude_to_linear(-20, "dBFS"), 0.1))
 
         # dBV
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBV", gain=np.sqrt(2)), 1.0)) # 1 Vrms -> sqrt(2) Vpeak -> 1.0 Linear
+        self.assertTrue(
+            np.isclose(utils.amplitude_to_linear(0, "dBV", gain=np.sqrt(2)), 1.0)
+        )  # 1 Vrms -> sqrt(2) Vpeak -> 1.0 Linear
 
         # dBu
         self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBu", gain=0.7746 * np.sqrt(2)), 1.0))
@@ -116,6 +120,7 @@ class TestUtils(unittest.TestCase):
     def test_linear_to_amplitude(self):
         import numpy as np
         from src.core import utils
+
         # Linear (0-1) / Amplitude
         self.assertTrue(np.isclose(utils.linear_to_amplitude(0.5, "Linear (0-1)"), 0.5))
         self.assertTrue(np.isclose(utils.linear_to_amplitude(0.5, "Amplitude"), 0.5))
@@ -136,5 +141,6 @@ class TestUtils(unittest.TestCase):
         # Vpeak
         self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "Vpeak", gain=1.0), 1.0))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

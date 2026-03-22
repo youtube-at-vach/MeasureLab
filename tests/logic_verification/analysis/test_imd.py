@@ -3,15 +3,16 @@ import numpy as np
 from scipy.signal import get_window
 from src.core.analysis import AudioCalc
 
+
 class TestIMDAnalysis(unittest.TestCase):
     def setUp(self):
         # Setup for a 1 second signal at 48kHz
         self.sr = 48000
         self.N = 48000
-        self.freqs = np.fft.rfftfreq(self.N, 1/self.sr)
+        self.freqs = np.fft.rfftfreq(self.N, 1 / self.sr)
         self.t = np.arange(self.N) / self.sr
         # Use Blackman-Harris window for good dynamic range (low side lobes)
-        self.window = get_window('blackmanharris', self.N)
+        self.window = get_window("blackmanharris", self.N)
         self.coherent_gain = np.sum(self.window) / self.N
 
     def _get_mag(self, signal):
@@ -28,8 +29,7 @@ class TestIMDAnalysis(unittest.TestCase):
         amp_f1 = 0.8
         amp_f2 = 0.2
 
-        signal = amp_f1 * np.sin(2 * np.pi * f1 * self.t) + \
-                 amp_f2 * np.sin(2 * np.pi * f2 * self.t)
+        signal = amp_f1 * np.sin(2 * np.pi * f1 * self.t) + amp_f2 * np.sin(2 * np.pi * f2 * self.t)
 
         mag = self._get_mag(signal)
 
@@ -37,8 +37,8 @@ class TestIMDAnalysis(unittest.TestCase):
 
         # Expect very low IMD (floating point noise + window leakage)
         # Should be below -100dB or very small percentage
-        self.assertLess(result['imd'], 0.001)  # < 0.001%
-        self.assertLess(result['imd_db'], -80.0)
+        self.assertLess(result["imd"], 0.001)  # < 0.001%
+        self.assertLess(result["imd_db"], -80.0)
 
     def test_calculate_imd_smpte_distortion(self):
         """Test SMPTE IMD calculation with known sidebands."""
@@ -56,26 +56,28 @@ class TestIMDAnalysis(unittest.TestCase):
         # A_sb = (target_imd * amp_f2) / np.sqrt(2)
         A_sb = (target_imd * amp_f2) / np.sqrt(2)
 
-        signal = amp_f1 * np.sin(2 * np.pi * f1 * self.t) + \
-                 amp_f2 * np.sin(2 * np.pi * f2 * self.t) + \
-                 A_sb * np.sin(2 * np.pi * (f2 - f1) * self.t) + \
-                 A_sb * np.sin(2 * np.pi * (f2 + f1) * self.t)
+        signal = (
+            amp_f1 * np.sin(2 * np.pi * f1 * self.t)
+            + amp_f2 * np.sin(2 * np.pi * f2 * self.t)
+            + A_sb * np.sin(2 * np.pi * (f2 - f1) * self.t)
+            + A_sb * np.sin(2 * np.pi * (f2 + f1) * self.t)
+        )
 
         mag = self._get_mag(signal)
 
         result = AudioCalc.calculate_imd_smpte(mag, self.freqs, f1, f2)
 
         # Verify result is close to 1%
-        self.assertAlmostEqual(result['imd'], target_imd_percent, delta=0.05)
-        self.assertAlmostEqual(result['imd_db'], -40.0, delta=0.5)
+        self.assertAlmostEqual(result["imd"], target_imd_percent, delta=0.05)
+        self.assertAlmostEqual(result["imd_db"], -40.0, delta=0.5)
 
     def test_calculate_imd_smpte_no_signal(self):
         """Test SMPTE IMD calculation with silence."""
         signal = np.zeros_like(self.t)
         mag = self._get_mag(signal)
         result = AudioCalc.calculate_imd_smpte(mag, self.freqs, 60.0, 7000.0)
-        self.assertEqual(result['imd'], 0.0)
-        self.assertEqual(result['imd_db'], -100.0)
+        self.assertEqual(result["imd"], 0.0)
+        self.assertEqual(result["imd_db"], -100.0)
 
     def test_calculate_imd_ccif_clean(self):
         """Test CCIF IMD calculation with a clean signal (should be ~0)."""
@@ -83,24 +85,23 @@ class TestIMDAnalysis(unittest.TestCase):
         f2 = 20000.0
         amp = 0.25
 
-        signal = amp * np.sin(2 * np.pi * f1 * self.t) + \
-                 amp * np.sin(2 * np.pi * f2 * self.t)
+        signal = amp * np.sin(2 * np.pi * f1 * self.t) + amp * np.sin(2 * np.pi * f2 * self.t)
 
         mag = self._get_mag(signal)
 
         res = AudioCalc.calculate_imd_ccif(mag, self.freqs, f1, f2)
 
-        self.assertLess(res['imd'], 0.001)
-        self.assertLess(res['imd_db'], -80.0)
+        self.assertLess(res["imd"], 0.001)
+        self.assertLess(res["imd_db"], -80.0)
 
     def test_calculate_imd_ccif_no_signal(self):
         """Test CCIF IMD calculation with silence."""
         signal = np.zeros_like(self.t)
         mag = self._get_mag(signal)
         res = AudioCalc.calculate_imd_ccif(mag, self.freqs, 19000.0, 20000.0)
-        self.assertEqual(res['imd'], 0.0)
-        self.assertEqual(res['details'], "Carriers not found")
-        self.assertNotIn('imd_db', res)
+        self.assertEqual(res["imd"], 0.0)
+        self.assertEqual(res["details"], "Carriers not found")
+        self.assertNotIn("imd_db", res)
 
     def test_calculate_imd_ccif(self):
         """Test CCIF IMD Calculation logic (from manual check)."""
@@ -110,8 +111,7 @@ class TestIMDAnalysis(unittest.TestCase):
         amp = 0.25
 
         # Generate Clean Signal
-        signal = amp * np.sin(2 * np.pi * f1 * self.t) + \
-                 amp * np.sin(2 * np.pi * f2 * self.t)
+        signal = amp * np.sin(2 * np.pi * f1 * self.t) + amp * np.sin(2 * np.pi * f2 * self.t)
 
         # Add IMD product (d2 = f2-f1 = 1kHz)
         # 1% of total amplitude (sum of carriers = 0.5)
@@ -126,7 +126,7 @@ class TestIMDAnalysis(unittest.TestCase):
         # Assertions
         # Expected ~1.0%
         # AudioCalc.calculate_imd_ccif likely calculates ratio of d2 to sum of carriers (or similar standard)
-        self.assertAlmostEqual(res['imd'], 1.0, delta=0.1)
+        self.assertAlmostEqual(res["imd"], 1.0, delta=0.1)
 
     def test_calculate_imd_ccif_negative_freq(self):
         """Test CCIF IMD with wide spacing causing negative 2*f1-f2 frequency."""
@@ -142,8 +142,8 @@ class TestIMDAnalysis(unittest.TestCase):
 
         idx_f1 = 2000
         idx_f2 = 5000
-        idx_d3_low = 1000 # abs(2*2000 - 5000)
-        idx_d3_high = 8000 # 2*5000 - 2000
+        idx_d3_low = 1000  # abs(2*2000 - 5000)
+        idx_d3_high = 8000  # 2*5000 - 2000
 
         mag[idx_f1] = 1.0
         mag[idx_f2] = 1.0
@@ -161,7 +161,7 @@ class TestIMDAnalysis(unittest.TestCase):
         # Distortion RMS = sqrt(0^2 + 0.1^2 + 0.1^2) = sqrt(0.02) = 0.14142
         # IMD = 0.14142 / 2.0 = 0.07071 (7.07%)
 
-        self.assertAlmostEqual(res['imd'], 7.071, places=3)
+        self.assertAlmostEqual(res["imd"], 7.071, places=3)
 
     def test_calculate_imd_ccif_exact(self):
         """Test CCIF IMD calculation with exact, known distortion amplitudes."""
@@ -206,8 +206,8 @@ class TestIMDAnalysis(unittest.TestCase):
         expected_imd_percent = 3.5355339
         expected_imd_db = -29.03089987
 
-        self.assertAlmostEqual(res['imd'], expected_imd_percent, places=5)
-        self.assertAlmostEqual(res['imd_db'], expected_imd_db, places=5)
+        self.assertAlmostEqual(res["imd"], expected_imd_percent, places=5)
+        self.assertAlmostEqual(res["imd_db"], expected_imd_db, places=5)
 
     def test_calculate_imd_ccif_missing_carriers(self):
         """Test CCIF IMD calculation when carriers are missing."""
@@ -221,8 +221,8 @@ class TestIMDAnalysis(unittest.TestCase):
         mag[19000] = 1.0
 
         res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
-        self.assertEqual(res['imd'], 0.0)
-        self.assertEqual(res['details'], "Carriers not found")
+        self.assertEqual(res["imd"], 0.0)
+        self.assertEqual(res["details"], "Carriers not found")
 
     def test_calculate_imd_ccif_low_total_amp(self):
         """Test CCIF IMD calculation when total amplitude is too low."""
@@ -237,8 +237,8 @@ class TestIMDAnalysis(unittest.TestCase):
         mag[20000] = 1e-7
 
         res = AudioCalc.calculate_imd_ccif(mag, freqs, f1, f2)
-        self.assertEqual(res['imd'], 0.0)
-        self.assertEqual(res['imd_db'], -100.0)
+        self.assertEqual(res["imd"], 0.0)
+        self.assertEqual(res["imd_db"], -100.0)
 
     def test_calculate_pim_clean(self):
         """Test PIM calculation with clean carriers (should be very low)."""
@@ -259,9 +259,9 @@ class TestIMDAnalysis(unittest.TestCase):
         res = AudioCalc.calculate_pim(mag, freqs, f1, f2)
 
         # Expect negligible PIM
-        self.assertLess(res['pim_db'], -100.0)
-        self.assertEqual(len(res['products']), 1)  # Order 3 loop runs
-        self.assertEqual(res['products'][0]['amp_low'], 0.0)
+        self.assertLess(res["pim_db"], -100.0)
+        self.assertEqual(len(res["products"]), 1)  # Order 3 loop runs
+        self.assertEqual(res["products"][0]["amp_low"], 0.0)
 
     def test_calculate_pim_no_signal(self):
         """Test PIM calculation with no signal."""
@@ -270,8 +270,8 @@ class TestIMDAnalysis(unittest.TestCase):
 
         res = AudioCalc.calculate_pim(mag, freqs, 1000.0, 2000.0)
 
-        self.assertEqual(res['pim_db'], -100.0)
-        self.assertEqual(res['products'], [])
+        self.assertEqual(res["pim_db"], -100.0)
+        self.assertEqual(res["products"], [])
 
     def test_calculate_pim_im3(self):
         """Test PIM calculation with known IM3 products."""
@@ -305,10 +305,10 @@ class TestIMDAnalysis(unittest.TestCase):
         expected_rms = np.sqrt(2 * (im3_amp**2))
         expected_db = 20 * np.log10(expected_rms)
 
-        self.assertAlmostEqual(res['pim_db'], expected_db, places=3)
-        self.assertEqual(len(res['products']), 1)
-        self.assertAlmostEqual(res['products'][0]['amp_low'], im3_amp, places=6)
-        self.assertAlmostEqual(res['products'][0]['amp_high'], im3_amp, places=6)
+        self.assertAlmostEqual(res["pim_db"], expected_db, places=3)
+        self.assertEqual(len(res["products"]), 1)
+        self.assertAlmostEqual(res["products"][0]["amp_low"], im3_amp, places=6)
+        self.assertAlmostEqual(res["products"][0]["amp_high"], im3_amp, places=6)
 
     def test_calculate_pim_im5(self):
         """Test PIM calculation with IM3 and IM5 products."""
@@ -338,24 +338,24 @@ class TestIMDAnalysis(unittest.TestCase):
 
         # Expected RMS = sqrt(2*0.01^2 + 2*0.005^2)
         # = sqrt(2e-4 + 2*2.5e-5) = sqrt(2e-4 + 0.5e-4) = sqrt(2.5e-4) = 0.015811
-        expected_rms = np.sqrt(2*(im3_amp**2) + 2*(im5_amp**2))
+        expected_rms = np.sqrt(2 * (im3_amp**2) + 2 * (im5_amp**2))
         expected_db = 20 * np.log10(expected_rms)
 
-        self.assertAlmostEqual(res['pim_db'], expected_db, places=3)
-        self.assertEqual(len(res['products']), 2) # Order 3 and Order 5
+        self.assertAlmostEqual(res["pim_db"], expected_db, places=3)
+        self.assertEqual(len(res["products"]), 2)  # Order 3 and Order 5
 
         # Check IM5 product details
         # products[0] is order 3, products[1] is order 5
-        self.assertEqual(res['products'][1]['order'], 5)
-        self.assertAlmostEqual(res['products'][1]['amp_low'], im5_amp, places=6)
-        self.assertAlmostEqual(res['products'][1]['amp_high'], im5_amp, places=6)
+        self.assertEqual(res["products"][1]["order"], 5)
+        self.assertAlmostEqual(res["products"][1]["amp_low"], im5_amp, places=6)
+        self.assertAlmostEqual(res["products"][1]["amp_high"], im5_amp, places=6)
 
         # Check filtering (if we run with order=3, IM5 should be ignored)
         res_order3 = AudioCalc.calculate_pim(mag, freqs, f1, f2, order=3)
         expected_rms_3 = np.sqrt(2 * (im3_amp**2))
         expected_db_3 = 20 * np.log10(expected_rms_3)
-        self.assertAlmostEqual(res_order3['pim_db'], expected_db_3, places=3)
-        self.assertEqual(len(res_order3['products']), 1)
+        self.assertAlmostEqual(res_order3["pim_db"], expected_db_3, places=3)
+        self.assertEqual(len(res_order3["products"]), 1)
 
     def test_calculate_pim_negative_freq(self):
         """Test PIM calculation where products wrap around DC (negative frequencies)."""
@@ -380,9 +380,9 @@ class TestIMDAnalysis(unittest.TestCase):
         expected_rms = np.sqrt(2 * (im3_amp**2))
         expected_db = 20 * np.log10(expected_rms)
 
-        self.assertAlmostEqual(res['pim_db'], expected_db, places=3)
+        self.assertAlmostEqual(res["pim_db"], expected_db, places=3)
 
         # Check that it correctly identified the negative freq product at positive index
-        prod = res['products'][0]
-        self.assertEqual(prod['freq_low'], -1000.0)
-        self.assertAlmostEqual(prod['amp_low'], im3_amp, places=6)
+        prod = res["products"][0]
+        self.assertEqual(prod["freq_low"], -1000.0)
+        self.assertAlmostEqual(prod["amp_low"], im3_amp, places=6)

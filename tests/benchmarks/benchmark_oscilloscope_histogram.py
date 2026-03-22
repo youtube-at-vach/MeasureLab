@@ -1,11 +1,12 @@
-
 import time
 import numpy as np
+
 
 def benchmark_histogram_original(t, y, bins, rng, intensity, heatmap):
     hist, _, _ = np.histogram2d(t, y, bins=bins, range=rng)
     heatmap += hist * intensity * 100
     return heatmap
+
 
 def benchmark_histogram_optimized(t, y, bins, rng, intensity, heatmap):
     w, h = bins
@@ -17,7 +18,7 @@ def benchmark_histogram_optimized(t, y, bins, rng, intensity, heatmap):
     # y_scale = h / (y_max - y_min)
     # Avoid division by zero if range is 0 (unlikely here but safe coding)
     if x_max <= x_min or y_max <= y_min:
-         return heatmap
+        return heatmap
 
     x_scale = w / (x_max - x_min)
     y_scale = h / (y_max - y_min)
@@ -58,6 +59,7 @@ def benchmark_histogram_optimized(t, y, bins, rng, intensity, heatmap):
     np.add.at(heatmap, (x_idx, y_idx), intensity * 100)
     return heatmap
 
+
 def verify_equivalence():
     sample_rate = 48000
     window_duration = 0.05
@@ -68,9 +70,9 @@ def verify_equivalence():
     # Add some out of bounds values
     y[10] = 1.5
     y[11] = -1.5
-    y[12] = 1.1 # Exactly on edge
+    y[12] = 1.1  # Exactly on edge
 
-    w, h = 60, 40 # Smaller for manual inspection if needed
+    w, h = 60, 40  # Smaller for manual inspection if needed
     bins = [w, h]
     rng = [[0, window_duration], [-1.1, 1.1]]
     intensity = 0.5
@@ -89,6 +91,7 @@ def verify_equivalence():
         return False
     return True
 
+
 if __name__ == "__main__":
     if not verify_equivalence():
         print("Verification FAILED!")
@@ -98,7 +101,7 @@ if __name__ == "__main__":
 
     # Setup parameters similar to Oscilloscope
     sample_rate = 48000
-    window_duration = 0.05 # 50ms
+    window_duration = 0.05  # 50ms
     num_samples = int(window_duration * sample_rate)
 
     t = np.linspace(0, window_duration, num_samples)

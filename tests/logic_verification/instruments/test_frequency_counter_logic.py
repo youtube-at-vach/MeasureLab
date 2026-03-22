@@ -6,7 +6,7 @@ import os
 from collections import deque
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 from src.gui.widgets.frequency_counter import FrequencyCounter
 
@@ -16,7 +16,7 @@ class TestFrequencyCounterLogic(unittest.TestCase):
         self.mock_audio_engine = MagicMock()
         self.mock_audio_engine.sample_rate = 48000
         self.counter = FrequencyCounter(self.mock_audio_engine)
-        self.counter.is_running = True # Simulate running
+        self.counter.is_running = True  # Simulate running
 
     def test_process_silence(self):
         # Create silence buffer
@@ -34,7 +34,7 @@ class TestFrequencyCounterLogic(unittest.TestCase):
         sr = 48000
         t = np.arange(self.counter.buffer_size) / sr
         target_freq = 1000.0
-        signal = 0.5 * np.sin(2 * np.pi * target_freq * t) # -6dBFS
+        signal = 0.5 * np.sin(2 * np.pi * target_freq * t)  # -6dBFS
 
         self.counter.input_buffer = signal
 
@@ -43,7 +43,7 @@ class TestFrequencyCounterLogic(unittest.TestCase):
 
         # Should detect frequency
         self.assertIsNotNone(freq)
-        self.assertAlmostEqual(freq, target_freq, delta=1.0) # Allow small error
+        self.assertAlmostEqual(freq, target_freq, delta=1.0)  # Allow small error
         self.assertGreater(self.counter.current_amp_db, self.counter.gate_threshold_db)
 
     def test_buffer_management(self):
@@ -58,7 +58,7 @@ class TestFrequencyCounterLogic(unittest.TestCase):
 
         # Roll logic from callback
         self.counter.input_buffer = np.roll(self.counter.input_buffer, -len(new_data))
-        self.counter.input_buffer[-len(new_data):] = new_data
+        self.counter.input_buffer[-len(new_data) :] = new_data
 
         # Check end is 0
         self.assertTrue(np.all(self.counter.input_buffer[-100:] == 0))
@@ -134,7 +134,7 @@ class TestFrequencyCounterStats(unittest.TestCase):
         # Std Dev
         # Mean = 1001
         # Variance = ((1+1+1+1)/3) = 4/3 = 1.333...
-        expected_std = np.sqrt(4/3)
+        expected_std = np.sqrt(4 / 3)
         self.assertAlmostEqual(self.counter.std_dev, expected_std, places=5)
 
         # Allan Dev
@@ -152,9 +152,11 @@ class TestFrequencyCounterCallback(unittest.TestCase):
         self.mock_audio_engine.sample_rate = 48000
         # Mock register_callback to capture the callback function
         self.callback_func = None
+
         def side_effect(func):
             self.callback_func = func
-            return 123 # callback_id
+            return 123  # callback_id
+
         self.mock_audio_engine.register_callback.side_effect = side_effect
 
         self.counter = FrequencyCounter(self.mock_audio_engine)
@@ -202,5 +204,6 @@ class TestFrequencyCounterCallback(unittest.TestCase):
         # buffer_size is 8192 by default
         self.assertTrue(np.allclose(self.counter.input_buffer[-frames:], 0.5))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

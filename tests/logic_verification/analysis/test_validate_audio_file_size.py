@@ -2,10 +2,12 @@ import unittest
 from unittest.mock import patch
 from src.core.analysis import AudioCalc
 
+
 class MockInfo:
     def __init__(self, frames, channels):
         self.frames = frames
         self.channels = channels
+
 
 class TestValidateAudioFileSize(unittest.TestCase):
     def test_validate_audio_file_size_valid(self):

@@ -1,12 +1,13 @@
-
 import timeit
 import numpy as np
+
 
 class MockModule:
     def __init__(self):
         self.heatmap_size = (600, 400)
         self.heatmap_l = np.random.rand(600, 400) * 300.0
         self.heatmap_r = np.random.rand(600, 400) * 300.0
+
 
 def original_implementation(module):
     w, h = module.heatmap_size
@@ -24,6 +25,7 @@ def original_implementation(module):
     rgba[..., 3] = alpha
     return rgba
 
+
 class OptimizedWidget:
     def __init__(self, module):
         self.module = module
@@ -34,8 +36,7 @@ class OptimizedWidget:
         w, h = self.module.heatmap_size
 
         # Check if buffer needs (re)allocation
-        if (self._rgba_buffer is None or
-            self._rgba_buffer.shape[:2] != (w, h)):
+        if self._rgba_buffer is None or self._rgba_buffer.shape[:2] != (w, h):
             self._rgba_buffer = np.zeros((w, h, 4), dtype=np.ubyte)
             # Create float buffer for clipping
             self._clip_buffer = np.empty((w, h), dtype=self.module.heatmap_l.dtype)
@@ -62,6 +63,7 @@ class OptimizedWidget:
 
         return self._rgba_buffer
 
+
 def run_benchmark():
     module = MockModule()
 
@@ -73,14 +75,14 @@ def run_benchmark():
     if not np.array_equal(orig_res, opt_res):
         print("Mismatch in results!")
         if orig_res.shape != opt_res.shape:
-             print(f"Shape mismatch: {orig_res.shape} vs {opt_res.shape}")
+            print(f"Shape mismatch: {orig_res.shape} vs {opt_res.shape}")
         else:
-             diff = orig_res != opt_res
-             print(f"Indices differing: {np.where(diff)}")
-             idx = np.where(diff)
-             if len(idx[0]) > 0:
-                 print(f"Orig: {orig_res[idx][0]}")
-                 print(f"Opt: {opt_res[idx][0]}")
+            diff = orig_res != opt_res
+            print(f"Indices differing: {np.where(diff)}")
+            idx = np.where(diff)
+            if len(idx[0]) > 0:
+                print(f"Orig: {orig_res[idx][0]}")
+                print(f"Opt: {opt_res[idx][0]}")
         return False
 
     iters = 2000
@@ -95,10 +97,11 @@ def run_benchmark():
         widget.update()
     t_opt = timeit.default_timer() - start
 
-    print(f"Original: {t_orig*1000/iters:.4f} ms/iter")
-    print(f"Optimized: {t_opt*1000/iters:.4f} ms/iter")
-    print(f"Speedup: {t_orig/t_opt:.2f}x")
+    print(f"Original: {t_orig * 1000 / iters:.4f} ms/iter")
+    print(f"Optimized: {t_opt * 1000 / iters:.4f} ms/iter")
+    print(f"Speedup: {t_orig / t_opt:.2f}x")
     return True
+
 
 if __name__ == "__main__":
     if not run_benchmark():

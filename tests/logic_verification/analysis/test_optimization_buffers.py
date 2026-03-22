@@ -1,8 +1,8 @@
-
 import unittest
 import numpy as np
 import threading
 from src.core.analysis import AudioCalc, _get_shared_buffers
+
 
 class TestOptimizationBuffers(unittest.TestCase):
     def test_buffer_reuse(self):
@@ -115,5 +115,6 @@ class TestOptimizationBuffers(unittest.TestCase):
 
         self.assertNotEqual(id(results[1]), id(results[2]))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

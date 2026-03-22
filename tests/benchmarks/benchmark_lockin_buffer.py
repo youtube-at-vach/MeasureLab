@@ -1,6 +1,7 @@
 import time
 import numpy as np
 
+
 def benchmark_buffer():
     buffer_size = 65536
     block_size = 1024
@@ -19,7 +20,7 @@ def benchmark_buffer():
             input_data_roll[:] = new_data[-buffer_size:]
         else:
             input_data_roll = np.roll(input_data_roll, -len(new_data), axis=0)
-            input_data_roll[-len(new_data):] = new_data
+            input_data_roll[-len(new_data) :] = new_data
     end_time = time.perf_counter()
     roll_time = end_time - start_time
 
@@ -55,6 +56,7 @@ def benchmark_buffer():
     print(f"np.roll Time: {roll_time:.6f} s")
     print(f"Ring Buffer Time: {ring_time:.6f} s")
     print(f"Speedup: {roll_time / ring_time:.2f}x")
+
 
 if __name__ == "__main__":
     benchmark_buffer()

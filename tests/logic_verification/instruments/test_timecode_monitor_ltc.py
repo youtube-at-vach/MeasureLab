@@ -2,6 +2,7 @@ import sys
 from unittest.mock import MagicMock, patch
 import pytest
 
+
 # Helper to mock dependencies for tests in this file
 @pytest.fixture(autouse=True)
 def mock_dependencies():
@@ -9,13 +10,16 @@ def mock_dependencies():
     mock_loc = MagicMock()
     mock_loc.tr = lambda x: x
 
-    with patch.dict(sys.modules, {
-        "PyQt6": mock_qt,
-        "PyQt6.QtCore": MagicMock(),
-        "PyQt6.QtGui": MagicMock(),
-        "PyQt6.QtWidgets": MagicMock(),
-        "src.core.localization": mock_loc
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "PyQt6": mock_qt,
+            "PyQt6.QtCore": MagicMock(),
+            "PyQt6.QtGui": MagicMock(),
+            "PyQt6.QtWidgets": MagicMock(),
+            "src.core.localization": mock_loc,
+        },
+    ):
         # Force reload of the module under test to ensure it uses the mocks
         if "src.gui.widgets.timecode_monitor" in sys.modules:
             del sys.modules["src.gui.widgets.timecode_monitor"]
@@ -24,12 +28,13 @@ def mock_dependencies():
         if "src.gui.widgets.timecode_monitor" in sys.modules:
             del sys.modules["src.gui.widgets.timecode_monitor"]
 
+
 try:
     import numpy as np
 except ImportError:
     pytest.skip("numpy not installed", allow_module_level=True)
 
-if isinstance(np, MagicMock) or hasattr(np, 'reset_mock'):
+if isinstance(np, MagicMock) or hasattr(np, "reset_mock"):
     pytest.skip("numpy is mocked", allow_module_level=True)
 
 

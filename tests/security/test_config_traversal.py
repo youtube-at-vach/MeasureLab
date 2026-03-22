@@ -4,6 +4,7 @@ import tempfile
 import json
 from src.core.config_manager import ConfigManager
 
+
 def test_screenshot_path_traversal():
     """
     Verifies that relative paths in screenshot output_dir cannot traverse
@@ -25,11 +26,7 @@ def test_screenshot_path_traversal():
         # ../traversal_target
         rel_path = os.path.join("..", target_name)
 
-        config_data = {
-            "screenshot": {
-                "output_dir": rel_path
-            }
-        }
+        config_data = {"screenshot": {"output_dir": rel_path}}
 
         with open(config_file, "w") as f:
             json.dump(config_data, f)
@@ -52,6 +49,7 @@ def test_screenshot_path_traversal():
             if os.path.exists(target_path):
                 shutil.rmtree(target_path)
 
+
 def test_absolute_path_rejected():
     """
     Verifies that absolute paths pointing outside the config directory are rejected.
@@ -61,11 +59,7 @@ def test_absolute_path_rejected():
 
         # Create a target directory in a separate location
         with tempfile.TemporaryDirectory() as abs_target_dir:
-            config_data = {
-                "screenshot": {
-                    "output_dir": abs_target_dir
-                }
-            }
+            config_data = {"screenshot": {"output_dir": abs_target_dir}}
 
             with open(config_file, "w") as f:
                 json.dump(config_data, f)

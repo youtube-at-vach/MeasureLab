@@ -9,21 +9,27 @@ mock_qt_widgets = MagicMock()
 mock_qt_core = MagicMock()
 mock_pyqtgraph = MagicMock()
 
+
 # Create a dummy QWidget class for inheritance
 class DummyQWidget:
     def __init__(self, *args, **kwargs):
         pass
 
+
 mock_qt_widgets.QWidget = DummyQWidget
 mock_qt_core.Qt = MagicMock()
 
 # Patch sys.modules
-with patch.dict(sys.modules, {
-    "PyQt6.QtWidgets": mock_qt_widgets,
-    "PyQt6.QtCore": mock_qt_core,
-    "pyqtgraph": mock_pyqtgraph,
-}):
+with patch.dict(
+    sys.modules,
+    {
+        "PyQt6.QtWidgets": mock_qt_widgets,
+        "PyQt6.QtCore": mock_qt_core,
+        "pyqtgraph": mock_pyqtgraph,
+    },
+):
     from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
+
 
 class TestLockInFrequencyCounter(unittest.TestCase):
     def setUp(self):
@@ -61,7 +67,7 @@ class TestLockInFrequencyCounter(unittest.TestCase):
 
     def test_startup_transient_suppression(self):
         """Test that initial estimates are discarded on startup."""
-        self.counter.start_analysis() # Sets _discard_initial_estimates = 3
+        self.counter.start_analysis()  # Sets _discard_initial_estimates = 3
 
         # 1001 Hz signal
         sig = self.create_signal(1001.0)
@@ -94,7 +100,7 @@ class TestLockInFrequencyCounter(unittest.TestCase):
 
         # Very weak signal (-80 dB)
         amp_db = -80.0
-        amp_lin = 10**(amp_db/20.0)
+        amp_lin = 10 ** (amp_db / 20.0)
         sig = self.create_signal(1000.0, amplitude=amp_lin)
 
         self.counter.input_data[:, 0] = sig
@@ -106,7 +112,7 @@ class TestLockInFrequencyCounter(unittest.TestCase):
 
         # Strong signal (-40 dB)
         amp_db = -40.0
-        amp_lin = 10**(amp_db/20.0)
+        amp_lin = 10 ** (amp_db / 20.0)
         sig = self.create_signal(1000.0, amplitude=amp_lin)
 
         self.counter.input_data[:, 0] = sig
@@ -133,6 +139,7 @@ class TestLockInFrequencyCounter(unittest.TestCase):
         # New freq should be around 1002.5 + I/D terms
         self.assertNotEqual(self.counter.gen_frequency, 1000.0)
         self.assertTrue(self.counter.gen_frequency > 1000.0)
+
 
 if __name__ == "__main__":
     unittest.main()

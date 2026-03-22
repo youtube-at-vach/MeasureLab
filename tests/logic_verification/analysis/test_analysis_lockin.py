@@ -1,13 +1,13 @@
-
 import unittest
 import numpy as np
 from src.core.analysis import AudioCalc
+
 
 class TestLockInMeasurement(unittest.TestCase):
     def test_basic_sine(self):
         fs = 48000
         freq = 1000.0
-        N = 48000 # 1 sec
+        N = 48000  # 1 sec
         t = np.arange(N) / fs
 
         # Test Case 1: 0 degrees phase
@@ -16,17 +16,17 @@ class TestLockInMeasurement(unittest.TestCase):
 
         self.assertAlmostEqual(mag, 1.0, places=4)
         # Phase should be 0, but might be small noise
-        self.assertAlmostEqual(phase, 0.0, places=1) # Allow slight jitter
+        self.assertAlmostEqual(phase, 0.0, places=1)  # Allow slight jitter
 
         # Test Case 2: 90 degrees phase
         # sin(wt + 90) = cos(wt)
-        signal = 1.0 * np.sin(2 * np.pi * freq * t + np.pi/2)
+        signal = 1.0 * np.sin(2 * np.pi * freq * t + np.pi / 2)
         mag, phase = AudioCalc.calculate_lockin_measurement(signal, freq, fs)
         self.assertAlmostEqual(mag, 1.0, places=4)
         self.assertAlmostEqual(phase, 90.0, places=1)
 
         # Test Case 3: 45 degrees
-        signal = 0.5 * np.sin(2 * np.pi * freq * t + np.pi/4)
+        signal = 0.5 * np.sin(2 * np.pi * freq * t + np.pi / 4)
         mag, phase = AudioCalc.calculate_lockin_measurement(signal, freq, fs)
         self.assertAlmostEqual(mag, 0.5, places=4)
         self.assertAlmostEqual(phase, 45.0, places=1)
@@ -72,6 +72,7 @@ class TestLockInMeasurement(unittest.TestCase):
 
         self.assertAlmostEqual(mag, 1.0, places=4)
         self.assertAlmostEqual(phase, 0.0, places=1)
+
 
 if __name__ == "__main__":
     unittest.main()

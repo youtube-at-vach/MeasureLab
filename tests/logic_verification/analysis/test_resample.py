@@ -1,10 +1,13 @@
 import unittest
 import numpy as np
+
 try:
     from src.core.analysis import AudioCalc
+
     deps_available = True
 except ImportError:
     deps_available = False
+
 
 @unittest.skipUnless(deps_available, "numpy or src.core.analysis not available")
 class TestResampleAccuracy(unittest.TestCase):
@@ -44,7 +47,7 @@ class TestResampleAccuracy(unittest.TestCase):
         # Apply window to reduce spectral leakage for better peak detection
         window = np.hanning(len(resampled_signal))
         fft_res = np.fft.rfft(resampled_signal * window)
-        freqs = np.fft.rfftfreq(len(resampled_signal), 1/target_sr)
+        freqs = np.fft.rfftfreq(len(resampled_signal), 1 / target_sr)
 
         peak_idx = np.argmax(np.abs(fft_res))
         peak_freq = freqs[peak_idx]
@@ -81,7 +84,7 @@ class TestResampleAccuracy(unittest.TestCase):
         # Check Frequency
         window = np.hanning(len(resampled_signal))
         fft_res = np.fft.rfft(resampled_signal * window)
-        freqs = np.fft.rfftfreq(len(resampled_signal), 1/target_sr)
+        freqs = np.fft.rfftfreq(len(resampled_signal), 1 / target_sr)
 
         peak_idx = np.argmax(np.abs(fft_res))
         peak_freq = freqs[peak_idx]
@@ -102,7 +105,7 @@ class TestResampleAccuracy(unittest.TestCase):
 
     def test_resample_odd_ratio(self):
         src_sr = 44100
-        dst_sr = 44101 # Very slight change, large GCD factors
+        dst_sr = 44101  # Very slight change, large GCD factors
         # data len 44100
         data = np.zeros((44100, 1))
         # This will trigger large up/down values.
@@ -111,5 +114,6 @@ class TestResampleAccuracy(unittest.TestCase):
         # Expected len: ceil(44100 * 44101 / 44100) = 44101
         self.assertEqual(res.shape[0], 44101)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

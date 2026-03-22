@@ -1,7 +1,7 @@
-
 import sys
 import pytest
 from unittest.mock import MagicMock, patch
+
 
 @pytest.fixture
 def pid_controller_class():
@@ -31,11 +31,13 @@ def pid_controller_class():
             del sys.modules["src.gui.widgets.lock_in_frequency_counter"]
 
         from src.gui.widgets.lock_in_frequency_counter import PIDController
+
         yield PIDController
 
         # Cleanup: Remove the module from sys.modules to avoid pollution
         if "src.gui.widgets.lock_in_frequency_counter" in sys.modules:
             del sys.modules["src.gui.widgets.lock_in_frequency_counter"]
+
 
 class TestPIDController:
     """Test suite for the PIDController class."""

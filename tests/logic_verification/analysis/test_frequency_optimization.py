@@ -3,6 +3,7 @@ from unittest.mock import patch
 import numpy as np
 from src.core.analysis import AudioCalc
 
+
 class TestOptimizeFrequencyVectorized(unittest.TestCase):
     def setUp(self):
         self.sr = 48000
@@ -40,7 +41,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         # Start from a low frequency where grid might include negative values
         freq = 10.0
         signal = np.sin(2 * np.pi * freq * self.t)
-        guess = 2.0 # search width is 5Hz -> -3 to 7.
+        guess = 2.0  # search width is 5Hz -> -3 to 7.
         # But wait, search width is max(5 * bin_width, 5.0).
         # bin_width = 1.0. search_width = 5.0.
         # Grid: 2.0 +/- 5.0 -> -3.0 to 7.0.
@@ -56,7 +57,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
     def test_exact_match_with_pure_sine(self):
         # For a pure sine, the residual should be near zero.
         signal = np.sin(2 * np.pi * self.freq * self.t)
-        guess = self.freq # Exact guess
+        guess = self.freq  # Exact guess
 
         best_freq = AudioCalc.optimize_frequency(signal, self.sr, guess)
         self.assertAlmostEqual(best_freq, self.freq, places=4)
@@ -105,7 +106,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
                 raise np.linalg.LinAlgError("Batch solve failed")
             return real_solve(a, b, *args, **kwargs)
 
-        with patch('numpy.linalg.solve', side_effect=side_effect_func) as mock_solve:
+        with patch("numpy.linalg.solve", side_effect=side_effect_func) as mock_solve:
             # Call the method which should catch the error and fallback to loop, then succeed
             best_coarse = AudioCalc._perform_coarse_search(signal, self.t, grid)
 
@@ -113,7 +114,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
             self.assertAlmostEqual(best_coarse, self.freq, places=2)
             self.assertGreater(mock_solve.call_count, 1)
 
-    @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
+    @patch("numpy.linalg.solve", side_effect=np.linalg.LinAlgError)
     def test_sine_fit_residual_linalg_error(self, mock_solve):
         """Test _sine_fit_residual when np.linalg.solve raises LinAlgError."""
         signal = np.sin(2 * np.pi * self.freq * self.t)
@@ -130,7 +131,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         self.assertTrue(mse >= 0.0)
         self.assertAlmostEqual(mse, 0.0, places=4)
 
-    @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
+    @patch("numpy.linalg.solve", side_effect=np.linalg.LinAlgError)
     def test_perform_coarse_search_linalg_error(self, mock_solve):
         """Test _perform_coarse_search when np.linalg.solve always raises LinAlgError."""
         signal = np.sin(2 * np.pi * self.freq * self.t)
@@ -145,7 +146,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         # Verify that solve was actually called and mocked
         self.assertTrue(mock_solve.called)
 
-    @patch('numpy.linalg.solve', side_effect=np.linalg.LinAlgError)
+    @patch("numpy.linalg.solve", side_effect=np.linalg.LinAlgError)
     def test_calculate_residual_linalg_error(self, mock_solve):
         """Test _calculate_residual when np.linalg.solve raises LinAlgError."""
         # _calculate_residual is called internally during fine optimization
@@ -156,7 +157,7 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         self.assertAlmostEqual(best_freq, self.freq, places=2)
         self.assertTrue(mock_solve.called)
 
-    @patch('numpy.linalg.lstsq', side_effect=np.linalg.LinAlgError)
+    @patch("numpy.linalg.lstsq", side_effect=np.linalg.LinAlgError)
     def test_optimize_frequency_return_full_linalg_error(self, mock_lstsq):
         """Test optimize_frequency final lstsq raising LinAlgError with return_full=True."""
         signal = np.sin(2 * np.pi * self.freq * self.t)
@@ -169,5 +170,6 @@ class TestOptimizeFrequencyVectorized(unittest.TestCase):
         self.assertIsNotNone(M)
         self.assertTrue(mock_lstsq.called)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

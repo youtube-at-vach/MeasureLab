@@ -1,11 +1,12 @@
-
 import numpy as np
 import pytest
 from PyQt6.QtWidgets import QApplication
 
+
 @pytest.fixture
 def app():
     return QApplication.instance() or QApplication([])
+
 
 def test_bit_depth_dialog(app):
     from src.core.audio_engine import AudioEngine
@@ -21,9 +22,9 @@ def test_bit_depth_dialog(app):
 
     # Simulate callback
     noise = np.random.uniform(-0.1, 0.1, (4096, 2))
-    # Using internal estimator to bypass callback loop for test if needed, 
+    # Using internal estimator to bypass callback loop for test if needed,
     # but let's test the callback registration indirectly by calling what callback would do
-    # Actually, we can't easily invoke the callback defined inside start_analysis 
+    # Actually, we can't easily invoke the callback defined inside start_analysis
     # unless we captured it or refactored.
     # But we can test that UI updates don't crash when there's data in estimator
 

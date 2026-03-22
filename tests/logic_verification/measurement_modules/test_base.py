@@ -1,6 +1,7 @@
 import unittest
 from src.measurement_modules.base import MeasurementModule
 
+
 class TestMeasurementModule(unittest.TestCase):
     """Tests for the MeasurementModule base class."""
 
@@ -30,6 +31,7 @@ class TestMeasurementModule(unittest.TestCase):
 
     def test_get_widget_default(self):
         """Test that get_widget returns None by default."""
+
         class ValidModule(MeasurementModule):
             @property
             def name(self) -> str:
@@ -42,5 +44,6 @@ class TestMeasurementModule(unittest.TestCase):
         module = ValidModule()
         self.assertIsNone(module.get_widget())
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

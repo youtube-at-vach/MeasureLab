@@ -91,8 +91,6 @@ class AdvancedDistortionMeter(MeasurementModule):
     def description(self) -> str:
         return "Advanced distortion measurements including MIM, SPDR, and PIM."
 
-
-
     def get_widget(self):
         return AdvancedDistortionMeterWidget(self)
 
@@ -287,25 +285,20 @@ class AnalysisWorker(QRunnable):
         # Calculate Metrics
         if self.mode == "MIM":
             # Need expected tone freqs (snapped)
-            mim_freqs = self.params.get('mim_freqs')
+            mim_freqs = self.params.get("mim_freqs")
             if mim_freqs is not None:
-                metrics['mim'] = AudioCalc.calculate_multitone_tdn(mag, freqs, mim_freqs)
+                metrics["mim"] = AudioCalc.calculate_multitone_tdn(mag, freqs, mim_freqs)
 
         elif self.mode == "SPDR":
             # Assume 1kHz fundamental (snapped check?)
-            metrics['spdr'] = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
+            metrics["spdr"] = AudioCalc.calculate_spdr(mag, freqs, 1000.0)
 
         elif self.mode == "PIM":
-            f1 = self.params.get('f1')
-            f2 = self.params.get('f2')
-            metrics['pim'] = AudioCalc.calculate_pim(mag, freqs, f1, f2)
+            f1 = self.params.get("f1")
+            f2 = self.params.get("f2")
+            metrics["pim"] = AudioCalc.calculate_pim(mag, freqs, f1, f2)
 
-        result = {
-            'freqs': freqs,
-            'mag_db': mag_db,
-            'metrics': metrics,
-            'mode': self.mode
-        }
+        result = {"freqs": freqs, "mag_db": mag_db, "metrics": metrics, "mode": self.mode}
         self.signals.result_ready.emit(result)
 
 
@@ -551,42 +544,42 @@ class AdvancedDistortionMeterWidget(QWidget):
         # Collect params
         params = {}
         if mode == "MIM":
-            params['mim_freqs'] = self.module._mim_freqs
+            params["mim_freqs"] = self.module._mim_freqs
         elif mode == "PIM":
-            params['f1'] = self.module._pim_f1_actual if self.module._pim_f1_actual is not None else self.module.pim_f1
-            params['f2'] = self.module._pim_f2_actual if self.module._pim_f2_actual is not None else self.module.pim_f2
+            params["f1"] = self.module._pim_f1_actual if self.module._pim_f1_actual is not None else self.module.pim_f1
+            params["f2"] = self.module._pim_f2_actual if self.module._pim_f2_actual is not None else self.module.pim_f2
 
         worker = AnalysisWorker(data, sr, mode, params)
         worker.signals.result_ready.connect(self.on_analysis_result)
         self.threadpool.start(worker)
 
     def on_analysis_result(self, result):
-        freqs = result['freqs']
-        mag_db = result['mag_db']
-        metrics = result['metrics']
-        mode = result['mode']
+        freqs = result["freqs"]
+        mag_db = result["mag_db"]
+        metrics = result["metrics"]
+        mode = result["mode"]
 
         # Update Plot
         self.plot_curve.setData(freqs, mag_db)
 
         # Calculate Metrics
         if mode == "MIM":
-            if 'mim' in metrics:
-                res = metrics['mim']
+            if "mim" in metrics:
+                res = metrics["mim"]
                 self.main_metric_label.setText(f"TD+N: {res['tdn_db']:.1f} dB")
                 self.sub_metric_label.setText(f"{res['tdn']:.4f} %")
 
         elif mode == "SPDR":
-            if 'spdr' in metrics:
-                res = metrics['spdr']
+            if "spdr" in metrics:
+                res = metrics["spdr"]
                 self.main_metric_label.setText(f"SPDR: {res['spdr_db']:.1f} dB")
                 self.sub_metric_label.setText(
                     f"Max Spur: {res['max_spur_freq']:.0f} Hz ({20 * np.log10(res['max_spur_amp'] + 1e-12):.1f} dB)"
                 )
 
         elif mode == "PIM":
-            if 'pim' in metrics:
-                res = metrics['pim']
+            if "pim" in metrics:
+                res = metrics["pim"]
                 self.main_metric_label.setText(f"PIM: {res['pim_db']:.1f} dBc")
                 products_str = ", ".join([f"{p['order']}th" for p in res["products"]])
                 self.sub_metric_label.setText(f"Orders: {products_str}")

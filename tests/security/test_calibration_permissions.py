@@ -5,6 +5,7 @@ import tempfile
 import shutil
 from src.core.calibration import CalibrationManager
 
+
 class TestCalibrationPermissions(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
@@ -25,7 +26,7 @@ class TestCalibrationPermissions(unittest.TestCase):
         st = os.stat(self.config_path)
         mode = st.st_mode
 
-        if os.name == 'posix':
+        if os.name == "posix":
             # Check for 0o600 (or stricter)
             # This test expects failure if the fix is not applied yet
             # because the current implementation uses default open() permissions
@@ -40,5 +41,6 @@ class TestCalibrationPermissions(unittest.TestCase):
             self.assertTrue(mode & stat.S_IRUSR, "Owner cannot read")
             self.assertTrue(mode & stat.S_IWUSR, "Owner cannot write")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

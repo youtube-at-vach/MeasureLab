@@ -1,4 +1,3 @@
-
 import threading
 
 import numpy as np
@@ -115,8 +114,6 @@ class Spectrogram(MeasurementModule):
     def description(self) -> str:
         return "Time-frequency analysis (Spectrogram)."
 
-
-
     def get_widget(self):
         return SpectrogramWidget(self)
 
@@ -201,21 +198,21 @@ class Spectrogram(MeasurementModule):
                 if end_pos <= buffer_len:
                     # No wrap
                     if indata.shape[1] >= 2:
-                        self.audio_buffer[self.audio_buffer_pos:end_pos] = indata[:, :2]
+                        self.audio_buffer[self.audio_buffer_pos : end_pos] = indata[:, :2]
                     else:
-                        self.audio_buffer[self.audio_buffer_pos:end_pos, 0] = indata[:, 0]
-                        self.audio_buffer[self.audio_buffer_pos:end_pos, 1] = indata[:, 0]
+                        self.audio_buffer[self.audio_buffer_pos : end_pos, 0] = indata[:, 0]
+                        self.audio_buffer[self.audio_buffer_pos : end_pos, 1] = indata[:, 0]
                 else:
                     # Wrap around
                     first_chunk = buffer_len - self.audio_buffer_pos
                     second_chunk = frames - first_chunk
 
                     if indata.shape[1] >= 2:
-                        self.audio_buffer[self.audio_buffer_pos:] = indata[:first_chunk, :2]
+                        self.audio_buffer[self.audio_buffer_pos :] = indata[:first_chunk, :2]
                         self.audio_buffer[:second_chunk] = indata[first_chunk:, :2]
                     else:
-                        self.audio_buffer[self.audio_buffer_pos:, 0] = indata[:first_chunk, 0]
-                        self.audio_buffer[self.audio_buffer_pos:, 1] = indata[:first_chunk, 0]
+                        self.audio_buffer[self.audio_buffer_pos :, 0] = indata[:first_chunk, 0]
+                        self.audio_buffer[self.audio_buffer_pos :, 1] = indata[:first_chunk, 0]
 
                         self.audio_buffer[:second_chunk, 0] = indata[first_chunk:, 0]
                         self.audio_buffer[:second_chunk, 1] = indata[first_chunk:, 0]
@@ -320,7 +317,21 @@ class SpectrogramWidget(QWidget):
         # Colormap
         settings_layout.addWidget(QLabel(tr("Colormap:")), 1, 0)
         self.cmap_combo = QComboBox()
-        self.cmap_combo.addItems(["viridis", "plasma", "inferno", "magma", "turbo", "thermal", "flame", "yellowy", "bipolar", "spectrum", "cyclic"])
+        self.cmap_combo.addItems(
+            [
+                "viridis",
+                "plasma",
+                "inferno",
+                "magma",
+                "turbo",
+                "thermal",
+                "flame",
+                "yellowy",
+                "bipolar",
+                "spectrum",
+                "cyclic",
+            ]
+        )
         self.cmap_combo.setCurrentText("turbo")
         self.cmap_combo.currentTextChanged.connect(self.on_cmap_changed)
         settings_layout.addWidget(self.cmap_combo, 1, 1)
@@ -384,7 +395,9 @@ class SpectrogramWidget(QWidget):
 
         # Sync second image
         self.hist.sigLevelsChanged.connect(lambda: self.img_new.setLevels(self.hist.getLevels()))
-        self.hist.sigLookupTableChanged.connect(lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512)))
+        self.hist.sigLookupTableChanged.connect(
+            lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512))
+        )
 
         # Set default colormap
         self.hist.gradient.loadPreset("turbo")
@@ -412,14 +425,14 @@ class SpectrogramWidget(QWidget):
             self.fft_combo.setCurrentIndex(index)
         else:
             # If current selection is invalid (e.g. was 16384 and switched to Fast), select max available or default
-             # Try to select 2048 as default, or last item
+            # Try to select 2048 as default, or last item
             def_idx = self.fft_combo.findText("2048")
             if def_idx >= 0:
                 self.fft_combo.setCurrentIndex(def_idx)
             else:
                 self.fft_combo.setCurrentIndex(self.fft_combo.count() - 1)
 
-             # Explicitly trigger change since we changed value
+            # Explicitly trigger change since we changed value
             if self.fft_combo.currentText() != current_text:
                 self.on_fft_changed(self.fft_combo.currentText())
 
@@ -470,16 +483,16 @@ class SpectrogramWidget(QWidget):
         if self.scale_combo.currentText() == "Log":
             # Avoid log(0) or negative
             if min_f <= 0:
-                min_f = 1.0 # 1Hz minimum for log scale
+                min_f = 1.0  # 1Hz minimum for log scale
             if max_f <= min_f:
-                 max_f = min_f + 10.0 # Valid range
+                max_f = min_f + 10.0  # Valid range
 
             self.plot.setYRange(np.log10(min_f), np.log10(max_f))
         else:
             self.plot.setYRange(min_f, max_f)
 
     def on_scale_changed(self, val):
-        is_log = (val == "Log")
+        is_log = val == "Log"
         self.plot.setLogMode(False, is_log)
         self.on_freq_range_changed()  # Re-apply limits safely
 
@@ -550,7 +563,7 @@ class SpectrogramWidget(QWidget):
         buffer = self.module.spectrogram_buffer
 
         # Check Scale Mode
-        is_log = (self.scale_combo.currentText() == "Log")
+        is_log = self.scale_combo.currentText() == "Log"
 
         sample_rate = self.module.audio_engine.sample_rate
         nyquist = sample_rate / 2
@@ -642,8 +655,6 @@ class SpectrogramWidget(QWidget):
         self.img_new.setImage(part2, autoLevels=False)
         self.img_new.setPos(len(part1), 0)
         self.img_new.setTransform(transform)
-
-
 
     def apply_theme(self, theme_name):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
