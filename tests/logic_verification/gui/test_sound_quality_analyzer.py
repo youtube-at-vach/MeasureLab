@@ -1,7 +1,6 @@
 import sys
 import unittest
 from unittest.mock import MagicMock, patch
-import scipy.signal  # noqa: F401
 import numpy as np
 import importlib
 from PyQt6.QtWidgets import QApplication
