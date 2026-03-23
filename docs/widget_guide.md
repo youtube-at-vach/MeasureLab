@@ -21,6 +21,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | **音の大きさ(LUFS)を管理したい** | [LUFS Meter](widgets/lufs_meter.md) |
 | **周囲の騒音レベル(SPL)を知りたい** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
+| **左右の音響特性のズレを精密に整えたい** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
 
 ---
 
@@ -141,6 +142,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 
 * **[HRTF Player](widgets/hrtf_player.md)**
     * 頭部伝達関数 (HRTF/SOFA) を読み込み、畳み込みによる3Dオーディオ再生をシミュレートします。
+
+* **[Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md)**
+    * 左右の音量・周波数特性・位相の整合性をリアルタイムで監視し、ステレオアライメントを確認します。
 
 ---
 

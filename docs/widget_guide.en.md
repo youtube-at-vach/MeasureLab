@@ -21,6 +21,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Manage loudness (LUFS)** | [LUFS Meter](widgets/lufs_meter.md) |
 | **Know ambient noise level (SPL)** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.md) |
+| **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
 
 ---
 
@@ -135,6 +136,9 @@ Handles stereo image and spatial sound reverberation.
 
 * **[HRTF Player](widgets/hrtf_player.md)**
     * Loads Head-Related Transfer Functions (HRTF/SOFA) and simulates 3D audio playback via convolution.
+
+* **[Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md)**
+    * Monitors the consistency of L/R level, frequency response, and phase in real-time to verify stereo alignment.
 
 ---
 
