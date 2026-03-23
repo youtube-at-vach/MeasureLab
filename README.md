@@ -55,7 +55,8 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 30 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
 | 31 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
 | 32 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
-| 33 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
+| 33 | **Stereo Alignment Monitor** | Analyzes stereo consistency (alignment). Real-time monitoring of L/R balance, frequency response match, center focus (M/S ratio), and phase issues. |
+| 34 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 
 ### 🌍 Localization
 
