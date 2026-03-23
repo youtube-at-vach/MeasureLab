@@ -64,7 +64,6 @@ plugins:
           nav_translations:
             ウィジット: Widgets
             測定レシピ: Measurement Recipes
-            公式リポジトリ: Official Repository
             リリースページ: Release Page
   - with-pdf:
       author: MeasureLab maintainers
@@ -114,6 +113,7 @@ nav:
   - Sound Quality Analyzer: widgets/sound_quality_analyzer.md
   - Spectrogram: widgets/spectrogram.md
   - Spectrum Analyzer: widgets/spectrum_analyzer.md
+  - Stereo Alignment Monitor: widgets/stereo_alignment_monitor.md
   - Timecode Monitor: widgets/timecode_monitor.md
   - Transient Analyzer: widgets/transient_analyzer.md
   - Ultrasound Modulator: widgets/ultrasound_modulator.md
@@ -124,6 +124,5 @@ nav:
   - Distortion Measurement: measurement_recipes/distortion_measurement.md
   - Speaker Impedance: measurement_recipes/speaker_impedance.md
   - measurement_recipes/lockin_amplifier.md
-- 公式リポジトリ: https://github.com/youtube-at-vach/MeasureLab
 - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
 - appendix.md
