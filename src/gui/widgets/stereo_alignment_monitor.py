@@ -1,0 +1,433 @@
+import numpy as np
+import pyqtgraph as pg
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
+from scipy.signal import get_window
+
+from src.core.audio_engine import AudioEngine
+from src.core.localization import tr
+from src.measurement_modules.base import MeasurementModule
+
+
+class StereoAlignmentMonitor(MeasurementModule):
+    def __init__(self, audio_engine: AudioEngine):
+        self.audio_engine = audio_engine
+        self.is_running = False
+
+        # DSP parameters
+        self.fft_size = 4096
+        self.smoothing_factor = 0.8  # Exponential moving average for spectra
+        self.noise_floor_db = -80.0
+
+        # State buffers
+        self.audio_buffer = np.zeros((self.fft_size, 2))
+        self.window = get_window("hann", self.fft_size)
+        self.freqs = np.zeros(self.fft_size // 2)
+
+        # Smoothed spectra
+        self.s_ll = np.zeros(self.fft_size // 2)
+        self.s_rr = np.zeros(self.fft_size // 2)
+        self.s_lr = np.zeros(self.fft_size // 2, dtype=complex)
+
+        # Calculated Metrics
+        self.balance_db = 0.0
+        self.freq_match = 0.0
+        self.center_focus = 0.0
+        self.phase_issue = 0.0
+
+        self.callback_id = None
+
+        # We'll use a local lock or double buffering to avoid thread contentions,
+        # but since arrays are small, direct overwrite might be ok. 
+        # A dirty flag helps.
+        self.data_ready = False
+
+    @property
+    def name(self) -> str:
+        return "Stereo Alignment Monitor"
+
+    @property
+    def description(self) -> str:
+        return "Analyzes stereo balance, center focus, and phase correlation across frequencies."
+
+    def get_widget(self):
+        return StereoAlignmentMonitorWidget(self)
+
+    def start_analysis(self):
+        if self.is_running:
+            return
+        self.is_running = True
+
+        self.audio_buffer = np.zeros((self.fft_size, 2))
+        self.s_ll = np.zeros(self.fft_size // 2)
+        self.s_rr = np.zeros(self.fft_size // 2)
+        self.s_lr = np.zeros(self.fft_size // 2, dtype=complex)
+
+        sr = self.audio_engine.sample_rate
+        self.freqs = np.fft.rfftfreq(self.fft_size, d=1.0 / sr)[:-1]
+
+        self.callback_id = self.audio_engine.register_callback(self._callback)
+
+    def stop_analysis(self):
+        if self.is_running:
+            if self.callback_id:
+                self.audio_engine.unregister_callback(self.callback_id)
+                self.callback_id = None
+            self.is_running = False
+
+    def _callback(self, indata, outdata, frames, time, status):
+        # Pass audio through
+        outdata.fill(0)
+
+        if indata.shape[1] < 2:
+            return  # Mono input, alignment monitor is meaningless
+
+        new_data = indata[:, :2]
+
+        # Shift buffer and insert new data
+        if frames >= self.fft_size:
+            self.audio_buffer[:] = new_data[-self.fft_size :]
+        else:
+            self.audio_buffer = np.roll(self.audio_buffer, -frames, axis=0)
+            self.audio_buffer[-frames:] = new_data
+
+        # We can calculate FFT on every block or when rolling completes.
+        # Doing it on every block provides continuous overlap-add style smoothness.
+
+        left_windowed = self.audio_buffer[:, 0] * self.window
+        right_windowed = self.audio_buffer[:, 1] * self.window
+
+        # RFFT (drop DC and Nyquist for convenience, keep len fft_size//2)
+        X_L = np.fft.rfft(left_windowed)[:-1]
+        X_R = np.fft.rfft(right_windowed)[:-1]
+
+        # Power spectra
+        P_L = np.abs(X_L)**2
+        P_R = np.abs(X_R)**2
+        P_LR = X_L * np.conj(X_R)
+
+        # Exponential smoothing
+        alpha = self.smoothing_factor
+        self.s_ll = alpha * self.s_ll + (1 - alpha) * P_L
+        self.s_rr = alpha * self.s_rr + (1 - alpha) * P_R
+        self.s_lr = alpha * self.s_lr + (1 - alpha) * P_LR
+
+        # --- Compute Metrics ---
+        # Sums for total energy
+        e_l = np.sum(self.s_ll)
+        e_r = np.sum(self.s_rr)
+        total_e = e_l + e_r
+
+        epsilon = 1e-12
+        if total_e > epsilon:
+            # 1. L/R Balance
+            # e_l and e_r are energy (RMS^2 * constants).
+            # 10 * log10(E_L / E_R) is the dB difference.
+            ratio = e_l / (e_r + epsilon)
+            self.balance_db = 10.0 * np.log10(ratio)
+
+            # 2. Center Focus
+            # E_M = (P_L + P_R + 2*Re(P_LR)) / 4
+            # E_S = (P_L + P_R - 2*Re(P_LR)) / 4
+            e_m = (total_e + 2 * np.sum(np.real(self.s_lr))) / 4.0
+            e_s = (total_e - 2 * np.sum(np.real(self.s_lr))) / 4.0
+            self.center_focus = (e_m / (e_m + e_s + epsilon)) * 100.0
+
+            # 3. Phase Issues
+            # Phase correlation C(f) = Re(P_LR) / sqrt(P_L * P_R)
+            denom = np.sqrt(self.s_ll * self.s_rr) + epsilon
+            c_f = np.real(self.s_lr) / denom
+            c_f = np.clip(c_f, -1.0, 1.0)
+
+            # Find negatively correlated bins
+            neg_mask = c_f < 0
+            if np.any(neg_mask):
+                issue_energy = np.sum((self.s_ll[neg_mask] + self.s_rr[neg_mask]) * np.abs(c_f[neg_mask]))
+                self.phase_issue = (issue_energy / total_e) * 100.0
+            else:
+                self.phase_issue = 0.0
+
+            # 4. Frequency Match
+            # Pearson correlation of Log spectra above noise floor
+            # Approximate peak to define noise floor relative to signal
+            peak_power = np.max(self.s_ll + self.s_rr)
+            noise_thresh = peak_power * (10 ** (self.noise_floor_db / 10.0))
+
+            sig_mask = (self.s_ll + self.s_rr) > noise_thresh
+            if np.sum(sig_mask) > 10:  # Need minimum number of bins
+                log_l = 10 * np.log10(self.s_ll[sig_mask] + epsilon)
+                log_r = 10 * np.log10(self.s_rr[sig_mask] + epsilon)
+
+                # Pearson corr
+                mean_l = np.mean(log_l)
+                mean_r = np.mean(log_r)
+                var_l = np.sum((log_l - mean_l)**2)
+                var_r = np.sum((log_r - mean_r)**2)
+
+                if var_l > epsilon and var_r > epsilon:
+                    cov = np.sum((log_l - mean_l) * (log_r - mean_r))
+                    corr = cov / np.sqrt(var_l * var_r)
+                    self.freq_match = max(0.0, corr) * 100.0
+                else:
+                    self.freq_match = 100.0 # Flat lines match
+            else:
+                self.freq_match = 0.0
+
+        else:
+            self.balance_db = 0.0
+            self.center_focus = 50.0  # Silence is neither mono nor out-of-phase
+            self.phase_issue = 0.0
+            self.freq_match = 0.0
+
+        self.data_ready = True
+
+
+class StereoAlignmentMonitorWidget(QWidget):
+    def __init__(self, module: StereoAlignmentMonitor):
+        super().__init__()
+        self.module = module
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_display)
+        self.timer.setInterval(33)  # ~30 FPS
+
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QHBoxLayout(self)
+
+        # === Left: Visualizations ===
+        viz_layout = QVBoxLayout()
+
+        # 1. FFT Difference Plot
+        self.fft_plot = pg.PlotWidget(title=tr("L/R Difference FFT (Tone Color Shift)"))
+        self.fft_plot.setLogMode(x=True, y=False)
+        self.fft_plot.setLabel('bottom', tr("Frequency"), units='Hz')
+        self.fft_plot.setLabel('left', tr("Magnitude"), units='dBFS')
+        self.fft_plot.showGrid(x=True, y=True, alpha=0.3)
+        self.fft_plot.setXRange(np.log10(20), np.log10(20000))
+        self.fft_plot.setYRange(-100, 0)
+
+        self.curve_l = self.fft_plot.plot(pen=pg.mkPen('#00FF00', width=1.5), name=tr("Left"))
+        self.curve_r = self.fft_plot.plot(pen=pg.mkPen('#FFFF00', width=1.5), name=tr("Right"))
+
+        # Fill between L and R to highlight differences
+        self.fill_lr = pg.FillBetweenItem(self.curve_l, self.curve_r, brush=pg.mkBrush(255, 255, 255, 50))
+        self.fft_plot.addItem(self.fill_lr)
+
+        viz_layout.addWidget(self.fft_plot, stretch=2)
+
+        # 2. Band-specific Correlation Plot
+        self.corr_plot = pg.PlotWidget(title=tr("Band-specific Phase Correlation"))
+        self.corr_plot.setLogMode(x=True, y=False)
+        self.corr_plot.setLabel('bottom', tr("Frequency"), units='Hz')
+        self.corr_plot.setLabel('left', tr("Correlation"))
+        self.corr_plot.showGrid(x=True, y=True, alpha=0.3)
+        self.corr_plot.setXRange(np.log10(20), np.log10(20000))
+        self.corr_plot.setYRange(-1.1, 1.1)
+
+        self.curve_corr = self.corr_plot.plot(pen=pg.mkPen('#00FFFF', width=2))
+
+        # Zero line for reference
+        zero_line = pg.InfiniteLine(pos=0, angle=0, pen=pg.mkPen('#888888', style=Qt.PenStyle.DashLine))
+        self.corr_plot.addItem(zero_line)
+
+        viz_layout.addWidget(self.corr_plot, stretch=1)
+
+        main_layout.addLayout(viz_layout, stretch=3)
+
+        # === Right: Metrics & Controls ===
+        controls_layout = QVBoxLayout()
+
+        # Metrics Group
+        metrics_group = QGroupBox(tr("Analysis Metrics"))
+        metrics_grid = QGridLayout()
+
+        font_val = QFont()
+        font_val.setBold(True)
+        font_val.setPointSize(12)
+
+        # Balance
+        metrics_grid.addWidget(QLabel(tr("L/R Balance:")), 0, 0)
+        self.lbl_balance_val = QLabel("0.00 dB")
+        self.lbl_balance_val.setFont(font_val)
+        self.lbl_balance_jdg = QLabel(tr("Excellent"))
+        metrics_grid.addWidget(self.lbl_balance_val, 0, 1)
+        metrics_grid.addWidget(self.lbl_balance_jdg, 0, 2)
+
+        # Frequency Match
+        metrics_grid.addWidget(QLabel(tr("Freq Match:")), 1, 0)
+        self.lbl_match_val = QLabel("0.0 %")
+        self.lbl_match_val.setFont(font_val)
+        self.lbl_match_jdg = QLabel("-")
+        metrics_grid.addWidget(self.lbl_match_val, 1, 1)
+        metrics_grid.addWidget(self.lbl_match_jdg, 1, 2)
+
+        # Center Focus
+        metrics_grid.addWidget(QLabel(tr("Center Focus:")), 2, 0)
+        self.lbl_focus_val = QLabel("0.0 %")
+        self.lbl_focus_val.setFont(font_val)
+        self.lbl_focus_jdg = QLabel("-")
+        metrics_grid.addWidget(self.lbl_focus_val, 2, 1)
+        metrics_grid.addWidget(self.lbl_focus_jdg, 2, 2)
+
+        # Phase Issues
+        metrics_grid.addWidget(QLabel(tr("Phase Issues:")), 3, 0)
+        self.lbl_phase_val = QLabel("0.0 %")
+        self.lbl_phase_val.setFont(font_val)
+        self.lbl_phase_jdg = QLabel("-")
+        metrics_grid.addWidget(self.lbl_phase_val, 3, 1)
+        metrics_grid.addWidget(self.lbl_phase_jdg, 3, 2)
+
+        metrics_group.setLayout(metrics_grid)
+        controls_layout.addWidget(metrics_group)
+
+        # M/S Ratio Bar Group
+        ms_group = QGroupBox(tr("M/S Ratio (Center Localization)"))
+        ms_layout = QVBoxLayout()
+
+        ms_labels = QHBoxLayout()
+        ms_labels.addWidget(QLabel(tr("100% Side (Wide)")))
+        ms_labels.addStretch()
+        ms_labels.addWidget(QLabel(tr("100% Mid (Mono)")))
+        ms_layout.addLayout(ms_labels)
+
+        self.ms_bar = QProgressBar()
+        self.ms_bar.setRange(0, 100)
+        self.ms_bar.setValue(50)
+        self.ms_bar.setTextVisible(False)
+        self.ms_bar.setFixedHeight(20)
+        self.ms_bar.setStyleSheet("QProgressBar::chunk { background-color: #3498db; }")
+        ms_layout.addWidget(self.ms_bar)
+
+        ms_group.setLayout(ms_layout)
+        controls_layout.addWidget(ms_group)
+
+        # Controls Group
+        ctrl_group = QGroupBox(tr("Controls"))
+        ctrl_vbox = QVBoxLayout()
+
+        self.btn_toggle = QPushButton(tr("Start"))
+        self.btn_toggle.setCheckable(True)
+        self.btn_toggle.clicked.connect(self.on_toggle)
+        ctrl_vbox.addWidget(self.btn_toggle)
+
+        ctrl_vbox.addWidget(QLabel(tr("Smoothing:")))
+        self.slider_smooth = QSlider(Qt.Orientation.Horizontal)
+        self.slider_smooth.setRange(0, 99)
+        self.slider_smooth.setValue(int(self.module.smoothing_factor * 100))
+        self.slider_smooth.valueChanged.connect(self.on_smooth_changed)
+        ctrl_vbox.addWidget(self.slider_smooth)
+
+        ctrl_group.setLayout(ctrl_vbox)
+        controls_layout.addWidget(ctrl_group)
+
+        controls_layout.addStretch()
+        main_layout.addLayout(controls_layout, stretch=1)
+
+    def on_toggle(self, checked):
+        if checked:
+            self.module.start_analysis()
+            self.timer.start()
+            self.btn_toggle.setText(tr("Stop"))
+        else:
+            self.module.stop_analysis()
+            self.timer.stop()
+            self.btn_toggle.setText(tr("Start"))
+
+    def on_smooth_changed(self, val):
+        self.module.smoothing_factor = val / 100.0
+
+    def update_display(self):
+        if not self.module.data_ready:
+            return
+        self.module.data_ready = False
+
+        freqs = self.module.freqs
+        # Skip DC (freq=0) for log plot
+        valid = freqs > 0
+        f_valid = freqs[valid]
+
+        s_ll = self.module.s_ll[valid]
+        s_rr = self.module.s_rr[valid]
+        s_lr = self.module.s_lr[valid]
+
+        epsilon = 1e-12
+
+        # 1. Update FFT Plot
+        # Convert to roughly dBFS (assuming 1.0 is full scale sine, power is 0.5)
+        scale = 2.0 / (self.module.fft_size ** 2)
+        db_l = 10 * np.log10(s_ll * scale + epsilon)
+        db_r = 10 * np.log10(s_rr * scale + epsilon)
+
+        self.curve_l.setData(f_valid, db_l)
+        self.curve_r.setData(f_valid, db_r)
+
+        # 2. Update Correlation Plot
+        denom = np.sqrt(s_ll * s_rr) + epsilon
+        corr = np.real(s_lr) / denom
+        corr = np.clip(corr, -1.0, 1.0)
+        self.curve_corr.setData(f_valid, corr)
+
+        # 3. Update Metrics text
+        bal_db = self.module.balance_db
+        self.lbl_balance_val.setText(f"{bal_db:+.2f} dB")
+        if abs(bal_db) < 0.5:
+            self.lbl_balance_jdg.setText(tr("Excellent"))
+            self.lbl_balance_jdg.setStyleSheet("color: #00FF00;")
+        elif abs(bal_db) < 3.0:
+            self.lbl_balance_jdg.setText(tr("Good"))
+            self.lbl_balance_jdg.setStyleSheet("color: #FFFF00;")
+        else:
+            self.lbl_balance_jdg.setText(tr("Unbalanced"))
+            self.lbl_balance_jdg.setStyleSheet("color: #FF0000;")
+
+        match = self.module.freq_match
+        self.lbl_match_val.setText(f"{match:.1f} %")
+        if match > 95.0:
+            self.lbl_match_jdg.setText(tr("Professional"))
+            self.lbl_match_jdg.setStyleSheet("color: #00FF00;")
+        elif match > 80.0:
+            self.lbl_match_jdg.setText(tr("Good"))
+            self.lbl_match_jdg.setStyleSheet("color: #FFFF00;")
+        else:
+            self.lbl_match_jdg.setText(tr("Poor"))
+            self.lbl_match_jdg.setStyleSheet("color: #FF0000;")
+
+        focus = self.module.center_focus
+        self.lbl_focus_val.setText(f"{focus:.1f} %")
+        if focus > 85.0:
+            self.lbl_focus_jdg.setText(tr("Mono Compatible"))
+            self.lbl_focus_jdg.setStyleSheet("color: #00FF00;")
+        elif focus > 50.0:
+            self.lbl_focus_jdg.setText(tr("Wide Stereo"))
+            self.lbl_focus_jdg.setStyleSheet("color: #3498db;")
+        else:
+            self.lbl_focus_jdg.setText(tr("Phasey / Wide"))
+            self.lbl_focus_jdg.setStyleSheet("color: #FFA500;")
+
+        issues = self.module.phase_issue
+        self.lbl_phase_val.setText(f"{issues:.2f} %")
+        if issues < 1.0:
+            self.lbl_phase_jdg.setText(tr("Negligible (Safe)"))
+            self.lbl_phase_jdg.setStyleSheet("color: #00FF00;")
+        elif issues < 10.0:
+            self.lbl_phase_jdg.setText(tr("Minor Issues"))
+            self.lbl_phase_jdg.setStyleSheet("color: #FFFF00;")
+        else:
+            self.lbl_phase_jdg.setText(tr("Severe Issues"))
+            self.lbl_phase_jdg.setStyleSheet("color: #FF0000;")
+
+        # 4. Update M/S Bar
+        self.ms_bar.setValue(int(focus))
