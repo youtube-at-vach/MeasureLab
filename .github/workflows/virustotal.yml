@@ -89,7 +89,7 @@ jobs:
           mkdir assets
           echo "Downloading assets for $TAG_NAME..."
           
-          # Match patterns: *windows-x64-onefile.zip, *windows-x64-onedir.zip, *.AppImage, *.dmg
+          # Match patterns: *windows-x64-onefile.zip, *windows-x64-onedir.zip, *.AppImage, *-macos-arm64.dmg, *-macos-x64.dmg
           # gh release download supports -p pattern
           
           cd assets
@@ -97,6 +97,7 @@ jobs:
           gh release download "$TAG_NAME" -p "*windows-x64-onedir.zip" || echo "No onedir zip found"
           gh release download "$TAG_NAME" -p "*.AppImage" || echo "No AppImage found"
           gh release download "$TAG_NAME" -p "*.dmg" || echo "No dmg found"
+
           
           ls -R
 
