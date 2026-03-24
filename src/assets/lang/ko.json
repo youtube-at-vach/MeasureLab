@@ -1042,6 +1042,7 @@
     "Show Group Delay": "군 지연 표시",
     "Show Input Trace": "입력 트레이스 표시",
     "Show Instantaneous": "순시치 표시",
+    "Show Physical Units (dB/r/°)": "물리 단위 표시 (dB/r/°)",
     "Show SPL": "SPL 표시",
     "Show Thermal Limit": "열 잡음 한계 표시",
     "Show Volts": "전압 표시",

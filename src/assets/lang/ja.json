@@ -1042,6 +1042,7 @@
     "Show Group Delay": "群遅延表示",
     "Show Input Trace": "入力波形を表示",
     "Show Instantaneous": "瞬時値を表示",
+    "Show Physical Units (dB/r/°)": "物理量（dB等）で表示",
     "Show SPL": "SPLを表示",
     "Show Thermal Limit": "熱雑音限界を表示",
     "Show Volts": "電圧表示",

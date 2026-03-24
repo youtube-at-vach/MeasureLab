@@ -3,6 +3,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -43,8 +44,11 @@ class StereoAlignmentMonitor(MeasurementModule):
         # Calculated Metrics
         self.balance_db = 0.0
         self.freq_match = 0.0
+        self.corr_raw = 0.0
         self.center_focus = 0.0
+        self.ms_ratio_db = 0.0
         self.phase_issue = 0.0
+        self.phase_issue_deg = 0.0
 
         self.callback_id = None
 
@@ -143,6 +147,7 @@ class StereoAlignmentMonitor(MeasurementModule):
             e_m = (total_e + 2 * np.sum(np.real(self.s_lr))) / 4.0
             e_s = (total_e - 2 * np.sum(np.real(self.s_lr))) / 4.0
             self.center_focus = (e_m / (e_m + e_s + epsilon)) * 100.0
+            self.ms_ratio_db = 10.0 * np.log10((e_m + epsilon) / (e_s + epsilon))
 
             # 3. Phase Issues
             # Phase correlation C(f) = Re(P_LR) / sqrt(P_L * P_R)
@@ -157,6 +162,12 @@ class StereoAlignmentMonitor(MeasurementModule):
                 self.phase_issue = (issue_energy / total_e) * 100.0
             else:
                 self.phase_issue = 0.0
+
+            # Overall phase angle in degrees
+            overall_cross_real = np.sum(np.real(self.s_lr))
+            overall_corr = overall_cross_real / (np.sqrt(e_l * e_r) + epsilon)
+            overall_corr = np.clip(overall_corr, -1.0, 1.0)
+            self.phase_issue_deg = np.arccos(overall_corr) * (180.0 / np.pi)
 
             # 4. Frequency Match
             # Pearson correlation of Log spectra above noise floor
@@ -179,16 +190,22 @@ class StereoAlignmentMonitor(MeasurementModule):
                     cov = np.sum((log_l - mean_l) * (log_r - mean_r))
                     corr = cov / np.sqrt(var_l * var_r)
                     self.freq_match = max(0.0, corr) * 100.0
+                    self.corr_raw = max(0.0, corr)
                 else:
                     self.freq_match = 100.0 # Flat lines match
+                    self.corr_raw = 1.0
             else:
                 self.freq_match = 0.0
+                self.corr_raw = 0.0
 
         else:
             self.balance_db = 0.0
             self.center_focus = 50.0  # Silence is neither mono nor out-of-phase
+            self.ms_ratio_db = 0.0
             self.phase_issue = 0.0
+            self.phase_issue_deg = 0.0
             self.freq_match = 0.0
+            self.corr_raw = 0.0
 
         self.data_ready = True
 
@@ -339,6 +356,10 @@ class StereoAlignmentMonitorWidget(QWidget):
         self.btn_toggle.clicked.connect(self.on_toggle)
         ctrl_vbox.addWidget(self.btn_toggle)
 
+        self.chk_physical = QCheckBox(tr("Show Physical Units (dB/r/°)"))
+        self.chk_physical.setChecked(False)
+        ctrl_vbox.addWidget(self.chk_physical)
+
         ctrl_vbox.addWidget(QLabel(tr("Smoothing:")))
         self.slider_smooth = QSlider(Qt.Orientation.Horizontal)
         self.slider_smooth.setRange(0, 99)
@@ -409,8 +430,14 @@ class StereoAlignmentMonitorWidget(QWidget):
             self.lbl_balance_jdg.setText(tr("Unbalanced"))
             self.lbl_balance_jdg.setStyleSheet("color: #FF0000;")
 
+        show_phys = self.chk_physical.isChecked()
+
         match = self.module.freq_match
-        self.lbl_match_val.setText(f"{match:.1f} %")
+        if show_phys:
+            self.lbl_match_val.setText(f"r = {self.module.corr_raw:.3f}")
+        else:
+            self.lbl_match_val.setText(f"{match:.1f} %")
+
         if match > 95.0:
             self.lbl_match_jdg.setText(tr("Professional"))
             self.lbl_match_jdg.setStyleSheet("color: #00FF00;")
@@ -422,7 +449,11 @@ class StereoAlignmentMonitorWidget(QWidget):
             self.lbl_match_jdg.setStyleSheet("color: #FF0000;")
 
         focus = self.module.center_focus
-        self.lbl_focus_val.setText(f"{focus:.1f} %")
+        if show_phys:
+            self.lbl_focus_val.setText(f"{self.module.ms_ratio_db:+.1f} dB")
+        else:
+            self.lbl_focus_val.setText(f"{focus:.1f} %")
+
         if focus > 85.0:
             self.lbl_focus_jdg.setText(tr("Mono Compatible"))
             self.lbl_focus_jdg.setStyleSheet("color: #00FF00;")
@@ -434,7 +465,11 @@ class StereoAlignmentMonitorWidget(QWidget):
             self.lbl_focus_jdg.setStyleSheet("color: #FFA500;")
 
         issues = self.module.phase_issue
-        self.lbl_phase_val.setText(f"{issues:.2f} %")
+        if show_phys:
+            self.lbl_phase_val.setText(f"{self.module.phase_issue_deg:.1f}°")
+        else:
+            self.lbl_phase_val.setText(f"{issues:.2f} %")
+
         if issues < 1.0:
             self.lbl_phase_jdg.setText(tr("Negligible (Safe)"))
             self.lbl_phase_jdg.setStyleSheet("color: #00FF00;")

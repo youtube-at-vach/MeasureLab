@@ -1042,6 +1042,7 @@
     "Show Group Delay": "显示群延迟",
     "Show Input Trace": "显示输入轨迹",
     "Show Instantaneous": "显示瞬时值",
+    "Show Physical Units (dB/r/°)": "显示物理单位 (dB/r/°)",
     "Show SPL": "显示 SPL",
     "Show Thermal Limit": "显示热噪声限制",
     "Show Volts": "显示电压",
