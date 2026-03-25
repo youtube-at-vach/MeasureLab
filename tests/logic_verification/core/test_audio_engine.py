@@ -231,7 +231,7 @@ class TestAudioEngineRefreshBackend(unittest.TestCase):
         # Call refresh_backend with patch
         error_msg = "Mock PortAudio error"
         with patch('src.core.audio_engine.sd._initialize') as mock_init, \
-             patch('src.core.audio_engine.sd._terminate', side_effect=Exception(error_msg)) as mock_term:
+             patch('src.core.audio_engine.sd._terminate', side_effect=Exception(error_msg)):
 
             self.engine.refresh_backend()
 
