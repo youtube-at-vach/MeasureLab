@@ -219,5 +219,31 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertAlmostEqual(self.engine.get_input_latency(), expected_fallback)
 
 
+class TestAudioEngineRefreshBackend(unittest.TestCase):
+    def setUp(self):
+        self.engine = AudioEngine()
+        self.engine.logger = MagicMock()
+        self.engine.stop_stream = MagicMock()
+
+    def test_refresh_backend_terminate_error(self):
+        from unittest.mock import patch
+
+        # Call refresh_backend with patch
+        error_msg = "Mock PortAudio error"
+        with patch('src.core.audio_engine.sd._initialize') as mock_init, \
+             patch('src.core.audio_engine.sd._terminate', side_effect=Exception(error_msg)):
+
+            self.engine.refresh_backend()
+
+            # Verify stop_stream was called
+            self.engine.stop_stream.assert_called_once()
+
+            # Verify the exception was caught and logged as a warning
+            self.engine.logger.warning.assert_any_call(f"Error terminating PortAudio: {error_msg}")
+
+            # Verify it still attempted to re-initialize
+            mock_init.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
