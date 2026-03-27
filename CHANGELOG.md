@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.6.0] - 2026-03-27
+
+### Added
+
+* **Analyzer**: Introduced `Stereo Alignment Monitor` module for assessing phase correlation and stereo width.
+* **Analyzer**: Added Loudness Range (LRA) calculation and configurable Target LUFS display to the `LUFS Meter`.
+* **Audio**: Added a seekable playback position slider to the `Recorder Player` and enhanced audio callback robustness.
+* **CI/CD**: Added macOS Intel (x64) DMG build to the release workflow.
+* **Docs**: Added repository navigation links and updated project documentation.
+
+### Changed
+
+* **Perf**: Optimized LTC zero-crossing array allocations in chunk processing.
+* **Perf**: Optimized lock-in spectrum finder background loop by replacing blocking sleep with thread yield.
+* **I18n**: Updated translations and expanded test coverage across various modules.
+
+### Fixed
+
+* **Core**: Removed unused imports in recorder player and sound quality analyzer tests.
+
 ## [v0.5.9] - 2026-03-21
 
 ### Added

@@ -19,7 +19,7 @@ Load and play files.
     * **Limit**: There is a file size limit of 500 million total samples (approx. 1 hour 26 mins for 48kHz Stereo). Files exceeding this limit cannot be loaded.
 * **Play / Stop**: Starts and stops playback.
 * **Loop**: When checked, the file will repeat from the beginning after reaching the end. Useful for continuously outputting test signals.
-* **Player Progress**: A bar indicating the current playback position.
+* **Player Progress**: A seekable slider indicating the current playback position. You can click or drag to seek to a specific position.
 
 * **Output Mode**
     * **Stereo**: Outputs the file's L/R channels as-is.
