@@ -6,6 +6,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -65,6 +66,9 @@ class LufsMeter(MeasurementModule):
         self.momentary_lufs = -100.0
         self.short_term_lufs = -100.0
         self.integrated_lufs = -100.0
+        self.target_lufs = -23.0
+        self.integrated_threshold = -100.0
+        self.lra = 0.0
 
         # Integrated loudness (BS.1770-style gating, streaming)
         self._i_started_at = None
@@ -75,6 +79,9 @@ class LufsMeter(MeasurementModule):
         self._i_abs_gate_ms = float(10 ** ((-70.0 + 0.691) / 10.0))
         self._i_dirty = False
         self._i_lock = threading.Lock()
+
+        self._lra_blocks = []
+        self._lra_step_frames = 0
 
         # Stereo RMS & Peak
         self.rms_l = self._db_floor
@@ -139,13 +146,17 @@ class LufsMeter(MeasurementModule):
 
     def reset_integration(self):
         self.integrated_lufs = -100.0
+        self.integrated_threshold = -100.0
+        self.lra = 0.0
         self._i_started_at = time.perf_counter()
         self._i_sample_count = 0
         self._i_since_last_block = 0
         # 400 ms block with 75% overlap -> 100 ms step
         self._i_block_step = int(round(0.1 * float(self.sample_rate)))
+        self._lra_step_frames = 0
         with self._i_lock:
             self._i_block_ms = []
+            self._lra_blocks = []
             self._i_dirty = False
 
     def update_integrated_lufs_if_dirty(self):
@@ -157,24 +168,48 @@ class LufsMeter(MeasurementModule):
             if not self._i_dirty:
                 return
             blocks = np.asarray(self._i_block_ms, dtype=np.float64)
+            lra_blocks = np.asarray(self._lra_blocks, dtype=np.float64)
             self._i_dirty = False
 
         if blocks.size == 0:
             self.integrated_lufs = -100.0
-            return
+            self.integrated_threshold = -100.0
+        else:
+            mean_ms_ungated = float(blocks.mean())
+            l_ungated = self._to_lufs(mean_ms_ungated)
+            rel_gate_l = l_ungated - 10.0
+            rel_gate_ms = float(10 ** ((rel_gate_l + 0.691) / 10.0))
+            gate_ms = max(self._i_abs_gate_ms, rel_gate_ms)
 
-        mean_ms_ungated = float(blocks.mean())
-        l_ungated = self._to_lufs(mean_ms_ungated)
-        rel_gate_l = l_ungated - 10.0
-        rel_gate_ms = float(10 ** ((rel_gate_l + 0.691) / 10.0))
-        gate_ms = max(self._i_abs_gate_ms, rel_gate_ms)
+            gated = blocks[blocks > gate_ms]
+            if gated.size == 0:
+                self.integrated_lufs = -100.0
+                self.integrated_threshold = -100.0
+            else:
+                self.integrated_lufs = self._to_lufs(float(gated.mean()))
+                self.integrated_threshold = self._to_lufs(gate_ms)
 
-        gated = blocks[blocks > gate_ms]
-        if gated.size == 0:
-            self.integrated_lufs = -100.0
-            return
+        # Calculation of LRA
+        if lra_blocks.size >= 2:
+            lra_abs_gate = self._i_abs_gate_ms
+            lra_abs_gated = lra_blocks[lra_blocks > lra_abs_gate]
+            if lra_abs_gated.size > 0:
+                lra_ungated_mean = float(lra_abs_gated.mean())
+                lra_rel_gate = self._to_lufs(lra_ungated_mean) - 20.0
+                lra_rel_gate_ms = float(10 ** ((lra_rel_gate + 0.691) / 10.0))
 
-        self.integrated_lufs = self._to_lufs(float(gated.mean()))
+                lra_gated = lra_abs_gated[lra_abs_gated > lra_rel_gate_ms]
+                if lra_gated.size >= 2:
+                    lra_lufs = np.array([self._to_lufs(v) for v in lra_gated])
+                    p10 = np.percentile(lra_lufs, 10)
+                    p95 = np.percentile(lra_lufs, 95)
+                    self.lra = p95 - p10
+                else:
+                    self.lra = 0.0
+            else:
+                self.lra = 0.0
+        else:
+            self.lra = 0.0
 
     def reset_all_stats(self):
         self.reset_peaks()
@@ -354,6 +389,16 @@ class LufsMeter(MeasurementModule):
             else:
                 self._i_since_last_block += int(frames)
 
+            # LRA collection (3s short-term blocks, 1s step)
+            self._lra_step_frames += int(frames)
+            while self._lra_step_frames >= self.sample_rate:
+                self._lra_step_frames -= self.sample_rate
+                if self._p_filled_s >= self.buffer_size_s:
+                    block_s_ms = float(self._p_sum_s / float(self.buffer_size_s))
+                    with self._i_lock:
+                        self._lra_blocks.append(block_s_ms)
+                        self._i_dirty = True
+
             # No output (meter is analysis-only). AudioEngine provides a fresh zeroed buffer.
 
         self.callback_id = self.audio_engine.register_callback(callback)
@@ -414,6 +459,16 @@ class LufsMeterWidget(QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
         controls_layout.addWidget(self.toggle_btn)
+
+        controls_layout.addWidget(QLabel(tr("Target LUFS:")))
+        self.target_spin = QDoubleSpinBox()
+        self.target_spin.setRange(-70.0, 0.0)
+        self.target_spin.setDecimals(1)
+        self.target_spin.setSingleStep(1.0)
+        self.target_spin.setValue(-23.0)
+        self.target_spin.setSuffix(" LUFS")
+        self.target_spin.valueChanged.connect(self.on_target_changed)
+        controls_layout.addWidget(self.target_spin)
 
         self.spl_check = QCheckBox(tr("Show SPL"))
         self.spl_check.toggled.connect(self.on_spl_toggled)
@@ -551,6 +606,21 @@ class LufsMeterWidget(QWidget):
         self.stats_i_time = QLabel(tr("0.0 s"))
         stats_grid.addWidget(self.stats_i_time, 3, 3, 1, 2)
 
+        # Output Threshold row
+        stats_grid.addWidget(QLabel(tr("Threshold")), 4, 0)
+        self.stats_threshold = QLabel(tr("-INF"))
+        stats_grid.addWidget(self.stats_threshold, 4, 1, 1, 4)
+
+        # LRA row
+        stats_grid.addWidget(QLabel(tr("LRA")), 5, 0)
+        self.stats_lra = QLabel(tr("0.0 LU"))
+        stats_grid.addWidget(self.stats_lra, 5, 1, 1, 4)
+
+        # Target Offset row
+        stats_grid.addWidget(QLabel(tr("Target Offset")), 6, 0)
+        self.stats_offset = QLabel(tr("0.0 LU"))
+        stats_grid.addWidget(self.stats_offset, 6, 1, 1, 4)
+
         tabs.addTab(stats_tab, tr("Statistics"))
 
         graph_tab = QWidget()
@@ -570,11 +640,12 @@ class LufsMeterWidget(QWidget):
         self.s_curve = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name=tr("Short-Term"))  # Yellow
 
         # Target Line
-        self.target_line = pg.InfiniteLine(angle=0, pos=-23, pen=pg.mkPen("g", style=Qt.PenStyle.DashLine))
+        target = self.module.target_lufs
+        self.target_line = pg.InfiniteLine(angle=0, pos=target, pen=pg.mkPen("g", style=Qt.PenStyle.DashLine))
         self.plot_widget.addItem(self.target_line)
 
         # Target band (-23 LUFS ±2) for quick visual alignment
-        self.target_band = pg.LinearRegionItem(values=[-25, -21], orientation=pg.LinearRegionItem.Horizontal)
+        self.target_band = pg.LinearRegionItem(values=[target - 2, target + 2], orientation=pg.LinearRegionItem.Horizontal)
         self.target_band.setBrush(pg.mkBrush(0, 255, 0, 35))
         self.target_band.setMovable(False)
         self.target_band.setZValue(-10)
@@ -639,6 +710,11 @@ class LufsMeterWidget(QWidget):
             self.spl_check.blockSignals(False)
             return
         self._show_spl = bool(checked)
+
+    def on_target_changed(self, value):
+        self.module.target_lufs = value
+        self.target_line.setPos(value)
+        self.target_band.setRegion([value - 2, value + 2])
 
     def update_display(self):
         if not self.module.is_running:
@@ -724,8 +800,8 @@ class LufsMeterWidget(QWidget):
         # Color coding
         self._set_bar_color(self.l_bar, rms_l)
         self._set_bar_color(self.r_bar, rms_r)
-        self._set_lufs_bar_color(self.m_bar, m_lufs)
-        self._set_lufs_bar_color(self.s_bar, s_lufs)
+        self._set_lufs_bar_color(self.m_bar, m_lufs, self.module.target_lufs)
+        self._set_lufs_bar_color(self.s_bar, s_lufs, self.module.target_lufs)
 
         # Update Plot
         self.m_history = np.roll(self.m_history, -1)
@@ -787,6 +863,17 @@ class LufsMeterWidget(QWidget):
         self.stats_i_val.setText(self._format_db(self.module.integrated_lufs))
         self.stats_i_time.setText(self._format_seconds(self.module.get_integrated_seconds()))
 
+        self.stats_threshold.setText(self._format_db(self.module.integrated_threshold))
+
+        self.stats_lra.setText(tr("{0:.1f} LU").format(self.module.lra))
+
+        if self.module.integrated_lufs > -99.9:
+            offset = self.module.target_lufs - self.module.integrated_lufs
+            sign = "+" if offset > 0 else ""
+            self.stats_offset.setText(tr("{0}{1:.1f} LU").format(sign, offset))
+        else:
+            self.stats_offset.setText(tr("---"))
+
     def _set_bar_color(self, bar, val):
         # Standard dBFS colors
         if val > -3:
@@ -797,11 +884,10 @@ class LufsMeterWidget(QWidget):
             color = "#00ff00"  # Green
         bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
 
-    def _set_lufs_bar_color(self, bar, lufs):
-        # EBU R128 target is -23 LUFS
-        if lufs > -21:
+    def _set_lufs_bar_color(self, bar, lufs, target):
+        if lufs > target + 2:
             color = "red"
-        elif lufs > -25:
+        elif lufs > target - 2:
             color = "#00ff00"  # Green (Target)
         else:
             color = "#aaaa00"  # Yellow/Orange
