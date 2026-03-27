@@ -30,16 +30,16 @@ LUFS Meterは、放送や配信サービス（YouTube, Spotify, Netflixなど）
 
 ### 各種リセット
 
-*   **Reset Peaks**: レベルメーターのピークホールド表示をリセットします。
-*   **Reset Stats**: LUFSの統計データ（Integratedの値やMin/Max履歴など）をすべてリセットしてゼロから再計算します。
+* **Reset Peaks**: レベルメーターのピークホールド表示をリセットします。
+* **Reset Stats**: LUFSの統計データ（Integratedの値やMin/Max履歴など）をすべてリセットしてゼロから再計算します。
 
 ### Target LUFS
 
 ターゲットとするラウドネスレベルを設定します。この値は以下の箇所に反映されます：
 
-*   **Statistics タブ**: Integrated LUFS との差分（Target Offset）の計算に使用されます。
-*   **Level Meter**: Integrated バーの色が、このターゲット値を基準に変化します（ターゲット付近で緑色、超過すると赤色など）。
-*   **Graph タブ**: グラフ上のターゲットを示す点線の位置がこの設定値に移動します。
+* **Statistics タブ**: Integrated LUFS との差分（Target Offset）の計算に使用されます。
+* **Level Meter**: Integrated バーの色が、このターゲット値を基準に変化します（ターゲット付近で緑色、超過すると赤色など）。
+* **Graph タブ**: グラフ上のターゲットを示す点線の位置がこの設定値に移動します。
 
 ### Show SPL
 
@@ -51,14 +51,14 @@ LUFS Meterは、放送や配信サービス（YouTube, Spotify, Netflixなど）
 
 各指標の現在値（Current）、最小値（Min）、最大値（Max）、平均値（Avg）を表で確認できます。
 
-*   **Target Offset**: 設定された Target LUFS と、現在の Integrated LUFS の差分を表示します。「+」はターゲットより大きい（うるさい）こと、「-」は小さい（静か）ことを示します。
+* **Target Offset**: 設定された Target LUFS と、現在の Integrated LUFS の差分を表示します。「+」はターゲットより大きい（うるさい）こと、「-」は小さい（静か）ことを示します。
 
 ### Graph タブ
 
 Momentary（水色）とShort-term（黄色）のラウドネス変化を時系列グラフで表示します。
 
-*   **点線**: 設定された Target LUFS を示す基準線です。
-*   これを目安に、楽曲や音声が目標とするラウドネス帯域に収まっているかを確認できます。
+* **点線**: 設定された Target LUFS を示す基準線です。
+* これを目安に、楽曲や音声が目標とするラウドネス帯域に収まっているかを確認できます。
 
 ## 一般的なターゲットレベルの目安
 
