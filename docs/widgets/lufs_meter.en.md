@@ -33,6 +33,14 @@ Begins the measurement. Graph plotting and statistical calculations will start.
 * **Reset Peaks**: Resets the peak hold display on the level meter.
 * **Reset Stats**: Resets all LUFS statistical data (Integrated value, Min/Max history, etc.) and restarts calculations from zero.
 
+### Target LUFS
+
+Sets the target loudness level. This value affects the following areas:
+
+* **Statistics Tab**: Used to calculate the difference from the Integrated LUFS (**Target Offset**).
+* **Level Meter**: The color of the Integrated bar changes based on this target value (e.g., green near the target, red when exceeding).
+* **Graph Tab**: The dashed reference line on the graph moves to this set value.
+
 ### Show SPL
 
 When checked, switches the units of the RMS level meter to "dB SPL" (requires prior SPL calibration in the Settings widget). LUFS values are always displayed on a dBFS basis (LUFS).
@@ -43,12 +51,14 @@ When checked, switches the units of the RMS level meter to "dB SPL" (requires pr
 
 Provides a table of the current value (Current), minimum (Min), maximum (Max), and average (Avg) for each indicator.
 
+* **Target Offset**: Displays the difference between the set Target LUFS and the current Integrated LUFS. A "+" indicates it is louder than the target, while a "-" indicates it is quieter.
+
 ### Graph Tab
 
 Displays time-series changes in Momentary (cyan) and Short-term (yellow) loudness.
 
-* **Green dashed line**: A typical target level reference (around -23 LUFS).
-* Use this as a guide to check if the track or audio fits within the target range.
+* **Dashed line**: A reference line indicating the set Target LUFS.
+* Use this as a guide to check if the track or audio fits within your target loudness range.
 
 ## Typical Target Levels
 
