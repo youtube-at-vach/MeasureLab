@@ -255,18 +255,7 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        # Note: Separator is ':' for mac
-        pyinstaller --windowed --noconfirm --name MeasureLab --icon=MeasureLab.icns \
-          --add-data "src:src" \
-          --exclude-module matplotlib \
-          --collect-all backports \
-          --collect-all soundfile \
-          --collect-all pyfftw \
-          --hidden-import pyfftw \
-          --distpath dist \
-          --workpath build \
-          --target-architecture arm64 \
-          main_gui.py
+        pyinstaller --noconfirm MeasureLab_macOS.spec
 
     - name: Verify macOS Application (Self-Test)
       run: |
@@ -375,17 +364,7 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        pyinstaller --windowed --noconfirm --name MeasureLab --icon=MeasureLab.icns \
-          --add-data "src:src" \
-          --exclude-module matplotlib \
-          --collect-all backports \
-          --collect-all soundfile \
-          --collect-all pyfftw \
-          --hidden-import pyfftw \
-          --distpath dist \
-          --workpath build \
-          --target-architecture x86_64 \
-          main_gui.py
+        pyinstaller --noconfirm MeasureLab_macOS.spec
 
     - name: Verify macOS Application (Self-Test)
       run: |

@@ -23,6 +23,7 @@ env/
 
 # PyInstaller
 *.spec
+!MeasureLab_macOS.spec
 
 # MyPy / Pyright
 .mypy_cache/
