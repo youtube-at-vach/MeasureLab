@@ -1124,7 +1124,7 @@ class AudioCalc:
     @staticmethod
     def _get_freq_index(freqs, f, axis_info: FreqAxisInfo, side="left"):
         is_linear_freqs, _, freq_step, start_freq, _ = axis_info
-        if axis_info.is_linear_freqs:
+        if is_linear_freqs:
             val = (f - start_freq) / freq_step
             if side == "left":
                 idx = int(math.ceil(val))
@@ -1340,7 +1340,7 @@ class AudioCalc:
         # Linear Gain = Ra(f) * 10^(2.0/20) = Ra(f) * 1.2589
 
         # Optimization: Use cached A-weighting curve based on frequency array content
-        if axis_info.is_linear_freqs:
+        if is_linear_freqs:
             weighting_sq = _compute_a_weighting_sq_curve(len(freqs), freq_step, start_freq)
         elif is_log_freqs:
             weighting_sq = _compute_a_weighting_sq_curve_log(len(freqs), start_freq, stop_freq)
