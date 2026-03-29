@@ -143,6 +143,7 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 
 ### 🧑‍💻 スペシャルサンクス
 
+- [TNT (diyAudio)](https://www.diyaudio.com/community/members/tnt.4571/)
 - [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
 - [バーチャ農ちゃんねる](https://www.youtube.com/@va-ch)
 
