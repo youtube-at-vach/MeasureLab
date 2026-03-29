@@ -5,6 +5,7 @@ import os
 import threading
 import time
 from collections import deque
+from dataclasses import dataclass
 
 import numpy as np
 import pyqtgraph as pg
@@ -546,20 +547,30 @@ class ImpedanceAnalyzer(MeasurementModule):
         return new_cal
 
 
+@dataclass
+class ImpedanceSweepConfig:
+    start_f: float
+    end_f: float
+    steps: int
+    log_sweep: bool
+    settle_time: float
+    cal_mode: str | None = None
+
+
 class ImpedanceSweepWorker(QThread):
     progress = pyqtSignal(int)
     result = pyqtSignal(float, complex)  # freq, z_complex
     finished_sweep = pyqtSignal()
 
-    def __init__(self, module: ImpedanceAnalyzer, start_f, end_f, steps, log_sweep, settle_time, cal_mode=None):
+    def __init__(self, module: ImpedanceAnalyzer, config: ImpedanceSweepConfig):
         super().__init__()
         self.module = module
-        self.start_f = start_f
-        self.end_f = end_f
-        self.steps = steps
-        self.log_sweep = log_sweep
-        self.settle_time = settle_time
-        self.cal_mode = cal_mode
+        self.start_f = config.start_f
+        self.end_f = config.end_f
+        self.steps = config.steps
+        self.log_sweep = config.log_sweep
+        self.settle_time = config.settle_time
+        self.cal_mode = config.cal_mode
         self.is_cancelled = False
 
     def _sleep_interruptible(self, duration):
@@ -1541,7 +1552,15 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.plot_widget.getPlotItem().enableAutoRange()
         self.plot_right.enableAutoRange()
 
-        self.sweep_worker = ImpedanceSweepWorker(self.module, start, end, steps, log, 0.2, cal_mode=mode)
+        config = ImpedanceSweepConfig(
+            start_f=start,
+            end_f=end,
+            steps=steps,
+            log_sweep=log,
+            settle_time=0.2,
+            cal_mode=mode
+        )
+        self.sweep_worker = ImpedanceSweepWorker(self.module, config)
         self.sweep_worker.progress.connect(self.sw_progress.setValue)
         self.sweep_worker.result.connect(self.on_sweep_result)
         self.sweep_worker.finished_sweep.connect(self.on_sweep_finished)
