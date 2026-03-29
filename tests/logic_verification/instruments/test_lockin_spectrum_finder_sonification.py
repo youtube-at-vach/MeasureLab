@@ -76,9 +76,8 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
         self.finder.sonifier = mock_sonifier
 
         # Run calculation
-        self.finder._do_calculation(
-            sig=sig,
-            fs=fs,
+        from src.gui.widgets.lockin_spectrum_finder import CalculationParams
+        params = CalculationParams(
             start_f=900.0,
             stop_f=1100.0,
             points=10,
@@ -86,6 +85,11 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
             display_unit="dBFS",
             offset_dbv=0.0,
             offset_spl=0.0,
+        )
+        self.finder._do_calculation(
+            sig=sig,
+            fs=fs,
+            params=params,
         )
 
         # Verify update_parameters was called at least once

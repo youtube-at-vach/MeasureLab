@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 import logging
 import os
 import threading
@@ -188,6 +189,24 @@ def _get_default_targets(
 
 # Used for decoupling background thread results to GUI thread safely.
 # Used for decoupling background thread results to GUI thread safely.
+@dataclass
+class CalculationParams:
+    start_f: float
+    stop_f: float
+    points: int
+    spacing: str
+    display_unit: str
+    offset_dbv: float
+    offset_spl: float | None
+    mode: str = "Scan"
+    zoom_center: float = 1000.0
+    zoom_span: float = 10.0
+    window_type: str = "none"
+    include_targets: bool = True
+    octave_ref: float = 1000.0
+    targets: dict | None = None
+
+
 class FinderSignals(QObject):
     result_ready = pyqtSignal(object)
     sweep_started = pyqtSignal(object)
@@ -502,50 +521,56 @@ class LockInSpectrumFinder(MeasurementModule):
         p_octave_ref = self.octave_ref_freq
         p_targets = self.current_targets.copy()
 
+        params = CalculationParams(
+            start_f=p_start,
+            stop_f=p_stop,
+            points=p_points,
+            spacing=p_spacing,
+            display_unit=p_unit,
+            offset_dbv=p_offset_dbv,
+            offset_spl=p_offset_spl,
+            mode=p_mode,
+            zoom_center=p_zoom_center,
+            zoom_span=p_zoom_span,
+            window_type=p_window,
+            include_targets=p_include_targets,
+            octave_ref=p_octave_ref,
+            targets=p_targets,
+        )
+
         self._calculation_future = self.executor.submit(
             self._do_calculation,
             sig,
             fs,
-            p_start,
-            p_stop,
-            p_points,
-            p_spacing,
-            p_unit,
-            p_offset_dbv,
-            p_offset_spl,
-            p_mode,
-            p_zoom_center,
-            p_zoom_span,
-            p_window,
-            p_include_targets,
-            p_octave_ref,
-            p_targets,
+            params,
         )
 
     def _do_calculation(
         self,
         sig,
         fs,
-        start_f,
-        stop_f,
-        points,
-        spacing,
-        display_unit,
-        offset_dbv,
-        offset_spl,
-        mode="Scan",
-        zoom_center=1000.0,
-        zoom_span=10.0,
-        window_type="none",
-        include_targets=True,
-        octave_ref=1000.0,
-        targets=None,
+        params: CalculationParams,
     ):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
         import time
         import scipy.signal as signal
+
+        start_f = params.start_f
+        stop_f = params.stop_f
+        points = params.points
+        spacing = params.spacing
+        display_unit = params.display_unit
+        offset_dbv = params.offset_dbv
+        offset_spl = params.offset_spl
+        mode = params.mode
+        zoom_center = params.zoom_center
+        zoom_span = params.zoom_span
+        window_type = params.window_type
+        include_targets = params.include_targets
+        octave_ref = params.octave_ref
+        targets = params.targets
 
         N = len(sig)
         t = np.arange(N, dtype=np.float64) / fs
