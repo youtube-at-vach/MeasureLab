@@ -1124,7 +1124,7 @@ class AudioCalc:
     @staticmethod
     def _get_freq_index(freqs, f, axis_info: FreqAxisInfo, side="left"):
         is_linear_freqs, _, freq_step, start_freq, _ = axis_info
-        if axis_info.is_linear_freqs:
+        if is_linear_freqs:
             val = (f - start_freq) / freq_step
             if side == "left":
                 idx = int(math.ceil(val))
@@ -1135,7 +1135,7 @@ class AudioCalc:
             return np.searchsorted(freqs, f, side=side)
 
     @staticmethod
-    def _calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, axis_info: FreqAxisInfo):
+    def _calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, axis_info):
         def get_power_in_band(f_center, width=5.0):
             f_start = f_center - width
             f_end = f_center + width
@@ -1172,7 +1172,7 @@ class AudioCalc:
         return np.sqrt(hum_power), base_freq, hum_components
 
     @staticmethod
-    def _calculate_white_noise(mag, freqs, axis_info: FreqAxisInfo):
+    def _calculate_white_noise(mag, freqs, axis_info):
         i_white_start = AudioCalc._get_freq_index(freqs, 1000.0, axis_info, side="left")
         i_white_end = AudioCalc._get_freq_index(freqs, 20000.0, axis_info, side="right")
 
@@ -1184,7 +1184,7 @@ class AudioCalc:
         return white_density
 
     @staticmethod
-    def _calculate_1f_noise(mag, freqs, hum_components, white_density, axis_info: FreqAxisInfo):
+    def _calculate_1f_noise(mag, freqs, hum_components, white_density, axis_info):
         results = {}
 
         # Determine Fit Upper Bound
@@ -1289,7 +1289,7 @@ class AudioCalc:
         return results
 
     @staticmethod
-    def _calculate_integrated_noise(mag_sq, freqs, bin_width, axis_info: FreqAxisInfo):
+    def _calculate_integrated_noise(mag_sq, freqs, bin_width, axis_info):
         def integrate_band(f_start, f_end):
             idx_start = AudioCalc._get_freq_index(freqs, f_start, axis_info, side="left")
             idx_end = AudioCalc._get_freq_index(freqs, f_end, axis_info, side="left")
@@ -1308,7 +1308,7 @@ class AudioCalc:
         return rms_20k, rms_100k
 
     @staticmethod
-    def _calculate_peak_noise(mag, freqs, axis_info: FreqAxisInfo):
+    def _calculate_peak_noise(mag, freqs, axis_info):
         # Peak Detection
         # Find peak in 20Hz-20kHz
         i_peak_start = AudioCalc._get_freq_index(freqs, 20.0, axis_info, side="left")
@@ -1340,7 +1340,7 @@ class AudioCalc:
         # Linear Gain = Ra(f) * 10^(2.0/20) = Ra(f) * 1.2589
 
         # Optimization: Use cached A-weighting curve based on frequency array content
-        if axis_info.is_linear_freqs:
+        if is_linear_freqs:
             weighting_sq = _compute_a_weighting_sq_curve(len(freqs), freq_step, start_freq)
         elif is_log_freqs:
             weighting_sq = _compute_a_weighting_sq_curve_log(len(freqs), start_freq, stop_freq)
@@ -1428,7 +1428,7 @@ class AudioCalc:
 
         # Pre-calculate squared magnitude and bin width
         mag_sq = mag**2
-        if axis_info.is_linear_freqs:
+        if is_linear_freqs:
             bin_width = axis_info.freq_step
         else:
             # Calculate variable bin widths for log/arbitrary scale
