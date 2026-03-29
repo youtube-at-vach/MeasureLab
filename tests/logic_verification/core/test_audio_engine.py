@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import time
 import numpy as np
 
@@ -243,6 +243,113 @@ class TestAudioEngineRefreshBackend(unittest.TestCase):
 
             # Verify it still attempted to re-initialize
             mock_init.assert_called_once()
+
+
+class TestAudioEngineGetHostApis(unittest.TestCase):
+
+    def setUp(self):
+
+        self.engine = AudioEngine()
+
+        self.engine._host_apis_cache = None
+
+        self.engine._last_cache_time = 0
+
+
+
+    @patch("src.core.audio_engine.sd.query_hostapis")
+
+    def test_get_host_apis_success(self, mock_query):
+
+        mock_query.return_value = [{"name": "ALSA"}, {"name": "PulseAudio"}]
+
+
+
+        result = self.engine.get_host_apis()
+
+
+
+        self.assertEqual(result, [{"name": "ALSA"}, {"name": "PulseAudio"}])
+
+        mock_query.assert_called_once()
+
+        self.assertEqual(self.engine._host_apis_cache, [{"name": "ALSA"}, {"name": "PulseAudio"}])
+
+
+
+    @patch("src.core.audio_engine.sd.query_hostapis")
+
+    def test_get_host_apis_caching(self, mock_query):
+
+        mock_query.return_value = [{"name": "ALSA"}]
+
+
+
+        # First call sets cache
+
+        result1 = self.engine.get_host_apis()
+
+        mock_query.assert_called_once()
+
+
+
+        # Second call uses cache (time hasn't advanced 2 seconds)
+
+        mock_query.reset_mock()
+
+        result2 = self.engine.get_host_apis()
+
+        mock_query.assert_not_called()
+
+        self.assertEqual(result1, result2)
+
+
+
+    @patch("src.core.audio_engine.sd.query_hostapis")
+
+    @patch("src.core.audio_engine.time.time")
+
+    def test_get_host_apis_cache_expiration(self, mock_time, mock_query):
+
+        mock_query.return_value = [{"name": "ALSA"}]
+
+        mock_time.return_value = 100.0
+
+
+
+        # First call sets cache at t=100
+
+        self.engine.get_host_apis()
+
+        self.assertEqual(mock_query.call_count, 1)
+
+
+
+        # Advance time by 2.1 seconds
+
+        mock_time.return_value = 102.1
+
+        self.engine.get_host_apis()
+
+        self.assertEqual(mock_query.call_count, 2)
+
+
+
+    @patch("src.core.audio_engine.sd.query_hostapis")
+
+    def test_get_host_apis_exception(self, mock_query):
+
+        mock_query.side_effect = Exception("Failed to query")
+
+
+
+        result = self.engine.get_host_apis()
+
+
+
+        self.assertEqual(result, [])
+
+
 
 
 if __name__ == "__main__":
