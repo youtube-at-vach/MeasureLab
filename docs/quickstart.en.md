@@ -49,6 +49,9 @@ Please download the latest version for your OS from the [Releases](https://githu
    - On the first launch, you may see a message saying the application "cannot be opened because the developer cannot be verified."
    - To open it, **"Right-click (or Control + click) the app and select 'Open'."**
    - A confirmation dialog will appear. Click **"Open"** again to start the application.
+3. **If the "Open" option still doesn't appear**:
+   - Go to **System Settings > Privacy & Security**. Scroll down to find the message stating "MeasureLab.app was blocked..." and click **"Open Anyway"**.
+   - Alternatively, manually remove the quarantine flag via Terminal: `xattr -d com.apple.quarantine /path/to/MeasureLab.app` (You can drag the app icon into the terminal window to paste its path).
 
 !!! important
     **Note for the first launch: FFT Optimization ([WISDOM](glossary.en.md#fft-wisdom-initial-optimization))**
