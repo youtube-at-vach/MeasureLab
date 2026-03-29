@@ -42,13 +42,16 @@ MeasureLab は Windows および Linux で動作します。
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
-### macOS (arm64) の場合
+### macOS の場合 (Apple Silicon / Intel)
 
-1. `MeasureLab-<version>-macos-arm64.dmg`（または `.app`）をダウンロードします。
+1. Apple Silicon の場合は `MeasureLab-<version>-macos-arm64.dmg`、Intel Mac の場合は `MeasureLab-<version>-macos-x64.dmg` をダウンロードします。
 2. **ゲートキーパーの回避**:
    - 初回起動時は、そのまま開こうとすると「開発元が未確認のため開けません」と表示される場合があります。
    - アプリを **「右クリック（または Control + クリック）して『開く』を選択」** してください。
    - 確認ダイアログが表示されるので、再度 **「開く」** をクリックすると起動します。
+3. **それでも「開く」オプションが表示されない場合**:
+   - **「システム設定」>「プライバシーとセキュリティ」** を開きます。下にスクロールして「MeasureLab.appは...」というメッセージを見つけ、**「このまま開く」** をクリックします。
+   - または、ターミナルから手動で隔離フラグを解除することもできます：`xattr -d com.apple.quarantine /path/to/MeasureLab.app` （アプリアイコンをターミナルウィンドウにドラッグ＆ドロップするとパスを入力できます）。
 
 !!! important
     **初回起動時の注意：FFT 最適化 ([WISDOM](glossary.md#fft-wisdom-初期最適化))**
