@@ -1,7 +1,6 @@
-import pytest
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.gui.widgets.welcome import WelcomeWidget
 from src.core.version import __version__
