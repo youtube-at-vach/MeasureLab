@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock
 from PyQt6.QtCore import Qt
 from src.gui.widgets.lufs_meter import LufsMeter, LufsMeterWidget
