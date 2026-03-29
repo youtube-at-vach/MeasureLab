@@ -248,6 +248,26 @@ class TestAudioEngineLogic(unittest.TestCase):
         settings = self.engine._get_jack_settings()
         self.assertIsNone(settings)
 
+    @patch("sounddevice.query_hostapis")
+    def test_get_host_apis_cache_expiration(self, mock_query_hostapis):
+        # Setup fake initial cache
+        self.engine._host_apis_cache = [{"name": "Fake API"}]
+
+        # Set cache time to 3 seconds ago (older than 2.0s limit)
+        import time
+        self.engine._last_cache_time = time.time() - 3.0
+
+        # Mock the return value of query_hostapis
+        mock_query_hostapis.return_value = [{"name": "New API"}]
+
+        # Call get_host_apis
+        result = self.engine.get_host_apis()
+
+        # Verify query_hostapis was called due to cache expiration
+        mock_query_hostapis.assert_called_once()
+        self.assertEqual(result, [{"name": "New API"}])
+        self.assertEqual(self.engine._host_apis_cache, [{"name": "New API"}])
+
 
 class TestAudioEngineChannelMapping(unittest.TestCase):
     def setUp(self):
