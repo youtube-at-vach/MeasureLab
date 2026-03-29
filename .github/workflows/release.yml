@@ -267,6 +267,9 @@ jobs:
           --workpath build \
           --target-architecture arm64 \
           main_gui.py
+          
+        # Add NSMicrophoneUsageDescription to Info.plist
+        plutil -insert NSMicrophoneUsageDescription -string "音響測定のためにマイクへのアクセスが必要です。" dist/MeasureLab.app/Contents/Info.plist
 
     - name: Verify macOS Application (Self-Test)
       run: |
@@ -386,6 +389,9 @@ jobs:
           --workpath build \
           --target-architecture x86_64 \
           main_gui.py
+          
+        # Add NSMicrophoneUsageDescription to Info.plist
+        plutil -insert NSMicrophoneUsageDescription -string "音響測定のためにマイクへのアクセスが必要です。" dist/MeasureLab.app/Contents/Info.plist
 
     - name: Verify macOS Application (Self-Test)
       run: |
