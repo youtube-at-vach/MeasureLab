@@ -7,15 +7,18 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Psychoacoustic AI-MOS Predictor:** AI model that predicts Mean Opinion Score (MOS) directly from DAC/Amp output without human listeners.
-* **Digital Twin Synthesizer:** Create a virtual, real-time running model of the measured analog component based on lock-in harmonic analysis.
-* **Quantum Jitter Tomography:** Using QRNG excitation to measure absolute system determinism and micro-jitter.
-* **Generative AI Non-Linearity Cloner:** AI model trained via specialized excitation signals to replicate exact dynamic non-linearities.
-* **Brainwave (EEG) Perceptual Correlator:** Syncing auditory test signals with real-time EEG metrics.
-* **Headless / Web Remote Interface:** Decouple GUI for embedded web/mobile remote monitoring.
-* **AI Component Degradation Predictor:** Analyzes harmonic drift over time to predict component aging.
-* **Augmented Reality (AR) Probe Visualizer:** Overlaying signal paths and distortion heatmaps onto a PCB view.
-* **Real-time Active Distortion Nulling:** Synthesizing inverse distortion signals to cancel inherent non-linearities.
+* **Psychoacoustic AI-MOS Predictor:** AI model predicting MOS from DAC/Amp output without listeners.
+* **Digital Twin Synthesizer:** Virtual, real-time model of analog components via lock-in analysis.
+* **Quantum Jitter Tomography:** QRNG excitation to measure absolute determinism and micro-jitter.
+* **Generative AI Non-Linearity Cloner:** AI model replicating dynamic non-linearities via specialized signals.
+* **Brainwave (EEG) Perceptual Correlator:** Syncing test signals with real-time EEG metrics.
+* **Headless / Web Remote Interface:** Decouple GUI for embedded web/mobile monitoring.
+* **AI Component Degradation Predictor:** Analyzes harmonic drift to predict aging.
+* **Augmented Reality (AR) Probe Visualizer:** Overlaying signal paths/distortion onto PCB views.
+* **Real-time Active Distortion Nulling:** Synthesizing inverse signals to cancel non-linearities.
+* **Neuromorphic Codec Evaluator:** Brain-inspired spiking neural network processing to evaluate lossy codec transparency in real-time.
+* **Holographic Intermodulation Topology:** 4D visualization of IMD products evolving dynamically through spatial multi-tone excitations.
+* **Quantum Entropy Analyzer:** Statistical analysis of random noise floors to measure inherent system stochasticity and true entropy generation.
 
 ---
 
@@ -23,27 +26,22 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
-* **Test Sequence Automator:**
-    * **Concept:** A macro engine to script and automate test sequences across multiple widgets.
-    * **Why:** Enables unattended 2D/3D parameter sweeps.
-* **Dynamics Processor Profiler:** Measures static I/O transfer curves and time-domain attack/release.
-* **Bit-Perfect Verifier:** PRBS/watermark generator to verify 100% bit-accurate loopback.
-* **Realtime/Offline Null Comparator:** Channel inversion with sub-sample delay/gain matching for difference listening.
+* **Test Sequence Automator:** Macro engine to script unattended 2D/3D sweeps.
+* **Dynamics Processor Profiler:** Measures static I/O transfer curves and attack/release.
+* **Bit-Perfect Verifier:** PRBS/watermark generator for 100% bit-accurate loopback verification.
+* **Realtime/Offline Null Comparator:** Channel inversion with sub-sample matching for difference listening.
+* **Wireless / Bluetooth Codec Analyzer:** End-to-end latency, jitter, and psychoacoustic degradation profiling for digital wireless audio links.
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **Oscilloscope: CMRR/PSRR Mode:**
-    * **Extension:** Dedicated Common-Mode and Power Supply Rejection Ratio calculations.
-* **Spectrum Analyzer: DAC Filter Classifier:**
-    * **Extension:** Automatically classify DAC reconstruction filters (Brickwall, Minimum Phase, etc.) via impulse response pre/post-ringing analysis.
-* **Frequency Counter: Thermal Drift Logger:**
-    * **Extension:** Long-term logging of clock frequency to evaluate oscillator temperature stability.
-* **Network Analyzer: Amplifier Stability Margins:** Calculate Gain/Phase Margin from Bode plots.
-* **Frequency Counter: Phase Noise Plot:** FFT-based phase deviation plot (dBc/Hz).
-* **Signal Generator: Psychoacoustic Masking Tones:** Pure tone + narrow-band noise generation.
-* **Impedance Analyzer: Cable Tester Mode:** Measure Capacitance/Inductance/Resistance per meter.
-* **Network Analyzer: Impulse Response & Coherence:** Time-domain IR and Coherence plot.
-* **Distortion/Spectrum Analyzer: J-Test & AES17:** Industry standard jitter/dynamic range automated modes.
+* **Oscilloscope:** Add CMRR/PSRR Mode and **Slew Rate Calculator** (automatic V/µs measurement for power amps).
+* **Spectrum Analyzer:** Add DAC Filter Classifier.
+* **Frequency Counter:** Add Thermal Drift Logger and Phase Noise Plot.
+* **Network Analyzer:** Add Amplifier Stability Margins, Impulse Response & Coherence, and **RIAA EQ Curve Matcher** (Phono preamp RIAA deviation overlay).
+* **Signal Generator:** Add Psychoacoustic Masking Tones.
+* **Impedance Analyzer:** Add Cable Tester Mode.
+* **Distortion Analyzer:** Add J-Test & AES17.
+* **LUFS Meter:** Add **True Peak (ISKb) Detection** with inter-sample oversampling detection.
 
 ---
 
@@ -65,6 +63,8 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 ## ❌ Cancelled / Not Needed
 
 * Step Response Analyzer, Spectrum Analyzer: THD Hot-Tracking, Multi-Channel Phase/Delay Matrix.
+* **Phase/Polarity Checker:** Duplicate. Can be verified via Oscilloscope (A/B inversion) or Transient Analyzer impulse polarity.
+* **Multitone THD Analyzer:** Duplicate. Covered by Advanced Distortion Meter (MIM).
 
 ---
 
