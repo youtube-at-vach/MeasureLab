@@ -42,9 +42,9 @@ Please download the latest version for your OS from the [Releases](https://githu
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
-### For macOS (arm64)
+### For macOS (Apple Silicon / Intel)
 
-1. Download `MeasureLab-<version>-macos-arm64.dmg` (or `.app`).
+1. Download `MeasureLab-<version>-macos-arm64.dmg` for Apple Silicon or `MeasureLab-<version>-macos-x64.dmg` for Intel Macs.
 2. **Gatekeeper Bypass**:
    - On the first launch, you may see a message saying the application "cannot be opened because the developer cannot be verified."
    - To open it, **"Right-click (or Control + click) the app and select 'Open'."**

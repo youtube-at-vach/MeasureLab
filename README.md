@@ -86,7 +86,7 @@ Major languages from around the world are supported. You can switch languages fr
 | --- | --- | --- |
 | Linux (x86_64) | ✅ Supported | Tested on Ubuntu 22.04 / 24.04 |
 | Windows 10/11 | ✅ Supported | Official binary available |
-| macOS (arm64) | ✅ Supported | macOS 11.0 or later (Apple Silicon only) |
+| macOS (arm64 / x86_64) | ✅ Supported | macOS 11.0 or later (Apple Silicon / Intel) |
 
 ---
 
@@ -104,8 +104,8 @@ Please download the latest version from the **Releases** page.
     ./MeasureLab-*-linux-x86_64.AppImage
     ```
 
-- **macOS (arm64)**: Download `MeasureLab-<version>-macos-arm64.dmg` (or `.app`).
-    - **Note: Currently only arm64 (Apple Silicon) and macOS 11.0 or later are supported.**
+- **macOS (arm64 / x86_64)**: Download `MeasureLab-<version>-macos-arm64.dmg` for Apple Silicon or `MeasureLab-<version>-macos-x64.dmg` for Intel Macs.
+    - **Note: macOS 11.0 or later for both Apple Silicon and Intel is supported.**
     - **Important: Bypassing Gatekeeper**
     - Since this app is currently unsigned, macOS Gatekeeper may only offer to "Move to Bin" or "Cancel". To bypass this:
         1. Open the `.dmg` and locate **MeasureLab.app**.

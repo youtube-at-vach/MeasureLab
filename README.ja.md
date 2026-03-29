@@ -86,7 +86,7 @@
 | --- | --- | --- |
 | Linux (x86_64) | ✅ サポート対象 | Ubuntu 22.04 / 24.04 にて動作確認済み |
 | Windows 10/11 | ✅ サポート対象 | 公式バイナリを提供 |
-| macOS (arm64) | ✅ サポート対象 | macOS 11.0以降 (Apple Silicon / arm64のみ対応) |
+| macOS (arm64 / x86_64) | ✅ サポート対象 | macOS 11.0以降 (Apple Silicon / Intel Mac対応) |
 
 ---
 
@@ -104,8 +104,8 @@
     ./MeasureLab-*-linux-x86_64.AppImage
     ```
 
-- **macOS (arm64)**: `MeasureLab-<version>-macos-arm64.dmg`（または `.app`）をダウンロードします。
-    - **注意: 現時点では arm64 (Apple Silicon) かつ macOS 11.0 以降のみをサポートしています。**
+- **macOS (arm64 / x86_64)**: Apple Silicon の場合は `MeasureLab-<version>-macos-arm64.dmg`、Intel Mac の場合は `MeasureLab-<version>-macos-x64.dmg` をダウンロードしてください。
+    - **注意: Apple Silicon および Intel Mac において macOS 11.0 以降をサポートしています。**
     - **重要：ゲートキーパーの回避**
     - 本アプリは現時点で未署名のため、通常の手順ですと「ゴミ箱に入れる」や「キャンセル」しか選択できない場合があります。これを回避するには以下の手順をお試しください：
         1. `.dmg` を開き、**MeasureLab.app** を見つけます。
