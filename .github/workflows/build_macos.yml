@@ -74,7 +74,10 @@ jobs:
           main_gui.py
           
         # Add NSMicrophoneUsageDescription to Info.plist
-        plutil -insert NSMicrophoneUsageDescription -string "音響測定のためにマイクへのアクセスが必要です。" dist/MeasureLab.app/Contents/Info.plist
+        plutil -insert NSMicrophoneUsageDescription -string "Microphone access is required for audio measurement." dist/MeasureLab.app/Contents/Info.plist
+        
+        # Re-sign the app bundle (PyInstaller's ad-hoc signature gets broken by plutil)
+        codesign --force --deep -s - dist/MeasureLab.app
 
     - name: Display Minimum macOS Version
       run: |
