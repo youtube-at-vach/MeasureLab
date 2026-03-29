@@ -5,6 +5,7 @@ import os
 import threading
 import time
 from collections import deque
+from dataclasses import dataclass
 
 import numpy as np
 import pyqtgraph as pg
@@ -628,6 +629,18 @@ class ImpedanceSweepWorker(QThread):
         self.is_cancelled = True
 
 
+@dataclass
+class ImpedanceMeasurementData:
+    z: complex
+    v: complex
+    i: complex
+    freq: float
+    buffer_size: int | None = None
+    sample_rate: float | None = None
+    z_mag_std: float | None = None
+    z_phase_std_deg: float | None = None
+
+
 class ImpedanceResultsWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -838,19 +851,19 @@ class ImpedanceResultsWidget(QWidget):
         self.detail_widget.setVisible(checked)
         self.detail_btn.setText(tr("Hide Details") if checked else tr("Show Details"))
 
-    def update_data(
-        self,
-        z: complex,
-        v: complex,
-        i: complex,
-        freq: float,
-        buffer_size: int | None = None,
-        sample_rate: float | None = None,
-        z_mag_std: float | None = None,
-        z_phase_std_deg: float | None = None,
-    ):
-        if freq <= 0:
+    def update_data(self, data: ImpedanceMeasurementData):
+        if data.freq <= 0:
             return
+
+        z = data.z
+        v = data.v
+        i = data.i
+        freq = data.freq
+        buffer_size = data.buffer_size
+        sample_rate = data.sample_rate
+        z_mag_std = data.z_mag_std
+        z_phase_std_deg = data.z_phase_std_deg
+
         w = 2 * np.pi * freq
         # Buffer display (shown in the Details panel)
         try:
@@ -1361,12 +1374,14 @@ class ImpedanceAnalyzerWidget(QWidget):
         if not self.module.is_running:
             # Manually update with last known data if available
             self.results_widget.update_data(
-                self.module.meas_z_complex,
-                self.module.meas_v_complex,
-                self.module.meas_i_complex,
-                self.module.gen_frequency,
-                buffer_size=self.module.buffer_size,
-                sample_rate=self.module.audio_engine.sample_rate,
+                ImpedanceMeasurementData(
+                    z=self.module.meas_z_complex,
+                    v=self.module.meas_v_complex,
+                    i=self.module.meas_i_complex,
+                    freq=self.module.gen_frequency,
+                    buffer_size=self.module.buffer_size,
+                    sample_rate=self.module.audio_engine.sample_rate,
+                )
             )
 
     def update_ui(self):
@@ -1418,14 +1433,16 @@ class ImpedanceAnalyzerWidget(QWidget):
             z_phase_std_deg = None
 
         self.results_widget.update_data(
-            self.module.meas_z_complex,
-            self.module.meas_v_complex,
-            self.module.meas_i_complex,
-            self.module.gen_frequency,
-            buffer_size=self.module.buffer_size,
-            sample_rate=self.module.audio_engine.sample_rate,
-            z_mag_std=z_mag_std,
-            z_phase_std_deg=z_phase_std_deg,
+            ImpedanceMeasurementData(
+                z=self.module.meas_z_complex,
+                v=self.module.meas_v_complex,
+                i=self.module.meas_i_complex,
+                freq=self.module.gen_frequency,
+                buffer_size=self.module.buffer_size,
+                sample_rate=self.module.audio_engine.sample_rate,
+                z_mag_std=z_mag_std,
+                z_phase_std_deg=z_phase_std_deg,
+            )
         )
 
         # Manual time-series capture and plotting
@@ -1921,12 +1938,14 @@ class ImpedanceAnalyzerWidget(QWidget):
             # Live numeric readout during sweep (no timer-driven processing).
             try:
                 self.results_widget.update_data(
-                    z,
-                    self.module.meas_v_complex,
-                    self.module.meas_i_complex,
-                    f,
-                    buffer_size=self.module.buffer_size,
-                    sample_rate=self.module.audio_engine.sample_rate,
+                    ImpedanceMeasurementData(
+                        z=z,
+                        v=self.module.meas_v_complex,
+                        i=self.module.meas_i_complex,
+                        freq=f,
+                        buffer_size=self.module.buffer_size,
+                        sample_rate=self.module.audio_engine.sample_rate,
+                    )
                 )
             except (AttributeError, RuntimeError):
                 logger.error("Failed to update live numeric readout during sweep", exc_info=True)
