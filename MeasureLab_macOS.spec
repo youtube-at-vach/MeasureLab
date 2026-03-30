@@ -59,7 +59,7 @@ app = BUNDLE(
     coll,
     name='MeasureLab.app',
     icon='MeasureLab.icns',
-    bundle_identifier=None,
+    bundle_identifier='com.github_vach.measurelab',
     info_plist={
         'NSMicrophoneUsageDescription': 'Microphone access is required for audio measurement.'
     },
