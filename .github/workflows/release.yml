@@ -257,6 +257,10 @@ jobs:
       run: |
         pyinstaller --noconfirm MeasureLab_macOS.spec
 
+    - name: Sign App with Entitlements
+      run: |
+        codesign --deep --force --options=runtime --entitlements entitlements_mac.plist --sign - dist/MeasureLab.app
+
     - name: Verify macOS Application (Self-Test)
       run: |
         echo "Testing dist/MeasureLab.app/Contents/MacOS/MeasureLab with --self-test..."
@@ -365,6 +369,10 @@ jobs:
     - name: Build with PyInstaller
       run: |
         pyinstaller --noconfirm MeasureLab_macOS.spec
+
+    - name: Sign App with Entitlements
+      run: |
+        codesign --deep --force --options=runtime --entitlements entitlements_mac.plist --sign - dist/MeasureLab.app
 
     - name: Verify macOS Application (Self-Test)
       run: |
