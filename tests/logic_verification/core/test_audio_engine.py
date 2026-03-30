@@ -98,6 +98,21 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.engine._restart_stream = MagicMock()
         self.engine._start_master_stream = MagicMock()
 
+    def test_set_audio_engine_64bit(self):
+        self.assertFalse(self.engine.audio_engine_64bit)
+
+        # Enable
+        self.engine.set_audio_engine_64bit(True)
+        self.assertTrue(self.engine.audio_engine_64bit)
+        self.engine._restart_stream.assert_called_once()
+
+        self.engine._restart_stream.reset_mock()
+
+        # Disable
+        self.engine.set_audio_engine_64bit(False)
+        self.assertFalse(self.engine.audio_engine_64bit)
+        self.engine._restart_stream.assert_called_once()
+
     def test_set_offline_mode(self):
         self.assertFalse(self.engine.offline_mode)
 
