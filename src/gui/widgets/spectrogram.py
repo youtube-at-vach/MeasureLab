@@ -306,10 +306,10 @@ class SpectrogramWidget(QWidget):
         self.window_combo.currentTextChanged.connect(self.on_window_changed)
         settings_layout.addWidget(self.window_combo, 0, 5)
 
-        # Scale (Log/Linear)
+        # Scale (Log/Linear/Mel)
         settings_layout.addWidget(QLabel(tr("Scale:")), 0, 6)
         self.scale_combo = QComboBox()
-        self.scale_combo.addItems(["Log", "Linear"])
+        self.scale_combo.addItems(["Log", "Linear", "Mel"])
         self.scale_combo.currentTextChanged.connect(self.on_scale_changed)
         settings_layout.addWidget(self.scale_combo, 0, 7)
 
@@ -480,7 +480,9 @@ class SpectrogramWidget(QWidget):
         min_f = float(self.module.min_freq)
         max_f = float(self.module.max_freq)
 
-        if self.scale_combo.currentText() == "Log":
+        scale_type = self.scale_combo.currentText()
+
+        if scale_type == "Log":
             # Avoid log(0) or negative
             if min_f <= 0:
                 min_f = 1.0  # 1Hz minimum for log scale
@@ -488,12 +490,25 @@ class SpectrogramWidget(QWidget):
                 max_f = min_f + 10.0  # Valid range
 
             self.plot.setYRange(np.log10(min_f), np.log10(max_f))
+        elif scale_type == "Mel":
+            if max_f <= min_f:
+                max_f = min_f + 10.0
+            mel_min = 2595.0 * np.log10(1.0 + min_f / 700.0)
+            mel_max = 2595.0 * np.log10(1.0 + max_f / 700.0)
+            self.plot.setYRange(mel_min, mel_max)
         else:
             self.plot.setYRange(min_f, max_f)
 
     def on_scale_changed(self, val):
         is_log = val == "Log"
+        is_mel = val == "Mel"
         self.plot.setLogMode(False, is_log)
+
+        if is_mel:
+            self.plot.setLabel("left", tr("Frequency"), units="Mel")
+        else:
+            self.plot.setLabel("left", tr("Frequency"), units="Hz")
+
         self.on_freq_range_changed()  # Re-apply limits safely
 
     def update_spectrogram(self):
@@ -563,33 +578,44 @@ class SpectrogramWidget(QWidget):
         buffer = self.module.spectrogram_buffer
 
         # Check Scale Mode
-        is_log = self.scale_combo.currentText() == "Log"
+        scale_mode = self.scale_combo.currentText()
 
         sample_rate = self.module.audio_engine.sample_rate
         nyquist = sample_rate / 2
 
         # Prepare Display Data
-        if is_log:
-            # Resample to Log Scale
+        if scale_mode in ("Log", "Mel"):
+            # Resample to Log or Mel Scale
             # Cache the map
-            # We map from Linear Bins (0..N/2) to Log Bins (0..N/2)
-            # Log Bins cover log10(min_freq) to log10(max_freq)
-            # If min_freq is 0, clamp to 1 Hz
+            # We map from Linear Bins (0..N/2) to Log/Mel Bins (0..N/2)
 
-            min_f = max(1, self.module.min_freq)
-            max_f = max(min_f + 1, self.module.max_freq)  # Ensure max > min
+            if scale_mode == "Log":
+                min_f = max(1, self.module.min_freq)
+                max_f = max(min_f + 1, self.module.max_freq)  # Ensure max > min
+            else:
+                min_f = max(0, self.module.min_freq)
+                max_f = max(min_f + 1, self.module.max_freq)
 
-            # Key for cache: (fft_size, min_f, max_f)
-            cache_key = (self.module.fft_size, min_f, max_f)
+            # Key for cache: (fft_size, min_f, max_f, scale_mode)
+            cache_key = (self.module.fft_size, min_f, max_f, scale_mode)
             map_changed = False
             if not hasattr(self, "_log_map_cache") or self._log_map_cache[0] != cache_key:
                 # Generate Map
                 n_bins = buffer.shape[1]
-                # Log spaced frequencies
-                log_freqs = np.logspace(np.log10(min_f), np.log10(max_f), n_bins)
+
+                if scale_mode == "Log":
+                    # Log spaced frequencies
+                    target_freqs = np.logspace(np.log10(min_f), np.log10(max_f), n_bins)
+                else:
+                    # Mel spaced frequencies
+                    mel_min = 2595.0 * np.log10(1.0 + min_f / 700.0)
+                    mel_max = 2595.0 * np.log10(1.0 + max_f / 700.0)
+                    mel_freqs = np.linspace(mel_min, mel_max, n_bins)
+                    target_freqs = 700.0 * (10.0 ** (mel_freqs / 2595.0) - 1.0)
+
                 # Convert to linear bin indices
                 freq_res = sample_rate / self.module.fft_size
-                linear_indices = log_freqs / freq_res
+                linear_indices = target_freqs / freq_res
                 # Clamp
                 linear_indices = np.clip(linear_indices, 0, n_bins - 1).astype(int)
                 self._log_map_cache = (cache_key, linear_indices)
@@ -615,21 +641,21 @@ class SpectrogramWidget(QWidget):
 
             display_buffer = self.log_spectrogram_buffer
 
-            # Transform for Log Mode
-            # Image Y: 0..Height -> log10(min)..log10(max)
-            # height of image is n_bins
-            # we want Y=0 to map to log10(min_f)
-            # we want Y=n_bins to map to log10(max_f)
+            # Transform for Target Mode
+            if scale_mode == "Log":
+                y_min = np.log10(min_f)
+                y_max = np.log10(max_f)
+            else:
+                y_min = 2595.0 * np.log10(1.0 + min_f / 700.0)
+                y_max = 2595.0 * np.log10(1.0 + max_f / 700.0)
 
-            log_min = np.log10(min_f)
-            log_max = np.log10(max_f)
-            y_scale = (log_max - log_min) / display_buffer.shape[1]
+            y_scale = (y_max - y_min) / display_buffer.shape[1]
 
-            transform = QTransform().translate(0, log_min).scale(1, y_scale)
+            transform = QTransform().translate(0, y_min).scale(1, y_scale)
 
-            # Limits in Log Domain
-            self.plot.setLimits(yMin=log_min, yMax=log_max)
-            self.plot.setYRange(log_min, log_max)
+            # Limits in Target Domain
+            self.plot.setLimits(yMin=y_min, yMax=y_max)
+            self.plot.setYRange(y_min, y_max)
 
         else:
             # Linear Scale

@@ -53,7 +53,8 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 - **Scale**
     - Switches the display scale of the vertical axis (frequency).
     - **Linear**: Equal spacing. Suitable for observing high-frequency details.
-    - **Log**: Logarithmic spacing. Expands the lower frequency range, matching human hearing characteristics. Suitable for musical pitch or low-frequency noise analysis.
+    - **Log**: Logarithmic spacing. Expands the lower frequency range. Suitable for musical pitch or low-frequency noise analysis.
+    - **Mel**: Mel scale. Spaced according to human pitch perception, making it ideal for voice analysis.
 
 - **Colormap**
     - Changes the color scheme of the graph.
