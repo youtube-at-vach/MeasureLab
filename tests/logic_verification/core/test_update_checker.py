@@ -23,6 +23,13 @@ class TestVersionComparison(unittest.TestCase):
         self.assertFalse(is_newer_version("not.a.version", "0.4.3"))
         self.assertFalse(is_newer_version("v1.a.b", "0.4.3"))
 
+        # Additional edge cases that cause ValueError during integer conversion
+        self.assertFalse(is_newer_version("", "0.4.3"))
+        self.assertFalse(is_newer_version("0.4.3", ""))
+        self.assertFalse(is_newer_version("...", "0.4.3"))
+        self.assertFalse(is_newer_version("0.4.3", "..."))
+        self.assertFalse(is_newer_version("1.2.3a", "1.2.3"))
+
 
 class TestUpdateChecker(unittest.TestCase):
     def setUp(self):
