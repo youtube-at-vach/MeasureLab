@@ -134,6 +134,27 @@ class TestLocalizationManager(unittest.TestCase):
 
         self.assertIs(get_manager(), _loc_manager)
 
+    @patch("src.core.localization._loc_manager.get", side_effect=Exception("Mocked error"))
+    def test_tr_exception_propagation(self, mock_get):
+        """Test that exceptions in the manager are propagated by the tr() shortcut."""
+        from src.core.localization import tr
+        with self.assertRaises(Exception) as context:
+            tr("key")
+        self.assertEqual(str(context.exception), "Mocked error")
+
+    @patch("src.core.localization._loc_manager.get", side_effect=Exception("Manager failed"))
+    def test_get_manager_exception_propagation(self, mock_get):
+        """Test that get_manager() correctly returns the manager even if its methods would fail,
+        and that subsequent calls on it propagate the exception."""
+        from src.core.localization import get_manager
+
+        manager = get_manager()
+        self.assertIsNotNone(manager)
+
+        with self.assertRaises(Exception) as context:
+            manager.get("key")
+        self.assertEqual(str(context.exception), "Manager failed")
+
 
 if __name__ == "__main__":
     unittest.main()
