@@ -1,5 +1,6 @@
 import functools
 import math
+from typing import NamedTuple
 import threading
 import numpy as np
 import scipy.signal
@@ -157,6 +158,14 @@ def _get_shared_buffers(N: int, dtype):
     cache[key] = (M, fitted_buffer, residual_buffer)
 
     return M, fitted_buffer, residual_buffer
+
+
+class FreqAxisInfo(NamedTuple):
+    is_linear_freqs: bool
+    is_log_freqs: bool
+    freq_step: float
+    start_freq: float
+    stop_freq: float
 
 
 class AudioCalc:
@@ -1113,7 +1122,8 @@ class AudioCalc:
         return {"pim_db": pim_db, "products": products}
 
     @staticmethod
-    def _get_freq_index(freqs, f, is_linear_freqs, freq_step, start_freq=0.0, side="left"):
+    def _get_freq_index(freqs, f, axis_info: FreqAxisInfo, side="left"):
+        is_linear_freqs, _, freq_step, start_freq, _ = axis_info
         if is_linear_freqs:
             val = (f - start_freq) / freq_step
             if side == "left":
@@ -1125,13 +1135,13 @@ class AudioCalc:
             return np.searchsorted(freqs, f, side=side)
 
     @staticmethod
-    def _calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
+    def _calculate_hum_noise(mag_sq, freqs, sampling_rate, bin_width, axis_info: FreqAxisInfo):
         def get_power_in_band(f_center, width=5.0):
             f_start = f_center - width
             f_end = f_center + width
 
-            idx_start = AudioCalc._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
-            idx_end = AudioCalc._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="right")
+            idx_start = AudioCalc._get_freq_index(freqs, f_start, axis_info, side="left")
+            idx_end = AudioCalc._get_freq_index(freqs, f_end, axis_info, side="right")
 
             if idx_start >= idx_end:
                 return 0.0
@@ -1162,9 +1172,9 @@ class AudioCalc:
         return np.sqrt(hum_power), base_freq, hum_components
 
     @staticmethod
-    def _calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq=0.0):
-        i_white_start = AudioCalc._get_freq_index(freqs, 1000.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_white_end = AudioCalc._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
+    def _calculate_white_noise(mag, freqs, axis_info: FreqAxisInfo):
+        i_white_start = AudioCalc._get_freq_index(freqs, 1000.0, axis_info, side="left")
+        i_white_end = AudioCalc._get_freq_index(freqs, 20000.0, axis_info, side="right")
 
         if i_white_start < i_white_end:
             # Median is robust to peaks, but under-estimates RMS of Gaussian noise (Rayleigh magnitude)
@@ -1174,14 +1184,14 @@ class AudioCalc:
         return white_density
 
     @staticmethod
-    def _calculate_1f_noise(mag, freqs, hum_components, white_density, is_linear_freqs, freq_step, start_freq=0.0):
+    def _calculate_1f_noise(mag, freqs, hum_components, white_density, axis_info: FreqAxisInfo):
         results = {}
 
         # Determine Fit Upper Bound
         # Find first frequency where mag < white_density * 1.5 (approx 3.5dB margin)
         # Search in 1Hz - 1kHz range
-        i_search_start = AudioCalc._get_freq_index(freqs, 1.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_search_end = AudioCalc._get_freq_index(freqs, 1000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_search_start = AudioCalc._get_freq_index(freqs, 1.0, axis_info, side="left")
+        i_search_end = AudioCalc._get_freq_index(freqs, 1000.0, axis_info, side="right")
 
         search_freqs = freqs[i_search_start:i_search_end]
         search_mags = mag[i_search_start:i_search_end]
@@ -1212,8 +1222,8 @@ class AudioCalc:
         for h_freq, _h_amp in hum_components:
             f_start = h_freq - 5.0
             f_end = h_freq + 5.0
-            idx_start = AudioCalc._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
-            idx_end = AudioCalc._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="right")
+            idx_start = AudioCalc._get_freq_index(freqs, f_start, axis_info, side="left")
+            idx_end = AudioCalc._get_freq_index(freqs, f_end, axis_info, side="right")
             mask_1f[idx_start:idx_end] = False
 
         if np.sum(mask_1f) > 5:
@@ -1279,10 +1289,10 @@ class AudioCalc:
         return results
 
     @staticmethod
-    def _calculate_integrated_noise(mag_sq, freqs, bin_width, is_linear_freqs, freq_step, start_freq=0.0):
+    def _calculate_integrated_noise(mag_sq, freqs, bin_width, axis_info: FreqAxisInfo):
         def integrate_band(f_start, f_end):
-            idx_start = AudioCalc._get_freq_index(freqs, f_start, is_linear_freqs, freq_step, start_freq, side="left")
-            idx_end = AudioCalc._get_freq_index(freqs, f_end, is_linear_freqs, freq_step, start_freq, side="left")
+            idx_start = AudioCalc._get_freq_index(freqs, f_start, axis_info, side="left")
+            idx_end = AudioCalc._get_freq_index(freqs, f_end, axis_info, side="left")
 
             if idx_start >= idx_end:
                 return 0.0
@@ -1298,11 +1308,11 @@ class AudioCalc:
         return rms_20k, rms_100k
 
     @staticmethod
-    def _calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq=0.0):
+    def _calculate_peak_noise(mag, freqs, axis_info: FreqAxisInfo):
         # Peak Detection
         # Find peak in 20Hz-20kHz
-        i_peak_start = AudioCalc._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_peak_end = AudioCalc._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_peak_start = AudioCalc._get_freq_index(freqs, 20.0, axis_info, side="left")
+        i_peak_end = AudioCalc._get_freq_index(freqs, 20000.0, axis_info, side="right")
 
         # Exclude Hum regions from peak search (optional, but requested to find "Other" noise)
         # If we want the absolute peak, we shouldn't exclude hum.
@@ -1321,8 +1331,9 @@ class AudioCalc:
 
     @staticmethod
     def _calculate_a_weighted_noise(
-        mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs=False, start_freq=0.0, stop_freq=0.0
+        mag_sq, freqs, bin_width, axis_info: FreqAxisInfo
     ):
+        is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq = axis_info
         # A-weighting Integration
         # Ra(f) = (12194^2 * f^4) / ((f^2 + 20.6^2) * sqrt((f^2 + 107.7^2)(f^2 + 737.9^2)) * (f^2 + 12194^2))
         # Gain = 20*log10(Ra(f)) + 2.00
@@ -1338,8 +1349,8 @@ class AudioCalc:
             weighting_sq = _get_a_weighting_curve_from_bytes(freqs.tobytes(), str(freqs.dtype), freqs.shape)
 
         # Integrate A-weighted spectrum (20Hz - 20kHz)
-        i_a_start = AudioCalc._get_freq_index(freqs, 20.0, is_linear_freqs, freq_step, start_freq, side="left")
-        i_a_end = AudioCalc._get_freq_index(freqs, 20000.0, is_linear_freqs, freq_step, start_freq, side="right")
+        i_a_start = AudioCalc._get_freq_index(freqs, 20.0, axis_info, side="left")
+        i_a_end = AudioCalc._get_freq_index(freqs, 20000.0, axis_info, side="right")
 
         # Integration
         # Power = sum(PSD * Weight^2 * bin_width)
@@ -1358,7 +1369,7 @@ class AudioCalc:
     def _analyze_frequency_axis(freqs):
         """
         Analyzes the frequency axis to determine if it's linear or logarithmic.
-        Returns (is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq)
+        Returns FreqAxisInfo(is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq)
         """
         is_linear_freqs = False
         is_log_freqs = False
@@ -1401,7 +1412,7 @@ class AudioCalc:
                             is_log_freqs = True
                             stop_freq = freqs[-1]
 
-        return is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq
+        return FreqAxisInfo(is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq)
 
     @staticmethod
     def calculate_noise_profile(mag, freqs, sampling_rate):
@@ -1413,12 +1424,12 @@ class AudioCalc:
         results = {}
 
         # Optimization: Check if freqs is linear or logarithmic
-        is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq = AudioCalc._analyze_frequency_axis(freqs)
+        axis_info = AudioCalc._analyze_frequency_axis(freqs)
 
         # Pre-calculate squared magnitude and bin width
         mag_sq = mag**2
-        if is_linear_freqs:
-            bin_width = freq_step
+        if axis_info.is_linear_freqs:
+            bin_width = axis_info.freq_step
         else:
             # Calculate variable bin widths for log/arbitrary scale
             if len(freqs) > 1:
@@ -1431,7 +1442,7 @@ class AudioCalc:
 
         # 1. Hum Noise Detection (50Hz vs 60Hz)
         hum_rms, hum_freq, hum_components = AudioCalc._calculate_hum_noise(
-            mag_sq, freqs, sampling_rate, bin_width, is_linear_freqs, freq_step, start_freq
+            mag_sq, freqs, sampling_rate, bin_width, axis_info
         )
         results["hum_rms"] = hum_rms
         results["hum_freq"] = hum_freq
@@ -1439,29 +1450,29 @@ class AudioCalc:
 
         # 2. 1/f Noise Analysis & White Noise
         # Estimate White Noise (Median of 1k-20k)
-        white_density = AudioCalc._calculate_white_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
+        white_density = AudioCalc._calculate_white_noise(mag, freqs, axis_info)
         results["white_density"] = white_density  # V/rtHz
 
         flicker_results = AudioCalc._calculate_1f_noise(
-            mag, freqs, hum_components, white_density, is_linear_freqs, freq_step, start_freq
+            mag, freqs, hum_components, white_density, axis_info
         )
         results.update(flicker_results)
 
         # 4. Integrated Noise in Bands
         rms_20k, rms_100k = AudioCalc._calculate_integrated_noise(
-            mag_sq, freqs, bin_width, is_linear_freqs, freq_step, start_freq
+            mag_sq, freqs, bin_width, axis_info
         )
         results["noise_rms_20k"] = rms_20k
         results["noise_rms_100k"] = rms_100k
 
         # Peak Detection
-        peak_freq, peak_amp = AudioCalc._calculate_peak_noise(mag, freqs, is_linear_freqs, freq_step, start_freq)
+        peak_freq, peak_amp = AudioCalc._calculate_peak_noise(mag, freqs, axis_info)
         results["peak_freq"] = peak_freq
         results["peak_amp"] = peak_amp
 
         # A-weighting Integration
         rms_a = AudioCalc._calculate_a_weighted_noise(
-            mag_sq, freqs, bin_width, is_linear_freqs, freq_step, is_log_freqs, start_freq, stop_freq
+            mag_sq, freqs, bin_width, axis_info
         )
         results["noise_rms_a_weighted"] = rms_a
 
