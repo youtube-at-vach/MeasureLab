@@ -572,17 +572,12 @@ class ImpedanceSweepWorker(QThread):
         self.settle_time = config.settle_time
         self.cal_mode = config.cal_mode
         self.is_cancelled = False
+        self._cancel_event = threading.Event()
 
     def _sleep_interruptible(self, duration):
-        start = time.monotonic()
-        while True:
-            if self.is_cancelled:
-                return
-            elapsed = time.monotonic() - start
-            remaining = duration - elapsed
-            if remaining <= 0:
-                break
-            time.sleep(min(0.05, remaining))
+        if self.is_cancelled:
+            return
+        self._cancel_event.wait(duration)
 
     def run(self):
         if self.log_sweep:
@@ -637,6 +632,7 @@ class ImpedanceSweepWorker(QThread):
 
     def cancel(self):
         self.is_cancelled = True
+        self._cancel_event.set()
 
 
 @dataclass
