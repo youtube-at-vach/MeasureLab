@@ -398,7 +398,7 @@ class GoniometerWidget(QWidget):
     def update_palette(self):
         # Define colormaps
         # 256 colors
-        np.linspace(0, 1, 256)
+        val = np.linspace(0, 1, 256)
         colors = np.zeros((256, 4), dtype=np.ubyte)
 
         name = self.module.color_palette
@@ -408,56 +408,89 @@ class GoniometerWidget(QWidget):
             # 0.0 -> (0,0,0)
             # 0.8 -> (0,255,0)
             # 1.0 -> (255,255,255)
-            for i in range(256):
-                val = i / 255.0
-                if val < 0.8:
-                    g = int((val / 0.8) * 255)
-                    colors[i] = [0, g, 0, 255]
-                else:
-                    rem = (val - 0.8) / 0.2
-                    colors[i] = [int(rem * 255), 255, int(rem * 255), 255]
+            mask1 = val < 0.8
+            mask2 = ~mask1
+
+            colors[mask1, 1] = (val[mask1] / 0.8 * 255).astype(int).astype(np.ubyte)
+            colors[mask1, 3] = 255
+
+            rem = (val[mask2] - 0.8) / 0.2
+            v = (rem * 255).astype(int).astype(np.ubyte)
+            colors[mask2, 0] = v
+            colors[mask2, 1] = 255
+            colors[mask2, 2] = v
+            colors[mask2, 3] = 255
 
         elif name == "Fire":
             # Black -> Red -> Yellow -> White
-            for i in range(256):
-                val = i / 255.0
-                if val < 0.33:
-                    r = int((val / 0.33) * 255)
-                    colors[i] = [r, 0, 0, 255]
-                elif val < 0.66:
-                    g = int(((val - 0.33) / 0.33) * 255)
-                    colors[i] = [255, g, 0, 255]
-                else:
-                    b = int(((val - 0.66) / 0.34) * 255)
-                    colors[i] = [255, 255, b, 255]
+            m1 = val < 0.33
+            m2 = (val >= 0.33) & (val < 0.66)
+            m3 = val >= 0.66
+
+            colors[m1, 0] = (val[m1] / 0.33 * 255).astype(int).astype(np.ubyte)
+            colors[m1, 3] = 255
+
+            colors[m2, 0] = 255
+            colors[m2, 1] = ((val[m2] - 0.33) / 0.33 * 255).astype(int).astype(np.ubyte)
+            colors[m2, 3] = 255
+
+            colors[m3, 0] = 255
+            colors[m3, 1] = 255
+            colors[m3, 2] = ((val[m3] - 0.66) / 0.34 * 255).astype(int).astype(np.ubyte)
+            colors[m3, 3] = 255
 
         elif name == "Ice":
             # Black -> Blue -> Cyan -> White
-            for i in range(256):
-                val = i / 255.0
-                if val < 0.5:
-                    b = int((val / 0.5) * 255)
-                    colors[i] = [0, 0, b, 255]
-                else:
-                    g = int(((val - 0.5) / 0.5) * 255)
-                    colors[i] = [0, g, 255, 255]
+            m1 = val < 0.5
+            m2 = ~m1
+
+            colors[m1, 2] = (val[m1] / 0.5 * 255).astype(int).astype(np.ubyte)
+            colors[m1, 3] = 255
+
+            colors[m2, 1] = ((val[m2] - 0.5) / 0.5 * 255).astype(int).astype(np.ubyte)
+            colors[m2, 2] = 255
+            colors[m2, 3] = 255
 
         elif name == "Rainbow":
             # HSL rainbow
-            import colorsys
+            h = (1.0 - val) * 0.66  # Blue(0.66) to Red(0)
 
-            for i in range(256):
-                val = i / 255.0
-                # Hue goes 0..1, Sat 1, Val 1
-                # But we want intensity to map to brightness too?
-                # Usually rainbow maps value to hue.
-                # Let's map low intensity to blue, high to red?
-                # Or just standard heatmap: Blue -> Cyan -> Green -> Yellow -> Red
-                h = (1.0 - val) * 0.66  # Blue(0.66) to Red(0)
-                r, g, b = colorsys.hsv_to_rgb(h, 1.0, 1.0)
-                # Apply intensity fade for low values
-                alpha = min(1.0, val * 2)
-                colors[i] = [int(r * 255 * alpha), int(g * 255 * alpha), int(b * 255 * alpha), 255]
+            i = (h * 6.0).astype(int)
+            f = (h * 6.0) - i
+            p = np.zeros_like(h)
+            q = 1.0 - f
+            t = f
+
+            i %= 6
+
+            r = np.zeros_like(h)
+            g = np.zeros_like(h)
+            b = np.zeros_like(h)
+
+            m = i == 0
+            r[m], g[m], b[m] = 1.0, t[m], p[m]
+
+            m = i == 1
+            r[m], g[m], b[m] = q[m], 1.0, p[m]
+
+            m = i == 2
+            r[m], g[m], b[m] = p[m], 1.0, t[m]
+
+            m = i == 3
+            r[m], g[m], b[m] = p[m], q[m], 1.0
+
+            m = i == 4
+            r[m], g[m], b[m] = t[m], p[m], 1.0
+
+            m = i == 5
+            r[m], g[m], b[m] = 1.0, p[m], q[m]
+
+            alpha = np.clip(val * 2.0, 0.0, 1.0)
+
+            colors[:, 0] = (r * 255 * alpha).astype(int).astype(np.ubyte)
+            colors[:, 1] = (g * 255 * alpha).astype(int).astype(np.ubyte)
+            colors[:, 2] = (b * 255 * alpha).astype(int).astype(np.ubyte)
+            colors[:, 3] = 255
 
         # Apply to ImageItem
         # pyqtgraph colormap
