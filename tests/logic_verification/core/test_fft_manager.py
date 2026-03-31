@@ -181,6 +181,35 @@ class TestFFTManagerWindows(unittest.TestCase):
 
         self.mock_dpss.assert_called_with(N, NW, 4)
 
+    def test_get_available_windows(self):
+        """Verify get_available_windows returns correct list."""
+        from src.core.fft_manager import FFTManager
+        manager = FFTManager()
+        windows = manager.get_available_windows()
+
+        self.assertIsInstance(windows, list)
+        self.assertGreater(len(windows), 0)
+
+        expected_windows = [
+            "boxcar",
+            "triang",
+            "blackman",
+            "hamming",
+            "hann",
+            "bartlett",
+            "flattop",
+            "parzen",
+            "bohman",
+            "blackmanharris",
+            "nuttall",
+            "barthann",
+            "cosine",
+            "exponential",
+            "tukey",
+            "taylor",
+        ]
+        self.assertEqual(windows, expected_windows)
+
 
 class TestFFTOptimization(unittest.TestCase):
     def test_rfft_out_param(self):
