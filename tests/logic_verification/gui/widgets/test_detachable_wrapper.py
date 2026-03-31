@@ -1,4 +1,3 @@
-import pytest
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 class TestDetachableWidgetWrapper:
