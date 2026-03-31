@@ -305,11 +305,14 @@ class AnalysisWorker(QThread):
         # Use floor to bin
         bark_indices = np.floor(barks_f).astype(int)
 
+        # Vectorized accumulation using contiguous slicing (barks_f is monotonically increasing)
+        bounds = np.searchsorted(bark_indices, np.arange(n_bands + 1))
+
         for b in range(n_bands):
-            # Sum power for all freq bins in this bark band
-            mask = bark_indices == b
-            if np.any(mask):
-                band_power[b, :] = np.sum(mag_sq[mask, :], axis=0)
+            start, end = bounds[b], bounds[b+1]
+            if start < end:
+                # Sum power for all freq bins in this bark band
+                band_power[b, :] = np.sum(mag_sq[start:end, :], axis=0)
 
         # Specific Loudness N' approx: E^0.23
         # Ideally should spread excitation, but this is simplified "core" loudness
@@ -461,14 +464,16 @@ class AnalysisWorker(QThread):
         weighted_tonality_sum = np.zeros(Zxx.shape[1])
         total_weight = np.zeros(Zxx.shape[1])
 
+        # Vectorized accumulation using contiguous slicing (barks_f is monotonically increasing)
+        bounds = np.searchsorted(bark_indices, np.arange(n_bands + 1))
+
         for b in range(n_bands):
-            # Find bins in this band
-            mask = bark_indices == b
-            if not np.any(mask):
+            start, end = bounds[b], bounds[b+1]
+            if start >= end:
                 continue
 
             # Extract power for this band: shape (n_bins_in_band, time_steps)
-            band_p = mag_sq[mask, :]
+            band_p = mag_sq[start:end, :]
 
             # Geometric Mean of this band
             # exp(mean(log(x)))
