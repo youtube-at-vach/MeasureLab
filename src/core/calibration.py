@@ -332,19 +332,19 @@ class CalibrationManager:
             return self.frequency_map[-1][1], self.frequency_map[-1][2]
 
         # Use cached numpy arrays for interpolation
-        mag_corr = np.interp(freq, self._map_freqs, self._map_mags)
-        phase_corr = np.interp(freq, self._map_freqs, self._map_phases)
+        mag_corr = np.interp(freq, self._freq_cache, self._mag_cache)
+        phase_corr = np.interp(freq, self._freq_cache, self._phase_cache)
 
         return mag_corr, phase_corr
 
     def _update_map_cache(self):
         if not self.frequency_map:
-            self._map_freqs = np.array([])
-            self._map_mags = np.array([])
-            self._map_phases = np.array([])
+            self._freq_cache = None
+            self._mag_cache = None
+            self._phase_cache = None
             return
 
         data = np.array(self.frequency_map)
-        self._map_freqs = data[:, 0]
-        self._map_mags = data[:, 1]
-        self._map_phases = data[:, 2]
+        self._freq_cache = data[:, 0]
+        self._mag_cache = data[:, 1]
+        self._phase_cache = data[:, 2]
