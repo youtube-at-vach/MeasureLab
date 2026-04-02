@@ -35,7 +35,7 @@ class ProcessorBenchmark(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Processor Benchmark"
+        return　"Processor Benchmark"
 
     @property
     def description(self) -> str:
