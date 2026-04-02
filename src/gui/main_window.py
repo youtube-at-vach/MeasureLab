@@ -55,6 +55,7 @@ from src.core.module_constants import (
     MODULE_ULTRASOUND_MODULATOR,
     EXPERIMENTAL_MODULE_KEYS,
     MODULE_STEREO_ALIGNMENT_MONITOR,
+    MODULE_PROCESSOR_BENCHMARK,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -93,6 +94,7 @@ MODULE_REGISTRY = {
     MODULE_LINEARITY_ANALYZER: ("src.gui.widgets.linearity_analyzer", "LinearityAnalyzer"),
     MODULE_1PPS_MONITOR: ("src.gui.widgets.one_pps_monitor", "OnePPSMonitor"),
     MODULE_STEREO_ALIGNMENT_MONITOR: ("src.gui.widgets.stereo_alignment_monitor", "StereoAlignmentMonitor"),
+    MODULE_PROCESSOR_BENCHMARK: ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"),
 }
 
 
