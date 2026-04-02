@@ -104,3 +104,19 @@ class TestAudioCalc:
         # Give a guess slightly off
         best_freq = AudioCalc.optimize_frequency(signal, 48000, 999.5)
         np.testing.assert_allclose(best_freq, 1000.0, rtol=1e-4)
+
+    @patch("src.core.analysis.np.linalg.solve")
+    def test_sine_fit_residual_linalg_error_fallback(self, mock_solve):
+        mock_solve.side_effect = np.linalg.LinAlgError("Singular matrix")
+        f = 1000.0
+        signal = np.array([1.0, 0.0, -1.0])
+        t = np.array([0.0, 0.00025, 0.0005])
+        M = np.empty((3, 3))
+        fitted_buffer = np.empty(3)
+        residual_buffer = np.empty(3)
+        with patch("src.core.analysis.np.linalg.lstsq", wraps=np.linalg.lstsq) as mock_lstsq:
+            mse = AudioCalc._sine_fit_residual(f, signal, t, M, fitted_buffer, residual_buffer)
+            assert mock_solve.called
+            mock_lstsq.assert_called_once()
+            assert isinstance(mse, float)
+            assert not np.isnan(mse)
