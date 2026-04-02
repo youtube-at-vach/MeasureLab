@@ -2,6 +2,7 @@ from unittest.mock import MagicMock
 from PyQt6.QtCore import Qt
 from src.gui.widgets.lufs_meter import LufsMeter, LufsMeterWidget
 
+
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
@@ -13,6 +14,7 @@ class MockAudioEngine:
 
     def unregister_callback(self, callback_id):
         pass
+
 
 def test_lufs_meter_widget_initialization(qtbot):
     engine = MockAudioEngine()
@@ -26,6 +28,7 @@ def test_lufs_meter_widget_initialization(qtbot):
     assert widget.spl_check.isChecked() is False
     assert widget.target_spin.value() == -23.0
     assert widget.timer.isActive() is False
+
 
 def test_lufs_meter_widget_toggle(qtbot):
     engine = MockAudioEngine()
@@ -47,6 +50,7 @@ def test_lufs_meter_widget_toggle(qtbot):
     assert not widget.module.is_running
     assert not widget.timer.isActive()
 
+
 def test_lufs_meter_widget_spl_check(qtbot):
     engine = MockAudioEngine()
     module = LufsMeter(engine)
@@ -64,6 +68,7 @@ def test_lufs_meter_widget_spl_check(qtbot):
     widget.spl_check.setChecked(True)
     assert widget.spl_check.isChecked()
     assert widget._show_spl
+
 
 def test_lufs_meter_widget_update_display(qtbot):
     engine = MockAudioEngine()
@@ -89,6 +94,7 @@ def test_lufs_meter_widget_update_display(qtbot):
     assert "-10.0" in widget.r_val_label.text()
     assert "dBFS" in widget.r_val_label.text()
 
+
 def test_lufs_meter_widget_spl_update_display(qtbot):
     engine = MockAudioEngine()
     engine.calibration.get_spl_offset_db.return_value = 100.0  # 0 dBFS = 100 dB SPL
@@ -109,6 +115,7 @@ def test_lufs_meter_widget_spl_update_display(qtbot):
     assert "90.0" in widget.l_val_label.text()
     assert "dB SPL" in widget.l_val_label.text()
 
+
 def test_lufs_meter_widget_reset_stats(qtbot):
     engine = MockAudioEngine()
     module = LufsMeter(engine)
@@ -128,6 +135,7 @@ def test_lufs_meter_widget_reset_stats(qtbot):
     assert widget._m_max is None
     assert widget._m_sum == 0.0
     assert widget._m_n == 0
+
 
 def test_lufs_meter_widget_target_changed(qtbot):
     engine = MockAudioEngine()

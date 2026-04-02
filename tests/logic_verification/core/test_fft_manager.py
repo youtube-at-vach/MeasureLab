@@ -184,6 +184,7 @@ class TestFFTManagerWindows(unittest.TestCase):
     def test_get_available_windows(self):
         """Verify get_available_windows returns correct list."""
         from src.core.fft_manager import FFTManager
+
         manager = FFTManager()
         windows = manager.get_available_windows()
 

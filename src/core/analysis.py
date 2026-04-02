@@ -1330,9 +1330,7 @@ class AudioCalc:
         return peak_freq, peak_amp
 
     @staticmethod
-    def _calculate_a_weighted_noise(
-        mag_sq, freqs, bin_width, axis_info: FreqAxisInfo
-    ):
+    def _calculate_a_weighted_noise(mag_sq, freqs, bin_width, axis_info: FreqAxisInfo):
         is_linear_freqs, is_log_freqs, freq_step, start_freq, stop_freq = axis_info
         # A-weighting Integration
         # Ra(f) = (12194^2 * f^4) / ((f^2 + 20.6^2) * sqrt((f^2 + 107.7^2)(f^2 + 737.9^2)) * (f^2 + 12194^2))
@@ -1453,15 +1451,11 @@ class AudioCalc:
         white_density = AudioCalc._calculate_white_noise(mag, freqs, axis_info)
         results["white_density"] = white_density  # V/rtHz
 
-        flicker_results = AudioCalc._calculate_1f_noise(
-            mag, freqs, hum_components, white_density, axis_info
-        )
+        flicker_results = AudioCalc._calculate_1f_noise(mag, freqs, hum_components, white_density, axis_info)
         results.update(flicker_results)
 
         # 4. Integrated Noise in Bands
-        rms_20k, rms_100k = AudioCalc._calculate_integrated_noise(
-            mag_sq, freqs, bin_width, axis_info
-        )
+        rms_20k, rms_100k = AudioCalc._calculate_integrated_noise(mag_sq, freqs, bin_width, axis_info)
         results["noise_rms_20k"] = rms_20k
         results["noise_rms_100k"] = rms_100k
 
@@ -1471,9 +1465,7 @@ class AudioCalc:
         results["peak_amp"] = peak_amp
 
         # A-weighting Integration
-        rms_a = AudioCalc._calculate_a_weighted_noise(
-            mag_sq, freqs, bin_width, axis_info
-        )
+        rms_a = AudioCalc._calculate_a_weighted_noise(mag_sq, freqs, bin_width, axis_info)
         results["noise_rms_a_weighted"] = rms_a
 
         return results

@@ -255,6 +255,7 @@ class TestAudioEngineLogic(unittest.TestCase):
 
         # Set cache time to 3 seconds ago (older than 2.0s limit)
         import time
+
         self.engine._last_cache_time = time.time() - 3.0
 
         # Mock the return value of query_hostapis

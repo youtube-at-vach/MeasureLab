@@ -1,5 +1,6 @@
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
+
 class TestDetachableWidgetWrapper:
     def test_safe_base_filename_normal(self):
         result = DetachableWidgetWrapper._safe_base_filename(None, "MyWidget_2023")
