@@ -138,6 +138,7 @@ class TestLocalizationManager(unittest.TestCase):
     def test_tr_exception_propagation(self, mock_get):
         """Test that exceptions in the manager are propagated by the tr() shortcut."""
         from src.core.localization import tr
+
         with self.assertRaises(Exception) as context:
             tr("key")
         self.assertEqual(str(context.exception), "Mocked error")

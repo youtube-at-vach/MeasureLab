@@ -645,7 +645,9 @@ class LufsMeterWidget(QWidget):
         self.plot_widget.addItem(self.target_line)
 
         # Target band (-23 LUFS ±2) for quick visual alignment
-        self.target_band = pg.LinearRegionItem(values=[target - 2, target + 2], orientation=pg.LinearRegionItem.Horizontal)
+        self.target_band = pg.LinearRegionItem(
+            values=[target - 2, target + 2], orientation=pg.LinearRegionItem.Horizontal
+        )
         self.target_band.setBrush(pg.mkBrush(0, 255, 0, 35))
         self.target_band.setMovable(False)
         self.target_band.setZValue(-10)

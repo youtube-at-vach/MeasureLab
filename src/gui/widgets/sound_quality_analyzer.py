@@ -309,7 +309,7 @@ class AnalysisWorker(QThread):
         bounds = np.searchsorted(bark_indices, np.arange(n_bands + 1))
 
         for b in range(n_bands):
-            start, end = bounds[b], bounds[b+1]
+            start, end = bounds[b], bounds[b + 1]
             if start < end:
                 # Sum power for all freq bins in this bark band
                 band_power[b, :] = np.sum(mag_sq[start:end, :], axis=0)
@@ -468,7 +468,7 @@ class AnalysisWorker(QThread):
         bounds = np.searchsorted(bark_indices, np.arange(n_bands + 1))
 
         for b in range(n_bands):
-            start, end = bounds[b], bounds[b+1]
+            start, end = bounds[b], bounds[b + 1]
             if start >= end:
                 continue
 

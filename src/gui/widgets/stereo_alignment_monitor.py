@@ -53,7 +53,7 @@ class StereoAlignmentMonitor(MeasurementModule):
         self.callback_id = None
 
         # We'll use a local lock or double buffering to avoid thread contentions,
-        # but since arrays are small, direct overwrite might be ok. 
+        # but since arrays are small, direct overwrite might be ok.
         # A dirty flag helps.
         self.data_ready = False
 
@@ -117,8 +117,8 @@ class StereoAlignmentMonitor(MeasurementModule):
         X_R = np.fft.rfft(right_windowed)[:-1]
 
         # Power spectra
-        P_L = np.abs(X_L)**2
-        P_R = np.abs(X_R)**2
+        P_L = np.abs(X_L) ** 2
+        P_R = np.abs(X_R) ** 2
         P_LR = X_L * np.conj(X_R)
 
         # Exponential smoothing
@@ -183,8 +183,8 @@ class StereoAlignmentMonitor(MeasurementModule):
                 # Pearson corr
                 mean_l = np.mean(log_l)
                 mean_r = np.mean(log_r)
-                var_l = np.sum((log_l - mean_l)**2)
-                var_r = np.sum((log_r - mean_r)**2)
+                var_l = np.sum((log_l - mean_l) ** 2)
+                var_r = np.sum((log_r - mean_r) ** 2)
 
                 if var_l > epsilon and var_r > epsilon:
                     cov = np.sum((log_l - mean_l) * (log_r - mean_r))
@@ -192,7 +192,7 @@ class StereoAlignmentMonitor(MeasurementModule):
                     self.freq_match = max(0.0, corr) * 100.0
                     self.corr_raw = max(0.0, corr)
                 else:
-                    self.freq_match = 100.0 # Flat lines match
+                    self.freq_match = 100.0  # Flat lines match
                     self.corr_raw = 1.0
             else:
                 self.freq_match = 0.0
@@ -230,14 +230,14 @@ class StereoAlignmentMonitorWidget(QWidget):
         # 1. FFT Difference Plot
         self.fft_plot = pg.PlotWidget(title=tr("L/R Difference FFT (Tone Color Shift)"))
         self.fft_plot.setLogMode(x=True, y=False)
-        self.fft_plot.setLabel('bottom', tr("Frequency"), units='Hz')
-        self.fft_plot.setLabel('left', tr("Magnitude"), units='dBFS')
+        self.fft_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.fft_plot.setLabel("left", tr("Magnitude"), units="dBFS")
         self.fft_plot.showGrid(x=True, y=True, alpha=0.3)
         self.fft_plot.setXRange(np.log10(20), np.log10(20000))
         self.fft_plot.setYRange(-100, 0)
 
-        self.curve_l = self.fft_plot.plot(pen=pg.mkPen('#00FF00', width=1.5), name=tr("Left"))
-        self.curve_r = self.fft_plot.plot(pen=pg.mkPen('#FFFF00', width=1.5), name=tr("Right"))
+        self.curve_l = self.fft_plot.plot(pen=pg.mkPen("#00FF00", width=1.5), name=tr("Left"))
+        self.curve_r = self.fft_plot.plot(pen=pg.mkPen("#FFFF00", width=1.5), name=tr("Right"))
 
         # Fill between L and R to highlight differences
         self.fill_lr = pg.FillBetweenItem(self.curve_l, self.curve_r, brush=pg.mkBrush(255, 255, 255, 50))
@@ -248,16 +248,16 @@ class StereoAlignmentMonitorWidget(QWidget):
         # 2. Band-specific Correlation Plot
         self.corr_plot = pg.PlotWidget(title=tr("Band-specific Phase Correlation"))
         self.corr_plot.setLogMode(x=True, y=False)
-        self.corr_plot.setLabel('bottom', tr("Frequency"), units='Hz')
-        self.corr_plot.setLabel('left', tr("Correlation"))
+        self.corr_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.corr_plot.setLabel("left", tr("Correlation"))
         self.corr_plot.showGrid(x=True, y=True, alpha=0.3)
         self.corr_plot.setXRange(np.log10(20), np.log10(20000))
         self.corr_plot.setYRange(-1.1, 1.1)
 
-        self.curve_corr = self.corr_plot.plot(pen=pg.mkPen('#00FFFF', width=2))
+        self.curve_corr = self.corr_plot.plot(pen=pg.mkPen("#00FFFF", width=2))
 
         # Zero line for reference
-        zero_line = pg.InfiniteLine(pos=0, angle=0, pen=pg.mkPen('#888888', style=Qt.PenStyle.DashLine))
+        zero_line = pg.InfiniteLine(pos=0, angle=0, pen=pg.mkPen("#888888", style=Qt.PenStyle.DashLine))
         self.corr_plot.addItem(zero_line)
 
         viz_layout.addWidget(self.corr_plot, stretch=1)
@@ -404,7 +404,7 @@ class StereoAlignmentMonitorWidget(QWidget):
 
         # 1. Update FFT Plot
         # Convert to roughly dBFS (assuming 1.0 is full scale sine, power is 0.5)
-        scale = 2.0 / (self.module.fft_size ** 2)
+        scale = 2.0 / (self.module.fft_size**2)
         db_l = 10 * np.log10(s_ll * scale + epsilon)
         db_r = 10 * np.log10(s_rr * scale + epsilon)
 

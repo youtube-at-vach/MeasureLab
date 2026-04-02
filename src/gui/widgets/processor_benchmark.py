@@ -6,6 +6,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
@@ -48,8 +49,9 @@ class ProcessorBenchmarkWidget(QWidget):
     def __init__(self, module: ProcessorBenchmark):
         super().__init__()
         self.module = module
-        self.fft_sizes = [2**i for i in range(8, 21)]  # 256 to 1048576
+        self.fft_sizes = []
         self.sample_rates = [44100, 48000, 96000, 192000]
+        self._benchmark_data = {}
         self.init_ui()
 
     def init_ui(self):
@@ -76,6 +78,10 @@ class ProcessorBenchmarkWidget(QWidget):
         self.safety_spin.valueChanged.connect(self.update_results_display)
         controls_layout.addWidget(self.safety_spin)
 
+        self.extreme_mode_cb = QCheckBox(tr("Enable Extreme Sizes (Max 16M)"))
+        self.extreme_mode_cb.toggled.connect(self._on_extreme_mode_toggled)
+        controls_layout.addWidget(self.extreme_mode_cb)
+
         controls_layout.addStretch()
 
         self.status_label = QLabel(tr("Status: Ready"))
@@ -94,19 +100,7 @@ class ProcessorBenchmarkWidget(QWidget):
         # Make the columns stretch evenly
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setRowCount(len(self.fft_sizes))
-
-        # Populate table with default empty values
-        for i, size in enumerate(self.fft_sizes):
-            # Size
-            idx_item = QTableWidgetItem(str(size))
-            idx_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(i, 0, idx_item)
-            # Empty cols
-            for col in range(1, 6):
-                item = QTableWidgetItem("--")
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.table.setItem(i, col, item)
+        self._update_fft_sizes()
 
         content_layout.addWidget(self.table, stretch=2)
 
@@ -128,7 +122,27 @@ class ProcessorBenchmarkWidget(QWidget):
         self.summary_layout = QVBoxLayout(summary_group)
         layout.addWidget(summary_group)
 
-        self._benchmark_data = {}  # { size: {'dsp': t, 'render': t, 'total': t} }
+    def _on_extreme_mode_toggled(self):
+        self._benchmark_data.clear()
+        self._update_fft_sizes()
+        self.update_results_display()
+
+    def _update_fft_sizes(self):
+        extreme = getattr(self, "extreme_mode_cb", None) and self.extreme_mode_cb.isChecked()
+        if extreme:
+            self.fft_sizes = [2**i for i in range(12, 25)]  # 4096 to 16M
+        else:
+            self.fft_sizes = [2**i for i in range(12, 21)]  # 4096 to 1M
+
+        self.table.setRowCount(len(self.fft_sizes))
+        for i, size in enumerate(self.fft_sizes):
+            idx_item = QTableWidgetItem(str(size))
+            idx_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(i, 0, idx_item)
+            for col in range(1, 6):
+                item = QTableWidgetItem("--")
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setItem(i, col, item)
 
     def set_output_destination(self, mode: str):
         pass  # Not used for this module

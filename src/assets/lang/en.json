@@ -339,6 +339,7 @@
     "Enable Calibration?": "Enable Calibration?",
     "Enable Cursors": "Enable Cursors",
     "Enable Dithering (TPDF)": "Enable Dithering (TPDF)",
+    "Enable Extreme Sizes (Max 16M)": "Enable Extreme Sizes (Max 16M)",
     "Enable Filter (Median/MAD)": "Enable Filter (Median/MAD)",
     "Enable Generator": "Enable Generator",
     "Enable Hysteresis Sweep": "Enable Hysteresis Sweep",

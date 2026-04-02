@@ -77,6 +77,7 @@ class TestLockInSpectrumFinderSonification(unittest.TestCase):
 
         # Run calculation
         from src.gui.widgets.lockin_spectrum_finder import CalculationParams
+
         params = CalculationParams(
             start_f=900.0,
             stop_f=1100.0,

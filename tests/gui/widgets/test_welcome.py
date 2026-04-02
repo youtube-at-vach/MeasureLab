@@ -7,9 +7,10 @@ from src.core.version import __version__
 from src.core.constants import RELEASE_PAGE_URL_TEMPLATE
 from src.core.localization import tr
 
+
 def test_welcome_widget_instantiation(qtbot):
     """Test that WelcomeWidget can be instantiated correctly."""
-    with patch('src.gui.widgets.welcome.QTimer.singleShot') as mock_timer:
+    with patch("src.gui.widgets.welcome.QTimer.singleShot") as mock_timer:
         widget = WelcomeWidget()
         qtbot.addWidget(widget)
 
@@ -18,11 +19,12 @@ def test_welcome_widget_instantiation(qtbot):
 
         assert widget is not None
         assert isinstance(widget.layout(), QVBoxLayout)
-        assert widget.layout().count() == 2 # image section and text section
+        assert widget.layout().count() == 2  # image section and text section
+
 
 def test_welcome_widget_layout_content(qtbot):
     """Test that the layout contains the expected text elements."""
-    with patch('src.gui.widgets.welcome.QTimer.singleShot'):
+    with patch("src.gui.widgets.welcome.QTimer.singleShot"):
         widget = WelcomeWidget()
         qtbot.addWidget(widget)
 
@@ -37,21 +39,24 @@ def test_welcome_widget_layout_content(qtbot):
         assert version_str in texts
 
         # Verify features are listed
-        features_str = " • ".join([
-            tr("Signal Generator"),
-            tr("Spectrum Analyzer"),
-            tr("Distortion Analyzer"),
-            tr("Network Analyzer"),
-            tr("Oscilloscope"),
-            tr("Lock-in Amplifier"),
-            tr("Frequency Counter"),
-            tr("Spectrogram"),
-        ])
+        features_str = " • ".join(
+            [
+                tr("Signal Generator"),
+                tr("Spectrum Analyzer"),
+                tr("Distortion Analyzer"),
+                tr("Network Analyzer"),
+                tr("Oscilloscope"),
+                tr("Lock-in Amplifier"),
+                tr("Frequency Counter"),
+                tr("Spectrogram"),
+            ]
+        )
         assert features_str in texts
+
 
 def test_welcome_widget_on_update_available(qtbot):
     """Test the behavior when an update is available."""
-    with patch('src.gui.widgets.welcome.QTimer.singleShot'):
+    with patch("src.gui.widgets.welcome.QTimer.singleShot"):
         widget = WelcomeWidget()
         qtbot.addWidget(widget)
 
@@ -69,16 +74,17 @@ def test_welcome_widget_on_update_available(qtbot):
         assert widget.update_label.cursor().shape() == Qt.CursorShape.PointingHandCursor
         assert widget.new_version_url == RELEASE_PAGE_URL_TEMPLATE.format(tag=new_version)
 
+
 def test_welcome_widget_open_release_page(qtbot):
     """Test clicking the update label opens the release page."""
-    with patch('src.gui.widgets.welcome.QTimer.singleShot'):
+    with patch("src.gui.widgets.welcome.QTimer.singleShot"):
         widget = WelcomeWidget()
         qtbot.addWidget(widget)
 
         new_version = "v1.2.3"
         widget.on_update_available(new_version)
 
-        with patch('src.gui.widgets.welcome.QDesktopServices.openUrl') as mock_open_url:
+        with patch("src.gui.widgets.welcome.QDesktopServices.openUrl") as mock_open_url:
             widget.open_release_page(None)
 
             # Since QUrl equals isn't always trivial in mocks, we can check the URL string
@@ -86,10 +92,11 @@ def test_welcome_widget_open_release_page(qtbot):
             url_arg = mock_open_url.call_args[0][0]
             assert url_arg.toString() == RELEASE_PAGE_URL_TEMPLATE.format(tag=new_version)
 
+
 def test_welcome_widget_start_update_check(qtbot):
     """Test starting the update check."""
-    with patch('src.gui.widgets.welcome.QTimer.singleShot'):
-        with patch('src.gui.widgets.welcome.UpdateChecker') as MockUpdateChecker:
+    with patch("src.gui.widgets.welcome.QTimer.singleShot"):
+        with patch("src.gui.widgets.welcome.UpdateChecker") as MockUpdateChecker:
             widget = WelcomeWidget()
             qtbot.addWidget(widget)
 

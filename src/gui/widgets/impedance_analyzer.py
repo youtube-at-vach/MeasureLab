@@ -1565,12 +1565,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.plot_right.enableAutoRange()
 
         config = ImpedanceSweepConfig(
-            start_f=start,
-            end_f=end,
-            steps=steps,
-            log_sweep=log,
-            settle_time=0.2,
-            cal_mode=mode
+            start_f=start, end_f=end, steps=steps, log_sweep=log, settle_time=0.2, cal_mode=mode
         )
         self.sweep_worker = ImpedanceSweepWorker(self.module, config)
         self.sweep_worker.progress.connect(self.sw_progress.setValue)

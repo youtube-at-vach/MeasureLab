@@ -339,6 +339,7 @@
     "Enable Calibration?": "キャリブレーションを有効化しますか?",
     "Enable Cursors": "カーソル有効化",
     "Enable Dithering (TPDF)": "ディザリングを有効化 (TPDF)",
+    "Enable Extreme Sizes (Max 16M)": "極端なサイズを有効化 (最大16M)",
     "Enable Filter (Median/MAD)": "フィルター有効 (Median/MAD)",
     "Enable Generator": "ジェネレーター有効",
     "Enable Hysteresis Sweep": "ヒステリシススイープを有効化",
