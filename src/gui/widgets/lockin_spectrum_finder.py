@@ -554,7 +554,6 @@ class LockInSpectrumFinder(MeasurementModule):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
-        import time
         import scipy.signal as signal
 
         start_f = params.start_f
