@@ -150,6 +150,8 @@ Other useful functions.
     * Simple recording and playback function.
 * **[Inverse Filter](widgets/inverse_filter.md)**
     * Creates an inverse filter to cancel out the characteristics of speakers and rooms.
+* **[Processor Benchmark](widgets/processor_benchmark.md)**
+    * Tests FFT and UI rendering performance for Real-Time measurement.
 * **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     * A framework for detaching any widget into a separate window.
 * **[Settings](widgets/settings.md)**

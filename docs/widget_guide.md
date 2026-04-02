@@ -156,6 +156,8 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     * シンプルな録音・再生機能です。
 * **[Inverse Filter](widgets/inverse_filter.md)**
     * スピーカーや部屋の特性を打ち消すための逆フィルターを作成します。
+* **[Processor Benchmark](widgets/processor_benchmark.md)**
+    * リアルタイム測定のためのFFTおよびUIレンダリングパフォーマンスをテストします。
 * **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     * 任意のウィジットを別ウィンドウとして切り離すための枠組みです。
 * **[Settings](widgets/settings.md)**
