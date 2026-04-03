@@ -136,6 +136,7 @@ class SignalParameters:
 
 class SignalGenerator(MeasurementModule):
     BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "burst", "prbs"]
+    PERIODIC_WAVEFORMS = {"sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"}
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -756,7 +757,7 @@ class SignalGenerator(MeasurementModule):
             params.pm_enabled
             and params.pm_frequency > 0
             and params.pm_deviation_deg != 0
-            and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
+            and params.waveform in self.PERIODIC_WAVEFORMS
         )
 
         # Optional FM (works for periodic waveforms only)
@@ -764,7 +765,7 @@ class SignalGenerator(MeasurementModule):
             params.fm_enabled
             and params.fm_frequency > 0
             and params.fm_deviation != 0
-            and params.waveform in ["sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"]
+            and params.waveform in self.PERIODIC_WAVEFORMS
         )
 
         if use_fm:
