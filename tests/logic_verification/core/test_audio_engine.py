@@ -329,7 +329,7 @@ class TestAudioEngineGetHostApis(unittest.TestCase):
 
         # Advance time by 2.1 seconds
 
-        mock_time.return_value = 102.1
+        mock_time.return_value = 162.1
 
         self.engine.get_host_apis()
 

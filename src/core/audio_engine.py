@@ -261,6 +261,26 @@ class AudioEngine:
         except Exception as e:
             self.logger.error(f"Error re-initializing PortAudio: {e}")
 
+
+    def _get_cached_audio_info(self):
+        now = time.time()
+        if (
+            self._device_list_cache is not None
+            and self._host_apis_cache is not None
+            and (now - self._last_cache_time) < 60.0
+        ):
+            return self._device_list_cache, self._host_apis_cache
+
+        devices = sd.query_devices()
+        try:
+            hostapis = sd.query_hostapis()
+        except Exception:
+            hostapis = None
+        self._device_list_cache = devices
+        self._host_apis_cache = hostapis
+        self._last_cache_time = now
+        return devices, hostapis
+
     def list_devices(self):
         """Returns a list of available audio devices.
 
@@ -273,23 +293,7 @@ class AudioEngine:
         # or return a specific virtual device list if needed.
         # For now, let's keep standard behavior so user can see hardware even if offline is checked (though controls disabled).
 
-        now = time.time()
-        if (
-            self._device_list_cache is not None
-            and self._host_apis_cache is not None
-            and (now - self._last_cache_time) < 2.0
-        ):
-            devices = self._device_list_cache
-            hostapis = self._host_apis_cache
-        else:
-            devices = sd.query_devices()
-            try:
-                hostapis = sd.query_hostapis()
-            except Exception:
-                hostapis = None
-            self._device_list_cache = devices
-            self._host_apis_cache = hostapis
-            self._last_cache_time = now
+        devices, hostapis = self._get_cached_audio_info()
 
         enriched = []
         for dev in devices:
@@ -312,16 +316,8 @@ class AudioEngine:
 
     def get_host_apis(self):
         """Returns a list of available host APIs."""
-        now = time.time()
-        if self._host_apis_cache is not None and (now - self._last_cache_time) < 2.0:
-            return list(self._host_apis_cache)
-        try:
-            hostapis = sd.query_hostapis()
-            self._host_apis_cache = hostapis
-            self._last_cache_time = now
-            return list(hostapis)
-        except Exception:
-            return []
+        _, hostapis = self._get_cached_audio_info()
+        return list(hostapis) if hostapis is not None else []
 
     def set_devices(self, input_device_id, output_device_id):
         """Sets the input and output devices."""
@@ -587,23 +583,7 @@ class AudioEngine:
                 dev_id = sd.default.device[1]
 
             # Use cached devices/hostapis to avoid redundant OS queries
-            now = time.time()
-            if (
-                self._device_list_cache is not None
-                and self._host_apis_cache is not None
-                and (now - self._last_cache_time) < 2.0
-            ):
-                devices = self._device_list_cache
-                hostapis = self._host_apis_cache
-            else:
-                devices = sd.query_devices()
-                try:
-                    hostapis = sd.query_hostapis()
-                except Exception:
-                    hostapis = None
-                self._device_list_cache = devices
-                self._host_apis_cache = hostapis
-                self._last_cache_time = now
+            devices, hostapis = self._get_cached_audio_info()
 
             if dev_id is not None and 0 <= dev_id < len(devices):
                 device_info = devices[dev_id]
