@@ -19,6 +19,8 @@ if False:
     from src.gui.widgets.linearity_analyzer import LinearityAnalyzer  # noqa: F401
     from src.gui.widgets.lock_in_amplifier import LockInAmplifier  # noqa: F401
     from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter  # noqa: F401
+    from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer  # noqa: F401
+    from src.gui.widgets.lockin_spectrum_finder import LockInSpectrumFinder  # noqa: F401
     from src.gui.widgets.lockin_thd_analyzer import LockInTHDAnalyzer  # noqa: F401
     from src.gui.widgets.loopback_finder import LoopbackFinder  # noqa: F401
     from src.gui.widgets.lufs_meter import LufsMeter  # noqa: F401
@@ -26,6 +28,7 @@ if False:
     from src.gui.widgets.noise_profiler import NoiseProfiler  # noqa: F401
     from src.gui.widgets.one_pps_monitor import OnePPSMonitor  # noqa: F401
     from src.gui.widgets.oscilloscope import Oscilloscope  # noqa: F401
+    from src.gui.widgets.processor_benchmark import ProcessorBenchmark  # noqa: F401
     from src.gui.widgets.raw_time_series import RawTimeSeries  # noqa: F401
     from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: F401
     from src.gui.widgets.signal_generator import SignalGenerator  # noqa: F401
@@ -33,6 +36,7 @@ if False:
     from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzer  # noqa: F401
     from src.gui.widgets.spectrogram import Spectrogram  # noqa: F401
     from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer  # noqa: F401
+    from src.gui.widgets.stereo_alignment_monitor import StereoAlignmentMonitor  # noqa: F401
     from src.gui.widgets.timecode_monitor import TimecodeMonitor  # noqa: F401
     from src.gui.widgets.transient_analyzer import TransientAnalyzer  # noqa: F401
     from src.gui.widgets.ultrasound_modulator import UltrasoundModulator  # noqa: F401
