@@ -152,6 +152,8 @@ Other useful functions.
     * Creates an inverse filter to cancel out the characteristics of speakers and rooms.
 * **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     * A framework for detaching any widget into a separate window.
+* **[Processor Benchmark](widgets/processor_benchmark.md)**
+    * Tests the FFT and rendering performance of your PC to verify real-time processing limits.
 * **[Settings](widgets/settings.md)**
     * Configure audio device settings, language settings, theme changes, etc.
 * **[Welcome](widgets/welcome.md)**
