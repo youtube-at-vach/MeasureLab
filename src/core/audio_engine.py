@@ -291,24 +291,27 @@ class AudioEngine:
             self._host_apis_cache = hostapis
             self._last_cache_time = now
 
-        enriched = []
-        for dev in devices:
-            d = dict(dev)
-            hostapi_name = None
-            if hostapis is not None:
-                try:
-                    hostapi_idx = d.get("hostapi")
-                    if hostapi_idx is not None and 0 <= int(hostapi_idx) < len(hostapis):
-                        hostapi_name = hostapis[int(hostapi_idx)].get("name")
-                except Exception:
-                    hostapi_name = None
+        if hostapis is None:
+            return [dict(dev) for dev in devices]
 
-            if hostapi_name:
-                d["hostapi_name"] = str(hostapi_name)
+        names = {
+            i: str(name)
+            for i, ha in enumerate(hostapis)
+            if (name := ha.get("name"))
+        }
 
-            enriched.append(d)
+        res = [dict(dev) for dev in devices]
+        for d in res:
+            try:
+                idx = d.get("hostapi")
+                if idx is not None:
+                    name = names.get(int(idx))
+                    if name is not None:
+                        d["hostapi_name"] = name
+            except (TypeError, ValueError):
+                pass
 
-        return enriched
+        return res
 
     def get_host_apis(self):
         """Returns a list of available host APIs."""
