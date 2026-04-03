@@ -1,5 +1,5 @@
 from unittest.mock import MagicMock, patch
-from PyQt6.QtWidgets import QTabWidget, QComboBox, QCheckBox, QLineEdit, QSpinBox, QPushButton
+from PyQt6.QtWidgets import QTabWidget
 from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
 
@@ -93,19 +93,19 @@ def test_settings_offline_mode_toggle_ui(qtbot):
             qtbot.addWidget(widget)
 
             # Initially offline is false, combos should be enabled
-            assert widget.offline_check.isChecked() == False
-            assert widget.hostapi_combo.isEnabled() == True
-            assert widget.input_combo.isEnabled() == True
+            assert not widget.offline_check.isChecked()
+            assert widget.hostapi_combo.isEnabled()
+            assert widget.input_combo.isEnabled()
 
             # Toggle offline on
             widget.offline_check.setChecked(True)
-            assert widget.hostapi_combo.isEnabled() == False
-            assert widget.input_combo.isEnabled() == False
+            assert not widget.hostapi_combo.isEnabled()
+            assert not widget.input_combo.isEnabled()
 
             # Toggle offline off
             widget.offline_check.setChecked(False)
-            assert widget.hostapi_combo.isEnabled() == True
-            assert widget.input_combo.isEnabled() == True
+            assert widget.hostapi_combo.isEnabled()
+            assert widget.input_combo.isEnabled()
 
 def test_settings_language_change_ui(qtbot):
     """Test changing language combo updates config manager."""
