@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.6.1] - 2026-04-03
+
+### Added
+
+* **Benchmark**: Added Processor Benchmark module for evaluating real-time FFT and rendering performance with system hardware info and clipboard export.
+* **Analyzer**: Added Mel scale option to Spectrogram frequency display.
+
+### Changed
+
+* **Perf**: Vectorized goniometer color palette generation and band power accumulation.
+* **Perf**: Removed `time.sleep(0)` in tight numerical loops in `LockInSpectrumFinder`.
+* **Perf**: Replaced polling loop with `threading.Event.wait` in `ImpedanceSweepWorker`.
+* **Refactor**: Reworked `ImpedanceAnalyzer`, `LockInSpectrumFinder`, and `ImpedanceSweepWorker` to use config dataclasses.
+
+### Fixed
+
+* **I18n**: Completed multilingual translation files for Processor Benchmark and other UI strings.
+
 ## [v0.6.0] - 2026-03-27
 
 ### Added
