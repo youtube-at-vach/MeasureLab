@@ -238,6 +238,7 @@ class LockInSpectrumFinder(MeasurementModule):
         self.callback_id = None
         self.signals = FinderSignals()
         self.executor = ThreadPoolExecutor(max_workers=1)
+        self.io_executor = ThreadPoolExecutor(max_workers=1)
         self._calculation_future = None
 
         # Mode
@@ -407,15 +408,22 @@ class LockInSpectrumFinder(MeasurementModule):
 
     def save_user_targets(self, targets: dict):
         self.current_targets = targets
-        path = ""
-        try:
-            path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
-            os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
-            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump({str(k): v for k, v in targets.items()}, f, indent=4, ensure_ascii=False)
-        except Exception as e:
-            logger.error(f"Failed to save user targets back to {path}: {e}")
+
+        def _save_task(targets_copy: dict):
+            try:
+                path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
+                os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump({str(k): v for k, v in targets_copy.items()}, f, indent=4, ensure_ascii=False)
+            except Exception as e:
+                logger.error(f"Failed to save user targets: {e}")
+
+        # Execute in background thread to prevent GUI blocking
+        if hasattr(self, "io_executor"):
+            self.io_executor.submit(_save_task, targets.copy())
+        else:
+            _save_task(targets.copy())
 
     def get_widget(self):
         return LockInSpectrumFinderWidget(self)
