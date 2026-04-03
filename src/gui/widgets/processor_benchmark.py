@@ -62,14 +62,23 @@ class ProcessorBenchmarkWidget(QWidget):
         sys_info_layout = QVBoxLayout(sys_info_group)
 
         import platform
-        try:
-            import cpuinfo
-            info = cpuinfo.get_cpu_info()
-            cpu_name = info.get('brand_raw', platform.processor())
-            arch_info = info.get('arch_string_raw', info.get('arch', platform.machine()))
-        except Exception:
-            cpu_name = platform.processor()
-            arch_info = platform.machine()
+        import sys
+
+        cpu_name = platform.processor()
+        arch_info = platform.machine()
+
+        # When running as a PyInstaller Windows executable, cpuinfo spawns a child process
+        # using sys.executable which points to the compiled exe itself, creating an infinite loop.
+        # We only use cpuinfo when NOT frozen.
+        if not getattr(sys, 'frozen', False):
+            try:
+                import cpuinfo
+                info = cpuinfo.get_cpu_info()
+                cpu_name = info.get('brand_raw', cpu_name)
+                arch_info = info.get('arch_string_raw', info.get('arch', arch_info))
+            except Exception:
+                pass
+
         os_name = f"{platform.system()} {platform.release()}"
 
         self.sys_info_str = f"OS: {os_name} | CPU: {cpu_name} ({arch_info})"
