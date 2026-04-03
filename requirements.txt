@@ -10,5 +10,6 @@ PyWavelets
 netCDF4
 pyfftw
 pytest-json-report
+py-cpuinfo
 
 requests
