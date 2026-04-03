@@ -327,9 +327,9 @@ class TestAudioEngineGetHostApis(unittest.TestCase):
 
         self.assertEqual(mock_query.call_count, 1)
 
-        # Advance time by 2.1 seconds
+        # Advance time by 60.1 seconds to trigger new 60s TTL logic
 
-        mock_time.return_value = 102.1
+        mock_time.return_value = 160.1
 
         self.engine.get_host_apis()
 
