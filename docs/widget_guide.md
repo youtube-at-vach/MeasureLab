@@ -158,6 +158,8 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     * スピーカーや部屋の特性を打ち消すための逆フィルターを作成します。
 * **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     * 任意のウィジットを別ウィンドウとして切り離すための枠組みです。
+* **[Processor Benchmark](widgets/processor_benchmark.md)**
+    * PCのFFTおよび描画パフォーマンスをテストし、リアルタイム処理の限界を検証します。
 * **[Settings](widgets/settings.md)**
     * オーディオデバイス設定、言語設定、テーマ変更などを行います。
 * **[Welcome](widgets/welcome.md)**
