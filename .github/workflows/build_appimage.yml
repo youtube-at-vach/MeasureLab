@@ -40,7 +40,7 @@ jobs:
         # Create libs directory if it doesn't exist (though not strictly needed for system-wide pyinstaller)
         mkdir -p libs
         # Run PyInstaller
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --hidden-import cpuinfo main_gui.py
+        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw main_gui.py
 
     - name: Build AppImage
       run: |
