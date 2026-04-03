@@ -554,7 +554,6 @@ class LockInSpectrumFinder(MeasurementModule):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
-        import time
         import scipy.signal as signal
 
         start_f = params.start_f
@@ -654,7 +653,6 @@ class LockInSpectrumFinder(MeasurementModule):
                 self.signals.progress_update.emit(
                     i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy()
                 )
-                time.sleep(0)
 
             if self.is_running:
                 # phases unmerged across chunks back to main for zoom (optional completeness)
@@ -832,7 +830,6 @@ class LockInSpectrumFinder(MeasurementModule):
             self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
 
             # Sleep briefly to ensure audio callback is not starved
-            time.sleep(0)
 
         if self.is_running:
             self.signals.result_ready.emit((freqs, mags_db_all))
