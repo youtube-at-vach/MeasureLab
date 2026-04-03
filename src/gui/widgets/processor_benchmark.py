@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 
 import numpy as np
@@ -27,6 +28,40 @@ from src.measurement_modules.base import MeasurementModule
 
 
 logger = logging.getLogger(__name__)
+
+
+def get_cpu_name():
+    if sys.platform == "win32":
+        import winreg
+        try:
+            key = winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0"
+            )
+            name, _ = winreg.QueryValueEx(key, "ProcessorNameString")
+            return name.strip()
+        except Exception:
+            pass
+
+    elif sys.platform == "linux":
+        try:
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if "model name" in line:
+                        return line.split(":")[1].strip()
+        except Exception:
+            pass
+
+    elif sys.platform == "darwin":
+        import subprocess
+        try:
+            return subprocess.check_output(
+                ["sysctl", "-n", "machdep.cpu.brand_string"]
+            ).decode().strip()
+        except Exception:
+            pass
+
+    return None
 
 
 class ProcessorBenchmark(MeasurementModule):
@@ -63,16 +98,8 @@ class ProcessorBenchmarkWidget(QWidget):
 
         import platform
 
-        cpu_name = platform.processor()
+        cpu_name = get_cpu_name() or platform.processor() or "Unknown CPU"
         arch_info = platform.machine()
-
-        try:
-            import cpuinfo
-            info = cpuinfo.get_cpu_info()
-            cpu_name = info.get('brand_raw', cpu_name)
-            arch_info = info.get('arch_string_raw', info.get('arch', arch_info))
-        except Exception:
-            pass
 
         os_name = f"{platform.system()} {platform.release()}"
 
