@@ -57,6 +57,27 @@ class ProcessorBenchmarkWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
+        # System Information
+        sys_info_group = QGroupBox(tr("System Information"))
+        sys_info_layout = QVBoxLayout(sys_info_group)
+
+        import platform
+        try:
+            import cpuinfo
+            info = cpuinfo.get_cpu_info()
+            cpu_name = info.get('brand_raw', platform.processor())
+            arch_info = info.get('arch_string_raw', info.get('arch', platform.machine()))
+        except Exception:
+            cpu_name = platform.processor()
+            arch_info = platform.machine()
+        os_name = f"{platform.system()} {platform.release()}"
+
+        self.sys_info_str = f"OS: {os_name} | CPU: {cpu_name} ({arch_info})"
+        sys_info_label = QLabel(self.sys_info_str)
+        sys_info_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        sys_info_layout.addWidget(sys_info_label)
+        layout.addWidget(sys_info_group)
+
         # Controls
         controls_group = QGroupBox(tr("Benchmark Controls"))
         controls_layout = QHBoxLayout(controls_group)
@@ -119,7 +140,18 @@ class ProcessorBenchmarkWidget(QWidget):
 
         # Summary / Recommendations
         summary_group = QGroupBox(tr("Recommendations"))
-        self.summary_layout = QVBoxLayout(summary_group)
+        summary_main_layout = QVBoxLayout(summary_group)
+
+        self.summary_text_layout = QVBoxLayout()
+        summary_main_layout.addLayout(self.summary_text_layout)
+
+        btn_layout = QHBoxLayout()
+        self.copy_btn = QPushButton(tr("Copy Results to Clipboard"))
+        self.copy_btn.clicked.connect(self.copy_to_clipboard)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.copy_btn)
+        summary_main_layout.addLayout(btn_layout)
+
         layout.addWidget(summary_group)
 
     def _on_extreme_mode_toggled(self):
@@ -236,8 +268,8 @@ class ProcessorBenchmarkWidget(QWidget):
         safety = self.safety_spin.value()
 
         # Clear existing summary
-        while self.summary_layout.count():
-            item = self.summary_layout.takeAt(0)
+        while self.summary_text_layout.count():
+            item = self.summary_text_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
@@ -301,4 +333,40 @@ class ProcessorBenchmarkWidget(QWidget):
 
         lbl = QLabel(summary_text.strip())
         lbl.setStyleSheet("font-size: 14px;")
-        self.summary_layout.addWidget(lbl)
+        self.summary_text_layout.addWidget(lbl)
+
+    def copy_to_clipboard(self):
+        lines = []
+        lines.append("--- MeasureLab Processor Benchmark ---")
+        lines.append(self.sys_info_str)
+        lines.append("")
+
+        # Table content
+        headers = []
+        for i in range(self.table.columnCount()):
+            item = self.table.horizontalHeaderItem(i)
+            headers.append(item.text() if item else "")
+        lines.append(" | ".join(headers))
+        lines.append("-" * 50)
+
+        for row in range(self.table.rowCount()):
+            row_data = []
+            if self.table.item(row, 0) is None or self.table.item(row, 0).text() == "":
+                continue
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                text = item.text() if item else ""
+                row_data.append(text)
+            lines.append(" | ".join(row_data))
+
+        lines.append("")
+
+        # Recommendations
+        lines.append(tr("Recommendations") + ":")
+        for i in range(self.summary_text_layout.count()):
+            item = self.summary_text_layout.itemAt(i)
+            if item and item.widget():
+                lines.append(item.widget().text())
+
+        QApplication.clipboard().setText("\n".join(lines))
+        self.status_label.setText(tr("Status: Copied to clipboard"))
