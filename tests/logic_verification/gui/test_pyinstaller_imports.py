@@ -16,7 +16,7 @@ def test_pyinstaller_imports_syntax_and_existence():
     try:
         tree = ast.parse(content, filename=str(file_path))
     except SyntaxError as e:
-        assert False, f"Syntax error in {file_path}: {e}"
+        raise AssertionError(f"Syntax error in {file_path}: {e}") from e
 
     # Extract all imported modules
     for node in ast.walk(tree):
