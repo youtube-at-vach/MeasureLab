@@ -326,7 +326,7 @@ class ProcessorBenchmarkWidget(QWidget):
             # We evaluate against an expected audio buffer cycle of 4096 samples
             # This perfectly compensates for the UI/OS overhead removed from the raw timing,
             # making 192kHz @ 262144 the practical limit (takes ~18ms, limit ~21ms).
-            reference_block_samples = 4096
+            reference_block_samples = 8192
             for col, fs in enumerate(self.sample_rates, start=1):
                 t_buf = reference_block_samples / fs
                 limit = t_buf * safety
