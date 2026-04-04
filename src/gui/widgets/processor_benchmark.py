@@ -323,9 +323,10 @@ class ProcessorBenchmarkWidget(QWidget):
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(i, 5, item)
 
-            # We evaluate against an expected audio buffer cycle of 16384 samples
-            # This makes 192kHz @ 262144 barely working (takes ~54ms, limit ~68ms)
-            reference_block_samples = 16384
+            # We evaluate against an expected audio buffer cycle of 4096 samples
+            # This perfectly compensates for the UI/OS overhead removed from the raw timing,
+            # making 192kHz @ 262144 the practical limit (takes ~18ms, limit ~21ms).
+            reference_block_samples = 4096
             for col, fs in enumerate(self.sample_rates, start=1):
                 t_buf = reference_block_samples / fs
                 limit = t_buf * safety
