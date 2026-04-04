@@ -12,9 +12,11 @@ Processor Benchmark is a tool to test the FFT and UI rendering performance of yo
 1. **Safety Factor**: Sets the fraction of total buffer time allowed for processing. Default is 0.8 (80%).
 2. **Extreme Sizes**: When enabled, performs testing with larger FFT sizes (up to 16M).
 3. **Start Benchmark**: Starts the test. Audio input is temporarily stopped during the test.
+4. **Copy Results to Clipboard**: Copies the benchmark results, including system information and performance metrics, to the clipboard.
 
 ## Display Elements
 
+- **System Information**: Displays the current operating system, CPU name, and architecture.
 - **FFT Size**: The FFT size tested.
 - **44.1kHz - 192kHz Columns**: Determines if the processing finishes within the specified safety factor for each sampling rate (OK, ⚠, NG).
 - **Max FPS**: The maximum frame rate achievable for that FFT size.
