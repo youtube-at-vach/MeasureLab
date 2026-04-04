@@ -36,7 +36,11 @@ class FFTManager:
     def __init__(self):
         self._plans = {}
         self._lock = threading.Lock()
-        self.threads = multiprocessing.cpu_count()
+        
+        # Limit the maximum number of threads to 8. PyFFTW suffers massive thread
+        # synchronization overhead when doing small 1D FFTs on high-end many-core processors.
+        self.threads = min(8, multiprocessing.cpu_count())
+        
         if HAS_PYFFTW:
             pyfftw.config.NUM_THREADS = self.threads
 

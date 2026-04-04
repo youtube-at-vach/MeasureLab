@@ -264,8 +264,11 @@ class ProcessorBenchmarkWidget(QWidget):
             # Test Render
             t3 = time.perf_counter()
             self.curve.setData(freqs, fft_db)
-            QApplication.processEvents()
             t4 = time.perf_counter()
+
+            # Process UI events outside the timing block to avoid
+            # artificially inflating benchmark time on Windows DWM.
+            QApplication.processEvents()
 
             # skip the first warmup run
             if _ > 0:
