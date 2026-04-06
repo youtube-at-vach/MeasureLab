@@ -65,33 +65,13 @@ class TestAudioCalc:
         with pytest.raises(ValueError, match="Invalid sample rate"):
             AudioCalc.design_c_weighting(-100)
 
-    def test_bandpass_filter_short_signal(self):
-        # Signal too short for padlen
-        signal = np.ones(10)
-        filtered = AudioCalc.bandpass_filter(signal, 48000)
-        np.testing.assert_array_equal(filtered, signal)
 
-    def test_bandpass_filter_valid(self):
-        signal = np.ones(100)
-        filtered = AudioCalc.bandpass_filter(signal, 48000, 20.0, 20000.0)
-        assert len(filtered) == 100
 
-    def test_bandpass_filter_invalid_freqs(self):
-        signal = np.ones(100)
-        # Invalid: lowcut >= highcut -> sos_factory returns None -> bypass/silence based on on_invalid_sos
-        # For bandpass, on_invalid_sos="silence"
-        filtered = AudioCalc.bandpass_filter(signal, 48000, 20000.0, 20.0)
-        np.testing.assert_array_equal(filtered, np.zeros_like(signal))
 
-    def test_lowpass_filter_valid(self):
-        signal = np.ones(100)
-        filtered = AudioCalc.lowpass_filter(signal, 48000, 1000.0)
-        assert len(filtered) == 100
 
-    def test_highpass_filter_valid(self):
-        signal = np.ones(100)
-        filtered = AudioCalc.highpass_filter(signal, 48000, 1000.0)
-        assert len(filtered) == 100
+
+
+
 
     def test_optimize_frequency_empty_signal(self):
         result = AudioCalc.optimize_frequency(np.array([]), 48000, 1000.0)

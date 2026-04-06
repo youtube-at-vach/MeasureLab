@@ -238,5 +238,3 @@ def test_highpass_filter_edge_cases():
     assert len(filtered) == len(signal)
     # Should not crash
 
-
-# Trigger CI

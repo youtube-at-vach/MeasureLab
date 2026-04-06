@@ -66,6 +66,8 @@ class TestOscilloscopeMath(unittest.TestCase):
             self.fail(f"update_plot raised ValueError with empty data: {e}")
         except Exception as e:
             self.fail(f"update_plot raised unexpected exception: {e}")
+        # Verify that get_display_data was actually called and we didn't crash before it
+        self.module.get_display_data.assert_called_once()
 
 
 if __name__ == "__main__":
