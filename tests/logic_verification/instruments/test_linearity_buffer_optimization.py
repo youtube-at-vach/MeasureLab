@@ -24,8 +24,9 @@ def test_linearity_analyzer_get_latest_buffer_into_correctness():
     # Set an arbitrary index to test wrapping
     analyzer.input_index = 37
 
-    # Expected result using legacy method
-    expected = analyzer.get_latest_buffer()
+    # Expected result using manual concatenation (what legacy method did)
+    idx = analyzer.input_index
+    expected = np.concatenate((analyzer.input_data[idx:], analyzer.input_data[:idx]))
 
     # Actual result using new method
     out = np.zeros_like(analyzer.input_data)
