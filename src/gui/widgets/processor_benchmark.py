@@ -355,16 +355,19 @@ class ProcessorBenchmarkWidget(QWidget):
                 self.table.setItem(i, col, item)
 
         # Update recommendations
-        summary_text = ""
+        summary_parts = []
         for fs in self.sample_rates:
             n = recommended_n[fs]
             if n is not None:
                 res = fs / n
-                summary_text += tr("{0}kHz → Recommended: {1} (Max Realtime Resolution: ~{2:.2f}Hz)\n").format(
-                    fs / 1000.0, n, res
+                summary_parts.append(
+                    tr("{0}kHz → Recommended: {1} (Max Realtime Resolution: ~{2:.2f}Hz)\n").format(
+                        fs / 1000.0, n, res
+                    )
                 )
             else:
-                summary_text += tr("{0}kHz → Recommended: None (Cannot process in real-time)\n").format(fs / 1000.0)
+                summary_parts.append(tr("{0}kHz → Recommended: None (Cannot process in real-time)\n").format(fs / 1000.0))
+        summary_text = "".join(summary_parts)
 
         lbl = QLabel(summary_text.strip())
         lbl.setStyleSheet("font-size: 14px;")
