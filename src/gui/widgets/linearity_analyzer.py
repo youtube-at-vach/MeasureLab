@@ -318,13 +318,6 @@ class LinearityAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "Measure Linearity Error (Gain Accuracy vs Level)."
 
-    def get_latest_buffer(self) -> np.ndarray:
-        """Returns the current buffer contents ordered chronologically."""
-        # Capture current state
-        idx = self.input_index
-
-        # Reconstruct ordered buffer: Oldest data (from idx to end) + Newest data (from 0 to idx)
-        return np.concatenate((self.input_data[idx:], self.input_data[:idx]))
 
     def get_latest_buffer_into(self, out: np.ndarray) -> None:
         """Writes the current buffer contents ordered chronologically into `out`."""

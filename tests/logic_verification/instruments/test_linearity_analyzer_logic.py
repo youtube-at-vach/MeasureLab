@@ -37,7 +37,8 @@ def test_linearity_analyzer_mono_input():
     # Expectation: input_data should be filled with duplicated mono data
     # get_latest_buffer returns ordered data. Since we only pushed 100 frames into a zero buffer,
     # the last 100 frames should be our data.
-    buffer = analyzer.get_latest_buffer()
+    buffer = np.zeros_like(analyzer.input_data)
+    analyzer.get_latest_buffer_into(buffer)
     last_samples = buffer[-frames:]
 
     assert not np.all(last_samples == 0), "Mono input resulted in all-zeros buffer"
@@ -68,7 +69,8 @@ def test_linearity_analyzer_stereo_input():
     callback_func(stereo_data, out_data, frames, 0, 0)
 
     # Check input_data
-    buffer = analyzer.get_latest_buffer()
+    buffer = np.zeros_like(analyzer.input_data)
+    analyzer.get_latest_buffer_into(buffer)
     last_samples = buffer[-frames:]
 
     assert np.allclose(last_samples, stereo_data), "Stereo input was not preserved correctly"
@@ -99,7 +101,8 @@ def test_linearity_analyzer_ring_buffer_wrap():
     callback_func(data2, out_data, 60, 0, 0)
 
     # Check
-    buffer = analyzer.get_latest_buffer()
+    buffer = np.zeros_like(analyzer.input_data)
+    analyzer.get_latest_buffer_into(buffer)
 
     # The buffer should contain last 100 samples.
     # Total sent: 120 samples.

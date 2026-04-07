@@ -102,11 +102,15 @@ class TestCrosstalkHardware:
         if self.active_channel < outdata.shape[1]:
             outdata[:, self.active_channel] = sig
 
-    def get_latest_buffer(self):
-        """Returns the current buffer contents ordered chronologically."""
+    def get_latest_buffer_into(self, out: np.ndarray) -> None:
+        """Writes the current buffer contents ordered chronologically into `out`."""
         idx = self.input_index
-        data = self.input_data.copy()
-        return np.concatenate((data[idx:], data[:idx]))
+        # Part 1: Oldest data (from idx to end)
+        part1_len = self.buffer_size - idx
+        out[:part1_len] = self.input_data[idx:]
+
+        # Part 2: Newest data (from 0 to idx)
+        out[part1_len:] = self.input_data[:idx]
 
     def test_crosstalk(self, crosstalk_params, record_property, hardware_config):
         """
@@ -164,12 +168,13 @@ class TestCrosstalkHardware:
             # Initial buffer fill wait
             time.sleep(buffer_duration * 1.5)
 
+            buffer = np.empty_like(self.input_data)
             for avg_idx in range(averaging_count):
                 if avg_idx > 0:
                     time.sleep(wait_for_new_data)
 
                 # Get Data
-                buffer = self.get_latest_buffer()
+                self.get_latest_buffer_into(buffer)
 
                 # Analyze Target Channel (Silent one)
                 sig = buffer[:, target_ch]
