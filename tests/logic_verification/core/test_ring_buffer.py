@@ -152,6 +152,20 @@ class TestRingBuffer(unittest.TestCase):
         self.assertEqual(read_data.shape, (5, 1))
         self.assertEqual(rb.available(), 0)
 
+    def test_read_empty(self):
+        rb = RingBuffer(10, 2)
+        # Read from empty buffer
+        read_data = rb.read()
+        self.assertEqual(read_data.shape, (0, 2))
+        self.assertEqual(rb.available(), 0)
+
+        # Write and read all, then read again
+        rb.write(np.ones((5, 2)))
+        rb.read()
+        read_data_again = rb.read()
+        self.assertEqual(read_data_again.shape, (0, 2))
+        self.assertEqual(rb.available(), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
