@@ -752,9 +752,9 @@ class TimecodeMonitor(MeasurementModule):
         if len(samples) < need:
             return None
 
-        diffs = [int(s[1]) for s in samples]
-        [float(s[2]) for s in samples]
-        out_lat = [float(s[3]) for s in samples]
+        arr = np.array(samples)
+        diffs = arr[:, 1].astype(int).tolist()
+        out_lat = arr[:, 3].astype(float).tolist()
 
         diffs.sort()
         mid = len(diffs) // 2
