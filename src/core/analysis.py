@@ -23,6 +23,7 @@ A_WEIGHTING_F4 = 12194.0
 # 20 * log10(Ra(1000)) approx -2.000 dB
 # Gain = 10^(2.000/20) = 1.2589...
 A_WEIGHTING_GAIN = 1.2589
+A_WEIGHTING_GAIN_SQ = A_WEIGHTING_GAIN ** 2
 
 # Factor to convert Median of Rayleigh distribution (magnitude of Gaussian noise) to RMS
 # RMS / Median = 1 / sqrt(ln(2)) ~= 1.2011
@@ -57,7 +58,7 @@ def _calculate_ra_raw(f):
 def _compute_a_weighting_sq_curve(n_bins, step, start_freq=0.0):
     f = start_freq + np.arange(n_bins) * step
     ra = _calculate_ra_raw(f)
-    return (ra * A_WEIGHTING_GAIN) ** 2
+    return (ra * ra) * A_WEIGHTING_GAIN_SQ
 
 
 @functools.lru_cache(maxsize=32)
@@ -67,14 +68,14 @@ def _compute_a_weighting_sq_curve_log(n_bins, start_freq, stop_freq):
     else:
         f = np.geomspace(start_freq, stop_freq, n_bins)
     ra = _calculate_ra_raw(f)
-    return (ra * A_WEIGHTING_GAIN) ** 2
+    return (ra * ra) * A_WEIGHTING_GAIN_SQ
 
 
 @functools.lru_cache(maxsize=32)
 def _get_a_weighting_curve_from_bytes(data_bytes, dtype_str, shape):
     freqs = np.frombuffer(data_bytes, dtype=dtype_str).reshape(shape)
     ra = _calculate_ra_raw(freqs)
-    return (ra * A_WEIGHTING_GAIN) ** 2
+    return (ra * ra) * A_WEIGHTING_GAIN_SQ
 
 
 @functools.lru_cache(maxsize=32)
