@@ -19,6 +19,8 @@ class TestRingBuffer(unittest.TestCase):
         with self.assertRaises(ValueError):
             RingBuffer(0, 1)
         with self.assertRaises(ValueError):
+            RingBuffer(-1, 1)
+        with self.assertRaises(ValueError):
             RingBuffer(10, 0)
 
     def test_basic_write_read(self):
