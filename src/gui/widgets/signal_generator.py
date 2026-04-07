@@ -949,10 +949,9 @@ class SignalGeneratorWidget(QWidget):
         self.init_ui()
 
     def _set_wave_combo_key(self, key: str):
-        for i in range(self.wave_combo.count()):
-            if self.wave_combo.itemData(i) == key:
-                self.wave_combo.setCurrentIndex(i)
-                return
+        idx = self.wave_combo.findData(key)
+        if idx >= 0:
+            self.wave_combo.setCurrentIndex(idx)
 
     def _set_fft_size_combo(self, size: int):
         idx = self.fft_size_combo.findData(size)
