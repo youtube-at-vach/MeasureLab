@@ -1,8 +1,8 @@
+import threading
 import bisect
 import json
 import logging
 import os
-import threading
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -187,6 +187,21 @@ class ImpedanceAnalyzer(MeasurementModule):
         self._postmix_lpf_initialized_v = False
         self._postmix_lpf_initialized_i = False
 
+
+    def wait_for_buffer(self, cancel_event=None):
+        if not hasattr(self, "_buffer_ready_event"):
+            self._buffer_ready_event = threading.Event()
+            self._new_frames = 0
+
+        with self._buffer_lock:
+            self._new_frames = 0
+            self._buffer_ready_event.clear()
+
+        while not self._buffer_ready_event.is_set():
+            if cancel_event and cancel_event.is_set():
+                break
+            self._buffer_ready_event.wait(0.1)
+
     @property
     def name(self) -> str:
         return "Impedance Analyzer"
@@ -230,6 +245,11 @@ class ImpedanceAnalyzer(MeasurementModule):
                 else:
                     self.input_data = np.roll(self.input_data, -len(new_data), axis=0)
                     self.input_data[-len(new_data) :] = new_data
+
+                if hasattr(self, "_new_frames"):
+                    self._new_frames += len(new_data)
+                    if self._new_frames >= bs:
+                        self._buffer_ready_event.set()
 
             # --- Output Generation ---
             t = (np.arange(frames) + self._phase) / sample_rate
@@ -603,11 +623,7 @@ class ImpedanceSweepWorker(QThread):
             self.module.history_i.clear()
 
             # Wait for buffer fill
-            sample_rate = self.module.audio_engine.sample_rate
-            buffer_duration = self.module.buffer_size / sample_rate
-            wait_time = max(0.05, buffer_duration)
-
-            self._sleep_interruptible(wait_time)  # Wait for settling in buffer
+            self.module.wait_for_buffer(self._cancel_event)
             if self.is_cancelled:
                 break
 
@@ -615,7 +631,7 @@ class ImpedanceSweepWorker(QThread):
             for _ in range(self.module.averaging_count):
                 if self.is_cancelled:
                     break
-                self._sleep_interruptible(wait_time)
+                self.module.wait_for_buffer(self._cancel_event)
                 if self.is_cancelled:
                     break
                 self.module.process_data(ignore_calibration=self.cal_mode in ("open", "short", "load"))
