@@ -200,7 +200,7 @@ class LufsMeter(MeasurementModule):
 
                 lra_gated = lra_abs_gated[lra_abs_gated > lra_rel_gate_ms]
                 if lra_gated.size >= 2:
-                    lra_lufs = np.array([self._to_lufs(v) for v in lra_gated])
+                    lra_lufs = -0.691 + 10.0 * np.log10(np.maximum(lra_gated, 1e-10))
                     p10 = np.percentile(lra_lufs, 10)
                     p95 = np.percentile(lra_lufs, 95)
                     self.lra = p95 - p10
