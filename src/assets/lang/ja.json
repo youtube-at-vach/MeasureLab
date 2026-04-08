@@ -877,8 +877,6 @@
     "Phosphor": "残光",
     "Physical Output": "物理出力",
     "PipeWire / JACK Mode (Resident)": "PipeWire / JACK モード（常駐）",
-    "Pk: -INF": "Pk: -INF",
-    "Pk: {0} {1}": "Pk: {0} {1}",
     "Play": "再生",
     "Play Tone.": "トーンを再生してください。",
     "Play band-limited pink noise, measure SPL with an external meter.": "帯域制限ピンクノイズを再生し、外部メーターでSPLを測定してください。",
@@ -1359,5 +1357,7 @@
     "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危険 - 高強度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波放射中 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢",
+    "TP: -INF": "TP: -INF",
+    "TP: {0} {1}": "TP: {0} {1}"
 }

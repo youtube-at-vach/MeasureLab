@@ -313,8 +313,16 @@ class LufsMeter(MeasurementModule):
                 self.rms_c_l = self._to_db(rms_c_l_linear)
                 self.rms_c_r = self._to_db(rms_c_r_linear)
 
-                peak_c_l_linear = float(np.max(np.abs(l_c))) if len(l_c) else 0.0
-                peak_c_r_linear = float(np.max(np.abs(r_c))) if len(r_c) else 0.0
+                # True Peak calculation using 4x oversampling (BS.1770)
+                if len(l_c) > 0:
+                    l_c_up = signal.resample_poly(l_c, 4, 1)
+                    r_c_up = signal.resample_poly(r_c, 4, 1)
+                    peak_c_l_linear = float(np.max(np.abs(l_c_up)))
+                    peak_c_r_linear = float(np.max(np.abs(r_c_up)))
+                else:
+                    peak_c_l_linear = 0.0
+                    peak_c_r_linear = 0.0
+
                 self.peak_c_l = self._to_db(peak_c_l_linear)
                 self.peak_c_r = self._to_db(peak_c_r_linear)
 
@@ -324,9 +332,16 @@ class LufsMeter(MeasurementModule):
                 self.crest_c_l = self.peak_c_l - self.rms_c_l
                 self.crest_c_r = self.peak_c_r - self.rms_c_r
 
-            # Peak (Instantaneous)
-            peak_l_linear = np.max(np.abs(l_channel))
-            peak_r_linear = np.max(np.abs(r_channel))
+            # True Peak (Instantaneous)
+            if frames > 0:
+                l_up = signal.resample_poly(l_channel, 4, 1)
+                r_up = signal.resample_poly(r_channel, 4, 1)
+                peak_l_linear = float(np.max(np.abs(l_up)))
+                peak_r_linear = float(np.max(np.abs(r_up)))
+            else:
+                peak_l_linear = 0.0
+                peak_r_linear = 0.0
+
             self.peak_l = self._to_db(peak_l_linear)
             self.peak_r = self._to_db(peak_r_linear)
 
@@ -334,9 +349,9 @@ class LufsMeter(MeasurementModule):
             self.peak_hold_l = max(self.peak_hold_l, self.peak_l)
             self.peak_hold_r = max(self.peak_hold_r, self.peak_r)
 
-            # Crest Factor (Peak dB - RMS dB)
+            # Crest Factor (True Peak dB - RMS dB)
             # Ensure we don't subtract -100 from -100 resulting in 0 if both are silence, which is fine.
-            # But if RMS is -100 and Peak is -90, CF is 10.
+            # But if RMS is -100 and True Peak is -90, CF is 10.
             self.crest_l = self.peak_l - self.rms_l
             self.crest_r = self.peak_r - self.rms_r
 
@@ -502,7 +517,7 @@ class LufsMeterWidget(QWidget):
         self.l_val_label = QLabel(tr("-INF"))
         grid.addWidget(self.l_val_label, 2, 1, Qt.AlignmentFlag.AlignHCenter)
 
-        self.l_peak_label = QLabel(tr("Pk: -INF"))
+        self.l_peak_label = QLabel(tr("TP: -INF"))
         self.l_peak_label.setStyleSheet("color: red; font-size: 10px;")
         grid.addWidget(self.l_peak_label, 3, 1, Qt.AlignmentFlag.AlignHCenter)
 
@@ -522,7 +537,7 @@ class LufsMeterWidget(QWidget):
         self.r_val_label = QLabel(tr("-INF"))
         grid.addWidget(self.r_val_label, 2, 3, Qt.AlignmentFlag.AlignHCenter)
 
-        self.r_peak_label = QLabel(tr("Pk: -INF"))
+        self.r_peak_label = QLabel(tr("TP: -INF"))
         self.r_peak_label.setStyleSheet("color: red; font-size: 10px;")
         grid.addWidget(self.r_peak_label, 3, 3, Qt.AlignmentFlag.AlignHCenter)
 
@@ -775,8 +790,8 @@ class LufsMeterWidget(QWidget):
         self.l_val_label.setText(tr("{0} {1}").format(self._format_db(disp_rms_l), disp_unit))
         self.r_val_label.setText(tr("{0} {1}").format(self._format_db(disp_rms_r), disp_unit))
 
-        self.l_peak_label.setText(tr("Pk: {0} {1}").format(self._format_db(disp_peak_hold_l), disp_unit))
-        self.r_peak_label.setText(tr("Pk: {0} {1}").format(self._format_db(disp_peak_hold_r), disp_unit))
+        self.l_peak_label.setText(tr("TP: {0} {1}").format(self._format_db(disp_peak_hold_l), disp_unit))
+        self.r_peak_label.setText(tr("TP: {0} {1}").format(self._format_db(disp_peak_hold_r), disp_unit))
 
         self.l_cf_label.setText(tr("CF: {0:.1f}").format(crest_l))
         self.r_cf_label.setText(tr("CF: {0:.1f}").format(crest_r))

@@ -6,12 +6,6 @@ import os
 import soundfile as sf
 import tempfile
 
-try:
-    from src.core.analysis import AudioCalc  # noqa: F401
-except ImportError:
-    pass
-
-
 class TestRecorderSaveOptimization(unittest.TestCase):
     def setUp(self):
         # Patch sys.modules to mock sounddevice and PyQt6
