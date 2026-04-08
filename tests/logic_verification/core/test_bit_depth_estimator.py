@@ -156,3 +156,12 @@ def test_clamping_low(estimator):
     results = estimator.analyze()
 
     assert results["bit_depth"] == 0.0
+
+def test_bit_depth_8bit(estimator):
+    """Verify 8-bit depth estimation."""
+    step = 2.0 / 256.0
+    quantized_signal = np.arange(-10, 10) * step
+    estimator.add_samples(quantized_signal)
+    results = estimator.analyze()
+    assert results is not None
+    assert abs(results["bit_depth"] - 8.0) < 0.1
