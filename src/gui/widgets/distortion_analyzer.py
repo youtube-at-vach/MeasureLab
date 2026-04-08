@@ -1232,7 +1232,7 @@ class DistortionAnalyzerWidget(QWidget):
             self.thdn_title_label.setVisible(True)
             self.thdn_db_label.setVisible(True)
             self.imd_row_widget.setVisible(False)
-            
+
             if mode == "aes17":
                 self.thdn_title_label.setText(tr("Dyn Range:"))
                 self.thdn_label.setVisible(False)

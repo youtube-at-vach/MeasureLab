@@ -311,12 +311,12 @@ class AudioCalc:
         fs = float(sampling_rate)
         if fs <= 0:
             raise ValueError("Invalid sample rate")
-        
+
         nyquist = fs / 2.0
         cutoff = min(20000.0, nyquist - 0.1) 
         if cutoff <= 0:
              return None
-             
+
         Wn = cutoff / nyquist
         sos = _get_butter_sos(8, Wn, "lowpass")
         return sos
