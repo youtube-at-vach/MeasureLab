@@ -62,7 +62,8 @@ class DistortionAnalyzer(MeasurementModule):
 
         # Mode
         self.mode = "Real-time"
-        self.signal_type = "sine"  # 'sine', 'smpte', 'ccif'
+        self.signal_type = "sine"  # 'sine', 'smpte', 'ccif', 'aes17'
+        self.filter_type = None  # None, 'aes17', 'a_weighting', 'c_weighting'
 
         # State
         self.current_result = None
@@ -417,8 +418,9 @@ class DistortionAnalyzer(MeasurementModule):
         else:
             gen_frequency = settings.get("gen_frequency", 1000.0)
             target_freq = settings.get("target_frequency", gen_frequency)
+            filter_type = settings.get("filter_type", None)
 
-            results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate)
+            results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate, filter_type=filter_type)
             results["type"] = "harmonics"
             results["basic_wave"]["target_frequency"] = target_freq
             return results
@@ -502,7 +504,7 @@ class SweepWorker(QThread):
                 # In sweep mode, gen_frequency is already set to the actual frequency (snapped or not)
                 # But we want to preserve the sweep parameter 'val' as the target
                 results = AudioCalc.analyze_harmonics(
-                    data, self.module.gen_frequency, self.module.window_type, sample_rate
+                    data, self.module.gen_frequency, self.module.window_type, sample_rate, filter_type=self.module.filter_type
                 )
 
                 # Add target frequency to results if we are snapping
@@ -650,7 +652,7 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Output Mode
         self.out_mode_combo = QComboBox()
-        self.out_mode_combo.addItems([tr("Off (External Source)"), tr("Sine Wave"), tr("SMPTE IMD"), tr("CCIF IMD")])
+        self.out_mode_combo.addItems([tr("Off (External Source)"), tr("Sine Wave"), tr("SMPTE IMD"), tr("CCIF IMD"), tr("AES17 Dynamic Range (-60dBFS)")])
         self.out_mode_combo.currentIndexChanged.connect(self.on_out_mode_changed)
         rt_layout.addRow(tr("Signal Generator:"), self.out_mode_combo)
 
@@ -708,6 +710,13 @@ class DistortionAnalyzerWidget(QWidget):
 
         imd_gen_widget.setLayout(imd_gen_layout)
         self.gen_stack.addWidget(imd_gen_widget)
+
+        # 3. AES17 Settings
+        aes17_widget = QWidget()
+        aes17_layout = QFormLayout()
+        aes17_layout.addRow(QLabel(tr("Standard 1kHz Tone at -60 dBFS")))
+        aes17_widget.setLayout(aes17_layout)
+        self.gen_stack.addWidget(aes17_widget)
 
         rt_layout.addRow(self.gen_stack)
 
@@ -811,8 +820,25 @@ class DistortionAnalyzerWidget(QWidget):
         avg_row.addWidget(self.avg_spin)
         common_layout.addRow(tr("Averaging:"), avg_row)
 
+        # Filter
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItems([tr("None (20Hz-20kHz)"), tr("AES17 20kHz Standard LP"), tr("A-Weighting"), tr("C-Weighting")])
+        self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
+        common_layout.addRow(tr("Filter:"), self.filter_combo)
+
         common_widget.setLayout(common_layout)
         return common_widget
+
+    def on_filter_changed(self, idx):
+        if idx == 0:
+            self.module.filter_type = None
+        elif idx == 1:
+            self.module.filter_type = "aes17"
+        elif idx == 2:
+            self.module.filter_type = "a_weighting"
+        elif idx == 3:
+            self.module.filter_type = "c_weighting"
+        self.module.reset_averaging_state()
 
     def _create_action_buttons(self) -> QVBoxLayout:
         """Creates the start/stop action button."""
@@ -848,17 +874,20 @@ class DistortionAnalyzerWidget(QWidget):
         thdn_row_layout.addWidget(self.thdn_label)
         thdn_row_layout.addWidget(self.thdn_db_label)
         thdn_row_layout.addStretch()
-        meters_layout.addRow(QLabel(tr("THD+N:")), thdn_row)
+        self.thdn_title_label = QLabel(tr("THD+N:"))
+        meters_layout.addRow(self.thdn_title_label, thdn_row)
 
         # THD row
+        self.thd_title_label = QLabel(tr("THD:"))
         self.thd_label = QLabel(tr("-- %"))
         self.thd_label.setStyleSheet("font-size: 16px; color: #ffaa55;")
-        meters_layout.addRow(QLabel(tr("THD:")), self.thd_label)
+        meters_layout.addRow(self.thd_title_label, self.thd_label)
 
         # SINAD row
+        self.sinad_title_label = QLabel(tr("SINAD:"))
         self.sinad_label = QLabel(tr("-- dB"))
         self.sinad_label.setStyleSheet("font-size: 16px; color: #55ffff;")
-        meters_layout.addRow(QLabel(tr("SINAD:")), self.sinad_label)
+        meters_layout.addRow(self.sinad_title_label, self.sinad_label)
 
         # IMD row (Hidden by default)
         self.imd_label = QLabel(tr("-- %"))
@@ -1041,6 +1070,8 @@ class DistortionAnalyzerWidget(QWidget):
             elif out_idx == 3:
                 self.module.signal_type = "ccif"
                 self.module.imd_standard = "ccif"
+            elif out_idx == 4:
+                self.module.signal_type = "aes17"
 
         # 3. IMD Settings
         self.module.imd_f1 = self.imd_f1_spin.value()
@@ -1136,7 +1167,13 @@ class DistortionAnalyzerWidget(QWidget):
                 self.imd_f2_spin.setValue(20000.0)
                 self.imd_ratio_spin.setEnabled(False)
                 self.module.reset_averaging_state()
-
+            elif idx == 4:  # AES17 Dynamic Range
+                self.module.signal_type = "aes17"
+                self.gen_stack.setCurrentIndex(2)
+                self.set_meters_mode("aes17")
+                self.amp_spin.setEnabled(False)
+                self.unit_combo.setEnabled(False)
+                self.module.reset_averaging_state()
     def on_unit_changed(self, unit):
         # Update spin box range/value based on current amplitude
         # Current amplitude is stored in module as Linear (0-1)
@@ -1191,17 +1228,33 @@ class DistortionAnalyzerWidget(QWidget):
             self.mode_combo.setEnabled(True)
 
     def set_meters_mode(self, mode):
-        if mode == "thd":
-            self.thdn_label.setVisible(True)
+        if mode == "thd" or mode == "aes17":
+            self.thdn_title_label.setVisible(True)
             self.thdn_db_label.setVisible(True)
-            self.thd_label.setVisible(True)
-            self.sinad_label.setVisible(True)
             self.imd_row_widget.setVisible(False)
 
+            if mode == "aes17":
+                self.thdn_title_label.setText(tr("Dyn Range:"))
+                self.thdn_label.setVisible(False)
+                self.thd_title_label.setVisible(False)
+                self.thd_label.setVisible(False)
+                self.sinad_title_label.setVisible(False)
+                self.sinad_label.setVisible(False)
+            else:
+                self.thdn_title_label.setText(tr("THD+N:"))
+                self.thdn_label.setVisible(True)
+                self.thd_title_label.setVisible(True)
+                self.thd_label.setVisible(True)
+                self.sinad_title_label.setVisible(True)
+                self.sinad_label.setVisible(True)
+
         else:  # imd
+            self.thdn_title_label.setVisible(False)
             self.thdn_label.setVisible(False)
             self.thdn_db_label.setVisible(False)
+            self.thd_title_label.setVisible(False)
             self.thd_label.setVisible(False)
+            self.sinad_title_label.setVisible(False)
             self.sinad_label.setVisible(False)
             self.imd_row_widget.setVisible(True)
 
@@ -1482,6 +1535,7 @@ class DistortionAnalyzerWidget(QWidget):
             "target_frequency": self.freq_spin.value(),  # Pass target separately
             "imd_f1": self.module.imd_f1,
             "imd_f2": self.module.imd_f2,
+            "filter_type": self.module.filter_type,
         }
 
         self.analysis_pending = True
@@ -1541,15 +1595,19 @@ class DistortionAnalyzerWidget(QWidget):
             self.module.current_result = results
 
             # Update Meters
-            self.thdn_label.setText(self._format_percent(results["thdn_percent"]))
-            self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
-
-            if results.get("thd_valid", True):
-                self.thd_label.setText(self._format_percent(results["thd_percent"]))
+            if self.module.signal_type == "aes17":
+                dr_db = -results["thdn_db"]
+                self.thdn_db_label.setText(tr("{0:.2f} dB").format(dr_db))
             else:
-                self.thd_label.setText(tr("LO"))
+                self.thdn_label.setText(self._format_percent(results["thdn_percent"]))
+                self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
 
-            self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
+                if results.get("thd_valid", True):
+                    self.thd_label.setText(self._format_percent(results["thd_percent"]))
+                else:
+                    self.thd_label.setText(tr("LO"))
+
+                self.sinad_label.setText(tr("{0:.2f} dB").format(results["sinad_db"]))
 
             # ENOB Calculation
             sinad = results["sinad_db"]

@@ -306,6 +306,22 @@ class AudioCalc:
         return sos
 
     @staticmethod
+    def design_aes17_filter(sampling_rate):
+        """Design AES17 standard 20kHz low-pass filter (8th order Butterworth). Returns SOS."""
+        fs = float(sampling_rate)
+        if fs <= 0:
+            raise ValueError("Invalid sample rate")
+
+        nyquist = fs / 2.0
+        cutoff = min(20000.0, nyquist - 0.1) 
+        if cutoff <= 0:
+             return None
+
+        Wn = cutoff / nyquist
+        sos = _get_butter_sos(8, Wn, "lowpass")
+        return sos
+
+    @staticmethod
     def bandpass_filter(signal, sampling_rate, lowcut=20.0, highcut=20000.0):
         # Check signal length to ensure padding works (3 * (2 * 8 + 1) = 51)
         def get_sos(nyquist):
@@ -636,7 +652,7 @@ class AudioCalc:
         return best_freq
 
     @staticmethod
-    def calculate_thdn_sine_fit(signal, sampling_rate, freq_guess):
+    def calculate_thdn_sine_fit(signal, sampling_rate, freq_guess, filter_type=None):
         """
         Calculates THD+N using Sine Fitting method.
         Returns (thdn_db, fund_rms, noise_dist_rms)
@@ -653,18 +669,29 @@ class AudioCalc:
         fitted_fund = M @ coeffs
         residual = signal - fitted_fund
 
-        # 3. Bandwidth Limit Residual (20Hz - 20kHz)
-        # Highpass 20Hz (Remove DC/Drift if any left)
-        # Only filter if we have enough samples to support padding (padlen > 15)
-        if N > 18:
-            if sampling_rate > 40:
-                sos_hp = _get_butter_sos(4, 20, "hp", fs=sampling_rate)
-                residual = sosfiltfilt(sos_hp, residual)
+        # 3. Bandwidth Limit Residual
+        if filter_type == "aes17" and N > 51:
+            if sampling_rate > 40000:
+                sos_aes = AudioCalc.design_aes17_filter(sampling_rate)
+                if sos_aes is not None:
+                    residual = sosfiltfilt(sos_aes, residual)
+        elif filter_type == "a_weighting" and N > 51:
+            sos_a = AudioCalc.design_a_weighting(sampling_rate)
+            residual = sosfiltfilt(sos_a, residual)
+        elif filter_type == "c_weighting" and N > 51:
+            sos_c = AudioCalc.design_c_weighting(sampling_rate)
+            residual = sosfiltfilt(sos_c, residual)
+        else:
+            # Default: 20Hz - 20kHz
+            if N > 18:
+                if sampling_rate > 40:
+                    sos_hp = _get_butter_sos(4, 20, "hp", fs=sampling_rate)
+                    residual = sosfiltfilt(sos_hp, residual)
 
-            # Lowpass 20kHz
-            if sampling_rate > 44100:
-                sos_lp = _get_butter_sos(4, 20000, "lp", fs=sampling_rate)
-                residual = sosfiltfilt(sos_lp, residual)
+                # Lowpass 20kHz
+                if sampling_rate > 44100:
+                    sos_lp = _get_butter_sos(4, 20000, "lp", fs=sampling_rate)
+                    residual = sosfiltfilt(sos_lp, residual)
 
         # 4. Calculate RMS
         # Trim edges to avoid filter transients from bandwidth limit (especially 20Hz HPF)
@@ -791,9 +818,9 @@ class AudioCalc:
         return thd_percent, thd_db
 
     @staticmethod
-    def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq):
+    def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq, filter_type=None):
         """Calculates THD+N and SINAD."""
-        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(audio_data, sampling_rate, max_freq)
+        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(audio_data, sampling_rate, max_freq, filter_type=filter_type)
         thdn_linear = 10 ** (thdn_db / 20)
 
         thdn_percent = thdn_linear * 100
@@ -838,7 +865,7 @@ class AudioCalc:
         }
 
     @staticmethod
-    def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0):
+    def analyze_harmonics(audio_data, fundamental_freq, window_name, sampling_rate, min_db=-140.0, filter_type=None):
         # 0. Compute Spectrum
         freqs, amplitude_spectrum, fft_result = AudioCalc._compute_spectrum(audio_data, window_name, sampling_rate)
 
@@ -869,7 +896,7 @@ class AudioCalc:
         # 4. THD+N Calculation (Sine Fit)
         # Use raw audio_data (no window applied yet)
         thdn_percent, thdn_db, sinad_db, fund_rms, res_rms = AudioCalc._calculate_thdn_and_sinad(
-            audio_data, sampling_rate, max_freq
+            audio_data, sampling_rate, max_freq, filter_type=filter_type
         )
 
         return {
