@@ -866,8 +866,6 @@
     "Phosphor": "Фосфор",
     "Physical Output": "Физический выход",
     "PipeWire / JACK Mode (Resident)": "Режим PipeWire / JACK (резидентный)",
-    "Pk: -INF": "Pk: -INF",
-    "Pk: {0} {1}": "Pk: {0} {1}",
     "Play": "Воспроизведение",
     "Play Tone.": "Воспроизвести тон.",
     "Play band-limited pink noise, measure SPL with an external meter.": "Воспроизведите розовый шум с ограниченной полосой и измерьте SPL внешним прибором.",
@@ -1347,5 +1345,7 @@
     "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 ОПАСНО - ВЫСОКАЯ ИНТЕНСИВНОСТЬ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ОСТОРОЖНО - УЛЬТРАЗВУК АКТИВЕН 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢",
+    "TP: -INF": "TP: -INF",
+    "TP: {0} {1}": "TP: {0} {1}"
 }

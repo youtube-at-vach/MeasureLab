@@ -45,7 +45,6 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Signal Generator:** Add Psychoacoustic Masking Tones.
 * **Impedance Analyzer:** Add Cable Tester Mode, **Damping Factor / Amp Output Impedance Mode**.
 * **Distortion Analyzer:** Add J-Test & AES17, **Thermal & Power Stress Logger** (logs THD drift over long loads).
-* **LUFS Meter:** Add True Peak (ISKb) Detection.
 * **Advanced Distortion Meter:** Add **RF Immunity (EMI Rejection) Tester**.
 * **Transient Analyzer:** Add **Relay/Switch Bounce Analyzer** (quantifies contact bounce).
 
@@ -54,6 +53,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 ## ✅ Already Implemented
 
 * Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer.
+* **LUFS Meter:** True Peak (ISKb) Detection.
 
 ---
 
