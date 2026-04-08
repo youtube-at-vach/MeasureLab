@@ -866,8 +866,6 @@
     "Phosphor": "Phosphor",
     "Physical Output": "Physical Output",
     "PipeWire / JACK Mode (Resident)": "PipeWire / JACK Mode (Resident)",
-    "Pk: -INF": "Pk: -INF",
-    "Pk: {0} {1}": "Pk: {0} {1}",
     "Play": "Play",
     "Play Tone.": "Play Tone.",
     "Play band-limited pink noise, measure SPL with an external meter.": "Play band-limited pink noise, measure SPL with an external meter.",
@@ -1347,5 +1345,7 @@
     "⬆︎Update available: {0}": "⬆︎Update available: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEROUS - HIGH INTENSITY 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 CAUTION - ULTRASOUND ACTIVE 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢",
+    "TP: -INF": "TP: -INF",
+    "TP: {0} {1}": "TP: {0} {1}"
 }

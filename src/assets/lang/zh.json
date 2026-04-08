@@ -866,8 +866,6 @@
     "Phosphor": "磷光",
     "Physical Output": "物理输出",
     "PipeWire / JACK Mode (Resident)": "PipeWire / JACK 模式（常驻）",
-    "Pk: -INF": "Pk: -INF",
-    "Pk: {0} {1}": "Pk: {0} {1}",
     "Play": "播放",
     "Play Tone.": "播放音调。",
     "Play band-limited pink noise, measure SPL with an external meter.": "播放带限粉红噪声，并用外部仪表测量 SPL。",
@@ -1347,5 +1345,7 @@
     "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危险 - 高强度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波活跃 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢",
+    "TP: -INF": "TP: -INF",
+    "TP: {0} {1}": "TP: {0} {1}"
 }
