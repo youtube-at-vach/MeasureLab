@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import patch, mock_open, MagicMock
 
 # The function get_cpu_name doesn't use the classes/variables from the module that require numpy/pyqt6,
