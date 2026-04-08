@@ -1,5 +1,3 @@
-import sys
-import pytest
 from unittest.mock import patch, mock_open, MagicMock
 
 # Wrap the import in a patch to avoid ModuleNotFoundError when numpy is missing in test environments
