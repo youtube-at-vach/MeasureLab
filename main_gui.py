@@ -10,8 +10,8 @@ from src.core.utils import resource_path
 from src.core.fft_manager import fft_manager
 
 
-def main():
-    """GUI Application Entry Point"""
+def setup_app():
+    """Set up the QApplication instance, logging, and environment configuration."""
     # Suppress benign GNOME portal Settings warnings like:
     #   qt.qpa.theme.gnome: dbus reply error: ... org.freedesktop.portal.Settings
     # This must be set before importing Qt/PyQt.
@@ -21,12 +21,11 @@ def main():
         os.environ["QT_LOGGING_RULES"] = _qt_rule
 
     # Import PyQt and GUI components only after setting the environment variable
-    from PyQt6.QtCore import Qt, QTimer
-    from PyQt6.QtGui import QPixmap
+    from PyQt6.QtCore import Qt
     from PyQt6.QtWidgets import QApplication
 
-    from src.gui.main_window import MainWindow
-    from src.gui.startup import TopLevelWindowLogger, WrappingSplashScreen
+    # Enable high DPI scaling
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
     # Allow Ctrl+C to exit
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -46,10 +45,31 @@ def main():
 
     app = QApplication(sys.argv)
 
+    from src.gui.startup import TopLevelWindowLogger
     # Optional: log transient windows during startup to diagnose flashes.
     if os.environ.get("MEASURELAB_DEBUG_WINDOWS", "").strip() not in ("", "0", "false", "False"):
         app._measurelab_window_logger = TopLevelWindowLogger(app)  # keep a strong ref
         app.installEventFilter(app._measurelab_window_logger)
+
+    # Brand name (do not translate)
+    app.setApplicationName("MeasureLab")
+    try:
+        app.setApplicationDisplayName("MeasureLab")
+    except Exception:
+        pass
+
+    return app
+
+def main():
+    """GUI Application Entry Point"""
+    app = setup_app()
+
+    # Import other PyQt components after setup
+    from PyQt6.QtCore import Qt, QTimer
+    from PyQt6.QtGui import QPixmap
+
+    from src.gui.main_window import MainWindow
+    from src.gui.startup import WrappingSplashScreen
 
     # Startup splash (loading screen): show immediately while MainWindow initializes.
     pixmap = QPixmap(resource_path("src/assets/welcome.png"))
