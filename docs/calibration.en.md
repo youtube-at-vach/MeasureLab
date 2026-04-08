@@ -3,26 +3,31 @@
 MeasureLab features the ability to calibrate the input and output voltages of your audio interface, as well as the sound pressure level (SPL) of microphones and speakers.
 This allows you to associate digital values (dBFS) with physical units (V, dBu, dBV, dB SPL).
 
-## What is Calibration?
+## What is Calibration? ☕
 
-In the world of digital audio, signal magnitude is typically expressed in **dBFS (Decibels relative to Full Scale)**. This is a relative value where the maximum representable digital value is 0 dBFS.
-However, the actual physical voltage (Volts) or sound pressure (Pascals/dB SPL) varies depending on the performance of the audio interface used, the gain knob settings, and the sensitivity of the connected microphone.
+In the world of digital audio, signal magnitude is typically expressed in **dBFS (Decibels relative to Full Scale)**. This is a relative value where the absolute maximum representable digital limit (the ceiling) is set to 0 dBFS.
 
-Calibration is the process of measuring this relationship between "digital values (dBFS)" and "physical values (V, Pa)" and informing the software.
-By doing this, displays such as the spectrum analyzer and oscilloscope can be read directly in Volts (V) or sound pressure (dB SPL) instead of just dBFS.
+However, knowing only this can be slightly inconvenient.
+For example, if someone tells you a cup is "100% full (0 dBFS)," you still don't know the actual volume of water (voltage or sound pressure) unless you know if it's a **tiny espresso cup** or a **large bucket**.
+Depending on the performance of the audio interface used and the gain knob settings, the "size of this cup" changes.
 
-## Relationship between dBFS / dBV / dBu
+Calibration is the process of measuring this relationship—"how many Volts (or Pascals) in the real world corresponds to 100% in the digital world"—and informing the software.
+By doing this, you can read waveforms directly in actual "Voltage (V)" or "Sound Pressure (dB SPL)" instead of just a "percentage (dBFS)."
 
-MeasureLab supports the following units:
+## Relationship between dBFS / dBV / dBu 📏
+
+MeasureLab supports the following units. Let's introduce them with a bit of historical context.
 
 * **dBFS**: Relative level to digital full scale. Always available without calibration. The maximum value is 0 dBFS.
-* **dBV**: Unit of voltage where 1 Vrms is 0 dBV. ($20 \log_{10}(V / 1.0)$)
-* **dBu**: Unit of voltage where 0.775 Vrms is 0 dBu. Commonly used in professional audio equipment. ($20 \log_{10}(V / 0.775)$)
-* **dB SPL**: Sound Pressure Level. A unit of sound pressure where $20 \mu Pa$ is 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
+* **dBV**: Unit of voltage where 1 Vrms is the reference (0 dBV). ($20 \log_{10}(V / 1.0)$) This is a standard commonly used in consumer (home) audio equipment.
+* **dBu**: Unit of voltage where 0.775 Vrms is the reference (0 dBu). ($20 \log_{10}(V / 0.775)$)
+  💡 **Why the odd number 0.775 V?**
+  This actually originates from old telephone line standards. The voltage required to deliver 1 milliwatt of power into a 600-ohm resistor is approximately 0.775 V. Even today, this unit remains the standard in professional audio equipment.
+* **dB SPL**: Sound Pressure Level. A unit of sound pressure where the threshold of human hearing—an extremely tiny pressure of $20 \mu Pa$—is set as 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
 
 To perform displays and measurements in these units, **Input Sensitivity** and **Output Gain** calibration are required.
 
-## What is Required for Calibration?
+## Equipment for the Adventure 🎒
 
 Required equipment varies depending on the items being calibrated.
 
