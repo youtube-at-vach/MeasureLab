@@ -61,9 +61,12 @@ class AdvancedDistortionMeter(MeasurementModule):
         self._pim_f1_actual = None
         self._pim_f2_actual = None
         self.pim_amp_ratio = 1.0  # Equal amplitude
+        
+        # J-Test Settings
+        self.jtest_bit_depth = 24
 
         # Mode
-        self.mode = "MIM"  # 'MIM', 'SPDR', 'PIM'
+        self.mode = "MIM"  # 'MIM', 'SPDR', 'PIM', 'J-Test'
 
         self.callback_id = None
         self.current_result = None
@@ -190,6 +193,8 @@ class AdvancedDistortionMeter(MeasurementModule):
             self.output_buffer = self._generate_pim(self.buffer_size, sr)
         elif self.mode == "SPDR":
             self.output_buffer = self._generate_sine(self.buffer_size, sr)
+        elif self.mode == "J-Test":
+            self.output_buffer = self._generate_jtest(self.buffer_size, sr)
         else:
             self.output_buffer = np.zeros(self.buffer_size)
 
@@ -255,6 +260,24 @@ class AdvancedDistortionMeter(MeasurementModule):
         t = np.arange(frames) / sample_rate
         return self.gen_amplitude * np.sin(2 * np.pi * f * t)
 
+    def _generate_jtest(self, frames, sample_rate):
+        period = 192
+        seamless_frames = (frames // period) * period
+        if seamless_frames == 0:
+            return np.zeros(frames)
+            
+        main_tone_amp = self.gen_amplitude
+        lsb = 1.0 / (2 ** (self.jtest_bit_depth - 1))
+        
+        t = np.arange(seamless_frames)
+        main_tone = main_tone_amp * np.sin(np.pi / 2 * t)
+        
+        toggle_phase = 2 * np.pi / period * t
+        toggle = np.sign(np.sin(toggle_phase))
+        toggle[toggle == 0] = 1 # Avoid 0
+        
+        return main_tone + toggle * lsb
+
 
 class AnalysisSignals(QObject):
     result_ready = pyqtSignal(dict)
@@ -297,6 +320,9 @@ class AnalysisWorker(QRunnable):
             f1 = self.params.get("f1")
             f2 = self.params.get("f2")
             metrics["pim"] = AudioCalc.calculate_pim(mag, freqs, f1, f2)
+        elif self.mode == "J-Test":
+            idx_fs4 = np.argmin(np.abs(freqs - self.sr / 4))
+            metrics["jtest"] = {"main_db": mag_db[idx_fs4]}
 
         result = {"freqs": freqs, "mag_db": mag_db, "metrics": metrics, "mode": self.mode}
         self.signals.result_ready.emit(result)
@@ -325,7 +351,7 @@ class AdvancedDistortionMeterWidget(QWidget):
         mode_group = QGroupBox(tr("Measurement Mode"))
         mode_layout = QVBoxLayout()
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems([tr("MIM (Multitone)"), tr("SPDR"), tr("PIM")])
+        self.mode_combo.addItems([tr("MIM (Multitone)"), tr("SPDR"), tr("PIM"), tr("J-Test")])
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         mode_layout.addWidget(self.mode_combo)
         mode_group.setLayout(mode_layout)
@@ -384,6 +410,23 @@ class AdvancedDistortionMeterWidget(QWidget):
 
         pim_widget.setLayout(pim_layout)
         self.settings_stack.addWidget(pim_widget)
+
+        # 4. J-Test Settings
+        jtest_widget = QWidget()
+        jtest_layout = QFormLayout()
+        
+        self.jtest_depth_combo = QComboBox()
+        self.jtest_depth_combo.addItems(["24-bit", "16-bit"])
+        self.jtest_depth_combo.currentIndexChanged.connect(lambda idx: self.set_param("jtest_bit_depth", 24 if idx == 0 else 16))
+        jtest_layout.addRow(tr("Bit Depth:"), self.jtest_depth_combo)
+        
+        jtest_info = QLabel(tr("Outputs Fs/4 Sine + Fs/192 toggling LSB."))
+        jtest_info.setWordWrap(True)
+        jtest_info.setStyleSheet("color: #aaaaaa; font-size: 11px;")
+        jtest_layout.addRow(jtest_info)
+        
+        jtest_widget.setLayout(jtest_layout)
+        self.settings_stack.addWidget(jtest_widget)
 
         left_panel.addWidget(self.settings_stack)
 
@@ -486,6 +529,9 @@ class AdvancedDistortionMeterWidget(QWidget):
         elif index == 2:  # PIM
             self.module.mode = "PIM"
             self.settings_stack.setCurrentIndex(2)
+        elif index == 3:  # J-Test
+            self.module.mode = "J-Test"
+            self.settings_stack.setCurrentIndex(3)
 
         if self.module.is_running:
             self.module._update_output_buffer()
@@ -583,6 +629,11 @@ class AdvancedDistortionMeterWidget(QWidget):
                 self.main_metric_label.setText(f"PIM: {res['pim_db']:.1f} dBc")
                 products_str = ", ".join([f"{p['order']}th" for p in res["products"]])
                 self.sub_metric_label.setText(f"Orders: {products_str}")
+        elif mode == "J-Test":
+            if "jtest" in metrics:
+                res = metrics["jtest"]
+                self.main_metric_label.setText(tr("J-Test Active"))
+                self.sub_metric_label.setText(f"Fs/4: {res['main_db']:.1f} dBFS")
 
         self.is_analyzing = False
         # Restart Measurement for next batch
