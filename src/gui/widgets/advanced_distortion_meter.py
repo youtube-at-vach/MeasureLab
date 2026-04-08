@@ -61,7 +61,7 @@ class AdvancedDistortionMeter(MeasurementModule):
         self._pim_f1_actual = None
         self._pim_f2_actual = None
         self.pim_amp_ratio = 1.0  # Equal amplitude
-        
+
         # J-Test Settings
         self.jtest_bit_depth = 24
 
@@ -265,17 +265,17 @@ class AdvancedDistortionMeter(MeasurementModule):
         seamless_frames = (frames // period) * period
         if seamless_frames == 0:
             return np.zeros(frames)
-            
+
         main_tone_amp = self.gen_amplitude
         lsb = 1.0 / (2 ** (self.jtest_bit_depth - 1))
-        
+
         t = np.arange(seamless_frames)
         main_tone = main_tone_amp * np.sin(np.pi / 2 * t)
-        
+
         toggle_phase = 2 * np.pi / period * t
         toggle = np.sign(np.sin(toggle_phase))
-        toggle[toggle == 0] = 1 # Avoid 0
-        
+        toggle[toggle == 0] = 1  # Avoid 0
+
         return main_tone + toggle * lsb
 
 
@@ -414,17 +414,19 @@ class AdvancedDistortionMeterWidget(QWidget):
         # 4. J-Test Settings
         jtest_widget = QWidget()
         jtest_layout = QFormLayout()
-        
+
         self.jtest_depth_combo = QComboBox()
         self.jtest_depth_combo.addItems(["24-bit", "16-bit"])
-        self.jtest_depth_combo.currentIndexChanged.connect(lambda idx: self.set_param("jtest_bit_depth", 24 if idx == 0 else 16))
+        self.jtest_depth_combo.currentIndexChanged.connect(
+            lambda idx: self.set_param("jtest_bit_depth", 24 if idx == 0 else 16)
+        )
         jtest_layout.addRow(tr("Bit Depth:"), self.jtest_depth_combo)
-        
+
         jtest_info = QLabel(tr("Outputs Fs/4 Sine + Fs/192 toggling LSB."))
         jtest_info.setWordWrap(True)
         jtest_info.setStyleSheet("color: #aaaaaa; font-size: 11px;")
         jtest_layout.addRow(jtest_info)
-        
+
         jtest_widget.setLayout(jtest_layout)
         self.settings_stack.addWidget(jtest_widget)
 
