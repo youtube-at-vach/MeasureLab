@@ -805,8 +805,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.mag_curve = self.mag_plot.plot(pen="g")
 
         # RIAA Reference Curve
-        self.riaa_curve = pg.PlotCurveItem(pen=pg.mkPen("m", style=pg.QtCore.Qt.PenStyle.DashLine))
-        self.mag_plot.addItem(self.riaa_curve)
+        self.riaa_curve = self.mag_plot.plot(pen=pg.mkPen("m", style=pg.QtCore.Qt.PenStyle.DashLine))
 
         # Coherence Axis (Right)
         self.coh_axis = pg.AxisItem("right")
