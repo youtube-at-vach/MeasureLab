@@ -73,6 +73,7 @@ Settings for the test signal used for measurement.
 * **Signal Generator**:
     * **Sine Wave**: A basic sine wave. Used for THD measurement.
     * **SMPTE / CCIF**: Special pair signals for IMD measurement.
+    * **AES17 Dynamic Range (-60dBFS)**: Special signal and measurement mode for testing Dynamic Range using a standard 1kHz tone at -60dBFS.
 * **Frequency**: Frequency of the sine wave. Standard is `1000 Hz`.
 * **Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT settings (buffer size) to prevent spectral leakage. Useful for accurate distortion measurements.
 * **Actual Freq**: Displays the exact frequency being generated when the Bin Center feature is enabled.
@@ -85,6 +86,12 @@ Settings for the test signal used for measurement.
 * **Signal Generator Mode**: Select `Off (External Source)` when using an external CD player or similar as the sound source.
 
 ### Settings
+
+* **Filter**
+    * **None (20Hz-20kHz)**: Standard bandwidth.
+    * **AES17 20kHz Standard LP**: Standard 20kHz low-pass filter defined by AES17.
+    * **A-Weighting**: Human hearing perception curve weighting.
+    * **C-Weighting**: Flatter human hearing perception curve weighting.
 
 * **Input Ch / Output Ch**
     * Selects the audio channel (Left or Right) to use for measurement.
