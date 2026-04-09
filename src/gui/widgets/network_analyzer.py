@@ -547,6 +547,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.mags = []
         self.phases = []
         self.cohs = []
+        self._riaa_auto_offset = 0.0
 
         # Decouple plot updates
         self.update_timer = QTimer()
@@ -707,6 +708,36 @@ class NetworkAnalyzerWidget(QWidget):
 
         display_group.setLayout(display_form)
         display_layout.addWidget(display_group)
+
+        # Reference Curves Group
+        riaa_group = QGroupBox(tr("Reference Curves"))
+        riaa_form = QFormLayout()
+
+        self.riaa_check = QCheckBox(tr("Show RIAA Curve"))
+        self.riaa_check.toggled.connect(self.refresh_plots)
+        riaa_form.addRow(self.riaa_check)
+
+        self.riaa_iec_check = QCheckBox(tr("Enable IEC Amendment"))
+        self.riaa_iec_check.toggled.connect(self.refresh_plots)
+        riaa_form.addRow(self.riaa_iec_check)
+
+        self.riaa_mode_combo = QComboBox()
+        self.riaa_mode_combo.addItem(tr("Auto (200Hz - 5kHz Fit)"), "auto")
+        self.riaa_mode_combo.addItem(tr("Manual"), "manual")
+        self.riaa_mode_combo.currentIndexChanged.connect(self.on_riaa_mode_changed)
+        riaa_form.addRow(tr("Alignment Mode:"), self.riaa_mode_combo)
+
+        self.riaa_gain_spin = QDoubleSpinBox()
+        self.riaa_gain_spin.setRange(-120, 120)
+        self.riaa_gain_spin.setValue(0.0)
+        self.riaa_gain_spin.setSuffix(" dB")
+        self.riaa_gain_spin.valueChanged.connect(self.refresh_plots)
+        self.riaa_gain_spin.setReadOnly(True)  # defaults to auto
+        riaa_form.addRow(tr("Gain Offset (dB):"), self.riaa_gain_spin)
+
+        riaa_group.setLayout(riaa_form)
+        display_layout.addWidget(riaa_group)
+
         display_layout.addStretch()
         display_tab.setLayout(display_layout)
         tabs.addTab(display_tab, tr("Display"))
@@ -773,6 +804,9 @@ class NetworkAnalyzerWidget(QWidget):
         self.mag_plot.showGrid(x=True, y=True)
         self.mag_curve = self.mag_plot.plot(pen="g")
 
+        # RIAA Reference Curve
+        self.riaa_curve = self.mag_plot.plot(pen=pg.mkPen("m", style=pg.QtCore.Qt.PenStyle.DashLine))
+
         # Coherence Axis (Right)
         self.coh_axis = pg.AxisItem("right")
         self.coh_axis.setLabel(tr("Coherence"), units="")
@@ -823,6 +857,35 @@ class NetworkAnalyzerWidget(QWidget):
         layout.addLayout(plot_layout)
         self.setLayout(layout)
         self.on_routing_changed(self.in_combo.currentIndex())
+
+    def on_riaa_mode_changed(self, index):
+        mode = self.riaa_mode_combo.currentData()
+        self.riaa_gain_spin.setReadOnly(mode == "auto")
+        if mode == "auto":
+            # Recompute auto offset using latest plotted data without sweeping penalty
+            self.refresh_plots()
+        else:
+            self.refresh_plots()
+
+    def _calculate_riaa_curve(self, freqs, use_iec=False):
+        # RIAA Playback Curve (normalized to 1 kHz)
+        t1 = 3180e-6
+        t2 = 318e-6
+        t3 = 75e-6
+        t4 = 7950e-6  # IEC amendment
+
+        def mag_squared(f):
+            w = 2 * np.pi * f
+            n = 1.0 + (w * t2)**2
+            d = (1.0 + (w * t1)**2) * (1.0 + (w * t3)**2)
+            res = n / d
+            if use_iec:
+                res *= (w * t4)**2 / (1.0 + (w * t4)**2)
+            return res
+
+        ms_1khz = mag_squared(1000.0)
+        ms_f = mag_squared(freqs)
+        return 10 * np.log10(ms_f / ms_1khz + 1e-12)
 
     def on_routing_changed(self, index):
         self.module.input_mode = self.in_combo.currentData()
@@ -1153,6 +1216,41 @@ class NetworkAnalyzerWidget(QWidget):
 
         self.mag_curve.setData(freqs_to_plot, y_values)
         self.phase_curve.setData(freqs_to_plot, phases_to_plot)
+
+        # RIAA Curve Overlay
+        if self.riaa_check.isChecked() and len(freqs_to_plot) > 1:
+            riaa_db_ideal = self._calculate_riaa_curve(freqs_to_plot, self.riaa_iec_check.isChecked())
+
+            if self.riaa_mode_combo.currentData() == "auto":
+                # Only re-fit if not currently sweeping (to save CPU / avoid jumping)
+                if not self.update_timer.isActive():
+                    fit_mask = (freqs_to_plot >= 200) & (freqs_to_plot <= 5000)
+                    if np.any(fit_mask):
+                        offset = np.mean(base_db[fit_mask] - riaa_db_ideal[fit_mask])
+                        self._riaa_auto_offset = float(offset)
+                        self.riaa_gain_spin.blockSignals(True)
+                        self.riaa_gain_spin.setValue(self._riaa_auto_offset)
+                        self.riaa_gain_spin.blockSignals(False)
+                applied_offset = self._riaa_auto_offset
+            else:
+                applied_offset = self.riaa_gain_spin.value()
+
+            y_riaa_base = riaa_db_ideal + applied_offset
+
+            if is_effectively_relative:
+                y_riaa_final = y_riaa_base
+            else:
+                mags_riaa_linear = 10 ** (y_riaa_base / 20)
+                if unit == "dBFS":
+                    y_riaa_final = y_riaa_base
+                elif unit in ["dBV", "dBu", "Vrms", "Vpeak"]:
+                    y_riaa_final = linear_to_amplitude(mags_riaa_linear, unit, input_sensitivity)
+                else:
+                    y_riaa_final = y_riaa_base
+
+            self.riaa_curve.setData(freqs_to_plot, y_riaa_final)
+        else:
+            self.riaa_curve.setData([], [])
 
         # Group Delay Calculation
         if self.gd_check.isChecked() and len(freqs_to_plot) > 1:
