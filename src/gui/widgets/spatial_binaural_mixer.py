@@ -146,15 +146,15 @@ class TrackControlUI(QFrame):
         layout.addWidget(self.name_label)
         
         layout.addWidget(QLabel(tr("Azimuth:")))
-        self.az_spin = pg.SpinBox(value=0, bounds=(-180, 180), suffix="°")
+        self.az_spin = pg.SpinBox(value=0, bounds=(-180, 180), suffix="°", int=True, step=1, siPrefix=False)
         layout.addWidget(self.az_spin)
         
         layout.addWidget(QLabel(tr("Elevation:")))
-        self.el_spin = pg.SpinBox(value=0, bounds=(-90, 90), suffix="°")
+        self.el_spin = pg.SpinBox(value=0, bounds=(-90, 90), suffix="°", int=True, step=1, siPrefix=False)
         layout.addWidget(self.el_spin)
         
         layout.addWidget(QLabel(tr("Gain:")))
-        self.gain_spin = pg.SpinBox(value=0, bounds=(-60, 12), suffix="dB")
+        self.gain_spin = pg.SpinBox(value=0, bounds=(-60, 12), suffix=" dB", step=1, decimals=1, siPrefix=False)
         layout.addWidget(self.gain_spin)
         
         self.mute_btn = QPushButton(tr("Mute"))
