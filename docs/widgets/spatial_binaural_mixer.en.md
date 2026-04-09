@@ -2,7 +2,7 @@
 
 The **Spatial Binaural Mixer** is a high-quality, offline 3D spatial audio rendering module designed for placing multiple independent source tracks in a virtual 3D space using Head-Related Transfer Functions (HRTF / SOFA files).
 
-Unlike real-time HRTF players, this module is specifically engineered for multi-track stem rendering. It employs block-less FFT convolution and high-precision spatial interpolation, ensuring the absolute highest sound quality for mixing and exporting spatial audio. 
+Unlike real-time HRTF players, this module is specifically engineered for multi-track stem rendering. It employs block-less FFT convolution and high-precision spatial interpolation, ensuring the absolute highest sound quality for mixing and exporting spatial audio.
 
 ---
 
@@ -10,7 +10,7 @@ Unlike real-time HRTF players, this module is specifically engineered for multi-
 
 * **Multitrack Support**: Load multiple audio files (WAV, FLAC, MP3, etc.) and independently control their spatial position (Azimuth, Elevation), volume (Gain), and mute/solo states.
 * **IDW Spatial Interpolation**: Uses Inverse Distance Weighting interpolation between the nearest measured HRIR points from the SOFA file to smoothly synthesize any arbitrary angle, extending the precision beyond the original SOFA grid.
-* **Offline Block-less FFT Convolution**: Bypasses real-time buffer overlap-add mechanisms, convolving the entire audio track perfectly at once (`scipy.signal.fftconvolve`) to prevent any windowing artifacts or zipper noise. 
+* **Offline Block-less FFT Convolution**: Bypasses real-time buffer overlap-add mechanisms, convolving the entire audio track perfectly at once (`scipy.signal.fftconvolve`) to prevent any windowing artifacts or zipper noise.
 * **Float64 Processing**: Internal summing bus operates in 64-bit floating point precision, ensuring absolute headroom before final normalization and export.
 * **Highest Quality Resampling**: Synchronizes mixed sample rates natively using Polyphase Sinc interpolation (`resample_poly`).
 
@@ -20,8 +20,9 @@ Unlike real-time HRTF players, this module is specifically engineered for multi-
 
 ### 1. Spatial Settings (SOFA)
 
-Choose the HRTF filter dataset you want to use for the acoustic space. 
-- Click **Load SOFA** and select a `.sofa` or `.nc` format file.
+Choose the HRTF filter dataset you want to use for the acoustic space.
+
+* Click **Load SOFA** and select a `.sofa` or `.nc` format file.
 
 ### 2. Track Setup
 
@@ -54,4 +55,4 @@ Because the module is optimized for quality over real-time responsiveness, audio
 ## 💡 Practical Examples
 
 * **Stem Breakdown**: Import vocals, bass, keys and drums separately. Set vocals to Center (`Az 0, El 10`), Drums to bottom rear, and keys off to the wide sides. Render the mix for an immersive binaural song.
-* **ASMR / Narrative**: Import multiple voice tracks and sound effects, spread them across the full 3D sphere to mimic a realistic story scene, and export the unified high-fidelity scene to WAV. 
+* **ASMR / Narrative**: Import multiple voice tracks and sound effects, spread them across the full 3D sphere to mimic a realistic story scene, and export the unified high-fidelity scene to WAV.
