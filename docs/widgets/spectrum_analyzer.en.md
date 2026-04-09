@@ -8,6 +8,13 @@ This tool analyzes and displays the frequency components of audio signals in rea
 You can visually confirm the magnitude of each frequency band for sounds input via microphone or line-in.  
 In addition to general FFT (Fast Fourier Transformation) analysis, it also features advanced measurement functions such as PSD (Power Spectral Density) display useful for noise analysis, and weighting (A-weighting/C-weighting) that takes hearing sensitivity into account.
 
+## ☕ Coffee Break: What is the Spectrum Analyzer actually doing?
+
+Sound is simply "vibration of air." An oscilloscope graphs this vibration over "time," but when a complex sound plays, the waveform becomes a messy jumble.
+
+The Spectrum Analyzer takes this complex waveform and passes it through a mathematical magic formula called **FFT (Fast Fourier Transform)**, breaking it down to show **"which pitches"** are mixed in and **"how strong"** they are.
+This is exactly the same principle as passing sunlight through a prism to separate it into its rainbow-colored components (red, green, blue, etc.). The role of this widget is to separate the "colors" of the sound and show them to you.
+
 ## Operation
 
 ### Starting and Stopping Measurement
@@ -36,21 +43,23 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
     * **Dual**: Displays both left and right channels simultaneously on the graph (Left=Green, Right=Red).
 
 * **FFT Size (Frequency Resolution)**
-    * Specifies the number of samples used for analysis.
-    * **Higher numbers (e.g., 131072, 1M)**: Frequency resolution becomes finer, making it easier to distinguish fine peaks, but the response time becomes slower.
-    * **Lower numbers (e.g., 1024, 4096)**: Response time is faster and moves briskly, but the frequency resolution becomes coarser.
-    * Usually, a value between `4096` and `16384` is recommended for a good balance.
+    * Specifies the number of samples used for analysis. Think of this like the **megapixel count of a digital camera**.
+    * **Higher numbers (e.g., 131072, 1M)**: High megapixel (high resolution) state. The frequency scale becomes finer, making it easier to distinguish dense peaks. However, just as taking a high-res photo requires a longer "exposure time," the graph's response speed becomes slower.
+    * **Lower numbers (e.g., 1024, 4096)**: Low megapixel (low resolution) state. The frequency scale becomes coarser, but because the shutter speed is fast, it briskly follows fast-moving sounds.
+    * Usually, a value between `4096` and `16384` is recommended for a good balance between resolution and response speed.
 
 * **Window (Window Function)**
     * A process to suppress errors (spectral leakage) that occur during FFT analysis.
+    * 💡 **Why is it necessary?**: FFT assumes that the "sound is repeating the exact same pattern infinitely." However, in reality, we cut out (sample) a certain length of sound and calculate that. The unnaturally cut edges of the waveform (as if cut by scissors) generate "non-existent noise (spectral leakage)" in the calculation results. The window function acts to smoothly fade out the edges of the cut waveform, preventing this noise.
     * **hanning**: The most versatile and common window function. Choose this if you are unsure.
     * **rect (Rectangular)**: No window function is applied. Errors will be large for any signals other than transient signals or signals whose cycles match perfectly.
     * **Multitaper**: When the Multitaper feature (described below) is turned ON, a dedicated window function is automatically applied.
 
 * **Weighting**
-    * **Z**: No weighting (flat). Use this for measuring physical, accurate values.
-    * **A**: **A-weighting**. A filter that matches the sensitivity characteristics of the human ear. Common for noise level measurements (low and very high frequencies are evaluated with lower sensitivity).
-    * **C**: **C-weighting**. Closer to flat than A-weighting, but with very low and very high frequencies cut.
+    * **Z**: No weighting (flat). Use this when measuring physically accurate voltage or sound pressure.
+    * **A**: **A-weighting**. A filter that matches the sensitivity characteristics of the human ear.
+        * 💡 **The mystery of the human ear**: The human ear does not hear all pitches equally. We are most sensitive to 3kHz-4kHz (the pitch of a baby's cry or a siren), and insensitive to low and very high frequencies (this is said to be an evolutionary advantage for survival). A-weighting converts the physical strength of the sound picked up by the mic into this "loudness perceived by humans" (weighting). This is the standard setting for noise level measurements.
+    * **C**: **C-weighting**. Closer to flat than A-weighting, but it cuts out very low and very high frequencies that human ears cannot hear. It is often used to evaluate the sound pressure you "feel" with your body at loud venues like live houses.
 
 * **Unit**
     * **dBFS**: A relative value with 0 dB as the digital full scale. It is the level relative to the input limit of the audio interface.
