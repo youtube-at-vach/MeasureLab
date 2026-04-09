@@ -19,8 +19,9 @@ The unit for perceived loudness.
 ### Other Indicators
 
 * **RMS**: Root Mean Square value (electrical average level).
-* **Peak (Pk)**: The maximum amplitude value of the signal.
-* **Crest Factor (CF)**: The difference between Peak and RMS. It represents the width of the dynamic range.
+* **True Peak (TP / ISKb)**: The maximum amplitude value of the signal, calculated using 4x oversampling to detect inter-sample peaks. It provides a more accurate representation of the analog signal after D/A conversion compared to a standard sample peak meter.
+* **Peak (Pk)**: The maximum sample value of the signal.
+* **Crest Factor (CF)**: The difference between True Peak and RMS. It represents the width of the dynamic range.
 
 ## Operation
 

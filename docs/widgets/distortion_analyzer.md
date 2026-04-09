@@ -73,6 +73,7 @@
 * **Signal Generator**:
     * **Sine Wave**: 基本的な正弦波です。THD測定に使います。
     * **SMPTE / CCIF**: IMD測定用の特殊なペア信号です。
+    * **AES17 Dynamic Range (-60dBFS)**: -60dBFSの1kHzトーンを使用し、ダイナミックレンジを測定するための専用モードです。
 * **Frequency**: 正弦波の周波数です。標準は `1000 Hz` です。
 * **Bin Center (ビンセンター)**: チェックを入れると、現在のFFT設定（バッファサイズ）でスペクトル漏れが発生しない「FFTビンの中心周波数」に自動的にスナップします。正確な歪み率測定を行いたい場合に有効です。
 * **Actual Freq**: ビンセンター機能が有効な場合に、実際に生成されている正確な周波数を表示します。
@@ -85,6 +86,12 @@
 * **Signal Generator Mode**: 外部のCDプレーヤーなどを音源にする場合は `Off (External Source)` を選びます。
 
 ### Settings
+
+* **Filter (フィルター)**
+    * **None (20Hz-20kHz)**: 標準帯域。
+    * **AES17 20kHz Standard LP**: AES17規格で定められた急峻な20kHzローパスフィルター。
+    * **A-Weighting**: 人間の聴覚特性に合わせた重み付け（A特性）。
+    * **C-Weighting**: 平坦に近い聴覚特性（C特性）。
 
 * **Input Ch / Output Ch**
     * 測定に使用するオーディオチャンネル（Left または Right）を選択します。

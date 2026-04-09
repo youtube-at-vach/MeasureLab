@@ -55,6 +55,11 @@ This is the core function of this tool. The main modes are as follows:
     - **How to interpret**: **PIM (dBc)** represents how low the distortion component is relative to the original signal. The "lower (greater negative value)" the value, the higher the performance.
     - **Settings**: Specify two frequencies in **Freq 1 / Freq 2** (e.g., 18kHz and 19kHz, or 1.8kHz and 2.1kHz, etc.).
 
+- **J-Test**
+    - **Overview**: Generates a specific signal designed to stimulate and expose digital jitter over an S/PDIF or USB audio interface.
+    - **How to interpret**: The result is displayed as the amplitude of the signal at Fs/4.
+    - **Settings**: Select the bit depth (16-bit or 24-bit) in the **J-Test Settings**.
+
 ### Generator
 
 Sets the strength of the signal used for measurement.
