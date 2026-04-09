@@ -32,7 +32,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 7 | **Distortion Analyzer** | Measures THD, THD+N, SINAD, and IMD (SMPTE/CCIF). Includes built-in signal generator, frequency sweep, snap to bin center, harmonic bar graph, and averaging function. |
 | 8 | **Linearity Analyzer** | Measures gain linearity relative to signal level (AES17 Linearity Deviation). Used for verifying DAC low-level signal reproducibility, bit accuracy, and dynamic range. |
 | 9 | **Advanced Distortion Meter** | Advanced distortion analysis including MIM (Multi-tone Intermodulation), SPDR (Spurious-free Dynamic Range), and PIM (Passive Intermodulation) measurement. |
-| 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay). Supports sweep measurement, multiple trace display, and frequency range limiting. |
+| 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay). Supports sweep measurement, multiple trace display, RIAA curve comparison, and frequency range limiting. |
 | 11 | **Oscilloscope** | 2-channel waveform display with trigger function, cursor measurement, math waveforms (A+B, A-B), and real-time low-pass/high-pass filtering. |
 | 12 | **Raw Time Series** | 2-channel scroll waveform monitor that holds long-term spans in a ring buffer. |
 | 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |

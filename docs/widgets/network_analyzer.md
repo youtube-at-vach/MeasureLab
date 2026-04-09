@@ -50,6 +50,16 @@ Network Analyzer（ネットワークアナライザ）は、機器やシステ�
 * **Max/Min Freq**: グラフに表示する周波数範囲を制限します。
 * **Single-Ch Mode**: 1チャンネルのみの入力を使用する場合の表示モードを選択します。**Relative (Gain)**（出力信号に対するゲイン）または **Absolute (Level)**（入力レベルをそのまま表示）が選択できます。
 
+## リファレンスカーブ (RIAA)
+
+Network Analyzerには、フォノイコライザーの測定に欠かせないRIAAカーブ比較機能が搭載されています。
+
+* **Show RIAA Curve**: 標準的なRIAA再生カーブをグラフ上に重ね合わせて表示します。
+* **Enable IEC Amendment**: RIAAカーブにIEC改正（サブソニックフィルタ）を追加します。20.02 Hz（時定数 7950μs）のポールが追加されます。
+* **Alignment Mode**:
+    * **Auto (200Hz - 5kHz Fit)**: 200 Hzから5 kHzの範囲の平均レベルに合わせて、RIAAカーブの上下位置（オフセット）を自動的に調整します。素早い検証に最適です。
+    * **Manual**: **Gain Offset** を手動で調整して、RIAAカーブと測定結果を微細に合わせることができます。
+
 ## キャリブレーション
 
 ### Latency (レイテンシ) と IR SNR
