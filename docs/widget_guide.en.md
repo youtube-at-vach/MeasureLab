@@ -90,7 +90,7 @@ Tools for evaluating equipment performance and sound quality.
 Measures transmission characteristics, impedance, etc., of electronic circuits and systems.
 
 * **[Network Analyzer](widgets/network_analyzer.md)**
-    * Measures frequency response (gain, phase, group delay). Useful for checking characterisics of amplifiers and filters.
+    * Measures frequency response (gain, phase, group delay). Useful for checking characteristics of amplifiers and filters. Supports RIAA curve overlay for phono-equalizer testing.
 
 * **[Impedance Analyzer](widgets/impedance_analyzer.md)**
     * Measures impedance characteristics (LCR) of speakers and components.

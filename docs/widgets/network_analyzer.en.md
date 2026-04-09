@@ -50,6 +50,16 @@ Customize the graph display in the **"Display"** tab.
 * **Max/Min Freq**: Limits the frequency range displayed on the graph.
 * **Single-Ch Mode**: When using a single input channel, choose between **Relative (Gain)** (normalized to the output) or **Absolute (Level)**.
 
+## Reference Curves (RIAA)
+
+The Network Analyzer includes specialized support for RIAA curve comparison, which is essential for testing phono-equalizers.
+
+* **Show RIAA Curve**: Overlays the standard RIAA playback curve on the magnitude plot.
+* **Enable IEC Amendment**: Adds the IEC amendment (sub-sonic filter) to the RIAA curve. This adds a pole at 20.02 Hz (7950μs time constant) to the response.
+* **Alignment Mode**:
+    * **Auto (200Hz - 5kHz Fit)**: Automatically shifts the RIAA curve vertically to match the average level of your measurement between 200 Hz and 5 kHz. This is the recommended mode for quick evaluation.
+    * **Manual**: Allows you to manually adjust the **Gain Offset** of the reference curve for precise alignment.
+
 ## Calibration
 
 ### Latency and IR SNR
