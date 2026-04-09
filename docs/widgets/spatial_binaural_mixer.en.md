@@ -21,6 +21,7 @@ Unlike real-time HRTF players, this module is specifically engineered for multi-
 ### 1. Spatial Settings (SOFA)
 
 Choose the HRTF filter dataset you want to use for the acoustic space.
+
 * Click **Load SOFA** and select a `.sofa` or `.nc` format file.
 
 ### 2. Track Setup
