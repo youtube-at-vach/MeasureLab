@@ -146,6 +146,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 * **[Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md)**
     * 左右の音量・周波数特性・位相の整合性をリアルタイムで監視し、ステレオアライメントを確認します。
 
+* **[Spatial Binaural Mixer](widgets/spatial_binaural_mixer.md)**
+    * 高品質なオフライン・マルチトラック空間オーディオレンダラーです。STEMなどの複数トラックを読み込み、HRTFを用いて独立して3D空間に配置し、リアルタイム処理特有のアーティファクトを回避した最高音質でMIXを書き出します。
+
 ---
 
 ## 🛠️ ユーティリティ

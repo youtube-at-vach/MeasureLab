@@ -56,6 +56,7 @@ from src.core.module_constants import (
     EXPERIMENTAL_MODULE_KEYS,
     MODULE_STEREO_ALIGNMENT_MONITOR,
     MODULE_PROCESSOR_BENCHMARK,
+    MODULE_SPATIAL_BINAURAL_MIXER,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -95,6 +96,7 @@ MODULE_REGISTRY = {
     MODULE_1PPS_MONITOR: ("src.gui.widgets.one_pps_monitor", "OnePPSMonitor"),
     MODULE_STEREO_ALIGNMENT_MONITOR: ("src.gui.widgets.stereo_alignment_monitor", "StereoAlignmentMonitor"),
     MODULE_PROCESSOR_BENCHMARK: ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"),
+    MODULE_SPATIAL_BINAURAL_MIXER: ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"),
 }
 
 

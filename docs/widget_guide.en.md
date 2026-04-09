@@ -140,6 +140,9 @@ Handles stereo image and spatial sound reverberation.
 * **[Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md)**
     * Monitors the consistency of L/R level, frequency response, and phase in real-time to verify stereo alignment.
 
+* **[Spatial Binaural Mixer](widgets/spatial_binaural_mixer.md)**
+    * A high-quality offline multitrack spatial audio renderer. Load stems and independently position them in 3D space using HRTF, avoiding real-time processing artifacts.
+
 ---
 
 ## 🛠️ Utilities
