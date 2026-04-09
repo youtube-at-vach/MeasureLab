@@ -14,6 +14,12 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 !!! note
     By using this loopback connection, you can perform a test to "analyze the sound you output yourself" without using external equipment. This is the basis of all measurements.
 
+### ☕ Coffee Break: Why start with a loopback?
+
+Why do we connect the "output" directly to the "input" first, instead of immediately connecting the thing we want to measure (like an amp or a microphone)?
+This is a "health check for the measurement instrument (PC and audio interface) itself"!
+For example, before looking at the stars with an astronomical telescope, you first check if the lens is cloudy and if it can focus properly, right? Loopback is a very important, and somewhat interesting, first ritual to confirm whether you can accurately pick up the sound you (the PC) outputted yourself.
+
 ---
 
 ## Starting the Software

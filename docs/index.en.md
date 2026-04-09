@@ -10,6 +10,12 @@ The purpose of this tool is to **turn your everyday PC and audio interface into 
     **"MeasureLab" is a "virtual measurement desk" inside your PC.**
     You can arrange the necessary instruments (widgets) on the desk and combine them freely to perform measurements.
 
+## ☕ Coffee Break: What does it mean to "see" sound?
+
+"Sound" is the vibration of air. We hear it with our ears, but we can't accurately tell what shape it has or what components are mixed in just by listening.
+MeasureLab is a tool that graphs the invisible "sound" and projects it onto the screen.
+To use an analogy, it's like an "electrocardiogram" at a hospital or an "astronomical telescope" for observing stars. Your PC turns into a magic mirror that reflects the invisible form of sound!
+
 ---
 
 ## How to Read This Manual
