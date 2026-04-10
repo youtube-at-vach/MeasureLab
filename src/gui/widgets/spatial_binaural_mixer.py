@@ -306,6 +306,18 @@ class SpatialBinauralMixerWidget(QWidget):
         self.start_sec_spin.setEnabled(False)
         preview_layout.addWidget(self.start_sec_spin)
         
+        self.prev_btn = QPushButton("◀")
+        self.prev_btn.setFixedWidth(24)
+        self.prev_btn.setEnabled(False)
+        self.prev_btn.clicked.connect(self.on_prev_preview)
+        preview_layout.addWidget(self.prev_btn)
+        
+        self.next_btn = QPushButton("▶")
+        self.next_btn.setFixedWidth(24)
+        self.next_btn.setEnabled(False)
+        self.next_btn.clicked.connect(self.on_next_preview)
+        preview_layout.addWidget(self.next_btn)
+        
         preview_layout.addWidget(QLabel(tr("Duration:")))
         self.duration_sec_spin = QDoubleSpinBox()
         self.duration_sec_spin.setRange(0.1, 600.0)
@@ -344,6 +356,18 @@ class SpatialBinauralMixerWidget(QWidget):
         is_checked = self.preview_cb.isChecked()
         self.start_sec_spin.setEnabled(is_checked)
         self.duration_sec_spin.setEnabled(is_checked)
+        self.prev_btn.setEnabled(is_checked)
+        self.next_btn.setEnabled(is_checked)
+
+    def on_prev_preview(self):
+        dur = self.duration_sec_spin.value()
+        curr = self.start_sec_spin.value()
+        self.start_sec_spin.setValue(max(0.0, curr - dur))
+
+    def on_next_preview(self):
+        dur = self.duration_sec_spin.value()
+        curr = self.start_sec_spin.value()
+        self.start_sec_spin.setValue(curr + dur)
 
     def on_load_sofa(self):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)")
