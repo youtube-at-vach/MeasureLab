@@ -7,23 +7,23 @@ UIの改善と多言語化の強化、各種ウィジェットや計測モジュ
 前回のレポート作成（コミット 40370ab2）以降、現在の最新コミット（d83bb31）までの期間において、以下の機能追加、最適化、および改善が行われました。
 
 - **新機能の追加・機能拡張**:
-  - Spatial Binaural Mixer モジュールの追加と多言語対応、UI改善。
-  - Network Analyzer に RIAA EQ curve matcher が追加されました。
-  - LUFS meter に True Peak (ISKb) 検出 (4x oversampling) 機能が実装されました。
-  - AES17 フィルタ設計と J-Test 信号生成 (THD+N 分析向け) が追加されました。
+    - Spatial Binaural Mixer モジュールの追加と多言語対応、UI改善。
+    - Network Analyzer に RIAA EQ curve matcher が追加されました。
+    - LUFS meter に True Peak (ISKb) 検出 (4x oversampling) 機能が実装されました。
+    - AES17 フィルタ設計と J-Test 信号生成 (THD+N 分析向け) が追加されました。
 - **ドキュメントの改善と更新**:
-  - Spectrum Analyzer などのドキュメントに対する読みやすさとエンゲージメント向上のための更新。
-  - Processor Benchmark、Spatial Binaural Mixer などの新規モジュールのドキュメント追加。
-  - 毎日の翻訳・ドキュメント自動同期とチェックタスクの継続的な実行。
+    - Spectrum Analyzer などのドキュメントに対する読みやすさとエンゲージメント向上のための更新。
+    - Processor Benchmark、Spatial Binaural Mixer などの新規モジュールのドキュメント追加。
+    - 毎日の翻訳・ドキュメント自動同期とチェックタスクの継続的な実行。
 - **パフォーマンス最適化とリファクタリング**:
-  - LUFS アレイ計算や A-Weighting ゲイン計算のベクタライズ最適化。
-  - ループ内の文字列結合を `"".join()` へ変更、ImpedanceSweepWorkerの待機をEvent待機にするなどパフォーマンス・リファクタリングの実施。
-  - Processor Benchmark の最適化（FFT スレッド上限設定、UIイベント排除による精度向上）と py-cpuinfo 依存の排除。
+    - LUFS アレイ計算や A-Weighting ゲイン計算のベクタライズ最適化。
+    - ループ内の文字列結合を `"".join()` へ変更、ImpedanceSweepWorkerの待機をEvent待機にするなどパフォーマンス・リファクタリングの実施。
+    - Processor Benchmark の最適化（FFT スレッド上限設定、UIイベント排除による精度向上）と py-cpuinfo 依存の排除。
 - **テスト・CI/CD環境の強化**:
-  - `SettingsWidget`、`Advanced Distortion Meter`、`ImpedanceAnalyzer` などUIウィジェットのテスト追加。
-  - `RingBuffer`、`AudioEngine` (デバイスキャッシュのTTL増加など)、`TimecodeMonitor` 等コア機能へのテストやモック改善。
-  - CPU名取得に関する Darwin / Win32 環境の例外ハンドリングテストや PyInstaller 向けのインポート自動化 (v0.6.1 リリース)。
-  - 古いテストのクリーンアップや Ruff linting エラーの解消。
+    - `SettingsWidget`、`Advanced Distortion Meter`、`ImpedanceAnalyzer` などUIウィジェットのテスト追加。
+    - `RingBuffer`、`AudioEngine` (デバイスキャッシュのTTL増加など)、`TimecodeMonitor` 等コア機能へのテストやモック改善。
+    - CPU名取得に関する Darwin / Win32 環境の例外ハンドリングテストや PyInstaller 向けのインポート自動化 (v0.6.1 リリース)。
+    - 古いテストのクリーンアップや Ruff linting エラーの解消。
 
 先週までのログ：
 
