@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.signal import hilbert
+from scipy.signal import hilbert, lfilter
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -80,7 +80,7 @@ class LockInAmplifier(MeasurementModule):
         self.postmix_lpf_order = 4
         # Time constant (seconds). If <= 0, defaults to the current integration time (buffer duration).
         self.postmix_lpf_tau_s = 0.0
-        self._postmix_lpf_state = [0j] * 8
+        self._postmix_lpf_state = np.zeros(8, dtype=np.complex128)
         self._postmix_lpf_initialized = False
 
         self.callback_id = None
@@ -125,7 +125,7 @@ class LockInAmplifier(MeasurementModule):
             logger.error("Failed to clear history on harmonic change", exc_info=True)
 
     def reset_postmix_lpf(self):
-        self._postmix_lpf_state = [0j] * 8
+        self._postmix_lpf_state = np.zeros(8, dtype=np.complex128)
         self._postmix_lpf_initialized = False
 
     @property
@@ -428,17 +428,13 @@ class LockInAmplifier(MeasurementModule):
             # Initialize to the first value after a reset to avoid a long transient
             # when using higher-order cascades (important since default order can be >0).
             if not self._postmix_lpf_initialized:
-                for stage in range(order):
-                    self._postmix_lpf_state[stage] = result
+                self._postmix_lpf_state[:order] = result
                 self._postmix_lpf_initialized = True
             else:
-                x = result
-                for stage in range(order):
-                    y_prev = self._postmix_lpf_state[stage]
-                    y = y_prev + alpha * (x - y_prev)
-                    self._postmix_lpf_state[stage] = y
-                    x = y
-                result = x
+                v = (1.0 - alpha) * self._postmix_lpf_state[:order]
+                v[0] += alpha * result
+                self._postmix_lpf_state[:order] = lfilter([1], [1, -alpha], v)
+                result = self._postmix_lpf_state[order - 1]
 
         # Averaging
         self.history.append(result)
