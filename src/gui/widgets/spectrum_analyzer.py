@@ -340,13 +340,18 @@ class SpectrumAnalyzer(MeasurementModule):
             psd_accum_0 = np.zeros(len(freqs))
             psd_accum_1 = np.zeros(len(freqs))
 
+            d0 = data[:, 0]
+            d1 = data[:, 1]
+
             for k in range(K):
                 w = windows[k]
-                fft_0 = fft_manager.rfft(data[:, 0] * w)
-                psd_accum_0 += np.abs(fft_0) ** 2
+                fft_0 = fft_manager.rfft(d0 * w)
+                psd_accum_0 += fft_0.real * fft_0.real
+                psd_accum_0 += fft_0.imag * fft_0.imag
 
-                fft_1 = fft_manager.rfft(data[:, 1] * w)
-                psd_accum_1 += np.abs(fft_1) ** 2
+                fft_1 = fft_manager.rfft(d1 * w)
+                psd_accum_1 += fft_1.real * fft_1.real
+                psd_accum_1 += fft_1.imag * fft_1.imag
 
             psd_0 = psd_accum_0 / K
             psd_1 = psd_accum_1 / K
