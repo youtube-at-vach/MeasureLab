@@ -141,6 +141,52 @@ class TestUtils(unittest.TestCase):
         # Vpeak
         self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "Vpeak", gain=1.0), 1.0))
 
+    def test_resource_path_meipass(self):
+        from unittest.mock import patch
+        from src.core.utils import resource_path
+        with patch("sys._MEIPASS", "/tmp/_MEI123456", create=True):
+            self.assertEqual(resource_path("test.png"), os.path.join("/tmp/_MEI123456", "test.png"))
+
+    def test_resource_path_exception_fallback_root(self):
+        from unittest.mock import patch
+        from src.core.utils import resource_path
+
+        if hasattr(sys, '_MEIPASS'):
+            del sys._MEIPASS
+
+        with patch("os.path.abspath", return_value="/fake/root"):
+            with patch("os.path.exists", side_effect=lambda p: p == os.path.join("/fake/root", "test.png")):
+                self.assertEqual(resource_path("test.png"), os.path.join("/fake/root", "test.png"))
+
+    def test_resource_path_exception_fallback_src(self):
+        from unittest.mock import patch
+        from src.core.utils import resource_path
+
+        if hasattr(sys, '_MEIPASS'):
+            del sys._MEIPASS
+
+        with patch("os.path.abspath", return_value="/fake/root"):
+            def mock_exists(p):
+                if p == os.path.join("/fake/root", "test.png"):
+                    return False
+                if p == os.path.join("/fake/root", "src", "test.png"):
+                    return True
+                return False
+
+            with patch("os.path.exists", side_effect=mock_exists):
+                self.assertEqual(resource_path("test.png"), os.path.join("/fake/root", "src", "test.png"))
+
+    def test_resource_path_exception_fallback_not_found(self):
+        from unittest.mock import patch
+        from src.core.utils import resource_path
+
+        if hasattr(sys, '_MEIPASS'):
+            del sys._MEIPASS
+
+        with patch("os.path.abspath", return_value="/fake/root"):
+            with patch("os.path.exists", return_value=False):
+                self.assertEqual(resource_path("test.png"), os.path.join("/fake/root", "test.png"))
+
 
 if __name__ == "__main__":
     unittest.main()
