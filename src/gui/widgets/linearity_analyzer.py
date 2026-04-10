@@ -163,10 +163,6 @@ class LinearitySweepWorker(QThread):
                 mag_sum = 0.0
                 noise_sum_sq = 0.0
 
-                # Determine wait time for buffer refresh
-                # We need fresh data for each average.
-                buffer_duration = self.module.buffer_size / sample_rate
-
                 # Initial wait for settling at this level
                 self.wait_interruptible(min_wait)
 
