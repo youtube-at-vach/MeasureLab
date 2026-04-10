@@ -25,6 +25,18 @@ Checklist to find the best tool for "what you want to do" quickly.
 
 ---
 
+## ☕ Coffee Break: An Orchestra of Instruments
+
+There are many widgets (measurement instruments) here, but what are their respective roles?
+
+- The **Oscilloscope** is a **"camera"** that captures the shape of sound exactly as it is.
+- The **Spectrum Analyzer** is a **"prism"** that separates sound by frequency. (Just like separating light into a rainbow!)
+- The **Distortion Analyzer** is a **"microscope"** that finds only the impurities mixed in the signal.
+
+By combining these, you can unravel the true nature of invisible "sound" from all angles. Try placing widgets freely according to your purpose, like a conductor of an orchestra!
+
+---
+
 ## 📡 Signal Generation
 
 Tools for outputting signals or generating reference signals.
