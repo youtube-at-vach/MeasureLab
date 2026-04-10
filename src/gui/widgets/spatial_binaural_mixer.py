@@ -63,12 +63,19 @@ class RenderWorker(QThread):
         self.tracks_data = tracks_data
         self.hrtf_data = hrtf_data
         self.target_sr = target_sr
+        self.is_cancelled = False
+
+    def cancel(self):
+        self.is_cancelled = True
 
     def run(self):
         try:
             processed_tracks = []
 
             for i, track in enumerate(self.tracks_data):
+                if self.is_cancelled:
+                    self.finished.emit(None)
+                    return
                 self.progress.emit(10, tr("Loading track {0}...").format(i+1))
                 data, sr = sf.read(track['path'], always_2d=True)
                 if sr != self.target_sr:
@@ -97,6 +104,9 @@ class RenderWorker(QThread):
             master_bus = np.zeros((max_mix_len, 2), dtype=np.float64)
 
             for i, (audio_data, config) in enumerate(zip(processed_tracks, self.tracks_data, strict=True)):
+                if self.is_cancelled:
+                    self.finished.emit(None)
+                    return
                 self.progress.emit(20 + int(70 * i / len(processed_tracks)), tr("Rendering track {0}...").format(i+1))
 
                 hrir_orig = interpolate_hrir(self.hrtf_data, config['az'], config['el'])
@@ -342,10 +352,13 @@ class SpatialBinauralMixerWidget(QWidget):
 
         self.worker = RenderWorker(configs, self.module.hrtf_data, self.module.audio_engine.sample_rate)
         self.worker.progress.connect(self.pd.setValue)
+        self.pd.canceled.connect(self.worker.cancel)
 
         def on_finished(result):
             self.pd.close()
-            if isinstance(result, Exception):
+            if result is None:
+                pass # Cancelled
+            elif isinstance(result, Exception):
                 QMessageBox.warning(self, tr("Error"), str(result))
             else:
                 callback(result)
