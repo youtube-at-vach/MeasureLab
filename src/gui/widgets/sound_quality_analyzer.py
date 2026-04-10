@@ -610,11 +610,10 @@ class AnalysisWorker(QThread):
             band_levels.append(band_db)
 
         # Calculate AI per time frame
-        for i in range(15):
-            snr = band_levels[i] - noise_floor_db
-            snr_clipped = np.clip(snr, -12, 18)
-            contribution = (snr_clipped + 12) / 30.0
-            ai_series += weights[i] * contribution
+        band_levels_arr = np.array(band_levels)
+        snr_clipped = np.clip(band_levels_arr - noise_floor_db, -12, 18)
+        contribution = (snr_clipped + 12) / 30.0
+        ai_series = weights @ contribution
 
         ai_series = np.clip(ai_series, 0.0, 1.0)
         step = (nperseg - noverlap) / sr
