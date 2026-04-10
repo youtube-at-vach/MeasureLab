@@ -620,7 +620,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 if window_coherent_gain == 0:
                     window_coherent_gain = 1.0
 
-            chunk_size = 32
+            chunk_size = 256
             is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
             for i in range(0, points, chunk_size):
                 if not self.is_running:
@@ -719,7 +719,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # To prevent CPU overallocation and buffer underruns, we process in chunks.
         # This spreads the load and allows for progressive UI updates (sliding line).
-        chunk_size = 32
+        chunk_size = 256
         mags_db_all = np.zeros(points)
 
         is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
