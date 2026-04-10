@@ -620,15 +620,16 @@ class LockInSpectrumFinder(MeasurementModule):
                 if window_coherent_gain == 0:
                     window_coherent_gain = 1.0
 
-            chunk_size = 32
+            chunk_size = 1024
             is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
+            two_pi_t_dec = -2j * np.pi * t_dec
             for i in range(0, points, chunk_size):
                 if not self.is_running:
                     break
                 end_idx = min(i + chunk_size, points)
                 f_chunk = freqs_offset[i:end_idx]
-                phase = t_dec[:, np.newaxis] * f_chunk
-                exp_chunk = np.exp(-2j * np.pi * phase)
+                phase = two_pi_t_dec[:, np.newaxis] * f_chunk
+                exp_chunk = np.exp(phase)
                 # Direct correlation on decimated baseband with windowing (vectorized)
                 vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
                 amp = np.abs(vals) * 2.0
