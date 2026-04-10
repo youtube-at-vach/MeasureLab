@@ -56,7 +56,8 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 31 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
 | 32 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
 | 33 | **Stereo Alignment Monitor** | Analyzes stereo consistency (alignment). Real-time monitoring of L/R balance, frequency response match, center focus (M/S ratio), and phase issues. |
-| 34 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
+| 34 | **Spatial Binaural Mixer** | Offline high-quality HRTF multitrack spatial renderer. Supports loading multiple audio tracks, setting position (azimuth/elevation), and rendering with SOFA files. |
+| 35 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 
 ### 🌍 Localization
 

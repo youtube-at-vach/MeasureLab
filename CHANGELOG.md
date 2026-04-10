@@ -1,5 +1,28 @@
 # Changelog
 
+## [v0.6.2] - 2026-04-10
+
+### Added
+
+* **Audio**: Added Spatial Binaural Mixer module with multi-track rendering support.
+* **Analyzer**: Added RIAA EQ curve matcher to Network Analyzer.
+* **Analyzer**: Added AES17 filter design and J-Test signal generation for THD+N analysis.
+* **Analyzer**: Implemented True Peak (ISKb) detection with 4x oversampling in LUFS meter.
+
+### Changed
+
+* **Perf**: Vectorized LUFS array calculation and pre-calculated A-weighting gain squared for performance improvement.
+* **Perf**: Optimized Linearity Analyzer buffer allocation, ImpedanceSweepWorker polling sleep to event-driven wait, and calibration samples extraction in timecode_monitor.
+* **Perf**: Optimized QComboBox data lookup in SignalGeneratorWidget.
+* **Refactor**: Extracted setup logic from main_gui.py, cleaned up whitespace, and refactored spatial mixer spinboxes.
+* **I18n**: Added missing localization strings for audio analysis and measurement features across all languages.
+* **Docs**: Enhanced Spectrum Analyzer, calibration explanations, index, quickstart, and Spatial Binaural Mixer documentation.
+
+### Fixed
+
+* **Core**: Removed unused imports across several modules.
+* **Tests**: Cleaned up the test suite, fixed merge conflicts, fixed test pollution, and added error handling tests for platform-specific CPU name resolution.
+
 ## [v0.6.1] - 2026-04-03
 
 ### Added
