@@ -1391,5 +1391,7 @@
     "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 ОПАСНО - ВЫСОКАЯ ИНТЕНСИВНОСТЬ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ОСТОРОЖНО - УЛЬТРАЗВУК АКТИВЕН 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢",
+    "Preview Settings": "Preview Settings",
+    "Preview Mode": "Preview Mode"
 }

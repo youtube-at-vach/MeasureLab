@@ -8,9 +8,10 @@ from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
     QFileDialog, QScrollArea, QGroupBox,
-    QMessageBox, QProgressDialog, QFrame
+    QMessageBox, QProgressDialog, QFrame, QCheckBox, QDoubleSpinBox,
+    QSpinBox
 )
-import pyqtgraph as pg
+
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -58,19 +59,41 @@ class RenderWorker(QThread):
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(object)
 
-    def __init__(self, tracks_data, hrtf_data, target_sr):
+    def __init__(self, tracks_data, hrtf_data, target_sr, start_sec=None, duration_sec=None):
         super().__init__()
         self.tracks_data = tracks_data
         self.hrtf_data = hrtf_data
         self.target_sr = target_sr
+        self.start_sec = start_sec
+        self.duration_sec = duration_sec
+        self.is_cancelled = False
+
+    def cancel(self):
+        self.is_cancelled = True
 
     def run(self):
         try:
             processed_tracks = []
 
             for i, track in enumerate(self.tracks_data):
+                if self.is_cancelled:
+                    self.finished.emit(None)
+                    return
                 self.progress.emit(10, tr("Loading track {0}...").format(i+1))
-                data, sr = sf.read(track['path'], always_2d=True)
+
+                info = sf.info(track['path'])
+                if self.start_sec is not None and self.duration_sec is not None:
+                    start_frame = int(self.start_sec * info.samplerate)
+                    if start_frame >= info.frames:
+                        start_frame = max(0, info.frames - info.samplerate)  # if start exceeds file
+
+                    frames_to_read = int(self.duration_sec * info.samplerate)
+                    frames_to_read = min(frames_to_read, info.frames - start_frame)
+
+                    data, sr = sf.read(track['path'], always_2d=True, start=start_frame, frames=frames_to_read)
+                else:
+                    data, sr = sf.read(track['path'], always_2d=True)
+
                 if sr != self.target_sr:
                     data = AudioCalc.resample(data, sr, self.target_sr)
 
@@ -97,6 +120,9 @@ class RenderWorker(QThread):
             master_bus = np.zeros((max_mix_len, 2), dtype=np.float64)
 
             for i, (audio_data, config) in enumerate(zip(processed_tracks, self.tracks_data, strict=True)):
+                if self.is_cancelled:
+                    self.finished.emit(None)
+                    return
                 self.progress.emit(20 + int(70 * i / len(processed_tracks)), tr("Rendering track {0}...").format(i+1))
 
                 hrir_orig = interpolate_hrir(self.hrtf_data, config['az'], config['el'])
@@ -145,15 +171,28 @@ class TrackControlUI(QFrame):
         layout.addWidget(self.name_label)
 
         layout.addWidget(QLabel(tr("Azimuth:")))
-        self.az_spin = pg.SpinBox(value=0, bounds=(-180, 180), suffix="°", int=True, step=1, siPrefix=False)
+        self.az_spin = QSpinBox()
+        self.az_spin.setRange(-180, 180)
+        self.az_spin.setSuffix("°")
+        self.az_spin.setSingleStep(1)
+        self.az_spin.setValue(0)
         layout.addWidget(self.az_spin)
 
         layout.addWidget(QLabel(tr("Elevation:")))
-        self.el_spin = pg.SpinBox(value=0, bounds=(-90, 90), suffix="°", int=True, step=1, siPrefix=False)
+        self.el_spin = QSpinBox()
+        self.el_spin.setRange(-90, 90)
+        self.el_spin.setSuffix("°")
+        self.el_spin.setSingleStep(1)
+        self.el_spin.setValue(0)
         layout.addWidget(self.el_spin)
 
         layout.addWidget(QLabel(tr("Gain:")))
-        self.gain_spin = pg.SpinBox(value=0, bounds=(-60, 12), suffix=" dB", step=1, decimals=1, siPrefix=False)
+        self.gain_spin = QDoubleSpinBox()
+        self.gain_spin.setRange(-60.0, 12.0)
+        self.gain_spin.setSuffix(" dB")
+        self.gain_spin.setSingleStep(1.0)
+        self.gain_spin.setDecimals(1)
+        self.gain_spin.setValue(0.0)
         layout.addWidget(self.gain_spin)
 
         self.mute_btn = QPushButton(tr("Mute"))
@@ -263,6 +302,49 @@ class SpatialBinauralMixerWidget(QWidget):
         tracks_group.setLayout(tracks_layout)
         layout.addWidget(tracks_group)
 
+        # Preview Settings
+        preview_group = QGroupBox(tr("Preview Settings"))
+        preview_layout = QHBoxLayout()
+
+        self.preview_cb = QCheckBox(tr("Preview Mode"))
+        self.preview_cb.stateChanged.connect(self.on_preview_cb_changed)
+
+        preview_layout.addWidget(self.preview_cb)
+        preview_layout.addWidget(QLabel(tr("Start:")))
+        self.start_sec_spin = QDoubleSpinBox()
+        self.start_sec_spin.setRange(0.0, 3600.0)
+        self.start_sec_spin.setSingleStep(1.0)
+        self.start_sec_spin.setSuffix(" s")
+        self.start_sec_spin.setDecimals(1)
+        self.start_sec_spin.setValue(0.0)
+        self.start_sec_spin.setEnabled(False)
+        preview_layout.addWidget(self.start_sec_spin)
+
+        self.prev_btn = QPushButton("◀")
+        self.prev_btn.setFixedWidth(24)
+        self.prev_btn.setEnabled(False)
+        self.prev_btn.clicked.connect(self.on_prev_preview)
+        preview_layout.addWidget(self.prev_btn)
+
+        self.next_btn = QPushButton("▶")
+        self.next_btn.setFixedWidth(24)
+        self.next_btn.setEnabled(False)
+        self.next_btn.clicked.connect(self.on_next_preview)
+        preview_layout.addWidget(self.next_btn)
+
+        preview_layout.addWidget(QLabel(tr("Duration:")))
+        self.duration_sec_spin = QDoubleSpinBox()
+        self.duration_sec_spin.setRange(0.1, 600.0)
+        self.duration_sec_spin.setSingleStep(1.0)
+        self.duration_sec_spin.setSuffix(" s")
+        self.duration_sec_spin.setDecimals(1)
+        self.duration_sec_spin.setValue(10.0)
+        self.duration_sec_spin.setEnabled(False)
+        preview_layout.addWidget(self.duration_sec_spin)
+        preview_layout.addStretch()
+        preview_group.setLayout(preview_layout)
+        layout.addWidget(preview_group)
+
         # Export Actions
         actions_group = QGroupBox(tr("Render Actions"))
         actions_layout = QHBoxLayout()
@@ -283,6 +365,23 @@ class SpatialBinauralMixerWidget(QWidget):
         layout.addWidget(actions_group)
 
         self.setLayout(layout)
+
+    def on_preview_cb_changed(self, state):
+        is_checked = self.preview_cb.isChecked()
+        self.start_sec_spin.setEnabled(is_checked)
+        self.duration_sec_spin.setEnabled(is_checked)
+        self.prev_btn.setEnabled(is_checked)
+        self.next_btn.setEnabled(is_checked)
+
+    def on_prev_preview(self):
+        dur = self.duration_sec_spin.value()
+        curr = self.start_sec_spin.value()
+        self.start_sec_spin.setValue(max(0.0, curr - dur))
+
+    def on_next_preview(self):
+        dur = self.duration_sec_spin.value()
+        curr = self.start_sec_spin.value()
+        self.start_sec_spin.setValue(curr + dur)
 
     def on_load_sofa(self):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)")
@@ -340,12 +439,24 @@ class SpatialBinauralMixerWidget(QWidget):
         self.pd.setWindowModality(Qt.WindowModality.WindowModal)
         self.pd.show()
 
-        self.worker = RenderWorker(configs, self.module.hrtf_data, self.module.audio_engine.sample_rate)
+        start_sec = self.start_sec_spin.value() if self.preview_cb.isChecked() else None
+        duration_sec = self.duration_sec_spin.value() if self.preview_cb.isChecked() else None
+
+        self.worker = RenderWorker(
+            configs, 
+            self.module.hrtf_data, 
+            self.module.audio_engine.sample_rate,
+            start_sec=start_sec,
+            duration_sec=duration_sec
+        )
         self.worker.progress.connect(self.pd.setValue)
+        self.pd.canceled.connect(self.worker.cancel)
 
         def on_finished(result):
             self.pd.close()
-            if isinstance(result, Exception):
+            if result is None:
+                pass # Cancelled
+            elif isinstance(result, Exception):
                 QMessageBox.warning(self, tr("Error"), str(result))
             else:
                 callback(result)
