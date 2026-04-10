@@ -420,7 +420,9 @@ class AudioCalc:
             E_chunk = E_base if current_len == chunk_size else E_base[:, :current_len]
             return (E_chunk @ sig_chunk) * np.exp(1j * omega * t[i])
 
-        acc_v_complex = sum((_compute_chunk(i) for i in range(0, N, chunk_size)), np.zeros(K, dtype=np.complex128))
+        acc_v_complex = np.zeros(K, dtype=np.complex128)
+        for i in range(0, N, chunk_size):
+            acc_v_complex += _compute_chunk(i)
 
         sig_s = acc_v_complex.imag
         sig_c = acc_v_complex.real
