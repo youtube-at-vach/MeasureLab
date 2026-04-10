@@ -163,16 +163,11 @@ class LinearitySweepWorker(QThread):
                 mag_sum = 0.0
                 noise_sum_sq = 0.0
 
-                # Determine wait time for buffer refresh
-                # We need fresh data for each average.
-                buffer_duration = self.module.buffer_size / sample_rate
-                wait_for_new_data = max(0.05, buffer_duration * 1.1)
-
                 # Initial wait for settling at this level
                 self.wait_interruptible(min_wait)
 
                 # First capture (wait for buffer fill)
-                self.wait_interruptible(buffer_duration * 1.5)
+                self.module.wait_for_buffer(self._stop_event)
 
                 for avg_idx in range(self.module.averaging_count):
                     if not self.is_running:
@@ -180,7 +175,7 @@ class LinearitySweepWorker(QThread):
 
                     if avg_idx > 0:
                         # Wait for fresh buffer
-                        self.wait_interruptible(wait_for_new_data)
+                        self.module.wait_for_buffer(self._stop_event)
 
                     self.module.get_latest_buffer_into(buffer)
 
@@ -282,6 +277,9 @@ class LinearityAnalyzer(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_index = 0
         self.is_running = False
+        self._buffer_lock = threading.Lock()
+        self._buffer_ready_event = threading.Event()
+        self._new_frames = 0
 
         # Generator
         self.test_frequency = 1000.0
@@ -319,15 +317,26 @@ class LinearityAnalyzer(MeasurementModule):
         return "Measure Linearity Error (Gain Accuracy vs Level)."
 
 
+    def wait_for_buffer(self, cancel_event=None):
+        with self._buffer_lock:
+            self._new_frames = 0
+            self._buffer_ready_event.clear()
+
+        while not self._buffer_ready_event.is_set():
+            if cancel_event and cancel_event.is_set():
+                break
+            self._buffer_ready_event.wait(0.1)
+
     def get_latest_buffer_into(self, out: np.ndarray) -> None:
         """Writes the current buffer contents ordered chronologically into `out`."""
-        idx = self.input_index
-        # Part 1: Oldest data (from idx to end)
-        part1_len = self.buffer_size - idx
-        out[:part1_len] = self.input_data[idx:]
+        with self._buffer_lock:
+            idx = self.input_index
+            # Part 1: Oldest data (from idx to end)
+            part1_len = self.buffer_size - idx
+            out[:part1_len] = self.input_data[idx:]
 
-        # Part 2: Newest data (from 0 to idx)
-        out[part1_len:] = self.input_data[:idx]
+            # Part 2: Newest data (from 0 to idx)
+            out[part1_len:] = self.input_data[:idx]
 
     def get_widget(self):
         return LinearityAnalyzerWidget(self)
@@ -363,26 +372,31 @@ class LinearityAnalyzer(MeasurementModule):
             if new_data is not None:
                 new_frames = len(new_data)
 
-                if new_frames >= self.buffer_size:
-                    # If incoming data handles the entire buffer or more, just take the last part
-                    self.input_data[:] = new_data[-self.buffer_size :]
-                    self.input_index = 0
-                else:
-                    # Ring buffer write
-                    remaining = self.buffer_size - self.input_index
-                    if new_frames <= remaining:
-                        self.input_data[self.input_index : self.input_index + new_frames] = new_data
-                        self.input_index += new_frames
-                    else:
-                        # Wrap around
-                        part1_len = remaining
-                        part2_len = new_frames - remaining
-                        self.input_data[self.input_index :] = new_data[:part1_len]
-                        self.input_data[:part2_len] = new_data[part1_len:]
-                        self.input_index = part2_len
-
-                    if self.input_index >= self.buffer_size:
+                with self._buffer_lock:
+                    if new_frames >= self.buffer_size:
+                        # If incoming data handles the entire buffer or more, just take the last part
+                        self.input_data[:] = new_data[-self.buffer_size :]
                         self.input_index = 0
+                    else:
+                        # Ring buffer write
+                        remaining = self.buffer_size - self.input_index
+                        if new_frames <= remaining:
+                            self.input_data[self.input_index : self.input_index + new_frames] = new_data
+                            self.input_index += new_frames
+                        else:
+                            # Wrap around
+                            part1_len = remaining
+                            part2_len = new_frames - remaining
+                            self.input_data[self.input_index :] = new_data[:part1_len]
+                            self.input_data[:part2_len] = new_data[part1_len:]
+                            self.input_index = part2_len
+
+                        if self.input_index >= self.buffer_size:
+                            self.input_index = 0
+
+                    self._new_frames += new_frames
+                    if self._new_frames >= self.buffer_size:
+                        self._buffer_ready_event.set()
 
             # Output
             if self._last_frames != frames or self._last_freq != self.test_frequency:
