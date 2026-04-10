@@ -8,7 +8,7 @@ from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
     QFileDialog, QScrollArea, QGroupBox,
-    QMessageBox, QProgressDialog, QFrame
+    QMessageBox, QProgressDialog, QFrame, QCheckBox, QDoubleSpinBox
 )
 import pyqtgraph as pg
 
@@ -58,11 +58,13 @@ class RenderWorker(QThread):
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(object)
 
-    def __init__(self, tracks_data, hrtf_data, target_sr):
+    def __init__(self, tracks_data, hrtf_data, target_sr, start_sec=None, duration_sec=None):
         super().__init__()
         self.tracks_data = tracks_data
         self.hrtf_data = hrtf_data
         self.target_sr = target_sr
+        self.start_sec = start_sec
+        self.duration_sec = duration_sec
         self.is_cancelled = False
 
     def cancel(self):
@@ -77,7 +79,20 @@ class RenderWorker(QThread):
                     self.finished.emit(None)
                     return
                 self.progress.emit(10, tr("Loading track {0}...").format(i+1))
-                data, sr = sf.read(track['path'], always_2d=True)
+                
+                info = sf.info(track['path'])
+                if self.start_sec is not None and self.duration_sec is not None:
+                    start_frame = int(self.start_sec * info.samplerate)
+                    if start_frame >= info.frames:
+                        start_frame = max(0, info.frames - info.samplerate)  # if start exceeds file
+                        
+                    frames_to_read = int(self.duration_sec * info.samplerate)
+                    frames_to_read = min(frames_to_read, info.frames - start_frame)
+                    
+                    data, sr = sf.read(track['path'], always_2d=True, start=start_frame, frames=frames_to_read)
+                else:
+                    data, sr = sf.read(track['path'], always_2d=True)
+                    
                 if sr != self.target_sr:
                     data = AudioCalc.resample(data, sr, self.target_sr)
 
@@ -273,6 +288,37 @@ class SpatialBinauralMixerWidget(QWidget):
         tracks_group.setLayout(tracks_layout)
         layout.addWidget(tracks_group)
 
+        # Preview Settings
+        preview_group = QGroupBox(tr("Preview Settings"))
+        preview_layout = QHBoxLayout()
+
+        self.preview_cb = QCheckBox(tr("Preview Mode"))
+        self.preview_cb.stateChanged.connect(self.on_preview_cb_changed)
+        
+        preview_layout.addWidget(self.preview_cb)
+        preview_layout.addWidget(QLabel(tr("Start:")))
+        self.start_sec_spin = QDoubleSpinBox()
+        self.start_sec_spin.setRange(0.0, 3600.0)
+        self.start_sec_spin.setSingleStep(1.0)
+        self.start_sec_spin.setSuffix(" s")
+        self.start_sec_spin.setDecimals(1)
+        self.start_sec_spin.setValue(0.0)
+        self.start_sec_spin.setEnabled(False)
+        preview_layout.addWidget(self.start_sec_spin)
+        
+        preview_layout.addWidget(QLabel(tr("Duration:")))
+        self.duration_sec_spin = QDoubleSpinBox()
+        self.duration_sec_spin.setRange(0.1, 600.0)
+        self.duration_sec_spin.setSingleStep(1.0)
+        self.duration_sec_spin.setSuffix(" s")
+        self.duration_sec_spin.setDecimals(1)
+        self.duration_sec_spin.setValue(10.0)
+        self.duration_sec_spin.setEnabled(False)
+        preview_layout.addWidget(self.duration_sec_spin)
+        preview_layout.addStretch()
+        preview_group.setLayout(preview_layout)
+        layout.addWidget(preview_group)
+
         # Export Actions
         actions_group = QGroupBox(tr("Render Actions"))
         actions_layout = QHBoxLayout()
@@ -293,6 +339,11 @@ class SpatialBinauralMixerWidget(QWidget):
         layout.addWidget(actions_group)
 
         self.setLayout(layout)
+
+    def on_preview_cb_changed(self, state):
+        is_checked = self.preview_cb.isChecked()
+        self.start_sec_spin.setEnabled(is_checked)
+        self.duration_sec_spin.setEnabled(is_checked)
 
     def on_load_sofa(self):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)")
@@ -350,7 +401,16 @@ class SpatialBinauralMixerWidget(QWidget):
         self.pd.setWindowModality(Qt.WindowModality.WindowModal)
         self.pd.show()
 
-        self.worker = RenderWorker(configs, self.module.hrtf_data, self.module.audio_engine.sample_rate)
+        start_sec = self.start_sec_spin.value() if self.preview_cb.isChecked() else None
+        duration_sec = self.duration_sec_spin.value() if self.preview_cb.isChecked() else None
+
+        self.worker = RenderWorker(
+            configs, 
+            self.module.hrtf_data, 
+            self.module.audio_engine.sample_rate,
+            start_sec=start_sec,
+            duration_sec=duration_sec
+        )
         self.worker.progress.connect(self.pd.setValue)
         self.pd.canceled.connect(self.worker.cancel)
 
