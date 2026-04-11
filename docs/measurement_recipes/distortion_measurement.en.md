@@ -16,6 +16,17 @@ Even though a pure sine wave (single frequency) is supposed to be input, the out
 
 The smaller this value (the lower the %, or the larger the absolute value of dB), the higher the performance of the equipment.
 
+### ☕ Coffee Break: What if distortion was a "mirror"?
+
+Imagine an audio device is a "mirror," and the input sound is the "scenery."
+A perfect mirror (0% distortion) reflects the scenery exactly as it is. However, if the mirror is slightly warped or its surface is dirty, the reflected scenery will look different from the original, right?
+
+* **Original Sound (Fundamental wave)**: The scenery you originally wanted to reflect.
+* **THD (Distortion)**: The parts where the scenery looks "regularly" warped because the mirror is bent (like a funhouse mirror at an amusement park).
+* **N (Noise)**: The parts where the whole scenery looks "irregularly" grainy or blurry due to dust or fog on the mirror's surface.
+
+In short, THD+N represents the **overall poor image quality** combining "how bent the mirror is and how dirty it is." The lower the number, the shinier and straighter the mirror is!
+
 ---
 
 ## Measurement Procedure (Loopback Test)
