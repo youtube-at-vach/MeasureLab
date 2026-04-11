@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69,<83", "wheel"]
+requires = ["setuptools>=82.0.1,<83", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,23 +14,23 @@ authors = [
 ]
 dependencies = [
   # numpy 2.4.2 causes "DLL load failed" on Windows. Keep < 2.4.0.
-  "numpy>=1.24,<2.4.0",
-  "scipy>=1.11,<1.18",
+  "numpy>=2.4.4,<2.5.0",
+  "scipy>=1.17.1,<1.18",
   "sounddevice>=0.4.6,<0.6",
-  "PyQt6>=6.6,<6.11",
+  "PyQt6>=6.11.0,<6.12",
   "pyqtgraph>=0.13,<0.15",
   "soundfile>=0.12,<0.14",
   "PyWavelets>=1.5,<1.10",
   "pyfftw>=0.13,<0.16",
-  "certifi>=2024.0.0",
+  "certifi>=2026.2.25",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "ruff>=0.7.0",
-  "mypy>=1.9.0",
-  "pytest>=7.4.0",
-  "pytest-qt>=4.2.0",
+  "ruff>=0.15.10",
+  "mypy>=1.20.0",
+  "pytest>=9.0.3",
+  "pytest-qt>=4.5.0",
 ]
 
 [tool.ruff]
