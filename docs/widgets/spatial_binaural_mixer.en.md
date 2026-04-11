@@ -44,7 +44,16 @@ Add the individual sound sources (e.g., Vocals, Drums, Bass) you want to spatial
    * **Mute/Solo**: Quickly isolate or ignore tracks during monitor testing.
    * **XButton**: Removes the track.
 
-### 3. Rendering and Exporting
+### 3. Preview Settings
+
+Use these settings to render and monitor only a specific portion of the tracks.
+
+* **Preview Mode**: Enable to process only a segment of the audio instead of the full tracks.
+* **Start**: The starting point of the preview segment in seconds.
+* **Duration**: The length of the preview segment to process in seconds.
+* **◀ / ▶ Buttons**: Quickly shift the start time backward or forward by the set duration to navigate through the tracks.
+
+### 4. Rendering and Exporting
 
 Because the module is optimized for quality over real-time responsiveness, audio is processed completely before playback or saving.
 
