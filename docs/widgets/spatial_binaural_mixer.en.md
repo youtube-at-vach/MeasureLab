@@ -57,7 +57,7 @@ Use these settings to render and monitor only a specific portion of the tracks.
 
 Because the module is optimized for quality over real-time responsiveness, audio is processed completely before playback or saving.
 
-* **▶ Render & Monitor**: Renders the complete mixed tracks directly into RAM, then plays it out through MeasureLab's active audio device. Rendering time depends on the number of tracks and the track length. Progress is shown in a popup.
+* **▶ Render & Monitor**: Renders the complete mixed tracks directly into RAM, then plays it out through MeasureLab's active audio device. Rendering time depends on the number of tracks and the track length. Progress is shown in a popup, and the process can be cancelled at any time.
 * **⏸ Stop Monitor**: Immediately halts playback of the rendered RAM buffer.
 * **Render to WAV**: Processes the mix and opens a dialog to save the result directly to your disk as a 32-bit Float WAV file, locking the peak volume to standard maximum (`0.99 FS` to avoid clipping).
 
