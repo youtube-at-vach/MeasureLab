@@ -111,6 +111,12 @@ When performing high-precision measurements in a Linux environment, we strongly 
 
 ### Recommendations for Input/Output and Sampling Settings
 
+### ☕ Knowledge Boost: Why do we use 192kHz?
+
+You might wonder, "Humans can only hear up to 20kHz, so isn't 48kHz (like in movies) enough?"
+For just "listening" to music, you are absolutely right. However, for "measuring," a higher sampling rate acts like a **"high-speed camera for sound."**
+For example, when measuring extremely high-frequency noise or analyzing the sharp attack of an impulse response, capturing the waveform as finely as possible gives us more accurate graphs. Since we are turning the PC into a measuring instrument, let's use the highest performance it can offer!
+
 - **Input/Output Channels**
     - Basically, leave it at the default and select **Stereo (2ch)**.
 - **Sampling Rate**

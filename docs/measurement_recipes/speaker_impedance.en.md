@@ -13,6 +13,12 @@ While it is possible to observe the shape of the impedance curve and resonance b
 
 If accurate impedance values or calculation of small-signal parameters is required, please use an external low-output impedance driver stage (such as a buffer or power amplifier).
 
+## ☕ Coffee Break: Why measure speaker impedance?
+
+You might often see speakers labeled as "8 ohms" or "4 ohms," but did you know that resistance isn't actually a constant number?
+When a speaker plays sound, its voice coil vibrates inside a magnet, working almost like a tiny electrical generator! Because of this, the resistance (impedance) to electricity changes drastically depending on the pitch of the sound.
+By finding the pitch where the impedance spikes the highest (this is called the lowest resonant frequency, or $f_0$), you can find the "pitch the speaker is best at vibrating at." It's like finding a swing's natural rhythm! This is an essential first step in designing a speaker box (enclosure).
+
 ## Purpose
 
 * **Identify $f_0$ (Lowest Resonant Frequency)**: Identify the low frequency at which the speaker vibrates most efficiently.

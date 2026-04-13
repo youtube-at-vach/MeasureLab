@@ -12,6 +12,12 @@ The widget to use depends on what kind of noise you want to see.
 | **Analyze noise types** | [Noise Profiler](../widgets/noise_profiler.md) | Decompose into components such as "hiss (white noise)" and "hum," and quantify their respective contributions. |
 | **View time-series changes in noise** | [Raw Time Series](../widgets/raw_time_series.md) | Monitor changes over time, such as "occasional pop noise" or "fluctuation of DC offset." |
 
+### ☕ Coffee Break: What exactly is "Noise"?
+
+The "hiss" of white noise, the "hum" of a power line... What we call "noise" is actually not just a "nuisance."
+In the world of physics, noise is the **"heartbeat of nature"** itself. For example, the sound of electrons randomly jiggling due to heat inside an amplifier (thermal noise) will never disappear unless the temperature reaches absolute zero. In other words, measuring noise is the same as **"observing the dance of electrons"**!
+Use this guide to uncover the invisible movements of electrons and the power supply waves secretly sneaking in.
+
 ---
 
 ## View Noise Spectrum (Spectrum Analyzer)
@@ -37,8 +43,9 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 
 ### How to Read Results
 
-* **What is PSD (Power Spectral Density)?**
-    * `Spectrum mode` is suitable for measuring the level of "sine wave-like signals," while `PSD mode` measures the density (power per 1 Hz) of "noise-like signals". The unit is $/√Hz$.
+* **💡 Knowledge Boost: What is PSD (Power Spectral Density)?**
+    * The normal `Spectrum mode` is like a **"weight scale"** suitable for measuring the level of a specific sound (like a "beep" sine wave). However, since noise is scattered across various frequencies, a simple weight scale can't measure it well.
+    * This is where `PSD mode` comes in. It's a measurement method like **"population density"** that shows how much power is packed into a specific 1Hz width. When measuring noise, using this PSD mode is an ironclad rule for pros! (The unit $/√Hz$ might look a bit intimidating, but for now, just think of it as "the concentration of noise per 1Hz".)
 
 * **What Can You See?**
     * **Hum Noise**: If sharp peaks stand at 50Hz or 60Hz (and their harmonics), it is induction noise from the power supply.
