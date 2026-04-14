@@ -8,17 +8,18 @@ This guide explains the flow from setting up MeasureLab to performing your first
 
 Before starting the measurement, let's prepare to confirm **"whether the sound is being recorded correctly."**
 
-1. **Cable Connection**: Connect the **Output** and **Input** of the audio interface directly with a cable (this is called a loopback connection).
-2. **Equipment Protection**: Initially, set the output volume (OUT) and input gain (IN) of the audio interface to the minimum.
+1. **Cable Connection**: Connect the **Output** and **Input** of your audio interface directly with a cable. This is called a "loopback connection."
+2. **Equipment Protection**: To prevent loud noises from suddenly damaging your equipment, initially set the output volume (OUT) and input gain (IN) of the audio interface to "minimum (zero)."
 
 !!! note
-    By using this loopback connection, you can perform a test to "analyze the sound you output yourself" without using external equipment. This is the basis of all measurements.
+    By using this loopback connection, you can test "whether the PC can correctly receive the sound it outputted itself" without connecting any other external equipment. This is a very important step that forms the basis of all future measurements.
 
 ### ☕ Coffee Break: Why start with a loopback?
 
 Why do we connect the "output" directly to the "input" first, instead of immediately connecting the thing we want to measure (like an amp or a microphone)?
-This is a "health check for the measurement instrument (PC and audio interface) itself"!
-For example, before looking at the stars with an astronomical telescope, you first check if the lens is cloudy and if it can focus properly, right? Loopback is a very important, and somewhat interesting, first ritual to confirm whether you can accurately pick up the sound you (the PC) outputted yourself.
+This is because it's a "health check for the measurement instrument (your PC and audio interface) itself"!
+
+For example, before looking at the stars with an astronomical telescope, you first check if the lens is cloudy and if the focus dial works properly, right? In the same way, loopback is a very important, and somewhat interesting, "first ritual" to confirm whether you can accurately pick up the sound you outputted yourself.
 
 ---
 
@@ -114,10 +115,11 @@ When performing high-precision measurements in a Linux environment, we strongly 
 - **Input/Output Channels**
     - Basically, leave it at the default and select **Stereo (2ch)**.
 - **Sampling Rate**
-    - As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
+    - This determines the "fineness" or resolution of the recorded sound. The larger the number, the higher the definition. As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
 - **Buffer Size / Buffer Optimization**
+    - This is the size of the "bucket" that temporarily stores audio data.
     - **We strongly recommend setting it to "Long (STABLE or higher)".**
-    - Since this software is for "measurement," prioritize data stability over latency.
+    - In music production or gaming, people make this bucket small to avoid "latency" (audio delay). However, MeasureLab is for "measurement." Even if the sound is slightly delayed, please prioritize stable, uninterrupted data processing (data stability) above all else.
 
 !!! tip
     **Using Dithering**
