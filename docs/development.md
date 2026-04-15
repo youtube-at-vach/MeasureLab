@@ -57,13 +57,63 @@
     python main_gui.py
     ```
 
+### macOS: MacPorts + Python 3.12 + pyFFTW を使用する場合
+
+（macOS 13 以降で動作確認済み）
+
+macOS で `pyFFTW` をインストールする場合、パッケージマネージャ（MacPorts 推奨）でインストールした FFTW ライブラリを明示的に指定する必要があります。
+
+1. MacPorts の更新と必要パッケージのインストール：
+
+    ```bash
+    sudo port selfupdate
+    sudo port install python312 py312-pip fftw-3
+    ```
+
+2. Python のバージョン選択：
+
+    ```bash
+    sudo port select --set python python312
+    sudo port select --set python3 python312
+    ```
+
+    ※ 設定後、ターミナルを再起動してください。
+
+3. 仮想環境の作成と有効化：
+
+    ```bash
+    python3.12 -m venv .venv
+    source .venv/bin/activate
+    python -m pip install -U pip
+    ```
+
+4. pyFFTW のインストール（FFTW のパスを明示指定）：
+
+    ```bash
+    PYFFTW_FFTW_PREFIX=/opt/local \
+    python -m pip install pyfftw --no-binary pyfftw
+    ```
+
+5. 依存パッケージのインストール：
+
+    ```bash
+    python -m pip install -c constraints.txt -r requirements.txt
+    ```
+
 ### 🛠️ 開発向けセットアップ
 
-テストやLint/型チェックを実行する場合は開発ツールもインストールしてください。
+テストやLint/型チェック、ドキュメントのビルドを実行する場合は追加のパッケージをインストールしてください。
 
-```bash
-pip install -c constraints.txt -e .[dev]
-```
+- **コード開発（テスト/Lintなど）**:
+    ```bash
+    pip install -c constraints.txt -e ".[dev]"
+    ```
+    ※ zsh を使用している場合は `.[dev]` を `".[dev]"` のように引用符で囲む必要があります。
+
+- **ドキュメント開発（MkDocs）**:
+    ```bash
+    pip install -c constraints.txt -r requirements-docs.txt
+    ```
 
 - Lint: `ruff check src scripts tests`
 - Type check: `mypy src`
