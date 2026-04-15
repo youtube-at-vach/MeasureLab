@@ -43,7 +43,7 @@ jobs:
           mv site/en/pdf/operation_manual.pdf site/en/pdf/operation_manual_en.pdf
 
       - name: Upload PDF Artifact
-        uses: actions/upload-artifact@v7.0.0
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: manual-pdf
           path: |
