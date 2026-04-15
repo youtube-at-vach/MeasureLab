@@ -77,7 +77,7 @@ When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW libra
     sudo port select --set python3 python312
     ```
 
-    * Restart the terminal after configuration.
+    - Restart the terminal after configuration.
 
 3. Create and activate a virtual environment:
 
@@ -105,12 +105,15 @@ When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW libra
 If you want to run tests, Lint/type checks, or build the documentation, install the additional packages.
 
 - **Code Development (Tests/Lint, etc.)**:
+
     ```bash
     pip install -c constraints.txt -e ".[dev]"
     ```
-    * If you are using zsh, you need to enclose `.[dev]` in quotes (e.g., `".[dev]"`).
+
+    - If you are using zsh, you need to enclose `.[dev]` in quotes (e.g., `".[dev]"`).
 
 - **Documentation Development (MkDocs)**:
+
     ```bash
     pip install -c constraints.txt -r requirements-docs.txt
     ```

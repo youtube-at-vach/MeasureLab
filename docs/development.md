@@ -105,12 +105,15 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
 テストやLint/型チェック、ドキュメントのビルドを実行する場合は追加のパッケージをインストールしてください。
 
 - **コード開発（テスト/Lintなど）**:
+
     ```bash
     pip install -c constraints.txt -e ".[dev]"
     ```
+
     ※ zsh を使用している場合は `.[dev]` を `".[dev]"` のように引用符で囲む必要があります。
 
 - **ドキュメント開発（MkDocs）**:
+
     ```bash
     pip install -c constraints.txt -r requirements-docs.txt
     ```
