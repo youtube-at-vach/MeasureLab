@@ -57,13 +57,66 @@ Therefore, on Linux, it is recommended to **use the system Python but install de
     python main_gui.py
     ```
 
+### macOS: Using MacPorts + Python 3.12 + pyFFTW
+
+(Verified on macOS 13 or later)
+
+When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW library installed via a package manager (MacPorts recommended).
+
+1. Update MacPorts and install required packages:
+
+    ```bash
+    sudo port selfupdate
+    sudo port install python312 py312-pip fftw-3
+    ```
+
+2. Select Python version:
+
+    ```bash
+    sudo port select --set python python312
+    sudo port select --set python3 python312
+    ```
+
+    - Restart the terminal after configuration.
+
+3. Create and activate a virtual environment:
+
+    ```bash
+    python3.12 -m venv .venv
+    source .venv/bin/activate
+    python -m pip install -U pip
+    ```
+
+4. Install pyFFTW (Explicitly specifying the FFTW path):
+
+    ```bash
+    PYFFTW_FFTW_PREFIX=/opt/local \
+    python -m pip install pyfftw --no-binary pyfftw
+    ```
+
+5. Install dependent packages:
+
+    ```bash
+    python -m pip install -c constraints.txt -r requirements.txt
+    ```
+
 ### 🛠️ Development Setup
 
-If you want to run tests or Lint/type checks, install development tools as well.
+If you want to run tests, Lint/type checks, or build the documentation, install the additional packages.
 
-```bash
-pip install -c constraints.txt -e .[dev]
-```
+- **Code Development (Tests/Lint, etc.)**:
+
+    ```bash
+    pip install -c constraints.txt -e ".[dev]"
+    ```
+
+    - If you are using zsh, you need to enclose `.[dev]` in quotes (e.g., `".[dev]"`).
+
+- **Documentation Development (MkDocs)**:
+
+    ```bash
+    pip install -c constraints.txt -r requirements-docs.txt
+    ```
 
 - Lint: `ruff check src scripts tests`
 - Type check: `mypy src`
