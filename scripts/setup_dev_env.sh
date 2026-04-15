@@ -24,11 +24,11 @@ if [ "${OS}" = "Linux" ]; then
     if command -v apt > /dev/null; then
         echo "Installing OS dependencies via apt..."
         sudo apt update
-        sudo apt install -y python3 python3-venv python3-pip libportaudio2 libsndfile1 build-essential portaudio19-dev libsndfile1-dev
+        sudo apt install -y python3 python3-venv python3-pip libportaudio2 libsndfile1 build-essential portaudio19-dev libsndfile1-dev nodejs npm
     else
         echo "Warning: 'apt' package manager not found."
         echo "Please ensure the following are installed manually:"
-        echo "- python3, python3-venv, python3-pip"
+        echo "- python3, python3-venv, python3-pip, nodejs, npm"
         echo "- libportaudio2, libsndfile1, build-essential, portaudio19-dev, libsndfile1-dev"
     fi
 
@@ -50,12 +50,21 @@ elif [ "${OS}" = "Darwin" ]; then
         echo "Updating MacPorts..."
         sudo port selfupdate
         
-        echo "Installing Python 3.12, pip, and FFTW3 via MacPorts..."
-        sudo port install python312 py312-pip fftw-3
+        echo "Installing Python 3.12, pip, FFTW3, and Node.js via MacPorts..."
+        sudo port install python312 py312-pip fftw-3 nodejs22 npm10
         
-        echo "Setting default python to python312..."
-        sudo port select --set python python312
-        sudo port select --set python3 python312
+        read -p "Do you want to set Python 3.12 and Node.js 22 as system defaults via 'port select'? (y/N): " set_default
+        if [[ "$set_default" =~ ^[Yy]$ ]]; then
+            echo "Setting default python to python312..."
+            sudo port select --set python python312
+            sudo port select --set python3 python312
+            
+            echo "Setting default node and npm..."
+            sudo port select --set node nodejs22
+            sudo port select --set npm npm10
+        else
+            echo "Skipping 'port select'. If not set, you may need to call python3.12 and node/npm explicitly."
+        fi
     else
         echo "Warning: MacPorts ('port') not found."
         echo "The development guide assumes MacPorts is used for this project."
