@@ -2,19 +2,23 @@
 
 ![Welcome](assets/welcome.png)
 
-This documentation summarizes the **operation methods for observing and evaluating audio signals and measurement targets** using MeasureLab.
+This documentation summarizes the **operation methods for observing and checking the performance of audio signals and equipment with your own eyes** using MeasureLab.
 
-The purpose of this tool is to **turn your everyday PC and audio interface into a "high-end measurement instrument,"** even in environments without specialized equipment (oscilloscope, spectrum analyzer, distortion meter, etc.).
+"I don't have specialized equipment (like an oscilloscope or spectrum analyzer)..." Don't worry!
+The purpose of this tool is to **transform your everyday PC and audio interface into a "high-end measurement instrument."**
 
 !!! tip
-    **"MeasureLab" is a "virtual measurement desk" inside your PC.**
-    You can arrange the necessary instruments (widgets) on the desk and combine them freely to perform measurements.
+    **MeasureLab is a "virtual laboratory" created inside your PC.**
+    Pull the necessary instruments (widgets) out of the drawer, arrange them on your desk, and build your very own lab!
 
 ## ☕ Coffee Break: What does it mean to "see" sound?
 
-"Sound" is the vibration of air. We hear it with our ears, but we can't accurately tell what shape it has or what components are mixed in just by listening.
-MeasureLab is a tool that graphs the invisible "sound" and projects it onto the screen.
-To use an analogy, it's like an "electrocardiogram" at a hospital or an "astronomical telescope" for observing stars. Your PC turns into a magic mirror that reflects the invisible form of sound!
+The true identity of "sound" is invisible vibrations in the air.
+We hear it with our ears and feel it as "high," "low," "loud," or "beautiful," but we can't accurately tell what actual shape it has or what components (frequencies) are mixed in just by relying on human hearing.
+
+MeasureLab is a tool that catches this invisible "sound," turns it into easy-to-understand graphs, and projects it onto your screen.
+To use an analogy, it's like an "electrocardiogram" a doctor uses to check a heartbeat, or an "astronomical telescope" for observing distant stars.
+Your PC turns into a magic mirror that reflects the true, invisible form of sound! Wouldn't you like to take a peek at what sound really looks like?
 
 ---
 

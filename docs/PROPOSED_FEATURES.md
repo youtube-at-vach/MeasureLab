@@ -7,22 +7,14 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **AI-Driven Ground Loop Topological Solver:** Predicts ground loop paths and identifies isolation points using hum harmonic analysis.
-* **Quantum-Tunneling Noise Floor Cartography:** Maps sub-nanovolt noise correlation to detect semiconductor-level micro-defects.
-* **Holographic Circuit Thermal-Acoustic Profiler:** Creates a virtual thermal map using audio-band piezoelectric emissions from stressed components.
-* **Neuromorphic Transient Reconstructor:** Uses Spiking Neural Networks to extrapolate and reconstruct clipped peaks from overdriven amplifiers.
-* **Psychoacoustic AI-MOS Predictor:** AI model predicting MOS from DAC/Amp output without listeners.
-* **Digital Twin Synthesizer:** Virtual, real-time model of analog components via lock-in analysis.
-* **Quantum Jitter Tomography:** QRNG excitation to measure absolute determinism and micro-jitter.
-* **Generative AI Non-Linearity Cloner:** AI model replicating dynamic non-linearities via specialized signals.
-* **Brainwave (EEG) Perceptual Correlator:** Syncing test signals with real-time EEG metrics.
-* **Headless / Web Remote Interface:** Decouple GUI for embedded web/mobile monitoring.
-* **AI Component Degradation Predictor:** Analyzes harmonic drift to predict aging.
-* **Augmented Reality (AR) Probe Visualizer:** Overlaying signal paths/distortion onto PCB views.
-* **Real-time Active Distortion Nulling:** Synthesizing inverse signals to cancel non-linearities.
-* **Neuromorphic Codec Evaluator:** Brain-inspired SNN processing to evaluate lossy codec transparency.
-* **Holographic Intermodulation Topology:** 4D visualization of IMD products.
-* **Quantum Entropy Analyzer:** Statistical analysis of random noise floors to measure true entropy.
+* **AI & Psychoacoustics**: Psychoacoustic AI-MOS Predictor, Generative AI Non-Linearity Cloner, Brainwave (EEG) Perceptual Correlator, Neuromorphic Codec Evaluator, AI Component Degradation Predictor, AI-Driven Ground Loop Topological Solver.
+* **Quantum & Advanced Physics**: Quantum-Tunneling Noise Floor Cartography, Quantum Jitter Tomography, Quantum Entropy Analyzer.
+* **Holographic & Spatial**: Holographic Circuit Thermal-Acoustic Profiler, Holographic Intermodulation Topology, Augmented Reality (AR) Probe Visualizer.
+* **Advanced Processing**: Neuromorphic Transient Reconstructor, Digital Twin Synthesizer, Headless / Web Remote Interface, Real-time Active Distortion Nulling.
+* **New Visionary Proposals**:
+    * **AI-Synthesized Virtual Golden Ear Listener:** Evaluates audio signals and outputs subjective audiophile terms (warmth, air, punch).
+    * **Sonic Chronoportation Extrapolator:** Generative AI predicting future signals to eliminate buffer latency completely.
+    * **Quantum-Entanglement Audio Sync Analyzer:** Measures absolute latency using theoretical quantum-linked interfaces.
 
 ---
 
@@ -30,30 +22,32 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
-* **Test Sequence Automator:** Macro engine to script unattended 2D/3D sweeps.
+* **Test Sequence Automator:** Macro engine to script unattended sweeps.
 * **Dynamics Processor Profiler:** Measures static I/O transfer curves and attack/release.
-* **Bit-Perfect Verifier:** PRBS/watermark generator for 100% bit-accurate loopback verification.
-* **Realtime/Offline Null Comparator:** Channel inversion with sub-sample matching for difference listening.
-* **Wireless / Bluetooth Codec Analyzer:** Latency, jitter, and psychoacoustic profiling for wireless links.
+* **Bit-Perfect Verifier:** PRBS/watermark generator for loopback verification.
+* **Realtime/Offline Null Comparator:** Channel inversion with sub-sample matching.
+* **Wireless / Bluetooth Codec Analyzer:** Latency, jitter, and psychoacoustic profiling.
+* **DSD / PDM Stream Analyzer:** 1-bit high-frequency stream analysis and noise shaping visualization.
+* **USB Audio Protocol Sniffer:** Analyzes USB packet jitter and dropouts for audio streams.
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **Oscilloscope:** Add CMRR/PSRR Mode, Slew Rate Calculator (V/µs measurement).
+* **Oscilloscope:** Add CMRR/PSRR Mode, Slew Rate Calculator.
 * **Spectrum Analyzer:** Add DAC Filter Classifier.
 * **Frequency Counter:** Add Thermal Drift Logger, Phase Noise Plot.
 * **Network Analyzer:** Add Amplifier Stability Margins, Impulse Response & Coherence.
 * **Signal Generator:** Add Psychoacoustic Masking Tones.
-* **Impedance Analyzer:** Add Cable Tester Mode, **Damping Factor / Amp Output Impedance Mode**.
-* **Distortion Analyzer:** **Thermal & Power Stress Logger** (logs THD drift over long loads).
-* **Advanced Distortion Meter:** Add **RF Immunity (EMI Rejection) Tester**.
-* **Transient Analyzer:** Add **Relay/Switch Bounce Analyzer** (quantifies contact bounce).
+* **Impedance Analyzer:** Add Cable Tester Mode, Damping Factor / Amp Output Impedance Mode.
+* **Distortion Analyzer:** Thermal & Power Stress Logger, **Harmonic Phase Analyzer** (measure relative phase of harmonics to construct non-linear transfer curves).
+* **Advanced Distortion Meter:** Add RF Immunity (EMI Rejection Tester).
+* **Transient Analyzer:** Add Relay/Switch Bounce Analyzer.
+* **Noise Profiler:** Add **Microphonics Impact Analysis mode** (correlates physical tap/shock stimuli with audio noise spikes).
 
 ---
 
 ## ✅ Already Implemented
 
-* Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer, J-Test & AES17, Network Analyzer RIAA EQ Curve Matcher.
-* **LUFS Meter:** True Peak (ISKb) Detection.
+* Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer, J-Test & AES17, Network Analyzer RIAA EQ Curve Matcher, LUFS Meter (True Peak / ISKb Detection).
 
 ---
 
