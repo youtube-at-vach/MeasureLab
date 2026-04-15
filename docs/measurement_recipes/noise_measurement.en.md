@@ -48,8 +48,9 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 
 ### How to Read Results
 
-* **What is PSD (Power Spectral Density)?**
-    * `Spectrum mode` is suitable for measuring the level of "sine wave-like signals," while `PSD mode` measures the density (power per 1 Hz) of "noise-like signals". The unit is $/√Hz$.
+* **💡 Knowledge Boost: What is PSD (Power Spectral Density)?**
+    * The normal `Spectrum mode` is like a **"weight scale"** suitable for measuring the level of a specific sound (like a "beep" sine wave). However, since noise is scattered across various frequencies, a simple weight scale can't measure it well.
+    * This is where `PSD mode` comes in. It's a measurement method like **"population density"** that shows how much power is packed into a specific 1Hz width. When measuring noise, using this PSD mode is an ironclad rule for pros! (The unit $/√Hz$ might look a bit intimidating, but for now, just think of it as "the concentration of noise per 1Hz".)
 
 * **What Can You See?**
     * **Hum Noise**: If sharp peaks stand at 50Hz or 60Hz (and their harmonics), it is induction noise from the power supply.
