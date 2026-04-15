@@ -87,7 +87,7 @@
 | --- | --- | --- |
 | Linux (x86_64) | ✅ サポート対象 | Ubuntu 22.04 / 24.04 にて動作確認済み |
 | Windows 10/11 | ✅ サポート対象 | 公式バイナリを提供 |
-| macOS (arm64 / x86_64) | ✅ サポート対象 | macOS 11.0以降 (Apple Silicon / Intel Mac対応) |
+| macOS (arm64 / x86_64) | ✅ サポート対象 | macOS 13.0以降 (Apple Silicon / Intel Mac対応) |
 
 ---
 
@@ -106,7 +106,8 @@
     ```
 
 - **macOS (arm64 / x86_64)**: Apple Silicon の場合は `MeasureLab-<version>-macos-arm64.dmg`、Intel Mac の場合は `MeasureLab-<version>-macos-x64.dmg` をダウンロードしてください。
-    - **注意: Apple Silicon および Intel Mac において macOS 11.0 以降をサポートしています。**
+    - **注意: PyQt6 の制約により、macOS 13.0 以降が必要です。**
+    - **レガシー Intel Mac**: iMac や MacBook Pro (2015以前) などの古いモデルでも、[OpenCore Legacy Patcher (OCLP)](<https://dortania.github.io/OpenCore-Legacy-Patcher/>) を使用して macOS 13 以降にアップグレードすることで動作可能です。
     - **重要：ゲートキーパーの回避**
     - 本アプリは現時点で未署名のため、通常の手順ですと「ゴミ箱に入れる」や「キャンセル」しか選択できない場合があります。これを回避するには以下の手順をお試しください：
         1. `.dmg` を開き、**MeasureLab.app** を見つけます。
