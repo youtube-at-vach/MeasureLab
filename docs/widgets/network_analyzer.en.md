@@ -4,13 +4,24 @@
 
 ## Overview
 
-The Network Analyzer is a tool for measuring the frequency response (amplitude and phase characteristics) of equipment and systems. It uses the "Fast Chirp" method (logarithmic chirp signal) to perform high-precision measurements of the entire band in a short time.
+The Network Analyzer is a tool for measuring the "frequency response" (amplitude and phase characteristics) of equipment and systems.
+Simply put, it is a feature that graphs **"how accurately (how loud or quiet) a device can transmit sounds of various pitches, from low to high."**
+
+It uses the "Fast Chirp" method (logarithmic chirp signal) to perform high-precision measurements of the entire band in a short time.
 
 Primary uses:
 
 * Measuring frequency response (f-response) of amplifiers and filters.
 * Measuring characteristics of speakers and headphones.
 * Measuring phase difference and delay between two signals.
+
+## ☕ Coffee Break: Bat Sonar and the "Chirp" Signal
+
+This widget uses a special signal called a "Fast Chirp" for measurement.
+It sounds like a rapid "Pweeeep!", sweeping from low to high pitches in an instant.
+
+Actually, this is the exact same mechanism as **the ultrasonic waves (echolocation) that bats emit to find obstacles and prey in the dark!**
+Because all pitches of sound are packed tightly into a short burst of time, simply passing this through a device and analyzing the output allows us to measure its response to all frequencies at once, and with high resistance to noise. It's a very clever measurement method that borrows wisdom from nature.
 
 ## Basic Operation
 
@@ -29,7 +40,7 @@ Primary uses:
 * **Output Ch**: Select the channel to output the measurement signal (L, R, or Stereo).
 * **Input Mode**: Select where to receive the signal returning from the measurement target.
     * **Left (Ch1)** / **Right (Ch2)**: Measures the signal of the selected channel. In "Absolute (Level)" mode, it displays the input level in various units.
-    * **XFER (Ref=L, Meas=R)**: Uses the Left channel as a "reference signal" and the Right channel as a "measurement signal," calculating their ratio (H = Meas / Ref). This allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface (relative measurement).
+    * **XFER (Ref=L, Meas=R)**: Uses the Left channel as a "reference signal" (the original sound before entering the device) and the Right channel as a "measurement signal" (the sound after passing through), calculating the ratio of change (H = Meas / Ref). This powerful mode allows for measuring pure device characteristics by canceling out the inherent traits of the audio interface, showing strictly "how the device altered the sound" (relative measurement).
     * **XFER (Ref=R, Meas=L)**: Reverse transfer function mode using Right as reference.
     * **Crosstalk L -> R / R -> L**: Pre-configured macros for measuring crosstalk between channels.
 
@@ -42,6 +53,7 @@ Customize the graph display in the **"Display"** tab.
 * **Magnitude Response**: Displays gain (amplification factor) or absolute level for each frequency. Units can be selected from dBFS, dBV, dBu, Vrms, or Vpeak.
 * **Phase Response**: Displays the phase shift for each frequency.
 * **Group Delay**: Displays the delay time for each frequency, calculated from the slope of the phase (check "Show Group Delay").
+    * 💡 **What is Group Delay?**: Depending on the pitch (frequency) of the sound, the time it takes to travel through a device can slightly differ. For example, a phenomenon where "only the bass comes out slightly delayed." Group delay displays this "time shift per pitch" easily in seconds (or milliseconds).
 * **Coherence**: Displays the correlation (reliability) between input and output. Values closer to 1.0 indicate high reliability. Low coherence suggests noise, distortion, or timing issues (check "Show Coherence").
 
 ### Display Options
