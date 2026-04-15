@@ -3,8 +3,8 @@
 
 # numpy 2.4.2 causes "DLL load failed" on Windows (v0.5.0 worked with 2.2.6).
 # Keep pinned to 2.2.6 until the issue is resolved.
-numpy==2.3.5
-scipy==1.17.0
+numpy==1.26.4
+scipy==1.11.4
 sounddevice==0.5.5
 PyQt6==6.8.0
 pyqtgraph==0.14.0
