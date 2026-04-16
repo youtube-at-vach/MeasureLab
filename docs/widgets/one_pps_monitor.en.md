@@ -4,71 +4,76 @@
 
 ## Overview
 
-The 1PPS (Pulse Per Second) Monitor is an experimental tool designed to precisely measure the stability of sampling rates and clock deviations by monitoring 1PPS signals.
+An experimental tool for monitoring 1PPS (Pulse Per Second) signals and precisely measuring the stability and clock deviation of sampling rates.
 
-It accepts a 1PPS signal from a GPS receiver or high-precision clock source and analyzes the deviation (in PPM: Parts Per Million) from the audio interface's sample rate in real-time.
+It inputs a pulse signal output every second from a GPS receiver or high-precision clock source, and analyzes/displays the deviation (PPM: Parts Per Million) from the audio interface's sample rate in real-time.
+
+💡 **What are 1PPS and PPM?**
+
+* **1PPS**: A feature that "outputs an exact signal (pulse) once every second". It is output from highly accurate clocks (atomic clocks) like those used in GPS.
+* **PPM (Parts Per Million)**: A unit representing one millionth. For example, a deviation of "10 PPM" means a very small error of shifting 10 seconds after 1 million seconds (about 11.5 days). This monitor acts like an "ultra-precise stopwatch" to measure how accurate your audio device's internal clock is, using the accurate GPS clock as a reference.
 
 ## Features
 
-* **PPM Deviation Measurement**: Measures the number of samples between rising edges of pulses and compares them to the nominal rate to calculate deviation.
-* **Support for Arbitrary Frequencies (Target PPS)**: Supports not only 1PPS but also 10PPS or any arbitrary pulse frequency.
-* **Triggered Waveform View**: Visualizes the waveform around detected pulses, allowing for visual confirmation of trigger status.
-* **PPM Display**: Visualizes Instantaneous and Cumulative Average deviations in PPM.
-* **Outlier Filter**: Robust filtering using Median Absolute Deviation (MAD) to reject glitches and noise.
-* **Input Latency Compensation**: Precision measurement accounting for audio interface input latency and manual offsets.
-* **Statistics**: Displays Mean, Standard Deviation, Max/Min deviation, and other statistical metrics.
+* **Sample PPM Deviation Measurement**: Measures the number of samples between the rising edges of pulses and displays the deviation by comparing it with the nominal rate.
+* **Arbitrary Frequency Support (Target PPS)**: Can set not only 1PPS but also 10PPS or pulse signals of arbitrary frequencies as the measurement target.
+* **Trigger Waveform Display**: Visualizes the waveform before and after the detected pulse, allowing visual confirmation of the trigger state.
+* **PPM Display**: Graphs the deviation of the instantaneous value and cumulative average in PPM units.
+* **Outlier Filter**: Equipped with a robust filter using Median Absolute Deviation (MAD) to prevent false detections caused by noise or glitches.
+* **Input Latency Compensation**: Enables precise measurement considering the input latency of the audio interface and manual offsets.
+* **Statistics**: Displays statistical information such as detection count, average deviation, standard deviation, and maximum/minimum deviation.
 
 ## Operation
 
-### Start and Stop
+### Starting and Stopping Measurements
 
 * **Start / Stop Button**: Starts or stops the measurement.
-* **Sync with Audio Engine**: Automatically sets the nominal rate to match the current sample rate of the Audio Engine.
+* **Sync with Audio Engine**: When checked, automatically sets the current sampling rate of the audio engine as the nominal rate.
 
-### Tab Interface
+### Tab Layout
 
-The control panel is organized into several tabs.
+The control panel is divided into multiple tabs.
 
 #### Settings
 
-* **Sample Rate**: Sets the reference sample rate.
-* **Target PPS (Hz)**: Sets the frequency of the pulse signal to be measured (default is 1.0Hz). This allows for signals like 10PPS.
-* **Outlier Rejection**: Filter settings to reject sudden measurement errors or noise.
+* **Sample Rate**: Sets the reference sampling rate.
+* **Target PPS (Hz)**: Sets the frequency of the pulse signal to be measured (default is 1.0Hz). This allows support for signals like 10PPS.
+* **Outlier Rejection**: Filter settings to remove sudden measurement errors or noise.
     * **Enable Filter**: Enables the filter.
-    * **Window**: Number of recent samples used for filter calculation (window size).
-    * **Tolerance (Sigma)**: Tolerance range for identifying outliers relative to the median.
+    * **Window**: The number of recent samples (window size) used for filter calculation.
+    * **Tolerance (Sigma)**: The tolerance range for considering a value an outlier based on its distance from the median.
 
 #### Waveform
 
-Monitor the pulse waveform in real-time and adjust trigger settings.
+Allows real-time confirmation of the detected pulse waveform and adjustment of trigger settings.
 
-* **Input Waveform (Triggered)**: Displays the waveform around the moment of a trigger (pulse detection) (default ±0.5s).
-* **Threshold (FS)**: Signal level threshold for pulse detection. Indicated by a green line on the waveform plot.
-* **Hysteresis (FS)**: Hysteresis width to prevent chattering. Indicated by a red dashed line on the waveform plot.
-* **Latency Compensation**: Settings for latency compensation.
+* **Input Waveform (Triggered)**: Displays the waveform before and after (default ±0.5 seconds) the moment the trigger (pulse detection) occurs.
+* **Threshold (FS)**: The signal level threshold considered as a pulse. Indicated by a green line on the waveform graph.
+* **Hysteresis (FS)**: Hysteresis to prevent chattering. Indicated by a red dotted line on the waveform graph.
+* **Latency Compensation**: Sets delay compensation for measured values.
     * **Compensate Input Latency**: Automatically subtracts the input latency reported by the audio interface.
-    * **Manual Offset (ms)**: Set an additional manual latency offset in milliseconds.
+    * **Manual Offset (ms)**: Manually sets additional delay compensation (in milliseconds).
 
 #### Display & Statistics
 
-* **Unit**: Switch the graph unit between `PPM` and `Seconds`.
-* **Show Instantaneous**: Toggle the visibility of the instantaneous deviation curve.
-* **Calibration**: Calculate and store calibration factors from measurements.
-    * **Stored 1PPS Cal**: Shows the current stored calibration factor (ppm).
-    * **Calibrate from Current**: Performs calibration based on the current cumulative average and saves it to the "1PPS Frequency Calibration" slot.
+* **Unit**: Switches the graph unit between `PPM` and `Seconds`.
+* **Show Instantaneous**: Toggles the display of instantaneous values.
+* **Calibration**: Calculates and saves the calibration coefficient from the measured values.
+    * **Stored 1PPS Cal**: The currently saved correction value (ppm).
+    * **Calibrate from Current**: Performs calibration based on the current cumulative average value and saves it in the "1PPS Frequency Calibration" slot.
         > [!NOTE]
-        > To apply the calibration from this monitor system-wide, you must switch the **Frequency Calibration Source** to `1PPS Monitor` in the **Calibration** tab of the **Settings** widget.
+        > To apply this monitor's calibration value to the entire system, you must switch the **Frequency Calibration Source** to `1PPS Monitor` in the **Calibration** tab of the **Settings** widget.
 * **Statistics**:
-    * **Count**: Number of pulses detected.
-    * **Inst / Cumul**: Latest instantaneous and cumulative average deviations (PPM).
-    * **Rate**: Effective sample rate estimated from the measurements.
-    * **Mean / Std Dev**: Mean and standard deviation of the deviations.
-    * **Min / Max**: Minimum and maximum deviations recorded since the start.
+    * **Count**: The number of pulses detected.
+    * **Inst / Cumul**: The latest instantaneous value and cumulative average value (PPM).
+    * **Rate**: The effective sampling rate estimated from the measurement.
+    * **Mean / Std Dev**: The average value and standard deviation of the deviation.
+    * **Min / Max**: The minimum and maximum deviation since the start of measurement.
 
-## Understanding the Graph
+## Reading the Graph ☕
 
-* **Instantaneous (Dotted Line - Yellow)**: Shows the deviation for each pulse. Suitable for observing jitter and short-term fluctuations.
-* **Cumulative Avg (Solid Line - Cyan)**: Shows the cumulative average deviation since the start of measurement. Suitable for observing long-term clock drift (frequency offset).
+* **Instantaneous (Dotted Line, Yellow)**: Displays the instantaneous deviation for each pulse. Suitable for checking jitter and short-term fluctuations.
+* **Cumulative Avg (Solid Line, Cyan)**: Displays the cumulative average deviation since the start of measurement. Suitable for checking long-term clock drift (frequency offset).
 
 > [!IMPORTANT]
-> **Calibration Note**: When "Calibrate from Current" is executed, the calculated calibration factor is saved to the settings. This value is used in frequency settings of the audio engine, but it does not reset the graph display of the monitor itself.
+> **Calibration Note**: Executing "Calibrate from Current" saves the calculated correction coefficient in the settings. While this value is used for the audio engine's frequency settings, it does not reset the graph display of the monitor itself.
