@@ -7,6 +7,9 @@
 A tool like a "chart recorder" that continuously monitors and records signal changes over long periods.
 While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences.
 
+💡 **What is a Chart Recorder?**
+Have you ever seen an old seismograph or lie detector where a long roll of paper slowly feeds out while a pen continuously draws a squiggly line? Raw Time Series is exactly the digital version of that. Even if you think, "I feel like I just heard a weird noise!", you can scroll back through the record to check it.
+
 ## Operations
 
 ### Starting and Stopping Measurements
@@ -58,7 +61,7 @@ Check the operational stability of a DIY amplifier or circuit.
 3. Turn **Show DC Offset** ON.
 4. Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
 
-### Finding Intermittent Noise
+### Finding Intermittent Noise ☕
 
 Wait for and monitor noise that occurs sporadically, such as occasional "popping" sounds.
 
@@ -66,3 +69,6 @@ Wait for and monitor noise that occurs sporadically, such as occasional "popping
 2. Set the **Scale** to a high value (`5.0x` or `10.0x`) to magnify the noise floor during silence.
 3. When noise occurs, it will be recorded as a spike on the graph.
 4. Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
+
+💡 **How is this different from an Oscilloscope Trigger?**
+An oscilloscope's trigger is a feature that says, "Take a snapshot the moment the voltage exceeds a set level." On the other hand, this method is more like "recording security camera footage constantly and reviewing the exact moment a suspicious shadow appears later." If you have no idea what kind of noise to expect, this approach is a much more reliable way to find it.

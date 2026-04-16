@@ -6,7 +6,32 @@ Instructions for running from source code and setting up the development environ
 
 **Prerequisites**: Python 3.12 or higher
 
-### Linux / Ubuntu (Recommended): Run in a Virtual Environment (venv)
+### 🚀 Automated Setup Script (Recommended)
+
+For Linux (Ubuntu) and macOS environments, we provide a convenient script that automates everything from installing OS packages to creating a virtual environment (`.venv`) and installing necessary Python dependencies, Node.js, and other development tools.
+
+Simply open your terminal and run the following command in the repository root directory:
+
+```bash
+./scripts/setup_dev_env.sh
+```
+
+- Note: During execution, you may be prompted to enter your password or confirm default settings for MacPorts.
+
+Once the setup is complete, activate the virtual environment and launch the application using the following commands:
+
+```bash
+source .venv/bin/activate
+python main_gui.py
+```
+
+---
+
+### 🛠️ Manual Setup
+
+If you prefer not to use the automated script and want to set up the environment manually, please follow the instructions below.
+
+#### Linux / Ubuntu: Manual Virtual Environment (venv) Setup
 
 While the release versions (AppImage/ZIP) work as is, when running from source code, **APT (OS package) Python dependencies (e.g., PyQt6) might be too old to work**.
 Therefore, on Linux, it is recommended to **use the system Python but install dependent packages using venv + pip**.
@@ -57,7 +82,7 @@ Therefore, on Linux, it is recommended to **use the system Python but install de
     python main_gui.py
     ```
 
-### macOS: Using MacPorts + Python 3.12 + pyFFTW
+#### macOS: Using MacPorts + Python 3.12 + pyFFTW
 
 (Verified on macOS 13 or later)
 
