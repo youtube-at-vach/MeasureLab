@@ -71,8 +71,13 @@ class DetachableWidgetWrapper(QWidget):
         self.screenshot_btn.clicked.connect(self.save_screenshot)
         self.screenshot_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
+        self.logs_btn = QPushButton(tr("Logs"))
+        self.logs_btn.clicked.connect(self.show_logs)
+        self.logs_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
+        header_layout.addWidget(self.logs_btn)
         header_layout.addWidget(self.screenshot_btn)
         header_layout.addWidget(self.detach_btn)
 
@@ -163,6 +168,16 @@ class DetachableWidgetWrapper(QWidget):
             return
 
         QMessageBox.information(self, tr("Success"), tr("Screenshot saved to: {0}").format(path))
+
+    def show_logs(self):
+        try:
+            from src.gui.widgets.log_viewer import LogViewerWindow
+            viewer = LogViewerWindow.get_instance()
+            viewer.show()
+            viewer.raise_()
+            viewer.activateWindow()
+        except Exception as e:
+            QMessageBox.warning(self, tr("Error"), tr("Failed to open log viewer: {0}").format(str(e)))
 
     def toggle_detach(self):
         if self.is_detached:

@@ -23,6 +23,7 @@ class TestMainGuiException(unittest.TestCase):
             "src.core.localization",
             "src.core.utils",
             "src.core.fft_manager",
+            "src.gui.widgets.log_viewer",
         ]:
             self.patched_modules[mod] = sys.modules.get(mod)
             sys.modules[mod] = MagicMock()
@@ -64,7 +65,7 @@ class TestMainGuiException(unittest.TestCase):
             MockConfigManager.side_effect = Exception("Simulated Config Load Failure")
 
             # Patch sys.exit to avoid exiting
-            with patch("sys.exit"):
+            with patch("sys.exit"), patch("os.makedirs"):
                 # Use assertLogs to capture logs
                 with self.assertLogs(level="ERROR") as cm:
                     main_gui.main()

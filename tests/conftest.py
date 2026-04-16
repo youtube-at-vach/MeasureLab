@@ -13,6 +13,9 @@ if str(_REPO_ROOT) not in sys.path:
 # Set Qt platform to offscreen for headless testing
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+# Disable file logging and real config during tests
+os.environ["MEASURELAB_TESTING"] = "1"
+
 # Mock sounddevice if not available or fails to initialize (no PortAudio)
 try:
     import sounddevice  # noqa: F401
