@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 import queue
@@ -21,6 +22,9 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class OnePPSMonitor(MeasurementModule):
@@ -369,7 +373,7 @@ class OnePPSMonitor(MeasurementModule):
             except queue.Empty:
                 continue
             except Exception as e:
-                print(f"OnePPSMonitor Worker Error: {e}")
+                logger.error(f"OnePPSMonitor Worker Error: {e}")
 
     def _capture_waveform(self, required_post, current_head):
         """Helper to extract waveform from buffer."""

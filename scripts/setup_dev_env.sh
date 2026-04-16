@@ -51,7 +51,7 @@ elif [ "${OS}" = "Darwin" ]; then
         sudo port selfupdate
         
         echo "Installing Python 3.12, pip, FFTW3, and Node.js via MacPorts..."
-        sudo port install python312 py312-pip fftw-3 nodejs22 npm10
+        sudo port install python312 py312-pip fftw-3 fftw-3-single nodejs22 npm10
         
         read -p "Do you want to set Python 3.12 and Node.js 22 as system defaults via 'port select'? (y/N): " set_default
         if [[ "$set_default" =~ ^[Yy]$ ]]; then
@@ -89,6 +89,8 @@ elif [ "${OS}" = "Darwin" ]; then
     echo "Upgrading pip..."
     python -m pip install -U pip
 
+    echo "Removing pyFFTW from pip cache to ensure clean build..."
+    python -m pip cache remove pyfftw || true
     echo "Installing pyFFTW with explicit FFTW prefix (for macOS)..."
     PYFFTW_FFTW_PREFIX=/opt/local python -m pip install pyfftw --no-binary pyfftw
 

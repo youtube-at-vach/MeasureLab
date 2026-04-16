@@ -177,7 +177,7 @@ class LockInAmplifier(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                logger.debug(status)
 
             # --- Input Capture ---
             if indata.shape[1] >= 2:

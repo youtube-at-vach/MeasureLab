@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer, QRunnable, QThreadPool, QObject, pyqtSignal
@@ -21,6 +22,9 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
+
+
+logger = logging.getLogger(__name__)
 
 
 class AdvancedDistortionMeter(MeasurementModule):
@@ -115,7 +119,7 @@ class AdvancedDistortionMeter(MeasurementModule):
 
         def callback(indata, outdata, frames, time, status):
             if status:
-                print(status)
+                logger.debug(status)
 
             # Output
             if self.output_enabled:

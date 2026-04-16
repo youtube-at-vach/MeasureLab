@@ -92,7 +92,7 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
 
     ```bash
     sudo port selfupdate
-    sudo port install python312 py312-pip fftw-3
+    sudo port install python312 py312-pip fftw-3 fftw-3-single
     ```
 
 2. Python のバージョン選択：
@@ -115,6 +115,7 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
 4. pyFFTW のインストール（FFTW のパスを明示指定）：
 
     ```bash
+    python -m pip cache remove pyfftw
     PYFFTW_FFTW_PREFIX=/opt/local \
     python -m pip install pyfftw --no-binary pyfftw
     ```

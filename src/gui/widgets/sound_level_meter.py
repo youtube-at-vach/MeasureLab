@@ -1,3 +1,4 @@
+import logging
 import time
 
 import numpy as np
@@ -20,6 +21,9 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class SoundLevelMeter(MeasurementModule):
@@ -263,7 +267,7 @@ class SoundLevelMeter(MeasurementModule):
         try:
             self.callback_id = self.audio_engine.register_callback(self.callback)
         except Exception as e:
-            print(f"Failed to start audio stream: {e}")
+            logger.error(f"Failed to start audio stream: {e}")
             self.is_running = False
 
     def stop_analysis(self):

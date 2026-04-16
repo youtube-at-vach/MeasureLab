@@ -1,3 +1,4 @@
+import logging
 import threading
 
 import numpy as np
@@ -33,6 +34,9 @@ from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
+
+
+logger = logging.getLogger(__name__)
 
 
 class NetworkAnalyzerSignals(QObject):
@@ -220,7 +224,7 @@ class NetworkAnalyzer(MeasurementModule):
             out_data[:, 0] = chirp
             out_data[:, 1] = chirp
 
-            print("Playing chirp for latency calibration...")
+            logger.info("Playing chirp for latency calibration...")
 
             # Always capture 1 channel for latency cal (assume Ch 0 loopback)
             rec_data = self.run_play_rec(out_data, input_channels=1)
@@ -237,7 +241,7 @@ class NetworkAnalyzer(MeasurementModule):
                 self.latency_sec = 0
 
             self.signals.latency_result.emit(self.latency_sec)
-            print(f"Measured Latency: {self.latency_sec * 1000:.2f} ms")
+            logger.info(f"Measured Latency: {self.latency_sec * 1000:.2f} ms")
 
         except Exception as e:
             self.signals.error.emit(f"Calibration failed: {e}")
@@ -1019,7 +1023,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.lat_btn.setEnabled(True)
 
     def on_error(self, msg):
-        print(f"Error: {msg}")
+        logger.error(f"Error: {msg}")
         self.start_btn.setChecked(False)
         self.start_btn.setText(tr("Start Sweep"))
 
@@ -1032,7 +1036,7 @@ class NetworkAnalyzerWidget(QWidget):
             "phases": np.array(self.phases),
             "gen_amp": float(self.module.amplitude),
         }
-        print("Reference trace stored.")
+        logger.info("Reference trace stored.")
 
     def on_clear_reference(self):
         self.module.reference_trace = None

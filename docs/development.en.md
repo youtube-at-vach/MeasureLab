@@ -92,7 +92,7 @@ When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW libra
 
     ```bash
     sudo port selfupdate
-    sudo port install python312 py312-pip fftw-3
+    sudo port install python312 py312-pip fftw-3 fftw-3-single
     ```
 
 2. Select Python version:
@@ -115,6 +115,7 @@ When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW libra
 4. Install pyFFTW (Explicitly specifying the FFTW path):
 
     ```bash
+    python -m pip cache remove pyfftw
     PYFFTW_FFTW_PREFIX=/opt/local \
     python -m pip install pyfftw --no-binary pyfftw
     ```
