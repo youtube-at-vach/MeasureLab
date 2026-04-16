@@ -8,6 +8,9 @@ A tool that displays sound components in three dimensions: "Time (horizontal axi
 While a spectrum analyzer displays the "frequency distribution at the current moment," a spectrogram visualizes the ever-changing "audio signature (voiceprint)".
 It is ideal for observing the "transitions" of sound, such as voice intonation analysis, time-based changes in instrument overtones, bird call analysis, and discovering intermittent noise.
 
+💡 **What is a Voiceprint?**
+When you look at human voices or bird calls on this graph, a "unique pattern for that sound" emerges, much like a fingerprint. This is called a voiceprint. For example, when you say "ah" versus "ee", the shape of your mouth changes, which alters the resonant pitches (frequencies), causing the pattern on the graph to clearly change as well. The exact same principle is used in police investigations to analyze a criminal's voice.
+
 ## Operation
 
 ### Starting and Stopping Measurements
@@ -72,7 +75,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 
 ## Usage Examples
 
-### Visualizing "Voice" (Voice Analysis)
+### Visualizing "Voice" (Voice Analysis) ☕
 
 Try analyzing your own voice or speech.
 
