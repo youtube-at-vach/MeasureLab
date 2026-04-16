@@ -1,5 +1,26 @@
 # Changelog
 
+## [v0.6.3] - 2026-04-16
+
+### Added
+
+* **Log Viewer**: Introduced a new Log Viewer widget that displays application logs in real-time, features theme-aware styling, and supports command-line configuration (`--log-level`, `--log-file`).
+* **Audio**: Added preview mode settings (start time and duration) and navigation buttons to the Spatial Binaural Mixer.
+* **Audio**: Added cancellation support to the Spatial Binaural Mixer rendering process.
+* **Tool**: Added `setup_dev_env.sh` for automated development environment configuration on Linux and macOS, including Node.js and npm installation.
+
+### Changed
+
+* **UI**: Replaced pyqtgraph spinboxes with native PyQt6 `QSpinBox` and `QDoubleSpinBox` for better performance and consistency.
+* **Docs**: Updated macOS minimum version requirement to 13.0 and added information about OpenCore Legacy Patcher (OCLP) for legacy hardware.
+* **Docs**: Improved documentation across several modules (Network Analyzer, Spectrum Analyzer, Inverse Filter, Spatial Binaural Mixer) with more engaging content and "Coffee Break" sections.
+
+### Fixed
+
+* **UI**: Improved Log Viewer visibility in dark theme by using dynamic color selection based on the active theme.
+* **Tests**: Disabled file logging during tests via `MEASURELAB_TESTING` environment variable to prevent side effects in CI environments.
+* **Tests**: Cleaned up the test suite and reorganized widget tests.
+
 ## [v0.6.2] - 2026-04-10
 
 ### Added
