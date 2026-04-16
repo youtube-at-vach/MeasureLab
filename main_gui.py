@@ -95,7 +95,7 @@ def setup_app():
     try:
         from src.gui.widgets.log_viewer import LogViewerWindow
         LogViewerWindow.attach_to_logger(root_logger)
-        
+
         # If debug is passed, we might want to ensure the log level matches
         # The QtLogHandler operates at DEBUG and filters based on user selection in the UI.
     except ImportError as e:

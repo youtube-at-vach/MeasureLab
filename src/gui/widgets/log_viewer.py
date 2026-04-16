@@ -1,5 +1,4 @@
 import logging
-import weakref
 
 from PyQt6.QtCore import pyqtSignal, QObject, Qt
 from PyQt6.QtWidgets import (
@@ -9,7 +8,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QPlainTextEdit,
     QComboBox,
-    QMessageBox,
+    QApplication,
 )
 
 from src.core.localization import tr
@@ -33,7 +32,7 @@ class QtLogHandler(logging.Handler):
     def emit(self, record):
         if record is None:
             return
-        
+
         try:
             msg = self.format(record)
             self.signals.log_emitted.emit(msg, record.levelno)
@@ -59,28 +58,33 @@ class LogViewerWindow(QDialog):
         super().__init__(parent)
         self.setWindowTitle(tr("Error Logs"))
         self.resize(800, 500)
-        
+
         # Make the dialog modeless, meaning it floats over the application but doesn't block it
         self.setModal(False)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
-        
+
         self.current_level = logging.DEBUG
         self.all_logs = []
 
         self._init_ui()
+
+        # Connect to theme changes to refresh existing logs with new palette colors
+        app = QApplication.instance()
+        if app and hasattr(app, "theme_manager"):
+            app.theme_manager.theme_changed.connect(self._refresh_display)
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
 
         # Header controls
         header_layout = QHBoxLayout()
-        
+
         self.level_combo = QComboBox()
         self.level_combo.addItem(tr("All Logs (DEBUG)"), logging.DEBUG)
         self.level_combo.addItem(tr("Info"), logging.INFO)
         self.level_combo.addItem(tr("Warnings"), logging.WARNING)
         self.level_combo.addItem(tr("Errors Only"), logging.ERROR)
-        
+
         # Default to Info for less clutter, but keep all in memory
         self.level_combo.setCurrentIndex(1)
         self.current_level = logging.INFO
@@ -105,10 +109,10 @@ class LogViewerWindow(QDialog):
         # Bottom buttons
         bottom_layout = QHBoxLayout()
         bottom_layout.addStretch()
-        
+
         self.close_btn = QPushButton(tr("Close"))
         self.close_btn.clicked.connect(self.hide)
-        
+
         bottom_layout.addWidget(self.close_btn)
         layout.addLayout(bottom_layout)
 
@@ -135,20 +139,24 @@ class LogViewerWindow(QDialog):
             self._append_formatted(msg, level)
 
     def _append_formatted(self, msg: str, level: int):
-        # We can use limited HTML to colorize text
-        color = "black"
+        # Determine color based on log level
+        color = None
         if level >= logging.ERROR:
             color = "red"
         elif level >= logging.WARNING:
-            color = "orange"
+            color = "#FF8C00"  # DarkOrange: visible on both backgrounds
         elif level <= logging.DEBUG:
             color = "gray"
 
-        # The appendHtml function works, but appendPlainText is faster.
-        # Since log lines might contain HTML-like traces (e.g. `<module>`), we must escape it or just use HTML explicitly.
-        # QPlainTextEdit has appendHtml.
-        msg_escaped = msg.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\\n", "<br>")
-        html_msg = f'<span style="color: {color};">{msg_escaped}</span>'
+        # Escape HTML special characters and handle newlines for HTML display
+        msg_escaped = msg.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+        if color:
+            html_msg = f'<span style="color: {color};">{msg_escaped}</span>'
+        else:
+            # Use default palette text color for INFO and other standard levels
+            html_msg = msg_escaped
+
         self.text_edit.appendHtml(html_msg)
 
     def clear_logs(self):
