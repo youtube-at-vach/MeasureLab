@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import argparse
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import signal
 import sys
@@ -30,8 +32,41 @@ def setup_app():
     # Allow Ctrl+C to exit
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    # Configure logging early
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    # Parse basic arguments for logging before full Qt initialization
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--log-level", default="INFO", help="Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+    parser.add_argument("--log-file", default=None, help="Path to log file (overrides default)")
+    args, _ = parser.parse_known_args()
+
+    numeric_level = getattr(logging, args.log_level.upper(), logging.INFO)
+
+    # Determine log file path
+    if args.log_file:
+        log_path = args.log_file
+    else:
+        # Default to User Data Directory
+        user_dir = ConfigManager.get_user_data_dir()
+        os.makedirs(user_dir, exist_ok=True)
+        log_path = os.path.join(user_dir, "measurelab.log")
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(numeric_level)
+
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    # File handler (5MB, 2 backups)
+    try:
+        file_handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
+    except Exception as e:
+        print(f"Failed to set up file logging at {log_path}: {e}")
 
     # Load language early so the splash text matches user settings.
     # Keep this lightweight: just read config + load translations.
@@ -50,6 +85,16 @@ def setup_app():
     if os.environ.get("MEASURELAB_DEBUG_WINDOWS", "").strip() not in ("", "0", "false", "False"):
         app._measurelab_window_logger = TopLevelWindowLogger(app)  # keep a strong ref
         app.installEventFilter(app._measurelab_window_logger)
+
+    # Attach the Qt logging handler to the root logger
+    try:
+        from src.gui.widgets.log_viewer import LogViewerWindow
+        LogViewerWindow.attach_to_logger(root_logger)
+        
+        # If debug is passed, we might want to ensure the log level matches
+        # The QtLogHandler operates at DEBUG and filters based on user selection in the UI.
+    except ImportError as e:
+        logging.error(f"Could not load GUI LogViewer: {e}")
 
     # Brand name (do not translate)
     app.setApplicationName("MeasureLab")

@@ -23,6 +23,7 @@ class TestMainGuiException(unittest.TestCase):
             "src.core.localization",
             "src.core.utils",
             "src.core.fft_manager",
+            "src.gui.widgets.log_viewer",
         ]:
             self.patched_modules[mod] = sys.modules.get(mod)
             sys.modules[mod] = MagicMock()
