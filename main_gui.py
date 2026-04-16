@@ -41,7 +41,9 @@ def setup_app():
     numeric_level = getattr(logging, args.log_level.upper(), logging.INFO)
 
     # Determine log file path
-    if args.log_file:
+    if os.environ.get("MEASURELAB_TESTING") == "1":
+        log_path = os.devnull
+    elif args.log_file:
         log_path = args.log_file
     else:
         # Default to User Data Directory
@@ -61,12 +63,15 @@ def setup_app():
     root_logger.addHandler(console_handler)
 
     # File handler (5MB, 2 backups)
-    try:
-        file_handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
-        file_handler.setFormatter(formatter)
-        root_logger.addHandler(file_handler)
-    except Exception as e:
-        print(f"Failed to set up file logging at {log_path}: {e}")
+    if os.environ.get("MEASURELAB_TESTING") == "1":
+        logging.info("MEASURELAB_TESTING=1 detected: Skipping file logging initialization.")
+    else:
+        try:
+            file_handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+        except Exception as e:
+            print(f"Failed to set up file logging at {log_path}: {e}")
 
     # Load language early so the splash text matches user settings.
     # Keep this lightweight: just read config + load translations.
