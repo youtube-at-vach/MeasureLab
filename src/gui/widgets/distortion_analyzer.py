@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 
 import numpy as np
@@ -28,6 +29,9 @@ from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
+
+
+logger = logging.getLogger(__name__)
 
 
 class DistortionAnalyzer(MeasurementModule):
@@ -556,7 +560,7 @@ class RealtimeAnalysisWorker(QObject):
             self.result_ready.emit(results)
 
         except Exception as e:
-            print(f"Error in analysis worker: {e}")
+            logger.error(f"Error in analysis worker: {e}")
 
 
 class DistortionAnalyzerWidget(QWidget):

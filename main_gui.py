@@ -71,7 +71,7 @@ def setup_app():
             file_handler.setFormatter(formatter)
             root_logger.addHandler(file_handler)
         except Exception as e:
-            print(f"Failed to set up file logging at {log_path}: {e}")
+            logging.error(f"Failed to set up file logging at {log_path}: {e}")
 
     # Load language early so the splash text matches user settings.
     # Keep this lightweight: just read config + load translations.
@@ -182,7 +182,7 @@ def main():
         # 2. Preload Modules
         window.preload_all_modules(progress_callback=_update_splash)
     except Exception as e:
-        print(f"Startup error: {e}")
+        logging.error(f"Startup error: {e}")
         # If preload fails, still show the window; individual pages may show errors.
         pass
 
@@ -195,7 +195,7 @@ def main():
 
     # Self-test mode: exit automatically after 5 seconds to verify startup.
     if "--self-test" in sys.argv:
-        print("[Self-Test] Application started successfully. Exiting in 5 seconds...")
+        logging.info("[Self-Test] Application started successfully. Exiting in 5 seconds...")
         QTimer.singleShot(5000, app.quit)
 
     sys.exit(app.exec())

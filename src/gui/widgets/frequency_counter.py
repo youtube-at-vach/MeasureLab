@@ -1,3 +1,4 @@
+import logging
 import time
 from collections import deque
 
@@ -25,6 +26,9 @@ from src.core.frequency_analysis import calculate_frequency_metrics, calculate_a
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+
+
+logger = logging.getLogger(__name__)
 
 
 class AllanWorkerSignals(QObject):
@@ -79,7 +83,7 @@ class AllanWorker(QRunnable):
 
         except Exception as e:
             # On error, just emit empty
-            print(f"Allan calc error: {e}")
+            logger.error(f"Allan calc error: {e}")
             self.signals.result.emit([], [])
 
 
@@ -108,7 +112,7 @@ class FrequencyWorker(QRunnable):
             self.signals.result.emit(freq, db)
         except Exception as e:
             # On error, we should probably emit something safe or just log
-            print(f"Freq worker error: {e}")
+            logger.error(f"Freq worker error: {e}")
             self.signals.result.emit(None, -140.0)
 
 

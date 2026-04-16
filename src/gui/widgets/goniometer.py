@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple
 
 import numpy as np
@@ -21,6 +22,9 @@ from scipy.ndimage import gaussian_filter
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+
+logger = logging.getLogger(__name__)
 
 
 class Goniometer(MeasurementModule):
@@ -82,7 +86,7 @@ class Goniometer(MeasurementModule):
 
     def _callback(self, indata, outdata, frames, time, status):
         if status:
-            print(status)
+            logger.debug(status)
 
         # Get stereo data
         if indata.shape[1] >= 2:
