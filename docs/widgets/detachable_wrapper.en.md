@@ -17,6 +17,13 @@ Pressing the **"Screenshot"** button in the upper right of the widget instantly 
 * **File Name**: Automatically named in the format `[Tool Name]_[Date]_[Time].png`.
 * **Use Cases**: Ideal for creating experiment reports, posting to SNS, and recording evidence of measurement results.
 
+### Viewing Logs (Logs)
+
+Pressing the **"Logs"** button in the upper right of the widget opens the log viewer that displays application errors and information.
+
+* **Use Cases**: Used to check warnings or errors during measurements, and to obtain debugging information.
+* **Features**: You can filter the level of logs to display, such as all logs, info, warnings, or errors only.
+
 ### Window Separation (Detach Window)
 
 Pressing the **"Detach Window"** button makes only that widget pop out into an independent individual window.
@@ -29,7 +36,7 @@ Pressing the **"Detach Window"** button makes only that widget pop out into an i
 Each widget, such as the Spectrogram, consists of the following three areas:
 
 1. **Common Header**:
-    An area where the title, screenshot, and separation buttons are lined up.
+    An area where the title, logs, screenshot, and separation buttons are lined up.
 2. **Main Display Area**:
     The most important area where waveforms, graphs, and numerical values are displayed.
 3. **Control Area**:
