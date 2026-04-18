@@ -6,6 +6,15 @@
 
 The LUFS Meter is a tool for measuring "Loudness" (the perceived volume by humans), which is the standard used in broadcasting and streaming services (YouTube, Spotify, Netflix, etc.). It uses an algorithm compliant with the international standard ITU-R BS.1770-4. It also simultaneously displays standard peak and RMS meters.
 
+## ☕ Coffee Break: The "Loudness War" and the Birth of LUFS
+
+Have you ever been watching TV and suddenly jumped because a commercial was way too loud?
+In the world of music CDs, there was also an era called the "Loudness War," where record companies cranked up the volume to the absolute limit just to make their songs stand out more than others.
+
+However, if the volume varies wildly from song to song, listeners have to constantly adjust their volume knobs, which is very annoying.
+To solve this, a new rule was created to standardize volume not by "mechanical peak values," but by the "actual loudness perceived by human ears." That standard is **LUFS** (Loudness Units relative to Full Scale).
+Today, platforms like YouTube and Spotify use LUFS to automatically adjust (normalize) all songs so they play at a consistent, comfortable volume.
+
 ## Key Indicators
 
 ### LUFS (Loudness Units Full Scale)
@@ -19,7 +28,7 @@ The unit for perceived loudness.
 ### Other Indicators
 
 * **RMS**: Root Mean Square value (electrical average level).
-* **True Peak (TP / ISKb)**: The maximum amplitude value of the signal, calculated using 4x oversampling to detect inter-sample peaks. It provides a more accurate representation of the analog signal after D/A conversion compared to a standard sample peak meter.
+* **True Peak (TP / ISKb)**: A feature that finds "hidden peaks" unique to digital audio. It internally calculates (oversamples) to predict exactly how far the true analog sound wave shoots up between the digital sample points (the true peak). This lets you accurately know the real maximum volume the moment the sound leaves your speakers.
 * **Peak (Pk)**: The maximum sample value of the signal.
 * **Crest Factor (CF)**: The difference between True Peak and RMS. It represents the width of the dynamic range.
 

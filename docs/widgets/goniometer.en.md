@@ -8,6 +8,14 @@ This is a tool for visualizing the "spread" and "phase" of stereo audio.
 It plots the relationship between the left and right channels (L/R) as a Lissajous figure, and is used to check the localization of the sound image, stereo width, and mono compatibility.
 It is an essential tool for discovering phase cancellation problems in mixdown and mastering.
 
+## ☕ Coffee Break: The "Lissajous Figure" Kaleidoscope of Sound
+
+The mysterious patterns dancing on the Goniometer screen are known in the mathematical world as "Lissajous figures."
+If you imagine the sound from the left speaker pulling a pen "up and down," and the sound from the right speaker pulling it "left and right," they work together to draw these shapes.
+
+When exactly the same sound reaches both ears, it draws a single, straight diagonal line at 45 degrees. But as subtle differences (spread and depth) are introduced between the left and right sounds, the line blooms into a circle, tangling and changing beautifully like a "kaleidoscope of sound."
+By peering into this magic window, you can see exactly how musicians and engineers scattered sounds across the space, revealing the "secrets of stereo" right before your eyes!
+
 ## How to Read the Screen
 
 ### Main Display (Lissajous Waveform)
