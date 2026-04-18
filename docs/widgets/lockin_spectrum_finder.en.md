@@ -5,10 +5,10 @@
 The **Lock-in Spectrum Finder** is a widget that uses the principles of lock-in detection (matrix projection) to calculate and display the spectrum of a specified frequency band with extremely high resolution.
 It is specialized for detecting weak signals at low noise floors or observing specific narrow bands where standard FFT-based spectrum analyzers lack sufficient resolution.
 
-> [!WARNING]
-> **Important Note on Measured Values**
-> This widget is specialized for "finding" the presence and frequency of weak signals buried in noise.
-> Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a **rough guide** for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
+!!! warning
+    **Important Note on Measured Values**
+    This widget is specialized for "finding" the presence and frequency of weak signals buried in noise.
+    Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a **rough guide** for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
 
 ## Usage Comparison with Other Widgets
 

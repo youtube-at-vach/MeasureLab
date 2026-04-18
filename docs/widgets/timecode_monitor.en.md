@@ -19,8 +19,8 @@ LTC stores time information as an audio-like waveform. To your ears it may sound
 * **Generator**: Output LTC from MeasureLab
 * **Compare**: Check how far the left and right channels are apart
 
-> [!NOTE]
-> Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
+!!! note
+    Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
 
 ## Operation
 
@@ -96,8 +96,8 @@ Up to 5 slots are saved, which can be referenced later or used as initial values
 * **Captured**: The timecode value at the moment the JAM button was pressed.
 * **Current**: The estimated current timecode value, calculated by adding the elapsed time since capture.
 
-> [!TIP]
-> Think of **Captured** as "the exact value we stored then" and **Current** as "where that value would be now if it had kept running normally."
+!!! tip
+    Think of **Captured** as "the exact value we stored then" and **Current** as "where that value would be now if it had kept running normally."
 
 ### Calibration
 
@@ -109,8 +109,8 @@ A feature to measure and automatically compensate for the input/output latency (
 4. A short test signal is output, and the number of frames delayed until it is input is measured.
 5. Based on the measurement result, **In Delay** (input compensation) and **Out Delay** (output compensation) are automatically set. This corrects display discrepancies during monitoring and phase discrepancies in generator output.
 
-> [!IMPORTANT]
-> Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
+!!! warning
+    Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
 
 ## Usage Examples
 
