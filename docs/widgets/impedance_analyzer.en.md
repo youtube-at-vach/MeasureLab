@@ -15,6 +15,13 @@ It has the same functions as instruments generally called "LCR meters" and can m
 * **Quality Factor ($Q$)**
 * **Dissipation Factor ($D$)**
 
+## ☕ Coffee Break: Resistance vs. Impedance
+
+"Resistance" is like the friction you feel when pushing a heavy box steadily across the floor.
+"Impedance," on the other hand, is the difficulty of **shaking that heavy box violently back and forth**.
+The heavier the box (like a coil), or the stiffer the springs attached to it (like a capacitor), the more energy you need to shake it quickly.
+Because audio signals like music are "waves (alternating current)" constantly switching between positive and negative, it's crucial to measure not just simple friction (resistance), but this "resistance to being shaken (impedance)"!
+
 ## Basic Knowledge for Beginners
 
 ### What is Impedance?
