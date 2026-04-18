@@ -21,8 +21,8 @@ Key Features:
 
 Click the **"Start Modulation"** button at the bottom of the screen to start the modulation process.
 
-> [!WARNING]
-> Although ultrasound is inaudible, high-intensity emission can be dangerous to hearing and pets. Always start with a low gain and use appropriate protection. A safety confirmation dialog will appear upon starting.
+!!! warning
+    Although ultrasound is inaudible, high-intensity emission can be dangerous to hearing and pets. Always start with a low gain and use appropriate protection. A safety confirmation dialog will appear upon starting.
 
 ### Parameter Settings
 

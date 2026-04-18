@@ -1,8 +1,8 @@
 # Lock-in THD Analyzer (THD+N Measurement)
 
-> [!WARNING]
-> This widget has been deprecated. The **[Lock-in Harmonic Analyzer](lockin_harmonic_analyzer.en.md)** is now provided as the superior successor.
-> The Lock-in THD Analyzer is hidden by default. To use it, please add the `--experimental` flag at startup.
+!!! warning
+    This widget has been deprecated. The **[Lock-in Harmonic Analyzer](lockin_harmonic_analyzer.en.md)** is now provided as the superior successor.
+    The Lock-in THD Analyzer is hidden by default. To use it, please add the `--experimental` flag at startup.
 
 ![Lockin Thd Analyzer](../assets/widgets/lockin_thd_analyzer.png)
 

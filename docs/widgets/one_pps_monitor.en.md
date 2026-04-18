@@ -61,8 +61,8 @@ Allows real-time confirmation of the detected pulse waveform and adjustment of t
 * **Calibration**: Calculates and saves the calibration coefficient from the measured values.
     * **Stored 1PPS Cal**: The currently saved correction value (ppm).
     * **Calibrate from Current**: Performs calibration based on the current cumulative average value and saves it in the "1PPS Frequency Calibration" slot.
-        > [!NOTE]
-        > To apply this monitor's calibration value to the entire system, you must switch the **Frequency Calibration Source** to `1PPS Monitor` in the **Calibration** tab of the **Settings** widget.
+        !!! note
+            To apply this monitor's calibration value to the entire system, you must switch the **Frequency Calibration Source** to `1PPS Monitor` in the **Calibration** tab of the **Settings** widget.
 * **Statistics**:
     * **Count**: The number of pulses detected.
     * **Inst / Cumul**: The latest instantaneous value and cumulative average value (PPM).
@@ -75,5 +75,5 @@ Allows real-time confirmation of the detected pulse waveform and adjustment of t
 * **Instantaneous (Dotted Line, Yellow)**: Displays the instantaneous deviation for each pulse. Suitable for checking jitter and short-term fluctuations.
 * **Cumulative Avg (Solid Line, Cyan)**: Displays the cumulative average deviation since the start of measurement. Suitable for checking long-term clock drift (frequency offset).
 
-> [!IMPORTANT]
-> **Calibration Note**: Executing "Calibrate from Current" saves the calculated correction coefficient in the settings. While this value is used for the audio engine's frequency settings, it does not reset the graph display of the monitor itself.
+!!! warning
+    **Calibration Note**: Executing "Calibrate from Current" saves the calculated correction coefficient in the settings. While this value is used for the audio engine's frequency settings, it does not reset the graph display of the monitor itself.
