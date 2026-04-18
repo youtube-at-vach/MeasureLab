@@ -52,6 +52,19 @@ If you have trouble, please check the following items.
 
 * **Sampling Rate Mismatch**: Confirm that the sampling rate setting in MeasureLab and the setting on the audio interface side (or OS sound setting) are the same (e.g., 48kHz, 192kHz).
 
+### ❓ I want to check detailed Error Logs (Command-Line Options)
+
+If you encounter unexpected errors or need to provide debugging information, you can check the application logs. By default, logs are displayed in the "Logs" window within the application, but you can also output them to a file or change the log level using command-line arguments when launching the application:
+
+* `--log-level`: Set the logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). Default is `INFO`.
+* `--log-file`: Specify the path to save the log file. If not specified, logs are automatically saved to `measurelab.log` in the user data directory.
+
+Example (macOS/Linux):
+
+```bash
+python main_gui.py --log-level DEBUG --log-file ./debug.log
+```
+
 ---
 
 ## Finally
