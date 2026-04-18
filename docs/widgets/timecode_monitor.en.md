@@ -1,4 +1,4 @@
-# Timecode Monitor
+# Timecode Monitor & Generator
 
 ![Timecode Monitor](../assets/widgets/timecode_monitor.png)
 
@@ -9,12 +9,26 @@ It can be used for checking synchronization between video and audio, and also as
 
 Since it can monitor timecode on independent left and right channels (L / R), it is also suitable for checking timecode discrepancies between different devices.
 
+💡 **What is LTC?**
+
+LTC stores time information as an audio-like waveform. To your ears it may sound like a harsh buzz, but inside that signal is `hour:minute:second:frame` data. If a camera, recorder, and audio interface all share matching timecode, your editor can line recordings up much more easily later.
+
+☕ **What this tool does in one sentence**
+
+* **Monitor**: Check whether incoming LTC is being decoded correctly
+* **Generator**: Output LTC from MeasureLab
+* **Compare**: Check how far the left and right channels are apart
+
+> [!NOTE]
+> Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
+
 ## Operation
 
 ### Starting and Stopping Measurement
 
 * **Start Monitor / Stop Monitor Button**: Starts and stops monitoring (reading) the timecode.
     * When the generator is enabled, monitoring also starts automatically.
+    * In other words, even if you think of it as "output only", the monitor side runs too.
 
 ### How to Read the Screen
 
@@ -32,7 +46,7 @@ At the top of the screen, the timecode information for each of the left and righ
     The volume level of the input signal. Ideally, the timecode signal should be input at a relatively high level (around -10dB to -20dB).
 * **JAM Button**:
     "Jams (sync copies)" the current input timecode.
-    When this is pressed, the timecode value at that moment is saved in the internal memory, and the generator (output) can be synchronized to that value and started immediately (see "JAM Function").
+    When pressed, the current input timecode is saved into an available JAM memory slot, and the generator can immediately start in JAM mode from that value (see "JAM Function").
 
 #### Inter-channel Discrepancy Display (CH Δ)
 
@@ -40,6 +54,7 @@ At the top of the screen, the timecode information for each of the left and righ
     Displays the discrepancy between the timecodes of the right and left channels.
     * If perfectly synchronized, `0 fr (0.0 ms)` is displayed.
     * This is convenient for checking if the timecodes between cameras are not out of sync in multi-camera recordings, etc.
+    * If the left and right frame-rate settings do not match, the tool cannot compare them and shows `--` instead.
 
 ## Settings
 
@@ -48,8 +63,9 @@ Detailed settings are possible within the tabs for each channel (Left / Right).
 ### Channel Settings
 
 * **Frame Rate**:
-    Manually sets the frame rate of the timecode (e.g., `24.00`, `29.97`, `30.00`, etc.).
-    * Normally it is automatically detected, but if it does not lock correctly, please set it manually.
+    Manually sets the frame rate of the timecode (for example `23.98`, `24.00`, `25.00`, `29.97`, `30.0`).
+    * This helps the decoder lock correctly. If auto detection is unstable, set it to match the incoming signal.
+    * `29.97D` and `30.0D` use drop-frame style notation. This is common in video workflows where the displayed timecode needs to stay close to real elapsed time.
 
 * **Display Local Time**:
     Interprets the timecode (Hour:Minute:Second) as the current time and displays it converted to the time of the specified time zone.
@@ -67,7 +83,9 @@ A function for outputting a timecode signal from MeasureLab. After performing se
 
 * **Link Stereo Output**:
     A checkbox in the center of the main screen.
-    When this is enabled, the generator settings of one channel (Source) are copied to the other, and exactly the same timecode is output from both left and right.
+    When enabled, one channel is treated as the source and the same timecode is output from both left and right.
+    * **Link Source**: Chooses which side acts as the source.
+    * In practice, this works like making one side the parent output while the other follows it.
 
 ### JAM Memories
 
@@ -78,6 +96,9 @@ Up to 5 slots are saved, which can be referenced later or used as initial values
 * **Captured**: The timecode value at the moment the JAM button was pressed.
 * **Current**: The estimated current timecode value, calculated by adding the elapsed time since capture.
 
+> [!TIP]
+> Think of **Captured** as "the exact value we stored then" and **Current** as "where that value would be now if it had kept running normally."
+
 ### Calibration
 
 A feature to measure and automatically compensate for the input/output latency (delay) of the audio interface.
@@ -87,6 +108,9 @@ A feature to measure and automatically compensate for the input/output latency (
 3. Press **Run Calibration**.
 4. A short test signal is output, and the number of frames delayed until it is input is measured.
 5. Based on the measurement result, **In Delay** (input compensation) and **Out Delay** (output compensation) are automatically set. This corrects display discrepancies during monitoring and phase discrepancies in generator output.
+
+> [!IMPORTANT]
+> Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
 
 ## Usage Examples
 
@@ -102,3 +126,11 @@ By looking at the display of **CH Δ (R-L)**, you can see at a glance if the two
 ### Timecode Playback Instead of a Slate (Clapperboard)
 
 By running this tool as a generator in "Time of Day" mode during video shooting and sending that audio to the camera's audio input, it can be used as "audio timecode" to make it easier to automatically synchronize video and audio during editing.
+
+## Quick Path When You Are Not Sure
+
+1. Press **Start Monitor** and confirm that the SYNC lamp becomes stable.
+2. If it does not lock, set **Frame Rate** to match the incoming signal.
+3. To compare two devices, feed them into L and R and watch **CH Δ**.
+4. To output LTC from MeasureLab, choose a **Generator** mode.
+5. To continue from an external device's current value, press **JAM**.
