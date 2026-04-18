@@ -4,6 +4,7 @@ import time
 from typing import Optional
 
 from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -133,6 +134,17 @@ def _load_welcome_widget_class():
 
 
 class MainWindow(QMainWindow):
+    _ACTIVE_STATE_ATTRS = (
+        "is_running",
+        "is_playing",
+        "is_recording",
+        "rotation_active",
+        "analysis_active",
+        "capture_active",
+        "_play_active",
+        "_cal_active",
+    )
+
     def __init__(self, enable_experimental: bool = False):
         super().__init__()
         self.enable_experimental = enable_experimental
@@ -279,6 +291,7 @@ class MainWindow(QMainWindow):
 
         self.sidebar.currentRowChanged.connect(self.on_tool_selected)
         layout.addWidget(self.sidebar)
+        self._refresh_sidebar_activity_indicators()
 
     def _init_content_area(self, layout):
         """Initialize the central stacked widget content area."""
@@ -530,12 +543,56 @@ class MainWindow(QMainWindow):
 
         # Clients
         self.clients_label.setText(tr("Clients: {0}").format(status["active_clients"]))
+        self._refresh_sidebar_activity_indicators()
 
         # Check for Offline Mode change
         is_offline = status["offline_mode"]
         if is_offline != self._last_offline_mode:
             self._update_output_destination_ui_for_mode(is_offline)
             self._last_offline_mode = is_offline
+
+    def _module_is_active(self, module) -> bool:
+        if module is None:
+            return False
+
+        for attr_name in self._ACTIVE_STATE_ATTRS:
+            if bool(getattr(module, attr_name, False)):
+                return True
+
+        return False
+
+    def _build_module_activity_tooltip(self, module_index: int) -> str:
+        key = self._module_keys[module_index]
+        parts = [tr(key)]
+
+        if self._module_is_active(self.modules[module_index]):
+            parts.append(tr("ACTIVE"))
+
+        wrapper = self.module_widgets[module_index]
+        if wrapper is not None and getattr(wrapper, "is_detached", False):
+            parts.append(tr("Widget is detached in a separate window."))
+
+        return "\n".join(parts)
+
+    def _refresh_sidebar_activity_indicators(self):
+        if not hasattr(self, "sidebar"):
+            return
+
+        default_brush = self.sidebar.palette().brush(QPalette.ColorRole.Text)
+        active_brush = self.sidebar.palette().brush(QPalette.ColorRole.Highlight)
+
+        for module_index, key in enumerate(self._module_keys):
+            item = self.sidebar.item(module_index + 2)
+            if item is None:
+                continue
+
+            is_active = self._module_is_active(self.modules[module_index])
+            font = item.font()
+            font.setBold(is_active)
+            item.setFont(font)
+            item.setForeground(active_brush if is_active else default_brush)
+            item.setToolTip(self._build_module_activity_tooltip(module_index))
+            item.setText(tr(key))
 
     def _get_engine_output_destination(self):
         if self.audio_engine.loopback:
