@@ -8,6 +8,13 @@ This is the most fundamental tool for measuring the "performance" of audio equip
 It measures how accurately amplifiers, DACs, etc., are outputting the original signal (how much they are distorted).
 It is like a "blood test" in a health checkup, allowing you to know the basic strength of the equipment.
 
+## ☕ Coffee Break: What is "Distortion"?
+
+Imagine putting a "picture of a perfectly round full moon" into a photocopier. What if the copy that comes out is "slightly oval-shaped" or has "extra stars" printed around it? It's a slightly different shape from the original full moon, right? This is what we call "distortion".
+
+The same thing happens in the audio world. Even if you put a "clean, smooth wave sound (a pure beep)" into an amplifier, the sound that comes out might be slightly jagged, or it might have a high-pitched "ringing" sound mixed in that wasn't in the original.
+The Distortion Analyzer is a tool that precisely measures "how much the shape has deformed from the original, perfect sound."
+
 ## Meaning of Key Indicators
 
 This tool measures the following values:
