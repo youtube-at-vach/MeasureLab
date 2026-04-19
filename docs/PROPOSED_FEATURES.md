@@ -15,6 +15,8 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
     * **AI-Synthesized Virtual Golden Ear Listener:** Evaluates audio signals and outputs subjective audiophile terms (warmth, air, punch).
     * **Sonic Chronoportation Extrapolator:** Generative AI predicting future signals to eliminate buffer latency completely.
     * **Quantum-Entanglement Audio Sync Analyzer:** Measures absolute latency using theoretical quantum-linked interfaces.
+    * **Synesthesia Audio-Visualizer:** Maps audio to visual/haptic representations for cross-modal analysis.
+    * **Time-Reversal Signal Pre-Conditioner:** Applies inverted room/system responses in reverse time before playback.
 
 ---
 
@@ -22,6 +24,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
+* **Lossy Codec Artifact Analyzer:** Real-time difference analysis between uncompressed source and Bluetooth/Lossy compressed return.
 * **Test Sequence Automator:** Macro engine to script unattended sweeps.
 * **Dynamics Processor Profiler:** Measures static I/O transfer curves and attack/release.
 * **Bit-Perfect Verifier:** PRBS/watermark generator for loopback verification.
@@ -32,11 +35,12 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🛠️ Extensions to Existing Widgets
 
+* **Spectrogram:** Add Reference Subtraction Mode (real-time difference between two sources).
+* **Signal Generator:** Add Interference/Glitch Injector (simulate dropouts, USB packet loss).
 * **Oscilloscope:** Add CMRR/PSRR Mode, Slew Rate Calculator.
 * **Spectrum Analyzer:** Add DAC Filter Classifier.
 * **Frequency Counter:** Add Thermal Drift Logger, Phase Noise Plot.
 * **Network Analyzer:** Add Amplifier Stability Margins, Impulse Response & Coherence.
-* **Signal Generator:** Add Psychoacoustic Masking Tones.
 * **Impedance Analyzer:** Add Cable Tester Mode, Damping Factor / Amp Output Impedance Mode.
 * **Distortion Analyzer:** Thermal & Power Stress Logger, **Harmonic Phase Analyzer** (measure relative phase of harmonics to construct non-linear transfer curves).
 * **Advanced Distortion Meter:** Add RF Immunity (EMI Rejection Tester).
