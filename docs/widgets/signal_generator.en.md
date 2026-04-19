@@ -12,6 +12,14 @@ Main features:
 * **Flexible Output Control**: Supports independent L/R output, phase inversion, and delay settings.
 * **Advanced Modulation**: Supports sweep (frequency sweep), AM (amplitude modulation), FM (frequency modulation), and ΦM (phase modulation).
 
+## ☕ Coffee Break: Why test with a "beep" instead of music?
+
+When testing audio equipment, we often use a monotonous "beep" sound (a sine wave). You might think, "Wouldn't playing music give a better idea of actual performance?"
+
+To use an analogy, it's like testing a car's suspension. Driving on a bumpy mountain road (= complex music) to say "this is a comfortable ride" is important, but it makes it very difficult to accurately quantify "which spring is bad and in what way."
+So, first, we try driving on a "perfectly flat road (= a pure beep sound)." If the car rattles while driving on a perfectly flat road, you know immediately, "Ah, this car itself is creating extra vibrations (= distortion or noise)!"
+The Signal Generator is a tool for creating these perfect test courses, such as "absolutely flat roads" or "regular, artificial bumpy roads."
+
 ## Basic Operation
 
 ### Starting and Stopping Output
