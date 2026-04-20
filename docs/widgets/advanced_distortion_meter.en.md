@@ -9,6 +9,14 @@ Instead of a single pure tone, it uses simultaneous multiple tones or specific c
 
 It is suitable for searching for the cause of phenomena such as "having good numbers in standard THD measurement, but the sound is muddy when actually listening."
 
+## ☕ Coffee Break: Why test with "Complex Sounds"?
+
+Normally, we use a single "beep" sound (a pure sine wave) to measure audio performance. However, the music we usually listen to has many sounds playing at the same time, like vocals, guitars, and drums.
+
+To use an analogy, a phenomenon similar to **"a singer (amplifier) who is great at singing solo, but suddenly loses their pitch when joining a choir because they are distracted by the sounds around them"** happens in actual audio equipment. When multiple sounds pass through an amplifier simultaneously, they can interfere with each other, creating "muddy sounds (intermodulation distortion)" that weren't originally there.
+
+This Advanced Distortion Meter acts as a very strict examiner. It intentionally plays multiple sounds at the same time to test "whether everyone can sing accurately even in a choir (without the sound getting muddy)"!
+
 ## Operation
 
 ### Starting and Stopping Measurement
