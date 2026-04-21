@@ -9,6 +9,14 @@ It achieves extremely high measurement accuracy through the adoption of the Blac
 In addition to simply showing the "current frequency," it allows for detailed analysis of frequency fluctuations (jitter) and variations over time (drift).
 It can be used for measuring the stability of crystal oscillators, instrument tuning, rotation speed measurement, and more.
 
+## ☕ Coffee Break: What exactly is "Frequency"?
+
+Hearing the word "Frequency (Hz: Hertz)" might sound complicated, but it's actually very simple. It just means "how many times something repeats in one second."
+Imagine standing at the beach and watching the waves. If one wave crashes ashore every second, that's "1 Hz." If two waves crash every second, that's "2 Hz." If your heart beats 60 times a minute, that's 1 beat per second, or "1 Hz."
+
+Sound works the same way. The "pitch" of a sound is determined by how many times the air vibrates per second. A typical human voice ranges from about 100 Hz to 1000 Hz. It's pretty amazing to think that the air is vibrating hundreds of times every single second!
+The Frequency Counter is like an ultra-reliable stopwatch that flawlessly counts these "invisible, super-fast waves" for you.
+
 ## Operation
 
 ### Starting and Stopping Measurements
