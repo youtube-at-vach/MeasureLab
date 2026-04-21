@@ -466,7 +466,12 @@ class AudioEngine:
     def _apply_dithering(self, mix_buffer):
         """Applies TPDF dithering to the mix buffer in-place."""
         depth_str = str(self.dithering_bit_depth)
-        bit_depth = 16 if "16" in depth_str else 24
+        if "8" in depth_str:
+            bit_depth = 8
+        elif "16" in depth_str:
+            bit_depth = 16
+        else:
+            bit_depth = 24
         lsb = 1.0 / (2 ** (bit_depth - 1))
 
         # Use _client_buffer as temp buffer (guaranteed to be sized correctly here)

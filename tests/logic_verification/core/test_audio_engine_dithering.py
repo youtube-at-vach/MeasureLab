@@ -37,6 +37,25 @@ class TestAudioEngineDithering(unittest.TestCase):
     def tearDown(self):
         self.patcher.stop()
 
+    def test_dithering_8bit(self):
+        """Verify that 8-bit TPDF dither is applied correctly."""
+        self.engine.dithering_enabled = True
+        self.engine.dithering_bit_depth = "8"
+
+        # Invoke callback
+        self.engine._master_callback(self.indata, self.outdata, self.frames, None, 0)
+
+        # Verify output is not zero
+        max_val = np.max(np.abs(self.outdata))
+        self.assertGreater(max_val, 0, "Dither output should not be zero")
+
+        # 8-bit LSB = 1 / 2^7
+        lsb_8 = 1.0 / (2**7)
+
+        # We allow a tiny epsilon for float precision
+        self.assertLess(max_val, lsb_8 * 1.01, f"Dither should be within approx 1 LSB ({lsb_8}), got {max_val}")
+        self.assertGreater(max_val, lsb_8 * 0.1, "Dither noise seems too small for 8-bit")
+
     def test_dithering_16bit(self):
         """Verify that 16-bit TPDF dither is applied correctly."""
         self.engine.dithering_enabled = True
@@ -96,6 +115,14 @@ class TestAudioEngineDithering(unittest.TestCase):
         """Verify string parsing for bit depth selection."""
         self.engine.dithering_enabled = True
 
+        # Test "8-bit" string
+        self.engine.dithering_bit_depth = "8-bit"
+        self.outdata.fill(0)
+        self.engine._master_callback(self.indata, self.outdata, self.frames, None, 0)
+        max_val_8 = np.max(np.abs(self.outdata))
+        lsb_8 = 1.0 / (2**7)
+        self.assertGreater(max_val_8, lsb_8 * 0.1, "Should detect 8-bit mode")
+
         # Test "16-bit" string
         self.engine.dithering_bit_depth = "16-bit"
         self.outdata.fill(0)  # Reset buffer
@@ -117,6 +144,7 @@ class TestAudioEngineDithering(unittest.TestCase):
         self.assertLess(max_val_32, lsb_24 * 1.01, "Should default to 24-bit mode for non-16 strings")
 
         # Compare magnitudes to be sure
+        self.assertGreater(max_val_8, max_val_16 * 100, "8-bit dither should be much larger than 16-bit dither")
         self.assertGreater(max_val_16, max_val_32 * 100, "16-bit dither should be much larger than 24-bit dither")
 
 

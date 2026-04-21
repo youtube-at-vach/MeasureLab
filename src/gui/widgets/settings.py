@@ -1199,6 +1199,7 @@ class SettingsWidget(QWidget):
         conf_layout.addRow(self.dithering_check)
 
         self.dithering_depth_combo = QComboBox()
+        self.dithering_depth_combo.addItem("8-bit", "8")
         self.dithering_depth_combo.addItem("16-bit", "16")
         self.dithering_depth_combo.addItem("24-bit", "24")
 
