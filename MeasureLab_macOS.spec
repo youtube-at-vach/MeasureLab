@@ -1,5 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
+import json
+import re
 from PyInstaller.utils.hooks import collect_all
+
+# Load version from version.json
+with open('version.json', 'r') as f:
+    version_data = json.load(f)
+version_raw = version_data.get('version', '0.0.0')
+# Keep only digits and dots for CFBundleShortVersionString
+version = "".join(re.findall(r'[\d.]', version_raw))
+# Keep only digits for CFBundleVersion and convert to natural number
+version_digits = "".join(re.findall(r'\d', version_raw))
+version_bundle = str(int(version_digits)) if version_digits else "0"
 
 datas = [('src', 'src')]
 binaries = []
@@ -61,6 +73,9 @@ app = BUNDLE(
     icon='MeasureLab.icns',
     bundle_identifier='com.github_vach.measurelab',
     info_plist={
+        'CFBundleShortVersionString': version,
+        'CFBundleVersion': version_bundle,
+        'LSMinimumSystemVersion': '13.0',
         'NSMicrophoneUsageDescription': 'Microphone access is required for audio measurement.'
     },
 )
