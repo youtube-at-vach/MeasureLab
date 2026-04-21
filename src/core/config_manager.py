@@ -377,7 +377,7 @@ class ConfigManager:
         self.save_config()
 
     def get_dithering_bit_depth(self) -> str:
-        """Returns the dithering bit depth setting ('16' or '24')."""
+        """Returns the dithering bit depth setting ('8', '16' or '24')."""
         audio = self.get_audio_config()
         return str(audio.get("dithering_bit_depth", "24"))
 
