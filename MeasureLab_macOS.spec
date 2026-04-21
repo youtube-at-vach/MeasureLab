@@ -1,5 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
+import json
 from PyInstaller.utils.hooks import collect_all
+
+# Load version from version.json
+with open('version.json', 'r') as f:
+    version_data = json.load(f)
+version = version_data.get('version', '0.0.0')
 
 datas = [('src', 'src')]
 binaries = []
@@ -61,6 +67,8 @@ app = BUNDLE(
     icon='MeasureLab.icns',
     bundle_identifier='com.github_vach.measurelab',
     info_plist={
+        'CFBundleShortVersionString': version,
+        'CFBundleVersion': version,
         'NSMicrophoneUsageDescription': 'Microphone access is required for audio measurement.'
     },
 )
