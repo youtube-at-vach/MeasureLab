@@ -6,19 +6,19 @@ const osData = {
   macOS: {
     name: 'macOS',
     icon: '🍎',
-    size: '約 180 MB',
+    size: '約 90 MB',
     link: `https://github.com/youtube-at-vach/MeasureLab/releases/download/${VERSION}/MeasureLab_macOS.zip` // 例
   },
   Windows: {
     name: 'Windows',
     icon: '🪟',
-    size: '約 150 MB',
+    size: '約 120 MB',
     link: `https://github.com/youtube-at-vach/MeasureLab/releases/download/${VERSION}/MeasureLab_Windows.zip` // 例
   },
   Linux: {
     name: 'Linux',
     icon: '🐧',
-    size: '約 170 MB',
+    size: '約 150 MB',
     link: `https://github.com/youtube-at-vach/MeasureLab/releases/download/${VERSION}/MeasureLab_Linux.AppImage` // 例
   }
 };
