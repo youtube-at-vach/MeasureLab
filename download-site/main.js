@@ -1,5 +1,6 @@
-const VERSION = 'v0.6.3'; // GitHub Actionsなどで自動更新される想定
-const UPDATE_DATE = '2026-04-16 更新';
+const FALLBACK_VERSION = 'v0.6.3';
+const RELEASE_BASE_URL = 'https://github.com/youtube-at-vach/MeasureLab/releases/download';
+let currentVersion = FALLBACK_VERSION;
 
 // OSに応じた情報
 const osData = {
@@ -7,21 +8,54 @@ const osData = {
     name: 'macOS',
     icon: '🍎',
     size: '約 90 MB',
-    link: `https://github.com/youtube-at-vach/MeasureLab/releases/download/${VERSION}/MeasureLab_macOS.zip` // 例
+    assetName: 'MeasureLab-{tag}-macos-arm64.dmg'
   },
   Windows: {
     name: 'Windows',
     icon: '🪟',
     size: '約 120 MB',
-    link: `https://github.com/youtube-at-vach/MeasureLab/releases/download/${VERSION}/MeasureLab_Windows.zip` // 例
+    assetName: 'MeasureLab-{tag}-windows-x64-onefile.zip'
   },
   Linux: {
     name: 'Linux',
     icon: '🐧',
     size: '約 150 MB',
-    link: `https://github.com/youtube-at-vach/MeasureLab/releases/download/${VERSION}/MeasureLab_Linux.AppImage` // 例
+    assetName: 'MeasureLab-{tag}-linux-x86_64.AppImage'
   }
 };
+
+function normalizeVersionTag(version) {
+  const trimmed = String(version ?? '').trim();
+  if (!trimmed) {
+    return FALLBACK_VERSION;
+  }
+
+  return trimmed.startsWith('v') ? trimmed : `v${trimmed}`;
+}
+
+function getVersionJsonUrl() {
+  return new URL('../version.json', window.location.href);
+}
+
+async function loadVersionTag() {
+  try {
+    const response = await fetch(getVersionJsonUrl(), { cache: 'no-cache' });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return normalizeVersionTag(data.version);
+  } catch (error) {
+    console.warn('Failed to load version.json, using fallback version.', error);
+    return FALLBACK_VERSION;
+  }
+}
+
+function buildReleaseUrl(versionTag, assetNameTemplate) {
+  const assetName = assetNameTemplate.replace('{tag}', versionTag);
+  return `${RELEASE_BASE_URL}/${versionTag}/${assetName}`;
+}
 
 // ユーザーのOSを判定
 function detectOS() {
@@ -41,22 +75,24 @@ function detectOS() {
 function updateMainDisplay(osName) {
   const data = osData[osName];
   if (!data) return;
+  const downloadUrl = buildReleaseUrl(currentVersion, data.assetName);
 
   document.getElementById('main-os-icon').textContent = data.icon;
   document.getElementById('main-os-name').textContent = data.name;
-  document.getElementById('main-version').textContent = VERSION;
+  document.getElementById('main-version').textContent = currentVersion;
   document.getElementById('main-size').textContent = data.size;
-  document.getElementById('main-date').textContent = UPDATE_DATE;
   
   // メインボタンのリンク設定
   const mainBtn = document.getElementById('main-download-btn');
   mainBtn.onclick = () => {
-    window.location.href = data.link;
+    window.location.href = downloadUrl;
   };
 }
 
 // 初期化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  currentVersion = await loadVersionTag();
+
   // 自動判定して表示
   const detectedOS = detectOS();
   updateMainDisplay(detectedOS);

@@ -43,6 +43,7 @@ jobs:
         run: |
           mkdir -p site/download
           cp -R download-site/dist/. site/download/
+          cp version.json site/version.json
       - name: Deploy combined site to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

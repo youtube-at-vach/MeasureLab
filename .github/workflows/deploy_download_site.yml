@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - 'download-site/**'
+      - 'version.json'
       - '.github/workflows/deploy_download_site.yml'
 
 permissions:
