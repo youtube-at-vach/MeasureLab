@@ -1,4 +1,4 @@
-name: Deploy Download Site
+name: Validate Download Site
 on:
   push:
     branches:
@@ -11,10 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +20,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: download-site/package-lock.json
 
       - name: Install Dependencies
         working-directory: download-site
@@ -30,11 +30,3 @@ jobs:
       - name: Build
         working-directory: download-site
         run: npm run build
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./download-site/dist
-          publish_branch: gh-pages-download
-          destination_dir: download
