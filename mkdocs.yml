@@ -124,5 +124,6 @@ nav:
   - Distortion Measurement: measurement_recipes/distortion_measurement.md
   - Speaker Impedance: measurement_recipes/speaker_impedance.md
   - measurement_recipes/lockin_amplifier.md
+- ダウンロード: https://youtube-at-vach.github.io/MeasureLab/download/
 - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
 - appendix.md
