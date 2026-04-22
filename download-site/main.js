@@ -3,6 +3,30 @@ const RELEASE_BASE_URL = 'https://github.com/youtube-at-vach/MeasureLab/releases
 let currentVersion = FALLBACK_VERSION;
 let currentVariantKey = null;
 
+const requirementData = {
+  macOS: {
+    lead: 'macOS 13以降が必要です。お使いのMacに合うDMGを選んでください。',
+    items: [
+      'Apple Silicon は arm64、Intel Mac は x64 を選択してください。',
+      '未署名アプリのため、初回起動時は右クリックの「開く」または「システム設定 > プライバシーとセキュリティ」から許可が必要な場合があります。'
+    ]
+  },
+  Windows: {
+    lead: 'Windows 10 / 11 向けのZIP版です。',
+    items: [
+      'ZIP を展開して MeasureLab.exe を実行してください。',
+      '通常版 (onedir) と単一EXE版 (onefile) を選べます。'
+    ]
+  },
+  Linux: {
+    lead: 'Linux 版は x86_64 向け AppImage です。',
+    items: [
+      '初回起動前に chmod +x で実行権限を付与してください。',
+      '位相連続性が重要な測定では、環境に応じて JACK / PipeWire の利用が推奨されます。'
+    ]
+  }
+};
+
 // OSに応じた情報
 const osData = {
   macOS: {
@@ -139,6 +163,24 @@ function renderVariantPicker(osName) {
   picker.hidden = false;
 }
 
+function renderRequirements(osName) {
+  const requirement = requirementData[osName];
+  if (!requirement) {
+    return;
+  }
+
+  const lead = document.getElementById('requirements-lead');
+  const list = document.getElementById('requirements-list');
+  lead.textContent = requirement.lead;
+  list.innerHTML = '';
+
+  requirement.items.forEach((item) => {
+    const li = document.createElement('li');
+    li.textContent = item;
+    list.appendChild(li);
+  });
+}
+
 // ユーザーのOSを判定
 function detectOS() {
   const userAgent = window.navigator.userAgent;
@@ -167,6 +209,7 @@ function updateMainDisplay(osName, requestedVariantKey = null) {
   document.getElementById('main-variant').textContent = variant.label;
   document.getElementById('main-size').textContent = variant.size;
   renderVariantPicker(osName);
+  renderRequirements(osName);
   
   // メインボタンのリンク設定
   const mainBtn = document.getElementById('main-download-btn');
