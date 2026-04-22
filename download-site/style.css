@@ -319,6 +319,42 @@ main {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.requirements {
+  width: 100%;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.requirements h3 {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.requirements-lead {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  margin-bottom: 0.9rem;
+}
+
+.requirements-list {
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.requirements-list li {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 /* Footer */
 footer {
   margin-top: 4rem;
@@ -356,6 +392,10 @@ footer {
 
   .variant-picker {
     width: 100%;
+  }
+
+  .requirements-list li {
+    font-size: 0.92rem;
   }
   
   .os-buttons {
