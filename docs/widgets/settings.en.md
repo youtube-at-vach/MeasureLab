@@ -56,7 +56,7 @@ Selects the input and output devices. Previous settings have been split into tab
 * **Buffer Size**: Actual size of the audio buffer.
 * **Input/Output Channels**: Selects the channel mode (Stereo, Left, Right).
 * **Enable Dithering (TPDF)**: Adds dither to the output signal to reduce quantization distortion.
-* **Dithering Bit Depth**: Selects the bit depth for dithering application.
+* **Dithering Bit Depth**: Selects the bit depth for dithering application (8-bit, 16-bit, 24-bit).
 
 ## Calibration
 
