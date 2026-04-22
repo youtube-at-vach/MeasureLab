@@ -1,0 +1,40 @@
+name: Deploy Download Site
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'download-site/**'
+      - '.github/workflows/deploy_download_site.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        working-directory: download-site
+        run: npm ci
+
+      - name: Build
+        working-directory: download-site
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./download-site/dist
+          publish_branch: gh-pages-download
+          destination_dir: download
