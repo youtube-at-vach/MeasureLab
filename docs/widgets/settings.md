@@ -56,7 +56,7 @@ FFT（高速フーリエ変換）の処理速度を向上させるための最�
 * **Buffer Size**: 実際のオーディオバッファのサイズです。
 * **Input/Output Channels**: チャンネルモードを選択します（Stereo, Left, Right）。
 * **Enable Dithering (TPDF)**: 出力信号に量子化歪み軽減のためのディザを付加します。
-* **Dithering Bit Depth**: ディザリングを適用するビット深度を選択します。
+* **Dithering Bit Depth**: ディザリングを適用するビット深度（8-bit, 16-bit, 24-bit）を選択します。
 
 ## Calibration (キャリブレーション)
 
