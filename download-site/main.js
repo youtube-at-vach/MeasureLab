@@ -1,26 +1,55 @@
 const FALLBACK_VERSION = 'v0.6.3';
 const RELEASE_BASE_URL = 'https://github.com/youtube-at-vach/MeasureLab/releases/download';
 let currentVersion = FALLBACK_VERSION;
+let currentVariantKey = null;
 
 // OSに応じた情報
 const osData = {
   macOS: {
     name: 'macOS',
     icon: '🍎',
-    size: '約 90 MB',
-    assetName: 'MeasureLab-{tag}-macos-arm64.dmg'
+    defaultVariant: 'arm64',
+    variants: {
+      arm64: {
+        label: 'Apple Silicon',
+        size: '約 90 MB',
+        assetName: 'MeasureLab-{tag}-macos-arm64.dmg'
+      },
+      x64: {
+        label: 'Intel',
+        size: '約 90 MB',
+        assetName: 'MeasureLab-{tag}-macos-x64.dmg'
+      }
+    }
   },
   Windows: {
     name: 'Windows',
     icon: '🪟',
-    size: '約 120 MB',
-    assetName: 'MeasureLab-{tag}-windows-x64-onefile.zip'
+    defaultVariant: 'onedir',
+    variants: {
+      onedir: {
+        label: '通常版 (onedir)',
+        size: '約 120 MB',
+        assetName: 'MeasureLab-{tag}-windows-x64-onedir.zip'
+      },
+      onefile: {
+        label: '単一EXE版 (onefile)',
+        size: '約 120 MB',
+        assetName: 'MeasureLab-{tag}-windows-x64-onefile.zip'
+      }
+    }
   },
   Linux: {
     name: 'Linux',
     icon: '🐧',
-    size: '約 150 MB',
-    assetName: 'MeasureLab-{tag}-linux-x86_64.AppImage'
+    defaultVariant: 'appimage',
+    variants: {
+      appimage: {
+        label: 'AppImage',
+        size: '約 150 MB',
+        assetName: 'MeasureLab-{tag}-linux-x86_64.AppImage'
+      }
+    }
   }
 };
 
@@ -57,6 +86,59 @@ function buildReleaseUrl(versionTag, assetNameTemplate) {
   return `${RELEASE_BASE_URL}/${versionTag}/${assetName}`;
 }
 
+function getVariantEntries(osName) {
+  const data = osData[osName];
+  if (!data) {
+    return [];
+  }
+
+  return Object.entries(data.variants);
+}
+
+function selectVariant(osName, requestedVariantKey) {
+  const data = osData[osName];
+  if (!data) {
+    return null;
+  }
+
+  if (requestedVariantKey && data.variants[requestedVariantKey]) {
+    return requestedVariantKey;
+  }
+
+  return data.defaultVariant;
+}
+
+function renderVariantPicker(osName) {
+  const picker = document.getElementById('variant-picker');
+  const variantEntries = getVariantEntries(osName);
+  picker.innerHTML = '';
+
+  if (variantEntries.length <= 1) {
+    picker.hidden = true;
+    return;
+  }
+
+  variantEntries.forEach(([variantKey, variant]) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'variant-btn';
+    button.textContent = variant.label;
+    button.dataset.variant = variantKey;
+
+    if (variantKey === currentVariantKey) {
+      button.classList.add('is-active');
+    }
+
+    button.addEventListener('click', () => {
+      updateMainDisplay(osName, variantKey);
+    });
+
+    picker.appendChild(button);
+  });
+
+  picker.hidden = false;
+}
+
 // ユーザーのOSを判定
 function detectOS() {
   const userAgent = window.navigator.userAgent;
@@ -72,15 +154,19 @@ function detectOS() {
 }
 
 // 画面の情報を更新
-function updateMainDisplay(osName) {
+function updateMainDisplay(osName, requestedVariantKey = null) {
   const data = osData[osName];
   if (!data) return;
-  const downloadUrl = buildReleaseUrl(currentVersion, data.assetName);
+  currentVariantKey = selectVariant(osName, requestedVariantKey);
+  const variant = data.variants[currentVariantKey];
+  const downloadUrl = buildReleaseUrl(currentVersion, variant.assetName);
 
   document.getElementById('main-os-icon').textContent = data.icon;
   document.getElementById('main-os-name').textContent = data.name;
   document.getElementById('main-version').textContent = currentVersion;
-  document.getElementById('main-size').textContent = data.size;
+  document.getElementById('main-variant').textContent = variant.label;
+  document.getElementById('main-size').textContent = variant.size;
+  renderVariantPicker(osName);
   
   // メインボタンのリンク設定
   const mainBtn = document.getElementById('main-download-btn');

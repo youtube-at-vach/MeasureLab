@@ -213,6 +213,11 @@ main {
   opacity: 0.8;
 }
 
+.btn-variant {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
 .pulse {
   animation: pulse-shadow 2s infinite;
 }
@@ -233,6 +238,37 @@ main {
 .aux-info .desc {
   margin-top: 0.5rem;
   color: #cbd5e1;
+}
+
+.variant-picker {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.variant-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.variant-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.variant-btn.is-active {
+  background: rgba(129, 140, 248, 0.2);
+  border-color: rgba(165, 180, 252, 0.7);
+  color: #ffffff;
 }
 
 /* Secondary Buttons */
@@ -316,6 +352,10 @@ footer {
   
   .btn-large {
     padding: 1rem 1.5rem;
+  }
+
+  .variant-picker {
+    width: 100%;
   }
   
   .os-buttons {
