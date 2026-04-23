@@ -65,6 +65,7 @@ plugins:
             ウィジット: Widgets
             測定レシピ: Measurement Recipes
             リリースページ: Release Page
+            ダウンロード: Download
   - with-pdf:
       author: MeasureLab maintainers
       copyright: Unlicense
