@@ -31,6 +31,10 @@ An oscilloscope draws a graph of this rapidly changing electrical voltage over "
 
 A function to stop (stabilize) the waveform for easier observation.
 
+💡 **Why do we need to stop the waveform?**
+Sound and electrical waves repeat the same shape at incredible speeds. If displayed exactly as they are, the waveform would flow left and right so fast that to the human eye, it would just look like a blurry band.
+The trigger function sets a rule: "Take a picture the exact moment the wave reaches this height (Level)!" By updating the screen at the exact same timing every time, it looks as if the wave has completely stopped. It's the exact same principle as shining a strobe light on a moving object in the dark to make it look like it's standing still!
+
 * **Source**: Selects the signal source for the trigger (Left or Right).
 * **Slope**: Selects the direction in which the signal crosses the trigger level.
     * **Rising**: Triggers when the voltage increases from low to high (rising edge).
@@ -44,6 +48,9 @@ A function to stop (stabilize) the waveform for easier observation.
 ## Persistence Settings
 
 A feature to display an "afterimage" similar to an analog oscilloscope. It is useful for visually capturing noise distribution and waveform fluctuations (jitter).
+
+💡 **The Sparkler Effect**
+If you wave a sparkler around in the dark, the afterimage of the light lets you draw letters or pictures in the air, right? Persistence is exactly that. By leaving a faint trail of past waveforms on the screen, it becomes much easier to visually spot rare, abnormal noise (a sudden spark) or subtle waveform shaking (jitter) by looking at how the light overlaps over time.
 
 * **Enable Persistence**: Enables the persistence display.
 * **Decay**: Adjusts the time until the afterimage disappears (decay rate). Moving it to the right makes it last longer.
