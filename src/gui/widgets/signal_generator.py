@@ -89,6 +89,7 @@ class SignalParameters:
 
     # New Parameters
     pulse_width: float = 50.0  # %
+    impulse_samples: int = 1
     sawtooth_type: str = "Raising"
     noise_amplitude: float = 0.1
     phase_offset: float = 0.0  # Degrees
@@ -110,6 +111,7 @@ class SignalParameters:
 
     # Internal state (not shared/copied usually, but kept here for simplicity per channel)
     _phase: float = 0.0
+    _impulse_phase_samples: float = 0.0
     _sweep_time: float = 0.0
     _buffer: Optional[np.ndarray] = None
     _buffer_index: int = 0
@@ -551,6 +553,20 @@ class SignalGenerator(MeasurementModule):
 
         return np.zeros_like(phase_rad)
 
+    def _generate_impulse_signal(self, params: SignalParameters, frames: int, sample_rate_eff: float) -> np.ndarray:
+        """Generate a periodic impulse train while preserving the requested fractional frequency."""
+        if params.frequency <= 0 or sample_rate_eff <= 0:
+            return np.zeros(frames)
+
+        period_samples = max(1.0, sample_rate_eff / params.frequency)
+        impulse_samples = max(1.0, min(float(params.impulse_samples), period_samples))
+        phase_offset_samples = (params.phase_offset / 360.0) * period_samples
+        sample_positions = (
+            params._impulse_phase_samples + np.arange(frames, dtype=float) + phase_offset_samples
+        ) % period_samples
+        params._impulse_phase_samples = float((params._impulse_phase_samples + frames) % period_samples)
+        return params.amplitude * np.where(sample_positions < impulse_samples, 1.0, 0.0)
+
     def _calculate_phase_from_freq(self, params: SignalParameters, f_inst_hz: np.ndarray, sample_rate: float):
         """Integrate instantaneous frequency to phase (radians) with continuity across blocks."""
         # Prevent negative frequencies from flipping waveforms in unexpected ways.
@@ -751,6 +767,9 @@ class SignalGenerator(MeasurementModule):
         return signal
 
     def _generate_standard_signal(self, params: SignalParameters, frames, t_global_eff, sample_rate_eff):
+        if params.waveform == "impulse":
+            return self._generate_impulse_signal(params, frames, sample_rate_eff)
+
         # Standard waveforms
         # Optional ΦM (works for periodic waveforms only)
         use_pm = bool(
@@ -845,6 +864,7 @@ class SignalGenerator(MeasurementModule):
         # Reset states
         for params in [self.params_L, self.params_R]:
             params._phase = 0
+            params._impulse_phase_samples = 0.0
             params._sweep_time = 0
             params._carrier_phase_rad = 0.0
             params._fm_phase_rad = 0.0
@@ -985,6 +1005,7 @@ class SignalGeneratorWidget(QWidget):
         self.mls_widget.hide()
         self.burst_widget.hide()
         self.pulse_widget.hide()
+        self.impulse_widget.hide()
         self.tn_widget.hide()
         self.tn_widget.hide()
         self.sawtooth_widget.hide()
@@ -1000,6 +1021,8 @@ class SignalGeneratorWidget(QWidget):
             self.burst_widget.show()
         elif key == "pulse":
             self.pulse_widget.show()
+        elif key == "impulse":
+            self.impulse_widget.show()
         elif key == "tone_noise":
             self.tn_widget.show()
         elif key == "sawtooth":
@@ -1118,18 +1141,19 @@ class SignalGeneratorWidget(QWidget):
     def _init_waveform_selector(self, layout):
         self.wave_combo = QComboBox()
         waveform_items = [
-            ("sine", "sine"),
-            ("square", "square"),
-            ("triangle", "triangle"),
-            ("sawtooth", "sawtooth"),
-            ("pulse", "pulse"),
-            ("tone_noise", "tone_noise"),
-            ("noise", "noise"),
-            ("multitone", "multitone"),
-            ("mls", "mls"),
-            ("burst", "burst"),
-            ("burst (windowed)", "burst_windowed"),
-            ("prbs", "prbs"),
+            (tr("Sine"), "sine"),
+            (tr("Square"), "square"),
+            (tr("Triangle"), "triangle"),
+            (tr("Sawtooth"), "sawtooth"),
+            (tr("Pulse"), "pulse"),
+            (tr("Impulse"), "impulse"),
+            (tr("Tone + Noise"), "tone_noise"),
+            (tr("Noise"), "noise"),
+            (tr("Multitone"), "multitone"),
+            (tr("MLS"), "mls"),
+            (tr("Burst"), "burst"),
+            (tr("Burst (windowed)"), "burst_windowed"),
+            (tr("PRBS"), "prbs"),
         ]
         for label, key in waveform_items:
             self.wave_combo.addItem(label, key)
@@ -1194,7 +1218,16 @@ class SignalGeneratorWidget(QWidget):
         self.pulse_width_spin.valueChanged.connect(lambda v: self.update_param("pulse_width", v))
         pulse_form.addRow(tr("Pulse Width:"), self.pulse_width_spin)
 
-        # 6. Tone+Noise Params
+        # 6. Impulse Params
+        self.impulse_widget = QWidget()
+        impulse_form = QFormLayout(self.impulse_widget)
+        self.impulse_samples_spin = QSpinBox()
+        self.impulse_samples_spin.setRange(1, 1000000)
+        self.impulse_samples_spin.setValue(1)
+        self.impulse_samples_spin.valueChanged.connect(lambda v: self.update_param("impulse_samples", v))
+        impulse_form.addRow(tr("Impulse Length (samples):"), self.impulse_samples_spin)
+
+        # 7. Tone+Noise Params
         self.tn_widget = QWidget()
         tn_form = QFormLayout(self.tn_widget)
         self.noise_amp_spin = QDoubleSpinBox()
@@ -1204,7 +1237,7 @@ class SignalGeneratorWidget(QWidget):
         self.noise_amp_spin.valueChanged.connect(lambda v: self.update_param("noise_amplitude", v))
         tn_form.addRow(tr("Noise Amplitude:"), self.noise_amp_spin)
 
-        # 7. Sawtooth Params
+        # 8. Sawtooth Params
         self.sawtooth_widget = QWidget()
         saw_form = QFormLayout(self.sawtooth_widget)
         self.saw_type_combo = QComboBox()
@@ -1212,7 +1245,7 @@ class SignalGeneratorWidget(QWidget):
         self.saw_type_combo.currentTextChanged.connect(lambda v: self.update_param("sawtooth_type", v))
         saw_form.addRow(tr("Type:"), self.saw_type_combo)
 
-        # 8. PRBS Params
+        # 9. PRBS Params
         self.prbs_widget = QWidget()
         prbs_form = QFormLayout(self.prbs_widget)
 
@@ -1222,12 +1255,6 @@ class SignalGeneratorWidget(QWidget):
         self.prbs_order_combo.setCurrentText("15")
         self.prbs_order_combo.currentTextChanged.connect(lambda v: self.update_param("prbs_order", int(v)))
         prbs_form.addRow(tr("Order (N):"), self.prbs_order_combo)
-
-        self.prbs_seed_spin = (
-            QDoubleSpinBox()
-        )  # Using DoubleSpinBox for int as it's often more flexible or just use SpinBox
-        # Actually QSpinBox is better for ints
-        from PyQt6.QtWidgets import QSpinBox
 
         self.prbs_seed_spin = QSpinBox()
         self.prbs_seed_spin.setRange(0, 999999)
@@ -1240,6 +1267,7 @@ class SignalGeneratorWidget(QWidget):
         self.param_layout.addWidget(self.mls_widget)
         self.param_layout.addWidget(self.burst_widget)
         self.param_layout.addWidget(self.pulse_widget)
+        self.param_layout.addWidget(self.impulse_widget)
         self.param_layout.addWidget(self.tn_widget)
         self.param_layout.addWidget(self.sawtooth_widget)
         self.param_layout.addWidget(self.prbs_widget)
@@ -1248,6 +1276,7 @@ class SignalGeneratorWidget(QWidget):
         self.mls_widget.hide()
         self.burst_widget.hide()
         self.pulse_widget.hide()
+        self.impulse_widget.hide()
         self.tn_widget.hide()
         self.sawtooth_widget.hide()
         self.prbs_widget.hide()
@@ -1615,6 +1644,7 @@ class SignalGeneratorWidget(QWidget):
         self.burst_on_spin.setValue(params.burst_on_cycles)
         self.burst_off_spin.setValue(params.burst_off_cycles)
         self.pulse_width_spin.setValue(params.pulse_width)
+        self.impulse_samples_spin.setValue(getattr(params, "impulse_samples", 1))
         self.saw_type_combo.setCurrentText(params.sawtooth_type)
         self.noise_amp_spin.setValue(params.noise_amplitude)
         self.prbs_order_combo.setCurrentText(str(params.prbs_order))
@@ -1686,6 +1716,7 @@ class SignalGeneratorWidget(QWidget):
             self.burst_on_spin,
             self.burst_off_spin,
             self.pulse_width_spin,
+            self.impulse_samples_spin,
             self.saw_type_combo,
             self.noise_amp_spin,
             self.prbs_order_combo,
@@ -1780,6 +1811,7 @@ class SignalGeneratorWidget(QWidget):
         dst.burst_off_cycles = src.burst_off_cycles
         dst.burst_windowed = src.burst_windowed
         dst.pulse_width = src.pulse_width
+        dst.impulse_samples = src.impulse_samples
         dst.sawtooth_type = src.sawtooth_type
         dst.noise_amplitude = src.noise_amplitude
         dst.phase_offset = src.phase_offset
