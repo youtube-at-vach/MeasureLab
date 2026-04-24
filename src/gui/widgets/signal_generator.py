@@ -111,6 +111,7 @@ class SignalParameters:
 
     # Internal state (not shared/copied usually, but kept here for simplicity per channel)
     _phase: float = 0.0
+    _impulse_phase_samples: float = 0.0
     _sweep_time: float = 0.0
     _buffer: Optional[np.ndarray] = None
     _buffer_index: int = 0
@@ -553,16 +554,17 @@ class SignalGenerator(MeasurementModule):
         return np.zeros_like(phase_rad)
 
     def _generate_impulse_signal(self, params: SignalParameters, frames: int, sample_rate_eff: float) -> np.ndarray:
-        """Generate a periodic impulse train with a pulse width defined in samples."""
+        """Generate a periodic impulse train while preserving the requested fractional frequency."""
         if params.frequency <= 0 or sample_rate_eff <= 0:
             return np.zeros(frames)
 
-        period_samples = max(1, int(round(sample_rate_eff / params.frequency)))
-        impulse_samples = max(1, min(int(params.impulse_samples), period_samples))
-        phase_offset_samples = int(round((params.phase_offset / 360.0) * period_samples))
+        period_samples = max(1.0, sample_rate_eff / params.frequency)
+        impulse_samples = max(1.0, min(float(params.impulse_samples), period_samples))
+        phase_offset_samples = (params.phase_offset / 360.0) * period_samples
         sample_positions = (
-            np.arange(frames, dtype=np.int64) + int(params._phase) + phase_offset_samples
+            params._impulse_phase_samples + np.arange(frames, dtype=float) + phase_offset_samples
         ) % period_samples
+        params._impulse_phase_samples = float((params._impulse_phase_samples + frames) % period_samples)
         return params.amplitude * np.where(sample_positions < impulse_samples, 1.0, 0.0)
 
     def _calculate_phase_from_freq(self, params: SignalParameters, f_inst_hz: np.ndarray, sample_rate: float):
@@ -766,9 +768,7 @@ class SignalGenerator(MeasurementModule):
 
     def _generate_standard_signal(self, params: SignalParameters, frames, t_global_eff, sample_rate_eff):
         if params.waveform == "impulse":
-            signal = self._generate_impulse_signal(params, frames, sample_rate_eff)
-            params._phase += frames
-            return signal
+            return self._generate_impulse_signal(params, frames, sample_rate_eff)
 
         # Standard waveforms
         # Optional ΦM (works for periodic waveforms only)
@@ -864,6 +864,7 @@ class SignalGenerator(MeasurementModule):
         # Reset states
         for params in [self.params_L, self.params_R]:
             params._phase = 0
+            params._impulse_phase_samples = 0.0
             params._sweep_time = 0
             params._carrier_phase_rad = 0.0
             params._fm_phase_rad = 0.0
