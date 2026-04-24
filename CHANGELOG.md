@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.6.4] - 2026-04-24
+
+### Added
+
+* **UI**: Added sidebar activity indicators to visually identify active modules.
+* **Audio**: Implemented 8-bit dithering support in the audio engine.
+* **Web**: Launched a dedicated download site with variant selectors and multilingual (English) support.
+* **Docs**: Extensive documentation improvements with "Coffee Break" analogies and engaging explanations added to Oscilloscope, Distortion Analyzer, Impedance Meter, LUFS Meter, Goniometer, and more.
+* **Docs**: Added documentation for command-line logging arguments and clarified Timecode Monitor and Loopback Finder guides.
+
+### Changed
+
+* **Build**: Optimized macOS build process with dynamic version injection from `version.json` and improved system requirement strings.
+* **Docs**: Updated `PROPOSED_FEATURES.md` with new visionary and practical development ideas.
+* **Docs**: Improved MkDocs admonition styling across widget documentation.
+
+### Fixed
+
+* **Web**: Resolved runtime errors on the download site caused by undefined variable references.
+* **CI**: Fixed npm CI lockfile mismatches during documentation deployment.
+* **Docs**: Fixed several documentation formatting issues and clarified technical terms.
+
 ## [v0.6.3] - 2026-04-16
 
 ### Added
