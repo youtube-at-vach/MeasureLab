@@ -9,11 +9,14 @@ It can be used for checking synchronization between video and audio, and also as
 
 Since it can monitor timecode on independent left and right channels (L / R), it is also suitable for checking timecode discrepancies between different devices.
 
-💡 **What is LTC?**
+## ☕ Coffee Break: The Magic of "Timecode" - Telling Time with Sound
 
-LTC stores time information as an audio-like waveform. To your ears it may sound like a harsh buzz, but inside that signal is `hour:minute:second:frame` data. If a camera, recorder, and audio interface all share matching timecode, your editor can line recordings up much more easily later.
+"Beep, beep," "bzzzz"... If you play a timecode (LTC) signal through speakers, it sounds like a strange noise, almost like an old dial-up modem or a secret code from aliens.
+However, hidden inside this harsh noise is precise time information: `hour:minute:second:frame`!
 
-☕ **What this tool does in one sentence**
+On a movie or TV shooting set, multiple cameras and audio recorders are rolling at the same time. Matching (synchronizing) the video and audio perfectly later is a daunting task. But if you send this "audio code (timecode)" to all the equipment via cables and record it, the editing software can automatically align the timelines based on this sound.
+
+### What this tool does in one sentence
 
 * **Monitor**: Check whether incoming LTC is being decoded correctly
 * **Generator**: Output LTC from MeasureLab
