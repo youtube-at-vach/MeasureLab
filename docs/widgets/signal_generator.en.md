@@ -8,7 +8,7 @@ The Signal Generator is a tool that generates various test signals required for 
 
 Main features:
 
-* **Diverse Waveforms**: In addition to basic waveforms, it can generate multitone, MLS, and burst signals.
+* **Diverse Waveforms**: In addition to basic waveforms, it can generate multitone, MLS, Golay, and burst signals.
 * **Flexible Output Control**: Supports independent L/R output, phase inversion, and delay settings.
 * **Advanced Modulation**: Supports sweep (frequency sweep), AM (amplitude modulation), FM (frequency modulation), and ΦM (phase modulation).
 
@@ -60,6 +60,7 @@ You can choose from the following waveforms:
 * **Noise**: Noise signal. You can choose the color (frequency characteristic) such as "White", "Pink", or "Brown".
 * **Multitone**: A signal synthesized from multiple sine waves.
 * **MLS (Maximum Length Sequence)**: A pseudo-random signal used for measuring room acoustics, etc. Order can be selected in the range of 10-18.
+* **Golay**: A Golay complementary sequence used for impulse-response and transfer-function measurements. Select **Pair** `A` or `B`, and set **Order (N)** to control the sequence length (`2^N` samples). Because this is a precomputed binary sequence, the normal **Frequency** parameter does not apply.
 * **Burst**: Tone burst signal. You can specify the number of On/Off cycles. Selecting "Windowed" applies a Hanning window to reduce click noise.
 * **PRBS (Pseudo-Random Binary Sequence)**: A pseudo-random binary sequence. Order (7-23) and Seed can be configured.
 
@@ -70,7 +71,7 @@ Available parameters vary depending on the waveform.
 !!! note
     Changes to parameters (including buffered waveforms such as Noise and Multitone) are applied immediately in real-time without restarting the output.
 
-* **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input.
+* **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input. This parameter is not used for sequence-based waveforms such as **MLS**, **Golay**, and **PRBS**.
 * **Snap to Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT Size to prevent spectral leakage. Useful for accurate distortion measurements.
 * **Phase Offset (deg)**: The initial phase of the signal. Used when you want to create a phase difference between the left and right channels.
 * **Delay (ms)**: The delay time of the signal. Useful for adjusting timing in burst signals, etc.
@@ -121,4 +122,4 @@ Applies Low-Pass (LPF) and/or High-Pass (HPF) filters to the generated signal.
 
 * **To measure frequency response**: Enable the "Sweep" tab and run a logarithmic sweep from 20 Hz to 20 kHz. You can record and analyze the signal using the **Recorder** widget.
 * **To measure Total Harmonic Distortion (THD)**: Select the "Sine" waveform, output a pure sine wave, and measure it with the **Distortion Analyzer**.
-* **To measure impulse response**: Use "MLS" or "Log Sweep".
+* **To measure impulse response**: Use "MLS", "Golay", or "Log Sweep".
