@@ -941,17 +941,22 @@ class NetworkAnalyzerWidget(QWidget):
             self.module.output_channel = self.out_combo.currentData()
 
         # Update UI hints
-        if self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+        is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
+
+        if is_transfer_mode:
             if "XTALK" in self.module.input_mode:
                 self.mag_plot.setTitle(tr("Crosstalk (Meas / Ref)"))
             else:
                 self.mag_plot.setTitle(tr("Transfer Function (Meas / Ref)"))
             self.single_mode_combo.setEnabled(False)
             self.unit_combo.setEnabled(False)  # Transfer mode is always relative dB
+            self.coh_check.setEnabled(True)
         else:
             self.mag_plot.setTitle(tr("Magnitude Response"))
             self.single_mode_combo.setEnabled(True)
             self.unit_combo.setEnabled(self.single_mode_combo.currentData() == "absolute")
+            self.coh_check.setChecked(False)
+            self.coh_check.setEnabled(False)
 
     def on_display_mode_changed(self, index):
         is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
@@ -1316,8 +1321,13 @@ class NetworkAnalyzerWidget(QWidget):
             self.gd_axis.hide()
             self.gd_curve.setData([], [])
 
-        # Coherence
-        if self.coh_check.isChecked() and len(freqs_to_plot) > 1 and len(self.cohs) == len(self.freqs):
+        # Coherence (valid only in transfer modes)
+        if (
+            is_transfer_mode
+            and self.coh_check.isChecked()
+            and len(freqs_to_plot) > 1
+            and len(self.cohs) == len(self.freqs)
+        ):
             self.coh_axis.show()
             cohs_arr = np.array(self.cohs)
             cohs_to_plot = cohs_arr[mask]
