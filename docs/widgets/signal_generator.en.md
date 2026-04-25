@@ -55,6 +55,7 @@ You can choose from the following waveforms:
 * **Triangle**: Triangle wave.
 * **Sawtooth**: Sawtooth wave. You can choose "Rising" or "Falling".
 * **Pulse**: Pulse wave. The pulse width (Duty cycle) can be adjusted.
+* **Impulse**: Impulse wave. The impulse length (in samples) can be adjusted.
 * **Tone + Noise**: A signal with noise superimposed on a sine wave. Used for S/N ratio testing, etc. Noise amplitude can be adjusted.
 * **Noise**: Noise signal. You can choose the color (frequency characteristic) such as "White", "Pink", or "Brown".
 * **Multitone**: A signal synthesized from multiple sine waves.

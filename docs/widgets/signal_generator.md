@@ -55,6 +55,7 @@ Signal Generator（シグナルジェネレータ）は、正弦波、矩形波�
 * **Triangle**: 三角波。
 * **Sawtooth**: のこぎり波。「Raising（上昇）」と「Falling（下降）」を選択可能。
 * **Pulse**: パルス波。パルス幅（Duty比）を調整可能。
+* **Impulse**: インパルス波。インパルス長（サンプル数）を調整可能。
 * **Tone + Noise**: 正弦波にノイズを重畳した信号。S/N比のテストなどに使用。ノイズの振幅（Noise Amplitude）を調整可能。
 * **Noise**: ノイズ信号。「White」「Pink」「Brown」などの色（周波数特性）を選択可能。
 * **Multitone**: 複数の正弦波を対数間隔（Log-spaced）で合成した信号。クレストファクタ（波高率）が最小になるよう位相が最適化されています。
