@@ -3,15 +3,6 @@ import threading
 
 import numpy as np
 import pyqtgraph as pg
-from scipy.signal import (
-    chirp as signal_chirp,
-    coherence,
-    correlate,
-    correlation_lags,
-    fftconvolve,
-    savgol_filter,
-    windows,
-)
 from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -28,13 +19,23 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from scipy.signal import (
+    chirp as signal_chirp,
+)
+from scipy.signal import (
+    coherence,
+    correlate,
+    correlation_lags,
+    fftconvolve,
+    savgol_filter,
+    windows,
+)
 
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
-from src.measurement_modules.base import MeasurementModule
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
-
+from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
@@ -880,11 +881,11 @@ class NetworkAnalyzerWidget(QWidget):
 
         def mag_squared(f):
             w = 2 * np.pi * f
-            n = 1.0 + (w * t2)**2
-            d = (1.0 + (w * t1)**2) * (1.0 + (w * t3)**2)
+            n = 1.0 + (w * t2) ** 2
+            d = (1.0 + (w * t1) ** 2) * (1.0 + (w * t3) ** 2)
             res = n / d
             if use_iec:
-                res *= (w * t4)**2 / (1.0 + (w * t4)**2)
+                res *= (w * t4) ** 2 / (1.0 + (w * t4) ** 2)
             return res
 
         ms_1khz = mag_squared(1000.0)
@@ -940,17 +941,22 @@ class NetworkAnalyzerWidget(QWidget):
             self.module.output_channel = self.out_combo.currentData()
 
         # Update UI hints
-        if self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+        is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
+
+        if is_transfer_mode:
             if "XTALK" in self.module.input_mode:
                 self.mag_plot.setTitle(tr("Crosstalk (Meas / Ref)"))
             else:
                 self.mag_plot.setTitle(tr("Transfer Function (Meas / Ref)"))
             self.single_mode_combo.setEnabled(False)
             self.unit_combo.setEnabled(False)  # Transfer mode is always relative dB
+            self.coh_check.setEnabled(True)
         else:
             self.mag_plot.setTitle(tr("Magnitude Response"))
             self.single_mode_combo.setEnabled(True)
             self.unit_combo.setEnabled(self.single_mode_combo.currentData() == "absolute")
+            self.coh_check.setChecked(False)
+            self.coh_check.setEnabled(False)
 
     def on_display_mode_changed(self, index):
         is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
@@ -1315,8 +1321,13 @@ class NetworkAnalyzerWidget(QWidget):
             self.gd_axis.hide()
             self.gd_curve.setData([], [])
 
-        # Coherence
-        if self.coh_check.isChecked() and len(freqs_to_plot) > 1 and len(self.cohs) == len(self.freqs):
+        # Coherence (valid only in transfer modes)
+        if (
+            is_transfer_mode
+            and self.coh_check.isChecked()
+            and len(freqs_to_plot) > 1
+            and len(self.cohs) == len(self.freqs)
+        ):
             self.coh_axis.show()
             cohs_arr = np.array(self.cohs)
             cohs_to_plot = cohs_arr[mask]
