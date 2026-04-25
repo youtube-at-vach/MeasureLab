@@ -370,6 +370,54 @@ class TestSignalGeneratorMLS(unittest.TestCase):
                 self.fail(f"Fallback MLS signal does not match Scipy implementation for order {order}")
 
 
+class TestSignalGeneratorGolay(unittest.TestCase):
+    """Tests for Golay complementary sequence generation."""
+
+    def test_golay_pair_is_complementary(self):
+        mock_engine = MagicMock()
+        sg = SignalGenerator(mock_engine)
+        params = SignalParameters()
+        params.waveform = "golay"
+        params.golay_order = 5
+
+        params.golay_pair = "A"
+        seq_a = sg._generate_golay(params, 48000)
+
+        params.golay_pair = "B"
+        seq_b = sg._generate_golay(params, 48000)
+
+        self.assertEqual(len(seq_a), 2**params.golay_order)
+        self.assertEqual(len(seq_b), 2**params.golay_order)
+        self.assertTrue(np.all(np.isin(seq_a, [-1.0, 1.0])))
+        self.assertTrue(np.all(np.isin(seq_b, [-1.0, 1.0])))
+
+        ac_a = np.correlate(seq_a, seq_a, mode="full")
+        ac_b = np.correlate(seq_b, seq_b, mode="full")
+        summed = ac_a + ac_b
+        center = len(summed) // 2
+
+        self.assertEqual(summed[center], 2 * len(seq_a))
+        off_center = np.delete(summed, center)
+        np.testing.assert_allclose(off_center, 0.0, atol=1e-9)
+
+    def test_golay_buffer_regenerates_on_pair_change(self):
+        mock_engine = MagicMock()
+        mock_engine.sample_rate = 48000
+        sg = SignalGenerator(mock_engine)
+        params = sg.params_L
+        params.waveform = "golay"
+        params.golay_order = 4
+        params.golay_pair = "A"
+
+        sg._prepare_buffer(params, mock_engine.sample_rate)
+        seq_a = params._buffer.copy()
+
+        sg.update_param(params, "golay_pair", "B")
+        seq_b = params._buffer
+
+        self.assertFalse(np.array_equal(seq_a, seq_b))
+
+
 class TestSignalGeneratorMultitone(unittest.TestCase):
     """Tests for Multitone generation."""
 
