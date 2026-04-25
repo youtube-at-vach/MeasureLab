@@ -83,6 +83,8 @@ class SignalParameters:
     # Advanced Signal Parameters
     multitone_count: int = 10
     mls_order: int = 15
+    golay_order: int = 12
+    golay_pair: str = "A"
     burst_on_cycles: int = 10
     burst_off_cycles: int = 90
     burst_windowed: bool = False
@@ -137,7 +139,7 @@ class SignalParameters:
 
 
 class SignalGenerator(MeasurementModule):
-    BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "burst", "prbs"]
+    BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "golay", "burst", "prbs"]
     PERIODIC_WAVEFORMS = {"sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"}
 
     def __init__(self, audio_engine: AudioEngine):
@@ -145,6 +147,7 @@ class SignalGenerator(MeasurementModule):
 
         self.params_L = SignalParameters()
         self.params_R = SignalParameters()
+        self._golay_cache: dict[tuple[int, str], np.ndarray] = {}
 
         # Output Routing: 'L', 'R', 'STEREO'
         self.output_mode = "STEREO"
@@ -352,6 +355,38 @@ class SignalGenerator(MeasurementModule):
             signal = np.array(raw_output, dtype=float) * 2 - 1
             return signal
 
+    def _generate_golay(self, params: SignalParameters, sample_rate):
+        """Generates a Golay complementary sequence for the selected pair."""
+        del sample_rate  # Precomputed sequence is sample-rate independent.
+
+        order = int(np.clip(getattr(params, "golay_order", 12), 1, 20))
+        pair = "B" if str(getattr(params, "golay_pair", "A")).upper() == "B" else "A"
+        cache_key = (order, pair)
+
+        cached = self._golay_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        seq_a = np.ones(1, dtype=np.float32)
+        seq_b = np.ones(1, dtype=np.float32)
+
+        for _ in range(order):
+            half = seq_a.size
+            next_a = np.empty(half * 2, dtype=np.float32)
+            next_b = np.empty(half * 2, dtype=np.float32)
+
+            next_a[:half] = seq_a
+            next_a[half:] = seq_b
+            next_b[:half] = seq_a
+            next_b[half:] = -seq_b
+
+            seq_a = next_a
+            seq_b = next_b
+
+        signal = seq_a if pair == "A" else seq_b
+        self._golay_cache[cache_key] = signal
+        return signal
+
     def _generate_burst(self, params: SignalParameters, sample_rate):
         """Generates a Tone Burst."""
         cal_factor = self._get_cal_factor(params)
@@ -429,6 +464,8 @@ class SignalGenerator(MeasurementModule):
             params._buffer = self._generate_multitone(params, sample_rate)
         elif params.waveform == "mls":
             params._buffer = self._generate_mls(params, sample_rate)
+        elif params.waveform == "golay":
+            params._buffer = self._generate_golay(params, sample_rate)
         elif params.waveform == "burst":
             params._buffer = self._generate_burst(params, sample_rate)
         elif params.waveform == "prbs":
@@ -945,6 +982,8 @@ class SignalGenerator(MeasurementModule):
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
                 needs_update = True
+            elif params.waveform == "golay" and name in ["golay_order", "golay_pair"]:
+                needs_update = True
             elif params.waveform == "burst" and name in [
                 "frequency",
                 "burst_on_cycles",
@@ -1002,11 +1041,10 @@ class SignalGeneratorWidget(QWidget):
         self.noise_widget.hide()
         self.multitone_widget.hide()
         self.mls_widget.hide()
-        self.mls_widget.hide()
+        self.golay_widget.hide()
         self.burst_widget.hide()
         self.pulse_widget.hide()
         self.impulse_widget.hide()
-        self.tn_widget.hide()
         self.tn_widget.hide()
         self.sawtooth_widget.hide()
         self.prbs_widget.hide()
@@ -1017,6 +1055,8 @@ class SignalGeneratorWidget(QWidget):
             self.multitone_widget.show()
         elif key == "mls":
             self.mls_widget.show()
+        elif key == "golay":
+            self.golay_widget.show()
         elif key in ["burst", "burst_windowed"]:
             self.burst_widget.show()
         elif key == "pulse":
@@ -1030,7 +1070,7 @@ class SignalGeneratorWidget(QWidget):
         elif key == "prbs":
             self.prbs_widget.show()
 
-        use_freq = key not in ["noise", "mls", "prbs"]
+        use_freq = key not in ["noise", "mls", "golay", "prbs"]
         self.freq_spin.setEnabled(use_freq)
         self.freq_slider.setEnabled(use_freq)
 
@@ -1151,6 +1191,7 @@ class SignalGeneratorWidget(QWidget):
             (tr("Noise"), "noise"),
             (tr("Multitone"), "multitone"),
             (tr("MLS"), "mls"),
+            (tr("Golay"), "golay"),
             (tr("Burst"), "burst"),
             (tr("Burst (windowed)"), "burst_windowed"),
             (tr("PRBS"), "prbs"),
@@ -1192,7 +1233,24 @@ class SignalGeneratorWidget(QWidget):
         self.mls_order_combo.currentTextChanged.connect(lambda v: self.update_param("mls_order", int(v)))
         mls_form.addRow(tr("Order (N):"), self.mls_order_combo)
 
-        # 4. Burst Params
+        # 4. Golay Params
+        self.golay_widget = QWidget()
+        golay_form = QFormLayout(self.golay_widget)
+        self.golay_pair_combo = QComboBox()
+        self.golay_pair_combo.addItem(tr("A"), "A")
+        self.golay_pair_combo.addItem(tr("B"), "B")
+        self.golay_pair_combo.currentIndexChanged.connect(
+            lambda _i: self.update_param("golay_pair", self.golay_pair_combo.currentData())
+        )
+        golay_form.addRow(tr("Pair:"), self.golay_pair_combo)
+
+        self.golay_order_combo = QComboBox()
+        self.golay_order_combo.addItems([str(i) for i in range(4, 21)])
+        self.golay_order_combo.setCurrentText("12")
+        self.golay_order_combo.currentTextChanged.connect(lambda v: self.update_param("golay_order", int(v)))
+        golay_form.addRow(tr("Order (N):"), self.golay_order_combo)
+
+        # 5. Burst Params
         self.burst_widget = QWidget()
         burst_form = QFormLayout(self.burst_widget)
         self.burst_on_spin = QDoubleSpinBox()
@@ -1208,7 +1266,7 @@ class SignalGeneratorWidget(QWidget):
         self.burst_off_spin.valueChanged.connect(lambda v: self.update_param("burst_off_cycles", int(v)))
         burst_form.addRow(tr("Off Cycles:"), self.burst_off_spin)
 
-        # 5. Pulse Params
+        # 6. Pulse Params
         self.pulse_widget = QWidget()
         pulse_form = QFormLayout(self.pulse_widget)
         self.pulse_width_spin = QDoubleSpinBox()
@@ -1218,7 +1276,7 @@ class SignalGeneratorWidget(QWidget):
         self.pulse_width_spin.valueChanged.connect(lambda v: self.update_param("pulse_width", v))
         pulse_form.addRow(tr("Pulse Width:"), self.pulse_width_spin)
 
-        # 6. Impulse Params
+        # 7. Impulse Params
         self.impulse_widget = QWidget()
         impulse_form = QFormLayout(self.impulse_widget)
         self.impulse_samples_spin = QSpinBox()
@@ -1227,7 +1285,7 @@ class SignalGeneratorWidget(QWidget):
         self.impulse_samples_spin.valueChanged.connect(lambda v: self.update_param("impulse_samples", v))
         impulse_form.addRow(tr("Impulse Length (samples):"), self.impulse_samples_spin)
 
-        # 7. Tone+Noise Params
+        # 8. Tone+Noise Params
         self.tn_widget = QWidget()
         tn_form = QFormLayout(self.tn_widget)
         self.noise_amp_spin = QDoubleSpinBox()
@@ -1237,7 +1295,7 @@ class SignalGeneratorWidget(QWidget):
         self.noise_amp_spin.valueChanged.connect(lambda v: self.update_param("noise_amplitude", v))
         tn_form.addRow(tr("Noise Amplitude:"), self.noise_amp_spin)
 
-        # 8. Sawtooth Params
+        # 9. Sawtooth Params
         self.sawtooth_widget = QWidget()
         saw_form = QFormLayout(self.sawtooth_widget)
         self.saw_type_combo = QComboBox()
@@ -1245,7 +1303,7 @@ class SignalGeneratorWidget(QWidget):
         self.saw_type_combo.currentTextChanged.connect(lambda v: self.update_param("sawtooth_type", v))
         saw_form.addRow(tr("Type:"), self.saw_type_combo)
 
-        # 9. PRBS Params
+        # 10. PRBS Params
         self.prbs_widget = QWidget()
         prbs_form = QFormLayout(self.prbs_widget)
 
@@ -1265,6 +1323,7 @@ class SignalGeneratorWidget(QWidget):
         self.param_layout.addWidget(self.noise_widget)
         self.param_layout.addWidget(self.multitone_widget)
         self.param_layout.addWidget(self.mls_widget)
+        self.param_layout.addWidget(self.golay_widget)
         self.param_layout.addWidget(self.burst_widget)
         self.param_layout.addWidget(self.pulse_widget)
         self.param_layout.addWidget(self.impulse_widget)
@@ -1274,6 +1333,7 @@ class SignalGeneratorWidget(QWidget):
         self.noise_widget.hide()
         self.multitone_widget.hide()
         self.mls_widget.hide()
+        self.golay_widget.hide()
         self.burst_widget.hide()
         self.pulse_widget.hide()
         self.impulse_widget.hide()
@@ -1641,6 +1701,8 @@ class SignalGeneratorWidget(QWidget):
         self.noise_combo.setCurrentText(params.noise_color)
         self.mt_count_spin.setValue(params.multitone_count)
         self.mls_order_combo.setCurrentText(str(params.mls_order))
+        self.golay_pair_combo.setCurrentIndex(self.golay_pair_combo.findData(getattr(params, "golay_pair", "A")))
+        self.golay_order_combo.setCurrentText(str(getattr(params, "golay_order", 12)))
         self.burst_on_spin.setValue(params.burst_on_cycles)
         self.burst_off_spin.setValue(params.burst_off_cycles)
         self.pulse_width_spin.setValue(params.pulse_width)
@@ -1713,6 +1775,8 @@ class SignalGeneratorWidget(QWidget):
             self.noise_combo,
             self.mt_count_spin,
             self.mls_order_combo,
+            self.golay_pair_combo,
+            self.golay_order_combo,
             self.burst_on_spin,
             self.burst_off_spin,
             self.pulse_width_spin,
@@ -1807,6 +1871,8 @@ class SignalGeneratorWidget(QWidget):
         dst.notch_q = getattr(src, "notch_q", 30.0)
         dst.multitone_count = src.multitone_count
         dst.mls_order = src.mls_order
+        dst.golay_order = src.golay_order
+        dst.golay_pair = src.golay_pair
         dst.burst_on_cycles = src.burst_on_cycles
         dst.burst_off_cycles = src.burst_off_cycles
         dst.burst_windowed = src.burst_windowed
@@ -2058,8 +2124,8 @@ class SignalGeneratorWidget(QWidget):
     def _get_current_crest_factor(self):
         """Returns the Crest Factor (Peak / RMS) for the current waveform."""
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
-        # Square, Pulse, MLS, PRBS (if full-swing -1..1) have Signal Power = Peak Power => CF=1
-        if key in ["square", "pulse", "mls", "prbs"]:
+        # Square-like binary sequences have Signal Power = Peak Power => CF=1
+        if key in ["square", "pulse", "mls", "golay", "prbs"]:
             return 1.0
         # Triangle, Sawtooth have CF = sqrt(3)
         if key in ["triangle", "sawtooth"]:
