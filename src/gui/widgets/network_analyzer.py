@@ -3,15 +3,6 @@ import threading
 
 import numpy as np
 import pyqtgraph as pg
-from scipy.signal import (
-    chirp as signal_chirp,
-    coherence,
-    correlate,
-    correlation_lags,
-    fftconvolve,
-    savgol_filter,
-    windows,
-)
 from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -28,13 +19,23 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from scipy.signal import (
+    chirp as signal_chirp,
+)
+from scipy.signal import (
+    coherence,
+    correlate,
+    correlation_lags,
+    fftconvolve,
+    savgol_filter,
+    windows,
+)
 
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
-from src.measurement_modules.base import MeasurementModule
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
-
+from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
@@ -880,11 +881,11 @@ class NetworkAnalyzerWidget(QWidget):
 
         def mag_squared(f):
             w = 2 * np.pi * f
-            n = 1.0 + (w * t2)**2
-            d = (1.0 + (w * t1)**2) * (1.0 + (w * t3)**2)
+            n = 1.0 + (w * t2) ** 2
+            d = (1.0 + (w * t1) ** 2) * (1.0 + (w * t3) ** 2)
             res = n / d
             if use_iec:
-                res *= (w * t4)**2 / (1.0 + (w * t4)**2)
+                res *= (w * t4) ** 2 / (1.0 + (w * t4) ** 2)
             return res
 
         ms_1khz = mag_squared(1000.0)
