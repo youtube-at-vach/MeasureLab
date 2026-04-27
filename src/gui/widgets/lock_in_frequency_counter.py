@@ -3,6 +3,7 @@ import time
 
 import numpy as np
 import pyqtgraph as pg
+import scipy.signal
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -153,6 +154,7 @@ class LockInFrequencyCounter(MeasurementModule):
 
         # Startup transient handling
         self._samples_received = 0
+        self._last_samples_processed = 0
         # Only enable estimate discarding during real-time streaming (set in start_analysis).
         # This keeps offline/unit-test calls to process_data() responsive.
         self._discard_initial_estimates = 0
@@ -224,6 +226,7 @@ class LockInFrequencyCounter(MeasurementModule):
         self.nco_display_std = 0.0
 
         self._samples_received = 0
+        self._last_samples_processed = 0
         self._discard_initial_estimates = 3
         self._estimates_discarded = 0
 
@@ -295,6 +298,10 @@ class LockInFrequencyCounter(MeasurementModule):
             else:
                 return
 
+        samples_elapsed = self._samples_received - self._last_samples_processed
+        if samples_elapsed == 0 and self._samples_received > 0:
+            return  # Wait for new audio samples
+
         # Get Snapshot
         data = self.input_data
         sig = data[:, self.signal_channel]
@@ -342,7 +349,10 @@ class LockInFrequencyCounter(MeasurementModule):
             start = i * stride
             end = start + seg_len
             segment = z[start:end]
-            win = np.blackman(len(segment))
+            # Use periodic Blackman-Harris for extremely high suppression of 2f component leakage.
+            # Symmetric windows leak when seg_len is an integer number of periods,
+            # causing a rotating phase bias which integrates into a systematic drift.
+            win = scipy.signal.windows.blackmanharris(len(segment), sym=False)
             avg = np.mean(segment * win)
 
             if np.abs(avg) < 1e-9:
@@ -379,7 +389,12 @@ class LockInFrequencyCounter(MeasurementModule):
             self.current_freq_dev = delta_f
 
             # Smoothing (EMA)
-            dt = n_samples / sr  # approx time per buffer
+            if samples_elapsed > 0:
+                dt = samples_elapsed / sr
+            else:
+                dt = n_samples / sr  # fallback for offline/test mode
+            self._last_samples_processed = self._samples_received
+
             tau = self.smoothing_tau
             if tau > 0:
                 alpha = dt / (tau + dt)
