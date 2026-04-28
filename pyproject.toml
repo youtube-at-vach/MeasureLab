@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "MeasureLab"
-version = "0.6.4"
+version = "0.6.5"
 description = "DIY audio measurement and analysis suite"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -62,4 +62,3 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 addopts = "-ra"
-

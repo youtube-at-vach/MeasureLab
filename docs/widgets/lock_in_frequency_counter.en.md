@@ -6,7 +6,7 @@
 
 While a standard frequency counter captures "signal fluctuations" broadly, the Lock-in Frequency Counter compares the input signal with a reference signal (NCO: Numerically Controlled Oscillator) and **visualizes the "deviation" with extremely high resolution**.
 
-It is suitable for observing the long-term stability (drift) of a clock source, wow and flutter in tape decks and record players, or minute frequency changes such as Doppler shifts.
+It is suitable for observing the long-term stability (drift) of a clock source, wow and flutter in tape decks and record players, or minute frequency changes such as Doppler shifts. Recent estimation improvements also make the display more resistant to startup bias and better aligned with the actual elapsed sample time, which helps long-running measurements feel steadier and more trustworthy.
 
 ## Operation
 
@@ -30,7 +30,8 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 
 * **Frequency Deviation Δf (Hz)**: Displays the current deviation from the reference frequency.
     * **Smoothing**: Use the slider to smooth the plot rendering. Moving it to the right increases averaging.
-* **Integrated Phase φ (deg)**: Displays the accumulated "phase change" resulting from the frequency deviation.
+    * Internally, the widget now tracks elapsed time from the actual number of processed samples, so the displayed deviation follows real audio timing more faithfully.
+* **Integrated Phase φ (deg)**: Displays the accumulated "phase change" resulting from the frequency deviation. Because the phase integration uses sample-based elapsed time, long observations are less likely to accumulate artificial drift caused by timing approximation.
 * **I-Q Phase Space (Right side)**: Provides a vector representation of "phase stability." When the points are concentrated at a single spot, the signal is stable. Movement in a circular pattern indicates a slight frequency deviation.
 
 ## Settings
@@ -39,6 +40,9 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 
 * **Avg Count (KF-Q & Display)**: Sets the process noise (Q) for the Kalman Filter used in NCO frequency estimation, as well as the display averaging count. Increasing this value results in stronger smoothing (lower Q) and a more stable display.
 * **Display Uncertainty (σ)**: Displays the uncertainty (standard deviation) of the current frequency estimate. This indicates the confidence interval estimated by the Kalman Filter. Additionally, the decimal precision of the NCO Frequency setting automatically adjusts based on measurement stability (uncertainty), displaying up to 8 decimal places.
+
+!!! note
+    The internal estimator uses a high-suppression periodic Blackman-Harris window and ignores a few startup estimates after capture begins. In practice, this reduces false phase rotation and the "first point jump" that can otherwise appear immediately after starting a measurement.
 
 ### PID Control Loop
 

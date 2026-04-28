@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.6.5] - 2026-04-28
+
+### Added
+
+* **Signal Generator**: Added Golay complementary sequence support with selectable A/B pair and order controls for impulse-response and transfer-function measurements.
+* **Signal Generator**: Added configurable impulse length in samples for the Impulse waveform.
+* **Docs**: Added release documentation updates for the Lock-in Frequency Counter and refreshed Signal Generator guidance in Japanese.
+
+### Changed
+
+* **Analyzer**: Improved Lock-in Frequency Counter precision and stability by using periodic Blackman-Harris windows and sample-accurate elapsed-time tracking.
+* **Analyzer**: Restricted Network Analyzer coherence display to valid transfer modes only, with clearer UI behavior when unavailable.
+* **Docs**: Updated widget documentation for Signal Generator and Lock-in Frequency Counter to reflect current behavior and measurement guidance.
+
+### Fixed
+
+* **Signal Generator**: Preserved requested impulse repetition frequency more accurately with fractional sample-phase accumulation.
+* **Analyzer**: Avoided stale re-processing in Lock-in Frequency Counter when no new audio samples have arrived.
+
 ## [v0.6.4] - 2026-04-24
 
 ### Added
