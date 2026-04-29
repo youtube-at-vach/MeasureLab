@@ -9,6 +9,16 @@ It is used in physical experiments and electronic measurements to dramatically i
 
 While general spectrum analyzers "see all frequencies," the lock-in amplifier "monitors only one frequency pinpointed," which allows it to demonstrate overwhelming noise rejection performance.
 
+## ☕ Coffee Break: Secret Talk at a Noisy Party
+
+"Lock-in Amplifier" sounds like a complicated name, but what it does is similar to what our brains do every day.
+
+Imagine you are at a crowded party where music is blasting. The room is overflowing with people talking, laughing, and the clinking of glasses (all of this is "noise").
+In the midst of this, a friend standing a little further away sends you a "secret signal (a wave of a specific frequency)" that only you can understand.
+To everyone else, it just sounds like noise, but because you know the characteristics and rhythm of your friend's voice (the reference signal), you can remarkably accurately "pick up (lock-in)" only that message from the noise.
+
+A lock-in amplifier is an electronic ear that takes this "ability to hear only a specific person's voice" to the extreme!
+
 ## Principles of Lock-in Measurement
 
 ### Phase Sensitive Detection (PSD)
