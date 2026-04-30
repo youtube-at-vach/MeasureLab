@@ -1346,7 +1346,7 @@ class SignalGeneratorWidget(QWidget):
     def _init_frequency_controls(self, layout):
         freq_layout = QHBoxLayout()
         self.freq_spin = QDoubleSpinBox()
-        self.freq_spin.setRange(20, 20000)
+        self.freq_spin.setRange(1, 20000)
         self.freq_spin.setValue(1000)
         self.freq_spin.valueChanged.connect(self.on_freq_spin_changed)
 
@@ -1502,7 +1502,7 @@ class SignalGeneratorWidget(QWidget):
         form_layout = QFormLayout()
 
         freq_spin = QDoubleSpinBox()
-        freq_spin.setRange(20, 20000)
+        freq_spin.setRange(1, 20000)
         freq_spin.setValue(default_freq)
         freq_spin.setGroupSeparatorShown(True)
         freq_spin.valueChanged.connect(lambda v, p=prefix: self.update_param(f"{p}_freq", v))
@@ -1542,7 +1542,7 @@ class SignalGeneratorWidget(QWidget):
         form_layout = QFormLayout()
 
         freq_spin = QDoubleSpinBox()
-        freq_spin.setRange(20, 20000)
+        freq_spin.setRange(1, 20000)
         freq_spin.setValue(1000.0)
         freq_spin.setGroupSeparatorShown(True)
         freq_spin.valueChanged.connect(lambda v: self.update_param("notch_freq", v))
@@ -1573,12 +1573,12 @@ class SignalGeneratorWidget(QWidget):
         sweep_layout = QFormLayout()
 
         self.start_freq_spin = QDoubleSpinBox()
-        self.start_freq_spin.setRange(20, 20000)
+        self.start_freq_spin.setRange(1, 20000)
         self.start_freq_spin.valueChanged.connect(lambda v: self.update_param("start_freq", v))
         sweep_layout.addRow(tr("Start Freq:"), self.start_freq_spin)
 
         self.end_freq_spin = QDoubleSpinBox()
-        self.end_freq_spin.setRange(20, 20000)
+        self.end_freq_spin.setRange(1, 20000)
         self.end_freq_spin.valueChanged.connect(lambda v: self.update_param("end_freq", v))
         sweep_layout.addRow(tr("End Freq:"), self.end_freq_spin)
 
@@ -1950,10 +1950,10 @@ class SignalGeneratorWidget(QWidget):
 
     # --- Frequency Helpers ---
     def _freq_to_slider(self, freq):
-        return int(1000 * (np.log10(freq) - np.log10(20)) / (np.log10(20000) - np.log10(20)))
+        return int(1000 * (np.log10(freq) - np.log10(1)) / (np.log10(20000) - np.log10(1)))
 
     def _slider_to_freq(self, val):
-        log_freq = np.log10(20) + (val / 1000) * (np.log10(20000) - np.log10(20))
+        log_freq = np.log10(1) + (val / 1000) * (np.log10(20000) - np.log10(1))
         return 10**log_freq
 
     def _get_snapped_frequency(self, freq):
@@ -1997,7 +1997,7 @@ class SignalGeneratorWidget(QWidget):
         if snapped_val != val:
             self.freq_spin.setValue(snapped_val)
 
-        self.freq_slider.setValue(self._freq_to_slider(snapped_val if snapped_val > 0 else 20))
+        self.freq_slider.setValue(self._freq_to_slider(snapped_val if snapped_val > 0 else 1))
 
         self.freq_spin.blockSignals(False)
         self.freq_slider.blockSignals(False)
@@ -2021,7 +2021,7 @@ class SignalGeneratorWidget(QWidget):
         # Actually, if we don't update slider, it might be out of sync.
         # Let's update it.
         if snapped_freq != freq:
-            self.freq_slider.setValue(self._freq_to_slider(snapped_freq if snapped_freq > 0 else 20))
+            self.freq_slider.setValue(self._freq_to_slider(snapped_freq if snapped_freq > 0 else 1))
 
         self.freq_spin.blockSignals(False)
         self.freq_slider.blockSignals(False)
