@@ -470,13 +470,13 @@ class LockInFrequencyCounterWidget(QWidget):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)  # 10Hz
 
-    def get_decimal_places(self, val_std, default=5, max_places=8):
+    def get_decimal_places(self, val_std, default=5, max_places=12):
         if val_std <= 0:
             return default
         try:
             std_to_use = val_std
 
-            if std_to_use <= 1e-12:
+            if std_to_use <= 1e-15:
                 return max_places
             places = -int(np.floor(np.log10(std_to_use)))
 
@@ -801,7 +801,7 @@ class LockInFrequencyCounterWidget(QWidget):
                 self.freq_spin.blockSignals(True)
 
                 # Use Display Stats (Averaged) for UI
-                decimals = self.get_decimal_places(self.module.nco_display_std, default=5, max_places=8)
+                decimals = self.get_decimal_places(self.module.nco_display_std, default=5, max_places=12)
                 self.freq_spin.setDecimals(decimals)
 
                 self.freq_spin.setValue(self.module.nco_display_mean)
