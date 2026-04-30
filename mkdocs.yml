@@ -62,10 +62,71 @@ plugins:
           site_name: MeasureLab Operation Manual
           site_description: Operation manual for measurement tools
           nav_translations:
+            ホーム: Home
+            クイックスタート: Quick Start
+            はじめに: Getting Started
+            ようこそ: Welcome
+            キャリブレーション: Calibration
+            UI概要: UI Overview
+            設定: Settings
             ウィジット: Widgets
+            信号生成と入出力: Signal Generation & I/O
+            信号発生器: Signal Generator
+            録音・再生: Recorder / Player
+            ループバック検出: Loopback Finder
+            生時系列: Raw Time Series
+            信号可視化: Signal Visualization
+            オシロスコープ: Oscilloscope
+            スペクトラムアナライザー: Spectrum Analyzer
+            スペクトログラム: Spectrogram
+            ゴニオメーター: Goniometer
+            ステレオ位置合わせモニター: Stereo Alignment Monitor
+            精密測定: Precision Measurement
+            ロックインアンプ: Lock-in Amplifier
+            ロックイン周波数カウンター: Lock-in Frequency Counter
+            ロックイン高調波解析: Lock-in Harmonic Analyzer
+            ロックインTHD解析: Lock-in THD Analyzer
+            ロックインスペクトラム検出: Lock-in Spectrum Finder
+            周波数カウンター: Frequency Counter
+            高度歪みメーター: Advanced Distortion Meter
+            歪み解析: Distortion Analyzer
+            直線性解析: Linearity Analyzer
+            音響・オーディオ解析: Acoustic & Audio Analysis
+            音圧レベルメーター: Sound Level Meter
+            LUFSメーター: LUFS Meter
+            音質解析: Sound Quality Analyzer
+            ノイズプロファイラー: Noise Profiler
+            過渡解析: Transient Analyzer
+            BNIMメーター: BNIM Meter
+            デバイス・システム解析: Device & System Analysis
+            インピーダンス解析: Impedance Analyzer
+            ネットワーク解析: Network Analyzer
+            逆フィルター: Inverse Filter
+            HRTFプレイヤー: HRTF Player
+            空間バイノーラルミキサー: Spatial Binaural Mixer
+            超音波変調器: Ultrasound Modulator
+            タイミング・基準信号: Timing & Reference
+            1PPSモニター: 1PPS Monitor
+            タイムコードモニター: Timecode Monitor
+            ボックスカー平均器: Boxcar Averager
+            ユーティリティ: Utilities
+            分離ウィンドウラッパー: Detachable Wrapper
+            プロセッサーベンチマーク: Processor Benchmark
             測定レシピ: Measurement Recipes
-            リリースページ: Release Page
+            概要: Overview
+            ノイズ測定: Noise Measurement
+            歪み測定: Distortion Measurement
+            スピーカーインピーダンス: Speaker Impedance
+            理論と実装: Theory & Implementation
+            ロックインアンプ実装: Lock-in Amplifier Implementation
+            カルマンフィルター: Kalman Filter
+            リファレンス: Reference
+            用語集: Glossary
+            付録: Appendix
+            開発情報: Development
+            提案機能: Proposed Features
             ダウンロード: Download
+            リリースページ: Release Page
   - with-pdf:
       author: MeasureLab maintainers
       copyright: Unlicense
@@ -79,79 +140,74 @@ extra_css:
   - stylesheets/extra.css
   - https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css
 nav:
-  - Home: index.md
-  - Quick Start: quickstart.md
+  - ホーム: index.md
+  - クイックスタート: quickstart.md
 
-  - Getting Started:
-      - Welcome: widgets/welcome.md
-      - Calibration: calibration.md
-      - UI Overview: widget_guide.md
-      - Settings: widgets/settings.md
+  - はじめに:
+      - ようこそ: widgets/welcome.md
+      - キャリブレーション: calibration.md
+      - UI概要: widget_guide.md
+      - 設定: widgets/settings.md
 
-  - Signal Generation & I/O:
-      - Signal Generator: widgets/signal_generator.md
-      - Recorder / Player: widgets/recorder_player.md
-      - Loopback Finder: widgets/loopback_finder.md
-      - Raw Time Series: widgets/raw_time_series.md
+  - ウィジット:
+      - 信号生成と入出力:
+          - 信号発生器: widgets/signal_generator.md
+          - 録音・再生: widgets/recorder_player.md
+          - ループバック検出: widgets/loopback_finder.md
+          - 生時系列: widgets/raw_time_series.md
+      - 信号可視化:
+          - オシロスコープ: widgets/oscilloscope.md
+          - スペクトラムアナライザー: widgets/spectrum_analyzer.md
+          - スペクトログラム: widgets/spectrogram.md
+          - ゴニオメーター: widgets/goniometer.md
+          - ステレオ位置合わせモニター: widgets/stereo_alignment_monitor.md
+      - 精密測定:
+          - ロックインアンプ: widgets/lock_in_amplifier.md
+          - ロックイン周波数カウンター: widgets/lock_in_frequency_counter.md
+          - ロックイン高調波解析: widgets/lockin_harmonic_analyzer.md
+          - ロックインTHD解析: widgets/lockin_thd_analyzer.md
+          - ロックインスペクトラム検出: widgets/lockin_spectrum_finder.md
+          - 周波数カウンター: widgets/frequency_counter.md
+          - 高度歪みメーター: widgets/advanced_distortion_meter.md
+          - 歪み解析: widgets/distortion_analyzer.md
+          - 直線性解析: widgets/linearity_analyzer.md
+      - 音響・オーディオ解析:
+          - 音圧レベルメーター: widgets/sound_level_meter.md
+          - LUFSメーター: widgets/lufs_meter.md
+          - 音質解析: widgets/sound_quality_analyzer.md
+          - ノイズプロファイラー: widgets/noise_profiler.md
+          - 過渡解析: widgets/transient_analyzer.md
+          - BNIMメーター: widgets/bnim_meter.md
+      - デバイス・システム解析:
+          - インピーダンス解析: widgets/impedance_analyzer.md
+          - ネットワーク解析: widgets/network_analyzer.md
+          - 逆フィルター: widgets/inverse_filter.md
+          - HRTFプレイヤー: widgets/hrtf_player.md
+          - 空間バイノーラルミキサー: widgets/spatial_binaural_mixer.md
+          - 超音波変調器: widgets/ultrasound_modulator.md
+      - タイミング・基準信号:
+          - 1PPSモニター: widgets/one_pps_monitor.md
+          - タイムコードモニター: widgets/timecode_monitor.md
+          - ボックスカー平均器: widgets/boxcar_averager.md
+      - ユーティリティ:
+          - 分離ウィンドウラッパー: widgets/detachable_wrapper.md
+          - プロセッサーベンチマーク: widgets/processor_benchmark.md
 
-  - Signal Visualization:
-      - Oscilloscope: widgets/oscilloscope.md
-      - Spectrum Analyzer: widgets/spectrum_analyzer.md
-      - Spectrogram: widgets/spectrogram.md
-      - Goniometer: widgets/goniometer.md
-      - Stereo Alignment Monitor: widgets/stereo_alignment_monitor.md
+  - 測定レシピ:
+      - 概要: measurement_recipes/index.md
+      - ノイズ測定: measurement_recipes/noise_measurement.md
+      - 歪み測定: measurement_recipes/distortion_measurement.md
+      - スピーカーインピーダンス: measurement_recipes/speaker_impedance.md
+      - ロックインアンプ: measurement_recipes/lockin_amplifier.md
 
-  - Precision Measurement:
-      - Lock-in Amplifier: widgets/lock_in_amplifier.md
-      - Lock-in Frequency Counter: widgets/lock_in_frequency_counter.md
-      - Lock-in Harmonic Analyzer: widgets/lockin_harmonic_analyzer.md
-      - Lock-in THD Analyzer: widgets/lockin_thd_analyzer.md
-      - Lock-in Spectrum Finder: widgets/lockin_spectrum_finder.md
-      - Frequency Counter: widgets/frequency_counter.md
-      - Advanced Distortion Meter: widgets/advanced_distortion_meter.md
-      - Distortion Analyzer: widgets/distortion_analyzer.md
-      - Linearity Analyzer: widgets/linearity_analyzer.md
+  - 理論と実装:
+      - ロックインアンプ実装: implementation/lock_in_amplifier.md
+      - カルマンフィルター: implementation/kalman_filter.md
 
-  - Acoustic & Audio Analysis:
-      - Sound Level Meter: widgets/sound_level_meter.md
-      - LUFS Meter: widgets/lufs_meter.md
-      - Sound Quality Analyzer: widgets/sound_quality_analyzer.md
-      - Noise Profiler: widgets/noise_profiler.md
-      - Transient Analyzer: widgets/transient_analyzer.md
-      - BNIM Meter: widgets/bnim_meter.md
-
-  - Device & System Analysis:
-      - Impedance Analyzer: widgets/impedance_analyzer.md
-      - Network Analyzer: widgets/network_analyzer.md
-      - Inverse Filter: widgets/inverse_filter.md
-      - HRTF Player: widgets/hrtf_player.md
-      - Spatial Binaural Mixer: widgets/spatial_binaural_mixer.md
-      - Ultrasound Modulator: widgets/ultrasound_modulator.md
-
-  - Timing & Reference:
-      - 1PPS Monitor: widgets/one_pps_monitor.md
-      - Timecode Monitor: widgets/timecode_monitor.md
-      - Boxcar Averager: widgets/boxcar_averager.md
-
-  - Utilities:
-      - Detachable Wrapper: widgets/detachable_wrapper.md
-      - Processor Benchmark: widgets/processor_benchmark.md
-
-  - Measurement Recipes:
-      - Overview: measurement_recipes/index.md
-      - Noise Measurement: measurement_recipes/noise_measurement.md
-      - Distortion Measurement: measurement_recipes/distortion_measurement.md
-      - Speaker Impedance: measurement_recipes/speaker_impedance.md
-      - Lock-in Amplifier: measurement_recipes/lockin_amplifier.md
-
-  - Theory & Implementation:
-      - Lock-in Amplifier Implementation: implementation/lock_in_amplifier.md
-      - Kalman Filter: implementation/kalman_filter.md
-
-  - Reference:
-      - Glossary: glossary.md
-      - Appendix: appendix.md
-      - Development: development.md
-      - Proposed Features: PROPOSED_FEATURES.md
-      - Download: https://youtube-at-vach.github.io/MeasureLab/download/
-      - Release Page: https://github.com/youtube-at-vach/MeasureLab/releases/
+  - リファレンス:
+      - 用語集: glossary.md
+      - 付録: appendix.md
+      - 開発情報: development.md
+      - 提案機能: PROPOSED_FEATURES.md
+      - ダウンロード: https://youtube-at-vach.github.io/MeasureLab/download/
+      - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
