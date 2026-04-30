@@ -70,6 +70,7 @@ plugins:
             UI概要: UI Overview
             設定: Settings
             ウィジット: Widgets
+            基本: Basics
             信号生成と入出力: Signal Generation & I/O
             信号発生器: Signal Generator
             録音・再生: Recorder / Player
@@ -144,12 +145,13 @@ nav:
   - クイックスタート: quickstart.md
 
   - はじめに:
-      - ようこそ: widgets/welcome.md
       - キャリブレーション: calibration.md
       - UI概要: widget_guide.md
-      - 設定: widgets/settings.md
 
   - ウィジット:
+      - 基本:
+          - ようこそ: widgets/welcome.md
+          - 設定: widgets/settings.md
       - 信号生成と入出力:
           - 信号発生器: widgets/signal_generator.md
           - 録音・再生: widgets/recorder_player.md
