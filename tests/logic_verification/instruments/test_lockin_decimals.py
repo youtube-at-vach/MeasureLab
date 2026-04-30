@@ -1,6 +1,5 @@
 import sys
 import unittest
-import numpy as np
 from unittest.mock import MagicMock, patch
 
 # Mock PyQt6 and pyqtgraph before importing the widget
@@ -36,12 +35,12 @@ class TestLockInDecimals(unittest.TestCase):
         # High uncertainty -> few decimals
         self.assertEqual(self.widget.get_decimal_places(0.1), 1)
         self.assertEqual(self.widget.get_decimal_places(0.01), 2)
-        
+
         # Low uncertainty -> many decimals
         self.assertEqual(self.widget.get_decimal_places(1e-8), 8)
         self.assertEqual(self.widget.get_decimal_places(1e-10), 10)
         self.assertEqual(self.widget.get_decimal_places(1e-12), 12)
-        
+
         # Extremely low uncertainty -> capped at 12
         self.assertEqual(self.widget.get_decimal_places(1e-15), 12)
         self.assertEqual(self.widget.get_decimal_places(0), 5) # Default
