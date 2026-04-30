@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 
 import numpy as np
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -1001,11 +1001,29 @@ class SignalGenerator(MeasurementModule):
 
 
 class SignalGeneratorWidget(QWidget):
+    FREQUENCY_PARAM_NAMES = (
+        "frequency",
+        "start_freq",
+        "end_freq",
+        "lpf_freq",
+        "hpf_freq",
+        "notch_freq",
+        "am_frequency",
+        "fm_frequency",
+        "pm_frequency",
+    )
+
     def __init__(self, module: SignalGenerator):
         super().__init__()
         self.module = module
         self.current_target = "L"  # 'L', 'R', 'LINK'
+        self._last_nyquist_freq: float | None = None
         self.init_ui()
+
+        self.frequency_limit_timer = QTimer(self)
+        self.frequency_limit_timer.setInterval(1000)
+        self.frequency_limit_timer.timeout.connect(self._refresh_frequency_limits)
+        self.frequency_limit_timer.start()
 
     def _set_wave_combo_key(self, key: str):
         idx = self.wave_combo.findData(key)
@@ -1105,6 +1123,7 @@ class SignalGeneratorWidget(QWidget):
         self.setLayout(layout)
 
         # Initialize UI with current target (L)
+        self._refresh_frequency_limits(force=True)
         self.load_params_to_ui(self.module.params_L)
 
     def _create_top_control_bar(self):
@@ -1346,7 +1365,7 @@ class SignalGeneratorWidget(QWidget):
     def _init_frequency_controls(self, layout):
         freq_layout = QHBoxLayout()
         self.freq_spin = QDoubleSpinBox()
-        self.freq_spin.setRange(1, 20000)
+        self.freq_spin.setRange(1, self._get_nyquist_frequency())
         self.freq_spin.setValue(1000)
         self.freq_spin.valueChanged.connect(self.on_freq_spin_changed)
 
@@ -1357,6 +1376,51 @@ class SignalGeneratorWidget(QWidget):
         freq_layout.addWidget(self.freq_spin)
         freq_layout.addWidget(self.freq_slider)
         layout.addRow(tr("Frequency (Hz):"), freq_layout)
+
+    def _get_nyquist_frequency(self) -> float:
+        try:
+            sample_rate = float(getattr(self.module.audio_engine, "sample_rate", 48000) or 48000)
+        except Exception:
+            sample_rate = 48000.0
+        return max(1.000001, sample_rate / 2.0)
+
+    def _refresh_frequency_limits(self, force: bool = False):
+        nyquist_freq = self._get_nyquist_frequency()
+        if (
+            not force
+            and self._last_nyquist_freq is not None
+            and abs(nyquist_freq - self._last_nyquist_freq) <= 1e-9
+        ):
+            return
+
+        self._last_nyquist_freq = nyquist_freq
+
+        for spin_name in (
+            "freq_spin",
+            "start_freq_spin",
+            "end_freq_spin",
+            "lpf_freq_spin",
+            "hpf_freq_spin",
+            "notch_freq_spin",
+            "am_freq_spin",
+            "fm_freq_spin",
+            "pm_freq_spin",
+        ):
+            spin = getattr(self, spin_name, None)
+            if spin is not None:
+                spin.setMaximum(nyquist_freq)
+
+        for params in (self.module.params_L, self.module.params_R):
+            for name in self.FREQUENCY_PARAM_NAMES:
+                value = getattr(params, name, None)
+                if value is not None and value > nyquist_freq:
+                    self.module.update_param(params, name, nyquist_freq)
+
+        params_list = self.get_active_params_list()
+        if params_list and hasattr(self, "freq_slider"):
+            self.freq_slider.blockSignals(True)
+            self.freq_slider.setValue(self._freq_to_slider(params_list[0].frequency))
+            self.freq_slider.blockSignals(False)
 
     def _init_phase_controls(self, layout):
         phase_layout = QHBoxLayout()
@@ -1502,7 +1566,7 @@ class SignalGeneratorWidget(QWidget):
         form_layout = QFormLayout()
 
         freq_spin = QDoubleSpinBox()
-        freq_spin.setRange(1, 20000)
+        freq_spin.setRange(1, self._get_nyquist_frequency())
         freq_spin.setValue(default_freq)
         freq_spin.setGroupSeparatorShown(True)
         freq_spin.valueChanged.connect(lambda v, p=prefix: self.update_param(f"{p}_freq", v))
@@ -1542,7 +1606,7 @@ class SignalGeneratorWidget(QWidget):
         form_layout = QFormLayout()
 
         freq_spin = QDoubleSpinBox()
-        freq_spin.setRange(1, 20000)
+        freq_spin.setRange(1, self._get_nyquist_frequency())
         freq_spin.setValue(1000.0)
         freq_spin.setGroupSeparatorShown(True)
         freq_spin.valueChanged.connect(lambda v: self.update_param("notch_freq", v))
@@ -1573,12 +1637,12 @@ class SignalGeneratorWidget(QWidget):
         sweep_layout = QFormLayout()
 
         self.start_freq_spin = QDoubleSpinBox()
-        self.start_freq_spin.setRange(1, 20000)
+        self.start_freq_spin.setRange(1, self._get_nyquist_frequency())
         self.start_freq_spin.valueChanged.connect(lambda v: self.update_param("start_freq", v))
         sweep_layout.addRow(tr("Start Freq:"), self.start_freq_spin)
 
         self.end_freq_spin = QDoubleSpinBox()
-        self.end_freq_spin.setRange(1, 20000)
+        self.end_freq_spin.setRange(1, self._get_nyquist_frequency())
         self.end_freq_spin.valueChanged.connect(lambda v: self.update_param("end_freq", v))
         sweep_layout.addRow(tr("End Freq:"), self.end_freq_spin)
 
@@ -1604,7 +1668,7 @@ class SignalGeneratorWidget(QWidget):
         am_layout = QFormLayout()
 
         self.am_freq_spin = QDoubleSpinBox()
-        self.am_freq_spin.setRange(0.01, 20000.0)
+        self.am_freq_spin.setRange(0.01, self._get_nyquist_frequency())
         self.am_freq_spin.setDecimals(3)
         self.am_freq_spin.setValue(5.0)
         self.am_freq_spin.valueChanged.connect(lambda v: self.update_param("am_frequency", v))
@@ -1632,7 +1696,7 @@ class SignalGeneratorWidget(QWidget):
         fm_layout = QFormLayout()
 
         self.fm_freq_spin = QDoubleSpinBox()
-        self.fm_freq_spin.setRange(0.01, 20000.0)
+        self.fm_freq_spin.setRange(0.01, self._get_nyquist_frequency())
         self.fm_freq_spin.setDecimals(3)
         self.fm_freq_spin.setValue(5.0)
         self.fm_freq_spin.valueChanged.connect(lambda v: self.update_param("fm_frequency", v))
@@ -1658,7 +1722,7 @@ class SignalGeneratorWidget(QWidget):
         pm_layout = QFormLayout()
 
         self.pm_freq_spin = QDoubleSpinBox()
-        self.pm_freq_spin.setRange(0.01, 20000.0)
+        self.pm_freq_spin.setRange(0.01, self._get_nyquist_frequency())
         self.pm_freq_spin.setDecimals(3)
         self.pm_freq_spin.setValue(5.0)
         self.pm_freq_spin.valueChanged.connect(lambda v: self.update_param("pm_frequency", v))
@@ -1691,6 +1755,8 @@ class SignalGeneratorWidget(QWidget):
         # No, UI reflects the state. If linked, we assume they are now same.
 
     def load_params_to_ui(self, params: SignalParameters):
+        self._refresh_frequency_limits()
+
         # Block signals to prevent feedback loops
         self.block_all_signals(True)
 
@@ -1920,6 +1986,7 @@ class SignalGeneratorWidget(QWidget):
             self.cal_freq_label.setText("")
 
     def on_snap_toggled(self, checked):
+        self._refresh_frequency_limits()
         self.update_param("bin_center_snap", checked)
         self.fft_size_combo.setEnabled(checked)
         # Re-apply frequency to snap it if enabled
@@ -1927,6 +1994,7 @@ class SignalGeneratorWidget(QWidget):
         self.on_freq_spin_changed(current_freq)
 
     def on_fft_size_changed(self, text):
+        self._refresh_frequency_limits()
         try:
             val = int(text)
             if val > 0:
@@ -1938,6 +2006,7 @@ class SignalGeneratorWidget(QWidget):
             logger.warning(f"Invalid FFT size provided: {text}")
 
     def on_wave_changed(self, _index):
+        self._refresh_frequency_limits()
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
         self._apply_waveform_key(str(key), update_params=True)
 
@@ -1950,10 +2019,13 @@ class SignalGeneratorWidget(QWidget):
 
     # --- Frequency Helpers ---
     def _freq_to_slider(self, freq):
-        return int(1000 * (np.log10(freq) - np.log10(1)) / (np.log10(20000) - np.log10(1)))
+        max_freq = self._get_nyquist_frequency()
+        freq = float(np.clip(freq, 1.0, max_freq))
+        return int(1000 * (np.log10(freq) - np.log10(1)) / (np.log10(max_freq) - np.log10(1)))
 
     def _slider_to_freq(self, val):
-        log_freq = np.log10(1) + (val / 1000) * (np.log10(20000) - np.log10(1))
+        max_freq = self._get_nyquist_frequency()
+        log_freq = np.log10(1) + (val / 1000) * (np.log10(max_freq) - np.log10(1))
         return 10**log_freq
 
     def _get_snapped_frequency(self, freq):
@@ -1985,6 +2057,7 @@ class SignalGeneratorWidget(QWidget):
         return snapped_freq
 
     def on_freq_spin_changed(self, val):
+        self._refresh_frequency_limits()
         snapped_val = self._get_snapped_frequency(val)
 
         self.update_param("frequency", snapped_val)
@@ -2003,6 +2076,7 @@ class SignalGeneratorWidget(QWidget):
         self.freq_slider.blockSignals(False)
 
     def on_freq_slider_changed(self, val):
+        self._refresh_frequency_limits()
         freq = self._slider_to_freq(val)
         snapped_freq = self._get_snapped_frequency(freq)
 
