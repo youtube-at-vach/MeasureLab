@@ -43,19 +43,23 @@ logger = logging.getLogger(__name__)
 
 
 class Oscilloscope(MeasurementModule):
+    MIN_BUFFER_SIZE = 8192
+    MAX_DISPLAY_SAMPLES = 8192
     TRIGGER_SEARCH_WINDOW_SIZE = 2048
+    TRIGGER_SEARCH_FRACTION = 0.25
+    MAX_TRIGGER_SEARCH_WINDOW_SIZE = 8192
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
+        # Settings
+        self.timebase = 0.01  # Seconds per division (approx) -> Total view window
         # Buffer enough for low frequency analysis, but we'll display a subset
-        self.buffer_size = 8192
+        self.buffer_size = self._recommended_buffer_size(self.timebase)
         # Double the buffer size to avoid wrap-around concatenation
         self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
-        # Settings
-        self.timebase = 0.01  # Seconds per division (approx) -> Total view window
         self.gain = 1.0
         self.trigger_source = 0  # 0: Left, 1: Right
         self.trigger_mode = "Auto"  # 'Auto', 'Normal', 'Single'
@@ -150,11 +154,63 @@ class Oscilloscope(MeasurementModule):
         self.heatmap_l = np.zeros((w, h))
         self.heatmap_r = np.zeros((w, h))
 
+    def _recommended_trigger_search_window(self, required_samples):
+        adaptive_window = int(required_samples * self.TRIGGER_SEARCH_FRACTION)
+        return min(
+            max(self.TRIGGER_SEARCH_WINDOW_SIZE, adaptive_window),
+            self.MAX_TRIGGER_SEARCH_WINDOW_SIZE,
+        )
+
+    def _sample_rate_hz(self):
+        try:
+            sample_rate = int(getattr(self.audio_engine, "sample_rate", 48000))
+        except (TypeError, ValueError):
+            sample_rate = 48000
+        return max(1, sample_rate)
+
+    def _recommended_buffer_size(self, window_duration):
+        sample_rate = self._sample_rate_hz()
+        required_samples = max(1, int(window_duration * sample_rate))
+        search_window = self._recommended_trigger_search_window(required_samples)
+        return max(self.MIN_BUFFER_SIZE, required_samples + search_window)
+
+    def _ensure_buffer_capacity(self, window_duration):
+        sample_rate = self._sample_rate_hz()
+        required_samples = max(1, int(window_duration * sample_rate))
+        if self.buffer_size < self.MIN_BUFFER_SIZE and required_samples <= self.buffer_size:
+            return
+
+        required_size = self._recommended_buffer_size(window_duration)
+        if required_size <= self.buffer_size:
+            return
+
+        old_buffer_size = self.buffer_size
+        old_data = self.input_data
+        old_write_index = self.write_index
+
+        # Reallocate only on the UI thread. Keep the ring-buffer invariant that
+        # write_index is the logical origin (oldest sample) for _get_data_slice().
+        self.buffer_size = required_size
+        self.input_data = np.zeros((self.buffer_size * 2, 2), dtype=old_data.dtype)
+        old_available = min(old_buffer_size, self.buffer_size)
+        old_start = (old_write_index - old_available) % old_buffer_size
+        new_start = self.buffer_size - old_available
+        if old_start + old_available <= old_buffer_size:
+            self.input_data[new_start : new_start + old_available] = old_data[old_start : old_start + old_available]
+        else:
+            split = old_buffer_size - old_start
+            self.input_data[new_start : new_start + split] = old_data[old_start:old_buffer_size]
+            self.input_data[new_start + split : new_start + old_available] = old_data[: old_available - split]
+
+        self.input_data[self.buffer_size :] = self.input_data[: self.buffer_size]
+        self.write_index = 0
+
     def start_analysis(self):
         if self.is_running:
             return
 
         self.is_running = True
+        self._ensure_buffer_capacity(self.timebase)
         self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
@@ -266,7 +322,8 @@ class Oscilloscope(MeasurementModule):
         Get triggered data for display.
         window_duration: float, seconds of data to display
         """
-        sample_rate = self.audio_engine.sample_rate
+        self._ensure_buffer_capacity(window_duration)
+        sample_rate = self._sample_rate_hz()
         required_samples = int(window_duration * sample_rate)
 
         if required_samples > self.buffer_size:
@@ -292,7 +349,7 @@ class Oscilloscope(MeasurementModule):
         # We search backwards from the end-required_samples to find the most recent trigger event
         # Or search forwards?
         # Let's search in the last 'search_window' samples
-        search_window = self.TRIGGER_SEARCH_WINDOW_SIZE  # Limit search to avoid high CPU
+        search_window = self._recommended_trigger_search_window(required_samples)  # Limit search to avoid high CPU
         start_idx = max(0, search_end - search_window)
 
         # Extract only the search window subset
@@ -1186,6 +1243,8 @@ class OscilloscopeWidget(QWidget):
                 self._time_array_cache = t
                 self._time_array_cache_params = (window_duration, current_len)
 
+            display_step = max(1, int(np.ceil(current_len / self.module.MAX_DISPLAY_SAMPLES)))
+
             # Apply Filter if enabled
             sr = self.module.audio_engine.sample_rate
             if self.module.filter_type != "None":
@@ -1245,8 +1304,10 @@ class OscilloscopeWidget(QWidget):
             self.latest_data = data
             self.latest_t = t
 
-            scaled_l = data[:, 0] * float(getattr(self.module, "vscale_left", 1.0))
-            scaled_r = data[:, 1] * float(getattr(self.module, "vscale_right", 1.0))
+            plot_t = t[::display_step]
+            plot_data = data[::display_step]
+            scaled_l = plot_data[:, 0] * float(getattr(self.module, "vscale_left", 1.0))
+            scaled_r = plot_data[:, 1] * float(getattr(self.module, "vscale_right", 1.0))
 
             if self.module.persistence_mode:
                 # Update Persistence
@@ -1266,10 +1327,10 @@ class OscilloscopeWidget(QWidget):
                 rng = [[0, window_duration], [self.VIEW_Y_MIN, self.VIEW_Y_MAX]]
 
                 if self.module.show_left:
-                    self.module._accumulate_heatmap(t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity)
+                    self.module._accumulate_heatmap(plot_t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity)
 
                 if self.module.show_right:
-                    self.module._accumulate_heatmap(t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity)
+                    self.module._accumulate_heatmap(plot_t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity)
 
                 # Compose Image
                 # L = Green, R = Red
@@ -1338,13 +1399,13 @@ class OscilloscopeWidget(QWidget):
             else:
                 # Normal Mode
                 if self.module.show_left:
-                    self.curve_l.setData(t, scaled_l)
+                    self.curve_l.setData(plot_t, scaled_l)
                     self.curve_l.setVisible(True)
                 else:
                     self.curve_l.setVisible(False)
 
                 if self.module.show_right:
-                    self.curve_r.setData(t, scaled_r)
+                    self.curve_r.setData(plot_t, scaled_r)
                     self.curve_r.setVisible(True)
                 else:
                     self.curve_r.setVisible(False)
@@ -1381,7 +1442,7 @@ class OscilloscopeWidget(QWidget):
                     math_data = math_data - np.mean(math_data)
 
                 if math_data is not None and math_data.size > 0:
-                    self.curve_math.setData(t, math_data)
+                    self.curve_math.setData(plot_t, math_data[::display_step])
                     # Auto-scale Math View
                     mn, mx = np.min(math_data), np.max(math_data)
                     if mn == mx:

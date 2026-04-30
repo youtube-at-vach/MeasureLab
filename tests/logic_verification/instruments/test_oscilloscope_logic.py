@@ -258,6 +258,52 @@ class TestOscilloscopeLogic(unittest.TestCase):
         data2 = self.scope.get_display_data(window_duration)
         self.assertIsNone(data2, "Should not capture after firing in Single mode")
 
+    def test_buffer_expansion_preserves_history_as_latest_samples(self):
+        self.engine.sample_rate = 100
+        self.scope.buffer_size = 8
+        self.scope.input_data = np.zeros((self.scope.buffer_size * 2, 2))
+        self.scope.write_index = 3
+
+        physical = np.arange(self.scope.buffer_size, dtype=float)
+        self.scope.input_data[: self.scope.buffer_size, 0] = physical
+        self.scope.input_data[self.scope.buffer_size :, 0] = physical
+
+        self.scope._ensure_buffer_capacity(0.2)
+
+        data = self.scope._get_data_slice(0, self.scope.buffer_size)
+        self.assertEqual(self.scope.write_index, 0)
+        self.assertTrue(np.all(data[: self.scope.buffer_size - 8, 0] == 0.0))
+        self.assertTrue(np.array_equal(data[-8:, 0], np.array([3, 4, 5, 6, 7, 0, 1, 2], dtype=float)))
+
+    def test_long_timebase_keeps_trigger_at_full_resolution(self):
+        self.engine.sample_rate = 48000
+        window_duration = 1.0
+
+        self.scope._ensure_buffer_capacity(window_duration)
+        self.assertGreater(self.scope.buffer_size, 8192)
+
+        self.scope.input_data[:] = -1.0
+        self.scope.write_index = 0
+        crossing_prev = 4095
+        crossing_now = 4096
+        self.scope.input_data[crossing_prev, 0] = -0.5
+        self.scope.input_data[crossing_now : self.scope.buffer_size, 0] = 0.5
+        self.scope.input_data[
+            self.scope.buffer_size + crossing_now : self.scope.buffer_size * 2,
+            0,
+        ] = 0.5
+
+        self.scope.trigger_source = 0
+        self.scope.trigger_mode = "Normal"
+        self.scope.trigger_level = 0.0
+        self.scope.trigger_slope = "Rising"
+
+        data = self.scope.get_display_data(window_duration)
+
+        self.assertIsNotNone(data)
+        self.assertEqual(len(data), 48000)
+        self.assertEqual(data[0, 0], 0.5)
+
     def test_measurements_apply_calibration(self):
         # 1. Test with default sensitivity (1.0)
         t = np.linspace(0, 1, 1000)
@@ -484,6 +530,35 @@ class TestOscilloscopeWidgetLogic(unittest.TestCase):
         # args: x, y, w, h. y=-1.1, h=2.2 (from VIEW_Y_MIN/MAX in widget code)
         # We expect (0, -1.1, 0.01, 2.2)
         widget.persistence_img.setRect.assert_called_with((0, -1.1, 0.01, 2.2))
+
+    def test_update_plot_measures_full_resolution_but_plots_decimated_data(self):
+        from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget
+
+        mock_audio_engine = MagicMock()
+        mock_audio_engine.sample_rate = 48000
+        mock_audio_engine.calibration.input_sensitivity = 1.0
+
+        oscilloscope = Oscilloscope(mock_audio_engine)
+        widget = OscilloscopeWidget(oscilloscope)
+        widget.chk_wave_meas.isChecked.return_value = False
+        widget.chk_cursors.isChecked.return_value = False
+
+        data = np.zeros((48000, 2))
+        data[12345, 0] = 1.0
+        oscilloscope.is_running = True
+        oscilloscope.timebase = 1.0
+        oscilloscope.get_display_data = MagicMock(return_value=data)
+        oscilloscope.process_queue = MagicMock()
+        oscilloscope.get_measurements = MagicMock(return_value={"l_rms": 0.0, "l_vpp": 1.0, "r_rms": 0.0, "r_vpp": 0.0})
+
+        widget.update_plot()
+
+        measured_data = oscilloscope.get_measurements.call_args.args[0]
+        self.assertEqual(len(measured_data), 48000)
+
+        plot_t, plot_l = widget.curve_l.setData.call_args.args
+        self.assertLessEqual(len(plot_t), oscilloscope.MAX_DISPLAY_SAMPLES)
+        self.assertLessEqual(len(plot_l), oscilloscope.MAX_DISPLAY_SAMPLES)
 
 
 if __name__ == "__main__":
