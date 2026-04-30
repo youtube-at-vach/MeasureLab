@@ -2067,11 +2067,8 @@ class SignalGeneratorWidget(QWidget):
         k = round(freq / bin_width)
         snapped_freq = k * bin_width
 
-        # Ensure we don't snap to 0 if the user didn't intend to (though 0 is a valid bin center DC)
-        # But for audio signal generator, usually we want > 0.
-        # But let's respect the math. If freq is close to 0, it snaps to DC.
-
-        return snapped_freq
+        # Keep DSP state aligned with the visible spin box range.
+        return float(np.clip(snapped_freq, self.freq_spin.minimum(), self.freq_spin.maximum()))
 
     def on_freq_spin_changed(self, val):
         self._refresh_frequency_limits()
@@ -2084,8 +2081,7 @@ class SignalGeneratorWidget(QWidget):
         self.freq_spin.blockSignals(True)
         self.freq_slider.blockSignals(True)
 
-        if snapped_val != val:
-            self.freq_spin.setValue(snapped_val)
+        self.freq_spin.setValue(snapped_val)
 
         self.freq_slider.setValue(self._freq_to_slider(snapped_val if snapped_val > 0 else 1))
 

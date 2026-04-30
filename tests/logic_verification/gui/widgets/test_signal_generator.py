@@ -67,3 +67,17 @@ def test_frequency_slider_maps_to_nyquist(signal_generator_widget):
 
     assert widget._slider_to_freq(1000) == pytest.approx(48000.0)
     assert widget._freq_to_slider(48000.0) == 1000
+
+
+def test_bin_snap_respects_frequency_lower_bound(signal_generator_widget):
+    widget, module, engine = signal_generator_widget
+
+    engine.sample_rate = 48000
+    widget._refresh_frequency_limits(force=True)
+    module.params_L.bin_center_snap = True
+    module.params_L.fft_size = 16384
+
+    widget.on_freq_spin_changed(1.0)
+
+    assert widget.freq_spin.value() == pytest.approx(1.0)
+    assert module.params_L.frequency == pytest.approx(1.0)
