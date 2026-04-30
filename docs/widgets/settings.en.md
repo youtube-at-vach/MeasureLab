@@ -55,7 +55,7 @@ Selects the input and output devices. Previous settings have been split into tab
 * **Buffer Optimization**: Selects the optimization level of the buffer size according to the application.
 * **Buffer Size**: Actual size of the audio buffer.
 
-💡 **Knowledge Boost: What are Buffer Size and Dithering?**
+## ☕ Coffee Break: What are Buffer Size and Dithering?
 
 * **Buffer Size**: Think of this as the "size of a bucket" used to carry sound. A small bucket means you have to make many trips, resulting in less delay (latency), but the PC has to work harder and the sound might cut out if it can't keep up. A large bucket makes it easy for the PC, but the sound is slightly delayed. Since MeasureLab is for "measurement," we generally recommend a large bucket (STABLE or higher) to ensure the sound doesn't stutter.
 * **Dithering**: In digital audio, sound is represented by blocky numbers like "stairs". When the sound becomes very quiet, it can no longer go up and down these stairs, causing the sound to distort or disappear. Dithering is a magical technique that intentionally adds a tiny "hiss" noise (dither) to smooth out the edges of the stairs, turning them into a smooth slope.
