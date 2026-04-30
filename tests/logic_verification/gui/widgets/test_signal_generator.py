@@ -36,6 +36,8 @@ def test_frequency_limits_follow_sample_rate_changes(signal_generator_widget):
 
     module.params_L.frequency = 50000.0
     module.params_R.frequency = 50000.0
+    module.params_L.lpf_freq = 50000.0
+    module.params_R.notch_freq = 50000.0
 
     engine.sample_rate = 44100
     widget._refresh_frequency_limits()
@@ -43,6 +45,21 @@ def test_frequency_limits_follow_sample_rate_changes(signal_generator_widget):
     assert widget.freq_spin.maximum() == pytest.approx(22050.0)
     assert module.params_L.frequency == pytest.approx(22050.0)
     assert module.params_R.frequency == pytest.approx(22050.0)
+    assert module.params_L.lpf_freq < 22050.0
+    assert module.params_R.notch_freq < 22050.0
+
+
+def test_filter_cutoffs_are_clamped_below_nyquist(signal_generator_widget):
+    widget, module, _engine = signal_generator_widget
+
+    widget.update_param("lpf_freq", 48000.0)
+    widget.update_param("hpf_freq", 48000.0)
+    widget.update_param("notch_freq", 48000.0)
+
+    assert widget.lpf_freq_spin.maximum() < 48000.0
+    assert module.params_L.lpf_freq < 48000.0
+    assert module.params_L.hpf_freq < 48000.0
+    assert module.params_L.notch_freq < 48000.0
 
 
 def test_frequency_slider_maps_to_nyquist(signal_generator_widget):

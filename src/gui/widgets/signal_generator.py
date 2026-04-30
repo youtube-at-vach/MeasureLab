@@ -1012,6 +1012,7 @@ class SignalGeneratorWidget(QWidget):
         "fm_frequency",
         "pm_frequency",
     )
+    FILTER_FREQUENCY_PARAM_NAMES = ("lpf_freq", "hpf_freq", "notch_freq")
 
     def __init__(self, module: SignalGenerator):
         super().__init__()
@@ -1384,6 +1385,11 @@ class SignalGeneratorWidget(QWidget):
             sample_rate = 48000.0
         return max(1.000001, sample_rate / 2.0)
 
+    def _get_filter_frequency_max(self) -> float:
+        nyquist_freq = self._get_nyquist_frequency()
+        epsilon = max(0.01, nyquist_freq * 1e-9)
+        return max(1.0, nyquist_freq - epsilon)
+
     def _refresh_frequency_limits(self, force: bool = False):
         nyquist_freq = self._get_nyquist_frequency()
         if (
@@ -1399,9 +1405,6 @@ class SignalGeneratorWidget(QWidget):
             "freq_spin",
             "start_freq_spin",
             "end_freq_spin",
-            "lpf_freq_spin",
-            "hpf_freq_spin",
-            "notch_freq_spin",
             "am_freq_spin",
             "fm_freq_spin",
             "pm_freq_spin",
@@ -1410,11 +1413,20 @@ class SignalGeneratorWidget(QWidget):
             if spin is not None:
                 spin.setMaximum(nyquist_freq)
 
+        filter_max = self._get_filter_frequency_max()
+        for spin_name in ("lpf_freq_spin", "hpf_freq_spin", "notch_freq_spin"):
+            spin = getattr(self, spin_name, None)
+            if spin is not None:
+                spin.setMaximum(filter_max)
+
         for params in (self.module.params_L, self.module.params_R):
             for name in self.FREQUENCY_PARAM_NAMES:
                 value = getattr(params, name, None)
-                if value is not None and value > nyquist_freq:
-                    self.module.update_param(params, name, nyquist_freq)
+                if value is None:
+                    continue
+                max_value = filter_max if name in self.FILTER_FREQUENCY_PARAM_NAMES else nyquist_freq
+                if value > max_value:
+                    self.module.update_param(params, name, max_value)
 
         params_list = self.get_active_params_list()
         if params_list and hasattr(self, "freq_slider"):
@@ -1566,7 +1578,7 @@ class SignalGeneratorWidget(QWidget):
         form_layout = QFormLayout()
 
         freq_spin = QDoubleSpinBox()
-        freq_spin.setRange(1, self._get_nyquist_frequency())
+        freq_spin.setRange(1, self._get_filter_frequency_max())
         freq_spin.setValue(default_freq)
         freq_spin.setGroupSeparatorShown(True)
         freq_spin.valueChanged.connect(lambda v, p=prefix: self.update_param(f"{p}_freq", v))
@@ -1606,7 +1618,7 @@ class SignalGeneratorWidget(QWidget):
         form_layout = QFormLayout()
 
         freq_spin = QDoubleSpinBox()
-        freq_spin.setRange(1, self._get_nyquist_frequency())
+        freq_spin.setRange(1, self._get_filter_frequency_max())
         freq_spin.setValue(1000.0)
         freq_spin.setGroupSeparatorShown(True)
         freq_spin.valueChanged.connect(lambda v: self.update_param("notch_freq", v))
@@ -1748,6 +1760,11 @@ class SignalGeneratorWidget(QWidget):
         return []
 
     def update_param(self, name, value):
+        if name in self.FILTER_FREQUENCY_PARAM_NAMES:
+            value = min(float(value), self._get_filter_frequency_max())
+        elif name in self.FREQUENCY_PARAM_NAMES:
+            value = min(float(value), self._get_nyquist_frequency())
+
         for p in self.get_active_params_list():
             self.module.update_param(p, name, value)
 
