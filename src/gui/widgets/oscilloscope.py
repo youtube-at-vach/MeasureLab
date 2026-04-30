@@ -43,19 +43,23 @@ logger = logging.getLogger(__name__)
 
 
 class Oscilloscope(MeasurementModule):
+    MIN_BUFFER_SIZE = 8192
+    MAX_DISPLAY_SAMPLES = 8192
     TRIGGER_SEARCH_WINDOW_SIZE = 2048
+    TRIGGER_SEARCH_FRACTION = 0.25
+    MAX_TRIGGER_SEARCH_WINDOW_SIZE = 8192
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
+        # Settings
+        self.timebase = 0.01  # Seconds per division (approx) -> Total view window
         # Buffer enough for low frequency analysis, but we'll display a subset
-        self.buffer_size = 8192
+        self.buffer_size = self._recommended_buffer_size(self.timebase)
         # Double the buffer size to avoid wrap-around concatenation
         self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
-        # Settings
-        self.timebase = 0.01  # Seconds per division (approx) -> Total view window
         self.gain = 1.0
         self.trigger_source = 0  # 0: Left, 1: Right
         self.trigger_mode = "Auto"  # 'Auto', 'Normal', 'Single'
@@ -150,11 +154,62 @@ class Oscilloscope(MeasurementModule):
         self.heatmap_l = np.zeros((w, h))
         self.heatmap_r = np.zeros((w, h))
 
+    def _recommended_trigger_search_window(self, required_samples):
+        adaptive_window = int(required_samples * self.TRIGGER_SEARCH_FRACTION)
+        return min(
+            max(self.TRIGGER_SEARCH_WINDOW_SIZE, adaptive_window),
+            self.MAX_TRIGGER_SEARCH_WINDOW_SIZE,
+        )
+
+    def _sample_rate_hz(self):
+        try:
+            sample_rate = int(getattr(self.audio_engine, "sample_rate", 48000))
+        except (TypeError, ValueError):
+            sample_rate = 48000
+        return max(1, sample_rate)
+
+    def _recommended_buffer_size(self, window_duration):
+        sample_rate = self._sample_rate_hz()
+        required_samples = max(1, int(window_duration * sample_rate))
+        search_window = self._recommended_trigger_search_window(required_samples)
+        return max(self.MIN_BUFFER_SIZE, required_samples + search_window)
+
+    def _ensure_buffer_capacity(self, window_duration):
+        sample_rate = self._sample_rate_hz()
+        required_samples = max(1, int(window_duration * sample_rate))
+        if self.buffer_size < self.MIN_BUFFER_SIZE and required_samples <= self.buffer_size:
+            return
+
+        required_size = self._recommended_buffer_size(window_duration)
+        if required_size <= self.buffer_size:
+            return
+
+        old_buffer_size = self.buffer_size
+        old_data = self.input_data
+        old_write_index = self.write_index
+
+        # Reallocate only on the UI thread. Keep chronological samples so trigger
+        # state does not jump when the user selects a longer timebase.
+        self.buffer_size = required_size
+        self.input_data = np.zeros((self.buffer_size * 2, 2), dtype=old_data.dtype)
+        old_available = min(old_buffer_size, self.buffer_size)
+        old_start = (old_write_index - old_available) % old_buffer_size
+        if old_start + old_available <= old_buffer_size:
+            preserved = old_data[old_start : old_start + old_available]
+        else:
+            split = old_buffer_size - old_start
+            preserved = np.vstack((old_data[old_start:old_buffer_size], old_data[: old_available - split]))
+
+        self.input_data[:old_available] = preserved
+        self.input_data[self.buffer_size : self.buffer_size + old_available] = preserved
+        self.write_index = old_available % self.buffer_size
+
     def start_analysis(self):
         if self.is_running:
             return
 
         self.is_running = True
+        self._ensure_buffer_capacity(self.timebase)
         self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
@@ -251,7 +306,7 @@ class Oscilloscope(MeasurementModule):
                 self.callback_id = None
             self.is_running = False
 
-    def _get_data_slice(self, start_offset, length):
+    def _get_data_slice(self, start_offset, length, step=1):
         """Returns a contiguous array of length samples starting at logical offset start_offset (0 = oldest)."""
         if length <= 0:
             return np.empty((0, 2))
@@ -259,14 +314,15 @@ class Oscilloscope(MeasurementModule):
         idx = (self.write_index + start_offset) % self.buffer_size
         end_idx = idx + length
 
-        return self.input_data[idx:end_idx].copy()
+        return self.input_data[idx:end_idx:step].copy()
 
     def get_display_data(self, window_duration):
         """
         Get triggered data for display.
         window_duration: float, seconds of data to display
         """
-        sample_rate = self.audio_engine.sample_rate
+        self._ensure_buffer_capacity(window_duration)
+        sample_rate = self._sample_rate_hz()
         required_samples = int(window_duration * sample_rate)
 
         if required_samples > self.buffer_size:
@@ -283,7 +339,8 @@ class Oscilloscope(MeasurementModule):
         if search_end <= 0:
             # Buffer too small for requested window, just return what we have (the last required_samples)
             start_offset = max(0, self.buffer_size - required_samples)
-            return self._get_data_slice(start_offset, required_samples)
+            step = max(1, int(np.ceil(required_samples / self.MAX_DISPLAY_SAMPLES)))
+            return self._get_data_slice(start_offset, required_samples, step=step)
 
         # Limit search to recent history to be responsive (e.g. last 50% of possible range)
         # But we need enough pre-trigger data?
@@ -292,7 +349,7 @@ class Oscilloscope(MeasurementModule):
         # We search backwards from the end-required_samples to find the most recent trigger event
         # Or search forwards?
         # Let's search in the last 'search_window' samples
-        search_window = self.TRIGGER_SEARCH_WINDOW_SIZE  # Limit search to avoid high CPU
+        search_window = self._recommended_trigger_search_window(required_samples)  # Limit search to avoid high CPU
         start_idx = max(0, search_end - search_window)
 
         # Extract only the search window subset
@@ -318,14 +375,16 @@ class Oscilloscope(MeasurementModule):
                 self.single_shot_fired = True
                 self.single_shot_armed = False
 
-            return self._get_data_slice(trigger_idx, required_samples)
+            step = max(1, int(np.ceil(required_samples / self.MAX_DISPLAY_SAMPLES)))
+            return self._get_data_slice(trigger_idx, required_samples, step=step)
         else:
             # No trigger found
             if self.trigger_mode == "Auto":
                 # Return latest data
                 # Corresponds to last required_samples
                 start_offset = self.buffer_size - required_samples
-                return self._get_data_slice(start_offset, required_samples)
+                step = max(1, int(np.ceil(required_samples / self.MAX_DISPLAY_SAMPLES)))
+                return self._get_data_slice(start_offset, required_samples, step=step)
             else:
                 # Normal mode: return None (keep last frame)
                 return None

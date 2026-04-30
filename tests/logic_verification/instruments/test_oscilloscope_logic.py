@@ -258,6 +258,35 @@ class TestOscilloscopeLogic(unittest.TestCase):
         data2 = self.scope.get_display_data(window_duration)
         self.assertIsNone(data2, "Should not capture after firing in Single mode")
 
+    def test_long_timebase_keeps_trigger_with_bounded_display_points(self):
+        self.engine.sample_rate = 48000
+        window_duration = 1.0
+
+        self.scope._ensure_buffer_capacity(window_duration)
+        self.assertGreater(self.scope.buffer_size, 8192)
+
+        self.scope.input_data[:] = -1.0
+        self.scope.write_index = 0
+        crossing_prev = 4095
+        crossing_now = 4096
+        self.scope.input_data[crossing_prev, 0] = -0.5
+        self.scope.input_data[crossing_now : self.scope.buffer_size, 0] = 0.5
+        self.scope.input_data[
+            self.scope.buffer_size + crossing_now : self.scope.buffer_size * 2,
+            0,
+        ] = 0.5
+
+        self.scope.trigger_source = 0
+        self.scope.trigger_mode = "Normal"
+        self.scope.trigger_level = 0.0
+        self.scope.trigger_slope = "Rising"
+
+        data = self.scope.get_display_data(window_duration)
+
+        self.assertIsNotNone(data)
+        self.assertLessEqual(len(data), self.scope.MAX_DISPLAY_SAMPLES)
+        self.assertEqual(data[0, 0], 0.5)
+
     def test_measurements_apply_calibration(self):
         # 1. Test with default sensitivity (1.0)
         t = np.linspace(0, 1, 1000)
