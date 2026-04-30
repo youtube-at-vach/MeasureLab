@@ -202,12 +202,9 @@ nav:
       - スピーカーインピーダンス: measurement_recipes/speaker_impedance.md
       - ロックインアンプ: measurement_recipes/lockin_amplifier.md
 
-
   - リファレンス:
       - 用語集: glossary.md
       - 付録: appendix.md
-      - 開発情報: development.md
-      - 提案機能: PROPOSED_FEATURES.md
       - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
     
   - ダウンロード: https://youtube-at-vach.github.io/MeasureLab/download/
