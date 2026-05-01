@@ -711,8 +711,20 @@ class LockInSpectrumFinder(MeasurementModule):
         if (include_targets or spacing == "Scan List Only") and targets:
             marker_freqs = [f for f in targets.keys() if start_f <= f <= stop_f]
             if marker_freqs and spacing != "Scan List Only":
-                # np.unique stably sorts and prevents duplicates
-                freqs = np.unique(np.concatenate([freqs, marker_freqs]))
+                # To prevent nearly-identical frequencies (e.g. log grid 200.000...03 vs marker 200.0)
+                # from causing ill-conditioned matrices in the chunk solver (ghost peaks),
+                # we replace existing frequencies that are extremely close to a marker frequency.
+                merged = list(freqs)
+                for mf in marker_freqs:
+                    if len(merged) > 0:
+                        idx = int(np.argmin(np.abs(np.array(merged) - mf)))
+                        if np.abs(merged[idx] - mf) < 1e-4:  # 0.1 mHz tolerance
+                            merged[idx] = mf
+                        else:
+                            merged.append(mf)
+                    else:
+                        merged.append(mf)
+                freqs = np.unique(merged)
 
         points = len(freqs)
 
