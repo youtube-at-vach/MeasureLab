@@ -59,7 +59,7 @@ You can choose from the following waveforms:
 * **Tone + Noise**: A signal with noise superimposed on a sine wave. Used for S/N ratio testing, etc. Noise amplitude can be adjusted.
 * **Noise**: Noise signal. You can choose the color (frequency characteristic) such as "White", "Pink", or "Brown".
 * **Multitone**: A signal synthesized from multiple sine waves.
-* **MLS (Maximum Length Sequence)**: A pseudo-random signal used for measuring room acoustics, etc. Order can be selected in the range of 10-18.
+* **MLS (Maximum Length Sequence)**: A pseudo-random signal used for measuring room acoustics, etc. Order can be selected in the range of 10-18. Frequencies can be set down to 1Hz and up to the Nyquist frequency.
 * **Golay**: A Golay complementary sequence used for impulse-response and transfer-function measurements. Select **Pair** `A` or `B`, and set **Order (N)** to control the sequence length (`2^N` samples). Because this is a precomputed binary sequence, the normal **Frequency** parameter does not apply.
 * **Burst**: Tone burst signal. You can specify the number of On/Off cycles. Selecting "Windowed" applies a Hanning window to reduce click noise.
 * **PRBS (Pseudo-Random Binary Sequence)**: A pseudo-random binary sequence. Order (7-23) and Seed can be configured.
@@ -115,7 +115,7 @@ Applies Low-Pass (LPF) and/or High-Pass (HPF) filters to the generated signal.
 
 * **Low Pass / High Pass tabs**: Can be configured independently.
 * **Enable**: Activates the filter.
-* **Freq**: Sets the cutoff frequency.
+* **Freq**: Sets the cutoff frequency. Filter frequencies are clamped below the Nyquist frequency.
 * **Order**: Selects the filter order (steepness) from 2-pole to 8-pole.
 
 ## Measurement Tips

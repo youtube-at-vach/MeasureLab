@@ -22,7 +22,7 @@ An oscilloscope draws a graph of this rapidly changing electrical voltage over "
 
 ### Reading the Screen
 
-* **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration, while smaller values zoom in on the waveform.
+* **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration, while smaller values zoom in on the waveform. Note that for long timebases (large Time/Div), history is preserved and plotting resolution is decoupled to maintain trigger sync.
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
     * **Left Scale / Right Scale**: Allows you to set the display magnification for each of the left and right channels. "1.0x" is the standard; setting it to a larger value, such as "2.0x", will vertically expand the display of the waveform.
 * **Channels**: Check boxes can be used to toggle the display/hide status of each channel (Left/Right).
