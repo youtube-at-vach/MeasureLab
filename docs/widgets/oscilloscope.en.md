@@ -22,7 +22,8 @@ An oscilloscope draws a graph of this rapidly changing electrical voltage over "
 
 ### Reading the Screen
 
-* **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration, while smaller values zoom in on the waveform. Note that for long timebases (large Time/Div), history is preserved and plotting resolution is decoupled to maintain trigger sync.
+* **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration (slower changes), while smaller values zoom in to show a shorter duration (faster changes).
+    * 💡 **Key Point**: Even when displaying a long duration, the system continues to record the waveform internally at high resolution. Therefore, you don't have to worry about the waveform becoming 'choppy' or losing its trigger sync.
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
     * **Left Scale / Right Scale**: Allows you to set the display magnification for each of the left and right channels. "1.0x" is the standard; setting it to a larger value, such as "2.0x", will vertically expand the display of the waveform.
 * **Channels**: Check boxes can be used to toggle the display/hide status of each channel (Left/Right).
@@ -50,7 +51,7 @@ The trigger function sets a rule: "Take a picture the exact moment the wave reac
 A feature to display an "afterimage" similar to an analog oscilloscope. It is useful for visually capturing noise distribution and waveform fluctuations (jitter).
 
 💡 **The Sparkler Effect**
-If you wave a sparkler around in the dark, the afterimage of the light lets you draw letters or pictures in the air, right? Persistence is exactly that. By leaving a faint trail of past waveforms on the screen, it becomes much easier to visually spot rare, abnormal noise (a sudden spark) or subtle waveform shaking (jitter) by looking at how the light overlaps over time.
+If you wave a sparkler around in the dark, the afterimage of the light lets you draw letters or pictures in the air, right? Persistence is exactly that. By leaving a faint trail of past waveforms on the screen, it becomes much easier to visually spot rare, abnormal noise (a sudden spark) or subtle waveform shaking (jitter) by looking at how the light overlaps over time. Even in the digital age, this 'analog afterimage' is the ultimate weapon for finding noise!
 
 * **Enable Persistence**: Enables the persistence display.
 * **Decay**: Adjusts the time until the afterimage disappears (decay rate). Moving it to the right makes it last longer.
