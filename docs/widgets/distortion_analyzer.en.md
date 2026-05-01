@@ -12,8 +12,8 @@ It is like a "blood test" in a health checkup, allowing you to know the basic st
 
 Imagine putting a "picture of a perfectly round full moon" into a photocopier. What if the copy that comes out is "slightly oval-shaped" or has "extra stars" printed around it? It's a slightly different shape from the original full moon, right? This is what we call "distortion".
 
-The same thing happens in the audio world. Even if you put a "clean, smooth wave sound (a pure beep)" into an amplifier, the sound that comes out might be slightly jagged, or it might have a high-pitched "ringing" sound mixed in that wasn't in the original.
-The Distortion Analyzer is a tool that precisely measures "how much the shape has deformed from the original, perfect sound."
+The same thing happens in the audio world. Even if you put a "clean, smooth wave sound (a pure beep)" into an amplifier, the sound that comes out might be slightly jagged, or it might have a high-pitched "ringing" sound mixed in that wasn't in the original. This is because the equipment added "extra sounds (overtones)" during the amplification process.
+The Distortion Analyzer is a tool that precisely measures "how much the shape has deformed from the original, perfect sound." It acts like a microscope, finding invisible impurities in the sound.
 
 ## Meaning of Key Indicators
 
@@ -29,7 +29,7 @@ This tool measures the following values:
     * THD+N expressed in dB as a reciprocal.
     * The larger the value, the higher the performance. (e.g., SINAD 100dB corresponds to THD+N 0.001%)
 * **IMD (Intermodulation Distortion)**
-    * Measures the muddiness that occurs when two different sounds are mixed. This indicator is closer to the performance during playback of complex music signals.
+    * Measures the muddiness that occurs when two different sounds are mixed. This indicator shows how clearly the equipment can play "complex music" where many sounds overlap, like an orchestra.
 
 ## Operation
 
@@ -57,9 +57,9 @@ Continues to measure the performance at the current moment.
 
 #### Frequency Sweep
 
-Measures by continuously changing the frequency from low to high tones.
+Measures by continuously changing the frequency from low to high tones, like sweeping your fingers across a piano keyboard from left to right.
 
-* **Use Case**: Used to investigate changes in characteristics for each frequency, such as "good at bass but distorts at high frequencies."
+* **Use Case**: Used to find the equipment's "weak spots" across different frequencies, such as "it's good at bass but distorts at high frequencies."
 * **Settings**: Set Start (starting frequency), End (ending frequency), and Steps (number of measurement points).
 * **Sweep Results**: Results are plotted on a graph. The Y-axis unit can be selected from `dB` or `Percent (%)`, and when displayed in percent, it automatically scales to an approximately logarithmic view.
 
