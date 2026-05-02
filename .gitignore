@@ -35,6 +35,9 @@ env/
 # VSCode settings
 .vscode/
 
+# Zed settings
+.zed/*
+
 # Mac
 .DS_Store
 
