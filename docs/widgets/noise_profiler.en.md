@@ -14,6 +14,16 @@ It goes beyond simply displaying the spectrum and quantifies noise by decomposin
 In addition, based on the temperature and impedance settings, it displays the "Thermal Noise" line, which is the physical limit, allowing comparison with the performance limit of the measurement system.
 It is ideal for evaluating the low-noise performance of amplifiers and microphone preamplifiers, and for identifying noise sources in circuits.
 
+## ☕ Coffee Break: What are the "Colors" of Noise?
+
+Even though we just call it "noise", the character of the sound differs completely depending on its cause. This widget analyzes noise by dividing it into three components (colors and types).
+
+* **White Noise**: A "hissing" sound. It's similar to television static or the sound of heavy rain. Just as mixing all colors of light produces "white," it's called this because it contains all pitches of sound mixed evenly.
+* **1/f Noise (Flicker Noise)**: A "roaring" or "rushing" sound. It has a slightly stronger bass than white noise and is also called pink noise. It is often found in natural sounds, such as a waterfall or a babbling brook.
+* **Hum Noise**: A low "humming" sound. It's similar to the sound of an old refrigerator. This is a state where the AC electricity coming from the wall outlet (50Hz or 60Hz depending on your region) is leaking directly into the audio.
+
+With this tool, the "true identity of the noise," which is hard to figure out just by listening, becomes obvious at a glance, making it a great help in getting rid of noise from amplifiers!
+
 ## Operation
 
 ### Starting and Stopping Measurement
