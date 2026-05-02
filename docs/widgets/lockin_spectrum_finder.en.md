@@ -76,7 +76,7 @@ You can select between two analysis modes based on your needs.
     * **Int x Sync**: Rounds frequencies so they correspond exclusively to exact multiples of the analysis buffer resolution (`fs / buffer_size`). Ideal for precision tracking of signals generated synchronously with the measurement buffer.
     * **Octave Bands**: Calculates frequencies strictly based on the specified fractional octave bands relative to the **Octave Ref Freq**.
 * **Scan Targets:**
-    * **Include Scan Targets**: When checked, the frequencies defined in the **Scan Targets** tab are automatically added to the analysis, guaranteeing that important frequencies (e.g., mains harmonics up to the 16th order) are accurately measured regardless of the base spacing settings.
+    * **Include Scan Targets**: When checked, the frequencies defined in the **Scan Targets** tab are automatically added to the analysis, guaranteeing that important frequencies (e.g., mains harmonics up to the 16th order) are accurately measured regardless of the base spacing settings. Automatically generated frequencies that are extremely close to a target frequency (within 0.1 mHz) will be merged to prevent calculation instability.
     * **Octave Ref Freq**: Reference frequency for Octave band calculations.
 
 ### Scan Targets Tab
