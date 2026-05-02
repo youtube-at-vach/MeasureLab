@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -897,25 +898,18 @@ class LockInFrequencyCounterWidget(QWidget):
             return "interval"
         return "frequency"
 
-    def _format_value(self, value, unit=""):
-        if value is None or not np.isfinite(value):
+    def _format_value(self, value, unit="", sig_figs=6):
+        if value is None:
             return "--"
-        if unit == "s":
-            abs_value = abs(value)
-            if abs_value == 0:
-                return "0 s"
-            if abs_value < 1e-9:
-                return f"{value * 1e12:.6g} ps"
-            if abs_value < 1e-6:
-                return f"{value * 1e9:.6g} ns"
-            if abs_value < 1e-3:
-                return f"{value * 1e6:.6g} µs"
-            if abs_value < 1.0:
-                return f"{value * 1e3:.6g} ms"
-            return f"{value:.12g} s"
-        if unit == "Hz":
-            return f"{value:.12g} Hz"
-        return f"{value:.6g}"
+        try:
+            x = float(value)
+        except (TypeError, ValueError):
+            return "--"
+        if not np.isfinite(x):
+            return "--"
+        if unit in ("Hz", "s"):
+            return format_si(x, unit, sig_figs=sig_figs)
+        return f"{x:.{int(sig_figs)}g}"
 
     def update_distribution_plot(self):
         mode = self._distribution_mode()
@@ -954,11 +948,15 @@ class LockInFrequencyCounterWidget(QWidget):
             return
 
         value_unit = str(stats.get("unit", unit))
-        for key in ("mean", "stddev", "pk_pk", "allan_dev", "min", "max"):
-            self.distribution_stats_labels[key].setText(self._format_value(stats.get(key), value_unit))
-        self.distribution_stats_labels["rms_jitter"].setText(self._format_value(stats.get("rms_jitter"), "s"))
-        self.distribution_stats_labels["skewness"].setText(self._format_value(stats.get("skewness")))
-        self.distribution_stats_labels["kurtosis"].setText(self._format_value(stats.get("kurtosis")))
+        for key in ("mean", "min", "max"):
+            self.distribution_stats_labels[key].setText(self._format_value(stats.get(key), value_unit, sig_figs=12))
+        for key in ("stddev", "pk_pk", "allan_dev"):
+            self.distribution_stats_labels[key].setText(self._format_value(stats.get(key), value_unit, sig_figs=6))
+        self.distribution_stats_labels["rms_jitter"].setText(
+            self._format_value(stats.get("rms_jitter"), "s", sig_figs=6)
+        )
+        self.distribution_stats_labels["skewness"].setText(self._format_value(stats.get("skewness"), sig_figs=6))
+        self.distribution_stats_labels["kurtosis"].setText(self._format_value(stats.get("kurtosis"), sig_figs=6))
 
     def update_ui(self):
         if self.module.is_running:
