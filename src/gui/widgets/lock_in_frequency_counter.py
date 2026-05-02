@@ -178,6 +178,7 @@ class LockInFrequencyCounter(MeasurementModule):
         self.frequency_distribution = deque(maxlen=self.distribution_max_samples)
         self.interval_distribution = deque(maxlen=self.distribution_max_samples)
         self.distribution_timestamps = deque(maxlen=self.distribution_max_samples)
+        self.distribution_revision = 0
 
         self.start_time = 0
 
@@ -249,6 +250,7 @@ class LockInFrequencyCounter(MeasurementModule):
         self.frequency_distribution.clear()
         self.interval_distribution.clear()
         self.distribution_timestamps.clear()
+        self.distribution_revision = 0
 
         sample_rate = self.audio_engine.sample_rate
 
@@ -406,6 +408,7 @@ class LockInFrequencyCounter(MeasurementModule):
                 self.frequency_distribution.append(measured_frequency)
                 self.interval_distribution.append(1.0 / measured_frequency)
                 self.distribution_timestamps.append(time.time())
+                self.distribution_revision += 1
 
             # Smoothing (EMA)
             if samples_elapsed > 0:
@@ -483,6 +486,7 @@ class LockInFrequencyCounter(MeasurementModule):
         self.frequency_distribution.clear()
         self.interval_distribution.clear()
         self.distribution_timestamps.clear()
+        self.distribution_revision += 1
 
     def get_distribution_data(self, mode):
         if mode == "interval":
@@ -539,6 +543,9 @@ class LockInFrequencyCounterWidget(QWidget):
         super().__init__()
         self.module = module
         self.init_ui()
+        self._distribution_update_interval_s = 0.5
+        self._last_distribution_update_time = 0.0
+        self._distribution_cache_key = None
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)  # 10Hz
@@ -870,18 +877,18 @@ class LockInFrequencyCounterWidget(QWidget):
         self.module.nco_history = deque(current_data, maxlen=self.module.nco_avg_count)
 
     def on_distribution_mode_changed(self, _idx):
-        self.update_distribution_plot()
+        self.update_distribution_plot(force=True)
 
     def on_hist_bins_changed(self, _val):
-        self.update_distribution_plot()
+        self.update_distribution_plot(force=True)
 
     def on_clear_distribution_clicked(self):
         self.module.clear_distribution_data()
-        self.update_distribution_plot()
+        self.update_distribution_plot(force=True)
 
     def on_tab_changed(self, _idx):
         if self.tabs.currentWidget() == self.tab_distribution:
-            self.update_distribution_plot()
+            self.update_distribution_plot(force=True)
 
     def on_run_clicked(self, checked):
         if checked:
@@ -911,10 +918,27 @@ class LockInFrequencyCounterWidget(QWidget):
             return format_si(x, unit, sig_figs=sig_figs)
         return f"{x:.{int(sig_figs)}g}"
 
-    def update_distribution_plot(self):
+    def update_distribution_plot(self, force=False):
+        if self.tabs.currentWidget() != self.tab_distribution and not force:
+            return
+
         mode = self._distribution_mode()
+        bins = int(self.hist_bins_spin.value())
+        revision = int(getattr(self.module, "distribution_revision", 0))
+        cache_key = (mode, bins, revision)
+        now = time.monotonic()
+
+        if not force:
+            if cache_key == self._distribution_cache_key:
+                return
+            if (now - self._last_distribution_update_time) < self._distribution_update_interval_s:
+                return
+
         data, unit = self.module.get_distribution_data(mode)
         data = data[np.isfinite(data)]
+
+        self._distribution_cache_key = cache_key
+        self._last_distribution_update_time = now
 
         if self.histogram_item is not None:
             self.plot_distribution.removeItem(self.histogram_item)
@@ -929,7 +953,7 @@ class LockInFrequencyCounterWidget(QWidget):
         self.plot_distribution.setLabel("left", tr("Count"))
 
         if data.size > 0:
-            counts, edges = np.histogram(data, bins=int(self.hist_bins_spin.value()))
+            counts, edges = np.histogram(data, bins=bins)
             centers = (edges[:-1] + edges[1:]) / 2.0
             widths = np.diff(edges)
             self.histogram_item = pg.BarGraphItem(
