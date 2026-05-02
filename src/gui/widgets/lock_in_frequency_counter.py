@@ -1,14 +1,17 @@
-from collections import deque
 import time
+from collections import deque
 
 import numpy as np
 import pyqtgraph as pg
 import scipy.signal
+import scipy.stats
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -168,6 +171,13 @@ class LockInFrequencyCounter(MeasurementModule):
         self.iq_history_i = deque(maxlen=self.max_history)  # For I-Q plot
         self.iq_history_q = deque(maxlen=self.max_history)
 
+        # Distribution / TIC-like statistics buffers. 100k samples keeps long
+        # stability runs useful without allowing unbounded memory growth.
+        self.distribution_max_samples = 100000
+        self.frequency_distribution = deque(maxlen=self.distribution_max_samples)
+        self.interval_distribution = deque(maxlen=self.distribution_max_samples)
+        self.distribution_timestamps = deque(maxlen=self.distribution_max_samples)
+
         self.start_time = 0
 
         # Current Value
@@ -235,6 +245,9 @@ class LockInFrequencyCounter(MeasurementModule):
         self.phase_history.clear()
         self.iq_history_i.clear()
         self.iq_history_q.clear()
+        self.frequency_distribution.clear()
+        self.interval_distribution.clear()
+        self.distribution_timestamps.clear()
 
         sample_rate = self.audio_engine.sample_rate
 
@@ -387,6 +400,11 @@ class LockInFrequencyCounter(MeasurementModule):
             self.signal_present = True
 
             self.current_freq_dev = delta_f
+            measured_frequency = self.gen_frequency + delta_f
+            if measured_frequency > 0.0:
+                self.frequency_distribution.append(measured_frequency)
+                self.interval_distribution.append(1.0 / measured_frequency)
+                self.distribution_timestamps.append(time.time())
 
             # Smoothing (EMA)
             if samples_elapsed > 0:
@@ -460,6 +478,60 @@ class LockInFrequencyCounter(MeasurementModule):
                 self.nco_display_mean = self.gen_frequency
                 self.nco_display_std = 0.0
 
+    def clear_distribution_data(self):
+        self.frequency_distribution.clear()
+        self.interval_distribution.clear()
+        self.distribution_timestamps.clear()
+
+    def get_distribution_data(self, mode):
+        if mode == "interval":
+            return np.asarray(self.interval_distribution, dtype=np.float64), "s"
+        return np.asarray(self.frequency_distribution, dtype=np.float64), "Hz"
+
+    def calculate_distribution_stats(self, mode):
+        values, unit = self.get_distribution_data(mode)
+        values = values[np.isfinite(values)]
+        count = int(values.size)
+        if count == 0:
+            return {"count": 0, "unit": unit}
+
+        mean = float(np.mean(values))
+        stddev = float(np.std(values, ddof=1)) if count > 1 else 0.0
+        pk_pk = float(np.ptp(values)) if count > 1 else 0.0
+        rms_deviation = float(np.sqrt(np.mean((values - mean) ** 2)))
+        skewness = float(scipy.stats.skew(values, bias=False)) if count > 2 and stddev > 0 else 0.0
+        kurtosis = float(scipy.stats.kurtosis(values, fisher=True, bias=False)) if count > 3 and stddev > 0 else 0.0
+
+        if mode == "interval":
+            rms_jitter = rms_deviation
+        else:
+            intervals = np.asarray(self.interval_distribution, dtype=np.float64)
+            intervals = intervals[np.isfinite(intervals)]
+            if intervals.size > 0:
+                interval_mean = float(np.mean(intervals))
+                rms_jitter = float(np.sqrt(np.mean((intervals - interval_mean) ** 2)))
+            else:
+                rms_jitter = 0.0
+
+        allan_dev = 0.0
+        if count > 1:
+            diffs = np.diff(values)
+            allan_dev = float(np.sqrt(0.5 * np.mean(diffs**2)))
+
+        return {
+            "count": count,
+            "unit": unit,
+            "mean": mean,
+            "stddev": stddev,
+            "pk_pk": pk_pk,
+            "rms_jitter": rms_jitter,
+            "skewness": skewness,
+            "kurtosis": kurtosis,
+            "allan_dev": allan_dev,
+            "min": float(np.min(values)),
+            "max": float(np.max(values)),
+        }
+
 
 class LockInFrequencyCounterWidget(QWidget):
     def __init__(self, module: LockInFrequencyCounter):
@@ -517,8 +589,6 @@ class LockInFrequencyCounterWidget(QWidget):
         controls_layout.addWidget(self.freq_spin)
 
         # Lock / FLL
-        from PyQt6.QtWidgets import QCheckBox
-
         self.lock_check = QCheckBox(tr("Lock NCO to Signal (FLL)"))
         self.lock_check.toggled.connect(self.on_lock_toggled)
         controls_layout.addWidget(self.lock_check)
@@ -588,7 +658,71 @@ class LockInFrequencyCounterWidget(QWidget):
         self.tabs.addTab(self.tab_main, tr("Main"))
 
         # =======================
-        # Tab 2: Settings (PID, Input, Stats)
+        # Tab 2: Distribution / TIC Statistics
+        # =======================
+        self.tab_distribution = QWidget()
+        distribution_layout = QVBoxLayout(self.tab_distribution)
+
+        distribution_controls = QHBoxLayout()
+        distribution_controls.addWidget(QLabel(tr("Distribution View:")))
+
+        self.distribution_mode_combo = QComboBox()
+        self.distribution_mode_combo.addItems([tr("Frequency Histogram"), tr("Time Interval Histogram")])
+        self.distribution_mode_combo.currentIndexChanged.connect(self.on_distribution_mode_changed)
+        distribution_controls.addWidget(self.distribution_mode_combo)
+
+        distribution_controls.addWidget(QLabel(tr("Bins:")))
+        self.hist_bins_spin = QSpinBox()
+        self.hist_bins_spin.setRange(5, 500)
+        self.hist_bins_spin.setValue(80)
+        self.hist_bins_spin.valueChanged.connect(self.on_hist_bins_changed)
+        distribution_controls.addWidget(self.hist_bins_spin)
+
+        self.btn_clear_distribution = QPushButton(tr("Clear Distribution"))
+        self.btn_clear_distribution.clicked.connect(self.on_clear_distribution_clicked)
+        distribution_controls.addWidget(self.btn_clear_distribution)
+        distribution_controls.addStretch()
+        distribution_layout.addLayout(distribution_controls)
+
+        distribution_splitter = QSplitter(Qt.Orientation.Horizontal)
+        distribution_layout.addWidget(distribution_splitter)
+
+        self.plot_distribution = pg.PlotWidget(title=tr("Frequency Histogram"))
+        self.plot_distribution.showGrid(x=True, y=True)
+        self.plot_distribution.setLabel("left", tr("Count"))
+        self.plot_distribution.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.histogram_item = None
+        distribution_splitter.addWidget(self.plot_distribution)
+
+        group_distribution_stats = QGroupBox(tr("Distribution Statistics"))
+        stats_grid = QGridLayout(group_distribution_stats)
+        self.distribution_stats_labels = {}
+        stat_rows = [
+            ("count", tr("Samples")),
+            ("mean", tr("Mean")),
+            ("stddev", tr("Std Dev")),
+            ("pk_pk", tr("Pk-Pk")),
+            ("rms_jitter", tr("RMS Jitter")),
+            ("allan_dev", tr("Allan Deviation")),
+            ("skewness", tr("Skewness")),
+            ("kurtosis", tr("Kurtosis (excess)")),
+            ("min", tr("Min")),
+            ("max", tr("Max")),
+        ]
+        for row, (key, label) in enumerate(stat_rows):
+            stats_grid.addWidget(QLabel(label + ":"), row, 0)
+            value_label = QLabel("--")
+            value_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            stats_grid.addWidget(value_label, row, 1)
+            self.distribution_stats_labels[key] = value_label
+
+        distribution_splitter.addWidget(group_distribution_stats)
+        distribution_splitter.setSizes([650, 250])
+
+        self.tabs.addTab(self.tab_distribution, tr("Distribution"))
+
+        # =======================
+        # Tab 3: Settings (PID, Input, Stats)
         # =======================
         self.tab_settings = QWidget()
         settings_layout = QVBoxLayout(self.tab_settings)
@@ -679,6 +813,7 @@ class LockInFrequencyCounterWidget(QWidget):
         settings_layout.addStretch()  # Push everything up
 
         self.tabs.addTab(self.tab_settings, tr("Settings"))
+        self.tabs.currentChanged.connect(self.on_tab_changed)
 
         # -- Meters --
         meters_layout = QHBoxLayout()
@@ -733,6 +868,20 @@ class LockInFrequencyCounterWidget(QWidget):
         current_data = list(self.module.nco_history)
         self.module.nco_history = deque(current_data, maxlen=self.module.nco_avg_count)
 
+    def on_distribution_mode_changed(self, _idx):
+        self.update_distribution_plot()
+
+    def on_hist_bins_changed(self, _val):
+        self.update_distribution_plot()
+
+    def on_clear_distribution_clicked(self):
+        self.module.clear_distribution_data()
+        self.update_distribution_plot()
+
+    def on_tab_changed(self, _idx):
+        if self.tabs.currentWidget() == self.tab_distribution:
+            self.update_distribution_plot()
+
     def on_run_clicked(self, checked):
         if checked:
             self.module.start_analysis()
@@ -743,9 +892,79 @@ class LockInFrequencyCounterWidget(QWidget):
             self.btn_run.setText(tr("Start"))
             self.btn_run.setStyleSheet("")
 
+    def _distribution_mode(self):
+        if self.distribution_mode_combo.currentIndex() == 1:
+            return "interval"
+        return "frequency"
+
+    def _format_value(self, value, unit=""):
+        if value is None or not np.isfinite(value):
+            return "--"
+        if unit == "s":
+            abs_value = abs(value)
+            if abs_value == 0:
+                return "0 s"
+            if abs_value < 1e-9:
+                return f"{value * 1e12:.6g} ps"
+            if abs_value < 1e-6:
+                return f"{value * 1e9:.6g} ns"
+            if abs_value < 1e-3:
+                return f"{value * 1e6:.6g} µs"
+            if abs_value < 1.0:
+                return f"{value * 1e3:.6g} ms"
+            return f"{value:.12g} s"
+        if unit == "Hz":
+            return f"{value:.12g} Hz"
+        return f"{value:.6g}"
+
+    def update_distribution_plot(self):
+        mode = self._distribution_mode()
+        data, unit = self.module.get_distribution_data(mode)
+        data = data[np.isfinite(data)]
+
+        if self.histogram_item is not None:
+            self.plot_distribution.removeItem(self.histogram_item)
+            self.histogram_item = None
+
+        if mode == "interval":
+            self.plot_distribution.setTitle(tr("Time Interval Histogram"))
+            self.plot_distribution.setLabel("bottom", tr("Time Interval"), units="s")
+        else:
+            self.plot_distribution.setTitle(tr("Frequency Histogram"))
+            self.plot_distribution.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_distribution.setLabel("left", tr("Count"))
+
+        if data.size > 0:
+            counts, edges = np.histogram(data, bins=int(self.hist_bins_spin.value()))
+            centers = (edges[:-1] + edges[1:]) / 2.0
+            widths = np.diff(edges)
+            self.histogram_item = pg.BarGraphItem(
+                x=centers, height=counts, width=widths, brush=(80, 180, 255, 160), pen="c"
+            )
+            self.plot_distribution.addItem(self.histogram_item)
+
+        stats = self.module.calculate_distribution_stats(mode)
+        count = int(stats.get("count", 0))
+        self.distribution_stats_labels["count"].setText(str(count))
+
+        if count == 0:
+            for key, label in self.distribution_stats_labels.items():
+                if key != "count":
+                    label.setText("--")
+            return
+
+        value_unit = str(stats.get("unit", unit))
+        for key in ("mean", "stddev", "pk_pk", "allan_dev", "min", "max"):
+            self.distribution_stats_labels[key].setText(self._format_value(stats.get(key), value_unit))
+        self.distribution_stats_labels["rms_jitter"].setText(self._format_value(stats.get("rms_jitter"), "s"))
+        self.distribution_stats_labels["skewness"].setText(self._format_value(stats.get("skewness")))
+        self.distribution_stats_labels["kurtosis"].setText(self._format_value(stats.get("kurtosis")))
+
     def update_ui(self):
         if self.module.is_running:
             self.module.process_data()
+            if self.tabs.currentWidget() == self.tab_distribution:
+                self.update_distribution_plot()
 
             # Signal present indicator
             has_signal = bool(getattr(self.module, "signal_present", False))
