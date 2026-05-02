@@ -1436,5 +1436,10 @@
     "Skewness": "Asimetría",
     "Kurtosis (excess)": "Curtosis (exceso)",
     "Distribution": "Distribución",
-    "Time Interval": "Intervalo de tiempo"
+    "Time Interval": "Intervalo de tiempo",
+    "Audio status summary.": "Resumen del estado de audio.",
+    "In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}": "Entrada: {0} | Salida: {1}\nCPU: {2:.1f}%\nClientes: {3}",
+    "{0:.1f} kHz": "{0:.1f} kHz",
+    "{0:g} Hz": "{0:g} Hz",
+    "{0:g} kHz": "{0:g} kHz"
 }

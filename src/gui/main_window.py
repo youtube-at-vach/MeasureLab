@@ -359,6 +359,9 @@ class MainWindow(QMainWindow):
         self.sr_label = QLabel(tr("SR: -"))
         self.cpu_label = QLabel(tr("CPU: 0%"))
         self.clients_label = QLabel(tr("Clients: 0"))
+        self.compact_status_label = QLabel(tr("Idle") + " • -")
+        self.compact_status_label.setStyleSheet("color: gray;")
+        self.compact_status_label.setToolTip(tr("Audio status summary."))
         self.output_dest_label = QLabel(tr("Output:"))
         self.output_dest_combo = QComboBox()
         self.output_dest_combo.addItem(tr("Physical Output"), "physical")
@@ -396,17 +399,22 @@ class MainWindow(QMainWindow):
                 widget.setParent(None)
 
     def _move_status_widgets_to_sidebar_footer(self):
-        """Move status/routing controls below the menu for menu-only mode."""
+        """Show compact status plus routing controls below the menu."""
         self._clear_sidebar_footer()
         for widget in self._status_widgets:
             self.status_bar.removeWidget(widget)
-            self.sidebar_footer_layout.addWidget(widget)
-            widget.show()
+            widget.hide()
+
+        self.sidebar_footer_layout.addWidget(self.compact_status_label)
+        self.sidebar_footer_layout.addWidget(self.output_dest_combo)
+        self.compact_status_label.show()
+        self.output_dest_combo.show()
 
     def _move_status_widgets_to_status_bar(self):
         """Move status/routing controls back to the QStatusBar."""
         if hasattr(self, "sidebar_footer_layout"):
             self._clear_sidebar_footer()
+        self.compact_status_label.hide()
         for widget in self._status_widgets:
             self.status_bar.addPermanentWidget(widget)
             widget.show()
@@ -564,6 +572,18 @@ class MainWindow(QMainWindow):
             self.logger.exception("Failed to stop audio stream on close")
         super().closeEvent(event)
 
+    def _format_compact_sample_rate(self, sample_rate) -> str:
+        try:
+            sr = float(sample_rate)
+        except (TypeError, ValueError):
+            return str(sample_rate)
+
+        if sr >= 1000 and sr % 1000 == 0:
+            return tr("{0:g} kHz").format(sr / 1000)
+        if sr >= 1000:
+            return tr("{0:.1f} kHz").format(sr / 1000)
+        return tr("{0:g} Hz").format(sr)
+
     def update_status(self):
         status = self.audio_engine.get_status()
 
@@ -573,11 +593,15 @@ class MainWindow(QMainWindow):
 
         # Active State
         if status["active"]:
+            state_text = tr("ACTIVE").capitalize()
+            status_style = "color: green; font-weight: bold;"
             self.status_label.setText(tr("ACTIVE"))
-            self.status_label.setStyleSheet("color: green; font-weight: bold;")
+            self.status_label.setStyleSheet(status_style)
         else:
+            state_text = tr("IDLE").capitalize()
+            status_style = "color: gray;"
             self.status_label.setText(tr("IDLE"))
-            self.status_label.setStyleSheet("color: gray;")
+            self.status_label.setStyleSheet(status_style)
 
         # I/O Mode
         in_mode = status["input_channels"].capitalize()
@@ -602,6 +626,18 @@ class MainWindow(QMainWindow):
 
         # Clients
         self.clients_label.setText(tr("Clients: {0}").format(status["active_clients"]))
+
+        compact_sr = self._format_compact_sample_rate(status["sample_rate"])
+        self.compact_status_label.setText(f"{state_text} • {compact_sr}")
+        self.compact_status_label.setStyleSheet(status_style)
+        self.compact_status_label.setToolTip(
+            tr("In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}").format(
+                in_mode,
+                out_mode,
+                cpu,
+                status["active_clients"],
+            )
+        )
         self._refresh_sidebar_activity_indicators()
 
         # Check for Offline Mode change
