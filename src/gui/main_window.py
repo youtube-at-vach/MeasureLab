@@ -401,6 +401,7 @@ class MainWindow(QMainWindow):
         for widget in self._status_widgets:
             self.status_bar.removeWidget(widget)
             self.sidebar_footer_layout.addWidget(widget)
+            widget.show()
 
     def _move_status_widgets_to_status_bar(self):
         """Move status/routing controls back to the QStatusBar."""
@@ -408,6 +409,7 @@ class MainWindow(QMainWindow):
             self._clear_sidebar_footer()
         for widget in self._status_widgets:
             self.status_bar.addPermanentWidget(widget)
+            widget.show()
 
     def _init_state(self):
         """Initial state synchronization (output destination, offline mode)."""
