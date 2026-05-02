@@ -1436,5 +1436,10 @@
     "Skewness": "偏度",
     "Kurtosis (excess)": "峰度 (超值)",
     "Distribution": "分布",
-    "Time Interval": "时间间隔"
+    "Time Interval": "时间间隔",
+    "Audio status summary.": "音频状态摘要。",
+    "In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}": "输入: {0} | 输出: {1}\nCPU: {2:.1f}%\n客户端: {3}",
+    "{0:.1f} kHz": "{0:.1f} kHz",
+    "{0:g} Hz": "{0:g} Hz",
+    "{0:g} kHz": "{0:g} kHz"
 }
