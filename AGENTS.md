@@ -65,7 +65,11 @@ VS Code から `pytest (venv)` タスクを利用可能です。
 
 最小スモークテスト:
 
-- `./.venv/bin/python -m pytest -q tests/functional/test_config.py tests/functional/test_si_formatting.py`
+- `./.venv/bin/python -m pytest -q tests/logic_verification/core/test_config_manager.py tests/logic_verification/core/test_utils.py`
+
+GUI メインウィンドウ周辺のみを確認する場合:
+
+- `./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_main_window_activity.py`
 
 全体テスト:
 

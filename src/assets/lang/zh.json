@@ -1419,5 +1419,9 @@
     "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危险 - 高强度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波活跃 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢",
+    "Menu Only": "Menu Only",
+    "Normal View": "Normal View",
+    "Toggle menu-only mode.": "Toggle menu-only mode.",
+    "Double-click a menu item to open it.": "Double-click a menu item to open it."
 }

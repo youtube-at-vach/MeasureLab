@@ -1419,5 +1419,9 @@
     "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 위험 - 고강도 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 주의 - 초음파 활성 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢",
+    "Menu Only": "Menu Only",
+    "Normal View": "Normal View",
+    "Toggle menu-only mode.": "Toggle menu-only mode.",
+    "Double-click a menu item to open it.": "Double-click a menu item to open it."
 }
