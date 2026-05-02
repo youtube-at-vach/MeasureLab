@@ -1,7 +1,7 @@
 import importlib
 import logging
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPalette
@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QListWidget,
     QMainWindow,
+    QPushButton,
+    QSizePolicy,
     QStackedWidget,
     QStatusBar,
     QVBoxLayout,
@@ -23,6 +25,7 @@ from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
 from src.core.module_constants import (
     ALL_MODULE_KEYS,
+    EXPERIMENTAL_MODULE_KEYS,
     MODULE_1PPS_MONITOR,
     MODULE_ADVANCED_DISTORTION_METER,
     MODULE_BNIM_METER,
@@ -44,23 +47,21 @@ from src.core.module_constants import (
     MODULE_NETWORK_ANALYZER,
     MODULE_NOISE_PROFILER,
     MODULE_OSCILLOSCOPE,
+    MODULE_PROCESSOR_BENCHMARK,
     MODULE_RAW_TIME_SERIES,
     MODULE_RECORDER_PLAYER,
     MODULE_SIGNAL_GENERATOR,
     MODULE_SOUND_LEVEL_METER,
     MODULE_SOUND_QUALITY_ANALYZER,
+    MODULE_SPATIAL_BINAURAL_MIXER,
     MODULE_SPECTROGRAM,
     MODULE_SPECTRUM_ANALYZER,
+    MODULE_STEREO_ALIGNMENT_MONITOR,
     MODULE_TIMECODE_MONITOR,
     MODULE_TRANSIENT_ANALYZER,
     MODULE_ULTRASOUND_MODULATOR,
-    EXPERIMENTAL_MODULE_KEYS,
-    MODULE_STEREO_ALIGNMENT_MONITOR,
-    MODULE_PROCESSOR_BENCHMARK,
-    MODULE_SPATIAL_BINAURAL_MIXER,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
-
 
 # Registry mapping module key -> (module_path, class_name)
 MODULE_REGISTRY = {
@@ -151,6 +152,10 @@ class MainWindow(QMainWindow):
         self.logger = logging.getLogger(__name__)
         self.setWindowTitle("MeasureLab")
         self.resize(1000, 700)
+        self._menu_only_mode = False
+        self._normal_geometry = None
+        self._normal_min_width = self.minimumWidth()
+        self._normal_max_width = self.maximumWidth()
 
         self._init_core()
         self._init_audio()
@@ -269,20 +274,32 @@ class MainWindow(QMainWindow):
         self._module_keys = [
             k for k in ALL_MODULE_KEYS if self.enable_experimental or k not in EXPERIMENTAL_MODULE_KEYS
         ]
-        self.modules = [None] * len(self._module_keys)
-        self.module_widgets = [None] * len(self._module_keys)
+        self.modules: list[Any | None] = [None] * len(self._module_keys)
+        self.module_widgets: list[DetachableWidgetWrapper | None] = [None] * len(self._module_keys)
 
     def _init_main_layout(self):
         """Initialize the main widget and layout."""
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         layout = QHBoxLayout(main_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         return layout
 
     def _init_sidebar(self, layout):
         """Initialize the sidebar with navigation items."""
+        self.sidebar_panel = QWidget()
+        self.sidebar_panel.setFixedWidth(220)
+        sidebar_layout = QVBoxLayout(self.sidebar_panel)
+        sidebar_layout.setContentsMargins(8, 8, 8, 8)
+
+        self.menu_only_btn = QPushButton(tr("Menu Only"))
+        self.menu_only_btn.setCheckable(True)
+        self.menu_only_btn.setToolTip(tr("Toggle menu-only mode."))
+        self.menu_only_btn.toggled.connect(self.set_menu_only_mode)
+        sidebar_layout.addWidget(self.menu_only_btn)
+
         self.sidebar = QListWidget()
-        self.sidebar.setFixedWidth(200)
         self.sidebar.addItem(tr("Welcome"))
         self.sidebar.addItem(tr("Settings"))  # Add Settings item
 
@@ -290,7 +307,17 @@ class MainWindow(QMainWindow):
             self.sidebar.addItem(tr(key))
 
         self.sidebar.currentRowChanged.connect(self.on_tool_selected)
-        layout.addWidget(self.sidebar)
+        self.sidebar.itemDoubleClicked.connect(self.on_sidebar_item_double_clicked)
+        sidebar_layout.addWidget(self.sidebar, stretch=1)
+
+        self.sidebar_footer = QWidget()
+        self.sidebar_footer_layout = QVBoxLayout(self.sidebar_footer)
+        self.sidebar_footer_layout.setContentsMargins(0, 8, 0, 0)
+        self.sidebar_footer_layout.setSpacing(4)
+        self.sidebar_footer.hide()
+        sidebar_layout.addWidget(self.sidebar_footer)
+
+        layout.addWidget(self.sidebar_panel)
         self._refresh_sidebar_activity_indicators()
 
     def _init_content_area(self, layout):
@@ -312,7 +339,7 @@ class MainWindow(QMainWindow):
         self.content_area.addWidget(self._settings_container)
 
         # Add module pages (Index 2+) - lazy loaded per selection
-        self._module_containers = []
+        self._module_containers: list[QWidget] = []
         for _key in self._module_keys:
             container = QWidget()
             v = QVBoxLayout(container)
@@ -339,20 +366,48 @@ class MainWindow(QMainWindow):
         self.output_dest_combo.addItem(tr("Loopback + Physical"), "loopback_mix")
         self.output_dest_combo.setToolTip(tr("Global output destination for all modules."))
         self.output_dest_combo.currentIndexChanged.connect(self.on_output_destination_changed)
+        self.output_dest_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+        self._status_widgets = [
+            self.status_label,
+            self.io_label,
+            self.sr_label,
+            self.cpu_label,
+            self.clients_label,
+            self.output_dest_label,
+            self.output_dest_combo,
+        ]
 
         # Add labels to status bar
-        self.status_bar.addPermanentWidget(self.status_label)
-        self.status_bar.addPermanentWidget(self.io_label)
-        self.status_bar.addPermanentWidget(self.sr_label)
-        self.status_bar.addPermanentWidget(self.cpu_label)
-        self.status_bar.addPermanentWidget(self.clients_label)
-        self.status_bar.addPermanentWidget(self.output_dest_label)
-        self.status_bar.addPermanentWidget(self.output_dest_combo)
+        self._move_status_widgets_to_status_bar()
 
         # Timer for status update
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(500)  # 500ms update rate
+
+    def _clear_sidebar_footer(self):
+        while self.sidebar_footer_layout.count():
+            item = self.sidebar_footer_layout.takeAt(0)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+
+    def _move_status_widgets_to_sidebar_footer(self):
+        """Move status/routing controls below the menu for menu-only mode."""
+        self._clear_sidebar_footer()
+        for widget in self._status_widgets:
+            self.status_bar.removeWidget(widget)
+            self.sidebar_footer_layout.addWidget(widget)
+
+    def _move_status_widgets_to_status_bar(self):
+        """Move status/routing controls back to the QStatusBar."""
+        if hasattr(self, "sidebar_footer_layout"):
+            self._clear_sidebar_footer()
+        for widget in self._status_widgets:
+            self.status_bar.addPermanentWidget(widget)
 
     def _init_state(self):
         """Initial state synchronization (output destination, offline mode)."""
@@ -403,6 +458,8 @@ class MainWindow(QMainWindow):
             layout = QVBoxLayout(container)
         while layout.count():
             item = layout.takeAt(0)
+            if item is None:
+                continue
             w = item.widget()
             if w is not None:
                 w.setParent(None)
@@ -664,7 +721,78 @@ class MainWindow(QMainWindow):
         # Mirror selection to widgets that expose destination controls
         self._propagate_output_destination(data)
 
+    def set_menu_only_mode(self, enabled: bool):
+        """Toggle between the full main window and a compact menu-only window."""
+        enabled = bool(enabled)
+        if self._menu_only_mode == enabled:
+            return
+
+        self._menu_only_mode = enabled
+        if self.menu_only_btn.isChecked() != enabled:
+            self.menu_only_btn.blockSignals(True)
+            self.menu_only_btn.setChecked(enabled)
+            self.menu_only_btn.blockSignals(False)
+
+        if enabled:
+            self._normal_geometry = self.saveGeometry()
+            self._normal_min_width = self.minimumWidth()
+            self._normal_max_width = self.maximumWidth()
+
+            self.content_area.hide()
+            self._move_status_widgets_to_sidebar_footer()
+            self.sidebar_footer.show()
+            self.status_bar.hide()
+            self.menu_only_btn.setText(tr("Normal View"))
+            self.sidebar.setToolTip(tr("Double-click a menu item to open it."))
+            self.setFixedWidth(self.sidebar_panel.width())
+            return
+
+        self.setMinimumWidth(self._normal_min_width)
+        self.setMaximumWidth(self._normal_max_width)
+        self.content_area.show()
+        self.sidebar_footer.hide()
+        self._move_status_widgets_to_status_bar()
+        self.status_bar.show()
+        self.menu_only_btn.setText(tr("Menu Only"))
+        self.sidebar.setToolTip("")
+
+        if self._normal_geometry is not None:
+            self.restoreGeometry(self._normal_geometry)
+
+        current_index = self.sidebar.currentRow()
+        if current_index >= 0:
+            self.on_tool_selected(current_index)
+
+    def on_sidebar_item_double_clicked(self, item):
+        """Open selected content on double-click while in menu-only mode."""
+        index = self.sidebar.row(item)
+        if not self._menu_only_mode:
+            self.on_tool_selected(index)
+            return
+
+        if index >= 2:
+            module_index = index - 2
+            self._ensure_module_loaded(module_index)
+            wrapper = self.module_widgets[module_index]
+            if isinstance(wrapper, DetachableWidgetWrapper):
+                if wrapper.is_detached:
+                    window = wrapper.independent_window
+                    if window is not None:
+                        window.show()
+                        window.raise_()
+                        window.activateWindow()
+                else:
+                    wrapper.detach()
+                return
+
+        self.set_menu_only_mode(False)
+        self.on_tool_selected(index)
+
     def on_tool_selected(self, index):
+        if index < 0:
+            return
+        if self._menu_only_mode:
+            return
         if index == 1:
             self._ensure_settings_loaded()
         elif index >= 2:

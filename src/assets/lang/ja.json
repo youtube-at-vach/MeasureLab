@@ -1419,5 +1419,9 @@
     "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危険 - 高強度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波放射中 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢",
+    "Menu Only": "メニューのみ",
+    "Normal View": "通常表示",
+    "Toggle menu-only mode.": "メニューのみ表示を切り替えます。",
+    "Double-click a menu item to open it.": "メニュー項目をダブルクリックして開きます。"
 }

@@ -1419,5 +1419,9 @@
     "⬆︎Update available: {0}": "⬆︎Mise à jour disponible : {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEREUX - HAUTE INTENSITÉ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ATTENTION - ULTRASONS ACTIFS 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SÉCURISÉ - FAIBLE INTENSITÉ 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SÉCURISÉ - FAIBLE INTENSITÉ 🟢",
+    "Menu Only": "Menu Only",
+    "Normal View": "Normal View",
+    "Toggle menu-only mode.": "Toggle menu-only mode.",
+    "Double-click a menu item to open it.": "Double-click a menu item to open it."
 }
