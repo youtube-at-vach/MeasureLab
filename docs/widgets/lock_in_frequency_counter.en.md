@@ -34,6 +34,15 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 * **Integrated Phase φ (deg)**: Displays the accumulated "phase change" resulting from the frequency deviation. Because the phase integration uses sample-based elapsed time, long observations are less likely to accumulate artificial drift caused by timing approximation.
 * **I-Q Phase Space (Right side)**: Provides a vector representation of "phase stability." When the points are concentrated at a single spot, the signal is stable. Movement in a circular pattern indicates a slight frequency deviation.
 
+### Distribution Tab
+
+This tab visualizes the statistical distribution of the measured frequency deviations or time intervals over time.
+
+* **Distribution View**: Select between **Frequency Histogram** (distribution of frequencies in Hz) and **Time Interval Histogram** (distribution of cycle times in seconds).
+* **Bins**: Adjust the number of bins (granularity) of the histogram.
+* **Clear Distribution**: Resets the collected distribution data.
+* **Distribution Statistics**: Displays comprehensive statistics for the selected distribution mode, including Mean, Standard Deviation, Peak-to-Peak, RMS Jitter, Allan Deviation, Skewness, Kurtosis, Min, and Max values.
+
 ## Settings
 
 ### Statistics & Averaging
