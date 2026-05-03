@@ -1,83 +1,132 @@
-<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/MeasureLab/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MeasureLab - Audio Measurement Tool</title>
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="MeasureLab is an open-source tool for high-precision audio analysis and measurement on macOS, Windows, and Linux." />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css" />
-  </head>
-  <body>
-    <!-- Background animations -->
-    <div class="background">
-      <div class="blob blob-1"></div>
-      <div class="blob blob-2"></div>
-      <div class="blob blob-3"></div>
-    </div>
-    
-    <div class="container">
-      <header>
-        <div class="lang-switch" aria-label="Language selector">
-          <button type="button" class="lang-btn" data-lang="ja">JA</button>
-          <button type="button" class="lang-btn" data-lang="en">EN</button>
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/MeasureLab/favicon.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>MeasureLab - Audio Measurement Tool</title>
+        <!-- SEO Meta Tags -->
+        <meta
+            name="description"
+            content="MeasureLab is an open-source tool for high-precision audio analysis and measurement on macOS, Windows, and Linux."
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+        <!-- Background animations -->
+        <div class="background">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
         </div>
-        <h1 class="logo">MeasureLab</h1>
-        <p class="subtitle" data-i18n="subtitle">オーディオ測定ツール</p>
-      </header>
-      
-      <main>
-        <section class="download-section">
-          <!-- Primary Download Button (Auto-detected OS) -->
-          <div class="primary-download">
-            <button id="main-download-btn" class="btn-large pulse">
-              <span class="os-icon" id="main-os-icon">🍎</span>
-              <div class="btn-text">
-                <span class="btn-title"><span data-i18n="downloadFor">Download for</span> <span id="main-os-name">macOS</span></span>
-                <span class="btn-version" id="main-version">Loading...</span>
-                <span class="btn-variant" id="main-variant"></span>
-              </div>
-            </button>
-            <div class="aux-info">
-              <span class="file-size" id="main-size"></span>
-              <p class="desc" data-i18n="heroDescription">高精度なオーディオ分析と測定を、あなたのPCで。</p>
-            </div>
-            <div class="variant-picker" id="variant-picker" hidden></div>
-          </div>
 
-          <!-- Other OS Options -->
-          <div class="other-os">
-            <h3 data-i18n="otherPlatforms">その他のプラットフォーム</h3>
-            <div class="os-buttons">
-              <button class="btn-small" data-os="macOS">
-                <span class="os-icon">🍎</span> macOS
-              </button>
-              <button class="btn-small" data-os="Windows">
-                <span class="os-icon">🪟</span> Windows
-              </button>
-              <button class="btn-small" data-os="Linux">
-                <span class="os-icon">🐧</span> Linux
-              </button>
-            </div>
-          </div>
+        <div class="container">
+            <header>
+                <div class="lang-switch" aria-label="Language selector">
+                    <button type="button" class="lang-btn" data-lang="ja">
+                        JA
+                    </button>
+                    <button type="button" class="lang-btn" data-lang="zh">
+                        ZH
+                    </button>
+                    <button type="button" class="lang-btn" data-lang="en">
+                        EN
+                    </button>
+                </div>
+                <h1 class="logo">MeasureLab</h1>
+                <p class="subtitle" data-i18n="subtitle">
+                    Audio Measurement Tool
+                </p>
+            </header>
 
-          <section class="requirements" aria-labelledby="requirements-title">
-            <h3 id="requirements-title" data-i18n="requirementsTitle">ダウンロード前に確認</h3>
-            <p class="requirements-lead" id="requirements-lead"></p>
-            <ul class="requirements-list" id="requirements-list"></ul>
-          </section>
-        </section>
-      </main>
+            <main>
+                <section class="download-section">
+                    <!-- Primary Download Button (Auto-detected OS) -->
+                    <div class="primary-download">
+                        <button id="main-download-btn" class="btn-large pulse">
+                            <span class="os-icon" id="main-os-icon">🍎</span>
+                            <div class="btn-text">
+                                <span class="btn-title"
+                                    ><span data-i18n="downloadFor"
+                                        >Download for</span
+                                    >
+                                    <span id="main-os-name">macOS</span></span
+                                >
+                                <span class="btn-version" id="main-version"
+                                    >Loading...</span
+                                >
+                                <span
+                                    class="btn-variant"
+                                    id="main-variant"
+                                ></span>
+                            </div>
+                        </button>
+                        <div class="aux-info">
+                            <span class="file-size" id="main-size"></span>
+                            <p class="desc" data-i18n="heroDescription">
+                                High-precision audio analysis and measurement on
+                                your computer.
+                            </p>
+                        </div>
+                        <div
+                            class="variant-picker"
+                            id="variant-picker"
+                            hidden
+                        ></div>
+                    </div>
 
-      <footer>
-        <a href="/MeasureLab/" class="footer-link">📖 <span data-i18n="docsLink">ドキュメント</span></a>
-        <a href="https://github.com/youtube-at-vach/MeasureLab" class="footer-link">🐙 GitHub</a>
-      </footer>
-    </div>
-    <script type="module" src="./main.js"></script>
-  </body>
+                    <!-- Other OS Options -->
+                    <div class="other-os">
+                        <h3 data-i18n="otherPlatforms">Other platforms</h3>
+                        <div class="os-buttons">
+                            <button class="btn-small" data-os="macOS">
+                                <span class="os-icon">🍎</span> macOS
+                            </button>
+                            <button class="btn-small" data-os="Windows">
+                                <span class="os-icon">🪟</span> Windows
+                            </button>
+                            <button class="btn-small" data-os="Linux">
+                                <span class="os-icon">🐧</span> Linux
+                            </button>
+                        </div>
+                    </div>
+
+                    <section
+                        class="requirements"
+                        aria-labelledby="requirements-title"
+                    >
+                        <h3
+                            id="requirements-title"
+                            data-i18n="requirementsTitle"
+                        >
+                            Before you download
+                        </h3>
+                        <p class="requirements-lead" id="requirements-lead"></p>
+                        <ul
+                            class="requirements-list"
+                            id="requirements-list"
+                        ></ul>
+                    </section>
+                </section>
+            </main>
+
+            <footer>
+                <a href="/MeasureLab/" class="footer-link"
+                    >📖 <span data-i18n="docsLink">Documentation</span></a
+                >
+                <a
+                    href="https://github.com/youtube-at-vach/MeasureLab"
+                    class="footer-link"
+                    >🐙 GitHub</a
+                >
+            </footer>
+        </div>
+        <script type="module" src="./main.js"></script>
+    </body>
 </html>
