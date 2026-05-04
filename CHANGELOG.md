@@ -1,5 +1,29 @@
 # Changelog
 
+## [v0.7.0] - 2026-05-04
+
+### Added
+
+* **Lock-in Frequency Counter**: Added "Distribution" tab for histogram visualization of frequency and time interval data, including comprehensive real-time statistics (standard deviation, RMS jitter, Allan deviation, skewness, kurtosis).
+* **Lock-in Frequency Counter**: Increased frequency display precision to 12 decimal places with dynamic uncertainty-based formatting.
+* **Signal Generator**: Extended frequency range to support settings from 1Hz up to the Nyquist frequency.
+* **GUI**: Introduced "Menu-only" mode and refactored the sidebar for improved flexibility and layout customization.
+* **GUI**: Added compact audio status widgets and improved layout transition stability.
+* **Docs**: Added "Coffee Break" sections to various widget guides for more engaging explanations.
+
+### Changed
+
+* **GUI**: Major refactoring of the sidebar and module switching logic for better performance and maintainability.
+* **I18n**: Extensive translation updates across all supported languages (French, German, Spanish, Portuguese, Russian, Chinese, Korean) for new features.
+* **Docs**: Refactored MkDocs navigation and improved documentation structure.
+
+### Fixed
+
+* **Oscilloscope**: Improved trigger synchronization for long timebases and decoupled plotting resolution from history preservation.
+* **Lock-in Spectrum Finder**: Prevented ill-conditioned matrices by automatically merging near-duplicate frequency targets.
+* **Signal Generator**: Fixed frequency clamping logic to correctly respect the Nyquist limit.
+* **GUI**: Resolved layout issues when moving between different window arrangements and layouts.
+
 ## [v0.6.5] - 2026-04-28
 
 ### Added
