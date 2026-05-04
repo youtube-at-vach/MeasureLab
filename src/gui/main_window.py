@@ -60,6 +60,7 @@ from src.core.module_constants import (
     MODULE_TIMECODE_MONITOR,
     MODULE_TRANSIENT_ANALYZER,
     MODULE_ULTRASOUND_MODULATOR,
+    MODULE_WAVEFORM_LOOP_PLAYER,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -87,6 +88,7 @@ MODULE_REGISTRY = {
     MODULE_IMPEDANCE_ANALYZER: ("src.gui.widgets.impedance_analyzer", "ImpedanceAnalyzer"),
     MODULE_NOISE_PROFILER: ("src.gui.widgets.noise_profiler", "NoiseProfiler"),
     MODULE_RECORDER_PLAYER: ("src.gui.widgets.recorder_player", "RecorderPlayer"),
+    MODULE_WAVEFORM_LOOP_PLAYER: ("src.gui.widgets.waveform_loop_player", "WaveformLoopPlayer"),
     MODULE_INVERSE_FILTER: ("src.gui.widgets.inverse_filter", "InverseFilter"),
     MODULE_TRANSIENT_ANALYZER: ("src.gui.widgets.transient_analyzer", "TransientAnalyzer"),
     MODULE_SOUND_QUALITY_ANALYZER: ("src.gui.widgets.sound_quality_analyzer", "SoundQualityAnalyzer"),
