@@ -1441,5 +1441,17 @@
     "In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}": "入力: {0} | 出力: {1}\nCPU: {2:.1f}%\nクライアント数: {3}",
     "{0:.1f} kHz": "{0:.1f} kHz",
     "{0:g} Hz": "{0:g} Hz",
-    "{0:g} kHz": "{0:g} kHz"
+    "{0:g} kHz": "{0:g} kHz",
+    "Click waveform to seek. Drag the highlighted region edges to set the loop.": "波形をクリックしてシーク。ハイライト範囲の端をドラッグしてループを設定します。",
+    "End (s):": "終了 (秒):",
+    "Fit All": "全体表示",
+    "Length: {0:.3f} s": "長さ: {0:.3f} 秒",
+    "Load an audio file, inspect the waveform, and loop a selected region.": "音声ファイルを読み込み、波形を確認しながら選択範囲をループ再生します。",
+    "Loaded: {0} ({1}Hz, {2}ch, {3:.2f}s)": "読み込み完了: {0} ({1}Hz, {2}ch, {3:.2f}秒)",
+    "Loop Selection": "選択範囲をループ",
+    "Position: {0:.3f} / {1:.3f} s": "位置: {0:.3f} / {1:.3f} 秒",
+    "Selection: {0:.3f} – {1:.3f} s": "選択範囲: {0:.3f} – {1:.3f} 秒",
+    "Start (s):": "開始 (秒):",
+    "Waveform Loop Player": "波形ループプレーヤー",
+    "Zoom to Selection": "選択範囲へズーム"
 }

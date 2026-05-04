@@ -40,5 +40,6 @@ if False:
     from src.gui.widgets.timecode_monitor import TimecodeMonitor  # noqa: F401
     from src.gui.widgets.transient_analyzer import TransientAnalyzer  # noqa: F401
     from src.gui.widgets.ultrasound_modulator import UltrasoundModulator  # noqa: F401
+    from src.gui.widgets.waveform_loop_player import WaveformLoopPlayer  # noqa: F401
     from src.gui.widgets.settings import SettingsWidget  # noqa: F401
     from src.gui.widgets.welcome import WelcomeWidget  # noqa: F401

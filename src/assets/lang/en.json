@@ -1441,5 +1441,17 @@
     "In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}": "In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}",
     "{0:.1f} kHz": "{0:.1f} kHz",
     "{0:g} Hz": "{0:g} Hz",
-    "{0:g} kHz": "{0:g} kHz"
+    "{0:g} kHz": "{0:g} kHz",
+    "Click waveform to seek. Drag the highlighted region edges to set the loop.": "Click waveform to seek. Drag the highlighted region edges to set the loop.",
+    "End (s):": "End (s):",
+    "Fit All": "Fit All",
+    "Length: {0:.3f} s": "Length: {0:.3f} s",
+    "Load an audio file, inspect the waveform, and loop a selected region.": "Load an audio file, inspect the waveform, and loop a selected region.",
+    "Loaded: {0} ({1}Hz, {2}ch, {3:.2f}s)": "Loaded: {0} ({1}Hz, {2}ch, {3:.2f}s)",
+    "Loop Selection": "Loop Selection",
+    "Position: {0:.3f} / {1:.3f} s": "Position: {0:.3f} / {1:.3f} s",
+    "Selection: {0:.3f} – {1:.3f} s": "Selection: {0:.3f} – {1:.3f} s",
+    "Start (s):": "Start (s):",
+    "Waveform Loop Player": "Waveform Loop Player",
+    "Zoom to Selection": "Zoom to Selection"
 }
