@@ -61,7 +61,7 @@ Check the operational stability of a DIY amplifier or circuit.
 3. Turn **Show DC Offset** ON.
 4. Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
 
-### Finding Intermittent Noise ☕
+### ☕ Coffee Break: Finding Intermittent Noise
 
 Wait for and monitor noise that occurs sporadically, such as occasional "popping" sounds.
 

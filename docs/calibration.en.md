@@ -3,7 +3,7 @@
 MeasureLab features the ability to calibrate the input and output voltages of your audio interface, as well as the sound pressure level (SPL) of microphones and speakers.
 This allows you to associate digital values (dBFS) with physical units (V, dBu, dBV, dB SPL).
 
-## What is Calibration? ☕
+## ☕ Coffee Break: What is Calibration?
 
 In the world of digital audio, signal magnitude is typically expressed in **dBFS (Decibels relative to Full Scale)**. This is a relative value where the absolute maximum representable digital limit (the ceiling) is set to 0 dBFS.
 
