@@ -642,7 +642,7 @@ def make_waveform_display_data(
     blocks = waveform.reshape(bins, samples_per_bin)
     y_min = blocks.min(axis=1)
     y_max = blocks.max(axis=1)
-    centers = (start + (np.arange(bins, dtype=np.float32) + 0.5) * samples_per_bin) / sr
+    centers = (start + np.arange(bins, dtype=np.float32) * samples_per_bin + (samples_per_bin - 1) / 2.0) / sr
 
     x = np.empty(bins * 3, dtype=np.float32)
     y = np.empty(bins * 3, dtype=np.float32)
