@@ -5,6 +5,7 @@ import numpy as np
 
 sys.modules["sounddevice"] = MagicMock()
 
+import src.gui.widgets.waveform_loop_player as waveform_loop_player  # noqa: E402
 from src.core.audio_engine import AudioEngine  # noqa: E402
 from src.gui.widgets.waveform_loop_player import WaveformLoopPlayer, make_waveform_display_data  # noqa: E402
 
@@ -66,10 +67,22 @@ def test_output_modes_and_gain_are_applied():
     np.testing.assert_allclose(outdata, expected, rtol=1e-6)
 
 
-def test_make_waveform_display_data_downsamples_to_min_max_pairs():
+def test_make_waveform_display_data_decimates_visible_raw_range_for_zoom():
     data = np.array([0.0, -0.5, 0.25, 1.0, -1.0, 0.2], dtype=np.float32)
 
     x, y = make_waveform_display_data(data, sample_rate=6, max_points=4)
 
-    np.testing.assert_allclose(x, np.array([0.0, 0.0, 0.5, 0.5], dtype=np.float32))
-    np.testing.assert_allclose(y, np.array([-0.5, 0.25, -1.0, 1.0], dtype=np.float32))
+    np.testing.assert_allclose(x, np.array([0.0, 2.0 / 6.0, 4.0 / 6.0], dtype=np.float32))
+    np.testing.assert_allclose(y, np.array([0.0, 0.25, -1.0], dtype=np.float32))
+
+
+def test_make_waveform_display_data_uses_min_max_envelope_for_large_ranges(monkeypatch):
+    monkeypatch.setattr(waveform_loop_player, "RAW_WAVEFORM_POINT_LIMIT", 4)
+    data = np.array([0.0, -0.5, 0.25, 1.0, -1.0, 0.2], dtype=np.float32)
+
+    x, y = make_waveform_display_data(data, sample_rate=6, max_points=6)
+
+    np.testing.assert_allclose(x[0:3], np.array([1.0 / 6.0, 1.0 / 6.0, np.nan], dtype=np.float32))
+    np.testing.assert_allclose(y[0:3], np.array([-0.5, 0.25, np.nan], dtype=np.float32))
+    np.testing.assert_allclose(x[3:6], np.array([4.0 / 6.0, 4.0 / 6.0, np.nan], dtype=np.float32))
+    np.testing.assert_allclose(y[3:6], np.array([-1.0, 1.0, np.nan], dtype=np.float32))

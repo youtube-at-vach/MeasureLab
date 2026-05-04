@@ -7,6 +7,7 @@ will detect these imports and include the modules in the bundle.
 
 if False:
     from src.gui.widgets.advanced_distortion_meter import AdvancedDistortionMeter  # noqa: F401
+
     from src.gui.widgets.bnim_meter import BNIMMeter  # noqa: F401
     from src.gui.widgets.boxcar_averager import BoxcarAverager  # noqa: F401
     from src.gui.widgets.distortion_analyzer import DistortionAnalyzer  # noqa: F401
@@ -30,7 +31,6 @@ if False:
     from src.gui.widgets.processor_benchmark import ProcessorBenchmark  # noqa: F401
     from src.gui.widgets.raw_time_series import RawTimeSeries  # noqa: F401
     from src.gui.widgets.recorder_player import RecorderPlayer  # noqa: F401
-    from src.gui.widgets.settings import SettingsWidget  # noqa: F401
     from src.gui.widgets.signal_generator import SignalGenerator  # noqa: F401
     from src.gui.widgets.sound_level_meter import SoundLevelMeter  # noqa: F401
     from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzer  # noqa: F401
@@ -41,4 +41,5 @@ if False:
     from src.gui.widgets.transient_analyzer import TransientAnalyzer  # noqa: F401
     from src.gui.widgets.ultrasound_modulator import UltrasoundModulator  # noqa: F401
     from src.gui.widgets.waveform_loop_player import WaveformLoopPlayer  # noqa: F401
+    from src.gui.widgets.settings import SettingsWidget  # noqa: F401
     from src.gui.widgets.welcome import WelcomeWidget  # noqa: F401

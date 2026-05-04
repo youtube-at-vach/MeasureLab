@@ -28,7 +28,9 @@ from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
-MAX_WAVEFORM_POINTS = 6000
+MAX_WAVEFORM_POINTS = 12000
+RAW_WAVEFORM_POINT_LIMIT = 500000
+WAVEFORM_REFRESH_DELAY_MS = 35
 
 
 class WaveformLoadWorker(QThread):
@@ -88,7 +90,7 @@ class WaveformLoopPlayer(MeasurementModule):
 
     @property
     def description(self) -> str:
-        return "Load an audio file, inspect the waveform, and loop a selected region."
+        return tr("Load an audio file, inspect the waveform, and loop a selected region.")
 
     def get_widget(self):
         if self.widget is None:
@@ -264,8 +266,13 @@ class WaveformLoopPlayerWidget(QWidget):
         self.progress_dialog = None
         self._updating_region = False
         self._updating_spinboxes = False
+        self._pending_waveform_range: tuple[float, float] | None = None
 
         self.init_ui()
+
+        self._waveform_refresh_timer = QTimer()
+        self._waveform_refresh_timer.setSingleShot(True)
+        self._waveform_refresh_timer.timeout.connect(self.refresh_visible_waveform)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
@@ -286,6 +293,7 @@ class WaveformLoopPlayerWidget(QWidget):
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.setMenuEnabled(False)
         self.waveform_curve = self.plot_widget.plot([], [], pen=pg.mkPen("#7fd3ff", width=1))
+        self.plot_widget.getViewBox().sigXRangeChanged.connect(self.on_x_range_changed)
         self.cursor_line = pg.InfiniteLine(pos=0.0, angle=90, pen=pg.mkPen("#ffcc33", width=2))
         self.region = pg.LinearRegionItem(values=(0.0, 0.0), movable=True, brush=(80, 160, 255, 45))
         self.region.setZValue(10)
@@ -455,10 +463,43 @@ class WaveformLoopPlayerWidget(QWidget):
             self._update_region_ui(0.0, 0.0)
             return
 
-        x, y = make_waveform_display_data(data, self.module.sample_rate, MAX_WAVEFORM_POINTS)
-        self.waveform_curve.setData(x, y)
         self.region.setBounds((0.0, duration))
         self._update_region_ui(0.0, duration)
+        self.refresh_visible_waveform((0.0, duration))
+
+    def on_x_range_changed(self, _view_box, x_range):
+        if self.module.playback_buffer is None:
+            return
+        self._pending_waveform_range = (float(x_range[0]), float(x_range[1]))
+        self._waveform_refresh_timer.start(WAVEFORM_REFRESH_DELAY_MS)
+
+    def refresh_visible_waveform(self, x_range: tuple[float, float] | None = None):
+        data = self.module.playback_buffer
+        if data is None or len(data) == 0:
+            self.waveform_curve.setData([], [])
+            return
+
+        if x_range is None:
+            x_range = self._pending_waveform_range
+        if x_range is None:
+            x_range = tuple(float(v) for v in self.plot_widget.getViewBox().viewRange()[0])
+
+        start_s = max(0.0, min(float(x_range[0]), self.module.duration_seconds))
+        end_s = max(0.0, min(float(x_range[1]), self.module.duration_seconds))
+        if end_s <= start_s:
+            start_s, end_s = 0.0, self.module.duration_seconds
+
+        sr = max(1, self.module.sample_rate)
+        start_sample = int(np.floor(start_s * sr))
+        end_sample = int(np.ceil(end_s * sr))
+        point_budget = self._waveform_point_budget()
+        x, y = make_waveform_display_data(data, sr, point_budget, start_sample, end_sample)
+        self.waveform_curve.setData(x, y)
+
+    def _waveform_point_budget(self) -> int:
+        # Keep redraw cost bounded while using enough points for the current plot width.
+        plot_width = max(800, int(self.plot_widget.width() or 0))
+        return int(np.clip(plot_width * 4, 4000, MAX_WAVEFORM_POINTS))
 
     def _update_region_ui(self, start_s: float, end_s: float):
         duration = self.module.duration_seconds
@@ -524,13 +565,17 @@ class WaveformLoopPlayerWidget(QWidget):
         start_s, end_s = self.module.get_selection_seconds()
         if end_s > start_s:
             padding = max(0.01, (end_s - start_s) * 0.08)
-            self.plot_widget.setXRange(max(0.0, start_s - padding), min(self.module.duration_seconds, end_s + padding))
+            left = max(0.0, start_s - padding)
+            right = min(self.module.duration_seconds, end_s + padding)
+            self.plot_widget.setXRange(left, right)
+            self.refresh_visible_waveform((left, right))
 
     def on_fit_all(self):
         duration = self.module.duration_seconds
         if duration > 0:
             self.plot_widget.setXRange(0.0, duration, padding=0.02)
             self.plot_widget.setYRange(-1.05, 1.05, padding=0.02)
+            self.refresh_visible_waveform((0.0, duration))
 
     def _update_selection_label(self):
         start_s, end_s = self.module.get_selection_seconds()
@@ -551,36 +596,60 @@ class WaveformLoopPlayerWidget(QWidget):
 
 
 def make_waveform_display_data(
-    data: np.ndarray, sample_rate: int, max_points: int = MAX_WAVEFORM_POINTS
+    data: np.ndarray,
+    sample_rate: int,
+    max_points: int = MAX_WAVEFORM_POINTS,
+    start_sample: int = 0,
+    end_sample: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Build a compact min/max waveform suitable for interactive plotting."""
-    if data.ndim > 1:
-        channel_indices = np.argmax(np.abs(data), axis=1)
-        waveform = data[np.arange(len(data)), channel_indices]
-    else:
-        waveform = data
+    """Build zoom-aware waveform data with bounded rendering cost.
 
-    total = len(waveform)
-    if total == 0:
+    When the visible sample count is small enough, return raw samples so the
+    waveform stays clean while zoomed in. For wider views, return min/max
+    vertical envelope bars separated by NaNs; this avoids misleading diagonal
+    zig-zags between decimated bins while keeping point count capped.
+    """
+    total_samples = len(data)
+    if total_samples == 0:
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32)
 
-    if total <= max_points:
-        x = np.arange(total, dtype=np.float32) / max(1, sample_rate)
-        return x, waveform.astype(np.float32, copy=False)
+    start = max(0, min(int(start_sample), total_samples - 1))
+    end = total_samples if end_sample is None else max(start + 1, min(int(end_sample), total_samples))
 
-    bins = max(1, max_points // 2)
-    samples_per_bin = int(np.ceil(total / bins))
+    if data.ndim > 1:
+        # Use the first channel for display: stable shape, low CPU, and no phase-cancellation surprises.
+        waveform = data[start:end, 0]
+    else:
+        waveform = data[start:end]
+
+    visible_samples = len(waveform)
+    if visible_samples == 0:
+        return np.array([], dtype=np.float32), np.array([], dtype=np.float32)
+
+    sr = max(1, sample_rate)
+    if visible_samples <= RAW_WAVEFORM_POINT_LIMIT:
+        stride = max(1, int(np.ceil(visible_samples / max(1, max_points))))
+        sample_indices = np.arange(start, end, stride, dtype=np.float32)
+        x = sample_indices / sr
+        return x, waveform[::stride].astype(np.float32, copy=False)
+
+    bins = max(1, max_points // 3)
+    samples_per_bin = int(np.ceil(visible_samples / bins))
     padded = bins * samples_per_bin
-    if padded > total:
-        waveform = np.pad(waveform, (0, padded - total), mode="edge")
+    if padded > visible_samples:
+        waveform = np.pad(waveform, (0, padded - visible_samples), mode="edge")
 
     blocks = waveform.reshape(bins, samples_per_bin)
     y_min = blocks.min(axis=1)
     y_max = blocks.max(axis=1)
-    centers = (np.arange(bins, dtype=np.float32) * samples_per_bin) / max(1, sample_rate)
+    centers = (start + (np.arange(bins, dtype=np.float32) + 0.5) * samples_per_bin) / sr
 
-    x = np.repeat(centers, 2)
-    y = np.empty(bins * 2, dtype=np.float32)
-    y[0::2] = y_min
-    y[1::2] = y_max
+    x = np.empty(bins * 3, dtype=np.float32)
+    y = np.empty(bins * 3, dtype=np.float32)
+    x[0::3] = centers
+    x[1::3] = centers
+    x[2::3] = np.nan
+    y[0::3] = y_min
+    y[1::3] = y_max
+    y[2::3] = np.nan
     return x, y
