@@ -7,6 +7,13 @@ This is not just a decoration; it is a "multi-functional frame" provided to offe
 
 Whether you are using tools such as the Spectrogram or Spectrum Analyzer, you can record data and rearrange layouts with the same operational feel.
 
+## ☕ Coffee Break: Build your own 'Cockpit'
+
+You know those scenes in movies where hackers or scientists are working surrounded by multiple monitors? Looks cool, doesn't it?
+
+MeasureLab widgets initially fit into one main window, but by pressing the 'Detach Window' button, you can place each measurement instrument as an independent small window anywhere on your screen.
+Putting an oscilloscope and signal generator on your left monitor, and a giant spectrum analyzer on your right monitor... the greatest appeal of this feature is that you can freely build your own 'laboratory cockpit' using multiple monitors!
+
 ## Operation
 
 ### Saving Screenshots (Screenshot)
