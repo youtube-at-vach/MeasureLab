@@ -31,8 +31,8 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 * **Spectrogram:** Add Reference Subtraction Mode (real-time difference between two sources).
 * **Signal Generator:** Add Interference/Glitch Injector (simulate dropouts, USB packet loss).
-* **Oscilloscope:** Add CMRR/PSRR Mode, Slew Rate Calculator, **Power (Wattage) Display Mode** (visualize instantaneous power delivery to load).
-* **Spectrum Analyzer:** Add DAC Filter Classifier, **Class-D PWM Artifact Analyzer** (out-of-band switching noise).
+* **Oscilloscope:** Add CMRR/PSRR Mode.
+* **Spectrum Analyzer:** (Extensions pending).
 * **Frequency Counter:** Add Thermal Drift Logger, Phase Noise Plot.
 * **Network Analyzer:** Add Amplifier Stability Margins, Impulse Response & Coherence.
 * **Impedance Analyzer:** Add Cable Tester Mode, Damping Factor / Amp Output Impedance Mode.
@@ -53,6 +53,8 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 ## ⏸️ Under Review / On Hold
 
 * Holographic Audio Topography, 3D Spectral Waterfall, Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
+* **Power Display Mode** (Oscilloscope): On hold. UI becomes complex with conversion factors for current sensing.
+* **DAC Filter Classifier & PWM Switching Noise Analysis** (Spectrum Analyzer): Integration postponed; kept as candidate ideas.
 
 ---
 
@@ -61,6 +63,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Step Response Analyzer / Spectrum Analyzer THD Hot-Tracking / Multi-Channel Phase Matrix.**
 * **Phase/Polarity Checker:** Duplicate. Verifiable via Oscilloscope or Transient Analyzer.
 * **Multitone THD Analyzer:** Duplicate. Covered by Advanced Distortion Meter (MIM).
+* **Slew Rate Calculator** (Oscilloscope): Cancelled. Narrow-band sound devices do not yield meaningful results in testing.
 
 ---
 
