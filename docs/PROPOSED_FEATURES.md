@@ -23,9 +23,6 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Dynamics Processor Profiler:** Measures static I/O transfer curves and attack/release.
 * **Bit-Perfect Verifier:** PRBS/watermark generator for loopback verification.
 * **Realtime/Offline Null Comparator:** Channel inversion with sub-sample matching.
-* **Wireless / Bluetooth Codec Analyzer:** Latency, jitter, and psychoacoustic profiling.
-* **DSD / PDM Stream Analyzer:** 1-bit high-frequency stream analysis and noise shaping visualization.
-* **USB Audio Protocol Sniffer:** Analyzes USB packet jitter and dropouts for audio streams.
 
 ### 🛠️ Extensions to Existing Widgets
 
@@ -55,6 +52,10 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * Holographic Audio Topography, 3D Spectral Waterfall, Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
 * **Power Display Mode** (Oscilloscope): On hold. UI becomes complex with conversion factors for current sensing.
 * **DAC Filter Classifier & PWM Switching Noise Analysis** (Spectrum Analyzer): Integration postponed; kept as candidate ideas.
+* **Bluetooth / DSD / USB Sniffer Proposals**: On hold.
+    * **Wireless / Bluetooth Codec Analyzer**: Pending.
+    * **DSD / PDM Stream Analyzer**: Few DSD-compatible devices available for testing.
+    * **USB Audio Protocol Sniffer**: Technical difficulty in implementing cross-platform packet sniffing.
 
 ---
 
