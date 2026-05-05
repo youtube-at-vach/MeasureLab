@@ -7,6 +7,13 @@
 A tool for visualizing data from **SOFA files** containing HRTF (Head-Related Transfer Function) and auditioning it by listening to actual sounds.
 It is useful in spatial audio (3D audio) production and research for intuitively understanding HRTF data characteristics or testing if they match your own ears.
 
+## ☕ Coffee Break: The Mystery of Hearing Sounds from 'Behind' with Earphones
+
+Stereo earphones only have speakers on the 'left' and 'right', so why do sounds in modern games and VR seem to come from 'behind' or 'above' you?
+
+Actually, our 'earlobes (pinnae)' have a very complex shape. When a sound comes from behind versus from the front, the way it bounces and reflects off this complex earlobe (changing the sound quality) is subtly different. From years of experience, the brain has learned, 'Ah, when the sound is muffled in this specific way, it means it's coming from behind.'
+**HRTF (Head-Related Transfer Function)** is the recorded data of these reflection patterns of the earlobes and head—'when it comes from the front, the sound quality changes like this,' and 'when from behind, it changes like that.' If you 'multiply' normal sounds by this HRTF data and play it through earphones, your brain is tricked into thinking, 'It's ringing from behind!' The HRTF Player is a tool to peek inside the contents of that magical data.
+
 ## Features and UI
 
 ### Main Plot (Heatmap)

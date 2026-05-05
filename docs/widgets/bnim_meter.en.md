@@ -8,6 +8,14 @@ This is a unique meter that simulates and visualizes how the human "hearing (bra
 More intuitively than a standard phase meter (Lissajous waveform), it displays "which frequency of sound is heard from which direction (left or right)" in a heat map like a thermogram.
 It is ideal for checking the sense of localization and spread of stereo sound images, and for checking binaural recordings.
 
+## ☕ Coffee Break: How do owls find mice in the dark?
+
+In a pitch-black forest, how does an owl pinpoint the exact location of a mouse on the ground? Interestingly, an owl's left and right ears are positioned at slightly different 'heights'.
+
+When a sound source (like a mouse's footsteps) is off to one side, the sound reaches the closer ear 'just a tiny bit earlier'. This is called **ITD (Interaural Time Difference)**.
+Furthermore, because the head acts as an obstacle, the sound is 'slightly quieter' in the farther ear. This is called **ILD (Interaural Level Difference)**.
+The brain of an owl (and humans too!) calculates this minute 'time difference' and 'volume difference' at ultra-high speed to determine the direction of the sound in 3D space. The BNIM meter is a tool that mimics this exact 'brain calculation' to project the direction of sound onto your screen.
+
 ## How to Read the Screen
 
 ### Main Graph (Neural Map)
