@@ -179,5 +179,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     - PCのFFTおよび描画パフォーマンスをテストし、リアルタイム処理の限界を検証します。
 - **[Settings](widgets/settings.md)**
     - オーディオデバイス設定、言語設定、テーマ変更などを行います。
+- **[Log Viewer](widgets/log_viewer.md)**
+    - アプリケーションのログ、警告、エラーをリアルタイムで表示し、トラブルシューティングに役立てます。
 - **[Welcome](widgets/welcome.md)**
     - 起動画面です。

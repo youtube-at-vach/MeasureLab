@@ -173,5 +173,7 @@ Other useful functions.
     - Tests the FFT and rendering performance of your PC to verify real-time processing limits.
 - **[Settings](widgets/settings.md)**
     - Configure audio device settings, language settings, theme changes, etc.
+- **[Log Viewer](widgets/log_viewer.en.md)**
+    - Displays real-time application logs, warnings, and errors for diagnostics and troubleshooting.
 - **[Welcome](widgets/welcome.md)**
     - The startup screen.
