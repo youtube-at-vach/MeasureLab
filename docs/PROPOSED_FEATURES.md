@@ -31,7 +31,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Oscilloscope:** Add CMRR/PSRR Mode.
 * **Spectrum Analyzer:** (Extensions pending).
 * **Frequency Counter:** Add Thermal Drift Logger, Phase Noise Plot.
-* **Network Analyzer:** Add Amplifier Stability Margins, Impulse Response & Coherence.
+* **Network Analyzer:** Add Amplifier Stability Margins & Coherence.
 * **Impedance Analyzer:** Add Cable Tester Mode, Damping Factor / Amp Output Impedance Mode.
 * **Distortion Analyzer:** Thermal & Power Stress Logger, **Harmonic Phase Analyzer** (measure relative phase of harmonics to construct non-linear transfer curves).
 * **Advanced Distortion Meter:** Add RF Immunity (EMI Rejection Tester).
@@ -43,7 +43,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## ✅ Already Implemented
 
-* Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer, J-Test & AES17, Network Analyzer RIAA EQ Curve Matcher, LUFS Meter (True Peak / ISKb Detection).
+* Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer, J-Test & AES17, Network Analyzer RIAA EQ Curve Matcher, Network Analyzer Impulse Response, LUFS Meter (True Peak / ISKb Detection).
 
 ---
 

@@ -32,7 +32,7 @@
 | 7 | **Distortion Analyzer** | THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ビンセンターへのスナップ、ハーモニクスバーグラフ、平均化機能搭載。 |
 | 8 | **Linearity Analyzer** | 信号レベルに対するゲインの直線性（AES17 Linearity Deviation）を測定。DACの微小信号再現性やビット精度、ダイナミックレンジの検証に対応。 |
 | 9 | **Advanced Distortion Meter** | MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。 |
-| 10 | **Network Analyzer** | 周波数特性(ゲイン・位相・群遅延)の測定。スイープ測定、複数トレース表示、RIAAカーブ比較、周波数範囲制限対応。 |
+| 10 | **Network Analyzer** | 周波数特性(ゲイン・位相・群遅延)およびインパルスレスポンスの測定。スイープ測定、複数トレース表示、RIAAカーブ比較、周波数範囲制限対応。 |
 | 11 | **Oscilloscope** | 2チャンネル波形表示、トリガー機能、カーソル測定、演算波形(A+B, A-B)、リアルタイムローパス/ハイパスフィルタリング対応。 |
 | 12 | **Raw Time Series** | 長時間スパンをリングバッファで保持する2chスクロール波形モニタ。 |
 | 13 | **Transient Analyzer** | トリガ収録＋CWT で過渡解析、解析帯域/スケールを柔軟に指定。 |
