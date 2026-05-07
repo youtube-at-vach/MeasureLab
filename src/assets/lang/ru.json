@@ -1442,7 +1442,7 @@
     "{0:.1f} kHz": "{0:.1f} кГц",
     "{0:g} Hz": "{0:g} Гц",
     "{0:g} kHz": "{0:g} кГц",
-    "Click waveform to seek. Drag the highlighted region edges to set the loop.": "Click waveform to seek. Drag the highlighted region edges to set the loop.",
+    "Click waveform to seek. Shift-drag waveform to set the loop range; drag highlighted edges for fine adjustment.": "Click waveform to seek. Shift-drag waveform to set the loop range; drag highlighted edges for fine adjustment.",
     "End (s):": "End (s):",
     "Fit All": "Fit All",
     "Length: {0:.3f} s": "Length: {0:.3f} s",

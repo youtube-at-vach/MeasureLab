@@ -4,7 +4,7 @@ import os
 import numpy as np
 import pyqtgraph as pg
 import soundfile as sf
-from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -267,6 +267,8 @@ class WaveformLoopPlayerWidget(QWidget):
         self._updating_region = False
         self._updating_spinboxes = False
         self._pending_waveform_range: tuple[float, float] | None = None
+        self._range_drag_active = False
+        self._range_drag_start_s: float | None = None
 
         self.init_ui()
 
@@ -300,12 +302,18 @@ class WaveformLoopPlayerWidget(QWidget):
         self.region.sigRegionChangeFinished.connect(self.on_region_changed)
         self.plot_widget.addItem(self.region)
         self.plot_widget.addItem(self.cursor_line)
+        self.plot_widget.viewport().installEventFilter(self)
         self.plot_widget.scene().sigMouseClicked.connect(self.on_plot_clicked)
         layout.addWidget(self.plot_widget, stretch=1)
 
-        hint = QLabel(tr("Click waveform to seek. Drag the highlighted region edges to set the loop."))
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
+        self.hint_label = QLabel()
+        self.hint_label.setText(
+            tr(
+                "Click waveform to seek. Shift-drag waveform to set the loop range; drag highlighted edges for fine adjustment."
+            )
+        )
+        self.hint_label.setWordWrap(True)
+        layout.addWidget(self.hint_label)
 
         controls = QGroupBox(tr("Playback"))
         controls_layout = QVBoxLayout()
@@ -394,6 +402,68 @@ class WaveformLoopPlayerWidget(QWidget):
         self.end_spin.setEnabled(enabled)
         self.out_mode_combo.setEnabled(enabled)
         self.gain_slider.setEnabled(enabled)
+
+    def eventFilter(self, watched, event):
+        if watched is self.plot_widget.viewport() and self.module.playback_buffer is not None:
+            event_type = event.type()
+            if event_type == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
+                if self._should_start_range_drag(event):
+                    start_s = self._time_from_mouse_event(event)
+                    if start_s is not None:
+                        self._range_drag_active = True
+                        self._range_drag_start_s = start_s
+                        self._update_region_ui(start_s, start_s)
+                        self.plot_widget.viewport().setCursor(Qt.CursorShape.CrossCursor)
+                        event.accept()
+                        return True
+
+            if event_type == QEvent.Type.MouseMove and self._range_drag_active:
+                if event.buttons() & Qt.MouseButton.LeftButton:
+                    current_s = self._time_from_mouse_event(event)
+                    if current_s is not None and self._range_drag_start_s is not None:
+                        self._update_region_ui(
+                            min(self._range_drag_start_s, current_s), max(self._range_drag_start_s, current_s)
+                        )
+                    event.accept()
+                    return True
+                self._finish_range_drag()
+
+            if event_type == QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
+                if self._range_drag_active:
+                    current_s = self._time_from_mouse_event(event)
+                    if current_s is not None and self._range_drag_start_s is not None:
+                        self._update_region_ui(
+                            min(self._range_drag_start_s, current_s), max(self._range_drag_start_s, current_s)
+                        )
+                    self._finish_range_drag()
+                    event.accept()
+                    return True
+
+        return super().eventFilter(watched, event)
+
+    def _should_start_range_drag(self, event) -> bool:
+        if not self._event_is_inside_plot(event):
+            return False
+        return bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+
+    def _event_is_inside_plot(self, event) -> bool:
+        scene_pos = self.plot_widget.mapToScene(event.position().toPoint())
+        return self.plot_widget.plotItem.sceneBoundingRect().contains(scene_pos)
+
+    def _time_from_mouse_event(self, event) -> float | None:
+        if not self._event_is_inside_plot(event):
+            return None
+        scene_pos = self.plot_widget.mapToScene(event.position().toPoint())
+        point = self.plot_widget.plotItem.vb.mapSceneToView(scene_pos)
+        return self._clamp_time(point.x())
+
+    def _clamp_time(self, seconds: float) -> float:
+        return max(0.0, min(float(seconds), self.module.duration_seconds))
+
+    def _finish_range_drag(self):
+        self._range_drag_active = False
+        self._range_drag_start_s = None
+        self.plot_widget.viewport().unsetCursor()
 
     def on_load(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -535,6 +605,9 @@ class WaveformLoopPlayerWidget(QWidget):
 
     def on_plot_clicked(self, event):
         if self.module.playback_buffer is None or event.button() != Qt.MouseButton.LeftButton:
+            return
+        modifiers = event.modifiers() if hasattr(event, "modifiers") else Qt.KeyboardModifier.NoModifier
+        if modifiers & Qt.KeyboardModifier.ShiftModifier:
             return
         if self.plot_widget.plotItem.sceneBoundingRect().contains(event.scenePos()):
             point = self.plot_widget.plotItem.vb.mapSceneToView(event.scenePos())
