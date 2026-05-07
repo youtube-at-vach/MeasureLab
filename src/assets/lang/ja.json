@@ -1442,7 +1442,7 @@
     "{0:.1f} kHz": "{0:.1f} kHz",
     "{0:g} Hz": "{0:g} Hz",
     "{0:g} kHz": "{0:g} kHz",
-    "Click waveform to seek. Drag the highlighted region edges to set the loop.": "波形をクリックしてシーク。ハイライト範囲の端をドラッグしてループを設定します。",
+    "Click waveform to seek. Shift-drag waveform to set the loop range; drag highlighted edges for fine adjustment.": "波形をクリックしてシーク。Shift + ドラッグでループ範囲指定、微調整はハイライト範囲の端をドラッグします。",
     "End (s):": "終了 (秒):",
     "Fit All": "全体表示",
     "Length: {0:.3f} s": "長さ: {0:.3f} 秒",
