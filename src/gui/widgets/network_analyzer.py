@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 class NetworkAnalyzerSignals(QObject):
     update_plot = pyqtSignal(float, float, float, float)  # freq, mag_db, phase_deg, coherence
+    update_ir_plot = pyqtSignal(object, object)  # time_ms, normalized_ir
     sweep_finished = pyqtSignal()
     progress = pyqtSignal(int)
     latency_result = pyqtSignal(float)
@@ -391,6 +392,30 @@ class NetworkAnalyzer(MeasurementModule):
         def get_ir(signal):
             return fftconvolve(signal, inv_filter, mode="full")
 
+        def normalize_ir(ir_data):
+            peak = np.max(np.abs(ir_data)) if len(ir_data) else 0.0
+            if peak <= 1e-12:
+                return ir_data
+            return ir_data / peak
+
+        def emit_linear_ir(ir_data, peak_index, pre_samples, post_samples):
+            ir_start = max(0, peak_index - pre_samples)
+            ir_end = min(len(ir_data), peak_index + post_samples)
+            if ir_end <= ir_start:
+                return
+            ir_slice = normalize_ir(ir_data[ir_start:ir_end])
+            time_ms = (np.arange(ir_start, ir_end) - peak_index) / sample_rate * 1000.0
+            self.signals.update_ir_plot.emit(time_ms, ir_slice)
+
+        def emit_circular_ir(ir_data, peak_index, pre_samples, post_samples):
+            if not len(ir_data):
+                return
+            offsets = np.arange(-pre_samples, post_samples)
+            indices = (peak_index + offsets) % len(ir_data)
+            ir_slice = normalize_ir(ir_data[indices])
+            time_ms = offsets / sample_rate * 1000.0
+            self.signals.update_ir_plot.emit(time_ms, ir_slice)
+
         ir_snr_db = None
 
         if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
@@ -434,6 +459,10 @@ class NetworkAnalyzer(MeasurementModule):
                 H_xfer = H_meas / H_ref
                 H_xfer = np.nan_to_num(H_xfer)
 
+            relative_ir = fft_manager.irfft(H_xfer, n=len_win)
+            relative_peak_idx = np.argmax(np.abs(relative_ir))
+            emit_circular_ir(relative_ir, relative_peak_idx, pre, post)
+
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
             valid_H = H_xfer[mask]
@@ -474,6 +503,7 @@ class NetworkAnalyzer(MeasurementModule):
             post = int(0.5 * sample_rate)
             start = max(0, peak_idx - pre)
             end = min(len(ir), peak_idx + post)
+            emit_linear_ir(ir, peak_idx, pre, post)
 
             ir_win = ir[start:end]
             # Normalize by the known excitation/deconvolution chain so that a unity
@@ -542,6 +572,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.init_ui()
 
         self.module.signals.update_plot.connect(self.update_plot)
+        self.module.signals.update_ir_plot.connect(self.update_ir_plot)
         self.module.signals.sweep_finished.connect(self.on_sweep_finished)
         self.module.signals.progress.connect(self.progress_bar.setValue)
         self.module.signals.latency_result.connect(self.on_latency_result)
@@ -552,6 +583,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.mags = []
         self.phases = []
         self.cohs = []
+        self.ir_times_ms = []
+        self.ir_values = []
         self._riaa_auto_offset = 0.0
 
         # Decouple plot updates
@@ -801,7 +834,10 @@ class NetworkAnalyzerWidget(QWidget):
         layout.addWidget(left_panel)
 
         # Plots
-        plot_layout = QVBoxLayout()
+        plot_tabs = QTabWidget()
+
+        bode_tab = QWidget()
+        plot_layout = QVBoxLayout(bode_tab)
         self.mag_plot = pg.PlotWidget(title=tr("Magnitude Response"))
         self.mag_plot.setLabel("left", tr("Magnitude"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
@@ -859,7 +895,19 @@ class NetworkAnalyzerWidget(QWidget):
 
         plot_layout.addWidget(self.phase_plot)
 
-        layout.addLayout(plot_layout)
+        plot_tabs.addTab(bode_tab, tr("Bode"))
+
+        ir_tab = QWidget()
+        ir_layout = QVBoxLayout(ir_tab)
+        self.ir_plot = pg.PlotWidget(title=tr("Impulse Response Plot"))
+        self.ir_plot.setLabel("left", tr("Normalized Amplitude"))
+        self.ir_plot.setLabel("bottom", tr("Time"), units="ms")
+        self.ir_plot.showGrid(x=True, y=True)
+        self.ir_curve = self.ir_plot.plot(pen="c")
+        ir_layout.addWidget(self.ir_plot)
+        plot_tabs.addTab(ir_tab, tr("Impulse Response"))
+
+        layout.addWidget(plot_tabs)
         self.setLayout(layout)
         self.on_routing_changed(self.in_combo.currentIndex())
 
@@ -1057,11 +1105,14 @@ class NetworkAnalyzerWidget(QWidget):
             self.mags = []
             self.phases = []
             self.cohs = []
+            self.ir_times_ms = []
+            self.ir_values = []
             self._needs_plot_update = False
             self.mag_curve.setData([], [])
             self.phase_curve.setData([], [])
             self.gd_curve.setData([], [])
             self.coh_curve.setData([], [])
+            self.ir_curve.setData([], [])
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.update_timer.start(50)
@@ -1099,6 +1150,11 @@ class NetworkAnalyzerWidget(QWidget):
         self.phases.append(phase)
         self.cohs.append(coh)
         self._needs_plot_update = True
+
+    def update_ir_plot(self, time_ms, ir_values):
+        self.ir_times_ms = np.asarray(time_ms)
+        self.ir_values = np.asarray(ir_values)
+        self.ir_curve.setData(self.ir_times_ms, self.ir_values)
 
     def _apply_smoothing(self, freqs, mags, phases, mode):
         # Apply simple Savitzky-Golay smoothing in the display domain; leave data unchanged when disabled.
