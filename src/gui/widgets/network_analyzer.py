@@ -872,6 +872,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(x=True, y=False)
         self.phase_plot.showGrid(x=True, y=True)
+        self.phase_plot.setXLink(self.mag_plot)
         self.phase_curve = self.phase_plot.plot(pen="y")
 
         # Group Delay Axis (Right)
