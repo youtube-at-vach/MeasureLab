@@ -27,6 +27,7 @@ from scipy.signal import (
     correlate,
     correlation_lags,
     fftconvolve,
+    hilbert,
     savgol_filter,
     windows,
 )
@@ -585,6 +586,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.cohs = []
         self.ir_times_ms = []
         self.ir_values = []
+        self.etc_times_ms = []
+        self.etc_db = []
         self._riaa_auto_offset = 0.0
 
         # Decouple plot updates
@@ -908,6 +911,16 @@ class NetworkAnalyzerWidget(QWidget):
         ir_layout.addWidget(self.ir_plot)
         plot_tabs.addTab(ir_tab, tr("Impulse Response"))
 
+        etc_tab = QWidget()
+        etc_layout = QVBoxLayout(etc_tab)
+        self.etc_plot = pg.PlotWidget(title=tr("Energy Time Curve Plot"))
+        self.etc_plot.setLabel("left", tr("Level"), units="dB")
+        self.etc_plot.setLabel("bottom", tr("Time"), units="ms")
+        self.etc_plot.showGrid(x=True, y=True)
+        self.etc_curve = self.etc_plot.plot(pen="m")
+        etc_layout.addWidget(self.etc_plot)
+        plot_tabs.addTab(etc_tab, tr("ETC"))
+
         layout.addWidget(plot_tabs)
         self.setLayout(layout)
         self.on_routing_changed(self.in_combo.currentIndex())
@@ -1108,12 +1121,15 @@ class NetworkAnalyzerWidget(QWidget):
             self.cohs = []
             self.ir_times_ms = []
             self.ir_values = []
+            self.etc_times_ms = []
+            self.etc_db = []
             self._needs_plot_update = False
             self.mag_curve.setData([], [])
             self.phase_curve.setData([], [])
             self.gd_curve.setData([], [])
             self.coh_curve.setData([], [])
             self.ir_curve.setData([], [])
+            self.etc_curve.setData([], [])
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.update_timer.start(50)
@@ -1156,6 +1172,26 @@ class NetworkAnalyzerWidget(QWidget):
         self.ir_times_ms = np.asarray(time_ms)
         self.ir_values = np.asarray(ir_values)
         self.ir_curve.setData(self.ir_times_ms, self.ir_values)
+        self.etc_times_ms = self.ir_times_ms
+        self.etc_db = self._calculate_etc_db(self.ir_values)
+        if len(self.etc_db) == len(self.etc_times_ms):
+            self.etc_curve.setData(self.etc_times_ms, self.etc_db)
+        else:
+            self.etc_curve.setData([], [])
+
+    def _calculate_etc_db(self, ir_values):
+        ir_arr = np.asarray(ir_values, dtype=float)
+        if ir_arr.size == 0:
+            return np.array([])
+
+        ir_arr = np.nan_to_num(ir_arr, nan=0.0, posinf=0.0, neginf=0.0)
+        envelope = np.abs(hilbert(ir_arr))
+        peak = np.max(envelope) if envelope.size else 0.0
+        if peak <= 1e-12:
+            return np.array([])
+
+        etc_db = 20 * np.log10((envelope / peak) + 1e-12)
+        return np.clip(etc_db, -120.0, 0.0)
 
     def _apply_smoothing(self, freqs, mags, phases, mode):
         # Apply simple Savitzky-Golay smoothing in the display domain; leave data unchanged when disabled.
