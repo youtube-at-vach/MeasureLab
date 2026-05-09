@@ -11,6 +11,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Quantum & Advanced Physics**: Quantum-Tunneling Noise Floor Cartography, Quantum Jitter Tomography, Quantum Entropy Analyzer, **Quantum Entropy DAC Sync Analyzer** (visualizing clock desync via quantum entropy).
 * **Holographic & Spatial**: Holographic Circuit Thermal-Acoustic Profiler, Holographic Intermodulation Topology, Augmented Reality (AR) Probe Visualizer, **Zero-G Resonant Frequency Simulator** (aerospace component vibration simulation), **Galactic IMD Topology Visualizer**.
 * **Advanced Processing**: Neuromorphic Transient Reconstructor, Digital Twin Synthesizer, Headless / Web Remote Interface, Real-time Active Distortion Nulling, Sonic Chronoportation Extrapolator (zero-latency prediction), Quantum-Entanglement Audio Sync Analyzer, Synesthesia Audio-Visualizer, Time-Reversal Signal Pre-Conditioner, **Sonic DNA Fingerprint Extractor**.
+* **Cosmic & Exotic Physics**: **Tachyon Audio Synthesizer** (reverse-time signal synthesis), **Black Hole Gravity Wave Simulator** (extreme sub-sonic spacetime distortion), **Quantum Superposition A/B Tester** (simultaneous multi-state audio perception).
 
 ---
 
@@ -18,6 +19,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
+* **Continuity & Dropout Logger:** Long-term monitoring of signal integrity to detect micro-dropouts and clock slips over hours of playback.
 * **Lossy Codec Artifact Analyzer:** Real-time difference analysis between uncompressed source and Bluetooth/Lossy compressed return.
 * **Test Sequence Automator:** Macro engine to script unattended sweeps.
 * **Dynamics Processor Profiler:** Measures static I/O transfer curves and attack/release.
@@ -26,10 +28,11 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🛠️ Extensions to Existing Widgets
 
+* **LUFS Meter:** Add **Crest Factor & Dynamic Range Radar Mode** (visualize macro/micro dynamics over time).
+* **Spectrum Analyzer:** Add **DAC Aliasing & Out-of-band Imaging Test** (automated high-frequency sweep to detect filter failures).
+* **Signal Generator:** Add **Programmable Jitter Injector** (simulate deterministic and random clock jitter) and Interference/Glitch Injector.
 * **Spectrogram:** Add Reference Subtraction Mode (real-time difference between two sources).
-* **Signal Generator:** Add Interference/Glitch Injector (simulate dropouts, USB packet loss).
 * **Oscilloscope:** Add CMRR/PSRR Mode.
-* **Spectrum Analyzer:** (Extensions pending).
 * **Frequency Counter:** Add Thermal Drift Logger, Phase Noise Plot.
 * **Network Analyzer:** Add Amplifier Stability Margins & Coherence.
 * **Impedance Analyzer:** Add Cable Tester Mode, Damping Factor / Amp Output Impedance Mode.
