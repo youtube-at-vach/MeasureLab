@@ -3,16 +3,16 @@
 
 # numpy 2.4.2 causes "DLL load failed" on Windows (v0.5.0 worked with 2.2.6).
 # Keep pinned to 2.2.6 until the issue is resolved.
-numpy==2.2.6
-scipy==1.17.0
+numpy==2.4.4
+scipy==1.17.1
 sounddevice==0.5.5
-PyQt6==6.10.2
-PyQt6-Qt6==6.10.2
+PyQt6==6.11.0
+PyQt6-Qt6==6.11.0
 pyqtgraph==0.14.0
 soundfile==0.13.1
 PyWavelets==1.9.0
 inquirer==3.4.1
 pytest==9.0.3
-ruff==0.15.2
-mypy==1.19.1
+ruff==0.15.12
+mypy==2.0.0
 pyfftw==0.15.1
