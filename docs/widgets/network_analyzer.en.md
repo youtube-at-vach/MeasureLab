@@ -54,6 +54,7 @@ Customize the graph display in the **"Display"** tab.
 * **Phase Response**: Displays the phase shift for each frequency.
 * **Group Delay**: Displays the delay time for each frequency, calculated from the slope of the phase (check "Show Group Delay").
     * 💡 **What is Group Delay?**: Depending on the pitch (frequency) of the sound, the time it takes to travel through a device can slightly differ. For example, a phenomenon where "only the bass comes out slightly delayed." Group delay displays this "time shift per pitch" easily in seconds (or milliseconds).
+* **ETC (Energy Time Curve)**: Displays the energy-time decay curve calculated from the impulse response in decibels (dB). It is primarily used to observe sound reflections and decay characteristics over time.
 * **Coherence**: Displays the correlation (reliability) between input and output (valid only in XFER and Crosstalk transfer modes). Values closer to 1.0 indicate high reliability. Low coherence suggests noise, distortion, or timing issues (check "Show Coherence").
     * 💡 **What is Coherence?**: Imagine a friend talking to you in a noisy room. If you can hear their voice clearly, the "coherence is high" (reliable). But if the background noise is too loud, or if their voice is distorted, you won't be able to understand what they are saying. Coherence is like a "report card" that shows "how cleanly the input sound made it to the output"!
 
