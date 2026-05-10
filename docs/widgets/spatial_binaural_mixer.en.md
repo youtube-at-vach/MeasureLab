@@ -4,6 +4,16 @@ The **Spatial Binaural Mixer** is a high-quality, offline 3D spatial audio rende
 
 Unlike real-time HRTF players, this module is specifically engineered for multi-track stem rendering. It employs block-less FFT convolution and high-precision spatial interpolation, ensuring the absolute highest sound quality for mixing and exporting spatial audio.
 
+## ☕ Coffee Break: The Magic of Spatial/Binaural Audio
+
+When a mosquito comes buzzing in the dark, we immediately know, "Ah, it's behind me to the right!" even with our eyes closed. But humans only have two ears (microphones), one on the left and one on the right. How can we tell "behind" or "above/below" with just two microphones?
+
+The secret lies in the "shape of our earlobes" and the "roundness of our head"!
+When sound comes from behind versus when it comes from the front, the way it reflects off the earlobes changes slightly, causing complex changes in the "color (frequency response)" and "arrival timing" of the sound. The brain instantly calculates these changes to pinpoint the sound's location.
+The "HRTF (Head-Related Transfer Function)" is a complete recording and digitization of this "pattern of changes that the head and ears apply to sound."
+
+This Spatial Binaural Mixer is a tool that multiplies (convolves) ordinary sound with this HRTF data (SOFA files)—the "magic of the earlobe." By using this, just by listening with normal headphones, sounds will magically appear to come from a 3D space outside your head!
+
 ---
 
 ## 🌟 Key Features

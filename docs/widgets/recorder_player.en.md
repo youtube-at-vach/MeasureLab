@@ -8,6 +8,18 @@ A simple audio recording and playback tool.
 It allows you to play test signals (such as sweeps or noise) to input into a circuit, or record output results and save them to files.
 It supports loading common audio files such as WAV, MP3, FLAC, and OGG.
 
+## ☕ Coffee Break: Why is "Recording" necessary for measurement?
+
+Why is there a "recording (recorder)" function when we are using a measurement tool?
+It's because sound problems don't always happen politely when we expect them to!
+
+For example, suppose you have a problem where "a mysterious 'pop!' noise occasionally comes from the amplifier."
+Staring closely at the oscilloscope screen for hours waiting for that split-second "pop!" is exhausting, right? You might miss it the moment you blink.
+
+That's when this recorder comes in handy!
+By just recording the sound of the suspicious machine, you can slowly play back the exact part where the "pop!" happened later, or zoom in on that waveform to your heart's content with another tool to "find the culprit."
+The recording function is a very reassuring presence, much like a **"security camera for sound"** installed in your laboratory!
+
 ## Operations
 
 ### Playback
