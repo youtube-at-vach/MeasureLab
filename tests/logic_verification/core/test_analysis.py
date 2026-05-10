@@ -117,3 +117,6 @@ class TestAudioCalc:
         win3 = get_cached_window("hann", 100, dtype=np.float32)
         assert win3.dtype == np.float32
         assert not win3.flags.writeable
+
+        # Clear cache to prevent lingering objects from causing segfaults in subsequent qt tests
+        get_cached_window.cache_clear()
