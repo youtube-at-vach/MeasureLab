@@ -100,3 +100,20 @@ class TestAudioCalc:
             mock_lstsq.assert_called_once()
             assert isinstance(mse, float)
             assert not np.isnan(mse)
+
+    def test_get_cached_window(self):
+        from src.core.analysis import get_cached_window
+        # Test default float64
+        win1 = get_cached_window("hann", 100)
+        assert len(win1) == 100
+        assert win1.dtype == np.float64
+        assert not win1.flags.writeable
+
+        # Test caching
+        win2 = get_cached_window("hann", 100)
+        assert win1 is win2
+
+        # Test dtype float32
+        win3 = get_cached_window("hann", 100, dtype=np.float32)
+        assert win3.dtype == np.float32
+        assert not win3.flags.writeable
