@@ -16,7 +16,7 @@ Simply open your terminal and run the following command in the repository root d
 ./scripts/setup_dev_env.sh
 ```
 
-- Note: During execution, you may be prompted to enter your password or confirm default settings for MacPorts.
+* Note: During execution, you may be prompted to enter your password or confirm default settings for MacPorts.
 
 Once the setup is complete, activate the virtual environment and launch the application using the following commands:
 
@@ -24,6 +24,13 @@ Once the setup is complete, activate the virtual environment and launch the appl
 source .venv/bin/activate
 python main_gui.py
 ```
+
+### ☕ Coffee Break: Behind the Scenes of the Automated Script
+
+It is convenient that "everything is ready with just one command," but it doesn't use magic behind the scenes. To use an analogy, this script is like an **"excellent assistant building a dedicated laboratory inside your computer."**
+
+First, it uses the OS package manager (apt or MacPorts) to install the "fundamental parts" necessary for recording into the system. Next, to avoid parts mixing with other apps and causing trouble, it builds a **completely isolated dedicated room** named "`.venv`". Then, inside only that room, it neatly arranges the dozens of Python packages that MeasureLab requires.
+Thanks to this mechanism, you can always start development in a "clean laboratory" without messing up your computer itself!
 
 ---
 
@@ -37,8 +44,8 @@ While the release versions (AppImage/ZIP) work as is, when running from source c
 Therefore, on Linux, it is recommended to **use the system Python but install dependent packages using venv + pip**.
 
 1. Install OS dependent libraries (minimum requirements).
-    - `sounddevice` uses PortAudio, so `libportaudio2` is required at runtime.
-    - `soundfile` uses libsndfile, so `libsndfile1` is required at runtime.
+    * `sounddevice` uses PortAudio, so `libportaudio2` is required at runtime.
+    * `soundfile` uses libsndfile, so `libsndfile1` is required at runtime.
 
     ```bash
     sudo apt update
@@ -61,7 +68,7 @@ Therefore, on Linux, it is recommended to **use the system Python but install de
 
     From here on, `python` / `pip` refer to the venv (do not use `sudo pip`).
 
-    - If you want to run without using `activate`, you can always call the venv Python directly:
+    * If you want to run without using `activate`, you can always call the venv Python directly:
 
     ```bash
     ./.venv/bin/python -m pip install -U pip
@@ -102,7 +109,7 @@ When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW libra
     sudo port select --set python3 python312
     ```
 
-    - Restart the terminal after configuration.
+    * Restart the terminal after configuration.
 
 3. Create and activate a virtual environment:
 
@@ -130,20 +137,20 @@ When installing `pyFFTW` on macOS, you need to explicitly specify the FFTW libra
 
 If you want to run tests, Lint/type checks, or build the documentation, install the additional packages.
 
-- **Code Development (Tests/Lint, etc.)**:
+* **Code Development (Tests/Lint, etc.)**:
 
     ```bash
     pip install -c constraints.txt -e ".[dev]"
     ```
 
-    - If you are using zsh, you need to enclose `.[dev]` in quotes (e.g., `".[dev]"`).
+    * If you are using zsh, you need to enclose `.[dev]` in quotes (e.g., `".[dev]"`).
 
-- **Documentation Development (MkDocs)**:
+* **Documentation Development (MkDocs)**:
 
     ```bash
     pip install -c constraints.txt -r requirements-docs.txt
     ```
 
-- Lint: `ruff check src scripts tests`
-- Type check: `mypy src`
-- Tests: `pytest` (Hardware/GUI dependent tests require environment variables; skipped by default in CI)
+* Lint: `ruff check src scripts tests`
+* Type check: `mypy src`
+* Tests: `pytest` (Hardware/GUI dependent tests require environment variables; skipped by default in CI)
