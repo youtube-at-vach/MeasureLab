@@ -25,6 +25,13 @@ source .venv/bin/activate
 python main_gui.py
 ```
 
+### ☕ コーヒーブレイク：自動化スクリプトの裏側
+
+「たった1行のコマンドで準備が整う」のは便利ですが、裏で魔法を使っているわけではありません。このスクリプトは、例えるなら**「優秀な助手が、あなたのパソコンの中に専用の実験室を建ててくれる」**ようなものです。
+
+まず、OSのパッケージマネージャ（aptやMacPorts）を使って、録音に必要な「基礎となる部品」をシステムにインストールします。次に、他のアプリと部品が混ざってトラブルにならないように、「`.venv`」という名前の**完全に隔離された専用の部屋**を作ります。そして、その部屋の中にだけ、MeasureLabが必要とする何十個ものPythonパッケージを順番に並べていくのです。
+この仕組みのおかげで、あなたのパソコン自体を汚すことなく、いつでも「きれいな実験室」で開発をスタートできます！
+
 ---
 
 ### 🛠️ 手動でセットアップする場合
@@ -37,8 +44,8 @@ python main_gui.py
 そのため Linux では、**システムの Python はそのまま使いつつ、依存パッケージは venv + pip で入れる**運用を推奨します。
 
 1. OS 依存ライブラリ（最低限）を入れます。
-    - `sounddevice` は PortAudio を利用するため、実行時に `libportaudio2` が必要です。
-    - `soundfile` は libsndfile を利用するため、実行時に `libsndfile1` が必要です。
+    * `sounddevice` は PortAudio を利用するため、実行時に `libportaudio2` が必要です。
+    * `soundfile` は libsndfile を利用するため、実行時に `libsndfile1` が必要です。
 
     ```bash
     sudo apt update
@@ -130,7 +137,7 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
 
 テストやLint/型チェック、ドキュメントのビルドを実行する場合は追加のパッケージをインストールしてください。
 
-- **コード開発（テスト/Lintなど）**:
+* **コード開発（テスト/Lintなど）**:
 
     ```bash
     pip install -c constraints.txt -e ".[dev]"
@@ -138,12 +145,12 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
 
     ※ zsh を使用している場合は `.[dev]` を `".[dev]"` のように引用符で囲む必要があります。
 
-- **ドキュメント開発（MkDocs）**:
+* **ドキュメント開発（MkDocs）**:
 
     ```bash
     pip install -c constraints.txt -r requirements-docs.txt
     ```
 
-- Lint: `ruff check src scripts tests`
-- Type check: `mypy src`
-- Tests: `pytest`（ハードウェア/GUI依存テストは環境変数が必要; CIではデフォルトでスキップ）
+* Lint: `ruff check src scripts tests`
+* Type check: `mypy src`
+* Tests: `pytest`（ハードウェア/GUI依存テストは環境変数が必要; CIではデフォルトでスキップ）
