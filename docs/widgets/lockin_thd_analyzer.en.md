@@ -6,6 +6,12 @@
 
 ![Lockin Thd Analyzer](../assets/widgets/lockin_thd_analyzer.png)
 
+## ☕ Coffee Break: Filtering out only the "Impurities"
+
+To measure sound distortion (THD), the original clean sound (fundamental wave) gets in the way. It's like trying to find tiny grains of spice in a pot of curry—the curry sauce itself makes it difficult.
+This tool uses a magical technology called a "Lock-in Amplifier" to pinpoint and "completely erase" only the original sound.
+What's left over is the "distortion" and "noise". With the original sound gone, microscopic impurities that were previously hidden become clearly visible!
+
 ## Overview
 
 The Lock-in THD Analyzer is a widget designed to measure **"Total Harmonic Distortion + Noise (THD+N)"** by using high-precision "lock-in detection" to identify and remove only the fundamental frequency component.

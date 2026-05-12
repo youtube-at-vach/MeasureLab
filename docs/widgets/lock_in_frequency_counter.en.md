@@ -2,6 +2,11 @@
 
 ![Lock In Frequency Counter](../assets/widgets/lock_in_frequency_counter.png)
 
+## ☕ Coffee Break: A "Magnifying Glass" for Frequency
+
+If a regular "frequency counter" tells you "It's about 1000Hz right now," this widget is an "ultra-precision magnifying glass" that tells you "It's 1000.000001Hz right now, and it shifted by 0.000001Hz from a moment ago!"
+For instance, it can capture microscopic changes that you would normally miss, such as the slight speed fluctuations of a record player's turntable (wow and flutter) or the slight pitch drift as equipment warms up (thermal drift).
+
 ## Overview
 
 While a standard frequency counter captures "signal fluctuations" broadly, the Lock-in Frequency Counter compares the input signal with a reference signal (NCO: Numerically Controlled Oscillator) and **visualizes the "deviation" with extremely high resolution**.
