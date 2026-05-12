@@ -7,6 +7,12 @@
 A tool that allows you to load an audio file, inspect its waveform, and loop a selected region.
 It is highly useful when you want to repeatedly play back a specific audio signal or a transient waveform and observe it in detail using an oscilloscope or a spectrum analyzer.
 
+## ☕ Coffee Break: Why "Loop Playback" is Essential for Measurement
+
+When listening to music, you probably don't often repeat the exact same short phrase over and over. However, in the world of measurement, "loop playback" is a super important tool.
+This is because it's often impossible to tell if a noise, distortion, or momentary impact sound (transient) is just "random chance" or a "characteristic of the equipment" after hearing (or measuring) it only once.
+By continuously and accurately repeating the "exact same sound" over and over, measuring instruments like oscilloscopes can freeze the waveform on the screen, allowing you to carefully observe it as if looking through a magnifying glass!
+
 ## Operations
 
 ### Waveform Display & Region Selection

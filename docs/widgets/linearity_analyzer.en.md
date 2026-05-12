@@ -7,6 +7,12 @@
 This tool precisely measures the "proportional relationship (linearity)" between input and output as the signal level changes.
 It is used to verify problems specific to digital equipment (DAC/ADC), such as "loud sounds are output correctly, but errors occur with very quiet sounds (bit truncation or buried in noise)," as well as the dynamic range of analog circuits.
 
+## ☕ Coffee Break: What is Linearity?
+
+Imagine hanging a "100-gram weight" on a spring scale, and it stretches by 10 centimeters. If you hang a "200-gram weight," it should stretch 20 centimeters, and for "1 gram," it should be 0.1 centimeters. This perfectly proportional relationship is "Linearity."
+However, with real audio equipment (especially digital converters), when the sound gets too quiet, the "spring stops moving smoothly," and a 1-gram sound might be incorrectly processed as 2 grams.
+The Linearity Analyzer is like a lie detector that reveals how accurately the equipment maintains this proportion, regardless of how loud or quiet the sound is!
+
 ## Meaning of Key Indicators
 
 This tool measures the following values:

@@ -12,6 +12,12 @@ The Lock-in THD Analyzer is a widget designed to measure **"Total Harmonic Disto
 
 It provides higher fundamental rejection performance than typical FFT analyzers, allowing for accurate evaluation of minute distortion in amplifiers and DACs.
 
+## ☕ Coffee Break: Why we "subtract" the loudest sound
+
+Imagine you are playing a 1kHz test tone. If an amplifier distorts, it will mix in "muddying sounds" (harmonics) at 2kHz, 3kHz, and so on.
+However, because the original 1kHz tone is so incredibly loud, these tiny distortions are completely hidden. It's like the sun being so bright that you can't see the tiny stars right next to it.
+Therefore, this widget performs the clever trick of "synthesizing the exact same 1kHz tone that came in, and subtracting it (eclipsing the sun)." By only looking at the remaining sound (the night sky), you can accurately measure even the tiniest distortion (the stars)!
+
 ## How it Works (Fundamental Rejection)
 
 This widget applies lock-in amplifier technology to calculate THD+N as follows:

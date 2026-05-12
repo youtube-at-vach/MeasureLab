@@ -8,6 +8,12 @@ The Ultrasound Modulator is a widget that amplitude-modulates (AM) audio signals
 
 It is used for experiments with parametric speakers and acoustic measurements in the ultrasonic band.
 
+## ☕ Coffee Break: How do we transmit sound using ultrasound?
+
+How can we deliver normal music or voices using "ultrasound (extremely high-pitched sound)" that human ears shouldn't be able to hear?
+Actually, we use the ultrasound as a "carrier" and let the music ride on its back (this is called modulation). Ultrasound has the property of traveling straight like a beam of light, and as it flies through the air, the music on its back naturally "spills off" and becomes audible.
+This is the principle behind "parametric speakers." Have you ever had a mysterious experience at a museum where you stand in a specific spot and suddenly hear an announcement? That very magic is created using technology like this widget!
+
 Key Features:
 
 * **Real-time AM Modulation**: Modulates a carrier wave (default 40kHz) using the input audio signal.

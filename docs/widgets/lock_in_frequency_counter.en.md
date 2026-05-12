@@ -8,6 +8,12 @@ While a standard frequency counter captures "signal fluctuations" broadly, the L
 
 It is suitable for observing the long-term stability (drift) of a clock source, wow and flutter in tape decks and record players, or minute frequency changes such as Doppler shifts. Recent estimation improvements also make the display more resistant to startup bias and better aligned with the actual elapsed sample time, which helps long-running measurements feel steadier and more trustworthy.
 
+## ☕ Coffee Break: Why do we need "Lock-in"?
+
+A normal frequency counter (like a guitar tuner) simply counts "how many waves arrive in one second." However, to measure a tiny deviation like "1000.0001 waves," it would have to wait and count for 10,000 seconds (about 3 hours)!
+That's where "Lock-in" comes in!
+It creates a "virtual running partner (NCO)" that runs at exactly the same pace as the input signal, and measures "how many millimeters of gap has opened up right now (phase difference)" while they run side-by-side. With this method, even after running for just 0.1 seconds, it can detect "Ah, it's lagging slightly" with ultra-high precision.
+
 ## Operation
 
 ### Preparation
