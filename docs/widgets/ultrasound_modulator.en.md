@@ -2,6 +2,11 @@
 
 ![Ultrasound Modulator](../assets/widgets/ultrasound_modulator.png)
 
+## ☕ Coffee Break: Riding Sound on an "Ultrasonic Rocket"
+
+"Ultrasound" is inaudible to humans. However, if you piggyback normal sounds (like voices or music) onto this ultrasound and transmit it, a mysterious phenomenon occurs where the sound is restored in mid-air, making it "audible only in a specific location" (Parametric Speaker).
+This widget is a tool (modulator) to put your voice onto an "ultrasonic rocket" (carrier wave). With this, you can conduct cutting-edge "acoustic laser" experiments using just a normal PC and an audio interface!
+
 ## Overview
 
 The Ultrasound Modulator is a widget that amplitude-modulates (AM) audio signals into the ultrasonic range, making them suitable for playback on ultrasonic reference speakers (typically centered at 40kHz).
