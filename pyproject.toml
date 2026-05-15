@@ -60,5 +60,9 @@ files = ["src/core", "src/gui"]
 module = "src.gui.*"
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = "src.core.update_checker"
+disable_error_code = ["import-untyped"]
+
 [tool.pytest.ini_options]
 addopts = "-ra"
