@@ -721,10 +721,12 @@ class NetworkAnalyzerWidget(QWidget):
         display_form.addRow(tr("Min Freq:"), min_limit_layout)
 
         self.smooth_combo = QComboBox()
-        self.smooth_combo.addItem(tr("Off"), "off")
-        self.smooth_combo.addItem(tr("Light"), "light")
-        self.smooth_combo.addItem(tr("Medium"), "medium")
-        self.smooth_combo.addItem(tr("Heavy"), "heavy")
+        self.smooth_combo.addItem(tr("None"), None)
+        self.smooth_combo.addItem(tr("1/1 Octave"), 1)
+        self.smooth_combo.addItem(tr("1/3 Octave"), 3)
+        self.smooth_combo.addItem(tr("1/6 Octave"), 6)
+        self.smooth_combo.addItem(tr("1/12 Octave"), 12)
+        self.smooth_combo.addItem(tr("1/24 Octave"), 24)
         self.smooth_combo.currentIndexChanged.connect(self.refresh_plots)
         display_form.addRow(tr("Smoothing:"), self.smooth_combo)
 
@@ -913,6 +915,17 @@ class NetworkAnalyzerWidget(QWidget):
 
         etc_tab = QWidget()
         etc_layout = QVBoxLayout(etc_tab)
+        etc_controls = QHBoxLayout()
+        etc_controls.addWidget(QLabel(f"{tr('ETC')} {tr('Smoothing:')}"))
+        self.etc_smooth_combo = QComboBox()
+        self.etc_smooth_combo.addItem(tr("Off"), "off")
+        self.etc_smooth_combo.addItem(tr("Light"), "light")
+        self.etc_smooth_combo.addItem(tr("Medium"), "medium")
+        self.etc_smooth_combo.addItem(tr("Heavy"), "heavy")
+        self.etc_smooth_combo.currentIndexChanged.connect(self.refresh_etc_plot)
+        etc_controls.addWidget(self.etc_smooth_combo)
+        etc_controls.addStretch()
+        etc_layout.addLayout(etc_controls)
         self.etc_plot = pg.PlotWidget(title=tr("Energy Time Curve Plot"))
         self.etc_plot.setLabel("left", tr("Level"), units="dB")
         self.etc_plot.setLabel("bottom", tr("Time"), units="ms")
@@ -1174,10 +1187,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.ir_curve.setData(self.ir_times_ms, self.ir_values)
         self.etc_times_ms = self.ir_times_ms
         self.etc_db = self._calculate_etc_db(self.ir_values)
-        if len(self.etc_db) == len(self.etc_times_ms):
-            self.etc_curve.setData(self.etc_times_ms, self.etc_db)
-        else:
-            self.etc_curve.setData([], [])
+        self.refresh_etc_plot()
 
     def _calculate_etc_db(self, ir_values):
         ir_arr = np.asarray(ir_values, dtype=float)
@@ -1193,42 +1203,107 @@ class NetworkAnalyzerWidget(QWidget):
         etc_db = 20 * np.log10((envelope / peak) + 1e-12)
         return np.clip(etc_db, -120.0, 0.0)
 
-    def _apply_smoothing(self, freqs, mags, phases, mode):
-        # Apply simple Savitzky-Golay smoothing in the display domain; leave data unchanged when disabled.
+    def _smooth_fractional_octave_values(self, freqs, values, fraction, *, db_values=False, circular_degrees=False):
+        if fraction is None or not len(freqs):
+            return values
+
+        freqs = np.asarray(freqs, dtype=float)
+        values = np.asarray(values, dtype=float)
+        valid_freqs = freqs > 0
+        if not np.any(valid_freqs):
+            return values
+
+        half_width = 2 ** (1 / (2 * fraction))
+        smoothed = values.astype(float, copy=True)
+
+        if circular_degrees:
+            source_values = np.unwrap(np.radians(values))
+        elif db_values:
+            source_values = 10 ** (values / 20.0)
+        else:
+            source_values = values
+
+        for i, freq in enumerate(freqs):
+            if freq <= 0:
+                continue
+            band_mask = valid_freqs & (freqs >= freq / half_width) & (freqs <= freq * half_width)
+            if not np.any(band_mask):
+                continue
+            smoothed[i] = np.mean(source_values[band_mask])
+
+        if circular_degrees:
+            smoothed = np.degrees(smoothed)
+            return (smoothed + 180) % 360 - 180
+        if db_values:
+            return 20 * np.log10(smoothed + 1e-12)
+        return smoothed
+
+    def _apply_smoothing(self, freqs, mags, phases, fraction, *, db_magnitude=True):
+        # Apply fractional-octave smoothing in the display domain; source data remains unchanged.
         if not len(freqs):
             return mags, phases
 
-        key = (mode or "off").lower()
-        window_map = {
-            "light": 5,
-            "medium": 11,
-            "heavy": 21,
-        }
-        window = window_map.get(key)
-        if window is None:
+        if fraction is None:
             return mags, phases
 
-        # Window length must be odd and not exceed available points.
-        max_len = len(freqs) if len(freqs) % 2 == 1 else len(freqs) - 1
-        window = min(window, max_len)
-        if window < 3:
-            return mags, phases
-
-        mags_smooth = savgol_filter(mags, window_length=window, polyorder=2)
-
-        # Unwrap before smoothing phase to avoid discontinuities, then re-wrap to [-180, 180].
-        phase_unwrapped = np.unwrap(np.radians(phases))
-        phase_smooth_rad = savgol_filter(phase_unwrapped, window_length=window, polyorder=2)
-        phase_smooth = np.degrees(phase_smooth_rad)
-        phase_smooth = (phase_smooth + 180) % 360 - 180
+        mags_smooth = self._smooth_fractional_octave_values(freqs, mags, fraction, db_values=db_magnitude)
+        phase_smooth = self._smooth_fractional_octave_values(freqs, phases, fraction, circular_degrees=True)
 
         return mags_smooth, phase_smooth
+
+    def _apply_etc_smoothing(self, etc_db, mode, times_ms=None):
+        if not len(etc_db):
+            return etc_db
+
+        key = (mode or "off").lower()
+        window_ms_map = {
+            "light": 0.5,
+            "medium": 1.5,
+            "heavy": 3.0,
+        }
+        window_ms = window_ms_map.get(key)
+        if window_ms is None:
+            return etc_db
+
+        if times_ms is None or len(times_ms) != len(etc_db):
+            sample_interval_ms = 1000.0 / float(self.module.audio_engine.sample_rate)
+        else:
+            times_ms = np.asarray(times_ms, dtype=float)
+            deltas = np.diff(times_ms)
+            deltas = deltas[deltas > 0]
+            if deltas.size == 0:
+                return etc_db
+            sample_interval_ms = float(np.median(deltas))
+
+        window = max(3, int(round(window_ms / sample_interval_ms)))
+        if window % 2 == 0:
+            window += 1
+        max_len = len(etc_db) if len(etc_db) % 2 == 1 else len(etc_db) - 1
+        window = min(window, max_len)
+        if window < 3:
+            return etc_db
+
+        return np.clip(savgol_filter(etc_db, window_length=window, polyorder=2), -120.0, 0.0)
+
+    def refresh_etc_plot(self):
+        if len(self.etc_db) != len(self.etc_times_ms):
+            self.etc_curve.setData([], [])
+            return
+
+        etc_db = np.asarray(self.etc_db)
+        etc_times_ms = np.asarray(self.etc_times_ms)
+        if etc_db.size == 0:
+            self.etc_curve.setData([], [])
+            return
+
+        smooth_mode = self.etc_smooth_combo.currentData()
+        self.etc_curve.setData(etc_times_ms, self._apply_etc_smoothing(etc_db, smooth_mode, etc_times_ms))
 
     def refresh_plots(self):
         if not self.freqs:
             return
 
-        smooth_mode = self.smooth_combo.currentData()
+        smooth_fraction = self.smooth_combo.currentData()
         unit = self.unit_combo.currentText()
 
         # Filter data if limit is enabled
@@ -1315,7 +1390,14 @@ class NetworkAnalyzerWidget(QWidget):
             else:
                 y_values = base_db
 
-        y_values, phases_to_plot = self._apply_smoothing(freqs_to_plot, y_values, phases_to_plot, smooth_mode)
+        is_db_magnitude = is_effectively_relative or unit in ["dBFS", "dBV", "dBu"]
+        y_values, phases_to_plot = self._apply_smoothing(
+            freqs_to_plot,
+            y_values,
+            phases_to_plot,
+            smooth_fraction,
+            db_magnitude=is_db_magnitude,
+        )
 
         self.mag_curve.setData(freqs_to_plot, y_values)
         self.phase_curve.setData(freqs_to_plot, phases_to_plot)
@@ -1425,14 +1507,8 @@ class NetworkAnalyzerWidget(QWidget):
             cohs_arr = np.array(self.cohs)
             cohs_to_plot = cohs_arr[mask]
 
-            if smooth_mode != "off":
-                window_map = {"light": 5, "medium": 11, "heavy": 21}
-                window = window_map.get(smooth_mode, 5)
-                max_len = len(cohs_to_plot) if len(cohs_to_plot) % 2 == 1 else len(cohs_to_plot) - 1
-                window = min(window, max_len)
-                if window >= 3:
-                    cohs_to_plot = savgol_filter(cohs_to_plot, window_length=window, polyorder=2)
-                    cohs_to_plot = np.clip(cohs_to_plot, 0, 1)
+            cohs_to_plot = self._smooth_fractional_octave_values(freqs_to_plot, cohs_to_plot, smooth_fraction)
+            cohs_to_plot = np.clip(cohs_to_plot, 0, 1)
 
             log_freqs = np.log10(freqs_to_plot)
             self.coh_curve.setData(log_freqs, cohs_to_plot)
