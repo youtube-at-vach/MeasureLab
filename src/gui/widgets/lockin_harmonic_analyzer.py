@@ -477,8 +477,10 @@ class LockInHarmonicWidget(QWidget):
         ov_layout = QVBoxLayout()
         self.lbl_thd = QLabel("--")
         self.lbl_thd.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff5555;")
+        self.lbl_thd.setMinimumWidth(320)
         self.lbl_thdn = QLabel("--")
         self.lbl_thdn.setStyleSheet("font-size: 18px; color: #ffaaaa;")
+        self.lbl_thdn.setMinimumWidth(320)
         self.lbl_fund = QLabel(tr("Fundamental Amplitude: -- dBFS"))
 
         ov_layout.addWidget(QLabel(tr("THD:")))
@@ -489,8 +491,10 @@ class LockInHarmonicWidget(QWidget):
         ov_group.setLayout(ov_layout)
         left_panel.addWidget(ov_group)
 
-        left_panel.addStretch()
-        layout.addLayout(left_panel, 1)
+        left_panel_widget = QWidget()
+        left_panel_widget.setLayout(left_panel)
+        left_panel_widget.setFixedWidth(340)  # Fixed width to prevent UI jumping
+        layout.addWidget(left_panel_widget)
 
         # RIGHT: Plots and Table
         right_panel = QVBoxLayout()
@@ -501,9 +505,16 @@ class LockInHarmonicWidget(QWidget):
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels([tr("Harmonic"), tr("Amp (dBFS)"), tr("Level (dBc)"), tr("Phase (deg)")])
         self.table.setRowCount(self.module.max_harmonic)
+
+        # Set fixed widths for stability and readability
+        self.table.setColumnWidth(0, 80)
+        self.table.setColumnWidth(1, 100)
+        self.table.setColumnWidth(2, 100)
+        self.table.setColumnWidth(3, 110)  # Widened phase column
+
         for i in range(self.module.max_harmonic):
             self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
-        self.table.resizeColumnsToContents()
+        # Removed resizeColumnsToContents() to prevent jumping
         self.tabs.addTab(self.table, tr("Harmonics Table"))
 
         # Bar Plot
