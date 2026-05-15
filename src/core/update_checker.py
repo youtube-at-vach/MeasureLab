@@ -1,5 +1,6 @@
-import requests  # type: ignore
 import logging
+
+import requests
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
