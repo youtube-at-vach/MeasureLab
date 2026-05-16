@@ -1,5 +1,16 @@
 # Changelog
 
+## [v0.7.2] - 2026-05-16
+
+### Added
+
+* **Lock-in Harmonic Analyzer**: Implemented harmonic distortion compensation with automated calibration logic and GUI controls to minimize system loop distortion.
+* **I18n**: Added comprehensive translation strings for harmonic compensation and updated UI labels across all supported languages.
+
+### Changed
+
+* **Lock-in Harmonic Analyzer**: Refactored the control panel into a tabbed interface (Settings, Compensation, Input Routing) to reduce vertical footprint and improve organization.
+
 ## [v0.7.1] - 2026-05-16
 
 ### Added

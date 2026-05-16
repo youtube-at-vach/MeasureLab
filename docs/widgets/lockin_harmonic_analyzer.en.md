@@ -31,7 +31,11 @@ Thanks to the lock-in amplifier's characteristic of acting as an extremely narro
 
 ## How to Use
 
-### 1. Settings
+The control panel on the left is organized into tabs, allowing you to switch between different functional groups.
+
+### 1. Settings Tab
+
+Configure basic measurement parameters.
 
 * **Output Ch**: Select the channel to output the test signal (Left / Right / Stereo).
 * **Buffer (Integ. Time)**: Select the length of data capture used for analysis. A larger buffer size means a longer integration time, which averages out random noise and improves the Signal-to-Noise Ratio (SNR) of the measurement. Large buffers (e.g., 262,144 or 524,288) are recommended for ultra-low distortion measurements.
@@ -40,18 +44,31 @@ Thanks to the lock-in amplifier's characteristic of acting as an extremely narro
 * **Harmonics**: Specify the maximum harmonic order to analyze (up to 200). Note that this limit is dynamically clamped based on the fundamental frequency and sampling rate to stay within the Nyquist frequency.
 * **Start Analysis / Stop Analysis**: Toggles the measurement on and off. When started, it will display "Buffering..." until the buffer is filled, after which the analysis results will update.
 
-### 2. Input Routing
+### 2. Compensation Tab [NEW]
+
+This feature allows you to cancel out the distortion inherent in the measurement system itself (e.g., the output stage of your audio interface).
+
+* **Harmonic Compensation**: When enabled, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
+* **Update Compensation**: Captures the current measurement results as the "system distortion" and updates the compensation table.
+    * **Procedure**: Press this button while in a loopback configuration and repeat until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
+* **Clear Compensation**: Resets the current compensation table to return to a pure sine wave output.
+
+### 3. Routing Tab
 
 * **Signal Input**: Select the channel where the target signal you want to measure for harmonic distortion is routed.
 * **Reference Input**: Select the channel where the reference signal for lock-in analysis is routed. This should be the test signal source itself, either tapped before going through the Device Under Test (DUT) or a very stable, low-distortion signal. The fundamental frequency and phase are extracted with high precision from this reference.
 
-### 3. Overview
+## Viewing Results
+
+### Overview
 
 * **THD**: Displays the measured Total Harmonic Distortion value (in dB and %).
 * **THD+N**: Displays the measured total of THD plus residual noise value (in dB and %).
 * **Fundamental**: Displays the amplitude level of the measured fundamental wave (1st harmonic) in dBFS.
 
-### 4. Detail Analysis Tabs
+### Detail Analysis Tabs
+
+The area on the right side allows you to view detailed data by switching between tabs.
 
 * **Harmonics Table**: A tabular view showing the absolute amplitude (Amp dBFS), relative level to the fundamental (Level dBc), and phase (Phase deg) for each harmonic order.
 * **Harmonics Plot**: A bar graph visually showing the level of each harmonic component (dBFS).
