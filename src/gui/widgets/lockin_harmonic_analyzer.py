@@ -467,14 +467,18 @@ class LockInHarmonicWidget(QWidget):
 
         # LEFT: Controls
         left_panel = QVBoxLayout()
-        settings_group = QGroupBox(tr("Settings"))
-        form = QFormLayout()
 
         self.btn_toggle = QPushButton(tr("Start Analysis"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle)
         self.btn_toggle.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
-        form.addRow(self.btn_toggle)
+        left_panel.addWidget(self.btn_toggle)
+
+        left_tabs = QTabWidget()
+
+        # Settings Tab
+        settings_tab = QWidget()
+        form = QFormLayout()
 
         # Output Channel
         self.combo_output_ch = QComboBox()
@@ -513,11 +517,11 @@ class LockInHarmonicWidget(QWidget):
 
         self._update_harmonic_limit()
 
-        settings_group.setLayout(form)
-        left_panel.addWidget(settings_group)
+        settings_tab.setLayout(form)
+        left_tabs.addTab(settings_tab, tr("Settings"))
 
-        # Distortion Compensation
-        comp_group = QGroupBox(tr("Distortion Compensation"))
+        # Distortion Compensation Tab
+        comp_tab = QWidget()
         c_form = QFormLayout()
 
         self.btn_comp_enable = QPushButton(tr("Enable Compensation"))
@@ -545,11 +549,11 @@ class LockInHarmonicWidget(QWidget):
         self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
         c_form.addRow(self.lbl_calib_status)
 
-        comp_group.setLayout(c_form)
-        left_panel.addWidget(comp_group)
+        comp_tab.setLayout(c_form)
+        left_tabs.addTab(comp_tab, tr("Compensation"))
 
-        # Routing
-        routing_group = QGroupBox(tr("Input Routing"))
+        # Routing Tab
+        routing_tab = QWidget()
         r_form = QFormLayout()
         self.sig_combo = QComboBox()
         self.sig_combo.addItems([tr("Left"), tr("Right")])
@@ -562,8 +566,10 @@ class LockInHarmonicWidget(QWidget):
         self.ref_combo.setCurrentIndex(self.module.ref_channel)
         self.ref_combo.currentIndexChanged.connect(self.on_ref_ch_changed)
         r_form.addRow(tr("Reference Input:"), self.ref_combo)
-        routing_group.setLayout(r_form)
-        left_panel.addWidget(routing_group)
+        routing_tab.setLayout(r_form)
+        left_tabs.addTab(routing_tab, tr("Routing"))
+
+        left_panel.addWidget(left_tabs)
 
         # Overview
         ov_group = QGroupBox(tr("Overview"))
