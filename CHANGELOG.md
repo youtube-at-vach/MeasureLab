@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.7.1] - 2026-05-16
+
+### Added
+
+* **Network Analyzer**: Added "Impulse Response" tab for normalized IR visualization.
+* **Network Analyzer**: Added "ETC" (Energy Time Curve) tab with smoothing controls to visualize energy decay and ringing.
+* **Waveform Loop Player**: Introduced a new widget for loading audio files and looping specific segments with high precision.
+* **Log Viewer**: Introduced a new widget for real-time monitoring of application logs with theme-aware styling.
+
+### Changed
+
+* **Network Analyzer**: Linked Bode plot X-axes for synchronized zooming and panning.
+* **Lock-in Harmonic Analyzer**: Stabilized UI layout by enforcing fixed widths for measurement labels and table columns.
+* **Docs**: Extensive documentation overhaul with engaging "Coffee Break" analogies and clarified technical explanations across all widgets.
+* **CI/CD**: Optimized GitHub Actions workflows using path-based filtering to reduce redundant build triggers.
+* **Chore**: Added Dependabot rules to ignore `numpy` and `scipy` updates due to persistent Windows compatibility constraints.
+
+### Fixed
+
+* **Lock-in Harmonic Analyzer**: Prevented layout shifting when precision or THD values change.
+* **Tests**: Cleaned up the test suite by removing trivial and redundant test cases.
+
 ## [v0.7.0] - 2026-05-04
 
 ### Added

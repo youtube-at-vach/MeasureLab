@@ -58,6 +58,8 @@ Customize the graph display in the **"Display"** tab.
     * 💡 **What is Coherence?**: Imagine a friend talking to you in a noisy room. If you can hear their voice clearly, the "coherence is high" (reliable). But if the background noise is too loud, or if their voice is distorted, you won't be able to understand what they are saying. Coherence is like a "report card" that shows "how cleanly the input sound made it to the output"!
 * **ETC (Energy Time Curve)**: Displays how the energy of the impulse response decays over time (in the "ETC" tab).
     * 💡 **What is ETC?**: Imagine plucking a heavy weight attached to a stiff spring; it bounces up and down for a long time. In the electrical world of filter circuits and amplifiers, how long a signal "lingers (ringing)" after a sudden input affects the crispness of the sound. ETC is a special microscope to see "how quickly that energy vanishes"!
+* **Impulse Response**: Displays the impulse response of the measurement target in the time domain (in the "Impulse Response" tab).
+    * 💡 **What is Impulse Response?**: Imagine the sound of a handclap in front of a speaker. The impulse response is a waveform that captures how the system reacts to that instantaneous sound and how the ringing fades away. By looking at this, you can intuitively check things like the damping of a speaker cone or the reflections in a room on a time axis.
 
 ### Display Options
 
