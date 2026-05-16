@@ -73,10 +73,25 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.history_len = min(8192, self.buffer_size // 10)
         self.residual_history = deque(maxlen=self.history_len)
 
+        # Distortion Compensation State
+        self.compensation_enabled = False
+        self.comp_max_harmonic = 5
+        self.compensation_coeffs = np.zeros(self.max_harmonic, dtype=complex)
+        self.is_calibrating = False
+        self.calibration_target_steps = 10
+        self.calibration_current_step = 0
+        self.calibration_alpha = 0.5
+        self.frames_since_last_cal = 0
+
     def _allocate_harmonic_buffers(self):
         with self.lock:
             self.harmonics_amp = np.zeros(self.max_harmonic)
             self.harmonics_phase_deg = np.zeros(self.max_harmonic)
+            old_coeffs = getattr(self, "compensation_coeffs", None)
+            self.compensation_coeffs = np.zeros(self.max_harmonic, dtype=complex)
+            if old_coeffs is not None:
+                n = min(len(old_coeffs), self.max_harmonic)
+                self.compensation_coeffs[:n] = old_coeffs[:n]
 
     def set_max_harmonic(self, val: int):
         if val == self.max_harmonic:
@@ -117,7 +132,14 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             if self.output_enabled:
                 t = (np.arange(frames) + self._phase_gen) / sample_rate
                 self._phase_gen += frames
-                sig = self.gen_amplitude * np.sin(2 * np.pi * self.gen_frequency * t)
+                wt = 2 * np.pi * self.gen_frequency * t
+                sig = self.gen_amplitude * np.sin(wt)
+
+                if self.compensation_enabled:
+                    for n in range(2, min(self.max_harmonic + 1, self.comp_max_harmonic + 1)):
+                        c = self.compensation_coeffs[n - 1]
+                        if c.real != 0 or c.imag != 0:
+                            sig += c.real * np.cos(n * wt) + c.imag * np.sin(n * wt)
 
                 if self.output_channel == 2:  # Stereo
                     if outdata.shape[1] >= 2:
@@ -156,6 +178,23 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
+
+    def start_calibration(self):
+        with self.lock:
+            if not self.compensation_enabled:
+                return
+            self.is_calibrating = True
+            self.calibration_current_step = 0
+            self.frames_since_last_cal = 0
+
+    def stop_calibration(self):
+        with self.lock:
+            self.is_calibrating = False
+
+    def clear_compensation(self):
+        with self.lock:
+            self.compensation_coeffs.fill(0)
+            self.is_calibrating = False
 
     def clear_buffer(self):
         with self.lock:
@@ -376,6 +415,28 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
             self.thdn_value = np.sqrt(thdn_sq) * 100
             self.thdn_db = 10 * np.log10(thdn_sq + DISTORTION_RATIO_EPS)
+
+            # 5. Auto-Calibration Logic
+            if self.is_calibrating:
+                self.frames_since_last_cal += 1
+                if self.frames_since_last_cal >= 3:
+                    self.frames_since_last_cal = 0
+                    self.calibration_current_step += 1
+
+                    fund_meas_amp = self.harmonics_amp[0]
+                    if fund_meas_amp > 1e-12:
+                        scale = self.gen_amplitude / fund_meas_amp
+                        for n in range(2, min(self.max_harmonic + 1, self.comp_max_harmonic + 1)):
+                            idx = (n - 1) * 2
+                            I_meas = X[idx]
+                            Q_meas = X[idx + 1]
+                            delta_I = -self.calibration_alpha * I_meas * scale
+                            delta_Q = -self.calibration_alpha * Q_meas * scale
+                            self.compensation_coeffs[n - 1] += complex(delta_I, delta_Q)
+
+                    if self.calibration_current_step >= self.calibration_target_steps:
+                        self.is_calibrating = False
+
         else:
             self._reset_results()
 
@@ -454,6 +515,38 @@ class LockInHarmonicWidget(QWidget):
 
         settings_group.setLayout(form)
         left_panel.addWidget(settings_group)
+
+        # Distortion Compensation
+        comp_group = QGroupBox(tr("Distortion Compensation"))
+        c_form = QFormLayout()
+
+        self.btn_comp_enable = QPushButton(tr("Enable Compensation"))
+        self.btn_comp_enable.setCheckable(True)
+        self.btn_comp_enable.setChecked(self.module.compensation_enabled)
+        self.btn_comp_enable.clicked.connect(self.on_comp_enable)
+        c_form.addRow(self.btn_comp_enable)
+
+        self.comp_max_spin = QSpinBox()
+        self.comp_max_spin.setRange(2, 50)
+        self.comp_max_spin.setValue(self.module.comp_max_harmonic)
+        self.comp_max_spin.valueChanged.connect(self.on_comp_max_changed)
+        c_form.addRow(tr("Comp. Max Harmonic:"), self.comp_max_spin)
+
+        calib_layout = QHBoxLayout()
+        self.btn_calib = QPushButton(tr("Auto-Calibrate"))
+        self.btn_calib.clicked.connect(self.on_calibrate)
+        self.btn_clear_comp = QPushButton(tr("Clear"))
+        self.btn_clear_comp.clicked.connect(self.on_clear_comp)
+        calib_layout.addWidget(self.btn_calib)
+        calib_layout.addWidget(self.btn_clear_comp)
+        c_form.addRow(calib_layout)
+
+        self.lbl_calib_status = QLabel("")
+        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
+        c_form.addRow(self.lbl_calib_status)
+
+        comp_group.setLayout(c_form)
+        left_panel.addWidget(comp_group)
 
         # Routing
         routing_group = QGroupBox(tr("Input Routing"))
@@ -547,6 +640,23 @@ class LockInHarmonicWidget(QWidget):
             self.module.stop_analysis()
             self.timer.stop()
             self.btn_toggle.setText(tr("Start Analysis"))
+
+    def on_comp_enable(self, checked):
+        self.module.compensation_enabled = checked
+        if not checked:
+            self.module.stop_calibration()
+
+    def on_comp_max_changed(self, val):
+        self.module.comp_max_harmonic = val
+
+    def on_calibrate(self):
+        if not self.module.compensation_enabled:
+            self.btn_comp_enable.setChecked(True)
+            self.module.compensation_enabled = True
+        self.module.start_calibration()
+
+    def on_clear_comp(self):
+        self.module.clear_compensation()
 
     def on_buffer_changed(self, idx):
         sizes = [65536, 131072, 262144, 524288]
@@ -662,6 +772,18 @@ class LockInHarmonicWidget(QWidget):
 
         self.lbl_thd.setText(tr("{} dB ({})").format(f"{thd_db:.3f}", self._format_percent(thd_pct)))
         self.lbl_thdn.setText(tr("{} dB ({})").format(f"{thdn_db:.3f}", self._format_percent(thdn_pct)))
+
+        if self.module.is_calibrating:
+            step = self.module.calibration_current_step
+            total = self.module.calibration_target_steps
+            self.lbl_calib_status.setText(tr("Calibrating... {}/{}").format(step, total))
+            self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
+        else:
+            if np.any(np.abs(self.module.compensation_coeffs) > 0) and self.module.compensation_enabled:
+                self.lbl_calib_status.setText(tr("Compensation Active"))
+                self.lbl_calib_status.setStyleSheet("color: #55ff55; font-weight: bold;")
+            else:
+                self.lbl_calib_status.setText("")
 
         fund_dbfs = (
             20 * np.log10((self.module.harmonics_amp[0] / np.sqrt(2)) + 1e-15) + 3
