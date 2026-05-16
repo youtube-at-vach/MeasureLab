@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
@@ -475,6 +476,7 @@ class LockInHarmonicWidget(QWidget):
         left_panel.addWidget(self.btn_toggle)
 
         left_tabs = QTabWidget()
+        left_tabs.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         # Settings Tab
         settings_tab = QWidget()
@@ -588,7 +590,9 @@ class LockInHarmonicWidget(QWidget):
         ov_layout.addWidget(self.lbl_thdn)
         ov_layout.addWidget(self.lbl_fund)
         ov_group.setLayout(ov_layout)
+        ov_group.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         left_panel.addWidget(ov_group)
+        left_panel.addStretch()
 
         left_panel_widget = QWidget()
         left_panel_widget.setLayout(left_panel)
