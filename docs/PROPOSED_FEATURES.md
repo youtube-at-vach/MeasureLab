@@ -7,11 +7,13 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **AI & Psychoacoustics**: Psychoacoustic AI-MOS Predictor, Generative AI Non-Linearity Cloner, Brainwave (EEG) Perceptual Correlator, Neuromorphic Codec Evaluator, AI Component Degradation Predictor, AI-Driven Ground Loop Topological Solver, **Neuro-Acoustic Emotional Profiler** (EEG mapping to signal distortion), Virtual Golden Ear Listener, **Telepathic UI** (EEG-based widget control).
-* **Quantum & Advanced Physics**: Quantum-Tunneling Noise Floor Cartography, Quantum Jitter Tomography, Quantum Entropy Analyzer, **Quantum Entropy DAC Sync Analyzer** (visualizing clock desync via quantum entropy).
-* **Holographic & Spatial**: Holographic Circuit Thermal-Acoustic Profiler, Holographic Intermodulation Topology, Augmented Reality (AR) Probe Visualizer, **Zero-G Resonant Frequency Simulator** (aerospace component vibration simulation), **Galactic IMD Topology Visualizer**.
-* **Advanced Processing**: Neuromorphic Transient Reconstructor, Digital Twin Synthesizer, Headless / Web Remote Interface, Real-time Active Distortion Nulling, Sonic Chronoportation Extrapolator (zero-latency prediction), Quantum-Entanglement Audio Sync Analyzer, Synesthesia Audio-Visualizer, Time-Reversal Signal Pre-Conditioner, **Sonic DNA Fingerprint Extractor**.
-* **Cosmic & Exotic Physics**: **Tachyon Audio Synthesizer** (reverse-time signal synthesis), **Black Hole Gravity Wave Simulator** (extreme sub-sonic spacetime distortion), **Quantum Superposition A/B Tester** (simultaneous multi-state audio perception).
+* **Temporal-Smearing Psycho-Acoustic Renderer**: AI-based model that predicts how human ears perceive transient smearing.
+* **Sub-atomic Thermal Noise Sonification**: Translating extreme low-level component thermal noise into audible landscapes.
+* **AI-Driven Sonic Aging Simulator**: Predicting how electrolytic capacitors and components will age and degrade the signal over 20 years.
+* **Neuro-Acoustic Emotional Profiler**: EEG mapping to signal distortion.
+* **Quantum Entropy DAC Sync Analyzer**: Visualizing clock desync via quantum entropy.
+* **Galactic IMD Topology Visualizer**: 3D spatial representation of intermodulation distortion.
+* **Tachyon Audio Synthesizer**: Reverse-time signal synthesis.
 
 ---
 
@@ -19,28 +21,25 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
-* **Continuity & Dropout Logger:** Long-term monitoring of signal integrity to detect micro-dropouts and clock slips over hours of playback.
-* **Lossy Codec Artifact Analyzer:** Real-time difference analysis between uncompressed source and Bluetooth/Lossy compressed return.
-* **Test Sequence Automator:** Macro engine to script unattended sweeps.
-* **Dynamics Processor Profiler:** Measures static I/O transfer curves and attack/release.
-* **Bit-Perfect Verifier:** PRBS/watermark generator for loopback verification.
-* **Realtime/Offline Null Comparator:** Channel inversion with sub-sample matching.
+* **ASRC Benchmark Automator**: Automated sweep of sample rate conversions to evaluate IMD/THD degradation across rate boundaries.
+* **Continuity & Dropout Logger**: Long-term monitoring of signal integrity to detect micro-dropouts.
+* **Lossy Codec Artifact Analyzer**: Real-time difference analysis of uncompressed vs lossy audio.
+* **Test Sequence Automator**: Macro engine to script unattended sweeps.
+* **Dynamics Processor Profiler**: Measures static I/O transfer curves and attack/release.
+* **Bit-Perfect Verifier**: PRBS/watermark generator for loopback verification.
+* **Realtime/Offline Null Comparator**: Channel inversion with sub-sample matching.
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **LUFS Meter:** Add **Crest Factor & Dynamic Range Radar Mode** (visualize macro/micro dynamics over time).
-* **Spectrum Analyzer:** Add **DAC Aliasing & Out-of-band Imaging Test** (automated high-frequency sweep to detect filter failures).
-* **Signal Generator:** Add **Programmable Jitter Injector** (simulate deterministic and random clock jitter) and Interference/Glitch Injector.
-* **Spectrogram:** Add Reference Subtraction Mode (real-time difference between two sources).
-* **Oscilloscope:** Add CMRR/PSRR Mode.
-* **Frequency Counter:** Add Thermal Drift Logger, Phase Noise Plot.
-* **Network Analyzer:** Add Amplifier Stability Margins & Coherence.
-* **Impedance Analyzer:** Add Cable Tester Mode, Damping Factor / Amp Output Impedance Mode.
-* **Distortion Analyzer:** Thermal & Power Stress Logger, **Harmonic Phase Analyzer** (measure relative phase of harmonics to construct non-linear transfer curves).
-* **Advanced Distortion Meter:** Add RF Immunity (EMI Rejection Tester).
-* **Transient Analyzer:** Add Relay/Switch Bounce Analyzer, **DAC Filter Ringing Visualizer** (pre/post-ringing characterization), **Overload Recovery Time Measurement**.
-* **Noise Profiler:** Add **Microphonics Impact Analysis mode** (correlates physical tap/shock stimuli with audio noise spikes).
-* **Stereo Alignment Monitor:** Add **Volume Gang Error Logger** (track tracking error vs level over time).
+* **Distortion Analyzer**: Add **Thermal & Power Stress Logger**, **Harmonic Phase Analyzer**.
+* **Spectrum Analyzer**: Add **DAC Aliasing & Out-of-band Imaging Test**, **ASRC Artifact Sweep Mode**.
+* **Noise Profiler**: Add **Microphonics Impact Analysis mode**, **Dither Signature Detector** (automatically identify TPDF/Noise Shaping).
+* **LUFS Meter**: Add **Crest Factor & Dynamic Range Radar Mode**.
+* **Signal Generator**: Add **Programmable Jitter Injector**, **Interference/Glitch Injector**.
+* **Network Analyzer**: Add **Amplifier Stability Margins**, **High-Resolution Stopband Attenuation Mode** for DAC filters.
+* **Transient Analyzer**: Add **Relay/Switch Bounce Analyzer**, **DAC Filter Ringing Visualizer**.
+* **Advanced Distortion Meter**: Add **RF Immunity (EMI Rejection Tester)**.
+* **Stereo Alignment Monitor**: Add **Volume Gang Error Logger**.
 
 ---
 
@@ -53,21 +52,15 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 ## ⏸️ Under Review / On Hold
 
 * Holographic Audio Topography, 3D Spectral Waterfall, Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
-* **Power Display Mode** (Oscilloscope): On hold. UI becomes complex with conversion factors for current sensing.
-* **DAC Filter Classifier & PWM Switching Noise Analysis** (Spectrum Analyzer): Integration postponed; kept as candidate ideas.
-* **Bluetooth / DSD / USB Sniffer Proposals**: On hold.
-    * **Wireless / Bluetooth Codec Analyzer**: Pending.
-    * **DSD / PDM Stream Analyzer**: Few DSD-compatible devices available for testing.
-    * **USB Audio Protocol Sniffer**: Technical difficulty in implementing cross-platform packet sniffing.
 
 ---
 
 ## ❌ Cancelled / Not Needed
 
-* **Step Response Analyzer / Spectrum Analyzer THD Hot-Tracking / Multi-Channel Phase Matrix.**
-* **Phase/Polarity Checker:** Duplicate. Verifiable via Oscilloscope or Transient Analyzer.
-* **Multitone THD Analyzer:** Duplicate. Covered by Advanced Distortion Meter (MIM).
-* **Slew Rate Calculator** (Oscilloscope): Cancelled. Narrow-band sound devices do not yield meaningful results in testing.
+* **Phase/Polarity Checker**: Duplicate (Verifiable via Oscilloscope or Transient Analyzer).
+* **Multitone THD Analyzer**: Duplicate (Covered by Advanced Distortion Meter).
+* **Step Response Analyzer / Spectrum Analyzer THD Hot-Tracking / Multi-Channel Phase Matrix**.
+* **Slew Rate Calculator**: Cancelled (Narrow-band sound devices do not yield meaningful results).
 
 ---
 
