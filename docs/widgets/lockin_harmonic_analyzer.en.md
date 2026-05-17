@@ -48,6 +48,14 @@ Configure basic measurement parameters.
 
 This feature allows you to cancel out the distortion inherent in the measurement system itself (e.g., the output stage of your audio interface).
 
+#### ☕ Coffee Break: Fighting Fire with Fire (The Magic of Anti-Phase)
+
+When your audio interface itself is slightly distorted, how can you output a clean signal?
+This is where we use the same magic found in "noise-canceling headphones": **Anti-Phase**.
+
+For example, imagine your interface has a bad habit of always "steering slightly to the right." If you purposely feed it a signal that is pre-steered "slightly to the left" by the exact same amount, by the time it exits the interface, it will come out perfectly "straight" (clean)!
+This tab pre-measures these "distortion habits" and secretly mixes the "opposite distortion" into the output signal, magically generating a sparkling clean test signal.
+
 * **Enable Compensation**: When checked, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
 * **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated.
 * **Auto-Calibrate**: Automatically captures and updates the compensation coefficients.
@@ -74,3 +82,4 @@ The area on the right side allows you to view detailed data by switching between
 * **Harmonics Table**: A tabular view showing the absolute amplitude (Amp dBFS), relative level to the fundamental (Level dBc), and phase (Phase deg) for each harmonic order.
 * **Harmonics Plot**: A bar graph visually showing the level of each harmonic component (dBFS).
 * **Residual**: Displays the waveform of the "residual components" (noise + other non-harmonic components). This is the original signal minus the calculated fundamental and all harmonic components.
+* **Compensation Data**: A table listing the currently applied compensation coefficients (amplitude and phase for each harmonic). By using the "Save as Reference" button and checking "Show Difference", you can monitor minute drifts in distortion characteristics (ΔAmp, ΔPhase) caused by time or temperature changes.
