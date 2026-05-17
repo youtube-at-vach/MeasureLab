@@ -48,10 +48,11 @@ Configure basic measurement parameters.
 
 This feature allows you to cancel out the distortion inherent in the measurement system itself (e.g., the output stage of your audio interface).
 
-* **Harmonic Compensation**: When enabled, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
-* **Update Compensation**: Captures the current measurement results as the "system distortion" and updates the compensation table.
-    * **Procedure**: Press this button while in a loopback configuration and repeat until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
-* **Clear Compensation**: Resets the current compensation table to return to a pure sine wave output.
+* **Enable Compensation**: When checked, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
+* **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated.
+* **Auto-Calibrate**: Automatically captures and updates the compensation coefficients.
+    * **Procedure**: Press this button while in a loopback configuration. It will automatically run the calibration sequence until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
+* **Clear**: Resets the current compensation table to return to a pure sine wave output.
 
 ### 3. Routing Tab
 
