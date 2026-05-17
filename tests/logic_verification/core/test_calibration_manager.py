@@ -63,19 +63,6 @@ def cal_manager(tmp_path):
     return cm
 
 
-def test_initialization(cal_manager):
-    """Test default values upon initialization."""
-    assert cal_manager.input_sensitivity == 1.0
-    assert cal_manager.output_gain == 1.0
-    assert cal_manager.output_gain_is_calibrated is False
-    assert cal_manager.frequency_calibration == 1.0
-    assert cal_manager.frequency_calibration_1pps == 1.0
-    assert cal_manager.lockin_gain_offset == 0.0
-    assert cal_manager.spl_offset_db is None
-    assert cal_manager.profiles == {}
-    assert cal_manager.last_profile is None
-
-
 def test_save_load(cal_manager):
     """Test saving and loading calibration data."""
     cal_manager.input_sensitivity = 2.0

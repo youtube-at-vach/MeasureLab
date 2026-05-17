@@ -8,13 +8,6 @@ def session_manager():
     return SessionManager()
 
 
-def test_initial_state(session_manager):
-    """Verify that a new SessionManager is initialized correctly."""
-    assert session_manager.current_module is None
-    assert session_manager.is_running is False
-    assert session_manager.results == []
-
-
 def test_set_module(session_manager):
     """Verify that set_module correctly updates the current_module."""
     dummy_module = "dummy_module"

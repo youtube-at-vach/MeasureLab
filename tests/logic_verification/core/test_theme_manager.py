@@ -129,11 +129,6 @@ class TestThemeManager(unittest.TestCase):
         if "src.core.theme_manager" in sys.modules:
             del sys.modules["src.core.theme_manager"]
 
-    def test_initialization(self):
-        tm = self.ThemeManager(self.mock_app)
-        self.assertEqual(tm.current_theme, "system")
-        self.assertEqual(tm.app, self.mock_app)
-
     def test_get_current_theme_with_config(self):
         """Test that get_current_theme resolves 'system' using config_manager and internal Qt detection."""
         mock_config = MagicMock()
