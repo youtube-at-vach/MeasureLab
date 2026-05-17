@@ -6,6 +6,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -458,6 +459,7 @@ class LockInHarmonicWidget(QWidget):
         super().__init__()
         self.module = module
         self._last_fs = 0
+        self.ref_compensation_coeffs = np.zeros(self.module.max_harmonic, dtype=complex)
         self.init_ui()
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_ui)
@@ -636,6 +638,43 @@ class LockInHarmonicWidget(QWidget):
         self.curve_res = self.plot_res.plot(pen="y")
         self.tabs.addTab(self.plot_res, tr("Residual"))
 
+        # Compensation Data
+        comp_data_tab = QWidget()
+        comp_data_layout = QVBoxLayout(comp_data_tab)
+
+        comp_ctrl_layout = QHBoxLayout()
+        self.btn_save_comp_ref = QPushButton(tr("Save as Reference"))
+        self.btn_clear_comp_ref = QPushButton(tr("Clear Reference"))
+        self.chk_show_comp_diff = QCheckBox(tr("Show Difference"))
+
+        self.btn_save_comp_ref.clicked.connect(self.on_save_comp_ref)
+        self.btn_clear_comp_ref.clicked.connect(self.on_clear_comp_ref)
+        self.chk_show_comp_diff.toggled.connect(self.on_comp_diff_toggled)
+
+        comp_ctrl_layout.addWidget(self.btn_save_comp_ref)
+        comp_ctrl_layout.addWidget(self.btn_clear_comp_ref)
+        comp_ctrl_layout.addWidget(self.chk_show_comp_diff)
+        comp_ctrl_layout.addStretch()
+
+        comp_data_layout.addLayout(comp_ctrl_layout)
+
+        self.comp_table = QTableWidget()
+        self.comp_table.setColumnCount(5)
+        self.comp_table.setHorizontalHeaderLabels(
+            [tr("Harmonic"), tr("Amp (dBFS)"), tr("Phase (deg)"), tr("ΔAmp (dB)"), tr("ΔPhase (deg)")]
+        )
+
+        row_count = max(0, self.module.max_harmonic - 1)
+        self.comp_table.setRowCount(row_count)
+        for i in range(row_count):
+            self.comp_table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 2)))
+
+        self.comp_table.setColumnHidden(3, True)
+        self.comp_table.setColumnHidden(4, True)
+
+        comp_data_layout.addWidget(self.comp_table)
+        self.tabs.addTab(comp_data_tab, tr("Compensation Data"))
+
         right_panel.addWidget(self.tabs)
         layout.addLayout(right_panel, 2)
 
@@ -668,6 +707,23 @@ class LockInHarmonicWidget(QWidget):
     def on_clear_comp(self):
         self.module.clear_compensation()
 
+    def on_save_comp_ref(self):
+        self.ref_compensation_coeffs = np.copy(self.module.compensation_coeffs)
+
+    def on_clear_comp_ref(self):
+        self.ref_compensation_coeffs.fill(0)
+
+    def on_comp_diff_toggled(self, checked):
+        self.comp_table.setColumnHidden(3, not checked)
+        self.comp_table.setColumnHidden(4, not checked)
+
+    def _get_comp_amp_phase(self, c: complex):
+        amp = np.abs(c)
+        phase = np.arctan2(c.real, c.imag)
+        phase_deg = np.degrees(phase)
+        phase_deg = (phase_deg + 180) % 360 - 180
+        return amp, phase_deg
+
     def on_buffer_changed(self, idx):
         sizes = [65536, 131072, 262144, 524288]
         if 0 <= idx < len(sizes):
@@ -678,11 +734,25 @@ class LockInHarmonicWidget(QWidget):
 
     def on_max_harmonic_changed(self, val):
         self.module.set_max_harmonic(val)
+
+        if len(self.ref_compensation_coeffs) < val:
+            new_ref = np.zeros(val, dtype=complex)
+            n = len(self.ref_compensation_coeffs)
+            new_ref[:n] = self.ref_compensation_coeffs
+            self.ref_compensation_coeffs = new_ref
+
         # Resize table
         self.table.setRowCount(val)
         for i in range(val):
             if not self.table.item(i, 0):
                 self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
+
+        row_count = max(0, val - 1)
+        self.comp_table.setRowCount(row_count)
+        for i in range(row_count):
+            if not self.comp_table.item(i, 0):
+                self.comp_table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 2)))
+
         # Re-create plot items
         self.plot_bar.removeItem(self.bar_items)
         x_indices = np.arange(1, val + 1)
@@ -818,6 +888,29 @@ class LockInHarmonicWidget(QWidget):
             self.table.setItem(i, 3, QTableWidgetItem(f"{phase:.2f}"))
 
         self.bar_items.setOpts(height=heights)
+
+        # Update Compensation Table
+        show_diff = self.chk_show_comp_diff.isChecked()
+        for i in range(1, self.module.max_harmonic):
+            c = self.module.compensation_coeffs[i]
+            amp, phase_deg = self._get_comp_amp_phase(c)
+
+            amp_dbfs = 20 * np.log10(amp + 1e-15)
+
+            self.comp_table.setItem(i - 1, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
+            self.comp_table.setItem(i - 1, 2, QTableWidgetItem(f"{phase_deg:.2f}"))
+
+            if show_diff:
+                ref_c = self.ref_compensation_coeffs[i]
+                ref_amp, ref_phase_deg = self._get_comp_amp_phase(ref_c)
+                ref_amp_dbfs = 20 * np.log10(ref_amp + 1e-15)
+
+                diff_amp = amp_dbfs - ref_amp_dbfs
+                diff_phase = phase_deg - ref_phase_deg
+                diff_phase = (diff_phase + 180) % 360 - 180
+
+                self.comp_table.setItem(i - 1, 3, QTableWidgetItem(f"{diff_amp:+.2f}"))
+                self.comp_table.setItem(i - 1, 4, QTableWidgetItem(f"{diff_phase:+.2f}"))
 
         res_hist = np.array(self.module.residual_history)
         if len(res_hist) > 0:
