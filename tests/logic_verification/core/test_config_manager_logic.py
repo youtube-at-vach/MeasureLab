@@ -197,9 +197,8 @@ class TestConfigManagerLogic(unittest.TestCase):
     @patch("src.core.config_manager.QLocale")
     @patch("src.core.config_manager.resource_path")
     @patch("src.core.config_manager.os.path.exists")
-    @patch("src.core.config_manager.locale.getdefaultlocale")
     @patch("src.core.config_manager.locale.getlocale")
-    def test_detect_system_language(self, mock_get, mock_default, mock_exists, mock_resource_path, mock_qlocale):
+    def test_detect_system_language(self, mock_get, mock_exists, mock_resource_path, mock_qlocale):
         """Test system language detection logic."""
         cm = self.ConfigManager(config_filename=self.config_path)
 
@@ -222,20 +221,20 @@ class TestConfigManagerLogic(unittest.TestCase):
         lang = cm._detect_system_language()
         self.assertEqual(lang, "ja")
 
-        # Case: Fallback to getdefaultlocale
+        # Case: Fallback to POSIX locale environment
         mock_get.return_value = (None, None)
-        mock_default.return_value = ("fr_FR", "UTF-8")
         mock_exists.side_effect = lambda p: p == "/path/to/src/assets/lang/fr.json"
 
-        lang = cm._detect_system_language()
+        with patch.dict("src.core.config_manager.os.environ", {"LANG": "fr_FR.UTF-8"}, clear=True):
+            lang = cm._detect_system_language()
         self.assertEqual(lang, "fr")
 
         # Case: No locale found
         mock_get.return_value = (None, None)
-        mock_default.return_value = (None, None)
         mock_exists.return_value = False
 
-        lang = cm._detect_system_language()
+        with patch.dict("src.core.config_manager.os.environ", {}, clear=True):
+            lang = cm._detect_system_language()
         self.assertIsNone(lang)
 
         # Case: Exception handling

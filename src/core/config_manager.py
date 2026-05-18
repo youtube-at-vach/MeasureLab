@@ -455,13 +455,8 @@ class ConfigManager:
             if os.path.exists(lang_file):
                 return lang_code
 
-            # 2. Fallback to standard python locale
-            loc = locale.getlocale()
-            if not loc or not loc[0]:
-                loc = locale.getdefaultlocale()
-
-            if loc and loc[0]:
-                lang_str = loc[0]
+            # 2. Fallback to standard python locale and POSIX locale environment
+            for lang_str in self._iter_locale_language_tags():
                 base_lang = lang_str.split("_")[0].lower()
 
                 # Check Windows mapping
@@ -476,3 +471,24 @@ class ConfigManager:
         except Exception as e:
             self.logger.warning(f"Failed to detect system language: {e}")
             return None
+
+    @staticmethod
+    def _iter_locale_language_tags() -> list[str]:
+        """Return locale language tags without using deprecated getdefaultlocale()."""
+        candidates = []
+
+        loc = locale.getlocale()
+        if loc and loc[0]:
+            candidates.append(loc[0])
+
+        for env_name in ("LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"):
+            env_value = os.environ.get(env_name)
+            if not env_value:
+                continue
+            # LANGUAGE may contain a priority list such as "fr_FR:en_US".
+            for item in env_value.split(":"):
+                lang = item.split(".", 1)[0].split("@", 1)[0]
+                if lang and lang.upper() not in {"C", "POSIX"}:
+                    candidates.append(lang)
+
+        return candidates
