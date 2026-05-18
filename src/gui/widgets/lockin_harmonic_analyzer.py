@@ -31,6 +31,9 @@ from src.measurement_modules.base import MeasurementModule
 logger = logging.getLogger(__name__)
 DISTORTION_DB_FLOOR = -300.0
 DISTORTION_RATIO_EPS = 10 ** (DISTORTION_DB_FLOOR / 10.0)
+MAX_ANALYSIS_HARMONIC = 200
+MAX_COMPENSATION_HARMONIC = 50
+NYQUIST_HARMONIC_MARGIN = 0.48
 
 
 class LockInHarmonicAnalyzer(MeasurementModule):
@@ -514,12 +517,14 @@ class LockInHarmonicWidget(QWidget):
         form.addRow(tr("Amplitude:"), self.amp_spin)
 
         self.harmonic_spin = QSpinBox()
-        self.harmonic_spin.setRange(2, 200)
-        self.harmonic_spin.setValue(self.module.max_harmonic)
+        harmonic_limit = self._calculate_harmonic_limit()
+        initial_harmonic = min(self.module.max_harmonic, harmonic_limit)
+        self.harmonic_spin.setRange(2, harmonic_limit)
+        self.harmonic_spin.setValue(initial_harmonic)
+        if self.module.max_harmonic != self.harmonic_spin.value():
+            self.module.set_max_harmonic(self.harmonic_spin.value())
         self.harmonic_spin.valueChanged.connect(self.on_max_harmonic_changed)
         form.addRow(tr("Harmonics:"), self.harmonic_spin)
-
-        self._update_harmonic_limit()
 
         settings_tab.setLayout(form)
         left_tabs.addTab(settings_tab, tr("Settings"))
@@ -535,8 +540,9 @@ class LockInHarmonicWidget(QWidget):
         c_form.addRow(self.btn_comp_enable)
 
         self.comp_max_spin = QSpinBox()
-        self.comp_max_spin.setRange(2, 50)
-        self.comp_max_spin.setValue(self.module.comp_max_harmonic)
+        self.comp_max_spin.setRange(2, self._compensation_order_limit())
+        self.comp_max_spin.setValue(min(self.module.comp_max_harmonic, self.comp_max_spin.maximum()))
+        self.module.comp_max_harmonic = self.comp_max_spin.value()
         self.comp_max_spin.valueChanged.connect(self.on_comp_max_changed)
         c_form.addRow(tr("Comp. Max Harmonic:"), self.comp_max_spin)
 
@@ -664,10 +670,7 @@ class LockInHarmonicWidget(QWidget):
             [tr("Harmonic"), tr("Amp (dBFS)"), tr("Phase (deg)"), tr("ΔAmp (dB)"), tr("ΔPhase (deg)")]
         )
 
-        row_count = max(0, self.module.max_harmonic - 1)
-        self.comp_table.setRowCount(row_count)
-        for i in range(row_count):
-            self.comp_table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 2)))
+        self._resize_compensation_table()
 
         self.comp_table.setColumnHidden(3, True)
         self.comp_table.setColumnHidden(4, True)
@@ -741,17 +744,9 @@ class LockInHarmonicWidget(QWidget):
             new_ref[:n] = self.ref_compensation_coeffs
             self.ref_compensation_coeffs = new_ref
 
-        # Resize table
-        self.table.setRowCount(val)
-        for i in range(val):
-            if not self.table.item(i, 0):
-                self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
-
-        row_count = max(0, val - 1)
-        self.comp_table.setRowCount(row_count)
-        for i in range(row_count):
-            if not self.comp_table.item(i, 0):
-                self.comp_table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 2)))
+        self._resize_harmonic_table(val)
+        self._update_compensation_order_limit()
+        self._resize_compensation_table()
 
         # Re-create plot items
         self.plot_bar.removeItem(self.bar_items)
@@ -781,21 +776,57 @@ class LockInHarmonicWidget(QWidget):
         self.module.ref_channel = val
         self.module.clear_buffer()
 
-    def _update_harmonic_limit(self):
-        """Update the maximum allowed harmonic order based on fundamental frequency and sample rate."""
+    def _calculate_harmonic_limit(self):
+        """Return the maximum measurable harmonic order for the current frequency."""
         fs = self.module.audio_engine.sample_rate
         f0 = self.module.gen_frequency
         if f0 > 0:
             # Nyquist margin (e.g. 48% of FS) to avoid aliasing artifacts near Nyquist.
-            limit = int(np.floor((fs * 0.48) / f0))
-            limit = max(2, min(200, limit))
-        else:
-            limit = 200
+            limit = int(np.floor((fs * NYQUIST_HARMONIC_MARGIN) / f0))
+            return max(2, min(MAX_ANALYSIS_HARMONIC, limit))
+        return MAX_ANALYSIS_HARMONIC
 
+    def _compensation_order_limit(self):
+        return min(MAX_COMPENSATION_HARMONIC, self.module.max_harmonic)
+
+    def _update_compensation_order_limit(self):
+        if not hasattr(self, "comp_max_spin"):
+            return
+
+        limit = self._compensation_order_limit()
+        if self.comp_max_spin.maximum() != limit:
+            self.comp_max_spin.setMaximum(limit)
+        if self.module.comp_max_harmonic != self.comp_max_spin.value():
+            self.module.comp_max_harmonic = self.comp_max_spin.value()
+
+    def _resize_harmonic_table(self, row_count):
+        if not hasattr(self, "table"):
+            return
+
+        self.table.setRowCount(row_count)
+        for i in range(row_count):
+            if not self.table.item(i, 0):
+                self.table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 1) if i > 0 else tr("Fund.")))
+
+    def _resize_compensation_table(self):
+        if not hasattr(self, "comp_table"):
+            return
+
+        row_count = max(0, self._compensation_order_limit() - 1)
+        self.comp_table.setRowCount(row_count)
+        for i in range(row_count):
+            if not self.comp_table.item(i, 0):
+                self.comp_table.setItem(i, 0, QTableWidgetItem(tr("{}th").format(i + 2)))
+
+    def _update_harmonic_limit(self):
+        """Update the maximum allowed harmonic order based on fundamental frequency and sample rate."""
+        limit = self._calculate_harmonic_limit()
         if self.harmonic_spin.maximum() != limit:
             self.harmonic_spin.setMaximum(limit)
             # If current value exceeds new limit, it will be automatically clamped by QSpinBox,
             # and valueChanged will trigger module update.
+        self._update_compensation_order_limit()
+        self._resize_compensation_table()
 
     def _update_buffer_labels(self):
         """Update the buffer combo box items with dynamic integration time labels."""
