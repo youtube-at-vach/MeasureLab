@@ -54,7 +54,13 @@ This feature allows you to cancel out the distortion inherent in the measurement
     * **Procedure**: Press this button while in a loopback configuration. It will automatically run the calibration sequence until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
 * **Clear**: Resets the current compensation table to return to a pure sine wave output.
 
-### 3. Routing Tab
+### 3. Compensation Data Tab [NEW]
+
+* **Save as Reference**: Saves the current compensation data as a reference.
+* **Clear Reference**: Clears the saved reference data.
+* **Show Difference**: Displays the difference (ΔAmp, ΔPhase) between the compensation data and the reference data.
+
+### 4. Routing Tab
 
 * **Signal Input**: Select the channel where the target signal you want to measure for harmonic distortion is routed.
 * **Reference Input**: Select the channel where the reference signal for lock-in analysis is routed. This should be the test signal source itself, either tapped before going through the Device Under Test (DUT) or a very stable, low-distortion signal. The fundamental frequency and phase are extracted with high precision from this reference.
