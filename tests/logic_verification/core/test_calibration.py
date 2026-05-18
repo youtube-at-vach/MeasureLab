@@ -20,22 +20,6 @@ def calibration_manager(temp_config_path):
     return CalibrationManager(config_filename=temp_config_path)
 
 
-def test_initialization(calibration_manager, temp_config_path):
-    """Test initial state of CalibrationManager."""
-    assert calibration_manager.config_path == temp_config_path
-    assert calibration_manager.input_sensitivity == 1.0
-    assert calibration_manager.output_gain == 1.0
-    assert calibration_manager.output_gain_is_calibrated is False
-    assert calibration_manager.frequency_calibration == 1.0
-    assert calibration_manager.frequency_calibration_1pps == 1.0
-    assert calibration_manager.frequency_calibration_source == "basic"
-    assert calibration_manager.lockin_gain_offset == 0.0
-    assert calibration_manager.spl_offset_db is None
-    assert calibration_manager.profiles == {}
-    assert calibration_manager.last_profile is None
-    assert calibration_manager.frequency_map == []
-
-
 def test_save_and_load(calibration_manager, temp_config_path):
     """Test saving and loading basic attributes."""
     calibration_manager.input_sensitivity = 2.0

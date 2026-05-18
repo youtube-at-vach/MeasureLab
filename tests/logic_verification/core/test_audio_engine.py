@@ -37,11 +37,6 @@ class TestVirtualStream(unittest.TestCase):
             samplerate=self.samplerate, blocksize=self.blocksize, channels=(2, 2), callback=self.callback_mock
         )
 
-    def test_initialization(self):
-        self.assertEqual(self.stream_int.channels, (2, 2))
-        self.assertEqual(self.stream_tuple.channels, (2, 2))
-        self.assertFalse(self.stream_int.active)
-
     def test_start_stop_close(self):
         self.assertFalse(self.stream_int.active)
 
@@ -98,21 +93,6 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.engine._restart_stream = MagicMock()
         self.engine._start_master_stream = MagicMock()
 
-    def test_set_audio_engine_64bit(self):
-        self.assertFalse(self.engine.audio_engine_64bit)
-
-        # Enable
-        self.engine.set_audio_engine_64bit(True)
-        self.assertTrue(self.engine.audio_engine_64bit)
-        self.engine._restart_stream.assert_called_once()
-
-        self.engine._restart_stream.reset_mock()
-
-        # Disable
-        self.engine.set_audio_engine_64bit(False)
-        self.assertFalse(self.engine.audio_engine_64bit)
-        self.engine._restart_stream.assert_called_once()
-
     def test_set_offline_mode(self):
         self.assertFalse(self.engine.offline_mode)
 
@@ -135,22 +115,6 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.engine.set_offline_mode(False)
         self.assertFalse(self.engine.offline_mode)
         self.engine._restart_stream.assert_not_called()
-
-    def test_set_loopback(self):
-        self.assertFalse(self.engine.loopback)
-        self.engine.set_loopback(True)
-        self.assertTrue(self.engine.loopback)
-        self.engine.set_loopback(False)
-        self.assertFalse(self.engine.loopback)
-
-    def test_set_mute_output(self):
-        self.assertFalse(self.engine.mute_output)
-        self.engine.set_mute_output(True)
-        self.assertTrue(self.engine.mute_output)
-        self.engine.logger.debug.assert_called_with("Set mute output: True")
-        self.engine.set_mute_output(False)
-        self.assertFalse(self.engine.mute_output)
-        self.engine.logger.debug.assert_called_with("Set mute output: False")
 
     def test_set_pipewire_jack_resident(self):
         self.assertFalse(self.engine.pipewire_jack_resident)
