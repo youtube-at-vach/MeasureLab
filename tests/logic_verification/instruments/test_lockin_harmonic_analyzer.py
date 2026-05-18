@@ -1,11 +1,11 @@
 import numpy as np
 
-from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer
+from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer, LockInHarmonicWidget
 
 
 class MockAudioEngine:
-    def __init__(self):
-        self.sample_rate = 48000
+    def __init__(self, sample_rate=48000):
+        self.sample_rate = sample_rate
         self.callbacks = {}
         self.callback_counter = 0
 
@@ -157,3 +157,42 @@ def test_lockin_harmonic_analyzer_clear_buffer():
     assert len(analyzer.residual_history) == 0
     assert np.all(analyzer.harmonics_amp == 0)
     assert np.all(analyzer.harmonics_phase_deg == 0)
+
+
+def test_compensation_data_table_shows_50th_when_measurable(qtbot):
+    engine = MockAudioEngine(sample_rate=192000)
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    widget = LockInHarmonicWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    assert analyzer.max_harmonic == 10
+    assert widget.comp_max_spin.maximum() == 10
+    assert widget.comp_table.rowCount() == 9
+
+    widget.harmonic_spin.setValue(50)
+
+    assert analyzer.max_harmonic == 50
+    assert widget.comp_max_spin.maximum() == 50
+    assert widget.comp_table.rowCount() == 49
+    assert widget.comp_table.item(48, 0).text().startswith("50")
+
+
+def test_compensation_order_limit_matches_measurable_harmonics(qtbot):
+    engine = MockAudioEngine(sample_rate=48000)
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    widget = LockInHarmonicWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    assert analyzer.max_harmonic == 10
+    assert widget.harmonic_spin.maximum() == 23
+    assert widget.comp_max_spin.maximum() == 10
+    assert widget.comp_table.rowCount() == 9
+
+    widget.harmonic_spin.setValue(23)
+
+    assert analyzer.max_harmonic == 23
+    assert widget.comp_max_spin.maximum() == 23
+    assert widget.comp_table.rowCount() == 22
+    assert widget.comp_table.item(21, 0).text().startswith("23")
