@@ -57,7 +57,7 @@ For example, imagine your interface has a bad habit of always "steering slightly
 This tab pre-measures these "distortion habits" and secretly mixes the "opposite distortion" into the output signal, magically generating a sparkling clean test signal.
 
 * **Enable Compensation**: When checked, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
-* **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated.
+* **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated. Note that this limit cannot exceed the analysis harmonic order limit or 50.
 * **Auto-Calibrate**: Automatically captures and updates the compensation coefficients.
     * **Procedure**: Press this button while in a loopback configuration. It will automatically run the calibration sequence until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
 * **Clear**: Resets the current compensation table to return to a pure sine wave output.
