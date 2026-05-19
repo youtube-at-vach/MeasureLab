@@ -60,6 +60,8 @@ Customize the graph display in the **"Display"** tab.
     * 💡 **What is ETC?**: Imagine plucking a heavy weight attached to a stiff spring; it bounces up and down for a long time. In the electrical world of filter circuits and amplifiers, how long a signal "lingers (ringing)" after a sudden input affects the crispness of the sound. ETC is a special microscope to see "how quickly that energy vanishes"!
 * **Impulse Response**: Displays the impulse response of the measurement target in the time domain (in the "Impulse Response" tab).
     * 💡 **What is Impulse Response?**: Imagine the sound of a handclap in front of a speaker. The impulse response is a waveform that captures how the system reacts to that instantaneous sound and how the ringing fades away. By looking at this, you can intuitively check things like the damping of a speaker cone or the reflections in a room on a time axis.
+* **Harmonics**: Displays the harmonic components (2nd to 5th, and THD) of the measurement target for each frequency (in the "Harmonics" tab).
+    * 💡 **Farina's Magic**: Normally, measuring distortion across frequencies requires playing and measuring individual tones one by one. However, using the mathematical magic of the Farina method with "Chirp signals" and "Impulse responses", this analyzer can separate and extract the distortion for all frequencies simultaneously with just a single "Pweeeep!" sweep!
 
 ### Display Options
 
