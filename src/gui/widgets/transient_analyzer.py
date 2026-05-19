@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pyqtgraph as pg
 import pywt
-from PyQt6.QtCore import QRectF, Qt, QTimer
+from PyQt6.QtCore import QRectF, Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -24,6 +24,56 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
+
+
+class CWTWorker(QThread):
+    finished = pyqtSignal(object, object, object, object)  # times, freqs, mag, error_msg
+
+    def __init__(self, analyzer: "TransientAnalyzer"):
+        super().__init__()
+        self.analyzer = analyzer
+        # Extract necessary values/data to avoid accessing shared state across threads
+        self.final_data = analyzer.final_data.copy() if analyzer.final_data is not None else None
+        self.fs = analyzer.fs
+        self.min_anal_freq = analyzer.min_anal_freq
+        self.max_anal_freq = analyzer.max_anal_freq
+        self.wavelet_name = analyzer.wavelet_name
+
+    def run(self):
+        try:
+            if self.final_data is None or len(self.final_data) == 0:
+                self.finished.emit(None, None, None, None)
+                return
+
+            # Use linear frequencies for correct axis mapping in ImageItem
+            num_scales = 120
+            min_freq = self.min_anal_freq
+            max_freq = self.max_anal_freq
+            if max_freq > self.fs / 2:
+                max_freq = self.fs / 2
+
+            # Check integrity
+            if min_freq <= 0:
+                min_freq = 1
+            if min_freq >= max_freq:
+                min_freq = max_freq - 10
+
+            # Linear space for frequencies to match linear Y-axis of plot
+            freqs = np.linspace(min_freq, max_freq, num_scales)
+
+            scales = pywt.frequency2scale(self.wavelet_name, freqs / self.fs)
+
+            # Run CWT
+            cwtmatr, frequencies = pywt.cwt(self.final_data, scales, self.wavelet_name, sampling_period=1.0 / self.fs)
+
+            # Calculate Magnitude
+            mag = np.abs(cwtmatr)
+
+            times = np.arange(len(self.final_data)) / self.fs
+
+            self.finished.emit(times, frequencies, mag, None)
+        except Exception as e:
+            self.finished.emit(None, None, None, str(e))
 
 
 class TransientAnalyzer(MeasurementModule):
@@ -239,6 +289,7 @@ class TransientAnalyzerWidget(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_status)
         self.timer.start(100)
+        self.worker = None
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -504,14 +555,26 @@ class TransientAnalyzerWidget(QWidget):
 
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setText(tr("Analyzing..."))
+        self.rec_btn.setEnabled(False)
         QApplication.processEvents()
 
+        self.worker = CWTWorker(self.module)
+        self.worker.finished.connect(self.on_analysis_finished)
+        self.worker.start()
+
+    def on_analysis_finished(self, times, freqs, mag, error_msg):
+        self.analyze_btn.setEnabled(True)
+        self.analyze_btn.setText(tr("Analyze"))
+        self.rec_btn.setEnabled(True)
+
+        if error_msg:
+            QMessageBox.critical(self, tr("Error"), error_msg)
+            return
+
+        if times is None:
+            return
+
         try:
-            times, freqs, mag = self.module.analyze()
-
-            if times is None:
-                return
-
             img_data = mag.T
 
             self.img_item.setImage(img_data, autoLevels=True)
@@ -530,7 +593,3 @@ class TransientAnalyzerWidget(QWidget):
 
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), str(e))
-
-        finally:
-            self.analyze_btn.setEnabled(True)
-            self.analyze_btn.setText(tr("Analyze"))
