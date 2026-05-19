@@ -103,3 +103,102 @@ def test_etc_smoothing_uses_time_based_strength(qtbot):
     assert np.std(light) < np.std(etc_db)
     assert np.std(medium) < np.std(light)
     assert np.std(heavy) < np.std(medium)
+
+
+def test_harmonics_plot_curves_and_visibility(qtbot):
+    widget = _make_widget(qtbot)
+
+    # Mock harmonics data
+    freqs = np.array([100.0, 200.0, 500.0, 1000.0])
+    data = {
+        "freqs": freqs,
+        "fundamental": np.array([0.0, -1.0, -2.0, -3.0]),
+        "h2": np.array([-40.0, -42.0, -45.0, -48.0]),
+        "h3": np.array([-50.0, -53.0, -56.0, -60.0]),
+        "h4": np.array([-60.0, -64.0, -68.0, -72.0]),
+        "h5": np.array([-70.0, -75.0, -80.0, -85.0]),
+        "thd": np.array([-39.0, -41.0, -44.0, -47.0]),
+    }
+
+    widget.on_harmonics_result(data)
+
+    # Verify curves got populated
+    for key in ["fundamental", "h2", "h3", "h4", "h5", "thd"]:
+        x, y = widget.h_curves[key].getData()
+        assert np.allclose(x, np.log10(freqs))
+        assert len(y) == len(freqs)
+
+    # Test visibility checkboxes
+    widget.show_h2_check.setChecked(False)
+    x, y = widget.h_curves["h2"].getData()
+    assert _curve_len(x) == 0  # Should be cleared
+
+    widget.show_h2_check.setChecked(True)
+    x, y = widget.h_curves["h2"].getData()
+    assert _curve_len(x) == len(freqs)  # Restored
+
+
+def test_harmonics_absolute_mode_and_units(qtbot):
+    widget = _make_widget(qtbot)
+
+    freqs = np.array([100.0, 1000.0])
+    data = {
+        "freqs": freqs,
+        "fundamental": np.array([-10.0, -10.0]),
+        "h2": np.array([-40.0, -40.0]),
+        "h3": np.array([-50.0, -50.0]),
+        "h4": np.array([-60.0, -60.0]),
+        "h5": np.array([-70.0, -70.0]),
+        "thd": np.array([-39.0, -39.0]),
+    }
+    widget.harmonics_data = data
+
+    # Put widget in Single-Ch Absolute mode
+    widget.single_mode_combo.setCurrentIndex(widget.single_mode_combo.findData("absolute"))
+    widget.unit_combo.setCurrentText("dBFS")
+    widget.module.amplitude = 0.5  # -6.02 dBFS
+    out_amp_db = 20 * np.log10(0.5)
+
+    widget.refresh_harmonics_plot()
+
+    # The plotted absolute values should be shifted by out_amp_db
+    x, y = widget.h_curves["h2"].getData()
+    assert np.allclose(y, -40.0 + out_amp_db)
+
+
+def test_calculate_harmonics_data_farina_math():
+    # Instantiate analyzer
+    analyzer = NetworkAnalyzer(MockAudioEngine())
+    analyzer.start_freq = 20.0
+    analyzer.end_freq = 20000.0
+    analyzer.chirp_duration = 1.0
+
+    # Create dummy impulse response data with a fundamental peak at peak_idx and an H2 peak before it
+    sample_rate = 48000
+    peak_idx = 10000
+    ir_data = np.zeros(20000, dtype=float)
+    ir_data[peak_idx] = 1.0
+
+    # Add dummy H2 peak
+    # ESS H2 offset calculation: delta_t_2 = T * ln(2) / ln(f2/f1)
+    L = np.log(20000.0 / 20.0)
+    delta_t_2 = 1.0 * np.log(2.0) / L
+    peak_2 = peak_idx - int(sample_rate * delta_t_2)
+    ir_data[peak_2] = 0.1
+
+    valid_freqs = np.array([100.0, 1000.0])
+
+    # Calculate harmonics data
+    harmonics = analyzer._calculate_harmonics_data(
+        ir_data=ir_data,
+        peak_idx=peak_idx,
+        sample_rate=sample_rate,
+        valid_freqs=valid_freqs
+    )
+
+    assert "h2" in harmonics
+    assert "h3" in harmonics
+    assert "h4" in harmonics
+    assert "h5" in harmonics
+    assert len(harmonics["h2"]) == len(valid_freqs)
+
