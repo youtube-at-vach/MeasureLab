@@ -49,6 +49,7 @@ class NetworkAnalyzerSignals(QObject):
     latency_result = pyqtSignal(float)
     ir_snr_result = pyqtSignal(float)
     error = pyqtSignal(str)
+    harmonics_result = pyqtSignal(dict)  # dict containing harmonics data arrays
 
 
 class PlayRecSession:
@@ -387,6 +388,58 @@ class NetworkAnalyzer(MeasurementModule):
 
         return chirp, inv_filter
 
+    def _calculate_harmonics_data(self, ir_data, peak_idx, sample_rate, valid_freqs, H_ref_or_drive=None, freqs_ref_or_drive=None):
+        """
+        Calculates individual harmonic responses using the Farina method (ESS).
+        """
+        L = np.log(self.end_freq / self.start_freq)
+        harmonics = {
+            "freqs": valid_freqs,
+        }
+
+        for N in range(2, 6):
+            delta_t_N = self.chirp_duration * np.log(N) / L
+            peak_N = peak_idx - int(sample_rate * delta_t_N)
+
+            # Prevent overlap
+            delta_t_next = self.chirp_duration * np.log(N + 1) / L
+            dist_next = sample_rate * (delta_t_next - delta_t_N)
+
+            delta_t_prev = self.chirp_duration * np.log(N - 1) / L
+            dist_prev = sample_rate * (delta_t_N - delta_t_prev)
+
+            pre_samples = min(int(0.005 * sample_rate), int(0.4 * dist_next))
+            post_samples = min(int(0.030 * sample_rate), int(0.4 * dist_prev))
+
+            start_idx = peak_N - pre_samples
+            end_idx = peak_N + post_samples
+
+            if start_idx >= 0 and end_idx < len(ir_data) and (end_idx - start_idx) > 8:
+                ir_slice = ir_data[start_idx:end_idx]
+                win = windows.tukey(len(ir_slice), alpha=0.1)
+                ir_slice_win = ir_slice * win
+
+                H_N = fft_manager.rfft(ir_slice_win)
+                freqs_N = fft_manager.rfftfreq(len(ir_slice_win), d=1 / sample_rate)
+
+                # Normalize
+                if H_ref_or_drive is not None and freqs_ref_or_drive is not None:
+                    H_ref_interp = np.interp(freqs_N, freqs_ref_or_drive, np.abs(H_ref_or_drive), left=1.0, right=1.0)
+                    H_N_norm = H_N / (H_ref_interp + 1e-12)
+                    mag_N = np.abs(H_N_norm)
+                else:
+                    mag_N = np.abs(H_N)
+
+                # Map to fundamental grid
+                freqs_fundamental = freqs_N / N
+                mag_N_interp = np.interp(valid_freqs, freqs_fundamental, mag_N, left=1e-12, right=1e-12)
+                harmonics[f"h{N}"] = 20 * np.log10(mag_N_interp + 1e-12)
+            else:
+                # If out of bounds or invalid, default to quiet level
+                harmonics[f"h{N}"] = np.full_like(valid_freqs, -120.0)
+
+        return harmonics
+
     def _process_sweep_data(self, rec_data, inv_filter, chirp, sample_rate, worker):
         """Processes the recorded sweep data to calculate magnitude and phase response, IR SNR, and Coherence."""
 
@@ -418,6 +471,7 @@ class NetworkAnalyzer(MeasurementModule):
             self.signals.update_ir_plot.emit(time_ms, ir_slice)
 
         ir_snr_db = None
+        harmonics = {}
 
         if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
             # XFER Mode: Ref = Ch0, Meas = Ch1 (Default) or Custom for Crosstalk
@@ -477,6 +531,17 @@ class NetworkAnalyzer(MeasurementModule):
             # Coherence
             f_coh, coh = coherence(meas_sig, ref_sig, fs=sample_rate, nperseg=8192)
             coh_interp = np.interp(valid_freqs, f_coh, coh)
+
+            # Calculate harmonics in XFER mode
+            harmonics = self._calculate_harmonics_data(
+                ir_data=ir_meas,
+                peak_idx=peak_idx,
+                sample_rate=sample_rate,
+                valid_freqs=valid_freqs,
+                H_ref_or_drive=H_ref,
+                freqs_ref_or_drive=freqs
+            )
+            harmonics["fundamental"] = mag_db
 
         else:
             # Single Channel Mode
@@ -555,8 +620,29 @@ class NetworkAnalyzer(MeasurementModule):
             f_coh, coh = coherence(sig[:min_len], chirp[:min_len], fs=sample_rate, nperseg=8192)
             coh_interp = np.interp(valid_freqs, f_coh, coh)
 
+            # Calculate harmonics in Single Channel mode
+            harmonics = self._calculate_harmonics_data(
+                ir_data=ir,
+                peak_idx=peak_idx,
+                sample_rate=sample_rate,
+                valid_freqs=valid_freqs,
+                H_ref_or_drive=H_drive if drive_ref_win is not None else None,
+                freqs_ref_or_drive=freqs if drive_ref_win is not None else None
+            )
+            harmonics["fundamental"] = mag_db
+
         if ir_snr_db is not None:
             self.signals.ir_snr_result.emit(ir_snr_db)
+
+        if harmonics and len(valid_freqs) > 0:
+            thd_linear = np.zeros_like(valid_freqs)
+            for N in range(2, 6):
+                h_key = f"h{N}"
+                if h_key in harmonics:
+                    thd_linear += (10 ** (harmonics[h_key] / 20)) ** 2
+            thd_linear = np.sqrt(thd_linear)
+            harmonics["thd"] = 20 * np.log10(thd_linear + 1e-12)
+            self.signals.harmonics_result.emit(harmonics)
 
         # Emit
         step = max(1, len(valid_freqs) // 500)
@@ -579,6 +665,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.module.signals.latency_result.connect(self.on_latency_result)
         self.module.signals.ir_snr_result.connect(self.on_ir_snr_result)
         self.module.signals.error.connect(self.on_error)
+        self.module.signals.harmonics_result.connect(self.on_harmonics_result)
 
         self.freqs = []
         self.mags = []
@@ -588,6 +675,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.ir_values = []
         self.etc_times_ms = []
         self.etc_db = []
+        self.harmonics_data = {}
         self._riaa_auto_offset = 0.0
 
         # Decouple plot updates
@@ -785,6 +873,49 @@ class NetworkAnalyzerWidget(QWidget):
         display_tab.setLayout(display_layout)
         tabs.addTab(display_tab, tr("Display"))
 
+        # --- Tab 2.5: Harmonics Settings ---
+        harmonics_settings_tab = QWidget()
+        harmonics_settings_layout = QVBoxLayout()
+
+        harmonics_group = QGroupBox(tr("Harmonics Display"))
+        harmonics_form = QFormLayout()
+
+        self.show_fundamental_check = QCheckBox(tr("Show Fundamental"))
+        self.show_fundamental_check.setChecked(True)
+        self.show_fundamental_check.toggled.connect(self.refresh_harmonics_plot)
+        harmonics_form.addRow(self.show_fundamental_check)
+
+        self.show_h2_check = QCheckBox(tr("Show 2nd Harmonic (H2)"))
+        self.show_h2_check.setChecked(True)
+        self.show_h2_check.toggled.connect(self.refresh_harmonics_plot)
+        harmonics_form.addRow(self.show_h2_check)
+
+        self.show_h3_check = QCheckBox(tr("Show 3rd Harmonic (H3)"))
+        self.show_h3_check.setChecked(True)
+        self.show_h3_check.toggled.connect(self.refresh_harmonics_plot)
+        harmonics_form.addRow(self.show_h3_check)
+
+        self.show_h4_check = QCheckBox(tr("Show 4th Harmonic (H4)"))
+        self.show_h4_check.setChecked(True)
+        self.show_h4_check.toggled.connect(self.refresh_harmonics_plot)
+        harmonics_form.addRow(self.show_h4_check)
+
+        self.show_h5_check = QCheckBox(tr("Show 5th Harmonic (H5)"))
+        self.show_h5_check.setChecked(True)
+        self.show_h5_check.toggled.connect(self.refresh_harmonics_plot)
+        harmonics_form.addRow(self.show_h5_check)
+
+        self.show_thd_check = QCheckBox(tr("Show THD"))
+        self.show_thd_check.setChecked(True)
+        self.show_thd_check.toggled.connect(self.refresh_harmonics_plot)
+        harmonics_form.addRow(self.show_thd_check)
+
+        harmonics_group.setLayout(harmonics_form)
+        harmonics_settings_layout.addWidget(harmonics_group)
+        harmonics_settings_layout.addStretch()
+        harmonics_settings_tab.setLayout(harmonics_settings_layout)
+        tabs.addTab(harmonics_settings_tab, tr("Harmonics"))
+
         # --- Tab 3: Calibration ---
         cal_tab = QWidget()
         cal_tab_layout = QVBoxLayout()
@@ -933,6 +1064,27 @@ class NetworkAnalyzerWidget(QWidget):
         self.etc_curve = self.etc_plot.plot(pen="m")
         etc_layout.addWidget(self.etc_plot)
         plot_tabs.addTab(etc_tab, tr("ETC"))
+
+        harmonics_tab = QWidget()
+        harmonics_layout = QVBoxLayout(harmonics_tab)
+        self.harmonics_plot = pg.PlotWidget(title=tr("Harmonic Distortion"))
+        self.harmonics_plot.setLabel("left", tr("Level"), units="dB")
+        self.harmonics_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.harmonics_plot.setLogMode(x=True, y=False)
+        self.harmonics_plot.showGrid(x=True, y=True)
+        self.harmonics_plot.addLegend()
+
+        # Beautiful premium harmonic colors
+        self.h_curves = {
+            "fundamental": self.harmonics_plot.plot(pen=pg.mkPen("g", width=2), name=tr("Fundamental")),
+            "h2": self.harmonics_plot.plot(pen=pg.mkPen("r", width=1.5), name=tr("2nd Harmonic")),
+            "h3": self.harmonics_plot.plot(pen=pg.mkPen("orange", width=1.5), name=tr("3rd Harmonic")),
+            "h4": self.harmonics_plot.plot(pen=pg.mkPen("y", width=1.5), name=tr("4th Harmonic")),
+            "h5": self.harmonics_plot.plot(pen=pg.mkPen("m", width=1.5), name=tr("5th Harmonic")),
+            "thd": self.harmonics_plot.plot(pen=pg.mkPen("c", width=2, style=pg.QtCore.Qt.PenStyle.DashLine), name=tr("THD")),
+        }
+        harmonics_layout.addWidget(self.harmonics_plot)
+        plot_tabs.addTab(harmonics_tab, tr("Harmonics"))
 
         layout.addWidget(plot_tabs)
         self.setLayout(layout)
@@ -1136,6 +1288,7 @@ class NetworkAnalyzerWidget(QWidget):
             self.ir_values = []
             self.etc_times_ms = []
             self.etc_db = []
+            self.harmonics_data = {}
             self._needs_plot_update = False
             self.mag_curve.setData([], [])
             self.phase_curve.setData([], [])
@@ -1143,6 +1296,8 @@ class NetworkAnalyzerWidget(QWidget):
             self.coh_curve.setData([], [])
             self.ir_curve.setData([], [])
             self.etc_curve.setData([], [])
+            for curve in self.h_curves.values():
+                curve.setData([], [])
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.update_timer.start(50)
@@ -1164,12 +1319,33 @@ class NetworkAnalyzerWidget(QWidget):
             self.refresh_plots()
             self._needs_plot_update = False
 
+    def closeEvent(self, event):
+        try:
+            self.phase_plot.setXLink(None)
+        except Exception:
+            pass
+        try:
+            self.coh_view.setXLink(None)
+        except Exception:
+            pass
+        try:
+            self.gd_view.setXLink(None)
+        except Exception:
+            pass
+        super().closeEvent(event)
+
     def update_gd_views(self):
-        # Keep the GD view aligned with the main view
-        self.gd_view.setGeometry(self.phase_plot.plotItem.vb.sceneBoundingRect())
+        try:
+            # Keep the GD view aligned with the main view
+            self.gd_view.setGeometry(self.phase_plot.plotItem.vb.sceneBoundingRect())
+        except RuntimeError:
+            pass
 
     def update_coh_views(self):
-        self.coh_view.setGeometry(self.mag_plot.plotItem.vb.sceneBoundingRect())
+        try:
+            self.coh_view.setGeometry(self.mag_plot.plotItem.vb.sceneBoundingRect())
+        except RuntimeError:
+            pass
 
     def on_ir_snr_result(self, snr):
         self.ir_snr_label.setText(tr("IR SNR: {0:.1f} dB").format(snr))
@@ -1516,3 +1692,128 @@ class NetworkAnalyzerWidget(QWidget):
         else:
             self.coh_axis.hide()
             self.coh_curve.setData([], [])
+
+        self.refresh_harmonics_plot()
+
+    def on_harmonics_result(self, data):
+        self.harmonics_data = data
+        self.refresh_harmonics_plot()
+
+    def refresh_harmonics_plot(self):
+        if not self.harmonics_data:
+            for curve in self.h_curves.values():
+                curve.setData([], [])
+            return
+
+        freqs_arr = np.asarray(self.harmonics_data["freqs"])
+        if len(freqs_arr) == 0:
+            for curve in self.h_curves.values():
+                curve.setData([], [])
+            return
+
+        # Filtering mask
+        mask = np.ones(len(freqs_arr), dtype=bool)
+        if self.limit_check.isChecked():
+            limit = self.limit_spin.value()
+            mask &= freqs_arr <= limit
+        if self.min_limit_check.isChecked():
+            min_limit = self.min_limit_spin.value()
+            mask &= freqs_arr >= min_limit
+
+        freqs_to_plot = freqs_arr[mask]
+        if len(freqs_to_plot) == 0:
+            for curve in self.h_curves.values():
+                curve.setData([], [])
+            return
+
+        is_transfer_mode = self.module.input_mode in ["XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"]
+        is_single_absolute_mode = (not is_transfer_mode) and (self.single_mode_combo.currentData() == "absolute")
+        smooth_fraction = self.smooth_combo.currentData()
+        unit = self.unit_combo.currentText()
+
+        # Determine effective relativity and label
+        is_effectively_relative = is_transfer_mode or (not is_single_absolute_mode) or self.apply_ref_check.isChecked()
+
+        if is_effectively_relative:
+            self.harmonics_plot.setLabel("left", tr("Level"), units="dB")
+        else:
+            if unit == "dBFS":
+                self.harmonics_plot.setLabel("left", tr("Level"), units="dBFS")
+            elif unit == "dBV":
+                self.harmonics_plot.setLabel("left", tr("Level"), units="dBV")
+            elif unit == "dBu":
+                self.harmonics_plot.setLabel("left", tr("Level"), units="dBu")
+            elif unit in ["Vrms", "Vpeak"]:
+                self.harmonics_plot.setLabel("left", tr("Level"), units="V")
+
+        visibility_mapping = {
+            "fundamental": self.show_fundamental_check.isChecked(),
+            "h2": self.show_h2_check.isChecked(),
+            "h3": self.show_h3_check.isChecked(),
+            "h4": self.show_h4_check.isChecked(),
+            "h5": self.show_h5_check.isChecked(),
+            "thd": self.show_thd_check.isChecked(),
+        }
+
+        # Get raw data for each key
+        raw_db_dict = {}
+        for key in ["fundamental", "h2", "h3", "h4", "h5", "thd"]:
+            if key in self.harmonics_data:
+                raw_db_dict[key] = np.asarray(self.harmonics_data[key])[mask]
+            else:
+                raw_db_dict[key] = np.full_like(freqs_arr[mask], -120.0)
+
+        for key in ["fundamental", "h2", "h3", "h4", "h5", "thd"]:
+            curve = self.h_curves[key]
+            if not visibility_mapping[key]:
+                curve.setData([], [])
+                continue
+
+            # Calculate base dB
+            if is_single_absolute_mode:
+                out_amp_db = 20 * np.log10(self.module.get_output_amplitude() + 1e-12)
+                base_db = raw_db_dict[key] + out_amp_db
+            else:
+                base_db = raw_db_dict[key]
+
+            # Apply reference
+            if self.apply_ref_check.isChecked() and self.module.reference_trace is not None:
+                ref = self.module.reference_trace
+                if len(ref["freqs"]) > 1:
+                    interp_mags = np.interp(freqs_to_plot, ref["freqs"], ref["mags"])
+                    if is_single_absolute_mode:
+                        ref_amp = float(ref.get("gen_amp", self.module.amplitude))
+                        ref_db = interp_mags + 20 * np.log10(ref_amp + 1e-12)
+                        base_db -= ref_db
+                    else:
+                        base_db -= interp_mags
+
+            # Unit conversion
+            if is_effectively_relative:
+                y_values = base_db
+            else:
+                mags_linear = 10 ** (base_db / 20)
+                try:
+                    input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
+                except Exception:
+                    input_sensitivity = 1.0
+
+                if unit == "dBFS":
+                    y_values = base_db
+                elif unit in ["dBV", "dBu", "Vrms", "Vpeak"]:
+                    y_values = linear_to_amplitude(mags_linear, unit, input_sensitivity)
+                else:
+                    y_values = base_db
+
+            # Apply smoothing
+            is_db_magnitude = is_effectively_relative or unit in ["dBFS", "dBV", "dBu"]
+            if smooth_fraction is not None:
+                y_values = self._smooth_fractional_octave_values(
+                    freqs_to_plot,
+                    y_values,
+                    smooth_fraction,
+                    db_values=is_db_magnitude,
+                )
+
+            curve.setData(freqs_to_plot, y_values)
+
