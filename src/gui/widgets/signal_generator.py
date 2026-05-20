@@ -973,26 +973,26 @@ class SignalGenerator(MeasurementModule):
 
             if params.waveform == "noise" and name == "noise_color":
                 needs_update = True
-            elif params.waveform == "multitone" and name in [
+            elif params.waveform == "multitone" and name in {
                 "multitone_count",
                 "start_freq",
                 "end_freq",
                 "use_freq_cal",
-            ]:
+            }:
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
                 needs_update = True
-            elif params.waveform == "golay" and name in ["golay_order", "golay_pair"]:
+            elif params.waveform == "golay" and name in {"golay_order", "golay_pair"}:
                 needs_update = True
-            elif params.waveform == "burst" and name in [
+            elif params.waveform == "burst" and name in {
                 "frequency",
                 "burst_on_cycles",
                 "burst_off_cycles",
                 "burst_windowed",
                 "use_freq_cal",
-            ]:
+            }:
                 needs_update = True
-            elif params.waveform == "prbs" and name in ["prbs_order", "prbs_seed"]:
+            elif params.waveform == "prbs" and name in {"prbs_order", "prbs_seed"}:
                 needs_update = True
 
             if needs_update:
