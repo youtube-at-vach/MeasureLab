@@ -1,6 +1,7 @@
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QListWidget
 
+from src.core.localization import tr
 from src.gui.main_window import MainWindow
 
 
@@ -54,12 +55,12 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
 
     assert active_item.font().bold()
     assert active_item.foreground().color() == active_brush.color()
-    assert "ACTIVE" in active_item.toolTip()
+    assert tr("ACTIVE") in active_item.toolTip()
 
     assert detached_item.font().bold()
     assert detached_item.foreground().color() == active_brush.color()
-    assert "ACTIVE" in detached_item.toolTip()
-    assert "detached" in detached_item.toolTip().lower()
+    assert tr("ACTIVE") in detached_item.toolTip()
+    assert tr("Widget is detached in a separate window.") in detached_item.toolTip()
 
     window.modules[0] = _DummyModule()
     window.modules[1] = _DummyModule()

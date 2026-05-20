@@ -82,3 +82,4 @@ site/
 .agent/rules/*
 report.json
 measurement_report.json
+thd.json

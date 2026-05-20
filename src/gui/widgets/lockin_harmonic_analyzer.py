@@ -651,14 +651,17 @@ class LockInHarmonicWidget(QWidget):
         comp_ctrl_layout = QHBoxLayout()
         self.btn_save_comp_ref = QPushButton(tr("Save as Reference"))
         self.btn_clear_comp_ref = QPushButton(tr("Clear Reference"))
+        self.btn_export_comp = QPushButton(tr("Export..."))
         self.chk_show_comp_diff = QCheckBox(tr("Show Difference"))
 
         self.btn_save_comp_ref.clicked.connect(self.on_save_comp_ref)
         self.btn_clear_comp_ref.clicked.connect(self.on_clear_comp_ref)
+        self.btn_export_comp.clicked.connect(self.on_export_comp)
         self.chk_show_comp_diff.toggled.connect(self.on_comp_diff_toggled)
 
         comp_ctrl_layout.addWidget(self.btn_save_comp_ref)
         comp_ctrl_layout.addWidget(self.btn_clear_comp_ref)
+        comp_ctrl_layout.addWidget(self.btn_export_comp)
         comp_ctrl_layout.addWidget(self.chk_show_comp_diff)
         comp_ctrl_layout.addStretch()
 
@@ -719,6 +722,55 @@ class LockInHarmonicWidget(QWidget):
     def on_comp_diff_toggled(self, checked):
         self.comp_table.setColumnHidden(3, not checked)
         self.comp_table.setColumnHidden(4, not checked)
+
+    def on_export_comp(self):
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        import json
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Export Compensation Data"),
+            "",
+            "JSON Files (*.json)"
+        )
+        if not filename:
+            return
+
+        try:
+            coeffs_list = []
+            for i in range(1, len(self.module.compensation_coeffs)):
+                c = self.module.compensation_coeffs[i]
+                amp = np.abs(c)
+                phase = np.arctan2(c.real, c.imag)
+                phase_deg = np.degrees(phase)
+                phase_deg = (phase_deg + 180) % 360 - 180
+                coeffs_list.append({
+                    "harmonic": i + 1,
+                    "real": float(c.real),
+                    "imag": float(c.imag),
+                    "amp_linear": float(amp),
+                    "phase_deg": float(phase_deg)
+                })
+
+            data = {
+                "format": "MeasureLab_Harmonic_Compensation",
+                "version": "1.0",
+                "fundamental_frequency": float(self.module.gen_frequency),
+                "max_harmonic": int(self.module.max_harmonic),
+                "compensation_coeffs": coeffs_list
+            }
+
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            logger.info(f"Successfully exported compensation data to {filename}")
+        except Exception as e:
+            logger.error(f"Failed to export compensation data: {e}")
+            QMessageBox.critical(
+                self,
+                tr("Error"),
+                tr("Failed to export compensation data: {0}").format(str(e))
+            )
 
     def _get_comp_amp_phase(self, c: complex):
         amp = np.abs(c)
