@@ -8,7 +8,6 @@ will detect these imports and include the modules in the bundle.
 if False:
     from src.gui.widgets.advanced_distortion_meter import AdvancedDistortionMeter  # noqa: F401
 
-    from src.gui.widgets.bnim_meter import BNIMMeter  # noqa: F401
     from src.gui.widgets.boxcar_averager import BoxcarAverager  # noqa: F401
     from src.gui.widgets.distortion_analyzer import DistortionAnalyzer  # noqa: F401
     from src.gui.widgets.frequency_counter import FrequencyCounter  # noqa: F401
