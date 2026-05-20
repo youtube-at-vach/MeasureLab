@@ -268,6 +268,8 @@ class LinearitySweepWorker(QThread):
     def stop(self):
         self.is_running = False
         self._stop_event.set()
+        if hasattr(self.module, "_buffer_ready_event"):
+            self.module._buffer_ready_event.set()
 
 
 class LinearityAnalyzer(MeasurementModule):
@@ -325,7 +327,7 @@ class LinearityAnalyzer(MeasurementModule):
         while not self._buffer_ready_event.is_set():
             if cancel_event and cancel_event.is_set():
                 break
-            self._buffer_ready_event.wait(0.1)
+            self._buffer_ready_event.wait()
 
     def get_latest_buffer_into(self, out: np.ndarray) -> None:
         """Writes the current buffer contents ordered chronologically into `out`."""
