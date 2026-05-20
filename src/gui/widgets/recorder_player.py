@@ -230,15 +230,15 @@ class RecorderPlayer(MeasurementModule):
         if self._temp_record_fd is not None:
             try:
                 os.close(self._temp_record_fd)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug(f"Failed to close temp record fd: {e}")
             self._temp_record_fd = None
 
         if self._temp_record_file and os.path.exists(self._temp_record_file):
             try:
                 os.remove(self._temp_record_file)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug(f"Failed to remove temp record file: {e}")
 
     def cleanup(self):
         """
@@ -262,8 +262,8 @@ class RecorderPlayer(MeasurementModule):
                     try:
                         os.close(self._temp_record_fd)
                         self._temp_record_fd = None
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        logger.debug(f"Failed to close temp record fd: {e}")
                 return
 
             channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
