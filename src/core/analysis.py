@@ -88,6 +88,7 @@ def _get_time_array(N: int, sampling_rate: float) -> np.ndarray:
         raise ValueError("sampling_rate must be > 0")
     t = np.arange(N, dtype=np.float64)
     t /= sampling_rate
+    t = t.copy()
     t.flags.writeable = False
     return t
 
@@ -100,8 +101,8 @@ def _get_reference_signals(N: int, sampling_rate: float, frequency: float) -> tu
     """
     t = _get_time_array(N, sampling_rate)
     theta = 2 * np.pi * frequency * t
-    sin_ref = np.sin(theta)
-    cos_ref = np.cos(theta)
+    sin_ref = np.sin(theta).copy()
+    cos_ref = np.cos(theta).copy()
     sin_ref.flags.writeable = False
     cos_ref.flags.writeable = False
     return sin_ref, cos_ref
