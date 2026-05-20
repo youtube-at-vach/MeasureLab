@@ -111,7 +111,6 @@ class VirtualStream:
             except Exception as e:
                 self.logger.error(f"VirtualStream Error: {e}")
                 # Don't crash thread, just log
-                pass
 
 
 class AudioEngine:
