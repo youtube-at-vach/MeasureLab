@@ -32,7 +32,7 @@ RAYLEIGH_RMS_FACTOR = 1.2011
 
 @functools.lru_cache(maxsize=16)
 def get_cached_window(window_name, nx, dtype=np.float64, fftbins=True):
-    win = get_window(window_name, nx, fftbins=fftbins).astype(dtype)
+    win = get_window(window_name, nx, fftbins=fftbins).astype(dtype, copy=True)
     win.flags.writeable = False
     return win
 
@@ -88,6 +88,7 @@ def _get_time_array(N: int, sampling_rate: float) -> np.ndarray:
         raise ValueError("sampling_rate must be > 0")
     t = np.arange(N, dtype=np.float64)
     t /= sampling_rate
+    t = t.copy()
     t.flags.writeable = False
     return t
 
@@ -102,6 +103,8 @@ def _get_reference_signals(N: int, sampling_rate: float, frequency: float) -> tu
     theta = 2 * np.pi * frequency * t
     sin_ref = np.sin(theta)
     cos_ref = np.cos(theta)
+    sin_ref = sin_ref.copy()
+    cos_ref = cos_ref.copy()
     sin_ref.flags.writeable = False
     cos_ref.flags.writeable = False
     return sin_ref, cos_ref
