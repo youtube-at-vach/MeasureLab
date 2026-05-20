@@ -74,14 +74,34 @@ class LoopbackFinder(MeasurementModule):
         return "Detects active loopback paths between output and input channels."
 
     def prepare_scan(self, device_id, sample_rate, progress_callback=None):
+        # Try to use cached device info, otherwise query sounddevice directly
+        try:
+            devices, _ = self.audio_engine._get_cached_audio_info()
+            has_cache = devices is not None and isinstance(devices, tuple)
+        except Exception:
+            devices = None
+            has_cache = False
+
         if isinstance(device_id, tuple):
             input_device, output_device = device_id
-            in_info = sd.query_devices(input_device)
-            out_info = sd.query_devices(output_device)
+            try:
+                in_info = devices[input_device] if has_cache and isinstance(input_device, int) and input_device < len(devices) else sd.query_devices(input_device)
+            except Exception:
+                in_info = sd.query_devices(input_device)
+
+            try:
+                out_info = devices[output_device] if has_cache and isinstance(output_device, int) and output_device < len(devices) else sd.query_devices(output_device)
+            except Exception:
+                out_info = sd.query_devices(output_device)
+
             max_in = in_info["max_input_channels"]
             max_out = out_info["max_output_channels"]
         else:
-            device_info = sd.query_devices(device_id)
+            try:
+                device_info = devices[device_id] if has_cache and isinstance(device_id, int) and device_id < len(devices) else sd.query_devices(device_id)
+            except Exception:
+                device_info = sd.query_devices(device_id)
+
             max_out = device_info["max_output_channels"]
             max_in = device_info["max_input_channels"]
 
