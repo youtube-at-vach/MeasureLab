@@ -156,15 +156,20 @@ class ConfigManager:
 
     def load_config(self):
         """Loads configuration from JSON file."""
+        is_testing = os.environ.get("MEASURELAB_TESTING") == "1"
+
         if not os.path.exists(self.config_path):
             self.logger.debug("No config file found, creating default.")
             config = self._default_config()
 
-            # Auto-detect language on first run
-            detected_lang = self._detect_system_language()
-            if detected_lang:
-                config["language"] = detected_lang
-                self.logger.debug(f"Auto-detected language: {detected_lang}")
+            # Auto-detect language on first run (bypass under testing)
+            if not is_testing:
+                detected_lang = self._detect_system_language()
+                if detected_lang:
+                    config["language"] = detected_lang
+                    self.logger.debug(f"Auto-detected language: {detected_lang}")
+            else:
+                config["language"] = "en"
 
             self._ensure_screenshot_dir(config)
             # Save the new default config to disk immediately
@@ -182,15 +187,27 @@ class ConfigManager:
         except (OSError, json.JSONDecodeError, ValueError) as e:
             self.logger.error(f"Failed to load config: {e}")
             config = self._default_config()
+            if is_testing:
+                config["language"] = "en"
             self._ensure_screenshot_dir(config)
             return config
 
         config = self._merge_with_defaults(loaded)
+        if is_testing:
+            config["language"] = "en"
         self._ensure_screenshot_dir(config)
         return config
 
     def _flush_config(self):
         """Internal method to immediately write config to disk."""
+        # Test isolation: prevent writing to the real config.json under testing
+        if os.environ.get("MEASURELAB_TESTING") == "1":
+            real_user_dir = ConfigManager.get_user_data_dir()
+            real_config_path = os.path.join(real_user_dir, "config.json")
+            if os.path.abspath(self.config_path) == os.path.abspath(real_config_path):
+                self.logger.debug("Bypassing saving to real config file during test execution.")
+                return
+
         with self._save_lock:
             try:
                 # Use os.open to ensure secure permissions (600) on creation
