@@ -150,6 +150,10 @@ class LinearitySweepWorker(QThread):
             # Pre-allocate buffer for data
             buffer = np.zeros_like(self.module.input_data)
 
+            # Warm-up the audio stream (especially for Mac/Linux startup delays)
+            # We wait for the first full buffer to be filled to ensure the stream is active and running.
+            self.module.wait_for_buffer(self._stop_event)
+
             for i, (level_db, direction) in enumerate(zip(full_levels, directions, strict=False)):
                 if not self.is_running:
                     break
