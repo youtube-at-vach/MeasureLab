@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-# Mock dependencies to isolate get_cpu_name
 mock_dict = {
     "numpy": MagicMock(),
     "pyqtgraph": MagicMock(),
@@ -16,13 +15,10 @@ mock_dict = {
 with patch.dict("sys.modules", mock_dict):
     from src.gui.widgets.processor_benchmark import get_cpu_name
 
-def test_get_cpu_name_win32_exception():
-    """Test that get_cpu_name correctly handles exceptions when winreg fails on win32."""
-    mock_winreg = MagicMock()
-    mock_winreg.OpenKey.side_effect = OSError("Mocked Exception")
-
-    with patch("sys.platform", "win32"), \
-         patch.dict("sys.modules", {"winreg": mock_winreg}):
+def test_get_cpu_name_linux_exception():
+    """Test that get_cpu_name correctly handles exceptions when reading /proc/cpuinfo fails on linux."""
+    with patch("sys.platform", "linux"), \
+         patch("builtins.open", side_effect=OSError("Mocked Exception")):
 
         result = get_cpu_name()
 
