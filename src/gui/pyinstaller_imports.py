@@ -13,7 +13,6 @@ if False:
     from src.gui.widgets.distortion_analyzer import DistortionAnalyzer  # noqa: F401
     from src.gui.widgets.frequency_counter import FrequencyCounter  # noqa: F401
     from src.gui.widgets.goniometer import Goniometer  # noqa: F401
-    from src.gui.widgets.hrtf_player import HRTFPlayer  # noqa: F401
     from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer  # noqa: F401
     from src.gui.widgets.inverse_filter import InverseFilter  # noqa: F401
     from src.gui.widgets.linearity_analyzer import LinearityAnalyzer  # noqa: F401
