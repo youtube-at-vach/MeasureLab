@@ -899,7 +899,7 @@ class SignalGenerator(MeasurementModule):
         base_sample_rate = self.audio_engine.sample_rate
 
         # Reset states
-        for params in [self.params_L, self.params_R]:
+        for params in (self.params_L, self.params_R):
             params._phase = 0
             params._impulse_phase_samples = 0.0
             params._sweep_time = 0
@@ -920,13 +920,13 @@ class SignalGenerator(MeasurementModule):
             outdata.fill(0)
 
             # Left Channel
-            if self.output_mode in ["L", "STEREO"]:
+            if self.output_mode in {"L", "STEREO"}:
                 sig_l = self._generate_channel_signal(self.params_L, frames, t, base_sample_rate)
                 if outdata.shape[1] >= 1:
                     outdata[:, 0] = sig_l
 
             # Right Channel
-            if self.output_mode in ["R", "STEREO"]:
+            if self.output_mode in {"R", "STEREO"}:
                 # If we are in STEREO but want to output the SAME signal if linked?
                 # The user requirement says "L and R separate signals".
                 # So we always use params_R for Right channel.
@@ -973,26 +973,26 @@ class SignalGenerator(MeasurementModule):
 
             if params.waveform == "noise" and name == "noise_color":
                 needs_update = True
-            elif params.waveform == "multitone" and name in [
+            elif params.waveform == "multitone" and name in {
                 "multitone_count",
                 "start_freq",
                 "end_freq",
                 "use_freq_cal",
-            ]:
+            }:
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
                 needs_update = True
-            elif params.waveform == "golay" and name in ["golay_order", "golay_pair"]:
+            elif params.waveform == "golay" and name in {"golay_order", "golay_pair"}:
                 needs_update = True
-            elif params.waveform == "burst" and name in [
+            elif params.waveform == "burst" and name in {
                 "frequency",
                 "burst_on_cycles",
                 "burst_off_cycles",
                 "burst_windowed",
                 "use_freq_cal",
-            ]:
+            }:
                 needs_update = True
-            elif params.waveform == "prbs" and name in ["prbs_order", "prbs_seed"]:
+            elif params.waveform == "prbs" and name in {"prbs_order", "prbs_seed"}:
                 needs_update = True
 
             if needs_update:
@@ -1076,7 +1076,7 @@ class SignalGeneratorWidget(QWidget):
             self.mls_widget.show()
         elif key == "golay":
             self.golay_widget.show()
-        elif key in ["burst", "burst_windowed"]:
+        elif key in {"burst", "burst_windowed"}:
             self.burst_widget.show()
         elif key == "pulse":
             self.pulse_widget.show()
@@ -1089,12 +1089,12 @@ class SignalGeneratorWidget(QWidget):
         elif key == "prbs":
             self.prbs_widget.show()
 
-        use_freq = key not in ["noise", "mls", "golay", "prbs"]
+        use_freq = key not in {"noise", "mls", "golay", "prbs"}
         self.freq_spin.setEnabled(use_freq)
         self.freq_slider.setEnabled(use_freq)
 
         # Delay UI is only relevant for burst variants (engine applies delay for burst only).
-        show_delay = key in ["burst", "burst_windowed"]
+        show_delay = key in {"burst", "burst_windowed"}
         self.delay_label.setVisible(show_delay)
         self.delay_spin.setVisible(show_delay)
         self.delay_slider.setVisible(show_delay)
@@ -1329,7 +1329,7 @@ class SignalGeneratorWidget(QWidget):
 
         self.prbs_order_combo = QComboBox()
         # Common PRBS orders: 7, 9, 11, 15, 20, 23, 31 (31 might be too large for buffer? 2GB buffer.. let's limit to 20 ~1M samples)
-        self.prbs_order_combo.addItems([str(i) for i in [7, 9, 10, 11, 15, 17, 20, 23]])
+        self.prbs_order_combo.addItems([str(i) for i in (7, 9, 10, 11, 15, 17, 20, 23)])
         self.prbs_order_combo.setCurrentText("15")
         self.prbs_order_combo.currentTextChanged.connect(lambda v: self.update_param("prbs_order", int(v)))
         prbs_form.addRow(tr("Order (N):"), self.prbs_order_combo)
@@ -2029,7 +2029,7 @@ class SignalGeneratorWidget(QWidget):
 
         # Refix RMS if unit is maintaining RMS
         unit = self.unit_combo.currentText()
-        if unit in ["Vrms", "dBu", "dBV"]:
+        if unit in {"Vrms", "dBu", "dBV"}:
             # Value in spinner is the desired RMS.
             # We must update peak amplitude to match this RMS with new crest factor.
             self.on_amp_spin_changed(self.amp_spin.value())
@@ -2212,10 +2212,10 @@ class SignalGeneratorWidget(QWidget):
         """Returns the Crest Factor (Peak / RMS) for the current waveform."""
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
         # Square-like binary sequences have Signal Power = Peak Power => CF=1
-        if key in ["square", "pulse", "mls", "golay", "prbs"]:
+        if key in {"square", "pulse", "mls", "golay", "prbs"}:
             return 1.0
         # Triangle, Sawtooth have CF = sqrt(3)
-        if key in ["triangle", "sawtooth"]:
+        if key in {"triangle", "sawtooth"}:
             import numpy as np
 
             return np.sqrt(3.0)
