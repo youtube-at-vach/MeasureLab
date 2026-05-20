@@ -94,23 +94,29 @@ def main():
             unused_in_code.append(k)
 
     # 5. Fix: Remove unused keys if requested
-    if args.fix and unused_in_code:
-        print(f"\n--- Fixing: Removing {len(unused_in_code)} unused keys ---")
+    if args.fix:
+        removed_any = False
         json_files = get_json_files()
         for jf in json_files:
             data = load_json(jf)
             original_len = len(data)
-            for k in unused_in_code:
-                if k in data:
-                    del data[k]
+            keys_to_remove = [k for k in data if k not in code_keys]
+
+            for k in keys_to_remove:
+                del data[k]
+
             if len(data) < original_len:
+                if not removed_any:
+                    print("\n--- Fixing: Removing unused keys ---")
+                    removed_any = True
                 save_json(jf, data)
                 print(f"  Updated {os.path.basename(jf)}: removed {original_len - len(data)} keys.")
 
-        # Re-load en_keys after fix
-        en_data = load_json(en_path)
-        en_keys = set(en_data.keys())
-        unused_in_code = []  # Cleared after fix
+        if removed_any:
+            # Re-load en_keys after fix
+            en_data = load_json(en_path)
+            en_keys = set(en_data.keys())
+            unused_in_code = []  # Cleared after fix
 
     # 6. Check: Other JSONs have all keys from en.json
     json_files = get_json_files()
