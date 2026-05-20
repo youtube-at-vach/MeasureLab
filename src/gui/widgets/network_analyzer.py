@@ -388,7 +388,9 @@ class NetworkAnalyzer(MeasurementModule):
 
         return chirp, inv_filter
 
-    def _calculate_harmonics_data(self, ir_data, peak_idx, sample_rate, valid_freqs, H_ref_or_drive=None, freqs_ref_or_drive=None):
+    def _calculate_harmonics_data(
+        self, ir_data, peak_idx, sample_rate, valid_freqs, H_ref_or_drive=None, freqs_ref_or_drive=None
+    ):
         """
         Calculates individual harmonic responses using the Farina method (ESS).
         """
@@ -539,7 +541,7 @@ class NetworkAnalyzer(MeasurementModule):
                 sample_rate=sample_rate,
                 valid_freqs=valid_freqs,
                 H_ref_or_drive=H_ref,
-                freqs_ref_or_drive=freqs
+                freqs_ref_or_drive=freqs,
             )
             harmonics["fundamental"] = mag_db
 
@@ -627,7 +629,7 @@ class NetworkAnalyzer(MeasurementModule):
                 sample_rate=sample_rate,
                 valid_freqs=valid_freqs,
                 H_ref_or_drive=H_drive if drive_ref_win is not None else None,
-                freqs_ref_or_drive=freqs if drive_ref_win is not None else None
+                freqs_ref_or_drive=freqs if drive_ref_win is not None else None,
             )
             harmonics["fundamental"] = mag_db
 
@@ -910,6 +912,11 @@ class NetworkAnalyzerWidget(QWidget):
         self.show_thd_check.toggled.connect(self.refresh_harmonics_plot)
         harmonics_form.addRow(self.show_thd_check)
 
+        self.harmonics_as_percent_check = QCheckBox(tr("Show as Percent (%)"))
+        self.harmonics_as_percent_check.setChecked(False)
+        self.harmonics_as_percent_check.toggled.connect(self.on_harmonics_as_percent_toggled)
+        harmonics_form.addRow(self.harmonics_as_percent_check)
+
         harmonics_group.setLayout(harmonics_form)
         harmonics_settings_layout.addWidget(harmonics_group)
         harmonics_settings_layout.addStretch()
@@ -1081,7 +1088,9 @@ class NetworkAnalyzerWidget(QWidget):
             "h3": self.harmonics_plot.plot(pen=pg.mkPen("orange", width=1.5), name=tr("3rd Harmonic")),
             "h4": self.harmonics_plot.plot(pen=pg.mkPen("y", width=1.5), name=tr("4th Harmonic")),
             "h5": self.harmonics_plot.plot(pen=pg.mkPen("m", width=1.5), name=tr("5th Harmonic")),
-            "thd": self.harmonics_plot.plot(pen=pg.mkPen("c", width=2, style=pg.QtCore.Qt.PenStyle.DashLine), name=tr("THD")),
+            "thd": self.harmonics_plot.plot(
+                pen=pg.mkPen("c", width=2, style=pg.QtCore.Qt.PenStyle.DashLine), name=tr("THD")
+            ),
         }
         harmonics_layout.addWidget(self.harmonics_plot)
         plot_tabs.addTab(harmonics_tab, tr("Harmonics"))
@@ -1321,6 +1330,27 @@ class NetworkAnalyzerWidget(QWidget):
 
     def closeEvent(self, event):
         try:
+            self.update_timer.stop()
+            self.update_timer.timeout.disconnect(self.on_update_timer)
+        except Exception:
+            pass
+        try:
+            self.mag_plot.plotItem.vb.sigResized.disconnect(self.update_coh_views)
+        except Exception:
+            pass
+        try:
+            self.phase_plot.plotItem.vb.sigResized.disconnect(self.update_gd_views)
+        except Exception:
+            pass
+        try:
+            self.mag_plot.plotItem.scene().removeItem(self.coh_view)
+        except Exception:
+            pass
+        try:
+            self.phase_plot.plotItem.scene().removeItem(self.gd_view)
+        except Exception:
+            pass
+        try:
             self.phase_plot.setXLink(None)
         except Exception:
             pass
@@ -1332,19 +1362,68 @@ class NetworkAnalyzerWidget(QWidget):
             self.gd_view.setXLink(None)
         except Exception:
             pass
+        try:
+            self.module.signals.update_plot.disconnect(self.update_plot)
+        except Exception:
+            pass
+        try:
+            self.module.signals.update_ir_plot.disconnect(self.update_ir_plot)
+        except Exception:
+            pass
+        try:
+            self.module.signals.sweep_finished.disconnect(self.on_sweep_finished)
+        except Exception:
+            pass
+        try:
+            self.module.signals.progress.disconnect(self.progress_bar.setValue)
+        except Exception:
+            pass
+        try:
+            self.module.signals.latency_result.disconnect(self.on_latency_result)
+        except Exception:
+            pass
+        try:
+            self.module.signals.ir_snr_result.disconnect(self.on_ir_snr_result)
+        except Exception:
+            pass
+        try:
+            self.module.signals.error.disconnect(self.on_error)
+        except Exception:
+            pass
+        try:
+            self.module.signals.harmonics_result.disconnect(self.on_harmonics_result)
+        except Exception:
+            pass
         super().closeEvent(event)
 
     def update_gd_views(self):
         try:
-            # Keep the GD view aligned with the main view
-            self.gd_view.setGeometry(self.phase_plot.plotItem.vb.sceneBoundingRect())
-        except RuntimeError:
+            if (
+                hasattr(self, "gd_view")
+                and hasattr(self, "phase_plot")
+                and self.gd_view is not None
+                and self.phase_plot is not None
+            ):
+                vb = self.phase_plot.plotItem.vb
+                rect = vb.sceneBoundingRect()
+                if rect is not None:
+                    self.gd_view.setGeometry(rect)
+        except (RuntimeError, AttributeError, TypeError):
             pass
 
     def update_coh_views(self):
         try:
-            self.coh_view.setGeometry(self.mag_plot.plotItem.vb.sceneBoundingRect())
-        except RuntimeError:
+            if (
+                hasattr(self, "coh_view")
+                and hasattr(self, "mag_plot")
+                and self.coh_view is not None
+                and self.mag_plot is not None
+            ):
+                vb = self.mag_plot.plotItem.vb
+                rect = vb.sceneBoundingRect()
+                if rect is not None:
+                    self.coh_view.setGeometry(rect)
+        except (RuntimeError, AttributeError, TypeError):
             pass
 
     def on_ir_snr_result(self, snr):
@@ -1695,6 +1774,20 @@ class NetworkAnalyzerWidget(QWidget):
 
         self.refresh_harmonics_plot()
 
+    def on_harmonics_as_percent_toggled(self, checked):
+        y_axis = self.harmonics_plot.getPlotItem().getAxis("left")
+        if checked:
+            self.harmonics_plot.setLogMode(x=True, y=True)
+            self.harmonics_plot.setYRange(np.log10(0.0001), np.log10(100))
+            percent_ticks = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+            ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
+            y_axis.setTicks([ticks_log])
+        else:
+            self.harmonics_plot.setLogMode(x=True, y=False)
+            y_axis.setTicks(None)
+            self.harmonics_plot.enableAutoRange(axis=pg.ViewBox.YAxis, enable=True)
+        self.refresh_harmonics_plot()
+
     def on_harmonics_result(self, data):
         self.harmonics_data = data
         self.refresh_harmonics_plot()
@@ -1734,7 +1827,9 @@ class NetworkAnalyzerWidget(QWidget):
         # Determine effective relativity and label
         is_effectively_relative = is_transfer_mode or (not is_single_absolute_mode) or self.apply_ref_check.isChecked()
 
-        if is_effectively_relative:
+        if self.harmonics_as_percent_check.isChecked():
+            self.harmonics_plot.setLabel("left", tr("Distortion"), units="%")
+        elif is_effectively_relative:
             self.harmonics_plot.setLabel("left", tr("Level"), units="dB")
         else:
             if unit == "dBFS":
@@ -1789,7 +1884,11 @@ class NetworkAnalyzerWidget(QWidget):
                         base_db -= interp_mags
 
             # Unit conversion
-            if is_effectively_relative:
+            if self.harmonics_as_percent_check.isChecked():
+                # Percent is relative to the fundamental
+                ratio = 10 ** ((raw_db_dict[key] - raw_db_dict["fundamental"]) / 20.0)
+                y_values = np.clip(100.0 * ratio, 1e-6, None)
+            elif is_effectively_relative:
                 y_values = base_db
             else:
                 mags_linear = 10 ** (base_db / 20)
@@ -1806,7 +1905,11 @@ class NetworkAnalyzerWidget(QWidget):
                     y_values = base_db
 
             # Apply smoothing
-            is_db_magnitude = is_effectively_relative or unit in ["dBFS", "dBV", "dBu"]
+            if self.harmonics_as_percent_check.isChecked():
+                is_db_magnitude = False
+            else:
+                is_db_magnitude = is_effectively_relative or unit in ["dBFS", "dBV", "dBu"]
+
             if smooth_fraction is not None:
                 y_values = self._smooth_fractional_octave_values(
                     freqs_to_plot,
@@ -1816,4 +1919,3 @@ class NetworkAnalyzerWidget(QWidget):
                 )
 
             curve.setData(freqs_to_plot, y_values)
-
