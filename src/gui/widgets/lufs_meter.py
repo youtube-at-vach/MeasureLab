@@ -247,23 +247,21 @@ class LufsMeter(MeasurementModule):
             if m <= 0:
                 return pos, filled, sum_p
 
+            p_chunk_sum = float(np.sum(p_chunk, dtype=np.float64))
+
             end = pos + m
             if end <= n:
-                old = ring[pos:end]
-                sum_p -= float(np.sum(old, dtype=np.float64))
+                sum_p -= float(np.sum(ring[pos:end], dtype=np.float64))
                 ring[pos:end] = p_chunk
-                sum_p += float(np.sum(p_chunk, dtype=np.float64))
+                sum_p += p_chunk_sum
             else:
                 first = n - pos
-                old1 = ring[pos:]
-                old2 = ring[: (end - n)]
-                sum_p -= float(np.sum(old1, dtype=np.float64))
-                sum_p -= float(np.sum(old2, dtype=np.float64))
+                sum_p -= float(np.sum(ring[pos:], dtype=np.float64))
+                sum_p -= float(np.sum(ring[: (end - n)], dtype=np.float64))
 
                 ring[pos:] = p_chunk[:first]
                 ring[: (end - n)] = p_chunk[first:]
-                sum_p += float(np.sum(p_chunk[:first], dtype=np.float64))
-                sum_p += float(np.sum(p_chunk[first:], dtype=np.float64))
+                sum_p += p_chunk_sum
 
             pos = end % n
             filled = min(n, filled + m)
