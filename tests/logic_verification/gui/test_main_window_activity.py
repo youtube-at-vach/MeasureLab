@@ -17,6 +17,7 @@ class _DummyWrapper:
 
 def _build_window_stub(qtbot):
     window = MainWindow.__new__(MainWindow)
+    window.__init__()
     window._module_keys = ["Signal Generator", "Recorder / Player"]
     window.modules = [None, None]
     window.module_widgets = [None, None]
