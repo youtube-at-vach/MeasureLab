@@ -167,3 +167,26 @@ def test_frequency_map(calibration_manager, temp_map_path):
     mag, phase = calibration_manager.get_frequency_correction(2000.0)
     assert mag == 1.0
     assert phase == -45.0
+
+def test_set_output_gain_edge_cases(calibration_manager):
+    """Test set_output_gain with various valid and invalid inputs."""
+    # Valid string conversion
+    calibration_manager.set_output_gain("4.2")
+    assert calibration_manager.output_gain == 4.2
+    assert calibration_manager.output_gain_is_calibrated is True
+
+    # Invalid string input
+    with pytest.raises(ValueError, match="Invalid output gain"):
+        calibration_manager.set_output_gain("invalid")
+
+    # Invalid zero input
+    with pytest.raises(ValueError, match="Invalid output gain"):
+        calibration_manager.set_output_gain(0.0)
+
+    # Invalid infinite input
+    with pytest.raises(ValueError, match="Invalid output gain"):
+        calibration_manager.set_output_gain(np.inf)
+
+    # Invalid NaN input
+    with pytest.raises(ValueError, match="Invalid output gain"):
+        calibration_manager.set_output_gain(np.nan)
