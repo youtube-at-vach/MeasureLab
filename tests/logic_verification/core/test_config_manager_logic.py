@@ -302,7 +302,8 @@ class TestConfigManagerLogic(unittest.TestCase):
     @patch("src.core.config_manager.os.open")
     @patch("src.core.config_manager.os.fdopen")
     @patch("src.core.config_manager.os.chmod")
-    def test_save_config_force_sync(self, mock_chmod, mock_fdopen, mock_open_func, mock_makedirs, mock_exists):
+    @patch("builtins.hasattr", return_value=False)
+    def test_save_config_force_sync(self, mock_hasattr, mock_chmod, mock_fdopen, mock_open_func, mock_makedirs, mock_exists):
         """Test that force_sync writes immediately."""
         mock_open_func.return_value = 123
         mock_file_handle = MagicMock()
