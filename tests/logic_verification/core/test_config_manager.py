@@ -164,7 +164,8 @@ class TestConfigManager(unittest.TestCase):
     def test_flush_config_chmod_error(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
-        with patch("os.chmod", side_effect=Exception("Chmod error")):
+        with patch("src.core.config_manager.os.chmod", side_effect=Exception("Chmod error")), \
+             patch("builtins.hasattr", return_value=False):
             cm._flush_config()
             self.mock_logger.warning.assert_called_with("Failed to set secure permissions for config file: Chmod error")
 

@@ -132,7 +132,10 @@ class CalibrationManager:
 
             # Ensure permissions on existing files (best effort)
             try:
-                os.chmod(self.config_path, 0o600)
+                if hasattr(os, "fchmod"):
+                    os.fchmod(fd, 0o600)
+                else:
+                    os.chmod(self.config_path, 0o600)
             except Exception as e:
                 self.logger.warning("Failed to set secure permissions for calibration file: %s", e)
 
@@ -306,6 +309,16 @@ class CalibrationManager:
         """
         try:
             fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+
+            # Ensure permissions on existing files (best effort)
+            try:
+                if hasattr(os, "fchmod"):
+                    os.fchmod(fd, 0o600)
+                else:
+                    os.chmod(path, 0o600)
+            except Exception as e:
+                self.logger.warning("Failed to set secure permissions for calibration map: %s", e)
+
             with os.fdopen(fd, "w") as f:
                 json.dump(data, f, indent=4)
             self.frequency_map = sorted(data, key=lambda x: x[0])
