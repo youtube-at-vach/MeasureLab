@@ -19,7 +19,7 @@ with patch.dict("sys.modules", mock_dict):
 def test_get_cpu_name_win32_exception():
     """Test that get_cpu_name correctly handles exceptions when winreg fails on win32."""
     mock_winreg = MagicMock()
-    mock_winreg.OpenKey.side_effect = Exception("Mocked Exception")
+    mock_winreg.OpenKey.side_effect = OSError("Mocked Exception")
 
     with patch("sys.platform", "win32"), \
          patch.dict("sys.modules", {"winreg": mock_winreg}):

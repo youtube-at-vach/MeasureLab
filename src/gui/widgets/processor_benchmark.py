@@ -40,8 +40,8 @@ def get_cpu_name():
             )
             name, _ = winreg.QueryValueEx(key, "ProcessorNameString")
             return name.strip()
-        except Exception:
-            pass
+        except OSError as e:
+            logger.debug(f"Failed to read CPU name from registry: {e}")
 
     elif sys.platform == "linux":
         try:
@@ -49,8 +49,8 @@ def get_cpu_name():
                 for line in f:
                     if "model name" in line:
                         return line.split(":")[1].strip()
-        except Exception:
-            pass
+        except OSError as e:
+            logger.debug(f"Failed to read CPU name from /proc/cpuinfo: {e}")
 
     elif sys.platform == "darwin":
         import subprocess
@@ -58,8 +58,8 @@ def get_cpu_name():
             return subprocess.check_output(
                 ["sysctl", "-n", "machdep.cpu.brand_string"]
             ).decode().strip()
-        except Exception:
-            pass
+        except (OSError, subprocess.CalledProcessError) as e:
+            logger.debug(f"Failed to read CPU name from sysctl: {e}")
 
     return None
 
