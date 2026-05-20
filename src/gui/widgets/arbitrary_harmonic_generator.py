@@ -41,8 +41,8 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
         # Core Parameters
         self.gen_frequency = 1000.0
         self.gen_amplitude = 0.5  # Linear amplitude for fundamental (e.g. -6dBFS = 0.5)
-        self.gen_phase = 0.0      # Degrees for fundamental
-        self.output_channel = 2   # Stereo default
+        self.gen_phase = 0.0  # Degrees for fundamental
+        self.output_channel = 2  # Stereo default
         self.output_enabled = True
 
         # Harmonics
@@ -53,6 +53,9 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
         # Compensation
         self.compensation_enabled = False
         self.compensation_coeffs = np.zeros(MAX_HARMONICS, dtype=complex)
+        self.compensation_amps_db = np.full(MAX_HARMONICS, OFF_DB)  # Manual/Absolute amplitude (dB)
+        self.compensation_phases_deg = np.zeros(MAX_HARMONICS)  # Manual/Absolute phase (degrees)
+        self.adjusted_compensation_coeffs = np.zeros(MAX_HARMONICS, dtype=complex)
         self.compensation_file_path = ""
         self.compensation_freq = 0.0
 
@@ -95,7 +98,7 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
                     h_amps = self.harmonics_amps.copy()
                     h_phases = self.harmonics_phases_deg.copy()
                     comp_enabled = self.compensation_enabled
-                    comp_coeffs = self.compensation_coeffs.copy()
+                    comp_coeffs = self.adjusted_compensation_coeffs.copy()
 
                 t = (np.arange(frames) + self._phase_gen) / sample_rate
                 self._phase_gen += frames
@@ -135,6 +138,27 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
 
+    def update_adjusted_compensation_coeffs(self):
+        with self.lock:
+            self.adjusted_compensation_coeffs.fill(0.0)
+            for n in range(1, MAX_HARMONICS):  # 0 is fundamental, 1 is 2nd harmonic (index 1), etc.
+                amp_db = self.compensation_amps_db[n]
+                phase_deg = self.compensation_phases_deg[n]
+
+                if amp_db <= OFF_DB:
+                    continue
+
+                amp = 10 ** (amp_db / 20.0)
+                # Keep phase in [-180, 180]
+                phase_deg = (phase_deg + 180) % 360 - 180
+                phase_rad = np.radians(phase_deg)
+
+                # Convert back to complex
+                adj_real = amp * np.sin(phase_rad)
+                adj_imag = amp * np.cos(phase_rad)
+
+                self.adjusted_compensation_coeffs[n] = complex(adj_real, adj_imag)
+
 
 class ArbitraryHarmonicWidget(QWidget):
     def __init__(self, module: ArbitraryHarmonicGenerator):
@@ -160,6 +184,14 @@ class ArbitraryHarmonicWidget(QWidget):
         self.btn_toggle.clicked.connect(self.on_toggle_generating)
         self.btn_toggle.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         left_panel.addWidget(self.btn_toggle)
+
+        # QTabWidget to organize controls
+        self.control_tabs = QTabWidget()
+
+        # ----------------- Tab 1: Manual Mix -----------------
+        manual_tab = QWidget()
+        manual_layout = QVBoxLayout()
+        manual_layout.setContentsMargins(0, 5, 0, 0)
 
         # Fundamental settings
         fund_group = QGroupBox(tr("Fundamental Tone"))
@@ -187,29 +219,7 @@ class ArbitraryHarmonicWidget(QWidget):
         fund_form.addRow(tr("Phase Offset:"), self.phase_spin)
 
         fund_group.setLayout(fund_form)
-        left_panel.addWidget(fund_group)
-
-        # Compensation settings
-        comp_group = QGroupBox(tr("System Distortion Compensation"))
-        comp_layout = QVBoxLayout()
-
-        self.btn_load_comp = QPushButton(tr("Import Compensation Data..."))
-        self.btn_load_comp.clicked.connect(self.on_load_compensation)
-        comp_layout.addWidget(self.btn_load_comp)
-
-        self.chk_comp_enable = QCheckBox(tr("Apply Compensation"))
-        self.chk_comp_enable.setChecked(self.module.compensation_enabled)
-        self.chk_comp_enable.setEnabled(False)  # Disabled until data is loaded
-        self.chk_comp_enable.toggled.connect(self.on_comp_toggled)
-        comp_layout.addWidget(self.chk_comp_enable)
-
-        self.lbl_comp_status = QLabel(tr("No compensation data loaded"))
-        self.lbl_comp_status.setWordWrap(True)
-        self.lbl_comp_status.setStyleSheet("color: gray;")
-        comp_layout.addWidget(self.lbl_comp_status)
-
-        comp_group.setLayout(comp_layout)
-        left_panel.addWidget(comp_group)
+        manual_layout.addWidget(fund_group)
 
         # Harmonic Limits and table controls
         harm_group = QGroupBox(tr("Harmonic Tone Mix"))
@@ -235,7 +245,58 @@ class ArbitraryHarmonicWidget(QWidget):
         harm_layout.addWidget(self.table)
 
         harm_group.setLayout(harm_layout)
-        left_panel.addWidget(harm_group)
+        manual_layout.addWidget(harm_group)
+        manual_tab.setLayout(manual_layout)
+        self.control_tabs.addTab(manual_tab, tr("Manual Mix"))
+
+        # ----------------- Tab 2: Compensation -----------------
+        comp_tab = QWidget()
+        comp_layout = QVBoxLayout()
+        comp_layout.setContentsMargins(0, 5, 0, 0)
+
+        # Compensation settings
+        comp_group = QGroupBox(tr("System Distortion Compensation"))
+        comp_settings_layout = QVBoxLayout()
+
+        self.btn_load_comp = QPushButton(tr("Import Compensation Data..."))
+        self.btn_load_comp.clicked.connect(self.on_load_compensation)
+        comp_settings_layout.addWidget(self.btn_load_comp)
+
+        self.chk_comp_enable = QCheckBox(tr("Apply Compensation"))
+        self.chk_comp_enable.setChecked(self.module.compensation_enabled)
+        self.chk_comp_enable.setEnabled(False)  # Disabled until data is loaded
+        self.chk_comp_enable.toggled.connect(self.on_comp_toggled)
+        comp_settings_layout.addWidget(self.chk_comp_enable)
+
+        self.lbl_comp_status = QLabel(tr("No compensation data loaded"))
+        self.lbl_comp_status.setWordWrap(True)
+        self.lbl_comp_status.setStyleSheet("color: gray;")
+        comp_settings_layout.addWidget(self.lbl_comp_status)
+
+        comp_group.setLayout(comp_settings_layout)
+        comp_layout.addWidget(comp_group)
+
+        # Compensation Fine Tuning
+        self.comp_adj_group = QGroupBox(tr("Compensation Fine Tuning"))
+        comp_adj_layout = QVBoxLayout()
+
+        self.comp_adj_table = QTableWidget()
+        self.comp_adj_table.setColumnCount(3)
+        self.comp_adj_table.setHorizontalHeaderLabels([tr("Harmonic"), tr("Amp (dBFS)"), tr("Phase (deg)")])
+        self.comp_adj_table.setColumnWidth(0, 80)
+        self.comp_adj_table.setColumnWidth(1, 100)
+        self.comp_adj_table.setColumnWidth(2, 100)
+        self.comp_adj_table.setEnabled(False)
+        self._rebuild_comp_adj_table()
+        comp_adj_layout.addWidget(self.comp_adj_table)
+
+        self.comp_adj_group.setLayout(comp_adj_layout)
+        comp_layout.addWidget(self.comp_adj_group)
+
+        comp_tab.setLayout(comp_layout)
+        self.control_tabs.addTab(comp_tab, tr("Compensation"))
+
+        left_panel.addWidget(self.control_tabs)
 
         left_widget = QWidget()
         left_widget.setLayout(left_panel)
@@ -262,7 +323,13 @@ class ArbitraryHarmonicWidget(QWidget):
         self.plot_spec.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_spec.showGrid(y=True)
         self.plot_spec.setYRange(-120, 10)
-        self.bar_spec = pg.BarGraphItem(x=np.arange(1, self.module.max_harmonic + 1), y0=-120, height=np.zeros(self.module.max_harmonic), width=0.6, brush="g")
+        self.bar_spec = pg.BarGraphItem(
+            x=np.arange(1, self.module.max_harmonic + 1),
+            y0=-120,
+            height=np.zeros(self.module.max_harmonic),
+            width=0.6,
+            brush="g",
+        )
         self.plot_spec.addItem(self.bar_spec)
         tabs.addTab(self.plot_spec, tr("Spectrum Preview"))
 
@@ -291,6 +358,7 @@ class ArbitraryHarmonicWidget(QWidget):
         with self.module.lock:
             self.module.max_harmonic = val
         self._rebuild_harmonics_table()
+        self._rebuild_comp_adj_table()
 
         # Update spec plot x-axis range
         self.plot_spec.removeItem(self.bar_spec)
@@ -340,6 +408,41 @@ class ArbitraryHarmonicWidget(QWidget):
 
         self._block_updates = False
 
+    def _rebuild_comp_adj_table(self):
+        self._block_updates = True
+        n_rows = self.module.max_harmonic - 1
+        self.comp_adj_table.setRowCount(n_rows)
+
+        for i in range(n_rows):
+            harmonic_idx = i + 1  # 2nd harmonic is index 1 in coeffs
+
+            # Label
+            item_lbl = QTableWidgetItem(tr("{}th").format(harmonic_idx + 1))
+            item_lbl.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            self.comp_adj_table.setItem(i, 0, item_lbl)
+
+            # Amp Adjust editor
+            amp_spin = QDoubleSpinBox()
+            amp_spin.setRange(-120.0, 0.0)
+            amp_spin.setSingleStep(0.1)
+            with self.module.lock:
+                amp_spin.setValue(self.module.compensation_amps_db[harmonic_idx])
+            amp_spin.setSuffix(" dBFS")
+            amp_spin.valueChanged.connect(self._on_comp_adj_changed)
+            self.comp_adj_table.setCellWidget(i, 1, amp_spin)
+
+            # Phase Adjust editor
+            phase_spin = QDoubleSpinBox()
+            phase_spin.setRange(-180.0, 180.0)
+            phase_spin.setSingleStep(1.0)
+            with self.module.lock:
+                phase_spin.setValue(self.module.compensation_phases_deg[harmonic_idx])
+            phase_spin.setSuffix(" deg")
+            phase_spin.valueChanged.connect(self._on_comp_adj_changed)
+            self.comp_adj_table.setCellWidget(i, 2, phase_spin)
+
+        self._block_updates = False
+
     def _on_table_changed(self):
         if self._block_updates:
             return
@@ -362,17 +465,32 @@ class ArbitraryHarmonicWidget(QWidget):
 
         self.update_plots()
 
+    def _on_comp_adj_changed(self):
+        if self._block_updates:
+            return
+
+        with self.module.lock:
+            n_rows = self.comp_adj_table.rowCount()
+            for i in range(n_rows):
+                harmonic_idx = i + 1
+
+                amp_spin = self.comp_adj_table.cellWidget(i, 1)
+                phase_spin = self.comp_adj_table.cellWidget(i, 2)
+
+                if amp_spin and phase_spin:
+                    self.module.compensation_amps_db[harmonic_idx] = amp_spin.value()
+                    self.module.compensation_phases_deg[harmonic_idx] = phase_spin.value()
+
+        self.module.update_adjusted_compensation_coeffs()
+        self.update_plots()
+
     def on_load_compensation(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self,
-            tr("Import Compensation Data"),
-            "",
-            "JSON Files (*.json)"
-        )
+        filename, _ = QFileDialog.getOpenFileName(self, tr("Import Compensation Data"), "", "JSON Files (*.json)")
         if not filename:
             return
 
         import json
+
         try:
             with open(filename, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -388,9 +506,11 @@ class ArbitraryHarmonicWidget(QWidget):
                 reply = QMessageBox.warning(
                     self,
                     tr("Frequency Mismatch"),
-                    tr("The compensation data frequency ({0:.1f} Hz) does not match the current generator frequency ({1:.1f} Hz).\nApply anyway?").format(f_cal, f_curr),
+                    tr(
+                        "The compensation data frequency ({0:.1f} Hz) does not match the current generator frequency ({1:.1f} Hz).\nApply anyway?"
+                    ).format(f_cal, f_curr),
                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No
+                    QMessageBox.StandardButton.No,
                 )
                 if reply == QMessageBox.StandardButton.No:
                     return
@@ -408,8 +528,24 @@ class ArbitraryHarmonicWidget(QWidget):
                 self.module.compensation_file_path = filename
                 self.module.compensation_enabled = True
 
+                self.module.compensation_amps_db.fill(OFF_DB)
+                self.module.compensation_phases_deg.fill(0.0)
+                for n in range(1, MAX_HARMONICS):
+                    c = coeffs[n]
+                    if c.real != 0.0 or c.imag != 0.0:
+                        amp = np.sqrt(c.real**2 + c.imag**2)
+                        amp_db = 20 * np.log10(amp) if amp > 1e-15 else OFF_DB
+                        phase_rad = np.arctan2(c.real, c.imag)
+                        phase_deg = np.degrees(phase_rad)
+                        self.module.compensation_amps_db[n] = amp_db
+                        self.module.compensation_phases_deg[n] = phase_deg
+
+            self.module.update_adjusted_compensation_coeffs()
+
             self.chk_comp_enable.setEnabled(True)
             self.chk_comp_enable.setChecked(True)
+            self.comp_adj_table.setEnabled(True)
+            self._rebuild_comp_adj_table()
 
             basename = os.path.basename(filename)
             self.lbl_comp_status.setText(tr("Loaded: {0} ({1:.1f} Hz)").format(basename, f_cal))
@@ -418,11 +554,7 @@ class ArbitraryHarmonicWidget(QWidget):
 
         except Exception as e:
             logger.error(f"Failed to load compensation data: {e}")
-            QMessageBox.critical(
-                self,
-                tr("Error"),
-                tr("Failed to load compensation data: {0}").format(str(e))
-            )
+            QMessageBox.critical(self, tr("Error"), tr("Failed to load compensation data: {0}").format(str(e)))
         self.update_plots()
 
     def on_comp_toggled(self, checked):
@@ -430,8 +562,10 @@ class ArbitraryHarmonicWidget(QWidget):
             self.module.compensation_enabled = checked
         if checked:
             self.lbl_comp_status.setStyleSheet("color: #55ff55; font-weight: bold;")
+            self.comp_adj_table.setEnabled(True)
         else:
             self.lbl_comp_status.setStyleSheet("color: gray;")
+            self.comp_adj_table.setEnabled(False)
         self.update_plots()
 
     def update_plots(self):
@@ -445,7 +579,7 @@ class ArbitraryHarmonicWidget(QWidget):
             h_amps = self.module.harmonics_amps.copy()
             h_phases = self.module.harmonics_phases_deg.copy()
             comp_enabled = self.module.compensation_enabled
-            comp_coeffs = self.module.compensation_coeffs.copy()
+            comp_coeffs = self.module.adjusted_compensation_coeffs.copy()
 
         # 1. Preview Waveform (3 cycles of fundamental)
         t_preview = np.linspace(0, 3.0 / f0 if f0 > 0 else 0.003, 1000)
@@ -491,8 +625,8 @@ class ArbitraryHarmonicWidget(QWidget):
             # Note:
             # c.real * cos(n*wt) + c.imag * sin(n*wt)
             # Therefore:
-            # Total sin coefficient = A_n * cos(phi_n) + c.imag
-            # Total cos coefficient = A_n * sin(phi_n) + c.real
+            # Total sin coefficient = A_n * cos(phase_user_rad) + imag_comp
+            # Total cos coefficient = A_n * sin(phase_user_rad) + real_comp
             # The RMS / Amplitude of total is sqrt(sin_coeff^2 + cos_coeff^2)
             amp_user = h_amps[n - 1]
             phase_user_rad = np.radians(h_phases[n - 1])
@@ -504,4 +638,6 @@ class ArbitraryHarmonicWidget(QWidget):
             if total_amp > 1e-15:
                 heights[n - 1] = 20 * np.log10(total_amp)
 
-        self.bar_spec.setOpts(height=heights + 120.0) # Scale offset for pyqtgraph height representation relative to y0=-120
+        self.bar_spec.setOpts(
+            x=np.arange(1, max_h + 1), height=heights + 120.0
+        )  # Scale offset for pyqtgraph height representation relative to y0=-120

@@ -5,10 +5,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 from PyQt6.QtWidgets import QMessageBox
 
-from src.gui.widgets.arbitrary_harmonic_generator import (
-    ArbitraryHarmonicGenerator,
-    MAX_HARMONICS
-)
+from src.gui.widgets.arbitrary_harmonic_generator import ArbitraryHarmonicGenerator, MAX_HARMONICS
+
 
 @pytest.fixture
 def generator_widget(qtbot):
@@ -23,6 +21,7 @@ def generator_widget(qtbot):
     qtbot.addWidget(widget)
     return widget, module, engine
 
+
 def test_initialization(generator_widget):
     widget, module, _engine = generator_widget
 
@@ -36,6 +35,7 @@ def test_initialization(generator_widget):
     assert widget.spin_max_harm.value() == 20
     assert widget.table.rowCount() == 19  # Max 20 harmonics means rows for 2nd to 20th
     assert not widget.chk_comp_enable.isEnabled()
+
 
 def test_fundamental_and_harmonics_signal_generation(generator_widget):
     widget, module, engine = generator_widget
@@ -77,6 +77,7 @@ def test_fundamental_and_harmonics_signal_generation(generator_widget):
     np.testing.assert_allclose(outdata[:, 0], expected_total, atol=1e-6)
     np.testing.assert_allclose(outdata[:, 1], expected_total, atol=1e-6)
 
+
 def test_compensation_signal_generation(generator_widget):
     widget, module, engine = generator_widget
 
@@ -85,10 +86,11 @@ def test_compensation_signal_generation(generator_widget):
     module.gen_phase = 0.0
     module.max_harmonic = 5
 
-    # Enable compensation and set 2nd harmonic complex coefficient
+    # Enable compensation and set absolute values for 2nd harmonic (equivalent to c_2 = 0.03 + 0.04j)
     module.compensation_enabled = True
-    # c_2 = 0.03 + 0.04j
-    module.compensation_coeffs[1] = 0.03 + 0.04j
+    module.compensation_amps_db[1] = 20 * np.log10(0.05)
+    module.compensation_phases_deg[1] = np.degrees(np.arctan2(0.03, 0.04))
+    module.update_adjusted_compensation_coeffs()
 
     module.start_generation()
     callback = engine.register_callback.call_args[0][0]
@@ -106,6 +108,7 @@ def test_compensation_signal_generation(generator_widget):
 
     np.testing.assert_allclose(outdata[:, 0], expected_total, atol=1e-6)
 
+
 def test_export_and_import_compensation(generator_widget, tmp_path):
     widget, module, _engine = generator_widget
 
@@ -117,6 +120,7 @@ def test_export_and_import_compensation(generator_widget, tmp_path):
 
     # Create a mock analyzer module / widget context or call on_export_comp via a patch
     from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicWidget
+
     analyzer_engine = MagicMock()
     analyzer_engine.sample_rate = 48000
     analyzer_module = MagicMock()
@@ -158,6 +162,13 @@ def test_export_and_import_compensation(generator_widget, tmp_path):
     assert module.compensation_coeffs[1] == pytest.approx(0.01 - 0.02j)
     assert module.compensation_coeffs[2] == pytest.approx(-0.005 + 0.008j)
 
+    # Check imported absolute parameters
+    expected_amp1 = 20 * np.log10(np.sqrt(0.01**2 + 0.02**2))
+    expected_phase1 = np.degrees(np.arctan2(0.01, -0.02))
+    assert module.compensation_amps_db[1] == pytest.approx(expected_amp1)
+    assert module.compensation_phases_deg[1] == pytest.approx(expected_phase1)
+
+
 def test_frequency_mismatch_warning(generator_widget, tmp_path):
     widget, module, _engine = generator_widget
 
@@ -168,9 +179,7 @@ def test_frequency_mismatch_warning(generator_widget, tmp_path):
         "version": "1.0",
         "fundamental_frequency": 1000.0,
         "max_harmonic": 5,
-        "compensation_coeffs": [
-            {"harmonic": 2, "real": 0.01, "imag": -0.02, "amp_linear": 0.022, "phase_deg": -63.4}
-        ]
+        "compensation_coeffs": [{"harmonic": 2, "real": 0.01, "imag": -0.02, "amp_linear": 0.022, "phase_deg": -63.4}],
     }
     with open(temp_file, "w") as f:
         json.dump(data, f)
@@ -179,15 +188,77 @@ def test_frequency_mismatch_warning(generator_widget, tmp_path):
     widget.freq_spin.setValue(2000.0)
 
     # 1. Test clicking "No" on warning dialog
-    with patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")), \
-         patch("PyQt6.QtWidgets.QMessageBox.warning", return_value=QMessageBox.StandardButton.No) as mock_warn:
+    with (
+        patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")),
+        patch("PyQt6.QtWidgets.QMessageBox.warning", return_value=QMessageBox.StandardButton.No) as mock_warn,
+    ):
         widget.on_load_compensation()
         assert mock_warn.called
         assert not module.compensation_enabled  # Should NOT apply
 
     # 2. Test clicking "Yes" on warning dialog
-    with patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")), \
-         patch("PyQt6.QtWidgets.QMessageBox.warning", return_value=QMessageBox.StandardButton.Yes) as mock_warn:
+    with (
+        patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")),
+        patch("PyQt6.QtWidgets.QMessageBox.warning", return_value=QMessageBox.StandardButton.Yes) as mock_warn,
+    ):
         widget.on_load_compensation()
         assert mock_warn.called
         assert module.compensation_enabled  # Should apply anyway
+
+
+def test_fine_tuning_math(generator_widget):
+    _widget, module, _engine = generator_widget
+
+    # Set absolute values directly
+    # 1. 0.1 amplitude (-20 dBFS) and 90 degrees phase
+    # real = 0.1 * sin(90 deg) = 0.1
+    # imag = 0.1 * cos(90 deg) = 0.0
+    module.compensation_amps_db[1] = -20.0
+    module.compensation_phases_deg[1] = 90.0
+    module.update_adjusted_compensation_coeffs()
+    c_adj = module.adjusted_compensation_coeffs[1]
+    assert c_adj.real == pytest.approx(0.1, abs=1e-5)
+    assert c_adj.imag == pytest.approx(0.0, abs=1e-5)
+
+    # 2. 0.05 amplitude (-26.02 dBFS) and 45 degrees phase
+    # real = 0.05 * sin(45 deg) = 0.035355
+    # imag = 0.05 * cos(45 deg) = 0.035355
+    module.compensation_amps_db[1] = -26.0205999
+    module.compensation_phases_deg[1] = 45.0
+    module.update_adjusted_compensation_coeffs()
+    c_adj = module.adjusted_compensation_coeffs[1]
+    assert c_adj.real == pytest.approx(0.035355, abs=1e-4)
+    assert c_adj.imag == pytest.approx(0.035355, abs=1e-4)
+
+
+def test_fine_tuning_widget_integration(generator_widget):
+    widget, module, _engine = generator_widget
+
+    # Set mock compensation data
+    module.compensation_amps_db[1] = -40.0
+    module.compensation_phases_deg[1] = 30.0
+    widget.comp_adj_table.setEnabled(True)
+    widget._rebuild_comp_adj_table()
+
+    # Get spinboxes for the 2nd harmonic (row 0)
+    amp_spin = widget.comp_adj_table.cellWidget(0, 1)
+    phase_spin = widget.comp_adj_table.cellWidget(0, 2)
+
+    assert amp_spin is not None
+    assert phase_spin is not None
+
+    # Verify original values are loaded into the UI
+    assert amp_spin.value() == pytest.approx(-40.0)
+    assert phase_spin.value() == pytest.approx(30.0)
+
+    # Change via UI SpinBox
+    amp_spin.setValue(-20.0)
+    phase_spin.setValue(-45.0)
+
+    # Values must be updated in module
+    assert module.compensation_amps_db[1] == -20.0
+    assert module.compensation_phases_deg[1] == -45.0
+
+    # Adjusted coefficients must be updated
+    c_adj = module.adjusted_compensation_coeffs[1]
+    assert c_adj != 0.0
