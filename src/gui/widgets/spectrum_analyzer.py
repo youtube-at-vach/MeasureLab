@@ -388,7 +388,7 @@ class SpectrumAnalyzer(MeasurementModule):
             mag_linear = magnitudes[0] if len(magnitudes) == 1 else np.column_stack(magnitudes)
 
             # Peak -> RMS conversion if Physical Units or SPL
-            if self.analysis_mode == "Spectrum" and self.display_unit in ["dBV", "dB SPL"]:
+            if self.analysis_mode == "Spectrum" and self.display_unit in {"dBV", "dB SPL"}:
                 mag_linear /= np.sqrt(2)
 
             # Temporal Averaging
@@ -420,7 +420,7 @@ class SpectrumAnalyzer(MeasurementModule):
 
             mag_linear = np.sqrt(np.abs(self._avg_cross_spectrum)) / np.sqrt(len(data))
 
-            if self.display_unit in ["dBV", "dB SPL"]:
+            if self.display_unit in {"dBV", "dB SPL"}:
                 mag_linear /= np.sqrt(2)
 
             magnitude = 20 * np.log10(mag_linear + 1e-12)
@@ -477,7 +477,7 @@ class SpectrumAnalyzer(MeasurementModule):
             if mag_second is not None:
                 mag_second = mag_second * norm_factor
 
-            if self.display_unit in ["dBV", "dB SPL"]:
+            if self.display_unit in {"dBV", "dB SPL"}:
                 mag_mono /= np.sqrt(2)
                 if mag_second is not None:
                     mag_second /= np.sqrt(2)
@@ -525,7 +525,7 @@ class SpectrumAnalyzer(MeasurementModule):
                 self._avg_cross_spectrum = alpha * self._avg_cross_spectrum + (1 - alpha) * Sxy
 
             magnitude_linear = np.sqrt(np.abs(self._avg_cross_spectrum))
-            if self.display_unit in ["dBV", "dB SPL"]:
+            if self.display_unit in {"dBV", "dB SPL"}:
                 magnitude_linear /= np.sqrt(2)
 
             magnitude = 20 * np.log10(magnitude_linear + 1e-12)
@@ -1055,7 +1055,7 @@ class SpectrumAnalyzerWidget(QWidget):
         plot_freqs_linear = plot_freqs + 1e-12  # Avoid exact 0
 
         # Handle Dual Mode Plotting
-        if self.module.analysis_mode in ["Spectrum", "PSD"] and self.module.channel_mode == "Dual":
+        if self.module.analysis_mode in {"Spectrum", "PSD"} and self.module.channel_mode == "Dual":
             # plot_mags should be (N, 2)
             if plot_mags.ndim == 2 and plot_mags.shape[1] >= 2:
                 # Curve 1 (Left) - Green
