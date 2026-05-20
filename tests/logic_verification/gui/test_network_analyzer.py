@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from src.gui.widgets.network_analyzer import NetworkAnalyzer, NetworkAnalyzerWidget
 
@@ -22,9 +23,30 @@ class MockAudioEngine:
         pass
 
 
+_created_widgets: list[NetworkAnalyzerWidget] = []
+
+
+@pytest.fixture(autouse=True)
+def cleanup_widgets(qtbot):
+    _created_widgets.clear()
+    yield
+    for w in _created_widgets:
+        try:
+            w.close()
+            w.deleteLater()
+        except Exception:
+            pass
+    _created_widgets.clear()
+    try:
+        qtbot.wait(50)
+    except Exception:
+        pass
+
+
 def _make_widget(qtbot):
     widget = NetworkAnalyzerWidget(NetworkAnalyzer(MockAudioEngine()))
     qtbot.addWidget(widget)
+    _created_widgets.append(widget)
     return widget
 
 
@@ -190,10 +212,7 @@ def test_calculate_harmonics_data_farina_math():
 
     # Calculate harmonics data
     harmonics = analyzer._calculate_harmonics_data(
-        ir_data=ir_data,
-        peak_idx=peak_idx,
-        sample_rate=sample_rate,
-        valid_freqs=valid_freqs
+        ir_data=ir_data, peak_idx=peak_idx, sample_rate=sample_rate, valid_freqs=valid_freqs
     )
 
     assert "h2" in harmonics
@@ -202,3 +221,30 @@ def test_calculate_harmonics_data_farina_math():
     assert "h5" in harmonics
     assert len(harmonics["h2"]) == len(valid_freqs)
 
+
+def test_harmonics_plot_percent_mode(qtbot):
+    widget = _make_widget(qtbot)
+
+    freqs = np.array([100.0, 1000.0])
+    data = {
+        "freqs": freqs,
+        "fundamental": np.array([-10.0, -10.0]),
+        "h2": np.array([-40.0, -40.0]),
+        "h3": np.array([-50.0, -50.0]),
+        "h4": np.array([-60.0, -60.0]),
+        "h5": np.array([-70.0, -70.0]),
+        "thd": np.array([-39.0, -39.0]),
+    }
+    widget.harmonics_data = data
+
+    # Toggle percent mode checkbox
+    widget.harmonics_as_percent_check.setChecked(True)
+    widget.refresh_harmonics_plot()
+
+    # In percent mode, the plotted values should be converted to percent relative to the fundamental
+    # h2 raw db = -40, fundamental raw db = -10.
+    # ratio = 10 ** ((-40 - (-10)) / 20) = 10 ** (-30 / 20) = 10 ** -1.5 = 0.03162277660168379
+    # percent = 100.0 * 0.03162277660168379 = 3.162277660168379 %
+    expected_h2_percent = 100.0 * (10 ** ((-40.0 - (-10.0)) / 20.0))
+    x, y = widget.h_curves["h2"].getData()
+    assert np.allclose(y, np.log10(expected_h2_percent))
