@@ -200,7 +200,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         while not self._buffer_ready_event.is_set():
             if cancel_event and cancel_event.is_set():
                 break
-            self._buffer_ready_event.wait(0.1)
+            self._buffer_ready_event.wait()
 
     @property
     def name(self) -> str:
@@ -650,6 +650,8 @@ class ImpedanceSweepWorker(QThread):
     def cancel(self):
         self.is_cancelled = True
         self._cancel_event.set()
+        if hasattr(self.module, "_buffer_ready_event"):
+            self.module._buffer_ready_event.set()
 
 
 @dataclass
