@@ -573,8 +573,8 @@ class AudioEngine:
         else:
             self._current_out_mode = self.MODE_STEREO
 
-        hw_in_ch = 2 if in_mode_str in ["right", "stereo"] else 1
-        hw_out_ch = 2 if out_mode_str in ["right", "stereo"] else 1
+        hw_in_ch = 2 if in_mode_str in {"right", "stereo"} else 1
+        hw_out_ch = 2 if out_mode_str in {"right", "stereo"} else 1
 
         return hw_in_ch, hw_out_ch
 
