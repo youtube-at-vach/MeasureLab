@@ -20,7 +20,7 @@ class BenchmarkCoarseSearch(unittest.TestCase):
         duration = 10.0  # 10 seconds, 480k samples
         N = int(sr * duration)
         # Mock t array
-        t = np.arange(N, dtype=np.float64) / sr
+        t = (np.arange(N, dtype=np.float64) / sr).copy()
         t.flags.writeable = False
 
         # Generate a signal

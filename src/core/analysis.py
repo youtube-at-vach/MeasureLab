@@ -32,7 +32,7 @@ RAYLEIGH_RMS_FACTOR = 1.2011
 
 @functools.lru_cache(maxsize=16)
 def get_cached_window(window_name, nx, dtype=np.float64, fftbins=True):
-    win = get_window(window_name, nx, fftbins=fftbins).astype(dtype, copy=True)
+    win = get_window(window_name, nx, fftbins=fftbins).astype(dtype, copy=True).copy()
     win.flags.writeable = False
     return win
 
