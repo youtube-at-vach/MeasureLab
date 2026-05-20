@@ -312,8 +312,8 @@ class AudioEngine:
                     name = names.get(int(idx))
                     if name is not None:
                         d["hostapi_name"] = name
-            except (TypeError, ValueError):
-                pass
+            except (TypeError, ValueError) as e:
+                self.logger.warning(f"Failed to parse hostapi index {idx!r} for device '{d.get('name', 'Unknown')}': {e}")
 
         return res
 
