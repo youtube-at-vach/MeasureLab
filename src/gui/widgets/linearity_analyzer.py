@@ -145,7 +145,7 @@ class LinearitySweepWorker(QThread):
 
             # Pre-calculate wait times
             # 100ms settling time is usually enough for electronics, plus buffer latency
-            min_wait = 0.2
+            min_wait = 1.0
 
             # Pre-allocate buffer for data
             buffer = np.zeros_like(self.module.input_data)
