@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pytest
 
-from src.core.analysis import AudioCalc
+from src.core.analysis import AudioCalc, get_cached_window
 
 
 class TestAudioCalc:
@@ -100,3 +100,29 @@ class TestAudioCalc:
             mock_lstsq.assert_called_once()
             assert isinstance(mse, float)
             assert not np.isnan(mse)
+
+def test_get_cached_window():
+    """Test get_cached_window caching and immutability behavior."""
+    # Test valid inputs
+    win1 = get_cached_window('hann', 1024)
+    assert win1.shape == (1024,)
+    assert win1.dtype == np.float64
+    assert not win1.flags.writeable
+
+    # Test caching behavior
+    win2 = get_cached_window('hann', 1024)
+
+    # Object identity should be the same
+    assert win1 is win2
+
+    # Test different window size
+    win3 = get_cached_window('hann', 2048)
+    assert win3.shape == (2048,)
+    assert win1 is not win3
+
+    # Test different window type
+    win4 = get_cached_window('hamming', 1024)
+    assert win1 is not win4
+
+    # Test cache cleanup
+    get_cached_window.cache_clear()
