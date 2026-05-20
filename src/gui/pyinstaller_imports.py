@@ -21,7 +21,6 @@ if False:
     from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
     from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer
     from src.gui.widgets.lockin_spectrum_finder import LockInSpectrumFinder
-    from src.gui.widgets.lockin_thd_analyzer import LockInTHDAnalyzer
     from src.gui.widgets.loopback_finder import LoopbackFinder
     from src.gui.widgets.lufs_meter import LufsMeter
     from src.gui.widgets.network_analyzer import NetworkAnalyzer
@@ -60,7 +59,6 @@ if False:
         LockInFrequencyCounter,
         LockInHarmonicAnalyzer,
         LockInSpectrumFinder,
-        LockInTHDAnalyzer,
         LoopbackFinder,
         LufsMeter,
         NetworkAnalyzer,
