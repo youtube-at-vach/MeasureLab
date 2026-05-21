@@ -31,6 +31,9 @@ DEFAULT_CONFIG = {
         "dithering_enabled": False,
         "dithering_bit_depth": "24",
         "audio_engine_64bit": False,
+        "coreaudio_fail_if_conversion_required": True,
+        "coreaudio_change_device_parameters": True,
+        "coreaudio_conversion_quality": "min",
     },
     "language": "en",
     "theme": "system",
@@ -418,6 +421,42 @@ class ConfigManager:
         if "audio" not in self.config:
             self.config["audio"] = {}
         self.config["audio"]["audio_engine_64bit"] = bool(enabled)
+        self.save_config()
+
+    def is_coreaudio_fail_if_conversion_required(self) -> bool:
+        """Returns whether CoreAudio streams fail if sample rate conversion is required."""
+        audio = self.get_audio_config()
+        return bool(audio.get("coreaudio_fail_if_conversion_required", True))
+
+    def set_coreaudio_fail_if_conversion_required(self, enabled: bool):
+        """Sets whether CoreAudio streams fail if sample rate conversion is required."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["coreaudio_fail_if_conversion_required"] = bool(enabled)
+        self.save_config()
+
+    def is_coreaudio_change_device_parameters(self) -> bool:
+        """Returns whether CoreAudio streams are allowed to change device hardware parameters."""
+        audio = self.get_audio_config()
+        return bool(audio.get("coreaudio_change_device_parameters", True))
+
+    def set_coreaudio_change_device_parameters(self, enabled: bool):
+        """Sets whether CoreAudio streams are allowed to change device hardware parameters."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["coreaudio_change_device_parameters"] = bool(enabled)
+        self.save_config()
+
+    def get_coreaudio_conversion_quality(self) -> str:
+        """Returns the sample rate conversion quality for CoreAudio."""
+        audio = self.get_audio_config()
+        return str(audio.get("coreaudio_conversion_quality", "min"))
+
+    def set_coreaudio_conversion_quality(self, quality: str):
+        """Sets the sample rate conversion quality for CoreAudio."""
+        if "audio" not in self.config:
+            self.config["audio"] = {}
+        self.config["audio"]["coreaudio_conversion_quality"] = str(quality)
         self.save_config()
 
     def get_language(self):

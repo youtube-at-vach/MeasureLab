@@ -309,5 +309,84 @@ class TestAudioEngineGetHostApis(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+class TestAudioEngineCoreAudioSettings(unittest.TestCase):
+    def setUp(self):
+        self.engine = AudioEngine()
+        self.engine.logger = MagicMock()
+        self.engine._restart_stream = MagicMock()
+
+    def test_coreaudio_settings_defaults_and_setters(self):
+        # Test defaults
+        self.assertTrue(self.engine.coreaudio_fail_if_conversion_required)
+        self.assertTrue(self.engine.coreaudio_change_device_parameters)
+        self.assertEqual(self.engine.coreaudio_conversion_quality, "min")
+
+        # Test setters
+        self.engine._restart_stream.reset_mock()
+        self.engine.set_coreaudio_fail_if_conversion_required(False)
+        self.assertFalse(self.engine.coreaudio_fail_if_conversion_required)
+        self.engine._restart_stream.assert_called_once()
+
+        self.engine._restart_stream.reset_mock()
+        self.engine.set_coreaudio_change_device_parameters(False)
+        self.assertFalse(self.engine.coreaudio_change_device_parameters)
+        self.engine._restart_stream.assert_called_once()
+
+        self.engine._restart_stream.reset_mock()
+        self.engine.set_coreaudio_conversion_quality("medium")
+        self.assertEqual(self.engine.coreaudio_conversion_quality, "medium")
+        self.engine._restart_stream.assert_called_once()
+
+    @patch("sys.platform", "linux")
+    def test_get_coreaudio_settings_non_mac(self):
+        settings = self.engine._get_coreaudio_settings()
+        self.assertIsNone(settings)
+
+    @patch("sys.platform", "darwin")
+    def test_get_coreaudio_settings_mac(self):
+        mock_settings_cls = MagicMock()
+        with patch("src.core.audio_engine.sd.CoreAudioSettings", mock_settings_cls):
+            self.engine.coreaudio_fail_if_conversion_required = True
+            self.engine.coreaudio_change_device_parameters = False
+            self.engine.coreaudio_conversion_quality = "max"
+
+            settings = self.engine._get_coreaudio_settings()
+
+            self.assertIsNotNone(settings)
+            self.assertEqual(len(settings), 2)
+
+            # Verify sd.CoreAudioSettings was called with correct parameters
+            mock_settings_cls.assert_any_call(
+                change_device_parameters=False, fail_if_conversion_required=True, conversion_quality="max"
+            )
+
+    @patch("sys.platform", "darwin")
+    def test_start_master_stream_mac(self):
+        self.engine.offline_mode = False
+        self.engine.input_device = 1
+        self.engine.output_device = 2
+        self.engine.sample_rate = 48000
+        self.engine.block_size = 1024
+
+        mock_settings = ("mock_in", "mock_out")
+        self.engine._get_coreaudio_settings = MagicMock(return_value=mock_settings)
+        self.engine._update_channel_modes = MagicMock(return_value=(1, 2))
+
+        mock_stream = MagicMock()
+        with patch("src.core.audio_engine.sd.Stream", mock_stream):
+            self.engine._start_master_stream()
+
+            mock_stream.assert_called_once_with(
+                device=(1, 2),
+                samplerate=48000,
+                blocksize=1024,
+                callback=self.engine._master_callback,
+                channels=(1, 2),
+                dtype="float32",
+                latency="high",
+                extra_settings=mock_settings,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

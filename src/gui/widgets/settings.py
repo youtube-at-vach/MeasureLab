@@ -1456,6 +1456,21 @@ class SettingsWidget(QWidget):
         self.audio_engine.dithering_bit_depth = depth
         self.logger.debug(f"Dithering bit depth set to: {depth}")
 
+    def on_ca_fail_if_conversion_toggled(self, checked: bool):
+        self.config_manager.set_coreaudio_fail_if_conversion_required(checked)
+        self.audio_engine.set_coreaudio_fail_if_conversion_required(checked)
+        self.logger.debug(f"CoreAudio fail_if_conversion_required set to: {checked}")
+
+    def on_ca_change_params_toggled(self, checked: bool):
+        self.config_manager.set_coreaudio_change_device_parameters(checked)
+        self.audio_engine.set_coreaudio_change_device_parameters(checked)
+        self.logger.debug(f"CoreAudio change_device_parameters set to: {checked}")
+
+    def on_ca_quality_changed(self, text: str):
+        self.config_manager.set_coreaudio_conversion_quality(text)
+        self.audio_engine.set_coreaudio_conversion_quality(text)
+        self.logger.debug(f"CoreAudio conversion_quality set to: {text}")
+
     def on_audio_engine_64bit_toggled(self, checked: bool):
         self.config_manager.set_audio_engine_64bit(checked)
         self.audio_engine.set_audio_engine_64bit(checked)

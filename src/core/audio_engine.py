@@ -186,6 +186,11 @@ class AudioEngine:
         self._host_apis_cache = None
         self._last_cache_time = 0
 
+        # Core Audio macOS Settings
+        self.coreaudio_fail_if_conversion_required = True
+        self.coreaudio_change_device_parameters = True
+        self.coreaudio_conversion_quality = "min"
+
     def _get_dtype(self):
         """Returns the appropriate numpy dtype based on precision settings."""
         return "float64" if self.audio_engine_64bit else "float32"
@@ -195,6 +200,24 @@ class AudioEngine:
         self.audio_engine_64bit = enabled
         self.logger.debug(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
         # Apply instantly by restarting active stream
+        self._restart_stream()
+
+    def set_coreaudio_fail_if_conversion_required(self, enabled: bool):
+        """Sets whether sample rate conversion failures are enforced on macOS."""
+        self.coreaudio_fail_if_conversion_required = bool(enabled)
+        self.logger.debug(f"CoreAudio fail_if_conversion_required set to: {enabled}")
+        self._restart_stream()
+
+    def set_coreaudio_change_device_parameters(self, enabled: bool):
+        """Sets whether CoreAudio device parameters can be modified for latency optimization."""
+        self.coreaudio_change_device_parameters = bool(enabled)
+        self.logger.debug(f"CoreAudio change_device_parameters set to: {enabled}")
+        self._restart_stream()
+
+    def set_coreaudio_conversion_quality(self, quality: str):
+        """Sets sample rate conversion quality for CoreAudio streams."""
+        self.coreaudio_conversion_quality = str(quality)
+        self.logger.debug(f"CoreAudio conversion_quality set to: {quality}")
         self._restart_stream()
 
     def set_pipewire_jack_resident(self, enabled: bool):
@@ -607,6 +630,29 @@ class AudioEngine:
             self.logger.debug(f"Failed to query audio devices for JACK settings: {e}")
         return None
 
+    def _get_coreaudio_settings(self):
+        """
+        Returns a tuple of (ca_in, ca_out) for CoreAudioSettings if running on macOS, else None.
+        """
+        import sys
+        if sys.platform != "darwin":
+            return None
+        try:
+            ca_in = sd.CoreAudioSettings(
+                change_device_parameters=self.coreaudio_change_device_parameters,
+                fail_if_conversion_required=self.coreaudio_fail_if_conversion_required,
+                conversion_quality=self.coreaudio_conversion_quality,
+            )
+            ca_out = sd.CoreAudioSettings(
+                change_device_parameters=self.coreaudio_change_device_parameters,
+                fail_if_conversion_required=self.coreaudio_fail_if_conversion_required,
+                conversion_quality=self.coreaudio_conversion_quality,
+            )
+            return (ca_in, ca_out)
+        except Exception as e:
+            self.logger.warning(f"Failed to create Core Audio settings: {e}")
+        return None
+
     def _start_master_stream(self):
         """Starts the underlying sounddevice stream or VirtualStream."""
         if self.stream is not None:
@@ -628,7 +674,11 @@ class AudioEngine:
                 self.stream.start()
                 self.logger.debug(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
             else:
-                extra_settings = self._get_jack_settings()
+                import sys
+                if sys.platform == "darwin":
+                    extra_settings = self._get_coreaudio_settings()
+                else:
+                    extra_settings = self._get_jack_settings()
 
                 self.stream = sd.Stream(
                     device=(self.input_device, self.output_device),
