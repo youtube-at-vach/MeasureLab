@@ -248,3 +248,29 @@ def test_harmonics_plot_percent_mode(qtbot):
     expected_h2_percent = 100.0 * (10 ** ((-40.0 - (-10.0)) / 20.0))
     x, y = widget.h_curves["h2"].getData()
     assert np.allclose(y, np.log10(expected_h2_percent))
+
+
+def test_frequency_limits_update_on_sample_rate_change(qtbot):
+    widget = _make_widget(qtbot)
+
+    # By default, MockAudioEngine has sample_rate = 48000.
+    # Nyquist should be 24000.
+    widget.update_frequency_limits()
+    assert widget.end_spin.maximum() == 24000.0
+    assert widget.limit_spin.maximum() == 24000.0
+    assert widget.min_limit_spin.maximum() == 24000.0
+
+    # Simulate changing sample rate to 96000
+    widget.module.audio_engine.sample_rate = 96000
+    widget.update_frequency_limits()
+    assert widget.end_spin.maximum() == 48000.0
+    assert widget.limit_spin.maximum() == 48000.0
+    assert widget.min_limit_spin.maximum() == 48000.0
+
+    # Simulate changing sample rate to 44100
+    # Values currently exceeding the new limits should be clamped
+    widget.end_spin.setValue(48000.0)
+    widget.module.audio_engine.sample_rate = 44100
+    widget.update_frequency_limits()
+    assert widget.end_spin.maximum() == 22050.0
+    assert widget.end_spin.value() == 22050.0
