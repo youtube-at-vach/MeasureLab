@@ -1224,50 +1224,6 @@ class SettingsWidget(QWidget):
         conf_group.setLayout(conf_layout)
         audio_layout.addWidget(conf_group)
 
-        # Core Audio Settings Group (macOS Only)
-        import sys
-
-        if sys.platform == "darwin":
-            ca_group = QGroupBox(tr("Core Audio Settings (macOS Only)"))
-            ca_layout = QFormLayout()
-
-            # Fail if Conversion Required
-            self.ca_fail_conv_check = QCheckBox(tr("Fail if Sample Rate Conversion Required"))
-            self.ca_fail_conv_check.setToolTip(
-                tr("Ensure no automatic sample rate conversion is done by Core Audio, preventing performance drop.")
-            )
-            fail_val = self.config_manager.is_coreaudio_fail_if_conversion_required()
-            if not isinstance(fail_val, bool):
-                fail_val = True
-            self.ca_fail_conv_check.setChecked(fail_val)
-            self.ca_fail_conv_check.toggled.connect(self.on_ca_fail_if_conversion_toggled)
-            ca_layout.addRow(self.ca_fail_conv_check)
-
-            # Allow Changing Device Parameters
-            self.ca_change_params_check = QCheckBox(tr("Allow Changing Device Parameters"))
-            self.ca_change_params_check.setToolTip(
-                tr("Allows PortAudio to change device frame size for lower latency, but may disrupt other apps.")
-            )
-            change_val = self.config_manager.is_coreaudio_change_device_parameters()
-            if not isinstance(change_val, bool):
-                change_val = False
-            self.ca_change_params_check.setChecked(change_val)
-            self.ca_change_params_check.toggled.connect(self.on_ca_change_params_toggled)
-            ca_layout.addRow(self.ca_change_params_check)
-
-            # Conversion Quality
-            self.ca_quality_combo = QComboBox()
-            self.ca_quality_combo.addItems(["min", "low", "medium", "high", "max"])
-            quality_val = self.config_manager.get_coreaudio_conversion_quality()
-            if not isinstance(quality_val, str):
-                quality_val = "max"
-            self.ca_quality_combo.setCurrentText(quality_val)
-            self.ca_quality_combo.currentTextChanged.connect(self.on_ca_quality_changed)
-            ca_layout.addRow(tr("Conversion Quality:"), self.ca_quality_combo)
-
-            ca_group.setLayout(ca_layout)
-            audio_layout.addWidget(ca_group)
-
         audio_layout.addStretch()
         audio_tab.setLayout(audio_layout)
         return audio_tab

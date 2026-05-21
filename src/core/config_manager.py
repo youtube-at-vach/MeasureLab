@@ -32,8 +32,8 @@ DEFAULT_CONFIG = {
         "dithering_bit_depth": "24",
         "audio_engine_64bit": False,
         "coreaudio_fail_if_conversion_required": True,
-        "coreaudio_change_device_parameters": False,
-        "coreaudio_conversion_quality": "max",
+        "coreaudio_change_device_parameters": True,
+        "coreaudio_conversion_quality": "min",
     },
     "language": "en",
     "theme": "system",
@@ -438,7 +438,7 @@ class ConfigManager:
     def is_coreaudio_change_device_parameters(self) -> bool:
         """Returns whether CoreAudio streams are allowed to change device hardware parameters."""
         audio = self.get_audio_config()
-        return bool(audio.get("coreaudio_change_device_parameters", False))
+        return bool(audio.get("coreaudio_change_device_parameters", True))
 
     def set_coreaudio_change_device_parameters(self, enabled: bool):
         """Sets whether CoreAudio streams are allowed to change device hardware parameters."""
@@ -450,7 +450,7 @@ class ConfigManager:
     def get_coreaudio_conversion_quality(self) -> str:
         """Returns the sample rate conversion quality for CoreAudio."""
         audio = self.get_audio_config()
-        return str(audio.get("coreaudio_conversion_quality", "max"))
+        return str(audio.get("coreaudio_conversion_quality", "min"))
 
     def set_coreaudio_conversion_quality(self, quality: str):
         """Sets the sample rate conversion quality for CoreAudio."""

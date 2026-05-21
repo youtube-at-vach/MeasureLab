@@ -318,8 +318,8 @@ class TestAudioEngineCoreAudioSettings(unittest.TestCase):
     def test_coreaudio_settings_defaults_and_setters(self):
         # Test defaults
         self.assertTrue(self.engine.coreaudio_fail_if_conversion_required)
-        self.assertFalse(self.engine.coreaudio_change_device_parameters)
-        self.assertEqual(self.engine.coreaudio_conversion_quality, "max")
+        self.assertTrue(self.engine.coreaudio_change_device_parameters)
+        self.assertEqual(self.engine.coreaudio_conversion_quality, "min")
 
         # Test setters
         self.engine._restart_stream.reset_mock()
@@ -328,8 +328,8 @@ class TestAudioEngineCoreAudioSettings(unittest.TestCase):
         self.engine._restart_stream.assert_called_once()
 
         self.engine._restart_stream.reset_mock()
-        self.engine.set_coreaudio_change_device_parameters(True)
-        self.assertTrue(self.engine.coreaudio_change_device_parameters)
+        self.engine.set_coreaudio_change_device_parameters(False)
+        self.assertFalse(self.engine.coreaudio_change_device_parameters)
         self.engine._restart_stream.assert_called_once()
 
         self.engine._restart_stream.reset_mock()

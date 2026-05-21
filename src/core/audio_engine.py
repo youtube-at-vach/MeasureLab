@@ -188,8 +188,8 @@ class AudioEngine:
 
         # Core Audio macOS Settings
         self.coreaudio_fail_if_conversion_required = True
-        self.coreaudio_change_device_parameters = False
-        self.coreaudio_conversion_quality = "max"
+        self.coreaudio_change_device_parameters = True
+        self.coreaudio_conversion_quality = "min"
 
     def _get_dtype(self):
         """Returns the appropriate numpy dtype based on precision settings."""
