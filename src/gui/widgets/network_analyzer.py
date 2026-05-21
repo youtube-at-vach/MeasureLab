@@ -1319,68 +1319,68 @@ class NetworkAnalyzerWidget(QWidget):
         try:
             self.update_timer.stop()
             self.update_timer.timeout.disconnect(self.on_update_timer)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.mag_plot.plotItem.vb.sigResized.disconnect(self.update_coh_views)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.phase_plot.plotItem.vb.sigResized.disconnect(self.update_gd_views)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.mag_plot.plotItem.scene().removeItem(self.coh_view)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.phase_plot.plotItem.scene().removeItem(self.gd_view)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.phase_plot.setXLink(None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.coh_view.setXLink(None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.gd_view.setXLink(None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.update_plot.disconnect(self.update_plot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.update_ir_plot.disconnect(self.update_ir_plot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.sweep_finished.disconnect(self.on_sweep_finished)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.progress.disconnect(self.progress_bar.setValue)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.latency_result.disconnect(self.on_latency_result)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.ir_snr_result.disconnect(self.on_ir_snr_result)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.error.disconnect(self.on_error)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.harmonics_result.disconnect(self.on_harmonics_result)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         super().closeEvent(event)
 
     def update_gd_views(self):
