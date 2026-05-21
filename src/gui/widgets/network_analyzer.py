@@ -154,7 +154,7 @@ class NetworkAnalyzer(MeasurementModule):
 
         # Parameters
         self.start_freq = 20.0
-        self.end_freq = 24000.0
+        self.end_freq = self.audio_engine.sample_rate / 2.0
         self.amplitude = 0.5
         self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
         self.latency_sec = 0.0
@@ -1085,6 +1085,7 @@ class NetworkAnalyzerWidget(QWidget):
 
         layout.addWidget(plot_tabs)
         self.setLayout(layout)
+        self.update_frequency_limits()
         self.on_routing_changed(self.in_combo.currentIndex())
     def on_riaa_mode_changed(self, index):
         mode = self.riaa_mode_combo.currentData()
@@ -1114,6 +1115,41 @@ class NetworkAnalyzerWidget(QWidget):
         ms_1khz = mag_squared(1000.0)
         ms_f = mag_squared(freqs)
         return 10 * np.log10(ms_f / ms_1khz + 1e-12)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_frequency_limits()
+
+    def update_frequency_limits(self):
+        sample_rate = self.module.audio_engine.sample_rate
+        nyquist = sample_rate / 2.0
+
+        # We block signals to prevent redundant logic execution during limits update
+        self.start_spin.blockSignals(True)
+        self.start_spin.setRange(10, nyquist)
+        if self.start_spin.value() > nyquist:
+            self.start_spin.setValue(min(20.0, nyquist))
+            self.module.start_freq = self.start_spin.value()
+        self.start_spin.blockSignals(False)
+
+        self.end_spin.blockSignals(True)
+        self.end_spin.setRange(10, nyquist)
+        if self.end_spin.value() > nyquist:
+            self.end_spin.setValue(nyquist)
+            self.module.end_freq = nyquist
+        self.end_spin.blockSignals(False)
+
+        self.limit_spin.blockSignals(True)
+        self.limit_spin.setRange(10, nyquist)
+        if self.limit_spin.value() > nyquist:
+            self.limit_spin.setValue(nyquist)
+        self.limit_spin.blockSignals(False)
+
+        self.min_limit_spin.blockSignals(True)
+        self.min_limit_spin.setRange(10, nyquist)
+        if self.min_limit_spin.value() > nyquist:
+            self.min_limit_spin.setValue(nyquist)
+        self.min_limit_spin.blockSignals(False)
 
     def on_routing_changed(self, index):
         self.module.input_mode = self.in_combo.currentData()
@@ -1276,6 +1312,7 @@ class NetworkAnalyzerWidget(QWidget):
 
     def on_start_stop(self, checked):
         if checked:
+            self.update_frequency_limits()
             self.freqs = []
             self.mags = []
             self.phases = []
