@@ -338,7 +338,7 @@ def test_linearity_analyzer_amplitude_continuity():
     # Reconstruct the expected modulated signal with ramp vs step
     phase_step = 2 * np.pi * 1000.0 / 48000.0
     phase_block2 = (frames * phase_step) + np.arange(frames) * phase_step
-    
+
     expected_step_sig = 0.5 * np.sin(phase_block2)
     expected_ramp_amp = np.linspace(1.0, 0.5, frames)
     expected_ramp_sig = expected_ramp_amp * np.sin(phase_block2)
