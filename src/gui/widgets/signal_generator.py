@@ -847,8 +847,8 @@ class SignalGenerator(MeasurementModule):
 
             signal = self._generate_wave_from_phase(params, phase)
         else:
-            # Legacy fixed-frequency phase calculation
-            phase_t = (np.arange(frames) + params._phase) / sample_rate_eff
+            # Fixed-frequency phase calculation with continuous phase tracking
+            phase_step = 2.0 * np.pi * params.frequency / sample_rate_eff
             params._phase += frames
 
             # If ΦM is enabled, construct explicit phase and use the phase-based definitions.
@@ -860,12 +860,21 @@ class SignalGenerator(MeasurementModule):
                     np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                 )
                 beta = float(np.radians(params.pm_deviation_deg))
-                phase = 2.0 * np.pi * params.frequency * phase_t + beta * np.sin(pm_phase)
-
+                
+                # Base phase is built continuously using phase_step
+                base_phase = params._carrier_phase_rad + np.arange(frames) * phase_step
+                params._carrier_phase_rad = float(
+                    np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi)
+                )
+                
+                phase = base_phase + beta * np.sin(pm_phase)
                 signal = self._generate_wave_from_phase(params, phase)
                 return signal
 
-            phase_rad = 2.0 * np.pi * params.frequency * phase_t
+            phase_rad = params._carrier_phase_rad + np.arange(frames) * phase_step
+            params._carrier_phase_rad = float(
+                np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi)
+            )
             signal = self._generate_wave_from_phase(params, phase_rad)
 
         return signal

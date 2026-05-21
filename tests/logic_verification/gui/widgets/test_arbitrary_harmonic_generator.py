@@ -262,3 +262,39 @@ def test_fine_tuning_widget_integration(generator_widget):
     # Adjusted coefficients must be updated
     c_adj = module.adjusted_compensation_coeffs[1]
     assert c_adj != 0.0
+
+
+def test_arbitrary_harmonic_generator_phase_continuity(generator_widget):
+    widget, module, engine = generator_widget
+
+    # Set parameters: 1000 Hz, 0.5 amplitude
+    module.gen_frequency = 1000.0
+    module.gen_amplitude = 0.5
+    module.gen_phase = 0.0
+
+    module.start_generation()
+    assert engine.register_callback.called
+    callback = engine.register_callback.call_args[0][0]
+
+    # Run block 1
+    frames = 512
+    outdata = np.zeros((frames, 2))
+    callback(None, outdata, frames, None, None)
+
+    # Change frequency for block 2 to 2000 Hz
+    module.gen_frequency = 2000.0
+    outdata.fill(0)
+    callback(None, outdata, frames, None, None)
+    signal2 = outdata[:, 0].copy()
+
+    # Total phase accumulated in block 1: frames * 2 * pi * 1000.0 / 48000.0
+    phase_step1 = 2 * np.pi * 1000.0 / 48000.0
+    expected_start_phase = (frames * phase_step1) % (2 * np.pi)
+
+    # Fundamental wave is amplitude * sin(phase)
+    expected_start_val = 0.5 * np.sin(expected_start_phase)
+
+    # First sample of block 2 must perfectly match expected_start_val
+    assert np.isclose(signal2[0], expected_start_val, atol=1e-12)
+
+    module.stop_generation()
