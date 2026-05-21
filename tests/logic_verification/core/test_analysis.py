@@ -126,3 +126,9 @@ def test_get_cached_window():
 
     # Test cache cleanup
     get_cached_window.cache_clear()
+
+def test_validate_audio_file_size_invalid_path():
+    """Test validate_audio_file_size handles invalid paths by returning False and an error."""
+    is_valid, msg = AudioCalc.validate_audio_file_size("does_not_exist_12345.wav")
+    assert is_valid is False
+    assert "Failed to check file size" in msg
