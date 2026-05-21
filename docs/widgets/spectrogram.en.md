@@ -79,7 +79,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 
 ## Usage Examples
 
-### ☕ Coffee Break: Visualizing "Voice" (Voice Analysis)
+### Visualizing "Voice" (Voice Analysis)
 
 Try analyzing your own voice or speech.
 
