@@ -6,10 +6,20 @@ from scipy.signal import fftconvolve
 
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-    QFileDialog, QScrollArea, QGroupBox,
-    QMessageBox, QProgressDialog, QFrame, QCheckBox, QDoubleSpinBox,
-    QSpinBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QFileDialog,
+    QScrollArea,
+    QGroupBox,
+    QMessageBox,
+    QProgressDialog,
+    QFrame,
+    QCheckBox,
+    QDoubleSpinBox,
+    QSpinBox,
 )
 
 
@@ -18,6 +28,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 from src.gui.widgets.hrtf_player import SOFALoader, HRTFData
+
 
 def interpolate_hrir(hrtf_data: HRTFData, target_az: float, target_el: float, k: int = 3, p: float = 2.0) -> np.ndarray:
     """
@@ -31,7 +42,7 @@ def interpolate_hrir(hrtf_data: HRTFData, target_az: float, target_el: float, k:
     pos_el_rad = pos[:, 1] * deg2rad
 
     # Calculate angular distance on a sphere
-    cos_terms = np.sin(el_rad)*np.sin(pos_el_rad) + np.cos(el_rad)*np.cos(pos_el_rad)*np.cos(pos_az_rad - az_rad)
+    cos_terms = np.sin(el_rad) * np.sin(pos_el_rad) + np.cos(el_rad) * np.cos(pos_el_rad) * np.cos(pos_az_rad - az_rad)
     cos_terms = np.clip(cos_terms, -1.0, 1.0)
     dists = np.arccos(cos_terms)
 
@@ -43,7 +54,7 @@ def interpolate_hrir(hrtf_data: HRTFData, target_az: float, target_el: float, k:
         return hrtf_data.ir_data[nearest_indices[0]].T.astype(np.float64)
 
     epsilon = 1e-9
-    weights = 1.0 / (nearest_dists ** p + epsilon)
+    weights = 1.0 / (nearest_dists**p + epsilon)
     weights /= np.sum(weights)
 
     N = hrtf_data.ir_data.shape[2]
@@ -54,6 +65,7 @@ def interpolate_hrir(hrtf_data: HRTFData, target_az: float, target_el: float, k:
         blended_hrir += pair * w
 
     return blended_hrir
+
 
 class RenderWorker(QThread):
     progress = pyqtSignal(int, str)
@@ -79,9 +91,9 @@ class RenderWorker(QThread):
                 if self.is_cancelled:
                     self.finished.emit(None)
                     return
-                self.progress.emit(10, tr("Loading track {0}...").format(i+1))
+                self.progress.emit(10, tr("Loading track {0}...").format(i + 1))
 
-                info = sf.info(track['path'])
+                info = sf.info(track["path"])
                 if self.start_sec is not None and self.duration_sec is not None:
                     start_frame = int(self.start_sec * info.samplerate)
                     if start_frame >= info.frames:
@@ -90,9 +102,9 @@ class RenderWorker(QThread):
                     frames_to_read = int(self.duration_sec * info.samplerate)
                     frames_to_read = min(frames_to_read, info.frames - start_frame)
 
-                    data, sr = sf.read(track['path'], always_2d=True, start=start_frame, frames=frames_to_read)
+                    data, sr = sf.read(track["path"], always_2d=True, start=start_frame, frames=frames_to_read)
                 else:
-                    data, sr = sf.read(track['path'], always_2d=True)
+                    data, sr = sf.read(track["path"], always_2d=True)
 
                 if sr != self.target_sr:
                     data = AudioCalc.resample(data, sr, self.target_sr)
@@ -104,7 +116,7 @@ class RenderWorker(QThread):
                     data = data[:, 0]
 
                 # Apply track gain
-                gain_linear = 10 ** (track['gain_db'] / 20.0)
+                gain_linear = 10 ** (track["gain_db"] / 20.0)
                 data *= gain_linear
                 processed_tracks.append(data)
 
@@ -123,9 +135,9 @@ class RenderWorker(QThread):
                 if self.is_cancelled:
                     self.finished.emit(None)
                     return
-                self.progress.emit(20 + int(70 * i / len(processed_tracks)), tr("Rendering track {0}...").format(i+1))
+                self.progress.emit(20 + int(70 * i / len(processed_tracks)), tr("Rendering track {0}...").format(i + 1))
 
-                hrir_orig = interpolate_hrir(self.hrtf_data, config['az'], config['el'])
+                hrir_orig = interpolate_hrir(self.hrtf_data, config["az"], config["el"])
                 if self.hrtf_data.sampling_rate != self.target_sr:
                     hrir = AudioCalc.resample(hrir_orig, self.hrtf_data.sampling_rate, self.target_sr)
                     correction = self.hrtf_data.sampling_rate / self.target_sr
@@ -134,11 +146,11 @@ class RenderWorker(QThread):
                     hrir = hrir_orig
 
                 # Full offline FFT Convolution (highest mathematical accuracy)
-                conv_l = fftconvolve(audio_data, hrir[:, 0], mode='full')
-                conv_r = fftconvolve(audio_data, hrir[:, 1], mode='full')
+                conv_l = fftconvolve(audio_data, hrir[:, 0], mode="full")
+                conv_r = fftconvolve(audio_data, hrir[:, 1], mode="full")
 
-                master_bus[:len(conv_l), 0] += conv_l
-                master_bus[:len(conv_r), 1] += conv_r
+                master_bus[: len(conv_l), 0] += conv_l
+                master_bus[: len(conv_r), 1] += conv_r
 
             peak = np.max(np.abs(master_bus))
             if peak > 0.99:
@@ -210,7 +222,9 @@ class TrackControlUI(QFrame):
         self.setLayout(layout)
 
     def on_load(self):
-        fname, _ = QFileDialog.getOpenFileName(self, tr("Open Audio"), "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)")
+        fname, _ = QFileDialog.getOpenFileName(
+            self, tr("Open Audio"), "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)"
+        )
         if fname:
             self.file_path = fname
             self.name_label.setText(fname.split("/")[-1])
@@ -384,13 +398,15 @@ class SpatialBinauralMixerWidget(QWidget):
         self.start_sec_spin.setValue(curr + dur)
 
     def on_load_sofa(self):
-        fname, _ = QFileDialog.getOpenFileName(self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)")
+        fname, _ = QFileDialog.getOpenFileName(
+            self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)"
+        )
         if fname:
             try:
                 data = SOFALoader.load(fname)
                 if data:
                     self.module.hrtf_data = data
-                    self.sofa_label.setText(fname.split('/')[-1])
+                    self.sofa_label.setText(fname.split("/")[-1])
                 else:
                     raise ValueError("Loader returned None")
             except Exception as e:
@@ -417,12 +433,9 @@ class SpatialBinauralMixerWidget(QWidget):
                 continue
             if not solo_active and t.mute_btn.isChecked():
                 continue
-            configs.append({
-                'path': t.file_path,
-                'az': t.az_spin.value(),
-                'el': t.el_spin.value(),
-                'gain_db': t.gain_spin.value()
-            })
+            configs.append(
+                {"path": t.file_path, "az": t.az_spin.value(), "el": t.el_spin.value(), "gain_db": t.gain_spin.value()}
+            )
         return configs
 
     def start_render(self, callback):
@@ -443,11 +456,11 @@ class SpatialBinauralMixerWidget(QWidget):
         duration_sec = self.duration_sec_spin.value() if self.preview_cb.isChecked() else None
 
         self.worker = RenderWorker(
-            configs, 
-            self.module.hrtf_data, 
+            configs,
+            self.module.hrtf_data,
             self.module.audio_engine.sample_rate,
             start_sec=start_sec,
-            duration_sec=duration_sec
+            duration_sec=duration_sec,
         )
         self.worker.progress.connect(self.pd.setValue)
         self.pd.canceled.connect(self.worker.cancel)
@@ -455,7 +468,7 @@ class SpatialBinauralMixerWidget(QWidget):
         def on_finished(result):
             self.pd.close()
             if result is None:
-                pass # Cancelled
+                pass  # Cancelled
             elif isinstance(result, Exception):
                 QMessageBox.warning(self, tr("Error"), str(result))
             else:
@@ -471,6 +484,7 @@ class SpatialBinauralMixerWidget(QWidget):
             self.module.is_playing = True
             if self.module.callback_id is None:
                 self.module.callback_id = self.module.audio_engine.register_callback(self.module._callback)
+
         self.start_render(play_callback)
 
     def on_stop_play(self):
@@ -482,8 +496,9 @@ class SpatialBinauralMixerWidget(QWidget):
             if fname:
                 try:
                     # Exporting as FLOAT to preserve dynamic range
-                    sf.write(fname, buffer, self.module.audio_engine.sample_rate, subtype='FLOAT')
+                    sf.write(fname, buffer, self.module.audio_engine.sample_rate, subtype="FLOAT")
                     QMessageBox.information(self, tr("Success"), tr("WAV Export Successful"))
                 except Exception as e:
                     QMessageBox.warning(self, tr("Error"), str(e))
+
         self.start_render(export_callback)

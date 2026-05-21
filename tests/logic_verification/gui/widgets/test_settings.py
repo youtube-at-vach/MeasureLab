@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QTabWidget
 from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
 
+
 def test_settings_widget_instantiation(qtbot):
     """Test basic instantiation of the SettingsWidget."""
     mock_engine = MagicMock()
@@ -49,6 +50,7 @@ def test_settings_widget_instantiation(qtbot):
             tabs = widget.findChild(QTabWidget)
             assert tabs is not None
             assert tabs.count() == 3
+
 
 def test_settings_offline_mode_toggle_ui(qtbot):
     """Test that toggling offline mode correctly disables/enables hardware combos in the UI."""
@@ -106,6 +108,7 @@ def test_settings_offline_mode_toggle_ui(qtbot):
             widget.offline_check.setChecked(False)
             assert widget.hostapi_combo.isEnabled()
             assert widget.input_combo.isEnabled()
+
 
 def test_settings_language_change_ui(qtbot):
     """Test changing language combo updates config manager."""

@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.7.3] - 2026-05-21
+
+### Added
+
+* **Arbitrary Harmonic Generator**: Added ArbitraryHarmonicGenerator and integrated compensation data export/import functionality into LockInHarmonicWidget, alongside fine-tuning controls and organized UI tabs.
+* **Network Analyzer**: Added harmonic analysis and THD calculation support with harmonic percentage display options.
+* **macOS Support**: Added CoreAudio hardware configuration settings and associated GUI controls.
+
+### Changed
+
+* **Audio Engine**: Decoupled macOS settings from GUI, updated default engine parameters, and optimized wait loops in impedance and linearity sweep workers.
+* **Linearity Analyzer**: Increased minimum settling wait time to 1.0s to account for macOS buffer latency, and added audio stream warm-up to prevent startup delays.
+* **Performance**: Vectorized redundant array sums in LUFS meter ring update, cached audio engine device queries in loopback finder, offloaded CWT computation to a background thread to prevent UI freezing in Network Analyzer, and replaced list-based membership testing with sets in signal generator and spectrum analyzer.
+
+### Fixed
+
+* **Security**: Fixed TOCTOU vulnerabilities in configuration saving and secured calibration file permissions in the Impedance Analyzer.
+* **Core**: Caught specific exceptions in platform CPU name queries (`get_cpu_name`) and host API queries (`get_host_apis`).
+* **UI**: Resolved segfaults in unit tests by properly initializing MainWindow in `test_main_window_activity.py`.
+* **Audio**: Logged `OSError` during temp file cleanup in `recorder_player`.
+* **I18n**: Updated translation check script to remove unused keys across all languages, and localized missing terminology.
+
+### Removed
+
+* **Lock-in THD Analyzer**: Removed the deprecated Lock-in THD Analyzer module, including associated documentation and localization strings, streamlining the codebase.
+
 ## [v0.7.2] - 2026-05-16
 
 ### Added

@@ -85,12 +85,20 @@ class LoopbackFinder(MeasurementModule):
         if isinstance(device_id, tuple):
             input_device, output_device = device_id
             try:
-                in_info = devices[input_device] if has_cache and isinstance(input_device, int) and input_device < len(devices) else sd.query_devices(input_device)
+                in_info = (
+                    devices[input_device]
+                    if has_cache and isinstance(input_device, int) and input_device < len(devices)
+                    else sd.query_devices(input_device)
+                )
             except Exception:
                 in_info = sd.query_devices(input_device)
 
             try:
-                out_info = devices[output_device] if has_cache and isinstance(output_device, int) and output_device < len(devices) else sd.query_devices(output_device)
+                out_info = (
+                    devices[output_device]
+                    if has_cache and isinstance(output_device, int) and output_device < len(devices)
+                    else sd.query_devices(output_device)
+                )
             except Exception:
                 out_info = sd.query_devices(output_device)
 
@@ -98,7 +106,11 @@ class LoopbackFinder(MeasurementModule):
             max_out = out_info["max_output_channels"]
         else:
             try:
-                device_info = devices[device_id] if has_cache and isinstance(device_id, int) and device_id < len(devices) else sd.query_devices(device_id)
+                device_info = (
+                    devices[device_id]
+                    if has_cache and isinstance(device_id, int) and device_id < len(devices)
+                    else sd.query_devices(device_id)
+                )
             except Exception:
                 device_info = sd.query_devices(device_id)
 

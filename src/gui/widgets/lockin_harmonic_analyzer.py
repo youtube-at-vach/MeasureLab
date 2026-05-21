@@ -727,12 +727,7 @@ class LockInHarmonicWidget(QWidget):
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
         import json
 
-        filename, _ = QFileDialog.getSaveFileName(
-            self,
-            tr("Export Compensation Data"),
-            "",
-            "JSON Files (*.json)"
-        )
+        filename, _ = QFileDialog.getSaveFileName(self, tr("Export Compensation Data"), "", "JSON Files (*.json)")
         if not filename:
             return
 
@@ -744,33 +739,31 @@ class LockInHarmonicWidget(QWidget):
                 phase = np.arctan2(c.real, c.imag)
                 phase_deg = np.degrees(phase)
                 phase_deg = (phase_deg + 180) % 360 - 180
-                coeffs_list.append({
-                    "harmonic": i + 1,
-                    "real": float(c.real),
-                    "imag": float(c.imag),
-                    "amp_linear": float(amp),
-                    "phase_deg": float(phase_deg)
-                })
+                coeffs_list.append(
+                    {
+                        "harmonic": i + 1,
+                        "real": float(c.real),
+                        "imag": float(c.imag),
+                        "amp_linear": float(amp),
+                        "phase_deg": float(phase_deg),
+                    }
+                )
 
             data = {
                 "format": "MeasureLab_Harmonic_Compensation",
                 "version": "1.0",
                 "fundamental_frequency": float(self.module.gen_frequency),
                 "max_harmonic": int(self.module.max_harmonic),
-                "compensation_coeffs": coeffs_list
+                "compensation_coeffs": coeffs_list,
             }
 
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
             logger.info(f"Successfully exported compensation data to {filename}")
         except Exception as e:
             logger.error(f"Failed to export compensation data: {e}")
-            QMessageBox.critical(
-                self,
-                tr("Error"),
-                tr("Failed to export compensation data: {0}").format(str(e))
-            )
+            QMessageBox.critical(self, tr("Error"), tr("Failed to export compensation data: {0}").format(str(e)))
 
     def _get_comp_amp_phase(self, c: complex):
         amp = np.abs(c)

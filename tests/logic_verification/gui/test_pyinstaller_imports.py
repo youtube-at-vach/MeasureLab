@@ -1,6 +1,7 @@
 import ast
 from pathlib import Path
 
+
 def test_pyinstaller_imports_syntax_and_existence():
     """
     Verifies that src/gui/pyinstaller_imports.py can be parsed correctly and
@@ -33,26 +34,30 @@ def test_pyinstaller_imports_syntax_and_existence():
                     continue
 
                 # Convert module path to file path
-                module_parts = module_name.split('.')
+                module_parts = module_name.split(".")
                 base_path = Path(*module_parts)
 
-                file_path_py = base_path.with_suffix('.py')
-                dir_path = base_path / '__init__.py'
+                file_path_py = base_path.with_suffix(".py")
+                dir_path = base_path / "__init__.py"
 
                 exists = file_path_py.exists() or dir_path.exists()
-                assert exists, f"Module {module_name} imported in pyinstaller_imports.py does not exist at {file_path_py} or {dir_path}"
+                assert exists, (
+                    f"Module {module_name} imported in pyinstaller_imports.py does not exist at {file_path_py} or {dir_path}"
+                )
 
-            module_name = None # Reset so we don't process it again below
+            module_name = None  # Reset so we don't process it again below
 
         if module_name is None:
             continue
 
         # Convert module path to file path
-        module_parts = module_name.split('.')
+        module_parts = module_name.split(".")
         base_path = Path(*module_parts)
 
-        file_path_py = base_path.with_suffix('.py')
-        dir_path = base_path / '__init__.py'
+        file_path_py = base_path.with_suffix(".py")
+        dir_path = base_path / "__init__.py"
 
         exists = file_path_py.exists() or dir_path.exists()
-        assert exists, f"Module {module_name} imported in pyinstaller_imports.py does not exist at {file_path_py} or {dir_path}"
+        assert exists, (
+            f"Module {module_name} imported in pyinstaller_imports.py does not exist at {file_path_py} or {dir_path}"
+        )

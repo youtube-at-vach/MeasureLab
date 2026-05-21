@@ -102,9 +102,10 @@ def test_analysis_worker():
     mock_slot = MagicMock()
     worker.signals.result_ready.connect(mock_slot)
 
-    with patch("src.gui.widgets.advanced_distortion_meter.fft_manager") as mock_fft, \
-         patch("src.gui.widgets.advanced_distortion_meter.AudioCalc") as mock_calc:
-
+    with (
+        patch("src.gui.widgets.advanced_distortion_meter.fft_manager") as mock_fft,
+        patch("src.gui.widgets.advanced_distortion_meter.AudioCalc") as mock_calc,
+    ):
         mock_fft.rfft.return_value = np.zeros(513)
         mock_fft.rfftfreq.return_value = np.linspace(0, 24000, 513)
         mock_calc.calculate_multitone_tdn.return_value = {"tdn_db": -60.0, "tdn": 0.1}

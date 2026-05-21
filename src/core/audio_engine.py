@@ -284,7 +284,6 @@ class AudioEngine:
         except Exception as e:
             self.logger.error(f"Error re-initializing PortAudio: {e}")
 
-
     def _get_cached_audio_info(self):
         now = time.time()
         if (
@@ -321,11 +320,7 @@ class AudioEngine:
         if hostapis is None:
             return [dict(dev) for dev in devices]
 
-        names = {
-            i: str(name)
-            for i, ha in enumerate(hostapis)
-            if (name := ha.get("name"))
-        }
+        names = {i: str(name) for i, ha in enumerate(hostapis) if (name := ha.get("name"))}
 
         res = [dict(dev) for dev in devices]
         for d in res:
@@ -336,7 +331,9 @@ class AudioEngine:
                     if name is not None:
                         d["hostapi_name"] = name
             except (TypeError, ValueError) as e:
-                self.logger.warning(f"Failed to parse hostapi index {idx!r} for device '{d.get('name', 'Unknown')}': {e}")
+                self.logger.warning(
+                    f"Failed to parse hostapi index {idx!r} for device '{d.get('name', 'Unknown')}': {e}"
+                )
 
         return res
 
@@ -635,6 +632,7 @@ class AudioEngine:
         Returns a tuple of (ca_in, ca_out) for CoreAudioSettings if running on macOS, else None.
         """
         import sys
+
         if sys.platform != "darwin":
             return None
         try:
@@ -675,6 +673,7 @@ class AudioEngine:
                 self.logger.debug(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
             else:
                 import sys
+
                 if sys.platform == "darwin":
                     extra_settings = self._get_coreaudio_settings()
                 else:

@@ -491,6 +491,7 @@ def test_legacy_empty_dict(legacy_config_path):
     cm = CalibrationManager(str(legacy_config_path))
     assert cm.spl_offset_db is None
 
+
 def test_update_map_cache(cal_manager):
     """Test that _update_map_cache correctly updates the cache arrays."""
     # Test with empty map
@@ -498,16 +499,13 @@ def test_update_map_cache(cal_manager):
     cal_manager._update_map_cache()
 
     import numpy as np
+
     assert cal_manager._freq_cache is None
     assert cal_manager._mag_cache is None
     assert cal_manager._phase_cache is None
 
     # Test with populated map
-    cal_manager.frequency_map = [
-        [100.0, 1.0, 10.0],
-        [1000.0, 2.0, 20.0],
-        [10000.0, 3.0, 30.0]
-    ]
+    cal_manager.frequency_map = [[100.0, 1.0, 10.0], [1000.0, 2.0, 20.0], [10000.0, 3.0, 30.0]]
     cal_manager._update_map_cache()
 
     np.testing.assert_array_equal(cal_manager._freq_cache, np.array([100.0, 1000.0, 10000.0]))

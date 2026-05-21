@@ -107,6 +107,7 @@ def test_sonifier_at_140dbfs():
     # target_amp = 0.25**3 = 0.015625
     assert np.isclose(s.target_amp, 0.25**3)
 
+
 def test_sonifier_set_sample_rate():
     s = Sonifier()
     s.set_sample_rate(96000)

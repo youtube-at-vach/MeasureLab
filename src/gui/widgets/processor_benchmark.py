@@ -33,11 +33,9 @@ logger = logging.getLogger(__name__)
 def get_cpu_name():
     if sys.platform == "win32":
         import winreg
+
         try:
-            key = winreg.OpenKey(
-                winreg.HKEY_LOCAL_MACHINE,
-                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0"
-            )
+            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
             name, _ = winreg.QueryValueEx(key, "ProcessorNameString")
             return name.strip()
         except OSError as e:
@@ -54,10 +52,9 @@ def get_cpu_name():
 
     elif sys.platform == "darwin":
         import subprocess
+
         try:
-            return subprocess.check_output(
-                ["sysctl", "-n", "machdep.cpu.brand_string"]
-            ).decode().strip()
+            return subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
         except (OSError, subprocess.CalledProcessError) as e:
             logger.debug(f"Failed to read CPU name from sysctl: {e}")
 
@@ -361,12 +358,12 @@ class ProcessorBenchmarkWidget(QWidget):
             if n is not None:
                 res = fs / n
                 summary_parts.append(
-                    tr("{0}kHz → Recommended: {1} (Max Realtime Resolution: ~{2:.2f}Hz)\n").format(
-                        fs / 1000.0, n, res
-                    )
+                    tr("{0}kHz → Recommended: {1} (Max Realtime Resolution: ~{2:.2f}Hz)\n").format(fs / 1000.0, n, res)
                 )
             else:
-                summary_parts.append(tr("{0}kHz → Recommended: None (Cannot process in real-time)\n").format(fs / 1000.0))
+                summary_parts.append(
+                    tr("{0}kHz → Recommended: None (Cannot process in real-time)\n").format(fs / 1000.0)
+                )
         summary_text = "".join(summary_parts)
 
         lbl = QLabel(summary_text.strip())

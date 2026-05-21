@@ -254,9 +254,7 @@ class MainWindow(QMainWindow):
             self.audio_engine.set_coreaudio_change_device_parameters(
                 self.config_manager.is_coreaudio_change_device_parameters()
             )
-            self.audio_engine.set_coreaudio_conversion_quality(
-                self.config_manager.get_coreaudio_conversion_quality()
-            )
+            self.audio_engine.set_coreaudio_conversion_quality(self.config_manager.get_coreaudio_conversion_quality())
 
         except Exception as e:
             self.logger.error(f"Failed to set devices/settings: {e}")

@@ -23,7 +23,7 @@ A_WEIGHTING_F4 = 12194.0
 # 20 * log10(Ra(1000)) approx -2.000 dB
 # Gain = 10^(2.000/20) = 1.2589...
 A_WEIGHTING_GAIN = 1.2589
-A_WEIGHTING_GAIN_SQ = A_WEIGHTING_GAIN ** 2
+A_WEIGHTING_GAIN_SQ = A_WEIGHTING_GAIN**2
 
 # Factor to convert Median of Rayleigh distribution (magnitude of Gaussian noise) to RMS
 # RMS / Median = 1 / sqrt(ln(2)) ~= 1.2011
@@ -313,9 +313,9 @@ class AudioCalc:
             raise ValueError("Invalid sample rate")
 
         nyquist = fs / 2.0
-        cutoff = min(20000.0, nyquist - 0.1) 
+        cutoff = min(20000.0, nyquist - 0.1)
         if cutoff <= 0:
-             return None
+            return None
 
         Wn = cutoff / nyquist
         sos = _get_butter_sos(8, Wn, "lowpass")
@@ -822,7 +822,9 @@ class AudioCalc:
     @staticmethod
     def _calculate_thdn_and_sinad(audio_data, sampling_rate, max_freq, filter_type=None):
         """Calculates THD+N and SINAD."""
-        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(audio_data, sampling_rate, max_freq, filter_type=filter_type)
+        thdn_db, fund_rms, res_rms = AudioCalc.calculate_thdn_sine_fit(
+            audio_data, sampling_rate, max_freq, filter_type=filter_type
+        )
         thdn_linear = 10 ** (thdn_db / 20)
 
         thdn_percent = thdn_linear * 100

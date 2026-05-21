@@ -237,4 +237,3 @@ def test_highpass_filter_edge_cases():
     filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=-100.0)
     assert len(filtered) == len(signal)
     # Should not crash
-

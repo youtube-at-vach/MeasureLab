@@ -65,14 +65,6 @@ class TestAudioCalc:
         with pytest.raises(ValueError, match="Invalid sample rate"):
             AudioCalc.design_c_weighting(-100)
 
-
-
-
-
-
-
-
-
     def test_optimize_frequency_empty_signal(self):
         result = AudioCalc.optimize_frequency(np.array([]), 48000, 1000.0)
         assert result == 1000.0
@@ -101,27 +93,28 @@ class TestAudioCalc:
             assert isinstance(mse, float)
             assert not np.isnan(mse)
 
+
 def test_get_cached_window():
     """Test get_cached_window caching and immutability behavior."""
     # Test valid inputs
-    win1 = get_cached_window('hann', 1024)
+    win1 = get_cached_window("hann", 1024)
     assert win1.shape == (1024,)
     assert win1.dtype == np.float64
     assert not win1.flags.writeable
 
     # Test caching behavior
-    win2 = get_cached_window('hann', 1024)
+    win2 = get_cached_window("hann", 1024)
 
     # Object identity should be the same
     assert win1 is win2
 
     # Test different window size
-    win3 = get_cached_window('hann', 2048)
+    win3 = get_cached_window("hann", 2048)
     assert win3.shape == (2048,)
     assert win1 is not win3
 
     # Test different window type
-    win4 = get_cached_window('hamming', 1024)
+    win4 = get_cached_window("hamming", 1024)
     assert win1 is not win4
 
     # Test cache cleanup

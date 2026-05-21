@@ -187,7 +187,6 @@ class ImpedanceAnalyzer(MeasurementModule):
         self._postmix_lpf_initialized_v = False
         self._postmix_lpf_initialized_i = False
 
-
     def wait_for_buffer(self, cancel_event=None):
         if not hasattr(self, "_buffer_ready_event"):
             self._buffer_ready_event = threading.Event()
