@@ -97,7 +97,7 @@ def test_signal_generator_phase_continuity():
     module.params_L.waveform = "sine"
     module.params_L.frequency = 1000.0
     module.params_L.amplitude = 1.0
-    
+
     module.start_generation()
     assert engine.register_callback.called
     callback = engine.register_callback.call_args[0][0]
@@ -106,7 +106,7 @@ def test_signal_generator_phase_continuity():
     frames = 512
     outdata = np.zeros((frames, 2))
     callback(None, outdata, frames, None, None)
-    
+
     # Change frequency for block 2
     module.update_param(module.params_L, "frequency", 2000.0)
     outdata.fill(0)
@@ -116,7 +116,7 @@ def test_signal_generator_phase_continuity():
     # Total phase accumulated in block 1: frames * 2 * pi * 1000.0 / 48000.0
     phase_step1 = 2 * np.pi * 1000.0 / 48000.0
     expected_start_phase = (frames * phase_step1) % (2 * np.pi)
-    
+
     # Waveform helper is amplitude * sin(phase)
     expected_start_val = np.sin(expected_start_phase)
 

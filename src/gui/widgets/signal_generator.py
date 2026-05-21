@@ -860,13 +860,13 @@ class SignalGenerator(MeasurementModule):
                     np.fmod(pm_phase0 + 2.0 * np.pi * params.pm_frequency * (frames / sample_rate_eff), 2.0 * np.pi)
                 )
                 beta = float(np.radians(params.pm_deviation_deg))
-                
+
                 # Base phase is built continuously using phase_step
                 base_phase = params._carrier_phase_rad + np.arange(frames) * phase_step
                 params._carrier_phase_rad = float(
                     np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi)
                 )
-                
+
                 phase = base_phase + beta * np.sin(pm_phase)
                 signal = self._generate_wave_from_phase(params, phase)
                 return signal
