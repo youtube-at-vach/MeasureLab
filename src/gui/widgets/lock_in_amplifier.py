@@ -175,6 +175,7 @@ class LockInAmplifier(MeasurementModule):
 
         # Generator State
         self._phase = 0
+        self._gen_phase = 0.0
         sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
@@ -218,11 +219,14 @@ class LockInAmplifier(MeasurementModule):
                 self._buffer_ready_event.set()
 
             # --- Output Generation ---
-            # Generate Sine Wave
-            t = (np.arange(frames) + self._phase) / sample_rate
-            self._phase += frames
+            # Generate Sine Wave with continuous phase
+            phase_step = 2 * np.pi * self.gen_frequency / sample_rate
+            t_phase = self._gen_phase + np.arange(frames) * phase_step
+            signal = self.gen_amplitude * np.cos(t_phase)
 
-            signal = self.gen_amplitude * np.cos(2 * np.pi * self.gen_frequency * t)
+            # Update the starting phase for the next block (wrap to prevent loss of precision)
+            self._gen_phase = (self._gen_phase + frames * phase_step) % (2 * np.pi)
+            self._phase += frames
 
             # Fill Output Buffer
             outdata.fill(0)
