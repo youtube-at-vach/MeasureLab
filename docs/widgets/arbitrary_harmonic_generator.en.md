@@ -4,7 +4,7 @@
 
 ## Overview
 
-The Arbitrary Harmonic Generator is an advanced signal generation module that allows you to synthesize complex waveforms by explicitly defining the fundamental frequency and the precise amplitude and phase of multiple harmonic components (up to the 100th harmonic).
+The Arbitrary Harmonic Generator is an advanced signal generation module that allows you to synthesize complex waveforms by explicitly defining the fundamental frequency and the precise amplitude and phase of multiple harmonic components (up to the 50th harmonic).
 
 This is particularly useful for generating test signals with specific distortion profiles or for creating inverse compensation signals to cancel out existing harmonic distortion in a measurement setup.
 
