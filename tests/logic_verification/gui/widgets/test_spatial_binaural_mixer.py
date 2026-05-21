@@ -1,6 +1,6 @@
-
-
-from src.gui.widgets.spatial_binaural_mixer import SpatialBinauralMixer
+import numpy as np
+from src.gui.widgets.hrtf_player import HRTFData
+from src.gui.widgets.spatial_binaural_mixer import SpatialBinauralMixer, interpolate_hrir
 
 def test_spatial_binaural_mixer_instantiation(qtbot):
     """Smoke test to ensure the widget can be instantiated without crashing."""
@@ -32,9 +32,6 @@ def test_add_remove_track(qtbot):
 
     assert len(widget.tracks) == 0
 
-import numpy as np
-from src.gui.widgets.hrtf_player import HRTFData
-from src.gui.widgets.spatial_binaural_mixer import interpolate_hrir
 
 def test_interpolate_hrir_exact_match():
     pos = np.array([[0.0, 0.0, 1.0], [90.0, 0.0, 1.0]])
