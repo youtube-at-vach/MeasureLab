@@ -727,11 +727,17 @@ class LockInHarmonicWidget(QWidget):
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
         import json
 
-        filename, _ = QFileDialog.getSaveFileName(self, tr("Export Compensation Data"), "", "JSON Files (*.json)")
-        if not filename:
-            return
+        # Disable the UI timer and button to prevent reentrancy and multiple dialogs on Linux
+        was_running = self.module.is_running
+        if was_running:
+            self.timer.stop()
+        self.btn_export_comp.setEnabled(False)
 
         try:
+            filename, _ = QFileDialog.getSaveFileName(self, tr("Export Compensation Data"), "", "JSON Files (*.json)")
+            if not filename:
+                return
+
             coeffs_list = []
             for i in range(1, len(self.module.compensation_coeffs)):
                 c = self.module.compensation_coeffs[i]
@@ -764,6 +770,11 @@ class LockInHarmonicWidget(QWidget):
         except Exception as e:
             logger.error(f"Failed to export compensation data: {e}")
             QMessageBox.critical(self, tr("Error"), tr("Failed to export compensation data: {0}").format(str(e)))
+        finally:
+            # Restore state
+            self.btn_export_comp.setEnabled(True)
+            if was_running and self.module.is_running:
+                self.timer.start()
 
     def _get_comp_amp_phase(self, c: complex):
         amp = np.abs(c)
