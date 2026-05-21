@@ -71,14 +71,13 @@ class FFTManager:
                 # Use JSON + Base64 to safely load wisdom (avoids pickle deserialization vulnerabilities)
                 with open(self.wisdom_path, "r") as f:
                     data = json.load(f)
+                    if not isinstance(data, list):
+                        raise ValueError(f"Invalid wisdom format in {self.wisdom_path}")
 
                 # Decode base64 strings back to bytes
-                if isinstance(data, list):
-                    wisdom = tuple(base64.b64decode(item) for item in data)
-                    pyfftw.import_wisdom(wisdom)
-                    logger.debug(f"Loaded pyfftw wisdom from {self.wisdom_path}")
-                else:
-                    logger.warning(f"Invalid wisdom format in {self.wisdom_path}")
+                wisdom = tuple(base64.b64decode(item) for item in data)
+                pyfftw.import_wisdom(wisdom)
+                logger.debug(f"Loaded pyfftw wisdom from {self.wisdom_path}")
             except Exception as e:
                 logger.warning(f"Failed to load wisdom: {e}")
 
