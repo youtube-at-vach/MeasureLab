@@ -1,5 +1,6 @@
 import logging
 import time
+import threading
 
 import numpy as np
 import pyqtgraph as pg
@@ -56,6 +57,7 @@ class SoundLevelMeter(MeasurementModule):
         self.LN_SAMPLING_PERIOD = 0.1  # Fixed 0.1s for statistics as requested
 
         self.callback_id = None
+        self._filter_lock = threading.Lock()
 
         # Filters
         self.sos_filter = None
@@ -191,15 +193,16 @@ class SoundLevelMeter(MeasurementModule):
             new_sos_filter = AudioCalc.design_c_weighting(sr)
             new_filter_state = np.zeros((new_sos_filter.shape[0], 2))
 
-        # Assign atomically to prevent race condition in the audio callback
-        self.bw_filter_state = new_bw_state
-        self.bw_filter = new_bw_filter
-        if self.freq_weighting != "Z":
-            self.filter_state = new_filter_state
-            self.sos_filter = new_sos_filter
-        else:
-            self.filter_state = None
-            self.sos_filter = None
+        # Assign safely using lock to prevent race condition in the audio callback
+        with self._filter_lock:
+            self.bw_filter_state = new_bw_state
+            self.bw_filter = new_bw_filter
+            if self.freq_weighting != "Z":
+                self.filter_state = new_filter_state
+                self.sos_filter = new_sos_filter
+            else:
+                self.filter_state = None
+                self.sos_filter = None
 
     def _apply_impulse_weighting(self, sq_sig, sr):
         """
@@ -312,24 +315,24 @@ class SoundLevelMeter(MeasurementModule):
         # Ah, but integrators need linear values.
         # Let's assume 1.0 FS = 0 dB for internal math, then add global offset.
 
-        # Apply Bandwidth Filter (HighSens/Wide/Normal)
-        bw_filt = self.bw_filter
-        bw_state = self.bw_filter_state
-        if bw_filt is not None and bw_state is not None:
-            try:
-                sig, self.bw_filter_state = sosfilt(bw_filt, sig, zi=bw_state)
-            except ValueError:
-                # Shape mismatch due to a thread context switch changing bw_filter mid-callback
-                pass
+        with self._filter_lock:
+            # Apply Bandwidth Filter (HighSens/Wide/Normal)
+            bw_filt = self.bw_filter
+            bw_state = self.bw_filter_state
+            if bw_filt is not None and bw_state is not None:
+                try:
+                    sig, self.bw_filter_state = sosfilt(bw_filt, sig, zi=bw_state)
+                except ValueError as e:
+                    logger.warning(f"Shape mismatch in bandwidth filter: {e}")
 
-        # Apply Frequency Weighting
-        freq_filt = self.sos_filter
-        freq_state = self.filter_state
-        if freq_filt is not None and freq_state is not None:
-            try:
-                sig, self.filter_state = sosfilt(freq_filt, sig, zi=freq_state)
-            except ValueError:
-                pass
+            # Apply Frequency Weighting
+            freq_filt = self.sos_filter
+            freq_state = self.filter_state
+            if freq_filt is not None and freq_state is not None:
+                try:
+                    sig, self.filter_state = sosfilt(freq_filt, sig, zi=freq_state)
+                except ValueError as e:
+                    logger.warning(f"Shape mismatch in frequency weighting filter: {e}")
 
         # Square signal for power
         sq_sig = sig**2
