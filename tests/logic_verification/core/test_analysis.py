@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import pytest
 
-from src.core.analysis import AudioCalc, get_cached_window
+from src.core.analysis import AudioCalc, get_cached_window, _calculate_ra_raw
 
 
 class TestAudioCalc:
@@ -119,3 +119,27 @@ def test_get_cached_window():
 
     # Test cache cleanup
     get_cached_window.cache_clear()
+
+def test_calculate_ra_raw_basic():
+    # 1000 Hz is typically the reference frequency where the curve is near 0 dB
+    f = np.array([1000.0])
+    ra = _calculate_ra_raw(f)
+    np.testing.assert_allclose(ra, [0.794341], rtol=1e-5)
+
+def test_calculate_ra_raw_zero():
+    # At 0 Hz, A-weighting should strictly be 0.
+    f = np.array([0.0])
+    ra = _calculate_ra_raw(f)
+    np.testing.assert_allclose(ra, [0.0])
+
+def test_calculate_ra_raw_negative():
+    # Negative frequency should give the same result as positive.
+    f = np.array([-1000.0])
+    ra = _calculate_ra_raw(f)
+    np.testing.assert_allclose(ra, [0.794341], rtol=1e-5)
+
+def test_calculate_ra_raw_multiple():
+    # Test array of frequencies
+    f = np.array([0.0, 1000.0, -1000.0])
+    ra = _calculate_ra_raw(f)
+    np.testing.assert_allclose(ra, [0.0, 0.794341, 0.794341], rtol=1e-5)

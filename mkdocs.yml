@@ -73,6 +73,7 @@ plugins:
             基本: Basics
             信号生成と入出力: Signal Generation & I/O
             信号発生器: Signal Generator
+            任意高調波ジェネレーター: Arbitrary Harmonic Generator
             録音・再生: Recorder / Player
             ループバック検出: Loopback Finder
             生時系列: Raw Time Series
@@ -153,6 +154,7 @@ nav:
           - 設定: widgets/settings.md
       - 信号生成と入出力:
           - 信号発生器: widgets/signal_generator.md
+          - 任意高調波ジェネレーター: widgets/arbitrary_harmonic_generator.md
           - 録音・再生: widgets/recorder_player.md
           - ループバック検出: widgets/loopback_finder.md
           - 生時系列: widgets/raw_time_series.md

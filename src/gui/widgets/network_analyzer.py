@@ -685,30 +685,12 @@ class NetworkAnalyzerWidget(QWidget):
         self._needs_plot_update = False
         self.update_timer.timeout.connect(self.on_update_timer)
 
-    def init_ui(self):
-        layout = QHBoxLayout()
-
-        # Left Panel Container
-        left_panel = QWidget()
-        left_panel.setFixedWidth(360)
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(5, 5, 5, 5)
-
-        # Create Tab Widget
-        tabs = QTabWidget()
-        # tabs.setFixedWidth(340) # Removed fixed width from tabs
-
-        # --- Tab 1: Settings ---
+    def _create_settings_tab(self) -> QWidget:
         settings_tab = QWidget()
         settings_layout = QVBoxLayout()
-
-        # Controls Group
         controls_group = QGroupBox(tr("Sweep Settings"))
         form = QFormLayout()
 
-        # Sweep Mode removed, Fast Chirp is standard
-
-        # Routing
         self.out_combo = QComboBox()
         self.out_combo.addItem(tr("Left"), "L")
         self.out_combo.addItem(tr("Right"), "R")
@@ -728,7 +710,6 @@ class NetworkAnalyzerWidget(QWidget):
         self.in_combo.currentIndexChanged.connect(self.on_routing_changed)
         form.addRow(tr("Input Mode:"), self.in_combo)
 
-        # Freqs
         self.start_spin = QDoubleSpinBox(controls_group)
         self.start_spin.setRange(10, 20000)
         self.start_spin.setValue(20)
@@ -773,16 +754,15 @@ class NetworkAnalyzerWidget(QWidget):
         settings_layout.addWidget(controls_group)
         settings_layout.addStretch()
         settings_tab.setLayout(settings_layout)
-        tabs.addTab(settings_tab, tr("Settings"))
+        return settings_tab
 
-        # --- Tab 2: Display ---
+    def _create_display_tab(self) -> QWidget:
         display_tab = QWidget()
         display_layout = QVBoxLayout()
 
         display_group = QGroupBox(tr("Display Settings"))
         display_form = QFormLayout()
 
-        # Limit Plot Freq (Max)
         self.limit_check = QCheckBox(tr("Limit"))
         self.limit_check.setChecked(True)
         self.limit_check.toggled.connect(self.refresh_plots)
@@ -796,7 +776,6 @@ class NetworkAnalyzerWidget(QWidget):
         limit_layout.addWidget(self.limit_spin)
         display_form.addRow(tr("Max Freq:"), limit_layout)
 
-        # Limit Plot Freq (Min)
         self.min_limit_check = QCheckBox(tr("Limit"))
         self.min_limit_check.setChecked(True)
         self.min_limit_check.toggled.connect(self.refresh_plots)
@@ -842,7 +821,6 @@ class NetworkAnalyzerWidget(QWidget):
         display_group.setLayout(display_form)
         display_layout.addWidget(display_group)
 
-        # Reference Curves Group
         riaa_group = QGroupBox(tr("Reference Curves"))
         riaa_form = QFormLayout()
 
@@ -850,7 +828,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.riaa_check.toggled.connect(self.refresh_plots)
         riaa_form.addRow(self.riaa_check)
 
-        self.riaa_iec_check = QCheckBox(tr("Enable IEC Amendment"))
+        self.riaa_iec_check = QCheckBox(tr("Use IEC Amendment (7950µs)"))
         self.riaa_iec_check.toggled.connect(self.refresh_plots)
         riaa_form.addRow(self.riaa_iec_check)
 
@@ -873,9 +851,9 @@ class NetworkAnalyzerWidget(QWidget):
 
         display_layout.addStretch()
         display_tab.setLayout(display_layout)
-        tabs.addTab(display_tab, tr("Display"))
+        return display_tab
 
-        # --- Tab 2.5: Harmonics Settings ---
+    def _create_harmonics_settings_tab(self) -> QWidget:
         harmonics_settings_tab = QWidget()
         harmonics_settings_layout = QVBoxLayout()
 
@@ -921,13 +899,12 @@ class NetworkAnalyzerWidget(QWidget):
         harmonics_settings_layout.addWidget(harmonics_group)
         harmonics_settings_layout.addStretch()
         harmonics_settings_tab.setLayout(harmonics_settings_layout)
-        tabs.addTab(harmonics_settings_tab, tr("Harmonics"))
+        return harmonics_settings_tab
 
-        # --- Tab 3: Calibration ---
+    def _create_calibration_tab(self) -> QWidget:
         cal_tab = QWidget()
         cal_tab_layout = QVBoxLayout()
 
-        # Latency
         lat_group = QGroupBox(tr("Latency"))
         lat_form = QFormLayout()
         self.lat_btn = QPushButton(tr("Calibrate Latency"))
@@ -942,7 +919,6 @@ class NetworkAnalyzerWidget(QWidget):
         lat_group.setLayout(lat_form)
         cal_tab_layout.addWidget(lat_group)
 
-        # Reference
         cal_group = QGroupBox(tr("Reference Trace"))
         cal_layout = QFormLayout()
         self.store_ref_btn = QPushButton(tr("Store Reference"))
@@ -959,26 +935,9 @@ class NetworkAnalyzerWidget(QWidget):
 
         cal_tab_layout.addStretch()
         cal_tab.setLayout(cal_tab_layout)
-        tabs.addTab(cal_tab, tr("Calibration"))
+        return cal_tab
 
-        # Add tabs to left layout
-        left_layout.addWidget(tabs)
-
-        # Buttons
-        self.start_btn = QPushButton(tr("Start Sweep"))
-        self.start_btn.setCheckable(True)
-        self.start_btn.clicked.connect(self.on_start_stop)
-        self.start_btn.setFixedHeight(40)
-        left_layout.addWidget(self.start_btn)
-
-        self.progress_bar = QProgressBar()
-        left_layout.addWidget(self.progress_bar)
-
-        layout.addWidget(left_panel)
-
-        # Plots
-        plot_tabs = QTabWidget()
-
+    def _create_bode_tab(self) -> QWidget:
         bode_tab = QWidget()
         plot_layout = QVBoxLayout(bode_tab)
         self.mag_plot = pg.PlotWidget(title=tr("Magnitude Response"))
@@ -988,10 +947,8 @@ class NetworkAnalyzerWidget(QWidget):
         self.mag_plot.showGrid(x=True, y=True)
         self.mag_curve = self.mag_plot.plot(pen="g")
 
-        # RIAA Reference Curve
         self.riaa_curve = self.mag_plot.plot(pen=pg.mkPen("m", style=pg.QtCore.Qt.PenStyle.DashLine))
 
-        # Coherence Axis (Right)
         self.coh_axis = pg.AxisItem("right")
         self.coh_axis.setLabel(tr("Coherence"), units="")
         self.mag_plot.plotItem.layout.addItem(self.coh_axis, 2, 3)
@@ -1003,7 +960,7 @@ class NetworkAnalyzerWidget(QWidget):
         self.coh_view.setYRange(0, 1.05, padding=0)
 
         self.coh_view.setLogMode(False, False)
-        self.coh_curve = pg.PlotCurveItem(pen="c")  # Cyan for visibility
+        self.coh_curve = pg.PlotCurveItem(pen="c")
         self.coh_view.addItem(self.coh_curve)
 
         self.mag_plot.plotItem.vb.sigResized.connect(self.update_coh_views)
@@ -1018,7 +975,6 @@ class NetworkAnalyzerWidget(QWidget):
         self.phase_plot.setXLink(self.mag_plot)
         self.phase_curve = self.phase_plot.plot(pen="y")
 
-        # Group Delay Axis (Right)
         self.gd_axis = pg.AxisItem("right")
         self.gd_axis.setLabel(tr("Group Delay"), units="s")
         self.phase_plot.plotItem.layout.addItem(self.gd_axis, 2, 3)
@@ -1028,19 +984,17 @@ class NetworkAnalyzerWidget(QWidget):
         self.phase_plot.plotItem.scene().addItem(self.gd_view)
         self.gd_view.setXLink(self.phase_plot.plotItem.vb)
 
-        # Disable log mode for the overlay view (we will manually log the data)
         self.gd_view.setLogMode(False, False)
 
         self.gd_curve = pg.PlotCurveItem(pen="r")
         self.gd_view.addItem(self.gd_curve)
 
-        # 同期処理
         self.phase_plot.plotItem.vb.sigResized.connect(self.update_gd_views)
 
         plot_layout.addWidget(self.phase_plot)
+        return bode_tab
 
-        plot_tabs.addTab(bode_tab, tr("Bode"))
-
+    def _create_ir_tab(self) -> QWidget:
         ir_tab = QWidget()
         ir_layout = QVBoxLayout(ir_tab)
         self.ir_plot = pg.PlotWidget(title=tr("Impulse Response Plot"))
@@ -1049,8 +1003,9 @@ class NetworkAnalyzerWidget(QWidget):
         self.ir_plot.showGrid(x=True, y=True)
         self.ir_curve = self.ir_plot.plot(pen="c")
         ir_layout.addWidget(self.ir_plot)
-        plot_tabs.addTab(ir_tab, tr("Impulse Response"))
+        return ir_tab
 
+    def _create_etc_tab(self) -> QWidget:
         etc_tab = QWidget()
         etc_layout = QVBoxLayout(etc_tab)
         etc_controls = QHBoxLayout()
@@ -1070,8 +1025,9 @@ class NetworkAnalyzerWidget(QWidget):
         self.etc_plot.showGrid(x=True, y=True)
         self.etc_curve = self.etc_plot.plot(pen="m")
         etc_layout.addWidget(self.etc_plot)
-        plot_tabs.addTab(etc_tab, tr("ETC"))
+        return etc_tab
 
+    def _create_harmonics_tab(self) -> QWidget:
         harmonics_tab = QWidget()
         harmonics_layout = QVBoxLayout(harmonics_tab)
         self.harmonics_plot = pg.PlotWidget(title=tr("Harmonic Distortion"))
@@ -1081,7 +1037,6 @@ class NetworkAnalyzerWidget(QWidget):
         self.harmonics_plot.showGrid(x=True, y=True)
         self.harmonics_plot.addLegend()
 
-        # Beautiful premium harmonic colors
         self.h_curves = {
             "fundamental": self.harmonics_plot.plot(pen=pg.mkPen("g", width=2), name=tr("Fundamental")),
             "h2": self.harmonics_plot.plot(pen=pg.mkPen("r", width=1.5), name=tr("2nd Harmonic")),
@@ -1093,12 +1048,44 @@ class NetworkAnalyzerWidget(QWidget):
             ),
         }
         harmonics_layout.addWidget(self.harmonics_plot)
-        plot_tabs.addTab(harmonics_tab, tr("Harmonics"))
+        return harmonics_tab
+
+    def init_ui(self):
+        layout = QHBoxLayout()
+
+        left_panel = QWidget()
+        left_panel.setFixedWidth(360)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(5, 5, 5, 5)
+
+        tabs = QTabWidget()
+        tabs.addTab(self._create_settings_tab(), tr("Settings"))
+        tabs.addTab(self._create_display_tab(), tr("Display"))
+        tabs.addTab(self._create_harmonics_settings_tab(), tr("Harmonics"))
+        tabs.addTab(self._create_calibration_tab(), tr("Calibration"))
+
+        left_layout.addWidget(tabs)
+
+        self.start_btn = QPushButton(tr("Start Sweep"))
+        self.start_btn.setCheckable(True)
+        self.start_btn.clicked.connect(self.on_start_stop)
+        self.start_btn.setFixedHeight(40)
+        left_layout.addWidget(self.start_btn)
+
+        self.progress_bar = QProgressBar()
+        left_layout.addWidget(self.progress_bar)
+
+        layout.addWidget(left_panel)
+
+        plot_tabs = QTabWidget()
+        plot_tabs.addTab(self._create_bode_tab(), tr("Bode"))
+        plot_tabs.addTab(self._create_ir_tab(), tr("Impulse Response"))
+        plot_tabs.addTab(self._create_etc_tab(), tr("ETC"))
+        plot_tabs.addTab(self._create_harmonics_tab(), tr("Harmonics"))
 
         layout.addWidget(plot_tabs)
         self.setLayout(layout)
         self.on_routing_changed(self.in_combo.currentIndex())
-
     def on_riaa_mode_changed(self, index):
         mode = self.riaa_mode_combo.currentData()
         self.riaa_gain_spin.setReadOnly(mode == "auto")
@@ -1332,68 +1319,68 @@ class NetworkAnalyzerWidget(QWidget):
         try:
             self.update_timer.stop()
             self.update_timer.timeout.disconnect(self.on_update_timer)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.mag_plot.plotItem.vb.sigResized.disconnect(self.update_coh_views)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.phase_plot.plotItem.vb.sigResized.disconnect(self.update_gd_views)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.mag_plot.plotItem.scene().removeItem(self.coh_view)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.phase_plot.plotItem.scene().removeItem(self.gd_view)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.phase_plot.setXLink(None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.coh_view.setXLink(None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.gd_view.setXLink(None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.update_plot.disconnect(self.update_plot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.update_ir_plot.disconnect(self.update_ir_plot)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.sweep_finished.disconnect(self.on_sweep_finished)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.progress.disconnect(self.progress_bar.setValue)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.latency_result.disconnect(self.on_latency_result)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.ir_snr_result.disconnect(self.on_ir_snr_result)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.error.disconnect(self.on_error)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         try:
             self.module.signals.harmonics_result.disconnect(self.on_harmonics_result)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
         super().closeEvent(event)
 
     def update_gd_views(self):

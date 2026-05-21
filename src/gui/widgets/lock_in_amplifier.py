@@ -85,6 +85,8 @@ class LockInAmplifier(MeasurementModule):
 
         self.callback_id = None
         self._last_process_time = 0.0
+        self._buffer_ready_event = threading.Event()
+        self._total_samples_written = 0
 
     @property
     def harmonic_numerator(self) -> int:
@@ -213,6 +215,7 @@ class LockInAmplifier(MeasurementModule):
                         self.input_buffer_pos = chunk2
 
                 self._total_samples_written += n
+                self._buffer_ready_event.set()
 
             # --- Output Generation ---
             # Generate Sine Wave
@@ -235,12 +238,37 @@ class LockInAmplifier(MeasurementModule):
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
+    def wait_for_buffer(self, samples_to_wait: int, timeout=1.0, cancel_check=None):
+        if not self.is_running:
+            return
+
+        target_samples = getattr(self, "_total_samples_written", 0) + samples_to_wait
+        start_time = time.time()
+
+        while getattr(self, "_total_samples_written", 0) < target_samples and self.is_running:
+            if cancel_check and cancel_check():
+                break
+            # Calculate remaining timeout
+            elapsed = time.time() - start_time
+            if elapsed >= timeout:
+                break
+
+            self._buffer_ready_event.clear()
+
+            # Double check condition before waiting to avoid race condition where
+            # the callback fired between the while check and the clear()
+            if getattr(self, "_total_samples_written", 0) >= target_samples or not self.is_running:
+                break
+
+            self._buffer_ready_event.wait(min(0.1, timeout - elapsed))
+
     def stop_analysis(self):
         if self.is_running:
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
             self.is_running = False
+            self._buffer_ready_event.set()
             self.reset_postmix_lpf()
 
     def process_data(self):
@@ -567,16 +595,16 @@ class FRASweepWorker(QThread):
             # We need to wait for the audio callback to update the buffer.
 
             # First, wait for one full buffer fill to ensure we are past the settling time completely
-            self._interruptible_sleep(wait_time)
+            # We wait for buffer_size samples with a slight timeout buffer.
+            self.module.wait_for_buffer(self.module.buffer_size, timeout=max(1.0, wait_time * 2), cancel_check=lambda: self.is_cancelled)
 
             for _ in range(self.module.averaging_count):
                 if self.is_cancelled:
                     break
 
                 # Wait for next buffer update
-                # Since we don't have precise synchronization with callback here,
-                # we sleep for the buffer duration.
-                self._interruptible_sleep(wait_time)
+                # We use event-based synchronization. Wait for a full buffer length.
+                self.module.wait_for_buffer(self.module.buffer_size, timeout=max(1.0, wait_time * 2), cancel_check=lambda: self.is_cancelled)
 
                 # Process the current buffer state
                 self.module.process_data()
@@ -592,6 +620,7 @@ class FRASweepWorker(QThread):
 
     def cancel(self):
         self.is_cancelled = True
+        self.module._buffer_ready_event.set()
 
 
 class LockInAmplifierWidget(QWidget):
@@ -651,6 +680,26 @@ class LockInAmplifierWidget(QWidget):
         # Tabs for Modes
         self.tabs = QTabWidget()
 
+        self._init_manual_control_tab()
+        self._init_fra_tab()
+        self._init_calibration_tab()
+
+        main_layout.addWidget(self.tabs)
+        self.setLayout(main_layout)
+
+        # Data storage for FRA
+        self.fra_freqs = []
+        self.fra_log_freqs = []
+        self.fra_raw_mags = []  # Linear (0-1)
+        self.fra_phases = []
+        self.fra_worker = None
+
+        # Data storage for Calibration
+        self.cal_data = []  # List of [freq, mag_db, phase_deg]
+        self.cal_worker = None
+
+
+    def _init_manual_control_tab(self):
         # --- Tab 1: Manual Control (Existing) ---
         manual_widget = QWidget()
         manual_layout = QHBoxLayout(manual_widget)
@@ -890,6 +939,8 @@ class LockInAmplifierWidget(QWidget):
 
         self.tabs.addTab(manual_widget, tr("Manual Control"))
 
+
+    def _init_fra_tab(self):
         # --- Tab 2: Frequency Response Analyzer (FRA) ---
         fra_widget = QWidget()
         fra_layout = QHBoxLayout(fra_widget)
@@ -1024,6 +1075,8 @@ class LockInAmplifierWidget(QWidget):
 
         self.tabs.addTab(fra_widget, tr("Frequency Response"))
 
+
+    def _init_calibration_tab(self):
         # --- Tab 3: Calibration ---
         cal_widget = QWidget()
         cal_layout = QHBoxLayout(cal_widget)
@@ -1140,20 +1193,6 @@ class LockInAmplifierWidget(QWidget):
         cal_layout.addWidget(self.cal_plot, stretch=3)
 
         self.tabs.addTab(cal_widget, tr("Calibration"))
-
-        main_layout.addWidget(self.tabs)
-        self.setLayout(main_layout)
-
-        # Data storage for FRA
-        self.fra_freqs = []
-        self.fra_log_freqs = []
-        self.fra_raw_mags = []  # Linear (0-1)
-        self.fra_phases = []
-        self.fra_worker = None
-
-        # Data storage for Calibration
-        self.cal_data = []  # List of [freq, mag_db, phase_deg]
-        self.cal_worker = None
 
     def on_toggle(self, checked):
         if checked:

@@ -66,6 +66,7 @@ Customize the graph display in the **"Display"** tab.
 ### Display Options
 
 * **Smoothing**: Smooths out fine jaggedness (noise) in the frequency response graph using fractional-octave smoothing. Selectable from None, 1/1, 1/3, 1/6, 1/12, or 1/24 Octave.
+* **Display as % (Harmonics Tab)**: Toggle the Y-axis of the Harmonics plot to display distortion levels as a percentage (%) relative to the fundamental, plotted on a logarithmic scale.
 * **ETC Smoothing**: Smooths the noise in the ETC graph. Selectable from Off/Light/Medium/Heavy.
 * **Max/Min Freq**: Limits the frequency range displayed on the graph.
 * **Single-Ch Mode**: When using a single input channel, choose between **Relative (Gain)** (normalized to the output) or **Absolute (Level)**.

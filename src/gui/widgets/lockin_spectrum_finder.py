@@ -562,113 +562,117 @@ class LockInSpectrumFinder(MeasurementModule):
         """
         Background heavy lifting: Matrix projection or Zoom DDC
         """
+        if params.mode == "Zoom":
+            self._calculate_zoom(sig, fs, params)
+        else:
+            self._calculate_scan(sig, fs, params)
+
+    def _calculate_zoom(self, sig, fs, params: CalculationParams):
         import scipy.signal as signal
 
-        start_f = params.start_f
-        stop_f = params.stop_f
         points = params.points
-        spacing = params.spacing
         display_unit = params.display_unit
         offset_dbv = params.offset_dbv
         offset_spl = params.offset_spl
-        mode = params.mode
         zoom_center = params.zoom_center
         zoom_span = params.zoom_span
         window_type = params.window_type
-        include_targets = params.include_targets
-        octave_ref = params.octave_ref
-        targets = params.targets
 
         N = len(sig)
         t = np.arange(N, dtype=np.float64) / fs
 
-        if mode == "Zoom":
-            s_f = zoom_center - zoom_span
-            e_f = zoom_center + zoom_span
-            freqs = np.linspace(s_f, e_f, points)
-            self.signals.sweep_started.emit((freqs, []))
+        s_f = zoom_center - zoom_span
+        e_f = zoom_center + zoom_span
+        freqs = np.linspace(s_f, e_f, points)
+        self.signals.sweep_started.emit((freqs, []))
 
-            # 1. Baseband mixing (DDC)
-            sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
+        # 1. Baseband mixing (DDC)
+        sig_c = sig * np.exp(-1j * 2 * np.pi * zoom_center * t)
 
-            # 2. Decimate to reduce points
-            # 巨大な間引き率によるハングを防ぐため、100Hz以上のサンプリングレートを維持
-            target_fs = max(zoom_span * 4, 100.0)
-            M = max(1, int(fs / target_fs))
+        # 2. Decimate to reduce points
+        # 巨大な間引き率によるハングを防ぐため、100Hz以上のサンプリングレートを維持
+        target_fs = max(zoom_span * 4, 100.0)
+        M = max(1, int(fs / target_fs))
 
-            if M > 1:
-                sig_dec = signal.resample_poly(sig_c, 1, M)
-            else:
-                sig_dec = sig_c
+        if M > 1:
+            sig_dec = signal.resample_poly(sig_c, 1, M)
+        else:
+            sig_dec = sig_c
 
-            fs_dec = fs / M
-            N_dec = len(sig_dec)
-            t_dec = np.arange(N_dec) / fs_dec
+        fs_dec = fs / M
+        N_dec = len(sig_dec)
+        t_dec = np.arange(N_dec) / fs_dec
 
-            freqs_offset = np.linspace(-zoom_span, zoom_span, points)
-            mags_db_all = np.zeros(points)
+        freqs_offset = np.linspace(-zoom_span, zoom_span, points)
+        mags_db_all = np.zeros(points)
 
-            # --- 窓関数の適用 ---
-            if window_type == "none":
-                window = np.ones(N_dec, dtype=np.float64)
-                sig_dec_win = sig_dec
+        # --- 窓関数の適用 ---
+        if window_type == "none":
+            window = np.ones(N_dec, dtype=np.float64)
+            sig_dec_win = sig_dec
+            window_coherent_gain = 1.0
+        else:
+            window = signal.get_window(window_type, N_dec)
+            sig_dec_win = sig_dec * window
+            window_coherent_gain = np.mean(window)
+            if window_coherent_gain == 0:
                 window_coherent_gain = 1.0
-            else:
-                window = signal.get_window(window_type, N_dec)
-                sig_dec_win = sig_dec * window
-                window_coherent_gain = np.mean(window)
-                if window_coherent_gain == 0:
-                    window_coherent_gain = 1.0
 
-            chunk_size = 1024
-            is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
-            two_pi_t_dec = -2j * np.pi * t_dec
-            for i in range(0, points, chunk_size):
-                if not self.is_running:
-                    break
-                end_idx = min(i + chunk_size, points)
-                f_chunk = freqs_offset[i:end_idx]
-                phase = two_pi_t_dec[:, np.newaxis] * f_chunk
-                exp_chunk = np.exp(phase)
-                # Direct correlation on decimated baseband with windowing (vectorized)
-                vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
-                amp = np.abs(vals) * 2.0
-                if is_dbv_or_spl:
-                    amp /= np.sqrt(2.0)
+        chunk_size = 1024
+        is_dbv_or_spl = display_unit in {"dBV", "dB SPL"}
+        two_pi_t_dec = -2j * np.pi * t_dec
+        for i in range(0, points, chunk_size):
+            if not self.is_running:
+                break
+            end_idx = min(i + chunk_size, points)
+            f_chunk = freqs_offset[i:end_idx]
+            phase = two_pi_t_dec[:, np.newaxis] * f_chunk
+            exp_chunk = np.exp(phase)
+            # Direct correlation on decimated baseband with windowing (vectorized)
+            vals = (sig_dec_win @ exp_chunk) / (N_dec * window_coherent_gain)
+            amp = np.abs(vals) * 2.0
+            if is_dbv_or_spl:
+                amp /= np.sqrt(2.0)
 
-                mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
-                if display_unit == "dBV":
-                    mags_db_chunk += offset_dbv
-                elif display_unit == "dB SPL" and offset_spl is not None:
-                    mags_db_chunk += offset_spl
+            mags_db_chunk = 20.0 * np.log10(amp + 1e-15)
+            if display_unit == "dBV":
+                mags_db_chunk += offset_dbv
+            elif display_unit == "dB SPL" and offset_spl is not None:
+                mags_db_chunk += offset_spl
 
-                mags_db_all[i:end_idx] = mags_db_chunk
+            mags_db_all[i:end_idx] = mags_db_chunk
 
-                # Compute Phase
-                phases = np.angle(vals)
+            # Compute Phase
+            phases = np.angle(vals)
 
-                # Update sonifier: pick the strongest signal in the chunk
-                if len(mags_db_chunk) > 0:
-                    max_idx = np.argmax(mags_db_chunk)
-                    chunk_freq = zoom_center + f_chunk[max_idx]
-                    chunk_mag = mags_db_chunk[max_idx]
-                    self.sonifier.update_parameters(chunk_freq, chunk_mag)
+            # Update sonifier: pick the strongest signal in the chunk
+            if len(mags_db_chunk) > 0:
+                max_idx = np.argmax(mags_db_chunk)
+                chunk_freq = zoom_center + f_chunk[max_idx]
+                chunk_mag = mags_db_chunk[max_idx]
+                self.sonifier.update_parameters(chunk_freq, chunk_mag)
 
-                    # Update manual tuner specifically if the manual freq is in this range
-                    # In zoom mode, manual tuner might just track the max
-                    self.sonifier.update_manual_tuner_mag(chunk_mag)
+                # Update manual tuner specifically if the manual freq is in this range
+                # In zoom mode, manual tuner might just track the max
+                self.sonifier.update_manual_tuner_mag(chunk_mag)
 
-                # Emit result chunk back to GUI thread
-                self.signals.progress_update.emit(
-                    i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy()
-                )
+            # Emit result chunk back to GUI thread
+            self.signals.progress_update.emit(
+                i, end_idx, freqs_offset[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy()
+            )
 
-            if self.is_running:
-                # phases unmerged across chunks back to main for zoom (optional completeness)
-                self.signals.result_ready.emit((freqs, mags_db_all))
-            return
+        if self.is_running:
+            # phases unmerged across chunks back to main for zoom (optional completeness)
+            self.signals.result_ready.emit((freqs, mags_db_all))
 
-        # Scan Mode (Matrix Projection)
+    def _generate_scan_frequencies(self, fs, N, params: CalculationParams) -> np.ndarray:
+        start_f = params.start_f
+        stop_f = params.stop_f
+        points = params.points
+        spacing = params.spacing
+        octave_ref = params.octave_ref
+        targets = params.targets
+
         if spacing == "Log":
             # Avoid log of 0 or negative
             s_f = max(0.1, start_f)
@@ -706,6 +710,25 @@ class LockInSpectrumFinder(MeasurementModule):
                 freqs = np.array([start_f, stop_f])
         else:  # "Lin"
             freqs = np.linspace(start_f, stop_f, points)
+        return freqs
+
+    def _calculate_scan(self, sig, fs, params: CalculationParams):
+        import scipy.signal as signal
+
+        start_f = params.start_f
+        stop_f = params.stop_f
+        spacing = params.spacing
+        display_unit = params.display_unit
+        offset_dbv = params.offset_dbv
+        offset_spl = params.offset_spl
+        window_type = params.window_type
+        include_targets = params.include_targets
+        targets = params.targets
+
+        N = len(sig)
+        t = np.arange(N, dtype=np.float64) / fs
+
+        freqs = self._generate_scan_frequencies(fs, N, params)
 
         marker_freqs = []
         if (include_targets or spacing == "Scan List Only") and targets:
@@ -739,7 +762,6 @@ class LockInSpectrumFinder(MeasurementModule):
 
         # --- 初期窓関数の適用 (指定された窓関数) ---
         # このNはsig全体の長さ
-        import scipy.signal as signal
 
         if window_type == "none":
             window_orig = np.ones(N, dtype=np.float64)
@@ -854,7 +876,6 @@ class LockInSpectrumFinder(MeasurementModule):
 
         if self.is_running:
             self.signals.result_ready.emit((freqs, mags_db_all))
-
 
 class LockInSpectrumFinderWidget(QWidget):
     def __init__(self, module: LockInSpectrumFinder):
