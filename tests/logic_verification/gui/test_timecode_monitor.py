@@ -3,18 +3,20 @@ import sys
 from unittest.mock import MagicMock
 
 # Mock numpy if needed for restricted environments
-if 'numpy' not in sys.modules:
-    sys.modules['numpy'] = MagicMock()
+if "numpy" not in sys.modules:
+    sys.modules["numpy"] = MagicMock()
 
 from src.gui.widgets.timecode_monitor import TimecodeMonitor, TimecodeMonitorWidget
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+
 
 @pytest.fixture
 def mock_audio_engine():
     engine = MagicMock(spec=AudioEngine)
     engine.sample_rate = 48000
     return engine
+
 
 def test_timecode_monitor_initialization(mock_audio_engine):
     monitor = TimecodeMonitor(mock_audio_engine)
@@ -25,6 +27,7 @@ def test_timecode_monitor_initialization(mock_audio_engine):
     assert monitor.channels["L"].fps == 30.0
     assert monitor.channels["R"].fps == 30.0
 
+
 def test_timecode_monitor_set_fps(mock_audio_engine):
     monitor = TimecodeMonitor(mock_audio_engine)
     monitor.set_fps(24.0)
@@ -32,6 +35,7 @@ def test_timecode_monitor_set_fps(mock_audio_engine):
     assert monitor.detected_fps == 0.0
     assert monitor.channels["L"].fps == 24.0
     assert monitor.channels["R"].fps == 24.0
+
 
 def test_parse_fps_option():
     # Test the parsing logic handles string parsing with and without 'D'
@@ -46,6 +50,7 @@ def test_parse_fps_option():
     fps, drop = TimecodeMonitorWidget._parse_fps_option(None, "invalid")
     assert fps is None
     assert drop is False
+
 
 def test_format_fps_option():
     # Test the formatting logic correctly appends 'D' when drop_frame is True

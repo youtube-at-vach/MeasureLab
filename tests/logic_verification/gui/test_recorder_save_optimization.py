@@ -6,6 +6,7 @@ import os
 import soundfile as sf
 import tempfile
 
+
 class TestRecorderSaveOptimization(unittest.TestCase):
     def setUp(self):
         # Patch sys.modules to mock sounddevice and PyQt6

@@ -424,7 +424,9 @@ class DistortionAnalyzer(MeasurementModule):
             target_freq = settings.get("target_frequency", gen_frequency)
             filter_type = settings.get("filter_type", None)
 
-            results = AudioCalc.analyze_harmonics(data, gen_frequency, window_type, sample_rate, filter_type=filter_type)
+            results = AudioCalc.analyze_harmonics(
+                data, gen_frequency, window_type, sample_rate, filter_type=filter_type
+            )
             results["type"] = "harmonics"
             results["basic_wave"]["target_frequency"] = target_freq
             return results
@@ -508,7 +510,11 @@ class SweepWorker(QThread):
                 # In sweep mode, gen_frequency is already set to the actual frequency (snapped or not)
                 # But we want to preserve the sweep parameter 'val' as the target
                 results = AudioCalc.analyze_harmonics(
-                    data, self.module.gen_frequency, self.module.window_type, sample_rate, filter_type=self.module.filter_type
+                    data,
+                    self.module.gen_frequency,
+                    self.module.window_type,
+                    sample_rate,
+                    filter_type=self.module.filter_type,
                 )
 
                 # Add target frequency to results if we are snapping
@@ -656,7 +662,15 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Output Mode
         self.out_mode_combo = QComboBox()
-        self.out_mode_combo.addItems([tr("Off (External Source)"), tr("Sine Wave"), tr("SMPTE IMD"), tr("CCIF IMD"), tr("AES17 Dynamic Range (-60dBFS)")])
+        self.out_mode_combo.addItems(
+            [
+                tr("Off (External Source)"),
+                tr("Sine Wave"),
+                tr("SMPTE IMD"),
+                tr("CCIF IMD"),
+                tr("AES17 Dynamic Range (-60dBFS)"),
+            ]
+        )
         self.out_mode_combo.currentIndexChanged.connect(self.on_out_mode_changed)
         rt_layout.addRow(tr("Signal Generator:"), self.out_mode_combo)
 
@@ -826,7 +840,9 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Filter
         self.filter_combo = QComboBox()
-        self.filter_combo.addItems([tr("None (20Hz-20kHz)"), tr("AES17 20kHz Standard LP"), tr("A-Weighting"), tr("C-Weighting")])
+        self.filter_combo.addItems(
+            [tr("None (20Hz-20kHz)"), tr("AES17 20kHz Standard LP"), tr("A-Weighting"), tr("C-Weighting")]
+        )
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
         common_layout.addRow(tr("Filter:"), self.filter_combo)
 
@@ -1178,6 +1194,7 @@ class DistortionAnalyzerWidget(QWidget):
                 self.amp_spin.setEnabled(False)
                 self.unit_combo.setEnabled(False)
                 self.module.reset_averaging_state()
+
     def on_unit_changed(self, unit):
         # Update spin box range/value based on current amplitude
         # Current amplitude is stored in module as Linear (0-1)

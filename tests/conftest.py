@@ -33,6 +33,7 @@ except Exception:
 @pytest.fixture(scope="session", autouse=True)
 def force_english_locale():
     from src.core.localization import get_manager
+
     get_manager().load_language("en")
 
 

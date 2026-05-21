@@ -157,6 +157,7 @@ def test_clamping_low(estimator):
 
     assert results["bit_depth"] == 0.0
 
+
 def test_bit_depth_8bit(estimator):
     """Verify 8-bit depth estimation."""
     step = 2.0 / 256.0

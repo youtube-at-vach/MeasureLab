@@ -1,6 +1,7 @@
 import unittest
 from src.gui.widgets.lock_in_frequency_counter import KalmanFilter1D
 
+
 class TestKalmanFilter1D(unittest.TestCase):
     def test_reset_behavior(self):
         kf = KalmanFilter1D(process_noise=1e-10, measurement_noise=1e-6)
@@ -35,5 +36,6 @@ class TestKalmanFilter1D(unittest.TestCase):
         kf.p = 4.0
         self.assertEqual(kf.get_std_uncertainty(), 2.0)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

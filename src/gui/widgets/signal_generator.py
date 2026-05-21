@@ -1392,11 +1392,7 @@ class SignalGeneratorWidget(QWidget):
 
     def _refresh_frequency_limits(self, force: bool = False):
         nyquist_freq = self._get_nyquist_frequency()
-        if (
-            not force
-            and self._last_nyquist_freq is not None
-            and abs(nyquist_freq - self._last_nyquist_freq) <= 1e-9
-        ):
+        if not force and self._last_nyquist_freq is not None and abs(nyquist_freq - self._last_nyquist_freq) <= 1e-9:
             return
 
         self._last_nyquist_freq = nyquist_freq

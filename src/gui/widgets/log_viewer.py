@@ -171,5 +171,5 @@ class LogViewerWindow(QDialog):
         handler.signals.log_emitted.connect(dialog.append_log)
         root_logger.addHandler(handler)
         # Ensure the handler processes everything
-        handler.setLevel(logging.DEBUG) 
+        handler.setLevel(logging.DEBUG)
         return handler

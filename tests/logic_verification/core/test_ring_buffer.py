@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from src.core.ring_buffer import RingBuffer
 
+
 def test_initialization():
     rb = RingBuffer(100, 2)
     assert rb.capacity == 100
@@ -15,6 +16,7 @@ def test_initialization():
     with pytest.raises(ValueError):
         RingBuffer(10, 0)
 
+
 def test_basic_write_read():
     rb = RingBuffer(10, 2)
     data = np.ones((5, 2), dtype=np.float32)
@@ -25,6 +27,7 @@ def test_basic_write_read():
     assert read_data.shape == (5, 2)
     np.testing.assert_array_equal(read_data, data)
     assert rb.available() == 0
+
 
 def test_wrap_around():
     rb = RingBuffer(10, 1)
@@ -47,6 +50,7 @@ def test_wrap_around():
     expected = np.concatenate((np.ones((3, 1)), np.full((5, 1), 2.0)))
     np.testing.assert_array_equal(all_data, expected)
 
+
 def test_overflow_behavior():
     rb = RingBuffer(10, 1)
     # Write 15 samples (capacity 10) - sequential writes
@@ -61,6 +65,7 @@ def test_overflow_behavior():
     expected = np.arange(5, 15, dtype=np.float32).reshape(-1, 1)
     np.testing.assert_array_equal(read_data, expected)
 
+
 def test_huge_write_overflow():
     # Test writing a single chunk larger than capacity
     rb = RingBuffer(10, 1)
@@ -72,6 +77,7 @@ def test_huge_write_overflow():
     # Should contain the last 10 samples (15 to 24)
     expected = np.arange(15, 25, dtype=np.float32).reshape(-1, 1)
     np.testing.assert_array_equal(read_data, expected)
+
 
 def test_mono_broadcasting():
     rb = RingBuffer(10, 2)
@@ -85,6 +91,7 @@ def test_mono_broadcasting():
     np.testing.assert_array_equal(read_data[:, 0], expected_col)
     np.testing.assert_array_equal(read_data[:, 1], expected_col)
 
+
 def test_1d_array_write():
     rb = RingBuffer(10, 2)
     # Write 1D data (5,)
@@ -96,6 +103,7 @@ def test_1d_array_write():
     expected_col = np.arange(5, dtype=np.float32)
     np.testing.assert_array_equal(read_data[:, 0], expected_col)
     np.testing.assert_array_equal(read_data[:, 1], expected_col)
+
 
 def test_extra_channels_write():
     # Test writing 4 channels to 2 channel buffer
@@ -118,6 +126,7 @@ def test_extra_channels_write():
 
     np.testing.assert_array_equal(read_data, expected)
 
+
 def test_reset():
     rb = RingBuffer(10, 1)
     rb.write(np.ones((5, 1)))
@@ -127,6 +136,7 @@ def test_reset():
     assert rb._write_index == 0
     assert rb._read_index == 0
 
+
 def test_partial_read_limit():
     rb = RingBuffer(10, 1)
     rb.write(np.ones((5, 1)))
@@ -135,6 +145,7 @@ def test_partial_read_limit():
     read_data = rb.read(10)
     assert read_data.shape == (5, 1)
     assert rb.available() == 0
+
 
 def test_read_empty():
     rb = RingBuffer(10, 2)

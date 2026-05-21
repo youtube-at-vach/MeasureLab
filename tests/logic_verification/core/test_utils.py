@@ -144,6 +144,7 @@ class TestUtils(unittest.TestCase):
     def test_resource_path_meipass(self):
         from unittest.mock import patch
         from src.core.utils import resource_path
+
         with patch("sys._MEIPASS", "/tmp/_MEI123456", create=True):
             self.assertEqual(resource_path("test.png"), os.path.join("/tmp/_MEI123456", "test.png"))
 
@@ -151,7 +152,7 @@ class TestUtils(unittest.TestCase):
         from unittest.mock import patch
         from src.core.utils import resource_path
 
-        if hasattr(sys, '_MEIPASS'):
+        if hasattr(sys, "_MEIPASS"):
             del sys._MEIPASS
 
         with patch("os.path.abspath", return_value="/fake/root"):
@@ -162,10 +163,11 @@ class TestUtils(unittest.TestCase):
         from unittest.mock import patch
         from src.core.utils import resource_path
 
-        if hasattr(sys, '_MEIPASS'):
+        if hasattr(sys, "_MEIPASS"):
             del sys._MEIPASS
 
         with patch("os.path.abspath", return_value="/fake/root"):
+
             def mock_exists(p):
                 if p == os.path.join("/fake/root", "test.png"):
                     return False
@@ -180,7 +182,7 @@ class TestUtils(unittest.TestCase):
         from unittest.mock import patch
         from src.core.utils import resource_path
 
-        if hasattr(sys, '_MEIPASS'):
+        if hasattr(sys, "_MEIPASS"):
             del sys._MEIPASS
 
         with patch("os.path.abspath", return_value="/fake/root"):

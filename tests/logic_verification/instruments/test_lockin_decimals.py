@@ -7,9 +7,11 @@ mock_qt_widgets = MagicMock()
 mock_qt_core = MagicMock()
 mock_pyqtgraph = MagicMock()
 
+
 class DummyQWidget:
     def __init__(self, *args, **kwargs):
         pass
+
 
 mock_qt_widgets.QWidget = DummyQWidget
 mock_qt_core.Qt = MagicMock()
@@ -23,6 +25,7 @@ with patch.dict(
     },
 ):
     from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounterWidget, LockInFrequencyCounter
+
 
 class TestLockInDecimals(unittest.TestCase):
     def setUp(self):
@@ -43,7 +46,8 @@ class TestLockInDecimals(unittest.TestCase):
 
         # Extremely low uncertainty -> capped at 12
         self.assertEqual(self.widget.get_decimal_places(1e-15), 12)
-        self.assertEqual(self.widget.get_decimal_places(0), 5) # Default
+        self.assertEqual(self.widget.get_decimal_places(0), 5)  # Default
+
 
 if __name__ == "__main__":
     unittest.main()

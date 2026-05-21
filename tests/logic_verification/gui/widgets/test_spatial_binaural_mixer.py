@@ -1,6 +1,5 @@
-
-
 from src.gui.widgets.spatial_binaural_mixer import SpatialBinauralMixer
+
 
 def test_spatial_binaural_mixer_instantiation(qtbot):
     """Smoke test to ensure the widget can be instantiated without crashing."""
@@ -11,6 +10,7 @@ def test_spatial_binaural_mixer_instantiation(qtbot):
 
     assert widget is not None
     assert widget.layout() is not None
+
 
 def test_add_remove_track(qtbot):
     module = SpatialBinauralMixer(None)
@@ -28,6 +28,6 @@ def test_add_remove_track(qtbot):
 
     # Remove track
     track_ui = widget.tracks[0]
-    track_ui.remove_btn.click() # Simulate remove click
+    track_ui.remove_btn.click()  # Simulate remove click
 
     assert len(widget.tracks) == 0

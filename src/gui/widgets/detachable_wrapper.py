@@ -172,6 +172,7 @@ class DetachableWidgetWrapper(QWidget):
     def show_logs(self):
         try:
             from src.gui.widgets.log_viewer import LogViewerWindow
+
             viewer = LogViewerWindow.get_instance()
             viewer.show()
             viewer.raise_()

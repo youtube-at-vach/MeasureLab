@@ -86,6 +86,7 @@ def setup_app():
     app = QApplication(sys.argv)
 
     from src.gui.startup import TopLevelWindowLogger
+
     # Optional: log transient windows during startup to diagnose flashes.
     if os.environ.get("MEASURELAB_DEBUG_WINDOWS", "").strip() not in ("", "0", "false", "False"):
         app._measurelab_window_logger = TopLevelWindowLogger(app)  # keep a strong ref
@@ -94,6 +95,7 @@ def setup_app():
     # Attach the Qt logging handler to the root logger
     try:
         from src.gui.widgets.log_viewer import LogViewerWindow
+
         LogViewerWindow.attach_to_logger(root_logger)
 
         # If debug is passed, we might want to ensure the log level matches
@@ -109,6 +111,7 @@ def setup_app():
         pass
 
     return app
+
 
 def main():
     """GUI Application Entry Point"""
@@ -203,5 +206,6 @@ def main():
 
 if __name__ == "__main__":
     import multiprocessing
+
     multiprocessing.freeze_support()
     main()

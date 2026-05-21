@@ -322,7 +322,6 @@ class LinearityAnalyzer(MeasurementModule):
     def description(self) -> str:
         return "Measure Linearity Error (Gain Accuracy vs Level)."
 
-
     def wait_for_buffer(self, cancel_event=None):
         with self._buffer_lock:
             self._new_frames = 0

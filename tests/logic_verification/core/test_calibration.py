@@ -168,6 +168,7 @@ def test_frequency_map(calibration_manager, temp_map_path):
     assert mag == 1.0
     assert phase == -45.0
 
+
 def test_set_output_gain_edge_cases(calibration_manager):
     """Test set_output_gain with various valid and invalid inputs."""
     # Valid string conversion
