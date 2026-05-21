@@ -247,6 +247,17 @@ class MainWindow(QMainWindow):
             is_64bit = audio_cfg.get("audio_engine_64bit", False)
             self.audio_engine.set_audio_engine_64bit(is_64bit)
 
+            # Apply Core Audio settings
+            self.audio_engine.set_coreaudio_fail_if_conversion_required(
+                self.config_manager.is_coreaudio_fail_if_conversion_required()
+            )
+            self.audio_engine.set_coreaudio_change_device_parameters(
+                self.config_manager.is_coreaudio_change_device_parameters()
+            )
+            self.audio_engine.set_coreaudio_conversion_quality(
+                self.config_manager.get_coreaudio_conversion_quality()
+            )
+
         except Exception as e:
             self.logger.error(f"Failed to set devices/settings: {e}")
             # Try default if specific failed
