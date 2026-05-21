@@ -196,3 +196,42 @@ def test_compensation_order_limit_matches_measurable_harmonics(qtbot):
     assert widget.comp_max_spin.maximum() == 23
     assert widget.comp_table.rowCount() == 22
     assert widget.comp_table.item(21, 0).text().startswith("23")
+
+
+def test_lockin_harmonic_analyzer_phase_continuity():
+    engine = MockAudioEngine()
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    analyzer.gen_frequency = 1000.0
+    analyzer.gen_amplitude = 1.0
+    analyzer.output_enabled = True
+    analyzer.output_channel = 0
+    analyzer.start_analysis()
+
+    # Get registered callback
+    assert len(engine.callbacks) == 1
+    callback = list(engine.callbacks.values())[0]
+
+    # Run first block (frames = 512)
+    frames = 512
+    indata = np.zeros((frames, 2))
+    outdata = np.zeros((frames, 2))
+    callback(indata, outdata, frames, None, None)
+
+    # Change frequency for block 2
+    analyzer.gen_frequency = 2000.0
+    outdata.fill(0)
+    callback(indata, outdata, frames, None, None)
+    signal2 = outdata[:, 0].copy()
+
+    # Verify that the phase transitions continuously.
+    # Block 1 ended with frequency 1000.0 and sample_rate 48000.
+    # Total phase accumulated in block 1: frames * 2 * pi * 1000.0 / 48000.0
+    phase_step1 = 2 * np.pi * 1000.0 / 48000.0
+    expected_start_phase = (frames * phase_step1) % (2 * np.pi)
+    expected_start_val = np.sin(expected_start_phase)
+
+    # The first sample of block 2 must perfectly match expected_start_val
+    assert np.isclose(signal2[0], expected_start_val, atol=1e-12)
+
+    analyzer.stop_analysis()

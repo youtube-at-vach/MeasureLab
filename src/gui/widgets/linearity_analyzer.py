@@ -313,6 +313,7 @@ class LinearityAnalyzer(MeasurementModule):
         self._last_freq = None
         self._phase_arr = None
         self._phase_inc = None
+        self._current_amp = 0.0
 
     @property
     def name(self) -> str:
@@ -362,6 +363,7 @@ class LinearityAnalyzer(MeasurementModule):
         # Reset generator phase
         self._phase_rad = 0.0
         self._last_frames = None
+        self._current_amp = self.gen_amplitude
         self.input_index = 0
         sample_rate = self.audio_engine.sample_rate
 
@@ -413,7 +415,15 @@ class LinearityAnalyzer(MeasurementModule):
             current_phase = self._phase_rad + self._phase_arr
             self._phase_rad = (self._phase_rad + frames * self._phase_inc) % (2 * np.pi)
 
-            sig = self.gen_amplitude * np.sin(current_phase)
+            # Smoothly transition amplitude to avoid step discontinuities
+            target_amp = self.gen_amplitude
+            if self._current_amp != target_amp:
+                amp_arr = np.linspace(self._current_amp, target_amp, frames)
+                self._current_amp = target_amp
+            else:
+                amp_arr = target_amp
+
+            sig = amp_arr * np.sin(current_phase)
 
             outdata.fill(0)
             if self.output_channel == 0:

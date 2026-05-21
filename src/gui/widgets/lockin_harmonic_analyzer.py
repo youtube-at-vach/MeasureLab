@@ -135,9 +135,9 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             # --- Generator ---
             outdata.fill(0)
             if self.output_enabled:
-                t = (np.arange(frames) + self._phase_gen) / sample_rate
-                self._phase_gen += frames
-                wt = 2 * np.pi * self.gen_frequency * t
+                phase_step = 2 * np.pi * self.gen_frequency / sample_rate
+                wt = self._phase_gen + np.arange(frames) * phase_step
+                self._phase_gen = (self._phase_gen + frames * phase_step) % (2 * np.pi)
                 sig = self.gen_amplitude * np.sin(wt)
 
                 if self.compensation_enabled:

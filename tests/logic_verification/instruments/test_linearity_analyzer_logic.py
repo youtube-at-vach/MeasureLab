@@ -302,3 +302,48 @@ def test_snr_calculation_on_silence():
         # If we add epsilon 1e-15, snr = 20*log10(1e-15 / 1e-9) = 20*log10(1e-6) = -120 dB.
         # If we didn't fix it, it would be -inf.
         assert snr > -200.0, "SNR should be reasonable (approx -120dB), not -inf"
+
+
+def test_linearity_analyzer_amplitude_continuity():
+    """Verifies that the generated signal transitions smoothly (ramps) when gen_amplitude changes."""
+    # Setup
+    audio_engine = AudioEngine()
+    audio_engine.sample_rate = 48000
+    audio_engine.register_callback = MagicMock(side_effect=lambda cb: 1)
+
+    analyzer = LinearityAnalyzer(audio_engine)
+    analyzer.test_frequency = 1000.0
+    analyzer.gen_amplitude = 1.0
+    analyzer.output_channel = 0  # Left
+
+    analyzer.start_analysis()
+
+    args = audio_engine.register_callback.call_args[0]
+    callback_func = args[0]
+
+    # Block 1: Amplitude is 1.0 (initialized to self.gen_amplitude in start_analysis)
+    frames = 512
+    indata = np.zeros((frames, 2), dtype=np.float32)
+    outdata1 = np.zeros((frames, 2), dtype=np.float32)
+    callback_func(indata, outdata1, frames, 0, 0)
+
+    # Change gen_amplitude to 0.5 for Block 2
+    analyzer.gen_amplitude = 0.5
+    outdata2 = np.zeros((frames, 2), dtype=np.float32)
+    callback_func(indata, outdata2, frames, 0, 0)
+
+    # Verify that in outdata2, the amplitude changes gradually from 1.0 to 0.5.
+    assert analyzer._current_amp == 0.5
+
+    # Reconstruct the expected modulated signal with ramp vs step
+    phase_step = 2 * np.pi * 1000.0 / 48000.0
+    phase_block2 = (frames * phase_step) + np.arange(frames) * phase_step
+
+    expected_step_sig = 0.5 * np.sin(phase_block2)
+    expected_ramp_amp = np.linspace(1.0, 0.5, frames)
+    expected_ramp_sig = expected_ramp_amp * np.sin(phase_block2)
+
+    # outdata2[:, 0] must match expected_ramp_sig, and not match expected_step_sig
+    assert np.allclose(outdata2[:, 0], expected_ramp_sig, atol=1e-5)
+    assert not np.allclose(outdata2[:, 0], expected_step_sig, atol=1e-5)
+

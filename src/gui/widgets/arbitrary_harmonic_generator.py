@@ -100,9 +100,9 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
                     comp_enabled = self.compensation_enabled
                     comp_coeffs = self.adjusted_compensation_coeffs.copy()
 
-                t = (np.arange(frames) + self._phase_gen) / sample_rate
-                self._phase_gen += frames
-                wt = 2 * np.pi * f0 * t
+                phase_step = 2.0 * np.pi * f0 / sample_rate
+                wt = self._phase_gen + np.arange(frames) * phase_step
+                self._phase_gen = float((self._phase_gen + frames * phase_step) % (2.0 * np.pi))
 
                 # Fundamental wave
                 sig = a1 * np.sin(wt + p1_rad)
