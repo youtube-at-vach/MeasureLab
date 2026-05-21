@@ -94,3 +94,17 @@ def test_impedance_analyzer_phase_continuity(impedance_module):
     # Verify signal2[0] matches expected_val with phase continuity
     assert abs(signal2[0] - expected_val) < 1e-12
 
+
+def test_impedance_analyzer_widget_sweep_finishes_stops_analysis(qtbot, impedance_module):
+    widget = ImpedanceAnalyzerWidget(impedance_module)
+    qtbot.addWidget(widget)
+
+    # Simulate analysis running (which would happen inside the worker thread)
+    impedance_module.start_analysis()
+    assert impedance_module.is_running
+
+    # Manually trigger on_sweep_finished to simulate sweep completion/cancellation
+    widget.on_sweep_finished()
+    assert not impedance_module.is_running
+
+

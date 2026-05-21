@@ -1984,6 +1984,8 @@ class ImpedanceAnalyzerWidget(QWidget):
                 logger.error("Failed to update live numeric readout during sweep", exc_info=True)
 
     def on_sweep_finished(self):
+        self.module.stop_analysis()
+
         if self.cal_mode == "open":
             QMessageBox.information(self, tr("Calibration"), tr("Open Calibration Completed"))
         elif self.cal_mode == "short":
