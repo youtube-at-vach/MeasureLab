@@ -11,6 +11,21 @@ except ImportError:
     pytest.skip("Skipping GUI test due to import errors", allow_module_level=True)
 
 
+_created_widgets = []
+
+@pytest.fixture(autouse=True)
+def cleanup_widgets(qtbot):
+    _created_widgets.clear()
+    yield
+    for w in _created_widgets:
+        try:
+            w.close()
+            w.deleteLater()
+        except Exception:
+            pass
+    _created_widgets.clear()
+
+
 @pytest.fixture
 def mock_engine():
     engine = MagicMock()
@@ -24,6 +39,7 @@ def test_error_message_box(qtbot, mock_engine):
     module = LinearityAnalyzer(mock_engine)
     widget = LinearityAnalyzerWidget(module)
     qtbot.addWidget(widget)
+    _created_widgets.append(widget)
 
     # Patch QMessageBox.critical in the module where it's used
     with patch("src.gui.widgets.linearity_analyzer.QMessageBox.critical") as mock_critical:
