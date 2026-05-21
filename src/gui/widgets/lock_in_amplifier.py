@@ -651,6 +651,26 @@ class LockInAmplifierWidget(QWidget):
         # Tabs for Modes
         self.tabs = QTabWidget()
 
+        self._init_manual_control_tab()
+        self._init_fra_tab()
+        self._init_calibration_tab()
+
+        main_layout.addWidget(self.tabs)
+        self.setLayout(main_layout)
+
+        # Data storage for FRA
+        self.fra_freqs = []
+        self.fra_log_freqs = []
+        self.fra_raw_mags = []  # Linear (0-1)
+        self.fra_phases = []
+        self.fra_worker = None
+
+        # Data storage for Calibration
+        self.cal_data = []  # List of [freq, mag_db, phase_deg]
+        self.cal_worker = None
+
+
+    def _init_manual_control_tab(self):
         # --- Tab 1: Manual Control (Existing) ---
         manual_widget = QWidget()
         manual_layout = QHBoxLayout(manual_widget)
@@ -890,6 +910,8 @@ class LockInAmplifierWidget(QWidget):
 
         self.tabs.addTab(manual_widget, tr("Manual Control"))
 
+
+    def _init_fra_tab(self):
         # --- Tab 2: Frequency Response Analyzer (FRA) ---
         fra_widget = QWidget()
         fra_layout = QHBoxLayout(fra_widget)
@@ -1024,6 +1046,8 @@ class LockInAmplifierWidget(QWidget):
 
         self.tabs.addTab(fra_widget, tr("Frequency Response"))
 
+
+    def _init_calibration_tab(self):
         # --- Tab 3: Calibration ---
         cal_widget = QWidget()
         cal_layout = QHBoxLayout(cal_widget)
@@ -1140,20 +1164,6 @@ class LockInAmplifierWidget(QWidget):
         cal_layout.addWidget(self.cal_plot, stretch=3)
 
         self.tabs.addTab(cal_widget, tr("Calibration"))
-
-        main_layout.addWidget(self.tabs)
-        self.setLayout(main_layout)
-
-        # Data storage for FRA
-        self.fra_freqs = []
-        self.fra_log_freqs = []
-        self.fra_raw_mags = []  # Linear (0-1)
-        self.fra_phases = []
-        self.fra_worker = None
-
-        # Data storage for Calibration
-        self.cal_data = []  # List of [freq, mag_db, phase_deg]
-        self.cal_worker = None
 
     def on_toggle(self, checked):
         if checked:
