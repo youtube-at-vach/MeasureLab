@@ -24,6 +24,7 @@ from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 logger = logging.getLogger(__name__)
 
@@ -264,9 +265,10 @@ class NoiseAnalysisWorker(QRunnable):
             self.signals.finished.emit()
 
 
-class NoiseProfilerWidget(QWidget):
+class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: NoiseProfiler):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -281,7 +283,9 @@ class NoiseProfilerWidget(QWidget):
         layout = QHBoxLayout()
 
         # --- Left Panel: Controls ---
-        left_panel = QVBoxLayout()
+        self.sidebar = QWidget()
+        left_panel = QVBoxLayout(self.sidebar)
+        left_panel.setContentsMargins(0, 0, 0, 0)
 
         # Top Controls (Always Visible)
         top_ctrl_layout = QVBoxLayout()
@@ -413,7 +417,7 @@ class NoiseProfilerWidget(QWidget):
         self.settings_tabs.addTab(tab_disp, tr("Display"))
 
         left_panel.addWidget(self.settings_tabs)
-        layout.addLayout(left_panel, 1)
+        layout.addWidget(self.sidebar, 1)
 
         # --- Center Panel: Visualization ---
         center_panel = QVBoxLayout()
@@ -944,3 +948,8 @@ class NoiseProfilerWidget(QWidget):
         {thermal_density * 1e9:.2f} nV/√Hz ({thermal_density_db:.1f} dBV)
         """
         self.report_label.setText(txt)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "sidebar"):
+            self.sidebar.setHidden(compact)

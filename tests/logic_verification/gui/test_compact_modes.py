@@ -8,6 +8,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
 from src.gui.widgets.raw_time_series import RawTimeSeries, RawTimeSeriesWidget
 from src.gui.widgets.bnim_meter import BNIMMeter, BNIMMeterWidget
+from src.gui.widgets.sound_level_meter import SoundLevelMeter, SoundLevelMeterWidget
+from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
@@ -87,3 +89,44 @@ def test_bnim_meter_compact_mode(qtbot):
     widget.set_compact_mode(False)
     assert not widget.is_compact_mode()
     assert not widget.controls_group.isHidden()
+
+
+def test_sound_level_meter_compact_mode(qtbot):
+    engine = MockAudioEngine()
+    module = SoundLevelMeter(engine)
+    widget = SoundLevelMeterWidget(module)
+    qtbot.addWidget(widget)
+
+    assert isinstance(widget, CompactableWidgetInterface)
+    assert not widget.is_compact_mode()
+    assert not widget.sidebar.isHidden()
+    assert not widget.tabs.isHidden()
+
+    widget.set_compact_mode(True)
+    assert widget.is_compact_mode()
+    assert widget.sidebar.isHidden()
+    assert widget.tabs.isHidden()
+
+    widget.set_compact_mode(False)
+    assert not widget.is_compact_mode()
+    assert not widget.sidebar.isHidden()
+    assert not widget.tabs.isHidden()
+
+
+def test_noise_profiler_compact_mode(qtbot):
+    engine = MockAudioEngine()
+    module = NoiseProfiler(engine)
+    widget = NoiseProfilerWidget(module)
+    qtbot.addWidget(widget)
+
+    assert isinstance(widget, CompactableWidgetInterface)
+    assert not widget.is_compact_mode()
+    assert not widget.sidebar.isHidden()
+
+    widget.set_compact_mode(True)
+    assert widget.is_compact_mode()
+    assert widget.sidebar.isHidden()
+
+    widget.set_compact_mode(False)
+    assert not widget.is_compact_mode()
+    assert not widget.sidebar.isHidden()
