@@ -21,6 +21,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.analysis import get_cached_window
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
@@ -222,9 +223,10 @@ class Spectrogram(MeasurementModule):
         outdata.fill(0)
 
 
-class SpectrogramWidget(QWidget):
+class SpectrogramWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: Spectrogram):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.log_spectrogram_buffer = None
         self._last_raw_buffer_id = None
@@ -243,7 +245,8 @@ class SpectrogramWidget(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout()
-        layout.addWidget(self._init_controls())
+        self.controls_group = self._init_controls()
+        layout.addWidget(self.controls_group)
         layout.addWidget(self._init_plot())
         self.setLayout(layout)
 
@@ -692,3 +695,10 @@ class SpectrogramWidget(QWidget):
         else:
             # Light Theme
             self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "controls_group"):
+            self.controls_group.setHidden(compact)
+        if hasattr(self, "hist"):
+            self.hist.setVisible(not compact)

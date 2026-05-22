@@ -22,6 +22,7 @@ from scipy.ndimage import gaussian_filter
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -120,9 +121,10 @@ class Goniometer(MeasurementModule):
         outdata.fill(0)
 
 
-class GoniometerWidget(QWidget):
+class GoniometerWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: Goniometer):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -168,7 +170,9 @@ class GoniometerWidget(QWidget):
         display_layout.addWidget(self.plot_widget, stretch=1)
 
         # 2. Correlation Meter
-        corr_layout = QHBoxLayout()
+        self.corr_container = QWidget()
+        corr_layout = QHBoxLayout(self.corr_container)
+        corr_layout.setContentsMargins(0, 0, 0, 0)
         corr_layout.addWidget(QLabel("-1"))
 
         self.corr_bar = QProgressBar()
@@ -179,12 +183,12 @@ class GoniometerWidget(QWidget):
         corr_layout.addWidget(self.corr_bar, stretch=1)
 
         corr_layout.addWidget(QLabel("+1"))
-        display_layout.addLayout(corr_layout)
+        display_layout.addWidget(self.corr_container)
 
         layout.addLayout(display_layout, stretch=3)
 
         # --- Right: Controls ---
-        controls_group = QGroupBox(tr("Controls"))
+        self.controls_group = QGroupBox(tr("Controls"))
         controls_layout = QVBoxLayout()
 
         # Start/Stop
@@ -286,9 +290,9 @@ class GoniometerWidget(QWidget):
         controls_layout.addWidget(self.invert_y_chk)
 
         controls_layout.addStretch()
-        controls_group.setLayout(controls_layout)
+        self.controls_group.setLayout(controls_layout)
 
-        layout.addWidget(controls_group, stretch=1)
+        layout.addWidget(self.controls_group, stretch=1)
 
         self.setLayout(layout)
 
@@ -604,3 +608,10 @@ class GoniometerWidget(QWidget):
                 "QPushButton:hover { background-color: #bbfebb; }"
                 "QPushButton:checked:hover { background-color: #ffbbbb; }"
             )
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "controls_group"):
+            self.controls_group.setHidden(compact)
+        if hasattr(self, "corr_container"):
+            self.corr_container.setHidden(compact)

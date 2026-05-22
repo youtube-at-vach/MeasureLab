@@ -27,6 +27,7 @@ from src.core.ring_buffer import RingBuffer
 from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.styles import (
     STYLE_TOGGLE_BTN_DARK,
     STYLE_TOGGLE_BTN_LIGHT,
@@ -575,13 +576,14 @@ class Oscilloscope(MeasurementModule):
         return (rise_time, fall_time, low_level, high_level)
 
 
-class OscilloscopeWidget(QWidget):
+class OscilloscopeWidget(QWidget, CompactableWidgetInterface):
     # View constants
     VIEW_Y_MIN = -1.1
     VIEW_Y_MAX = 1.1
 
     def __init__(self, module: Oscilloscope):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self._rgba_buffer = None
         self._clip_buffer = None
@@ -609,19 +611,19 @@ class OscilloscopeWidget(QWidget):
         main_layout.addLayout(left_layout, stretch=1)  # Give priority to plot
 
         # --- Right Panel (Controls) ---
-        right_widget = self._setup_right_panel()
+        self.right_widget = self._setup_right_panel()
 
         # Math Curve
         self._setup_math_view()
 
-        main_layout.addWidget(right_widget)
+        main_layout.addWidget(self.right_widget)
         self.setLayout(main_layout)
 
     def _setup_left_panel(self):
         left_layout = QVBoxLayout()
 
         # Measurements
-        meas_group = QGroupBox(tr("Measurements"))
+        self.meas_group = QGroupBox(tr("Measurements"))
         meas_layout = QVBoxLayout()
 
         meas_row_1 = QHBoxLayout()
@@ -645,8 +647,8 @@ class OscilloscopeWidget(QWidget):
         self.meas_r_auto_label.setVisible(False)
         meas_layout.addWidget(self.meas_r_auto_label)
 
-        meas_group.setLayout(meas_layout)
-        left_layout.addWidget(meas_group)
+        self.meas_group.setLayout(meas_layout)
+        left_layout.addWidget(self.meas_group)
 
         # Cursor Info
         self.cursor_info_label = QLabel(tr("Cursors: Off"))
@@ -1492,3 +1494,13 @@ class OscilloscopeWidget(QWidget):
             if hasattr(self, "meas_r_auto_label"):
                 self.meas_r_auto_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_LIGHT)
             self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_LIGHT)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "right_widget"):
+            self.right_widget.setHidden(compact)
+        if hasattr(self, "meas_group"):
+            self.meas_group.setHidden(compact)
+        if hasattr(self, "cursor_info_label"):
+            self.cursor_info_label.setHidden(compact)
+

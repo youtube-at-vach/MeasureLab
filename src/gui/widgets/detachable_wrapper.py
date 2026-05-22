@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.localization import tr
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 class IndependentWindow(QMainWindow):
@@ -24,21 +25,54 @@ class IndependentWindow(QMainWindow):
     """
 
     closed = pyqtSignal()
+    toggle_compact_requested = pyqtSignal()
+    reattach_requested = pyqtSignal()
 
     def __init__(self, title, widget, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(800, 600)
         self.setCentralWidget(widget)
+        self.content_widget = widget
 
     def closeEvent(self, event):
         self.closed.emit()
         event.accept()
 
+    def keyPressEvent(self, event):
+        # 'C' key toggles compact mode
+        if event.key() == Qt.Key.Key_C:
+            self.toggle_compact_requested.emit()
+            event.accept()
+        else:
+            super().keyPressEvent(event)
+
+    def contextMenuEvent(self, event):
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+
+        menu = QMenu(self)
+
+        is_compactable = isinstance(self.content_widget, CompactableWidgetInterface) or hasattr(self.content_widget, "set_compact_mode")
+        if is_compactable:
+            is_compact = getattr(self.content_widget, "is_compact_mode", lambda: False)()
+            toggle_action = QAction(tr("Toggle Compact Mode"), self)
+            toggle_action.setCheckable(True)
+            toggle_action.setChecked(is_compact)
+            toggle_action.triggered.connect(self.toggle_compact_requested.emit)
+            menu.addAction(toggle_action)
+
+        reattach_action = QAction(tr("Reattach"), self)
+        reattach_action.triggered.connect(self.reattach_requested.emit)
+        menu.addAction(reattach_action)
+
+        menu.exec(event.globalPosition().toPoint())
+
 
 class DetachableWidgetWrapper(QWidget):
     """
     Wraps a widget to allow it to be detached into a separate window.
+    Supports compact mode if the content widget implements CompactableWidgetInterface.
     """
 
     def __init__(self, widget: QWidget, title: str, config_manager=None):
@@ -48,6 +82,9 @@ class DetachableWidgetWrapper(QWidget):
         self.config_manager = config_manager
         self.is_detached = False
         self.independent_window = None
+
+        # Check if the content widget supports compact mode
+        self.is_compactable = isinstance(widget, CompactableWidgetInterface) or hasattr(widget, "set_compact_mode")
 
         self.init_ui()
 
@@ -75,10 +112,19 @@ class DetachableWidgetWrapper(QWidget):
         self.logs_btn.clicked.connect(self.show_logs)
         self.logs_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
+        self.compact_btn = None
+        if self.is_compactable:
+            self.compact_btn = QPushButton(tr("Compact"))
+            self.compact_btn.setCheckable(True)
+            self.compact_btn.clicked.connect(self.toggle_compact)
+            self.compact_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
         header_layout.addWidget(self.logs_btn)
         header_layout.addWidget(self.screenshot_btn)
+        if self.compact_btn:
+            header_layout.addWidget(self.compact_btn)
         header_layout.addWidget(self.detach_btn)
 
         self.layout.addWidget(self.header)
@@ -180,6 +226,24 @@ class DetachableWidgetWrapper(QWidget):
         except Exception as e:
             QMessageBox.warning(self, tr("Error"), tr("Failed to open log viewer: {0}").format(str(e)))
 
+    def toggle_compact(self, checked):
+        if not self.is_compactable:
+            return
+
+        self.content_widget.set_compact_mode(checked)
+
+        if self.compact_btn:
+            self.compact_btn.blockSignals(True)
+            self.compact_btn.setChecked(checked)
+            self.compact_btn.setText(tr("Full Mode") if checked else tr("Compact"))
+            self.compact_btn.blockSignals(False)
+
+    def toggle_compact_from_window(self):
+        if not self.is_compactable:
+            return
+        current_state = self.content_widget.is_compact_mode()
+        self.toggle_compact(not current_state)
+
     def toggle_detach(self):
         if self.is_detached:
             self.reattach()
@@ -199,6 +263,8 @@ class DetachableWidgetWrapper(QWidget):
         # 2. Create independent window
         self.independent_window = IndependentWindow(self.title, self.content_widget, self)
         self.independent_window.closed.connect(self.reattach)
+        self.independent_window.toggle_compact_requested.connect(self.toggle_compact_from_window)
+        self.independent_window.reattach_requested.connect(self.reattach)
         self.independent_window.show()
 
         # 3. Update UI state
