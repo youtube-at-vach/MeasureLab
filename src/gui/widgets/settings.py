@@ -845,7 +845,7 @@ class BitDepthDialog(QDialog):
         def callback(indata, outdata, frames, time, status):
             if indata.shape[1] >= 1:
                 # Copy is important because indata is reused
-                self.estimator.add_samples(indata[:, 0].copy())
+                self.estimator.add_samples(indata[:, 0])
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
