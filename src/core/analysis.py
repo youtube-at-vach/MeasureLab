@@ -1193,13 +1193,52 @@ class AudioCalc:
 
         # Sum harmonics
         max_i = min(10, int(sampling_rate / (2 * base_freq)))
-        hum_power = 0.0
-        hum_components = []
-        for i in range(1, max_i + 1):
-            freq = base_freq * i
-            power = get_power_in_band(freq)
-            hum_power += power
-            hum_components.append((freq, math.sqrt(power)))
+        if max_i == 0:
+            return 0.0, base_freq, []
+
+        f_centers = base_freq * np.arange(1, max_i + 1)
+        f_starts = f_centers - 5.0
+        f_ends = f_centers + 5.0
+
+        is_linear_freqs, _, freq_step, start_freq, _ = axis_info
+        if is_linear_freqs:
+            idx_starts = np.ceil((f_starts - start_freq) / freq_step).astype(int)
+            idx_ends = np.floor((f_ends - start_freq) / freq_step).astype(int) + 1
+            idx_starts = np.clip(idx_starts, 0, len(freqs))
+            idx_ends = np.clip(idx_ends, 0, len(freqs))
+        else:
+            idx_starts = np.searchsorted(freqs, f_starts, side="left")
+            idx_ends = np.searchsorted(freqs, f_ends, side="right")
+
+        start_idx = idx_starts[0]
+        end_idx = idx_ends[-1]
+
+        if start_idx >= end_idx:
+            return 0.0, base_freq, []
+
+        slice_length = end_idx - start_idx
+        mask = np.zeros(slice_length, dtype=bool)
+        harmonic_indices = np.zeros(slice_length, dtype=int)
+
+        rel_starts = idx_starts - start_idx
+        rel_ends = idx_ends - start_idx
+
+        for i, (s, e) in enumerate(zip(rel_starts, rel_ends, strict=False)):
+            if s < e:
+                mask[s:e] = True
+                harmonic_indices[s:e] = i
+
+        slice_mag = mag_sq[start_idx:end_idx]
+
+        if np.ndim(bin_width) == 0:
+            powers_masked = slice_mag[mask] * bin_width
+        else:
+            slice_bin = bin_width[start_idx:end_idx]
+            powers_masked = slice_mag[mask] * slice_bin[mask]
+
+        hum_power = float(np.sum(powers_masked))
+        powers = np.bincount(harmonic_indices[mask], weights=powers_masked, minlength=max_i)
+        hum_components = [(float(f), float(math.sqrt(p))) for f, p in zip(f_centers, powers, strict=False)]
 
         return np.sqrt(hum_power), base_freq, hum_components
 
