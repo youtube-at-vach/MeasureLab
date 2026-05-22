@@ -93,6 +93,26 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.engine._restart_stream = MagicMock()
         self.engine._start_master_stream = MagicMock()
 
+    def test_set_loopback(self):
+        self.assertFalse(self.engine.loopback)
+        self.engine.set_loopback(True)
+        self.assertTrue(self.engine.loopback)
+        self.engine.logger.debug.assert_called_with("Set software loopback: True")
+
+        self.engine.set_loopback(False)
+        self.assertFalse(self.engine.loopback)
+        self.engine.logger.debug.assert_called_with("Set software loopback: False")
+
+    def test_set_mute_output(self):
+        self.assertFalse(self.engine.mute_output)
+        self.engine.set_mute_output(True)
+        self.assertTrue(self.engine.mute_output)
+        self.engine.logger.debug.assert_called_with("Set mute output: True")
+
+        self.engine.set_mute_output(False)
+        self.assertFalse(self.engine.mute_output)
+        self.engine.logger.debug.assert_called_with("Set mute output: False")
+
     def test_set_offline_mode(self):
         self.assertFalse(self.engine.offline_mode)
 
