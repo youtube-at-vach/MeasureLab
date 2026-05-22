@@ -54,7 +54,7 @@ def get_cpu_name():
         import subprocess
 
         try:
-            return subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
+            return subprocess.check_output(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
         except (OSError, subprocess.CalledProcessError) as e:
             logger.debug(f"Failed to read CPU name from sysctl: {e}")
 
@@ -215,8 +215,8 @@ class ProcessorBenchmarkWidget(QWidget):
         # Attempt to stop audio stream safely to prevent dropouts during heavy benchmark
         try:
             self.module.audio_engine.stop_stream()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to stop stream safely: {e}")
 
         self._benchmark_data.clear()
 
@@ -292,8 +292,8 @@ class ProcessorBenchmarkWidget(QWidget):
         # Restart the stream so that other widgets can be used immediately
         try:
             self.module.audio_engine._restart_stream()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to restart stream: {e}")
 
     def update_results_display(self):
         safety = self.safety_spin.value()
