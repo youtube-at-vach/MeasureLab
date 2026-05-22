@@ -11,6 +11,7 @@ from src.gui.widgets.bnim_meter import BNIMMeter, BNIMMeterWidget
 from src.gui.widgets.sound_level_meter import SoundLevelMeter, SoundLevelMeterWidget
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
 class MockAudioEngine:
@@ -93,6 +94,7 @@ def test_bnim_meter_compact_mode(qtbot):
 
 def test_sound_level_meter_compact_mode(qtbot):
     from PyQt6.QtWidgets import QMainWindow
+
     engine = MockAudioEngine()
     module = SoundLevelMeter(engine)
     widget = SoundLevelMeterWidget(module)
@@ -148,3 +150,33 @@ def test_noise_profiler_compact_mode(qtbot):
     widget.set_compact_mode(False)
     assert not widget.is_compact_mode()
     assert not widget.sidebar.isHidden()
+
+
+def test_detachable_wrapper_compact_btn(qtbot):
+    engine = MockAudioEngine()
+    module = SoundLevelMeter(engine)
+    widget = SoundLevelMeterWidget(module)
+    wrapper = DetachableWidgetWrapper(widget, "Test Widget")
+    qtbot.addWidget(wrapper)
+
+    # Initially, it is not detached, so compact button should be disabled
+    assert wrapper.compact_btn is not None
+    assert not wrapper.compact_btn.isEnabled()
+
+    # Detach it
+    wrapper.detach()
+    assert wrapper.is_detached
+    assert wrapper.compact_btn.isEnabled()
+
+    # Toggle compact mode via the button
+    wrapper.compact_btn.setChecked(True)
+    wrapper.toggle_compact(True)
+    assert widget.is_compact_mode()
+
+    # Reattach it
+    wrapper.reattach()
+    assert not wrapper.is_detached
+    # It should be disabled again
+    assert not wrapper.compact_btn.isEnabled()
+    # It should also reset compact mode back to full mode
+    assert not widget.is_compact_mode()
