@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QSizePolicy,
 )
 
 from src.core.audio_engine import AudioEngine
@@ -26,6 +27,7 @@ from src.core.frequency_analysis import calculate_frequency_metrics, calculate_a
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -418,9 +420,10 @@ class FrequencyCalibrationDialog(QDialog):
             self.status_label.setText(tr("Status: Cancelled"))
 
 
-class FrequencyCounterWidget(QWidget):
+class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: FrequencyCounter):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
 
         # Display mode: 'frequency' or 'period'
@@ -447,6 +450,7 @@ class FrequencyCounterWidget(QWidget):
 
         # --- Display Area ---
         display_frame = QFrame()
+        display_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         display_frame.setStyleSheet("background-color: #000; border: 2px solid #444; border-radius: 10px;")
         display_layout = QVBoxLayout(display_frame)
 
@@ -483,7 +487,9 @@ class FrequencyCounterWidget(QWidget):
         display_layout.addLayout(stats_layout)
 
         # --- Controls ---
-        controls_layout = QHBoxLayout()
+        self.controls_container = QWidget()
+        controls_layout = QHBoxLayout(self.controls_container)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
 
         # Gate
         gate_layout = QHBoxLayout()
@@ -515,14 +521,14 @@ class FrequencyCounterWidget(QWidget):
         controls_layout.addLayout(speed_layout)
 
         # Display Mode
-        display_layout = QHBoxLayout()
-        display_layout.addWidget(QLabel(tr("Display:")))
+        display_combo_layout = QHBoxLayout()
+        display_combo_layout.addWidget(QLabel(tr("Display:")))
         self.display_combo = QComboBox()
         self.display_combo.addItem(tr("Frequency"), "frequency")
         self.display_combo.addItem(tr("Period"), "period")
         self.display_combo.currentIndexChanged.connect(self.on_display_mode_changed)
-        display_layout.addWidget(self.display_combo)
-        controls_layout.addLayout(display_layout)
+        display_combo_layout.addWidget(self.display_combo)
+        controls_layout.addLayout(display_combo_layout)
 
         # Start/Stop
         self.run_btn = QPushButton(tr("Start"))
@@ -536,7 +542,7 @@ class FrequencyCounterWidget(QWidget):
         controls_layout.addWidget(self.cal_btn)
 
         controls_layout.addStretch()
-        layout.addLayout(controls_layout)
+        layout.addWidget(self.controls_container)
 
         # --- Tabs ---
         self.tab_widget = QTabWidget()
@@ -1081,3 +1087,22 @@ class FrequencyCounterWidget(QWidget):
         worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor)
         worker.signals.result.connect(self.on_freq_calculation_result)
         self.threadpool.start(worker)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "controls_container"):
+            self.controls_container.setHidden(compact)
+        if hasattr(self, "tab_widget"):
+            self.tab_widget.setHidden(compact)
+        if hasattr(self, "amp_label"):
+            self.amp_label.setHidden(compact)
+        if hasattr(self, "std_label"):
+            self.std_label.setHidden(compact)
+        if hasattr(self, "allan_label"):
+            self.allan_label.setHidden(compact)
+
+        # Trigger parent window size adjustment to prevent vertical stretching
+        win = self.window()
+        if win:
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(50, win.adjustSize)
