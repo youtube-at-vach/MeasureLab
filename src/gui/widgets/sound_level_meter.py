@@ -57,6 +57,11 @@ class SoundLevelMeter(MeasurementModule):
         self.last_sample_time = 0.0
         self.LN_SAMPLING_PERIOD = 0.1  # Fixed 0.1s for statistics as requested
 
+        # Cache for LN statistics
+        self._ln_stats_cache = {}
+        self._ln_stats_last_count = 0
+        self._ln_stats_last_time = 0.0
+
         self.callback_id = None
         self._filter_lock = threading.Lock()
 
@@ -443,30 +448,35 @@ class SoundLevelMeter(MeasurementModule):
         if self.ln_history_count == 0:
             return {}
 
-        data_linear = self.ln_history[: self.ln_history_count]
-        data_db = 10 * np.log10(data_linear + 1e-12)
+        current_time = time.time()
 
-        # Percentiles (Ln is level EXCEEDED n% of time)
-        # So L5 is the 95th percentile of the distribution (high level).
-        # L95 is the 5th percentile (low level).
-        # numpy.percentile calculates "p-th percentile below which p% of observations fall".
-        # So L5 = np.percentile(data, 95)
-        # L95 = np.percentile(data, 5)
+        # Adaptive update rate based on history size to prevent UI stutter
+        # Small history (< 1000 items / 100s): update every 0.1s
+        # Large history: update every 1.0s to save CPU
+        update_interval = 1.0 if self.ln_history_count > 1000 else 0.1
 
-        p_vals = np.percentile(data_db, [95, 90, 50, 10, 5])
-        l5, l10, l50, l90, l95 = p_vals
+        if (self.ln_history_count != self._ln_stats_last_count) and \
+           (current_time - self._ln_stats_last_time >= update_interval):
 
-        lhigh = np.max(data_db)
-        llow = np.min(data_db)
+            data_linear = self.ln_history[: self.ln_history_count]
+            data_db = 10 * np.log10(data_linear + 1e-12)
 
-        # Lave (Arithmetic average of levels or Energy average?)
-        # Standard in acoustics: Lave usually implies Leq (Energy Average).
-        # But if it means "Average of the sampled dB values", that's different.
-        # "Lave" (Label) usually acts as Leq short term or specified period.
-        # Since we have the linear history, we can calc Leq of the history.
-        lave = 10 * np.log10(np.mean(data_linear) + 1e-12)
+            # Percentiles (Ln is level EXCEEDED n% of time)
+            p_vals = np.percentile(data_db, [95, 90, 50, 10, 5])
+            l5, l10, l50, l90, l95 = p_vals
 
-        return {"L5": l5, "L10": l10, "L50": l50, "L90": l90, "L95": l95, "Lhigh": lhigh, "Llow": llow, "Lave": lave}
+            lhigh = float(np.max(data_db))
+            llow = float(np.min(data_db))
+            lave = float(10 * np.log10(np.mean(data_linear) + 1e-12))
+
+            self._ln_stats_cache = {
+                "L5": float(l5), "L10": float(l10), "L50": float(l50), "L90": float(l90), "L95": float(l95),
+                "Lhigh": lhigh, "Llow": llow, "Lave": lave
+            }
+            self._ln_stats_last_count = self.ln_history_count
+            self._ln_stats_last_time = current_time
+
+        return self._ln_stats_cache
 
     def get_ln_histogram(self, bin_size=0.5):
         """
