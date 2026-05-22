@@ -495,6 +495,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         gate_layout = QHBoxLayout()
         gate_layout.addWidget(QLabel(tr("Gate (dB):")))
         self.gate_spin = QDoubleSpinBox()
+        self.gate_spin.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.gate_spin.setRange(-120, 0)
         self.gate_spin.setValue(self.module.gate_threshold_db)
         self.gate_spin.valueChanged.connect(lambda v: setattr(self.module, "gate_threshold_db", v))
@@ -505,6 +506,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         ch_layout = QHBoxLayout()
         ch_layout.addWidget(QLabel(tr("Channel:")))
         self.ch_combo = QComboBox()
+        self.ch_combo.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.ch_combo.addItems([tr("Ch 1"), tr("Ch 2")])
         self.ch_combo.currentIndexChanged.connect(self.on_channel_changed)
         ch_layout.addWidget(self.ch_combo)
@@ -514,6 +516,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         speed_layout = QHBoxLayout()
         speed_layout.addWidget(QLabel(tr("Update Rate:")))
         self.speed_combo = QComboBox()
+        self.speed_combo.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.speed_combo.addItem(tr("Fast (10Hz)"), 100)
         self.speed_combo.addItem(tr("Slow (2Hz)"), 500)
         self.speed_combo.currentIndexChanged.connect(self.on_speed_changed)
@@ -524,6 +527,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         display_combo_layout = QHBoxLayout()
         display_combo_layout.addWidget(QLabel(tr("Display:")))
         self.display_combo = QComboBox()
+        self.display_combo.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self.display_combo.addItem(tr("Frequency"), "frequency")
         self.display_combo.addItem(tr("Period"), "period")
         self.display_combo.currentIndexChanged.connect(self.on_display_mode_changed)
@@ -639,6 +643,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         self.jitter_ref_spin.valueChanged.connect(self._on_jitter_settings_changed)
         self._on_jitter_settings_changed()
 
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setLayout(layout)
 
     def _format_frequency_text(self, freq_hz: float) -> str:
