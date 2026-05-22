@@ -35,7 +35,7 @@ This tool measures the following values:
 
 1. Determine the measurement conditions in **Sweep Settings**.
 2. Press the **Start Sweep** button to begin measurement.
-3. The tool automatically sweeps the specified range (e.g., -5dBFS to -120dBFS) and plots the results on the graph.
+3. The tool automatically sweeps the specified range (e.g., -5dBFS to -120dBFS) and plots the results on the graph. During this sweep, amplitude ramping is applied to ensure smooth level transitions, preventing signal discontinuities such as clicks or pops.
     * If **Enable Hysteresis Sweep** is enabled, it performs forward (large to small) and reverse (small to large) measurements sequentially.
 
 ### Interpreting Results
