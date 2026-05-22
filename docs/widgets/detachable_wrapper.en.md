@@ -38,6 +38,14 @@ Pressing the **"Detach Window"** button makes only that widget pop out into an i
 * **Utilization in Multi-monitors**: For example, you can use the main screen on the left to change signal settings while monitoring the spectrum's movement on a sub-screen on the right in full-screen display.
 * **Restoring Docking**: By closing the separated window or pressing the **"Reattach"** button displayed in the original location on the main screen, it returns perfectly to its original position.
 
+### Compact Mode
+
+When a widget window is detached, a **"Compact"** button appears in the common header.
+
+* **Space-Saving Display**: Clicking this button minimizes the widget's footprint, displaying only critical numerical parameters (e.g., SPL values in Sound Level Meter, frequency counts in Frequency Counter) in a bold, easy-to-read format.
+* **Auto-Reset on Reattach**: Reattaching the window back to the main layout automatically exits compact mode and restores the standard detailed layout.
+* **Keyboard-Friendly Focus**: Focus policies are optimized for fast toggling, ensuring shortcut keys (such as 'C') function reliably without interference from input controls.
+
 ## Common Layout of Widgets
 
 Each widget, such as the Spectrogram, consists of the following three areas:

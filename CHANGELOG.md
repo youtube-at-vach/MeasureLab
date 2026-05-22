@@ -1,5 +1,43 @@
 # Changelog
 
+## [v0.7.4] - 2026-05-22
+
+> [!IMPORTANT]
+> **Critical Swings and Measurement Precision Improvements / 測定精度に係るスイープ挙動の重要改善**
+>
+> * **Lock-in Phase Tracking**: Lock-in Amplifierウィジェットにおける正弦波（サイン波）生成に連続位相トラッキングを実装。周波数スイープや周波数変更時の波形不連続性（位相の飛び）を完全に排除し、測定精度と安定性を大幅に向上させました。
+> * **Linearity Amplitude Ramping**: Linearity Analyzerにおいて、テスト信号生成時の過渡的なクリックノイズや波形不連続性を防止するための振幅ランピング（ランプイン・ランプアウト）を実装。ループバック測定の信頼性と安定性を劇的に改善しました。
+> * **Impedance Sweep Safety**: インピーダンス測定での連続位相トラッキングに対応するとともに、スイープ測定が完了した際に自動的に信号生成と解析処理（Impedance Sweep Worker）を完全停止し、不要なループバック信号の送出を防止する安全機構を実装しました。
+> * **Nyquist Limitations**: Network Analyzer等の動作において、オーディオデバイスの現在のアクティブサンプリングレートに基づいて周波数の上限設定を自動的かつ動的にナイキスト周波数以下に制限し、不正な測定パラメータの指定を未然に防止するよう改善しました。
+> * **UI Reentrancy Protection**: Lock-in Harmonic Analyzer等の補正データエクスポート（Calibration Data Export）実行中、ボタンやタイマーを適切に無効化してUIの再入（Reentrancy）によるバグやハングを防止するロックを追加しました。
+
+### Added
+
+* **Arbitrary Harmonic Generator**: 任意高調波生成ウィジェットを新規追加。歪み特性の微調整用インターフェースやタブ、補正データのエクスポート/インポート機能を含む、柔軟なハーモニックプロファイル設計環境を提供します。
+* **Compact Display Mode**: Sound Level Meter（騒音計）、Noise Profiler（ノイズプロファイラ）、Frequency Counter（周波数カウンター）などの主要ウィジェットに、省スペースな「コンパクトモード」を追加。
+    * 共通のインターフェース `CompactableWidgetInterface` を新設し、UIの切り替えに柔軟に対応。
+    * Detachable Wrapper（別ウィンドウでのデタッチ表示時）にのみ「Compact」ボタンが表示され、限られた画面スペースでも重要な数値データを大きく見やすく表示します。
+    * メインウィンドウへの再ドッキング（Reattach）を検知すると、自動的に標準の詳細表示モードへリセットする安全設計を実装。
+    * ショートカットキー（'C' キーなど）での切り替えが他のUI入力コントロールにフォーカスを奪われて阻害されないよう、フォーカスポリシーとキー入力を最適化。
+* **GUI Stability**: 破棄されたQtオブジェクトにアクセスしてクラッシュする問題（`wrapped C/C++ object has been deleted`）を回避するため、ウィジェット破棄時の明示的なライフサイクルクリーンアップと安全チェックを導入。
+
+### Changed
+
+* **Performance & Optimizations**:
+    * Noise Profiler におけるハムノイズの高調波マスク計算（`hum_components`）を完全にベクトル化し、処理パフォーマンスを飛躍的に向上。
+    * Sound Level Meter の Percentile Noise Level (LN) 統計量計算処理にキャッシュとスロットリング処理を適用。連続更新時の画面描画のモタつき（UI Stutter）を解消。
+    * 信号生成ロジック内のメンバーシップテストや数学的探索処理をベクトル化・最適化し、CPU負荷を軽減。
+    * オーディオエンジンにおいて `list_devices` の辞書ルックアップ結果をキャッシュし、デバイスクエリによるシステムコールオーバーヘッドを大幅に削減。
+    * Bit Depth Estimator 内の処理バッファを事前割り当て（Pre-allocate）化し、メモリの再割り当てを最小化。
+    * PlotDataItems のデータ更新において `.setData([], [])` を高速な `.clear()` に変更し、グラフ描画パイプラインを最適化。
+* **Security & Core**:
+    * `sysctl` によるシステムハードウェア情報取得時、PATH環境変数の操作による脆弱性を防ぐため、実行プロセスのセキュリティ耐性を強化。
+* **Test Suite & CI**:
+    * テストスイート内で mock PyQt6 ウィジェットの自動クリーンアップを導入し、テスト間の干渉・汚染（test cross-pollution）を完全に防止。
+    * `AudioEngine` の出力ミュート（`set_mute_output`）やループバック（`set_loopback`）などの挙動テストを新規追加。
+    * AES17フィルター設計のエラー系テストを含む、多数の単体テストを拡張。
+    * ユニットテストから不要な `QMessageBox` 参照を削除。
+
 ## [v0.7.3] - 2026-05-21
 
 ### Added
