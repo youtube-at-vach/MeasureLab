@@ -22,6 +22,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager, get_dpss_windows
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -616,9 +617,10 @@ class SpectrumAnalyzer(MeasurementModule):
         }
 
 
-class SpectrumAnalyzerWidget(QWidget):
+class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: SpectrumAnalyzer):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -630,7 +632,7 @@ class SpectrumAnalyzerWidget(QWidget):
         layout = QVBoxLayout()
 
         # --- Controls ---
-        controls_group = QGroupBox(tr("Analysis Settings"))
+        self.controls_group = QGroupBox(tr("Analysis Settings"))
         main_controls_layout = QVBoxLayout()
 
         # Row 1: Basic Controls
@@ -781,8 +783,8 @@ class SpectrumAnalyzerWidget(QWidget):
         # row3_layout.addStretch()
         # main_controls_layout.addLayout(row3_layout)
 
-        controls_group.setLayout(main_controls_layout)
-        layout.addWidget(controls_group)
+        self.controls_group.setLayout(main_controls_layout)
+        layout.addWidget(self.controls_group)
 
         # --- Info Display ---
         info_layout = QHBoxLayout()
@@ -1116,3 +1118,13 @@ class SpectrumAnalyzerWidget(QWidget):
         if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "controls_group"):
+            self.controls_group.setHidden(compact)
+        if hasattr(self, "overall_label"):
+            self.overall_label.setHidden(compact)
+        if hasattr(self, "cursor_label"):
+            self.cursor_label.setHidden(compact)
+

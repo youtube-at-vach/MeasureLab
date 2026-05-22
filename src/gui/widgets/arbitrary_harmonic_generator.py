@@ -484,8 +484,9 @@ class ArbitraryHarmonicWidget(QWidget):
         self.module.update_adjusted_compensation_coeffs()
         self.update_plots()
 
-    def on_load_compensation(self):
-        filename, _ = QFileDialog.getOpenFileName(self, tr("Import Compensation Data"), "", "JSON Files (*.json)")
+    def on_load_compensation(self, filename=None, force_apply=None):
+        if not filename:
+            filename, _ = QFileDialog.getOpenFileName(self, tr("Import Compensation Data"), "", "JSON Files (*.json)")
         if not filename:
             return
 
@@ -503,15 +504,18 @@ class ArbitraryHarmonicWidget(QWidget):
 
             # Warning if frequency mismatch by more than 1%
             if abs(f_cal - f_curr) / f_cal > 0.01:
-                reply = QMessageBox.warning(
-                    self,
-                    tr("Frequency Mismatch"),
-                    tr(
-                        "The compensation data frequency ({0:.1f} Hz) does not match the current generator frequency ({1:.1f} Hz).\nApply anyway?"
-                    ).format(f_cal, f_curr),
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
+                if force_apply is not None:
+                    reply = QMessageBox.StandardButton.Yes if force_apply else QMessageBox.StandardButton.No
+                else:
+                    reply = QMessageBox.warning(
+                        self,
+                        tr("Frequency Mismatch"),
+                        tr(
+                            "The compensation data frequency ({0:.1f} Hz) does not match the current generator frequency ({1:.1f} Hz).\nApply anyway?"
+                        ).format(f_cal, f_curr),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
                 if reply == QMessageBox.StandardButton.No:
                     return
 

@@ -23,6 +23,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.fft_manager import fft_manager
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 class BNIMMeter(MeasurementModule):
@@ -436,9 +437,10 @@ class BNIMMeter(MeasurementModule):
         self.neural_map = (self.neural_map * self.decay) + (coincidence * (1.0 - self.decay))
 
 
-class BNIMMeterWidget(QWidget):
+class BNIMMeterWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: BNIMMeter):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -490,7 +492,7 @@ class BNIMMeterWidget(QWidget):
         layout.addLayout(display_layout, stretch=3)
 
         # --- Right: Controls ---
-        controls_group = QGroupBox(tr("BNIM Controls"))
+        self.controls_group = QGroupBox(tr("BNIM Controls"))
         controls_layout = QVBoxLayout()
 
         self.toggle_btn = QPushButton(tr("Start"))
@@ -587,8 +589,8 @@ class BNIMMeterWidget(QWidget):
         controls_layout.addWidget(self.play_last_label)
 
         controls_layout.addStretch()
-        controls_group.setLayout(controls_layout)
-        layout.addWidget(controls_group, stretch=1)
+        self.controls_group.setLayout(controls_layout)
+        layout.addWidget(self.controls_group, stretch=1)
 
         self.setLayout(layout)
 
@@ -764,3 +766,9 @@ class BNIMMeterWidget(QWidget):
         self.img_item.setRect(pg.QtCore.QRectF(-itd, fmin, 2 * itd, max(1.0, fmax - fmin)))
         self.plot_widget.setXRange(-itd, itd)
         self.plot_widget.setYRange(fmin, fmax)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "controls_group"):
+            self.controls_group.setHidden(compact)
+

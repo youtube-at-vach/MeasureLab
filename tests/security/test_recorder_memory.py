@@ -29,15 +29,28 @@ class TestRecorderMemory(unittest.TestCase):
         qt_core.QThread = MockQThread
         qt_core.pyqtSignal = lambda *args, **kwargs: MagicMock()
 
+        # Create a mock for QtWidgets that has proper classes to avoid metaclass conflict
+        class MockQWidget:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        class MockQDialog(MockQWidget):
+            pass
+
+        qt_widgets = MagicMock()
+        qt_widgets.QWidget = MockQWidget
+        qt_widgets.QDialog = MockQDialog
+
         # Patch sys.modules to mock sounddevice and PyQt6
         self.modules_patcher = patch.dict(
             sys.modules,
             {
                 "sounddevice": MagicMock(),
                 "PyQt6.QtCore": qt_core,
-                "PyQt6.QtWidgets": MagicMock(),
+                "PyQt6.QtWidgets": qt_widgets,
                 "scipy": MagicMock(),
                 "scipy.signal": MagicMock(),
+                "scipy.optimize": MagicMock(),
             },
         )
         self.modules_patcher.start()
@@ -67,6 +80,12 @@ class TestRecorderMemory(unittest.TestCase):
                 pass
         self.temp_dir.cleanup()
         self.modules_patcher.stop()
+
+        # Clean up sys.modules to prevent pollution of subsequent tests
+        if "src.gui.widgets.recorder_player" in sys.modules:
+            del sys.modules["src.gui.widgets.recorder_player"]
+        if "src.core.analysis" in sys.modules:
+            del sys.modules["src.core.analysis"]
 
     def test_audio_callback_streams_to_disk(self):
         """Verify audio callback pushes to queue/disk instead of memory buffer."""

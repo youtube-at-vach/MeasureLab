@@ -723,7 +723,7 @@ class LockInHarmonicWidget(QWidget):
         self.comp_table.setColumnHidden(3, not checked)
         self.comp_table.setColumnHidden(4, not checked)
 
-    def on_export_comp(self):
+    def on_export_comp(self, filename=None):
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
         import json
 
@@ -734,7 +734,8 @@ class LockInHarmonicWidget(QWidget):
         self.btn_export_comp.setEnabled(False)
 
         try:
-            filename, _ = QFileDialog.getSaveFileName(self, tr("Export Compensation Data"), "", "JSON Files (*.json)")
+            if not filename:
+                filename, _ = QFileDialog.getSaveFileName(self, tr("Export Compensation Data"), "", "JSON Files (*.json)")
             if not filename:
                 return
 

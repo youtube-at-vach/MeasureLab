@@ -59,3 +59,66 @@ def test_widget_channel_change_resets_history(qapp, frequency_counter):
     # Cleanup properly to avoid segfaults and "pure virtual method called"
     widget.deleteLater()
     qapp.processEvents()
+
+
+def test_frequency_counter_compact_mode(qapp, qtbot, frequency_counter):
+    from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+    from unittest.mock import MagicMock
+    from PyQt6.QtWidgets import QMainWindow
+
+    # Create widget
+    widget = FrequencyCounterWidget(frequency_counter)
+
+    # Attach to a parent QMainWindow to mock and test adjustSize
+    parent_win = QMainWindow()
+    parent_win.adjustSize = MagicMock()
+    widget.setParent(parent_win)
+
+    # Verify inheritance and default state
+    assert isinstance(widget, CompactableWidgetInterface)
+    assert not widget.is_compact_mode()
+
+    # Verify initial visibility (everything should be visible)
+    assert not widget.controls_container.isHidden()
+    assert not widget.tab_widget.isHidden()
+    assert not widget.amp_label.isHidden()
+    assert not widget.std_label.isHidden()
+    assert not widget.allan_label.isHidden()
+
+    # Toggle compact mode ON
+    widget.set_compact_mode(True)
+    assert widget.is_compact_mode()
+
+    # Verify non-essential components are hidden
+    assert widget.controls_container.isHidden()
+    assert widget.tab_widget.isHidden()
+    assert widget.amp_label.isHidden()
+    assert widget.std_label.isHidden()
+    assert widget.allan_label.isHidden()
+
+    # Wait for the singleShot timer of 50ms to fire and check if adjustSize was called
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    # Reset mock for next check
+    parent_win.adjustSize.reset_mock()
+
+    # Toggle compact mode OFF
+    widget.set_compact_mode(False)
+    assert not widget.is_compact_mode()
+
+    # Verify everything is visible again
+    assert not widget.controls_container.isHidden()
+    assert not widget.tab_widget.isHidden()
+    assert not widget.amp_label.isHidden()
+    assert not widget.std_label.isHidden()
+    assert not widget.allan_label.isHidden()
+
+    # Wait for singleShot timer
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    # Cleanup properly
+    widget.deleteLater()
+    parent_win.deleteLater()
+    qapp.processEvents()

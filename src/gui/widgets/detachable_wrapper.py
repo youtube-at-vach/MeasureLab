@@ -53,7 +53,9 @@ class IndependentWindow(QMainWindow):
 
         menu = QMenu(self)
 
-        is_compactable = isinstance(self.content_widget, CompactableWidgetInterface) or hasattr(self.content_widget, "set_compact_mode")
+        is_compactable = isinstance(self.content_widget, CompactableWidgetInterface) or hasattr(
+            self.content_widget, "set_compact_mode"
+        )
         if is_compactable:
             is_compact = getattr(self.content_widget, "is_compact_mode", lambda: False)()
             toggle_action = QAction(tr("Toggle Compact Mode"), self)
@@ -118,6 +120,7 @@ class DetachableWidgetWrapper(QWidget):
             self.compact_btn.setCheckable(True)
             self.compact_btn.clicked.connect(self.toggle_compact)
             self.compact_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+            self.compact_btn.setEnabled(False)
 
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
@@ -272,6 +275,8 @@ class DetachableWidgetWrapper(QWidget):
         self.placeholder_widget.show()
         self.detach_btn.setText(tr("Reattach"))
         self.detach_btn.setEnabled(False)  # Use the big reattach button in placeholder or window close
+        if self.compact_btn:
+            self.compact_btn.setEnabled(True)
         self.is_detached = True
 
     def reattach(self):
@@ -296,6 +301,8 @@ class DetachableWidgetWrapper(QWidget):
             self.content_widget.setParent(self.content_container)
             self.content_container_layout.addWidget(self.content_widget)
 
+            # Explicitly delete the window to ensure clean C++ destruction in Qt
+            self.independent_window.deleteLater()
             self.independent_window = None
 
         # 2. Update UI state
@@ -304,4 +311,7 @@ class DetachableWidgetWrapper(QWidget):
 
         self.detach_btn.setText(tr("Detach Window"))
         self.detach_btn.setEnabled(True)
+        if self.compact_btn:
+            self.toggle_compact(False)
+            self.compact_btn.setEnabled(False)
         self.is_detached = False

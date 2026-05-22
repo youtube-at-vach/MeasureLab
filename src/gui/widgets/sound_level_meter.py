@@ -22,6 +22,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -514,9 +515,10 @@ class SoundLevelMeter(MeasurementModule):
         return centers, probs
 
 
-class SoundLevelMeterWidget(QWidget):
+class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: SoundLevelMeter):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -821,3 +823,17 @@ class SoundLevelMeterWidget(QWidget):
 
                         # Auto range y?
                         # self.plot_widget.setYRange(0, np.max(probs)*1.1)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "sidebar"):
+            self.sidebar.setHidden(compact)
+        if hasattr(self, "tabs"):
+            self.tabs.setHidden(compact)
+
+        # Trigger parent window size adjustment to prevent vertical stretching
+        win = self.window()
+        if win:
+            from PyQt6 import sip
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)

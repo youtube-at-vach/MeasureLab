@@ -21,11 +21,24 @@ mock_qt_core.QRunnable = MockQRunnable
 mock_qt_core.QObject = MockQObject
 mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
 
+class MockQWidget:
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+class MockQDialog(MockQWidget):
+    pass
+
+
+mock_qt_widgets = MagicMock()
+mock_qt_widgets.QWidget = MockQWidget
+mock_qt_widgets.QDialog = MockQDialog
+
 mock_modules = {
     "PyQt6": MagicMock(),
     "PyQt6.QtCore": mock_qt_core,
     "PyQt6.QtGui": MagicMock(),
-    "PyQt6.QtWidgets": MagicMock(),
+    "PyQt6.QtWidgets": mock_qt_widgets,
     "pyqtgraph": MagicMock(),
 }
 
@@ -37,6 +50,9 @@ def mock_gui_deps():
         if "src.gui.widgets.frequency_counter" in sys.modules:
             del sys.modules["src.gui.widgets.frequency_counter"]
         yield
+        # Clean up to prevent subsequent test pollution
+        if "src.gui.widgets.frequency_counter" in sys.modules:
+            del sys.modules["src.gui.widgets.frequency_counter"]
 
 
 def test_worker_logic_basic():
