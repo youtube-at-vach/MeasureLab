@@ -22,8 +22,17 @@ class TestNoiseProfilerLogicBase(unittest.TestCase):
             def __init__(self, *args, **kwargs):
                 pass
 
+        class MockQWidget:
+            def __init__(self, *args, **kwargs):
+                pass
+
+        class MockQDialog(MockQWidget):
+            pass
+
         self.mock_qt.QtCore.QObject = MockQObject
         self.mock_qt.QtCore.QRunnable = MockQRunnable
+        self.mock_qt.QtWidgets.QWidget = MockQWidget
+        self.mock_qt.QtWidgets.QDialog = MockQDialog
 
         # Mock pyqtSignal to return a MagicMock (which has .emit which is also a MagicMock)
         # We use a side_effect that returns a NEW MagicMock each time
