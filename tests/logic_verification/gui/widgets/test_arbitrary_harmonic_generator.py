@@ -19,7 +19,9 @@ def generator_widget(qtbot):
     module = ArbitraryHarmonicGenerator(engine)
     widget = module.get_widget()
     qtbot.addWidget(widget)
-    return widget, module, engine
+    yield widget, module, engine
+    widget.timer.stop()
+    module.stop_generation()
 
 
 def test_initialization(generator_widget):
@@ -136,9 +138,8 @@ def test_export_and_import_compensation(generator_widget, tmp_path):
 
     temp_file = os.path.join(tmp_path, "comp.json")
 
-    # Export using patch to bypass QFileDialog
-    with patch("PyQt6.QtWidgets.QFileDialog.getSaveFileName", return_value=(temp_file, "JSON Files (*.json)")):
-        analyzer_widget.on_export_comp()
+    # Export using direct filename parameter
+    analyzer_widget.on_export_comp(filename=temp_file)
 
     # Confirm file was written
     assert os.path.exists(temp_file)
@@ -150,9 +151,8 @@ def test_export_and_import_compensation(generator_widget, tmp_path):
     assert data["max_harmonic"] == 10
     assert len(data["compensation_coeffs"]) > 0
 
-    # Import the data in our ArbitraryHarmonicWidget
-    with patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")):
-        widget.on_load_compensation()
+    # Import the data in our ArbitraryHarmonicWidget specifying filename directly
+    widget.on_load_compensation(filename=temp_file)
 
     # Check imported coefficients
     assert module.compensation_enabled
@@ -187,23 +187,13 @@ def test_frequency_mismatch_warning(generator_widget, tmp_path):
     # Set widget frequency spin to 2000.0 Hz (which causes mismatch warning)
     widget.freq_spin.setValue(2000.0)
 
-    # 1. Test clicking "No" on warning dialog
-    with (
-        patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")),
-        patch("PyQt6.QtWidgets.QMessageBox.warning", return_value=QMessageBox.StandardButton.No) as mock_warn,
-    ):
-        widget.on_load_compensation()
-        assert mock_warn.called
-        assert not module.compensation_enabled  # Should NOT apply
+    # 1. Test clicking "No" on warning dialog (bypassed with force_apply=False)
+    widget.on_load_compensation(filename=temp_file, force_apply=False)
+    assert not module.compensation_enabled  # Should NOT apply
 
-    # 2. Test clicking "Yes" on warning dialog
-    with (
-        patch("PyQt6.QtWidgets.QFileDialog.getOpenFileName", return_value=(temp_file, "JSON Files (*.json)")),
-        patch("PyQt6.QtWidgets.QMessageBox.warning", return_value=QMessageBox.StandardButton.Yes) as mock_warn,
-    ):
-        widget.on_load_compensation()
-        assert mock_warn.called
-        assert module.compensation_enabled  # Should apply anyway
+    # 2. Test clicking "Yes" on warning dialog (bypassed with force_apply=True)
+    widget.on_load_compensation(filename=temp_file, force_apply=True)
+    assert module.compensation_enabled  # Should apply anyway
 
 
 def test_fine_tuning_math(generator_widget):
