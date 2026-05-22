@@ -1323,14 +1323,14 @@ class NetworkAnalyzerWidget(QWidget):
             self.etc_db = []
             self.harmonics_data = {}
             self._needs_plot_update = False
-            self.mag_curve.setData([], [])
-            self.phase_curve.setData([], [])
-            self.gd_curve.setData([], [])
-            self.coh_curve.setData([], [])
-            self.ir_curve.setData([], [])
-            self.etc_curve.setData([], [])
+            self.mag_curve.clear()
+            self.phase_curve.clear()
+            self.gd_curve.clear()
+            self.coh_curve.clear()
+            self.ir_curve.clear()
+            self.etc_curve.clear()
             for curve in self.h_curves.values():
-                curve.setData([], [])
+                curve.clear()
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.update_timer.start(50)
@@ -1566,13 +1566,13 @@ class NetworkAnalyzerWidget(QWidget):
 
     def refresh_etc_plot(self):
         if len(self.etc_db) != len(self.etc_times_ms):
-            self.etc_curve.setData([], [])
+            self.etc_curve.clear()
             return
 
         etc_db = np.asarray(self.etc_db)
         etc_times_ms = np.asarray(self.etc_times_ms)
         if etc_db.size == 0:
-            self.etc_curve.setData([], [])
+            self.etc_curve.clear()
             return
 
         smooth_mode = self.etc_smooth_combo.currentData()
@@ -1714,7 +1714,7 @@ class NetworkAnalyzerWidget(QWidget):
 
             self.riaa_curve.setData(freqs_to_plot, y_riaa_final)
         else:
-            self.riaa_curve.setData([], [])
+            self.riaa_curve.clear()
 
         # Group Delay Calculation
         if self.gd_check.isChecked() and len(freqs_to_plot) > 1:
@@ -1773,7 +1773,7 @@ class NetworkAnalyzerWidget(QWidget):
 
         else:
             self.gd_axis.hide()
-            self.gd_curve.setData([], [])
+            self.gd_curve.clear()
 
         # Coherence (valid only in transfer modes)
         if (
@@ -1794,7 +1794,7 @@ class NetworkAnalyzerWidget(QWidget):
             self.update_coh_views()
         else:
             self.coh_axis.hide()
-            self.coh_curve.setData([], [])
+            self.coh_curve.clear()
 
         self.refresh_harmonics_plot()
 
@@ -1819,13 +1819,13 @@ class NetworkAnalyzerWidget(QWidget):
     def refresh_harmonics_plot(self):
         if not self.harmonics_data:
             for curve in self.h_curves.values():
-                curve.setData([], [])
+                curve.clear()
             return
 
         freqs_arr = np.asarray(self.harmonics_data["freqs"])
         if len(freqs_arr) == 0:
             for curve in self.h_curves.values():
-                curve.setData([], [])
+                curve.clear()
             return
 
         # Filtering mask
@@ -1840,7 +1840,7 @@ class NetworkAnalyzerWidget(QWidget):
         freqs_to_plot = freqs_arr[mask]
         if len(freqs_to_plot) == 0:
             for curve in self.h_curves.values():
-                curve.setData([], [])
+                curve.clear()
             return
 
         is_transfer_mode = self.module.input_mode in {"XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"}
@@ -1885,7 +1885,7 @@ class NetworkAnalyzerWidget(QWidget):
         for key in ("fundamental", "h2", "h3", "h4", "h5", "thd"):
             curve = self.h_curves[key]
             if not visibility_mapping[key]:
-                curve.setData([], [])
+                curve.clear()
                 continue
 
             # Calculate base dB
