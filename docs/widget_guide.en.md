@@ -49,16 +49,6 @@ Tools for outputting signals or generating reference signals.
 
 ---
 
-## ☕ Coffee Break: Viewing sound as a "Wave" vs "Components"
-
-As you explore the various analysis tools, you will notice two main perspectives: viewing by "Time" or viewing by "Frequency (Components)".
-To use an analogy, it's like tasting a delicious soup.
-The "Oscilloscope (Time Domain)" is like taking a sip and feeling the change over time: "It's hot at first, and then the flavor gets stronger."
-On the other hand, the "Spectrum Analyzer (Frequency Domain)" is like scientifically analyzing the soup to identify its ingredients: "It contains this many grams of salt and this many grams of pepper."
-The real thrill of measurement is knowing how to switch between these two perspectives depending on your goal!
-
----
-
 ## 📊 Basic Analysis
 
 Measures basic characteristics of audio signals (spectrum, level, frequency).

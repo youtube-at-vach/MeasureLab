@@ -48,14 +48,6 @@ Configure basic measurement parameters.
 
 This feature allows you to cancel out the distortion inherent in the measurement system itself (e.g., the output stage of your audio interface).
 
-#### ☕ Coffee Break: Fighting Fire with Fire (The Magic of Anti-Phase)
-
-When your audio interface itself is slightly distorted, how can you output a clean signal?
-This is where we use the same magic found in "noise-canceling headphones": **Anti-Phase**.
-
-For example, imagine your interface has a bad habit of always "steering slightly to the right." If you purposely feed it a signal that is pre-steered "slightly to the left" by the exact same amount, by the time it exits the interface, it will come out perfectly "straight" (clean)!
-This tab pre-measures these "distortion habits" and secretly mixes the "opposite distortion" into the output signal, magically generating a sparkling clean test signal.
-
 * **Enable Compensation**: When checked, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
 * **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated. Note that this limit cannot exceed the analysis harmonic order limit or 50.
 * **Auto-Calibrate**: Automatically captures and updates the compensation coefficients.
