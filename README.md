@@ -38,27 +38,28 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
 | 14 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
 | 15 | **Lock-in Harmonic Analyzer** | Ultra-low distortion measurement module utilizing the principle of a lock-in amplifier. It performs multi-parallel IQ detection (up to 200th order) strictly tuned to the fundamental and harmonics to extract minute distortion with high precision. |
-| 16 | **Lock-in Spectrum Finder** | High-resolution spectrum finder using parallel lock-in detection (matrix projection). |
-| 17 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
-| 18 | **Inverse Filter** | Deconvolution tool that designs inverse characteristic FIR from calibration map and applies it to audio files. Supports regularization with gain limit, tap count/smoothing specification, response preview, and batch processing with output peak normalization. |
-| 19 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
-| 20 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
-| 21 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
-| 22 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
-| 23 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
-| 24 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
-| 25 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
-| 26 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
-| 27 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
-| 28 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
-| 29 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
-| 30 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
-| 31 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
-| 32 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
-| 33 | **Stereo Alignment Monitor** | Analyzes stereo consistency (alignment). Real-time monitoring of L/R balance, frequency response match, center focus (M/S ratio), and phase issues. |
-| 34 | **Spatial Binaural Mixer** | Offline high-quality HRTF multitrack spatial renderer. Supports loading multiple audio tracks, setting position (azimuth/elevation), and rendering with SOFA files. |
-| 35 | **Waveform Loop Player** | Loads an audio file, visualizes the waveform, and loops a selected region. Useful for repeated observation of transient responses or analyzing specific phrases. |
-| 36 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
+| 16 | **Arbitrary Harmonic Generator** | Synthesizes complex waveforms by precisely defining the fundamental frequency and the amplitude/phase of multiple harmonic components (up to the 50th order). |
+| 17 | **Lock-in Spectrum Finder** | High-resolution spectrum finder using parallel lock-in detection (matrix projection). |
+| 18 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
+| 19 | **Inverse Filter** | Deconvolution tool that designs inverse characteristic FIR from calibration map and applies it to audio files. Supports regularization with gain limit, tap count/smoothing specification, response preview, and batch processing with output peak normalization. |
+| 20 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
+| 21 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
+| 22 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
+| 23 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
+| 24 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
+| 25 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
+| 26 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
+| 27 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
+| 28 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
+| 29 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
+| 30 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
+| 31 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
+| 32 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
+| 33 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
+| 34 | **Stereo Alignment Monitor** | Analyzes stereo consistency (alignment). Real-time monitoring of L/R balance, frequency response match, center focus (M/S ratio), and phase issues. |
+| 35 | **Spatial Binaural Mixer** | Offline high-quality HRTF multitrack spatial renderer. Supports loading multiple audio tracks, setting position (azimuth/elevation), and rendering with SOFA files. |
+| 36 | **Waveform Loop Player** | Loads an audio file, visualizes the waveform, and loops a selected region. Useful for repeated observation of transient responses or analyzing specific phrases. |
+| 37 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 
 ### 🌍 Localization
 
@@ -153,5 +154,5 @@ You are free to copy, modify, distribute, and use it for any commercial or non-c
 ### 🤖 AI Models
 
 - OpenAI: GPT-4.1, GPT-5, GPT-5.1 Codex Max, GPT-5.2, GPT-5.2 Codex, GPT-5.3-Codex, GPT-5.4, GPT-5.5
-- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash, Gemini 3.1 Pro
+- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash, Gemini 3.1 Pro, Gemini 3.5 Flash
 - Anthropic: Claude 4.5 Sonnet
