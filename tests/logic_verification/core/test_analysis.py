@@ -65,6 +65,13 @@ class TestAudioCalc:
         with pytest.raises(ValueError, match="Invalid sample rate"):
             AudioCalc.design_c_weighting(-100)
 
+
+    def test_design_aes17_filter_invalid(self):
+        with pytest.raises(ValueError, match="Invalid sample rate"):
+            AudioCalc.design_aes17_filter(0)
+        with pytest.raises(ValueError, match="Invalid sample rate"):
+            AudioCalc.design_aes17_filter(-100)
+
     def test_optimize_frequency_empty_signal(self):
         result = AudioCalc.optimize_frequency(np.array([]), 48000, 1000.0)
         assert result == 1000.0
