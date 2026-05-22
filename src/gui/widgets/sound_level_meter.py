@@ -830,3 +830,9 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
             self.sidebar.setHidden(compact)
         if hasattr(self, "tabs"):
             self.tabs.setHidden(compact)
+
+        # Trigger parent window size adjustment to prevent vertical stretching
+        win = self.window()
+        if win:
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(50, win.adjustSize)

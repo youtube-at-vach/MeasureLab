@@ -92,9 +92,15 @@ def test_bnim_meter_compact_mode(qtbot):
 
 
 def test_sound_level_meter_compact_mode(qtbot):
+    from PyQt6.QtWidgets import QMainWindow
     engine = MockAudioEngine()
     module = SoundLevelMeter(engine)
     widget = SoundLevelMeterWidget(module)
+
+    # Attach to a parent QMainWindow to mock and test adjustSize
+    parent_win = QMainWindow()
+    parent_win.adjustSize = MagicMock()
+    widget.setParent(parent_win)
     qtbot.addWidget(widget)
 
     assert isinstance(widget, CompactableWidgetInterface)
@@ -107,10 +113,22 @@ def test_sound_level_meter_compact_mode(qtbot):
     assert widget.sidebar.isHidden()
     assert widget.tabs.isHidden()
 
+    # Wait for the singleShot timer of 50ms to fire and check if adjustSize was called
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    parent_win.adjustSize.reset_mock()
+
     widget.set_compact_mode(False)
     assert not widget.is_compact_mode()
     assert not widget.sidebar.isHidden()
     assert not widget.tabs.isHidden()
+
+    # Wait for singleShot timer
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    parent_win.deleteLater()
 
 
 def test_noise_profiler_compact_mode(qtbot):
