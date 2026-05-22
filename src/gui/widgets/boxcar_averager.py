@@ -290,9 +290,9 @@ class BoxcarAverager(MeasurementModule):
 
             # Output to both channels? Or just Left? Let's do Left.
             # Output to selected channel(s)
-            if outdata.shape[1] >= 1 and self.input_channel in ["Left", "Stereo"]:
+            if outdata.shape[1] >= 1 and self.input_channel in {"Left", "Stereo"}:
                 outdata[:, 0] = signal * 0.5  # -6dB
-            if outdata.shape[1] >= 2 and self.input_channel in ["Right", "Stereo"]:
+            if outdata.shape[1] >= 2 and self.input_channel in {"Right", "Stereo"}:
                 outdata[:, 1] = signal * 0.5
 
     def process(self):

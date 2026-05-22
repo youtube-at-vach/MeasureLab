@@ -1932,7 +1932,7 @@ class SettingsWidget(QWidget):
     def _sync_buffer_level_from_size(self, size, sr):
         """Check if current size matches any level. If so, select it. Else Custom."""
         match = "Custom"
-        for lvl in ["FAST", "MINIMUM", "STABLE", "LOW_FREQ", "ULTRA"]:
+        for lvl in ("FAST", "MINIMUM", "STABLE", "LOW_FREQ", "ULTRA"):
             expected = self._calculate_buffer_size(sr, lvl)
             if expected == size:
                 match = lvl

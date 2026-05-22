@@ -411,7 +411,7 @@ class AudioCalc:
         # but 16k is reasonable.
 
         base_t = np.arange(chunk_size) * dt
-        E_base = np.exp(1j * np.outer(omega, base_t))
+        E_base = np.exp(1j * (omega[:, None] * base_t[None, :]))
 
         def _compute_chunk(i):
             end = min(i + chunk_size, N)
