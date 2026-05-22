@@ -68,7 +68,7 @@ class IndependentWindow(QMainWindow):
         reattach_action.triggered.connect(self.reattach_requested.emit)
         menu.addAction(reattach_action)
 
-        menu.exec(event.globalPosition().toPoint())
+        menu.exec(event.globalPos())
 
 
 class DetachableWidgetWrapper(QWidget):

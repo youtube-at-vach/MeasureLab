@@ -1,5 +1,42 @@
 # Changelog
 
+## [v0.7.4] - 2026-05-22
+
+> [!IMPORTANT]
+> **Critical Swings and Measurement Precision Improvements**
+>
+> * **Lock-in Phase Tracking**: Implemented continuous phase tracking for sine wave generation in the Lock-in Amplifier widget, eliminating phase jumps/waveform discontinuities during frequency sweeps.
+> * **Linearity Amplitude Ramping**: Added amplitude ramping (ramp-in and ramp-out) in the Linearity Analyzer to prevent transient click noise and signal discontinuities, greatly stabilizing loopback sweeps.
+> * **Impedance Sweep Safety**: Implemented continuous phase tracking for impedance measurements, and ensured the analyzer automatically stops signal generation and analysis upon sweep completion to avoid persistent active loopback.
+> * **Nyquist Limitations**: Dynamically restrict frequency range limits in the Network Analyzer based on the active audio sample rate to ensure measurements remain within valid limits.
+> * **UI Reentrancy Protection**: Added robust UI state and timer locks during lock-in compensation data export to prevent reentrancy issues.
+
+### Added
+
+* **Arbitrary Harmonic Generator**: Introduced a new widget for creating customized harmonic profiles, fully integrated with fine-tuning, tabs, and export/import functionality.
+* **Compact Display Mode**: Introduced a new space-saving "Compact Mode" for primary widgets including Sound Level Meter, Noise Profiler, and Frequency Counter.
+    * Supported via a new `CompactableWidgetInterface` for flexible UI layout toggling.
+    * Added a **"Compact"** button in the Detachable Window header, enabling space-saving layouts only when a widget is detached.
+    * Implemented auto-reset mechanism that reverts widgets to their detailed standard modes when reattached to the main application window.
+    * Fine-tuned focus policies and keyboard input handling to allow quick, uninterrupted hotkey toggling (e.g. using the 'C' key).
+* **GUI Stability**: Implemented explicit Qt widget cleanup and lifecycle checks to avoid "wrapped C/C++ object has been deleted" runtime errors.
+
+### Changed
+
+* **Performance & Optimizations**:
+    * Vectorized hum noise harmonic mask calculations (`hum_components`) in the Noise Profiler for massive processing speedups.
+    * Cached and throttled Percentile Noise Level (LN) statistics calculation in the Sound Level Meter to eliminate UI stutter during continuous updates.
+    * Vectorized mathematical searches and optimized numerical membership tests in signal generation logic.
+    * Optimized `list_devices` in the audio engine using dictionary lookup caching to reduce redundant device queries and system call overhead.
+    * Pre-allocated buffers in the Bit Depth Estimator to reduce memory churn.
+    * Replaced `.setData([], [])` with `.clear()` for PlotDataItems to streamline GUI rendering.
+* **Security & Core**:
+    * Secured `sysctl` path execution to prevent potential PATH manipulation vulnerabilities.
+* **Test Suite & CI**:
+    * Re-engineered test setup to utilize mock PyQt6 widgets and automated module teardowns, preventing test cross-pollution.
+    * Added tests for AudioEngine output muting (`set_mute_output`), loopback settings (`set_loopback`), and AES17 filter design errors.
+    * Removed redundant `QMessageBox` references from unit tests.
+
 ## [v0.7.3] - 2026-05-21
 
 ### Added
