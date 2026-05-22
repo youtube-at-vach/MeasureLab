@@ -18,6 +18,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 class RawTimeSeries(MeasurementModule):
@@ -155,9 +156,10 @@ class RawTimeSeries(MeasurementModule):
         return t, data
 
 
-class RawTimeSeriesWidget(QWidget):
+class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: RawTimeSeries):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
 
         self._last_frame = None  # (t, data)
@@ -215,9 +217,10 @@ class RawTimeSeriesWidget(QWidget):
         root.addLayout(left, stretch=1)
 
         # Right: controls
-        right_widget = QWidget()
-        right_widget.setFixedWidth(260)
-        right = QVBoxLayout(right_widget)
+        self.right_widget = QWidget()
+        self.right_widget.setFixedWidth(260)
+        right = QVBoxLayout(self.right_widget)
+
 
         ctrl_group = QGroupBox(tr("General"))
         ctrl = QVBoxLayout(ctrl_group)
@@ -299,7 +302,7 @@ class RawTimeSeriesWidget(QWidget):
         right.addWidget(ctrl_group)
         right.addStretch(1)
 
-        root.addWidget(right_widget)
+        root.addWidget(self.right_widget)
 
         # Apply defaults
         self._apply_unit_settings()
@@ -428,3 +431,9 @@ class RawTimeSeriesWidget(QWidget):
 
         # Force scrolling view even if user drags/zooms (unless paused).
         self._apply_view_ranges()
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "right_widget"):
+            self.right_widget.setHidden(compact)
+
