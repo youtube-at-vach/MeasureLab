@@ -834,5 +834,6 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         # Trigger parent window size adjustment to prevent vertical stretching
         win = self.window()
         if win:
+            from PyQt6 import sip
             from PyQt6.QtCore import QTimer
-            QTimer.singleShot(50, win.adjustSize)
+            QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)

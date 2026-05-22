@@ -301,6 +301,8 @@ class DetachableWidgetWrapper(QWidget):
             self.content_widget.setParent(self.content_container)
             self.content_container_layout.addWidget(self.content_widget)
 
+            # Explicitly delete the window to ensure clean C++ destruction in Qt
+            self.independent_window.deleteLater()
             self.independent_window = None
 
         # 2. Update UI state
