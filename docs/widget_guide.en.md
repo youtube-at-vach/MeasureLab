@@ -11,6 +11,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | What you want to do | Recommended Widget |
 | :--- | :--- |
 | **Output sound / Need a signal source** | [Signal Generator](widgets/signal_generator.md) |
+| **Synthesize complex waveforms / Blend specific harmonics** | [Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md) |
 | **View frequency components (spectrum)** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
 | **Check specific frequencies with extremely high resolution** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
 | **View original waveform shape** | [Oscilloscope](widgets/oscilloscope.md) |
@@ -43,6 +44,9 @@ Tools for outputting signals or generating reference signals.
 
 - **[Signal Generator](widgets/signal_generator.md)**
     - Generates sine waves, noise, sweep signals, etc. It is the basic signal source for measurements.
+
+- **[Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md)**
+    - An advanced signal generator that allows synthesizing complex waveforms by precisely controlling the amplitude and phase of multiple harmonic components (up to the 50th order) relative to the fundamental frequency.
 
 - **[Timecode Monitor & Generator](widgets/timecode_monitor.md)**
     - Generates and monitors LTC (Linear Timecode). Used for checking synchronization with video equipment.

@@ -11,6 +11,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | あなたがやりたいこと | おすすめのウィジット |
 | :--- | :--- |
 | **まず音を出したい / 信号源がほしい** | [Signal Generator](widgets/signal_generator.md) |
+| **複雑な波形を合成したい / 特定の高調波をブレンドした信号を作りたい** | [Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md) |
 | **周波数成分（スペクトル）を見たい** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
 | **特定の周波数を極めて高い分解能で確認したい** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
 | **波形の形をそのまま見たい** | [Oscilloscope](widgets/oscilloscope.md) |
@@ -43,6 +44,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 
 - **[Signal Generator](widgets/signal_generator.md)**
     - 正弦波、ノイズ、スイープ信号などを生成します。測定の基本となる信号源です。
+
+- **[Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md)**
+    - 基本周波数と複数（最大50次）の高調波成分の振幅・位相を自在にコントロールし、複雑な波形を合成できる信号発生器です。
 
 - **[Timecode Monitor & Generator](widgets/timecode_monitor.md)**
     - LTC (Linear Timecode) の生成と監視を行います。映像機器との同期確認などに使用します。
