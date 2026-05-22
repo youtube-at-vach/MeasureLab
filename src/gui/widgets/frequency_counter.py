@@ -941,9 +941,9 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
             if np.any(mask):
                 self.allan_curve.setData(taus[mask], devs[mask])
             else:
-                self.allan_curve.setData([], [])
+                self.allan_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
         else:
-            self.allan_curve.setData([], [])
+            self.allan_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def on_freq_calculation_result(self, freq, amp_db):
         self.is_calculating_freq = False
@@ -1024,7 +1024,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
                         self.jitter_sigma_label.setText(tr("Std Dev: --"))
                         self.jitter_n_label.setText(tr("N: --"))
                         self.jitter_hist_item.setOpts(x=[0.0], height=[0.0], width=1.0)
-                        self.jitter_pdf_curve.setData([], [])
+                        self.jitter_pdf_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
                     else:
                         self.jitter_baseline_label.setText(baseline_text)
                         self.jitter_offset_label.setText(offset_text)
@@ -1045,7 +1045,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
                             self.jitter_pdf_curve.setData(x_pdf, y_pdf)
                         else:
                             self.jitter_hist_item.setOpts(x=[0.0], height=[0.0], width=1.0)
-                            self.jitter_pdf_curve.setData([], [])
+                            self.jitter_pdf_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
         else:
             self.freq_label.setText(self._placeholder_main_text())
             if self.display_mode == "period":
@@ -1063,7 +1063,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
                 self.jitter_sigma_label.setText(tr("Std Dev: --"))
                 self.jitter_n_label.setText(tr("N: --"))
                 self.jitter_hist_item.setOpts(x=[0.0], height=[0.0], width=1.0)
-                self.jitter_pdf_curve.setData([], [])
+                self.jitter_pdf_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def update_display(self):
         if self.is_calculating_freq:

@@ -1121,7 +1121,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface):
         self.module.math_mode = val
         if val == "Off":
             self.axis_math.hide()
-            self.curve_math.setData([], [])  # Clear math curve when off
+            self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead  # Clear math curve when off
         else:
             self.axis_math.show()
             self.axis_math.setLabel(tr("Math ({0})").format(val), color="#ffffff")
@@ -1453,9 +1453,9 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface):
                     padding = (mx - mn) * 0.1
                     self.math_view.setYRange(mn - padding, mx + padding)
                 else:
-                    self.curve_math.setData([], [])
+                    self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
             else:
-                self.curve_math.setData([], [])
+                self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
             # Update cursor info if they are on (to update voltage readings)
             if self.chk_cursors.isChecked():

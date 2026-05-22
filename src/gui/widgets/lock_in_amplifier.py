@@ -1483,8 +1483,8 @@ class LockInAmplifierWidget(QWidget):
         self.fra_log_freqs = []
         self.fra_raw_mags = []
         self.fra_phases = []
-        self.fra_curve_mag.setData([], [])
-        self.fra_curve_phase.setData([], [])
+        self.fra_curve_mag.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+        self.fra_curve_phase.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
         # Reset View (Force AutoRange)
         self.fra_plot.getPlotItem().enableAutoRange()
@@ -1759,8 +1759,8 @@ class LockInAmplifierWidget(QWidget):
 
         # Clear Data
         self.cal_data = []
-        self.cal_curve_mag.setData([], [])
-        self.cal_curve_phase.setData([], [])
+        self.cal_curve_mag.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+        self.cal_curve_phase.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
         # Start Worker (Reuse FRASweepWorker logic)
         start = self.cal_start_spin.value()

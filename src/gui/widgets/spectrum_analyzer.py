@@ -922,7 +922,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.module._avg_magnitude = None
         self.module._avg_cross_spectrum = None
         self.module._peak_magnitude = None
-        self.peak_curve.setData([], [])
+        self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
         # Disable channel selection in Cross Spectrum mode?
         # Cross Spectrum inherently uses L and R.
@@ -940,7 +940,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
     def on_channel_changed(self, val):
         self.module.channel_mode = val
         self.module._avg_magnitude = None  # Reset average
-        self.peak_curve.setData([], [])
+        self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def on_fft_size_changed(self, val):
         if "1M" in val:
@@ -960,7 +960,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.module.weighting = val
         # Reset peak when weighting changes
         self.module._peak_magnitude = None
-        self.peak_curve.setData([], [])
+        self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def on_smooth_changed(self, index):
         val = self.smooth_combo.itemData(index)
@@ -981,11 +981,11 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.module.peak_hold = checked
         if not checked:
             self.module._peak_magnitude = None
-            self.peak_curve.setData([], [])
+            self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def on_clear_peak(self):
         self.module._peak_magnitude = None
-        self.peak_curve.setData([], [])
+        self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def on_unit_changed(self, val):
         self.module.display_unit = val
@@ -995,7 +995,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.plot_widget.setLabel("left", "Magnitude", units=unit)
         # Reset peak to avoid mixing units
         self.module._peak_magnitude = None
-        self.peak_curve.setData([], [])
+        self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def update_plot(self):
         if not self.module.is_running:
@@ -1067,7 +1067,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
             else:
                 # Fallback
                 self.plot_curve.setData(plot_freqs_linear, plot_mags, pen="y")
-                self.plot_curve_2.setData([], [])
+                self.plot_curve_2.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
         else:
             # Single Curve
             # Ensure 1D
@@ -1075,7 +1075,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
                 plot_mags = plot_mags[:, 0]  # Should not happen if logic above is correct for non-Dual
 
             self.plot_curve.setData(plot_freqs_linear, plot_mags, pen="y")
-            self.plot_curve_2.setData([], [])
+            self.plot_curve_2.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
         if peak_mags is not None:
             # Peak hold usually just max of whatever we are displaying.
@@ -1085,7 +1085,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
                 peak_mags = peak_mags[:, 0]
             self.peak_curve.setData(plot_freqs_linear, peak_mags)
         else:
-            self.peak_curve.setData([], [])
+            self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
     def apply_theme(self, theme_name):
         # If theme_name is 'system', resolve it
