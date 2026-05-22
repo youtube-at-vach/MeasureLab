@@ -7,15 +7,35 @@ class BitDepthEstimator:
     from a sequence of audio samples.
     """
 
-    def __init__(self):
-        self.reset()
+    def __init__(self, capacity=8192):
+        self._capacity = capacity
+        # To avoid data type issues during concatenation and preserve precision,
+        # we do not force np.float32 for the buffer unless we know it.
+        # But we don't know it until the first block, so we initialize as float64
+        # to match np.random.randn default, or just dynamically initialize on first add.
+        self._buffer = None
+        self._write_ptr = 0
 
     def reset(self):
-        self._samples_buffer = []
+        self._write_ptr = 0
 
     def add_samples(self, samples: np.ndarray):
         """Add samples to the internal buffer for later analysis."""
-        self._samples_buffer.append(samples)
+        n = len(samples)
+        if self._buffer is None:
+            self._buffer = np.zeros(max(self._capacity, n), dtype=samples.dtype)
+            self._capacity = len(self._buffer)
+
+        if self._write_ptr + n > self._capacity:
+            new_capacity = max(self._capacity * 2, self._write_ptr + n)
+            new_buffer = np.zeros(new_capacity, dtype=self._buffer.dtype)
+            if self._write_ptr > 0:
+                new_buffer[:self._write_ptr] = self._buffer[:self._write_ptr]
+            self._buffer = new_buffer
+            self._capacity = new_capacity
+
+        self._buffer[self._write_ptr:self._write_ptr + n] = samples
+        self._write_ptr += n
 
     def analyze(self):
         """
@@ -25,12 +45,12 @@ class BitDepthEstimator:
         - 'delta_hist': Tuple (hist, bin_edges) for quantization step histogram
         - 'bit_distribution': Array of length 32 representing bit activity probability
         """
-        if not self._samples_buffer:
+        if self._write_ptr == 0:
             return None
 
-        # Concatenate all chunks
-        full_data = np.concatenate(self._samples_buffer)
-        self._samples_buffer = []  # Clear buffer after processing
+        # Just take a copy of the valid data
+        full_data = self._buffer[:self._write_ptr].copy()
+        self._write_ptr = 0  # Clear buffer after processing
 
         if len(full_data) < 2:
             return None
