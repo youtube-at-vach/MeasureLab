@@ -1223,7 +1223,7 @@ class AudioCalc:
         rel_starts = idx_starts - start_idx
         rel_ends = idx_ends - start_idx
 
-        for i, (s, e) in enumerate(zip(rel_starts, rel_ends)):
+        for i, (s, e) in enumerate(zip(rel_starts, rel_ends, strict=False)):
             if s < e:
                 mask[s:e] = True
                 harmonic_indices[s:e] = i
@@ -1238,7 +1238,7 @@ class AudioCalc:
 
         hum_power = float(np.sum(powers_masked))
         powers = np.bincount(harmonic_indices[mask], weights=powers_masked, minlength=max_i)
-        hum_components = [(float(f), float(math.sqrt(p))) for f, p in zip(f_centers, powers)]
+        hum_components = [(float(f), float(math.sqrt(p))) for f, p in zip(f_centers, powers, strict=False)]
 
         return np.sqrt(hum_power), base_freq, hum_components
 
