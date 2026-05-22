@@ -399,7 +399,7 @@ class DistortionAnalyzer(MeasurementModule):
         sample_rate = settings.get("sample_rate", 48000)
         window_type = settings.get("window_type", "blackmanharris")
 
-        if signal_type in ["smpte", "ccif"]:
+        if signal_type in {"smpte", "ccif"}:
             window = get_cached_window(window_type, len(data), dtype=data.dtype)
             fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) * (2 / np.sum(window))

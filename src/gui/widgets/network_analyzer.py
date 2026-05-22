@@ -281,9 +281,9 @@ class NetworkAnalyzer(MeasurementModule):
     def _prepare_output_buffer(self, signal):
         """Prepares stereo output buffer based on routing."""
         out_data = np.zeros((len(signal), 2), dtype=np.float32)
-        if self.output_channel in ["L", "STEREO"]:
+        if self.output_channel in {"L", "STEREO"}:
             out_data[:, 0] = signal
-        if self.output_channel in ["R", "STEREO"]:
+        if self.output_channel in {"R", "STEREO"}:
             out_data[:, 1] = signal
         return out_data
 
@@ -302,7 +302,7 @@ class NetworkAnalyzer(MeasurementModule):
         reference_peak_idx = None
 
         # Determine the channel to use for time alignment
-        if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+        if self.input_mode in {"XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"}:
             align_ch = self.ref_channel_index
         elif self.input_mode == "R":
             align_ch = 1
@@ -475,7 +475,7 @@ class NetworkAnalyzer(MeasurementModule):
         ir_snr_db = None
         harmonics = {}
 
-        if self.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]:
+        if self.input_mode in {"XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"}:
             # XFER Mode: Ref = Ch0, Meas = Ch1 (Default) or Custom for Crosstalk
             ref_sig = rec_data[:, self.ref_channel_index]
             meas_sig = rec_data[:, self.meas_channel_index]
@@ -1200,7 +1200,7 @@ class NetworkAnalyzerWidget(QWidget):
             self.module.output_channel = self.out_combo.currentData()
 
         # Update UI hints
-        is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
+        is_transfer_mode = self.module.input_mode in {"XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"}
 
         if is_transfer_mode:
             if "XTALK" in self.module.input_mode:
@@ -1218,7 +1218,7 @@ class NetworkAnalyzerWidget(QWidget):
             self.coh_check.setEnabled(False)
 
     def on_display_mode_changed(self, index):
-        is_transfer_mode = self.module.input_mode in ["XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"]
+        is_transfer_mode = self.module.input_mode in {"XFER", "XTALK_LR", "XTALK_RL", "XFER_REV"}
         if not is_transfer_mode:
             self.unit_combo.setEnabled(self.single_mode_combo.currentData() == "absolute")
         self.refresh_plots()
@@ -1608,7 +1608,7 @@ class NetworkAnalyzerWidget(QWidget):
         if len(freqs_to_plot) == 0:
             return
 
-        is_transfer_mode = self.module.input_mode in ["XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"]
+        is_transfer_mode = self.module.input_mode in {"XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"}
         is_single_absolute_mode = (not is_transfer_mode) and (self.single_mode_combo.currentData() == "absolute")
 
         # Base domain:
@@ -1669,7 +1669,7 @@ class NetworkAnalyzerWidget(QWidget):
             else:
                 y_values = base_db
 
-        is_db_magnitude = is_effectively_relative or unit in ["dBFS", "dBV", "dBu"]
+        is_db_magnitude = is_effectively_relative or unit in {"dBFS", "dBV", "dBu"}
         y_values, phases_to_plot = self._apply_smoothing(
             freqs_to_plot,
             y_values,
@@ -1707,7 +1707,7 @@ class NetworkAnalyzerWidget(QWidget):
                 mags_riaa_linear = 10 ** (y_riaa_base / 20)
                 if unit == "dBFS":
                     y_riaa_final = y_riaa_base
-                elif unit in ["dBV", "dBu", "Vrms", "Vpeak"]:
+                elif unit in {"dBV", "dBu", "Vrms", "Vpeak"}:
                     y_riaa_final = linear_to_amplitude(mags_riaa_linear, unit, input_sensitivity)
                 else:
                     y_riaa_final = y_riaa_base
@@ -1843,7 +1843,7 @@ class NetworkAnalyzerWidget(QWidget):
                 curve.setData([], [])
             return
 
-        is_transfer_mode = self.module.input_mode in ["XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"]
+        is_transfer_mode = self.module.input_mode in {"XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"}
         is_single_absolute_mode = (not is_transfer_mode) and (self.single_mode_combo.currentData() == "absolute")
         smooth_fraction = self.smooth_combo.currentData()
         unit = self.unit_combo.currentText()
@@ -1862,7 +1862,7 @@ class NetworkAnalyzerWidget(QWidget):
                 self.harmonics_plot.setLabel("left", tr("Level"), units="dBV")
             elif unit == "dBu":
                 self.harmonics_plot.setLabel("left", tr("Level"), units="dBu")
-            elif unit in ["Vrms", "Vpeak"]:
+            elif unit in {"Vrms", "Vpeak"}:
                 self.harmonics_plot.setLabel("left", tr("Level"), units="V")
 
         visibility_mapping = {
@@ -1876,13 +1876,13 @@ class NetworkAnalyzerWidget(QWidget):
 
         # Get raw data for each key
         raw_db_dict = {}
-        for key in ["fundamental", "h2", "h3", "h4", "h5", "thd"]:
+        for key in ("fundamental", "h2", "h3", "h4", "h5", "thd"):
             if key in self.harmonics_data:
                 raw_db_dict[key] = np.asarray(self.harmonics_data[key])[mask]
             else:
                 raw_db_dict[key] = np.full_like(freqs_arr[mask], -120.0)
 
-        for key in ["fundamental", "h2", "h3", "h4", "h5", "thd"]:
+        for key in ("fundamental", "h2", "h3", "h4", "h5", "thd"):
             curve = self.h_curves[key]
             if not visibility_mapping[key]:
                 curve.setData([], [])
@@ -1923,7 +1923,7 @@ class NetworkAnalyzerWidget(QWidget):
 
                 if unit == "dBFS":
                     y_values = base_db
-                elif unit in ["dBV", "dBu", "Vrms", "Vpeak"]:
+                elif unit in {"dBV", "dBu", "Vrms", "Vpeak"}:
                     y_values = linear_to_amplitude(mags_linear, unit, input_sensitivity)
                 else:
                     y_values = base_db
@@ -1932,7 +1932,7 @@ class NetworkAnalyzerWidget(QWidget):
             if self.harmonics_as_percent_check.isChecked():
                 is_db_magnitude = False
             else:
-                is_db_magnitude = is_effectively_relative or unit in ["dBFS", "dBV", "dBu"]
+                is_db_magnitude = is_effectively_relative or unit in {"dBFS", "dBV", "dBu"}
 
             if smooth_fraction is not None:
                 y_values = self._smooth_fractional_octave_values(

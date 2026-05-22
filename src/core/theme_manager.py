@@ -55,7 +55,7 @@ class ThemeManager(QObject):
         Args:
             theme_name: One of 'system', 'light', 'dark'
         """
-        if theme_name not in ["system", "light", "dark"]:
+        if theme_name not in {"system", "light", "dark"}:
             self.logger.error(f"Invalid theme name: {theme_name}")
             return
 
