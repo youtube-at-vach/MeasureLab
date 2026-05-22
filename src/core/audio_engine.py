@@ -320,20 +320,23 @@ class AudioEngine:
         if hostapis is None:
             return [dict(dev) for dev in devices]
 
-        names = {i: str(name) for i, ha in enumerate(hostapis) if (name := ha.get("name"))}
+        names = {}
+        for i, ha in enumerate(hostapis):
+            if name := ha.get("name"):
+                names[i] = names[str(i)] = str(name)
 
         res = [dict(dev) for dev in devices]
         for d in res:
-            try:
-                idx = d.get("hostapi")
-                if idx is not None:
-                    name = names.get(int(idx))
+            idx = d.get("hostapi")
+            if idx is not None:
+                try:
+                    name = names.get(idx)
                     if name is not None:
                         d["hostapi_name"] = name
-            except (TypeError, ValueError) as e:
-                self.logger.warning(
-                    f"Failed to parse hostapi index {idx!r} for device '{d.get('name', 'Unknown')}': {e}"
-                )
+                except TypeError as e:
+                    self.logger.warning(
+                        f"Failed to parse hostapi index {idx!r} for device '{d.get('name', 'Unknown')}': {e}"
+                    )
 
         return res
 
