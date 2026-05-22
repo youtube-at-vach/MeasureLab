@@ -11,15 +11,6 @@ The purpose of this tool is to **transform your everyday PC and audio interface 
     **MeasureLab is a "virtual laboratory" created inside your PC.**
     Pull the necessary instruments (widgets) out of the drawer, arrange them on your desk, and build your very own lab!
 
-## ☕ Coffee Break: What does it mean to "see" sound?
-
-The true identity of "sound" is invisible vibrations in the air.
-We hear it with our ears and feel it as "high," "low," "loud," or "beautiful," but we can't accurately tell what actual shape it has or what components (frequencies) are mixed in just by relying on human hearing.
-
-MeasureLab is a tool that catches this invisible "sound," turns it into easy-to-understand graphs, and projects it onto your screen.
-To use an analogy, it's like an "electrocardiogram" a doctor uses to check a heartbeat, or an "astronomical telescope" for observing distant stars.
-Your PC turns into a magic mirror that reflects the true, invisible form of sound! Wouldn't you like to take a peek at what sound really looks like?
-
 ---
 
 ## How to Read This Manual

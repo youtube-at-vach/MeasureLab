@@ -6,15 +6,6 @@ This is the dashboard screen displayed first when MeasureLab is started. It list
 
 If you are using this tool for the first time, grasp the overall picture of each widget (measurement tool) from here and select the target tool from the sidebar on the left.
 
-## ☕ Coffee Break: The Origin of the Name "MeasureLab" and the Virtual Lab
-
-"Measure" means to quantify, and "Lab" stands for "Laboratory."
-This software is your very own **"Virtual Sound Laboratory"** built inside your PC!
-
-In the real world, building a full-fledged audio laboratory would require buying multiple large, expensive measuring instruments and connecting them with complex cables. That was something only professional engineers could do.
-However, with MeasureLab, you just click the measuring instrument (widget) you want to use from the left menu (your drawer), and it magically appears on your desk (your screen).
-Peek into the shape of a wave with the Oscilloscope, or investigate the "color" of sound with the Spectrum Analyzer... Feel like a scientist and have fun exploring the true identity of invisible "sound"!
-
 ## Operation
 
 * **Selection of Tools**: You can switch to each measurement widget by clicking the icon or name in the sidebar on the left.
