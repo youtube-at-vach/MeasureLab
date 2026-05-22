@@ -2,8 +2,7 @@ import os
 import json
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
-from PyQt6.QtWidgets import QMessageBox
+from unittest.mock import MagicMock
 
 from src.gui.widgets.arbitrary_harmonic_generator import ArbitraryHarmonicGenerator, MAX_HARMONICS
 
