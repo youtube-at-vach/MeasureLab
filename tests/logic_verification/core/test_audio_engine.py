@@ -116,6 +116,19 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertFalse(self.engine.offline_mode)
         self.engine._restart_stream.assert_not_called()
 
+
+    def test_set_loopback(self):
+        self.assertFalse(self.engine.loopback)
+        self.engine.set_loopback(True)
+        self.assertTrue(self.engine.loopback)
+        self.engine.logger.debug.assert_called_with("Set software loopback: True")
+
+    def test_set_mute_output(self):
+        self.assertFalse(self.engine.mute_output)
+        self.engine.set_mute_output(True)
+        self.assertTrue(self.engine.mute_output)
+        self.engine.logger.debug.assert_called_with("Set mute output: True")
+
     def test_set_pipewire_jack_resident(self):
         self.assertFalse(self.engine.pipewire_jack_resident)
 
