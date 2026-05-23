@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   changes:
@@ -21,7 +20,6 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           filters: |
             code:
               - 'src/**'
