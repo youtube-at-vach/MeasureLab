@@ -1115,7 +1115,7 @@ class DistortionAnalyzerWidget(QWidget):
 
         # Reset sweep data and plot when changing from/to sweep modes
         self.module.sweep_results = []
-        self.sweep_curve.setData([], [])
+        self.sweep_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
         self._update_sweep_x_controls()
 
         if idx == 0:  # Real-time
@@ -1283,7 +1283,7 @@ class DistortionAnalyzerWidget(QWidget):
         self.module.start_analysis()  # Ensure audio is running
         self.action_btn.setText(tr("Stop Sweep"))
         self.module.sweep_results = []
-        self.sweep_curve.setData([], [])
+        self.sweep_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
         sweep_type = "frequency" if mode_idx == 1 else "amplitude"
         start = self.sweep_start_spin.value()
@@ -1318,7 +1318,7 @@ class DistortionAnalyzerWidget(QWidget):
 
     def _update_sweep_chart(self):
         if not self.sweep_data:
-            self.sweep_curve.setData([], [])
+            self.sweep_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
             self.sweep_points.clear()
             return
 

@@ -656,7 +656,7 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
                     y_fit_r = (y_fit_volts**2) / denom
                     self.fit_curve.setData(f_fit, y_fit_r)
                 else:
-                    self.fit_curve.setData([], [])
+                    self.fit_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
                 # Hum Markers
                 hum_freqs = [h[0] for h in results["hum_components"]]
@@ -719,7 +719,7 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
                     y_fit_db = 20 * y_fit_log
                     self.fit_curve.setData(f_fit, y_fit_db)
                 else:
-                    self.fit_curve.setData([], [])
+                    self.fit_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
                 # Hum Markers
                 hum_freqs = [h[0] for h in results["hum_components"]]

@@ -1566,9 +1566,9 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.sweep_z_phases = []
 
         # Clear Curves
-        self.curve_primary.setData([], [])
-        self.curve_secondary.setData([], [])
-        self.curve_right.setData([], [])
+        self.curve_primary.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+        self.curve_secondary.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+        self.curve_right.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
         # Clear Resonance Marker
         if self.resonance_line:

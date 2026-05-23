@@ -529,7 +529,7 @@ class WaveformLoopPlayerWidget(QWidget):
         data = self.module.playback_buffer
         duration = self.module.duration_seconds
         if data is None or len(data) == 0:
-            self.waveform_curve.setData([], [])
+            self.waveform_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
             self._update_region_ui(0.0, 0.0)
             return
 
@@ -546,7 +546,7 @@ class WaveformLoopPlayerWidget(QWidget):
     def refresh_visible_waveform(self, x_range: tuple[float, float] | None = None):
         data = self.module.playback_buffer
         if data is None or len(data) == 0:
-            self.waveform_curve.setData([], [])
+            self.waveform_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
             return
 
         if x_range is None:

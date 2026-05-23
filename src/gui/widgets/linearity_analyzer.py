@@ -715,9 +715,9 @@ class LinearityAnalyzerWidget(QWidget):
             self.results_measured = []
             self.results_snr = []
             self.results_direction = []
-            self.error_curve.setData([], [])
-            self.error_curve.setData([], [])
-            self.gain_curve.setData([], [])
+            self.error_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+            self.error_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+            self.gain_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
             # Reset Stats
             self.stat_ref_gain.setText("-- dB")
