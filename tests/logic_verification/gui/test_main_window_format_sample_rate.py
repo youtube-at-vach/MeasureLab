@@ -1,4 +1,3 @@
-import pytest
 from src.gui.main_window import MainWindow
 
 class MockMainWindow:
