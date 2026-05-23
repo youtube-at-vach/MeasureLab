@@ -369,6 +369,16 @@ class InverseFilterWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
+        self._setup_calibration_section(layout)
+        self._setup_filter_design_section(layout)
+        self._setup_file_processing_section(layout)
+
+        self.setLayout(layout)
+
+        # Initial Load
+        self.load_calibration()
+
+    def _setup_calibration_section(self, layout):
         # --- Section 1: Calibration ---
         cal_group = QGroupBox(tr("1. Calibration Data"))
         cal_layout = QHBoxLayout()
@@ -388,6 +398,7 @@ class InverseFilterWidget(QWidget):
         cal_group.setLayout(cal_layout)
         layout.addWidget(cal_group)
 
+    def _setup_filter_design_section(self, layout):
         # --- Section 2: Filter Design ---
         filter_group = QGroupBox(tr("2. Inverse Filter Design"))
         filter_layout = QVBoxLayout()
@@ -435,6 +446,7 @@ class InverseFilterWidget(QWidget):
         filter_group.setLayout(filter_layout)
         layout.addWidget(filter_group, stretch=2)
 
+    def _setup_file_processing_section(self, layout):
         # --- Section 3: File Processing ---
         proc_group = QGroupBox(tr("3. Audio Processing"))
         proc_layout = QFormLayout()
@@ -471,11 +483,6 @@ class InverseFilterWidget(QWidget):
 
         proc_group.setLayout(proc_layout)
         layout.addWidget(proc_group)
-
-        self.setLayout(layout)
-
-        # Initial Load
-        self.load_calibration()
 
     def load_calibration(self):
         cal = self.module.audio_engine.calibration
