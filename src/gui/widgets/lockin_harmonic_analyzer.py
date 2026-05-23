@@ -962,43 +962,75 @@ class LockInHarmonicWidget(QWidget):
 
         # Update Table and Bar Plot
         heights = np.zeros(self.module.max_harmonic)
-        for i in range(self.module.max_harmonic):
-            amp_peak = self.module.harmonics_amp[i]
-            phase = self.module.harmonics_phase_deg[i]
+        show_diff = self.chk_show_comp_diff.isChecked()
 
-            amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
-            dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
+        self.table.setUpdatesEnabled(False)
+        self.comp_table.setUpdatesEnabled(False)
 
-            heights[i] = max(0, amp_dbfs + 200)
+        try:
+            for i in range(self.module.max_harmonic):
+                amp_peak = self.module.harmonics_amp[i]
+                phase = self.module.harmonics_phase_deg[i]
 
-            self.table.setItem(i, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
-            self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else tr("--")))
-            self.table.setItem(i, 3, QTableWidgetItem(f"{phase:.2f}"))
+                amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
+                dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
+
+                heights[i] = max(0, amp_dbfs + 200)
+
+                if item := self.table.item(i, 1):
+                    item.setText(f"{amp_dbfs:.2f}")
+                else:
+                    self.table.setItem(i, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
+
+                if item := self.table.item(i, 2):
+                    item.setText(f"{dbc:.2f}" if i > 0 else tr("--"))
+                else:
+                    self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else tr("--")))
+
+                if item := self.table.item(i, 3):
+                    item.setText(f"{phase:.2f}")
+                else:
+                    self.table.setItem(i, 3, QTableWidgetItem(f"{phase:.2f}"))
+
+                # Update Compensation Table inline to save loops
+                if i > 0:
+                    c = self.module.compensation_coeffs[i]
+                    amp, phase_deg = self._get_comp_amp_phase(c)
+                    amp_dbfs_comp = 20 * np.log10(amp + 1e-15)
+
+                    if item := self.comp_table.item(i - 1, 1):
+                        item.setText(f"{amp_dbfs_comp:.2f}")
+                    else:
+                        self.comp_table.setItem(i - 1, 1, QTableWidgetItem(f"{amp_dbfs_comp:.2f}"))
+
+                    if item := self.comp_table.item(i - 1, 2):
+                        item.setText(f"{phase_deg:.2f}")
+                    else:
+                        self.comp_table.setItem(i - 1, 2, QTableWidgetItem(f"{phase_deg:.2f}"))
+
+                    if show_diff:
+                        ref_c = self.ref_compensation_coeffs[i]
+                        ref_amp, ref_phase_deg = self._get_comp_amp_phase(ref_c)
+                        ref_amp_dbfs = 20 * np.log10(ref_amp + 1e-15)
+
+                        diff_amp = amp_dbfs_comp - ref_amp_dbfs
+                        diff_phase = phase_deg - ref_phase_deg
+                        diff_phase = (diff_phase + 180) % 360 - 180
+
+                        if item := self.comp_table.item(i - 1, 3):
+                            item.setText(f"{diff_amp:+.2f}")
+                        else:
+                            self.comp_table.setItem(i - 1, 3, QTableWidgetItem(f"{diff_amp:+.2f}"))
+
+                        if item := self.comp_table.item(i - 1, 4):
+                            item.setText(f"{diff_phase:+.2f}")
+                        else:
+                            self.comp_table.setItem(i - 1, 4, QTableWidgetItem(f"{diff_phase:+.2f}"))
+        finally:
+            self.table.setUpdatesEnabled(True)
+            self.comp_table.setUpdatesEnabled(True)
 
         self.bar_items.setOpts(height=heights)
-
-        # Update Compensation Table
-        show_diff = self.chk_show_comp_diff.isChecked()
-        for i in range(1, self.module.max_harmonic):
-            c = self.module.compensation_coeffs[i]
-            amp, phase_deg = self._get_comp_amp_phase(c)
-
-            amp_dbfs = 20 * np.log10(amp + 1e-15)
-
-            self.comp_table.setItem(i - 1, 1, QTableWidgetItem(f"{amp_dbfs:.2f}"))
-            self.comp_table.setItem(i - 1, 2, QTableWidgetItem(f"{phase_deg:.2f}"))
-
-            if show_diff:
-                ref_c = self.ref_compensation_coeffs[i]
-                ref_amp, ref_phase_deg = self._get_comp_amp_phase(ref_c)
-                ref_amp_dbfs = 20 * np.log10(ref_amp + 1e-15)
-
-                diff_amp = amp_dbfs - ref_amp_dbfs
-                diff_phase = phase_deg - ref_phase_deg
-                diff_phase = (diff_phase + 180) % 360 - 180
-
-                self.comp_table.setItem(i - 1, 3, QTableWidgetItem(f"{diff_amp:+.2f}"))
-                self.comp_table.setItem(i - 1, 4, QTableWidgetItem(f"{diff_phase:+.2f}"))
 
         res_hist = np.array(self.module.residual_history)
         if len(res_hist) > 0:
