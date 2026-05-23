@@ -71,7 +71,7 @@ class LockInAmplifier(MeasurementModule):
         self.current_phase_std = 0.0
 
         # Averaging
-        self.averaging_count = 4
+        self.averaging_count = 1
         self.history = deque(maxlen=300)
 
         # Post-mix IIR LPF (dynamic reserve)
@@ -794,7 +794,7 @@ class LockInAmplifierWidget(QWidget):
 
         self.avg_spin = QSpinBox()
         self.avg_spin.setRange(1, 300)
-        self.avg_spin.setValue(4)
+        self.avg_spin.setValue(1)
         self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averaging_count", v))
         settings_layout.addRow(tr("Averaging:"), self.avg_spin)
 
@@ -1744,6 +1744,7 @@ class LockInAmplifierWidget(QWidget):
         self.fra_start_btn.setText(tr("Start Sweep"))
         self.fra_start_btn.setEnabled(True)
         self.module.stop_analysis()  # Stop generator
+        self.module.gen_frequency = self.freq_spin.value()
 
         # Set cursor to max frequency initially or just update
         if self.fra_log_freqs:
@@ -1814,6 +1815,7 @@ class LockInAmplifierWidget(QWidget):
         self.cal_start_btn.setEnabled(True)
         self.cal_save_btn.setEnabled(True)
         self.module.stop_analysis()
+        self.module.gen_frequency = self.freq_spin.value()
 
         # Normalize Map to 1kHz (or nearest)
         # Find 1kHz index

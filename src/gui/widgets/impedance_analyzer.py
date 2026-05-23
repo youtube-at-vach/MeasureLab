@@ -1985,6 +1985,7 @@ class ImpedanceAnalyzerWidget(QWidget):
 
     def on_sweep_finished(self):
         self.module.stop_analysis()
+        self.module.gen_frequency = self.freq_spin.value()
 
         if self.cal_mode == "open":
             QMessageBox.information(self, tr("Calibration"), tr("Open Calibration Completed"))
