@@ -9,12 +9,11 @@ It can be used for checking synchronization between video and audio, and also as
 
 Since it can monitor timecode on independent left and right channels (L / R), it is also suitable for checking timecode discrepancies between different devices.
 
-## ☕ Coffee Break: The Magic of "Timecode" - Telling Time with Sound
+## ☕ Coffee Break: Timecode (LTC)
 
-"Beep, beep," "bzzzz"... If you play a timecode (LTC) signal through speakers, it sounds like a strange noise, almost like an old dial-up modem or a secret code from aliens.
-However, hidden inside this harsh noise is precise time information: `hour:minute:second:frame`!
+If you play a timecode (LTC) signal through speakers, it sounds like a harsh, modem-like noise. However, this signal contains precise time information: `hour:minute:second:frame`.
 
-On a movie or TV shooting set, multiple cameras and audio recorders are rolling at the same time. Matching (synchronizing) the video and audio perfectly later is a daunting task. But if you send this "audio code (timecode)" to all the equipment via cables and record it, the editing software can automatically align the timelines based on this sound.
+On a shooting set, by sending and recording this audio to multiple cameras and recorders via cables, editing software can later use the audio as a reference to automatically synchronize the timelines perfectly.
 
 ### What this tool does in one sentence
 
