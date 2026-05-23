@@ -408,6 +408,38 @@ class TestConfigManagerLogic(unittest.TestCase):
         finally:
             os.chdir(original_cwd)
 
+    def test_coreaudio_conversion_quality_settings(self):
+        """Test getting and setting the CoreAudio conversion quality."""
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        # Mock save_config
+        cm.save_config = MagicMock()
+
+        # Check default value (should be 'min' as per DEFAULT_CONFIG)
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "min")
+
+        # Enable setting
+        cm.set_coreaudio_conversion_quality("max")
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "max")
+        self.assertEqual(cm.config["audio"]["coreaudio_conversion_quality"], "max")
+        cm.save_config.assert_called_once()
+
+        # Edge case: "audio" key is missing
+        cm.save_config.reset_mock()
+        del cm.config["audio"]
+
+        # Test getting without audio config (should fallback to default)
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "min")
+
+        # Test setting without audio config
+        cm.set_coreaudio_conversion_quality("normal")
+        self.assertIn("audio", cm.config)
+        self.assertEqual(cm.config["audio"]["coreaudio_conversion_quality"], "normal")
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "normal")
+        cm.save_config.assert_called_once()
+
+        cm.shutdown()
+
     def test_is_dithering_enabled(self):
         """Test checking if audio dithering is enabled."""
         cm = self.ConfigManager(config_filename=self.config_path)
