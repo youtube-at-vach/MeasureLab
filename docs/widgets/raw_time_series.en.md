@@ -10,6 +10,10 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
 💡 **What is a Chart Recorder?**
 Have you ever seen an old seismograph or lie detector where a long roll of paper slowly feeds out while a pen continuously draws a squiggly line? Raw Time Series is exactly the digital version of that. Even if you think, "I feel like I just heard a weird noise!", you can scroll back through the record to check it.
 
+## Compact Mode
+
+When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform display.
+
 ## Operations
 
 ### Starting and Stopping Measurements

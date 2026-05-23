@@ -8,6 +8,10 @@ This tool analyzes and displays the frequency components of audio signals in rea
 You can visually confirm the magnitude of each frequency band for sounds input via microphone or line-in.  
 In addition to general FFT (Fast Fourier Transformation) analysis, it also features advanced measurement functions such as PSD (Power Spectral Density) display useful for noise analysis, and weighting (A-weighting/C-weighting) that takes hearing sensitivity into account.
 
+## Compact Mode
+
+When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the graph display. This is ideal for monitoring just the waveform on a large screen in a multi-monitor setup.
+
 ## ☕ Coffee Break: What is the Spectrum Analyzer actually doing?
 
 Sound is simply "vibration of air." An oscilloscope graphs this vibration over "time," but when a complex sound plays, the waveform becomes a messy jumble.

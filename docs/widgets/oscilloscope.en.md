@@ -6,6 +6,10 @@
 
 The Oscilloscope is a measurement tool that displays the waveform of the input signal on a time axis in real-time. It is used to visually confirm the shape, amplitude, and period of a signal. It also includes trigger functions, automatic measurement capabilities, and arithmetic (math) functions.
 
+## Compact Mode
+
+When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
+
 ## ☕ Coffee Break: An "Ultra-High-Speed Camera" for Electricity
 
 The name "Oscilloscope" might sound intimidating, but what it does is quite simple. Think of it as an **"ultra-high-speed camera"** that takes continuous shots of how sound or electricity moves.
