@@ -377,21 +377,16 @@ class ProcessorBenchmarkWidget(QWidget):
         lines.append("")
 
         # Table content
-        headers = []
-        for i in range(self.table.columnCount()):
-            item = self.table.horizontalHeaderItem(i)
-            headers.append(item.text() if item else "")
+        col_count = self.table.columnCount()
+        headers = [(item.text() if (item := self.table.horizontalHeaderItem(i)) else "") for i in range(col_count)]
         lines.append(" | ".join(headers))
         lines.append("-" * 50)
 
         for row in range(self.table.rowCount()):
-            row_data = []
-            if self.table.item(row, 0) is None or self.table.item(row, 0).text() == "":
+            item_0 = self.table.item(row, 0)
+            if item_0 is None or not item_0.text():
                 continue
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                text = item.text() if item else ""
-                row_data.append(text)
+            row_data = [(item.text() if (item := self.table.item(row, col)) else "") for col in range(col_count)]
             lines.append(" | ".join(row_data))
 
         lines.append("")
