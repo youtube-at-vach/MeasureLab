@@ -3,6 +3,7 @@ import logging
 import os
 import queue
 import tempfile
+import weakref
 import threading
 
 import numpy as np
@@ -130,7 +131,7 @@ class RecorderPlayer(MeasurementModule):
 
         # Disk Streaming
         self._temp_record_file = None
-        self._temp_record_fd = None
+        self._temp_record_obj = None
         self._write_queue = None
         self._writer_thread = None
 
@@ -227,18 +228,31 @@ class RecorderPlayer(MeasurementModule):
         self._check_stop_callback()
 
     def _remove_temp_file(self):
-        if self._temp_record_fd is not None:
+        if hasattr(self, '_temp_record_obj') and self._temp_record_obj is not None:
             try:
-                os.close(self._temp_record_fd)
-            except OSError as e:
-                logger.debug(f"Failed to close temp record fd: {e}")
-            self._temp_record_fd = None
+                self._temp_record_obj.close()
+            except Exception as e:
+                logger.debug(f"Failed to close temp record obj: {e}")
+            self._temp_record_obj = None
 
         if self._temp_record_file and os.path.exists(self._temp_record_file):
             try:
                 os.remove(self._temp_record_file)
             except OSError as e:
                 logger.debug(f"Failed to remove temp record file: {e}")
+
+    @staticmethod
+    def _cleanup_temp_file(obj, filepath):
+        if obj is not None:
+            try:
+                obj.close()
+            except Exception:
+                pass
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
 
     def cleanup(self):
         """
@@ -257,13 +271,12 @@ class RecorderPlayer(MeasurementModule):
             # Wait for first chunk to determine channels
             first_chunk = self._write_queue.get()
             if first_chunk is None:
-                # If we exit before opening the file, ensure the fd is closed
-                if self._temp_record_fd is not None:
+                # If we exit before opening the file, ensure the object is closed
+                if getattr(self, '_temp_record_obj', None) is not None:
                     try:
-                        os.close(self._temp_record_fd)
-                        self._temp_record_fd = None
-                    except OSError as e:
-                        logger.debug(f"Failed to close temp record fd: {e}")
+                        self._temp_record_obj.close()
+                    except Exception as e:
+                        logger.debug(f"Failed to close temp record obj: {e}")
                 return
 
             channels = first_chunk.shape[1] if first_chunk.ndim > 1 else 1
@@ -271,19 +284,16 @@ class RecorderPlayer(MeasurementModule):
 
             # Open file for writing. using 'FLOAT' subtype for high quality temp storage
             # Use the secure file descriptor instead of the filepath to prevent TOCTOU
-            # The format argument is required when using a file descriptor
+            # We pass the file descriptor but set closefd=False, then explicitly close the object later
             with sf.SoundFile(
-                self._temp_record_fd,
+                self._temp_record_obj.fileno(),
                 mode="w",
                 samplerate=samplerate,
                 channels=channels,
                 subtype="FLOAT",
                 format="WAV",
-                closefd=True,
+                closefd=False,
             ) as f:
-                # SoundFile now owns the fd and will close it
-                self._temp_record_fd = None
-
                 f.write(first_chunk)
 
                 while True:
@@ -292,6 +302,14 @@ class RecorderPlayer(MeasurementModule):
                         break
                     f.write(chunk)
 
+            # Explicitly close the file object to release the lock on Windows
+            # allowing the file to be read by name subsequently
+            if self._temp_record_obj is not None:
+                try:
+                    self._temp_record_obj.close()
+                except Exception as e:
+                    logger.debug(f"Failed to close temp record obj: {e}")
+
         except Exception as e:
             logger.error(f"Recorder writer error: {e}")
 
@@ -299,10 +317,13 @@ class RecorderPlayer(MeasurementModule):
         # Cleanup previous temp file
         self._remove_temp_file()
 
-        # Create new temp file and store file descriptor to avoid TOCTOU vulnerability
-        fd, self._temp_record_file = tempfile.mkstemp(suffix=".wav")
-        # Keep the file descriptor open and store it for sf.SoundFile to use
-        self._temp_record_fd = fd
+        # Create new temp file object to manage lifecycle securely and avoid TOCTOU
+        # We use delete=False so we can explicitly control deletion and ensure cross-platform compatibility
+        self._temp_record_obj = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        self._temp_record_file = self._temp_record_obj.name
+
+        # Add a weakref finalizer to ensure cleanup on garbage collection if the app exits ungracefully
+        weakref.finalize(self, RecorderPlayer._cleanup_temp_file, self._temp_record_obj, self._temp_record_file)
 
         # Init queue and thread
         self._write_queue = queue.Queue()
