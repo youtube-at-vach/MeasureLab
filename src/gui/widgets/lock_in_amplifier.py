@@ -39,7 +39,7 @@ class LockInAmplifier(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.buffer_size = 4096  # Adjust for integration time
+        self.buffer_size = 65536  # Adjust for integration time
         self.input_data = np.zeros((self.buffer_size, 2))
         self.input_buffer_pos = 0
         self.buffer_lock = threading.Lock()
@@ -47,7 +47,7 @@ class LockInAmplifier(MeasurementModule):
         # Settings
         self.gen_frequency = 1000.0
         self.gen_amplitude = 0.5  # Linear 0-1
-        self.output_channel = 0  # 0: Left, 1: Right
+        self.output_channel = 2  # 0: Left, 1: Right, 2: Stereo
         self.external_mode = False
 
         self._harmonic_numerator = 1
@@ -758,6 +758,7 @@ class LockInAmplifierWidget(QWidget):
 
         self.out_ch_combo = QComboBox()
         self.out_ch_combo.addItems([tr("Left (Ch 1)"), tr("Right (Ch 2)"), tr("Stereo (Both)")])
+        self.out_ch_combo.setCurrentIndex(2)
         self.out_ch_combo.currentIndexChanged.connect(self.on_out_ch_changed)
         settings_layout.addRow(tr("Output Ch:"), self.out_ch_combo)
 
@@ -779,15 +780,15 @@ class LockInAmplifierWidget(QWidget):
         self.time_combo = QComboBox()
         self.time_combo.addItems(
             [
-                tr("Fast (2048 samples)"),
-                tr("Medium (4096 samples)"),
-                tr("Slow (16384 samples)"),
-                tr("Very Slow (65536 samples)"),
-                tr("Very Slow 2x (131072 samples)"),
-                tr("Very Slow 4x (262144 samples)"),
+                tr("Very Fast (2048 samples)"),
+                tr("Fast (4096 samples)"),
+                tr("Medium (16384 samples)"),
+                tr("Standard (65536 samples)"),
+                tr("Slow (131072 samples)"),
+                tr("Very Slow (262144 samples)"),
             ]
         )
-        self.time_combo.setCurrentIndex(1)
+        self.time_combo.setCurrentIndex(3)
         self.time_combo.currentIndexChanged.connect(self.on_time_changed)
         settings_layout.addRow(tr("Integration:"), self.time_combo)
 
@@ -1743,6 +1744,7 @@ class LockInAmplifierWidget(QWidget):
         self.fra_start_btn.setText(tr("Start Sweep"))
         self.fra_start_btn.setEnabled(True)
         self.module.stop_analysis()  # Stop generator
+        self.module.gen_frequency = self.freq_spin.value()
 
         # Set cursor to max frequency initially or just update
         if self.fra_log_freqs:
@@ -1813,6 +1815,7 @@ class LockInAmplifierWidget(QWidget):
         self.cal_start_btn.setEnabled(True)
         self.cal_save_btn.setEnabled(True)
         self.module.stop_analysis()
+        self.module.gen_frequency = self.freq_spin.value()
 
         # Normalize Map to 1kHz (or nearest)
         # Find 1kHz index
