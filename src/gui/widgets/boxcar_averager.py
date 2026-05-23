@@ -212,16 +212,23 @@ class BoxcarAverager(MeasurementModule):
             return self._mls_cache
 
         # 16-bit maximal-length LFSR (polynomial taps 16,14,13,11 => 0xB400)
+        # Sequence repeats every 65535 samples.
         reg = int(self._mls_seed) & 0xFFFF
         if reg == 0:
             reg = 1
-        seq = np.empty((period,), dtype=np.float64)
-        for i in range(period):
+
+        lfsr_max_period = 65535
+        calc_len = min(period, lfsr_max_period)
+        seq = np.empty((calc_len,), dtype=np.float64)
+        for i in range(calc_len):
             lsb = reg & 1
             seq[i] = 1.0 if lsb else -1.0
             reg >>= 1
             if lsb:
                 reg ^= 0xB400
+
+        if period > lfsr_max_period:
+            seq = np.resize(seq, period)
 
         self._mls_cache = seq
         self._mls_cache_period = period
