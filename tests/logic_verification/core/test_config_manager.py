@@ -188,5 +188,17 @@ class TestConfigManager(unittest.TestCase):
                     )
 
 
+
+    def test_coreaudio_change_device_parameters(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertTrue(cm.is_coreaudio_change_device_parameters())
+        cm.set_coreaudio_change_device_parameters(False)
+        self.assertFalse(cm.is_coreaudio_change_device_parameters())
+
+        cm.config.pop("audio", None)
+        cm.set_coreaudio_change_device_parameters(True)
+        self.assertTrue(cm.is_coreaudio_change_device_parameters())
+
 if __name__ == "__main__":
     unittest.main()
