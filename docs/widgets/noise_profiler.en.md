@@ -14,6 +14,10 @@ It goes beyond simply displaying the spectrum and quantifies noise by decomposin
 In addition, based on the temperature and impedance settings, it displays the "Thermal Noise" line, which is the physical limit, allowing comparison with the performance limit of the measurement system.
 It is ideal for evaluating the low-noise performance of amplifiers and microphone preamplifiers, and for identifying noise sources in circuits.
 
+## Compact Mode
+
+When detached via the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, displaying only the correlation scores (percentages) for each noise type in a large, easy-to-read format. This allows you to instantly recognize the noise characteristics at a glance.
+
 ## ☕ Coffee Break: What are the "Colors" of Noise?
 
 Even though we just call it "noise", the character of the sound differs completely depending on its cause. This widget analyzes noise by dividing it into three components (colors and types).

@@ -14,6 +14,10 @@ The "dB SPL" measured by a sound level meter uses the extremely tiny air pressur
 For example, a quiet library might be 40 dB SPL, and a vacuum cleaner 70 dB SPL. The number only differs by 30, but in terms of pressure energy, it's actually **1000 times** different!
 The human ear is a super sensor capable of hearing an extremely wide range from tiny sounds to roaring explosions, so if we didn't use logarithms (a multiplication scale) like this, the numbers would become too gigantic to handle.
 
+## Compact Mode
+
+When the window is detached using the Detachable Wrapper, pressing the "Compact" button enters Compact Mode. Only the primary numerical values, such as SPL and Leq, are displayed largely across the screen, providing visibility similar to dedicated sound level meter hardware.
+
 ## Basic Operation
 
 ### Starting Measurement

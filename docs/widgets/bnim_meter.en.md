@@ -8,6 +8,10 @@ This is a unique meter that simulates and visualizes how the human "hearing (bra
 More intuitively than a standard phase meter (Lissajous waveform), it displays "which frequency of sound is heard from which direction (left or right)" in a heat map like a thermogram.
 It is ideal for checking the sense of localization and spread of stereo sound images, and for checking binaural recordings.
 
+## Compact Mode
+
+When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the image map display. This is useful when you only want to monitor the spatial spread.
+
 ## ☕ Coffee Break: How do owls find mice in the dark?
 
 In a pitch-black forest, how does an owl pinpoint the exact location of a mouse on the ground? Interestingly, an owl's left and right ears are positioned at slightly different 'heights'.

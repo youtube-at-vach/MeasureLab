@@ -8,6 +8,10 @@ This is a tool for visualizing the "spread" and "phase" of stereo audio.
 It plots the relationship between the left and right channels (L/R) as a Lissajous figure, and is used to check the localization of the sound image, stereo width, and mono compatibility.
 It is an essential tool for discovering phase cancellation problems in mixdown and mastering.
 
+## Compact Mode
+
+When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the Lissajous figure. This is ideal when you want to keep it constantly displayed as a meter.
+
 ## ☕ Coffee Break: The "Lissajous Figure" Kaleidoscope of Sound
 
 The mysterious patterns dancing on the Goniometer screen are known in the mathematical world as "Lissajous figures."

@@ -17,6 +17,10 @@ Imagine standing at the beach and watching the waves. If one wave crashes ashore
 Sound works the same way. The "pitch" of a sound is determined by how many times the air vibrates per second. A typical human voice ranges from about 100 Hz to 1000 Hz. It's pretty amazing to think that the air is vibrating hundreds of times every single second!
 The Frequency Counter is like an ultra-reliable stopwatch that flawlessly counts these "invisible, super-fast waves" for you.
 
+## Compact Mode
+
+When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, displaying only the frequency and statistical values in an extra-large font. This is highly useful for monitoring values from a distance.
+
 ## Operation
 
 ### Starting and Stopping Measurements
