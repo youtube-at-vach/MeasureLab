@@ -8,14 +8,6 @@ Please use them as practical procedures to maximize the diverse measurement tool
 
 ---
 
-## ☕ Coffee Break: Why call them "Recipes"?
-
-Imagine going to cook and being handed just "ingredients" and a "frying pan." You'd be at a loss! It's only with a **recipe (instruction manual)** that tells you "use these tools, and cook them in this order" that you can create a delicious dish.
-
-Audio measurement is exactly the same. MeasureLab offers many powerful tools (widgets), but "how to combine them" is the crucial part. On this page, we've compiled the know-how of measurement professionals into "recipes" that anyone can easily follow. What menu shall we cook up today?
-
----
-
 ## How to Use Measurement Recipes
 
 The most important thing in measurement is not just reading numbers, but **"measuring with the correct method and interpreting the results correctly."** Each recipe explains according to the following steps:
