@@ -48,6 +48,22 @@ class IndependentWindow(QMainWindow):
             super().keyPressEvent(event)
 
     def contextMenuEvent(self, event):
+        # Prevent context menu from blocking plot interactions (e.g., pyqtgraph zoom/pan)
+        target_widget = self.childAt(event.pos())
+        is_plot = False
+        curr = target_widget
+        while curr is not None:
+            class_name = curr.__class__.__name__
+            module_name = curr.__class__.__module__
+            if "pyqtgraph" in module_name or "PlotWidget" in class_name or "GraphicsLayoutWidget" in class_name:
+                is_plot = True
+                break
+            curr = curr.parentWidget()
+
+        if is_plot:
+            event.ignore()
+            return
+
         from PyQt6.QtWidgets import QMenu
         from PyQt6.QtGui import QAction
 
