@@ -6,13 +6,13 @@
 numpy==2.2.6
 scipy==1.17.0
 sounddevice==0.5.5
-PyQt6==6.10.2
-PyQt6-Qt6==6.10.2
+PyQt6==6.11.0
+PyQt6-Qt6==6.11.1
 pyqtgraph==0.14.0
 soundfile==0.13.1
 PyWavelets==1.9.0
 inquirer==3.4.1
 pytest==9.0.3
-ruff==0.15.2
-mypy==1.19.1
+ruff==0.15.14
+mypy==2.1.0
 pyfftw==0.15.1
