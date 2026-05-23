@@ -45,7 +45,7 @@ class ImpedanceAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.base_buffer_size = 4096
+        self.base_buffer_size = 16384
         self.max_buffer_multiplier = 16
         self.dynamic_buffer_threshold_hz = 100.0
         # Target number of cycles to integrate at low frequencies.
@@ -132,7 +132,7 @@ class ImpedanceAnalyzer(MeasurementModule):
             logger.warning("Failed to apply dynamic buffering for frequency %s: %s", f, e)
 
     def _desired_buffer_multiplier(self, freq_hz: float) -> int:
-        base = int(getattr(self, "base_buffer_size", 4096) or 4096)
+        base = int(getattr(self, "base_buffer_size", 16384) or 16384)
         max_mul = int(getattr(self, "max_buffer_multiplier", 8) or 8)
         threshold = float(getattr(self, "dynamic_buffer_threshold_hz", 100.0) or 100.0)
         min_cycles = float(getattr(self, "dynamic_buffer_min_cycles", 8.0) or 8.0)
@@ -174,7 +174,7 @@ class ImpedanceAnalyzer(MeasurementModule):
             self.input_data = np.zeros((self.buffer_size, 2))
 
     def _apply_dynamic_buffering(self, freq_hz: float):
-        base = int(getattr(self, "base_buffer_size", 4096) or 4096)
+        base = int(getattr(self, "base_buffer_size", 16384) or 16384)
         mul = self._desired_buffer_multiplier(freq_hz)
         target = base * mul
         # Cap at max_multiplier by design.
@@ -1099,15 +1099,15 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         # Default buffer size (base integration window)
         self.base_buffer_combo = QComboBox()
-        self.base_buffer_combo.addItems(["4096", "8192", "16384"])
+        self.base_buffer_combo.addItems(["4096", "8192", "16384", "32768", "65536"])
         try:
-            current_base = int(getattr(self.module, "base_buffer_size", 4096) or 4096)
+            current_base = int(getattr(self.module, "base_buffer_size", 16384) or 16384)
         except (ValueError, TypeError, AttributeError):
-            current_base = 4096
-        if current_base in (4096, 8192, 16384):
+            current_base = 16384
+        if current_base in (4096, 8192, 16384, 32768, 65536):
             self.base_buffer_combo.setCurrentText(str(current_base))
         else:
-            self.base_buffer_combo.setCurrentText("4096")
+            self.base_buffer_combo.setCurrentText("16384")
 
         def _on_base_buffer_changed(text: str):
             try:
