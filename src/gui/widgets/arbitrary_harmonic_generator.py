@@ -368,11 +368,36 @@ class ArbitraryHarmonicWidget(QWidget):
 
     def _rebuild_harmonics_table(self):
         self._block_updates = True
+        self.table.setUpdatesEnabled(False)
         n_rows = self.module.max_harmonic - 1
+        current_rows = self.table.rowCount()
         self.table.setRowCount(n_rows)
 
         for i in range(n_rows):
             harmonic_idx = i + 1  # harmonic_idx = 1 maps to 2nd harmonic, etc.
+
+            # Reuse existing widgets if row was already present
+            if i < current_rows:
+                amp_spin = self.table.cellWidget(i, 1)
+                phase_spin = self.table.cellWidget(i, 2)
+                if amp_spin and phase_spin:
+                    with self.module.lock:
+                        linear_amp = self.module.harmonics_amps[harmonic_idx]
+                        phase_val = self.module.harmonics_phases_deg[harmonic_idx]
+
+                    if linear_amp > 0:
+                        amp_spin.blockSignals(True)
+                        amp_spin.setValue(20 * np.log10(linear_amp))
+                        amp_spin.blockSignals(False)
+                    else:
+                        amp_spin.blockSignals(True)
+                        amp_spin.setValue(OFF_DB)
+                        amp_spin.blockSignals(False)
+
+                    phase_spin.blockSignals(True)
+                    phase_spin.setValue(phase_val)
+                    phase_spin.blockSignals(False)
+                continue
 
             # Label
             item_lbl = QTableWidgetItem(tr("{}th").format(harmonic_idx + 1))
@@ -406,15 +431,36 @@ class ArbitraryHarmonicWidget(QWidget):
             phase_spin.valueChanged.connect(self._on_table_changed)
             self.table.setCellWidget(i, 2, phase_spin)
 
+        self.table.setUpdatesEnabled(True)
         self._block_updates = False
 
     def _rebuild_comp_adj_table(self):
         self._block_updates = True
+        self.comp_adj_table.setUpdatesEnabled(False)
         n_rows = self.module.max_harmonic - 1
+        current_rows = self.comp_adj_table.rowCount()
         self.comp_adj_table.setRowCount(n_rows)
 
         for i in range(n_rows):
             harmonic_idx = i + 1  # 2nd harmonic is index 1 in coeffs
+
+            # Reuse existing widgets if row was already present
+            if i < current_rows:
+                amp_spin = self.comp_adj_table.cellWidget(i, 1)
+                phase_spin = self.comp_adj_table.cellWidget(i, 2)
+                if amp_spin and phase_spin:
+                    with self.module.lock:
+                        amp_val = self.module.compensation_amps_db[harmonic_idx]
+                        phase_val = self.module.compensation_phases_deg[harmonic_idx]
+
+                    amp_spin.blockSignals(True)
+                    amp_spin.setValue(amp_val)
+                    amp_spin.blockSignals(False)
+
+                    phase_spin.blockSignals(True)
+                    phase_spin.setValue(phase_val)
+                    phase_spin.blockSignals(False)
+                continue
 
             # Label
             item_lbl = QTableWidgetItem(tr("{}th").format(harmonic_idx + 1))
@@ -441,6 +487,7 @@ class ArbitraryHarmonicWidget(QWidget):
             phase_spin.valueChanged.connect(self._on_comp_adj_changed)
             self.comp_adj_table.setCellWidget(i, 2, phase_spin)
 
+        self.comp_adj_table.setUpdatesEnabled(True)
         self._block_updates = False
 
     def _on_table_changed(self):
