@@ -180,3 +180,25 @@ def test_detachable_wrapper_compact_btn(qtbot):
     assert not wrapper.compact_btn.isEnabled()
     # It should also reset compact mode back to full mode
     assert not widget.is_compact_mode()
+
+
+def test_independent_window_context_menu_plot_bypass(qtbot):
+    from PyQt6.QtGui import QContextMenuEvent
+    import pyqtgraph as pg
+    from src.gui.widgets.detachable_wrapper import IndependentWindow
+
+    plot_widget = pg.PlotWidget()
+    qtbot.addWidget(plot_widget)
+
+    win = IndependentWindow("Test Window", plot_widget)
+    qtbot.addWidget(win)
+    win.show()
+
+    # Create context menu event at the center of the window (where the plot widget resides)
+    pos = win.rect().center()
+    event = QContextMenuEvent(QContextMenuEvent.Reason.Mouse, pos, win.mapToGlobal(pos))
+
+    win.contextMenuEvent(event)
+
+    # Context menu event should be ignored on plot widget to let the plot handle zoom/pan
+    assert not event.isAccepted()
