@@ -102,6 +102,18 @@ class TestConfigManager(unittest.TestCase):
         cm.set_dithering_bit_depth("24")
         self.assertEqual(cm.get_dithering_bit_depth(), "24")
 
+
+    def test_coreaudio_conversion_quality(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "min")
+        cm.set_coreaudio_conversion_quality("max")
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "max")
+
+        cm.config.pop("audio", None)
+        cm.set_coreaudio_conversion_quality("high")
+        self.assertEqual(cm.get_coreaudio_conversion_quality(), "high")
+
     def test_theme(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
