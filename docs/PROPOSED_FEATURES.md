@@ -14,6 +14,9 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Quantum Entropy DAC Sync Analyzer**: Visualizing clock desync via quantum entropy.
 * **Galactic IMD Topology Visualizer**: 3D spatial representation of intermodulation distortion.
 * **Tachyon Audio Synthesizer**: Reverse-time signal synthesis.
+* **Psycho-Acoustic Masking Threshold Mapper**: Real-time 3D topographical map showing where signals are mathematically present but imperceptible to human hearing due to simultaneous masking.
+* **Synesthetic Distortion Sonification**: Translating invisible THD+N components into multi-sensory color-mapped feedback for intuitive "feeling" of distortion characteristics without relying solely on graphs.
+* **Fluid-Dynamic Phase Flow Hologram**: Visualizing complex phase interactions and cancellations across multi-channel environments as a particle simulation of liquid currents.
 
 ---
 
@@ -28,18 +31,23 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Dynamics Processor Profiler**: Measures static I/O transfer curves and attack/release.
 * **Bit-Perfect Verifier**: PRBS/watermark generator for loopback verification.
 * **Realtime/Offline Null Comparator**: Channel inversion with sub-sample matching.
+* **TIE Jitter Analysis & Phase Noise Profiler**: High-precision Time Interval Error analysis combined with Phase Noise mapping for oscillator and digital interface evaluation.
+* **Damping Factor & Load Dependency Profiler**: Sweeps amplifier outputs across varying complex loads to dynamically plot Damping Factor and reactive stability margins.
+* **Power Supply Rejection Ratio (PSRR) Evaluator**: Dedicated tool injecting noise into power rails and tracking its manifestation on the audio output signal.
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **Distortion Analyzer**: Add **Thermal & Power Stress Logger**, **Harmonic Phase Analyzer**.
-* **Spectrum Analyzer**: Add **DAC Aliasing & Out-of-band Imaging Test**, **ASRC Artifact Sweep Mode**.
-* **Noise Profiler**: Add **Microphonics Impact Analysis mode**, **Dither Signature Detector** (automatically identify TPDF/Noise Shaping).
+* **Distortion Analyzer**: Add **Thermal & Power Stress Logger**, **Harmonic Phase Analyzer**, **Transient Intermodulation (TIM) Mode**.
+* **Spectrum Analyzer**: Add **DAC Aliasing & Out-of-band Imaging Test**, **ASRC Artifact Sweep Mode**, **High-Resolution Envelope Tracking**.
+* **Noise Profiler**: Add **Microphonics Impact Analysis mode**, **Dither Signature Detector** (automatically identify TPDF/Noise Shaping), **EMI/RFI Signature Fingerprinting**.
 * **LUFS Meter**: Add **Crest Factor & Dynamic Range Radar Mode**.
-* **Signal Generator**: Add **Programmable Jitter Injector**, **Interference/Glitch Injector**.
+* **Signal Generator**: Add **Programmable Jitter Injector**, **Interference/Glitch Injector**, **Custom Pulse Train Builder**.
 * **Network Analyzer**: Add **Amplifier Stability Margins**, **High-Resolution Stopband Attenuation Mode** for DAC filters.
-* **Transient Analyzer**: Add **Relay/Switch Bounce Analyzer**, **DAC Filter Ringing Visualizer**.
+* **Transient Analyzer**: Add **Relay/Switch Bounce Analyzer**, **DAC Filter Ringing Visualizer**, **Pre/Post-Ringing Energy Ratio**.
 * **Advanced Distortion Meter**: Add **RF Immunity (EMI Rejection Tester)**.
 * **Stereo Alignment Monitor**: Add **Volume Gang Error Logger**.
+* **Impedance Analyzer**: Add **Voice Coil Thermal Drift Tracking** (monitor changes in Re under continuous signal stress).
+* **Frequency Counter**: Add **Long-term Allan Deviation Plotter** for ultra-stable clock drift characterization.
 
 ---
 
