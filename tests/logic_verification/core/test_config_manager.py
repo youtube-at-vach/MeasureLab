@@ -188,5 +188,17 @@ class TestConfigManager(unittest.TestCase):
                     )
 
 
+    def test_coreaudio_fail_if_conversion_required(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertTrue(cm.is_coreaudio_fail_if_conversion_required())
+
+        cm.set_coreaudio_fail_if_conversion_required(False)
+        self.assertFalse(cm.is_coreaudio_fail_if_conversion_required())
+
+        cm.config.pop("audio", None)
+        cm.set_coreaudio_fail_if_conversion_required(True)
+        self.assertTrue(cm.is_coreaudio_fail_if_conversion_required())
+
 if __name__ == "__main__":
     unittest.main()
