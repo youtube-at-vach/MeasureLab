@@ -148,8 +148,8 @@ class PlotComparerWidget(QWidget):
 
         # --- Right Panel: Controls ---
         self.controls_widget = QWidget()
-        self.controls_widget.setMinimumWidth(300)
-        self.controls_widget.setMaximumWidth(450)
+        self.controls_widget.setMinimumWidth(380)
+        self.controls_widget.setMaximumWidth(600)
         controls_layout = QVBoxLayout(self.controls_widget)
         controls_layout.setContentsMargins(5, 5, 5, 5)
 
@@ -181,8 +181,9 @@ class PlotComparerWidget(QWidget):
         self.tree_widget = QTreeWidget()
         self.tree_widget.setColumnCount(2)
         self.tree_widget.setHeaderLabels([tr("Trace / Parameter"), tr("Y-Axis")])
-        self.tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
-        self.tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        self.tree_widget.setColumnWidth(1, 130)
         self.tree_widget.itemChanged.connect(self.on_item_changed)
         list_layout.addWidget(self.tree_widget)
 
@@ -203,7 +204,7 @@ class PlotComparerWidget(QWidget):
         btn_layout.addWidget(self.btn_clear)
         list_layout.addLayout(btn_layout)
 
-        controls_layout.addWidget(list_group)
+        controls_layout.addWidget(list_group, stretch=1)
 
         # Global Options Group
         options_group = QGroupBox(tr("Global Options"))
@@ -214,13 +215,13 @@ class PlotComparerWidget(QWidget):
         options_layout.addWidget(self.normalize_check)
 
         controls_layout.addWidget(options_group)
-        controls_layout.addStretch()
 
         self.splitter.addWidget(self.controls_widget)
 
         # Default splitter weights
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 0)
+        self.splitter.setSizes([620, 380])
 
         self.setLayout(main_layout)
 
