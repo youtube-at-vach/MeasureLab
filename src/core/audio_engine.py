@@ -421,7 +421,11 @@ class AudioEngine:
         if use_loopback:
             # Loopback logic: reuse last output
             lb_src = self.last_output_buffer
-            if self._logical_in_buffer is None or self._logical_in_buffer.shape[0] < frames or self._logical_in_buffer.shape[1] < 2:
+            if (
+                self._logical_in_buffer is None
+                or self._logical_in_buffer.shape[0] < frames
+                or self._logical_in_buffer.shape[1] < 2
+            ):
                 new_len = max(frames * 2, self.block_size * 2)
                 self._logical_in_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
@@ -443,7 +447,11 @@ class AudioEngine:
             in_mode = self._current_in_mode
             req_channels = 1 if in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
 
-            if self._logical_in_buffer is None or self._logical_in_buffer.shape[0] < frames or self._logical_in_buffer.shape[1] < req_channels:
+            if (
+                self._logical_in_buffer is None
+                or self._logical_in_buffer.shape[0] < frames
+                or self._logical_in_buffer.shape[1] < req_channels
+            ):
                 new_len = max(frames * 2, self.block_size * 2)
                 self._logical_in_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
@@ -475,7 +483,11 @@ class AudioEngine:
 
         for cb in active_callbacks:
             # Temp buffer for this client (allocation-free reuse if large enough)
-            if self._client_buffer is None or self._client_buffer.shape[0] < frames or self._client_buffer.shape[1] < logical_out_ch:
+            if (
+                self._client_buffer is None
+                or self._client_buffer.shape[0] < frames
+                or self._client_buffer.shape[1] < logical_out_ch
+            ):
                 new_len = max(frames * 2, self.block_size * 2)
                 self._client_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
@@ -508,7 +520,11 @@ class AudioEngine:
 
         # Use isolated dither scratch buffer to protect client buffers
         frames, channels = mix_buffer.shape
-        if self._dither_scratch_buffer is None or self._dither_scratch_buffer.shape[0] < frames or self._dither_scratch_buffer.shape[1] < channels:
+        if (
+            self._dither_scratch_buffer is None
+            or self._dither_scratch_buffer.shape[0] < frames
+            or self._dither_scratch_buffer.shape[1] < channels
+        ):
             new_len = max(frames * 2, self.block_size * 2)
             self._dither_scratch_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
@@ -724,7 +740,7 @@ class AudioEngine:
                     )
                 except Exception as stream_err:
                     if self._get_dtype() == "float64":
-                        self.logger.warning(
+                        self.logger.info(
                             f"Failed to start master stream with float64 ({stream_err}). Falling back to float32."
                         )
                         self.stream = sd.Stream(

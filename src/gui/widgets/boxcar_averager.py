@@ -809,6 +809,10 @@ class BoxcarAveragerWidget(QWidget):
     def on_int64_changed(self, checked):
         self.module.use_int64 = checked
         self.module.reset_average()
+        self.curve_l.setData([], [])
+        self.curve_r.setData([], [])
+        self.plot.setTitle(tr("Averaged Signal"))
+        self.plot.autoRange()
 
     def on_export(self):
         fname, selected_filter = QFileDialog.getSaveFileName(
