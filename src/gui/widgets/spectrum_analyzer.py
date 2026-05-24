@@ -22,7 +22,10 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager, get_dpss_windows
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from typing import List
+from src.core.comparison_manager import ComparisonTrace
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -617,11 +620,17 @@ class SpectrumAnalyzer(MeasurementModule):
         }
 
 
-class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
+class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface):
     def __init__(self, module: SpectrumAnalyzer):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        ComparableWidgetInterface.__init__(self)
         self.module = module
+
+        # Cache variables for plot comparison
+        self.last_freqs = None
+        self.last_mags = None
+
         self.init_ui()
 
         self.timer = QTimer()
@@ -1056,6 +1065,10 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         plot_freqs_linear = plot_freqs + 1e-12  # Avoid exact 0
 
+        # Cache variables for plot comparison
+        self.last_freqs = plot_freqs_linear.copy()
+        self.last_mags = plot_mags.copy()
+
         # Handle Dual Mode Plotting
         if self.module.analysis_mode in {"Spectrum", "PSD"} and self.module.channel_mode == "Dual":
             # plot_mags should be (N, 2)
@@ -1127,4 +1140,132 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.overall_label.setHidden(compact)
         if hasattr(self, "cursor_label"):
             self.cursor_label.setHidden(compact)
+
+    def get_comparable_data(self) -> List[ComparisonTrace]:
+        if self.last_freqs is None or self.last_mags is None:
+            return []
+
+        import uuid
+        from datetime import datetime
+        from src.core.comparison_manager import AxisMetadata, CalibrationInfo
+
+        freqs = self.last_freqs
+        mags = self.last_mags
+
+        try:
+            input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
+            is_calibrated = self.module.audio_engine.calibration.is_calibrated
+        except Exception:
+            input_sensitivity = 1.0
+            is_calibrated = False
+
+        timestamp = datetime.now().isoformat()
+        traces = []
+
+        unit = self.module.display_unit
+
+        # Determine dimension and base unit based on display unit
+        if unit == "dB SPL":
+            y_dimension = "sound_level"
+            y_base_unit = "Pa"
+        elif unit == "dBV":
+            y_dimension = "voltage"
+            y_base_unit = "V"
+        else:  # dBFS
+            y_dimension = "voltage"
+            y_base_unit = "FS"
+
+        x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
+        y_axis_metadata = AxisMetadata(dimension=y_dimension, base_unit=y_base_unit, display_unit=unit, is_log=False)
+
+        # Dual channel
+        if self.module.analysis_mode in {"Spectrum", "PSD"} and self.module.channel_mode == "Dual":
+            if mags.ndim == 2 and mags.shape[1] >= 2:
+                # Left Channel
+                trace_id_l = str(uuid.uuid4())
+                trace_name_l = f"{tr('Spectrum Analyzer')} - L ({datetime.now().strftime('%H:%M:%S')})"
+                trace_l = ComparisonTrace(
+                    id=trace_id_l,
+                    name=trace_name_l,
+                    source_module="Spectrum Analyzer",
+                    timestamp=timestamp,
+                    plot_type="spectrum",
+                    x_axis=x_axis,
+                    y_axis=y_axis_metadata,
+                    x_data=freqs.tolist(),
+                    y_data=mags[:, 0].tolist(),
+                    calibration=CalibrationInfo(
+                        is_calibrated=is_calibrated,
+                        input_sensitivity=input_sensitivity,
+                        applied_offset_db=0.0,
+                        reference_level="absolute" if is_calibrated else "relative"
+                    ),
+                    metadata={
+                        "channel": "Left",
+                        "analysis_mode": self.module.analysis_mode,
+                        "fft_size": self.module.buffer_size,
+                    }
+                )
+                traces.append(trace_l)
+
+                # Right Channel
+                trace_id_r = str(uuid.uuid4())
+                trace_name_r = f"{tr('Spectrum Analyzer')} - R ({datetime.now().strftime('%H:%M:%S')})"
+                trace_r = ComparisonTrace(
+                    id=trace_id_r,
+                    name=trace_name_r,
+                    source_module="Spectrum Analyzer",
+                    timestamp=timestamp,
+                    plot_type="spectrum",
+                    x_axis=x_axis,
+                    y_axis=y_axis_metadata,
+                    x_data=freqs.tolist(),
+                    y_data=mags[:, 1].tolist(),
+                    calibration=CalibrationInfo(
+                        is_calibrated=is_calibrated,
+                        input_sensitivity=input_sensitivity,
+                        applied_offset_db=0.0,
+                        reference_level="absolute" if is_calibrated else "relative"
+                    ),
+                    metadata={
+                        "channel": "Right",
+                        "analysis_mode": self.module.analysis_mode,
+                        "fft_size": self.module.buffer_size,
+                    }
+                )
+                traces.append(trace_r)
+        else:
+            # Single/Average Channel
+            trace_id = str(uuid.uuid4())
+            ch_mode_tr = tr(self.module.channel_mode)
+            trace_name = f"{tr('Spectrum Analyzer')} - {ch_mode_tr} ({datetime.now().strftime('%H:%M:%S')})"
+
+            # Ensure 1D mags data
+            y_data_list = mags[:, 0].tolist() if mags.ndim == 2 else mags.tolist()
+
+            trace = ComparisonTrace(
+                id=trace_id,
+                name=trace_name,
+                source_module="Spectrum Analyzer",
+                timestamp=timestamp,
+                plot_type="spectrum",
+                x_axis=x_axis,
+                y_axis=y_axis_metadata,
+                x_data=freqs.tolist(),
+                y_data=y_data_list,
+                calibration=CalibrationInfo(
+                    is_calibrated=is_calibrated,
+                    input_sensitivity=input_sensitivity,
+                    applied_offset_db=0.0,
+                    reference_level="absolute" if is_calibrated else "relative"
+                ),
+                metadata={
+                    "channel_mode": self.module.channel_mode,
+                    "analysis_mode": self.module.analysis_mode,
+                    "fft_size": self.module.buffer_size,
+                }
+            )
+            traces.append(trace)
+
+        return traces
 

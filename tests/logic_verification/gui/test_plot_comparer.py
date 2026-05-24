@@ -2,7 +2,7 @@ import os
 import sys
 import pytest
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QDoubleSpinBox, QCheckBox
+from PyQt6.QtWidgets import QDoubleSpinBox
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
@@ -50,7 +50,7 @@ def test_plot_comparer_receives_data_and_updates_ui(qtbot, clean_manager):
         y2_axis=AxisMetadata("phase", "deg", "deg", False),
         x_data=[10.0, 100.0, 1000.0],
         y_data=[1.0, 2.0, 3.0],
-        y2_data=[10.0, 20.0, 30.0]
+        y2_data=[10.0, 20.0, 30.0],
     )
 
     # Add trace to comparison manager
@@ -77,7 +77,7 @@ def test_plot_comparer_receives_data_and_updates_ui(qtbot, clean_manager):
     assert "Gain" in child_y.text(0)
     assert "Phase" in child_y2.text(0)
     assert "Gain Offset" in child_offset.text(0)
-    assert "Time Shift" in child_shift.text(0)
+    assert "Frequency Shift" in child_shift.text(0)
 
     # Check Y-axis mapping comboboxes are loaded correctly
     combo_y = widget.tree_widget.itemWidget(child_y, 1)
@@ -147,3 +147,143 @@ def test_plot_comparer_receives_data_and_updates_ui(qtbot, clean_manager):
     widget.filter_combo.setCurrentIndex(0)  # All (index 0)
     assert widget.tree_widget.topLevelItemCount() == 1  # Should reappear
     assert not widget.master_toggles_container.isHidden()
+
+
+def test_spectrum_analyzer_comparable_data(qtbot):
+    from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
+    import numpy as np
+
+    engine = AudioEngine()
+    module = SpectrumAnalyzer(engine)
+    widget = SpectrumAnalyzerWidget(module)
+    qtbot.addWidget(widget)
+
+    # When no data is cached, it should return an empty list
+    assert widget.get_comparable_data() == []
+
+    # Mock caching data (Single Mode)
+    widget.last_freqs = np.array([20.0, 100.0, 1000.0])
+    widget.last_mags = np.array([-10.0, -20.0, -30.0])
+
+    traces = widget.get_comparable_data()
+    assert len(traces) == 1
+    trace = traces[0]
+    assert trace.source_module == "Spectrum Analyzer"
+    assert trace.plot_type == "spectrum"
+    assert trace.x_axis.dimension == "frequency"
+    assert trace.x_axis.is_log is True
+    assert trace.y_axis.display_unit == "dBFS"
+    assert trace.x_data == [20.0, 100.0, 1000.0]
+    assert trace.y_data == [-10.0, -20.0, -30.0]
+
+    # Mock caching data (Dual Mode)
+    module.analysis_mode = "Spectrum"
+    module.channel_mode = "Dual"
+    widget.last_mags = np.column_stack(([-10.0, -20.0, -30.0], [-15.0, -25.0, -35.0]))
+
+    traces = widget.get_comparable_data()
+    assert len(traces) == 2
+    assert " - L " in traces[0].name
+    assert " - R " in traces[1].name
+    assert traces[0].y_data == [-10.0, -20.0, -30.0]
+    assert traces[1].y_data == [-15.0, -25.0, -35.0]
+
+
+def test_plot_comparer_log_axis_for_spectrum(qtbot, clean_manager):
+    engine = AudioEngine()
+    module = PlotComparer(engine)
+    widget = PlotComparerWidget(module)
+    qtbot.addWidget(widget)
+
+    # Create dummy spectrum trace
+    trace = ComparisonTrace(
+        id="t2",
+        name="Mock Spectrum",
+        source_module="Spectrum Analyzer",
+        timestamp="2026-05-24T12:00:00",
+        plot_type="spectrum",
+        x_axis=AxisMetadata("frequency", "Hz", "Hz", True),
+        y_axis=AxisMetadata("voltage", "FS", "dBFS", False),
+        x_data=[20.0, 100.0, 1000.0],
+        y_data=[-10.0, -20.0, -30.0],
+    )
+
+    clean_manager.add_trace(trace)
+    widget.replot()
+
+    # Log mode X should be enabled
+    assert widget.is_log_x is True
+
+
+def test_plot_comparer_dynamic_shifts(qtbot, clean_manager):
+    engine = AudioEngine()
+    module = PlotComparer(engine)
+    widget = PlotComparerWidget(module)
+    qtbot.addWidget(widget)
+
+    # 1. Frequency Domain Trace
+    freq_trace = ComparisonTrace(
+        id="t_freq",
+        name="Freq Trace",
+        source_module="Spectrum Analyzer",
+        timestamp="2026-05-24T12:00:00",
+        plot_type="spectrum",
+        x_axis=AxisMetadata("frequency", "Hz", "Hz", True),
+        y_axis=AxisMetadata("voltage", "FS", "dBFS", False),
+        x_data=[20.0, 100.0, 1000.0],
+        y_data=[-10.0, -20.0, -30.0],
+    )
+    clean_manager.add_trace(freq_trace)
+
+    # Filter combo: Index 0 is "frequency"
+    widget.filter_combo.setCurrentIndex(0)
+
+    # The Freq Trace parent should have 3 children: Voltage, Gain Offset, Frequency Shift
+    parent_freq = widget.tree_widget.topLevelItem(0)
+    assert parent_freq.childCount() == 3
+    child_y_freq = parent_freq.child(0)
+    child_offset_freq = parent_freq.child(1)
+    child_shift_freq = parent_freq.child(2)
+
+    assert "Voltage" in child_y_freq.text(0)
+    assert "Gain Offset" in child_offset_freq.text(0)
+    assert "Frequency Shift" in child_shift_freq.text(0)
+
+    spin_shift_freq = widget.tree_widget.itemWidget(child_shift_freq, 1)
+    assert spin_shift_freq.suffix() == " Hz"
+    assert spin_shift_freq.maximum() == 100000.0
+    assert spin_shift_freq.decimals() == 2
+
+    clean_manager.clear_all_traces()
+
+    # 2. Time Domain Trace
+    time_trace = ComparisonTrace(
+        id="t_time",
+        name="Time Trace",
+        source_module="Oscilloscope",
+        timestamp="2026-05-24T12:00:00",
+        plot_type="time_series",
+        x_axis=AxisMetadata("time", "s", "s", False),
+        y_axis=AxisMetadata("voltage", "V", "V", False),
+        x_data=[0.0, 0.001, 0.002],
+        y_data=[0.1, 0.2, 0.3],
+    )
+    clean_manager.add_trace(time_trace)
+
+    # Filter combo: Index 1 is "time"
+    widget.filter_combo.setCurrentIndex(1)
+
+    parent_time = widget.tree_widget.topLevelItem(0)
+    assert parent_time.childCount() == 3
+    child_y_time = parent_time.child(0)
+    child_offset_time = parent_time.child(1)
+    child_shift_time = parent_time.child(2)
+
+    assert "Voltage" in child_y_time.text(0)
+    assert "Gain Offset" in child_offset_time.text(0)
+    assert "Time Shift" in child_shift_time.text(0)
+
+    spin_shift_time = widget.tree_widget.itemWidget(child_shift_time, 1)
+    assert spin_shift_time.suffix() == " s"
+    assert spin_shift_time.maximum() == 10.0
+    assert spin_shift_time.decimals() == 4

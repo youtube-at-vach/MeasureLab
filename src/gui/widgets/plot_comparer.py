@@ -157,15 +157,13 @@ class PlotComparerWidget(QWidget):
         list_group = QGroupBox(tr("Traces"))
         list_layout = QVBoxLayout(list_group)
 
-        # Plot Type Filter
+        # Plot Domain Filter
         filter_layout = QHBoxLayout()
-        filter_label = QLabel(tr("Filter by Type:"))
+        filter_label = QLabel(tr("Domain:"))
         self.filter_combo = QComboBox()
-        self.filter_combo.addItem(tr("All"), "all")
-        self.filter_combo.addItem(tr("Frequency Response"), "frequency_response")
-        self.filter_combo.addItem(tr("Time Series"), "time_series")
-        self.filter_combo.addItem(tr("Spectrum"), "spectrum")
-        self.filter_combo.addItem(tr("XY Plot"), "xy_plot")
+        self.filter_combo.addItem(tr("Frequency Domain"), "frequency")
+        self.filter_combo.addItem(tr("Time Domain"), "time")
+        self.filter_combo.addItem(tr("Other Domain"), "other")
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
         filter_layout.addWidget(filter_label)
         filter_layout.addWidget(self.filter_combo)
@@ -245,22 +243,29 @@ class PlotComparerWidget(QWidget):
         colors = self.COLORS_DARK if self._is_dark_theme else self.COLORS_LIGHT
         return colors[idx % len(colors)]
 
+    def _get_trace_domain(self, trace) -> str:
+        if not trace or not trace.x_axis or not trace.x_axis.dimension:
+            return "other"
+        dim = trace.x_axis.dimension.lower()
+        if dim in ("frequency", "freq"):
+            return "frequency"
+        elif dim in ("time", "t"):
+            return "time"
+        else:
+            return "other"
+
     def refresh_trace_list(self):
         self.tree_widget.blockSignals(True)
         self.tree_widget.clear()
 
-        # Get the selected plot type filter
-        filter_type = self.filter_combo.currentData()
+        # Get the selected plot domain filter
+        active_domain = self.filter_combo.currentData()
 
         traces = self.manager.get_all_traces()
         for idx, (tid, trace) in enumerate(traces.items()):
-            # Apply plot type filter
-            if filter_type != "all":
-                if filter_type == "time_series":
-                    if trace.plot_type not in ("time_series", "time_history"):
-                        continue
-                elif trace.plot_type != filter_type:
-                    continue
+            trace_domain = self._get_trace_domain(trace)
+            if trace_domain != active_domain:
+                continue
 
             # Initialize settings if new, preserving backwards compatibility
             if tid not in self.trace_settings:
@@ -321,6 +326,8 @@ class PlotComparerWidget(QWidget):
             self.tree_widget.setItemWidget(y_item, 1, y_combo)
 
             # 3. Create Child Item (Secondary Data) - only if it exists
+            y2_item = None
+            y2_combo = None
             if trace.y2_data is not None and trace.y2_axis:
                 y2_label = tr(trace.y2_axis.dimension).capitalize()
                 if trace.y2_axis.display_unit:
@@ -358,21 +365,37 @@ class PlotComparerWidget(QWidget):
             offset_spin.valueChanged.connect(self.on_tree_offset_changed)
             self.tree_widget.setItemWidget(offset_item, 1, offset_spin)
 
-            # 5. Create Child Item (Time Shift)
+            # 5. Create Child Item (X-Axis Shift/Offset)
             shift_item = QTreeWidgetItem(parent_item)
-            shift_item.setText(0, tr("Time Shift"))
-            shift_item.setFlags(shift_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
             shift_item.setData(0, Qt.ItemDataRole.UserRole, tid)
             shift_item.setData(0, Qt.ItemDataRole.UserRole + 1, "shift")
 
             shift_spin = QDoubleSpinBox()
-            shift_spin.setRange(-10.0, 10.0)
             shift_spin.setValue(settings["shift"])
-            shift_spin.setSuffix(" s")
-            shift_spin.setDecimals(4)
-            shift_spin.setSingleStep(0.001)
             shift_spin.setProperty("trace_id", tid)
             shift_spin.valueChanged.connect(self.on_tree_shift_changed)
+
+            active_domain = self.filter_combo.currentData()
+            if active_domain == "frequency":
+                shift_item.setText(0, tr("Frequency Shift"))
+                shift_spin.setRange(-100000.0, 100000.0)
+                shift_spin.setSuffix(" Hz")
+                shift_spin.setDecimals(2)
+                shift_spin.setSingleStep(1.0)
+            elif active_domain == "time":
+                shift_item.setText(0, tr("Time Shift"))
+                shift_spin.setRange(-10.0, 10.0)
+                shift_spin.setSuffix(" s")
+                shift_spin.setDecimals(4)
+                shift_spin.setSingleStep(0.001)
+            else:
+                shift_item.setText(0, tr("Shift"))
+                shift_spin.setRange(-100000.0, 100000.0)
+                shift_spin.setSuffix("")
+                shift_spin.setDecimals(4)
+                shift_spin.setSingleStep(0.1)
+
+            shift_item.setFlags(shift_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
             self.tree_widget.setItemWidget(shift_item, 1, shift_spin)
 
             parent_item.setExpanded(True)
@@ -466,18 +489,15 @@ class PlotComparerWidget(QWidget):
             self.replot()
 
     def update_master_toggles(self):
-        # 1. Gather all unique Y dimensions for visible traces
-        filter_type = self.filter_combo.currentData()
+        # 1. Gather all unique Y dimensions for active domain traces
+        active_domain = self.filter_combo.currentData()
         traces = self.manager.get_all_traces()
 
         dimensions = set()
         for _, trace in traces.items():
-            if filter_type != "all":
-                if filter_type == "time_series":
-                    if trace.plot_type not in ("time_series", "time_history"):
-                        continue
-                elif trace.plot_type != filter_type:
-                    continue
+            trace_domain = self._get_trace_domain(trace)
+            if trace_domain != active_domain:
+                continue
 
             if trace.y_axis and trace.y_axis.dimension:
                 dimensions.add(trace.y_axis.dimension)
@@ -508,7 +528,7 @@ class PlotComparerWidget(QWidget):
         self.sync_master_toggle_states()
 
     def sync_master_toggle_states(self):
-        filter_type = self.filter_combo.currentData()
+        active_domain = self.filter_combo.currentData()
         traces = self.manager.get_all_traces()
 
         dim_states = {dim: [] for dim in self.master_toggles_checkboxes.keys()}
@@ -516,12 +536,9 @@ class PlotComparerWidget(QWidget):
         for tid, trace in traces.items():
             if tid not in self.trace_settings:
                 continue
-            if filter_type != "all":
-                if filter_type == "time_series":
-                    if trace.plot_type not in ("time_series", "time_history"):
-                        continue
-                elif trace.plot_type != filter_type:
-                    continue
+            trace_domain = self._get_trace_domain(trace)
+            if trace_domain != active_domain:
+                continue
 
             settings = self.trace_settings[tid]
             parent_visible = settings.get("visible", True)
@@ -553,7 +570,7 @@ class PlotComparerWidget(QWidget):
         if not dim:
             return
 
-        filter_type = self.filter_combo.currentData()
+        active_domain = self.filter_combo.currentData()
         traces = self.manager.get_all_traces()
 
         self.tree_widget.blockSignals(True)
@@ -561,12 +578,9 @@ class PlotComparerWidget(QWidget):
         for tid, trace in traces.items():
             if tid not in self.trace_settings:
                 continue
-            if filter_type != "all":
-                if filter_type == "time_series":
-                    if trace.plot_type not in ("time_series", "time_history"):
-                        continue
-                elif trace.plot_type != filter_type:
-                    continue
+            trace_domain = self._get_trace_domain(trace)
+            if trace_domain != active_domain:
+                continue
 
             settings = self.trace_settings[tid]
 
@@ -689,15 +703,22 @@ class PlotComparerWidget(QWidget):
             QMessageBox.warning(self, tr("Export"), tr("Please select or check traces to export."))
             return
 
-        filepath, _ = QFileDialog.getSaveFileName(
-            self, tr("Export Selected Traces"), "comparison_export.mlcomp", "MeasureLab Comparison Files (*.mlcomp)"
-        )
-        if filepath:
-            ok = self.manager.export_to_file(filepath, trace_ids)
-            if ok:
-                QMessageBox.information(self, tr("Success"), tr("Traces exported successfully."))
-            else:
-                QMessageBox.warning(self, tr("Error"), tr("Failed to export traces."))
+        # Gather trace objects
+        traces_to_export = []
+        for tid in trace_ids:
+            trace = self.manager.get_trace(tid)
+            if trace:
+                traces_to_export.append(trace)
+
+        if not traces_to_export:
+            QMessageBox.warning(self, tr("Export"), tr("Failed to retrieve selected traces."))
+            return
+
+        # Open export settings dialog
+        from src.gui.widgets.export_dialog import ExportSettingsDialog
+
+        dialog = ExportSettingsDialog(traces_to_export, self)
+        dialog.exec()
 
     def replot(self):
         # 1. Clear current plots
@@ -705,8 +726,8 @@ class PlotComparerWidget(QWidget):
         self.y2_view.clear()
         self.curve_items.clear()
 
-        # Get the selected plot type filter
-        filter_type = self.filter_combo.currentData()
+        # Get the selected plot domain filter
+        active_domain = self.filter_combo.currentData()
 
         traces = self.manager.get_all_traces()
         visible_traces = {}
@@ -718,13 +739,10 @@ class PlotComparerWidget(QWidget):
             if not self.trace_settings[tid]["visible"]:
                 continue
 
-            # Apply plot type filter
-            if filter_type != "all":
-                if filter_type == "time_series":
-                    if trace.plot_type not in ("time_series", "time_history"):
-                        continue
-                elif trace.plot_type != filter_type:
-                    continue
+            # Apply plot domain filter
+            trace_domain = self._get_trace_domain(trace)
+            if trace_domain != active_domain:
+                continue
 
             # Ensure at least one sub-trace is visible
             settings = self.trace_settings[tid]
@@ -744,15 +762,16 @@ class PlotComparerWidget(QWidget):
         first_tid = list(visible_traces.keys())[0]
         first_trace = visible_traces[first_tid]
 
-        # Apply Axis Settings based on Plot Type
+        # Apply Axis Settings based on Plot Domain
         self.is_log_x = False
-        if first_trace.plot_type == "frequency_response":
+        first_domain = self._get_trace_domain(first_trace)
+        if first_domain == "frequency":
             self.plot_widget.setLogMode(x=True, y=False)
             self.is_log_x = True
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
             )
-        elif first_trace.plot_type in ("time_series", "time_history"):
+        elif first_domain == "time":
             self.plot_widget.setLogMode(x=False, y=False)
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
