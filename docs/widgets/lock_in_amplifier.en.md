@@ -82,9 +82,9 @@ The performance of a lock-in amplifier is determined by the "strength of the fil
 
 1. **Integration**:
     * The length of data used for a single measurement.
-    * `Fast (2048)`: Fast response, but lower accuracy for low-frequency measurements.
-    * `Slow / Very Slow`: Slower response, but higher noise rejection capability.
-    * `Very Slow 4x (262144)`: Uses an even longer integration time (approx. several seconds depending on sample rate) for extremely high measurement precision.
+    * `Very Fast (2048) / Fast (4096)`: Fast response, but lower accuracy for low-frequency measurements.
+    * `Medium (16384) / Standard (65536)`: Balanced response and noise rejection capability.
+    * `Slow (131072) / Very Slow (262144)`: Slower response, but higher noise rejection capability and extremely high measurement precision.
 
 2. **Post-mix LPF (Time Constant $\tau$)**:
     * A filter that further smooths the signal after detection. Corresponds to the "Time Constant" of analog lock-in amplifiers.
