@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QSplitter,
+    QSizePolicy,
 )
 
 from src.measurement_modules.base import MeasurementModule
@@ -90,11 +91,47 @@ class PlotComparerWidget(QWidget):
         plot_layout = QVBoxLayout(plot_container)
         plot_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Horizontal layout to contain both the plot and the slim collapse button
+        plot_content_layout = QHBoxLayout()
+        plot_content_layout.setContentsMargins(0, 0, 0, 0)
+        plot_content_layout.setSpacing(2)
+
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.setLabel("bottom", tr("X Axis"))
         self.plot_widget.setLabel("left", tr("Y Axis"))
-        plot_layout.addWidget(self.plot_widget)
+        plot_content_layout.addWidget(self.plot_widget, stretch=1)
+
+        # Slim, premium vertical collapse button
+        self.collapse_btn = QPushButton("›")
+        self.collapse_btn.setFixedWidth(14)
+        self.collapse_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+        self.collapse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.collapse_btn.setToolTip(tr("Hide Control Panel"))
+
+        # Apply elegant, glassmorphism/flat premium styling
+        self.collapse_btn.setStyleSheet("""
+            QPushButton {
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2c3e50, stop:1 #34495e);
+                color: #ecf0f1;
+                border: 1px solid #1a252f;
+                border-radius: 3px;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #34495e;
+                color: #3498db;
+            }
+            QPushButton:pressed {
+                background-color: #1a252f;
+            }
+        """)
+        self.collapse_btn.clicked.connect(self.toggle_controls)
+        plot_content_layout.addWidget(self.collapse_btn)
+
+        plot_layout.addLayout(plot_content_layout)
 
         # Setup secondary Y-axis (for phase/distortion)
         self.plot_item = self.plot_widget.plotItem
@@ -109,10 +146,10 @@ class PlotComparerWidget(QWidget):
         self.splitter.addWidget(plot_container)
 
         # --- Right Panel: Controls ---
-        controls_widget = QWidget()
-        controls_widget.setMinimumWidth(300)
-        controls_widget.setMaximumWidth(450)
-        controls_layout = QVBoxLayout(controls_widget)
+        self.controls_widget = QWidget()
+        self.controls_widget.setMinimumWidth(300)
+        self.controls_widget.setMaximumWidth(450)
+        controls_layout = QVBoxLayout(self.controls_widget)
         controls_layout.setContentsMargins(5, 5, 5, 5)
 
         # Trace List Group
@@ -181,7 +218,7 @@ class PlotComparerWidget(QWidget):
         controls_layout.addWidget(options_group)
         controls_layout.addStretch()
 
-        self.splitter.addWidget(controls_widget)
+        self.splitter.addWidget(self.controls_widget)
 
         # Default splitter weights
         self.splitter.setStretchFactor(0, 1)
@@ -192,6 +229,16 @@ class PlotComparerWidget(QWidget):
             self.y2_view.setGeometry(self.plot_item.vb.sceneBoundingRect())
         except Exception:
             pass
+
+    def toggle_controls(self):
+        is_visible = self.controls_widget.isVisible()
+        self.controls_widget.setVisible(not is_visible)
+        if is_visible:
+            self.collapse_btn.setText("‹")
+            self.collapse_btn.setToolTip(tr("Show Control Panel"))
+        else:
+            self.collapse_btn.setText("›")
+            self.collapse_btn.setToolTip(tr("Hide Control Panel"))
 
     def get_color(self, idx: int) -> str:
         colors = self.COLORS_DARK if self._is_dark_theme else self.COLORS_LIGHT
