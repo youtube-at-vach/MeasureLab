@@ -79,28 +79,29 @@ class PlotComparerWidget(QWidget):
         self.replot()
 
     def init_ui(self):
-        main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(5, 5, 5, 5)
+        # Set expanding size policy so the widget occupies the maximum vertical and horizontal space,
+        # avoiding empty/blank spacing at the top of the container layout.
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         # Splitter to allow resizing plot vs controls
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         main_layout.addWidget(self.splitter)
 
         # --- Left Panel: Plot Area ---
         plot_container = QWidget()
-        plot_layout = QVBoxLayout(plot_container)
+        plot_layout = QHBoxLayout(plot_container)
         plot_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Horizontal layout to contain both the plot and the slim collapse button
-        plot_content_layout = QHBoxLayout()
-        plot_content_layout.setContentsMargins(0, 0, 0, 0)
-        plot_content_layout.setSpacing(2)
+        plot_layout.setSpacing(2)
 
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.setLabel("bottom", tr("X Axis"))
         self.plot_widget.setLabel("left", tr("Y Axis"))
-        plot_content_layout.addWidget(self.plot_widget, stretch=1)
+        plot_layout.addWidget(self.plot_widget, stretch=1)
 
         # Slim, premium vertical collapse button
         self.collapse_btn = QPushButton("›")
@@ -129,9 +130,7 @@ class PlotComparerWidget(QWidget):
             }
         """)
         self.collapse_btn.clicked.connect(self.toggle_controls)
-        plot_content_layout.addWidget(self.collapse_btn)
-
-        plot_layout.addLayout(plot_content_layout)
+        plot_layout.addWidget(self.collapse_btn)
 
         # Setup secondary Y-axis (for phase/distortion)
         self.plot_item = self.plot_widget.plotItem
@@ -223,6 +222,8 @@ class PlotComparerWidget(QWidget):
         # Default splitter weights
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 0)
+
+        self.setLayout(main_layout)
 
     def update_y2_views(self):
         try:
