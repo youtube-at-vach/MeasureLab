@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
 
 from src.core.localization import tr
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.core.comparison_manager import ComparisonManager
 
 
 class IndependentWindow(QMainWindow):
@@ -104,6 +106,9 @@ class DetachableWidgetWrapper(QWidget):
         # Check if the content widget supports compact mode
         self.is_compactable = isinstance(widget, CompactableWidgetInterface) or hasattr(widget, "set_compact_mode")
 
+        # Check if the content widget supports plot comparison
+        self.is_comparable = isinstance(widget, ComparableWidgetInterface) or hasattr(widget, "get_comparable_data")
+
         self.init_ui()
 
     def init_ui(self):
@@ -138,10 +143,18 @@ class DetachableWidgetWrapper(QWidget):
             self.compact_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
             self.compact_btn.setEnabled(False)
 
+        self.compare_btn = None
+        if self.is_comparable:
+            self.compare_btn = QPushButton(tr("Send to Comparer"))
+            self.compare_btn.clicked.connect(self.send_to_comparer)
+            self.compare_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
         header_layout.addWidget(self.logs_btn)
         header_layout.addWidget(self.screenshot_btn)
+        if self.compare_btn:
+            header_layout.addWidget(self.compare_btn)
         if self.compact_btn:
             header_layout.addWidget(self.compact_btn)
         header_layout.addWidget(self.detach_btn)
@@ -331,3 +344,31 @@ class DetachableWidgetWrapper(QWidget):
             self.toggle_compact(False)
             self.compact_btn.setEnabled(False)
         self.is_detached = False
+
+    def send_to_comparer(self):
+        if not self.is_comparable:
+            return
+        try:
+
+            traces = self.content_widget.get_comparable_data()
+            if not traces:
+                QMessageBox.warning(self, tr("Compare"), tr("No data available to compare."))
+                return
+
+            manager = ComparisonManager.instance()
+            for trace in traces:
+                manager.add_trace(trace)
+
+            QMessageBox.information(
+                self,
+                tr("Compare"),
+                tr("Successfully sent {0} traces to Plot Comparer.").format(len(traces)),
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error("Failed to send data to comparer", exc_info=True)
+            QMessageBox.critical(
+                self,
+                tr("Error"),
+                tr("Failed to send data to comparer: {0}").format(str(e)),
+            )

@@ -49,6 +49,7 @@ from src.core.module_constants import (
     MODULE_OSCILLOSCOPE,
     MODULE_PROCESSOR_BENCHMARK,
     MODULE_RAW_TIME_SERIES,
+    MODULE_PLOT_COMPARER,
     MODULE_RECORDER_PLAYER,
     MODULE_SIGNAL_GENERATOR,
     MODULE_SOUND_LEVEL_METER,
@@ -101,6 +102,7 @@ MODULE_REGISTRY = {
     MODULE_STEREO_ALIGNMENT_MONITOR: ("src.gui.widgets.stereo_alignment_monitor", "StereoAlignmentMonitor"),
     MODULE_PROCESSOR_BENCHMARK: ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"),
     MODULE_SPATIAL_BINAURAL_MIXER: ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"),
+    MODULE_PLOT_COMPARER: ("src.gui.widgets.plot_comparer", "PlotComparer"),
 }
 
 
