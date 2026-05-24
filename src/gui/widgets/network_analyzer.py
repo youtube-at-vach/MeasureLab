@@ -167,7 +167,7 @@ class NetworkAnalyzer(MeasurementModule):
 
         # Fast Sweep Parameters
         self.sweep_mode = "Fast Chirp"
-        self.chirp_duration = 1.0
+        self.chirp_duration = 10.0
         self.averages = 1
 
         self.worker = None
@@ -724,7 +724,7 @@ class NetworkAnalyzerWidget(QWidget):
 
         self.duration_spin = QDoubleSpinBox(controls_group)
         self.duration_spin.setRange(0.1, 60.0)
-        self.duration_spin.setValue(1.0)
+        self.duration_spin.setValue(10.0)
         self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, "chirp_duration", v))
         self.duration_label = QLabel(tr("Duration (s):"), controls_group)
         form.addRow(self.duration_label, self.duration_spin)
