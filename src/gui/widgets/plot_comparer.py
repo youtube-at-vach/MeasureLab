@@ -9,16 +9,18 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
     QGroupBox,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QCheckBox,
     QDoubleSpinBox,
-    QFormLayout,
     QFileDialog,
     QMessageBox,
     QSplitter,
     QSizePolicy,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QHeaderView,
+    QComboBox,
+    QLabel,
 )
 
 from src.measurement_modules.base import MeasurementModule
@@ -155,11 +157,34 @@ class PlotComparerWidget(QWidget):
         list_group = QGroupBox(tr("Traces"))
         list_layout = QVBoxLayout(list_group)
 
-        self.list_widget = QListWidget()
-        self.list_widget.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-        self.list_widget.itemChanged.connect(self.on_item_changed)
-        self.list_widget.itemSelectionChanged.connect(self.on_selection_changed)
-        list_layout.addWidget(self.list_widget)
+        # Plot Type Filter
+        filter_layout = QHBoxLayout()
+        filter_label = QLabel(tr("Filter by Type:"))
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItem(tr("All"), "all")
+        self.filter_combo.addItem(tr("Frequency Response"), "frequency_response")
+        self.filter_combo.addItem(tr("Time Series"), "time_series")
+        self.filter_combo.addItem(tr("Spectrum"), "spectrum")
+        self.filter_combo.addItem(tr("XY Plot"), "xy_plot")
+        self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
+        filter_layout.addWidget(filter_label)
+        filter_layout.addWidget(self.filter_combo)
+        list_layout.addLayout(filter_layout)
+
+        # Master Toggles container (dynamic checkboxes will be inserted here)
+        self.master_toggles_container = QWidget()
+        self.master_toggles_layout = QHBoxLayout(self.master_toggles_container)
+        self.master_toggles_layout.setContentsMargins(0, 2, 0, 2)
+        self.master_toggles_checkboxes = {}
+        list_layout.addWidget(self.master_toggles_container)
+
+        self.tree_widget = QTreeWidget()
+        self.tree_widget.setColumnCount(2)
+        self.tree_widget.setHeaderLabels([tr("Trace / Parameter"), tr("Y-Axis")])
+        self.tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
+        self.tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.tree_widget.itemChanged.connect(self.on_item_changed)
+        list_layout.addWidget(self.tree_widget)
 
         # Action Buttons
         btn_layout = QHBoxLayout()
@@ -179,32 +204,6 @@ class PlotComparerWidget(QWidget):
         list_layout.addLayout(btn_layout)
 
         controls_layout.addWidget(list_group)
-
-        # Parameter Adjustments Group
-        adjust_group = QGroupBox(tr("Trace Adjustments"))
-        adjust_layout = QFormLayout(adjust_group)
-
-        self.offset_spin = QDoubleSpinBox()
-        self.offset_spin.setRange(-120.0, 120.0)
-        self.offset_spin.setValue(0.0)
-        self.offset_spin.setSuffix(" dB")
-        self.offset_spin.setDecimals(1)
-        self.offset_spin.setSingleStep(1.0)
-        self.offset_spin.valueChanged.connect(self.on_offset_changed)
-        self.offset_spin.setEnabled(False)
-        adjust_layout.addRow(tr("Gain Offset:"), self.offset_spin)
-
-        self.shift_spin = QDoubleSpinBox()
-        self.shift_spin.setRange(-10.0, 10.0)
-        self.shift_spin.setValue(0.0)
-        self.shift_spin.setSuffix(" s")
-        self.shift_spin.setDecimals(4)
-        self.shift_spin.setSingleStep(0.001)
-        self.shift_spin.valueChanged.connect(self.on_shift_changed)
-        self.shift_spin.setEnabled(False)
-        adjust_layout.addRow(tr("Time Shift:"), self.shift_spin)
-
-        controls_layout.addWidget(adjust_group)
 
         # Global Options Group
         options_group = QGroupBox(tr("Global Options"))
@@ -246,94 +245,387 @@ class PlotComparerWidget(QWidget):
         return colors[idx % len(colors)]
 
     def refresh_trace_list(self):
-        self.list_widget.blockSignals(True)
-        self.list_widget.clear()
+        self.tree_widget.blockSignals(True)
+        self.tree_widget.clear()
+
+        # Get the selected plot type filter
+        filter_type = self.filter_combo.currentData()
 
         traces = self.manager.get_all_traces()
         for idx, (tid, trace) in enumerate(traces.items()):
-            # Initialize settings if new
+            # Apply plot type filter
+            if filter_type != "all":
+                if filter_type == "time_series":
+                    if trace.plot_type not in ("time_series", "time_history"):
+                        continue
+                elif trace.plot_type != filter_type:
+                    continue
+
+            # Initialize settings if new, preserving backwards compatibility
             if tid not in self.trace_settings:
                 self.trace_settings[tid] = {
                     "visible": True,
                     "offset_db": 0.0,
                     "shift": 0.0,
                     "color": self.get_color(idx),
+                    "y_visible": True,
+                    "y_axis_choice": "Y1",
+                    "y2_visible": True,
+                    "y2_axis_choice": "Y2",
                 }
+            else:
+                # Ensure the new nested settings exist
+                if "y_visible" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["y_visible"] = True
+                if "y_axis_choice" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["y_axis_choice"] = "Y1"
+                if "y2_visible" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["y2_visible"] = True
+                if "y2_axis_choice" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["y2_axis_choice"] = "Y2"
 
-            item = QListWidgetItem(trace.name)
-            item.setData(Qt.ItemDataRole.UserRole, tid)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEditable)
+            settings = self.trace_settings[tid]
 
-            # Set checked state based on settings
-            state = Qt.CheckState.Checked if self.trace_settings[tid]["visible"] else Qt.CheckState.Unchecked
-            item.setCheckState(state)
+            # 1. Create Parent Item (Trace Entire)
+            parent_item = QTreeWidgetItem(self.tree_widget)
+            parent_item.setText(0, trace.name)
+            parent_item.setFlags(parent_item.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEditable)
+            parent_item.setCheckState(0, Qt.CheckState.Checked if settings["visible"] else Qt.CheckState.Unchecked)
+            parent_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+            parent_item.setData(0, Qt.ItemDataRole.UserRole + 1, "parent")
 
-            # Set brush color for list hint
             from PyQt6.QtGui import QColor, QBrush
-            color = QColor(self.trace_settings[tid]["color"])
-            item.setForeground(QBrush(color))
 
-            self.list_widget.addItem(item)
+            color = QColor(settings["color"])
+            parent_item.setForeground(0, QBrush(color))
 
-        self.list_widget.blockSignals(False)
+            # 2. Create Child Item (Primary Data)
+            y_label = tr(trace.y_axis.dimension).capitalize()
+            if trace.y_axis.display_unit:
+                y_label += f" ({trace.y_axis.display_unit})"
 
-    def on_item_changed(self, item: QListWidgetItem):
-        tid = item.data(Qt.ItemDataRole.UserRole)
+            y_item = QTreeWidgetItem(parent_item)
+            y_item.setText(0, y_label)
+            y_item.setFlags(y_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            y_item.setCheckState(0, Qt.CheckState.Checked if settings["y_visible"] else Qt.CheckState.Unchecked)
+            y_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+            y_item.setData(0, Qt.ItemDataRole.UserRole + 1, "y")
+
+            y_combo = QComboBox()
+            y_combo.addItems(["Y1", "Y2"])
+            y_combo.setCurrentText(settings["y_axis_choice"])
+            y_combo.setProperty("trace_id", tid)
+            y_combo.setProperty("sub_type", "y")
+            y_combo.currentTextChanged.connect(self.on_axis_changed)
+            self.tree_widget.setItemWidget(y_item, 1, y_combo)
+
+            # 3. Create Child Item (Secondary Data) - only if it exists
+            if trace.y2_data is not None and trace.y2_axis:
+                y2_label = tr(trace.y2_axis.dimension).capitalize()
+                if trace.y2_axis.display_unit:
+                    y2_label += f" ({trace.y2_axis.display_unit})"
+
+                y2_item = QTreeWidgetItem(parent_item)
+                y2_item.setText(0, y2_label)
+                y2_item.setFlags(y2_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                y2_item.setCheckState(0, Qt.CheckState.Checked if settings["y2_visible"] else Qt.CheckState.Unchecked)
+                y2_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+                y2_item.setData(0, Qt.ItemDataRole.UserRole + 1, "y2")
+
+                y2_combo = QComboBox()
+                y2_combo.addItems(["Y1", "Y2"])
+                y2_combo.setCurrentText(settings["y2_axis_choice"])
+                y2_combo.setProperty("trace_id", tid)
+                y2_combo.setProperty("sub_type", "y2")
+                y2_combo.currentTextChanged.connect(self.on_axis_changed)
+                self.tree_widget.setItemWidget(y2_item, 1, y2_combo)
+
+            # 4. Create Child Item (Gain Offset)
+            offset_item = QTreeWidgetItem(parent_item)
+            offset_item.setText(0, tr("Gain Offset"))
+            offset_item.setFlags(offset_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            offset_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+            offset_item.setData(0, Qt.ItemDataRole.UserRole + 1, "offset")
+
+            offset_spin = QDoubleSpinBox()
+            offset_spin.setRange(-120.0, 120.0)
+            offset_spin.setValue(settings["offset_db"])
+            offset_spin.setSuffix(" dB")
+            offset_spin.setDecimals(3)
+            offset_spin.setSingleStep(0.1)
+            offset_spin.setProperty("trace_id", tid)
+            offset_spin.valueChanged.connect(self.on_tree_offset_changed)
+            self.tree_widget.setItemWidget(offset_item, 1, offset_spin)
+
+            # 5. Create Child Item (Time Shift)
+            shift_item = QTreeWidgetItem(parent_item)
+            shift_item.setText(0, tr("Time Shift"))
+            shift_item.setFlags(shift_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            shift_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+            shift_item.setData(0, Qt.ItemDataRole.UserRole + 1, "shift")
+
+            shift_spin = QDoubleSpinBox()
+            shift_spin.setRange(-10.0, 10.0)
+            shift_spin.setValue(settings["shift"])
+            shift_spin.setSuffix(" s")
+            shift_spin.setDecimals(4)
+            shift_spin.setSingleStep(0.001)
+            shift_spin.setProperty("trace_id", tid)
+            shift_spin.valueChanged.connect(self.on_tree_shift_changed)
+            self.tree_widget.setItemWidget(shift_item, 1, shift_spin)
+
+            parent_item.setExpanded(True)
+
+        self.tree_widget.blockSignals(False)
+        self.update_master_toggles()
+
+    def on_item_changed(self, item: QTreeWidgetItem, column: int):
+        if column != 0:
+            return
+
+        tid = item.data(0, Qt.ItemDataRole.UserRole)
         if not tid:
             return
 
-        # Handle Rename
-        trace = self.manager.get_trace(tid)
-        if trace and item.text() != trace.name:
-            trace.name = item.text()
-            logger.info(f"Trace renamed to: {trace.name}")
+        item_type = item.data(0, Qt.ItemDataRole.UserRole + 1)
 
-        # Handle Visibility
-        visible = item.checkState() == Qt.CheckState.Checked
-        if tid in self.trace_settings:
-            self.trace_settings[tid]["visible"] = visible
+        # Handle Rename (only for parent item)
+        if item_type == "parent":
+            trace = self.manager.get_trace(tid)
+            if trace and item.text(0) != trace.name:
+                trace.name = item.text(0)
+                logger.info(f"Trace renamed to: {trace.name}")
+
+            # Sync checked state down to children
+            visible = item.checkState(0) == Qt.CheckState.Checked
+            if tid in self.trace_settings:
+                self.trace_settings[tid]["visible"] = visible
+                self.tree_widget.blockSignals(True)
+                for i in range(item.childCount()):
+                    child = item.child(i)
+                    child.setCheckState(0, Qt.CheckState.Checked if visible else Qt.CheckState.Unchecked)
+                    c_type = child.data(0, Qt.ItemDataRole.UserRole + 1)
+                    if c_type == "y":
+                        self.trace_settings[tid]["y_visible"] = visible
+                    elif c_type == "y2":
+                        self.trace_settings[tid]["y2_visible"] = visible
+                self.tree_widget.blockSignals(False)
+
+        elif item_type in ("y", "y2"):
+            visible = item.checkState(0) == Qt.CheckState.Checked
+            if tid in self.trace_settings:
+                if item_type == "y":
+                    self.trace_settings[tid]["y_visible"] = visible
+                elif item_type == "y2":
+                    self.trace_settings[tid]["y2_visible"] = visible
+
+                # Sync checked state up to parent
+                parent = item.parent()
+                if parent:
+                    self.tree_widget.blockSignals(True)
+                    any_checked = False
+                    all_checked = True
+                    for i in range(parent.childCount()):
+                        c_state = parent.child(i).checkState(0)
+                        if c_state == Qt.CheckState.Checked:
+                            any_checked = True
+                        else:
+                            all_checked = False
+
+                    if all_checked:
+                        parent.setCheckState(0, Qt.CheckState.Checked)
+                        self.trace_settings[tid]["visible"] = True
+                    elif any_checked:
+                        parent.setCheckState(0, Qt.CheckState.Checked)
+                        self.trace_settings[tid]["visible"] = True
+                    else:
+                        parent.setCheckState(0, Qt.CheckState.Unchecked)
+                        self.trace_settings[tid]["visible"] = False
+                    self.tree_widget.blockSignals(False)
 
         self.replot()
+        self.sync_master_toggle_states()
 
-    def on_selection_changed(self):
-        selected_items = self.list_widget.selectedItems()
-        if not selected_items:
-            self.offset_spin.setEnabled(False)
-            self.shift_spin.setEnabled(False)
+    def on_tree_offset_changed(self, val):
+        spin = self.sender()
+        if not isinstance(spin, QDoubleSpinBox):
             return
-
-        tid = selected_items[0].data(Qt.ItemDataRole.UserRole)
-        if tid in self.trace_settings:
-            self.offset_spin.setEnabled(True)
-            self.offset_spin.blockSignals(True)
-            self.offset_spin.setValue(self.trace_settings[tid]["offset_db"])
-            self.offset_spin.blockSignals(False)
-
-            self.shift_spin.setEnabled(True)
-            self.shift_spin.blockSignals(True)
-            self.shift_spin.setValue(self.trace_settings[tid]["shift"])
-            self.shift_spin.blockSignals(False)
-        else:
-            self.offset_spin.setEnabled(False)
-            self.shift_spin.setEnabled(False)
-
-    def on_offset_changed(self, val):
-        selected_items = self.list_widget.selectedItems()
-        if not selected_items:
-            return
-        tid = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        tid = spin.property("trace_id")
         if tid in self.trace_settings:
             self.trace_settings[tid]["offset_db"] = val
             self.replot()
 
-    def on_shift_changed(self, val):
-        selected_items = self.list_widget.selectedItems()
-        if not selected_items:
+    def on_tree_shift_changed(self, val):
+        spin = self.sender()
+        if not isinstance(spin, QDoubleSpinBox):
             return
-        tid = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        tid = spin.property("trace_id")
         if tid in self.trace_settings:
             self.trace_settings[tid]["shift"] = val
             self.replot()
+
+    def update_master_toggles(self):
+        # 1. Gather all unique Y dimensions for visible traces
+        filter_type = self.filter_combo.currentData()
+        traces = self.manager.get_all_traces()
+
+        dimensions = set()
+        for _, trace in traces.items():
+            if filter_type != "all":
+                if filter_type == "time_series":
+                    if trace.plot_type not in ("time_series", "time_history"):
+                        continue
+                elif trace.plot_type != filter_type:
+                    continue
+
+            if trace.y_axis and trace.y_axis.dimension:
+                dimensions.add(trace.y_axis.dimension)
+            if trace.y2_data is not None and trace.y2_axis and trace.y2_axis.dimension:
+                dimensions.add(trace.y2_axis.dimension)
+
+        # 2. Clear old master checkboxes
+        for cb in list(self.master_toggles_checkboxes.values()):
+            cb.blockSignals(True)
+            self.master_toggles_layout.removeWidget(cb)
+            cb.deleteLater()
+        self.master_toggles_checkboxes.clear()
+
+        # 3. Create new checkboxes
+        if not dimensions:
+            self.master_toggles_container.setVisible(False)
+            return
+
+        self.master_toggles_container.setVisible(True)
+        for dim in sorted(list(dimensions)):
+            label_text = tr(dim).capitalize()
+            cb = QCheckBox(label_text)
+            cb.setProperty("dimension", dim)
+            cb.toggled.connect(self.on_master_toggle_changed)
+            self.master_toggles_layout.addWidget(cb)
+            self.master_toggles_checkboxes[dim] = cb
+
+        self.sync_master_toggle_states()
+
+    def sync_master_toggle_states(self):
+        filter_type = self.filter_combo.currentData()
+        traces = self.manager.get_all_traces()
+
+        dim_states = {dim: [] for dim in self.master_toggles_checkboxes.keys()}
+
+        for tid, trace in traces.items():
+            if tid not in self.trace_settings:
+                continue
+            if filter_type != "all":
+                if filter_type == "time_series":
+                    if trace.plot_type not in ("time_series", "time_history"):
+                        continue
+                elif trace.plot_type != filter_type:
+                    continue
+
+            settings = self.trace_settings[tid]
+            parent_visible = settings.get("visible", True)
+
+            if trace.y_axis and trace.y_axis.dimension in dim_states:
+                dim = trace.y_axis.dimension
+                is_visible = parent_visible and settings.get("y_visible", True)
+                dim_states[dim].append(is_visible)
+
+            if trace.y2_data is not None and trace.y2_axis and trace.y2_axis.dimension in dim_states:
+                dim = trace.y2_axis.dimension
+                is_visible = parent_visible and settings.get("y2_visible", True)
+                dim_states[dim].append(is_visible)
+
+        for dim, cb in self.master_toggles_checkboxes.items():
+            cb.blockSignals(True)
+            states = dim_states[dim]
+            if states:
+                cb.setChecked(any(states))
+            else:
+                cb.setChecked(False)
+            cb.blockSignals(False)
+
+    def on_master_toggle_changed(self, checked: bool):
+        cb = self.sender()
+        if not isinstance(cb, QCheckBox):
+            return
+        dim = cb.property("dimension")
+        if not dim:
+            return
+
+        filter_type = self.filter_combo.currentData()
+        traces = self.manager.get_all_traces()
+
+        self.tree_widget.blockSignals(True)
+
+        for tid, trace in traces.items():
+            if tid not in self.trace_settings:
+                continue
+            if filter_type != "all":
+                if filter_type == "time_series":
+                    if trace.plot_type not in ("time_series", "time_history"):
+                        continue
+                elif trace.plot_type != filter_type:
+                    continue
+
+            settings = self.trace_settings[tid]
+
+            if trace.y_axis and trace.y_axis.dimension == dim:
+                settings["y_visible"] = checked
+                if checked:
+                    settings["visible"] = True
+
+            if trace.y2_data is not None and trace.y2_axis and trace.y2_axis.dimension == dim:
+                settings["y2_visible"] = checked
+                if checked:
+                    settings["visible"] = True
+
+            # Auto-disable parent trace if all children become unchecked
+            has_y = settings.get("y_visible", True)
+            has_y2 = (trace.y2_data is not None) and settings.get("y2_visible", True)
+            if not has_y and not has_y2:
+                settings["visible"] = False
+
+        # Refresh tree checkboxes directly to avoid clearing selection or inputs
+        root = self.tree_widget.invisibleRootItem()
+        for i in range(root.childCount()):
+            parent_item = root.child(i)
+            tid = parent_item.data(0, Qt.ItemDataRole.UserRole)
+            if tid in self.trace_settings:
+                settings = self.trace_settings[tid]
+                parent_item.setCheckState(0, Qt.CheckState.Checked if settings["visible"] else Qt.CheckState.Unchecked)
+                for j in range(parent_item.childCount()):
+                    child = parent_item.child(j)
+                    c_type = child.data(0, Qt.ItemDataRole.UserRole + 1)
+                    if c_type == "y":
+                        child.setCheckState(
+                            0, Qt.CheckState.Checked if settings["y_visible"] else Qt.CheckState.Unchecked
+                        )
+                    elif c_type == "y2":
+                        child.setCheckState(
+                            0, Qt.CheckState.Checked if settings["y2_visible"] else Qt.CheckState.Unchecked
+                        )
+
+        self.tree_widget.blockSignals(False)
+        self.replot()
+
+    def on_axis_changed(self, text):
+        combo = self.sender()
+        if not isinstance(combo, QComboBox):
+            return
+        tid = combo.property("trace_id")
+        sub_type = combo.property("sub_type")
+
+        if tid in self.trace_settings:
+            if sub_type == "y":
+                self.trace_settings[tid]["y_axis_choice"] = text
+            elif sub_type == "y2":
+                self.trace_settings[tid]["y2_axis_choice"] = text
+            logger.info(f"Sub-trace {sub_type} of {tid} re-mapped to {text}")
+            self.replot()
+
+    def on_filter_changed(self, index):
+        self.refresh_trace_list()
+        self.replot()
 
     def on_trace_added(self, trace_id: str):
         self.refresh_trace_list()
@@ -351,10 +643,10 @@ class PlotComparerWidget(QWidget):
         self.replot()
 
     def remove_selected(self):
-        selected_items = self.list_widget.selectedItems()
+        selected_items = self.tree_widget.selectedItems()
         if not selected_items:
             return
-        tid = selected_items[0].data(Qt.ItemDataRole.UserRole)
+        tid = selected_items[0].data(0, Qt.ItemDataRole.UserRole)
         self.manager.remove_trace(tid)
 
     def clear_all(self):
@@ -374,16 +666,23 @@ class PlotComparerWidget(QWidget):
                 QMessageBox.warning(self, tr("Error"), tr("Failed to import traces from file."))
 
     def export_selected(self):
-        selected_items = self.list_widget.selectedItems()
+        selected_items = self.tree_widget.selectedItems()
         if not selected_items:
             # If nothing is explicitly selected, export all checked traces
-            trace_ids = [
-                self.list_widget.item(i).data(Qt.ItemDataRole.UserRole)
-                for i in range(self.list_widget.count())
-                if self.list_widget.item(i).checkState() == Qt.CheckState.Checked
-            ]
+            trace_ids = []
+            root = self.tree_widget.invisibleRootItem()
+            for i in range(root.childCount()):
+                item = root.child(i)
+                if item.checkState(0) == Qt.CheckState.Checked:
+                    tid = item.data(0, Qt.ItemDataRole.UserRole)
+                    if tid:
+                        trace_ids.append(tid)
         else:
-            trace_ids = [item.data(Qt.ItemDataRole.UserRole) for item in selected_items]
+            trace_ids = []
+            for item in selected_items:
+                tid = item.data(0, Qt.ItemDataRole.UserRole)
+                if tid and tid not in trace_ids:
+                    trace_ids.append(tid)
 
         if not trace_ids:
             QMessageBox.warning(self, tr("Export"), tr("Please select or check traces to export."))
@@ -405,12 +704,34 @@ class PlotComparerWidget(QWidget):
         self.y2_view.clear()
         self.curve_items.clear()
 
+        # Get the selected plot type filter
+        filter_type = self.filter_combo.currentData()
+
         traces = self.manager.get_all_traces()
-        visible_traces = {
-            tid: trace
-            for tid, trace in traces.items()
-            if tid in self.trace_settings and self.trace_settings[tid]["visible"]
-        }
+        visible_traces = {}
+        for tid, trace in traces.items():
+            if tid not in self.trace_settings:
+                continue
+
+            # Check parent visibility
+            if not self.trace_settings[tid]["visible"]:
+                continue
+
+            # Apply plot type filter
+            if filter_type != "all":
+                if filter_type == "time_series":
+                    if trace.plot_type not in ("time_series", "time_history"):
+                        continue
+                elif trace.plot_type != filter_type:
+                    continue
+
+            # Ensure at least one sub-trace is visible
+            settings = self.trace_settings[tid]
+            has_y = settings.get("y_visible", True)
+            has_y2 = (trace.y2_data is not None) and settings.get("y2_visible", True)
+
+            if has_y or has_y2:
+                visible_traces[tid] = trace
 
         if not visible_traces:
             self.plot_widget.setLabel("bottom", tr("X Axis"))
@@ -427,20 +748,20 @@ class PlotComparerWidget(QWidget):
         if first_trace.plot_type == "frequency_response":
             self.plot_widget.setLogMode(x=True, y=False)
             self.is_log_x = True
-            self.plot_widget.setLabel("bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit))
-            self.plot_widget.setLabel("left", tr(first_trace.y_axis.dimension).capitalize(), units=tr(first_trace.y_axis.display_unit))
-            if first_trace.y2_axis:
-                self.plot_item.getAxis("right").setLabel(tr(first_trace.y2_axis.dimension).capitalize(), units=tr(first_trace.y2_axis.display_unit))
-        elif first_trace.plot_type == "time_series" or first_trace.plot_type == "time_history":
+            self.plot_widget.setLabel(
+                "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
+            )
+        elif first_trace.plot_type in ("time_series", "time_history"):
             self.plot_widget.setLogMode(x=False, y=False)
-            self.plot_widget.setLabel("bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit))
-            self.plot_widget.setLabel("left", tr(first_trace.y_axis.dimension).capitalize(), units=tr(first_trace.y_axis.display_unit))
-            self.plot_item.getAxis("right").setLabel("")
+            self.plot_widget.setLabel(
+                "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
+            )
         else:
-            # Fallback
             self.plot_widget.setLogMode(x=False, y=False)
             self.plot_widget.setLabel("bottom", "X")
-            self.plot_widget.setLabel("left", "Y")
+
+        y1_labels = []
+        y2_labels = []
 
         # 3. Draw each trace
         for tid, trace in visible_traces.items():
@@ -451,56 +772,106 @@ class PlotComparerWidget(QWidget):
             y = np.array(trace.y_data, dtype=float)
             y2 = np.array(trace.y2_data, dtype=float) if trace.y2_data is not None else None
 
-            if len(x) == 0 or len(y) == 0:
+            if len(x) == 0:
                 continue
 
             # Apply Time Shift (X Shift)
             if settings["shift"] != 0.0:
                 x = x + settings["shift"]
 
-            # Apply Offset (Gain Offset / Amplitude Scaling)
-            if settings["offset_db"] != 0.0:
-                if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
-                    # Logarithmic domain addition
-                    y = y + settings["offset_db"]
-                else:
-                    # Linear domain multiplication
-                    gain_factor = 10 ** (settings["offset_db"] / 20.0)
-                    y = y * gain_factor
-
-            # Normalize (Align Peaks) if requested
-            if self.normalize_check.isChecked():
-                if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
-                    y = y - np.max(y)
-                else:
-                    max_y = np.max(np.abs(y))
-                    if max_y > 1e-12:
-                        y = y / max_y
-
-            # Convert to display formats (e.g. logX handling)
-            # PyQtGraph's setLogMode(x=True) automatically takes log10 of x values.
-            # However, for secondary Y axis ViewBox (which doesn't support automatic LogMode link easily),
-            # we manually log the X if setLogMode is enabled.
+            # Convert to display formats (e.g. logX handling for Y2 overlay)
             x_for_y2 = x
+            y_for_y2 = y
+            y2_for_y2 = y2
+
             if getattr(self, "is_log_x", False):
-                # Avoid log of zero
                 valid_mask = x > 0
                 x_for_y2 = np.log10(x[valid_mask])
+                if y is not None:
+                    y_for_y2 = y[valid_mask]
+                    x = x[valid_mask]
+                    y = y[valid_mask]
                 if y2 is not None:
+                    y2_for_y2 = y2[valid_mask]
                     y2 = y2[valid_mask]
 
-            # Draw Y
-            pen = pg.mkPen(settings["color"], width=2)
-            y_curve = self.plot_widget.plot(x, y, pen=pen, name=trace.name)
-
-            # Draw Y2 (Phase, etc. on secondary axis)
+            y_curve = None
             y2_curve = None
-            if y2 is not None and len(y2) == len(x_for_y2):
-                pen_y2 = pg.mkPen(settings["color"], width=1, style=Qt.PenStyle.DashLine)
-                y2_curve = pg.PlotCurveItem(x_for_y2, y2, pen=pen_y2)
-                self.y2_view.addItem(y2_curve)
 
-            self.curve_items[tid] = (y_curve, y2_curve)
+            # --- Primary Data (y) ---
+            if settings.get("y_visible", True) and len(y) > 0:
+                # Apply Offset (Gain Offset / Amplitude Scaling)
+                y_processed = y_for_y2.copy() if settings.get("y_axis_choice", "Y1") == "Y2" else y.copy()
+                if settings["offset_db"] != 0.0:
+                    if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
+                        y_processed = y_processed + settings["offset_db"]
+                    else:
+                        gain_factor = 10 ** (settings["offset_db"] / 20.0)
+                        y_processed = y_processed * gain_factor
+
+                # Normalize (Align Peaks) if requested
+                if self.normalize_check.isChecked():
+                    if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
+                        y_processed = y_processed - np.max(y_processed)
+                    else:
+                        max_y = np.max(np.abs(y_processed))
+                        if max_y > 1e-12:
+                            y_processed = y_processed / max_y
+
+                axis_choice = settings.get("y_axis_choice", "Y1")
+                dim_cap = tr(trace.y_axis.dimension).capitalize()
+                unit = trace.y_axis.display_unit
+                label_str = f"{dim_cap} ({unit})" if unit else dim_cap
+
+                if axis_choice == "Y1":
+                    pen = pg.mkPen(settings["color"], width=2)
+                    y_curve = self.plot_widget.plot(
+                        x, y_processed, pen=pen, name=f"{trace.name} - {tr(trace.y_axis.dimension)}"
+                    )
+                    y1_labels.append(label_str)
+                else:  # Y2
+                    pen = pg.mkPen(settings["color"], width=2, style=Qt.PenStyle.DashLine)
+                    y_curve = pg.PlotCurveItem(x_for_y2, y_processed, pen=pen)
+                    self.y2_view.addItem(y_curve)
+                    y2_labels.append(label_str)
+
+            # --- Secondary Data (y2) ---
+            if y2 is not None and settings.get("y2_visible", True) and len(y2) > 0:
+                y2_processed = y2_for_y2.copy() if settings.get("y2_axis_choice", "Y2") == "Y2" else y2.copy()
+
+                axis_choice = settings.get("y2_axis_choice", "Y2")
+                dim_cap = tr(trace.y2_axis.dimension).capitalize()
+                unit = trace.y2_axis.display_unit
+                label_str = f"{dim_cap} ({unit})" if unit else dim_cap
+
+                if axis_choice == "Y1":
+                    # Draw on primary axis
+                    pen_y2 = pg.mkPen(settings["color"], width=1, style=Qt.PenStyle.DotLine)
+                    y2_curve = self.plot_widget.plot(
+                        x, y2_processed, pen=pen_y2, name=f"{trace.name} - {tr(trace.y2_axis.dimension)}"
+                    )
+                    y1_labels.append(label_str)
+                else:  # Y2
+                    pen_y2 = pg.mkPen(settings["color"], width=1, style=Qt.PenStyle.DashLine)
+                    y2_curve = pg.PlotCurveItem(x_for_y2, y2_processed, pen=pen_y2)
+                    self.y2_view.addItem(y2_curve)
+                    y2_labels.append(label_str)
+
+            if y_curve is not None or y2_curve is not None:
+                self.curve_items[tid] = (y_curve, y2_curve)
+
+        # Dynamic Axis Labels
+        if y1_labels:
+            y1_uniq = list(dict.fromkeys(y1_labels))
+            self.plot_widget.setLabel("left", ", ".join(y1_uniq))
+        else:
+            self.plot_widget.setLabel("left", tr("Y Axis"))
+
+        if y2_labels:
+            y2_uniq = list(dict.fromkeys(y2_labels))
+            self.plot_item.getAxis("right").setLabel(", ".join(y2_uniq))
+        else:
+            self.plot_item.getAxis("right").setLabel("")
 
         self.update_y2_views()
 
