@@ -12,3 +12,8 @@
 
 **Learning:** Instantiating new `QTableWidgetItem` on every update loop severely impacts performance due to unnecessary memory allocations and garbage collection overhead.
 **Action:** Always prefer `.item(row, col)` with the walrus operator to fetch existing table items and `.setText()` to update them, avoiding the creation of new `QTableWidgetItem` whenever possible. Also, disable UI updates using `setUpdatesEnabled(False)` when iterating rows to further reduce UI stuttering.
+
+## 2026-05-25 - [ArbitraryHarmonicGenerator QTableWidget performance improvement]
+
+**Learning:** Instantiating new `QTableWidgetItem` on every update loop in the Arbitrary Harmonic Generator severely impacts performance due to unnecessary memory allocations and garbage collection overhead, exactly as seen in LockInHarmonicAnalyzer.
+**Action:** Reused existing table items using `.item(row, col)` with the walrus operator to fetch them and `.setText()` to update them, avoiding the creation of new `QTableWidgetItem` whenever possible.

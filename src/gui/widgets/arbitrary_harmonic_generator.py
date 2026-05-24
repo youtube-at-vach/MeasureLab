@@ -400,9 +400,13 @@ class ArbitraryHarmonicWidget(QWidget):
                 continue
 
             # Label
-            item_lbl = QTableWidgetItem(tr("{}th").format(harmonic_idx + 1))
-            item_lbl.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.table.setItem(i, 0, item_lbl)
+            lbl_text = tr("{}th").format(harmonic_idx + 1)
+            if item_lbl := self.table.item(i, 0):
+                item_lbl.setText(lbl_text)
+            else:
+                item_lbl = QTableWidgetItem(lbl_text)
+                item_lbl.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.table.setItem(i, 0, item_lbl)
 
             # Amp editor
             amp_spin = QDoubleSpinBox()
@@ -463,9 +467,13 @@ class ArbitraryHarmonicWidget(QWidget):
                 continue
 
             # Label
-            item_lbl = QTableWidgetItem(tr("{}th").format(harmonic_idx + 1))
-            item_lbl.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.comp_adj_table.setItem(i, 0, item_lbl)
+            lbl_text = tr("{}th").format(harmonic_idx + 1)
+            if item_lbl := self.comp_adj_table.item(i, 0):
+                item_lbl.setText(lbl_text)
+            else:
+                item_lbl = QTableWidgetItem(lbl_text)
+                item_lbl.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.comp_adj_table.setItem(i, 0, item_lbl)
 
             # Amp Adjust editor
             amp_spin = QDoubleSpinBox()
