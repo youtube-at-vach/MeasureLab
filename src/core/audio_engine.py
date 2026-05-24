@@ -141,6 +141,7 @@ class AudioEngine:
 
         # Precision Mode
         self.audio_engine_64bit = False
+        self.active_dtype = None
 
         # Calibration
         self.calibration = CalibrationManager()
@@ -193,7 +194,9 @@ class AudioEngine:
         self.coreaudio_conversion_quality = "min"
 
     def _get_dtype(self):
-        """Returns the appropriate numpy dtype based on precision settings."""
+        """Returns the appropriate numpy dtype based on precision settings or active stream."""
+        if getattr(self, "active_dtype", None) is not None:
+            return self.active_dtype
         return "float64" if self.audio_engine_64bit else "float32"
 
     def set_audio_engine_64bit(self, enabled: bool):
@@ -604,13 +607,13 @@ class AudioEngine:
 
         mix_buffer = self._mix_clients(logical_in, frames, time, status, active_callbacks, logical_out_ch)
 
-        # 4. Apply Effects (Dithering)
-        if self.dithering_enabled:
-            self._apply_dithering(mix_buffer)
-
-        # 5. Update Loopback
+        # 4. Update Loopback (using clean, high-precision mix_buffer)
         if use_loopback:
             self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
+
+        # 5. Apply Effects (Dithering)
+        if self.dithering_enabled:
+            self._apply_dithering(mix_buffer)
 
         # 6. Map to Hardware Output
         self._map_logical_to_hardware_output(mix_buffer, outdata, out_mode)
@@ -707,6 +710,7 @@ class AudioEngine:
 
         try:
             if self.offline_mode:
+                self.active_dtype = "float64" if self.audio_engine_64bit else "float32"
                 self.stream = VirtualStream(
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
@@ -724,6 +728,7 @@ class AudioEngine:
                     extra_settings = self._get_jack_settings()
 
                 try:
+                    self.active_dtype = "float64" if self.audio_engine_64bit else "float32"
                     self.stream = sd.Stream(
                         device=(self.input_device, self.output_device),
                         samplerate=self.sample_rate,
@@ -739,10 +744,11 @@ class AudioEngine:
                         f"Master audio stream started with {self._get_dtype()}. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
                     )
                 except Exception as stream_err:
-                    if self._get_dtype() == "float64":
+                    if self.audio_engine_64bit:
                         self.logger.info(
                             f"Failed to start master stream with float64 ({stream_err}). Falling back to float32."
                         )
+                        self.active_dtype = "float32"
                         self.stream = sd.Stream(
                             device=(self.input_device, self.output_device),
                             samplerate=self.sample_rate,
@@ -763,6 +769,7 @@ class AudioEngine:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.
             self.stream = None
+            self.active_dtype = None
 
     def stop_stream(self):
         """Stops the master audio stream."""
@@ -775,6 +782,7 @@ class AudioEngine:
                     self.logger.error(f"Error stopping stream: {e}")
                 finally:
                     self.stream = None
+                    self.active_dtype = None
                 self.logger.debug("Master audio stream stopped")
 
     def _restart_stream(self):

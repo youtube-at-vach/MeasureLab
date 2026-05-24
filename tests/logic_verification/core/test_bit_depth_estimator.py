@@ -89,20 +89,18 @@ def test_bit_distribution(estimator):
 
     estimator.reset()
 
-    # Test with -1.0 (0x80000001 per code logic scaling)
-    # scaling: -1.0 * (2^31 - 1) = -2147483647
-    # int32(-2147483647) is 0x80000001
-    # 0x80000001 = 1000...0001
-    # So bit 31 is 1, bit 0 is 1. Others 0.
+    # Test with -1.0
+    # In sign-magnitude representation:
+    # -1.0 scales to -2147483647, which has magnitude 2147483647 (0x7FFFFFFF, bits 0-30 set)
+    # and sign bit set (bit 31 set).
+    # So all bits 0 to 31 are set to 1.0.
 
     samples_neg = -np.ones(100)
     estimator.add_samples(samples_neg)
     results = estimator.analyze()
 
     bit_dist = results["bit_distribution"]
-    assert bit_dist[0] == 1.0
-    assert bit_dist[31] == 1.0
-    np.testing.assert_allclose(bit_dist[1:31], 0.0)
+    np.testing.assert_allclose(bit_dist, 1.0)
 
 
 def test_histogram(estimator):

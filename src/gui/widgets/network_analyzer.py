@@ -80,7 +80,9 @@ class PlayRecSession:
             self.callback_id = None
 
     def wait(self, timeout=None):
-        self.completion_event.wait(timeout)
+        completed = self.completion_event.wait(timeout)
+        if not completed:
+            self.error = "Audio playback timed out. The audio driver or hardware may have disconnected or stopped responding."
         if self.error:
             raise RuntimeError(str(self.error))
 
@@ -205,7 +207,8 @@ class NetworkAnalyzer(MeasurementModule):
         """
         session = PlayRecSession(self.audio_engine, output_data, input_channels)
         session.start()
-        session.wait()
+        expected_duration = len(output_data) / self.audio_engine.sample_rate
+        session.wait(timeout=expected_duration + 2.0)
         session.stop()
         return session.input_data
 
