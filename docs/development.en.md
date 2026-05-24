@@ -25,15 +25,6 @@ source .venv/bin/activate
 python main_gui.py
 ```
 
-### ☕ Coffee Break: Behind the Scenes of the Automated Script
-
-It is convenient that "everything is ready with just one command," but it doesn't use magic behind the scenes. To use an analogy, this script is like an **"excellent assistant building a dedicated laboratory inside your computer."**
-
-First, it uses the OS package manager (apt or MacPorts) to install the "fundamental parts" necessary for recording into the system. Next, to avoid parts mixing with other apps and causing trouble, it builds a **completely isolated dedicated room** named "`.venv`". Then, inside only that room, it neatly arranges the dozens of Python packages that MeasureLab requires.
-Thanks to this mechanism, you can always start development in a "clean laboratory" without messing up your computer itself!
-
----
-
 ### 🛠️ Manual Setup
 
 If you prefer not to use the automated script and want to set up the environment manually, please follow the instructions below.

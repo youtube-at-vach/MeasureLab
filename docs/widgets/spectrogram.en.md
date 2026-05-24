@@ -14,10 +14,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 ## ☕ Coffee Break: What is a "Voiceprint", the Fingerprint of Sound?
 
-When you look at human voices or bird calls on this graph, a "unique pattern for that sound" emerges, much like a fingerprint. This is called a "voiceprint".
-
-For example, try saying "ah" and then "ee". Even though the original sound coming from your throat is the same, the shape of your mouth changes, which alters the resonant pitches (frequencies). When viewed on a spectrogram, this difference clearly appears as "striped patterns of color (formants)".
-Because the size of each person's vocal cords and skeletal differences also appear in this pattern, the exact same principle is used in forensic police investigations to identify a criminal's voice. The moment the true identity of an invisible "voice" appears as a vivid pattern is truly fascinating!
+Different pronunciations, like "Ah" and "Ee", resonate at different frequency bands. When viewed on a spectrogram, this appears as specific "colored striped patterns (formants)", allowing you to visually confirm differences in voice quality.
 
 ## Operation
 

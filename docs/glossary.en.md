@@ -42,7 +42,4 @@ A mechanism used by the Fast Fourier Transform (FFT) library, FFTW, to explore a
 
 #### ☕ Coffee Break: What exactly is this "Wisdom"?
 
-Imagine your first day commuting to a new workplace or school. On the first day, you look at your map app, wondering "Is this route faster? Is that street less crowded?", through trial and error, which takes time.
-But after commuting for a few days, you find your very own **"fastest commute route (Wisdom)"**, and from then on, you can get there via the quickest path without hesitation.
-
-FFTW (the calculation engine) is doing the exact same thing! On the first day, it works hard to find the "calculation shortcuts" that best suit your PC's CPU, and jots them down in a file named "Wisdom". So, please give it a little patience just for that very first startup!
+FFTW (the calculation engine) searches for the optimal "calculation shortcut" for your CPU on its first startup and saves it in a file named "Wisdom". This is why it takes some time only the first time.
