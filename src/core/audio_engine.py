@@ -707,20 +707,42 @@ class AudioEngine:
                 else:
                     extra_settings = self._get_jack_settings()
 
-                self.stream = sd.Stream(
-                    device=(self.input_device, self.output_device),
-                    samplerate=self.sample_rate,
-                    blocksize=self.block_size,
-                    callback=self._master_callback,
-                    channels=(hw_in_ch, hw_out_ch),
-                    dtype=self._get_dtype(),
-                    latency="high",
-                    extra_settings=extra_settings,
-                )
-                self.stream.start()
-                self.logger.debug(
-                    f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
-                )
+                try:
+                    self.stream = sd.Stream(
+                        device=(self.input_device, self.output_device),
+                        samplerate=self.sample_rate,
+                        blocksize=self.block_size,
+                        callback=self._master_callback,
+                        channels=(hw_in_ch, hw_out_ch),
+                        dtype=self._get_dtype(),
+                        latency="high",
+                        extra_settings=extra_settings,
+                    )
+                    self.stream.start()
+                    self.logger.debug(
+                        f"Master audio stream started with {self._get_dtype()}. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
+                    )
+                except Exception as stream_err:
+                    if self._get_dtype() == "float64":
+                        self.logger.warning(
+                            f"Failed to start master stream with float64 ({stream_err}). Falling back to float32."
+                        )
+                        self.stream = sd.Stream(
+                            device=(self.input_device, self.output_device),
+                            samplerate=self.sample_rate,
+                            blocksize=self.block_size,
+                            callback=self._master_callback,
+                            channels=(hw_in_ch, hw_out_ch),
+                            dtype="float32",
+                            latency="high",
+                            extra_settings=extra_settings,
+                        )
+                        self.stream.start()
+                        self.logger.debug(
+                            f"Master audio stream started (Float32 fallback). SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
+                        )
+                    else:
+                        raise stream_err
         except Exception as e:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.
