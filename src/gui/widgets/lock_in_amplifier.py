@@ -24,7 +24,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy.signal import hilbert
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -316,32 +315,22 @@ class LockInAmplifier(MeasurementModule):
             return
 
         # Estimate Ref Frequency and Coherence
-        # Use Hilbert Transform to get analytic signal
-        ref_analytic = hilbert(ref)
+        # Replace heavy Hilbert transform with a highly optimized O(N) single-tone AR(2) estimator.
+        # The relationship is: ref[n-1] + ref[n+1] = 2 * cos(omega) * ref[n]
+        # We solve cos(omega) using linear least-squares over the entire buffer.
+        ref_detrended = ref - np.mean(ref)
+        num = np.sum((ref_detrended[:-2] + ref_detrended[2:]) * ref_detrended[1:-1])
+        den = 2.0 * np.sum(ref_detrended[1:-1]**2)
 
-        # Trim edges to remove Hilbert artifacts (e.g., 5% from each side)
-        trim_percent = 0.05
-        trim_len = int(len(ref) * trim_percent)
-        if trim_len < 10:
-            trim_len = 0  # Don't trim if too short (shouldn't happen with 4096)
-
-        if trim_len > 0:
-            ref_analytic_trimmed = ref_analytic[trim_len:-trim_len]
-            ref_trimmed = ref[trim_len:-trim_len]
-        else:
-            ref_analytic_trimmed = ref_analytic
-            ref_trimmed = ref
-
-        if len(ref_analytic_trimmed) > 10:
-            # Linear Regression on Phase
-            ref_inst_phase = np.unwrap(np.angle(ref_analytic_trimmed))
-            t_trimmed = np.arange(len(ref_inst_phase)) / self.audio_engine.sample_rate
-
-            # Polyfit degree 1 (Linear) -> slope is angular frequency (rad/s)
-            slope, intercept = np.polyfit(t_trimmed, ref_inst_phase, 1)
-            self.ref_freq = slope / (2.0 * np.pi)
+        if den > 1e-12:
+            cos_omega = np.clip(num / den, -1.0, 1.0)
+            omega = np.arccos(cos_omega)
+            self.ref_freq = omega * self.audio_engine.sample_rate / (2.0 * np.pi)
         else:
             self.ref_freq = 0.0
+
+        # For coherence calculation, we use the full reference buffer
+        ref_trimmed = ref
 
         # Calculate Coherence (Spectral Purity)
         # Coherence = magnitude of component at ref_freq / total peak level
@@ -415,6 +404,11 @@ class LockInAmplifier(MeasurementModule):
         diff = current_buffer_phase - predicted_phase
         wraps = np.round(diff / (2 * np.pi))
         self._unwrapped_ref_phase = current_buffer_phase - wraps * 2 * np.pi
+
+        # Prevent phase drifting and float64 precision degradation by wrapping the phase
+        # using 2 * np.pi * harmonic_den to preserve continuity for fractional harmonics.
+        wrap_period = 2 * np.pi * harmonic_den
+        self._unwrapped_ref_phase = (self._unwrapped_ref_phase + wrap_period / 2) % wrap_period - wrap_period / 2
         self._last_start_idx = start_idx
 
         # The true phase of the fractional harmonic is scaled perfectly:

@@ -46,9 +46,9 @@ class CalibrationManager:
         self.last_profile = None
         self.frequency_map = []
         # Caches for vectorized interpolation
-        self._map_freqs = np.array([])
-        self._map_mags = np.array([])
-        self._map_phases = np.array([])
+        self._freq_cache = np.array([])
+        self._mag_cache = np.array([])
+        self._phase_cache = np.array([])
         self.load()
 
     def load(self):

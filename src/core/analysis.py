@@ -459,21 +459,16 @@ class AudioCalc:
         # Using a numerically stable form for sin(N*x)/sin(x) might be better but complex form is usually fine for this SNR.
         # Let's use the standard formula directly.
 
-        denom = 1 - np.exp(1j * phi)
-        # Handle small phi (Taylor expansion or limit) - but usually phi is not effectively 0 for audio freq.
-        # If w is very close to 0 or sampling rate multiple, denom ~ 0.
-        # For our use case (audio freq, 48kHz), this is rare for grid > 0.
-
-        # Safety for denom close to 0
+        # Numerically stable trigonometric ratio of sines form:
+        # S_geom = exp(1j * (N - 1) * phi / 2) * sin(N * phi / 2) / sin(phi / 2)
         epsilon = 1e-15
-        mask = np.abs(denom) < epsilon
-        safe_denom = np.where(mask, 1.0, denom)
+        sin_half_phi = np.sin(phi / 2.0)
+        mask = np.abs(sin_half_phi) < epsilon
+        safe_sin = np.where(mask, 1.0, sin_half_phi)
 
-        S_geom = (1 - np.exp(1j * N * phi)) / safe_denom
-
-        # Apply limit: lim_{phi->0} (1 - exp(j*N*phi)) / (1 - exp(j*phi)) = N * exp(j*(N-1)*phi/2)
+        S_geom = np.exp(1j * (N - 1) * phi / 2.0) * np.sin(N * phi / 2.0) / safe_sin
         if np.any(mask):
-            limit_val = N * np.exp(1j * (N - 1) * phi / 2)
+            limit_val = N * np.exp(1j * (N - 1) * phi / 2.0)
             S_geom = np.where(mask, limit_val, S_geom)
 
         # Apply t[0] phase shift
@@ -489,15 +484,13 @@ class AudioCalc:
 
         # We need sum of exp(j * 2w * t)
         phi2 = 2 * phi
-        denom2 = 1 - np.exp(1j * phi2)
-        mask2 = np.abs(denom2) < epsilon
-        safe_denom2 = np.where(mask2, 1.0, denom2)
+        sin_half_phi2 = np.sin(phi2 / 2.0)
+        mask2 = np.abs(sin_half_phi2) < epsilon
+        safe_sin2 = np.where(mask2, 1.0, sin_half_phi2)
 
-        S_geom2 = (1 - np.exp(1j * N * phi2)) / safe_denom2
-
-        # Apply limit for small phi2
+        S_geom2 = np.exp(1j * (N - 1) * phi2 / 2.0) * np.sin(N * phi2 / 2.0) / safe_sin2
         if np.any(mask2):
-            limit_val2 = N * np.exp(1j * (N - 1) * phi2 / 2)
+            limit_val2 = N * np.exp(1j * (N - 1) * phi2 / 2.0)
             S_geom2 = np.where(mask2, limit_val2, S_geom2)
         S_exp2 = S_geom2 * np.exp(1j * 2 * omega * t[0])
 

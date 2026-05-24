@@ -141,6 +141,7 @@ class AudioEngine:
 
         # Precision Mode
         self.audio_engine_64bit = False
+        self.active_dtype = None
 
         # Calibration
         self.calibration = CalibrationManager()
@@ -171,6 +172,7 @@ class AudioEngine:
         self._mix_buffer = None
         self._client_buffer = None
         self._logical_in_buffer = None
+        self._dither_scratch_buffer = None
 
         # Error tracking
         self.last_callback_error = None
@@ -192,7 +194,9 @@ class AudioEngine:
         self.coreaudio_conversion_quality = "min"
 
     def _get_dtype(self):
-        """Returns the appropriate numpy dtype based on precision settings."""
+        """Returns the appropriate numpy dtype based on precision settings or active stream."""
+        if getattr(self, "active_dtype", None) is not None:
+            return self.active_dtype
         return "float64" if self.audio_engine_64bit else "float32"
 
     def set_audio_engine_64bit(self, enabled: bool):
@@ -417,19 +421,28 @@ class AudioEngine:
 
     def _prepare_logical_input(self, indata, frames, use_loopback):
         """Prepares logical input buffer from hardware input or loopback."""
-        if use_loopback and self.last_output_buffer is not None and len(self.last_output_buffer) == frames:
+        if use_loopback:
             # Loopback logic: reuse last output
             lb_src = self.last_output_buffer
-            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, 2):
-                self._logical_in_buffer = np.zeros((frames, 2), dtype=self._get_dtype())
+            if (
+                self._logical_in_buffer is None
+                or self._logical_in_buffer.shape[0] < frames
+                or self._logical_in_buffer.shape[1] < 2
+            ):
+                new_len = max(frames * 2, self.block_size * 2)
+                self._logical_in_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
-            logical_in = self._logical_in_buffer
-            if lb_src.shape[1] >= 2:
-                logical_in[:, :2] = lb_src[:, :2]
-            elif lb_src.shape[1] == 1:
-                logical_in[:, 0] = lb_src[:, 0]
-                logical_in[:, 1] = lb_src[:, 0]
+            logical_in = self._logical_in_buffer[:frames, :2]
+            if lb_src is not None and len(lb_src) == frames:
+                if lb_src.shape[1] >= 2:
+                    logical_in[:, :2] = lb_src[:, :2]
+                elif lb_src.shape[1] == 1:
+                    logical_in[:, 0] = lb_src[:, 0]
+                    logical_in[:, 1] = lb_src[:, 0]
+                else:
+                    logical_in.fill(0)
             else:
+                # Security/QA guard: Fill with silence instead of falling back to physical mic inputs on first frame
                 logical_in.fill(0)
             return logical_in
         else:
@@ -437,10 +450,15 @@ class AudioEngine:
             in_mode = self._current_in_mode
             req_channels = 1 if in_mode in (self.MODE_LEFT, self.MODE_RIGHT) else 2
 
-            if self._logical_in_buffer is None or self._logical_in_buffer.shape != (frames, req_channels):
-                self._logical_in_buffer = np.zeros((frames, req_channels), dtype=self._get_dtype())
+            if (
+                self._logical_in_buffer is None
+                or self._logical_in_buffer.shape[0] < frames
+                or self._logical_in_buffer.shape[1] < req_channels
+            ):
+                new_len = max(frames * 2, self.block_size * 2)
+                self._logical_in_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
-            logical_in = self._logical_in_buffer
+            logical_in = self._logical_in_buffer[:frames, :req_channels]
             if in_mode == self.MODE_LEFT:
                 logical_in[:, 0] = indata[:, 0]
             elif in_mode == self.MODE_RIGHT:
@@ -458,22 +476,26 @@ class AudioEngine:
 
     def _mix_clients(self, logical_in, frames, time, status, active_callbacks, logical_out_ch):
         """Iterates active clients, executes callbacks, and mixes output."""
-        # Initialize or clear mix buffer
-        if self._mix_buffer is not None and self._mix_buffer.shape == (frames, logical_out_ch):
-            mix_buffer = self._mix_buffer
-            mix_buffer.fill(0)
-        else:
-            mix_buffer = np.zeros((frames, logical_out_ch), dtype=self._get_dtype())
-            self._mix_buffer = mix_buffer
+        # Initialize or clear mix buffer (allocation-free reuse if large enough)
+        if self._mix_buffer is None or self._mix_buffer.shape[0] < frames or self._mix_buffer.shape[1] < logical_out_ch:
+            new_len = max(frames * 2, self.block_size * 2)
+            self._mix_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
+
+        mix_buffer = self._mix_buffer[:frames, :logical_out_ch]
+        mix_buffer.fill(0)
 
         for cb in active_callbacks:
-            # Temp buffer for this client
-            if self._client_buffer is not None and self._client_buffer.shape == (frames, logical_out_ch):
-                client_out = self._client_buffer
-                client_out.fill(0)
-            else:
-                client_out = np.zeros_like(mix_buffer)
-                self._client_buffer = client_out
+            # Temp buffer for this client (allocation-free reuse if large enough)
+            if (
+                self._client_buffer is None
+                or self._client_buffer.shape[0] < frames
+                or self._client_buffer.shape[1] < logical_out_ch
+            ):
+                new_len = max(frames * 2, self.block_size * 2)
+                self._client_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
+
+            client_out = self._client_buffer[:frames, :logical_out_ch]
+            client_out.fill(0)
 
             try:
                 cb(logical_in, client_out, frames, time, status)
@@ -487,7 +509,7 @@ class AudioEngine:
         return mix_buffer
 
     def _apply_dithering(self, mix_buffer):
-        """Applies TPDF dithering to the mix buffer in-place."""
+        """Applies TPDF dithering and actual quantization to the mix buffer in-place."""
         depth_str = str(self.dithering_bit_depth)
         if "8" in depth_str:
             bit_depth = 8
@@ -495,20 +517,42 @@ class AudioEngine:
             bit_depth = 16
         else:
             bit_depth = 24
-        lsb = 1.0 / (2 ** (bit_depth - 1))
 
-        # Use _client_buffer as temp buffer (guaranteed to be sized correctly here)
-        dither_buf = self._client_buffer
+        scale = float(2 ** (bit_depth - 1))
+        lsb = 1.0 / scale
 
-        # 1. Generate R1
+        # Use isolated dither scratch buffer to protect client buffers
+        frames, channels = mix_buffer.shape
+        if (
+            self._dither_scratch_buffer is None
+            or self._dither_scratch_buffer.shape[0] < frames
+            or self._dither_scratch_buffer.shape[1] < channels
+        ):
+            new_len = max(frames * 2, self.block_size * 2)
+            self._dither_scratch_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
+
+        dither_buf = self._dither_scratch_buffer[:frames, :channels]
+
+        # 1. Generate R1 [0, 1) and scale to lsb
         self._rng.random(out=dither_buf, dtype=self._get_dtype())
         dither_buf *= lsb
         mix_buffer += dither_buf
 
-        # 2. Generate R2 (subtract)
+        # 2. Generate R2 [0, 1) and scale to lsb (subtract)
         self._rng.random(out=dither_buf, dtype=self._get_dtype())
         dither_buf *= lsb
         mix_buffer -= dither_buf
+
+        # 3. Perform Actual Quantization (Round in LSB scale and clip to integer limits)
+        mix_buffer *= scale
+        np.round(mix_buffer, out=mix_buffer)
+
+        min_val = -scale
+        max_val = scale - 1.0
+        np.clip(mix_buffer, min_val, max_val, out=mix_buffer)
+
+        # Scale back to float [-1.0, 1.0]
+        mix_buffer /= scale
 
     def _update_loopback_buffer(self, source_buffer, frames, channels):
         """Updates the loopback buffer from the given source (or clears if None)."""
@@ -563,13 +607,13 @@ class AudioEngine:
 
         mix_buffer = self._mix_clients(logical_in, frames, time, status, active_callbacks, logical_out_ch)
 
-        # 4. Apply Effects (Dithering)
-        if self.dithering_enabled:
-            self._apply_dithering(mix_buffer)
-
-        # 5. Update Loopback
+        # 4. Update Loopback (using clean, high-precision mix_buffer)
         if use_loopback:
             self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
+
+        # 5. Apply Effects (Dithering)
+        if self.dithering_enabled:
+            self._apply_dithering(mix_buffer)
 
         # 6. Map to Hardware Output
         self._map_logical_to_hardware_output(mix_buffer, outdata, out_mode)
@@ -666,6 +710,7 @@ class AudioEngine:
 
         try:
             if self.offline_mode:
+                self.active_dtype = "float64" if self.audio_engine_64bit else "float32"
                 self.stream = VirtualStream(
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
@@ -682,24 +727,49 @@ class AudioEngine:
                 else:
                     extra_settings = self._get_jack_settings()
 
-                self.stream = sd.Stream(
-                    device=(self.input_device, self.output_device),
-                    samplerate=self.sample_rate,
-                    blocksize=self.block_size,
-                    callback=self._master_callback,
-                    channels=(hw_in_ch, hw_out_ch),
-                    dtype="float32",
-                    latency="high",
-                    extra_settings=extra_settings,
-                )
-                self.stream.start()
-                self.logger.debug(
-                    f"Master audio stream started. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
-                )
+                try:
+                    self.active_dtype = "float64" if self.audio_engine_64bit else "float32"
+                    self.stream = sd.Stream(
+                        device=(self.input_device, self.output_device),
+                        samplerate=self.sample_rate,
+                        blocksize=self.block_size,
+                        callback=self._master_callback,
+                        channels=(hw_in_ch, hw_out_ch),
+                        dtype=self._get_dtype(),
+                        latency="high",
+                        extra_settings=extra_settings,
+                    )
+                    self.stream.start()
+                    self.logger.debug(
+                        f"Master audio stream started with {self._get_dtype()}. SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
+                    )
+                except Exception as stream_err:
+                    if self.audio_engine_64bit:
+                        self.logger.info(
+                            f"Failed to start master stream with float64 ({stream_err}). Falling back to float32."
+                        )
+                        self.active_dtype = "float32"
+                        self.stream = sd.Stream(
+                            device=(self.input_device, self.output_device),
+                            samplerate=self.sample_rate,
+                            blocksize=self.block_size,
+                            callback=self._master_callback,
+                            channels=(hw_in_ch, hw_out_ch),
+                            dtype="float32",
+                            latency="high",
+                            extra_settings=extra_settings,
+                        )
+                        self.stream.start()
+                        self.logger.debug(
+                            f"Master audio stream started (Float32 fallback). SR={self.sample_rate}, HW_Ch=({hw_in_ch}, {hw_out_ch})"
+                        )
+                    else:
+                        raise stream_err
         except Exception as e:
             self.logger.error(f"Failed to start master stream: {e}")
             # Don't raise, just log. Clients will just not run.
             self.stream = None
+            self.active_dtype = None
 
     def stop_stream(self):
         """Stops the master audio stream."""
@@ -712,6 +782,7 @@ class AudioEngine:
                     self.logger.error(f"Error stopping stream: {e}")
                 finally:
                     self.stream = None
+                    self.active_dtype = None
                 self.logger.debug("Master audio stream stopped")
 
     def _restart_stream(self):

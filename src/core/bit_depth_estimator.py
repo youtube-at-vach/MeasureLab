@@ -89,8 +89,13 @@ class BitDepthEstimator:
         # Note: We use 2^31 - 1 to map 1.0 to MAX_INT.
         clipped_data = np.clip(full_data, -1.0, 1.0)
         int_data = (clipped_data * (2**31 - 1)).astype(np.int32)
-        # View as uint32 to handle bits uniformly
-        uint_data = int_data.view(np.uint32)
+
+        # Convert to sign-magnitude representation to avoid two's complement sign-extension artifacts.
+        # Positive values: magnitude is in abs_data (bits 0 to 30), sign bit (bit 31) is 0.
+        # Negative values: magnitude is in abs_data (bits 0 to 30), sign bit (bit 31) is 1.
+        abs_data = np.abs(int_data).astype(np.uint32)
+        sign_bit = (int_data < 0).astype(np.uint32) << 31
+        uint_data = abs_data | sign_bit
 
         n_samples = len(uint_data)
         bit_counts = np.zeros(32)

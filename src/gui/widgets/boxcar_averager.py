@@ -330,9 +330,8 @@ class BoxcarAverager(MeasurementModule):
             data = np.concatenate((self.input_ring_buffer[read_pos:], self.input_ring_buffer[:write_pos]))
             idxs = np.concatenate((self.sample_index_ring[read_pos:], self.sample_index_ring[:write_pos]))
 
-        self.input_read_pos = write_pos
-
         if len(data) == 0:
+            self.input_read_pos = write_pos
             return
 
         # Optional reset alignment: restart accumulation on a stable window boundary.
@@ -343,10 +342,13 @@ class BoxcarAverager(MeasurementModule):
             start_mod = int((int(idxs[0]) - origin) % period)
             skip = (period - start_mod) % period
             if skip >= len(data):
+                # Do not advance read position! Wait until more data accumulates to span the boundary
                 return
             if skip > 0:
                 data = data[skip:]
                 idxs = idxs[skip:]
+
+        self.input_read_pos = write_pos
         if self.reset_pending:
             # After we have aligned/skipped (if needed), start accumulating.
             self.reset_pending = False
@@ -807,6 +809,10 @@ class BoxcarAveragerWidget(QWidget):
     def on_int64_changed(self, checked):
         self.module.use_int64 = checked
         self.module.reset_average()
+        self.curve_l.setData([], [])
+        self.curve_r.setData([], [])
+        self.plot.setTitle(tr("Averaged Signal"))
+        self.plot.autoRange()
 
     def on_export(self):
         fname, selected_filter = QFileDialog.getSaveFileName(
