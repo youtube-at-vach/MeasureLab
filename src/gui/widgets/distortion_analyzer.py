@@ -29,6 +29,8 @@ from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
+from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 
 
 logger = logging.getLogger(__name__)
@@ -569,7 +571,7 @@ class RealtimeAnalysisWorker(QObject):
             logger.error(f"Error in analysis worker: {e}")
 
 
-class DistortionAnalyzerWidget(QWidget):
+class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
     start_analysis_signal = pyqtSignal(np.ndarray, dict)
 
     def __init__(self, module: DistortionAnalyzer):
@@ -1697,3 +1699,85 @@ class DistortionAnalyzerWidget(QWidget):
                 mag = 20 * np.log10(mag_linear + 1e-12)
                 freqs = fft_manager.rfftfreq(n_fft, 1 / sample_rate)
                 self.spectrum_curve.setData(freqs[1:], mag[1:])
+
+    def get_comparable_data(self) -> list[ComparisonTrace]:
+        if not self.module.sweep_results:
+            return []
+
+        import uuid
+        from datetime import datetime
+
+        timestamp = datetime.now().isoformat()
+        trace_id = str(uuid.uuid4())
+
+        is_freq_sweep = self.mode_combo.currentIndex() == 1
+        sweep_mode_str = tr("Frequency Sweep") if is_freq_sweep else tr("Amplitude Sweep")
+        trace_name = f"{tr('Distortion Analyzer')} - {sweep_mode_str} ({datetime.now().strftime('%H:%M:%S')})"
+
+        # X-Axis configuration
+        x_unit = self._get_sweep_x_unit()
+
+        if is_freq_sweep:
+            x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
+            plot_type = "frequency_response"
+        else:
+            plot_type = "xy_plot"
+            if x_unit == "dBFS":
+                x_axis = AxisMetadata(dimension="amplitude", base_unit="dBFS", display_unit="dBFS", is_log=False)
+            elif x_unit == "dBV":
+                x_axis = AxisMetadata(dimension="voltage", base_unit="dBV", display_unit="dBV", is_log=False)
+            elif x_unit == "Vrms":
+                x_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="Vrms", is_log=True)
+            elif x_unit == "W":
+                x_axis = AxisMetadata(dimension="power", base_unit="W", display_unit="W", is_log=True)
+            elif x_unit == "dBW":
+                x_axis = AxisMetadata(dimension="power", base_unit="dBW", display_unit="dBW", is_log=False)
+            else:
+                x_axis = AxisMetadata(dimension="amplitude", base_unit="dBFS", display_unit="dBFS", is_log=False)
+
+        x_data = [self._convert_sweep_x_value(r["sweep_param"]) for r in self.module.sweep_results]
+
+        # Y-Axis configuration (THD+N only)
+        y_unit = self.sweep_y_unit_combo.currentText()
+        if y_unit == "Percent (%)":
+            y_axis = AxisMetadata(dimension="distortion", base_unit="%", display_unit="%", is_log=False)
+            y_data = [r["thdn_percent"] for r in self.module.sweep_results]
+        else:
+            y_axis = AxisMetadata(dimension="distortion", base_unit="dB", display_unit="dB", is_log=False)
+            y_data = [r["thdn_db"] for r in self.module.sweep_results]
+
+        try:
+            input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
+            is_calibrated = self.module.audio_engine.calibration.is_calibrated
+        except Exception:
+            input_sensitivity = 1.0
+            is_calibrated = False
+
+        calibration = CalibrationInfo(
+            is_calibrated=is_calibrated,
+            input_sensitivity=input_sensitivity,
+            applied_offset_db=0.0,
+            reference_level="absolute" if is_calibrated else "relative",
+        )
+
+        trace = ComparisonTrace(
+            id=trace_id,
+            name=trace_name,
+            source_module="Distortion Analyzer",
+            timestamp=timestamp,
+            plot_type=plot_type,
+            x_axis=x_axis,
+            y_axis=y_axis,
+            y2_axis=None,  # THD+N only, no secondary Y-axis (e.g. phase or harmonics)
+            x_data=x_data,
+            y_data=y_data,
+            y2_data=None,
+            calibration=calibration,
+            metadata={
+                "sweep_type": "frequency" if is_freq_sweep else "amplitude",
+                "y_unit": y_unit,
+                "filter_type": str(self.module.filter_type),
+            },
+        )
+
+        return [trace]
