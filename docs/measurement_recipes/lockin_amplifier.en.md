@@ -4,13 +4,6 @@ One of the standout features of this application is measurement using a **Lock-i
 
 Generally, an FRA (Frequency Response Analyzer) using FFT (Fast Fourier Transform) is used to measure frequency characteristics (gain and phase), but using a lock-in amplifier allows for measurements with relative precision that far exceeds that.
 
-## ☕ Coffee Break: What is a "Lock-in Amplifier"?
-
-Imagine you are looking for a friend in a very noisy crowd. You can't see or hear them well because of everyone else.
-However, if your friend is waving a **"red flag at a steady rhythm of exactly once per second,"** you could find them immediately, right?
-A Lock-in Amplifier uses this exact same principle!
-It completely ignores noise by saying, "I will only look for the signal that changes at this exact specific rhythm (Reference Signal)." By doing this, it can dig up extremely faint signals buried in noise that normal FFTs cannot find. It is truly the ultimate **"Noise Canceling Microscope"**!
-
 ## Why a Lock-in Amplifier?
 
 Measurements using FFT are fast, but the measurement precision depends on "frequency resolution (bin width)" and "noise floor". On the other hand, a lock-in amplifier uses a method called **Phase Sensitive Detection (PSD)** to extract only the components that are synchronized with the reference signal.
