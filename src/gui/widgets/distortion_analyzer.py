@@ -1006,6 +1006,10 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         return harmonics_widget
 
     def _on_sweep_y_unit_changed(self, idx):
+        # Clear data on the curve first to avoid applying log10 to negative values (dB values)
+        # when we change logMode inside _update_sweep_y_axis_format()
+        self.sweep_curve.clear()
+
         self._update_sweep_y_axis_format()
 
         # Replot if data exists
