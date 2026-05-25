@@ -1144,7 +1144,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 # Fallback to downsampling if view range cannot be resolved
                 visible_points = 999999
 
-            if visible_points <= 4000 or len(freqs) <= 4000:
+            if visible_points <= 8000 or len(freqs) <= 8000:
                 # Zoomed in: Render absolute RAW precision data without downsampling
                 plot_freqs = freqs[1:]
                 plot_mags = magnitude[1:]
