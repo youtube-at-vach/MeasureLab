@@ -183,6 +183,8 @@ class PlotComparerWidget(QWidget):
         self.tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
         self.tree_widget.setColumnWidth(1, 130)
         self.tree_widget.itemChanged.connect(self.on_item_changed)
+        self.tree_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree_widget.customContextMenuRequested.connect(self.show_tree_context_menu)
         list_layout.addWidget(self.tree_widget)
 
         # Action Buttons
@@ -679,6 +681,42 @@ class PlotComparerWidget(QWidget):
                 )
             else:
                 QMessageBox.warning(self, tr("Error"), tr("Failed to import traces from file."))
+
+    def show_tree_context_menu(self, pos):
+        item = self.tree_widget.itemAt(pos)
+        if not item:
+            return
+
+        tid = item.data(0, Qt.ItemDataRole.UserRole)
+        item_type = item.data(0, Qt.ItemDataRole.UserRole + 1)
+
+        if item_type == "parent":
+            from PyQt6.QtGui import QAction
+            from PyQt6.QtWidgets import QMenu
+
+            menu = QMenu(self)
+
+            export_action = QAction(tr("Export This Trace Individually..."), self)
+            rename_action = QAction(tr("Rename Trace"), self)
+            delete_action = QAction(tr("Delete Trace"), self)
+
+            export_action.triggered.connect(lambda: self.export_single_trace(tid))
+            rename_action.triggered.connect(lambda: self.tree_widget.editItem(item, 0))
+            delete_action.triggered.connect(lambda: self.manager.remove_trace(tid))
+
+            menu.addAction(export_action)
+            menu.addAction(rename_action)
+            menu.addSeparator()
+            menu.addAction(delete_action)
+
+            menu.exec(self.tree_widget.mapToGlobal(pos))
+
+    def export_single_trace(self, trace_id):
+        trace = self.manager.get_trace(trace_id)
+        if trace:
+            from src.gui.widgets.export_dialog import ExportSettingsDialog
+            dialog = ExportSettingsDialog([trace], self)
+            dialog.exec()
 
     def export_selected(self):
         selected_items = self.tree_widget.selectedItems()

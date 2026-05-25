@@ -1,5 +1,6 @@
 import os
 from typing import List
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -15,7 +16,9 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QStackedWidget,
-    QWidget
+    QWidget,
+    QListWidget,
+    QListWidgetItem,
 )
 from src.core.localization import tr
 from src.core.export import ExportManager
@@ -30,10 +33,11 @@ class ExportSettingsDialog(QDialog):
 
         self.init_ui()
         self.update_format_options()
+        self.on_scheme_changed()
 
     def init_ui(self):
         self.setWindowTitle(tr("Export Settings"))
-        self.resize(460, 380)
+        self.resize(500, 560)
 
         main_layout = QVBoxLayout(self)
 
@@ -50,7 +54,36 @@ class ExportSettingsDialog(QDialog):
         format_layout.addWidget(self.format_combo)
         main_layout.addLayout(format_layout)
 
-        # 2. Options Stack (Dynamic options based on format)
+        # 2. Export Target Selection (New feature)
+        target_group = QGroupBox(tr("Export Targets"))
+        target_layout = QVBoxLayout(target_group)
+        self.target_list = QListWidget()
+        for t in self.traces:
+            item = QListWidgetItem(t.name)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+            item.setCheckState(Qt.CheckState.Checked)
+            item.setData(Qt.ItemDataRole.UserRole, t.id)
+            self.target_list.addItem(item)
+        target_layout.addWidget(self.target_list)
+        main_layout.addWidget(target_group)
+
+        # 3. Export Scheme (Output Mode) (New feature)
+        scheme_group = QGroupBox(tr("Export Scheme"))
+        scheme_layout = QVBoxLayout(scheme_group)
+        self.radio_merged = QRadioButton(tr("Combine into a single file"))
+        self.radio_individual = QRadioButton(tr("Export as individual files (one file per trace)"))
+        self.radio_merged.setChecked(True)
+
+        self.scheme_button_group = QButtonGroup(self)
+        self.scheme_button_group.addButton(self.radio_merged)
+        self.scheme_button_group.addButton(self.radio_individual)
+        self.radio_merged.toggled.connect(self.on_scheme_changed)
+
+        scheme_layout.addWidget(self.radio_merged)
+        scheme_layout.addWidget(self.radio_individual)
+        main_layout.addWidget(scheme_group)
+
+        # 4. Options Stack (Dynamic options based on format)
         self.options_stack = QStackedWidget()
         main_layout.addWidget(self.options_stack)
 
@@ -129,20 +162,20 @@ class ExportSettingsDialog(QDialog):
         csv_layout.addWidget(csv_group)
         self.options_stack.addWidget(self.csv_widget)
 
-        # 3. Output File Path Selection
+        # 5. Output File Path Selection
         path_group = QGroupBox(tr("Output File"))
-        path_layout = QHBoxLayout(path_group)
+        self.path_group_layout = QHBoxLayout(path_group)
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText(tr("Select destination file..."))
         self.btn_browse = QPushButton(tr("Browse..."))
         self.btn_browse.clicked.connect(self.browse_filepath)
-        path_layout.addWidget(self.path_edit)
-        path_layout.addWidget(self.btn_browse)
+        self.path_group_layout.addWidget(self.path_edit)
+        self.path_group_layout.addWidget(self.btn_browse)
         main_layout.addWidget(path_group)
 
         main_layout.addStretch()
 
-        # 4. Dialog Action Buttons
+        # 6. Dialog Action Buttons
         btn_layout = QHBoxLayout()
         self.btn_export = QPushButton(tr("Export"))
         self.btn_export.setDefault(True)
@@ -167,21 +200,43 @@ class ExportSettingsDialog(QDialog):
         elif fmt_id == "csv":
             self.options_stack.setCurrentWidget(self.csv_widget)
 
-        # Update output filepath extension
-        current_path = self.path_edit.text().strip()
-        exporter = self.export_manager.get_exporter(fmt_id)
-        if exporter:
-            ext = exporter.default_extension
-            if current_path:
-                base, _ = os.path.splitext(current_path)
-                self.path_edit.setText(base + ext)
-            else:
-                self.path_edit.setText("comparison_export" + ext)
+        # Update output filepath extension (only if in single merged file mode)
+        if self.radio_merged.isChecked():
+            current_path = self.path_edit.text().strip()
+            exporter = self.export_manager.get_exporter(fmt_id)
+            if exporter:
+                ext = exporter.default_extension
+                if current_path:
+                    base, _ = os.path.splitext(current_path)
+                    self.path_edit.setText(base + ext)
+                else:
+                    self.path_edit.setText("comparison_export" + ext)
 
     def on_layout_mode_changed(self):
         # Enable/Disable reference trace combobox based on layout choice
         is_merged = self.layout_merged.isChecked()
         self.ref_container.setEnabled(is_merged)
+
+    def on_scheme_changed(self):
+        is_individual = self.radio_individual.isChecked()
+
+        # Delimiter choices and metadata checks stay relevant for CSV individual mode too,
+        # but merged layout choices (merging all traces together) is irrelevant.
+        if hasattr(self, "layout_merged"):
+            self.layout_merged.setEnabled(not is_individual)
+            self.layout_indep.setEnabled(not is_individual)
+            self.ref_container.setEnabled(not is_individual and self.layout_merged.isChecked())
+
+        fmt_id = self.format_combo.currentData()
+        exporter = self.export_manager.get_exporter(fmt_id)
+        ext = exporter.default_extension if exporter else ""
+
+        if is_individual:
+            self.path_edit.setPlaceholderText(tr("Select destination folder..."))
+            self.path_edit.setText("")
+        else:
+            self.path_edit.setPlaceholderText(tr("Select destination file..."))
+            self.path_edit.setText("comparison_export" + ext)
 
     def browse_filepath(self):
         fmt_id = self.format_combo.currentData()
@@ -189,27 +244,49 @@ class ExportSettingsDialog(QDialog):
         if not exporter:
             return
 
-        default_name = self.path_edit.text().strip() or "comparison_export" + exporter.default_extension
+        if self.radio_individual.isChecked():
+            # Directory selection mode
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                tr("Select Destination Directory")
+            )
+            if folder:
+                self.path_edit.setText(folder)
+        else:
+            # File selection mode
+            default_name = self.path_edit.text().strip() or "comparison_export" + exporter.default_extension
 
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            tr("Select Destination File"),
-            default_name,
-            exporter.file_filter
-        )
-        if filepath:
-            self.path_edit.setText(filepath)
+            filepath, _ = QFileDialog.getSaveFileName(
+                self,
+                tr("Select Destination File"),
+                default_name,
+                exporter.file_filter
+            )
+            if filepath:
+                self.path_edit.setText(filepath)
 
     def do_export(self):
-        filepath = self.path_edit.text().strip()
-        if not filepath:
-            QMessageBox.warning(self, tr("Export Error"), tr("Please select a destination file path."))
+        dest_path = self.path_edit.text().strip()
+        if not dest_path:
+            QMessageBox.warning(self, tr("Export Error"), tr("Please select a destination path."))
             return
 
         fmt_id = self.format_combo.currentData()
         exporter = self.export_manager.get_exporter(fmt_id)
         if not exporter:
             QMessageBox.critical(self, tr("Export Error"), tr("Exporter not found for format: {0}").format(fmt_id))
+            return
+
+        # Gather target selection states
+        selected_trace_ids = []
+        for i in range(self.target_list.count()):
+            item = self.target_list.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                selected_trace_ids.append(item.data(Qt.ItemDataRole.UserRole))
+
+        traces_to_export = [t for t in self.traces if t.id in selected_trace_ids]
+        if not traces_to_export:
+            QMessageBox.warning(self, tr("Export Error"), tr("Please check at least one trace to export."))
             return
 
         # Gather exporter specific options
@@ -221,10 +298,42 @@ class ExportSettingsDialog(QDialog):
             options["include_headers"] = self.chk_headers.isChecked()
             options["include_metadata"] = self.chk_metadata.isChecked()
 
-        # Execute Export
-        ok = exporter.export_traces(filepath, self.traces, options)
-        if ok:
-            QMessageBox.information(self, tr("Success"), tr("Traces exported successfully."))
-            self.accept()
+        if self.radio_individual.isChecked():
+            # Individual export mode
+            if not os.path.isdir(dest_path):
+                QMessageBox.warning(self, tr("Export Error"), tr("Please select a destination folder."))
+                return
+
+            success_count = 0
+            for t in traces_to_export:
+                # Safe name logic to remove symbols that are invalid in filenames
+                safe_name = "".join(c for c in t.name if c.isalnum() or c in (" ", "_", "-")).rstrip()
+                safe_name = safe_name.replace(" ", "_")
+                filename = f"{safe_name}{exporter.default_extension}"
+                full_path = os.path.join(dest_path, filename)
+
+                ok = exporter.export_traces(full_path, [t], options)
+                if ok:
+                    success_count += 1
+
+            if success_count == len(traces_to_export):
+                QMessageBox.information(
+                    self,
+                    tr("Success"),
+                    tr("Successfully exported {0} traces to individual files.").format(success_count)
+                )
+                self.accept()
+            else:
+                QMessageBox.warning(
+                    self,
+                    tr("Export Error"),
+                    tr("Failed to export some traces ({0}/{1} succeeded).").format(success_count, len(traces_to_export))
+                )
         else:
-            QMessageBox.warning(self, tr("Export Error"), tr("Failed to export traces to: {0}").format(filepath))
+            # Merged export mode
+            ok = exporter.export_traces(dest_path, traces_to_export, options)
+            if ok:
+                QMessageBox.information(self, tr("Success"), tr("Traces exported successfully."))
+                self.accept()
+            else:
+                QMessageBox.warning(self, tr("Export Error"), tr("Failed to export traces to: {0}").format(dest_path))
