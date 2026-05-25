@@ -158,6 +158,7 @@ class AudioEngine:
         self._cached_callbacks = []  # Cached list of values(self.callbacks)
         self.next_callback_id = 0
         self.lock = threading.Lock()
+        self._status_lock = threading.Lock()
 
         # Status Monitoring
         # Loopback State
@@ -500,8 +501,9 @@ class AudioEngine:
             try:
                 cb(logical_in, client_out, frames, time, status)
             except Exception as e:
-                self.last_callback_error = e
-                self.callback_error_count += 1
+                with self._status_lock:
+                    self.last_callback_error = e
+                    self.callback_error_count += 1
                 continue
 
             mix_buffer += client_out
@@ -585,7 +587,8 @@ class AudioEngine:
 
     def _master_callback(self, indata, outdata, frames, time, status):
         if status:
-            self.accumulated_status |= status
+            with self._status_lock:
+                self.accumulated_status |= status
 
         # Zero out master output buffer first
         outdata.fill(0)
@@ -805,15 +808,15 @@ class AudioEngine:
         with self.lock:
             client_count = len(self.callbacks)
 
-        # Get and reset accumulated status
-        current_status_flags = self.accumulated_status
-        self.accumulated_status = sd.CallbackFlags()
+        # Get and reset accumulated status and error stats thread-safely
+        with self._status_lock:
+            current_status_flags = self.accumulated_status
+            self.accumulated_status = sd.CallbackFlags()
 
-        # Get and reset error stats
-        error_count = self.callback_error_count
-        last_error = str(self.last_callback_error) if self.last_callback_error else None
-        self.callback_error_count = 0
-        self.last_callback_error = None
+            error_count = self.callback_error_count
+            last_error = str(self.last_callback_error) if self.last_callback_error else None
+            self.callback_error_count = 0
+            self.last_callback_error = None
 
         return {
             "active": active,
