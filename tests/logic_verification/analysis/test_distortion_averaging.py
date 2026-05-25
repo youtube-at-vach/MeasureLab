@@ -25,11 +25,20 @@ mock_qt_core.Qt.AlignmentFlag.AlignVCenter = 2
 mock_qt_core.Qt.AlignmentFlag.AlignLeft = 3
 mock_qt_core.Qt.AlignmentFlag.AlignTop = 4
 
+class MockQWidget:
+    def __init__(self, *args, **kwargs):
+        pass
+
+mock_widgets = MagicMock()
+mock_widgets.QWidget = MockQWidget
+# Add support for QHeaderView mapping in distortion_analyzer.py
+mock_widgets.QHeaderView.ResizeMode.Stretch = 1
+
 mock_modules = {
     "PyQt6": MagicMock(),
     "PyQt6.QtCore": mock_qt_core,
     "PyQt6.QtGui": MagicMock(),
-    "PyQt6.QtWidgets": MagicMock(),
+    "PyQt6.QtWidgets": mock_widgets,
     "pyqtgraph": MagicMock(),
 }
 
