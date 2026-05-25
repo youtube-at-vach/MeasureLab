@@ -1164,9 +1164,9 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     peak_mags = None
             else:
                 # Zoomed out: Apply cached Log-space Max-Downsampling
-                plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=4000)
+                plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=8000)
                 if self.module.peak_hold and peak_magnitude is not None:
-                    _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=4000)
+                    _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=8000)
                 else:
                     peak_mags = None
 
