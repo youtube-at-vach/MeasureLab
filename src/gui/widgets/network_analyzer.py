@@ -85,7 +85,9 @@ class PlayRecSession:
     def wait(self, timeout=None):
         completed = self.completion_event.wait(timeout)
         if not completed:
-            self.error = "Audio playback timed out. The audio driver or hardware may have disconnected or stopped responding."
+            self.error = (
+                "Audio playback timed out. The audio driver or hardware may have disconnected or stopped responding."
+            )
         if self.error:
             raise RuntimeError(str(self.error))
 
@@ -159,7 +161,7 @@ class NetworkAnalyzer(MeasurementModule):
 
         # Parameters
         self.start_freq = 20.0
-        self.end_freq = self.audio_engine.sample_rate / 2.0
+        self.end_freq = min(24000.0, self.audio_engine.sample_rate / 2.0)
         self.amplitude = 0.5
         self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
         self.latency_sec = 0.0
@@ -719,27 +721,27 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         self.start_spin = QDoubleSpinBox(controls_group)
         self.start_spin.setRange(10, 20000)
-        self.start_spin.setValue(20)
         self.start_spin.valueChanged.connect(lambda v: setattr(self.module, "start_freq", v))
+        self.start_spin.setValue(self.module.start_freq)
         form.addRow(tr("Start Freq:"), self.start_spin)
 
         self.end_spin = QDoubleSpinBox(controls_group)
         self.end_spin.setRange(10, 24000)
-        self.end_spin.setValue(24000)
         self.end_spin.valueChanged.connect(lambda v: setattr(self.module, "end_freq", v))
+        self.end_spin.setValue(self.module.end_freq)
         form.addRow(tr("End Freq:"), self.end_spin)
 
         self.duration_spin = QDoubleSpinBox(controls_group)
         self.duration_spin.setRange(0.1, 60.0)
-        self.duration_spin.setValue(10.0)
         self.duration_spin.valueChanged.connect(lambda v: setattr(self.module, "chirp_duration", v))
+        self.duration_spin.setValue(self.module.chirp_duration)
         self.duration_label = QLabel(tr("Duration (s):"), controls_group)
         form.addRow(self.duration_label, self.duration_spin)
 
         self.avg_spin = QSpinBox(controls_group)
         self.avg_spin.setRange(1, 100)
-        self.avg_spin.setValue(1)
         self.avg_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
+        self.avg_spin.setValue(self.module.averages)
         form.addRow(tr("Averages:"), self.avg_spin)
 
         self.amp_spin = QDoubleSpinBox()
@@ -1094,6 +1096,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.setLayout(layout)
         self.update_frequency_limits()
         self.on_routing_changed(self.in_combo.currentIndex())
+
     def on_riaa_mode_changed(self, index):
         mode = self.riaa_mode_combo.currentData()
         self.riaa_gain_spin.setReadOnly(mode == "auto")
@@ -1962,6 +1965,22 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         mags_arr = np.array(self.mags)
         phases_arr = np.array(self.phases)
 
+        # Apply frequency limits if checked
+        mask = np.ones(len(freqs_arr), dtype=bool)
+        if self.limit_check.isChecked():
+            limit = self.limit_spin.value()
+            mask &= freqs_arr <= limit
+        if self.min_limit_check.isChecked():
+            min_limit = self.min_limit_spin.value()
+            mask &= freqs_arr >= min_limit
+
+        freqs_arr = freqs_arr[mask]
+        mags_arr = mags_arr[mask]
+        phases_arr = phases_arr[mask]
+
+        if len(freqs_arr) == 0:
+            return []
+
         is_transfer_mode = self.module.input_mode in {"XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"}
         is_single_absolute_mode = (not is_transfer_mode) and (self.single_mode_combo.currentData() == "absolute")
 
@@ -1979,9 +1998,9 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         mode_str = tr(self.module.input_mode)
         trace_name = f"{tr('Network Analyzer')} - {mode_str} ({datetime.now().strftime('%H:%M:%S')})"
 
-        # Handle X, Y axes depending on transfer vs single channel mode
-        if is_transfer_mode:
-            # Transfer function is relative dB (Gain) and Phase
+        # Handle X, Y axes depending on transfer vs single channel mode and relative vs absolute mode
+        if is_transfer_mode or (not is_single_absolute_mode):
+            # Transfer function or Relative Single-Channel mode is relative dB (Gain) and Phase
             x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
             y_axis = AxisMetadata(dimension="gain", base_unit="dB", display_unit="dB", is_log=False)
             y2_axis = AxisMetadata(dimension="phase", base_unit="deg", display_unit="deg", is_log=False)
@@ -1993,19 +2012,16 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 is_calibrated=is_calibrated,
                 input_sensitivity=input_sensitivity,
                 applied_offset_db=0.0,
-                reference_level="relative"
+                reference_level="relative",
             )
         else:
-            # Single channel measurement
+            # Single channel measurement - Absolute mode
             x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
             y2_axis = AxisMetadata(dimension="phase", base_unit="deg", display_unit="deg", is_log=False)
 
             # Base dB calculation (dBFS)
-            if is_single_absolute_mode:
-                out_amp_db = 20 * np.log10(self.module.get_output_amplitude() + 1e-12)
-                base_db = mags_arr + out_amp_db
-            else:
-                base_db = mags_arr
+            out_amp_db = 20 * np.log10(self.module.get_output_amplitude() + 1e-12)
+            base_db = mags_arr + out_amp_db
 
             # Linear conversion
             mags_linear = 10 ** (base_db / 20)
@@ -2027,7 +2043,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 is_calibrated=is_calibrated,
                 input_sensitivity=input_sensitivity,
                 applied_offset_db=0.0,
-                reference_level=ref_lvl
+                reference_level=ref_lvl,
             )
 
         trace = ComparisonTrace(
@@ -2046,7 +2062,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
             metadata={
                 "input_mode": self.module.input_mode,
                 "smoothing": self.smooth_combo.currentText(),
-            }
+            },
         )
 
         return [trace]

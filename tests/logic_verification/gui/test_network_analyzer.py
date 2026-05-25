@@ -274,3 +274,82 @@ def test_frequency_limits_update_on_sample_rate_change(qtbot):
     widget.update_frequency_limits()
     assert widget.end_spin.maximum() == 22050.0
     assert widget.end_spin.value() == 22050.0
+
+
+def test_get_comparable_data_modes(qtbot):
+    widget = _make_widget(qtbot)
+
+    # Setup dummy data in the widget
+    widget.freqs = [100.0, 1000.0]
+    widget.mags = [-10.0, -20.0]
+    widget.phases = [45.0, -45.0]
+
+    # --- Mode 1: Transfer Function (XFER) ---
+    widget.module.input_mode = "XFER"
+    traces = widget.get_comparable_data()
+    assert len(traces) == 1
+    t = traces[0]
+    assert t.y_axis.dimension == "gain"
+    assert t.y_axis.display_unit == "dB"
+    assert np.allclose(t.y_data, [-10.0, -20.0])
+    assert t.calibration.reference_level == "relative"
+
+    # --- Mode 2: Single-Channel Relative (relative) ---
+    widget.module.input_mode = "L"
+    widget.single_mode_combo.setCurrentIndex(widget.single_mode_combo.findData("relative"))
+    traces = widget.get_comparable_data()
+    assert len(traces) == 1
+    t = traces[0]
+    assert t.y_axis.dimension == "gain"
+    assert t.y_axis.display_unit == "dB"
+    assert np.allclose(t.y_data, [-10.0, -20.0])
+    assert t.calibration.reference_level == "relative"
+
+    # --- Mode 3: Single-Channel Absolute (absolute, uncalibrated) ---
+    widget.single_mode_combo.setCurrentIndex(widget.single_mode_combo.findData("absolute"))
+    widget.module.audio_engine.calibration.is_calibrated = False
+    widget.module.amplitude = 1.0  # 0 dBFS
+    traces = widget.get_comparable_data()
+    assert len(traces) == 1
+    t = traces[0]
+    assert t.y_axis.dimension == "voltage"
+    assert t.y_axis.display_unit == "dBFS"
+    assert np.allclose(t.y_data, [10 ** (-10 / 20), 10 ** (-20 / 20)])
+    assert t.calibration.reference_level == "relative"
+
+    # --- Mode 4: Single-Channel Absolute (absolute, calibrated) ---
+    widget.module.audio_engine.calibration.is_calibrated = True
+    widget.module.audio_engine.calibration.input_sensitivity = 2.0
+    traces = widget.get_comparable_data()
+    assert len(traces) == 1
+    t = traces[0]
+    assert t.y_axis.dimension == "voltage"
+    assert t.y_axis.display_unit == "dBV"
+    assert np.allclose(t.y_data, [10 ** (-10 / 20) * 2.0, 10 ** (-20 / 20) * 2.0])
+    assert t.calibration.reference_level == "absolute"
+
+
+def test_get_comparable_data_applies_frequency_limits(qtbot):
+    widget = _make_widget(qtbot)
+
+    # Setup dummy data
+    widget.freqs = [20.0, 100.0, 1000.0, 10000.0, 20000.0]
+    widget.mags = [0.0, -5.0, -10.0, -15.0, -20.0]
+    widget.phases = [10.0, 20.0, 30.0, 40.0, 50.0]
+
+    widget.module.input_mode = "XFER"
+
+    # Limit check enabled: max = 5000 Hz, min = 50 Hz
+    widget.limit_check.setChecked(True)
+    widget.limit_spin.setValue(5000.0)
+    widget.min_limit_check.setChecked(True)
+    widget.min_limit_spin.setValue(50.0)
+
+    traces = widget.get_comparable_data()
+    assert len(traces) == 1
+    t = traces[0]
+
+    # Should only contain 100.0 and 1000.0 Hz
+    assert np.allclose(t.x_data, [100.0, 1000.0])
+    assert np.allclose(t.y_data, [-5.0, -10.0])
+    assert np.allclose(t.y2_data, [20.0, 30.0])
