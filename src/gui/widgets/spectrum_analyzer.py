@@ -1144,7 +1144,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 # Fallback to downsampling if view range cannot be resolved
                 visible_points = 999999
 
-            if visible_points <= 2000 or len(freqs) <= 2000:
+            if visible_points <= 4000 or len(freqs) <= 4000:
                 # Zoomed in: Render absolute RAW precision data without downsampling
                 plot_freqs = freqs[1:]
                 plot_mags = magnitude[1:]
@@ -1154,9 +1154,9 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     peak_mags = None
             else:
                 # Zoomed out: Apply cached Log-space Max-Downsampling
-                plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=2000)
+                plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=4000)
                 if self.module.peak_hold and peak_magnitude is not None:
-                    _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=2000)
+                    _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=4000)
                 else:
                     peak_mags = None
 
