@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class SpectrumAnalyzer(MeasurementModule):
     # Threshold for switching to "Snapshot / Slow" mode
-    LARGE_BUFFER_THRESHOLD = 500000
+    LARGE_BUFFER_THRESHOLD = 600000
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -751,6 +751,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 "65536",
                 "131072",
                 "262144",
+                "524288",
                 "1M (Slow)",
                 "2M (Slow)",
                 "4M (Slow)",

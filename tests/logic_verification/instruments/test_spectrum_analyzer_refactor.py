@@ -33,7 +33,7 @@ class TestSpectrumAnalyzerRefactor:
 
     def test_constants(self, sa):
         assert hasattr(sa, "LARGE_BUFFER_THRESHOLD")
-        assert sa.LARGE_BUFFER_THRESHOLD == 500000
+        assert sa.LARGE_BUFFER_THRESHOLD == 600000
 
     def test_apply_octave_smoothing_method(self, sa):
         # Create a simple spectrum
