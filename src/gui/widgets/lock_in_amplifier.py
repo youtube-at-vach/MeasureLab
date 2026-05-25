@@ -28,6 +28,9 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from typing import List
+from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
 
 
@@ -621,9 +624,10 @@ class FRASweepWorker(QThread):
         self.module._buffer_ready_event.set()
 
 
-class LockInAmplifierWidget(QWidget):
+class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
     def __init__(self, module: LockInAmplifier):
-        super().__init__()
+        QWidget.__init__(self)
+        ComparableWidgetInterface.__init__(self)
         self.module = module
         self._last_nyquist_freq = None
         self._is_dark_theme = False
@@ -2050,3 +2054,65 @@ class LockInAmplifierWidget(QWidget):
             self.phase_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #008888;")
             self.x_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #888800;")
             self.y_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #880088;")
+
+    def get_comparable_data(self) -> List[ComparisonTrace]:
+        if not self.fra_freqs:
+            return []
+
+        import uuid
+        from datetime import datetime
+
+        freqs_arr = np.array(self.fra_freqs)
+        raw_mags_arr = np.array(self.fra_raw_mags)
+        phases_arr = np.array(self.fra_phases)
+
+        try:
+            input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
+            is_calibrated = self.module.audio_engine.calibration.is_calibrated
+        except Exception:
+            input_sensitivity = 1.0
+            is_calibrated = False
+
+        timestamp = datetime.now().isoformat()
+        trace_id = str(uuid.uuid4())
+        trace_name = f"{tr('Lock-in Amplifier')} - FRA ({datetime.now().strftime('%H:%M:%S')})"
+
+        x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
+        y2_axis = AxisMetadata(dimension="phase", base_unit="deg", display_unit="deg", is_log=False)
+
+        if is_calibrated:
+            y_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="dBV", is_log=False)
+            y_data = (raw_mags_arr * input_sensitivity).tolist()
+            ref_lvl = "absolute"
+        else:
+            y_axis = AxisMetadata(dimension="voltage", base_unit="FS", display_unit="dBFS", is_log=False)
+            y_data = raw_mags_arr.tolist()
+            ref_lvl = "relative"
+
+        calibration = CalibrationInfo(
+            is_calibrated=is_calibrated,
+            input_sensitivity=input_sensitivity,
+            applied_offset_db=0.0,
+            reference_level=ref_lvl
+        )
+
+        trace = ComparisonTrace(
+            id=trace_id,
+            name=trace_name,
+            source_module="Lock-in Amplifier",
+            timestamp=timestamp,
+            plot_type="frequency_response",
+            x_axis=x_axis,
+            y_axis=y_axis,
+            y2_axis=y2_axis,
+            x_data=freqs_arr.tolist(),
+            y_data=y_data,
+            y2_data=phases_arr.tolist(),
+            calibration=calibration,
+            metadata={
+                "integration": self.time_combo.currentText(),
+                "averaging": self.avg_spin.value(),
+            }
+        )
+
+        return [trace]
