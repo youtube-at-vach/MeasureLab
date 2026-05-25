@@ -363,6 +363,7 @@ class InverseFilterWidget(QWidget):
     def __init__(self, module: InverseFilter):
         super().__init__()
         self.module = module
+        self.calibration_map = None
         self.init_ui()
         self.worker = None
 
@@ -375,8 +376,8 @@ class InverseFilterWidget(QWidget):
 
         self.setLayout(layout)
 
-        # Initial Load
-        self.load_calibration()
+        # Initial Button State
+        self._update_process_btn()
 
     def _setup_calibration_section(self, layout):
         # --- Section 1: Calibration ---
@@ -386,10 +387,6 @@ class InverseFilterWidget(QWidget):
         self.cal_status_label = QLabel(tr("Status: No Map Loaded"))
         self.cal_status_label.setStyleSheet("color: orange;")
         cal_layout.addWidget(self.cal_status_label)
-
-        self.load_cal_btn = QPushButton(tr("Reload from Memory"))
-        self.load_cal_btn.clicked.connect(self.load_calibration)
-        cal_layout.addWidget(self.load_cal_btn)
 
         self.load_file_btn = QPushButton(tr("Load File"))
         self.load_file_btn.clicked.connect(self.load_calibration_file)
@@ -484,33 +481,41 @@ class InverseFilterWidget(QWidget):
         proc_group.setLayout(proc_layout)
         layout.addWidget(proc_group)
 
-    def load_calibration(self):
-        cal = self.module.audio_engine.calibration
-        if hasattr(cal, "frequency_map") and cal.frequency_map:
-            self.cal_loaded = True
-            self.cal_status_label.setText(tr("Status: Calibration Loaded ({0} points)").format(len(cal.frequency_map)))
-            self.cal_status_label.setStyleSheet("color: green;")
-            self.update_plot()
-        else:
-            self.cal_loaded = False
-            self.cal_status_label.setText(tr("Status: No Map Found in AudioEngine"))
-            self.cal_status_label.setStyleSheet("color: red;")
-
     def load_calibration_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Load Calibration Map"), "", tr("JSON Files (*.json)"))
         if path:
-            if self.module.audio_engine.calibration.load_frequency_map(path):
-                self.load_calibration()  # Update UI
+            try:
+                import json
+                with open(path, "r") as f:
+                    data = json.load(f)
+
+                if not isinstance(data, list) or not all(isinstance(x, list) and len(x) >= 3 for x in data):
+                    raise ValueError(tr("Invalid format. Expected list of [frequency, magnitude, phase] points."))
+
+                self.calibration_map = sorted(data, key=lambda x: x[0])
+                self.cal_loaded = True
+                self.cal_status_label.setText(tr("Status: Calibration Loaded ({0} points)").format(len(self.calibration_map)))
+                self.cal_status_label.setStyleSheet("color: green;")
+                self.update_plot()
+                self._update_process_btn()
                 QMessageBox.information(self, tr("Success"), tr("Calibration loaded successfully."))
-            else:
-                QMessageBox.critical(self, tr("Error"), tr("Failed to load calibration file."))
+            except Exception as e:
+                self.cal_loaded = False
+                self.calibration_map = None
+                self.cal_status_label.setText(tr("Status: No Map Loaded"))
+                self.cal_status_label.setStyleSheet("color: red;")
+                self.update_plot()
+                self._update_process_btn()
+                QMessageBox.critical(self, tr("Error"), tr("Failed to load calibration file: {0}").format(e))
 
     def update_plot(self):
-        cal = self.module.audio_engine.calibration
-        if not hasattr(cal, "frequency_map") or not cal.frequency_map:
+        if not self.calibration_map:
+            self.curve_sys.setData([], [])
+            self.curve_inv_raw.setData([], [])
+            self.curve_inv.setData([], [])
             return
 
-        data = np.array(cal.frequency_map)
+        data = np.array(self.calibration_map)
         freqs = data[:, 0]
         mags = data[:, 1]
 
@@ -592,7 +597,7 @@ class InverseFilterWidget(QWidget):
 
         input_path = self.in_path_edit.text()
         output_path = self.out_path_edit.text()
-        cal_map = self.module.audio_engine.calibration.frequency_map
+        cal_map = self.calibration_map
         max_gain = self.max_gain_spin.value()
         taps = int(self.taps_combo.currentText())
         smoothing = self.smooth_spin.value()
