@@ -809,8 +809,8 @@ class BoxcarAveragerWidget(QWidget):
     def on_int64_changed(self, checked):
         self.module.use_int64 = checked
         self.module.reset_average()
-        self.curve_l.setData([], [])
-        self.curve_r.setData([], [])
+        self.curve_l.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+        self.curve_r.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
         self.plot.setTitle(tr("Averaged Signal"))
         self.plot.autoRange()
 

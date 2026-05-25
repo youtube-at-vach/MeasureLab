@@ -486,6 +486,7 @@ class InverseFilterWidget(QWidget):
         if path:
             try:
                 import json
+
                 with open(path, "r") as f:
                     data = json.load(f)
 
@@ -494,7 +495,9 @@ class InverseFilterWidget(QWidget):
 
                 self.calibration_map = sorted(data, key=lambda x: x[0])
                 self.cal_loaded = True
-                self.cal_status_label.setText(tr("Status: Calibration Loaded ({0} points)").format(len(self.calibration_map)))
+                self.cal_status_label.setText(
+                    tr("Status: Calibration Loaded ({0} points)").format(len(self.calibration_map))
+                )
                 self.cal_status_label.setStyleSheet("color: green;")
                 self.update_plot()
                 self._update_process_btn()
@@ -510,9 +513,9 @@ class InverseFilterWidget(QWidget):
 
     def update_plot(self):
         if not self.calibration_map:
-            self.curve_sys.setData([], [])
-            self.curve_inv_raw.setData([], [])
-            self.curve_inv.setData([], [])
+            self.curve_sys.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+            self.curve_inv_raw.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+            self.curve_inv.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
             return
 
         data = np.array(self.calibration_map)
