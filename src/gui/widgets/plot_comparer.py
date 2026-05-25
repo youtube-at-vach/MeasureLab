@@ -163,6 +163,7 @@ class PlotComparerWidget(QWidget):
         self.filter_combo = QComboBox()
         self.filter_combo.addItem(tr("Frequency Domain"), "frequency")
         self.filter_combo.addItem(tr("Time Domain"), "time")
+        self.filter_combo.addItem(tr("Amplitude Domain"), "amplitude")
         self.filter_combo.addItem(tr("Other Domain"), "other")
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
         filter_layout.addWidget(filter_label)
@@ -255,6 +256,8 @@ class PlotComparerWidget(QWidget):
             return "frequency"
         elif dim in ("time", "t"):
             return "time"
+        elif dim in ("amplitude", "volt", "voltage", "power", "dbfs", "dbv", "vrms"):
+            return "amplitude"
         else:
             return "other"
 
@@ -804,20 +807,28 @@ class PlotComparerWidget(QWidget):
 
         # Apply Axis Settings based on Plot Domain
         self.is_log_x = False
+        self.is_log_y = first_trace.y_axis.is_log if first_trace.y_axis else False
         first_domain = self._get_trace_domain(first_trace)
         if first_domain == "frequency":
-            self.plot_widget.setLogMode(x=True, y=False)
+            self.plot_widget.setLogMode(x=True, y=self.is_log_y)
             self.is_log_x = True
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
             )
         elif first_domain == "time":
-            self.plot_widget.setLogMode(x=False, y=False)
+            self.plot_widget.setLogMode(x=False, y=self.is_log_y)
+            self.plot_widget.setLabel(
+                "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
+            )
+        elif first_domain == "amplitude":
+            x_log = first_trace.x_axis.is_log if first_trace.x_axis else False
+            self.plot_widget.setLogMode(x=x_log, y=self.is_log_y)
+            self.is_log_x = x_log
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
             )
         else:
-            self.plot_widget.setLogMode(x=False, y=False)
+            self.plot_widget.setLogMode(x=False, y=self.is_log_y)
             self.plot_widget.setLabel("bottom", "X")
 
         y1_labels = []
@@ -878,6 +889,10 @@ class PlotComparerWidget(QWidget):
                         if max_y > 1e-12:
                             y_processed = y_processed / max_y
 
+                # Clip non-positive values to 1e-6 if using log Y scale to prevent math domain errors / warnings
+                if getattr(self, "is_log_y", False):
+                    y_processed = np.clip(y_processed, 1e-6, None)
+
                 axis_choice = settings.get("y_axis_choice", "Y1")
                 dim_cap = tr(trace.y_axis.dimension).capitalize()
                 unit = trace.y_axis.display_unit
@@ -932,6 +947,23 @@ class PlotComparerWidget(QWidget):
             self.plot_item.getAxis("right").setLabel(", ".join(y2_uniq))
         else:
             self.plot_item.getAxis("right").setLabel("")
+
+        # 4. Ticks setup for log Y scale
+        y1_axis = self.plot_widget.getPlotItem().getAxis("left")
+        y2_axis = self.plot_item.getAxis("right")
+
+        # Reset ticks first
+        y1_axis.setTicks(None)
+        y2_axis.setTicks(None)
+
+        if getattr(self, "is_log_y", False):
+            # If the primary visible trace uses percent, set log ticks
+            if first_trace.y_axis and first_trace.y_axis.display_unit == "%":
+                percent_ticks = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
+                ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
+                y1_axis.setTicks([ticks_log])
+                # Set range from 0.0001% to 100%
+                self.plot_widget.setYRange(np.log10(0.0001), np.log10(100))
 
         self.update_y2_views()
 

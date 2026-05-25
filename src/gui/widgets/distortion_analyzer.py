@@ -1744,7 +1744,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Y-Axis configuration (THD+N only)
         y_unit = self.sweep_y_unit_combo.currentText()
         if y_unit == "Percent (%)":
-            y_axis = AxisMetadata(dimension="distortion", base_unit="%", display_unit="%", is_log=False)
+            y_axis = AxisMetadata(dimension="distortion", base_unit="%", display_unit="%", is_log=True)
             y_data = [r["thdn_percent"] for r in self.module.sweep_results]
         else:
             y_axis = AxisMetadata(dimension="distortion", base_unit="dB", display_unit="dB", is_log=False)
