@@ -28,7 +28,7 @@ Because all pitches of sound are packed tightly into a short burst of time, simp
 ### Starting Measurement
 
 1. Set the measurement range (**Start/End Freq**) and **Amplitude** in the **"Settings"** tab. The maximum frequency limit dynamically adjusts to the Nyquist frequency (half the sample rate) based on the current audio sample rate.
-2. Adjust the **Duration** of the chirp signal. Longer durations generally improve the S/N ratio.
+2. Adjust the **Duration** of the chirp signal (Default: 10.0s). Longer durations generally improve the S/N ratio.
 3. Set the number of **Averages**. Multiple sweeps are performed and averaged to reduce noise.
 4. Click the **"Start Sweep"** button to begin measurement. Progress is shown on the progress bar.
 5. Click the button again to stop the measurement midway.
