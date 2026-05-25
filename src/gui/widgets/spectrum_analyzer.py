@@ -1117,11 +1117,47 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
             else:
                 peak_mags = None
         else:
-            plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=2000)
-            if self.module.peak_hold and peak_magnitude is not None:
-                _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=2000)
+            # Hybrid Rendering Mode: Switch to RAW mode dynamically when zoomed in
+            try:
+                view_range = self.plot_widget.viewRange()
+                x_range_log = view_range[0]
+                
+                # Robustly verify that the retrieved view range contains valid numeric limits
+                if (x_range_log is not None and 
+                        hasattr(x_range_log, "__len__") and 
+                        len(x_range_log) >= 2 and 
+                        np.isfinite(x_range_log[0]) and 
+                        np.isfinite(x_range_log[1])):
+                    
+                    # Log-X is log10(frequency)
+                    f_min_visible = float(10 ** x_range_log[0])
+                    f_max_visible = float(10 ** x_range_log[1])
+                    
+                    # Count visible bins using fast binary search (np.searchsorted)
+                    idx_start = int(np.searchsorted(freqs, f_min_visible, side="left"))
+                    idx_end = int(np.searchsorted(freqs, f_max_visible, side="right"))
+                    visible_points = idx_end - idx_start
+                else:
+                    visible_points = 999999
+            except Exception:
+                # Fallback to downsampling if view range cannot be resolved
+                visible_points = 999999
+
+            if visible_points <= 2000 or len(freqs) <= 2000:
+                # Zoomed in: Render absolute RAW precision data without downsampling
+                plot_freqs = freqs[1:]
+                plot_mags = magnitude[1:]
+                if self.module.peak_hold and peak_magnitude is not None:
+                    peak_mags = peak_magnitude[1:]
+                else:
+                    peak_mags = None
             else:
-                peak_mags = None
+                # Zoomed out: Apply cached Log-space Max-Downsampling
+                plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=2000)
+                if self.module.peak_hold and peak_magnitude is not None:
+                    _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=2000)
+                else:
+                    peak_mags = None
 
         # Update curves
         # When setLogMode(x=True) is active, we must pass LINEAR x values to setData.
