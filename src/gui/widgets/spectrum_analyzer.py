@@ -48,7 +48,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self.window_type = "hanning"
         self.averaging = 0.0  # 0.0 to 0.95
         self.peak_hold = False
-        self.octave_smoothing = "None"  # None, 1/1, 1/3, 1/6, 1/12, 1/24
+        self.octave_smoothing = "None"  # None, 1/1, 1/3, 1/6, 1/12, 1/24, 1/48, 1/96
         self.analysis_mode = "Spectrum"  # 'Spectrum', 'Cross Spectrum'
         self.channel_mode = "Average"  # 'Left', 'Right', 'Average', 'Dual'
         self.multitaper_enabled = False
@@ -346,26 +346,26 @@ class SpectrumAnalyzer(MeasurementModule):
             # Pre-calculate log bins safely avoiding log10(0)
             f_min = freqs[0] if freqs[0] > 0 else (freqs[1] if len(freqs) > 1 and freqs[1] > 0 else 20)
             f_max = freqs[-1]
-            
+
             # Generate log-spaced bin edges
             log_bins = np.logspace(np.log10(f_min), np.log10(f_max), max_points + 1)
-            
+
             # Find indices for each bin
             indices = np.searchsorted(freqs, log_bins, side="left")
-            
+
             band_indices = []
             smoothed_freqs_list = []
-            
+
             # Calculate geometric centers for representative frequencies
             geom_centers = np.sqrt(log_bins[:-1] * log_bins[1:])
-            
+
             for i in range(max_points):
                 start = indices[i]
                 end = indices[i + 1]
                 if end > start:
                     smoothed_freqs_list.append(geom_centers[i])
                     band_indices.append((start, end))
-            
+
             smoothed_freqs = np.array(smoothed_freqs_list)
             cached_data = (smoothed_freqs, band_indices)
             self._smoothing_cache[cache_key] = cached_data
@@ -809,6 +809,8 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.smooth_combo.addItem(tr("1/6 Octave"), "1/6 Octave")
         self.smooth_combo.addItem(tr("1/12 Octave"), "1/12 Octave")
         self.smooth_combo.addItem(tr("1/24 Octave"), "1/24 Octave")
+        self.smooth_combo.addItem(tr("1/48 Octave"), "1/48 Octave")
+        self.smooth_combo.addItem(tr("1/96 Octave"), "1/96 Octave")
 
         index = self.smooth_combo.findData(self.module.octave_smoothing)
         if index >= 0:
@@ -1108,7 +1110,15 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.overall_label.setText(f"Overall: {overall_weighted_db:.1f} {unit_display}")
 
         # Smoothing
-        fraction_map = {"1/1 Octave": 1, "1/3 Octave": 3, "1/6 Octave": 6, "1/12 Octave": 12, "1/24 Octave": 24}
+        fraction_map = {
+            "1/1 Octave": 1,
+            "1/3 Octave": 3,
+            "1/6 Octave": 6,
+            "1/12 Octave": 12,
+            "1/24 Octave": 24,
+            "1/48 Octave": 48,
+            "1/96 Octave": 96,
+        }
         fraction = fraction_map.get(self.module.octave_smoothing)
 
         if fraction:
@@ -1122,18 +1132,18 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
             try:
                 view_range = self.plot_widget.viewRange()
                 x_range_log = view_range[0]
-                
+
                 # Robustly verify that the retrieved view range contains valid numeric limits
                 if (x_range_log is not None and 
                         hasattr(x_range_log, "__len__") and 
                         len(x_range_log) >= 2 and 
                         np.isfinite(x_range_log[0]) and 
                         np.isfinite(x_range_log[1])):
-                    
+
                     # Log-X is log10(frequency)
                     f_min_visible = float(10 ** x_range_log[0])
                     f_max_visible = float(10 ** x_range_log[1])
-                    
+
                     # Count visible bins using fast binary search (np.searchsorted)
                     idx_start = int(np.searchsorted(freqs, f_min_visible, side="left"))
                     idx_end = int(np.searchsorted(freqs, f_max_visible, side="right"))
