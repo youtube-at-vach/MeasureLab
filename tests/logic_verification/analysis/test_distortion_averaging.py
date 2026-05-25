@@ -29,10 +29,28 @@ class MockQWidget:
     def __init__(self, *args, **kwargs):
         pass
 
-mock_widgets = MagicMock()
-mock_widgets.QWidget = MockQWidget
-# Add support for QHeaderView mapping in distortion_analyzer.py
-mock_widgets.QHeaderView.ResizeMode.Stretch = 1
+class MockQHeaderView(MagicMock):
+    class ResizeMode:
+        Stretch = 1
+
+class DummyQtWidgets:
+    QWidget = MockQWidget
+    QHeaderView = MockQHeaderView
+    QComboBox = MagicMock
+    QDoubleSpinBox = MagicMock
+    QFormLayout = MagicMock
+    QGroupBox = MagicMock
+    QHBoxLayout = MagicMock
+    QLabel = MagicMock
+    QPushButton = MagicMock
+    QSpinBox = MagicMock
+    QStackedWidget = MagicMock
+    QTableWidget = MagicMock
+    QTableWidgetItem = MagicMock
+    QTabWidget = MagicMock
+    QVBoxLayout = MagicMock
+
+mock_widgets = DummyQtWidgets()
 
 mock_modules = {
     "PyQt6": MagicMock(),
