@@ -913,6 +913,64 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         layout.addWidget(self.plot_widget)
         self.setLayout(layout)
 
+    def apply_min_max_envelope(self, freqs, magnitude, x_range_log, width_px):
+        """
+        Extract Min-Max envelope based on screen pixels for logarithmic X-axis.
+        """
+        if x_range_log is None or len(x_range_log) < 2:
+            f_min = freqs[0] if len(freqs) > 0 and freqs[0] > 0 else 20.0
+            f_max = freqs[-1] if len(freqs) > 0 else 20000.0
+            x_range_log = [np.log10(f_min), np.log10(f_max)]
+
+        x_start, x_end = x_range_log[0], x_range_log[1]
+        x_edges = np.linspace(x_start, x_end, int(width_px) + 1)
+        f_edges = 10**x_edges
+
+        indices = np.searchsorted(freqs, f_edges, side="left")
+        diffs = np.diff(indices)
+        valid_mask = diffs > 0
+
+        starts = indices[:-1][valid_mask]
+        ends = indices[1:][valid_mask]
+        geom_centers = 10 ** ((x_edges[:-1][valid_mask] + x_edges[1:][valid_mask]) / 2.0)
+
+        num_valid = len(starts)
+        if num_valid == 0:
+            return np.array([]), np.array([])
+
+        if magnitude.ndim == 2:
+            mins = np.empty((num_valid, 2))
+            maxs = np.empty((num_valid, 2))
+            for idx, (start, end) in enumerate(zip(starts, ends, strict=True)):
+                slice_m = magnitude[start:end]
+                mins[idx] = np.min(slice_m, axis=0)
+                maxs[idx] = np.max(slice_m, axis=0)
+
+            plot_freqs = np.empty(2 * num_valid)
+            plot_freqs[0::2] = geom_centers
+            plot_freqs[1::2] = geom_centers
+
+            plot_mags = np.empty((2 * num_valid, 2))
+            plot_mags[0::2] = mins
+            plot_mags[1::2] = maxs
+        else:
+            mins = np.empty(num_valid)
+            maxs = np.empty(num_valid)
+            for idx, (start, end) in enumerate(zip(starts, ends, strict=True)):
+                slice_m = magnitude[start:end]
+                mins[idx] = np.min(slice_m)
+                maxs[idx] = np.max(slice_m)
+
+            plot_freqs = np.empty(2 * num_valid)
+            plot_freqs[0::2] = geom_centers
+            plot_freqs[1::2] = geom_centers
+
+            plot_mags = np.empty(2 * num_valid)
+            plot_mags[0::2] = mins
+            plot_mags[1::2] = maxs
+
+        return plot_freqs, plot_mags
+
     def format_si(self, value, unit):
         if value == 0:
             return f"0.0 {unit}"
@@ -1027,9 +1085,9 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         if size >= 131072:
             self.timer.setInterval(100)  # 10 fps
         elif size >= 32768:
-            self.timer.setInterval(60)   # ~17 fps
+            self.timer.setInterval(60)  # ~17 fps
         else:
-            self.timer.setInterval(30)   # ~33 fps
+            self.timer.setInterval(30)  # ~33 fps
 
     def on_window_changed(self, val):
         self.module.window_type = val
@@ -1134,12 +1192,13 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 x_range_log = view_range[0]
 
                 # Robustly verify that the retrieved view range contains valid numeric limits
-                if (x_range_log is not None and 
-                        hasattr(x_range_log, "__len__") and 
-                        len(x_range_log) >= 2 and 
-                        np.isfinite(x_range_log[0]) and 
-                        np.isfinite(x_range_log[1])):
-
+                if (
+                    x_range_log is not None
+                    and hasattr(x_range_log, "__len__")
+                    and len(x_range_log) >= 2
+                    and np.isfinite(x_range_log[0])
+                    and np.isfinite(x_range_log[1])
+                ):
                     # Log-X is log10(frequency)
                     f_min_visible = float(10 ** x_range_log[0])
                     f_max_visible = float(10 ** x_range_log[1])
@@ -1154,7 +1213,17 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 # Fallback to downsampling if view range cannot be resolved
                 visible_points = 999999
 
-            if visible_points <= 8000 or len(freqs) <= 8000:
+            # Retrieve viewport width dynamically
+            try:
+                width_px = self.plot_widget.plotItem.vb.width()
+                if not isinstance(width_px, (int, float)) or width_px <= 0 or not np.isfinite(width_px):
+                    width_px = 1200
+            except Exception:
+                width_px = 1200
+
+            threshold = 2 * width_px
+
+            if visible_points <= threshold or len(freqs) <= threshold:
                 # Zoomed in: Render absolute RAW precision data without downsampling
                 plot_freqs = freqs[1:]
                 plot_mags = magnitude[1:]
@@ -1163,10 +1232,10 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 else:
                     peak_mags = None
             else:
-                # Zoomed out: Apply cached Log-space Max-Downsampling
-                plot_freqs, plot_mags = self.module.apply_log_max_downsampling(freqs[1:], magnitude[1:], max_points=8000)
+                # Zoomed out: Apply screen-pixel based Min-Max envelope downsampling
+                plot_freqs, plot_mags = self.apply_min_max_envelope(freqs[1:], magnitude[1:], x_range_log, width_px)
                 if self.module.peak_hold and peak_magnitude is not None:
-                    _, peak_mags = self.module.apply_log_max_downsampling(freqs[1:], peak_magnitude[1:], max_points=8000)
+                    _, peak_mags = self.apply_min_max_envelope(freqs[1:], peak_magnitude[1:], x_range_log, width_px)
                 else:
                     peak_mags = None
 
@@ -1310,13 +1379,13 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                         is_calibrated=is_calibrated,
                         input_sensitivity=input_sensitivity,
                         applied_offset_db=0.0,
-                        reference_level="absolute" if is_calibrated else "relative"
+                        reference_level="absolute" if is_calibrated else "relative",
                     ),
                     metadata={
                         "channel": "Left",
                         "analysis_mode": self.module.analysis_mode,
                         "fft_size": self.module.buffer_size,
-                    }
+                    },
                 )
                 traces.append(trace_l)
 
@@ -1337,13 +1406,13 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                         is_calibrated=is_calibrated,
                         input_sensitivity=input_sensitivity,
                         applied_offset_db=0.0,
-                        reference_level="absolute" if is_calibrated else "relative"
+                        reference_level="absolute" if is_calibrated else "relative",
                     ),
                     metadata={
                         "channel": "Right",
                         "analysis_mode": self.module.analysis_mode,
                         "fft_size": self.module.buffer_size,
-                    }
+                    },
                 )
                 traces.append(trace_r)
         else:
@@ -1369,15 +1438,14 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     is_calibrated=is_calibrated,
                     input_sensitivity=input_sensitivity,
                     applied_offset_db=0.0,
-                    reference_level="absolute" if is_calibrated else "relative"
+                    reference_level="absolute" if is_calibrated else "relative",
                 ),
                 metadata={
                     "channel_mode": self.module.channel_mode,
                     "analysis_mode": self.module.analysis_mode,
                     "fft_size": self.module.buffer_size,
-                }
+                },
             )
             traces.append(trace)
 
         return traces
-
