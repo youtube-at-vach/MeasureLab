@@ -177,6 +177,8 @@ class PlotComparerWidget(QWidget):
         list_layout.addWidget(self.master_toggles_container)
 
         self.tree_widget = QTreeWidget()
+        self.tree_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.tree_widget.setMinimumHeight(450)  # Expand vertical zone to display more traces at once
         self.tree_widget.setColumnCount(2)
         self.tree_widget.setHeaderLabels([tr("Trace / Parameter"), tr("Y-Axis")])
         self.tree_widget.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)

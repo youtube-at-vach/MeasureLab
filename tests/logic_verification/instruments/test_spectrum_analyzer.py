@@ -172,3 +172,28 @@ class TestSpectrumAnalyzer:
         val_spl_a = float(sa_widget.overall_label.text().split(" ")[1])
         assert val_spl_a == pytest.approx(val_spl, abs=0.2)
         assert "dB SPL(A)" in sa_widget.overall_label.text()
+
+    def test_apply_min_max_envelope(self, sa_widget):
+        """Verify that apply_min_max_envelope correctly downsamples single/dual channel magnitudes."""
+        # 1. Single Channel test
+        freqs = np.linspace(20, 20000, 1000)
+        magnitude_1d = -20 * np.ones_like(freqs)
+        x_range_log = [np.log10(20.0), np.log10(20000.0)]
+        width_px = 100
+
+        plot_freqs, plot_mags = sa_widget.apply_min_max_envelope(freqs, magnitude_1d, x_range_log, width_px)
+
+        assert len(plot_freqs) > 0
+        assert len(plot_freqs) == len(plot_mags)
+        assert len(plot_freqs) % 2 == 0  # Even number of points (interleaved min and max)
+        assert np.allclose(plot_mags, -20.0)
+
+        # 2. Dual Channel test
+        magnitude_2d = -30 * np.ones((len(freqs), 2))
+        plot_freqs_2d, plot_mags_2d = sa_widget.apply_min_max_envelope(freqs, magnitude_2d, x_range_log, width_px)
+
+        assert len(plot_freqs_2d) > 0
+        assert len(plot_freqs_2d) == len(plot_mags_2d)
+        assert plot_mags_2d.ndim == 2
+        assert plot_mags_2d.shape[1] == 2
+        assert np.allclose(plot_mags_2d, -30.0)

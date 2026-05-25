@@ -25,11 +25,38 @@ mock_qt_core.Qt.AlignmentFlag.AlignVCenter = 2
 mock_qt_core.Qt.AlignmentFlag.AlignLeft = 3
 mock_qt_core.Qt.AlignmentFlag.AlignTop = 4
 
+class MockQWidget:
+    def __init__(self, *args, **kwargs):
+        pass
+
+class MockQHeaderView(MagicMock):
+    class ResizeMode:
+        Stretch = 1
+
+class DummyQtWidgets:
+    QWidget = MockQWidget
+    QHeaderView = MockQHeaderView
+    QComboBox = MagicMock
+    QDoubleSpinBox = MagicMock
+    QFormLayout = MagicMock
+    QGroupBox = MagicMock
+    QHBoxLayout = MagicMock
+    QLabel = MagicMock
+    QPushButton = MagicMock
+    QSpinBox = MagicMock
+    QStackedWidget = MagicMock
+    QTableWidget = MagicMock
+    QTableWidgetItem = MagicMock
+    QTabWidget = MagicMock
+    QVBoxLayout = MagicMock
+
+mock_widgets = DummyQtWidgets()
+
 mock_modules = {
     "PyQt6": MagicMock(),
     "PyQt6.QtCore": mock_qt_core,
     "PyQt6.QtGui": MagicMock(),
-    "PyQt6.QtWidgets": MagicMock(),
+    "PyQt6.QtWidgets": mock_widgets,
     "pyqtgraph": MagicMock(),
 }
 

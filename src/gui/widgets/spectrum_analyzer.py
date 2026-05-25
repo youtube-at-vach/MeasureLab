@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class SpectrumAnalyzer(MeasurementModule):
     # Threshold for switching to "Snapshot / Slow" mode
-    LARGE_BUFFER_THRESHOLD = 500000
+    LARGE_BUFFER_THRESHOLD = 600000
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -48,7 +48,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self.window_type = "hanning"
         self.averaging = 0.0  # 0.0 to 0.95
         self.peak_hold = False
-        self.octave_smoothing = "None"  # None, 1/1, 1/3, 1/6, 1/12, 1/24
+        self.octave_smoothing = "None"  # None, 1/1, 1/3, 1/6, 1/12, 1/24, 1/48, 1/96
         self.analysis_mode = "Spectrum"  # 'Spectrum', 'Cross Spectrum'
         self.channel_mode = "Average"  # 'Left', 'Right', 'Average', 'Dual'
         self.multitaper_enabled = False
@@ -329,6 +329,62 @@ class SpectrumAnalyzer(MeasurementModule):
         smoothed_mags_db = 20 * np.log10(smoothed_mags_linear + 1e-12)
 
         return smoothed_freqs, smoothed_mags_db
+
+    def apply_log_max_downsampling(self, freqs, magnitude, max_points=2000):
+        """
+        Apply log-space max downsampling to reduce plot points while preserving sharp peaks.
+        max_points: Target number of plot points.
+        """
+        if len(freqs) <= max_points:
+            return freqs, magnitude
+
+        # Check cache to avoid searchsorted recalculation
+        cache_key = ("log_downsample", len(freqs), float(freqs[-1]), max_points)
+        cached_data = self._smoothing_cache.get(cache_key)
+
+        if cached_data is None:
+            # Pre-calculate log bins safely avoiding log10(0)
+            f_min = freqs[0] if freqs[0] > 0 else (freqs[1] if len(freqs) > 1 and freqs[1] > 0 else 20)
+            f_max = freqs[-1]
+
+            # Generate log-spaced bin edges
+            log_bins = np.logspace(np.log10(f_min), np.log10(f_max), max_points + 1)
+
+            # Find indices for each bin
+            indices = np.searchsorted(freqs, log_bins, side="left")
+
+            band_indices = []
+            smoothed_freqs_list = []
+
+            # Calculate geometric centers for representative frequencies
+            geom_centers = np.sqrt(log_bins[:-1] * log_bins[1:])
+
+            for i in range(max_points):
+                start = indices[i]
+                end = indices[i + 1]
+                if end > start:
+                    smoothed_freqs_list.append(geom_centers[i])
+                    band_indices.append((start, end))
+
+            smoothed_freqs = np.array(smoothed_freqs_list)
+            cached_data = (smoothed_freqs, band_indices)
+            self._smoothing_cache[cache_key] = cached_data
+
+        smoothed_freqs, band_indices = cached_data
+
+        if len(band_indices) == 0:
+            return np.array([]), np.array([])
+
+        smoothed_mags_list = []
+        for start, end in band_indices:
+            if magnitude.ndim == 2:
+                # dual channel: max along axis 0
+                val = np.max(magnitude[start:end], axis=0)
+            else:
+                val = np.max(magnitude[start:end])
+            smoothed_mags_list.append(val)
+
+        return smoothed_freqs, np.array(smoothed_mags_list)
 
     def _compute_multitaper(self, data, freqs, sample_rate):
         """Helper to calculate spectrum using multitaper method."""
@@ -695,6 +751,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 "65536",
                 "131072",
                 "262144",
+                "524288",
                 "1M (Slow)",
                 "2M (Slow)",
                 "4M (Slow)",
@@ -752,6 +809,8 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.smooth_combo.addItem(tr("1/6 Octave"), "1/6 Octave")
         self.smooth_combo.addItem(tr("1/12 Octave"), "1/12 Octave")
         self.smooth_combo.addItem(tr("1/24 Octave"), "1/24 Octave")
+        self.smooth_combo.addItem(tr("1/48 Octave"), "1/48 Octave")
+        self.smooth_combo.addItem(tr("1/96 Octave"), "1/96 Octave")
 
         index = self.smooth_combo.findData(self.module.octave_smoothing)
         if index >= 0:
@@ -849,8 +908,68 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         # For Dual: Left (Green), Right (Red).
         # So we might need to change pen colors dynamically.
 
+        self.plot_widget.setClipToView(True)
+
         layout.addWidget(self.plot_widget)
         self.setLayout(layout)
+
+    def apply_min_max_envelope(self, freqs, magnitude, x_range_log, width_px):
+        """
+        Extract Min-Max envelope based on screen pixels for logarithmic X-axis.
+        """
+        if x_range_log is None or len(x_range_log) < 2:
+            f_min = freqs[0] if len(freqs) > 0 and freqs[0] > 0 else 20.0
+            f_max = freqs[-1] if len(freqs) > 0 else 20000.0
+            x_range_log = [np.log10(f_min), np.log10(f_max)]
+
+        x_start, x_end = x_range_log[0], x_range_log[1]
+        x_edges = np.linspace(x_start, x_end, int(width_px) + 1)
+        f_edges = 10**x_edges
+
+        indices = np.searchsorted(freqs, f_edges, side="left")
+        diffs = np.diff(indices)
+        valid_mask = diffs > 0
+
+        starts = indices[:-1][valid_mask]
+        ends = indices[1:][valid_mask]
+        geom_centers = 10 ** ((x_edges[:-1][valid_mask] + x_edges[1:][valid_mask]) / 2.0)
+
+        num_valid = len(starts)
+        if num_valid == 0:
+            return np.array([]), np.array([])
+
+        if magnitude.ndim == 2:
+            mins = np.empty((num_valid, 2))
+            maxs = np.empty((num_valid, 2))
+            for idx, (start, end) in enumerate(zip(starts, ends, strict=True)):
+                slice_m = magnitude[start:end]
+                mins[idx] = np.min(slice_m, axis=0)
+                maxs[idx] = np.max(slice_m, axis=0)
+
+            plot_freqs = np.empty(2 * num_valid)
+            plot_freqs[0::2] = geom_centers
+            plot_freqs[1::2] = geom_centers
+
+            plot_mags = np.empty((2 * num_valid, 2))
+            plot_mags[0::2] = mins
+            plot_mags[1::2] = maxs
+        else:
+            mins = np.empty(num_valid)
+            maxs = np.empty(num_valid)
+            for idx, (start, end) in enumerate(zip(starts, ends, strict=True)):
+                slice_m = magnitude[start:end]
+                mins[idx] = np.min(slice_m)
+                maxs[idx] = np.max(slice_m)
+
+            plot_freqs = np.empty(2 * num_valid)
+            plot_freqs[0::2] = geom_centers
+            plot_freqs[1::2] = geom_centers
+
+            plot_mags = np.empty(2 * num_valid)
+            plot_mags[0::2] = mins
+            plot_mags[1::2] = maxs
+
+        return plot_freqs, plot_mags
 
     def format_si(self, value, unit):
         if value == 0:
@@ -962,6 +1081,14 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
             size = int(val)
         self.module.set_buffer_size(size)
 
+        # Adjust update timer interval dynamically based on FFT size to reduce CPU and draw load.
+        if size >= 131072:
+            self.timer.setInterval(100)  # 10 fps
+        elif size >= 32768:
+            self.timer.setInterval(60)  # ~17 fps
+        else:
+            self.timer.setInterval(30)  # ~33 fps
+
     def on_window_changed(self, val):
         self.module.window_type = val
 
@@ -1041,7 +1168,15 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.overall_label.setText(f"Overall: {overall_weighted_db:.1f} {unit_display}")
 
         # Smoothing
-        fraction_map = {"1/1 Octave": 1, "1/3 Octave": 3, "1/6 Octave": 6, "1/12 Octave": 12, "1/24 Octave": 24}
+        fraction_map = {
+            "1/1 Octave": 1,
+            "1/3 Octave": 3,
+            "1/6 Octave": 6,
+            "1/12 Octave": 12,
+            "1/24 Octave": 24,
+            "1/48 Octave": 48,
+            "1/96 Octave": 96,
+        }
         fraction = fraction_map.get(self.module.octave_smoothing)
 
         if fraction:
@@ -1051,12 +1186,58 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
             else:
                 peak_mags = None
         else:
-            plot_freqs = freqs[1:]
-            plot_mags = magnitude[1:]
-            if self.module.peak_hold and peak_magnitude is not None:
-                peak_mags = peak_magnitude[1:]
+            # Hybrid Rendering Mode: Switch to RAW mode dynamically when zoomed in
+            try:
+                view_range = self.plot_widget.viewRange()
+                x_range_log = view_range[0]
+
+                # Robustly verify that the retrieved view range contains valid numeric limits
+                if (
+                    x_range_log is not None
+                    and hasattr(x_range_log, "__len__")
+                    and len(x_range_log) >= 2
+                    and np.isfinite(x_range_log[0])
+                    and np.isfinite(x_range_log[1])
+                ):
+                    # Log-X is log10(frequency)
+                    f_min_visible = float(10 ** x_range_log[0])
+                    f_max_visible = float(10 ** x_range_log[1])
+
+                    # Count visible bins using fast binary search (np.searchsorted)
+                    idx_start = int(np.searchsorted(freqs, f_min_visible, side="left"))
+                    idx_end = int(np.searchsorted(freqs, f_max_visible, side="right"))
+                    visible_points = idx_end - idx_start
+                else:
+                    visible_points = 999999
+            except Exception:
+                # Fallback to downsampling if view range cannot be resolved
+                visible_points = 999999
+
+            # Retrieve viewport width dynamically
+            try:
+                width_px = self.plot_widget.plotItem.vb.width()
+                if not isinstance(width_px, (int, float)) or width_px <= 0 or not np.isfinite(width_px):
+                    width_px = 1200
+            except Exception:
+                width_px = 1200
+
+            threshold = 2 * width_px
+
+            if visible_points <= threshold or len(freqs) <= threshold:
+                # Zoomed in: Render absolute RAW precision data without downsampling
+                plot_freqs = freqs[1:]
+                plot_mags = magnitude[1:]
+                if self.module.peak_hold and peak_magnitude is not None:
+                    peak_mags = peak_magnitude[1:]
+                else:
+                    peak_mags = None
             else:
-                peak_mags = None
+                # Zoomed out: Apply screen-pixel based Min-Max envelope downsampling
+                plot_freqs, plot_mags = self.apply_min_max_envelope(freqs[1:], magnitude[1:], x_range_log, width_px)
+                if self.module.peak_hold and peak_magnitude is not None:
+                    _, peak_mags = self.apply_min_max_envelope(freqs[1:], peak_magnitude[1:], x_range_log, width_px)
+                else:
+                    peak_mags = None
 
         # Update curves
         # When setLogMode(x=True) is active, we must pass LINEAR x values to setData.
@@ -1198,13 +1379,13 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                         is_calibrated=is_calibrated,
                         input_sensitivity=input_sensitivity,
                         applied_offset_db=0.0,
-                        reference_level="absolute" if is_calibrated else "relative"
+                        reference_level="absolute" if is_calibrated else "relative",
                     ),
                     metadata={
                         "channel": "Left",
                         "analysis_mode": self.module.analysis_mode,
                         "fft_size": self.module.buffer_size,
-                    }
+                    },
                 )
                 traces.append(trace_l)
 
@@ -1225,13 +1406,13 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                         is_calibrated=is_calibrated,
                         input_sensitivity=input_sensitivity,
                         applied_offset_db=0.0,
-                        reference_level="absolute" if is_calibrated else "relative"
+                        reference_level="absolute" if is_calibrated else "relative",
                     ),
                     metadata={
                         "channel": "Right",
                         "analysis_mode": self.module.analysis_mode,
                         "fft_size": self.module.buffer_size,
-                    }
+                    },
                 )
                 traces.append(trace_r)
         else:
@@ -1257,15 +1438,14 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     is_calibrated=is_calibrated,
                     input_sensitivity=input_sensitivity,
                     applied_offset_db=0.0,
-                    reference_level="absolute" if is_calibrated else "relative"
+                    reference_level="absolute" if is_calibrated else "relative",
                 ),
                 metadata={
                     "channel_mode": self.module.channel_mode,
                     "analysis_mode": self.module.analysis_mode,
                     "fft_size": self.module.buffer_size,
-                }
+                },
             )
             traces.append(trace)
 
         return traces
-
