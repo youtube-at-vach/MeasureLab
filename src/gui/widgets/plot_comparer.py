@@ -120,6 +120,7 @@ class PlotComparerWidget(QWidget):
 
         # ② Readout Label for interactive values
         self.readout_label = QLabel(tr("Move mouse over plot to read values"))
+        self.readout_label.setWordWrap(True)
         self.readout_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.readout_label.setStyleSheet("""
             QLabel {
@@ -901,7 +902,7 @@ class PlotComparerWidget(QWidget):
             readout_parts = []
             trace_y_vals = []
 
-            for tid, trace in visible_traces:
+            for idx, (tid, trace) in enumerate(visible_traces, start=1):
                 settings = self.trace_settings[tid]
                 x_arr = np.array(trace.x_data, dtype=float)
                 if use_khz:
@@ -935,8 +936,8 @@ class PlotComparerWidget(QWidget):
                     try:
                         interp_y = np.interp(actual_x, x_sorted, y_arr)
                         unit = trace.y_axis.display_unit or ""
-                        name_short = trace.name[:12] + ".." if len(trace.name) > 14 else trace.name
-                        readout_parts.append(f"{name_short}: {interp_y:.2f} {unit}")
+                        color = settings.get("color", "#ffffff")
+                        readout_parts.append(f'<span style="color: {color};">● T{idx}: {interp_y:.2f} {unit}</span>')
                         trace_y_vals.append(interp_y)
                     except Exception:
                         pass
@@ -947,8 +948,8 @@ class PlotComparerWidget(QWidget):
                     try:
                         interp_y2 = np.interp(actual_x, x_sorted, y2_arr)
                         unit2 = trace.y2_axis.display_unit or ""
-                        name_short = trace.name[:12] + ".." if len(trace.name) > 14 else trace.name
-                        readout_parts.append(f"{name_short} ({tr('Phase')}): {interp_y2:.1f} {unit2}")
+                        color = settings.get("color", "#ffffff")
+                        readout_parts.append(f'<span style="color: {color};">● T{idx} ({tr("Phase")}): {interp_y2:.1f} {unit2}</span>')
                     except Exception:
                         pass
 
