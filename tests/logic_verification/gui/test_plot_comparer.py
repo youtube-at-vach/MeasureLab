@@ -391,21 +391,20 @@ def test_plot_comparer_interactive_cursor_readout(qtbot, clean_manager):
     assert not widget.v_line.isVisible()
     assert not widget.h_line.isVisible()
 
-    # Simulate mouse hover at mapped scene coordinate (e.g. 100 Hz in log scale)
+    # Simulate mouse hover at mapped scene coordinate (e.g. 100 Hz = 0.1 kHz. log10(0.1) = -1.0)
     from PyQt6.QtCore import QPointF
-    # Find scene position that maps to x=2.0 (log10 of 100.0), y=-20.0
     vb = widget.plot_item.vb
-    scene_pos = vb.mapViewToScene(QPointF(2.0, -20.0))
+    scene_pos = vb.mapViewToScene(QPointF(-1.0, -20.0))
     
     widget.on_mouse_moved(scene_pos)
     
     assert widget.v_line.isVisible()
     assert widget.h_line.isVisible()
-    assert widget.v_line.pos().x() == pytest.approx(2.0)
+    assert widget.v_line.pos().x() == pytest.approx(-1.0)
     assert widget.h_line.pos().y() == pytest.approx(-20.0)
     
-    # Readout label text should show interpolated values
+    # Readout label text should show interpolated values in kHz
     text = widget.readout_label.text()
-    assert "100.00 Hz" in text
+    assert "0.100 kHz" in text
     assert "-20.00 dBFS" in text
 

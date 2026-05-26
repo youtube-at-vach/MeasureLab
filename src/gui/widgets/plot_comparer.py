@@ -863,13 +863,29 @@ class PlotComparerWidget(QWidget):
             active_domain = self.filter_combo.currentData()
             x_unit = "Hz" if active_domain == "frequency" else "s" if active_domain == "time" else ""
 
+            visible_traces = []
+            traces = self.manager.get_all_traces()
+            for tid, trace in traces.items():
+                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                    trace_domain = self._get_trace_domain(trace)
+                    if trace_domain == active_domain:
+                        visible_traces.append((tid, trace))
+
+            use_khz = False
+            if visible_traces:
+                first_trace = visible_traces[0][1]
+                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+
             # Format X value taking logX into account
             if active_domain == "frequency":
                 if getattr(self, "is_log_x", False):
                     actual_x = 10 ** x_val
                 else:
                     actual_x = x_val
-                x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x/1000:.3f} k{x_unit}"
+                if use_khz:
+                    x_str = f"{actual_x:.3f} kHz"
+                else:
+                    x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x/1000:.3f} k{x_unit}"
             elif active_domain == "time":
                 actual_x = x_val
                 x_str = f"{actual_x*1000:.3f} ms" if abs(actual_x) < 1.0 else f"{actual_x:.4f} {x_unit}"
@@ -885,17 +901,11 @@ class PlotComparerWidget(QWidget):
             readout_parts = []
             trace_y_vals = []
 
-            visible_traces = []
-            traces = self.manager.get_all_traces()
-            for tid, trace in traces.items():
-                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                    trace_domain = self._get_trace_domain(trace)
-                    if trace_domain == active_domain:
-                        visible_traces.append((tid, trace))
-
             for tid, trace in visible_traces:
                 settings = self.trace_settings[tid]
                 x_arr = np.array(trace.x_data, dtype=float)
+                if use_khz:
+                    x_arr = x_arr / 1000.0
 
                 if settings["shift"] != 0.0:
                     x_arr = x_arr + settings["shift"]
@@ -1001,6 +1011,74 @@ class PlotComparerWidget(QWidget):
         dialog = ExportSettingsDialog(traces_to_export, self)
         dialog.exec()
 
+    def update_x_axis_ticks(self, use_khz: bool, active_domain: str):
+        x_axis = self.plot_widget.getPlotItem().getAxis("bottom")
+        if not getattr(self, "is_log_x", False):
+            # Linear scale: Let pyqtgraph handle ticks automatically
+            x_axis.setTicks(None)
+            return
+
+        if active_domain == "frequency":
+            if use_khz:
+                major_specs = [
+                    (0.01, "0.01"),
+                    (0.02, "0.02"),
+                    (0.05, "0.05"),
+                    (0.1, "0.1"),
+                    (0.2, "0.2"),
+                    (0.5, "0.5"),
+                    (1.0, "1"),
+                    (2.0, "2"),
+                    (5.0, "5"),
+                    (10.0, "10"),
+                    (20.0, "20"),
+                    (50.0, "50"),
+                    (100.0, "100"),
+                    (200.0, "200"),
+                ]
+                base_decades = [0.01, 0.1, 1.0, 10.0, 100.0]
+            else:
+                major_specs = [
+                    (10.0, "10"),
+                    (20.0, "20"),
+                    (50.0, "50"),
+                    (100.0, "100"),
+                    (200.0, "200"),
+                    (500.0, "500"),
+                    (1000.0, "1k"),
+                    (2000.0, "2k"),
+                    (5000.0, "5k"),
+                    (10000.0, "10k"),
+                    (20000.0, "20k"),
+                    (50000.0, "50k"),
+                    (100000.0, "100k"),
+                    (200000.0, "200k"),
+                ]
+                base_decades = [10.0, 100.0, 1000.0, 10000.0, 100000.0]
+
+            major_ticks = [(np.log10(val), label) for val, label in major_specs]
+            minor_ticks = []
+            for dec in base_decades:
+                for mul in [3, 4, 6, 7, 8, 9]:
+                    val = dec * mul
+                    minor_ticks.append((np.log10(val), ""))
+            x_axis.setTicks([major_ticks, minor_ticks])
+        else:
+            # Generic decade ticks for other domains
+            major_ticks = []
+            minor_ticks = []
+            for exp in range(-6, 7):
+                val = 10.0 ** exp
+                label = f"1e{exp}" if exp != 0 else "1"
+                if exp == 3:
+                    label = "1k"
+                elif exp == -3:
+                    label = "1m"
+                major_ticks.append((float(exp), label))
+                for mul in [2, 3, 4, 5, 6, 7, 8, 9]:
+                    minor_ticks.append((np.log10(val * mul), ""))
+            x_axis.setTicks([major_ticks, minor_ticks])
+
     def replot(self):
         # 1. Clear current plots
         self.plot_widget.clear()
@@ -1068,13 +1146,21 @@ class PlotComparerWidget(QWidget):
         self.is_log_x = self.log_x_check.isChecked()
         self.is_log_y = self.log_y_check.isChecked()
 
-        self.plot_widget.setLogMode(x=self.is_log_x, y=self.is_log_y)
+        # ALWAYS keep PyQtGraph's setLogMode(x=False) to avoid its severe non-linear coordinate scaling bugs.
+        # We manually perform np.log10 on X coordinates instead.
+        self.plot_widget.setLogMode(x=False, y=self.is_log_y)
 
+        # Determine if we need manual kHz scaling for frequency to avoid pyqtgraph units bugs
         first_domain = self._get_trace_domain(first_trace)
+        use_khz = (first_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+
         if first_domain == "frequency":
-            self.plot_widget.setLabel(
-                "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
-            )
+            if use_khz:
+                self.plot_widget.setLabel("bottom", f"{tr(first_trace.x_axis.dimension).capitalize()} (kHz)")
+            else:
+                self.plot_widget.setLabel(
+                    "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
+                )
         elif first_domain == "time":
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
@@ -1095,6 +1181,8 @@ class PlotComparerWidget(QWidget):
 
             # Arrays
             x = np.array(trace.x_data, dtype=float)
+            if use_khz:
+                x = x / 1000.0
             y = np.array(trace.y_data, dtype=float)
             y2 = np.array(trace.y2_data, dtype=float) if trace.y2_data is not None else None
 
@@ -1105,17 +1193,18 @@ class PlotComparerWidget(QWidget):
             if settings["shift"] != 0.0:
                 x = x + settings["shift"]
 
-            # Convert to display formats (e.g. logX handling for Y2 overlay)
+            # Convert to display formats (e.g. logX handling)
             x_for_y2 = x
             y_for_y2 = y
             y2_for_y2 = y2
 
             if getattr(self, "is_log_x", False):
                 valid_mask = x > 0
-                x_for_y2 = np.log10(x[valid_mask])
+                x_log = np.log10(x[valid_mask])
+                x_for_y2 = x_log
+                x = x_log
                 if y is not None:
                     y_for_y2 = y[valid_mask]
-                    x = x[valid_mask]
                     y = y[valid_mask]
                 if y2 is not None:
                     y2_for_y2 = y2[valid_mask]
@@ -1223,6 +1312,9 @@ class PlotComparerWidget(QWidget):
                 y1_axis.setTicks([ticks_log])
                 # Set range from 0.0001% to 100%
                 self.plot_widget.setYRange(np.log10(0.0001), np.log10(100))
+
+        # Update custom X axis log ticks
+        self.update_x_axis_ticks(use_khz, active_domain)
 
         self.update_y2_views()
 
