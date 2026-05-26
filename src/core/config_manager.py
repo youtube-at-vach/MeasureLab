@@ -269,8 +269,8 @@ class ConfigManager:
 
         audio_loaded = loaded_config.get("audio", {})
         if isinstance(audio_loaded, dict):
-            for key in config["audio"].keys():
-                value = audio_loaded.get(key, config["audio"][key])
+            for key, default_value in config["audio"].items():
+                value = audio_loaded.get(key, default_value)
                 config["audio"][key] = value
         else:
             self.logger.warning("'audio' section is missing or invalid; using defaults.")
