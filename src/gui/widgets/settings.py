@@ -1814,14 +1814,16 @@ class SettingsWidget(QWidget):
             # but combo text should be fine.
 
             self.config_manager.set_audio_config(
-                in_name,
-                out_name,
-                self.audio_engine.sample_rate,
-                self.audio_engine.block_size,
-                self.audio_engine.input_channel_mode,
-                self.audio_engine.output_channel_mode,
-                input_hostapi=host_api_name,
-                output_hostapi=host_api_name,
+                {
+                    "input_device": in_name,
+                    "output_device": out_name,
+                    "sample_rate": self.audio_engine.sample_rate,
+                    "block_size": self.audio_engine.block_size,
+                    "input_channels": self.audio_engine.input_channel_mode,
+                    "output_channels": self.audio_engine.output_channel_mode,
+                    "input_hostapi": host_api_name,
+                    "output_hostapi": host_api_name,
+                }
             )
 
         except Exception as e:
@@ -1861,14 +1863,16 @@ class SettingsWidget(QWidget):
                 out_hostapi = self.hostapi_combo.currentText()
 
                 self.config_manager.set_audio_config(
-                    in_name,
-                    out_name,
-                    rate,
-                    self.audio_engine.block_size,
-                    self.audio_engine.input_channel_mode,
-                    self.audio_engine.output_channel_mode,
-                    input_hostapi=in_hostapi,
-                    output_hostapi=out_hostapi,
+                    {
+                        "input_device": in_name,
+                        "output_device": out_name,
+                        "sample_rate": rate,
+                        "block_size": self.audio_engine.block_size,
+                        "input_channels": self.audio_engine.input_channel_mode,
+                        "output_channels": self.audio_engine.output_channel_mode,
+                        "input_hostapi": in_hostapi,
+                        "output_hostapi": out_hostapi,
+                    }
                 )
         except ValueError:
             pass
@@ -1892,14 +1896,16 @@ class SettingsWidget(QWidget):
                 out_hostapi = self.hostapi_combo.currentText()
 
                 self.config_manager.set_audio_config(
-                    in_name,
-                    out_name,
-                    self.audio_engine.sample_rate,
-                    size,
-                    self.audio_engine.input_channel_mode,
-                    self.audio_engine.output_channel_mode,
-                    input_hostapi=in_hostapi,
-                    output_hostapi=out_hostapi,
+                    {
+                        "input_device": in_name,
+                        "output_device": out_name,
+                        "sample_rate": self.audio_engine.sample_rate,
+                        "block_size": size,
+                        "input_channels": self.audio_engine.input_channel_mode,
+                        "output_channels": self.audio_engine.output_channel_mode,
+                        "input_hostapi": in_hostapi,
+                        "output_hostapi": out_hostapi,
+                    }
                 )
         except ValueError:
             pass
@@ -1960,7 +1966,16 @@ class SettingsWidget(QWidget):
             in_name = self._get_device_name_for_config(in_id, self.input_combo.currentText())
             out_name = self._get_device_name_for_config(out_id, self.output_combo.currentText())
             self.config_manager.set_audio_config(
-                in_name, out_name, self.audio_engine.sample_rate, self.audio_engine.block_size, in_mode, out_mode
+                {
+                    "input_device": in_name,
+                    "output_device": out_name,
+                    "sample_rate": self.audio_engine.sample_rate,
+                    "block_size": self.audio_engine.block_size,
+                    "input_channels": in_mode,
+                    "output_channels": out_mode,
+                    "input_hostapi": None,
+                    "output_hostapi": None,
+                }
             )
 
     def on_regenerate_fft(self):
