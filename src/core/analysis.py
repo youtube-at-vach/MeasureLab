@@ -237,7 +237,11 @@ class AudioCalc:
     @staticmethod
     def _prewarp(f, fs):
         """Pre-warp analog frequency for bilinear transform."""
-        return (fs / np.pi) * np.tan(np.pi * f / fs)
+        # Safe pre-warping: clamp to avoid tangent divergence as frequency approaches Nyquist.
+        # This keeps the poles of the digital filter strictly inside the unit circle.
+        nyquist = fs / 2.0
+        f_clamped = min(f, nyquist * 0.95)
+        return (fs / np.pi) * np.tan(np.pi * f_clamped / fs)
 
     @staticmethod
     def design_a_weighting(sampling_rate):

@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QColorDialog,
     QInputDialog,
+    QTabWidget,
 )
 
 from src.measurement_modules.base import MeasurementModule
@@ -120,6 +121,7 @@ class PlotComparerWidget(QWidget):
 
         # ② Readout Label for interactive values
         self.readout_label = QLabel(tr("Move mouse over plot to read values"))
+        self.readout_label.setWordWrap(True)
         self.readout_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.readout_label.setStyleSheet("""
             QLabel {
@@ -189,16 +191,20 @@ class PlotComparerWidget(QWidget):
 
         self.splitter.addWidget(plot_container)
 
-        # --- Right Panel: Controls ---
+        # --- Right Panel: Controls (with Tabbed Widget) ---
         self.controls_widget = QWidget()
         self.controls_widget.setMinimumWidth(380)
         self.controls_widget.setMaximumWidth(600)
         controls_layout = QVBoxLayout(self.controls_widget)
         controls_layout.setContentsMargins(5, 5, 5, 5)
 
-        # Trace List Group
-        list_group = QGroupBox(tr("Traces"))
-        list_layout = QVBoxLayout(list_group)
+        self.tab_widget = QTabWidget()
+        controls_layout.addWidget(self.tab_widget)
+
+        # === Tab 1: Traces ===
+        traces_tab = QWidget()
+        traces_layout = QVBoxLayout(traces_tab)
+        traces_layout.setContentsMargins(5, 5, 5, 5)
 
         # Plot Domain Filter
         filter_layout = QHBoxLayout()
@@ -211,14 +217,14 @@ class PlotComparerWidget(QWidget):
         self.filter_combo.currentIndexChanged.connect(self.on_filter_changed)
         filter_layout.addWidget(filter_label)
         filter_layout.addWidget(self.filter_combo)
-        list_layout.addLayout(filter_layout)
+        traces_layout.addLayout(filter_layout)
 
         # Master Toggles container (dynamic checkboxes will be inserted here)
         self.master_toggles_container = QWidget()
         self.master_toggles_layout = QHBoxLayout(self.master_toggles_container)
         self.master_toggles_layout.setContentsMargins(0, 2, 0, 2)
         self.master_toggles_checkboxes = {}
-        list_layout.addWidget(self.master_toggles_container)
+        traces_layout.addWidget(self.master_toggles_container)
 
         self.tree_widget = QTreeWidget()
         self.tree_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -232,7 +238,7 @@ class PlotComparerWidget(QWidget):
         self.tree_widget.itemDoubleClicked.connect(self.on_tree_item_double_clicked)
         self.tree_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_tree_context_menu)
-        list_layout.addWidget(self.tree_widget)
+        traces_layout.addWidget(self.tree_widget)
 
         # Action Buttons
         btn_layout = QHBoxLayout()
@@ -250,34 +256,123 @@ class PlotComparerWidget(QWidget):
         btn_layout.addWidget(self.btn_export)
         btn_layout.addWidget(self.btn_remove)
         btn_layout.addWidget(self.btn_clear)
-        list_layout.addLayout(btn_layout)
+        traces_layout.addLayout(btn_layout)
 
         # Sleek helper label for export/visibility interactions
         self.export_hint_label = QLabel(tr("Tip: Select items to export specifically, or check them to compare in the plot."))
         self.export_hint_label.setStyleSheet("color: #7f8c8d; font-size: 10px; padding: 2px;")
-        list_layout.addWidget(self.export_hint_label)
+        traces_layout.addWidget(self.export_hint_label)
 
-        controls_layout.addWidget(list_group, stretch=1)
+        self.tab_widget.addTab(traces_tab, tr("Traces"))
 
-        # Global Options Group
-        options_group = QGroupBox(tr("Global Options"))
-        options_layout = QVBoxLayout(options_group)
+        # === Tab 2: Plot Range ===
+        range_tab = QWidget()
+        range_layout = QVBoxLayout(range_tab)
+        range_layout.setContentsMargins(5, 5, 5, 5)
 
+        # X Axis Group
+        x_group = QGroupBox(tr("X Axis"))
+        x_v_layout = QVBoxLayout(x_group)
+
+        x_opts_layout = QHBoxLayout()
+        self.x_auto_cb = QCheckBox(tr("Auto"))
+        self.x_auto_cb.setChecked(True)
+        self.x_auto_cb.toggled.connect(self.on_x_auto_toggled)
+        self.log_x_check = QCheckBox(tr("Log X Axis"))
+        self.log_x_check.toggled.connect(self.on_scale_override_toggled)
+        x_opts_layout.addWidget(self.x_auto_cb)
+        x_opts_layout.addWidget(self.log_x_check)
+        x_v_layout.addLayout(x_opts_layout)
+
+        x_spin_layout = QHBoxLayout()
+        x_spin_layout.addWidget(QLabel(tr("Min")))
+        self.x_min_spin = QDoubleSpinBox()
+        self.x_min_spin.setRange(-1000000.0, 1000000.0)
+        self.x_min_spin.setEnabled(False)
+        self.x_min_spin.valueChanged.connect(self.replot)
+        x_spin_layout.addWidget(self.x_min_spin)
+
+        x_spin_layout.addWidget(QLabel(tr("Max")))
+        self.x_max_spin = QDoubleSpinBox()
+        self.x_max_spin.setRange(-1000000.0, 1000000.0)
+        self.x_max_spin.setEnabled(False)
+        self.x_max_spin.valueChanged.connect(self.replot)
+        x_spin_layout.addWidget(self.x_max_spin)
+
+        x_v_layout.addLayout(x_spin_layout)
+        range_layout.addWidget(x_group)
+
+        # Y1 Axis (Primary) Group
+        y1_group = QGroupBox(tr("Y1 Axis (Primary)"))
+        y1_v_layout = QVBoxLayout(y1_group)
+
+        y1_opts_layout = QHBoxLayout()
+        self.y1_auto_cb = QCheckBox(tr("Auto"))
+        self.y1_auto_cb.setChecked(True)
+        self.y1_auto_cb.toggled.connect(self.on_y1_auto_toggled)
+        self.log_y_check = QCheckBox(tr("Log Y Axis"))
+        self.log_y_check.toggled.connect(self.on_scale_override_toggled)
+        y1_opts_layout.addWidget(self.y1_auto_cb)
+        y1_opts_layout.addWidget(self.log_y_check)
+        y1_v_layout.addLayout(y1_opts_layout)
+
+        y1_spin_layout = QHBoxLayout()
+        y1_spin_layout.addWidget(QLabel(tr("Min")))
+        self.y1_min_spin = QDoubleSpinBox()
+        self.y1_min_spin.setRange(-1000.0, 1000.0)
+        self.y1_min_spin.setEnabled(False)
+        self.y1_min_spin.valueChanged.connect(self.replot)
+        y1_spin_layout.addWidget(self.y1_min_spin)
+
+        y1_spin_layout.addWidget(QLabel(tr("Max")))
+        self.y1_max_spin = QDoubleSpinBox()
+        self.y1_max_spin.setRange(-1000.0, 1000.0)
+        self.y1_max_spin.setEnabled(False)
+        self.y1_max_spin.valueChanged.connect(self.replot)
+        y1_spin_layout.addWidget(self.y1_max_spin)
+
+        y1_v_layout.addLayout(y1_spin_layout)
+        range_layout.addWidget(y1_group)
+
+        # Y2 Axis (Secondary) Group
+        y2_group = QGroupBox(tr("Y2 Axis (Secondary)"))
+        y2_v_layout = QVBoxLayout(y2_group)
+
+        y2_opts_layout = QHBoxLayout()
+        self.y2_auto_cb = QCheckBox(tr("Auto"))
+        self.y2_auto_cb.setChecked(True)
+        self.y2_auto_cb.toggled.connect(self.on_y2_auto_toggled)
+        y2_opts_layout.addWidget(self.y2_auto_cb)
+        y2_v_layout.addLayout(y2_opts_layout)
+
+        y2_spin_layout = QHBoxLayout()
+        y2_spin_layout.addWidget(QLabel(tr("Min")))
+        self.y2_min_spin = QDoubleSpinBox()
+        self.y2_min_spin.setRange(-1000.0, 1000.0)
+        self.y2_min_spin.setEnabled(False)
+        self.y2_min_spin.valueChanged.connect(self.replot)
+        y2_spin_layout.addWidget(self.y2_min_spin)
+
+        y2_spin_layout.addWidget(QLabel(tr("Max")))
+        self.y2_max_spin = QDoubleSpinBox()
+        self.y2_max_spin.setRange(-1000.0, 1000.0)
+        self.y2_max_spin.setEnabled(False)
+        self.y2_max_spin.valueChanged.connect(self.replot)
+        y2_spin_layout.addWidget(self.y2_max_spin)
+
+        y2_v_layout.addLayout(y2_spin_layout)
+        range_layout.addWidget(y2_group)
+
+        # Global Options Group in range tab
+        global_opts_group = QGroupBox(tr("Global Options"))
+        global_opts_layout = QVBoxLayout(global_opts_group)
         self.normalize_check = QCheckBox(tr("Normalize (Align Peaks)"))
         self.normalize_check.toggled.connect(self.replot)
-        options_layout.addWidget(self.normalize_check)
+        global_opts_layout.addWidget(self.normalize_check)
+        range_layout.addWidget(global_opts_group)
 
-        # ④ Manual Scale Overrides checkboxes
-        scale_layout = QHBoxLayout()
-        self.log_x_check = QCheckBox(tr("Log X Axis"))
-        self.log_y_check = QCheckBox(tr("Log Y Axis"))
-        self.log_x_check.toggled.connect(self.on_scale_override_toggled)
-        self.log_y_check.toggled.connect(self.on_scale_override_toggled)
-        scale_layout.addWidget(self.log_x_check)
-        scale_layout.addWidget(self.log_y_check)
-        options_layout.addLayout(scale_layout)
-
-        controls_layout.addWidget(options_group)
+        range_layout.addStretch()
+        self.tab_widget.addTab(range_tab, tr("Plot Range"))
 
         self.splitter.addWidget(self.controls_widget)
 
@@ -287,6 +382,210 @@ class PlotComparerWidget(QWidget):
         self.splitter.setSizes([620, 380])
 
         self.setLayout(main_layout)
+
+    def on_x_auto_toggled(self, checked: bool):
+        self.x_min_spin.setEnabled(not checked)
+        self.x_max_spin.setEnabled(not checked)
+        if not checked:
+            x_range = self.plot_widget.viewRange()[0]
+            min_val, max_val = x_range[0], x_range[1]
+
+            active_domain = self.filter_combo.currentData()
+            use_khz = False
+            traces = self.manager.get_all_traces()
+            first_trace = None
+            for tid, trace in traces.items():
+                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                    if self._get_trace_domain(trace) == active_domain:
+                        first_trace = trace
+                        break
+            if first_trace:
+                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+
+            if getattr(self, "is_log_x", False):
+                min_val = 10 ** min_val
+                max_val = 10 ** max_val
+            elif use_khz:
+                min_val = min_val * 1000.0
+                max_val = max_val * 1000.0
+
+            self.x_min_spin.blockSignals(True)
+            self.x_max_spin.blockSignals(True)
+            self.x_min_spin.setValue(min_val)
+            self.x_max_spin.setValue(max_val)
+            self.x_min_spin.blockSignals(False)
+            self.x_max_spin.blockSignals(False)
+        self.replot()
+
+    def on_y1_auto_toggled(self, checked: bool):
+        self.y1_min_spin.setEnabled(not checked)
+        self.y1_max_spin.setEnabled(not checked)
+        if not checked:
+            y_range = self.plot_widget.viewRange()[1]
+            min_val, max_val = y_range[0], y_range[1]
+
+            if getattr(self, "is_log_y", False):
+                first_trace = None
+                traces = self.manager.get_all_traces()
+                active_domain = self.filter_combo.currentData()
+                for tid, trace in traces.items():
+                    if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                        if self._get_trace_domain(trace) == active_domain:
+                            first_trace = trace
+                            break
+                if first_trace and first_trace.y_axis and first_trace.y_axis.display_unit == "%":
+                    min_val = 10 ** min_val
+                    max_val = 10 ** max_val
+
+            self.y1_min_spin.blockSignals(True)
+            self.y1_max_spin.blockSignals(True)
+            self.y1_min_spin.setValue(min_val)
+            self.y1_max_spin.setValue(max_val)
+            self.y1_min_spin.blockSignals(False)
+            self.y1_max_spin.blockSignals(False)
+        self.replot()
+
+    def on_y2_auto_toggled(self, checked: bool):
+        self.y2_min_spin.setEnabled(not checked)
+        self.y2_max_spin.setEnabled(not checked)
+        if not checked:
+            y2_range = self.y2_view.viewRange()[1]
+            min_val, max_val = y2_range[0], y2_range[1]
+
+            self.y2_min_spin.blockSignals(True)
+            self.y2_max_spin.blockSignals(True)
+            self.y2_min_spin.setValue(min_val)
+            self.y2_max_spin.setValue(max_val)
+            self.y2_min_spin.blockSignals(False)
+            self.y2_max_spin.blockSignals(False)
+        self.replot()
+
+    def on_range_changed(self):
+        # Update spinboxes to match the actual range if Auto is checked
+        if not hasattr(self, "x_auto_cb"):
+            return
+
+        if self.x_auto_cb.isChecked():
+            x_range = self.plot_widget.viewRange()[0]
+            min_val, max_val = x_range[0], x_range[1]
+
+            active_domain = self.filter_combo.currentData()
+            use_khz = False
+            traces = self.manager.get_all_traces()
+            first_trace = None
+            for tid, trace in traces.items():
+                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                    if self._get_trace_domain(trace) == active_domain:
+                        first_trace = trace
+                        break
+            if first_trace:
+                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+
+            if getattr(self, "is_log_x", False):
+                min_val = 10 ** min_val
+                max_val = 10 ** max_val
+            elif use_khz:
+                min_val = min_val * 1000.0
+                max_val = max_val * 1000.0
+
+            self.x_min_spin.blockSignals(True)
+            self.x_max_spin.blockSignals(True)
+            self.x_min_spin.setValue(min_val)
+            self.x_max_spin.setValue(max_val)
+            self.x_min_spin.blockSignals(False)
+            self.x_max_spin.blockSignals(False)
+
+        if self.y1_auto_cb.isChecked():
+            y_range = self.plot_widget.viewRange()[1]
+            min_val, max_val = y_range[0], y_range[1]
+            if getattr(self, "is_log_y", False):
+                first_trace = None
+                traces = self.manager.get_all_traces()
+                active_domain = self.filter_combo.currentData()
+                for tid, trace in traces.items():
+                    if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                        if self._get_trace_domain(trace) == active_domain:
+                            first_trace = trace
+                            break
+                if first_trace and first_trace.y_axis and first_trace.y_axis.display_unit == "%":
+                    min_val = 10 ** min_val
+                    max_val = 10 ** max_val
+
+            self.y1_min_spin.blockSignals(True)
+            self.y1_max_spin.blockSignals(True)
+            self.y1_min_spin.setValue(min_val)
+            self.y1_max_spin.setValue(max_val)
+            self.y1_min_spin.blockSignals(False)
+            self.y1_max_spin.blockSignals(False)
+
+        if self.y2_auto_cb.isChecked():
+            y2_range = self.y2_view.viewRange()[1]
+            min_val, max_val = y2_range[0], y2_range[1]
+
+            self.y2_min_spin.blockSignals(True)
+            self.y2_max_spin.blockSignals(True)
+            self.y2_min_spin.setValue(min_val)
+            self.y2_max_spin.setValue(max_val)
+            self.y2_min_spin.blockSignals(False)
+            self.y2_max_spin.blockSignals(False)
+
+    def update_spinbox_limits(self):
+        if not hasattr(self, "x_min_spin"):
+            return
+        active_domain = self.filter_combo.currentData()
+        traces = self.manager.get_all_traces()
+        first_trace = None
+        for tid, trace in traces.items():
+            if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                if self._get_trace_domain(trace) == active_domain:
+                    first_trace = trace
+                    break
+
+        use_khz = (active_domain == "frequency" and first_trace and first_trace.x_axis.display_unit == "Hz")
+
+        self.x_min_spin.blockSignals(True)
+        self.x_max_spin.blockSignals(True)
+
+        if active_domain == "frequency":
+            if use_khz:
+                self.x_min_spin.setRange(0.001, 200.0)
+                self.x_max_spin.setRange(0.001, 200.0)
+                self.x_min_spin.setSuffix(" kHz")
+                self.x_max_spin.setSuffix(" kHz")
+                self.x_min_spin.setSingleStep(0.1)
+                self.x_max_spin.setSingleStep(0.1)
+                self.x_min_spin.setDecimals(3)
+                self.x_max_spin.setDecimals(3)
+            else:
+                self.x_min_spin.setRange(0.1, 200000.0)
+                self.x_max_spin.setRange(0.1, 200000.0)
+                self.x_min_spin.setSuffix(" Hz")
+                self.x_max_spin.setSuffix(" Hz")
+                self.x_min_spin.setSingleStep(1.0)
+                self.x_max_spin.setSingleStep(1.0)
+                self.x_min_spin.setDecimals(2)
+                self.x_max_spin.setDecimals(2)
+        elif active_domain == "time":
+            self.x_min_spin.setRange(-100.0, 100.0)
+            self.x_max_spin.setRange(-100.0, 100.0)
+            self.x_min_spin.setSuffix(" s")
+            self.x_max_spin.setSuffix(" s")
+            self.x_min_spin.setSingleStep(0.001)
+            self.x_max_spin.setSingleStep(0.001)
+            self.x_min_spin.setDecimals(4)
+            self.x_max_spin.setDecimals(4)
+        else:
+            self.x_min_spin.setRange(-1000000.0, 1000000.0)
+            self.x_max_spin.setRange(-1000000.0, 1000000.0)
+            self.x_min_spin.setSuffix("")
+            self.x_max_spin.setSuffix("")
+            self.x_min_spin.setSingleStep(1.0)
+            self.x_max_spin.setSingleStep(1.0)
+            self.x_min_spin.setDecimals(2)
+            self.x_max_spin.setDecimals(2)
+
+        self.x_min_spin.blockSignals(False)
+        self.x_max_spin.blockSignals(False)
 
     def update_y2_views(self):
         try:
@@ -842,6 +1141,10 @@ class PlotComparerWidget(QWidget):
             self.y2_view.autoRange(axis=pg.ViewBox.YAxis)
         except Exception:
             pass
+        try:
+            self.on_range_changed()
+        except Exception:
+            pass
 
     def on_mouse_moved(self, pos):
         if not self.curve_items:
@@ -863,13 +1166,29 @@ class PlotComparerWidget(QWidget):
             active_domain = self.filter_combo.currentData()
             x_unit = "Hz" if active_domain == "frequency" else "s" if active_domain == "time" else ""
 
+            visible_traces = []
+            traces = self.manager.get_all_traces()
+            for tid, trace in traces.items():
+                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                    trace_domain = self._get_trace_domain(trace)
+                    if trace_domain == active_domain:
+                        visible_traces.append((tid, trace))
+
+            use_khz = False
+            if visible_traces:
+                first_trace = visible_traces[0][1]
+                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+
             # Format X value taking logX into account
             if active_domain == "frequency":
                 if getattr(self, "is_log_x", False):
                     actual_x = 10 ** x_val
                 else:
                     actual_x = x_val
-                x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x/1000:.3f} k{x_unit}"
+                if use_khz:
+                    x_str = f"{actual_x:.3f} kHz"
+                else:
+                    x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x/1000:.3f} k{x_unit}"
             elif active_domain == "time":
                 actual_x = x_val
                 x_str = f"{actual_x*1000:.3f} ms" if abs(actual_x) < 1.0 else f"{actual_x:.4f} {x_unit}"
@@ -885,17 +1204,11 @@ class PlotComparerWidget(QWidget):
             readout_parts = []
             trace_y_vals = []
 
-            visible_traces = []
-            traces = self.manager.get_all_traces()
-            for tid, trace in traces.items():
-                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                    trace_domain = self._get_trace_domain(trace)
-                    if trace_domain == active_domain:
-                        visible_traces.append((tid, trace))
-
-            for tid, trace in visible_traces:
+            for idx, (tid, trace) in enumerate(visible_traces, start=1):
                 settings = self.trace_settings[tid]
                 x_arr = np.array(trace.x_data, dtype=float)
+                if use_khz:
+                    x_arr = x_arr / 1000.0
 
                 if settings["shift"] != 0.0:
                     x_arr = x_arr + settings["shift"]
@@ -925,8 +1238,8 @@ class PlotComparerWidget(QWidget):
                     try:
                         interp_y = np.interp(actual_x, x_sorted, y_arr)
                         unit = trace.y_axis.display_unit or ""
-                        name_short = trace.name[:12] + ".." if len(trace.name) > 14 else trace.name
-                        readout_parts.append(f"{name_short}: {interp_y:.2f} {unit}")
+                        color = settings.get("color", "#ffffff")
+                        readout_parts.append(f'<span style="color: {color};">● T{idx}: {interp_y:.2f} {unit}</span>')
                         trace_y_vals.append(interp_y)
                     except Exception:
                         pass
@@ -937,8 +1250,8 @@ class PlotComparerWidget(QWidget):
                     try:
                         interp_y2 = np.interp(actual_x, x_sorted, y2_arr)
                         unit2 = trace.y2_axis.display_unit or ""
-                        name_short = trace.name[:12] + ".." if len(trace.name) > 14 else trace.name
-                        readout_parts.append(f"{name_short} ({tr('Phase')}): {interp_y2:.1f} {unit2}")
+                        color = settings.get("color", "#ffffff")
+                        readout_parts.append(f'<span style="color: {color};">● T{idx} ({tr("Phase")}): {interp_y2:.1f} {unit2}</span>')
                     except Exception:
                         pass
 
@@ -1000,6 +1313,74 @@ class PlotComparerWidget(QWidget):
 
         dialog = ExportSettingsDialog(traces_to_export, self)
         dialog.exec()
+
+    def update_x_axis_ticks(self, use_khz: bool, active_domain: str):
+        x_axis = self.plot_widget.getPlotItem().getAxis("bottom")
+        if not getattr(self, "is_log_x", False):
+            # Linear scale: Let pyqtgraph handle ticks automatically
+            x_axis.setTicks(None)
+            return
+
+        if active_domain == "frequency":
+            if use_khz:
+                major_specs = [
+                    (0.01, "0.01"),
+                    (0.02, "0.02"),
+                    (0.05, "0.05"),
+                    (0.1, "0.1"),
+                    (0.2, "0.2"),
+                    (0.5, "0.5"),
+                    (1.0, "1"),
+                    (2.0, "2"),
+                    (5.0, "5"),
+                    (10.0, "10"),
+                    (20.0, "20"),
+                    (50.0, "50"),
+                    (100.0, "100"),
+                    (200.0, "200"),
+                ]
+                base_decades = [0.01, 0.1, 1.0, 10.0, 100.0]
+            else:
+                major_specs = [
+                    (10.0, "10"),
+                    (20.0, "20"),
+                    (50.0, "50"),
+                    (100.0, "100"),
+                    (200.0, "200"),
+                    (500.0, "500"),
+                    (1000.0, "1k"),
+                    (2000.0, "2k"),
+                    (5000.0, "5k"),
+                    (10000.0, "10k"),
+                    (20000.0, "20k"),
+                    (50000.0, "50k"),
+                    (100000.0, "100k"),
+                    (200000.0, "200k"),
+                ]
+                base_decades = [10.0, 100.0, 1000.0, 10000.0, 100000.0]
+
+            major_ticks = [(np.log10(val), label) for val, label in major_specs]
+            minor_ticks = []
+            for dec in base_decades:
+                for mul in [3, 4, 6, 7, 8, 9]:
+                    val = dec * mul
+                    minor_ticks.append((np.log10(val), ""))
+            x_axis.setTicks([major_ticks, minor_ticks])
+        else:
+            # Generic decade ticks for other domains
+            major_ticks = []
+            minor_ticks = []
+            for exp in range(-6, 7):
+                val = 10.0 ** exp
+                label = f"1e{exp}" if exp != 0 else "1"
+                if exp == 3:
+                    label = "1k"
+                elif exp == -3:
+                    label = "1m"
+                major_ticks.append((float(exp), label))
+                for mul in [2, 3, 4, 5, 6, 7, 8, 9]:
+                    minor_ticks.append((np.log10(val * mul), ""))
+            x_axis.setTicks([major_ticks, minor_ticks])
 
     def replot(self):
         # 1. Clear current plots
@@ -1068,13 +1449,21 @@ class PlotComparerWidget(QWidget):
         self.is_log_x = self.log_x_check.isChecked()
         self.is_log_y = self.log_y_check.isChecked()
 
-        self.plot_widget.setLogMode(x=self.is_log_x, y=self.is_log_y)
+        # ALWAYS keep PyQtGraph's setLogMode(x=False) to avoid its severe non-linear coordinate scaling bugs.
+        # We manually perform np.log10 on X coordinates instead.
+        self.plot_widget.setLogMode(x=False, y=self.is_log_y)
 
+        # Determine if we need manual kHz scaling for frequency to avoid pyqtgraph units bugs
         first_domain = self._get_trace_domain(first_trace)
+        use_khz = (first_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+
         if first_domain == "frequency":
-            self.plot_widget.setLabel(
-                "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
-            )
+            if use_khz:
+                self.plot_widget.setLabel("bottom", f"{tr(first_trace.x_axis.dimension).capitalize()} (kHz)")
+            else:
+                self.plot_widget.setLabel(
+                    "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
+                )
         elif first_domain == "time":
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
@@ -1095,6 +1484,8 @@ class PlotComparerWidget(QWidget):
 
             # Arrays
             x = np.array(trace.x_data, dtype=float)
+            if use_khz:
+                x = x / 1000.0
             y = np.array(trace.y_data, dtype=float)
             y2 = np.array(trace.y2_data, dtype=float) if trace.y2_data is not None else None
 
@@ -1105,17 +1496,18 @@ class PlotComparerWidget(QWidget):
             if settings["shift"] != 0.0:
                 x = x + settings["shift"]
 
-            # Convert to display formats (e.g. logX handling for Y2 overlay)
+            # Convert to display formats (e.g. logX handling)
             x_for_y2 = x
             y_for_y2 = y
             y2_for_y2 = y2
 
             if getattr(self, "is_log_x", False):
                 valid_mask = x > 0
-                x_for_y2 = np.log10(x[valid_mask])
+                x_log = np.log10(x[valid_mask])
+                x_for_y2 = x_log
+                x = x_log
                 if y is not None:
                     y_for_y2 = y[valid_mask]
-                    x = x[valid_mask]
                     y = y[valid_mask]
                 if y2 is not None:
                     y2_for_y2 = y2[valid_mask]
@@ -1224,7 +1616,52 @@ class PlotComparerWidget(QWidget):
                 # Set range from 0.0001% to 100%
                 self.plot_widget.setYRange(np.log10(0.0001), np.log10(100))
 
+        # Update custom X axis log ticks
+        self.update_x_axis_ticks(use_khz, active_domain)
+
         self.update_y2_views()
+
+        # Update min/max limits
+        self.update_spinbox_limits()
+
+        # Apply manual limits if Auto is unchecked
+        # 1. X Axis Limit
+        if hasattr(self, "x_auto_cb") and not self.x_auto_cb.isChecked():
+            min_val = self.x_min_spin.value()
+            max_val = self.x_max_spin.value()
+
+            if getattr(self, "is_log_x", False):
+                if min_val > 0 and max_val > 0:
+                    self.plot_widget.setXRange(np.log10(min_val), np.log10(max_val), padding=0)
+            elif use_khz:
+                self.plot_widget.setXRange(min_val / 1000.0, max_val / 1000.0, padding=0)
+            else:
+                self.plot_widget.setXRange(min_val, max_val, padding=0)
+        else:
+            self.plot_widget.enableAutoRange(axis=pg.ViewBox.XAxis, enable=True)
+
+        # 2. Y1 Axis Limit
+        if hasattr(self, "y1_auto_cb") and not self.y1_auto_cb.isChecked():
+            min_val = self.y1_min_spin.value()
+            max_val = self.y1_max_spin.value()
+
+            if getattr(self, "is_log_y", False):
+                if first_trace.y_axis and first_trace.y_axis.display_unit == "%":
+                    self.plot_widget.setYRange(np.log10(max(1e-6, min_val)), np.log10(max(1e-6, max_val)), padding=0)
+                else:
+                    self.plot_widget.setYRange(min_val, max_val, padding=0)
+            else:
+                self.plot_widget.setYRange(min_val, max_val, padding=0)
+        else:
+            self.plot_widget.enableAutoRange(axis=pg.ViewBox.YAxis, enable=True)
+
+        # 3. Y2 Axis Limit
+        if hasattr(self, "y2_auto_cb") and not self.y2_auto_cb.isChecked():
+            min_val = self.y2_min_spin.value()
+            max_val = self.y2_max_spin.value()
+            self.y2_view.setYRange(min_val, max_val, padding=0)
+        else:
+            self.y2_view.enableAutoRange(axis=pg.ViewBox.YAxis, enable=True)
 
     def apply_theme(self, theme_name):
         if theme_name == "system" and self.app and hasattr(self.app, "theme_manager"):
