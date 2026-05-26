@@ -1785,3 +1785,14 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         )
 
         return [trace]
+
+    def closeEvent(self, event):
+        # Stop the timer and threads to prevent memory leaks and GC crashes
+        self.timer.stop()
+        if hasattr(self, "analysis_thread") and self.analysis_thread.isRunning():
+            self.analysis_thread.quit()
+            self.analysis_thread.wait()
+        if self.sweep_worker and self.sweep_worker.isRunning():
+            self.sweep_worker.stop()
+            self.sweep_worker.wait()
+        super().closeEvent(event)

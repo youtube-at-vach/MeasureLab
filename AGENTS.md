@@ -75,6 +75,33 @@ GUI メインウィンドウ周辺のみを確認する場合:
 
 - `./.venv/bin/python -m pytest -q`
 
+## UIサイズ制限と検証スクリプト (UI Size Limits & Verification)
+
+画面サイズが小さいPC（ノートPCや低解像度ディスプレイ）でメニューやコントロールが画面外にはみ出ることを防止するため、UIの最大サイズ制限（上限）を設けています。
+
+### サイズ上限基準 (Size Constraints)
+
+- **MainWindow 最小サイズ (minimumSizeHint)**: 最大 **1290x740** px
+- **各モジュールコンテンツ (Widget minimumSizeHint)**: 最大 **1070x690** px
+    - ※現在の最大要求サイズ（`Spectrum Analyzer` 幅1058px、`LUFS Meter` 高さ676px）に基づき、微小なプラットフォーム差分を含めたバッファ（+10〜15px）を追加した上限値です。
+
+### 検証スクリプト (Check Script)
+
+開発時にレイアウトを変更した場合や、新規モジュールをリリースする前には、以下のスクリプトを実行してサイズ上限に収まっているかを確認してください（QApplicationやC言語拡張の競合を防ぐため、pytestとは独立したスクリプトになっています）。
+
+```bash
+./.venv/bin/python scripts/check_ui_size_limits.py
+```
+
+- 全モジュールが安全範囲内であれば `Verification Passed!` となり、終了コード `0` を返します。
+- 超過したモジュールが存在する場合、エラー内容を赤字で出力して終了コード `1` を返します。
+
+#### レイアウトがサイズ上限を超過した場合の対策
+
+1. コントロール数が多い場合、ウィジェットのレイアウトを `QScrollArea` でラップする。
+2. 多くのコントロールを `QTabWidget` や、折りたたみ可能な `QGroupBox` に整理・分割する。
+3. サブコンポーネントに対する `minimumWidth` や `minimumHeight` の設定値を削減し、伸縮可能なサイズポリシーを設定する。
+
 ## 主要ディレクトリ / コンポーネント
 
 - `src/gui/main_window.py`: 画面全体（サイドバー・遅延ロード）。
