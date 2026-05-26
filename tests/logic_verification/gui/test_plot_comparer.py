@@ -344,15 +344,15 @@ def test_plot_comparer_color_and_width_customization(qtbot, clean_manager):
         y_data=[-10.0, -20.0, -30.0],
     )
     clean_manager.add_trace(trace)
-    
+
     settings = widget.trace_settings["t_custom"]
     assert settings["width"] == 2
-    
+
     # Direct settings update simulation (mimicking dialog choice)
     settings["color"] = "#ff0000"
     settings["width"] = 4
     widget.replot()
-    
+
     # Verify plot curve reflects modified settings
     y_curve, _ = widget.curve_items["t_custom"]
     assert y_curve is not None
@@ -385,7 +385,7 @@ def test_plot_comparer_interactive_cursor_readout(qtbot, clean_manager):
     clean_manager.add_trace(trace)
     widget.refresh_trace_list()
     widget.replot()
-    
+
     # Initially reading helper message
     assert "Move mouse over plot" in widget.readout_label.text()
     assert not widget.v_line.isVisible()
@@ -395,14 +395,14 @@ def test_plot_comparer_interactive_cursor_readout(qtbot, clean_manager):
     from PyQt6.QtCore import QPointF
     vb = widget.plot_item.vb
     scene_pos = vb.mapViewToScene(QPointF(-1.0, -20.0))
-    
+
     widget.on_mouse_moved(scene_pos)
-    
+
     assert widget.v_line.isVisible()
     assert widget.h_line.isVisible()
     assert widget.v_line.pos().x() == pytest.approx(-1.0)
     assert widget.h_line.pos().y() == pytest.approx(-20.0)
-    
+
     # Readout label text should show interpolated values in kHz
     text = widget.readout_label.text()
     assert "0.100 kHz" in text
