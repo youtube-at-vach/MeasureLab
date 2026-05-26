@@ -8,23 +8,9 @@ def session_manager():
     return SessionManager()
 
 
-def test_set_module(session_manager):
-    """Verify that set_module correctly updates the current_module."""
-    dummy_module = "dummy_module"
-    session_manager.set_module(dummy_module)
-    assert session_manager.current_module == dummy_module
-
-
-def test_set_module_none(session_manager):
-    """Verify that set_module(None) clears the current_module."""
-    session_manager.set_module("temp_module")
-    session_manager.set_module(None)
-    assert session_manager.current_module is None
-
-
 def test_start_measurement_success(session_manager):
     """Verify that start_measurement sets is_running to True when a module is set."""
-    session_manager.set_module("valid_module")
+    session_manager.current_module = "valid_module"
     session_manager.start_measurement()
     assert session_manager.is_running is True
 
@@ -38,7 +24,7 @@ def test_start_measurement_no_module(session_manager):
 
 def test_stop_measurement(session_manager):
     """Verify that stop_measurement sets is_running to False."""
-    session_manager.set_module("valid_module")
+    session_manager.current_module = "valid_module"
     session_manager.start_measurement()
     assert session_manager.is_running is True
 
@@ -48,7 +34,7 @@ def test_stop_measurement(session_manager):
 
 def test_stop_measurement_idempotent(session_manager):
     """Verify that calling stop_measurement multiple times is safe."""
-    session_manager.set_module("valid_module")
+    session_manager.current_module = "valid_module"
     session_manager.start_measurement()
     session_manager.stop_measurement()
     assert session_manager.is_running is False
@@ -60,7 +46,7 @@ def test_stop_measurement_idempotent(session_manager):
 
 def test_start_measurement_idempotent(session_manager):
     """Verify that calling start_measurement multiple times keeps is_running True."""
-    session_manager.set_module("valid_module")
+    session_manager.current_module = "valid_module"
     session_manager.start_measurement()
     assert session_manager.is_running is True
 
@@ -71,11 +57,11 @@ def test_start_measurement_idempotent(session_manager):
 
 def test_change_module_while_running(session_manager):
     """Verify behavior when changing module while running."""
-    session_manager.set_module("module_a")
+    session_manager.current_module = "module_a"
     session_manager.start_measurement()
     assert session_manager.is_running is True
 
-    session_manager.set_module("module_b")
+    session_manager.current_module = "module_b"
     assert session_manager.current_module == "module_b"
     # Assuming implementation allows changing module while running without stopping
     assert session_manager.is_running is True

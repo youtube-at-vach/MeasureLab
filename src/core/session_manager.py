@@ -8,10 +8,6 @@ class SessionManager:
         self.is_running = False
         self.results = []
 
-    def set_module(self, module):
-        """Sets the current measurement module."""
-        self.current_module = module
-
     def start_measurement(self):
         """Starts the measurement process."""
         if self.current_module:
