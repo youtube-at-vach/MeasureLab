@@ -16,10 +16,7 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 
 ### ☕ Coffee Break: Why start with a loopback?
 
-Why do we connect the "output" directly to the "input" first, instead of immediately connecting the thing we want to measure (like an amp or a microphone)?
-This is because it's a "health check for the measurement instrument (your PC and audio interface) itself"!
-
-For example, before looking at the stars with an astronomical telescope, you first check if the lens is cloudy and if the focus dial works properly, right? In the same way, loopback is a very important, and somewhat interesting, "first ritual" to confirm whether you can accurately pick up the sound you outputted yourself.
+Instead of immediately connecting the device you want to measure, directly connecting the "output" to the "input" first allows you to verify that your PC and audio interface can correctly output and input signals. This helps prevent configuration errors and equipment issues.
 
 ---
 
