@@ -181,6 +181,9 @@ def main():
         # 1. Warmup FFT Optimization (Show progress)
         # This will be fast if wisdom exists, or show progress if optimizing
         fft_manager.warmup(callback=_update_splash)
+
+        # 2. Preload Modules
+        window.preload_all_modules(progress_callback=_update_splash)
     except Exception as e:
         logging.error(f"Startup error: {e}")
         # If preload fails, still show the window; individual pages may show errors.

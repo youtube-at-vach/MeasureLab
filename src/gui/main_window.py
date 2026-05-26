@@ -538,6 +538,45 @@ class MainWindow(QMainWindow):
             )
             self.logger.error(f"Failed to load module {key}: {e}", exc_info=True)
 
+    def preload_all_modules(self, progress_callback=None):
+        """Preload Settings and all modules.
+
+        Intended to be called while a splash screen is visible so the user sees
+        progress while heavy imports/widgets are created.
+
+        progress_callback: callable(str) -> None
+        """
+
+        def report(msg: str):
+            if progress_callback is None:
+                return
+            try:
+                progress_callback(msg)
+            except Exception as e:
+                self.logger.warning(f"Progress callback failed: {e}")
+
+        report(tr("Loading Settings..."))
+        QApplication.processEvents()
+        self._ensure_settings_loaded()
+        QApplication.processEvents()
+
+        total = len(self._module_keys)
+        last_event_time = time.monotonic()
+        for i, key in enumerate(self._module_keys, start=1):
+            report(tr("Loading {0} ({1}/{2})...").format(tr(key), i, total))
+
+            current_time = time.monotonic()
+            if current_time - last_event_time > 0.05:
+                QApplication.processEvents()
+                last_event_time = current_time
+
+            self._ensure_module_loaded(i - 1)
+
+            current_time = time.monotonic()
+            if current_time - last_event_time > 0.05:
+                QApplication.processEvents()
+                last_event_time = current_time
+
     def closeEvent(self, event):
         # Ensure PortAudio stream is closed (important in resident mode).
         try:
