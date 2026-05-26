@@ -54,8 +54,12 @@ def get_cpu_name():
         import subprocess
 
         try:
-            return subprocess.check_output(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
-        except (OSError, subprocess.CalledProcessError) as e:
+            return (
+                subprocess.check_output(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"], timeout=2.0)
+                .decode()
+                .strip()
+            )
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             logger.debug(f"Failed to read CPU name from sysctl: {e}")
 
     return None

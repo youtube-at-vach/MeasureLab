@@ -26,3 +26,14 @@ def test_get_cpu_name_darwin_exception():
         result = get_cpu_name()
 
         assert result is None
+
+
+def test_get_cpu_name_darwin_timeout():
+    """Test that get_cpu_name correctly handles timeout exception."""
+    with (
+        patch("sys.platform", "darwin"),
+        patch("subprocess.check_output", side_effect=subprocess.TimeoutExpired("sysctl", 2.0)),
+    ):
+        result = get_cpu_name()
+
+        assert result is None
