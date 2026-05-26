@@ -287,3 +287,125 @@ def test_plot_comparer_dynamic_shifts(qtbot, clean_manager):
     assert spin_shift_time.suffix() == " s"
     assert spin_shift_time.maximum() == 10.0
     assert spin_shift_time.decimals() == 4
+
+
+def test_plot_comparer_manual_scale_overrides(qtbot, clean_manager):
+    engine = AudioEngine()
+    module = PlotComparer(engine)
+    widget = PlotComparerWidget(module)
+    qtbot.addWidget(widget)
+
+    # 1. Frequency Domain Trace
+    trace = ComparisonTrace(
+        id="t_scale",
+        name="Freq Sweep",
+        source_module="Spectrum Analyzer",
+        timestamp="2026-05-24T12:00:00",
+        plot_type="spectrum",
+        x_axis=AxisMetadata("frequency", "Hz", "Hz", True),
+        y_axis=AxisMetadata("voltage", "FS", "dBFS", False),
+        x_data=[20.0, 100.0, 1000.0],
+        y_data=[-10.0, -20.0, -30.0],
+    )
+    clean_manager.add_trace(trace)
+    widget.filter_combo.setCurrentIndex(0)  # Frequency domain
+
+    # Initially scale overridden is False, X-Axis Log checkbox should be checked
+    assert widget.scale_overridden is False
+    assert widget.log_x_check.isChecked() is True
+    assert widget.log_y_check.isChecked() is False
+
+    # Simulate manual toggling
+    widget.log_x_check.setChecked(False)
+    # Toggling sets overridden flag and triggers replot
+    assert widget.scale_overridden is True
+    assert widget.is_log_x is False
+
+    # Toggle Log Y
+    widget.log_y_check.setChecked(True)
+    assert widget.is_log_y is True
+
+
+def test_plot_comparer_color_and_width_customization(qtbot, clean_manager):
+    engine = AudioEngine()
+    module = PlotComparer(engine)
+    widget = PlotComparerWidget(module)
+    qtbot.addWidget(widget)
+
+    trace = ComparisonTrace(
+        id="t_custom",
+        name="Sweep Trace",
+        source_module="Spectrum Analyzer",
+        timestamp="2026-05-24T12:00:00",
+        plot_type="spectrum",
+        x_axis=AxisMetadata("frequency", "Hz", "Hz", True),
+        y_axis=AxisMetadata("voltage", "FS", "dBFS", False),
+        x_data=[20.0, 100.0, 1000.0],
+        y_data=[-10.0, -20.0, -30.0],
+    )
+    clean_manager.add_trace(trace)
+    
+    settings = widget.trace_settings["t_custom"]
+    assert settings["width"] == 2
+    
+    # Direct settings update simulation (mimicking dialog choice)
+    settings["color"] = "#ff0000"
+    settings["width"] = 4
+    widget.replot()
+    
+    # Verify plot curve reflects modified settings
+    y_curve, _ = widget.curve_items["t_custom"]
+    assert y_curve is not None
+    # Pyqtgraph plot item options or pen configurations can be checked
+    pen = y_curve.opts['pen']
+    from PyQt6.QtGui import QColor
+    assert pen.width() == 4
+    assert pen.color() == QColor("#ff0000")
+
+
+def test_plot_comparer_interactive_cursor_readout(qtbot, clean_manager):
+    engine = AudioEngine()
+    module = PlotComparer(engine)
+    widget = PlotComparerWidget(module)
+    qtbot.addWidget(widget)
+    widget.show()
+    widget.filter_combo.setCurrentIndex(0)
+
+    trace = ComparisonTrace(
+        id="t_cursor",
+        name="Sweep Trace",
+        source_module="Spectrum Analyzer",
+        timestamp="2026-05-24T12:00:00",
+        plot_type="spectrum",
+        x_axis=AxisMetadata("frequency", "Hz", "Hz", True),
+        y_axis=AxisMetadata("voltage", "FS", "dBFS", False),
+        x_data=[20.0, 100.0, 1000.0],
+        y_data=[-10.0, -20.0, -30.0],
+    )
+    clean_manager.add_trace(trace)
+    widget.refresh_trace_list()
+    widget.replot()
+    
+    # Initially reading helper message
+    assert "Move mouse over plot" in widget.readout_label.text()
+    assert not widget.v_line.isVisible()
+    assert not widget.h_line.isVisible()
+
+    # Simulate mouse hover at mapped scene coordinate (e.g. 100 Hz in log scale)
+    from PyQt6.QtCore import QPointF
+    # Find scene position that maps to x=2.0 (log10 of 100.0), y=-20.0
+    vb = widget.plot_item.vb
+    scene_pos = vb.mapViewToScene(QPointF(2.0, -20.0))
+    
+    widget.on_mouse_moved(scene_pos)
+    
+    assert widget.v_line.isVisible()
+    assert widget.h_line.isVisible()
+    assert widget.v_line.pos().x() == pytest.approx(2.0)
+    assert widget.h_line.pos().y() == pytest.approx(-20.0)
+    
+    # Readout label text should show interpolated values
+    text = widget.readout_label.text()
+    assert "100.00 Hz" in text
+    assert "-20.00 dBFS" in text
+

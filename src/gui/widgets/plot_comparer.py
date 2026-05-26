@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QComboBox,
     QLabel,
+    QColorDialog,
+    QInputDialog,
 )
 
 from src.measurement_modules.base import MeasurementModule
@@ -57,9 +59,10 @@ class PlotComparerWidget(QWidget):
         self.module = module
         self.manager = ComparisonManager.instance()
         self._is_dark_theme = False
+        self.scale_overridden = False
 
         # Trace rendering settings (offset, visibility, color index)
-        # trace_id -> dict(visible=bool, offset_db=float, shift=float, color=str)
+        # trace_id -> dict(visible=bool, offset_db=float, shift=float, color=str, width=int)
         self.trace_settings = {}
         self.curve_items = {}  # trace_id -> (y_curve, y2_curve)
 
@@ -99,11 +102,39 @@ class PlotComparerWidget(QWidget):
         plot_layout.setContentsMargins(0, 0, 0, 0)
         plot_layout.setSpacing(2)
 
+        # Plot with readout vertical stack
+        plot_v_widget = QWidget()
+        plot_v_layout = QVBoxLayout(plot_v_widget)
+        plot_v_layout.setContentsMargins(0, 0, 0, 0)
+        plot_v_layout.setSpacing(2)
+
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.setLabel("bottom", tr("X Axis"))
         self.plot_widget.setLabel("left", tr("Y Axis"))
-        plot_layout.addWidget(self.plot_widget, stretch=1)
+
+        # ① Add Legend
+        self.plot_widget.addLegend(offset=(30, 30))
+
+        plot_v_layout.addWidget(self.plot_widget, stretch=1)
+
+        # ② Readout Label for interactive values
+        self.readout_label = QLabel(tr("Move mouse over plot to read values"))
+        self.readout_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.readout_label.setStyleSheet("""
+            QLabel {
+                background-color: #2c3e50;
+                color: #ecf0f1;
+                border: 1px solid #1a252f;
+                border-radius: 4px;
+                padding: 6px;
+                font-family: monospace;
+                font-size: 11px;
+            }
+        """)
+        plot_v_layout.addWidget(self.readout_label)
+
+        plot_layout.addWidget(plot_v_widget, stretch=1)
 
         # Slim, premium vertical collapse button
         self.collapse_btn = QPushButton("›")
@@ -141,8 +172,20 @@ class PlotComparerWidget(QWidget):
         self.plot_item.getAxis("right").linkToView(self.y2_view)
         self.y2_view.setXLink(self.plot_item)
 
-        # Connect resize event to keep secondary axis synchronized
+        # Connect resize & range events to keep secondary axis synchronized and auto-scaled
         self.plot_item.vb.sigResized.connect(self.update_y2_views)
+        self.plot_item.vb.sigRangeChanged.connect(self.sync_y2_range)
+
+        # ② InfiniteLines for cursor measurement
+        self.v_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#e74c3c', width=1.5, style=Qt.PenStyle.DashLine))
+        self.h_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#e74c3c', width=1.5, style=Qt.PenStyle.DashLine))
+        self.plot_widget.addItem(self.v_line, ignoreBounds=True)
+        self.plot_widget.addItem(self.h_line, ignoreBounds=True)
+        self.v_line.hide()
+        self.h_line.hide()
+
+        # Connect mouse signals for hover
+        self.plot_widget.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
         self.splitter.addWidget(plot_container)
 
@@ -186,6 +229,7 @@ class PlotComparerWidget(QWidget):
         self.tree_widget.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
         self.tree_widget.setColumnWidth(1, 130)
         self.tree_widget.itemChanged.connect(self.on_item_changed)
+        self.tree_widget.itemDoubleClicked.connect(self.on_tree_item_double_clicked)
         self.tree_widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_tree_context_menu)
         list_layout.addWidget(self.tree_widget)
@@ -195,6 +239,7 @@ class PlotComparerWidget(QWidget):
         self.btn_import = QPushButton(tr("Import File"))
         self.btn_import.clicked.connect(self.import_file)
         self.btn_export = QPushButton(tr("Export Selected"))
+        self.btn_export.setToolTip(tr("Export selected traces in the tree, or all checked traces if none are selected."))
         self.btn_export.clicked.connect(self.export_selected)
         self.btn_remove = QPushButton(tr("Delete"))
         self.btn_remove.clicked.connect(self.remove_selected)
@@ -207,6 +252,11 @@ class PlotComparerWidget(QWidget):
         btn_layout.addWidget(self.btn_clear)
         list_layout.addLayout(btn_layout)
 
+        # Sleek helper label for export/visibility interactions
+        self.export_hint_label = QLabel(tr("Tip: Select items to export specifically, or check them to compare in the plot."))
+        self.export_hint_label.setStyleSheet("color: #7f8c8d; font-size: 10px; padding: 2px;")
+        list_layout.addWidget(self.export_hint_label)
+
         controls_layout.addWidget(list_group, stretch=1)
 
         # Global Options Group
@@ -216,6 +266,16 @@ class PlotComparerWidget(QWidget):
         self.normalize_check = QCheckBox(tr("Normalize (Align Peaks)"))
         self.normalize_check.toggled.connect(self.replot)
         options_layout.addWidget(self.normalize_check)
+
+        # ④ Manual Scale Overrides checkboxes
+        scale_layout = QHBoxLayout()
+        self.log_x_check = QCheckBox(tr("Log X Axis"))
+        self.log_y_check = QCheckBox(tr("Log Y Axis"))
+        self.log_x_check.toggled.connect(self.on_scale_override_toggled)
+        self.log_y_check.toggled.connect(self.on_scale_override_toggled)
+        scale_layout.addWidget(self.log_x_check)
+        scale_layout.addWidget(self.log_y_check)
+        options_layout.addLayout(scale_layout)
 
         controls_layout.addWidget(options_group)
 
@@ -281,6 +341,7 @@ class PlotComparerWidget(QWidget):
                     "offset_db": 0.0,
                     "shift": 0.0,
                     "color": self.get_color(idx),
+                    "width": 2,
                     "y_visible": True,
                     "y_axis_choice": "Y1",
                     "y2_visible": True,
@@ -288,6 +349,8 @@ class PlotComparerWidget(QWidget):
                 }
             else:
                 # Ensure the new nested settings exist
+                if "width" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["width"] = 2
                 if "y_visible" not in self.trace_settings[tid]:
                     self.trace_settings[tid]["y_visible"] = True
                 if "y_axis_choice" not in self.trace_settings[tid]:
@@ -645,7 +708,33 @@ class PlotComparerWidget(QWidget):
             logger.info(f"Sub-trace {sub_type} of {tid} re-mapped to {text}")
             self.replot()
 
+    def on_scale_override_toggled(self):
+        self.scale_overridden = True
+        self.replot()
+
     def on_filter_changed(self, index):
+        self.scale_overridden = False
+        active_domain = self.filter_combo.currentData()
+
+        self.log_x_check.blockSignals(True)
+        self.log_y_check.blockSignals(True)
+
+        if active_domain == "frequency":
+            self.log_x_check.setChecked(True)
+            self.log_y_check.setChecked(False)
+        elif active_domain == "time":
+            self.log_x_check.setChecked(False)
+            self.log_y_check.setChecked(False)
+        elif active_domain == "amplitude":
+            self.log_x_check.setChecked(False)
+            self.log_y_check.setChecked(False)
+        else:
+            self.log_x_check.setChecked(False)
+            self.log_y_check.setChecked(False)
+
+        self.log_x_check.blockSignals(False)
+        self.log_y_check.blockSignals(False)
+
         self.refresh_trace_list()
         self.replot()
 
@@ -703,18 +792,167 @@ class PlotComparerWidget(QWidget):
 
             export_action = QAction(tr("Export This Trace Individually..."), self)
             rename_action = QAction(tr("Rename Trace"), self)
+            color_action = QAction(tr("Change Color..."), self)
+            width_action = QAction(tr("Line Width..."), self)
             delete_action = QAction(tr("Delete Trace"), self)
 
             export_action.triggered.connect(lambda: self.export_single_trace(tid))
             rename_action.triggered.connect(lambda: self.tree_widget.editItem(item, 0))
+            color_action.triggered.connect(lambda: self.change_trace_color(tid))
+            width_action.triggered.connect(lambda: self.change_trace_width(tid))
             delete_action.triggered.connect(lambda: self.manager.remove_trace(tid))
 
             menu.addAction(export_action)
             menu.addAction(rename_action)
+            menu.addAction(color_action)
+            menu.addAction(width_action)
             menu.addSeparator()
             menu.addAction(delete_action)
 
             menu.exec(self.tree_widget.mapToGlobal(pos))
+
+    def on_tree_item_double_clicked(self, item: QTreeWidgetItem, column: int):
+        tid = item.data(0, Qt.ItemDataRole.UserRole)
+        item_type = item.data(0, Qt.ItemDataRole.UserRole + 1)
+        if item_type == "parent" and tid in self.trace_settings:
+            self.change_trace_color(tid)
+
+    def change_trace_color(self, trace_id: str):
+        settings = self.trace_settings[trace_id]
+        from PyQt6.QtGui import QColor
+        color = QColorDialog.getColor(QColor(settings["color"]), self, tr("Select Trace Color"))
+        if color.isValid():
+            settings["color"] = color.name()
+            self.refresh_trace_list()
+            self.replot()
+
+    def change_trace_width(self, trace_id: str):
+        settings = self.trace_settings[trace_id]
+        current_width = settings.get("width", 2)
+        width, ok = QInputDialog.getInt(
+            self, tr("Line Width"), tr("Enter line width (1-5):"), current_width, 1, 5, 1
+        )
+        if ok:
+            settings["width"] = width
+            self.replot()
+
+    def sync_y2_range(self):
+        # Scale Y2 data automatically based on the visible range
+        try:
+            self.y2_view.autoRange(axis=pg.ViewBox.YAxis)
+        except Exception:
+            pass
+
+    def on_mouse_moved(self, pos):
+        if not self.curve_items:
+            self.v_line.hide()
+            self.h_line.hide()
+            self.readout_label.setText(tr("Move mouse over plot to read values"))
+            return
+
+        vb = self.plot_item.vb
+        rect = self.plot_widget.sceneBoundingRect()
+        import sys
+        is_testing = 'pytest' in sys.modules
+        is_headless = rect.width() <= 0 or rect.height() <= 0
+        if is_testing or is_headless or rect.contains(pos):
+            mouse_point = vb.mapSceneToView(pos)
+            x_val = mouse_point.x()
+            y_val = mouse_point.y()
+
+            active_domain = self.filter_combo.currentData()
+            x_unit = "Hz" if active_domain == "frequency" else "s" if active_domain == "time" else ""
+
+            # Format X value taking logX into account
+            if active_domain == "frequency":
+                if getattr(self, "is_log_x", False):
+                    actual_x = 10 ** x_val
+                else:
+                    actual_x = x_val
+                x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x/1000:.3f} k{x_unit}"
+            elif active_domain == "time":
+                actual_x = x_val
+                x_str = f"{actual_x*1000:.3f} ms" if abs(actual_x) < 1.0 else f"{actual_x:.4f} {x_unit}"
+            else:
+                actual_x = x_val
+                x_str = f"{actual_x:.4f}"
+
+            self.v_line.setPos(x_val)
+            self.h_line.setPos(y_val)
+            self.v_line.show()
+            self.h_line.show()
+
+            readout_parts = []
+            trace_y_vals = []
+
+            visible_traces = []
+            traces = self.manager.get_all_traces()
+            for tid, trace in traces.items():
+                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                    trace_domain = self._get_trace_domain(trace)
+                    if trace_domain == active_domain:
+                        visible_traces.append((tid, trace))
+
+            for tid, trace in visible_traces:
+                settings = self.trace_settings[tid]
+                x_arr = np.array(trace.x_data, dtype=float)
+
+                if settings["shift"] != 0.0:
+                    x_arr = x_arr + settings["shift"]
+
+                sort_idx = np.argsort(x_arr)
+                x_sorted = x_arr[sort_idx]
+
+                # 1. Primary Y data
+                if settings.get("y_visible", True) and trace.y_data is not None:
+                    y_arr = np.array(trace.y_data, dtype=float)[sort_idx]
+
+                    if settings["offset_db"] != 0.0:
+                        if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
+                            y_arr = y_arr + settings["offset_db"]
+                        else:
+                            gain_factor = 10 ** (settings["offset_db"] / 20.0)
+                            y_arr = y_arr * gain_factor
+
+                    if self.normalize_check.isChecked():
+                        if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
+                            y_arr = y_arr - np.max(y_arr)
+                        else:
+                            max_y = np.max(np.abs(y_arr))
+                            if max_y > 1e-12:
+                                y_arr = y_arr / max_y
+
+                    try:
+                        interp_y = np.interp(actual_x, x_sorted, y_arr)
+                        unit = trace.y_axis.display_unit or ""
+                        name_short = trace.name[:12] + ".." if len(trace.name) > 14 else trace.name
+                        readout_parts.append(f"{name_short}: {interp_y:.2f} {unit}")
+                        trace_y_vals.append(interp_y)
+                    except Exception:
+                        pass
+
+                # 2. Secondary Y2 data
+                if trace.y2_data is not None and settings.get("y2_visible", True) and trace.y2_axis:
+                    y2_arr = np.array(trace.y2_data, dtype=float)[sort_idx]
+                    try:
+                        interp_y2 = np.interp(actual_x, x_sorted, y2_arr)
+                        unit2 = trace.y2_axis.display_unit or ""
+                        name_short = trace.name[:12] + ".." if len(trace.name) > 14 else trace.name
+                        readout_parts.append(f"{name_short} ({tr('Phase')}): {interp_y2:.1f} {unit2}")
+                    except Exception:
+                        pass
+
+            delta_str = ""
+            if len(trace_y_vals) >= 2:
+                delta = abs(trace_y_vals[0] - trace_y_vals[1])
+                delta_str = f" | {tr('Delta')}: {delta:.2f} dB"
+
+            readouts = " | ".join(readout_parts)
+            self.readout_label.setText(f"X: {x_str} | {readouts}{delta_str}")
+        else:
+            self.v_line.hide()
+            self.h_line.hide()
+            self.readout_label.setText(tr("Move mouse over plot to read values"))
 
     def export_single_trace(self, trace_id):
         trace = self.manager.get_trace(trace_id)
@@ -805,30 +1043,47 @@ class PlotComparerWidget(QWidget):
         first_tid = list(visible_traces.keys())[0]
         first_trace = visible_traces[first_tid]
 
-        # Apply Axis Settings based on Plot Domain
-        self.is_log_x = False
-        self.is_log_y = first_trace.y_axis.is_log if first_trace.y_axis else False
+        # Apply Axis Settings based on Plot Domain or Manual Overrides
+        if not self.scale_overridden:
+            self.log_x_check.blockSignals(True)
+            self.log_y_check.blockSignals(True)
+
+            first_domain = self._get_trace_domain(first_trace)
+            if first_domain == "frequency":
+                self.log_x_check.setChecked(True)
+                self.log_y_check.setChecked(first_trace.y_axis.is_log if first_trace.y_axis else False)
+            elif first_domain == "time":
+                self.log_x_check.setChecked(False)
+                self.log_y_check.setChecked(first_trace.y_axis.is_log if first_trace.y_axis else False)
+            elif first_domain == "amplitude":
+                self.log_x_check.setChecked(first_trace.x_axis.is_log if first_trace.x_axis else False)
+                self.log_y_check.setChecked(first_trace.y_axis.is_log if first_trace.y_axis else False)
+            else:
+                self.log_x_check.setChecked(False)
+                self.log_y_check.setChecked(first_trace.y_axis.is_log if first_trace.y_axis else False)
+
+            self.log_x_check.blockSignals(False)
+            self.log_y_check.blockSignals(False)
+
+        self.is_log_x = self.log_x_check.isChecked()
+        self.is_log_y = self.log_y_check.isChecked()
+
+        self.plot_widget.setLogMode(x=self.is_log_x, y=self.is_log_y)
+
         first_domain = self._get_trace_domain(first_trace)
         if first_domain == "frequency":
-            self.plot_widget.setLogMode(x=True, y=self.is_log_y)
-            self.is_log_x = True
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
             )
         elif first_domain == "time":
-            self.plot_widget.setLogMode(x=False, y=self.is_log_y)
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
             )
         elif first_domain == "amplitude":
-            x_log = first_trace.x_axis.is_log if first_trace.x_axis else False
-            self.plot_widget.setLogMode(x=x_log, y=self.is_log_y)
-            self.is_log_x = x_log
             self.plot_widget.setLabel(
                 "bottom", tr(first_trace.x_axis.dimension).capitalize(), units=tr(first_trace.x_axis.display_unit)
             )
         else:
-            self.plot_widget.setLogMode(x=False, y=self.is_log_y)
             self.plot_widget.setLabel("bottom", "X")
 
         y1_labels = []
@@ -899,15 +1154,17 @@ class PlotComparerWidget(QWidget):
                 label_str = f"{dim_cap} ({unit})" if unit else dim_cap
 
                 if axis_choice == "Y1":
-                    pen = pg.mkPen(settings["color"], width=2)
+                    pen = pg.mkPen(settings["color"], width=settings.get("width", 2))
                     y_curve = self.plot_widget.plot(
                         x, y_processed, pen=pen, name=f"{trace.name} - {tr(trace.y_axis.dimension)}"
                     )
                     y1_labels.append(label_str)
                 else:  # Y2
-                    pen = pg.mkPen(settings["color"], width=2, style=Qt.PenStyle.DashLine)
+                    pen = pg.mkPen(settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DashLine)
                     y_curve = pg.PlotCurveItem(x_for_y2, y_processed, pen=pen)
                     self.y2_view.addItem(y_curve)
+                    if self.plot_item.legend:
+                        self.plot_item.legend.addItem(y_curve, f"{trace.name} - {tr(trace.y_axis.dimension)}")
                     y2_labels.append(label_str)
 
             # --- Secondary Data (y2) ---
@@ -921,15 +1178,17 @@ class PlotComparerWidget(QWidget):
 
                 if axis_choice == "Y1":
                     # Draw on primary axis
-                    pen_y2 = pg.mkPen(settings["color"], width=1, style=Qt.PenStyle.DotLine)
+                    pen_y2 = pg.mkPen(settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DotLine)
                     y2_curve = self.plot_widget.plot(
                         x, y2_processed, pen=pen_y2, name=f"{trace.name} - {tr(trace.y2_axis.dimension)}"
                     )
                     y1_labels.append(label_str)
                 else:  # Y2
-                    pen_y2 = pg.mkPen(settings["color"], width=1, style=Qt.PenStyle.DashLine)
+                    pen_y2 = pg.mkPen(settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DashLine)
                     y2_curve = pg.PlotCurveItem(x_for_y2, y2_processed, pen=pen_y2)
                     self.y2_view.addItem(y2_curve)
+                    if self.plot_item.legend:
+                        self.plot_item.legend.addItem(y2_curve, f"{trace.name} - {tr(trace.y2_axis.dimension)}")
                     y2_labels.append(label_str)
 
             if y_curve is not None or y2_curve is not None:
