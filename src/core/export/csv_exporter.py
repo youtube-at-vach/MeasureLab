@@ -8,6 +8,7 @@ from .base import BaseTraceExporter
 
 logger = logging.getLogger(__name__)
 
+
 class CsvTraceExporter(BaseTraceExporter):
     @property
     def format_id(self) -> str:
@@ -141,7 +142,7 @@ class CsvTraceExporter(BaseTraceExporter):
             writer.writerow(headers)
 
         # 2. Find maximum row length
-        max_len = max(len(t.x_data) for t in traces) if traces else 0
+        max_len = max([len(t.x_data) for t in traces]) if traces else 0
 
         # 3. Write Data Row by Row
         for i in range(max_len):
