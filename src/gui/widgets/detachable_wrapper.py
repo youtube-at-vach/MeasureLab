@@ -349,7 +349,6 @@ class DetachableWidgetWrapper(QWidget):
         if not self.is_comparable:
             return
         try:
-
             traces = self.content_widget.get_comparable_data()
             if not traces:
                 QMessageBox.warning(self, tr("Compare"), tr("No data available to compare."))
@@ -366,6 +365,7 @@ class DetachableWidgetWrapper(QWidget):
             )
         except Exception as e:
             import logging
+
             logging.getLogger(__name__).error("Failed to send data to comparer", exc_info=True)
             QMessageBox.critical(
                 self,

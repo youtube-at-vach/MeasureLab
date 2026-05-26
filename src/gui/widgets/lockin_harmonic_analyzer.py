@@ -735,7 +735,9 @@ class LockInHarmonicWidget(QWidget):
 
         try:
             if not filename:
-                filename, _ = QFileDialog.getSaveFileName(self, tr("Export Compensation Data"), "", "JSON Files (*.json)")
+                filename, _ = QFileDialog.getSaveFileName(
+                    self, tr("Export Compensation Data"), "", "JSON Files (*.json)"
+                )
             if not filename:
                 return
 

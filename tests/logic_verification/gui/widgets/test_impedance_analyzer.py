@@ -106,5 +106,3 @@ def test_impedance_analyzer_widget_sweep_finishes_stops_analysis(qtbot, impedanc
     # Manually trigger on_sweep_finished to simulate sweep completion/cancellation
     widget.on_sweep_finished()
     assert not impedance_module.is_running
-
-

@@ -455,9 +455,9 @@ class SoundLevelMeter(MeasurementModule):
         # Large history: update every 1.0s to save CPU
         update_interval = 1.0 if self.ln_history_count > 1000 else 0.1
 
-        if (self.ln_history_count != self._ln_stats_last_count) and \
-           (current_time - self._ln_stats_last_time >= update_interval):
-
+        if (self.ln_history_count != self._ln_stats_last_count) and (
+            current_time - self._ln_stats_last_time >= update_interval
+        ):
             data_linear = self.ln_history[: self.ln_history_count]
             data_db = 10 * np.log10(data_linear + 1e-12)
 
@@ -470,8 +470,14 @@ class SoundLevelMeter(MeasurementModule):
             lave = float(10 * np.log10(np.mean(data_linear) + 1e-12))
 
             self._ln_stats_cache = {
-                "L5": float(l5), "L10": float(l10), "L50": float(l50), "L90": float(l90), "L95": float(l95),
-                "Lhigh": lhigh, "Llow": llow, "Lave": lave
+                "L5": float(l5),
+                "L10": float(l10),
+                "L50": float(l50),
+                "L90": float(l90),
+                "L95": float(l95),
+                "Lhigh": lhigh,
+                "Llow": llow,
+                "Lave": lave,
             }
             self._ln_stats_last_count = self.ln_history_count
             self._ln_stats_last_time = current_time
@@ -846,4 +852,5 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         if win:
             from PyQt6 import sip
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)

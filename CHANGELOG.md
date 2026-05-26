@@ -1,5 +1,45 @@
 # Changelog
 
+## [v0.7.5] - 2026-05-26
+
+### Added
+
+* **Plot Comparer Enhancements**:
+    * Introduced cross-module plot comparison management via a new `ComparisonManager` and standard interfaces.
+    * Replaced `QListWidget` with a hierarchical `QTreeWidget` in the control panel to support structured parameter adjustment, individual trace filtering, and master toggle controls.
+    * Added a collapsible control panel to the Plot Comparer, complete with localized tooltips and optimized layout distributions.
+    * Implemented structured CSV/JSON trace data exporting supporting both single-file and individual-file schemas.
+    * Integrated the new `ComparableWidgetInterface` with `DistortionAnalyzerWidget` to allow exporting its measurements directly to the comparison suite.
+* **Spectrum Analyzer Optimization**:
+    * Implemented a dynamic pixel-based Min-Max envelope downsampling algorithm for high-performance rendering of extremely dense plots.
+    * Expanded downsampling point and precision thresholds up to 8000 points.
+    * Implemented a hybrid rendering mode that automatically bypasses downsampling when zooming in on fine structures.
+    * Implemented log-space maximum downsampling and dynamic timer intervals to drastically reduce plotting thread overhead.
+    * Added 1/48 and 1/96 octave smoothing options, plus a larger 512k buffer size selection.
+
+### Changed
+
+* **Audio Engine Robustness & Performance**:
+    * Implemented thread-safe locking for active audio engine status and error statistics queries, verified by dedicated concurrency unit tests.
+    * Replaced the older Hilbert-transform-based frequency estimation with an optimized AR(2) model featuring fractional phase wrapping in signal processing.
+    * Optimized memory management in the real-time audio pipeline using pre-allocated thread-safe scratch buffers.
+    * Implemented proper quantization in the audio engine's dithering process.
+    * Vectorized and pre-allocated exponential operations in the lock-in spectrum analyzer chunk loop.
+    * Optimized MLS signal generation in the Boxcar Averager using pre-allocated vector resizing.
+* **Network Analyzer Refinements**:
+    * Enforced strict frequency boundaries, resolved spinbox value initialization errors, and refined raw absolute measurement processing.
+    * Updated the default chirp sweep duration to 10.0 seconds.
+* **UI & Performance Improvements**:
+    * Replaced costly PyQtGraph `.setData([], [])` plot reset calls with optimized `.clear()` invocations.
+    * Suppressed context menu events on plot widgets within `IndependentWindow` to preserve native OS interactivity.
+* **Documentation Cleanup**:
+    * Systematically audited and simplified widget manuals to remove redundant metaphorical "Coffee Breaks", ensuring clear, professional documentation.
+    * Synchronized the Lock-in Amplifier user guide with new integration time options.
+
+### Fixed
+
+* **Audio**: Resolved secure temporary file leakage bugs inside `RecorderPlayer`.
+
 ## [v0.7.4] - 2026-05-22
 
 > [!IMPORTANT]

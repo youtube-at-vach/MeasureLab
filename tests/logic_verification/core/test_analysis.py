@@ -65,7 +65,6 @@ class TestAudioCalc:
         with pytest.raises(ValueError, match="Invalid sample rate"):
             AudioCalc.design_c_weighting(-100)
 
-
     def test_design_aes17_filter_invalid(self):
         with pytest.raises(ValueError, match="Invalid sample rate"):
             AudioCalc.design_aes17_filter(0)
@@ -127,11 +126,13 @@ def test_get_cached_window():
     # Test cache cleanup
     get_cached_window.cache_clear()
 
+
 def test_calculate_ra_raw_basic():
     # 1000 Hz is typically the reference frequency where the curve is near 0 dB
     f = np.array([1000.0])
     ra = _calculate_ra_raw(f)
     np.testing.assert_allclose(ra, [0.794341], rtol=1e-5)
+
 
 def test_calculate_ra_raw_zero():
     # At 0 Hz, A-weighting should strictly be 0.
@@ -139,11 +140,13 @@ def test_calculate_ra_raw_zero():
     ra = _calculate_ra_raw(f)
     np.testing.assert_allclose(ra, [0.0])
 
+
 def test_calculate_ra_raw_negative():
     # Negative frequency should give the same result as positive.
     f = np.array([-1000.0])
     ra = _calculate_ra_raw(f)
     np.testing.assert_allclose(ra, [0.794341], rtol=1e-5)
+
 
 def test_calculate_ra_raw_multiple():
     # Test array of frequencies

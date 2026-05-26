@@ -863,18 +863,14 @@ class SignalGenerator(MeasurementModule):
 
                 # Base phase is built continuously using phase_step
                 base_phase = params._carrier_phase_rad + np.arange(frames) * phase_step
-                params._carrier_phase_rad = float(
-                    np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi)
-                )
+                params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi))
 
                 phase = base_phase + beta * np.sin(pm_phase)
                 signal = self._generate_wave_from_phase(params, phase)
                 return signal
 
             phase_rad = params._carrier_phase_rad + np.arange(frames) * phase_step
-            params._carrier_phase_rad = float(
-                np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi)
-            )
+            params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi))
             signal = self._generate_wave_from_phase(params, phase_rad)
 
         return signal

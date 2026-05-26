@@ -346,4 +346,3 @@ def test_linearity_analyzer_amplitude_continuity():
     # outdata2[:, 0] must match expected_ramp_sig, and not match expected_step_sig
     assert np.allclose(outdata2[:, 0], expected_ramp_sig, atol=1e-5)
     assert not np.allclose(outdata2[:, 0], expected_step_sig, atol=1e-5)
-
