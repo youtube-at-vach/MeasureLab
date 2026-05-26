@@ -179,8 +179,12 @@ class PlotComparerWidget(QWidget):
         self.plot_item.vb.sigRangeChanged.connect(self.sync_y2_range)
 
         # ② InfiniteLines for cursor measurement
-        self.v_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('#e74c3c', width=1.5, style=Qt.PenStyle.DashLine))
-        self.h_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('#e74c3c', width=1.5, style=Qt.PenStyle.DashLine))
+        self.v_line = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen("#e74c3c", width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.h_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen("#e74c3c", width=1.5, style=Qt.PenStyle.DashLine)
+        )
         self.plot_widget.addItem(self.v_line, ignoreBounds=True)
         self.plot_widget.addItem(self.h_line, ignoreBounds=True)
         self.v_line.hide()
@@ -245,7 +249,9 @@ class PlotComparerWidget(QWidget):
         self.btn_import = QPushButton(tr("Import File"))
         self.btn_import.clicked.connect(self.import_file)
         self.btn_export = QPushButton(tr("Export Selected"))
-        self.btn_export.setToolTip(tr("Export selected traces in the tree, or all checked traces if none are selected."))
+        self.btn_export.setToolTip(
+            tr("Export selected traces in the tree, or all checked traces if none are selected.")
+        )
         self.btn_export.clicked.connect(self.export_selected)
         self.btn_remove = QPushButton(tr("Delete"))
         self.btn_remove.clicked.connect(self.remove_selected)
@@ -259,7 +265,9 @@ class PlotComparerWidget(QWidget):
         traces_layout.addLayout(btn_layout)
 
         # Sleek helper label for export/visibility interactions
-        self.export_hint_label = QLabel(tr("Tip: Select items to export specifically, or check them to compare in the plot."))
+        self.export_hint_label = QLabel(
+            tr("Tip: Select items to export specifically, or check them to compare in the plot.")
+        )
         self.export_hint_label.setStyleSheet("color: #7f8c8d; font-size: 10px; padding: 2px;")
         traces_layout.addWidget(self.export_hint_label)
 
@@ -400,11 +408,11 @@ class PlotComparerWidget(QWidget):
                         first_trace = trace
                         break
             if first_trace:
-                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+                use_khz = active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz"
 
             if getattr(self, "is_log_x", False):
-                min_val = 10 ** min_val
-                max_val = 10 ** max_val
+                min_val = 10**min_val
+                max_val = 10**max_val
             elif use_khz:
                 min_val = min_val * 1000.0
                 max_val = max_val * 1000.0
@@ -434,8 +442,8 @@ class PlotComparerWidget(QWidget):
                             first_trace = trace
                             break
                 if first_trace and first_trace.y_axis and first_trace.y_axis.display_unit == "%":
-                    min_val = 10 ** min_val
-                    max_val = 10 ** max_val
+                    min_val = 10**min_val
+                    max_val = 10**max_val
 
             self.y1_min_spin.blockSignals(True)
             self.y1_max_spin.blockSignals(True)
@@ -479,11 +487,11 @@ class PlotComparerWidget(QWidget):
                         first_trace = trace
                         break
             if first_trace:
-                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+                use_khz = active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz"
 
             if getattr(self, "is_log_x", False):
-                min_val = 10 ** min_val
-                max_val = 10 ** max_val
+                min_val = 10**min_val
+                max_val = 10**max_val
             elif use_khz:
                 min_val = min_val * 1000.0
                 max_val = max_val * 1000.0
@@ -508,8 +516,8 @@ class PlotComparerWidget(QWidget):
                             first_trace = trace
                             break
                 if first_trace and first_trace.y_axis and first_trace.y_axis.display_unit == "%":
-                    min_val = 10 ** min_val
-                    max_val = 10 ** max_val
+                    min_val = 10**min_val
+                    max_val = 10**max_val
 
             self.y1_min_spin.blockSignals(True)
             self.y1_max_spin.blockSignals(True)
@@ -541,7 +549,7 @@ class PlotComparerWidget(QWidget):
                     first_trace = trace
                     break
 
-        use_khz = (active_domain == "frequency" and first_trace and first_trace.x_axis.display_unit == "Hz")
+        use_khz = active_domain == "frequency" and first_trace and first_trace.x_axis.display_unit == "Hz"
 
         self.x_min_spin.blockSignals(True)
         self.x_max_spin.blockSignals(True)
@@ -1119,6 +1127,7 @@ class PlotComparerWidget(QWidget):
     def change_trace_color(self, trace_id: str):
         settings = self.trace_settings[trace_id]
         from PyQt6.QtGui import QColor
+
         color = QColorDialog.getColor(QColor(settings["color"]), self, tr("Select Trace Color"))
         if color.isValid():
             settings["color"] = color.name()
@@ -1128,9 +1137,7 @@ class PlotComparerWidget(QWidget):
     def change_trace_width(self, trace_id: str):
         settings = self.trace_settings[trace_id]
         current_width = settings.get("width", 2)
-        width, ok = QInputDialog.getInt(
-            self, tr("Line Width"), tr("Enter line width (1-5):"), current_width, 1, 5, 1
-        )
+        width, ok = QInputDialog.getInt(self, tr("Line Width"), tr("Enter line width (1-5):"), current_width, 1, 5, 1)
         if ok:
             settings["width"] = width
             self.replot()
@@ -1156,7 +1163,8 @@ class PlotComparerWidget(QWidget):
         vb = self.plot_item.vb
         rect = self.plot_widget.sceneBoundingRect()
         import sys
-        is_testing = 'pytest' in sys.modules
+
+        is_testing = "pytest" in sys.modules
         is_headless = rect.width() <= 0 or rect.height() <= 0
         if is_testing or is_headless or rect.contains(pos):
             mouse_point = vb.mapSceneToView(pos)
@@ -1177,21 +1185,21 @@ class PlotComparerWidget(QWidget):
             use_khz = False
             if visible_traces:
                 first_trace = visible_traces[0][1]
-                use_khz = (active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+                use_khz = active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz"
 
             # Format X value taking logX into account
             if active_domain == "frequency":
                 if getattr(self, "is_log_x", False):
-                    actual_x = 10 ** x_val
+                    actual_x = 10**x_val
                 else:
                     actual_x = x_val
                 if use_khz:
                     x_str = f"{actual_x:.3f} kHz"
                 else:
-                    x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x/1000:.3f} k{x_unit}"
+                    x_str = f"{actual_x:.2f} {x_unit}" if actual_x < 1000 else f"{actual_x / 1000:.3f} k{x_unit}"
             elif active_domain == "time":
                 actual_x = x_val
-                x_str = f"{actual_x*1000:.3f} ms" if abs(actual_x) < 1.0 else f"{actual_x:.4f} {x_unit}"
+                x_str = f"{actual_x * 1000:.3f} ms" if abs(actual_x) < 1.0 else f"{actual_x:.4f} {x_unit}"
             else:
                 actual_x = x_val
                 x_str = f"{actual_x:.4f}"
@@ -1251,7 +1259,9 @@ class PlotComparerWidget(QWidget):
                         interp_y2 = np.interp(actual_x, x_sorted, y2_arr)
                         unit2 = trace.y2_axis.display_unit or ""
                         color = settings.get("color", "#ffffff")
-                        readout_parts.append(f'<span style="color: {color};">● T{idx} ({tr("Phase")}): {interp_y2:.1f} {unit2}</span>')
+                        readout_parts.append(
+                            f'<span style="color: {color};">● T{idx} ({tr("Phase")}): {interp_y2:.1f} {unit2}</span>'
+                        )
                     except Exception:
                         pass
 
@@ -1271,6 +1281,7 @@ class PlotComparerWidget(QWidget):
         trace = self.manager.get_trace(trace_id)
         if trace:
             from src.gui.widgets.export_dialog import ExportSettingsDialog
+
             dialog = ExportSettingsDialog([trace], self)
             dialog.exec()
 
@@ -1371,7 +1382,7 @@ class PlotComparerWidget(QWidget):
             major_ticks = []
             minor_ticks = []
             for exp in range(-6, 7):
-                val = 10.0 ** exp
+                val = 10.0**exp
                 label = f"1e{exp}" if exp != 0 else "1"
                 if exp == 3:
                     label = "1k"
@@ -1455,7 +1466,7 @@ class PlotComparerWidget(QWidget):
 
         # Determine if we need manual kHz scaling for frequency to avoid pyqtgraph units bugs
         first_domain = self._get_trace_domain(first_trace)
-        use_khz = (first_domain == "frequency" and first_trace.x_axis.display_unit == "Hz")
+        use_khz = first_domain == "frequency" and first_trace.x_axis.display_unit == "Hz"
 
         if first_domain == "frequency":
             if use_khz:
@@ -1552,7 +1563,9 @@ class PlotComparerWidget(QWidget):
                     )
                     y1_labels.append(label_str)
                 else:  # Y2
-                    pen = pg.mkPen(settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DashLine)
+                    pen = pg.mkPen(
+                        settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DashLine
+                    )
                     y_curve = pg.PlotCurveItem(x_for_y2, y_processed, pen=pen)
                     self.y2_view.addItem(y_curve)
                     if self.plot_item.legend:
@@ -1570,13 +1583,17 @@ class PlotComparerWidget(QWidget):
 
                 if axis_choice == "Y1":
                     # Draw on primary axis
-                    pen_y2 = pg.mkPen(settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DotLine)
+                    pen_y2 = pg.mkPen(
+                        settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DotLine
+                    )
                     y2_curve = self.plot_widget.plot(
                         x, y2_processed, pen=pen_y2, name=f"{trace.name} - {tr(trace.y2_axis.dimension)}"
                     )
                     y1_labels.append(label_str)
                 else:  # Y2
-                    pen_y2 = pg.mkPen(settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DashLine)
+                    pen_y2 = pg.mkPen(
+                        settings["color"], width=max(1, settings.get("width", 2) - 1), style=Qt.PenStyle.DashLine
+                    )
                     y2_curve = pg.PlotCurveItem(x_for_y2, y2_processed, pen=pen_y2)
                     self.y2_view.addItem(y2_curve)
                     if self.plot_item.legend:

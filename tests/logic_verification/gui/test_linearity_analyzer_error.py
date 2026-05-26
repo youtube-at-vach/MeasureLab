@@ -13,6 +13,7 @@ except ImportError:
 
 _created_widgets = []
 
+
 @pytest.fixture(autouse=True)
 def cleanup_widgets(qtbot):
     _created_widgets.clear()

@@ -78,7 +78,7 @@ class TestAudioErrorHandling(unittest.TestCase):
             self.assertIsNone(status_dict_2["last_error"], "Last error should be None after reset")
 
     def test_concurrency_error_stats(self):
-        # We will run N iterations of error logging across multiple threads, 
+        # We will run N iterations of error logging across multiple threads,
         # and concurrently read/reset them using get_status.
         # At the end, the sum of all returned error counts + any remaining error count in engine
         # must equal the total number of errors logged.
@@ -98,14 +98,16 @@ class TestAudioErrorHandling(unittest.TestCase):
         class MockFlags:
             def __init__(self, val=0):
                 self.val = val
+
             def __ior__(self, other):
-                return MockFlags(self.val | getattr(other, 'val', 0))
+                return MockFlags(self.val | getattr(other, "val", 0))
 
         # Override accumulated_status so we don't depend on actual sounddevice C bindings in test
         engine.accumulated_status = MockFlags(0)
 
         # We also need to patch sd.CallbackFlags in engine since get_status initializes it
         with patch("src.core.audio_engine.sd.CallbackFlags", return_value=MockFlags(0)):
+
             def writer():
                 for i in range(loops_per_writer):
                     # Simulate master callback catching an exception

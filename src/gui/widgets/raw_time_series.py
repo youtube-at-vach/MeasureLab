@@ -221,7 +221,6 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
         self.right_widget.setFixedWidth(260)
         right = QVBoxLayout(self.right_widget)
 
-
         ctrl_group = QGroupBox(tr("General"))
         ctrl = QVBoxLayout(ctrl_group)
 
@@ -436,4 +435,3 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
         compact = self.is_compact_mode()
         if hasattr(self, "right_widget"):
             self.right_widget.setHidden(compact)
-

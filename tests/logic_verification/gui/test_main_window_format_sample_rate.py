@@ -1,8 +1,10 @@
 from src.gui.main_window import MainWindow
 
+
 class MockMainWindow:
     def _format_compact_sample_rate(self, sample_rate):
         return MainWindow._format_compact_sample_rate(self, sample_rate)
+
 
 def test_format_compact_sample_rate():
     mw = MockMainWindow()

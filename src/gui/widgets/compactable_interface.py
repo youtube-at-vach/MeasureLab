@@ -2,6 +2,7 @@ class CompactableWidgetInterface:
     """
     Interface/Mixin for widgets supporting a Compact Mode (display-only/plot-only).
     """
+
     def __init__(self):
         self._is_compact = False
 

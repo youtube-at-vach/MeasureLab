@@ -7,6 +7,7 @@ from .base import BaseTraceExporter
 
 logger = logging.getLogger(__name__)
 
+
 class JsonTraceExporter(BaseTraceExporter):
     @property
     def format_id(self) -> str:

@@ -1563,12 +1563,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                     is_calibrated=is_calibrated,
                     input_sensitivity=input_sensitivity,
                     applied_offset_db=0.0,
-                    reference_level=ref_lvl
+                    reference_level=ref_lvl,
                 ),
                 metadata={
                     "channel": "Left",
                     "timebase": self.module.timebase,
-                }
+                },
             )
             traces.append(trace_l)
 
@@ -1602,14 +1602,13 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                     is_calibrated=is_calibrated,
                     input_sensitivity=input_sensitivity,
                     applied_offset_db=0.0,
-                    reference_level=ref_lvl
+                    reference_level=ref_lvl,
                 ),
                 metadata={
                     "channel": "Right",
                     "timebase": self.module.timebase,
-                }
+                },
             )
             traces.append(trace_r)
 
         return traces
-

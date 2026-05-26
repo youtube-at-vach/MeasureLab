@@ -25,13 +25,16 @@ mock_qt_core.Qt.AlignmentFlag.AlignVCenter = 2
 mock_qt_core.Qt.AlignmentFlag.AlignLeft = 3
 mock_qt_core.Qt.AlignmentFlag.AlignTop = 4
 
+
 class MockQWidget:
     def __init__(self, *args, **kwargs):
         pass
 
+
 class MockQHeaderView(MagicMock):
     class ResizeMode:
         Stretch = 1
+
 
 class DummyQtWidgets:
     QWidget = MockQWidget
@@ -49,6 +52,7 @@ class DummyQtWidgets:
     QTableWidgetItem = MagicMock
     QTabWidget = MagicMock
     QVBoxLayout = MagicMock
+
 
 mock_widgets = DummyQtWidgets()
 

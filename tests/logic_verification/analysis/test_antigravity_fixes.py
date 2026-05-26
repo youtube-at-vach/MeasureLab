@@ -10,7 +10,6 @@ from src.gui.widgets.boxcar_averager import BoxcarAverager  # noqa: E402
 from src.gui.widgets.lock_in_amplifier import LockInAmplifier  # noqa: E402
 
 
-
 class MockCalibration:
     def __init__(self):
         self.lockin_gain_offset = 0.0
