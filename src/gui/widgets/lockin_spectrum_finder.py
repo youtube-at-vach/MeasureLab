@@ -368,9 +368,7 @@ class LockInSpectrumFinder(MeasurementModule):
     def _load_user_targets(self) -> dict:
         path = ""
         try:
-            path = os.path.join(
-                ConfigManager.get_user_data_dir(), "user_scan_targets.json"
-            )
+            path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
             if os.path.exists(path):
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -454,9 +452,7 @@ class LockInSpectrumFinder(MeasurementModule):
 
         def _save_task(targets_copy: dict):
             try:
-                path = os.path.join(
-                    ConfigManager.get_user_data_dir(), "user_scan_targets.json"
-                )
+                path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
                 os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
                 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -514,9 +510,7 @@ class LockInSpectrumFinder(MeasurementModule):
                     self.input_data[:chunk2] = new_data[chunk1:]
                     self.input_buffer_pos = chunk2
 
-                self.buffer_filled_samples = min(
-                    self.buffer_size, self.buffer_filled_samples + n
-                )
+                self.buffer_filled_samples = min(self.buffer_size, self.buffer_filled_samples + n)
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
@@ -729,9 +723,7 @@ class LockInSpectrumFinder(MeasurementModule):
             # phases unmerged across chunks back to main for zoom (optional completeness)
             self.signals.result_ready.emit((freqs, mags_db_all))
 
-    def _generate_scan_frequencies(
-        self, fs, N, params: CalculationParams
-    ) -> np.ndarray:
+    def _generate_scan_frequencies(self, fs, N, params: CalculationParams) -> np.ndarray:
         start_f = params.start_f
         stop_f = params.stop_f
         points = params.points
@@ -754,9 +746,7 @@ class LockInSpectrumFinder(MeasurementModule):
                 freqs = np.array([df])
         elif spacing == "Scan List Only":
             if targets:
-                freqs = np.array(
-                    sorted([f for f in targets.keys() if start_f <= f <= stop_f])
-                )
+                freqs = np.array(sorted([f for f in targets.keys() if start_f <= f <= stop_f]))
             else:
                 freqs = np.array([])
             if len(freqs) == 0:
@@ -938,9 +928,7 @@ class LockInSpectrumFinder(MeasurementModule):
                         self.sonifier.update_manual_tuner_mag(mags_db_chunk[idx])
 
             # Emit result chunk back to GUI thread
-            self.signals.progress_update.emit(
-                i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy()
-            )
+            self.signals.progress_update.emit(i, end_idx, freqs[i:end_idx].copy(), mags_db_chunk.copy(), phases.copy())
 
             # Sleep briefly to ensure audio callback is not starved
 
@@ -973,9 +961,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.btn_toggle = QPushButton(tr("Start Analysis"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle)
-        self.btn_toggle.setStyleSheet(
-            "QPushButton:checked { background-color: #ccffcc; }"
-        )
+        self.btn_toggle.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         form.addRow(self.btn_toggle)
 
         # Mode Selection
@@ -1115,9 +1101,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.lbl_resolution = QLabel(tr("Resolution:"))
         self.lbl_resolution_info = QLabel("")
-        self.lbl_resolution_info.setStyleSheet(
-            "font-family: monospace; font-weight: bold;"
-        )
+        self.lbl_resolution_info.setStyleSheet("font-family: monospace; font-weight: bold;")
         # Color will be set by apply_theme
         form.addRow(self.lbl_resolution, self.lbl_resolution_info)
 
@@ -1139,15 +1123,11 @@ class LockInSpectrumFinderWidget(QWidget):
         target_layout.setContentsMargins(0, 0, 0, 0)
 
         self.table_targets = QTableWidget(0, 2)
-        self.table_targets.setHorizontalHeaderLabels(
-            [tr("Frequency (Hz)"), tr("Cause / Note")]
-        )
+        self.table_targets.setHorizontalHeaderLabels([tr("Frequency (Hz)"), tr("Cause / Note")])
         self.table_targets.horizontalHeader().setStretchLastSection(True)
         self.table_targets.verticalHeader().setVisible(False)
         self.table_targets.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table_targets.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
+        self.table_targets.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_targets.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
 
         self._populate_targets_table()
@@ -1225,9 +1205,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.combo_scale_type = QComboBox()
         self.combo_scale_type.addItem(tr("12-Tone Equal Temperament (12TET)"), "12TET")
         self.combo_scale_type.addItem(tr("24-Tone Equal Temperament (24TET)"), "24TET")
-        self.combo_scale_type.addItem(
-            tr("Just Intonation (5-limit)"), "Just Intonation"
-        )
+        self.combo_scale_type.addItem(tr("Just Intonation (5-limit)"), "Just Intonation")
         idx = self.combo_scale_type.findData(self.module.musical_scale_type)
         if idx >= 0:
             self.combo_scale_type.setCurrentIndex(idx)
@@ -1249,9 +1227,7 @@ class LockInSpectrumFinderWidget(QWidget):
         presets_group = QGroupBox(tr("Other Presets"))
         presets_form = QFormLayout()
 
-        self.chk_default_presets = QCheckBox(
-            tr("Include Default Presets (Sample Rates, SMPS, etc.)")
-        )
+        self.chk_default_presets = QCheckBox(tr("Include Default Presets (Sample Rates, SMPS, etc.)"))
         self.chk_default_presets.setChecked(self.module.include_default_presets)
         self.chk_default_presets.stateChanged.connect(self.on_default_presets_changed)
         presets_form.addRow(self.chk_default_presets)
@@ -1280,31 +1256,23 @@ class LockInSpectrumFinderWidget(QWidget):
         sonification_form.addRow(self.chk_sonification_enable)
 
         self.combo_sonification_mode = QComboBox()
-        self.combo_sonification_mode.addItem(
-            tr("Level Monitor (Fixed Pitch)"), self.module.sonifier.MODE_LEVEL_MONITOR
-        )
+        self.combo_sonification_mode.addItem(tr("Level Monitor (Fixed Pitch)"), self.module.sonifier.MODE_LEVEL_MONITOR)
         self.combo_sonification_mode.addItem(
             tr("Frequency Mapping (Variable Pitch)"),
             self.module.sonifier.MODE_FREQUENCY_MAPPING,
         )
-        self.combo_sonification_mode.addItem(
-            tr("Manual Tuner"), self.module.sonifier.MODE_MANUAL_TUNER
-        )
+        self.combo_sonification_mode.addItem(tr("Manual Tuner"), self.module.sonifier.MODE_MANUAL_TUNER)
         idx = self.combo_sonification_mode.findData(self.module.sonifier.mode)
         if idx >= 0:
             self.combo_sonification_mode.setCurrentIndex(idx)
-        self.combo_sonification_mode.currentIndexChanged.connect(
-            self.on_audio_mode_changed
-        )
+        self.combo_sonification_mode.currentIndexChanged.connect(self.on_audio_mode_changed)
         sonification_form.addRow(tr("Sonification Mode:"), self.combo_sonification_mode)
 
         self.spin_sonification_freq = QDoubleSpinBox()
         self.spin_sonification_freq.setRange(1.0, 192000.0)
         self.spin_sonification_freq.setValue(self.module.sonifier.manual_freq)
         self.spin_sonification_freq.setSuffix(" Hz")
-        self.spin_sonification_freq.valueChanged.connect(
-            self.on_audio_manual_freq_changed
-        )
+        self.spin_sonification_freq.valueChanged.connect(self.on_audio_manual_freq_changed)
         sonification_form.addRow(tr("Manual Tuner:"), self.spin_sonification_freq)
 
         self.spin_sonification_vol = QDoubleSpinBox()
@@ -1322,9 +1290,7 @@ class LockInSpectrumFinderWidget(QWidget):
         idx = self.combo_sonification_ch.findData(self.module.sonifier.output_channel)
         if idx >= 0:
             self.combo_sonification_ch.setCurrentIndex(idx)
-        self.combo_sonification_ch.currentIndexChanged.connect(
-            self.on_audio_channel_changed
-        )
+        self.combo_sonification_ch.currentIndexChanged.connect(self.on_audio_channel_changed)
         sonification_form.addRow(tr("Output Channel:"), self.combo_sonification_ch)
 
         sonification_group.setLayout(sonification_form)
@@ -1402,9 +1368,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.spin_stop_f.setVisible(not is_zoom)
         self.lbl_spacing.setVisible(not is_zoom)
         self.combo_spacing.setVisible(not is_zoom)
-        self.chk_log_axis.setVisible(
-            not is_zoom and self.module.spacing == "Scan List Only"
-        )
+        self.chk_log_axis.setVisible(not is_zoom and self.module.spacing == "Scan List Only")
         self.chk_include_targets.setVisible(not is_zoom)
         self.lbl_octave_ref.setVisible(not is_zoom)
         self.spin_octave_ref.setVisible(not is_zoom)
@@ -1429,9 +1393,7 @@ class LockInSpectrumFinderWidget(QWidget):
             # Blue for light theme (matches Spectrum Analyzer cursor)
             color = "#0000aa"
 
-        self.lbl_resolution_info.setStyleSheet(
-            f"font-family: monospace; color: {color}; font-weight: bold;"
-        )
+        self.lbl_resolution_info.setStyleSheet(f"font-family: monospace; color: {color}; font-weight: bold;")
 
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""
@@ -1582,10 +1544,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         if filled < size:
             pct = int((filled / size) * 100)
-            if (
-                self.module._calculation_future is None
-                or self.module._calculation_future.done()
-            ):
+            if self.module._calculation_future is None or self.module._calculation_future.done():
                 self.lbl_status.setText(tr("Buffering... {}%").format(pct))
             return
 
@@ -1597,11 +1556,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.current_freqs = freqs.copy()
         self.current_marker_freqs = marker_freqs
 
-        if (
-            not hasattr(self, "averaged_amps")
-            or self.averaged_amps is None
-            or len(self.averaged_amps) != len(freqs)
-        ):
+        if not hasattr(self, "averaged_amps") or self.averaged_amps is None or len(self.averaged_amps) != len(freqs):
             self.averaged_amps = np.zeros(len(freqs))
             self.frames_counted = 0
 
@@ -1639,16 +1594,10 @@ class LockInSpectrumFinderWidget(QWidget):
             idx = np.searchsorted(self.current_freqs, mf)
 
             def check_and_add(i, mf=mf):
-                if 0 <= i < len(self.current_freqs) and np.isclose(
-                    self.current_freqs[i], mf, atol=1e-3
-                ):
+                if 0 <= i < len(self.current_freqs) and np.isclose(self.current_freqs[i], mf, atol=1e-3):
                     y = self.current_mags[i]
                     x = mf
-                    phase = (
-                        float(self.current_phases[i])
-                        if hasattr(self, "current_phases")
-                        else 0.0
-                    )
+                    phase = float(self.current_phases[i]) if hasattr(self, "current_phases") else 0.0
                     note = self.module.current_targets.get(mf, "Unknown")
                     unit = self.module.display_unit
 
@@ -1677,9 +1626,7 @@ class LockInSpectrumFinderWidget(QWidget):
         if not hasattr(self, "current_freqs") or not hasattr(self, "current_mags"):
             return
 
-        if not hasattr(self, "current_phases") or len(self.current_phases) != len(
-            self.current_freqs
-        ):
+        if not hasattr(self, "current_phases") or len(self.current_phases) != len(self.current_freqs):
             self.current_phases = np.zeros(len(self.current_freqs))
 
         if (
@@ -1718,7 +1665,9 @@ class LockInSpectrumFinderWidget(QWidget):
         pct = int((end_idx / len(self.current_freqs)) * 100)
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = (
+                f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            )
         self.lbl_status.setText(tr("Calculating... {}%").format(pct) + avg_text)
 
         if self.module.mode == "Zoom":
@@ -1732,9 +1681,7 @@ class LockInSpectrumFinderWidget(QWidget):
             k = k_factors.get(self.module.window_type, 1.0)
             rbw = k / T
             step_hz = (2.0 * self.module.zoom_span) / max(1, self.module.points - 1)
-            self.lbl_resolution_info.setText(
-                tr("RBW: {0:.2f} Hz | Step: {1:.3f} Hz").format(rbw, step_hz)
-            )
+            self.lbl_resolution_info.setText(tr("RBW: {0:.2f} Hz | Step: {1:.3f} Hz").format(rbw, step_hz))
 
     def on_result_ready(self, result):
         freqs, mags_db = result
@@ -1745,7 +1692,9 @@ class LockInSpectrumFinderWidget(QWidget):
 
         avg_text = ""
         if self.spin_averages.value() > 1:
-            avg_text = f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            avg_text = (
+                f" [{tr('Avg:')} {min(self.spin_averages.value(), self.frames_counted)}/{self.spin_averages.value()}]"
+            )
         self.lbl_status.setText(tr("Spectrum Updated") + avg_text)
 
         if self.module.mode == "Zoom" and self.module.track_peak:
@@ -1789,9 +1738,7 @@ class LockInSpectrumFinderWidget(QWidget):
             self.table_targets.setItem(i, 1, QTableWidgetItem(tr(note)))
 
     def on_add_target(self):
-        freq, ok_f = QInputDialog.getDouble(
-            self, tr("Add Target"), tr("Frequency (Hz):"), 1000.0, 0.1, 192000.0, 1
-        )
+        freq, ok_f = QInputDialog.getDouble(self, tr("Add Target"), tr("Frequency (Hz):"), 1000.0, 0.1, 192000.0, 1)
         if not ok_f:
             return
         note, ok_n = QInputDialog.getText(self, tr("Add Target"), tr("Note:"))
@@ -1827,9 +1774,7 @@ class LockInSpectrumFinderWidget(QWidget):
             self._transition_to_zoom(freq)
 
     def on_import_targets(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, tr("Import Targets"), "", "JSON Files (*.json)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("Import Targets"), "", "JSON Files (*.json)")
         if file_path:
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -1839,9 +1784,7 @@ class LockInSpectrumFinderWidget(QWidget):
                 self._populate_targets_table()
                 self.reset_averaging()
             except Exception as e:
-                QMessageBox.critical(
-                    self, tr("Error"), f"{tr('Failed to import targets:')}\n{e}"
-                )
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to import targets:')}\n{e}")
 
     def on_export_targets(self):
         file_path, _ = QFileDialog.getSaveFileName(
@@ -1853,13 +1796,9 @@ class LockInSpectrumFinderWidget(QWidget):
                 with os.fdopen(fd, "w", encoding="utf-8") as f:
                     data = {str(k): v for k, v in self.module.current_targets.items()}
                     json.dump(data, f, indent=4, ensure_ascii=False)
-                QMessageBox.information(
-                    self, tr("Success"), tr("Targets exported successfully.")
-                )
+                QMessageBox.information(self, tr("Success"), tr("Targets exported successfully."))
             except Exception as e:
-                QMessageBox.critical(
-                    self, tr("Error"), f"{tr('Failed to export targets:')}\n{e}"
-                )
+                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to export targets:')}\n{e}")
 
     def on_reset_targets(self):
         reply = QMessageBox.question(
@@ -1910,9 +1849,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self.module.update_generator_targets()
         self._populate_targets_table()
         self.reset_averaging()
-        QMessageBox.information(
-            self, tr("Success"), tr("Scan targets updated with generator settings.")
-        )
+        QMessageBox.information(self, tr("Success"), tr("Scan targets updated with generator settings."))
 
     def on_audio_enable_toggled(self, state):
         self.module.sonifier.set_enabled(bool(state))

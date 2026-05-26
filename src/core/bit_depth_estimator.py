@@ -30,11 +30,11 @@ class BitDepthEstimator:
             new_capacity = max(self._capacity * 2, self._write_ptr + n)
             new_buffer = np.zeros(new_capacity, dtype=self._buffer.dtype)
             if self._write_ptr > 0:
-                new_buffer[:self._write_ptr] = self._buffer[:self._write_ptr]
+                new_buffer[: self._write_ptr] = self._buffer[: self._write_ptr]
             self._buffer = new_buffer
             self._capacity = new_capacity
 
-        self._buffer[self._write_ptr:self._write_ptr + n] = samples
+        self._buffer[self._write_ptr : self._write_ptr + n] = samples
         self._write_ptr += n
 
     def analyze(self):
@@ -49,7 +49,7 @@ class BitDepthEstimator:
             return None
 
         # Just take a copy of the valid data
-        full_data = self._buffer[:self._write_ptr].copy()
+        full_data = self._buffer[: self._write_ptr].copy()
         self._write_ptr = 0  # Clear buffer after processing
 
         if len(full_data) < 2:

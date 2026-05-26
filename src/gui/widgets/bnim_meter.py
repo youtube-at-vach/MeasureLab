@@ -771,4 +771,3 @@ class BNIMMeterWidget(QWidget, CompactableWidgetInterface):
         compact = self.is_compact_mode()
         if hasattr(self, "controls_group"):
             self.controls_group.setHidden(compact)
-

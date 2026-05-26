@@ -24,6 +24,7 @@ from src.core.localization import tr
 from src.core.export import ExportManager
 from src.core.comparison_manager import ComparisonTrace
 
+
 class ExportSettingsDialog(QDialog):
     def __init__(self, traces: List[ComparisonTrace], parent=None):
         super().__init__(parent)
@@ -92,7 +93,11 @@ class ExportSettingsDialog(QDialog):
         json_layout = QVBoxLayout(self.json_widget)
         json_group = QGroupBox(tr("JSON Options"))
         json_group_layout = QVBoxLayout(json_group)
-        json_desc = QLabel(tr("Saves comparison traces as highly compatible MeasureLab proprietary format (.mlcomp). This allows importing them back into Plot Comparer later."))
+        json_desc = QLabel(
+            tr(
+                "Saves comparison traces as highly compatible MeasureLab proprietary format (.mlcomp). This allows importing them back into Plot Comparer later."
+            )
+        )
         json_desc.setWordWrap(True)
         json_group_layout.addWidget(json_desc)
         json_layout.addWidget(json_group)
@@ -246,10 +251,7 @@ class ExportSettingsDialog(QDialog):
 
         if self.radio_individual.isChecked():
             # Directory selection mode
-            folder = QFileDialog.getExistingDirectory(
-                self,
-                tr("Select Destination Directory")
-            )
+            folder = QFileDialog.getExistingDirectory(self, tr("Select Destination Directory"))
             if folder:
                 self.path_edit.setText(folder)
         else:
@@ -257,10 +259,7 @@ class ExportSettingsDialog(QDialog):
             default_name = self.path_edit.text().strip() or "comparison_export" + exporter.default_extension
 
             filepath, _ = QFileDialog.getSaveFileName(
-                self,
-                tr("Select Destination File"),
-                default_name,
-                exporter.file_filter
+                self, tr("Select Destination File"), default_name, exporter.file_filter
             )
             if filepath:
                 self.path_edit.setText(filepath)
@@ -320,14 +319,16 @@ class ExportSettingsDialog(QDialog):
                 QMessageBox.information(
                     self,
                     tr("Success"),
-                    tr("Successfully exported {0} traces to individual files.").format(success_count)
+                    tr("Successfully exported {0} traces to individual files.").format(success_count),
                 )
                 self.accept()
             else:
                 QMessageBox.warning(
                     self,
                     tr("Export Error"),
-                    tr("Failed to export some traces ({0}/{1} succeeded).").format(success_count, len(traces_to_export))
+                    tr("Failed to export some traces ({0}/{1} succeeded).").format(
+                        success_count, len(traces_to_export)
+                    ),
                 )
         else:
             # Merged export mode

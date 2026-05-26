@@ -357,8 +357,9 @@ def test_plot_comparer_color_and_width_customization(qtbot, clean_manager):
     y_curve, _ = widget.curve_items["t_custom"]
     assert y_curve is not None
     # Pyqtgraph plot item options or pen configurations can be checked
-    pen = y_curve.opts['pen']
+    pen = y_curve.opts["pen"]
     from PyQt6.QtGui import QColor
+
     assert pen.width() == 4
     assert pen.color() == QColor("#ff0000")
 
@@ -393,6 +394,7 @@ def test_plot_comparer_interactive_cursor_readout(qtbot, clean_manager):
 
     # Simulate mouse hover at mapped scene coordinate (e.g. 100 Hz = 0.1 kHz. log10(0.1) = -1.0)
     from PyQt6.QtCore import QPointF
+
     vb = widget.plot_item.vb
     scene_pos = vb.mapViewToScene(QPointF(-1.0, -20.0))
 
@@ -407,4 +409,3 @@ def test_plot_comparer_interactive_cursor_readout(qtbot, clean_manager):
     text = widget.readout_label.text()
     assert "0.100 kHz" in text
     assert "-20.00 dBFS" in text
-

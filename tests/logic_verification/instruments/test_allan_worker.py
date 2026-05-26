@@ -21,6 +21,7 @@ mock_qt_core.QRunnable = MockQRunnable
 mock_qt_core.QObject = MockQObject
 mock_qt_core.pyqtSignal = MagicMock(side_effect=lambda *args: MagicMock())
 
+
 class MockQWidget:
     def __init__(self, *args, **kwargs):
         pass

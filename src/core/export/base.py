@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 from src.core.comparison_manager import ComparisonTrace
 
+
 class BaseTraceExporter(ABC):
     @property
     @abstractmethod

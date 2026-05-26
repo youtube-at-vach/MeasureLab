@@ -323,7 +323,7 @@ class LockInAmplifier(MeasurementModule):
         # We solve cos(omega) using linear least-squares over the entire buffer.
         ref_detrended = ref - np.mean(ref)
         num = np.sum((ref_detrended[:-2] + ref_detrended[2:]) * ref_detrended[1:-1])
-        den = 2.0 * np.sum(ref_detrended[1:-1]**2)
+        den = 2.0 * np.sum(ref_detrended[1:-1] ** 2)
 
         if den > 1e-12:
             cos_omega = np.clip(num / den, -1.0, 1.0)
@@ -597,7 +597,9 @@ class FRASweepWorker(QThread):
 
             # First, wait for one full buffer fill to ensure we are past the settling time completely
             # We wait for buffer_size samples with a slight timeout buffer.
-            self.module.wait_for_buffer(self.module.buffer_size, timeout=max(1.0, wait_time * 2), cancel_check=lambda: self.is_cancelled)
+            self.module.wait_for_buffer(
+                self.module.buffer_size, timeout=max(1.0, wait_time * 2), cancel_check=lambda: self.is_cancelled
+            )
 
             for _ in range(self.module.averaging_count):
                 if self.is_cancelled:
@@ -605,7 +607,9 @@ class FRASweepWorker(QThread):
 
                 # Wait for next buffer update
                 # We use event-based synchronization. Wait for a full buffer length.
-                self.module.wait_for_buffer(self.module.buffer_size, timeout=max(1.0, wait_time * 2), cancel_check=lambda: self.is_cancelled)
+                self.module.wait_for_buffer(
+                    self.module.buffer_size, timeout=max(1.0, wait_time * 2), cancel_check=lambda: self.is_cancelled
+                )
 
                 # Process the current buffer state
                 self.module.process_data()
@@ -699,7 +703,6 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         # Data storage for Calibration
         self.cal_data = []  # List of [freq, mag_db, phase_deg]
         self.cal_worker = None
-
 
     def _init_manual_control_tab(self):
         # --- Tab 1: Manual Control (Existing) ---
@@ -942,7 +945,6 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
 
         self.tabs.addTab(manual_widget, tr("Manual Control"))
 
-
     def _init_fra_tab(self):
         # --- Tab 2: Frequency Response Analyzer (FRA) ---
         fra_widget = QWidget()
@@ -1077,7 +1079,6 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         fra_layout.addLayout(fra_right_layout, stretch=3)
 
         self.tabs.addTab(fra_widget, tr("Frequency Response"))
-
 
     def _init_calibration_tab(self):
         # --- Tab 3: Calibration ---
@@ -2093,7 +2094,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
             is_calibrated=is_calibrated,
             input_sensitivity=input_sensitivity,
             applied_offset_db=0.0,
-            reference_level=ref_lvl
+            reference_level=ref_lvl,
         )
 
         trace = ComparisonTrace(
@@ -2112,7 +2113,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
             metadata={
                 "integration": self.time_combo.currentText(),
                 "averaging": self.avg_spin.value(),
-            }
+            },
         )
 
         return [trace]

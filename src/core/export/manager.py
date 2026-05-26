@@ -6,6 +6,7 @@ from .csv_exporter import CsvTraceExporter
 
 logger = logging.getLogger(__name__)
 
+
 class ExportManager:
     _instance: Optional["ExportManager"] = None
 
