@@ -60,6 +60,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 35 | **Spatial Binaural Mixer** | Offline high-quality HRTF multitrack spatial renderer. Supports loading multiple audio tracks, setting position (azimuth/elevation), and rendering with SOFA files. |
 | 36 | **Waveform Loop Player** | Loads an audio file, visualizes the waveform, and loops a selected region. Useful for repeated observation of transient responses or analyzing specific phrases. |
 | 37 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
+| 38 | **Plot Comparer** | Overlay and compare multiple plot traces from different measurements. Supports gain offset, axis shift, normalization (align peaks), dual Y-axis mapping (Y1/Y2), log scaling, and interactive cursor readout. |
 
 ### 🌍 Localization
 

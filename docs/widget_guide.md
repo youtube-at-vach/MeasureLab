@@ -23,6 +23,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | **周囲の騒音レベル(SPL)を知りたい** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
 | **左右の音響特性のズレを精密に整えたい** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
+| **異なる測定から取得した複数のプロットを重ね合わせて比較したい** | [Plot Comparer](widgets/plot_comparer.md) |
 
 ---
 
@@ -167,6 +168,8 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     - スピーカーや部屋の特性を打ち消すための逆フィルターを作成します。
 - **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     - 任意のウィジットを別ウィンドウとして切り離すための枠組みです。
+- **[Plot Comparer](widgets/plot_comparer.md)**
+    - 異なる測定モジュール（スペクトラムアナライザ、ネットワークアナライザ、オシロスコープなど）から保存・エクスポートした測定データをインポートし、ゲインオフセットや軸シフトなどを調整しながら重ね合わせて詳細に比較できます。
 - **[Processor Benchmark](widgets/processor_benchmark.md)**
     - PCのFFTおよび描画パフォーマンスをテストし、リアルタイム処理の限界を検証します。
 - **[Settings](widgets/settings.md)**
