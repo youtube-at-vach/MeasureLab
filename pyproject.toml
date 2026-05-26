@@ -66,3 +66,9 @@ disable_error_code = ["import-untyped"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.3,<10.0.0)",
+    "pytest-qt (>=4.5.0,<5.0.0)"
+]

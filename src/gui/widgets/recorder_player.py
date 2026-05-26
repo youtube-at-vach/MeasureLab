@@ -228,7 +228,7 @@ class RecorderPlayer(MeasurementModule):
         self._check_stop_callback()
 
     def _remove_temp_file(self):
-        if hasattr(self, '_temp_record_obj') and self._temp_record_obj is not None:
+        if hasattr(self, "_temp_record_obj") and self._temp_record_obj is not None:
             try:
                 self._temp_record_obj.close()
             except Exception as e:
@@ -272,7 +272,7 @@ class RecorderPlayer(MeasurementModule):
             first_chunk = self._write_queue.get()
             if first_chunk is None:
                 # If we exit before opening the file, ensure the object is closed
-                if getattr(self, '_temp_record_obj', None) is not None:
+                if getattr(self, "_temp_record_obj", None) is not None:
                     try:
                         self._temp_record_obj.close()
                     except Exception as e:
@@ -318,8 +318,9 @@ class RecorderPlayer(MeasurementModule):
         self._remove_temp_file()
 
         # Create new temp file object to manage lifecycle securely and avoid TOCTOU
-        # We use delete=False so we can explicitly control deletion and ensure cross-platform compatibility
-        self._temp_record_obj = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        # We use delete=True with delete_on_close=False to ensure OS-level cleanup on crash
+        # while explicitly controlling the deletion lifecycle and ensuring cross-platform compatibility
+        self._temp_record_obj = tempfile.NamedTemporaryFile(suffix=".wav", delete=True, delete_on_close=False)
         self._temp_record_file = self._temp_record_obj.name
 
         # Add a weakref finalizer to ensure cleanup on garbage collection if the app exits ungracefully
