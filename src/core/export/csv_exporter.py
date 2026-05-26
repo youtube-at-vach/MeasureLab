@@ -8,6 +8,7 @@ from .base import BaseTraceExporter
 
 logger = logging.getLogger(__name__)
 
+
 class CsvTraceExporter(BaseTraceExporter):
     @property
     def format_id(self) -> str:
@@ -65,13 +66,10 @@ class CsvTraceExporter(BaseTraceExporter):
 
         if x_grid is None:
             # Union of all X axes
-            all_x = []
-            for t in traces:
-                all_x.extend(t.x_data)
-            if not all_x:
+            x_arrays = [t.x_data for t in traces if len(t.x_data) > 0]
+            if not x_arrays:
                 return
-            x_grid = np.unique(all_x)
-            x_grid.sort()
+            x_grid = np.unique(np.concatenate(x_arrays))
 
         # 2. Write Headers
         if include_headers:
