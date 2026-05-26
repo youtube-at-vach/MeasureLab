@@ -23,6 +23,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Know ambient noise level (SPL)** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.md) |
 | **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
+| **Overlay and compare multiple plot traces from different measurements** | [Plot Comparer](widgets/plot_comparer.md) |
 
 ---
 
@@ -161,6 +162,8 @@ Other useful functions.
     - Creates an inverse filter to cancel out the characteristics of speakers and rooms.
 - **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     - A framework for detaching any widget into a separate window.
+- **[Plot Comparer](widgets/plot_comparer.md)**
+    - Imports measurement traces saved/exported from other modules (Spectrum Analyzer, Network Analyzer, Oscilloscope, etc.) and allows detailed comparison by overlaying them with adjustable gain offsets, axis shifts, and peak alignment.
 - **[Processor Benchmark](widgets/processor_benchmark.md)**
     - Tests the FFT and rendering performance of your PC to verify real-time processing limits.
 - **[Settings](widgets/settings.md)**

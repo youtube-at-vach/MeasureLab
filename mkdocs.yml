@@ -112,6 +112,7 @@ plugins:
             ボックスカー平均器: Boxcar Averager
             ユーティリティ: Utilities
             分離ウィンドウラッパー: Detachable Wrapper
+            プロット比較器: Plot Comparer
             プロセッサーベンチマーク: Processor Benchmark
             測定レシピ: Measurement Recipes
             概要: Overview
@@ -193,6 +194,7 @@ nav:
           - ボックスカー平均器: widgets/boxcar_averager.md
       - ユーティリティ:
           - 分離ウィンドウラッパー: widgets/detachable_wrapper.md
+          - プロット比較器: widgets/plot_comparer.md
           - プロセッサーベンチマーク: widgets/processor_benchmark.md
 
   - 測定レシピ:

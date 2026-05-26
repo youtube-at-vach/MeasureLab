@@ -758,8 +758,9 @@ class LockInHarmonicWidget(QWidget):
 
             data = {
                 "format": "MeasureLab_Harmonic_Compensation",
-                "version": "1.0",
+                "version": "1.1",
                 "fundamental_frequency": float(self.module.gen_frequency),
+                "fundamental_amplitude": float(self.module.gen_amplitude),
                 "max_harmonic": int(self.module.max_harmonic),
                 "compensation_coeffs": coeffs_list,
             }

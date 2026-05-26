@@ -58,6 +58,8 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
         self.adjusted_compensation_coeffs = np.zeros(MAX_HARMONICS, dtype=complex)
         self.compensation_file_path = ""
         self.compensation_freq = 0.0
+        self.compensation_relative_mode = False
+        self.compensation_ref_amplitude = 0.5
 
         # DSP State
         self._phase_gen = 0.0
@@ -141,9 +143,22 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
     def update_adjusted_compensation_coeffs(self):
         with self.lock:
             self.adjusted_compensation_coeffs.fill(0.0)
+
+            amp_diff_db = 0.0
+            if self.compensation_relative_mode:
+                curr_fund_db = 20 * np.log10(self.gen_amplitude + 1e-15)
+                ref_fund_db = 20 * np.log10(self.compensation_ref_amplitude + 1e-15)
+                amp_diff_db = curr_fund_db - ref_fund_db
+
             for n in range(1, MAX_HARMONICS):  # 0 is fundamental, 1 is 2nd harmonic (index 1), etc.
                 amp_db = self.compensation_amps_db[n]
                 phase_deg = self.compensation_phases_deg[n]
+
+                if amp_db <= OFF_DB:
+                    continue
+
+                if self.compensation_relative_mode:
+                    amp_db += amp_diff_db
 
                 if amp_db <= OFF_DB:
                     continue
@@ -268,6 +283,12 @@ class ArbitraryHarmonicWidget(QWidget):
         self.chk_comp_enable.toggled.connect(self.on_comp_toggled)
         comp_settings_layout.addWidget(self.chk_comp_enable)
 
+        self.chk_comp_relative = QCheckBox(tr("Relative to Fundamental (dBr)"))
+        self.chk_comp_relative.setChecked(self.module.compensation_relative_mode)
+        self.chk_comp_relative.setEnabled(False)  # Disabled until data is loaded
+        self.chk_comp_relative.toggled.connect(self.on_comp_relative_toggled)
+        comp_settings_layout.addWidget(self.chk_comp_relative)
+
         self.lbl_comp_status = QLabel(tr("No compensation data loaded"))
         self.lbl_comp_status.setWordWrap(True)
         self.lbl_comp_status.setStyleSheet("color: gray;")
@@ -352,6 +373,7 @@ class ArbitraryHarmonicWidget(QWidget):
             self.module.gen_frequency = self.freq_spin.value()
             self.module.gen_amplitude = 10 ** (self.amp_spin.value() / 20.0)
             self.module.gen_phase = self.phase_spin.value()
+        self.module.update_adjusted_compensation_coeffs()
         self.update_plots()
 
     def on_max_harmonic_changed(self, val):
@@ -581,11 +603,17 @@ class ArbitraryHarmonicWidget(QWidget):
                 if 2 <= h <= MAX_HARMONICS:
                     coeffs[h - 1] = complex(item.get("real", 0.0), item.get("imag", 0.0))
 
+            f_amp = data.get("fundamental_amplitude")
+
             with self.module.lock:
                 self.module.compensation_coeffs = coeffs
                 self.module.compensation_freq = f_cal
                 self.module.compensation_file_path = filename
                 self.module.compensation_enabled = True
+                if f_amp is not None:
+                    self.module.compensation_ref_amplitude = float(f_amp)
+                else:
+                    self.module.compensation_ref_amplitude = self.module.gen_amplitude
 
                 self.module.compensation_amps_db.fill(OFF_DB)
                 self.module.compensation_phases_deg.fill(0.0)
@@ -603,6 +631,7 @@ class ArbitraryHarmonicWidget(QWidget):
 
             self.chk_comp_enable.setEnabled(True)
             self.chk_comp_enable.setChecked(True)
+            self.chk_comp_relative.setEnabled(True)
             self.comp_adj_table.setEnabled(True)
             self._rebuild_comp_adj_table()
 
@@ -625,6 +654,12 @@ class ArbitraryHarmonicWidget(QWidget):
         else:
             self.lbl_comp_status.setStyleSheet("color: gray;")
             self.comp_adj_table.setEnabled(False)
+        self.update_plots()
+
+    def on_comp_relative_toggled(self, checked):
+        with self.module.lock:
+            self.module.compensation_relative_mode = checked
+        self.module.update_adjusted_compensation_coeffs()
         self.update_plots()
 
     def update_plots(self):
