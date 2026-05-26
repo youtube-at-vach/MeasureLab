@@ -10,6 +10,7 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 **MeasureLab** provides these tools bundled into a single GUI application. Built with Python and PyQt6, it allows for intuitive high-precision signal generation, analysis, and measurement. This software works with standard audio devices.
 
+
 This project aims to reach more people as an alternative for audio enthusiasts who cannot afford expensive measurement equipment.
 
 ## ✨ Features
