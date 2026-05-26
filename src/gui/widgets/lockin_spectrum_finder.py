@@ -35,6 +35,7 @@ from src.core.config_manager import ConfigManager
 from src.core.localization import tr
 from src.core.sonifier import Sonifier
 from src.measurement_modules.base import MeasurementModule
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 logger = logging.getLogger(__name__)
 
@@ -1101,7 +1102,7 @@ class LockInSpectrumFinderWidget(QWidget):
 
         self.lbl_resolution = QLabel(tr("Resolution:"))
         self.lbl_resolution_info = QLabel("")
-        self.lbl_resolution_info.setStyleSheet("font-family: monospace; font-weight: bold;")
+        self.lbl_resolution_info.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-weight: bold;")
         # Color will be set by apply_theme
         form.addRow(self.lbl_resolution, self.lbl_resolution_info)
 
@@ -1393,7 +1394,7 @@ class LockInSpectrumFinderWidget(QWidget):
             # Blue for light theme (matches Spectrum Analyzer cursor)
             color = "#0000aa"
 
-        self.lbl_resolution_info.setStyleSheet(f"font-family: monospace; color: {color}; font-weight: bold;")
+        self.lbl_resolution_info.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; color: {color}; font-weight: bold;")
 
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""

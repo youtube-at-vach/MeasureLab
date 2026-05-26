@@ -30,6 +30,7 @@ from src.measurement_modules.base import MeasurementModule
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.comparison_manager import ComparisonManager
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 logger = logging.getLogger(__name__)
 
@@ -123,16 +124,16 @@ class PlotComparerWidget(QWidget):
         self.readout_label = QLabel(tr("Move mouse over plot to read values"))
         self.readout_label.setWordWrap(True)
         self.readout_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.readout_label.setStyleSheet("""
-            QLabel {
+        self.readout_label.setStyleSheet(f"""
+            QLabel {{
                 background-color: #2c3e50;
                 color: #ecf0f1;
                 border: 1px solid #1a252f;
                 border-radius: 4px;
                 padding: 6px;
-                font-family: monospace;
+                font-family: {MONOSPACE_FONT_FAMILY};
                 font-size: 11px;
-            }
+            }}
         """)
         plot_v_layout.addWidget(self.readout_label)
 
