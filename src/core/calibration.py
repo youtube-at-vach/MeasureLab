@@ -173,6 +173,13 @@ class CalibrationManager:
 
     def set_input_sensitivity(self, v_per_fs):
         """Sets input sensitivity in Volts (Peak) corresponding to 1.0 FS."""
+        try:
+            v_per_fs = float(v_per_fs)
+        except Exception:
+            raise ValueError("Invalid input sensitivity") from None
+        if not np.isfinite(v_per_fs) or v_per_fs <= 0:
+            raise ValueError("Invalid input sensitivity")
+
         self.input_sensitivity = v_per_fs
         self.save()
 
