@@ -39,14 +39,16 @@ class TestConfigManager(unittest.TestCase):
 
         # Test set_audio_config
         cm.set_audio_config(
-            input_name="In1",
-            output_name="Out1",
-            sample_rate=44100,
-            block_size=512,
-            in_ch="mono",
-            out_ch="stereo",
-            input_hostapi="ALSA",
-            output_hostapi="ALSA",
+            {
+                "input_device": "In1",
+                "output_device": "Out1",
+                "sample_rate": 44100,
+                "block_size": 512,
+                "input_channels": "mono",
+                "output_channels": "stereo",
+                "input_hostapi": "ALSA",
+                "output_hostapi": "ALSA",
+            }
         )
         audio_cfg = cm.get_audio_config()
         self.assertEqual(audio_cfg["input_device"], "In1")
@@ -54,7 +56,18 @@ class TestConfigManager(unittest.TestCase):
 
         # Missing audio dict
         cm.config.pop("audio", None)
-        cm.set_audio_config("In2", "Out2", 48000, 1024, "stereo", "stereo")
+        cm.set_audio_config(
+            {
+                "input_device": "In2",
+                "output_device": "Out2",
+                "sample_rate": 48000,
+                "block_size": 1024,
+                "input_channels": "stereo",
+                "output_channels": "stereo",
+                "input_hostapi": None,
+                "output_hostapi": None,
+            }
+        )
         self.assertEqual(cm.get_audio_config()["input_device"], "In2")
 
     def test_pipewire_jack_resident(self):
@@ -101,7 +114,6 @@ class TestConfigManager(unittest.TestCase):
         cm.config.pop("audio", None)
         cm.set_dithering_bit_depth("24")
         self.assertEqual(cm.get_dithering_bit_depth(), "24")
-
 
     def test_coreaudio_conversion_quality(self):
         cm = self.ConfigManager(config_filename=self.config_path)

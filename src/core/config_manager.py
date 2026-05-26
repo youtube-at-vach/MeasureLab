@@ -8,11 +8,24 @@ import atexit
 import weakref
 from copy import deepcopy
 from pathlib import Path
+from typing import TypedDict
 
 # Use QLocale for robust language detection on all platforms, including macOS
 from PyQt6.QtCore import QLocale
 
 from src.core.utils import resource_path
+
+
+class AudioConfigDict(TypedDict, total=False):
+    input_device: str | None
+    input_hostapi: str | None
+    output_device: str | None
+    output_hostapi: str | None
+    sample_rate: int
+    block_size: int
+    input_channels: str
+    output_channels: str
+
 
 # Default configuration used for initialization and validation
 DEFAULT_CONFIG = {
@@ -326,29 +339,14 @@ class ConfigManager:
         """Returns a dictionary of audio configuration."""
         return self.config.get("audio", self._default_config()["audio"])
 
-    def set_audio_config(
-        self,
-        input_name,
-        output_name,
-        sample_rate,
-        block_size,
-        in_ch,
-        out_ch,
-        input_hostapi=None,
-        output_hostapi=None,
-    ):
+    def set_audio_config(self, audio_config: AudioConfigDict):
         """Updates the audio configuration."""
         if "audio" not in self.config:
             self.config["audio"] = {}
 
-        self.config["audio"]["input_device"] = input_name
-        self.config["audio"]["input_hostapi"] = input_hostapi
-        self.config["audio"]["output_device"] = output_name
-        self.config["audio"]["output_hostapi"] = output_hostapi
-        self.config["audio"]["sample_rate"] = sample_rate
-        self.config["audio"]["block_size"] = block_size
-        self.config["audio"]["input_channels"] = in_ch
-        self.config["audio"]["output_channels"] = out_ch
+        for key, value in audio_config.items():
+            self.config["audio"][key] = value
+
         self.save_config()
 
     def get_pipewire_jack_resident(self) -> bool:
