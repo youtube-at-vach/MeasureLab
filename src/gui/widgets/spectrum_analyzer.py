@@ -1185,7 +1185,12 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 _, peak_mags = self.module.apply_octave_smoothing(freqs, peak_magnitude, fraction)
             else:
                 peak_mags = None
+            compare_freqs = plot_freqs
+            compare_mags = plot_mags
         else:
+            compare_freqs = freqs[1:]
+            compare_mags = magnitude[1:]
+
             # Hybrid Rendering Mode: Switch to RAW mode dynamically when zoomed in
             try:
                 view_range = self.plot_widget.viewRange()
@@ -1247,8 +1252,9 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         plot_freqs_linear = plot_freqs + 1e-12  # Avoid exact 0
 
         # Cache variables for plot comparison
-        self.last_freqs = plot_freqs_linear.copy()
-        self.last_mags = plot_mags.copy()
+        compare_freqs_linear = compare_freqs + 1e-12
+        self.last_freqs = compare_freqs_linear.copy()
+        self.last_mags = compare_mags.copy()
 
         # Handle Dual Mode Plotting
         if self.module.analysis_mode in {"Spectrum", "PSD"} and self.module.channel_mode == "Dual":
