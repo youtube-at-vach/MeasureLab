@@ -1442,8 +1442,8 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 rect = vb.sceneBoundingRect()
                 if rect is not None:
                     self.gd_view.setGeometry(rect)
-        except (RuntimeError, AttributeError, TypeError):
-            pass
+        except (RuntimeError, AttributeError, TypeError) as e:
+            logger.debug(f"Error during view update: {e}")
 
     def update_coh_views(self):
         try:
@@ -1457,8 +1457,8 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 rect = vb.sceneBoundingRect()
                 if rect is not None:
                     self.coh_view.setGeometry(rect)
-        except (RuntimeError, AttributeError, TypeError):
-            pass
+        except (RuntimeError, AttributeError, TypeError) as e:
+            logger.debug(f"Error during view update: {e}")
 
     def on_ir_snr_result(self, snr):
         self.ir_snr_label.setText(tr("IR SNR: {0:.1f} dB").format(snr))
