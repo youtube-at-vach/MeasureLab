@@ -71,6 +71,42 @@ class TestAudioCalc:
         with pytest.raises(ValueError, match="Invalid sample rate"):
             AudioCalc.design_aes17_filter(-100)
 
+    def test_lowpass_filter_basic(self):
+        sr = 48000
+        t = np.arange(sr) / sr
+        s_low = np.sin(2 * np.pi * 100 * t)
+        s_high = np.sin(2 * np.pi * 10000 * t)
+        signal = s_low + s_high
+
+        filtered = AudioCalc.lowpass_filter(signal, sr, cutoff=1000.0)
+        assert filtered.shape == signal.shape
+
+        amp_low = np.sqrt(2 * np.mean(filtered**2))
+        np.testing.assert_allclose(amp_low, 1.0, rtol=1e-2)
+
+    def test_lowpass_filter_empty(self):
+        signal = np.array([])
+        filtered = AudioCalc.lowpass_filter(signal, 48000, cutoff=1000.0)
+        assert len(filtered) == 0
+
+    def test_highpass_filter_basic(self):
+        sr = 48000
+        t = np.arange(sr) / sr
+        s_low = np.sin(2 * np.pi * 100 * t)
+        s_high = np.sin(2 * np.pi * 10000 * t)
+        signal = s_low + s_high
+
+        filtered = AudioCalc.highpass_filter(signal, sr, cutoff=1000.0)
+        assert filtered.shape == signal.shape
+
+        amp_high = np.sqrt(2 * np.mean(filtered**2))
+        np.testing.assert_allclose(amp_high, 1.0, rtol=1e-2)
+
+    def test_highpass_filter_empty(self):
+        signal = np.array([])
+        filtered = AudioCalc.highpass_filter(signal, 48000, cutoff=1000.0)
+        assert len(filtered) == 0
+
     def test_optimize_frequency_empty_signal(self):
         result = AudioCalc.optimize_frequency(np.array([]), 48000, 1000.0)
         assert result == 1000.0
