@@ -273,13 +273,8 @@ class ConfigManager:
         config["screenshot"]["output_dir"] = self._get_default_screenshot_dir()
         return config
 
-    def _merge_with_defaults(self, loaded_config):
-        if not isinstance(loaded_config, dict):
-            self.logger.warning("Config file root is not a dict; falling back to defaults.")
-            return self._default_config()
-
-        config = self._default_config()
-
+    def _merge_audio_config(self, config: dict, loaded_config: dict) -> None:
+        """Merges audio configuration settings."""
         audio_loaded = loaded_config.get("audio", {})
         if isinstance(audio_loaded, dict):
             for key, default_value in config["audio"].items():
@@ -287,6 +282,25 @@ class ConfigManager:
                 config["audio"][key] = value
         else:
             self.logger.warning("'audio' section is missing or invalid; using defaults.")
+
+    def _merge_screenshot_config(self, config: dict, loaded_config: dict) -> None:
+        """Merges screenshot configuration settings."""
+        screenshot_loaded = loaded_config.get("screenshot", {})
+        if isinstance(screenshot_loaded, dict):
+            output_dir = screenshot_loaded.get("output_dir")
+            if output_dir:
+                config["screenshot"]["output_dir"] = str(output_dir)
+        else:
+            self.logger.warning("'screenshot' section is missing or invalid; using defaults.")
+
+    def _merge_with_defaults(self, loaded_config):
+        if not isinstance(loaded_config, dict):
+            self.logger.warning("Config file root is not a dict; falling back to defaults.")
+            return self._default_config()
+
+        config = self._default_config()
+
+        self._merge_audio_config(config, loaded_config)
 
         language = loaded_config.get("language")
         if isinstance(language, str) and language:
@@ -296,13 +310,7 @@ class ConfigManager:
         if isinstance(theme, str) and theme:
             config["theme"] = theme
 
-        screenshot_loaded = loaded_config.get("screenshot", {})
-        if isinstance(screenshot_loaded, dict):
-            output_dir = screenshot_loaded.get("output_dir")
-            if output_dir:
-                config["screenshot"]["output_dir"] = str(output_dir)
-        else:
-            self.logger.warning("'screenshot' section is missing or invalid; using defaults.")
+        self._merge_screenshot_config(config, loaded_config)
 
         return config
 
