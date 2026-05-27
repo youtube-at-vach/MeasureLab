@@ -2,17 +2,6 @@
 
 Processor Benchmark is a tool to test the FFT and UI rendering performance of your PC for real-time measurements, verifying safe processing limits.
 
-## ☕ Coffee Break: What does it mean for a PC to "Run Out of Breath"?
-
-Audio measurement is an extremely demanding task that involves continuously calculating (FFT) and drawing on the screen the stream of audio data flowing in real-time.
-Let's compare this to a **"Conveyor Belt Sushi Kitchen"**.
-
-* **Sampling Rate (Audio Data)**: These are the "plates of sushi" coming down the conveyor belt one after another. If the rate is high, like 192kHz, the plates flow at a furious speed.
-* **FFT Size (Bucket Size)**: This is the number of "how many plates of sushi the chef gathers at once before calculating" to process them at the same time. A larger size allows for higher-definition analysis, but the calculation takes longer.
-* **Processing Dropouts**: This is the state where the chef's (PC's CPU) calculation speed cannot keep up, and the sushi spills off the conveyor belt. When this happens, the measurement data is interrupted, and accurate results cannot be obtained.
-
-This widget is a tool to test "up to what speed can your PC (the chef) handle the sushi without dropping it?" It is a very important "health check" to prevent the screen from stuttering or data from skipping during measurement!
-
 ## Primary Uses
 
 * Evaluate the maximum FFT size your PC can process in real-time.
