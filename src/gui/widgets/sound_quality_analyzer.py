@@ -1150,8 +1150,7 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         if chunk.ndim == 1:
             # Mono to all ch
-            for c in range(out_ch):
-                outdata[:n, c] = chunk
+            outdata[:n, :] = chunk[:, np.newaxis]
         else:
             # Stereo input
             in_ch = chunk.shape[1]
