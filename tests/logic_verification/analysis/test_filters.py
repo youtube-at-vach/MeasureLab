@@ -175,22 +175,26 @@ def test_lowpass_filter_edge_cases():
     # Should not crash
 
 
-def test_highpass_filter_attenuation():
+@pytest.mark.parametrize(
+    "cutoff,low_freq,high_freq",
+    [
+        (1000.0, 100.0, 5000.0),
+        (50.0, 5.0, 250.0),
+        (10000.0, 1000.0, 20000.0),
+    ],
+)
+def test_highpass_filter_attenuation(cutoff, low_freq, high_freq):
     """Verify that frequencies below the cutoff are attenuated."""
     sampling_rate = 48000
     duration = 0.1
     t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
 
-    # Low freq: 100 Hz (well below 1000 Hz cutoff)
-    low_freq_signal = np.sin(2 * np.pi * 100 * t)
-    # High freq: 5000 Hz (well above 1000 Hz cutoff)
-    high_freq_signal = np.sin(2 * np.pi * 5000 * t)
+    low_freq_signal = np.sin(2 * np.pi * low_freq * t)
+    high_freq_signal = np.sin(2 * np.pi * high_freq * t)
 
-    # Filter with 1000 Hz cutoff
-    filtered_low = AudioCalc.highpass_filter(low_freq_signal, sampling_rate, cutoff=1000.0)
-    filtered_high = AudioCalc.highpass_filter(high_freq_signal, sampling_rate, cutoff=1000.0)
+    filtered_low = AudioCalc.highpass_filter(low_freq_signal, sampling_rate, cutoff=cutoff)
+    filtered_high = AudioCalc.highpass_filter(high_freq_signal, sampling_rate, cutoff=cutoff)
 
-    # Check RMS values
     trim = int(sampling_rate * 0.01)
 
     def get_rms(sig):
@@ -202,9 +206,7 @@ def test_highpass_filter_attenuation():
     orig_rms_low = np.sqrt(np.mean(low_freq_signal**2))
     orig_rms_high = np.sqrt(np.mean(high_freq_signal**2))
 
-    # Expect significant attenuation for low freq
     assert rms_low < orig_rms_low * 0.1, f"Low frequency not attenuated enough: {rms_low} vs {orig_rms_low}"
-    # Expect preservation for high freq
     assert rms_high > orig_rms_high * 0.9, f"High frequency attenuated too much: {rms_high} vs {orig_rms_high}"
 
 
@@ -237,3 +239,28 @@ def test_highpass_filter_edge_cases():
     filtered = AudioCalc.highpass_filter(signal, sampling_rate, cutoff=-100.0)
     assert len(filtered) == len(signal)
     # Should not crash
+
+
+def test_highpass_filter_dc_removal():
+    """Verify that a highpass filter successfully removes a DC offset."""
+    sampling_rate = 48000
+    duration = 0.5
+    t = np.linspace(0, duration, int(sampling_rate * duration), endpoint=False)
+
+    # 1 kHz sine wave + DC offset of 5.0
+    clean_signal = np.sin(2 * np.pi * 1000 * t)
+    dc_offset = 5.0
+    signal_with_dc = clean_signal + dc_offset
+
+    filtered_signal = AudioCalc.highpass_filter(signal_with_dc, sampling_rate, cutoff=20.0)
+
+    # Calculate the mean of the signals (excluding the initial transient)
+    trim = int(sampling_rate * 0.05)  # Ignore first 50ms
+
+    original_mean = np.mean(signal_with_dc[trim:])
+    filtered_mean = np.mean(filtered_signal[trim:])
+
+    assert abs(original_mean - dc_offset) < 0.1, (
+        f"Original signal mean expected to be near {dc_offset}, got {original_mean}"
+    )
+    assert abs(filtered_mean) < 0.1, f"Filtered signal mean expected to be near 0.0, got {filtered_mean}"
