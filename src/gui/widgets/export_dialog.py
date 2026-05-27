@@ -1,4 +1,5 @@
 import os
+import re
 from typing import List
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -306,7 +307,7 @@ class ExportSettingsDialog(QDialog):
             success_count = 0
             for t in traces_to_export:
                 # Safe name logic to remove symbols that are invalid in filenames
-                safe_name = "".join(c for c in t.name if c.isalnum() or c in (" ", "_", "-")).rstrip()
+                safe_name = re.sub(r"[^\w \-]", "", t.name).rstrip()
                 safe_name = safe_name.replace(" ", "_")
                 filename = f"{safe_name}{exporter.default_extension}"
                 full_path = os.path.join(dest_path, filename)
