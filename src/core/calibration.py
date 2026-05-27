@@ -346,15 +346,17 @@ class CalibrationManager:
             return 0.0, 0.0
 
         # If out of range, clamp to nearest
-        if freq <= self.frequency_map[0][0]:
-            return self.frequency_map[0][1], self.frequency_map[0][2]
-        if freq >= self.frequency_map[-1][0]:
-            return self.frequency_map[-1][1], self.frequency_map[-1][2]
+        is_scalar = np.isscalar(freq)
+        freq_arr = np.atleast_1d(freq)
 
         # Use cached numpy arrays for interpolation
-        mag_corr = np.interp(freq, self._freq_cache, self._mag_cache)
-        phase_corr = np.interp(freq, self._freq_cache, self._phase_cache)
+        # np.interp automatically clamps out-of-range values if left/right are not provided,
+        # but the default behavior of np.interp uses the end values of fp.
+        mag_corr = np.interp(freq_arr, self._freq_cache, self._mag_cache)
+        phase_corr = np.interp(freq_arr, self._freq_cache, self._phase_cache)
 
+        if is_scalar:
+            return float(mag_corr[0]), float(phase_corr[0])
         return mag_corr, phase_corr
 
     def _update_map_cache(self):

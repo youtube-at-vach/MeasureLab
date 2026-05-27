@@ -191,3 +191,35 @@ def test_set_output_gain_edge_cases(calibration_manager):
     # Invalid NaN input
     with pytest.raises(ValueError, match="Invalid output gain"):
         calibration_manager.set_output_gain(np.nan)
+
+
+def test_get_frequency_correction_array(calibration_manager, temp_map_path):
+    """Test get_frequency_correction with numpy array inputs."""
+    map_data = [[10.0, -1.0, 45.0], [100.0, 0.0, 0.0], [1000.0, 1.0, -45.0]]
+    calibration_manager.save_frequency_map(temp_map_path, map_data)
+
+    freqs = np.array([5.0, 100.0, 550.0, 2000.0])
+    mag, phase = calibration_manager.get_frequency_correction(freqs)
+
+    assert np.allclose(mag, np.array([-1.0, 0.0, 0.5, 1.0]))
+    assert np.allclose(phase, np.array([45.0, 0.0, -22.5, -45.0]))
+
+
+def test_get_frequency_correction_scalar(calibration_manager, temp_map_path):
+    """Test get_frequency_correction with scalar inputs."""
+    map_data = [[10.0, -1.0, 45.0], [100.0, 0.0, 0.0], [1000.0, 1.0, -45.0]]
+    calibration_manager.save_frequency_map(temp_map_path, map_data)
+
+    # Scalar input returns floats
+    mag, phase = calibration_manager.get_frequency_correction(550.0)
+    assert isinstance(mag, float)
+    assert isinstance(phase, float)
+    assert np.isclose(mag, 0.5)
+    assert np.isclose(phase, -22.5)
+
+
+def test_get_frequency_correction_empty_map(calibration_manager):
+    """Test get_frequency_correction when no map is loaded."""
+    mag, phase = calibration_manager.get_frequency_correction(100.0)
+    assert mag == 0.0
+    assert phase == 0.0
