@@ -109,8 +109,8 @@ class VirtualStream:
                 # So we are good.
 
             except Exception as e:
-                self.logger.error(f"VirtualStream Error: {e}")
-                # Don't crash thread, just log
+                self.logger.error(f"VirtualStream Error: {e}", exc_info=True)
+                # Don\'t crash thread, just log
                 pass
 
 

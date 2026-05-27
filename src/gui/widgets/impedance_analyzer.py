@@ -200,7 +200,7 @@ class ImpedanceAnalyzer(MeasurementModule):
         while not self._buffer_ready_event.is_set():
             if cancel_event and cancel_event.is_set():
                 break
-            self._buffer_ready_event.wait()
+            self._buffer_ready_event.wait(0.1)
 
     @property
     def name(self) -> str:

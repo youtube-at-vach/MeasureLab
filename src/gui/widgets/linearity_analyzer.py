@@ -331,7 +331,7 @@ class LinearityAnalyzer(MeasurementModule):
         while not self._buffer_ready_event.is_set():
             if cancel_event and cancel_event.is_set():
                 break
-            self._buffer_ready_event.wait()
+            self._buffer_ready_event.wait(0.1)
 
     def get_latest_buffer_into(self, out: np.ndarray) -> None:
         """Writes the current buffer contents ordered chronologically into `out`."""
