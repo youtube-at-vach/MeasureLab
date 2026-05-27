@@ -339,7 +339,10 @@ class LockInAmplifier(MeasurementModule):
         # Coherence = magnitude of component at ref_freq / total peak level
         # Use the same coherent projection used by the lock-in detector.
         t_coh = np.arange(len(ref_trimmed)) / self.audio_engine.sample_rate
-        osc_coh = np.exp(-1j * 2 * np.pi * self.ref_freq * t_coh)
+        osc_coh = np.empty_like(t_coh, dtype=np.complex128)
+        phase_coh = -2 * np.pi * self.ref_freq * t_coh
+        np.cos(phase_coh, out=osc_coh.real)
+        np.sin(phase_coh, out=osc_coh.imag)
         ref_component = np.abs(2 * np.mean(ref_trimmed * osc_coh))
         ref_rms_val = np.sqrt(np.mean(ref_trimmed**2))
         ref_peak_val = ref_rms_val * np.sqrt(2)
@@ -384,7 +387,10 @@ class LockInAmplifier(MeasurementModule):
 
         # Build a reference phasor from the FUNDAMENTAL component of the reference channel.
         # For harmonic measurements, the reference channel often contains only the fundamental.
-        osc_ref = np.exp(-1j * 2 * np.pi * ref_freq * t)
+        osc_ref = np.empty_like(t, dtype=np.complex128)
+        phase_ref = -2 * np.pi * ref_freq * t
+        np.cos(phase_ref, out=osc_ref.real)
+        np.sin(phase_ref, out=osc_ref.imag)
         ref_c_fund = 2 * np.mean(ref * w * osc_ref) / w_mean
 
         # Exact Phase tracking for fractional harmonics:
@@ -416,10 +422,13 @@ class LockInAmplifier(MeasurementModule):
 
         # The true phase of the fractional harmonic is scaled perfectly:
         fractional_phase = self._unwrapped_ref_phase * (harmonic_num / harmonic_den)
-        ref_fractional_phasor = np.exp(1j * fractional_phase)
+        ref_fractional_phasor = np.cos(fractional_phase) + 1j * np.sin(fractional_phase)
 
         # Complex signal amplitude (peak) at the DEMOD frequency (fundamental or harmonic)
-        osc_demod = np.exp(-1j * 2 * np.pi * demod_freq * t)
+        osc_demod = np.empty_like(t, dtype=np.complex128)
+        phase_demod = -2 * np.pi * demod_freq * t
+        np.cos(phase_demod, out=osc_demod.real)
+        np.sin(phase_demod, out=osc_demod.imag)
         sig_c = 2 * np.mean(sig * w * osc_demod) / w_mean
 
         # Remove reference phase at the requested harmonic.
