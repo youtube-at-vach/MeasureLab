@@ -175,8 +175,7 @@ class Sonifier:
             else:
                 outdata[:, 0] = wave
         else:  # Both
-            for c in range(channels):
-                outdata[:, c] = wave
+            outdata[:] = wave[:, None]
 
         # Update state for next block
         with self.lock:
