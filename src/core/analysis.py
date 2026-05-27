@@ -415,18 +415,32 @@ class AudioCalc:
         # but 16k is reasonable.
 
         base_t = np.arange(chunk_size) * dt
-        E_base = np.exp(1j * (omega[:, None] * base_t[None, :]))
 
-        def _compute_chunk(i):
+        # Optimization: Use Euler's formula and pre-allocated arrays
+        # instead of np.exp(1j * phase) to avoid expensive complex math and reallocation
+        phase = omega[:, None] * base_t[None, :]
+        E_base = np.empty(phase.shape, dtype=np.complex128)
+        np.cos(phase, out=E_base.real)
+        np.sin(phase, out=E_base.imag)
+
+        acc_v_complex = np.zeros(K, dtype=np.complex128)
+        rot_buffer = np.empty(K, dtype=np.complex128)
+
+        for i in range(0, N, chunk_size):
             end = min(i + chunk_size, N)
             current_len = end - i
             sig_chunk = signal[i:end]
-            E_chunk = E_base if current_len == chunk_size else E_base[:, :current_len]
-            return (E_chunk @ sig_chunk) * np.exp(1j * omega * t[i])
 
-        acc_v_complex = np.zeros(K, dtype=np.complex128)
-        for i in range(0, N, chunk_size):
-            acc_v_complex += _compute_chunk(i)
+            if current_len == chunk_size:
+                dot_prod = E_base @ sig_chunk
+            else:
+                dot_prod = E_base[:, :current_len] @ sig_chunk
+
+            rot_phase = omega * t[i]
+            np.cos(rot_phase, out=rot_buffer.real)
+            np.sin(rot_phase, out=rot_buffer.imag)
+
+            acc_v_complex += dot_prod * rot_buffer
 
         sig_s = acc_v_complex.imag
         sig_c = acc_v_complex.real

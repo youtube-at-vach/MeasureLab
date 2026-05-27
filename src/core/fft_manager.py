@@ -23,7 +23,7 @@ except ImportError:
 # Common FFT sizes to optimize during startup
 WARMUP_SIZES = [256, 512, 1024, 2048, 4096, 8192, 16384, 24000, 32768, 48000, 65536]
 # Medium sizes for standard exhaustive optimization (on-demand)
-MEDIUM_SIZES = [131072, 262144]
+MEDIUM_SIZES = [131072, 262144, 524288]
 # Huge sizes that take very long to optimize (optional)
 HUGE_SIZES = [1048576, 2097152, 4194304]
 
