@@ -223,8 +223,8 @@ class CalibrationManager:
         try:
             self.lockin_gain_offset = float(offset)
             self.save()
-        except (ValueError, TypeError):
-            pass
+        except (ValueError, TypeError) as e:
+            self.logger.warning("Invalid lock-in gain offset provided: %s", e)
 
     def set_last_profile(self, name):
         """Sets the last selected profile name."""
