@@ -599,7 +599,7 @@ class PlotComparerWidget(QWidget):
     def update_y2_views(self):
         try:
             self.y2_view.setGeometry(self.plot_item.vb.sceneBoundingRect())
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
     def toggle_controls(self):
@@ -1250,7 +1250,7 @@ class PlotComparerWidget(QWidget):
                         color = settings.get("color", "#ffffff")
                         readout_parts.append(f'<span style="color: {color};">● T{idx}: {interp_y:.2f} {unit}</span>')
                         trace_y_vals.append(interp_y)
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
 
                 # 2. Secondary Y2 data
@@ -1263,7 +1263,7 @@ class PlotComparerWidget(QWidget):
                         readout_parts.append(
                             f'<span style="color: {color};">● T{idx} ({tr("Phase")}): {interp_y2:.1f} {unit2}</span>'
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
 
             delta_str = ""

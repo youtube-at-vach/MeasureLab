@@ -107,7 +107,7 @@ def setup_app():
     app.setApplicationName("MeasureLab")
     try:
         app.setApplicationDisplayName("MeasureLab")
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     return app
@@ -148,7 +148,7 @@ def main():
             splash_rect = splash.frameGeometry()
             splash_rect.moveCenter(geom.center())
             splash.move(splash_rect.topLeft())
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     splash.showMessage(
         f"{tr('Loading...')}\n{tr('Initializing application...')}",
@@ -161,7 +161,7 @@ def main():
     app.setApplicationName("MeasureLab")
     try:
         app.setApplicationDisplayName("MeasureLab")
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     enable_experimental = "--experimental" in sys.argv

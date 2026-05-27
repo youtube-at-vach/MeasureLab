@@ -344,12 +344,12 @@ class TimecodeMonitor(MeasurementModule):
                             if input_adc_epoch is not None:
                                 try:
                                     ch.last_input_latency_sec = float(current_t_epoch) - float(input_adc_epoch)
-                                except Exception:
+                                except Exception:  # noqa: S110
                                     pass
                             if output_dac_epoch is not None:
                                 try:
                                     ch.last_output_latency_sec = float(output_dac_epoch) - float(current_t_epoch)
-                                except Exception:
+                                except Exception:  # noqa: S110
                                     pass
 
                             frame_t_epoch = float(now)
@@ -678,7 +678,7 @@ class TimecodeMonitor(MeasurementModule):
         if cid is not None:
             try:
                 self.audio_engine.unregister_callback(cid)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         self.callback_id = None
@@ -825,7 +825,7 @@ class TimecodeMonitor(MeasurementModule):
         # Apply input delay compensation (if any)
         try:
             total_frames += int(ch.input_offset_frames)
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
         mem = self.jam_memories[s]
@@ -1388,7 +1388,7 @@ class TimecodeMonitorWidget(QWidget):
         # Ensure we don't keep decoding/generating LTC after the widget is closed.
         try:
             self._set_monitor_running(False)
-        except Exception:
+        except Exception:  # noqa: S110
             pass
         return super().closeEvent(event)
 
