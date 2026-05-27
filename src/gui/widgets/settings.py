@@ -1874,8 +1874,8 @@ class SettingsWidget(QWidget):
                         "output_hostapi": out_hostapi,
                     }
                 )
-        except ValueError:
-            pass
+        except ValueError as e:
+            self.logger.debug(f"ValueError in on_sr_changed: {e}")
 
     def on_bs_changed(self, text):
         try:
@@ -1907,8 +1907,8 @@ class SettingsWidget(QWidget):
                         "output_hostapi": out_hostapi,
                     }
                 )
-        except ValueError:
-            pass
+        except ValueError as e:
+            self.logger.debug(f"ValueError in on_bs_changed: {e}")
 
     def on_buffer_level_changed(self):
         level = self.buffer_level_combo.currentData()
