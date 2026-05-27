@@ -148,21 +148,20 @@ class TestLocalizationManager(unittest.TestCase):
 
             self.assertEqual(manager.get("missing"), "missing")
 
-    def test_tr_function(self):
-        """Test the global tr helper function."""
-        # tr uses the global _loc_manager instance.
-        # We need to ensure that global instance has our translations.
-        # But _loc_manager is instantiated at import time.
-        # We can inject translations into it.
-        from src.core.localization import _loc_manager
+    @patch("src.core.localization.get_manager")
+    def test_tr_delegates_to_manager(self, mock_get_manager):
+        """Test that tr() calls the localization manager correctly."""
+        from unittest.mock import MagicMock
 
-        original_translations = _loc_manager.translations
-        try:
-            _loc_manager.translations = {"hello": "world"}
-            self.assertEqual(tr("hello"), "world")
-            self.assertEqual(tr("missing"), "missing")
-        finally:
-            _loc_manager.translations = original_translations
+        mock_manager = MagicMock()
+        mock_manager.get.return_value = "translated_value"
+        mock_get_manager.return_value = mock_manager
+
+        result = tr("test_key", default="test_default")
+
+        mock_get_manager.assert_called_once()
+        mock_manager.get.assert_called_once_with("test_key", "test_default")
+        self.assertEqual(result, "translated_value")
 
     def test_get_manager_function(self):
         """Test the get_manager helper function."""

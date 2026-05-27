@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, MagicMock
 
 from src.core.localization import LocalizationManager, tr, get_manager
 
@@ -113,20 +113,22 @@ class TestLocalizationManager(unittest.TestCase):
         # Missing key, with default
         self.assertEqual(manager.get("missing_key", "Default Value"), "Default Value")
 
-    def test_global_tr_function(self):
-        """Test the global tr() shortcut uses the singleton manager properly."""
-        from src.core.localization import _loc_manager
+    @patch("src.core.localization.get_manager")
+    def test_global_tr_function(self, mock_get_manager):
+        """Test the global tr() shortcut delegates to the manager properly."""
+        from unittest.mock import MagicMock
 
-        # Save state
-        old_translations = _loc_manager.translations
+        mock_manager = MagicMock()
+        mock_manager.get.side_effect = lambda k, d=None: (
+            "test_value" if k == "test_key" else (d if d is not None else k)
+        )
+        mock_get_manager.return_value = mock_manager
 
-        try:
-            _loc_manager.translations = {"test_key": "test_value"}
-            self.assertEqual(tr("test_key"), "test_value")
-            self.assertEqual(tr("nonexistent"), "nonexistent")
-            self.assertEqual(tr("nonexistent", "fallback"), "fallback")
-        finally:
-            _loc_manager.translations = old_translations
+        self.assertEqual(tr("test_key"), "test_value")
+        self.assertEqual(tr("nonexistent"), "nonexistent")
+        self.assertEqual(tr("nonexistent", "fallback"), "fallback")
+
+        self.assertEqual(mock_get_manager.call_count, 3)
 
     def test_get_manager_function(self):
         """Test the get_manager() global shortcut."""
@@ -134,9 +136,13 @@ class TestLocalizationManager(unittest.TestCase):
 
         self.assertIs(get_manager(), _loc_manager)
 
-    @patch("src.core.localization._loc_manager.get", side_effect=Exception("Mocked error"))
-    def test_tr_exception_propagation(self, mock_get):
+    @patch("src.core.localization.get_manager")
+    def test_tr_exception_propagation(self, mock_get_manager):
         """Test that exceptions in the manager are propagated by the tr() shortcut."""
+        mock_manager = MagicMock()
+        mock_manager.get.side_effect = Exception("Mocked error")
+        mock_get_manager.return_value = mock_manager
+
         from src.core.localization import tr
 
         with self.assertRaises(Exception) as context:
