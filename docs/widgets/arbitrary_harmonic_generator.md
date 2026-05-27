@@ -20,6 +20,7 @@ Arbitrary Harmonic Generator は、基本周波数と複数（最大50次まで�
 このモジュールの核となる機能は、個々の高調波を調整する機能です。
 
 * **Compensation Adjustments (dB)**: 基本波に対する各高調波の振幅を微調整します。
+* **Relative to Fundamental (dBr)**: 各高調波の補償調整を基本波の振幅に対する相対値（dBr）で行うか、絶対値で行うかを切り替えます。
 * **Phase Adjustments (deg)**: 各高調波の位相オフセットを調整します。
 * **Enable/Disable**: チェックボックスを使用して、特定の高調波のオン/オフを切り替えることができます。
 

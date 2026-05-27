@@ -10,6 +10,7 @@ To help visualize differences between measurements, it features powerful compari
 
 * **Hierarchical Trace Management (Tree View)**
     * Displays imported traces in a structured tree. You can easily rename a trace by double-clicking its name.
+    * **Trace Customization**: Adjust line width and choose custom colors for individual traces to enhance distinction.
     * Allows you to toggle the visibility of each trace as a whole, or toggle individual components separately (such as primary Y1 data or secondary Y2 phase/distortion data).
 * **Powerful Alignment and Adjustments**
     * **Gain Offset (dB)**: Allows you to manually apply a vertical offset to a trace's amplitude, making it easy to align curves visually.

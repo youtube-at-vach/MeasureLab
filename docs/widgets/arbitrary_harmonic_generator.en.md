@@ -20,6 +20,7 @@ This is particularly useful for generating test signals with specific distortion
 The core feature of this module is the ability to adjust individual harmonics.
 
 * **Compensation Adjustments (dB)**: Fine-tune the amplitude of each harmonic relative to the fundamental.
+* **Relative to Fundamental (dBr)**: Toggle whether the compensation adjustments are absolute or relative to the fundamental amplitude.
 * **Phase Adjustments (deg)**: Adjust the phase offset of each harmonic.
 * **Enable/Disable**: You can toggle specific harmonics on or off using checkboxes.
 

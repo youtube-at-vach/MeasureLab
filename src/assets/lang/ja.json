@@ -1117,6 +1117,7 @@
     "Refresh Devices": "デバイス更新",
     "Regenerate Optimization": "最適化を再生成",
     "Relative (Gain)": "相対 (ゲイン)",
+    "Relative to Fundamental (dBr)": "基本波に対する相対値 (dBr)",
     "Rename Trace": "トレース名の変更",
     "Render Actions": "レンダーアクション",
     "Render Test View": "描画テストビュー",
