@@ -1117,6 +1117,7 @@
     "Refresh Devices": "장치 새로 고침",
     "Regenerate Optimization": "최적화 재생성",
     "Relative (Gain)": "상대 (게인)",
+    "Relative to Fundamental (dBr)": "기본파에 대한 상대값 (dBr)",
     "Rename Trace": "트레이스 이름 바꾸기",
     "Render Actions": "Render Actions",
     "Render Test View": "렌더링 테스트 뷰",
