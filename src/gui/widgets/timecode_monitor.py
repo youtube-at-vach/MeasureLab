@@ -1,4 +1,5 @@
 import itertools
+import logging
 import math
 import threading
 import time
@@ -36,6 +37,9 @@ from src.core.localization import tr
 from src.core.ltc import LTCDecoder, LTCEncoder
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -930,8 +934,8 @@ class TimecodeMonitor(MeasurementModule):
         final_total_frames = int(f_last)
         try:
             final_total_frames += int(ch.input_offset_frames)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to apply input delay compensation: {e}")
 
         mem = self.jam_memories[s]
         mem.valid = True
