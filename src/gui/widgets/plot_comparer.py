@@ -1147,12 +1147,12 @@ class PlotComparerWidget(QWidget):
         # Scale Y2 data automatically based on the visible range
         try:
             self.y2_view.autoRange(axis=pg.ViewBox.YAxis)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to autoRange Y2: {e}")
         try:
             self.on_range_changed()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed in on_range_changed during sync_y2_range: {e}")
 
     def on_mouse_moved(self, pos):
         if not self.curve_items:
