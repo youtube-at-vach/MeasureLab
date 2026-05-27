@@ -246,13 +246,13 @@ class RecorderPlayer(MeasurementModule):
         if obj is not None:
             try:
                 obj.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to close temp obj: {e}")
         if filepath and os.path.exists(filepath):
             try:
                 os.remove(filepath)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug(f"Failed to remove temp file: {e}")
 
     def cleanup(self):
         """
