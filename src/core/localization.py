@@ -59,7 +59,8 @@ _loc_manager = LocalizationManager()
 
 
 def tr(key, default=None):
-    return _loc_manager.get(key, default)
+    """Helper to get a translated string from the global manager."""
+    return get_manager().get(key, default)
 
 
 def get_manager():
