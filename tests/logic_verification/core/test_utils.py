@@ -87,6 +87,30 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(format_si(val, "s", sig_figs=4), "123.5 ns")
         self.assertEqual(format_si(val, "s", sig_figs=5), "123.46 ns")
 
+    def test_amplitude_to_linear_unknown_unit(self):
+        from src.core import utils
+
+        self.assertEqual(utils.amplitude_to_linear(1.0, "UnknownUnit"), 0.0)
+
+    def test_linear_to_amplitude_unknown_unit(self):
+        from src.core import utils
+
+        self.assertEqual(utils.linear_to_amplitude(1.0, "UnknownUnit"), 0.0)
+
+    def test_format_si_rounding_spillover_exp3_24(self):
+        from src.core.utils import format_si
+
+        # exp3 >= 24 case
+        # scaled * 10^24 >= 1000 => val = 1000 * 10^24 = 1e27
+        self.assertEqual(format_si(1e27, "Hz"), "1000 YHz")
+
+    def test_format_si_rounding_spillover_exp3_negative(self):
+        from src.core.utils import format_si
+        # 999.95e-6 => exp3 = -6. rounds to 1000. increments to -3.
+        # exp3 = -3 is < 0, triggering line 66.
+
+        self.assertEqual(format_si(999.95e-6, "Hz", sig_figs=4), "1 mHz")
+
     def test_amplitude_to_linear(self):
         # Linear (0-1) / Amplitude
         import numpy as np
@@ -117,29 +141,32 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.isclose(utils.amplitude_to_linear(2.0, "Linear (0-1)"), 1.0))
         self.assertTrue(np.isclose(utils.amplitude_to_linear(-0.5, "Linear (0-1)"), 0.0))
 
-    def test_linear_to_amplitude(self):
+    def test_linear_to_amplitude_parameterized(self):
         import numpy as np
         from src.core import utils
 
-        # Linear (0-1) / Amplitude
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(0.5, "Linear (0-1)"), 0.5))
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(0.5, "Amplitude"), 0.5))
+        # Test cases for linear_to_amplitude parameterized mapping (amp_linear, unit, gain, crest_factor, expected)
+        test_cases = [
+            (0.5, "Linear (0-1)", 1.0, np.sqrt(2), 0.5),
+            (0.5, "Amplitude", 1.0, np.sqrt(2), 0.5),
+            (1.0, "dBFS", 1.0, np.sqrt(2), 0.0),
+            (0.1, "dBFS", 1.0, np.sqrt(2), -20.0),
+            (1.0, "dBV", np.sqrt(2), np.sqrt(2), 0.0),
+            (0.1, "dBV", np.sqrt(2), np.sqrt(2), -20.0),
+            (1.0, "dBu", 0.7746 * np.sqrt(2), np.sqrt(2), 0.0),
+            (0.1, "dBu", 0.7746 * np.sqrt(2), np.sqrt(2), -20.0),
+            (1.0, "Vrms", np.sqrt(2), np.sqrt(2), 1.0),
+            (0.5, "Vrms", np.sqrt(2), np.sqrt(2), 0.5),
+            (1.0, "Vpeak", 1.0, np.sqrt(2), 1.0),
+            (0.5, "Vpeak", 1.0, np.sqrt(2), 0.5),
+        ]
 
-        # dBFS
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "dBFS"), 0.0))
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(0.1, "dBFS"), -20.0, atol=1e-5))
-
-        # dBV
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "dBV", gain=np.sqrt(2)), 0.0, atol=1e-5))
-
-        # dBu
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "dBu", gain=0.7746 * np.sqrt(2)), 0.0, atol=1e-5))
-
-        # Vrms
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "Vrms", gain=np.sqrt(2)), 1.0))
-
-        # Vpeak
-        self.assertTrue(np.isclose(utils.linear_to_amplitude(1.0, "Vpeak", gain=1.0), 1.0))
+        for amp_linear, unit, gain, crest_factor, expected in test_cases:
+            with self.subTest(unit=unit, amp_linear=amp_linear, gain=gain, crest_factor=crest_factor):
+                result = utils.linear_to_amplitude(amp_linear, unit, gain, crest_factor)
+                self.assertTrue(
+                    np.isclose(result, expected, atol=1e-5), f"Failed for {unit}: Expected {expected}, got {result}"
+                )
 
     def test_resource_path_meipass(self):
         from unittest.mock import patch
