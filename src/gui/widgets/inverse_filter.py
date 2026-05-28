@@ -490,10 +490,16 @@ class InverseFilterWidget(QWidget):
                 with open(path, "r") as f:
                     data = json.load(f)
 
-                if not isinstance(data, list) or not all(isinstance(x, list) and len(x) >= 3 for x in data):
-                    raise ValueError(tr("Invalid format. Expected list of [frequency, magnitude, phase] points."))
-
-                self.calibration_map = sorted(data, key=lambda x: x[0])
+                import numpy as np
+                try:
+                    arr = np.array(data, dtype=float)
+                    if arr.ndim != 2 or arr.shape[1] < 3:
+                        raise ValueError(tr("Invalid format. Expected list of [frequency, magnitude, phase] points."))
+                    # Sort by frequency (first column)
+                    sorted_arr = arr[arr[:, 0].argsort()]
+                    self.calibration_map = sorted_arr.tolist()
+                except (ValueError, TypeError) as err:
+                    raise ValueError(tr("Invalid format. Expected list of [frequency, magnitude, phase] points.")) from err
                 self.cal_loaded = True
                 self.cal_status_label.setText(
                     tr("Status: Calibration Loaded ({0} points)").format(len(self.calibration_map))
