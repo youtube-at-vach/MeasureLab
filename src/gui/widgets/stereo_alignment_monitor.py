@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -11,6 +12,7 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSlider,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -56,6 +58,14 @@ class StereoAlignmentMonitor(MeasurementModule):
         # but since arrays are small, direct overwrite might be ok.
         # A dirty flag helps.
         self.data_ready = False
+
+        # Volume Gang Error Logger variables
+        self.gang_error_data = {}  # {rounded_avg_db: diff_db}
+        self.is_logging = False
+        self.log_threshold_db = -60.0
+        self.current_l_db = -120.0
+        self.current_r_db = -120.0
+        self.current_diff_db = 0.0
 
     @property
     def name(self) -> str:
@@ -105,6 +115,22 @@ class StereoAlignmentMonitor(MeasurementModule):
         else:
             self.audio_buffer = np.roll(self.audio_buffer, -frames, axis=0)
             self.audio_buffer[-frames:] = new_data
+
+        # Volume Gang Error Logger: Compute RMS levels (dBFS)
+        rms_l = np.sqrt(np.mean(new_data[:, 0] ** 2))
+        rms_r = np.sqrt(np.mean(new_data[:, 1] ** 2))
+
+        epsilon = 1e-12
+        self.current_l_db = 20 * np.log10(rms_l + epsilon)
+        self.current_r_db = 20 * np.log10(rms_r + epsilon)
+        self.current_diff_db = self.current_l_db - self.current_r_db
+
+        if self.is_logging:
+            avg_level = (self.current_l_db + self.current_r_db) / 2.0
+            if avg_level >= self.log_threshold_db:
+                # Binning to round to nearest 0.1 dB to prevent redundant points
+                bin_key = round(avg_level, 1)
+                self.gang_error_data[bin_key] = self.current_diff_db
 
         # We can calculate FFT on every block or when rolling completes.
         # Doing it on every block provides continuous overlap-add style smoothness.
@@ -222,7 +248,24 @@ class StereoAlignmentMonitorWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        main_layout = QHBoxLayout(self)
+        self.tabs = QTabWidget(self)
+
+        # 1. Realtime Monitor Tab
+        self.tab_realtime = QWidget()
+        self.init_realtime_tab()
+        self.tabs.addTab(self.tab_realtime, tr("Realtime Monitor"))
+
+        # 2. Volume Gang Error Logger Tab
+        self.tab_gang_error = QWidget()
+        self.init_gang_error_tab()
+        self.tabs.addTab(self.tab_gang_error, tr("Volume Gang Error Logger"))
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.tabs)
+
+    def init_realtime_tab(self):
+        main_layout = QHBoxLayout(self.tab_realtime)
 
         # === Left: Visualizations ===
         viz_layout = QVBoxLayout()
@@ -373,6 +416,155 @@ class StereoAlignmentMonitorWidget(QWidget):
         controls_layout.addStretch()
         main_layout.addLayout(controls_layout, stretch=1)
 
+    def init_gang_error_tab(self):
+        main_layout = QHBoxLayout(self.tab_gang_error)
+
+        # === Left: 2D Plot ===
+        self.gang_plot = pg.PlotWidget(title=tr("Volume Gang Error (L - R Balance over Average Level)"))
+        self.gang_plot.setLabel("bottom", tr("Average Signal Level"), units="dBFS")
+        self.gang_plot.setLabel("left", tr("L/R Balance (L - R)"), units="dB")
+        self.gang_plot.showGrid(x=True, y=True, alpha=0.3)
+        self.gang_plot.setXRange(-80, 0)
+        self.gang_plot.setYRange(-3.0, 3.0)
+
+        # Draw visual guidelines/bands
+        # Excellent band: ±0.5 dB (Green)
+        green_brush = pg.mkBrush(0, 255, 0, 20)  # semi-transparent green
+        self.region_excellent = pg.LinearRegionItem(
+            values=[-0.5, 0.5], orientation=pg.LinearRegionItem.Horizontal, brush=green_brush, movable=False
+        )
+        self.gang_plot.addItem(self.region_excellent)
+
+        # Region -1.0 to 1.0 (Yellow, showing acceptable)
+        yellow_brush = pg.mkBrush(255, 255, 0, 10)  # semi-transparent yellow
+        self.region_good_top = pg.LinearRegionItem(
+            values=[0.5, 1.0], orientation=pg.LinearRegionItem.Horizontal, brush=yellow_brush, movable=False
+        )
+        self.region_good_bottom = pg.LinearRegionItem(
+            values=[-1.0, -0.5], orientation=pg.LinearRegionItem.Horizontal, brush=yellow_brush, movable=False
+        )
+        self.gang_plot.addItem(self.region_good_top)
+        self.gang_plot.addItem(self.region_good_bottom)
+
+        # Central ideal line (0 dB)
+        center_line = pg.InfiniteLine(pos=0, angle=0, pen=pg.mkPen("#888888", style=Qt.PenStyle.DashLine))
+        self.gang_plot.addItem(center_line)
+
+        # Data Curve and Scatter Points
+        self.curve_gang = self.gang_plot.plot(
+            pen=pg.mkPen("#3498db", width=2), symbol="o", symbolSize=6, symbolBrush=pg.mkBrush("#3498db")
+        )
+
+        main_layout.addWidget(self.gang_plot, stretch=3)
+
+        # === Right: Controls ===
+        controls_layout = QVBoxLayout()
+
+        # Status Group
+        status_group = QGroupBox(tr("Real-time Levels"))
+        status_grid = QGridLayout()
+
+        font_val = QFont()
+        font_val.setBold(True)
+        font_val.setPointSize(12)
+
+        status_grid.addWidget(QLabel(tr("Left RMS:")), 0, 0)
+        self.lbl_l_rms = QLabel("-inf dBFS")
+        self.lbl_l_rms.setFont(font_val)
+        self.lbl_l_rms.setAlignment(Qt.AlignmentFlag.AlignRight)
+        status_grid.addWidget(self.lbl_l_rms, 0, 1)
+
+        status_grid.addWidget(QLabel(tr("Right RMS:")), 1, 0)
+        self.lbl_r_rms = QLabel("-inf dBFS")
+        self.lbl_r_rms.setFont(font_val)
+        self.lbl_r_rms.setAlignment(Qt.AlignmentFlag.AlignRight)
+        status_grid.addWidget(self.lbl_r_rms, 1, 1)
+
+        status_grid.addWidget(QLabel(tr("Current Balance:")), 2, 0)
+        self.lbl_curr_bal = QLabel("0.00 dB")
+        self.lbl_curr_bal.setFont(font_val)
+        self.lbl_curr_bal.setAlignment(Qt.AlignmentFlag.AlignRight)
+        status_grid.addWidget(self.lbl_curr_bal, 2, 1)
+
+        status_group.setLayout(status_grid)
+        controls_layout.addWidget(status_group)
+
+        # Logging Controls Group
+        log_group = QGroupBox(tr("Logger Controls"))
+        log_vbox = QVBoxLayout()
+
+        self.btn_log_toggle = QPushButton(tr("Start Logging"))
+        self.btn_log_toggle.setCheckable(True)
+        self.btn_log_toggle.clicked.connect(self.on_log_toggle)
+        log_vbox.addWidget(self.btn_log_toggle)
+
+        self.btn_log_clear = QPushButton(tr("Clear Data"))
+        self.btn_log_clear.clicked.connect(self.on_log_clear)
+        log_vbox.addWidget(self.btn_log_clear)
+
+        self.btn_log_export = QPushButton(tr("Export CSV"))
+        self.btn_log_export.clicked.connect(self.on_log_export)
+        log_vbox.addWidget(self.btn_log_export)
+
+        log_group.setLayout(log_vbox)
+        controls_layout.addWidget(log_group)
+
+        # Settings Group
+        settings_group = QGroupBox(tr("Settings"))
+        settings_vbox = QVBoxLayout()
+
+        settings_vbox.addWidget(QLabel(tr("Min Level for Logging (dBFS):")))
+        self.lbl_thresh_val = QLabel("-60 dB")
+        settings_vbox.addWidget(self.lbl_thresh_val)
+
+        self.slider_thresh = QSlider(Qt.Orientation.Horizontal)
+        self.slider_thresh.setRange(-80, -20)
+        self.slider_thresh.setValue(int(self.module.log_threshold_db))
+        self.slider_thresh.valueChanged.connect(self.on_thresh_changed)
+        settings_vbox.addWidget(self.slider_thresh)
+
+        settings_group.setLayout(settings_vbox)
+        controls_layout.addWidget(settings_group)
+
+        controls_layout.addStretch()
+        main_layout.addLayout(controls_layout, stretch=1)
+
+    def on_log_toggle(self, checked):
+        self.module.is_logging = checked
+        if checked:
+            self.btn_log_toggle.setText(tr("Pause Logging"))
+        else:
+            self.btn_log_toggle.setText(tr("Start Logging"))
+
+    def on_log_clear(self):
+        self.module.gang_error_data.clear()
+        self.curve_gang.setData([], [])
+
+    def on_thresh_changed(self, val):
+        self.module.log_threshold_db = float(val)
+        self.lbl_thresh_val.setText(f"{val} dB")
+
+    def on_log_export(self):
+        if not self.module.gang_error_data:
+            return
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self, tr("Export Gang Error Data"), "gang_error.csv", "CSV Files (*.csv)"
+        )
+        if filename:
+            try:
+                import csv
+
+                with open(filename, "w", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Average Level (dBFS)", "L/R Balance (dB)"])
+                    for avg_lvl in sorted(self.module.gang_error_data.keys()):
+                        writer.writerow([avg_lvl, self.module.gang_error_data[avg_lvl]])
+            except Exception as e:
+                import logging
+
+                logging.getLogger("MeasureLab").error(f"Failed to export CSV: {e}")
+
     def on_toggle(self, checked):
         if checked:
             self.module.start_analysis()
@@ -387,98 +579,115 @@ class StereoAlignmentMonitorWidget(QWidget):
         self.module.smoothing_factor = val / 100.0
 
     def update_display(self):
-        if not self.module.data_ready:
-            return
-        self.module.data_ready = False
+        # Always update real-time RMS levels for Tab 2 status
+        self.lbl_l_rms.setText(f"{self.module.current_l_db:.1f} dBFS")
+        self.lbl_r_rms.setText(f"{self.module.current_r_db:.1f} dBFS")
+        self.lbl_curr_bal.setText(f"{self.module.current_diff_db:+.2f} dB")
 
-        freqs = self.module.freqs
-        # Skip DC (freq=0) for log plot
-        valid = freqs > 0
-        f_valid = freqs[valid]
+        current_tab_idx = self.tabs.currentIndex()
 
-        s_ll = self.module.s_ll[valid]
-        s_rr = self.module.s_rr[valid]
-        s_lr = self.module.s_lr[valid]
+        if current_tab_idx == 0:
+            # Tab 1: Realtime Monitor
+            if not self.module.data_ready:
+                return
+            self.module.data_ready = False
 
-        epsilon = 1e-12
+            freqs = self.module.freqs
+            # Skip DC (freq=0) for log plot
+            valid = freqs > 0
+            f_valid = freqs[valid]
 
-        # 1. Update FFT Plot
-        # Convert to roughly dBFS (assuming 1.0 is full scale sine, power is 0.5)
-        scale = 2.0 / (self.module.fft_size**2)
-        db_l = 10 * np.log10(s_ll * scale + epsilon)
-        db_r = 10 * np.log10(s_rr * scale + epsilon)
+            s_ll = self.module.s_ll[valid]
+            s_rr = self.module.s_rr[valid]
+            s_lr = self.module.s_lr[valid]
 
-        self.curve_l.setData(f_valid, db_l)
-        self.curve_r.setData(f_valid, db_r)
+            epsilon = 1e-12
 
-        # 2. Update Correlation Plot
-        denom = np.sqrt(s_ll * s_rr) + epsilon
-        corr = np.real(s_lr) / denom
-        corr = np.clip(corr, -1.0, 1.0)
-        self.curve_corr.setData(f_valid, corr)
+            # 1. Update FFT Plot
+            # Convert to roughly dBFS (assuming 1.0 is full scale sine, power is 0.5)
+            scale = 2.0 / (self.module.fft_size**2)
+            db_l = 10 * np.log10(s_ll * scale + epsilon)
+            db_r = 10 * np.log10(s_rr * scale + epsilon)
 
-        # 3. Update Metrics text
-        bal_db = self.module.balance_db
-        self.lbl_balance_val.setText(f"{bal_db:+.2f} dB")
-        if abs(bal_db) < 0.5:
-            self.lbl_balance_jdg.setText(tr("Excellent"))
-            self.lbl_balance_jdg.setStyleSheet("color: #00FF00;")
-        elif abs(bal_db) < 3.0:
-            self.lbl_balance_jdg.setText(tr("Good"))
-            self.lbl_balance_jdg.setStyleSheet("color: #FFFF00;")
-        else:
-            self.lbl_balance_jdg.setText(tr("Unbalanced"))
-            self.lbl_balance_jdg.setStyleSheet("color: #FF0000;")
+            self.curve_l.setData(f_valid, db_l)
+            self.curve_r.setData(f_valid, db_r)
 
-        show_phys = self.chk_physical.isChecked()
+            # 2. Update Correlation Plot
+            denom = np.sqrt(s_ll * s_rr) + epsilon
+            corr = np.real(s_lr) / denom
+            corr = np.clip(corr, -1.0, 1.0)
+            self.curve_corr.setData(f_valid, corr)
 
-        match = self.module.freq_match
-        if show_phys:
-            self.lbl_match_val.setText(f"r = {self.module.corr_raw:.3f}")
-        else:
-            self.lbl_match_val.setText(f"{match:.1f} %")
+            # 3. Update Metrics text
+            bal_db = self.module.balance_db
+            self.lbl_balance_val.setText(f"{bal_db:+.2f} dB")
+            if abs(bal_db) < 0.5:
+                self.lbl_balance_jdg.setText(tr("Excellent"))
+                self.lbl_balance_jdg.setStyleSheet("color: #00FF00;")
+            elif abs(bal_db) < 3.0:
+                self.lbl_balance_jdg.setText(tr("Good"))
+                self.lbl_balance_jdg.setStyleSheet("color: #FFFF00;")
+            else:
+                self.lbl_balance_jdg.setText(tr("Unbalanced"))
+                self.lbl_balance_jdg.setStyleSheet("color: #FF0000;")
 
-        if match > 95.0:
-            self.lbl_match_jdg.setText(tr("Professional"))
-            self.lbl_match_jdg.setStyleSheet("color: #00FF00;")
-        elif match > 80.0:
-            self.lbl_match_jdg.setText(tr("Good"))
-            self.lbl_match_jdg.setStyleSheet("color: #FFFF00;")
-        else:
-            self.lbl_match_jdg.setText(tr("Poor"))
-            self.lbl_match_jdg.setStyleSheet("color: #FF0000;")
+            show_phys = self.chk_physical.isChecked()
 
-        focus = self.module.center_focus
-        if show_phys:
-            self.lbl_focus_val.setText(f"{self.module.ms_ratio_db:+.1f} dB")
-        else:
-            self.lbl_focus_val.setText(f"{focus:.1f} %")
+            match = self.module.freq_match
+            if show_phys:
+                self.lbl_match_val.setText(f"r = {self.module.corr_raw:.3f}")
+            else:
+                self.lbl_match_val.setText(f"{match:.1f} %")
 
-        if focus > 85.0:
-            self.lbl_focus_jdg.setText(tr("Mono Compatible"))
-            self.lbl_focus_jdg.setStyleSheet("color: #00FF00;")
-        elif focus > 50.0:
-            self.lbl_focus_jdg.setText(tr("Wide Stereo"))
-            self.lbl_focus_jdg.setStyleSheet("color: #3498db;")
-        else:
-            self.lbl_focus_jdg.setText(tr("Phasey / Wide"))
-            self.lbl_focus_jdg.setStyleSheet("color: #FFA500;")
+            if match > 95.0:
+                self.lbl_match_jdg.setText(tr("Professional"))
+                self.lbl_match_jdg.setStyleSheet("color: #00FF00;")
+            elif match > 80.0:
+                self.lbl_match_jdg.setText(tr("Good"))
+                self.lbl_match_jdg.setStyleSheet("color: #FFFF00;")
+            else:
+                self.lbl_match_jdg.setText(tr("Poor"))
+                self.lbl_match_jdg.setStyleSheet("color: #FF0000;")
 
-        issues = self.module.phase_issue
-        if show_phys:
-            self.lbl_phase_val.setText(f"{self.module.phase_issue_deg:.1f}°")
-        else:
-            self.lbl_phase_val.setText(f"{issues:.2f} %")
+            focus = self.module.center_focus
+            if show_phys:
+                self.lbl_focus_val.setText(f"{self.module.ms_ratio_db:+.1f} dB")
+            else:
+                self.lbl_focus_val.setText(f"{focus:.1f} %")
 
-        if issues < 1.0:
-            self.lbl_phase_jdg.setText(tr("Negligible (Safe)"))
-            self.lbl_phase_jdg.setStyleSheet("color: #00FF00;")
-        elif issues < 10.0:
-            self.lbl_phase_jdg.setText(tr("Minor Issues"))
-            self.lbl_phase_jdg.setStyleSheet("color: #FFFF00;")
-        else:
-            self.lbl_phase_jdg.setText(tr("Severe Issues"))
-            self.lbl_phase_jdg.setStyleSheet("color: #FF0000;")
+            if focus > 85.0:
+                self.lbl_focus_jdg.setText(tr("Mono Compatible"))
+                self.lbl_focus_jdg.setStyleSheet("color: #00FF00;")
+            elif focus > 50.0:
+                self.lbl_focus_jdg.setText(tr("Wide Stereo"))
+                self.lbl_focus_jdg.setStyleSheet("color: #3498db;")
+            else:
+                self.lbl_focus_jdg.setText(tr("Phasey / Wide"))
+                self.lbl_focus_jdg.setStyleSheet("color: #FFA500;")
 
-        # 4. Update M/S Bar
-        self.ms_bar.setValue(int(focus))
+            issues = self.module.phase_issue
+            if show_phys:
+                self.lbl_phase_val.setText(f"{self.module.phase_issue_deg:.1f}°")
+            else:
+                self.lbl_phase_val.setText(f"{issues:.2f} %")
+
+            if issues < 1.0:
+                self.lbl_phase_jdg.setText(tr("Negligible (Safe)"))
+                self.lbl_phase_jdg.setStyleSheet("color: #00FF00;")
+            elif issues < 10.0:
+                self.lbl_phase_jdg.setText(tr("Minor Issues"))
+                self.lbl_phase_jdg.setStyleSheet("color: #FFFF00;")
+            else:
+                self.lbl_phase_jdg.setText(tr("Severe Issues"))
+                self.lbl_phase_jdg.setStyleSheet("color: #FF0000;")
+
+            # 4. Update M/S Bar
+            self.ms_bar.setValue(int(focus))
+
+        elif current_tab_idx == 1:
+            # Tab 2: Volume Gang Error Logger
+            if self.module.gang_error_data:
+                sorted_keys = sorted(self.module.gang_error_data.keys())
+                x_data = np.array(sorted_keys)
+                y_data = np.array([self.module.gang_error_data[k] for k in sorted_keys])
+                self.curve_gang.setData(x_data, y_data)

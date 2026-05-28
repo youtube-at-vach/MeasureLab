@@ -53,7 +53,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## ✅ Already Implemented
 
-* Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer, J-Test & AES17, Network Analyzer RIAA EQ Curve Matcher, Network Analyzer Impulse Response, LUFS Meter (True Peak / ISKb Detection).
+* Quantization / Bit Depth Analyzer, Crosstalk & Multitone Analyzer, Oscilloscope Persistence / Eye Pattern, Linearity Analyzer, J-Test & AES17, Network Analyzer RIAA EQ Curve Matcher, Network Analyzer Impulse Response, LUFS Meter (True Peak / ISKb Detection), Signal Generator Amplitude Sweep (Linear & Logarithmic sweeps with phase continuity and multi-unit linkage).
 
 ---
 
