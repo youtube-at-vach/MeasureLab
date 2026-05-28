@@ -1,5 +1,5 @@
-## 2026-05-26 - Optimized Sine Fitting Frequency Search with Euler's Formula
+## 2024-05-28 - Optimize Arbitrary Harmonic Generator math with matrix multiplication
 
-**Learning:** In tight NumPy calculation loops like `_perform_coarse_search`, `np.exp(1j * phase)` is slow due to memory allocation and complex exponential math. The codebase's memory advises replacing `np.exp(1j * phase)` with Euler's formula (`np.cos(phase) + 1j * np.sin(phase)`), using `out=` buffers to prevent reallocation. Applying this with large complex signal arrays (using `np.empty` to preallocate and `np.cos(phase, out=buffer.real)` and `np.sin(phase, out=buffer.imag)`) reduced the search time from ~3.6s to ~2.8s in tight benchmark loops, cutting `optimize_frequency` time by ~20%.
+**Learning:** When calculating many harmonic sine waves with arbitrary amplitudes and phases, broadcasting a full (harmonics, frames) array and computing `np.sin()` on it is slow and memory intensive. The fastest way is to mathematically decompose the amplitude and phase into real and imaginary coefficients using the sine addition formula, and then compute the final signal in one go using matrix multiplication (`@`) against a pre-computed array of pure harmonic sine/cosine basis vectors.
 
-**Action:** Whenever using `np.exp(1j * phase)` heavily inside a signal processing loop over arrays, preallocate a complex NumPy array and populate it directly with `np.cos(..., out=buffer.real)` and `np.sin(..., out=buffer.imag)` to save significant memory reallocation overhead and complex math time.
+**Action:** When vectorizing audio harmonic generation, use dot products (`@`) instead of looping over harmonics or broadcasting large arrays inside `np.sin()`.
