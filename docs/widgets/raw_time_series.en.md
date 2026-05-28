@@ -74,5 +74,5 @@ Wait for and monitor noise that occurs sporadically, such as occasional "popping
 3. When noise occurs, it will be recorded as a spike on the graph.
 4. Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
 
-💡 **How is this different from an Oscilloscope Trigger?**
-An oscilloscope's trigger is a feature that says, "Take a snapshot the moment the voltage exceeds a set level." On the other hand, this method is more like "recording security camera footage constantly and reviewing the exact moment a suspicious shadow appears later." If you have no idea what kind of noise to expect, this approach is a much more reliable way to find it.
+💡 **Difference from an Oscilloscope Trigger**
+An oscilloscope trigger captures a snapshot when a specific voltage condition is met, whereas this approach continuously records a long history, allowing you to review issues later. This is highly effective for discovering noise when the conditions are completely unpredictable.
