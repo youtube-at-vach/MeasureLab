@@ -67,6 +67,13 @@ class SignalParameters:
     sweep_duration: float = 5.0
     log_sweep: bool = True
 
+    # Amplitude Sweep parameters
+    amp_sweep_enabled: bool = False
+    start_amp: float = 0.1
+    end_amp: float = 1.0
+    amp_sweep_duration: float = 5.0
+    log_amp_sweep: bool = True
+
     # Filter Parameters (BPF/LPF/HPF/Notch)
     lpf_enabled: bool = False
     lpf_freq: float = 20000.0
@@ -115,6 +122,7 @@ class SignalParameters:
     _phase: float = 0.0
     _impulse_phase_samples: float = 0.0
     _sweep_time: float = 0.0
+    _amp_sweep_time: float = 0.0
     _buffer: Optional[np.ndarray] = None
     _buffer_index: int = 0
 
@@ -891,6 +899,33 @@ class SignalGenerator(MeasurementModule):
         else:
             signal = self._generate_standard_signal(params, frames, t_global_eff, sample_rate_eff)
 
+        # Amplitude Sweep
+        if params.amp_sweep_enabled:
+            t_block = params._amp_sweep_time + np.arange(frames) / sample_rate_eff
+            t_mod = np.mod(t_block, params.amp_sweep_duration)
+
+            if params.log_amp_sweep:
+                start_amp_clean = max(1e-5, params.start_amp)
+                end_amp_clean = max(1e-5, params.end_amp)
+                start_db = 20.0 * np.log10(start_amp_clean)
+                end_db = 20.0 * np.log10(end_amp_clean)
+                db_env = start_db + (end_db - start_db) * (t_mod / params.amp_sweep_duration)
+                amp_env = 10.0 ** (db_env / 20.0)
+                if params.start_amp == 0.0:
+                    amp_env = np.where(t_mod < 0.01, 0.0, amp_env)
+                if params.end_amp == 0.0:
+                    amp_env = np.where(t_mod > params.amp_sweep_duration - 0.01, 0.0, amp_env)
+            else:
+                amp_env = params.start_amp + (params.end_amp - params.start_amp) * (t_mod / params.amp_sweep_duration)
+
+            if params.amplitude > 0.0:
+                signal = (signal / params.amplitude) * amp_env
+            else:
+                signal = signal * amp_env
+
+            params._amp_sweep_time += frames / sample_rate_eff
+            params._amp_sweep_time = np.mod(params._amp_sweep_time, params.amp_sweep_duration)
+
         signal = self._apply_am(signal, params, t_global_eff, sample_rate_eff)
         signal = self._apply_filters(signal, params, sample_rate_eff)
 
@@ -908,6 +943,7 @@ class SignalGenerator(MeasurementModule):
             params._phase = 0
             params._impulse_phase_samples = 0.0
             params._sweep_time = 0
+            params._amp_sweep_time = 0.0
             params._carrier_phase_rad = 0.0
             params._fm_phase_rad = 0.0
             params._pm_phase_rad = 0.0
@@ -1556,7 +1592,8 @@ class SignalGeneratorWidget(QWidget):
 
     def _create_options_tabs(self):
         tabs = QTabWidget()
-        tabs.addTab(self._create_sweep_tab(), tr("Sweep"))
+        tabs.addTab(self._create_freq_sweep_tab(), tr("Freq Sweep"))
+        tabs.addTab(self._create_amp_sweep_tab(), tr("Amp Sweep"))
         tabs.addTab(self._create_am_tab(), tr("AM"))
         tabs.addTab(self._create_fm_tab(), tr("FM"))
         tabs.addTab(self._create_pm_tab(), tr("ΦM"))
@@ -1640,7 +1677,7 @@ class SignalGeneratorWidget(QWidget):
 
         return filter_widget
 
-    def _create_sweep_tab(self):
+    def _create_freq_sweep_tab(self):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
         sweep_group.setCheckable(True)
         sweep_group.setChecked(False)
@@ -1670,6 +1707,42 @@ class SignalGeneratorWidget(QWidget):
 
         sweep_group.setLayout(sweep_layout)
         return sweep_group
+
+    def _create_amp_sweep_tab(self):
+        amp_sweep_group = QGroupBox(tr("Amplitude Sweep"))
+        amp_sweep_group.setCheckable(True)
+        amp_sweep_group.setChecked(False)
+        amp_sweep_group.toggled.connect(lambda v: self.update_param("amp_sweep_enabled", v))
+        self.amp_sweep_group = amp_sweep_group
+
+        amp_sweep_layout = QFormLayout()
+
+        self.start_amp_spin = QDoubleSpinBox()
+        self.start_amp_spin.setRange(0.0, 1.0)
+        self.start_amp_spin.setSingleStep(0.05)
+        self.start_amp_spin.setValue(0.1)
+        self.start_amp_spin.valueChanged.connect(self.on_start_amp_changed)
+        amp_sweep_layout.addRow(tr("Start Amp:"), self.start_amp_spin)
+
+        self.end_amp_spin = QDoubleSpinBox()
+        self.end_amp_spin.setRange(0.0, 1.0)
+        self.end_amp_spin.setSingleStep(0.05)
+        self.end_amp_spin.setValue(1.0)
+        self.end_amp_spin.valueChanged.connect(self.on_end_amp_changed)
+        amp_sweep_layout.addRow(tr("End Amp:"), self.end_amp_spin)
+
+        self.amp_duration_spin = QDoubleSpinBox()
+        self.amp_duration_spin.setRange(0.1, 60.0)
+        self.amp_duration_spin.setValue(5.0)
+        self.amp_duration_spin.valueChanged.connect(lambda v: self.update_param("amp_sweep_duration", v))
+        amp_sweep_layout.addRow(tr("Duration (s):"), self.amp_duration_spin)
+
+        self.amp_log_check = QCheckBox(tr("Logarithmic Sweep (dB)"))
+        self.amp_log_check.toggled.connect(lambda v: self.update_param("log_amp_sweep", v))
+        amp_sweep_layout.addRow(self.amp_log_check)
+
+        amp_sweep_group.setLayout(amp_sweep_layout)
+        return amp_sweep_group
 
     def _create_am_tab(self):
         am_group = QGroupBox(tr("AM (Amplitude Modulation)"))
@@ -1820,6 +1893,11 @@ class SignalGeneratorWidget(QWidget):
         self.duration_spin.setValue(params.sweep_duration)
         self.log_check.setChecked(params.log_sweep)
 
+        self.amp_sweep_group.setChecked(params.amp_sweep_enabled)
+        # Note: start_amp_spin and end_amp_spin values are populated during update_amp_display_value()
+        self.amp_duration_spin.setValue(params.amp_sweep_duration)
+        self.amp_log_check.setChecked(params.log_amp_sweep)
+
         # Filter params
         self.lpf_group.setChecked(params.lpf_enabled)
         self.lpf_freq_spin.setValue(params.lpf_freq)
@@ -1884,6 +1962,11 @@ class SignalGeneratorWidget(QWidget):
             self.end_freq_spin,
             self.duration_spin,
             self.log_check,
+            self.amp_sweep_group,
+            self.start_amp_spin,
+            self.end_amp_spin,
+            self.amp_duration_spin,
+            self.amp_log_check,
             self.lpf_group,
             self.lpf_freq_spin,
             self.lpf_order_spin,
@@ -1944,6 +2027,11 @@ class SignalGeneratorWidget(QWidget):
         dst.end_freq = src.end_freq
         dst.sweep_duration = src.sweep_duration
         dst.log_sweep = src.log_sweep
+        dst.amp_sweep_enabled = src.amp_sweep_enabled
+        dst.start_amp = src.start_amp
+        dst.end_amp = src.end_amp
+        dst.amp_sweep_duration = src.amp_sweep_duration
+        dst.log_amp_sweep = src.log_amp_sweep
         dst.lpf_enabled = src.lpf_enabled
         dst.lpf_freq = src.lpf_freq
         dst.lpf_order = src.lpf_order
@@ -2147,41 +2235,57 @@ class SignalGeneratorWidget(QWidget):
         params = self.get_active_params_list()[0]
         self.update_amp_display_value(params.amplitude)
 
+    def _set_spin_range_by_unit(self, spin, unit):
+        if unit == "Linear (0-1)":
+            spin.setRange(0.0, 1.0)
+            spin.setSingleStep(0.05 if spin != self.amp_spin else 0.1)
+        elif unit == "dBFS":
+            spin.setRange(-180.0, 0.0)
+            spin.setSingleStep(1.0)
+        elif unit == "dBV":
+            spin.setRange(-180.0, 20.0)
+            spin.setSingleStep(1.0)
+        elif unit == "dBu":
+            spin.setRange(-180.0, 20.0)
+            spin.setSingleStep(1.0)
+        elif unit == "Vrms":
+            spin.setRange(0.0, 100.0)
+            spin.setSingleStep(0.1)
+        elif unit == "Vpeak":
+            spin.setRange(0.0, 100.0)
+            spin.setSingleStep(0.1)
+
     def update_amp_display_value(self, amp_0_1):
         unit = self.unit_combo.currentText()
         gain = self.module.audio_engine.calibration.output_gain
-
-        self.amp_spin.blockSignals(True)
-
         cf = self._get_current_crest_factor()
 
-        if unit == "Linear (0-1)":
-            self.amp_spin.setRange(0, 1.0)
-            self.amp_spin.setSingleStep(0.1)
-        elif unit == "dBFS":
-            self.amp_spin.setRange(-180, 0)
-            self.amp_spin.setSingleStep(1.0)
-        elif unit == "dBV":
-            self.amp_spin.setRange(-180, 20)
-            self.amp_spin.setSingleStep(1.0)
-        elif unit == "dBu":
-            self.amp_spin.setRange(-180, 20)
-            self.amp_spin.setSingleStep(1.0)
-        elif unit == "Vrms":
-            self.amp_spin.setRange(0, 100)
-            self.amp_spin.setSingleStep(0.1)
-        elif unit == "Vpeak":
-            self.amp_spin.setRange(0, 100)
-            self.amp_spin.setSingleStep(0.1)
-
+        self.amp_spin.blockSignals(True)
+        self._set_spin_range_by_unit(self.amp_spin, unit)
         val = linear_to_amplitude(amp_0_1, unit, gain, cf)
         self.amp_spin.setValue(val)
-
         self.amp_spin.blockSignals(False)
 
         self.amp_slider.blockSignals(True)
         self.amp_slider.setValue(int(amp_0_1 * 100))
         self.amp_slider.blockSignals(False)
+
+        if hasattr(self, "start_amp_spin") and hasattr(self, "end_amp_spin"):
+            params_list = self.get_active_params_list()
+            if params_list:
+                params = params_list[0]
+
+                self.start_amp_spin.blockSignals(True)
+                self._set_spin_range_by_unit(self.start_amp_spin, unit)
+                val_start = linear_to_amplitude(params.start_amp, unit, gain, cf)
+                self.start_amp_spin.setValue(val_start)
+                self.start_amp_spin.blockSignals(False)
+
+                self.end_amp_spin.blockSignals(True)
+                self._set_spin_range_by_unit(self.end_amp_spin, unit)
+                val_end = linear_to_amplitude(params.end_amp, unit, gain, cf)
+                self.end_amp_spin.setValue(val_end)
+                self.end_amp_spin.blockSignals(False)
 
     def on_amp_spin_changed(self, val):
         unit = self.unit_combo.currentText()
@@ -2200,6 +2304,20 @@ class SignalGeneratorWidget(QWidget):
         amp = val / 100.0
         self.update_param("amplitude", amp)
         self.update_amp_display_value(amp)
+
+    def on_start_amp_changed(self, val):
+        unit = self.unit_combo.currentText()
+        gain = self.module.audio_engine.calibration.output_gain
+        cf = self._get_current_crest_factor()
+        amp_0_1 = amplitude_to_linear(val, unit, gain, cf)
+        self.update_param("start_amp", amp_0_1)
+
+    def on_end_amp_changed(self, val):
+        unit = self.unit_combo.currentText()
+        gain = self.module.audio_engine.calibration.output_gain
+        cf = self._get_current_crest_factor()
+        amp_0_1 = amplitude_to_linear(val, unit, gain, cf)
+        self.update_param("end_amp", amp_0_1)
 
     def on_toggle(self, checked):
         if checked:
