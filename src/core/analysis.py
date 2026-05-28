@@ -1258,7 +1258,7 @@ class AudioCalc:
         i_white_start = AudioCalc._get_freq_index(freqs, 1000.0, axis_info, side="left")
         i_white_end = AudioCalc._get_freq_index(freqs, 20000.0, axis_info, side="right")
 
-        if i_white_start < i_white_end:
+        if i_white_start < i_white_end and len(mag[i_white_start:i_white_end]) > 0:
             # Median is robust to peaks, but under-estimates RMS of Gaussian noise (Rayleigh magnitude)
             white_density = np.median(mag[i_white_start:i_white_end]) * RAYLEIGH_RMS_FACTOR
         else:
