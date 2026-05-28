@@ -87,13 +87,21 @@ Available parameters vary depending on the waveform.
 
 Advanced signal generation features can be configured in the tabs at the bottom of the screen.
 
-### Sweep
+### Freq Sweep (Frequency Sweep)
 
 Continuously changes the frequency of a sine wave. Used for measuring frequency response.
 
 * **Start / End Freq**: The starting and ending frequencies.
 * **Duration**: The time taken for the sweep (in seconds).
 * **Logarithmic Sweep**: When checked, the sweep becomes logarithmic (constant rate of change per octave). When unchecked, it becomes a linear sweep.
+
+### Amp Sweep (Amplitude Sweep)
+
+Continuously changes the amplitude of the signal. Applicable to all waveforms (Sine, Square, Noise, etc.). Smoothly sweeps the amplitude while perfectly preserving the phase continuity of the carrier signal.
+
+* **Start / End Amp**: The starting and ending amplitudes. These input fields dynamically link with the primary amplitude unit settings (Linear, dBFS, Vrms, etc.) so you can intuitively configure sweep limits using your preferred units.
+* **Duration**: The time taken for the sweep (in seconds).
+* **Logarithmic Sweep (dB)**: When checked, sweeps logarithmically (constant rate of change in decibels). When unchecked, performs a linear sweep (enabled by default).
 
 ### AM (Amplitude Modulation)
 
