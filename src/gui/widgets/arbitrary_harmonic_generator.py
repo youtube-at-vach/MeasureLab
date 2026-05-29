@@ -29,7 +29,7 @@ from src.measurement_modules.base import MeasurementModule
 logger = logging.getLogger(__name__)
 
 MAX_HARMONICS = 50
-OFF_DB = -120.0
+OFF_DB = -140.0
 
 
 class ArbitraryHarmonicGenerator(MeasurementModule):
@@ -220,7 +220,7 @@ class ArbitraryHarmonicWidget(QWidget):
         fund_form.addRow(tr("Frequency:"), self.freq_spin)
 
         self.amp_spin = QDoubleSpinBox()
-        self.amp_spin.setRange(-120.0, 0.0)
+        self.amp_spin.setRange(-140.0, 0.0)
         self.amp_spin.setValue(20 * np.log10(self.module.gen_amplitude + 1e-15))
         self.amp_spin.setSuffix(" dBFS")
         self.amp_spin.valueChanged.connect(self.on_fundamental_changed)
@@ -343,10 +343,10 @@ class ArbitraryHarmonicWidget(QWidget):
         self.plot_spec.setLabel("bottom", tr("Harmonic Order"))
         self.plot_spec.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_spec.showGrid(y=True)
-        self.plot_spec.setYRange(-120, 10)
+        self.plot_spec.setYRange(-140, 10)
         self.bar_spec = pg.BarGraphItem(
             x=np.arange(1, self.module.max_harmonic + 1),
-            y0=-120,
+            y0=-140,
             height=np.zeros(self.module.max_harmonic),
             width=0.6,
             brush="g",
@@ -384,7 +384,7 @@ class ArbitraryHarmonicWidget(QWidget):
 
         # Update spec plot x-axis range
         self.plot_spec.removeItem(self.bar_spec)
-        self.bar_spec = pg.BarGraphItem(x=np.arange(1, val + 1), y0=-120, height=np.zeros(val), width=0.6, brush="g")
+        self.bar_spec = pg.BarGraphItem(x=np.arange(1, val + 1), y0=-140, height=np.zeros(val), width=0.6, brush="g")
         self.plot_spec.addItem(self.bar_spec)
         self.update_plots()
 
@@ -432,7 +432,7 @@ class ArbitraryHarmonicWidget(QWidget):
 
             # Amp editor
             amp_spin = QDoubleSpinBox()
-            amp_spin.setRange(-120.0, -10.0)
+            amp_spin.setRange(-140.0, -10.0)
             amp_spin.setValue(OFF_DB)
             amp_spin.setSpecialValueText(tr("OFF"))
             amp_spin.setSuffix(" dBFS")
@@ -499,7 +499,7 @@ class ArbitraryHarmonicWidget(QWidget):
 
             # Amp Adjust editor
             amp_spin = QDoubleSpinBox()
-            amp_spin.setRange(-120.0, 0.0)
+            amp_spin.setRange(-140.0, 0.0)
             amp_spin.setSingleStep(0.1)
             with self.module.lock:
                 amp_spin.setValue(self.module.compensation_amps_db[harmonic_idx])
@@ -699,7 +699,7 @@ class ArbitraryHarmonicWidget(QWidget):
         self.curve_wave.setData(t_preview, sig)
 
         # 2. Spectrum Preview
-        heights = np.full(max_h, -120.0)
+        heights = np.full(max_h, -140.0)
 
         # Fundamental
         heights[0] = 20 * np.log10(a1 + 1e-15)
@@ -733,5 +733,5 @@ class ArbitraryHarmonicWidget(QWidget):
                 heights[n - 1] = 20 * np.log10(total_amp)
 
         self.bar_spec.setOpts(
-            x=np.arange(1, max_h + 1), height=heights + 120.0
-        )  # Scale offset for pyqtgraph height representation relative to y0=-120
+            x=np.arange(1, max_h + 1), height=heights + 140.0
+        )  # Scale offset for pyqtgraph height representation relative to y0=-140

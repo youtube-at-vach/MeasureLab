@@ -235,3 +235,135 @@ def test_lockin_harmonic_analyzer_phase_continuity():
     assert np.isclose(signal2[0], expected_start_val, atol=1e-12)
 
     analyzer.stop_analysis()
+
+
+def test_lockin_harmonic_analyzer_calibration_settling_check():
+    engine = MockAudioEngine()
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    analyzer.gen_frequency = 1000.0
+    analyzer.buffer_size = 8192
+    analyzer.max_harmonic = 5
+    analyzer.comp_max_harmonic = 2
+    analyzer.compensation_enabled = True
+    analyzer.start_analysis()
+
+    callback = list(engine.callbacks.values())[0]
+
+    # Start calibration
+    analyzer.start_calibration()
+    assert analyzer.is_calibrating is True
+    assert analyzer.calibration_current_step == 0
+    assert analyzer.cal_samples_written == 0
+
+    # 1. Feed partial data (4096 samples < 8192 buffer_size)
+    fs = engine.sample_rate
+    phase_step = 2 * np.pi * 1000.0 / fs
+    t1 = np.arange(4096) / fs
+    wt1 = np.arange(4096) * phase_step
+    
+    # We must provide non-zero signals so ref_rms is high enough and process() doesn't return early
+    sig1 = 1.0 * np.sin(wt1)
+    ref1 = 1.0 * np.sin(wt1)
+    indata1 = np.column_stack((sig1, ref1))
+    outdata1 = np.zeros_like(indata1)
+    callback(indata1, outdata1, 4096, None, None)
+
+    # Process and verify that calibration did NOT advance because cal_samples_written = 4096 < 8192
+    analyzer.process()
+    assert analyzer.calibration_current_step == 0
+    assert analyzer.compensation_coeffs[1] == 0j
+
+    # 2. Feed the remaining 4096 samples (total 8192 >= buffer_size)
+    t2 = np.arange(4096) / fs
+    wt2 = 4096 * phase_step + np.arange(4096) * phase_step
+    sig2 = 1.0 * np.sin(wt2)
+    ref2 = 1.0 * np.sin(wt2)
+    indata2 = np.column_stack((sig2, ref2))
+    outdata2 = np.zeros_like(indata2)
+    callback(indata2, outdata2, 4096, None, None)
+
+    # Process and verify that calibration DID advance
+    analyzer.process()
+    assert analyzer.calibration_current_step == 1
+    assert analyzer.cal_samples_written == 0  # Was reset
+    
+    analyzer.stop_analysis()
+
+
+def test_lockin_harmonic_analyzer_calibration_quasi_newton_convergence():
+    engine = MockAudioEngine()
+    analyzer = LockInHarmonicAnalyzer(engine)
+
+    analyzer.gen_frequency = 1000.0
+    analyzer.buffer_size = 8192
+    analyzer.max_harmonic = 5
+    analyzer.comp_max_harmonic = 2
+    analyzer.compensation_enabled = True
+    # For a deterministic 1-step Newton convergence in clean simulation, set gamma to 1.0
+    analyzer.calibration_gamma = 1.0
+    analyzer.start_analysis()
+
+    callback = list(engine.callbacks.values())[0]
+
+    # Inherent distortion: 2nd harmonic amplitude 0.02, phase pi/6.
+    # Loopback transfer function: gain 0.8, phase shift 45 degrees.
+    fs = engine.sample_rate
+    phase_step = 2 * np.pi * 1000.0 / fs
+    current_phase = 0.0
+
+    def feed_full_buffer():
+        nonlocal current_phase
+        # We need to feed 8192 samples. Let's do 8 blocks of 1024 samples.
+        frames = 1024
+        for _ in range(8):
+            t = np.arange(frames) / fs
+            wt = current_phase + np.arange(frames) * phase_step
+            current_phase = (current_phase + frames * phase_step) % (2 * np.pi)
+
+            # Generated output comp
+            c2 = analyzer.compensation_coeffs[1]
+            # Simulate the Loopback Path with transfer function G2 = 0.8 * e^(j * pi/4)
+            c2_rec_real = 0.8 * (c2.real * np.cos(np.pi/4) + c2.imag * np.sin(np.pi/4))
+            c2_rec_imag = 0.8 * (-c2.real * np.sin(np.pi/4) + c2.imag * np.cos(np.pi/4))
+
+            # Input signal = Fundamental + Inherent distortion + loopback-received compensation
+            sig = 1.0 * np.sin(wt)
+            sig += 0.02 * np.sin(2 * wt + np.pi/6)
+            sig += c2_rec_real * np.cos(2 * wt) + c2_rec_imag * np.sin(2 * wt)
+
+            ref = 1.0 * np.sin(wt)
+            indata = np.column_stack((sig, ref))
+            outdata = np.zeros_like(indata)
+            callback(indata, outdata, frames, None, None)
+
+    # Start calibration
+    analyzer.start_calibration()
+
+    # Step 0 -> Step 1 (Perturbation Step)
+    feed_full_buffer()
+    analyzer.process()
+    assert analyzer.calibration_current_step == 1
+    # Verify that compensation coefficient was perturbed (non-zero)
+    c1 = analyzer.compensation_coeffs[1]
+    assert c1 != 0j
+
+    # Step 1 -> Step 2 (Quasi-Newton / Secant Step)
+    feed_full_buffer()
+    analyzer.process()
+    assert analyzer.calibration_current_step == 2
+    c2 = analyzer.compensation_coeffs[1]
+    assert c2 != c1
+
+    # Step 2 -> Step 3 (Verification Step)
+    # The Quasi-Newton step should have computed the exact gain and canceled the distortion!
+    feed_full_buffer()
+    analyzer.process()
+    assert analyzer.calibration_current_step == 3
+
+    # Check 2nd harmonic amplitude after convergence.
+    # It should be extremely close to 0 (distortion canceled, e.g. < 1e-5 or -100 dBc)
+    assert analyzer.harmonics_amp[1] < 1e-5
+    
+    analyzer.stop_analysis()
+
