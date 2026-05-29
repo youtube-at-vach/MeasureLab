@@ -344,6 +344,7 @@ class TestSignalGeneratorMLS(unittest.TestCase):
 
             # 1. Get reference signal using actual scipy
             import scipy.signal
+
             ref_seq, _ = scipy.signal.max_len_seq(order)
             ref_signal = ref_seq.astype(float) * 2 - 1
 

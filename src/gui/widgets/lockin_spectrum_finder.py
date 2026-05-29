@@ -1394,7 +1394,9 @@ class LockInSpectrumFinderWidget(QWidget):
             # Blue for light theme (matches Spectrum Analyzer cursor)
             color = "#0000aa"
 
-        self.lbl_resolution_info.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; color: {color}; font-weight: bold;")
+        self.lbl_resolution_info.setStyleSheet(
+            f"font-family: {MONOSPACE_FONT_FAMILY}; color: {color}; font-weight: bold;"
+        )
 
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""

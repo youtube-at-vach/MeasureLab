@@ -491,6 +491,7 @@ class InverseFilterWidget(QWidget):
                     data = json.load(f)
 
                 import numpy as np
+
                 try:
                     arr = np.array(data, dtype=float)
                     if arr.ndim != 2 or arr.shape[1] < 3:
@@ -499,7 +500,9 @@ class InverseFilterWidget(QWidget):
                     sorted_arr = arr[arr[:, 0].argsort()]
                     self.calibration_map = sorted_arr.tolist()
                 except (ValueError, TypeError) as err:
-                    raise ValueError(tr("Invalid format. Expected list of [frequency, magnitude, phase] points.")) from err
+                    raise ValueError(
+                        tr("Invalid format. Expected list of [frequency, magnitude, phase] points.")
+                    ) from err
                 self.cal_loaded = True
                 self.cal_status_label.setText(
                     tr("Status: Calibration Loaded ({0} points)").format(len(self.calibration_map))

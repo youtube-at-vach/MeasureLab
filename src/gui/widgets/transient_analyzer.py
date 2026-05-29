@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import numpy as np
@@ -9,8 +10,6 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
-    QGridLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -26,6 +25,8 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
+
+logger = logging.getLogger(__name__)
 
 
 class CWTWorker(QThread):
@@ -287,10 +288,10 @@ class TransientAnalyzer(MeasurementModule):
     def calculate_ringing_metrics(self, window_width_ms: float) -> Optional[dict]:
         """
         Calculate DAC filter ringing metrics from final_data.
-        
+
         Args:
             window_width_ms: Width of the integration window in milliseconds.
-            
+
         Returns:
             A dictionary containing ringing metrics, window boundaries, and validation flags.
         """
@@ -310,7 +311,7 @@ class TransientAnalyzer(MeasurementModule):
         peak_db = 20 * np.log10(peak_val + epsilon)
 
         # Validation: check if it looks like an impulse response
-        rms = float(np.sqrt(np.mean(data ** 2)))
+        rms = float(np.sqrt(np.mean(data**2)))
         crest_factor_db = 20 * np.log10((peak_val / (rms + epsilon)) + epsilon)
 
         is_valid = True
@@ -348,7 +349,7 @@ class TransientAnalyzer(MeasurementModule):
         elif pre_energy <= epsilon and post_energy > epsilon:
             ratio_db = -100.0  # Cap at -100 dB
         elif pre_energy > epsilon and post_energy <= epsilon:
-            ratio_db = 100.0   # Cap at 100 dB
+            ratio_db = 100.0  # Cap at 100 dB
         else:
             ratio_db = 0.0
 
@@ -377,9 +378,8 @@ class TransientAnalyzer(MeasurementModule):
             "post_end_idx": post_end,
             "is_valid": is_valid,
             "error_msg": error_msg,
-            "crest_factor_db": crest_factor_db
+            "crest_factor_db": crest_factor_db,
         }
-
 
 
 class TransientAnalyzerWidget(QWidget):
@@ -505,7 +505,7 @@ class TransientAnalyzerWidget(QWidget):
         self.trig_level_spin.setValue(float(self.module.trigger_level))
         self.trig_level_spin.valueChanged.connect(self.on_trigger_level_changed)
         trig_layout.addWidget(self.trig_level_spin)
-        
+
         trig_layout.addStretch()
 
         self.control_tabs.addTab(tab_trigger, tr("Trigger"))
@@ -543,7 +543,7 @@ class TransientAnalyzerWidget(QWidget):
         self.lbl_ringing_warning.setStyleSheet("color: #ff5555; font-size: 10px; font-style: italic;")
         self.lbl_ringing_warning.setWordWrap(True)
         ringing_layout.addWidget(self.lbl_ringing_warning)
-        
+
         ringing_layout.addStretch()
 
         self.control_tabs.addTab(tab_ringing, tr("Filter Ringing Analysis"))
@@ -563,11 +563,17 @@ class TransientAnalyzerWidget(QWidget):
         self.wave_plot.setLabel("left", tr("Amplitude"))
         self.wave_plot.setLabel("bottom", tr("Time"), units="s")
         self.wave_plot.showGrid(x=True, y=True)
-        
+
         # Ringing overlay elements (hidden/disabled by default)
-        self.ringing_peak_line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen("r", width=1.5, style=Qt.PenStyle.DashLine))
-        self.ringing_pre_region = pg.LinearRegionItem(values=[0, 0], orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(0, 191, 255, 30), movable=False)
-        self.ringing_post_region = pg.LinearRegionItem(values=[0, 0], orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(50, 205, 50, 30), movable=False)
+        self.ringing_peak_line = pg.InfiniteLine(
+            pos=0, angle=90, pen=pg.mkPen("r", width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.ringing_pre_region = pg.LinearRegionItem(
+            values=[0, 0], orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(0, 191, 255, 30), movable=False
+        )
+        self.ringing_post_region = pg.LinearRegionItem(
+            values=[0, 0], orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(50, 205, 50, 30), movable=False
+        )
 
         splitter.addWidget(self.wave_plot)
 
@@ -711,8 +717,8 @@ class TransientAnalyzerWidget(QWidget):
             self.wave_plot.removeItem(self.ringing_peak_line)
             self.wave_plot.removeItem(self.ringing_pre_region)
             self.wave_plot.removeItem(self.ringing_post_region)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to remove ringing overlay items: %s", e)
 
         if not self.module.ringing_enabled or self.module.final_data is None:
             self.lbl_ringing_ratio.setText(tr("Pre/Post Ratio: N/A"))
@@ -734,7 +740,7 @@ class TransientAnalyzerWidget(QWidget):
             self.lbl_ringing_ratio.setText(tr("Pre/Post Ratio: {0:+.2f} dB").format(ratio_db))
 
         self.lbl_filter_type.setText(tr("Filter Type: {0}").format(metrics["filter_type"]))
-        
+
         if metrics["error_msg"]:
             self.lbl_ringing_warning.setText(metrics["error_msg"])
         else:
@@ -743,7 +749,7 @@ class TransientAnalyzerWidget(QWidget):
         # Add visual overlay items to the plot
         fs = self.module.fs
         peak_t = metrics["peak_idx"] / fs
-        
+
         self.ringing_peak_line.setValue(peak_t)
         self.wave_plot.addItem(self.ringing_peak_line)
 
