@@ -259,9 +259,9 @@ def test_lockin_harmonic_analyzer_calibration_settling_check():
     # 1. Feed partial data (4096 samples < 8192 buffer_size)
     fs = engine.sample_rate
     phase_step = 2 * np.pi * 1000.0 / fs
-    t1 = np.arange(4096) / fs
+    np.arange(4096) / fs
     wt1 = np.arange(4096) * phase_step
-    
+
     # We must provide non-zero signals so ref_rms is high enough and process() doesn't return early
     sig1 = 1.0 * np.sin(wt1)
     ref1 = 1.0 * np.sin(wt1)
@@ -275,7 +275,7 @@ def test_lockin_harmonic_analyzer_calibration_settling_check():
     assert analyzer.compensation_coeffs[1] == 0j
 
     # 2. Feed the remaining 4096 samples (total 8192 >= buffer_size)
-    t2 = np.arange(4096) / fs
+    np.arange(4096) / fs
     wt2 = 4096 * phase_step + np.arange(4096) * phase_step
     sig2 = 1.0 * np.sin(wt2)
     ref2 = 1.0 * np.sin(wt2)
@@ -287,7 +287,7 @@ def test_lockin_harmonic_analyzer_calibration_settling_check():
     analyzer.process()
     assert analyzer.calibration_current_step == 1
     assert analyzer.cal_samples_written == 0  # Was reset
-    
+
     analyzer.stop_analysis()
 
 
@@ -317,7 +317,7 @@ def test_lockin_harmonic_analyzer_calibration_quasi_newton_convergence():
         # We need to feed 8192 samples. Let's do 8 blocks of 1024 samples.
         frames = 1024
         for _ in range(8):
-            t = np.arange(frames) / fs
+            np.arange(frames) / fs
             wt = current_phase + np.arange(frames) * phase_step
             current_phase = (current_phase + frames * phase_step) % (2 * np.pi)
 
@@ -364,6 +364,6 @@ def test_lockin_harmonic_analyzer_calibration_quasi_newton_convergence():
     # Check 2nd harmonic amplitude after convergence.
     # It should be extremely close to 0 (distortion canceled, e.g. < 1e-5 or -100 dBc)
     assert analyzer.harmonics_amp[1] < 1e-5
-    
+
     analyzer.stop_analysis()
 

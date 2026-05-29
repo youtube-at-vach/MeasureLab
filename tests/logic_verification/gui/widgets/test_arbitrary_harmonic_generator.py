@@ -296,7 +296,7 @@ def test_load_low_level_compensation(generator_widget, tmp_path):
     # 10 ** (-130 / 20) = 3.16227766e-7
     # c2 = 3.16227766e-7 * e^(j * 0) -> real = 3.16227766e-7, imag = 0.0
     val_130db = 10 ** (-130.0 / 20.0)
-    
+
     temp_file = os.path.join(tmp_path, "low_level_comp.json")
     data = {
         "format": "MeasureLab_Harmonic_Compensation",
