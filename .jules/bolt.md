@@ -8,3 +8,8 @@
 
 **Learning:** When validating very large 2D arrays loaded from JSON, using exhaustive list comprehensions and `all()` with `isinstance` on every single element is extremely slow. Instead, performing a quick sanity check on the container and the first element, and letting subsequent vectorized operations (like numpy conversion or sorting) implicitly validate or fail, drastically improves performance.
 **Action:** Replace exhaustive nested element-by-element type validation with shallow checks plus `try...except` handling when parsing large datasets into structured data like numpy arrays or Pandas DataFrames.
+
+## 2024-05-29 - Vectorizing backwards search loops in NumPy
+
+**Learning:** Iterating backwards over a NumPy array in Python to find the first element meeting a condition (`for i in range(len(arr) - 1, -1, -1)`) is significantly slower than using vectorized C-level operations, especially for large arrays or early exits.
+**Action:** Replace Python backwards loops over NumPy arrays with vectorized searches like `matches = np.where(condition(arr))[0]` and taking the last match `arr[matches[-1]]` for an immediate performance boost.

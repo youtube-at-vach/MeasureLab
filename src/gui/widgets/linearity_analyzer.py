@@ -823,12 +823,9 @@ class LinearityAnalyzerWidget(QWidget):
             x_sorted = x_data[sorted_indices]
             snr_sorted = snr_data[sorted_indices]
 
-            limit_dbfs = None
-            # Scan from High to Low
-            for i in range(len(x_sorted) - 1, -1, -1):
-                if snr_sorted[i] < threshold:
-                    limit_dbfs = x_sorted[i]
-                    break  # Found the highest level that failed (or rather, the boundary)
+            # Scan from High to Low (Vectorized)
+            matches = np.where(snr_sorted < threshold)[0]
+            limit_dbfs = x_sorted[matches[-1]] if matches.size > 0 else None
 
             # Wait, if sorting Low to High (indexes 0..N), range(len-1, -1, -1) goes High to Low.
             # If [i] is bad, does that mean [i-1] (lower level) is also bad?
