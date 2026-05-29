@@ -310,58 +310,20 @@ class SignalGenerator(MeasurementModule):
 
     def _generate_mls(self, params: SignalParameters, sample_rate):
         """Generates a Maximum Length Sequence (MLS)."""
-        taps = {
-            10: [10, 3],
-            11: [11, 2],
-            12: [12, 8, 2, 1],
-            13: [13, 5, 2, 1],
-            14: [14, 12, 2, 1],
-            15: [15, 1],
-            16: [16, 12, 3, 1],
-            17: [17, 3],
-            18: [18, 7],
-        }
+        # The project uses scipy for audio operations, we can just use scipy.signal.max_len_seq directly
+        # and not have a large bitwise fallback loop at all.
+        import scipy.signal
 
         order = params.mls_order
-        if order not in taps:
+        if not (2 <= order <= 32):
             order = 15
 
-        try:
-            import scipy.signal
-
-            seq, state = scipy.signal.max_len_seq(order)
-            signal = seq.astype(float) * 2 - 1
-            return signal
-        except Exception:
-            logger.warning("scipy.signal.max_len_seq not found/failed, using optimized fallback")
-
-            # Recurrence-based generation: y[i] = y[i-t1] ^ y[i-t2] ...
-            # This is significantly faster than bitwise simulation.
-            # Taps for MLS are defined such that they satisfy this recurrence.
-
-            N = 2**order - 1
-            raw_output = [1] * N  # Initialize with 1s (initial state)
-
-            current_taps = taps[order]
-
-            if len(current_taps) == 2:
-                t1, t2 = current_taps
-                for i in range(order, N):
-                    raw_output[i] = raw_output[i - t1] ^ raw_output[i - t2]
-            elif len(current_taps) == 4:
-                t1, t2, t3, t4 = current_taps
-                for i in range(order, N):
-                    raw_output[i] = raw_output[i - t1] ^ raw_output[i - t2] ^ raw_output[i - t3] ^ raw_output[i - t4]
-            else:
-                # Generic fallback for any number of taps
-                for i in range(order, N):
-                    val = 0
-                    for t in current_taps:
-                        val ^= raw_output[i - t]
-                    raw_output[i] = val
-
-            signal = np.array(raw_output, dtype=float) * 2 - 1
-            return signal
+        # We pass state as an int8 numpy array to ensure consistency
+        # and prevent recreating Python lists internally in scipy if needed.
+        # However max_len_seq defaults state to [1]*nbits so passing None is also fine.
+        seq, state = scipy.signal.max_len_seq(order)
+        signal = seq.astype(float) * 2.0 - 1.0
+        return signal
 
     def _generate_golay(self, params: SignalParameters, sample_rate):
         """Generates a Golay complementary sequence for the selected pair."""
