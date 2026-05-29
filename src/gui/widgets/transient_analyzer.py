@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -16,6 +17,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -95,6 +97,8 @@ class TransientAnalyzer(MeasurementModule):
         self.min_anal_freq = 20
         self.max_anal_freq = 20000
         self.record_duration_s = 0.5
+        self.ringing_enabled = False
+        self.ringing_window_width_ms = 2.0
 
         # Trigger (oscilloscope-like)
         self.trigger_enabled = False
@@ -280,6 +284,103 @@ class TransientAnalyzer(MeasurementModule):
 
         return times, frequencies, mag
 
+    def calculate_ringing_metrics(self, window_width_ms: float) -> Optional[dict]:
+        """
+        Calculate DAC filter ringing metrics from final_data.
+        
+        Args:
+            window_width_ms: Width of the integration window in milliseconds.
+            
+        Returns:
+            A dictionary containing ringing metrics, window boundaries, and validation flags.
+        """
+        if self.final_data is None or len(self.final_data) == 0:
+            return None
+
+        data = self.final_data
+        fs = self.fs
+
+        # Calculate peak
+        abs_data = np.abs(data)
+        peak_idx = int(np.argmax(abs_data))
+        peak_val = float(abs_data[peak_idx])
+
+        # Convert to dBFS
+        epsilon = 1e-12
+        peak_db = 20 * np.log10(peak_val + epsilon)
+
+        # Validation: check if it looks like an impulse response
+        rms = float(np.sqrt(np.mean(data ** 2)))
+        crest_factor_db = 20 * np.log10((peak_val / (rms + epsilon)) + epsilon)
+
+        is_valid = True
+        error_msg = None
+        if crest_factor_db < 12.0:
+            is_valid = False
+            error_msg = tr("Warning: Waveform does not look like an impulse (Low Crest Factor).")
+
+        # Define window boundaries in samples
+        offset_samples = max(2, int(round(0.04 * fs / 1000.0)))
+        window_samples = int(round(window_width_ms * fs / 1000.0))
+
+        # Pre-ringing window
+        pre_start = max(0, peak_idx - window_samples)
+        pre_end = max(0, peak_idx - offset_samples)
+
+        # Post-ringing window
+        post_start = min(len(data), peak_idx + offset_samples)
+        post_end = min(len(data), peak_idx + window_samples)
+
+        # Compute energy (sum of squares)
+        if pre_end > pre_start:
+            pre_energy = float(np.sum(data[pre_start:pre_end] ** 2))
+        else:
+            pre_energy = 0.0
+
+        if post_end > post_start:
+            post_energy = float(np.sum(data[post_start:post_end] ** 2))
+        else:
+            post_energy = 0.0
+
+        # Calculate ratio in dB
+        if pre_energy > epsilon and post_energy > epsilon:
+            ratio_db = 10 * np.log10(pre_energy / post_energy)
+        elif pre_energy <= epsilon and post_energy > epsilon:
+            ratio_db = -100.0  # Cap at -100 dB
+        elif pre_energy > epsilon and post_energy <= epsilon:
+            ratio_db = 100.0   # Cap at 100 dB
+        else:
+            ratio_db = 0.0
+
+        # Estimate filter type
+        if not is_valid:
+            filter_type = tr("Unknown")
+        else:
+            if ratio_db < -20.0:
+                filter_type = tr("Minimum Phase")
+            elif -3.0 <= ratio_db <= 3.0:
+                filter_type = tr("Linear Phase")
+            else:
+                filter_type = tr("Mixed / Intermediate Phase")
+
+        return {
+            "peak_idx": peak_idx,
+            "peak_val": peak_val,
+            "peak_db": peak_db,
+            "pre_energy": pre_energy,
+            "post_energy": post_energy,
+            "ratio_db": ratio_db,
+            "filter_type": filter_type,
+            "pre_start_idx": pre_start,
+            "pre_end_idx": pre_end,
+            "post_start_idx": post_start,
+            "post_end_idx": post_end,
+            "is_valid": is_valid,
+            "error_msg": error_msg,
+            "crest_factor_db": crest_factor_db
+        }
+
+
 
 class TransientAnalyzerWidget(QWidget):
     def __init__(self, module: TransientAnalyzer):
@@ -292,14 +393,17 @@ class TransientAnalyzerWidget(QWidget):
         self.worker = None
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
 
-        # --- Settings & Controls ---
-        ctrl_group = QGroupBox(tr("Controls"))
-        ctrl_layout = QHBoxLayout()
+        # Create Tab Widget for Controls
+        self.control_tabs = QTabWidget()
 
-        # Input Channel
-        ctrl_layout.addWidget(QLabel(tr("Channel:")))
+        # --- Tab 1: Recording & Settings ---
+        tab_record = QWidget()
+        rec_layout = QHBoxLayout(tab_record)
+
+        # Channel
+        rec_layout.addWidget(QLabel(tr("Channel:")))
         self.chan_combo = QComboBox()
         self.chan_combo.addItem(tr("Left"), "Left")
         self.chan_combo.addItem(tr("Right"), "Right")
@@ -308,38 +412,36 @@ class TransientAnalyzerWidget(QWidget):
         if chan_idx >= 0:
             self.chan_combo.setCurrentIndex(chan_idx)
         self.chan_combo.currentIndexChanged.connect(self.on_channel_changed)
-        ctrl_layout.addWidget(self.chan_combo)
+        rec_layout.addWidget(self.chan_combo)
 
         # Wavelet
-        ctrl_layout.addWidget(QLabel(tr("Wavelet:")))
+        rec_layout.addWidget(QLabel(tr("Wavelet:")))
         self.wavelet_combo = QComboBox()
-        # Common continuous wavelets
         self.wavelet_combo.addItems(["cmor1.5-1.0", "mexh", "morl", "cgau1", "gaus1"])
         self.wavelet_combo.setEditable(True)
         self.wavelet_combo.currentTextChanged.connect(self.on_wavelet_changed)
-        ctrl_layout.addWidget(self.wavelet_combo)
+        rec_layout.addWidget(self.wavelet_combo)
 
-        # Param Layout (Freq Range)
-        param_layout = QHBoxLayout()
-
-        param_layout.addWidget(QLabel(tr("Min Freq:")))
+        # Min Freq
+        rec_layout.addWidget(QLabel(tr("Min Freq:")))
         self.min_freq_spin = QSpinBox()
         self.min_freq_spin.setRange(1, 96000)
         self.min_freq_spin.setValue(self.module.min_anal_freq)
         self.min_freq_spin.setSuffix(" Hz")
         self.min_freq_spin.valueChanged.connect(self.on_min_freq_changed)
-        param_layout.addWidget(self.min_freq_spin)
+        rec_layout.addWidget(self.min_freq_spin)
 
-        param_layout.addWidget(QLabel(tr("Max Freq:")))
+        # Max Freq
+        rec_layout.addWidget(QLabel(tr("Max Freq:")))
         self.max_freq_spin = QSpinBox()
         self.max_freq_spin.setRange(1, 96000)
         self.max_freq_spin.setValue(self.module.max_anal_freq)
         self.max_freq_spin.setSuffix(" Hz")
         self.max_freq_spin.valueChanged.connect(self.on_max_freq_changed)
-        param_layout.addWidget(self.max_freq_spin)
+        rec_layout.addWidget(self.max_freq_spin)
 
         # Record Duration
-        param_layout.addWidget(QLabel(tr("Record Time:")))
+        rec_layout.addWidget(QLabel(tr("Record Time:")))
         self.rec_time_spin = QDoubleSpinBox()
         self.rec_time_spin.setRange(0.1, 3.0)
         self.rec_time_spin.setDecimals(2)
@@ -347,30 +449,28 @@ class TransientAnalyzerWidget(QWidget):
         self.rec_time_spin.setValue(float(self.module.record_duration_s))
         self.rec_time_spin.setSuffix(" s")
         self.rec_time_spin.valueChanged.connect(self.on_record_time_changed)
-        param_layout.addWidget(self.rec_time_spin)
+        rec_layout.addWidget(self.rec_time_spin)
 
-        ctrl_layout.addLayout(param_layout)
-
-        # Buttons
+        # Record Button
         self.rec_btn = QPushButton(tr("Record"))
         self.rec_btn.setCheckable(True)
         self.rec_btn.clicked.connect(self.on_record_toggle)
-        ctrl_layout.addWidget(self.rec_btn)
+        rec_layout.addWidget(self.rec_btn)
 
+        # Analyze Button
         self.analyze_btn = QPushButton(tr("Analyze"))
         self.analyze_btn.clicked.connect(self.on_analyze)
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setToolTip(
             tr("Warning: Analysis can be slow for long recordings.\nComplexity ~ O(N * Scales).")
         )
-        ctrl_layout.addWidget(self.analyze_btn)
+        rec_layout.addWidget(self.analyze_btn)
 
-        ctrl_group.setLayout(ctrl_layout)
-        layout.addWidget(ctrl_group)
+        self.control_tabs.addTab(tab_record, tr("Recording & Settings"))
 
-        # --- Trigger ---
-        trig_group = QGroupBox(tr("Trigger"))
-        trig_layout = QHBoxLayout()
+        # --- Tab 2: Trigger ---
+        tab_trigger = QWidget()
+        trig_layout = QHBoxLayout(tab_trigger)
 
         self.trig_enable = QCheckBox(tr("Enable"))
         self.trig_enable.setChecked(bool(self.module.trigger_enabled))
@@ -405,9 +505,50 @@ class TransientAnalyzerWidget(QWidget):
         self.trig_level_spin.setValue(float(self.module.trigger_level))
         self.trig_level_spin.valueChanged.connect(self.on_trigger_level_changed)
         trig_layout.addWidget(self.trig_level_spin)
+        
+        trig_layout.addStretch()
 
-        trig_group.setLayout(trig_layout)
-        layout.addWidget(trig_group)
+        self.control_tabs.addTab(tab_trigger, tr("Trigger"))
+
+        # --- Tab 3: Ringing Analysis ---
+        tab_ringing = QWidget()
+        ringing_layout = QHBoxLayout(tab_ringing)
+
+        self.ringing_enable = QCheckBox(tr("Enable Analysis & Overlay"))
+        self.ringing_enable.setChecked(bool(self.module.ringing_enabled))
+        self.ringing_enable.toggled.connect(self.on_ringing_enabled_changed)
+        ringing_layout.addWidget(self.ringing_enable)
+
+        ringing_layout.addWidget(QLabel(tr("Window:")))
+        self.ringing_width_spin = QDoubleSpinBox()
+        self.ringing_width_spin.setRange(0.2, 10.0)
+        self.ringing_width_spin.setDecimals(1)
+        self.ringing_width_spin.setSingleStep(0.1)
+        self.ringing_width_spin.setValue(float(self.module.ringing_window_width_ms))
+        self.ringing_width_spin.setSuffix(" ms")
+        self.ringing_width_spin.valueChanged.connect(self.on_ringing_width_changed)
+        ringing_layout.addWidget(self.ringing_width_spin)
+
+        # Metrics labels
+        self.lbl_ringing_ratio = QLabel(tr("Pre/Post Ratio: N/A"))
+        self.lbl_ringing_ratio.setStyleSheet("font-weight: bold;")
+        ringing_layout.addWidget(self.lbl_ringing_ratio)
+
+        self.lbl_filter_type = QLabel(tr("Filter Type: N/A"))
+        self.lbl_filter_type.setStyleSheet("font-weight: bold; color: #3498db;")
+        ringing_layout.addWidget(self.lbl_filter_type)
+
+        # Warning label
+        self.lbl_ringing_warning = QLabel("")
+        self.lbl_ringing_warning.setStyleSheet("color: #ff5555; font-size: 10px; font-style: italic;")
+        self.lbl_ringing_warning.setWordWrap(True)
+        ringing_layout.addWidget(self.lbl_ringing_warning)
+        
+        ringing_layout.addStretch()
+
+        self.control_tabs.addTab(tab_ringing, tr("Filter Ringing Analysis"))
+
+        layout.addWidget(self.control_tabs)
 
         # Complexity Note
         note_label = QLabel(tr("Note: CWT analysis is computationally intensive. Long recordings may take time."))
@@ -422,6 +563,12 @@ class TransientAnalyzerWidget(QWidget):
         self.wave_plot.setLabel("left", tr("Amplitude"))
         self.wave_plot.setLabel("bottom", tr("Time"), units="s")
         self.wave_plot.showGrid(x=True, y=True)
+        
+        # Ringing overlay elements (hidden/disabled by default)
+        self.ringing_peak_line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen("r", width=1.5, style=Qt.PenStyle.DashLine))
+        self.ringing_pre_region = pg.LinearRegionItem(values=[0, 0], orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(0, 191, 255, 30), movable=False)
+        self.ringing_post_region = pg.LinearRegionItem(values=[0, 0], orientation=pg.LinearRegionItem.Vertical, brush=pg.mkBrush(50, 205, 50, 30), movable=False)
+
         splitter.addWidget(self.wave_plot)
 
         # 2. Scalogram (Image)
@@ -548,6 +695,68 @@ class TransientAnalyzerWidget(QWidget):
         t = np.arange(len(self.module.final_data)) / self.module.fs
         self.wave_plot.clear()
         self.wave_plot.plot(t, self.module.final_data, pen="y")
+        self.update_ringing_analysis()
+
+    def on_ringing_enabled_changed(self, enabled: bool):
+        self.module.ringing_enabled = bool(enabled)
+        self.update_ringing_analysis()
+
+    def on_ringing_width_changed(self, val: float):
+        self.module.ringing_window_width_ms = float(val)
+        self.update_ringing_analysis()
+
+    def update_ringing_analysis(self):
+        # Remove any existing overlay items first
+        try:
+            self.wave_plot.removeItem(self.ringing_peak_line)
+            self.wave_plot.removeItem(self.ringing_pre_region)
+            self.wave_plot.removeItem(self.ringing_post_region)
+        except Exception:
+            pass
+
+        if not self.module.ringing_enabled or self.module.final_data is None:
+            self.lbl_ringing_ratio.setText(tr("Pre/Post Ratio: N/A"))
+            self.lbl_filter_type.setText(tr("Filter Type: N/A"))
+            self.lbl_ringing_warning.setText("")
+            return
+
+        metrics = self.module.calculate_ringing_metrics(self.module.ringing_window_width_ms)
+        if metrics is None:
+            return
+
+        # Update labels
+        ratio_db = metrics["ratio_db"]
+        if ratio_db == -100.0:
+            self.lbl_ringing_ratio.setText(tr("Pre/Post Ratio: -INF dB (Pure Min Phase)"))
+        elif ratio_db == 100.0:
+            self.lbl_ringing_ratio.setText(tr("Pre/Post Ratio: +INF dB"))
+        else:
+            self.lbl_ringing_ratio.setText(tr("Pre/Post Ratio: {0:+.2f} dB").format(ratio_db))
+
+        self.lbl_filter_type.setText(tr("Filter Type: {0}").format(metrics["filter_type"]))
+        
+        if metrics["error_msg"]:
+            self.lbl_ringing_warning.setText(metrics["error_msg"])
+        else:
+            self.lbl_ringing_warning.setText("")
+
+        # Add visual overlay items to the plot
+        fs = self.module.fs
+        peak_t = metrics["peak_idx"] / fs
+        
+        self.ringing_peak_line.setValue(peak_t)
+        self.wave_plot.addItem(self.ringing_peak_line)
+
+        # Set region values (in seconds)
+        pre_start_t = metrics["pre_start_idx"] / fs
+        pre_end_t = metrics["pre_end_idx"] / fs
+        self.ringing_pre_region.setRegion([pre_start_t, pre_end_t])
+        self.wave_plot.addItem(self.ringing_pre_region)
+
+        post_start_t = metrics["post_start_idx"] / fs
+        post_end_t = metrics["post_end_idx"] / fs
+        self.ringing_post_region.setRegion([post_start_t, post_end_t])
+        self.wave_plot.addItem(self.ringing_post_region)
 
     def on_analyze(self):
         if self.module.final_data is None:
