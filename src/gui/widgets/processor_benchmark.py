@@ -52,16 +52,21 @@ def get_cpu_name():
             logger.debug(f"Failed to read CPU name from /proc/cpuinfo: {e}")
 
     elif sys.platform == "darwin":
-        import subprocess
+        import ctypes
+        import ctypes.util
 
         try:
-            return (
-                subprocess.check_output(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"], timeout=2.0)
-                .decode()
-                .strip()
-            )
-        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
-            logger.debug(f"Failed to read CPU name from sysctl: {e}")
+            libc_name = ctypes.util.find_library("c")
+            if libc_name is not None:
+                libc = ctypes.cdll.LoadLibrary(libc_name)
+                size = ctypes.c_size_t()
+                name = b"machdep.cpu.brand_string"
+                if libc.sysctlbyname(name, None, ctypes.byref(size), None, 0) == 0:
+                    buf = ctypes.create_string_buffer(size.value)
+                    if libc.sysctlbyname(name, buf, ctypes.byref(size), None, 0) == 0:
+                        return buf.value.decode("utf-8").strip()
+        except Exception as e:
+            logger.debug(f"Failed to read CPU name from sysctlbyname: {e}")
 
     return None
 

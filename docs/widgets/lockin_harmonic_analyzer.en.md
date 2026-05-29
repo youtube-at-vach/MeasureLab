@@ -6,16 +6,11 @@ The **Lock-in Harmonic Analyzer** is a module that utilizes the principles of a 
 
 Unlike conventional FFT-based distortion measurements that rely on window functions, this widget performs **multi-parallel IQ detection (up to 200th order)** simultaneously for the fundamental wave and its harmonics. By strictly tuning into only the target frequency components, it can accurately extract signals buried in noise, enabling measurements in ultra-low distortion regimes (e.g., below -160 dBc) that exceed the limitations of traditional FFT analysis.
 
-## ☕ Coffee Break: Picking out the "Fingerprints of Sound" one by one with Tweezers
+## ☕ Coffee Break: An Approach to Measuring Microscopic Distortion
 
-When sound passes through audio equipment, impurities called "overtones (harmonics)" that were not in the original sound are mixed in. This is the true identity of "distortion".
-For example, it's like putting in a "C" note, but a faint "C one octave higher" or a "G" note comes out mixed in.
-
-Conventional distortion meters (FFT) were like looking for these with a magnifying glass. However, when dealing with the latest ultra-high-performance equipment, the distortion is so small that it just looks like "noise (static)", reaching the limit of what can be measured.
-
-Enter the "Lock-in Harmonic Analyzer".
-Instead of a magnifying glass, it uses dozens of **"magic tweezers with magnets that only attract specific overtones"** simultaneously to directly pluck out specific sound components like the "2nd harmonic" and "3rd harmonic" from the static (IQ detection).
-Because it can completely ignore the surrounding static (noise), it can clearly quantify even "extremely small distortions" that were previously invisible to anyone!
+When sound passes through audio equipment, impurities called "overtones (harmonics)" are added, which we perceive as "distortion."
+With conventional FFT-based distortion meters, the microscopic distortion of ultra-high-performance equipment gets buried in the noise floor, making it impossible to measure.
+The Lock-in Harmonic Analyzer overcomes this by performing multiple lock-in detections targeted exclusively at "specific harmonic frequencies." By bypassing the FFT entirely, it can precisely extract and quantify extremely faint distortion components while completely ignoring the surrounding noise.
 
 ## Unique Measurement Principle
 

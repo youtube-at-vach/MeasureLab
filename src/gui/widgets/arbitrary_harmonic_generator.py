@@ -109,19 +109,34 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
                 # Fundamental wave
                 sig = a1 * np.sin(wt + p1_rad)
 
-                # Add User Harmonics
-                for n in range(2, max_h + 1):
-                    amp = h_amps[n - 1]
-                    if amp > 0:
-                        phase_rad = np.radians(h_phases[n - 1])
-                        sig += amp * np.sin(n * wt + phase_rad)
+                # Combine User and Compensation Harmonics
+                if max_h >= 2:
+                    amps = h_amps[1:max_h]
+                    phases_rad = np.radians(h_phases[1:max_h])
 
-                # Add Compensation Harmonics
-                if comp_enabled:
-                    for n in range(2, min(max_h + 1, len(comp_coeffs) + 1)):
-                        c = comp_coeffs[n - 1]
-                        if c.real != 0 or c.imag != 0:
-                            sig += c.real * np.cos(n * wt) + c.imag * np.sin(n * wt)
+                    # User harmonics using sine addition formula:
+                    # A * sin(n*wt + phi) = A * cos(phi) * sin(n*wt) + A * sin(phi) * cos(n*wt)
+                    sin_coeff = amps * np.cos(phases_rad)
+                    cos_coeff = amps * np.sin(phases_rad)
+
+                    if comp_enabled:
+                        n_comp_limit = min(max_h + 1, len(comp_coeffs) + 1)
+                        n_comp_len = n_comp_limit - 2
+
+                        # Add compensation coefficients
+                        # comp: c.imag * sin(n*wt) + c.real * cos(n*wt)
+                        if n_comp_len > 0:
+                            sin_coeff[:n_comp_len] += comp_coeffs[1 : n_comp_len + 1].imag
+                            cos_coeff[:n_comp_len] += comp_coeffs[1 : n_comp_len + 1].real
+
+                    valid = (sin_coeff != 0) | (cos_coeff != 0)
+
+                    if np.any(valid):
+                        n_arr = np.arange(2, max_h + 1)[valid, None]
+                        n_wt = n_arr * wt
+
+                        sig += sin_coeff[valid] @ np.sin(n_wt)
+                        sig += cos_coeff[valid] @ np.cos(n_wt)
 
                 # Output routing
                 if self.output_channel == 2:  # Stereo
