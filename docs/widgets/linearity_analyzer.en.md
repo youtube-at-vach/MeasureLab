@@ -2,12 +2,10 @@
 
 ![Linearity Analyzer](../assets/widgets/linearity_analyzer.png)
 
-## ☕ Coffee Break: What is "Linearity"?
+## ☕ Coffee Break: Linearity
 
-"Linearity" might sound like a complex term, but it simply means "does what comes out exactly proportional to what goes in?"
-For example, if you place a 1kg weight on a scale and it reads "1kg", and then a 100kg weight and it reads "100kg", that scale has "good linearity".
-However, in digital audio equipment, it often happens that "it handles loud sounds perfectly, but makes errors with very quiet sounds (just like a normal scale struggles to weigh a 1g feather)".
-This widget checks exactly "how quiet of a sound the equipment can measure accurately." It's essentially a "precision inspection tool for your audio scale"!
+"Linearity" refers to whether the output is perfectly proportional to the amplitude of the input signal.
+In digital audio equipment, this proportional relationship often breaks down at extremely low signal levels due to quantization errors or the noise floor. This widget measures the precision limits of equipment when handling minute signals.
 
 ## Overview
 

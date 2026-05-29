@@ -2,12 +2,6 @@
 
 ![Waveform Loop Player](../assets/widgets/waveform_loop_player.png)
 
-## ☕ Coffee Break: Creating a "Microscope Slide" for Sound
-
-In science class, you placed what you wanted to see on a glass slide to look at it under a microscope, right?
-This tool does exactly that! From a long recording, you cut out just the specific moment you want (like a drum kick or a sudden noise) and play it back repeatedly (loop it) over and over.
-By doing this, you can take your time and carefully observe that fleeting moment of sound using other "microscopes" like the Oscilloscope or Spectrum Analyzer.
-
 ## Overview
 
 A tool that allows you to load an audio file, inspect its waveform, and loop a selected region.
