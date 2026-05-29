@@ -5,7 +5,6 @@ import time
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QBrush, QPalette
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -52,21 +51,16 @@ def get_cpu_name():
             logger.debug(f"Failed to read CPU name from /proc/cpuinfo: {e}")
 
     elif sys.platform == "darwin":
-        import ctypes
-        import ctypes.util
+        import subprocess
 
         try:
-            libc_name = ctypes.util.find_library("c")
-            if libc_name is not None:
-                libc = ctypes.cdll.LoadLibrary(libc_name)
-                size = ctypes.c_size_t()
-                name = b"machdep.cpu.brand_string"
-                if libc.sysctlbyname(name, None, ctypes.byref(size), None, 0) == 0:
-                    buf = ctypes.create_string_buffer(size.value)
-                    if libc.sysctlbyname(name, buf, ctypes.byref(size), None, 0) == 0:
-                        return buf.value.decode("utf-8").strip()
-        except Exception as e:
-            logger.debug(f"Failed to read CPU name from sysctlbyname: {e}")
+            return (
+                subprocess.check_output(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"], timeout=2.0)
+                .decode()
+                .strip()
+            )
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+            logger.debug(f"Failed to read CPU name from sysctl: {e}")
 
     return None
 
@@ -204,33 +198,15 @@ class ProcessorBenchmarkWidget(QWidget):
         else:
             self.fft_sizes = [2**i for i in range(12, 21)]  # 4096 to 1M
 
-        self.table.setUpdatesEnabled(False)
-        try:
-            self.table.setRowCount(len(self.fft_sizes))
-            for i, size in enumerate(self.fft_sizes):
-                if item := self.table.item(i, 0):
-                    item.setText(str(size))
-                else:
-                    idx_item = QTableWidgetItem(str(size))
-                    idx_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    self.table.setItem(i, 0, idx_item)
-
-                for col in range(1, 6):
-                    if item := self.table.item(i, col):
-                        item.setText("--")
-                        item.setForeground(
-                            QBrush(
-                                Qt.GlobalColor.white
-                                if self.palette().color(QPalette.ColorRole.WindowText).lightness() > 128
-                                else Qt.GlobalColor.black
-                            )
-                        )
-                    else:
-                        item = QTableWidgetItem("--")
-                        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                        self.table.setItem(i, col, item)
-        finally:
-            self.table.setUpdatesEnabled(True)
+        self.table.setRowCount(len(self.fft_sizes))
+        for i, size in enumerate(self.fft_sizes):
+            idx_item = QTableWidgetItem(str(size))
+            idx_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(i, 0, idx_item)
+            for col in range(1, 6):
+                item = QTableWidgetItem("--")
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setItem(i, col, item)
 
     def set_output_destination(self, mode: str):
         pass  # Not used for this module
@@ -334,60 +310,50 @@ class ProcessorBenchmarkWidget(QWidget):
 
         recommended_n = {sr: None for sr in self.sample_rates}
 
-        self.table.setUpdatesEnabled(False)
-        try:
+        for i, size in enumerate(self.fft_sizes):
+            if size not in self._benchmark_data:
+                continue
+
+            scores = self._benchmark_data[size]
+            t_total = scores["total"]
+
+            fps = 1.0 / t_total if t_total > 0 else 0
+
+            # FPS Column
+            item = QTableWidgetItem(f"{fps:.1f}")
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(i, 5, item)
+
             # We evaluate against an expected audio buffer cycle of 4096 samples
             # This perfectly compensates for the UI/OS overhead removed from the raw timing,
             # making 192kHz @ 262144 the practical limit (takes ~18ms, limit ~21ms).
             reference_block_samples = 8192
-            for i, size in enumerate(self.fft_sizes):
-                if size not in self._benchmark_data:
-                    continue
+            for col, fs in enumerate(self.sample_rates, start=1):
+                t_buf = reference_block_samples / fs
+                limit = t_buf * safety
+                limit_warn = t_buf * safety * 0.8  # 80% of limit
 
-                scores = self._benchmark_data[size]
-                t_total = scores["total"]
-
-                fps = 1.0 / t_total if t_total > 0 else 0
-
-                # FPS Column
-                if item := self.table.item(i, 5):
-                    item.setText(f"{fps:.1f}")
+                if t_total <= limit_warn:
+                    text = "OK"
+                    # also recommend if it passing
+                    recommended_n[fs] = size
+                elif t_total <= limit:
+                    text = "⚠"
+                    # also recommend if it technically passes
+                    recommended_n[fs] = size
                 else:
-                    item = QTableWidgetItem(f"{fps:.1f}")
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    self.table.setItem(i, 5, item)
+                    text = "NG"
 
-                for col, fs in enumerate(self.sample_rates, start=1):
-                    t_buf = reference_block_samples / fs
-                    limit = t_buf * safety
-                    limit_warn = t_buf * safety * 0.8  # 80% of limit
+                item = QTableWidgetItem(text)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                if text == "OK":
+                    item.setForeground(Qt.GlobalColor.green)
+                elif text == "⚠":
+                    item.setForeground(Qt.GlobalColor.yellow)
+                elif text == "NG":
+                    item.setForeground(Qt.GlobalColor.red)
 
-                    if t_total <= limit_warn:
-                        text = "OK"
-                        # also recommend if it passing
-                        recommended_n[fs] = size
-                    elif t_total <= limit:
-                        text = "⚠"
-                        # also recommend if it technically passes
-                        recommended_n[fs] = size
-                    else:
-                        text = "NG"
-
-                    if item := self.table.item(i, col):
-                        item.setText(text)
-                    else:
-                        item = QTableWidgetItem(text)
-                        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                        self.table.setItem(i, col, item)
-
-                    if text == "OK":
-                        item.setForeground(QBrush(Qt.GlobalColor.green))
-                    elif text == "⚠":
-                        item.setForeground(QBrush(Qt.GlobalColor.yellow))
-                    elif text == "NG":
-                        item.setForeground(QBrush(Qt.GlobalColor.red))
-        finally:
-            self.table.setUpdatesEnabled(True)
+                self.table.setItem(i, col, item)
 
         # Update recommendations
         summary_parts = []
@@ -403,12 +369,6 @@ class ProcessorBenchmarkWidget(QWidget):
                     tr("{0}kHz → Recommended: None (Cannot process in real-time)\n").format(fs / 1000.0)
                 )
         summary_text = "".join(summary_parts)
-
-        # Clear existing labels in summary layout
-        while self.summary_text_layout.count():
-            child = self.summary_text_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
 
         lbl = QLabel(summary_text.strip())
         lbl.setStyleSheet("font-size: 14px;")

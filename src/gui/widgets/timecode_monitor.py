@@ -923,8 +923,6 @@ class TimecodeMonitor(MeasurementModule):
             keep_f = f_u[keep_mask]
 
         offsets2 = keep_f.astype(np.float64) - (float(fps) * keep_t)
-        if len(offsets2) == 0:
-            return False
         b = float(np.median(offsets2))
 
         f_last = int(keep_f[-1])
