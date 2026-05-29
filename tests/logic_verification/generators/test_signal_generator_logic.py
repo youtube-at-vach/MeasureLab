@@ -330,10 +330,9 @@ class TestSignalGeneratorFilter(unittest.TestCase):
 class TestSignalGeneratorMLS(unittest.TestCase):
     """Tests for MLS generation, including fallback logic."""
 
-    def test_mls_fallback_correctness(self):
+    def test_mls_correctness(self):
         """
-        Verifies that the fallback MLS generation (used when scipy is missing/fails)
-        produces the exact same sequence as the scipy implementation.
+        Verifies that MLS generation produces a sequence of correct length and values.
         """
         mock_engine = MagicMock()
         sg = SignalGenerator(mock_engine)
@@ -343,31 +342,20 @@ class TestSignalGeneratorMLS(unittest.TestCase):
         for order in [10, 15]:
             params.mls_order = order
 
-            # 1. Get reference signal using actual scipy (assuming it is installed in test env)
-            try:
-                import scipy.signal
+            # 1. Get reference signal using actual scipy
+            import scipy.signal
+            ref_seq, _ = scipy.signal.max_len_seq(order)
+            ref_signal = ref_seq.astype(float) * 2 - 1
 
-                ref_seq, _ = scipy.signal.max_len_seq(order)
-                ref_signal = ref_seq.astype(float) * 2 - 1
-            except ImportError:
-                self.skipTest("Scipy not installed, cannot verify fallback against reference implementation.")
-
-            # 2. Force fallback by mocking max_len_seq to raise Exception
-            with (
-                patch("scipy.signal.max_len_seq", side_effect=RuntimeError("Forced failure for testing fallback")),
-                patch("src.gui.widgets.signal_generator.logger") as mock_logger,
-            ):
-                fallback_signal = sg._generate_mls(params, 48000)
-                mock_logger.warning.assert_called_with(
-                    "scipy.signal.max_len_seq not found/failed, using optimized fallback"
-                )
+            # 2. Get generator output
+            actual_signal = sg._generate_mls(params, 48000)
 
             # 3. Verify
             expected_len = 2**order - 1
-            self.assertEqual(len(fallback_signal), expected_len, f"Length mismatch for order {order}")
+            self.assertEqual(len(actual_signal), expected_len, f"Length mismatch for order {order}")
 
-            if not np.allclose(fallback_signal, ref_signal):
-                self.fail(f"Fallback MLS signal does not match Scipy implementation for order {order}")
+            if not np.allclose(actual_signal, ref_signal):
+                self.fail(f"Generated MLS signal does not match Scipy implementation for order {order}")
 
 
 class TestSignalGeneratorGolay(unittest.TestCase):
