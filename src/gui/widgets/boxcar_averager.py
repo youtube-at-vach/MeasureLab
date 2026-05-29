@@ -219,13 +219,25 @@ class BoxcarAverager(MeasurementModule):
 
         lfsr_max_period = 65535
         calc_len = min(period, lfsr_max_period)
-        seq = np.empty((calc_len,), dtype=np.float64)
-        for i in range(calc_len):
-            lsb = reg & 1
-            seq[i] = 1.0 if lsb else -1.0
-            reg >>= 1
-            if lsb:
-                reg ^= 0xB400
+
+        try:
+            import scipy.signal
+
+            state = np.array([(reg >> i) & 1 for i in range(16)], dtype=np.int8)
+            seq, _ = scipy.signal.max_len_seq(16, state=state, length=calc_len)
+            # scipy returns 0 and 1, we want -1.0 and 1.0
+            # However, looking at the old code: lsb=1 -> 1.0, lsb=0 -> -1.0
+            # scipy returns 1 for True, 0 for False.
+            seq = seq.astype(np.float64) * 2.0 - 1.0
+        except Exception:
+            # Fallback to python loop if scipy fails
+            seq = np.empty((calc_len,), dtype=np.float64)
+            for i in range(calc_len):
+                lsb = reg & 1
+                seq[i] = 1.0 if lsb else -1.0
+                reg >>= 1
+                if lsb:
+                    reg ^= 0xB400
 
         if period > lfsr_max_period:
             seq = np.resize(seq, period)
