@@ -179,9 +179,6 @@ class ProcessingWorker(QThread):
                         data = infile.read(dtype="float32")
                         self.progress.emit(25)
 
-                        processed_channels = []
-                        channel_count = 1 if data.ndim == 1 else data.shape[1]
-
                         if data.ndim == 1:
                             # Mono
                             input_rms = float(np.sqrt(np.mean(np.square(data))))
@@ -192,28 +189,24 @@ class ProcessingWorker(QThread):
                                 if processed_rms > 0 and input_rms > 0:
                                     out_data = out_data * (input_rms / processed_rms)
 
-                            processed_channels.append(out_data)
-                            self.progress.emit(25 + int(60 * 1 / channel_count))
+                            data = out_data
+                            self.progress.emit(85)
                         else:
-                            # Multichannel
-                            for ch in range(channel_count):
-                                ch_data = data[:, ch]
-                                input_rms = float(np.sqrt(np.mean(np.square(ch_data))))
-                                out_data = signal.oaconvolve(ch_data, kernel, mode="same")
+                            # Multichannel Vectorized
+                            input_rms = np.sqrt(np.mean(np.square(data), axis=0))
+                            kernel_2d = kernel[:, np.newaxis]
+                            out_data = signal.oaconvolve(data, kernel_2d, mode="same", axes=0)
 
-                                if self.normalize_rms:
-                                    processed_rms = float(np.sqrt(np.mean(np.square(out_data))))
-                                    if processed_rms > 0 and input_rms > 0:
-                                        out_data = out_data * (input_rms / processed_rms)
+                            if self.normalize_rms:
+                                processed_rms = np.sqrt(np.mean(np.square(out_data), axis=0))
+                                valid = (processed_rms > 0) & (input_rms > 0)
+                                if np.any(valid):
+                                    scaling = np.ones_like(input_rms)
+                                    scaling[valid] = input_rms[valid] / processed_rms[valid]
+                                    out_data = out_data * scaling
 
-                                processed_channels.append(out_data)
-                                # Emit incremental progress per channel
-                                self.progress.emit(25 + int(60 * (ch + 1) / channel_count))
-
-                        if len(processed_channels) == 1:
-                            data = processed_channels[0]
-                        else:
-                            data = np.column_stack(processed_channels)
+                            data = out_data
+                            self.progress.emit(85)
 
                         self.progress.emit(90)
                         outfile.write(data)
@@ -277,23 +270,20 @@ class ProcessingWorker(QThread):
                                 chunk = chunk[:, np.newaxis]
 
                             # Output buffer for this chunk (linear convolution part)
-                            # Length L
-                            out_chunk = np.zeros((current_chunk_len, channels), dtype="float32")
+                            # Vectorized Multichannel Processing
+                            kernel_2d = kernel[:, np.newaxis]
+                            # Convolve chunk with kernel (full mode)
+                            # Returns L + M - 1 for axis 0
+                            conv_res = signal.fftconvolve(chunk, kernel_2d, mode="full", axes=0)
 
-                            for ch in range(channels):
-                                ch_data = chunk[:, ch]
-                                # Convolve chunk with kernel (full mode)
-                                # Returns L + M - 1
-                                conv_res = signal.fftconvolve(ch_data, kernel, mode="full")
+                            # Add overlap from previous block
+                            conv_res[: M - 1, :] += overlap_buffer
 
-                                # Add overlap from previous block
-                                conv_res[: M - 1] += overlap_buffer[:, ch]
+                            # Save new overlap (last M-1 samples)
+                            overlap_buffer[:] = conv_res[current_chunk_len:, :]
 
-                                # Save new overlap (last M-1 samples)
-                                overlap_buffer[:, ch] = conv_res[current_chunk_len:]
-
-                                # Valid linear convolution part for this step
-                                out_chunk[:, ch] = conv_res[:current_chunk_len]
+                            # Valid linear convolution part for this step
+                            out_chunk = conv_res[:current_chunk_len, :]
 
                             # Flatten if mono output needed?
                             # If input was mono, chunk is (N, 1), output is (N, 1).

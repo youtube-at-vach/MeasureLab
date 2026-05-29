@@ -1,3 +1,4 @@
+import html
 import logging
 
 from PyQt6.QtCore import pyqtSignal, QObject, Qt
@@ -149,7 +150,7 @@ class LogViewerWindow(QDialog):
             color = "gray"
 
         # Escape HTML special characters and handle newlines for HTML display
-        msg_escaped = msg.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+        msg_escaped = html.escape(msg).replace("\n", "<br>")
 
         if color:
             html_msg = f'<span style="color: {color};">{msg_escaped}</span>'
