@@ -28,16 +28,6 @@ The Stereo Alignment Monitor helps you visually monitor these discrepancies and 
 * **Show Physical Units (dB/r/°)**: When checked, displays detailed numerical values in physical units (dB, correlation coefficient r, degrees °, etc.) in addition to the analysis metrics (percentages and qualitative judgments like "Good/Poor"). This is useful when you need strict, exact data.
 * **Smoothing**: Adjusts the amount of temporal smoothing applied to the plots and analysis metrics. Higher values result in slower, more stable readings, making it easier to evaluate consistent trends.
 
-## Volume Gang Error Logger
-
-### Volume Gang Error Logger
-
-Monitors and logs the L/R balance (gang error) across different volume levels. This is particularly useful for testing analog volume potentiometers in amplifiers, which often exhibit channel imbalance at lower volume settings.
-
-* **Real-time Levels**: Displays the current RMS levels for Left and Right channels, and the instantaneous balance difference.
-* **Logger Controls**: Start, pause, or clear the logging process. You can also export the logged data to a CSV file for further analysis or reporting.
-* **Settings**: Configure the minimum signal level (dBFS) required for logging to ignore background noise.
-
 ## Reading the Plots
 
 ### L/R Difference FFT (Tone Color Shift)

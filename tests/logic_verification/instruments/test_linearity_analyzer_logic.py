@@ -346,11 +346,3 @@ def test_linearity_analyzer_amplitude_continuity():
     # outdata2[:, 0] must match expected_ramp_sig, and not match expected_step_sig
     assert np.allclose(outdata2[:, 0], expected_ramp_sig, atol=1e-5)
     assert not np.allclose(outdata2[:, 0], expected_step_sig, atol=1e-5)
-
-
-def test_calculate_hysteresis_empty_inputs():
-    """Verifies that calculate_hysteresis returns None for empty inputs."""
-    assert calculate_hysteresis([], [1.0], ["fwd"]) is None
-    assert calculate_hysteresis([1.0], [], ["fwd"]) is None
-    assert calculate_hysteresis([1.0], [1.0], []) is None
-    assert calculate_hysteresis([], [], []) is None

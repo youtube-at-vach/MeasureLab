@@ -1,11 +1,10 @@
-## 2024-05-28 - Optimize Arbitrary Harmonic Generator math with matrix multiplication
+## 2026-05-26 - Optimized Sine Fitting Frequency Search with Euler's Formula
 
-**Learning:** When calculating many harmonic sine waves with arbitrary amplitudes and phases, broadcasting a full (harmonics, frames) array and computing `np.sin()` on it is slow and memory intensive. The fastest way is to mathematically decompose the amplitude and phase into real and imaginary coefficients using the sine addition formula, and then compute the final signal in one go using matrix multiplication (`@`) against a pre-computed array of pure harmonic sine/cosine basis vectors.
+**Learning:** In tight NumPy calculation loops like `_perform_coarse_search`, `np.exp(1j * phase)` is slow due to memory allocation and complex exponential math. The codebase's memory advises replacing `np.exp(1j * phase)` with Euler's formula (`np.cos(phase) + 1j * np.sin(phase)`), using `out=` buffers to prevent reallocation. Applying this with large complex signal arrays (using `np.empty` to preallocate and `np.cos(phase, out=buffer.real)` and `np.sin(phase, out=buffer.imag)`) reduced the search time from ~3.6s to ~2.8s in tight benchmark loops, cutting `optimize_frequency` time by ~20%.
 
 **Action:** Whenever using `np.exp(1j * phase)` heavily inside a signal processing loop over arrays, preallocate a complex NumPy array and populate it directly with `np.cos(..., out=buffer.real)` and `np.sin(..., out=buffer.imag)` to save significant memory reallocation overhead and complex math time.
 
-## 2026-05-28 - Optimized PyQt QTableWidget Updates By Reusing Items
+## 2024-05-19 - Inverse Filter JSON Array Validation Optimization
 
-**Learning:** When updating data in QTableWidget (e.g., high-frequency realtime results or benchmark tables), unconditionally instantiating new `QTableWidgetItem` objects and calling `setItem` is extremely slow and triggers high garbage collection and layout overhead. Instead, using the walrus operator (`:=`) to assign and reuse an existing item reference (`if item := self.table.item(row, col): item.setText(val) else: ...`) minimizes PyQt C++ crossings and object creations. Furthermore, surrounding large table updates with `self.table.setUpdatesEnabled(False)` and a `try/finally` block drastically reduces redraw overhead.
-
-**Action:** Whenever a PyQt table is populated continuously or has dynamic row counts, use `setUpdatesEnabled(False)`, and always lookup existing table items with `item()` before instantiating new `QTableWidgetItem` objects.
+**Learning:** When validating very large 2D arrays loaded from JSON, using exhaustive list comprehensions and `all()` with `isinstance` on every single element is extremely slow. Instead, performing a quick sanity check on the container and the first element, and letting subsequent vectorized operations (like numpy conversion or sorting) implicitly validate or fail, drastically improves performance.
+**Action:** Replace exhaustive nested element-by-element type validation with shallow checks plus `try...except` handling when parsing large datasets into structured data like numpy arrays or Pandas DataFrames.
