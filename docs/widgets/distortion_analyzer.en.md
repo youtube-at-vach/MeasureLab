@@ -10,10 +10,8 @@ It is like a "blood test" in a health checkup, allowing you to know the basic st
 
 ## ☕ Coffee Break: What is "Distortion"?
 
-Imagine putting a "picture of a perfectly round full moon" into a photocopier. What if the copy that comes out is "slightly oval-shaped" or has "extra stars" printed around it? It's a slightly different shape from the original full moon, right? This is what we call "distortion".
-
-The same thing happens in the audio world. Even if you put a "clean, smooth wave sound (a pure beep)" into an amplifier, the sound that comes out might be slightly jagged, or it might have a high-pitched "ringing" sound mixed in that wasn't in the original. This is because the equipment added "extra sounds (overtones)" during the amplification process.
-The Distortion Analyzer is a tool that precisely measures "how much the shape has deformed from the original, perfect sound." It acts like a microscope, finding invisible impurities in the sound.
+When a pure signal (such as a sine wave) is input into audio equipment, the internal amplification circuits can add "overtones (harmonics)" and "noise" that were not present in the original signal. This alteration is called "distortion."
+The Distortion Analyzer precisely quantifies how much the original waveform has been deformed by these extra components, displaying the result as a percentage (THD) or in decibels (SINAD). This allows for an objective evaluation of the equipment's output accuracy.
 
 ## Meaning of Key Indicators
 
