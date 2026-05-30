@@ -5,7 +5,6 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
@@ -21,7 +20,6 @@ from scipy import signal
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
