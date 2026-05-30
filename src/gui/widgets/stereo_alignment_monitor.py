@@ -21,6 +21,7 @@ from scipy.signal import get_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 class StereoAlignmentMonitor(MeasurementModule):
@@ -236,9 +237,10 @@ class StereoAlignmentMonitor(MeasurementModule):
         self.data_ready = True
 
 
-class StereoAlignmentMonitorWidget(QWidget):
+class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: StereoAlignmentMonitor):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
 
         self.timer = QTimer()
@@ -308,7 +310,9 @@ class StereoAlignmentMonitorWidget(QWidget):
         main_layout.addLayout(viz_layout, stretch=3)
 
         # === Right: Metrics & Controls ===
-        controls_layout = QVBoxLayout()
+        self.controls_container = QWidget()
+        controls_layout = QVBoxLayout(self.controls_container)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
 
         # Metrics Group
         metrics_group = QGroupBox(tr("Analysis Metrics"))
@@ -414,7 +418,7 @@ class StereoAlignmentMonitorWidget(QWidget):
         controls_layout.addWidget(ctrl_group)
 
         controls_layout.addStretch()
-        main_layout.addLayout(controls_layout, stretch=1)
+        main_layout.addWidget(self.controls_container, stretch=1)
 
     def init_gang_error_tab(self):
         main_layout = QHBoxLayout(self.tab_gang_error)
@@ -691,3 +695,22 @@ class StereoAlignmentMonitorWidget(QWidget):
                 x_data = np.array(sorted_keys)
                 y_data = np.array([self.module.gang_error_data[k] for k in sorted_keys])
                 self.curve_gang.setData(x_data, y_data)
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+
+        if hasattr(self, "controls_container"):
+            self.controls_container.setHidden(compact)
+
+        if hasattr(self, "tabs"):
+            self.tabs.tabBar().setHidden(compact)
+            if compact:
+                self.tabs.setCurrentIndex(0)
+
+        # Trigger parent window size adjustment
+        win = self.window()
+        if win:
+            from PyQt6 import sip
+            from PyQt6.QtCore import QTimer
+
+            QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)
