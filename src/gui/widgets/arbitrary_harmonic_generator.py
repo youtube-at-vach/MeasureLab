@@ -106,22 +106,28 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
                 wt = self._phase_gen + np.arange(frames) * phase_step
                 self._phase_gen = float((self._phase_gen + frames * phase_step) % (2.0 * np.pi))
 
-                # Fundamental wave
-                sig = a1 * np.sin(wt + p1_rad)
+                # Generate signal (Vectorized)
+                amps = np.zeros(max_h)
+                phases_rad = np.zeros(max_h)
+                amps[0] = a1
+                phases_rad[0] = p1_rad
+                if max_h > 1:
+                    amps[1:] = h_amps[1:max_h]
+                    phases_rad[1:] = np.radians(h_phases[1:max_h])
 
-                # Add User Harmonics
-                for n in range(2, max_h + 1):
-                    amp = h_amps[n - 1]
-                    if amp > 0:
-                        phase_rad = np.radians(h_phases[n - 1])
-                        sig += amp * np.sin(n * wt + phase_rad)
+                sin_coeffs = amps * np.cos(phases_rad)
+                cos_coeffs = amps * np.sin(phases_rad)
 
-                # Add Compensation Harmonics
                 if comp_enabled:
-                    for n in range(2, min(max_h + 1, len(comp_coeffs) + 1)):
-                        c = comp_coeffs[n - 1]
-                        if c.real != 0 or c.imag != 0:
-                            sig += c.real * np.cos(n * wt) + c.imag * np.sin(n * wt)
+                    n_comp = min(max_h, len(comp_coeffs))
+                    if n_comp > 1:
+                        comps = comp_coeffs[1:n_comp]
+                        cos_coeffs[1:n_comp] += comps.real
+                        sin_coeffs[1:n_comp] += comps.imag
+
+                n_arr = np.arange(1, max_h + 1)
+                wt_matrix = n_arr[:, np.newaxis] * wt
+                sig = sin_coeffs @ np.sin(wt_matrix) + cos_coeffs @ np.cos(wt_matrix)
 
                 # Output routing
                 if self.output_channel == 2:  # Stereo
@@ -679,22 +685,28 @@ class ArbitraryHarmonicWidget(QWidget):
         t_preview = np.linspace(0, 3.0 / f0 if f0 > 0 else 0.003, 1000)
         wt = 2 * np.pi * f0 * t_preview
 
-        # Generate preview signal
-        sig = a1 * np.sin(wt + p1_rad)
+        # Generate preview signal (Vectorized)
+        amps = np.zeros(max_h)
+        phases_rad = np.zeros(max_h)
+        amps[0] = a1
+        phases_rad[0] = p1_rad
+        if max_h > 1:
+            amps[1:] = h_amps[1:max_h]
+            phases_rad[1:] = np.radians(h_phases[1:max_h])
 
-        # User harmonics
-        for n in range(2, max_h + 1):
-            amp = h_amps[n - 1]
-            if amp > 0:
-                phase_rad = np.radians(h_phases[n - 1])
-                sig += amp * np.sin(n * wt + phase_rad)
+        sin_coeffs = amps * np.cos(phases_rad)
+        cos_coeffs = amps * np.sin(phases_rad)
 
-        # Compensation harmonics
         if comp_enabled:
-            for n in range(2, min(max_h + 1, len(comp_coeffs) + 1)):
-                c = comp_coeffs[n - 1]
-                if c.real != 0 or c.imag != 0:
-                    sig += c.real * np.cos(n * wt) + c.imag * np.sin(n * wt)
+            n_comp = min(max_h, len(comp_coeffs))
+            if n_comp > 1:
+                comps = comp_coeffs[1:n_comp]
+                cos_coeffs[1:n_comp] += comps.real
+                sin_coeffs[1:n_comp] += comps.imag
+
+        n_arr = np.arange(1, max_h + 1)
+        wt_matrix = n_arr[:, np.newaxis] * wt
+        sig = sin_coeffs @ np.sin(wt_matrix) + cos_coeffs @ np.cos(wt_matrix)
 
         self.curve_wave.setData(t_preview, sig)
 
