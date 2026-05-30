@@ -1,3 +1,4 @@
+import threading
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
@@ -28,6 +29,7 @@ class StereoAlignmentMonitor(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
+        self._lock = threading.Lock()
 
         # DSP parameters
         self.fft_size = 4096
@@ -122,20 +124,19 @@ class StereoAlignmentMonitor(MeasurementModule):
         rms_r = np.sqrt(np.mean(new_data[:, 1] ** 2))
 
         epsilon = 1e-12
-        self.current_l_db = 20 * np.log10(rms_l + epsilon)
-        self.current_r_db = 20 * np.log10(rms_r + epsilon)
-        self.current_diff_db = self.current_l_db - self.current_r_db
+        l_db = 20 * np.log10(rms_l + epsilon)
+        r_db = 20 * np.log10(rms_r + epsilon)
+        diff_db = l_db - r_db
 
+        new_gang_entry = None
         if self.is_logging:
-            avg_level = (self.current_l_db + self.current_r_db) / 2.0
+            avg_level = (l_db + r_db) / 2.0
             if avg_level >= self.log_threshold_db:
                 # Binning to round to nearest 0.1 dB to prevent redundant points
                 bin_key = round(avg_level, 1)
-                self.gang_error_data[bin_key] = self.current_diff_db
+                new_gang_entry = (bin_key, diff_db)
 
-        # We can calculate FFT on every block or when rolling completes.
-        # Doing it on every block provides continuous overlap-add style smoothness.
-
+        # FFT Calculation (Heavy but runs thread-safely outside lock)
         left_windowed = self.audio_buffer[:, 0] * self.window
         right_windowed = self.audio_buffer[:, 1] * self.window
 
@@ -148,93 +149,95 @@ class StereoAlignmentMonitor(MeasurementModule):
         P_R = np.abs(X_R) ** 2
         P_LR = X_L * np.conj(X_R)
 
-        # Exponential smoothing
-        alpha = self.smoothing_factor
-        self.s_ll = alpha * self.s_ll + (1 - alpha) * P_L
-        self.s_rr = alpha * self.s_rr + (1 - alpha) * P_R
-        self.s_lr = alpha * self.s_lr + (1 - alpha) * P_LR
+        # Update all shared state variables under lock to ensure consistency with GUI thread
+        with self._lock:
+            self.current_l_db = l_db
+            self.current_r_db = r_db
+            self.current_diff_db = diff_db
 
-        # --- Compute Metrics ---
-        # Sums for total energy
-        e_l = np.sum(self.s_ll)
-        e_r = np.sum(self.s_rr)
-        total_e = e_l + e_r
+            if new_gang_entry is not None:
+                b_k, d_v = new_gang_entry
+                self.gang_error_data[b_k] = d_v
 
-        epsilon = 1e-12
-        if total_e > epsilon:
-            # 1. L/R Balance
-            # e_l and e_r are energy (RMS^2 * constants).
-            # 10 * log10(E_L / E_R) is the dB difference.
-            ratio = e_l / (e_r + epsilon)
-            self.balance_db = 10.0 * np.log10(ratio)
+            # Exponential smoothing
+            alpha = self.smoothing_factor
+            self.s_ll = alpha * self.s_ll + (1 - alpha) * P_L
+            self.s_rr = alpha * self.s_rr + (1 - alpha) * P_R
+            self.s_lr = alpha * self.s_lr + (1 - alpha) * P_LR
 
-            # 2. Center Focus
-            # E_M = (P_L + P_R + 2*Re(P_LR)) / 4
-            # E_S = (P_L + P_R - 2*Re(P_LR)) / 4
-            e_m = (total_e + 2 * np.sum(np.real(self.s_lr))) / 4.0
-            e_s = (total_e - 2 * np.sum(np.real(self.s_lr))) / 4.0
-            self.center_focus = (e_m / (e_m + e_s + epsilon)) * 100.0
-            self.ms_ratio_db = 10.0 * np.log10((e_m + epsilon) / (e_s + epsilon))
+            # --- Compute Metrics ---
+            # Sums for total energy
+            e_l = np.sum(self.s_ll)
+            e_r = np.sum(self.s_rr)
+            total_e = e_l + e_r
 
-            # 3. Phase Issues
-            # Phase correlation C(f) = Re(P_LR) / sqrt(P_L * P_R)
-            denom = np.sqrt(self.s_ll * self.s_rr) + epsilon
-            c_f = np.real(self.s_lr) / denom
-            c_f = np.clip(c_f, -1.0, 1.0)
+            if total_e > epsilon:
+                # 1. L/R Balance
+                ratio = e_l / (e_r + epsilon)
+                self.balance_db = 10.0 * np.log10(ratio)
 
-            # Find negatively correlated bins
-            neg_mask = c_f < 0
-            if np.any(neg_mask):
-                issue_energy = np.sum((self.s_ll[neg_mask] + self.s_rr[neg_mask]) * np.abs(c_f[neg_mask]))
-                self.phase_issue = (issue_energy / total_e) * 100.0
-            else:
-                self.phase_issue = 0.0
+                # 2. Center Focus
+                e_m = (total_e + 2 * np.sum(np.real(self.s_lr))) / 4.0
+                e_s = (total_e - 2 * np.sum(np.real(self.s_lr))) / 4.0
+                self.center_focus = (e_m / (e_m + e_s + epsilon)) * 100.0
+                self.ms_ratio_db = 10.0 * np.log10((e_m + epsilon) / (e_s + epsilon))
 
-            # Overall phase angle in degrees
-            overall_cross_real = np.sum(np.real(self.s_lr))
-            overall_corr = overall_cross_real / (np.sqrt(e_l * e_r) + epsilon)
-            overall_corr = np.clip(overall_corr, -1.0, 1.0)
-            self.phase_issue_deg = np.arccos(overall_corr) * (180.0 / np.pi)
+                # 3. Phase Issues
+                denom = np.sqrt(self.s_ll * self.s_rr) + epsilon
+                c_f = np.real(self.s_lr) / denom
+                c_f = np.clip(c_f, -1.0, 1.0)
 
-            # 4. Frequency Match
-            # Pearson correlation of Log spectra above noise floor
-            # Approximate peak to define noise floor relative to signal
-            peak_power = np.max(self.s_ll + self.s_rr)
-            noise_thresh = peak_power * (10 ** (self.noise_floor_db / 10.0))
-
-            sig_mask = (self.s_ll + self.s_rr) > noise_thresh
-            if np.sum(sig_mask) > 10:  # Need minimum number of bins
-                log_l = 10 * np.log10(self.s_ll[sig_mask] + epsilon)
-                log_r = 10 * np.log10(self.s_rr[sig_mask] + epsilon)
-
-                # Pearson corr
-                mean_l = np.mean(log_l)
-                mean_r = np.mean(log_r)
-                var_l = np.sum((log_l - mean_l) ** 2)
-                var_r = np.sum((log_r - mean_r) ** 2)
-
-                if var_l > epsilon and var_r > epsilon:
-                    cov = np.sum((log_l - mean_l) * (log_r - mean_r))
-                    corr = cov / np.sqrt(var_l * var_r)
-                    self.freq_match = max(0.0, corr) * 100.0
-                    self.corr_raw = max(0.0, corr)
+                # Find negatively correlated bins
+                neg_mask = c_f < 0
+                if np.any(neg_mask):
+                    issue_energy = np.sum((self.s_ll[neg_mask] + self.s_rr[neg_mask]) * np.abs(c_f[neg_mask]))
+                    self.phase_issue = (issue_energy / total_e) * 100.0
                 else:
-                    self.freq_match = 100.0  # Flat lines match
-                    self.corr_raw = 1.0
+                    self.phase_issue = 0.0
+
+                # Overall phase angle in degrees
+                overall_cross_real = np.sum(np.real(self.s_lr))
+                overall_corr = overall_cross_real / (np.sqrt(e_l * e_r) + epsilon)
+                overall_corr = np.clip(overall_corr, -1.0, 1.0)
+                self.phase_issue_deg = np.arccos(overall_corr) * (180.0 / np.pi)
+
+                # 4. Frequency Match
+                peak_power = np.max(self.s_ll + self.s_rr)
+                noise_thresh = peak_power * (10 ** (self.noise_floor_db / 10.0))
+
+                sig_mask = (self.s_ll + self.s_rr) > noise_thresh
+                if np.sum(sig_mask) > 10:  # Need minimum number of bins
+                    log_l = 10 * np.log10(self.s_ll[sig_mask] + epsilon)
+                    log_r = 10 * np.log10(self.s_rr[sig_mask] + epsilon)
+
+                    # Pearson corr
+                    mean_l = np.mean(log_l)
+                    mean_r = np.mean(log_r)
+                    var_l = np.sum((log_l - mean_l) ** 2)
+                    var_r = np.sum((log_r - mean_r) ** 2)
+
+                    if var_l > epsilon and var_r > epsilon:
+                        cov = np.sum((log_l - mean_l) * (log_r - mean_r))
+                        corr = cov / np.sqrt(var_l * var_r)
+                        self.freq_match = max(0.0, corr) * 100.0
+                        self.corr_raw = max(0.0, corr)
+                    else:
+                        self.freq_match = 100.0  # Flat lines match
+                        self.corr_raw = 1.0
+                else:
+                    self.freq_match = 0.0
+                    self.corr_raw = 0.0
+
             else:
+                self.balance_db = 0.0
+                self.center_focus = 50.0  # Silence is neither mono nor out-of-phase
+                self.ms_ratio_db = 0.0
+                self.phase_issue = 0.0
+                self.phase_issue_deg = 0.0
                 self.freq_match = 0.0
                 self.corr_raw = 0.0
 
-        else:
-            self.balance_db = 0.0
-            self.center_focus = 50.0  # Silence is neither mono nor out-of-phase
-            self.ms_ratio_db = 0.0
-            self.phase_issue = 0.0
-            self.phase_issue_deg = 0.0
-            self.freq_match = 0.0
-            self.corr_raw = 0.0
-
-        self.data_ready = True
+            self.data_ready = True
 
 
 class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
@@ -541,7 +544,8 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
             self.btn_log_toggle.setText(tr("Start Logging"))
 
     def on_log_clear(self):
-        self.module.gang_error_data.clear()
+        with self.module._lock:
+            self.module.gang_error_data.clear()
         self.curve_gang.setData([], [])
 
     def on_thresh_changed(self, val):
@@ -549,8 +553,10 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
         self.lbl_thresh_val.setText(f"{val} dB")
 
     def on_log_export(self):
-        if not self.module.gang_error_data:
-            return
+        with self.module._lock:
+            if not self.module.gang_error_data:
+                return
+            gang_error_copy = self.module.gang_error_data.copy()
 
         filename, _ = QFileDialog.getSaveFileName(
             self, tr("Export Gang Error Data"), "gang_error.csv", "CSV Files (*.csv)"
@@ -562,8 +568,8 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
                 with open(filename, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow(["Average Level (dBFS)", "L/R Balance (dB)"])
-                    for avg_lvl in sorted(self.module.gang_error_data.keys()):
-                        writer.writerow([avg_lvl, self.module.gang_error_data[avg_lvl]])
+                    for avg_lvl in sorted(gang_error_copy.keys()):
+                        writer.writerow([avg_lvl, gang_error_copy[avg_lvl]])
             except Exception as e:
                 import logging
 
@@ -583,52 +589,72 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
         self.module.smoothing_factor = val / 100.0
 
     def update_display(self):
+        # Read all shared values and make safe copies under lock
+        with self.module._lock:
+            current_l_db = self.module.current_l_db
+            current_r_db = self.module.current_r_db
+            current_diff_db = self.module.current_diff_db
+
+            data_ready = self.module.data_ready
+            if data_ready:
+                self.module.data_ready = False
+                freqs = self.module.freqs.copy()
+                s_ll = self.module.s_ll.copy()
+                s_rr = self.module.s_rr.copy()
+                s_lr = self.module.s_lr.copy()
+                balance_db = self.module.balance_db
+                corr_raw = self.module.corr_raw
+                freq_match = self.module.freq_match
+                ms_ratio_db = self.module.ms_ratio_db
+                center_focus = self.module.center_focus
+                phase_issue = self.module.phase_issue
+                phase_issue_deg = self.module.phase_issue_deg
+
+            gang_error_data_copy = self.module.gang_error_data.copy() if self.module.gang_error_data else None
+
         # Always update real-time RMS levels for Tab 2 status
-        self.lbl_l_rms.setText(f"{self.module.current_l_db:.1f} dBFS")
-        self.lbl_r_rms.setText(f"{self.module.current_r_db:.1f} dBFS")
-        self.lbl_curr_bal.setText(f"{self.module.current_diff_db:+.2f} dB")
+        self.lbl_l_rms.setText(f"{current_l_db:.1f} dBFS")
+        self.lbl_r_rms.setText(f"{current_r_db:.1f} dBFS")
+        self.lbl_curr_bal.setText(f"{current_diff_db:+.2f} dB")
 
         current_tab_idx = self.tabs.currentIndex()
 
         if current_tab_idx == 0:
             # Tab 1: Realtime Monitor
-            if not self.module.data_ready:
+            if not data_ready:
                 return
-            self.module.data_ready = False
 
-            freqs = self.module.freqs
             # Skip DC (freq=0) for log plot
             valid = freqs > 0
             f_valid = freqs[valid]
 
-            s_ll = self.module.s_ll[valid]
-            s_rr = self.module.s_rr[valid]
-            s_lr = self.module.s_lr[valid]
+            s_ll_v = s_ll[valid]
+            s_rr_v = s_rr[valid]
+            s_lr_v = s_lr[valid]
 
             epsilon = 1e-12
 
             # 1. Update FFT Plot
             # Convert to roughly dBFS (assuming 1.0 is full scale sine, power is 0.5)
             scale = 2.0 / (self.module.fft_size**2)
-            db_l = 10 * np.log10(s_ll * scale + epsilon)
-            db_r = 10 * np.log10(s_rr * scale + epsilon)
+            db_l = 10 * np.log10(s_ll_v * scale + epsilon)
+            db_r = 10 * np.log10(s_rr_v * scale + epsilon)
 
             self.curve_l.setData(f_valid, db_l)
             self.curve_r.setData(f_valid, db_r)
 
             # 2. Update Correlation Plot
-            denom = np.sqrt(s_ll * s_rr) + epsilon
-            corr = np.real(s_lr) / denom
+            denom = np.sqrt(s_ll_v * s_rr_v) + epsilon
+            corr = np.real(s_lr_v) / denom
             corr = np.clip(corr, -1.0, 1.0)
             self.curve_corr.setData(f_valid, corr)
 
             # 3. Update Metrics text
-            bal_db = self.module.balance_db
-            self.lbl_balance_val.setText(f"{bal_db:+.2f} dB")
-            if abs(bal_db) < 0.5:
+            self.lbl_balance_val.setText(f"{balance_db:+.2f} dB")
+            if abs(balance_db) < 0.5:
                 self.lbl_balance_jdg.setText(tr("Excellent"))
                 self.lbl_balance_jdg.setStyleSheet("color: #00FF00;")
-            elif abs(bal_db) < 3.0:
+            elif abs(balance_db) < 3.0:
                 self.lbl_balance_jdg.setText(tr("Good"))
                 self.lbl_balance_jdg.setStyleSheet("color: #FFFF00;")
             else:
@@ -637,48 +663,45 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
 
             show_phys = self.chk_physical.isChecked()
 
-            match = self.module.freq_match
             if show_phys:
-                self.lbl_match_val.setText(f"r = {self.module.corr_raw:.3f}")
+                self.lbl_match_val.setText(f"r = {corr_raw:.3f}")
             else:
-                self.lbl_match_val.setText(f"{match:.1f} %")
+                self.lbl_match_val.setText(f"{freq_match:.1f} %")
 
-            if match > 95.0:
+            if freq_match > 95.0:
                 self.lbl_match_jdg.setText(tr("Professional"))
                 self.lbl_match_jdg.setStyleSheet("color: #00FF00;")
-            elif match > 80.0:
+            elif freq_match > 80.0:
                 self.lbl_match_jdg.setText(tr("Good"))
                 self.lbl_match_jdg.setStyleSheet("color: #FFFF00;")
             else:
                 self.lbl_match_jdg.setText(tr("Poor"))
                 self.lbl_match_jdg.setStyleSheet("color: #FF0000;")
 
-            focus = self.module.center_focus
             if show_phys:
-                self.lbl_focus_val.setText(f"{self.module.ms_ratio_db:+.1f} dB")
+                self.lbl_focus_val.setText(f"{ms_ratio_db:+.1f} dB")
             else:
-                self.lbl_focus_val.setText(f"{focus:.1f} %")
+                self.lbl_focus_val.setText(f"{center_focus:.1f} %")
 
-            if focus > 85.0:
+            if center_focus > 85.0:
                 self.lbl_focus_jdg.setText(tr("Mono Compatible"))
                 self.lbl_focus_jdg.setStyleSheet("color: #00FF00;")
-            elif focus > 50.0:
+            elif center_focus > 50.0:
                 self.lbl_focus_jdg.setText(tr("Wide Stereo"))
                 self.lbl_focus_jdg.setStyleSheet("color: #3498db;")
             else:
                 self.lbl_focus_jdg.setText(tr("Phasey / Wide"))
                 self.lbl_focus_jdg.setStyleSheet("color: #FFA500;")
 
-            issues = self.module.phase_issue
             if show_phys:
-                self.lbl_phase_val.setText(f"{self.module.phase_issue_deg:.1f}°")
+                self.lbl_phase_val.setText(f"{phase_issue_deg:.1f}°")
             else:
-                self.lbl_phase_val.setText(f"{issues:.2f} %")
+                self.lbl_phase_val.setText(f"{phase_issue:.2f} %")
 
-            if issues < 1.0:
+            if phase_issue < 1.0:
                 self.lbl_phase_jdg.setText(tr("Negligible (Safe)"))
                 self.lbl_phase_jdg.setStyleSheet("color: #00FF00;")
-            elif issues < 10.0:
+            elif phase_issue < 10.0:
                 self.lbl_phase_jdg.setText(tr("Minor Issues"))
                 self.lbl_phase_jdg.setStyleSheet("color: #FFFF00;")
             else:
@@ -686,14 +709,14 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
                 self.lbl_phase_jdg.setStyleSheet("color: #FF0000;")
 
             # 4. Update M/S Bar
-            self.ms_bar.setValue(int(focus))
+            self.ms_bar.setValue(int(center_focus))
 
         elif current_tab_idx == 1:
             # Tab 2: Volume Gang Error Logger
-            if self.module.gang_error_data:
-                sorted_keys = sorted(self.module.gang_error_data.keys())
+            if gang_error_data_copy:
+                sorted_keys = sorted(gang_error_data_copy.keys())
                 x_data = np.array(sorted_keys)
-                y_data = np.array([self.module.gang_error_data[k] for k in sorted_keys])
+                y_data = np.array([gang_error_data_copy[k] for k in sorted_keys])
                 self.curve_gang.setData(x_data, y_data)
 
     def update_compact_layout(self):
