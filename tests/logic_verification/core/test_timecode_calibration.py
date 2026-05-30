@@ -8,16 +8,22 @@ from collections import deque
 class TestTimecodeCalibration(unittest.TestCase):
     def setUp(self):
         # Create mocks
+        class DummyQWidget:
+            pass
+
         self.mock_qt = MagicMock()
         self.mock_loc = MagicMock()
         self.mock_loc.tr = lambda x: x
+
+        mock_widgets = MagicMock()
+        mock_widgets.QWidget = DummyQWidget
 
         # Prepare mocks dict
         mocks = {
             "PyQt6": self.mock_qt,
             "PyQt6.QtCore": MagicMock(),
             "PyQt6.QtGui": MagicMock(),
-            "PyQt6.QtWidgets": MagicMock(),
+            "PyQt6.QtWidgets": mock_widgets,
             "src.core.localization": self.mock_loc,
         }
 
