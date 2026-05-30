@@ -48,7 +48,17 @@ When measuring high-pitched sounds (short waves), it shortens the puzzle piece t
 * **Min / Max Freq**: Specifies the frequency range (lower and upper limits) to be analyzed. By narrowing it down to the band you want to see, you can eliminate wasteful calculations and get clearer results.
 * **Record Time**: Sets the recording time (in seconds). The default is 0.5 seconds. Be careful not to make it too long, as the calculation time will become significantly longer.
 
+### Filter Ringing Analysis
+
+A feature to evaluate ringing (pre-echo and post-echo) in digital filters such as DACs.
+
+* **Enable Analysis & Overlay**: When checked, ringing evaluation regions are highlighted on the waveform graph, and metrics are calculated.
+* **Window**: Specifies the width (in milliseconds) of the time window for calculating ringing energy.
+* **Pre/Post Ratio**: Displays the energy ratio (in dB) between the pre-echo (before the impulse peak) and the post-echo (after the peak).
+* **Filter Type**: Displays the inferred filter type (Linear Phase, Minimum Phase, Intermediate Phase, etc.) based on the symmetry of the ringing.
+
 ## Use Cases
 
+* **DAC Filter Ringing Evaluation**: By inputting an impulse response, visually and quantitatively evaluate what type of digital filter (e.g., linear phase, minimum phase) the DAC is using, and the strength of the pre-echo.
 * **Impact Sound Analysis**: Examining the response when a pulse is input to a speaker (impulse response) or changes in sound components when something collides.
 * **Evaluation of Instrument Attack**: Detailed observation of how harmonics appear at the moment a musical instrument starts sounding. For example, you can clearly separate and observe the difference between the impact sound of the hammer the moment a piano key is struck, and the resonance of the strings that follows.
