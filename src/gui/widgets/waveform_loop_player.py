@@ -294,7 +294,8 @@ class WaveformLoopPlayerWidget(QWidget):
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
         self.plot_widget.setMouseEnabled(x=True, y=False)
         self.plot_widget.setMenuEnabled(False)
-        self.waveform_curve = self.plot_widget.plot([], [], pen=pg.mkPen("#7fd3ff", width=1))
+        self.waveform_curve_l = self.plot_widget.plot([], [], pen=pg.mkPen("#7fd3ff", width=1))
+        self.waveform_curve_r = self.plot_widget.plot([], [], pen=pg.mkPen("#ff7f7f", width=1))
         self.plot_widget.getViewBox().sigXRangeChanged.connect(self.on_x_range_changed)
         self.cursor_line = pg.InfiniteLine(pos=0.0, angle=90, pen=pg.mkPen("#ffcc33", width=2))
         self.region = pg.LinearRegionItem(values=(0.0, 0.0), movable=True, brush=(80, 160, 255, 45))
@@ -369,6 +370,15 @@ class WaveformLoopPlayerWidget(QWidget):
         self.out_mode_combo.addItem(tr("Mono"), "Mono")
         self.out_mode_combo.currentIndexChanged.connect(self.on_out_mode_changed)
         routing_layout.addWidget(self.out_mode_combo)
+
+        routing_layout.addWidget(QLabel(tr("Plot Mode:")))
+        self.plot_mode_combo = QComboBox()
+        self.plot_mode_combo.addItem(tr("Stereo"), "Stereo")
+        self.plot_mode_combo.addItem(tr("Left"), "Left")
+        self.plot_mode_combo.addItem(tr("Right"), "Right")
+        self.plot_mode_combo.currentIndexChanged.connect(self.on_plot_mode_changed)
+        routing_layout.addWidget(self.plot_mode_combo)
+
         controls_layout.addLayout(routing_layout)
 
         gain_layout = QHBoxLayout()
@@ -401,6 +411,7 @@ class WaveformLoopPlayerWidget(QWidget):
         self.start_spin.setEnabled(enabled)
         self.end_spin.setEnabled(enabled)
         self.out_mode_combo.setEnabled(enabled)
+        self.plot_mode_combo.setEnabled(enabled)
         self.gain_slider.setEnabled(enabled)
 
     def eventFilter(self, watched, event):
@@ -529,7 +540,8 @@ class WaveformLoopPlayerWidget(QWidget):
         data = self.module.playback_buffer
         duration = self.module.duration_seconds
         if data is None or len(data) == 0:
-            self.waveform_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+            self.waveform_curve_l.clear()
+            self.waveform_curve_r.clear()
             self._update_region_ui(0.0, 0.0)
             return
 
@@ -546,7 +558,8 @@ class WaveformLoopPlayerWidget(QWidget):
     def refresh_visible_waveform(self, x_range: tuple[float, float] | None = None):
         data = self.module.playback_buffer
         if data is None or len(data) == 0:
-            self.waveform_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+            self.waveform_curve_l.clear()
+            self.waveform_curve_r.clear()
             return
 
         if x_range is None:
@@ -563,8 +576,36 @@ class WaveformLoopPlayerWidget(QWidget):
         start_sample = int(np.floor(start_s * sr))
         end_sample = int(np.ceil(end_s * sr))
         point_budget = self._waveform_point_budget()
-        x, y = make_waveform_display_data(data, sr, point_budget, start_sample, end_sample)
-        self.waveform_curve.setData(x, y)
+
+        channels = data.shape[1] if data.ndim > 1 else 1
+        plot_mode = self.plot_mode_combo.currentData()
+
+        show_l = False
+        show_r = False
+
+        if plot_mode == "Left":
+            show_l = True
+        elif plot_mode == "Right":
+            if channels > 1:
+                show_r = True
+            else:
+                show_l = True
+        else:  # Stereo
+            show_l = True
+            if channels > 1:
+                show_r = True
+
+        if show_l:
+            x, y = make_waveform_display_data(data, sr, 0, point_budget, start_sample, end_sample)
+            self.waveform_curve_l.setData(x, y)
+        else:
+            self.waveform_curve_l.clear()
+
+        if show_r:
+            x, y = make_waveform_display_data(data, sr, 1, point_budget, start_sample, end_sample)
+            self.waveform_curve_r.setData(x, y)
+        else:
+            self.waveform_curve_r.clear()
 
     def _waveform_point_budget(self) -> int:
         # Keep redraw cost bounded while using enough points for the current plot width.
@@ -630,6 +671,9 @@ class WaveformLoopPlayerWidget(QWidget):
     def on_out_mode_changed(self):
         self.module.output_mode = self.out_mode_combo.currentData()
 
+    def on_plot_mode_changed(self):
+        self.refresh_visible_waveform()
+
     def on_gain_changed(self, value: int):
         self.module.playback_gain_db = float(value)
         self.gain_value_label.setText(tr("{0} dB").format(value))
@@ -671,6 +715,7 @@ class WaveformLoopPlayerWidget(QWidget):
 def make_waveform_display_data(
     data: np.ndarray,
     sample_rate: int,
+    channel: int = 0,
     max_points: int = MAX_WAVEFORM_POINTS,
     start_sample: int = 0,
     end_sample: int | None = None,
@@ -690,8 +735,9 @@ def make_waveform_display_data(
     end = total_samples if end_sample is None else max(start + 1, min(int(end_sample), total_samples))
 
     if data.ndim > 1:
-        # Use the first channel for display: stable shape, low CPU, and no phase-cancellation surprises.
-        waveform = data[start:end, 0]
+        # Use specified channel for display
+        ch = min(channel, data.shape[1] - 1)
+        waveform = data[start:end, ch]
     else:
         waveform = data[start:end]
 
