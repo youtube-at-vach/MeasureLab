@@ -626,6 +626,7 @@ class PlotComparerWidget(QWidget):
                 self.trace_settings[tid] = {
                     "visible": True,
                     "offset_db": 0.0,
+                    "y_offset": 0.0,
                     "shift": 0.0,
                     "color": self.get_color(idx),
                     "width": 2,
@@ -638,6 +639,8 @@ class PlotComparerWidget(QWidget):
                 # Ensure the new nested settings exist
                 if "width" not in self.trace_settings[tid]:
                     self.trace_settings[tid]["width"] = 2
+                if "y_offset" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["y_offset"] = 0.0
                 if "y_visible" not in self.trace_settings[tid]:
                     self.trace_settings[tid]["y_visible"] = True
                 if "y_axis_choice" not in self.trace_settings[tid]:
@@ -721,6 +724,24 @@ class PlotComparerWidget(QWidget):
             offset_spin.setProperty("trace_id", tid)
             offset_spin.valueChanged.connect(self.on_tree_offset_changed)
             self.tree_widget.setItemWidget(offset_item, 1, offset_spin)
+
+            # 4.5 Create Child Item (Y-Axis Offset)
+            y_offset_item = QTreeWidgetItem(parent_item)
+            y_offset_item.setText(0, tr("Y-Axis Offset"))
+            y_offset_item.setFlags(y_offset_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            y_offset_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+            y_offset_item.setData(0, Qt.ItemDataRole.UserRole + 1, "y_offset")
+
+            y_offset_spin = QDoubleSpinBox()
+            y_offset_spin.setRange(-1000000.0, 1000000.0)
+            y_offset_spin.setValue(settings.get("y_offset", 0.0))
+            if trace.y_axis and trace.y_axis.display_unit:
+                y_offset_spin.setSuffix(f" {trace.y_axis.display_unit}")
+            y_offset_spin.setDecimals(4)
+            y_offset_spin.setSingleStep(0.01)
+            y_offset_spin.setProperty("trace_id", tid)
+            y_offset_spin.valueChanged.connect(self.on_tree_y_offset_changed)
+            self.tree_widget.setItemWidget(y_offset_item, 1, y_offset_spin)
 
             # 5. Create Child Item (X-Axis Shift/Offset)
             shift_item = QTreeWidgetItem(parent_item)
@@ -834,6 +855,15 @@ class PlotComparerWidget(QWidget):
         tid = spin.property("trace_id")
         if tid in self.trace_settings:
             self.trace_settings[tid]["offset_db"] = val
+            self.replot()
+
+    def on_tree_y_offset_changed(self, val):
+        spin = self.sender()
+        if not isinstance(spin, QDoubleSpinBox):
+            return
+        tid = spin.property("trace_id")
+        if tid in self.trace_settings:
+            self.trace_settings[tid]["y_offset"] = val
             self.replot()
 
     def on_tree_shift_changed(self, val):
@@ -1226,6 +1256,10 @@ class PlotComparerWidget(QWidget):
                             if max_y > 1e-12:
                                 y_arr = y_arr / max_y
 
+                    # Apply Y-Axis Offset (Vertical Shift)
+                    if settings.get("y_offset", 0.0) != 0.0:
+                        y_arr = y_arr + settings["y_offset"]
+
                     try:
                         interp_y = np.interp(actual_x, x_sorted, y_arr)
                         unit = trace.y_axis.display_unit or ""
@@ -1523,6 +1557,10 @@ class PlotComparerWidget(QWidget):
                         max_y = np.max(np.abs(y_processed))
                         if max_y > 1e-12:
                             y_processed = y_processed / max_y
+
+                # Apply Y-Axis Offset (Vertical Shift)
+                if settings.get("y_offset", 0.0) != 0.0:
+                    y_processed = y_processed + settings["y_offset"]
 
                 # Clip non-positive values to 1e-6 if using log Y scale to prevent math domain errors / warnings
                 if getattr(self, "is_log_y", False):
