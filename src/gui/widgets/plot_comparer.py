@@ -68,6 +68,9 @@ class PlotComparerWidget(QWidget):
         self.trace_settings = {}
         self.curve_items = {}  # trace_id -> (y_curve, y2_curve)
 
+        # Cache of domain -> {trace_id: trace} for O(1) lookups by active domain
+        self._domain_traces_cache = {}
+
         self.init_ui()
 
         # Connect comparison manager signals
@@ -401,13 +404,7 @@ class PlotComparerWidget(QWidget):
 
             active_domain = self.filter_combo.currentData()
             use_khz = False
-            traces = self.manager.get_all_traces()
-            first_trace = None
-            for tid, trace in traces.items():
-                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                    if self._get_trace_domain(trace) == active_domain:
-                        first_trace = trace
-                        break
+            first_trace = self._get_first_visible_trace(active_domain)
             if first_trace:
                 use_khz = active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz"
 
@@ -434,14 +431,8 @@ class PlotComparerWidget(QWidget):
             min_val, max_val = y_range[0], y_range[1]
 
             if getattr(self, "is_log_y", False):
-                first_trace = None
-                traces = self.manager.get_all_traces()
                 active_domain = self.filter_combo.currentData()
-                for tid, trace in traces.items():
-                    if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                        if self._get_trace_domain(trace) == active_domain:
-                            first_trace = trace
-                            break
+                first_trace = self._get_first_visible_trace(active_domain)
                 if first_trace and first_trace.y_axis and first_trace.y_axis.display_unit == "%":
                     min_val = 10**min_val
                     max_val = 10**max_val
@@ -480,13 +471,7 @@ class PlotComparerWidget(QWidget):
 
             active_domain = self.filter_combo.currentData()
             use_khz = False
-            traces = self.manager.get_all_traces()
-            first_trace = None
-            for tid, trace in traces.items():
-                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                    if self._get_trace_domain(trace) == active_domain:
-                        first_trace = trace
-                        break
+            first_trace = self._get_first_visible_trace(active_domain)
             if first_trace:
                 use_khz = active_domain == "frequency" and first_trace.x_axis.display_unit == "Hz"
 
@@ -508,14 +493,8 @@ class PlotComparerWidget(QWidget):
             y_range = self.plot_widget.viewRange()[1]
             min_val, max_val = y_range[0], y_range[1]
             if getattr(self, "is_log_y", False):
-                first_trace = None
-                traces = self.manager.get_all_traces()
                 active_domain = self.filter_combo.currentData()
-                for tid, trace in traces.items():
-                    if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                        if self._get_trace_domain(trace) == active_domain:
-                            first_trace = trace
-                            break
+                first_trace = self._get_first_visible_trace(active_domain)
                 if first_trace and first_trace.y_axis and first_trace.y_axis.display_unit == "%":
                     min_val = 10**min_val
                     max_val = 10**max_val
@@ -542,13 +521,7 @@ class PlotComparerWidget(QWidget):
         if not hasattr(self, "x_min_spin"):
             return
         active_domain = self.filter_combo.currentData()
-        traces = self.manager.get_all_traces()
-        first_trace = None
-        for tid, trace in traces.items():
-            if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                if self._get_trace_domain(trace) == active_domain:
-                    first_trace = trace
-                    break
+        first_trace = self._get_first_visible_trace(active_domain)
 
         use_khz = active_domain == "frequency" and first_trace and first_trace.x_axis.display_unit == "Hz"
 
@@ -629,6 +602,15 @@ class PlotComparerWidget(QWidget):
         else:
             return "other"
 
+    def _get_domain_traces(self, domain: str) -> dict:
+        return self._domain_traces_cache.get(domain, {})
+
+    def _get_first_visible_trace(self, active_domain: str):
+        for tid, trace in self._get_domain_traces(active_domain).items():
+            if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
+                return trace
+        return None
+
     def refresh_trace_list(self):
         self.tree_widget.blockSignals(True)
         self.tree_widget.clear()
@@ -636,11 +618,8 @@ class PlotComparerWidget(QWidget):
         # Get the selected plot domain filter
         active_domain = self.filter_combo.currentData()
 
-        traces = self.manager.get_all_traces()
-        for idx, (tid, trace) in enumerate(traces.items()):
-            trace_domain = self._get_trace_domain(trace)
-            if trace_domain != active_domain:
-                continue
+        # Iterate only through traces in the active domain
+        for idx, (tid, trace) in enumerate(self._get_domain_traces(active_domain).items()):
 
             # Initialize settings if new, preserving backwards compatibility
             if tid not in self.trace_settings:
@@ -869,13 +848,9 @@ class PlotComparerWidget(QWidget):
     def update_master_toggles(self):
         # 1. Gather all unique Y dimensions for active domain traces
         active_domain = self.filter_combo.currentData()
-        traces = self.manager.get_all_traces()
 
         dimensions = set()
-        for _, trace in traces.items():
-            trace_domain = self._get_trace_domain(trace)
-            if trace_domain != active_domain:
-                continue
+        for _, trace in self._get_domain_traces(active_domain).items():
 
             if trace.y_axis and trace.y_axis.dimension:
                 dimensions.add(trace.y_axis.dimension)
@@ -907,15 +882,11 @@ class PlotComparerWidget(QWidget):
 
     def sync_master_toggle_states(self):
         active_domain = self.filter_combo.currentData()
-        traces = self.manager.get_all_traces()
 
         dim_states = {dim: [] for dim in self.master_toggles_checkboxes.keys()}
 
-        for tid, trace in traces.items():
+        for tid, trace in self._get_domain_traces(active_domain).items():
             if tid not in self.trace_settings:
-                continue
-            trace_domain = self._get_trace_domain(trace)
-            if trace_domain != active_domain:
                 continue
 
             settings = self.trace_settings[tid]
@@ -1047,17 +1018,31 @@ class PlotComparerWidget(QWidget):
         self.replot()
 
     def on_trace_added(self, trace_id: str):
+        trace = self.manager.get_trace(trace_id)
+        if trace:
+            domain = self._get_trace_domain(trace)
+            if domain not in self._domain_traces_cache:
+                self._domain_traces_cache[domain] = {}
+            self._domain_traces_cache[domain][trace_id] = trace
+
         self.refresh_trace_list()
         self.replot()
 
     def on_trace_removed(self, trace_id: str):
         if trace_id in self.trace_settings:
             del self.trace_settings[trace_id]
+
+        for domain_traces in self._domain_traces_cache.values():
+            if trace_id in domain_traces:
+                del domain_traces[trace_id]
+                break
+
         self.refresh_trace_list()
         self.replot()
 
     def on_traces_cleared(self):
         self.trace_settings.clear()
+        self._domain_traces_cache.clear()
         self.refresh_trace_list()
         self.replot()
 
@@ -1176,12 +1161,9 @@ class PlotComparerWidget(QWidget):
             x_unit = "Hz" if active_domain == "frequency" else "s" if active_domain == "time" else ""
 
             visible_traces = []
-            traces = self.manager.get_all_traces()
-            for tid, trace in traces.items():
+            for tid, trace in self._get_domain_traces(active_domain).items():
                 if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                    trace_domain = self._get_trace_domain(trace)
-                    if trace_domain == active_domain:
-                        visible_traces.append((tid, trace))
+                    visible_traces.append((tid, trace))
 
             use_khz = False
             if visible_traces:
@@ -1403,19 +1385,13 @@ class PlotComparerWidget(QWidget):
         # Get the selected plot domain filter
         active_domain = self.filter_combo.currentData()
 
-        traces = self.manager.get_all_traces()
         visible_traces = {}
-        for tid, trace in traces.items():
+        for tid, trace in self._get_domain_traces(active_domain).items():
             if tid not in self.trace_settings:
                 continue
 
             # Check parent visibility
             if not self.trace_settings[tid]["visible"]:
-                continue
-
-            # Apply plot domain filter
-            trace_domain = self._get_trace_domain(trace)
-            if trace_domain != active_domain:
                 continue
 
             # Ensure at least one sub-trace is visible
