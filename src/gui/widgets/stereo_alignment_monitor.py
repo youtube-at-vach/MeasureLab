@@ -594,7 +594,7 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
             current_l_db = self.module.current_l_db
             current_r_db = self.module.current_r_db
             current_diff_db = self.module.current_diff_db
-            
+
             data_ready = self.module.data_ready
             if data_ready:
                 self.module.data_ready = False
