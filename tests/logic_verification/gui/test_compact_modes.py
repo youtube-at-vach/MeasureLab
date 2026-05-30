@@ -202,3 +202,89 @@ def test_independent_window_context_menu_plot_bypass(qtbot):
 
     # Context menu event should be ignored on plot widget to let the plot handle zoom/pan
     assert not event.isAccepted()
+
+
+def test_stereo_alignment_monitor_compact_mode(qtbot):
+    from PyQt6.QtWidgets import QMainWindow
+    from src.gui.widgets.stereo_alignment_monitor import StereoAlignmentMonitor, StereoAlignmentMonitorWidget
+
+    engine = MockAudioEngine()
+    module = StereoAlignmentMonitor(engine)
+    widget = StereoAlignmentMonitorWidget(module)
+
+    parent_win = QMainWindow()
+    parent_win.adjustSize = MagicMock()
+    widget.setParent(parent_win)
+    qtbot.addWidget(widget)
+
+    assert isinstance(widget, CompactableWidgetInterface)
+    assert not widget.is_compact_mode()
+    assert not widget.controls_container.isHidden()
+    assert not widget.tabs.tabBar().isHidden()
+
+    widget.set_compact_mode(True)
+    assert widget.is_compact_mode()
+    assert widget.controls_container.isHidden()
+    assert widget.tabs.tabBar().isHidden()
+    assert widget.tabs.currentIndex() == 0
+
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    parent_win.adjustSize.reset_mock()
+
+    widget.set_compact_mode(False)
+    assert not widget.is_compact_mode()
+    assert not widget.controls_container.isHidden()
+    assert not widget.tabs.tabBar().isHidden()
+
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    parent_win.deleteLater()
+
+
+def test_timecode_monitor_compact_mode(qtbot):
+    from PyQt6.QtWidgets import QMainWindow
+    from src.gui.widgets.timecode_monitor import TimecodeMonitor, TimecodeMonitorWidget
+
+    engine = MockAudioEngine()
+    engine.sample_rate = 48000
+    module = TimecodeMonitor(engine)
+    widget = TimecodeMonitorWidget(module)
+
+    parent_win = QMainWindow()
+    parent_win.adjustSize = MagicMock()
+    widget.setParent(parent_win)
+    qtbot.addWidget(widget)
+
+    assert isinstance(widget, CompactableWidgetInterface)
+    assert not widget.is_compact_mode()
+    assert not widget.tabs.isHidden()
+    assert not widget.controls_group.isHidden()
+    assert not widget._monitor_toggle_btn.isHidden()
+    assert not widget.ltc_offset_label.isHidden()
+
+    widget.set_compact_mode(True)
+    assert widget.is_compact_mode()
+    assert widget.tabs.isHidden()
+    assert widget.controls_group.isHidden()
+    assert widget._monitor_toggle_btn.isHidden()
+    assert widget.ltc_offset_label.isHidden()
+
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    parent_win.adjustSize.reset_mock()
+
+    widget.set_compact_mode(False)
+    assert not widget.is_compact_mode()
+    assert not widget.tabs.isHidden()
+    assert not widget.controls_group.isHidden()
+    assert not widget._monitor_toggle_btn.isHidden()
+    assert not widget.ltc_offset_label.isHidden()
+
+    qtbot.wait(100)
+    assert parent_win.adjustSize.called
+
+    parent_win.deleteLater()

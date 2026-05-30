@@ -37,6 +37,7 @@ from src.core.localization import tr
 from src.core.ltc import LTCDecoder, LTCEncoder
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -1201,9 +1202,10 @@ class TimecodeMonitor(MeasurementModule):
         self.channels["L"].display_tz_name = str(v)
 
 
-class TimecodeMonitorWidget(QWidget):
+class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: TimecodeMonitor):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self._gen_buttons: Dict[str, QPushButton] = {}
         self._gen_out_labels: Dict[str, QLabel] = {}
@@ -1327,7 +1329,7 @@ class TimecodeMonitorWidget(QWidget):
         self.ltc_offset_label.setStyleSheet("color: #888;")
         layout.addWidget(self.ltc_offset_label)
 
-        controls_group = QGroupBox(tr("Output"))
+        self.controls_group = QGroupBox(tr("Output"))
         c_layout = QGridLayout()
 
         self.link_check = QCheckBox(tr("Link Stereo Output"))
@@ -1344,8 +1346,8 @@ class TimecodeMonitorWidget(QWidget):
         c_layout.addWidget(self.link_src_combo, 1, 1)
         self.link_src_combo.setEnabled(bool(self.module.link_enabled))
 
-        controls_group.setLayout(c_layout)
-        layout.addWidget(controls_group)
+        self.controls_group.setLayout(c_layout)
+        layout.addWidget(self.controls_group)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_channel_tab("L"), tr("Left"))
@@ -2030,3 +2032,23 @@ class TimecodeMonitorWidget(QWidget):
         ch.gen.jam_base_fps = None
         if getattr(self, "_cal_status", None) is not None:
             self._cal_status.setText(tr("Calibrating..."))
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+
+        if hasattr(self, "tabs"):
+            self.tabs.setHidden(compact)
+        if hasattr(self, "controls_group"):
+            self.controls_group.setHidden(compact)
+        if hasattr(self, "_monitor_toggle_btn") and self._monitor_toggle_btn is not None:
+            self._monitor_toggle_btn.setHidden(compact)
+        if hasattr(self, "ltc_offset_label") and self.ltc_offset_label is not None:
+            self.ltc_offset_label.setHidden(compact)
+
+        # Trigger parent window size adjustment
+        win = self.window()
+        if win:
+            from PyQt6 import sip
+            from PyQt6.QtCore import QTimer
+
+            QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)
