@@ -42,10 +42,7 @@ class LufsMeter(MeasurementModule):
         self.zi_hp_l = None
         self.zi_hp_r = None
 
-        # C-weighting (for SPL calibration compatibility)
-        self.c_sos = None
-        self.c_zi_l = None
-        self.c_zi_r = None
+
 
         # Buffers / windows
         self.momentary_window = 0.4  # 400ms
@@ -94,15 +91,7 @@ class LufsMeter(MeasurementModule):
         self.crest_l = 0.0
         self.crest_r = 0.0
 
-        # C-weighted RMS/Peak (dBFS_C) for SPL display
-        self.rms_c_l = self._db_floor
-        self.rms_c_r = self._db_floor
-        self.peak_c_l = self._db_floor
-        self.peak_c_r = self._db_floor
-        self.peak_hold_c_l = self._db_floor
-        self.peak_hold_c_r = self._db_floor
-        self.crest_c_l = 0.0
-        self.crest_c_r = 0.0
+
 
         self.callback_id = None
 
@@ -133,17 +122,11 @@ class LufsMeter(MeasurementModule):
         self.zi_hp_l = zi_hp.copy()
         self.zi_hp_r = zi_hp.copy()
 
-        # C-weighting (IEC 61672) for SPL calibration compatibility
-        self.c_sos = AudioCalc.design_c_weighting(self.sample_rate).astype(np.float32)
-        zi = signal.sosfilt_zi(self.c_sos).astype(np.float32, copy=False)
-        self.c_zi_l = zi.copy()
-        self.c_zi_r = zi.copy()
+
 
     def reset_peaks(self):
         self.peak_hold_l = self._db_floor
         self.peak_hold_r = self._db_floor
-        self.peak_hold_c_l = self._db_floor
-        self.peak_hold_c_r = self._db_floor
 
     def reset_integration(self):
         self.integrated_lufs = -100.0
@@ -295,41 +278,7 @@ class LufsMeter(MeasurementModule):
             self.rms_l = self._to_db(rms_l_linear)
             self.rms_r = self._to_db(rms_r_linear)
 
-            # --- C-weighted RMS/Peak (for SPL calibration) ---
-            # Calibration wizard measures dBFS_C using a C-weighting IIR filter and RMS.
-            # We compute the same here so that SPL = dBFS_C + offset is consistent.
-            if self.c_sos is not None and self.c_zi_l is not None and self.c_zi_r is not None:
-                # Keep float32 throughout; input stream is float32.
-                l_c, self.c_zi_l = signal.sosfilt(self.c_sos, l_channel, zi=self.c_zi_l)
-                r_c, self.c_zi_r = signal.sosfilt(self.c_sos, r_channel, zi=self.c_zi_r)
 
-                if frames > 0:
-                    rms_c_l_linear = float(np.sqrt(np.dot(l_c, l_c) / float(frames) + 1e-24))
-                    rms_c_r_linear = float(np.sqrt(np.dot(r_c, r_c) / float(frames) + 1e-24))
-                else:
-                    rms_c_l_linear = 0.0
-                    rms_c_r_linear = 0.0
-                self.rms_c_l = self._to_db(rms_c_l_linear)
-                self.rms_c_r = self._to_db(rms_c_r_linear)
-
-                # True Peak calculation using 4x oversampling (BS.1770)
-                if len(l_c) > 0:
-                    l_c_up = signal.resample_poly(l_c, 4, 1)
-                    r_c_up = signal.resample_poly(r_c, 4, 1)
-                    peak_c_l_linear = float(np.max(np.abs(l_c_up)))
-                    peak_c_r_linear = float(np.max(np.abs(r_c_up)))
-                else:
-                    peak_c_l_linear = 0.0
-                    peak_c_r_linear = 0.0
-
-                self.peak_c_l = self._to_db(peak_c_l_linear)
-                self.peak_c_r = self._to_db(peak_c_r_linear)
-
-                self.peak_hold_c_l = max(self.peak_hold_c_l, self.peak_c_l)
-                self.peak_hold_c_r = max(self.peak_hold_c_r, self.peak_c_r)
-
-                self.crest_c_l = self.peak_c_l - self.rms_c_l
-                self.crest_c_r = self.peak_c_r - self.rms_c_r
 
             # True Peak (Instantaneous)
             if frames > 0:
@@ -448,8 +397,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         CompactableWidgetInterface.__init__(self)
         self.module = module
 
-        # Optional SPL display mode (requires SPL calibration)
-        self._show_spl = False
+
 
         # History for plotting
         self.history_size = 400  # 20s at 50ms interval
@@ -525,9 +473,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.target_spin.valueChanged.connect(self.on_target_changed)
         settings_layout.addWidget(self.target_spin)
 
-        self.spl_check = QCheckBox(tr("Show SPL"))
-        self.spl_check.toggled.connect(self.on_spl_toggled)
-        settings_layout.addWidget(self.spl_check)
+
 
         settings_group.setLayout(settings_layout)
         sidebar_layout.addWidget(settings_group)
@@ -535,8 +481,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         sidebar_layout.addStretch()
         self.sidebar.setLayout(sidebar_layout)
 
-        # Sync SPL state
-        self._sync_spl_checkbox()
+
 
         # --- Right Main Content Area ---
         content_area = QWidget()
@@ -906,29 +851,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
             self.toggle_btn.setText(tr("Start Metering"))
             self.toggle_btn.setStyleSheet("font-weight: bold; font-size: 13px;")
 
-    def _get_spl_offset_db(self):
-        try:
-            return self.module.audio_engine.calibration.get_spl_offset_db()
-        except Exception:
-            return None
 
-    def _sync_spl_checkbox(self):
-        has_cal = self._get_spl_offset_db() is not None
-        self.spl_check.setEnabled(has_cal)
-        if not has_cal and self._show_spl:
-            self._show_spl = False
-            self.spl_check.blockSignals(True)
-            self.spl_check.setChecked(False)
-            self.spl_check.blockSignals(False)
-
-    def on_spl_toggled(self, checked: bool):
-        if checked and self._get_spl_offset_db() is None:
-            self._show_spl = False
-            self.spl_check.blockSignals(True)
-            self.spl_check.setChecked(False)
-            self.spl_check.blockSignals(False)
-            return
-        self._show_spl = bool(checked)
 
     def on_target_changed(self, value):
         self.module.target_lufs = value
@@ -942,45 +865,19 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         # Keep integrated LUFS computation off the audio callback.
         self.module.update_integrated_lufs_if_dirty()
 
-        # Allow calibration to appear/disappear without recreating the widget
-        self._sync_spl_checkbox()
-
         # Update RMS/Peak
-        if self._show_spl and self._get_spl_offset_db() is not None:
-            # Use C-weighted dBFS values (compatible with SPL calibration wizard)
-            rms_l = self.module.rms_c_l
-            rms_r = self.module.rms_c_r
-            peak_hold_l = self.module.peak_hold_c_l
-            peak_hold_r = self.module.peak_hold_c_r
-            crest_l = self.module.crest_c_l
-            crest_r = self.module.crest_c_r
+        rms_l = self.module.rms_l
+        rms_r = self.module.rms_r
+        peak_hold_l = self.module.peak_hold_l
+        peak_hold_r = self.module.peak_hold_r
+        crest_l = self.module.crest_l
+        crest_r = self.module.crest_r
 
-            spl_offset = float(self._get_spl_offset_db())
-
-            def to_spl(dbfs_c: float) -> float:
-                # Keep true silence as -INF, but allow very low-noise readings.
-                if dbfs_c <= -199.9:
-                    return -200.0
-                return dbfs_c + spl_offset
-
-            disp_rms_l = to_spl(rms_l)
-            disp_rms_r = to_spl(rms_r)
-            disp_peak_hold_l = to_spl(peak_hold_l)
-            disp_peak_hold_r = to_spl(peak_hold_r)
-            disp_unit = "dB SPL"
-        else:
-            rms_l = self.module.rms_l
-            rms_r = self.module.rms_r
-            peak_hold_l = self.module.peak_hold_l
-            peak_hold_r = self.module.peak_hold_r
-            crest_l = self.module.crest_l
-            crest_r = self.module.crest_r
-
-            disp_rms_l = rms_l
-            disp_rms_r = rms_r
-            disp_peak_hold_l = peak_hold_l
-            disp_peak_hold_r = peak_hold_r
-            disp_unit = "dBFS"
+        disp_rms_l = rms_l
+        disp_rms_r = rms_r
+        disp_peak_hold_l = peak_hold_l
+        disp_peak_hold_r = peak_hold_r
+        disp_unit = "dBFS"
 
         l_min = int(self.l_bar.minimum())
         l_max = int(self.l_bar.maximum())
@@ -1016,8 +913,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         # Update Session digital displays
         self.disp_i["label"].setText(self._format_db(i_lufs))
         self.disp_s["label"].setText(self._format_db(s_lufs))
-        self.disp_i["unit"].setText("dB SPL" if (self._show_spl and self._get_spl_offset_db() is not None) else "LUFS")
-        self.disp_s["unit"].setText("dB SPL" if (self._show_spl and self._get_spl_offset_db() is not None) else "LUFS")
+        self.disp_i["unit"].setText("LUFS")
+        self.disp_s["unit"].setText("LUFS")
 
         # Update session stats
         self._update_session_stats(m_lufs, s_lufs)
