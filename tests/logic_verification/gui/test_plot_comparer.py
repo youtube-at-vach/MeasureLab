@@ -67,16 +67,19 @@ def test_plot_comparer_receives_data_and_updates_ui(qtbot, clean_manager):
     # 0: Gain (dB)
     # 1: Phase (deg)
     # 2: Gain Offset
-    # 3: Time Shift
-    assert parent_item.childCount() == 4
+    # 3: Y-Axis Offset
+    # 4: Time Shift
+    assert parent_item.childCount() == 5
     child_y = parent_item.child(0)
     child_y2 = parent_item.child(1)
     child_offset = parent_item.child(2)
-    child_shift = parent_item.child(3)
+    child_y_offset = parent_item.child(3)
+    child_shift = parent_item.child(4)
 
     assert "Gain" in child_y.text(0)
     assert "Phase" in child_y2.text(0)
     assert "Gain Offset" in child_offset.text(0)
+    assert "Y-Axis Offset" in child_y_offset.text(0)
     assert "Frequency Shift" in child_shift.text(0)
 
     # Check Y-axis mapping comboboxes are loaded correctly
@@ -89,17 +92,22 @@ def test_plot_comparer_receives_data_and_updates_ui(qtbot, clean_manager):
 
     # Check Inline adjustment spin boxes
     spin_offset = widget.tree_widget.itemWidget(child_offset, 1)
+    spin_y_offset = widget.tree_widget.itemWidget(child_y_offset, 1)
     spin_shift = widget.tree_widget.itemWidget(child_shift, 1)
     assert isinstance(spin_offset, QDoubleSpinBox)
+    assert isinstance(spin_y_offset, QDoubleSpinBox)
     assert isinstance(spin_shift, QDoubleSpinBox)
     assert spin_offset.value() == 0.0
+    assert spin_y_offset.value() == 0.0
     assert spin_shift.value() == 0.0
 
     # Modify adjustments via inline SpinBoxes
     spin_offset.setValue(10.0)
+    spin_y_offset.setValue(-1.5)
     spin_shift.setValue(0.5)
 
     assert widget.trace_settings["t1"]["offset_db"] == 10.0
+    assert widget.trace_settings["t1"]["y_offset"] == -1.5
     assert widget.trace_settings["t1"]["shift"] == 0.5
 
     # Modify Y-axis selection and ensure settings are updated
@@ -238,15 +246,17 @@ def test_plot_comparer_dynamic_shifts(qtbot, clean_manager):
     # Filter combo: Index 0 is "frequency"
     widget.filter_combo.setCurrentIndex(0)
 
-    # The Freq Trace parent should have 3 children: Voltage, Gain Offset, Frequency Shift
+    # The Freq Trace parent should have 4 children: Voltage, Gain Offset, Y-Axis Offset, Frequency Shift
     parent_freq = widget.tree_widget.topLevelItem(0)
-    assert parent_freq.childCount() == 3
+    assert parent_freq.childCount() == 4
     child_y_freq = parent_freq.child(0)
     child_offset_freq = parent_freq.child(1)
-    child_shift_freq = parent_freq.child(2)
+    child_y_offset_freq = parent_freq.child(2)
+    child_shift_freq = parent_freq.child(3)
 
     assert "Voltage" in child_y_freq.text(0)
     assert "Gain Offset" in child_offset_freq.text(0)
+    assert "Y-Axis Offset" in child_y_offset_freq.text(0)
     assert "Frequency Shift" in child_shift_freq.text(0)
 
     spin_shift_freq = widget.tree_widget.itemWidget(child_shift_freq, 1)
@@ -274,13 +284,15 @@ def test_plot_comparer_dynamic_shifts(qtbot, clean_manager):
     widget.filter_combo.setCurrentIndex(1)
 
     parent_time = widget.tree_widget.topLevelItem(0)
-    assert parent_time.childCount() == 3
+    assert parent_time.childCount() == 4
     child_y_time = parent_time.child(0)
     child_offset_time = parent_time.child(1)
-    child_shift_time = parent_time.child(2)
+    child_y_offset_time = parent_time.child(2)
+    child_shift_time = parent_time.child(3)
 
     assert "Voltage" in child_y_time.text(0)
     assert "Gain Offset" in child_offset_time.text(0)
+    assert "Y-Axis Offset" in child_y_offset_time.text(0)
     assert "Time Shift" in child_shift_time.text(0)
 
     spin_shift_time = widget.tree_widget.itemWidget(child_shift_time, 1)
