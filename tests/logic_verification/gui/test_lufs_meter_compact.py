@@ -39,13 +39,13 @@ def test_lufs_meter_compact_mode(qtbot):
 
     assert isinstance(widget, CompactableWidgetInterface)
     assert not widget.is_compact_mode()
-    assert not widget.controls_widget.isHidden()
+    assert not widget.sidebar.isHidden()
     assert not widget.tabs.isHidden()
 
     # Enable compact mode
     widget.set_compact_mode(True)
     assert widget.is_compact_mode()
-    assert widget.controls_widget.isHidden()
+    assert widget.sidebar.isHidden()
     assert widget.tabs.isHidden()
 
     # Wait for the singleShot timer of 50ms to fire and check if adjustSize was called
@@ -57,7 +57,7 @@ def test_lufs_meter_compact_mode(qtbot):
     # Disable compact mode
     widget.set_compact_mode(False)
     assert not widget.is_compact_mode()
-    assert not widget.controls_widget.isHidden()
+    assert not widget.sidebar.isHidden()
     assert not widget.tabs.isHidden()
 
     # Wait for singleShot timer

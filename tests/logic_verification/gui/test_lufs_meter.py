@@ -25,7 +25,6 @@ def test_lufs_meter_widget_initialization(qtbot):
     # Verify initial states
     assert "-INF" in widget.m_val_label.text()
     assert "-INF" in widget.s_val_label.text()
-    assert widget.spl_check.isChecked() is False
     assert widget.target_spin.value() == -23.0
     assert widget.timer.isActive() is False
 
@@ -51,23 +50,7 @@ def test_lufs_meter_widget_toggle(qtbot):
     assert not widget.timer.isActive()
 
 
-def test_lufs_meter_widget_spl_check(qtbot):
-    engine = MockAudioEngine()
-    module = LufsMeter(engine)
-    widget = LufsMeterWidget(module)
-    qtbot.addWidget(widget)
 
-    # When get_spl_offset_db returns None, SPL check shouldn't be enabled or checked
-    assert not widget.spl_check.isEnabled()
-
-    # Mock an active calibration
-    engine.calibration.get_spl_offset_db.return_value = 0.0
-    widget._sync_spl_checkbox()
-    assert widget.spl_check.isEnabled()
-
-    widget.spl_check.setChecked(True)
-    assert widget.spl_check.isChecked()
-    assert widget._show_spl
 
 
 def test_lufs_meter_widget_update_display(qtbot):
@@ -95,25 +78,7 @@ def test_lufs_meter_widget_update_display(qtbot):
     assert "dBFS" in widget.r_val_label.text()
 
 
-def test_lufs_meter_widget_spl_update_display(qtbot):
-    engine = MockAudioEngine()
-    engine.calibration.get_spl_offset_db.return_value = 100.0  # 0 dBFS = 100 dB SPL
-    module = LufsMeter(engine)
-    widget = LufsMeterWidget(module)
-    qtbot.addWidget(widget)
 
-    widget.on_toggle(True)
-    widget._sync_spl_checkbox()
-    widget.spl_check.setChecked(True)
-
-    module.rms_c_l = -10.0
-    module.rms_c_r = -10.0
-
-    widget.update_display()
-
-    # 100 - 10 = 90.0 dB SPL
-    assert "90.0" in widget.l_val_label.text()
-    assert "dB SPL" in widget.l_val_label.text()
 
 
 def test_lufs_meter_widget_reset_stats(qtbot):

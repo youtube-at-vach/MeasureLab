@@ -5,7 +5,6 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
@@ -21,7 +20,6 @@ from scipy import signal
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
@@ -42,10 +40,7 @@ class LufsMeter(MeasurementModule):
         self.zi_hp_l = None
         self.zi_hp_r = None
 
-        # C-weighting (for SPL calibration compatibility)
-        self.c_sos = None
-        self.c_zi_l = None
-        self.c_zi_r = None
+
 
         # Buffers / windows
         self.momentary_window = 0.4  # 400ms
@@ -94,15 +89,7 @@ class LufsMeter(MeasurementModule):
         self.crest_l = 0.0
         self.crest_r = 0.0
 
-        # C-weighted RMS/Peak (dBFS_C) for SPL display
-        self.rms_c_l = self._db_floor
-        self.rms_c_r = self._db_floor
-        self.peak_c_l = self._db_floor
-        self.peak_c_r = self._db_floor
-        self.peak_hold_c_l = self._db_floor
-        self.peak_hold_c_r = self._db_floor
-        self.crest_c_l = 0.0
-        self.crest_c_r = 0.0
+
 
         self.callback_id = None
 
@@ -133,17 +120,11 @@ class LufsMeter(MeasurementModule):
         self.zi_hp_l = zi_hp.copy()
         self.zi_hp_r = zi_hp.copy()
 
-        # C-weighting (IEC 61672) for SPL calibration compatibility
-        self.c_sos = AudioCalc.design_c_weighting(self.sample_rate).astype(np.float32)
-        zi = signal.sosfilt_zi(self.c_sos).astype(np.float32, copy=False)
-        self.c_zi_l = zi.copy()
-        self.c_zi_r = zi.copy()
+
 
     def reset_peaks(self):
         self.peak_hold_l = self._db_floor
         self.peak_hold_r = self._db_floor
-        self.peak_hold_c_l = self._db_floor
-        self.peak_hold_c_r = self._db_floor
 
     def reset_integration(self):
         self.integrated_lufs = -100.0
@@ -295,41 +276,7 @@ class LufsMeter(MeasurementModule):
             self.rms_l = self._to_db(rms_l_linear)
             self.rms_r = self._to_db(rms_r_linear)
 
-            # --- C-weighted RMS/Peak (for SPL calibration) ---
-            # Calibration wizard measures dBFS_C using a C-weighting IIR filter and RMS.
-            # We compute the same here so that SPL = dBFS_C + offset is consistent.
-            if self.c_sos is not None and self.c_zi_l is not None and self.c_zi_r is not None:
-                # Keep float32 throughout; input stream is float32.
-                l_c, self.c_zi_l = signal.sosfilt(self.c_sos, l_channel, zi=self.c_zi_l)
-                r_c, self.c_zi_r = signal.sosfilt(self.c_sos, r_channel, zi=self.c_zi_r)
 
-                if frames > 0:
-                    rms_c_l_linear = float(np.sqrt(np.dot(l_c, l_c) / float(frames) + 1e-24))
-                    rms_c_r_linear = float(np.sqrt(np.dot(r_c, r_c) / float(frames) + 1e-24))
-                else:
-                    rms_c_l_linear = 0.0
-                    rms_c_r_linear = 0.0
-                self.rms_c_l = self._to_db(rms_c_l_linear)
-                self.rms_c_r = self._to_db(rms_c_r_linear)
-
-                # True Peak calculation using 4x oversampling (BS.1770)
-                if len(l_c) > 0:
-                    l_c_up = signal.resample_poly(l_c, 4, 1)
-                    r_c_up = signal.resample_poly(r_c, 4, 1)
-                    peak_c_l_linear = float(np.max(np.abs(l_c_up)))
-                    peak_c_r_linear = float(np.max(np.abs(r_c_up)))
-                else:
-                    peak_c_l_linear = 0.0
-                    peak_c_r_linear = 0.0
-
-                self.peak_c_l = self._to_db(peak_c_l_linear)
-                self.peak_c_r = self._to_db(peak_c_r_linear)
-
-                self.peak_hold_c_l = max(self.peak_hold_c_l, self.peak_c_l)
-                self.peak_hold_c_r = max(self.peak_hold_c_r, self.peak_c_r)
-
-                self.crest_c_l = self.peak_c_l - self.rms_c_l
-                self.crest_c_r = self.peak_c_r - self.rms_c_r
 
             # True Peak (Instantaneous)
             if frames > 0:
@@ -448,13 +395,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         CompactableWidgetInterface.__init__(self)
         self.module = module
 
-        # Optional SPL display mode (requires SPL calibration)
-        self._show_spl = False
+
 
         # History for plotting
         self.history_size = 400  # 20s at 50ms interval
         self.m_history = np.full(self.history_size, -100.0)
         self.s_history = np.full(self.history_size, -100.0)
+
+        # Performance optimizations state
+        self._state_l = None
+        self._state_r = None
+        self._state_m = None
+        self._state_s = None
 
         # Session stats (since last reset)
         self._reset_session_stats()
@@ -466,219 +418,402 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.timer.setInterval(50)  # 20 FPS
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # Two-column layout (Sidebar on Left, Content on Right)
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(10)
 
-        # Controls Container
-        self.controls_widget = QWidget()
-        controls_layout = QHBoxLayout(self.controls_widget)
-        controls_layout.setContentsMargins(0, 0, 0, 0)
+        # --- Left Sidebar ---
+        self.sidebar = QWidget()
+        self.sidebar.setFixedWidth(240)
+        sidebar_layout = QVBoxLayout()
+        sidebar_layout.setContentsMargins(10, 10, 10, 10)
+        sidebar_layout.setSpacing(10)
+
+        # Controls Group
+        controls_group = QGroupBox(tr("Controls"))
+        controls_layout = QVBoxLayout()
+        controls_layout.setSpacing(8)
+
         self.toggle_btn = QPushButton(tr("Start Metering"))
         self.toggle_btn.setCheckable(True)
+        self.toggle_btn.setMinimumHeight(36)
+        self.toggle_btn.setStyleSheet("font-weight: bold; font-size: 13px;")
         self.toggle_btn.clicked.connect(self.on_toggle)
         controls_layout.addWidget(self.toggle_btn)
 
-        controls_layout.addWidget(QLabel(tr("Target LUFS:")))
+        self.reset_btn = QPushButton(tr("Reset Peaks"))
+        self.reset_btn.setMinimumHeight(28)
+        self.reset_btn.clicked.connect(self.module.reset_peaks)
+        controls_layout.addWidget(self.reset_btn)
+
+        self.reset_stats_btn = QPushButton(tr("Reset Stats"))
+        self.reset_stats_btn.setMinimumHeight(28)
+        self.reset_stats_btn.clicked.connect(self.on_reset_stats)
+        controls_layout.addWidget(self.reset_stats_btn)
+
+        controls_group.setLayout(controls_layout)
+        sidebar_layout.addWidget(controls_group)
+
+        # Settings Group
+        settings_group = QGroupBox(tr("Settings"))
+        settings_layout = QVBoxLayout()
+        settings_layout.setSpacing(8)
+
+        settings_layout.addWidget(QLabel(tr("Target LUFS:")))
         self.target_spin = QDoubleSpinBox()
         self.target_spin.setRange(-70.0, 0.0)
         self.target_spin.setDecimals(1)
         self.target_spin.setSingleStep(1.0)
         self.target_spin.setValue(-23.0)
         self.target_spin.setSuffix(" LUFS")
+        self.target_spin.setMinimumHeight(28)
         self.target_spin.valueChanged.connect(self.on_target_changed)
-        controls_layout.addWidget(self.target_spin)
+        settings_layout.addWidget(self.target_spin)
 
-        self.spl_check = QCheckBox(tr("Show SPL"))
-        self.spl_check.toggled.connect(self.on_spl_toggled)
-        controls_layout.addWidget(self.spl_check)
 
-        self.reset_btn = QPushButton(tr("Reset Peaks"))
-        self.reset_btn.clicked.connect(self.module.reset_peaks)
-        controls_layout.addWidget(self.reset_btn)
 
-        self.reset_stats_btn = QPushButton(tr("Reset Stats"))
-        self.reset_stats_btn.clicked.connect(self.on_reset_stats)
-        controls_layout.addWidget(self.reset_stats_btn)
-        layout.addWidget(self.controls_widget)
+        settings_group.setLayout(settings_layout)
+        sidebar_layout.addWidget(settings_group)
 
-        self._sync_spl_checkbox()
+        sidebar_layout.addStretch()
+        self.sidebar.setLayout(sidebar_layout)
 
-        # --- Meters Area ---
+
+
+        # --- Right Main Content Area ---
+        content_area = QWidget()
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(10, 10, 10, 10)
+        content_layout.setSpacing(8)
+
+        # 1. Top Panel (Horizontal combination of Digital Displays + Level Meters to optimize height!)
+        top_panel = QWidget()
+        top_panel_layout = QHBoxLayout(top_panel)
+        top_panel_layout.setContentsMargins(0, 0, 0, 0)
+        top_panel_layout.setSpacing(10)
+
+        # 1a. Digital Readouts Frame
+        display_frame = QWidget()
+        display_frame.setStyleSheet("background-color: #000; border-radius: 8px;")
+        display_layout = QHBoxLayout(display_frame)
+        display_layout.setContentsMargins(6, 6, 6, 6)
+        display_layout.setSpacing(6)
+
+        self.disp_i = self._create_big_display(tr("Integrated"), "#ffaa00")
+        display_layout.addWidget(self.disp_i["container"])
+
+        self.disp_s = self._create_big_display(tr("Short-Term"), "#00ccff")
+        display_layout.addWidget(self.disp_s["container"])
+
+        top_panel_layout.addWidget(display_frame, 3)  # Stretch factor 3
+
+        # 1b. Level Meters Panel
         meters_group = QGroupBox(tr("Levels"))
-        grid = QGridLayout()
+        meters_layout = QHBoxLayout()
+        meters_layout.setContentsMargins(10, 6, 10, 6)
+        meters_layout.setSpacing(15)  # spacing between stereo and loudness meter groups
 
-        # 1. Stereo RMS / Peak Meters
-        # Left
-        grid.addWidget(QLabel(tr("L")), 0, 0)
+        # Custom progress bar styling helper (Compact vertical height)
+        def apply_meter_style(bar):
+            bar.setRange(-120, 0)
+            bar.setTextVisible(False)
+            bar.setOrientation(Qt.Orientation.Vertical)
+            bar.setFixedSize(18, 110)  # Compact meter size
+            bar.setStyleSheet("""
+                QProgressBar {
+                    border: none;
+                    background: #222;
+                    border-radius: 2px;
+                }
+                QProgressBar::chunk {
+                    border-radius: 2px;
+                }
+            """)
+
+        # Stereo Group (L & R)
+        stereo_widget = QWidget()
+        stereo_layout = QHBoxLayout(stereo_widget)
+        stereo_layout.setContentsMargins(0, 0, 0, 0)
+        stereo_layout.setSpacing(8)
+
+        # L channel
+        l_container = QVBoxLayout()
+        l_container.setSpacing(2)
+        l_label = QLabel(tr("L"))
+        l_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        l_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
         self.l_bar = QProgressBar()
-        self.l_bar.setRange(-120, 0)  # Extended range for low-noise devices
-        self.l_bar.setTextVisible(False)
-        self.l_bar.setOrientation(Qt.Orientation.Vertical)
-        self.l_bar.setFixedSize(30, 200)
-        grid.addWidget(self.l_bar, 0, 1, 2, 1)
-
+        apply_meter_style(self.l_bar)
         self.l_val_label = QLabel(tr("-INF"))
-        grid.addWidget(self.l_val_label, 2, 1, Qt.AlignmentFlag.AlignHCenter)
-
+        self.l_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.l_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
         self.l_peak_label = QLabel(tr("TP: -INF"))
-        self.l_peak_label.setStyleSheet("color: red; font-size: 10px;")
-        grid.addWidget(self.l_peak_label, 3, 1, Qt.AlignmentFlag.AlignHCenter)
-
+        self.l_peak_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.l_peak_label.setStyleSheet("color: #ff5555; font-size: 8px;")
         self.l_cf_label = QLabel(tr("CF: 0.0"))
-        self.l_cf_label.setStyleSheet("color: cyan; font-size: 10px;")
-        grid.addWidget(self.l_cf_label, 4, 1, Qt.AlignmentFlag.AlignHCenter)
+        self.l_cf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.l_cf_label.setStyleSheet("color: #00cccc; font-size: 8px;")
 
-        # Right
-        grid.addWidget(QLabel(tr("R")), 0, 2)
+        l_container.addWidget(l_label)
+        l_container.addWidget(self.l_bar, 0, Qt.AlignmentFlag.AlignHCenter)
+        l_container.addWidget(self.l_val_label)
+        l_container.addWidget(self.l_peak_label)
+        l_container.addWidget(self.l_cf_label)
+        stereo_layout.addLayout(l_container)
+
+        # R channel
+        r_container = QVBoxLayout()
+        r_container.setSpacing(2)
+        r_label = QLabel(tr("R"))
+        r_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        r_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
         self.r_bar = QProgressBar()
-        self.r_bar.setRange(-120, 0)
-        self.r_bar.setTextVisible(False)
-        self.r_bar.setOrientation(Qt.Orientation.Vertical)
-        self.r_bar.setFixedSize(30, 200)
-        grid.addWidget(self.r_bar, 0, 3, 2, 1)
-
+        apply_meter_style(self.r_bar)
         self.r_val_label = QLabel(tr("-INF"))
-        grid.addWidget(self.r_val_label, 2, 3, Qt.AlignmentFlag.AlignHCenter)
-
+        self.r_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.r_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
         self.r_peak_label = QLabel(tr("TP: -INF"))
-        self.r_peak_label.setStyleSheet("color: red; font-size: 10px;")
-        grid.addWidget(self.r_peak_label, 3, 3, Qt.AlignmentFlag.AlignHCenter)
-
+        self.r_peak_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.r_peak_label.setStyleSheet("color: #ff5555; font-size: 8px;")
         self.r_cf_label = QLabel(tr("CF: 0.0"))
-        self.r_cf_label.setStyleSheet("color: cyan; font-size: 10px;")
-        grid.addWidget(self.r_cf_label, 4, 3, Qt.AlignmentFlag.AlignHCenter)
+        self.r_cf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.r_cf_label.setStyleSheet("color: #00cccc; font-size: 8px;")
 
-        # Spacer
-        grid.setColumnMinimumWidth(4, 30)
+        r_container.addWidget(r_label)
+        r_container.addWidget(self.r_bar, 0, Qt.AlignmentFlag.AlignHCenter)
+        r_container.addWidget(self.r_val_label)
+        r_container.addWidget(self.r_peak_label)
+        r_container.addWidget(self.r_cf_label)
+        stereo_layout.addLayout(r_container)
 
-        # 2. LUFS Meters
-        # Momentary
-        grid.addWidget(QLabel(tr("M")), 0, 5)
+        # Loudness Group (M & S)
+        loudness_widget = QWidget()
+        loudness_layout = QHBoxLayout(loudness_widget)
+        loudness_layout.setContentsMargins(0, 0, 0, 0)
+        loudness_layout.setSpacing(8)
+
+        # M Meter
+        m_container = QVBoxLayout()
+        m_container.setSpacing(2)
+        m_label = QLabel(tr("M"))
+        m_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        m_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
         self.m_bar = QProgressBar()
-        self.m_bar.setRange(-120, 0)
-        self.m_bar.setTextVisible(False)
-        self.m_bar.setOrientation(Qt.Orientation.Vertical)
-        self.m_bar.setFixedSize(30, 200)
-        grid.addWidget(self.m_bar, 0, 6, 2, 1)
-
+        apply_meter_style(self.m_bar)
         self.m_val_label = QLabel(tr("-INF"))
-        grid.addWidget(self.m_val_label, 2, 6, Qt.AlignmentFlag.AlignHCenter)
-        grid.addWidget(QLabel(tr("LUFS(M)")), 3, 6, Qt.AlignmentFlag.AlignHCenter)
+        self.m_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.m_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
+        m_text_lbl = QLabel(tr("LUFS(M)"))
+        m_text_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        m_text_lbl.setStyleSheet("color: #aaa; font-size: 8px;")
 
-        # Short-term
-        grid.addWidget(QLabel(tr("S")), 0, 7)
+        m_container.addWidget(m_label)
+        m_container.addWidget(self.m_bar, 0, Qt.AlignmentFlag.AlignHCenter)
+        m_container.addWidget(self.m_val_label)
+        m_container.addWidget(m_text_lbl)
+        loudness_layout.addLayout(m_container)
+
+        # S Meter
+        s_container = QVBoxLayout()
+        s_container.setSpacing(2)
+        s_label = QLabel(tr("S"))
+        s_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        s_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
         self.s_bar = QProgressBar()
-        self.s_bar.setRange(-120, 0)
-        self.s_bar.setTextVisible(False)
-        self.s_bar.setOrientation(Qt.Orientation.Vertical)
-        self.s_bar.setFixedSize(30, 200)
-        grid.addWidget(self.s_bar, 0, 8, 2, 1)
-
+        apply_meter_style(self.s_bar)
         self.s_val_label = QLabel(tr("-INF"))
-        grid.addWidget(self.s_val_label, 2, 8, Qt.AlignmentFlag.AlignHCenter)
-        grid.addWidget(QLabel(tr("LUFS(S)")), 3, 8, Qt.AlignmentFlag.AlignHCenter)
+        self.s_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.s_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
+        s_text_lbl = QLabel(tr("LUFS(S)"))
+        s_text_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        s_text_lbl.setStyleSheet("color: #aaa; font-size: 8px;")
 
-        meters_group.setLayout(grid)
-        layout.addWidget(meters_group)
+        s_container.addWidget(s_label)
+        s_container.addWidget(self.s_bar, 0, Qt.AlignmentFlag.AlignHCenter)
+        s_container.addWidget(self.s_val_label)
+        s_container.addWidget(s_text_lbl)
+        loudness_layout.addLayout(s_container)
 
-        # --- Statistics / Graph (Tabbed) ---
+        # Assemble Meters Area
+        meters_layout.addWidget(stereo_widget)
+        meters_layout.addStretch()
+        meters_layout.addWidget(loudness_widget)
+        meters_group.setLayout(meters_layout)
+
+        top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
+
+        content_layout.addWidget(top_panel)
+
+        # 2. Tabs (Statistics and Graph)
         self.tabs = QTabWidget()
-        tabs = self.tabs
 
+        # --- Statistics Tab (Dashboard Grid Card Layout) ---
         stats_tab = QWidget()
         stats_grid = QGridLayout(stats_tab)
+        stats_grid.setContentsMargins(8, 8, 8, 8)
+        stats_grid.setSpacing(8)
 
-        # Headers
-        stats_grid.addWidget(QLabel(""), 0, 0)
-        stats_grid.addWidget(QLabel(tr("Current")), 0, 1)
-        stats_grid.addWidget(QLabel(tr("Min")), 0, 2)
-        stats_grid.addWidget(QLabel(tr("Max")), 0, 3)
-        stats_grid.addWidget(QLabel(tr("Avg")), 0, 4)
+        # Create dashboard cards
+        self.card_lra = self._create_metric_card(tr("LRA"), tr("Loudness Range"), "#ffcc00")
+        self.card_offset = self._create_metric_card(tr("Target Offset"), tr("Diff from target"), "#00ffcc")
+        self.card_threshold = self._create_metric_card(tr("Gating Threshold"), tr("BS.1770 gating limit"), "#bb99ff")
+        self.card_time = self._create_metric_card(tr("Duration"), tr("Total integration time"), "#ff99bb")
 
-        # Momentary row
-        stats_grid.addWidget(QLabel(tr("LUFS (M)")), 1, 0)
-        self.stats_m_cur = QLabel(tr("-INF"))
-        self.stats_m_min = QLabel(tr("-INF"))
-        self.stats_m_max = QLabel(tr("-INF"))
-        self.stats_m_avg = QLabel(tr("-INF"))
-        stats_grid.addWidget(self.stats_m_cur, 1, 1)
-        stats_grid.addWidget(self.stats_m_min, 1, 2)
-        stats_grid.addWidget(self.stats_m_max, 1, 3)
-        stats_grid.addWidget(self.stats_m_avg, 1, 4)
+        stats_grid.addWidget(self.card_lra["container"], 0, 0)
+        stats_grid.addWidget(self.card_offset["container"], 0, 1)
+        stats_grid.addWidget(self.card_threshold["container"], 0, 2)
+        stats_grid.addWidget(self.card_time["container"], 0, 3)
 
-        # Short-term row
-        stats_grid.addWidget(QLabel(tr("LUFS (S)")), 2, 0)
-        self.stats_s_cur = QLabel(tr("-INF"))
-        self.stats_s_min = QLabel(tr("-INF"))
-        self.stats_s_max = QLabel(tr("-INF"))
-        self.stats_s_avg = QLabel(tr("-INF"))
-        stats_grid.addWidget(self.stats_s_cur, 2, 1)
-        stats_grid.addWidget(self.stats_s_min, 2, 2)
-        stats_grid.addWidget(self.stats_s_max, 2, 3)
-        stats_grid.addWidget(self.stats_s_avg, 2, 4)
+        # Create details panel (Momentary and Short-term side-by-side to save height!)
+        details_panel = QWidget()
+        details_layout = QHBoxLayout(details_panel)
+        details_layout.setContentsMargins(0, 0, 0, 0)
+        details_layout.setSpacing(8)
 
-        # Integrated + duration row
-        stats_grid.addWidget(QLabel(tr("LUFS (I)")), 3, 0)
-        self.stats_i_val = QLabel(tr("-INF"))
-        stats_grid.addWidget(self.stats_i_val, 3, 1)
-        stats_grid.addWidget(QLabel(tr("Time")), 3, 2)
-        self.stats_i_time = QLabel(tr("0.0 s"))
-        stats_grid.addWidget(self.stats_i_time, 3, 3, 1, 2)
+        # M-LUFS Detail Stats Card
+        m_group = QGroupBox(tr("Momentary LUFS Stats"))
+        m_box = QHBoxLayout(m_group)
+        m_box.setContentsMargins(4, 8, 4, 4)
+        m_box.setSpacing(4)
+        self.card_m_cur = self._create_stat_value_box(tr("Current"), "#00ff00")
+        self.card_m_min = self._create_stat_value_box(tr("Min"), "#ff3333")
+        self.card_m_max = self._create_stat_value_box(tr("Max"), "#3399ff")
+        self.card_m_avg = self._create_stat_value_box(tr("Avg"), "#ffffff")
+        m_box.addWidget(self.card_m_cur["container"])
+        m_box.addWidget(self.card_m_min["container"])
+        m_box.addWidget(self.card_m_max["container"])
+        m_box.addWidget(self.card_m_avg["container"])
+        details_layout.addWidget(m_group)
 
-        # Output Threshold row
-        stats_grid.addWidget(QLabel(tr("Threshold")), 4, 0)
-        self.stats_threshold = QLabel(tr("-INF"))
-        stats_grid.addWidget(self.stats_threshold, 4, 1, 1, 4)
+        # S-LUFS Detail Stats Card
+        s_group = QGroupBox(tr("Short-Term LUFS Stats"))
+        s_box = QHBoxLayout(s_group)
+        s_box.setContentsMargins(4, 8, 4, 4)
+        s_box.setSpacing(4)
+        self.card_s_cur = self._create_stat_value_box(tr("Current"), "#00ff00")
+        self.card_s_min = self._create_stat_value_box(tr("Min"), "#ff3333")
+        self.card_s_max = self._create_stat_value_box(tr("Max"), "#3399ff")
+        self.card_s_avg = self._create_stat_value_box(tr("Avg"), "#ffffff")
+        s_box.addWidget(self.card_s_cur["container"])
+        s_box.addWidget(self.card_s_min["container"])
+        s_box.addWidget(self.card_s_max["container"])
+        s_box.addWidget(self.card_s_avg["container"])
+        details_layout.addWidget(s_group)
 
-        # LRA row
-        stats_grid.addWidget(QLabel(tr("LRA")), 5, 0)
-        self.stats_lra = QLabel(tr("0.0 LU"))
-        stats_grid.addWidget(self.stats_lra, 5, 1, 1, 4)
+        stats_grid.addWidget(details_panel, 1, 0, 1, 4)
 
-        # Target Offset row
-        stats_grid.addWidget(QLabel(tr("Target Offset")), 6, 0)
-        self.stats_offset = QLabel(tr("0.0 LU"))
-        stats_grid.addWidget(self.stats_offset, 6, 1, 1, 4)
+        self.tabs.addTab(stats_tab, tr("Statistics"))
 
-        tabs.addTab(stats_tab, tr("Statistics"))
-
+        # --- Graph Tab ---
         graph_tab = QWidget()
         graph_layout = QVBoxLayout(graph_tab)
+        graph_layout.setContentsMargins(4, 4, 4, 4)
 
-        # --- Time Series Plot ---
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setLabel("left", tr("LUFS"), units="dB")
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
         self.plot_widget.setYRange(-60, 0)
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.setBackground("k")
-        self.plot_widget.setFixedHeight(200)
+        self.plot_widget.setBackground("#111")
+        self.plot_widget.setFixedHeight(140)  # Reduced from 180 to 140 for height limit
 
         # Curves
-        self.m_curve = self.plot_widget.plot(pen=pg.mkPen("c", width=1), name=tr("Momentary"))  # Cyan
-        self.s_curve = self.plot_widget.plot(pen=pg.mkPen("y", width=2), name=tr("Short-Term"))  # Yellow
+        self.m_curve = self.plot_widget.plot(pen=pg.mkPen("#00ccff", width=1), name=tr("Momentary"))  # Cyan
+        self.s_curve = self.plot_widget.plot(pen=pg.mkPen("#ffcc00", width=2), name=tr("Short-Term"))  # Yellow
 
         # Target Line
         target = self.module.target_lufs
-        self.target_line = pg.InfiniteLine(angle=0, pos=target, pen=pg.mkPen("g", style=Qt.PenStyle.DashLine))
+        self.target_line = pg.InfiniteLine(angle=0, pos=target, pen=pg.mkPen("#00ff00", style=Qt.PenStyle.DashLine))
         self.plot_widget.addItem(self.target_line)
 
         # Target band (-23 LUFS ±2) for quick visual alignment
         self.target_band = pg.LinearRegionItem(
             values=[target - 2, target + 2], orientation=pg.LinearRegionItem.Horizontal
         )
-        self.target_band.setBrush(pg.mkBrush(0, 255, 0, 35))
+        self.target_band.setBrush(pg.mkBrush(0, 255, 0, 20))
         self.target_band.setMovable(False)
         self.target_band.setZValue(-10)
         self.plot_widget.addItem(self.target_band)
 
         graph_layout.addWidget(self.plot_widget)
+        self.tabs.addTab(graph_tab, tr("Graph"))
 
-        tabs.addTab(graph_tab, tr("Graph"))
+        content_layout.addWidget(self.tabs)
+        content_area.setLayout(content_layout)
 
-        layout.addWidget(self.tabs)
+        # --- Assemble Main Layout ---
+        main_layout.addWidget(self.sidebar)
+        main_layout.addWidget(content_area)
+        self.setLayout(main_layout)
 
-        layout.addStretch()
-        self.setLayout(layout)
+    def _create_big_display(self, title, color):
+        container = QWidget()
+        layout = QVBoxLayout()
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
+
+        lbl_title = QLabel(title)
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_title.setStyleSheet("color: #aaa; font-size: 10pt; font-weight: bold; margin-top: 2px;")
+
+        lbl_val = QLabel("--.-")
+        lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_val.setStyleSheet(f"color: {color}; font-size: 32px; font-weight: bold; font-family: monospace;")
+
+        lbl_unit = QLabel("LUFS")
+        lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_unit.setStyleSheet(f"color: {color}; font-size: 10pt; margin-bottom: 2px;")
+
+        layout.addWidget(lbl_title)
+        layout.addWidget(lbl_val)
+        layout.addWidget(lbl_unit)
+        container.setLayout(layout)
+        return {"container": container, "label": lbl_val, "unit": lbl_unit}
+
+    def _create_metric_card(self, title, desc, color):
+        container = QWidget()
+        v_box = QVBoxLayout()
+        v_box.setContentsMargins(4, 4, 4, 4)
+        v_box.setSpacing(2)
+
+        lbl_title = QLabel(title)
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_title.setStyleSheet("font-weight: bold; font-size: 10pt; color: #eee;")
+
+        lbl_desc = QLabel(desc)
+        lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_desc.setStyleSheet("font-size: 8pt; color: #888;")
+
+        lbl_val = QLabel("--.-")
+        lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_val.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {color}; font-family: monospace;")
+
+        v_box.addWidget(lbl_title)
+        v_box.addWidget(lbl_desc)
+        v_box.addWidget(lbl_val)
+        container.setLayout(v_box)
+        container.setStyleSheet("background-color: #222; border-radius: 6px; border: 1px solid #333;")
+        return {"container": container, "label": lbl_val}
+
+    def _create_stat_value_box(self, label_text, color):
+        container = QWidget()
+        h_box = QHBoxLayout()
+        h_box.setContentsMargins(6, 3, 6, 3)
+
+        lbl_label = QLabel(label_text + ":")
+        lbl_label.setStyleSheet("font-weight: bold; font-size: 9pt; color: #aaa;")
+
+        lbl_val = QLabel("--.-")
+        lbl_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        lbl_val.setStyleSheet(f"font-size: 11pt; font-weight: bold; color: {color}; font-family: monospace;")
+
+        h_box.addWidget(lbl_label)
+        h_box.addStretch()
+        h_box.addWidget(lbl_val)
+        container.setLayout(h_box)
+        container.setStyleSheet("background-color: #1a1a1a; border-radius: 4px;")
+        return {"container": container, "label": lbl_val}
 
     def _reset_session_stats(self):
         self._m_min = None
@@ -695,6 +830,11 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self._reset_session_stats()
         self.m_history[:] = -100.0
         self.s_history[:] = -100.0
+        # Reset color states so they force update on next tick
+        self._state_l = None
+        self._state_r = None
+        self._state_m = None
+        self._state_s = None
         self.module.reset_all_stats()
 
     def on_toggle(self, checked):
@@ -702,34 +842,14 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
             self.module.start_meter()
             self.timer.start()
             self.toggle_btn.setText(tr("Stop Metering"))
+            self.toggle_btn.setStyleSheet("background-color: #aa3333; font-weight: bold; font-size: 13px;")
         else:
             self.module.stop_meter()
             self.timer.stop()
             self.toggle_btn.setText(tr("Start Metering"))
+            self.toggle_btn.setStyleSheet("font-weight: bold; font-size: 13px;")
 
-    def _get_spl_offset_db(self):
-        try:
-            return self.module.audio_engine.calibration.get_spl_offset_db()
-        except Exception:
-            return None
 
-    def _sync_spl_checkbox(self):
-        has_cal = self._get_spl_offset_db() is not None
-        self.spl_check.setEnabled(has_cal)
-        if not has_cal and self._show_spl:
-            self._show_spl = False
-            self.spl_check.blockSignals(True)
-            self.spl_check.setChecked(False)
-            self.spl_check.blockSignals(False)
-
-    def on_spl_toggled(self, checked: bool):
-        if checked and self._get_spl_offset_db() is None:
-            self._show_spl = False
-            self.spl_check.blockSignals(True)
-            self.spl_check.setChecked(False)
-            self.spl_check.blockSignals(False)
-            return
-        self._show_spl = bool(checked)
 
     def on_target_changed(self, value):
         self.module.target_lufs = value
@@ -743,45 +863,19 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         # Keep integrated LUFS computation off the audio callback.
         self.module.update_integrated_lufs_if_dirty()
 
-        # Allow calibration to appear/disappear without recreating the widget
-        self._sync_spl_checkbox()
-
         # Update RMS/Peak
-        if self._show_spl and self._get_spl_offset_db() is not None:
-            # Use C-weighted dBFS values (compatible with SPL calibration wizard)
-            rms_l = self.module.rms_c_l
-            rms_r = self.module.rms_c_r
-            peak_hold_l = self.module.peak_hold_c_l
-            peak_hold_r = self.module.peak_hold_c_r
-            crest_l = self.module.crest_c_l
-            crest_r = self.module.crest_c_r
+        rms_l = self.module.rms_l
+        rms_r = self.module.rms_r
+        peak_hold_l = self.module.peak_hold_l
+        peak_hold_r = self.module.peak_hold_r
+        crest_l = self.module.crest_l
+        crest_r = self.module.crest_r
 
-            spl_offset = float(self._get_spl_offset_db())
-
-            def to_spl(dbfs_c: float) -> float:
-                # Keep true silence as -INF, but allow very low-noise readings.
-                if dbfs_c <= -199.9:
-                    return -200.0
-                return dbfs_c + spl_offset
-
-            disp_rms_l = to_spl(rms_l)
-            disp_rms_r = to_spl(rms_r)
-            disp_peak_hold_l = to_spl(peak_hold_l)
-            disp_peak_hold_r = to_spl(peak_hold_r)
-            disp_unit = "dB SPL"
-        else:
-            rms_l = self.module.rms_l
-            rms_r = self.module.rms_r
-            peak_hold_l = self.module.peak_hold_l
-            peak_hold_r = self.module.peak_hold_r
-            crest_l = self.module.crest_l
-            crest_r = self.module.crest_r
-
-            disp_rms_l = rms_l
-            disp_rms_r = rms_r
-            disp_peak_hold_l = peak_hold_l
-            disp_peak_hold_r = peak_hold_r
-            disp_unit = "dBFS"
+        disp_rms_l = rms_l
+        disp_rms_r = rms_r
+        disp_peak_hold_l = peak_hold_l
+        disp_peak_hold_r = peak_hold_r
+        disp_unit = "dBFS"
 
         l_min = int(self.l_bar.minimum())
         l_max = int(self.l_bar.maximum())
@@ -802,6 +896,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         # Update LUFS
         m_lufs = self.module.momentary_lufs
         s_lufs = self.module.short_term_lufs
+        i_lufs = self.module.integrated_lufs
 
         m_min = int(self.m_bar.minimum())
         m_max = int(self.m_bar.maximum())
@@ -813,15 +908,21 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.m_val_label.setText(tr("{0:.1f}").format(m_lufs))
         self.s_val_label.setText(tr("{0:.1f}").format(s_lufs))
 
+        # Update Session digital displays
+        self.disp_i["label"].setText(self._format_db(i_lufs))
+        self.disp_s["label"].setText(self._format_db(s_lufs))
+        self.disp_i["unit"].setText("LUFS")
+        self.disp_s["unit"].setText("LUFS")
+
         # Update session stats
         self._update_session_stats(m_lufs, s_lufs)
         self._update_stats_labels(m_lufs, s_lufs)
 
-        # Color coding
-        self._set_bar_color(self.l_bar, rms_l)
-        self._set_bar_color(self.r_bar, rms_r)
-        self._set_lufs_bar_color(self.m_bar, m_lufs, self.module.target_lufs)
-        self._set_lufs_bar_color(self.s_bar, s_lufs, self.module.target_lufs)
+        # Color coding with optimization
+        self._set_bar_color(self.l_bar, rms_l, "l")
+        self._set_bar_color(self.r_bar, rms_r, "r")
+        self._set_lufs_bar_color(self.m_bar, m_lufs, self.module.target_lufs, "m")
+        self._set_lufs_bar_color(self.s_bar, s_lufs, self.module.target_lufs, "s")
 
         # Update Plot
         self.m_history = np.roll(self.m_history, -1)
@@ -867,56 +968,92 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
             self._s_n += 1
 
     def _update_stats_labels(self, m_lufs: float, s_lufs: float):
-        self.stats_m_cur.setText(self._format_db(m_lufs))
-        self.stats_s_cur.setText(self._format_db(s_lufs))
-
-        self.stats_m_min.setText(self._format_db(self._m_min if self._m_min is not None else -100.0))
-        self.stats_m_max.setText(self._format_db(self._m_max if self._m_max is not None else -100.0))
+        # Momentary details
+        self.card_m_cur["label"].setText(self._format_db(m_lufs))
+        self.card_m_min["label"].setText(self._format_db(self._m_min if self._m_min is not None else -100.0))
+        self.card_m_max["label"].setText(self._format_db(self._m_max if self._m_max is not None else -100.0))
         m_avg = (self._m_sum / self._m_n) if self._m_n > 0 else -100.0
-        self.stats_m_avg.setText(self._format_db(m_avg))
+        self.card_m_avg["label"].setText(self._format_db(m_avg))
 
-        self.stats_s_min.setText(self._format_db(self._s_min if self._s_min is not None else -100.0))
-        self.stats_s_max.setText(self._format_db(self._s_max if self._s_max is not None else -100.0))
+        # Short-term details
+        self.card_s_cur["label"].setText(self._format_db(s_lufs))
+        self.card_s_min["label"].setText(self._format_db(self._s_min if self._s_min is not None else -100.0))
+        self.card_s_max["label"].setText(self._format_db(self._s_max if self._s_max is not None else -100.0))
         s_avg = (self._s_sum / self._s_n) if self._s_n > 0 else -100.0
-        self.stats_s_avg.setText(self._format_db(s_avg))
+        self.card_s_avg["label"].setText(self._format_db(s_avg))
 
-        self.stats_i_val.setText(self._format_db(self.module.integrated_lufs))
-        self.stats_i_time.setText(self._format_seconds(self.module.get_integrated_seconds()))
+        # Gated items
+        self.card_lra["label"].setText(tr("{0:.1f} LU").format(self.module.lra))
+        self.card_threshold["label"].setText(self._format_db(self.module.integrated_threshold))
+        self.card_time["label"].setText(self._format_seconds(self.module.get_integrated_seconds()))
 
-        self.stats_threshold.setText(self._format_db(self.module.integrated_threshold))
-
-        self.stats_lra.setText(tr("{0:.1f} LU").format(self.module.lra))
-
+        # Target Offset
         if self.module.integrated_lufs > -99.9:
             offset = self.module.target_lufs - self.module.integrated_lufs
             sign = "+" if offset > 0 else ""
-            self.stats_offset.setText(tr("{0}{1:.1f} LU").format(sign, offset))
+            self.card_offset["label"].setText(tr("{0}{1:.1f} LU").format(sign, offset))
         else:
-            self.stats_offset.setText(tr("---"))
+            self.card_offset["label"].setText(tr("---"))
 
-    def _set_bar_color(self, bar, val):
+    def _set_bar_color(self, bar, val, ch_id):
         # Standard dBFS colors
         if val > -3:
+            state = "red"
             color = "red"
         elif val > -12:
+            state = "yellow"
             color = "#aaaa00"  # Yellow
         else:
+            state = "green"
             color = "#00ff00"  # Green
-        bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
 
-    def _set_lufs_bar_color(self, bar, lufs, target):
+        attr_name = f"_state_{ch_id}"
+        prev_state = getattr(self, attr_name, None)
+        if prev_state != state:
+            setattr(self, attr_name, state)
+            bar.setStyleSheet(f"""
+                QProgressBar {{
+                    border: none;
+                    background: #222;
+                    border-radius: 3px;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {color};
+                    border-radius: 3px;
+                }}
+            """)
+
+    def _set_lufs_bar_color(self, bar, lufs, target, ch_id):
         if lufs > target + 2:
+            state = "red"
             color = "red"
         elif lufs > target - 2:
+            state = "green"
             color = "#00ff00"  # Green (Target)
         else:
+            state = "yellow"
             color = "#aaaa00"  # Yellow/Orange
-        bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
+
+        attr_name = f"_state_{ch_id}"
+        prev_state = getattr(self, attr_name, None)
+        if prev_state != state:
+            setattr(self, attr_name, state)
+            bar.setStyleSheet(f"""
+                QProgressBar {{
+                    border: none;
+                    background: #222;
+                    border-radius: 3px;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {color};
+                    border-radius: 3px;
+                }}
+            """)
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
-        if hasattr(self, "controls_widget"):
-            self.controls_widget.setHidden(compact)
+        if hasattr(self, "sidebar"):
+            self.sidebar.setHidden(compact)
         if hasattr(self, "tabs"):
             self.tabs.setHidden(compact)
 
