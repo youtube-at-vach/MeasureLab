@@ -6,7 +6,13 @@ import pytest
 # Helper to mock dependencies for tests in this file
 @pytest.fixture(autouse=True)
 def mock_dependencies():
+    class DummyQWidget:
+        pass
+
     mock_qt = MagicMock()
+    mock_widgets = MagicMock()
+    mock_widgets.QWidget = DummyQWidget
+
     mock_loc = MagicMock()
     mock_loc.tr = lambda x: x
 
@@ -16,7 +22,7 @@ def mock_dependencies():
             "PyQt6": mock_qt,
             "PyQt6.QtCore": MagicMock(),
             "PyQt6.QtGui": MagicMock(),
-            "PyQt6.QtWidgets": MagicMock(),
+            "PyQt6.QtWidgets": mock_widgets,
             "src.core.localization": mock_loc,
         },
     ):
