@@ -22,6 +22,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 
 class LufsMeter(MeasurementModule):
@@ -759,7 +760,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_val.setStyleSheet(f"color: {color}; font-size: 32px; font-weight: bold; font-family: monospace;")
+        lbl_val.setStyleSheet(f"color: {color}; font-size: 32px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};")
 
         lbl_unit = QLabel("LUFS")
         lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -787,7 +788,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_val.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {color}; font-family: monospace;")
+        lbl_val.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {color}; font-family: {MONOSPACE_FONT_FAMILY};")
 
         v_box.addWidget(lbl_title)
         v_box.addWidget(lbl_desc)
@@ -806,7 +807,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        lbl_val.setStyleSheet(f"font-size: 11pt; font-weight: bold; color: {color}; font-family: monospace;")
+        lbl_val.setStyleSheet(f"font-size: 11pt; font-weight: bold; color: {color}; font-family: {MONOSPACE_FONT_FAMILY};")
 
         h_box.addWidget(lbl_label)
         h_box.addStretch()
