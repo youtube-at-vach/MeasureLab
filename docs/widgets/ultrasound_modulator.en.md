@@ -2,10 +2,9 @@
 
 ![Ultrasound Modulator](../assets/widgets/ultrasound_modulator.png)
 
-## ☕ Coffee Break: Riding Sound on an "Ultrasonic Rocket"
+## ☕ Coffee Break: Parametric Speakers
 
-"Ultrasound" is inaudible to humans. However, if you piggyback normal sounds (like voices or music) onto this ultrasound and transmit it, a mysterious phenomenon occurs where the sound is restored in mid-air, making it "audible only in a specific location" (Parametric Speaker).
-This widget is a tool (modulator) to put your voice onto an "ultrasonic rocket" (carrier wave). With this, you can conduct cutting-edge "acoustic laser" experiments using just a normal PC and an audio interface!
+When an audible signal is amplitude-modulated onto an ultrasonic carrier wave (beyond human hearing) and emitted, the non-linearity of air causes the audible sound to self-demodulate in mid-air. This realizes a "parametric speaker" that delivers sound only to a highly specific, narrow area.
 
 ## Overview
 

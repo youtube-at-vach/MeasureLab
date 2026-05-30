@@ -8,14 +8,10 @@ This tool is used to quantify how sound is perceived by the human ear ("subjecti
 
 This tool is for **offline analysis only**. It analyzes pre-recorded audio files.
 
-## ☕ Coffee Break: How do we turn "Good Sound" into numbers?
+## ☕ Coffee Break: Psychoacoustic Metrics
 
-Normal measuring instruments (like oscilloscopes) measure the physical properties of electricity, such as "voltage" and "frequency." In cooking terms, this is like measuring "how many grams of salt are in it" or "what the temperature is."
-But we don't feel something is "delicious!" just based on the amount of salt, do we? We only feel it's "delicious" when the balance of sweetness and sourness, temperature, and texture all come together.
-
-Sound is exactly the same. Just knowing "how many decibels a sound is" doesn't tell us whether it's "pleasant music" or "the annoying sound of scratching a chalkboard."
-The field of "Psychoacoustics" studies the "perceptual quirks" of the human ear and brain. This Sound Quality Analyzer is not just an electrical meter, but a **"taste sensor for sound"** that evaluates "how humans feel when they hear it"!
-Because it translates whether a sound is "grating (Roughness)" or "piercing (Sharpness)" into numbers, it's very useful for designing product motor noises or alarm sounds to be "more elegant."
+While conventional measuring instruments measure physical quantities like voltage and frequency, they cannot fully explain the human sensation of a sound being "loud" or "unpleasant."
+Psychoacoustics models the human auditory mechanism and cognitive characteristics to evaluate subjective sensations, such as the "Roughness" or "Sharpness" of a sound, as objective numerical values.
 
 ## Metric Descriptions
 
