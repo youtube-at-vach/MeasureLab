@@ -39,7 +39,7 @@ class UpdateChecker(QThread):
             url = UPDATE_CHECK_URL
 
             headers = {"User-Agent": f"MeasureLab/{__version__}"}
-            response = requests.get(url, headers=headers, timeout=5)
+            response = requests.get(url, headers=headers, timeout=5, verify=True)
 
             if response.status_code == 200:
                 data = response.json()
