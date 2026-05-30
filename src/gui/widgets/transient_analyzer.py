@@ -146,7 +146,7 @@ class TransientAnalyzer(MeasurementModule):
 
     def stop_recording(self):
         self.is_recording = False
-        if self.callback_id:
+        if self.callback_id is not None:
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
 

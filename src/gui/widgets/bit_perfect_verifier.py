@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
+    QDoubleSpinBox,
 )
 
 from src.core.audio_engine import AudioEngine
@@ -27,6 +28,7 @@ from src.core.bit_perfect_logic import (
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 logger = logging.getLogger(__name__)
+
 
 class BitPerfectVerifier(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
@@ -44,6 +46,8 @@ class BitPerfectVerifier(MeasurementModule):
         self.pattern_mode = "PRBS-15"
         self.bit_depth = 24
         self.input_channel_idx = 0  # 0 for Left, 1 for Right
+        self.output_gain_db = 0.0
+        self.output_gain_linear = 1.0
 
         # State variables
         self.generator = PRBSGenerator(self.pattern_mode)
@@ -131,7 +135,7 @@ class BitPerfectVerifier(MeasurementModule):
                 return
             self.is_running = False
 
-            if self.callback_id:
+            if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
 
@@ -140,7 +144,7 @@ class BitPerfectVerifier(MeasurementModule):
         # Note: PRBS is filled on output channel 1 (Left) and 2 (Right)
         out_ch = outdata.shape[1]
         for i in range(frames):
-            val = self.ref_cycle[self.tx_ptr]
+            val = self.ref_cycle[self.tx_ptr] * self.output_gain_linear
             outdata[i, 0] = val
             if out_ch > 1:
                 outdata[i, 1] = val
@@ -277,7 +281,7 @@ class BitPerfectVerifierWidget(QWidget, CompactableWidgetInterface):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
-        self.timer.setInterval(100) # 10Hz UI refresh
+        self.timer.setInterval(100)  # 10Hz UI refresh
 
         self.init_ui()
 
@@ -334,6 +338,16 @@ class BitPerfectVerifierWidget(QWidget, CompactableWidgetInterface):
         self.combo_depth.addItem(tr("16-bit (CD Quality)"), 16)
         self.combo_depth.currentIndexChanged.connect(self.on_settings_changed)
         form_layout.addRow(tr("Bit Depth:"), self.combo_depth)
+
+        # Output Gain
+        self.spin_output_gain = QDoubleSpinBox()
+        self.spin_output_gain.setRange(-60.0, 0.0)
+        self.spin_output_gain.setSingleStep(1.0)
+        self.spin_output_gain.setValue(0.0)
+        self.spin_output_gain.setDecimals(1)
+        self.spin_output_gain.setSuffix(" dB")
+        self.spin_output_gain.valueChanged.connect(self.on_output_gain_changed)
+        form_layout.addRow(tr("Output Gain:"), self.spin_output_gain)
 
         settings_group.setLayout(form_layout)
         controls_layout.addWidget(settings_group)
@@ -429,6 +443,11 @@ class BitPerfectVerifierWidget(QWidget, CompactableWidgetInterface):
     def on_channel_changed(self, idx):
         self.module.input_channel_idx = idx
 
+    def on_output_gain_changed(self, val):
+        with self.module._lock:
+            self.module.output_gain_db = val
+            self.module.output_gain_linear = 10 ** (val / 20.0)
+
     def on_settings_changed(self):
         # Restart test with new settings if currently running
         is_running = self.btn_toggle.isChecked()
@@ -497,4 +516,5 @@ class BitPerfectVerifierWidget(QWidget, CompactableWidgetInterface):
         if win:
             from PyQt6 import sip
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)
