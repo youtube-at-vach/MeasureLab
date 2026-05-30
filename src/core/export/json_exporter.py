@@ -27,9 +27,7 @@ class JsonTraceExporter(BaseTraceExporter):
 
     def export_traces(self, filepath: str, traces: List[ComparisonTrace], options: Dict[str, Any]) -> bool:
         try:
-            export_data = []
-            for trace in traces:
-                export_data.append(trace.to_dict())
+            export_data = [trace.to_dict() for trace in traces]
 
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump({"version": "1.0", "traces": export_data}, f, indent=4)
