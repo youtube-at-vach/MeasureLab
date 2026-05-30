@@ -748,7 +748,7 @@ class AudioEngine:
                     )
                 except Exception as stream_err:
                     if self.audio_engine_64bit:
-                        self.logger.info(
+                        self.logger.debug(
                             f"Failed to start master stream with float64 ({stream_err}). Falling back to float32."
                         )
                         self.active_dtype = "float32"

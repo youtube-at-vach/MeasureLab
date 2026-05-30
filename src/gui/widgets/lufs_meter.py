@@ -23,6 +23,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 class LufsMeter(MeasurementModule):
@@ -441,9 +442,10 @@ class LufsMeter(MeasurementModule):
         return self._i_sample_count / float(self.sample_rate)
 
 
-class LufsMeterWidget(QWidget):
+class LufsMeterWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: LufsMeter):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
 
         # Optional SPL display mode (requires SPL calibration)
@@ -466,8 +468,10 @@ class LufsMeterWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        # Controls
-        controls_layout = QHBoxLayout()
+        # Controls Container
+        self.controls_widget = QWidget()
+        controls_layout = QHBoxLayout(self.controls_widget)
+        controls_layout.setContentsMargins(0, 0, 0, 0)
         self.toggle_btn = QPushButton(tr("Start Metering"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
@@ -494,7 +498,7 @@ class LufsMeterWidget(QWidget):
         self.reset_stats_btn = QPushButton(tr("Reset Stats"))
         self.reset_stats_btn.clicked.connect(self.on_reset_stats)
         controls_layout.addWidget(self.reset_stats_btn)
-        layout.addLayout(controls_layout)
+        layout.addWidget(self.controls_widget)
 
         self._sync_spl_checkbox()
 
@@ -577,7 +581,8 @@ class LufsMeterWidget(QWidget):
         layout.addWidget(meters_group)
 
         # --- Statistics / Graph (Tabbed) ---
-        tabs = QTabWidget()
+        self.tabs = QTabWidget()
+        tabs = self.tabs
 
         stats_tab = QWidget()
         stats_grid = QGridLayout(stats_tab)
@@ -670,7 +675,7 @@ class LufsMeterWidget(QWidget):
 
         tabs.addTab(graph_tab, tr("Graph"))
 
-        layout.addWidget(tabs)
+        layout.addWidget(self.tabs)
 
         layout.addStretch()
         self.setLayout(layout)
@@ -907,3 +912,18 @@ class LufsMeterWidget(QWidget):
         else:
             color = "#aaaa00"  # Yellow/Orange
         bar.setStyleSheet(f"QProgressBar::chunk {{ background-color: {color}; }}")
+
+    def update_compact_layout(self):
+        compact = self.is_compact_mode()
+        if hasattr(self, "controls_widget"):
+            self.controls_widget.setHidden(compact)
+        if hasattr(self, "tabs"):
+            self.tabs.setHidden(compact)
+
+        # Trigger parent window size adjustment to prevent vertical stretching
+        win = self.window()
+        if win:
+            from PyQt6 import sip
+            from PyQt6.QtCore import QTimer
+
+            QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)

@@ -86,6 +86,10 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.calibration_target_steps = 10
         self.calibration_current_step = 0
         self.calibration_alpha = 0.5
+        self.calibration_gamma = 0.9
+        self.cal_samples_written = 0
+        self.prev_compensation_coeffs = np.zeros(self.max_harmonic, dtype=complex)
+        self.prev_measured_harmonics = np.zeros(self.max_harmonic, dtype=complex)
         self.frames_since_last_cal = 0
 
     def _allocate_harmonic_buffers(self):
@@ -97,6 +101,8 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             if old_coeffs is not None:
                 n = min(len(old_coeffs), self.max_harmonic)
                 self.compensation_coeffs[:n] = old_coeffs[:n]
+            self.prev_compensation_coeffs = np.zeros(self.max_harmonic, dtype=complex)
+            self.prev_measured_harmonics = np.zeros(self.max_harmonic, dtype=complex)
 
     def set_max_harmonic(self, val: int):
         if val == self.max_harmonic:
@@ -174,6 +180,8 @@ class LockInHarmonicAnalyzer(MeasurementModule):
                     self.input_buffer_pos = chunk2
 
                 self.buffer_filled_samples = min(self.buffer_size, self.buffer_filled_samples + n)
+                if self.is_calibrating:
+                    self.cal_samples_written += n
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
@@ -190,6 +198,9 @@ class LockInHarmonicAnalyzer(MeasurementModule):
                 return
             self.is_calibrating = True
             self.calibration_current_step = 0
+            self.cal_samples_written = 0
+            self.prev_compensation_coeffs.fill(0)
+            self.prev_measured_harmonics.fill(0)
             self.frames_since_last_cal = 0
 
     def stop_calibration(self):
@@ -217,6 +228,11 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         return np.roll(data, -pos, axis=0)
 
     def _estimate_ref_phase_params(self, ref: np.ndarray, fs: float):
+        # Limit to a maximum of 8192 samples to dramatically reduce computational load
+        max_samples = 8192
+        if len(ref) > max_samples:
+            ref = ref[-max_samples:]
+
         n_samples = len(ref)
         if n_samples < 100:
             return None, None
@@ -285,8 +301,14 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
         with self.lock:
             filled = self.buffer_filled_samples
+            is_cal = self.is_calibrating
+            cal_ready = self.cal_samples_written >= self.buffer_size
 
         if filled < self.buffer_size:
+            return
+
+        # If calibrating, skip expensive analysis unless the buffer is fully settled
+        if is_cal and not cal_ready:
             return
 
         data = self._get_ordered_input_data()
@@ -423,10 +445,14 @@ class LockInHarmonicAnalyzer(MeasurementModule):
 
             # 5. Auto-Calibration Logic
             if self.is_calibrating:
-                self.frames_since_last_cal += 1
-                if self.frames_since_last_cal >= 3:
-                    self.frames_since_last_cal = 0
-                    self.calibration_current_step += 1
+                # Ensure the input buffer is fully flushed and filled with the new compensated signal
+                with self.lock:
+                    ready = self.cal_samples_written >= self.buffer_size
+
+                if ready:
+                    with self.lock:
+                        self.cal_samples_written = 0
+                        self.calibration_current_step += 1
 
                     fund_meas_amp = self.harmonics_amp[0]
                     if fund_meas_amp > 1e-12:
@@ -435,11 +461,42 @@ class LockInHarmonicAnalyzer(MeasurementModule):
                             idx = (n - 1) * 2
                             I_meas = X[idx]
                             Q_meas = X[idx + 1]
-                            delta_I = -self.calibration_alpha * I_meas * scale
-                            delta_Q = -self.calibration_alpha * Q_meas * scale
-                            self.compensation_coeffs[n - 1] += complex(delta_I, delta_Q)
+                            M_curr = complex(I_meas, Q_meas)
+                            C_curr = self.compensation_coeffs[n - 1]
 
-                    if self.calibration_current_step >= self.calibration_target_steps:
+                            if self.calibration_current_step == 1:
+                                # Step 1: Perturbation step with standard proportional feedback
+                                delta = -self.calibration_alpha * M_curr * scale
+                                self.prev_compensation_coeffs[n - 1] = C_curr
+                                self.prev_measured_harmonics[n - 1] = M_curr
+                                self.compensation_coeffs[n - 1] += delta
+                            else:
+                                # Step 2 and onwards: Quasi-Newton (Secant) Method in Complex Plane
+                                C_prev = self.prev_compensation_coeffs[n - 1]
+                                M_prev = self.prev_measured_harmonics[n - 1]
+
+                                dC = C_curr - C_prev
+                                dM = M_curr - M_prev
+
+                                # Estimate loopback complex gain G_n
+                                if abs(dC) > 1e-12:
+                                    G_n = dM / dC
+                                    if abs(G_n) > 0.01 / scale:
+                                        # Use estimated complex gain to jump to ideal compensation
+                                        delta = -self.calibration_gamma * (M_curr / G_n)
+                                    else:
+                                        # Fallback if gain estimate is suspiciously small
+                                        delta = -self.calibration_alpha * M_curr * scale
+                                else:
+                                    delta = -self.calibration_alpha * M_curr * scale
+
+                                # Update history and coefficient
+                                self.prev_compensation_coeffs[n - 1] = C_curr
+                                self.prev_measured_harmonics[n - 1] = M_curr
+                                self.compensation_coeffs[n - 1] += delta
+
+                    # Finish early if target steps reached or THD is already below the noise floor
+                    if self.calibration_current_step >= self.calibration_target_steps or self.thd_db <= -120.0:
                         self.is_calibrating = False
 
         else:

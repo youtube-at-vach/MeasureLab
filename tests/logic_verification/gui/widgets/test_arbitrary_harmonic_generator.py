@@ -287,3 +287,48 @@ def test_arbitrary_harmonic_generator_phase_continuity(generator_widget):
     assert np.isclose(signal2[0], expected_start_val, atol=1e-12)
 
     module.stop_generation()
+
+
+def test_load_low_level_compensation(generator_widget, tmp_path):
+    widget, module, _engine = generator_widget
+
+    # Set up a JSON calibration file with an extremely small coefficient (e.g. -130 dBFS)
+    # 10 ** (-130 / 20) = 3.16227766e-7
+    # c2 = 3.16227766e-7 * e^(j * 0) -> real = 3.16227766e-7, imag = 0.0
+    val_130db = 10 ** (-130.0 / 20.0)
+
+    temp_file = os.path.join(tmp_path, "low_level_comp.json")
+    data = {
+        "format": "MeasureLab_Harmonic_Compensation",
+        "version": "1.1",
+        "fundamental_frequency": 1000.0,
+        "fundamental_amplitude": 0.5,
+        "max_harmonic": 5,
+        "compensation_coeffs": [
+            {
+                "harmonic": 2,
+                "real": float(val_130db),
+                "imag": 0.0,
+                "amp_linear": float(val_130db),
+                "phase_deg": 90.0,  # arctan2(real, imag) = arctan2(val, 0) = pi/2 = 90 deg
+            }
+        ],
+    }
+    with open(temp_file, "w") as f:
+        json.dump(data, f)
+
+    # Load compensation data
+    widget.on_load_compensation(filename=temp_file)
+
+    # Verify that it loaded and is enabled
+    assert module.compensation_enabled is True
+    assert widget.chk_comp_enable.isEnabled()
+    assert widget.chk_comp_enable.isChecked()
+
+    # Check imported coefficient is NOT skipped (should be around -130 dBFS)
+    assert module.compensation_coeffs[1] == pytest.approx(complex(val_130db, 0.0))
+    assert module.compensation_amps_db[1] == pytest.approx(-130.0, abs=1e-2)
+
+    # Adjusted coefficient should also be successfully updated
+    assert module.adjusted_compensation_coeffs[1] == pytest.approx(complex(val_130db, 0.0), abs=1e-15)
+
