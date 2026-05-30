@@ -610,13 +610,15 @@ class AudioEngine:
 
         mix_buffer = self._mix_clients(logical_in, frames, time, status, active_callbacks, logical_out_ch)
 
-        # 5. Apply Effects (Dithering)
-        if self.dithering_enabled:
-            self._apply_dithering(mix_buffer)
-
-        # 4. Update Loopback (using the post-dither/quantized mix_buffer to ensure loopback matches hardware output)
+        # 4. Update Loopback
+        # Capture the pristine, full-precision output BEFORE applying dithering/quantization
+        # to ensure that internal/digital loopback measurements keep their ideal numerical precision.
         if use_loopback:
             self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
+
+        # 5. Apply Effects (Dithering & Quantization to target hardware bit depth)
+        if self.dithering_enabled:
+            self._apply_dithering(mix_buffer)
 
         # 6. Map to Hardware Output
         self._map_logical_to_hardware_output(mix_buffer, outdata, out_mode)
