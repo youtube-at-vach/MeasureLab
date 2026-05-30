@@ -12,17 +12,6 @@ The widget to use depends on what kind of noise you want to see.
 | **Analyze noise types** | [Noise Profiler](../widgets/noise_profiler.md) | Decompose into components such as "hiss (white noise)" and "hum," and quantify their respective contributions. |
 | **View time-series changes in noise** | [Raw Time Series](../widgets/raw_time_series.md) | Monitor changes over time, such as "occasional pop noise" or "fluctuation of DC offset." |
 
-### ☕ Coffee Break: What if we compare noise to "everyday sounds"?
-
-Even though we simply call it "noise," the character of the sound is completely different depending on the cause.
-Before analyzing it with a spectrum or profiler, let's imagine what it sounds like by listening to it.
-
-* **White Noise**: A "hiss" sound. It's similar to TV static or the **"sound of heavy rain"**. Sounds of all pitches are mixed evenly.
-* **Pink Noise / 1/f Noise**: A "roar" sound. It has slightly stronger bass than white noise and is similar to the **"sound of a waterfall"** or the **"sound of waves"**. It exists abundantly in nature, and human heartbeats also have this 1/f fluctuation.
-* **Hum Noise**: A low "hum" sound. It's similar to the **"sound of an old refrigerator"** or the **"sound near a substation"**. It is the frequency of alternating current electricity coming from an outlet (e.g., 50Hz or 60Hz) mixed directly into the signal.
-
-Knowing these differences will allow you to intuitively understand the cause just by looking at the graph, like "Ah, this is refrigerator-type noise (hum)!"
-
 ---
 
 ## View Noise Spectrum (Spectrum Analyzer)
