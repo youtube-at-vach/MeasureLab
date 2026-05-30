@@ -8,3 +8,8 @@
 
 **Learning:** When validating very large 2D arrays loaded from JSON, using exhaustive list comprehensions and `all()` with `isinstance` on every single element is extremely slow. Instead, performing a quick sanity check on the container and the first element, and letting subsequent vectorized operations (like numpy conversion or sorting) implicitly validate or fail, drastically improves performance.
 **Action:** Replace exhaustive nested element-by-element type validation with shallow checks plus `try...except` handling when parsing large datasets into structured data like numpy arrays or Pandas DataFrames.
+
+## 2025-02-23 - Vectorize Arbitrary Harmonic Generator
+
+**Learning:** Calculating signals in a tight loop inside a Python thread adds latency. Vectorizing over the time array using matrix multiplication and angle addition eliminates Python loop overhead.
+**Action:** Replace sequential element-wise numpy array additions and multiple trigonometric functions with matrix products using the angle addition formula.
