@@ -65,6 +65,7 @@ class LogViewerWindow(QDialog):
 
         self.current_level = logging.DEBUG
         self.all_logs = []
+        self.initial_logger_level = logging.getLogger().level
 
         self._init_ui()
 
@@ -118,6 +119,14 @@ class LogViewerWindow(QDialog):
 
     def _on_level_changed(self, index):
         self.current_level = self.level_combo.itemData(index)
+
+        # Dynamically adjust the root logger level
+        root_logger = logging.getLogger()
+        # We want the root logger to capture at least the level the user is viewing,
+        # but not be more restrictive than the initial startup logging level.
+        target_level = min(self.current_level, self.initial_logger_level)
+        root_logger.setLevel(target_level)
+
         self._refresh_display()
 
     def _refresh_display(self):
