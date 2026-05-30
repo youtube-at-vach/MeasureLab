@@ -205,7 +205,7 @@ class BitPerfectVerifier(MeasurementModule):
                 self.is_locked = True
                 self.lock_offset = offset
                 self.samples_processed = 0
-                logger.info(f"Bit-Perfect Verifier Locked: Offset={offset}, Correlation={corr:.4f}")
+                logger.debug(f"Bit-Perfect Verifier Locked: Offset={offset}, Correlation={corr:.4f}")
             else:
                 # No lock
                 self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(corr)
