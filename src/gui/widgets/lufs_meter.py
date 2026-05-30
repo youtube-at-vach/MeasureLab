@@ -562,7 +562,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         self.disp_s = self._create_big_display(tr("Short-Term"), "#00ccff")
         display_layout.addWidget(self.disp_s["container"])
-        
+
         top_panel_layout.addWidget(display_frame, 3)  # Stretch factor 3
 
         # 1b. Level Meters Panel
@@ -611,7 +611,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.l_cf_label = QLabel(tr("CF: 0.0"))
         self.l_cf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.l_cf_label.setStyleSheet("color: #00cccc; font-size: 8px;")
-        
+
         l_container.addWidget(l_label)
         l_container.addWidget(self.l_bar, 0, Qt.AlignmentFlag.AlignHCenter)
         l_container.addWidget(self.l_val_label)
@@ -636,7 +636,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.r_cf_label = QLabel(tr("CF: 0.0"))
         self.r_cf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.r_cf_label.setStyleSheet("color: #00cccc; font-size: 8px;")
-        
+
         r_container.addWidget(r_label)
         r_container.addWidget(self.r_bar, 0, Qt.AlignmentFlag.AlignHCenter)
         r_container.addWidget(self.r_val_label)
@@ -664,7 +664,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         m_text_lbl = QLabel(tr("LUFS(M)"))
         m_text_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         m_text_lbl.setStyleSheet("color: #aaa; font-size: 8px;")
-        
+
         m_container.addWidget(m_label)
         m_container.addWidget(self.m_bar, 0, Qt.AlignmentFlag.AlignHCenter)
         m_container.addWidget(self.m_val_label)
@@ -685,7 +685,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         s_text_lbl = QLabel(tr("LUFS(S)"))
         s_text_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         s_text_lbl.setStyleSheet("color: #aaa; font-size: 8px;")
-        
+
         s_container.addWidget(s_label)
         s_container.addWidget(self.s_bar, 0, Qt.AlignmentFlag.AlignHCenter)
         s_container.addWidget(self.s_val_label)
@@ -697,14 +697,14 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         meters_layout.addStretch()
         meters_layout.addWidget(loudness_widget)
         meters_group.setLayout(meters_layout)
-        
+
         top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
 
         content_layout.addWidget(top_panel)
 
         # 2. Tabs (Statistics and Graph)
         self.tabs = QTabWidget()
-        
+
         # --- Statistics Tab (Dashboard Grid Card Layout) ---
         stats_tab = QWidget()
         stats_grid = QGridLayout(stats_tab)
@@ -833,7 +833,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         v_box = QVBoxLayout()
         v_box.setContentsMargins(4, 4, 4, 4)
         v_box.setSpacing(2)
-        
+
         lbl_title = QLabel(title)
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setStyleSheet("font-weight: bold; font-size: 10pt; color: #eee;")
@@ -857,14 +857,14 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         container = QWidget()
         h_box = QHBoxLayout()
         h_box.setContentsMargins(6, 3, 6, 3)
-        
+
         lbl_label = QLabel(label_text + ":")
         lbl_label.setStyleSheet("font-weight: bold; font-size: 9pt; color: #aaa;")
-        
+
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         lbl_val.setStyleSheet(f"font-size: 11pt; font-weight: bold; color: {color}; font-family: monospace;")
-        
+
         h_box.addWidget(lbl_label)
         h_box.addStretch()
         h_box.addWidget(lbl_val)
@@ -1111,7 +1111,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         else:
             state = "green"
             color = "#00ff00"  # Green
-            
+
         attr_name = f"_state_{ch_id}"
         prev_state = getattr(self, attr_name, None)
         if prev_state != state:
