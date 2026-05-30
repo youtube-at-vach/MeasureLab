@@ -634,6 +634,7 @@ class PlotComparerWidget(QWidget):
                     "y_axis_choice": "Y1",
                     "y2_visible": True,
                     "y2_axis_choice": "Y2",
+                    "invert": False,
                 }
             else:
                 # Ensure the new nested settings exist
@@ -647,8 +648,10 @@ class PlotComparerWidget(QWidget):
                     self.trace_settings[tid]["y_axis_choice"] = "Y1"
                 if "y2_visible" not in self.trace_settings[tid]:
                     self.trace_settings[tid]["y2_visible"] = True
-                if "y2_axis_choice" not in self.trace_settings[tid]:
+                if "y2_axis_choice" not in self.trace_settings[tid]["y2_axis_choice"]:
                     self.trace_settings[tid]["y2_axis_choice"] = "Y2"
+                if "invert" not in self.trace_settings[tid]:
+                    self.trace_settings[tid]["invert"] = False
 
             settings = self.trace_settings[tid]
 
@@ -708,73 +711,84 @@ class PlotComparerWidget(QWidget):
                 y2_combo.currentTextChanged.connect(self.on_axis_changed)
                 self.tree_widget.setItemWidget(y2_item, 1, y2_combo)
 
-            # 4. Create Child Item (Gain Offset)
-            offset_item = QTreeWidgetItem(parent_item)
-            offset_item.setText(0, tr("Gain Offset"))
-            offset_item.setFlags(offset_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-            offset_item.setData(0, Qt.ItemDataRole.UserRole, tid)
-            offset_item.setData(0, Qt.ItemDataRole.UserRole + 1, "offset")
+            # 4. Create Child Item (Gain Offset) - Shown in frequency and time domains
+            if active_domain in ("frequency", "time"):
+                offset_item = QTreeWidgetItem(parent_item)
+                offset_item.setText(0, tr("Gain Offset"))
+                offset_item.setFlags(offset_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                offset_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+                offset_item.setData(0, Qt.ItemDataRole.UserRole + 1, "offset")
 
-            offset_spin = QDoubleSpinBox()
-            offset_spin.setRange(-120.0, 120.0)
-            offset_spin.setValue(settings["offset_db"])
-            offset_spin.setSuffix(" dB")
-            offset_spin.setDecimals(3)
-            offset_spin.setSingleStep(0.1)
-            offset_spin.setProperty("trace_id", tid)
-            offset_spin.valueChanged.connect(self.on_tree_offset_changed)
-            self.tree_widget.setItemWidget(offset_item, 1, offset_spin)
+                offset_spin = QDoubleSpinBox()
+                offset_spin.setRange(-120.0, 120.0)
+                offset_spin.setValue(settings["offset_db"])
+                offset_spin.setSuffix(" dB")
+                offset_spin.setDecimals(3)
+                offset_spin.setSingleStep(0.1)
+                offset_spin.setProperty("trace_id", tid)
+                offset_spin.valueChanged.connect(self.on_tree_offset_changed)
+                self.tree_widget.setItemWidget(offset_item, 1, offset_spin)
 
-            # 4.5 Create Child Item (Y-Axis Offset)
-            y_offset_item = QTreeWidgetItem(parent_item)
-            y_offset_item.setText(0, tr("Y-Axis Offset"))
-            y_offset_item.setFlags(y_offset_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-            y_offset_item.setData(0, Qt.ItemDataRole.UserRole, tid)
-            y_offset_item.setData(0, Qt.ItemDataRole.UserRole + 1, "y_offset")
+            # 4.5 Create Child Item (Y-Axis Offset) - Shown in time and amplitude domains
+            if active_domain in ("time", "amplitude"):
+                y_offset_item = QTreeWidgetItem(parent_item)
+                y_offset_item.setText(0, tr("Y-Axis Offset"))
+                y_offset_item.setFlags(y_offset_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                y_offset_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+                y_offset_item.setData(0, Qt.ItemDataRole.UserRole + 1, "y_offset")
 
-            y_offset_spin = QDoubleSpinBox()
-            y_offset_spin.setRange(-1000000.0, 1000000.0)
-            y_offset_spin.setValue(settings.get("y_offset", 0.0))
-            if trace.y_axis and trace.y_axis.display_unit:
-                y_offset_spin.setSuffix(f" {trace.y_axis.display_unit}")
-            y_offset_spin.setDecimals(4)
-            y_offset_spin.setSingleStep(0.01)
-            y_offset_spin.setProperty("trace_id", tid)
-            y_offset_spin.valueChanged.connect(self.on_tree_y_offset_changed)
-            self.tree_widget.setItemWidget(y_offset_item, 1, y_offset_spin)
+                y_offset_spin = QDoubleSpinBox()
+                y_offset_spin.setRange(-1000000.0, 1000000.0)
+                y_offset_spin.setValue(settings.get("y_offset", 0.0))
+                if trace.y_axis and trace.y_axis.display_unit:
+                    y_offset_spin.setSuffix(f" {trace.y_axis.display_unit}")
+                y_offset_spin.setDecimals(4)
+                y_offset_spin.setSingleStep(0.01)
+                y_offset_spin.setProperty("trace_id", tid)
+                y_offset_spin.valueChanged.connect(self.on_tree_y_offset_changed)
+                self.tree_widget.setItemWidget(y_offset_item, 1, y_offset_spin)
 
-            # 5. Create Child Item (X-Axis Shift/Offset)
-            shift_item = QTreeWidgetItem(parent_item)
-            shift_item.setData(0, Qt.ItemDataRole.UserRole, tid)
-            shift_item.setData(0, Qt.ItemDataRole.UserRole + 1, "shift")
+            # 4.6 Create Child Item (Invert Polarity) - Shown only in time domain [NEW]
+            if active_domain == "time":
+                invert_item = QTreeWidgetItem(parent_item)
+                invert_item.setText(0, tr("Invert Polarity"))
+                invert_item.setFlags(invert_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                invert_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+                invert_item.setData(0, Qt.ItemDataRole.UserRole + 1, "invert")
 
-            shift_spin = QDoubleSpinBox()
-            shift_spin.setValue(settings["shift"])
-            shift_spin.setProperty("trace_id", tid)
-            shift_spin.valueChanged.connect(self.on_tree_shift_changed)
+                invert_cb = QCheckBox()
+                invert_cb.setChecked(settings.get("invert", False))
+                invert_cb.setProperty("trace_id", tid)
+                invert_cb.toggled.connect(self.on_tree_invert_toggled)
+                self.tree_widget.setItemWidget(invert_item, 1, invert_cb)
 
-            active_domain = self.filter_combo.currentData()
-            if active_domain == "frequency":
-                shift_item.setText(0, tr("Frequency Shift"))
-                shift_spin.setRange(-100000.0, 100000.0)
-                shift_spin.setSuffix(" Hz")
-                shift_spin.setDecimals(2)
-                shift_spin.setSingleStep(1.0)
-            elif active_domain == "time":
-                shift_item.setText(0, tr("Time Shift"))
-                shift_spin.setRange(-10.0, 10.0)
-                shift_spin.setSuffix(" s")
-                shift_spin.setDecimals(4)
-                shift_spin.setSingleStep(0.001)
-            else:
-                shift_item.setText(0, tr("Shift"))
-                shift_spin.setRange(-100000.0, 100000.0)
-                shift_spin.setSuffix("")
-                shift_spin.setDecimals(4)
-                shift_spin.setSingleStep(0.1)
+            # 5. Create Child Item (X-Axis Shift/Offset) - Shown in time and amplitude domains
+            if active_domain in ("time", "amplitude"):
+                shift_item = QTreeWidgetItem(parent_item)
+                shift_item.setData(0, Qt.ItemDataRole.UserRole, tid)
+                shift_item.setData(0, Qt.ItemDataRole.UserRole + 1, "shift")
 
-            shift_item.setFlags(shift_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
-            self.tree_widget.setItemWidget(shift_item, 1, shift_spin)
+                shift_spin = QDoubleSpinBox()
+                shift_spin.setValue(settings["shift"])
+                shift_spin.setProperty("trace_id", tid)
+                shift_spin.valueChanged.connect(self.on_tree_shift_changed)
+
+                if active_domain == "time":
+                    shift_item.setText(0, tr("Time Shift"))
+                    shift_spin.setRange(-10.0, 10.0)
+                    shift_spin.setSuffix(" s")
+                    shift_spin.setDecimals(4)
+                    shift_spin.setSingleStep(0.001)
+                else:  # amplitude
+                    shift_item.setText(0, tr("X-Axis Offset"))
+                    shift_spin.setRange(-1000000.0, 1000000.0)
+                    if trace.x_axis and trace.x_axis.display_unit:
+                        shift_spin.setSuffix(f" {trace.x_axis.display_unit}")
+                    shift_spin.setDecimals(4)
+                    shift_spin.setSingleStep(0.01)
+
+                shift_item.setFlags(shift_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                self.tree_widget.setItemWidget(shift_item, 1, shift_spin)
 
             parent_item.setExpanded(True)
 
@@ -873,6 +887,15 @@ class PlotComparerWidget(QWidget):
         tid = spin.property("trace_id")
         if tid in self.trace_settings:
             self.trace_settings[tid]["shift"] = val
+            self.replot()
+
+    def on_tree_invert_toggled(self, checked: bool):
+        cb = self.sender()
+        if not isinstance(cb, QCheckBox):
+            return
+        tid = cb.property("trace_id")
+        if tid in self.trace_settings:
+            self.trace_settings[tid]["invert"] = checked
             self.replot()
 
     def update_master_toggles(self):
@@ -1248,6 +1271,10 @@ class PlotComparerWidget(QWidget):
                             gain_factor = 10 ** (settings["offset_db"] / 20.0)
                             y_arr = y_arr * gain_factor
 
+                    # Apply Polarity Inversion (time domain only)
+                    if active_domain == "time" and settings.get("invert", False):
+                        y_arr = y_arr * -1.0
+
                     if self.normalize_check.isChecked():
                         if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
                             y_arr = y_arr - np.max(y_arr)
@@ -1272,6 +1299,11 @@ class PlotComparerWidget(QWidget):
                 # 2. Secondary Y2 data
                 if trace.y2_data is not None and settings.get("y2_visible", True) and trace.y2_axis:
                     y2_arr = np.array(trace.y2_data, dtype=float)[sort_idx]
+
+                    # Apply Polarity Inversion (time domain only)
+                    if active_domain == "time" and settings.get("invert", False):
+                        y2_arr = y2_arr * -1.0
+
                     try:
                         interp_y2 = np.interp(actual_x, x_sorted, y2_arr)
                         unit2 = trace.y2_axis.display_unit or ""
@@ -1549,6 +1581,10 @@ class PlotComparerWidget(QWidget):
                         gain_factor = 10 ** (settings["offset_db"] / 20.0)
                         y_processed = y_processed * gain_factor
 
+                # Apply Polarity Inversion (time domain only)
+                if active_domain == "time" and settings.get("invert", False):
+                    y_processed = y_processed * -1.0
+
                 # Normalize (Align Peaks) if requested
                 if self.normalize_check.isChecked():
                     if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
@@ -1590,6 +1626,10 @@ class PlotComparerWidget(QWidget):
             # --- Secondary Data (y2) ---
             if y2 is not None and settings.get("y2_visible", True) and len(y2) > 0:
                 y2_processed = y2_for_y2.copy() if settings.get("y2_axis_choice", "Y2") == "Y2" else y2.copy()
+
+                # Apply Polarity Inversion (time domain only)
+                if active_domain == "time" and settings.get("invert", False):
+                    y2_processed = y2_processed * -1.0
 
                 axis_choice = settings.get("y2_axis_choice", "Y2")
                 dim_cap = tr(trace.y2_axis.dimension).capitalize()
