@@ -159,7 +159,7 @@ class TestTransmissionLogic(unittest.TestCase):
         # Add high noise
         rx_noisy = rx_linear + 0.05 * np.random.normal(size=512)
         evm_noisy_equalized = calculate_equalized_evm(rx_noisy, tx)
-        
+
         # Noise cannot be corrected by linear equalization, so EVM should still reflect the noise level
         self.assertGreater(evm_noisy_equalized, 0.5)
         self.assertLess(evm_noisy_equalized, evm_unequalized)  # Equalization still removes linear part
