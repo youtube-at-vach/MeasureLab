@@ -14,7 +14,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QTabWidget,
-    QCheckBox,
 )
 
 from src.core.audio_engine import AudioEngine
@@ -27,7 +26,6 @@ from src.core.transmission_logic import (
     extract_impulse_response,
     extract_frequency_response,
     calculate_evm,
-    measure_crosstalk,
     diagnose_bit_perfection,
     estimate_fractional_delay,
     shift_signal_fractional,
@@ -60,7 +58,6 @@ class TransmissionAnalyzer(MeasurementModule):
         self.bit_depth = 24
         self.input_channel_idx = 0  # 0 for Left, 1 for Right
         self.mode = "Digital"  # "Digital" or "Analog"
-        self.enable_crosstalk = True
 
         # PRBS Engines (Distinct seeds to allow Crosstalk measurement)
         self.generator_l = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
@@ -107,7 +104,6 @@ class TransmissionAnalyzer(MeasurementModule):
             "total_samples": 0,
             "active_bits": 0,
             "evm": 0.0,
-            "crosstalk_db": -120.0,
             "dsp_detected": "None",
             "jitter_samples": 0.0,
         }
@@ -179,7 +175,6 @@ class TransmissionAnalyzer(MeasurementModule):
                 "total_samples": 0,
                 "active_bits": 0,
                 "evm": 0.0,
-                "crosstalk_db": -120.0,
                 "dsp_detected": tr("Analyzing..."),
                 "jitter_samples": 0.0,
             }
@@ -287,10 +282,8 @@ class TransmissionAnalyzer(MeasurementModule):
             # We perform a .copy() inside the lock to prevent data races with the audio callback thread.
             if self.input_channel_idx == 0:
                 align_tx_history = self.tx_history_l.copy()
-                leak_tx_history = self.tx_history_r.copy()
             else:
                 align_tx_history = self.tx_history_r.copy()
-                leak_tx_history = self.tx_history_l.copy()
 
         # Synchronization & Lock
         if not self.is_locked:
@@ -354,7 +347,6 @@ class TransmissionAnalyzer(MeasurementModule):
 
         # Lock is active: Continuous alignment tracking (fine jitter/slip check)
         N = len(rx_block)
-        prev_frac_delay = self.fractional_delay
         offset = self.lock_offset
 
         # 1. Slide expected offset dynamically in sync with the audio callback's write index (tx_w)
@@ -383,20 +375,16 @@ class TransmissionAnalyzer(MeasurementModule):
 
         # Calculate matching aligned TX blocks (integer matched first)
         aligned_tx_int = np.zeros(N, dtype=np.float32)
-        leak_tx_int = np.zeros(N, dtype=np.float32)
 
         if self.lock_offset + N <= self.max_buffer_len:
             aligned_tx_int = align_tx_history[self.lock_offset : self.lock_offset + N]
-            leak_tx_int = leak_tx_history[self.lock_offset : self.lock_offset + N]
         else:
             part = self.max_buffer_len - self.lock_offset
             aligned_tx_int = np.concatenate((align_tx_history[self.lock_offset :], align_tx_history[: N - part]))
-            leak_tx_int = np.concatenate((leak_tx_history[self.lock_offset :], leak_tx_history[: N - part]))
 
-        # Apply precision fractional delay shift to both aligned primary and leakage signals in frequency domain.
+        # Apply precision fractional delay shift to aligned primary signal in frequency domain.
         # This aligns the reference phases perfectly to the received block down to sub-sample scale.
         aligned_tx = shift_signal_fractional(aligned_tx_int, self.fractional_delay)
-        leak_tx = shift_signal_fractional(leak_tx_int, self.fractional_delay)
 
         # Check for catastrophic unlock using precision fractional correlation.
         # Threshold raised to 0.75 since fractional correlation is highly stable and robust.
@@ -460,10 +448,7 @@ class TransmissionAnalyzer(MeasurementModule):
         # 2c. EVM calculation
         evm_val = calculate_evm(rx_block, aligned_tx)
 
-        # ---------------- 3. Crosstalk Leakage ----------------
-        crosstalk_db = -120.0
-        if self.enable_crosstalk:
-            crosstalk_db = measure_crosstalk(rx_block, leak_tx)
+
 
         # Delay in samples & milliseconds
         delay_samples = self.lock_offset
@@ -494,7 +479,6 @@ class TransmissionAnalyzer(MeasurementModule):
             "total_samples": self.total_test_samples,
             "active_bits": diag["active_bits"],
             "evm": evm_val,
-            "crosstalk_db": crosstalk_db,
             "dsp_detected": diag["dsp_detected"],
             "jitter_samples": float(jitter_s),
             "delay_samples": delay_samples,
@@ -566,10 +550,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.combo_channel.currentIndexChanged.connect(self.on_channel_changed)
         form_layout.addRow(tr("Input Channel:"), self.combo_channel)
 
-        self.lbl_crosstalk_source = QLabel(tr("Right Channel (CH2) TX"))
-        self.lbl_crosstalk_source.setStyleSheet("font-weight: bold; color: #3498db;")
-        form_layout.addRow(tr("Crosstalk Source:"), self.lbl_crosstalk_source)
-
         self.combo_pattern = QComboBox()
         self.combo_pattern.addItem("PRBS-15 (Standard)", "PRBS-15")
         self.combo_pattern.addItem("PRBS-7 (Fast Sync)", "PRBS-7")
@@ -584,11 +564,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.combo_depth.addItem(tr("16-bit (CD Quality)"), 16)
         self.combo_depth.currentIndexChanged.connect(self.on_settings_changed)
         form_layout.addRow(tr("Bit Depth:"), self.combo_depth)
-
-        self.chk_crosstalk = QCheckBox(tr("Enable Crosstalk Measurement"))
-        self.chk_crosstalk.setChecked(True)
-        self.chk_crosstalk.stateChanged.connect(self.on_crosstalk_toggle)
-        form_layout.addRow(self.chk_crosstalk)
 
         settings_group.setLayout(form_layout)
         controls_layout.addWidget(settings_group)
@@ -631,13 +606,8 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.lbl_stat_evm.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
         self.lbl_stat_evm.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.lbl_stat_crosstalk = QLabel(tr("Crosstalk: -"))
-        self.lbl_stat_crosstalk.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
-        self.lbl_stat_crosstalk.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         stats_row.addWidget(self.lbl_stat_delay)
         stats_row.addWidget(self.lbl_stat_evm)
-        stats_row.addWidget(self.lbl_stat_crosstalk)
         status_layout.addLayout(stats_row)
 
         right_panel.addWidget(self.card_status)
@@ -755,7 +725,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.lbl_reason.setText(tr("Start analysis to evaluate transmission characteristics."))
             self.lbl_stat_delay.setText(tr("Delay: -"))
             self.lbl_stat_evm.setText(tr("EVM: -"))
-            self.lbl_stat_crosstalk.setText(tr("Crosstalk: -"))
 
     def on_reset_stats(self):
         with self.module._lock:
@@ -781,11 +750,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
     def on_channel_changed(self, idx):
         self.module.input_channel_idx = idx
-        # Update specified crosstalk source UI label
-        if idx == 0:
-            self.lbl_crosstalk_source.setText(tr("Right Channel (CH2) TX"))
-        else:
-            self.lbl_crosstalk_source.setText(tr("Left Channel (CH1) TX"))
 
     def on_settings_changed(self):
         is_running = self.btn_toggle.isChecked()
@@ -798,8 +762,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         if is_running:
             self.module.start_analysis()
 
-    def on_crosstalk_toggle(self, state):
-        self.module.enable_crosstalk = state == Qt.CheckState.Checked.value
+
 
     def on_trend_changed(self):
         self.update_trend_axes()
@@ -863,15 +826,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         )
         self.lbl_stat_evm.setText(tr("Waveform EVM: {0:.3f} %").format(res["evm"]))
 
-        if self.module.enable_crosstalk:
-            crosstalk_text = (
-                tr("Crosstalk: {0:+.1f} dB").format(res["crosstalk_db"])
-                if res["crosstalk_db"] > -110
-                else tr("Crosstalk: < -100 dB")
-            )
-            self.lbl_stat_crosstalk.setText(crosstalk_text)
-        else:
-            self.lbl_stat_crosstalk.setText(tr("Crosstalk: Disabled"))
+
 
         # Update Text Report (Tab 1)
         report_text = (
