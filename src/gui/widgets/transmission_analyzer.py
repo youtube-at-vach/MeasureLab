@@ -327,14 +327,13 @@ class TransmissionAnalyzer(MeasurementModule):
                     self.initial_fractional_delay = est_delay
                     self.fractional_delay = est_delay
 
-                    # Calculate correct delay estimate modulo max_buffer_len to avoid wrap discrepancy
+                    # Calculate correct delay estimate modulo max_buffer_len to avoid wrap discrepancy.
+                    # We do NOT cap it modulo the PRBS sync_period here. Capping it would artificially restrict
+                    # delay_samples to [0, sync_period-1], causing a catastrophic 4-sample or 8-sample phase
+                    # discrepancy in the ring buffer when the expected_offset wraps around the buffer boundary 0.
+                    # By retaining the true delay modulo max_buffer_len, we ensure the transmission reference
+                    # alignment is always in phase across buffer wraps.
                     delay_est = (rx_w - block_size - offset) % self.max_buffer_len
-                    # Prevent wrap discrepancy by keeping the delay within the PRBS period boundary.
-                    # For very long periods (PRBS-23/31), we cap it at the reference cycle length to ensure
-                    # the lock offset stays close to the write pointer. This prevents catastrophic boundary
-                    # un-sync when the ring buffer wraps around.
-                    sync_period = min(self.ref_cycle_len, len(self.ref_cycle))
-                    delay_est = delay_est % sync_period
 
                     self.delay_samples = delay_est  # Save baseline physical loopback delay samples
                     self.initial_delay_samples = delay_est  # Save baseline for cumulative drift tracking
@@ -399,6 +398,7 @@ class TransmissionAnalyzer(MeasurementModule):
                     f"delay_samples corrected to {self.delay_samples}."
                 )
                 self.delay_slip_counter = 0
+                drift_int = 0
         else:
             # Decamp slip counter slowly to 0 when no slip is detected,
             # allowing high resilience to sporadic isolated slip reports.
@@ -545,8 +545,10 @@ class TransmissionAnalyzer(MeasurementModule):
         if cumulative_drift_int > self.max_buffer_len / 2:
             cumulative_drift_int -= self.max_buffer_len
 
+        # Incorporate drift_int to represent the true sub-sample delay drift during transient periods
+        # before the slip integrator triggers. This completely eliminates 1-sample sawtooth discontinuities.
         drift_frac = self.fractional_delay
-        jitter_s = cumulative_drift_int + drift_frac
+        jitter_s = cumulative_drift_int + drift_int + drift_frac
 
         # ---------------- 2. Analog Mode Metrics ----------------
         # 2a. Impulse Response (h[t])
