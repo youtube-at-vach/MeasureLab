@@ -401,8 +401,46 @@ class TransmissionAnalyzer(MeasurementModule):
         self.samples_processed += N
         self.total_test_samples += N
 
-        # ---------------- 1. Digital Mode Metrics ----------------
-        diag = diagnose_bit_perfection(rx_block, aligned_tx)
+        # ---------------- 1. Digital & Analog Mode Metrics ----------------
+        if self.mode == "Digital":
+            diag = diagnose_bit_perfection(rx_block, aligned_tx)
+            gain_db = diag["gain_db"]
+            bit_depth = diag["bit_depth"]
+            dsp_detected = diag["dsp_detected"]
+            reason = diag["reason"]
+            active_bits = diag["active_bits"]
+            bit_perfect = diag["bit_perfect"]
+
+            # Scale and compute bit errors for histogram
+            gain_scalar = 10 ** (gain_db / 20.0)
+            rx_scaled = rx_block / (gain_scalar + 1e-12)
+
+            err_mask = np.abs(rx_scaled - aligned_tx) > 1e-6
+            err_count = np.sum(err_mask)
+            self.total_bit_errors += err_count
+
+            if err_count > 0:
+                # Map values into 24-bit integer values to verify exactly which bits flipped
+                rx_int = np.round(rx_scaled[err_mask] * 8388608.0).astype(np.int32)
+                ref_int = np.round(aligned_tx[err_mask] * 8388608.0).astype(np.int32)
+                diff_mask = (rx_int ^ ref_int) & 0xFFFFFF
+
+                for b in range(24):
+                    bits_flipped = np.sum((diff_mask >> b) & 1)
+                    self.bit_hist[b] += bits_flipped
+        else:
+            # Analog mode: Bypass digital bit perfect diagnostics
+            dot_ref_ref = np.dot(aligned_tx, aligned_tx)
+            if dot_ref_ref > 1e-12:
+                K = np.dot(rx_block, aligned_tx) / dot_ref_ref
+            else:
+                K = 1.0
+            gain_db = 20 * np.log10(abs(K) + 1e-12)
+            bit_depth = 0
+            dsp_detected = "N/A"
+            active_bits = 0
+            bit_perfect = False
+            err_count = 0
 
         # Jitter estimation (convert offset variance into samples / ms)
         # Calculate cumulative integer buffer drift since initial sync baseline
@@ -412,24 +450,6 @@ class TransmissionAnalyzer(MeasurementModule):
 
         drift_frac = self.fractional_delay
         jitter_s = cumulative_drift_int + drift_frac
-
-        # Scale and compute bit errors for histogram
-        gain_scalar = 10 ** (diag["gain_db"] / 20.0)
-        rx_scaled = rx_block / (gain_scalar + 1e-12)
-
-        err_mask = np.abs(rx_scaled - aligned_tx) > 1e-6
-        err_count = np.sum(err_mask)
-        self.total_bit_errors += err_count
-
-        if err_count > 0 and self.mode == "Digital":
-            # Map values into 24-bit integer values to verify exactly which bits flipped
-            rx_int = np.round(rx_scaled[err_mask] * 8388608.0).astype(np.int32)
-            ref_int = np.round(aligned_tx[err_mask] * 8388608.0).astype(np.int32)
-            diff_mask = (rx_int ^ ref_int) & 0xFFFFFF
-
-            for b in range(24):
-                bits_flipped = np.sum((diff_mask >> b) & 1)
-                self.bit_hist[b] += bits_flipped
 
         # ---------------- 2. Analog Mode Metrics ----------------
         # 2a. Impulse Response (h[t])
@@ -448,14 +468,21 @@ class TransmissionAnalyzer(MeasurementModule):
         # 2c. EVM calculation
         evm_val = calculate_evm(rx_block, aligned_tx)
 
-
+        # Set analog-specific reason text if in Analog mode
+        if self.mode == "Analog":
+            if evm_val < 1.0:
+                reason = tr("Excellent signal quality (EVM < 1.0%).")
+            elif evm_val < 10.0:
+                reason = tr("Standard analog path (EVM < 10.0%). Minimal distortion.")
+            else:
+                reason = tr("High signal distortion or noise (EVM >= 10.0%).")
 
         # Delay in samples & milliseconds
         delay_samples = self.delay_samples
         delay_ms = (delay_samples / self.audio_engine.sample_rate) * 1000.0
 
         # Update Trend Histories
-        self.gain_trend.append(diag["gain_db"])
+        self.gain_trend.append(gain_db)
         self.ber_trend.append((err_count / N) * 100.0 if N > 0 else 0.0)
         self.jitter_trend.append(float(jitter_s))
 
@@ -468,18 +495,18 @@ class TransmissionAnalyzer(MeasurementModule):
         # Save results
         self.results = {
             "locked": True,
-            "bit_perfect": diag["bit_perfect"] if self.mode == "Digital" else False,
-            "reason": diag["reason"],
-            "gain_db": diag["gain_db"],
-            "bit_depth": diag["bit_depth"],
+            "bit_perfect": bit_perfect,
+            "reason": reason,
+            "gain_db": gain_db,
+            "bit_depth": bit_depth,
             "bit_errors": self.total_bit_errors,
             "error_rate": (self.total_bit_errors / self.total_test_samples) * 100.0
-            if self.total_test_samples > 0
+            if (self.mode == "Digital" and self.total_test_samples > 0)
             else 0.0,
-            "total_samples": self.total_test_samples,
-            "active_bits": diag["active_bits"],
+            "total_samples": self.total_test_samples if self.mode == "Digital" else 0,
+            "active_bits": active_bits,
             "evm": evm_val,
-            "dsp_detected": diag["dsp_detected"],
+            "dsp_detected": dsp_detected,
             "jitter_samples": float(jitter_s),
             "delay_samples": delay_samples,
             "delay_ms": delay_ms,
@@ -624,7 +651,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # Report box
         self.lbl_report = QLabel(tr("Establish sync lock to generate digital report."))
-        self.lbl_report.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #2c3e50;")
+        self.lbl_report.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px;")
         self.lbl_report.setWordWrap(True)
         self.lbl_report.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
@@ -698,9 +725,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         trend_ctrl_row = QHBoxLayout()
         trend_ctrl_row.addWidget(QLabel(tr("Select Trend Chart:")))
         self.combo_trend = QComboBox()
-        self.combo_trend.addItem(tr("Clock Jitter / Buffer Drifts (samples)"), "jitter")
-        self.combo_trend.addItem(tr("Gain / Volume Variations (dB)"), "gain")
-        self.combo_trend.addItem(tr("Bit Error Rate (BER %)"), "ber")
         self.combo_trend.currentIndexChanged.connect(self.on_trend_changed)
         trend_ctrl_row.addWidget(self.combo_trend)
         trend_ctrl_row.addStretch()
@@ -713,6 +737,8 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.trend_curve = self.plot_trend.plot(pen=pg.mkPen("#f1c40f", width=2.0))
         tab_trend_layout.addWidget(self.plot_trend)
         self.tabs.addTab(self.tab_trends, tr("Trends & Jitter"))
+
+        self.update_trend_options()
 
         right_panel.addWidget(self.tabs, stretch=1)
         main_layout.addLayout(right_panel, stretch=1)
@@ -752,13 +778,36 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         mode = self.combo_mode.currentData()
         self.module.mode = mode
 
-        # Switch tab index to highlight relevant visualizers
+        # Switch tab index to highlight relevant visualizers and enable/disable digital tab
         if mode == "Digital":
+            self.tabs.setTabEnabled(0, True)
             self.tabs.setCurrentIndex(0)
             self.plot_trend.setLabel("left", tr("Error Rate (%)"))
         else:
+            self.tabs.setTabEnabled(0, False)
             self.tabs.setCurrentIndex(1)
             self.plot_trend.setLabel("left", tr("Jitter (samples)"))
+
+        self.update_trend_options()
+
+    def update_trend_options(self):
+        curr_data = self.combo_trend.currentData()
+
+        self.combo_trend.blockSignals(True)
+        self.combo_trend.clear()
+        self.combo_trend.addItem(tr("Clock Jitter / Buffer Drifts (samples)"), "jitter")
+        self.combo_trend.addItem(tr("Gain / Volume Variations (dB)"), "gain")
+        if self.module.mode == "Digital":
+            self.combo_trend.addItem(tr("Bit Error Rate (BER %)"), "ber")
+
+        idx = self.combo_trend.findData(curr_data)
+        if idx >= 0:
+            self.combo_trend.setCurrentIndex(idx)
+        else:
+            self.combo_trend.setCurrentIndex(0)
+        self.combo_trend.blockSignals(False)
+
+        self.update_trend_axes()
 
     def on_channel_changed(self, idx):
         self.module.input_channel_idx = idx
@@ -774,13 +823,13 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         if is_running:
             self.module.start_analysis()
 
-
-
     def on_trend_changed(self):
         self.update_trend_axes()
 
     def update_trend_axes(self):
         trend = self.combo_trend.currentData()
+        if not trend:
+            return
         if trend == "jitter":
             self.plot_trend.setLabel("left", tr("Jitter / Drift (samples)"))
             self.trend_curve.setPen(pg.mkPen("#f1c40f", width=2.0))
@@ -841,16 +890,23 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
 
         # Update Text Report (Tab 1)
-        report_text = (
-            f"<b>{tr('Transmission Mode:')}</b> {tr(self.module.mode)}<br/>"
-            f"<b>{tr('Detected Bit Depth:')}</b> {res['bit_depth'] if res['bit_depth'] > 0 else 'N/A'}-bit<br/>"
-            f"<b>{tr('Volume Alteration:')}</b> {res['gain_db']:+.3f} dB<br/>"
-            f"<b>{tr('Total Processed:')}</b> {res['total_samples']:,} samples<br/>"
-            f"<b>{tr('Bit Errors:')}</b> {res['bit_errors']:,}<br/>"
-            f"<b>{tr('Bit Error Rate (BER):')}</b> {res['error_rate']:.6f} %<br/>"
-            f"<b>{tr('Intervention Heuristic:')}</b> {res['dsp_detected']}<br/>"
-            f"<b>{tr('Jitter Drift:')}</b> {res['jitter_samples']:+.1f} samples"
-        )
+        if self.module.mode == "Digital":
+            report_text = (
+                f"<b>{tr('Transmission Mode:')}</b> {tr(self.module.mode)}<br/>"
+                f"<b>{tr('Detected Bit Depth:')}</b> {res['bit_depth'] if res['bit_depth'] > 0 else 'N/A'}-bit<br/>"
+                f"<b>{tr('Volume Alteration:')}</b> {res['gain_db']:+.3f} dB<br/>"
+                f"<b>{tr('Total Processed:')}</b> {res['total_samples']:,} samples<br/>"
+                f"<b>{tr('Bit Errors:')}</b> {res['bit_errors']:,}<br/>"
+                f"<b>{tr('Bit Error Rate (BER):')}</b> {res['error_rate']:.6f} %<br/>"
+                f"<b>{tr('Intervention Heuristic:')}</b> {res['dsp_detected']}<br/>"
+                f"<b>{tr('Jitter Drift:')}</b> {res['jitter_samples']:+.1f} samples"
+            )
+        else:
+            report_text = (
+                f"<b>{tr('Transmission Mode:')}</b> {tr(self.module.mode)}<br/>"
+                f"<br/>"
+                f"<i>{tr('Digital Path diagnostics are disabled in Analog Transmission mode.')}</i>"
+            )
         self.lbl_report.setText(report_text)
 
         # Update Bit-Error Histogram (Tab 1)
@@ -879,8 +935,10 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             y_data = list(self.module.jitter_trend)
         elif trend == "gain":
             y_data = list(self.module.gain_trend)
-        else:  # "ber"
+        elif trend == "ber":
             y_data = list(self.module.ber_trend)
+        else:
+            y_data = []
 
         if len(y_data) > 0:
             self.trend_curve.setData(np.arange(len(y_data)), np.array(y_data))
