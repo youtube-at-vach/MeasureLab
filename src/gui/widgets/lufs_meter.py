@@ -22,6 +22,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 
 class LufsMeter(MeasurementModule):
@@ -39,8 +40,6 @@ class LufsMeter(MeasurementModule):
         self.zi_shelf_r = None
         self.zi_hp_l = None
         self.zi_hp_r = None
-
-
 
         # Buffers / windows
         self.momentary_window = 0.4  # 400ms
@@ -89,8 +88,6 @@ class LufsMeter(MeasurementModule):
         self.crest_l = 0.0
         self.crest_r = 0.0
 
-
-
         self.callback_id = None
 
     @property
@@ -119,8 +116,6 @@ class LufsMeter(MeasurementModule):
         self.zi_shelf_r = zi_shelf.copy()
         self.zi_hp_l = zi_hp.copy()
         self.zi_hp_r = zi_hp.copy()
-
-
 
     def reset_peaks(self):
         self.peak_hold_l = self._db_floor
@@ -276,8 +271,6 @@ class LufsMeter(MeasurementModule):
             self.rms_l = self._to_db(rms_l_linear)
             self.rms_r = self._to_db(rms_r_linear)
 
-
-
             # True Peak (Instantaneous)
             if frames > 0:
                 l_up = signal.resample_poly(l_channel, 4, 1)
@@ -395,8 +388,6 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         CompactableWidgetInterface.__init__(self)
         self.module = module
 
-
-
         # History for plotting
         self.history_size = 400  # 20s at 50ms interval
         self.m_history = np.full(self.history_size, -100.0)
@@ -471,15 +462,11 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.target_spin.valueChanged.connect(self.on_target_changed)
         settings_layout.addWidget(self.target_spin)
 
-
-
         settings_group.setLayout(settings_layout)
         sidebar_layout.addWidget(settings_group)
 
         sidebar_layout.addStretch()
         self.sidebar.setLayout(sidebar_layout)
-
-
 
         # --- Right Main Content Area ---
         content_area = QWidget()
@@ -759,7 +746,9 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_val.setStyleSheet(f"color: {color}; font-size: 32px; font-weight: bold; font-family: monospace;")
+        lbl_val.setStyleSheet(
+            f"color: {color}; font-size: 32px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};"
+        )
 
         lbl_unit = QLabel("LUFS")
         lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -787,7 +776,9 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_val.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {color}; font-family: monospace;")
+        lbl_val.setStyleSheet(
+            f"font-size: 16px; font-weight: bold; color: {color}; font-family: {MONOSPACE_FONT_FAMILY};"
+        )
 
         v_box.addWidget(lbl_title)
         v_box.addWidget(lbl_desc)
@@ -806,7 +797,9 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        lbl_val.setStyleSheet(f"font-size: 11pt; font-weight: bold; color: {color}; font-family: monospace;")
+        lbl_val.setStyleSheet(
+            f"font-size: 11pt; font-weight: bold; color: {color}; font-family: {MONOSPACE_FONT_FAMILY};"
+        )
 
         h_box.addWidget(lbl_label)
         h_box.addStretch()
@@ -848,8 +841,6 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
             self.timer.stop()
             self.toggle_btn.setText(tr("Start Metering"))
             self.toggle_btn.setStyleSheet("font-weight: bold; font-size: 13px;")
-
-
 
     def on_target_changed(self, value):
         self.module.target_lufs = value

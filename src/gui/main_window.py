@@ -28,6 +28,7 @@ from src.core.module_constants import (
     EXPERIMENTAL_MODULE_KEYS,
     MODULE_1PPS_MONITOR,
     MODULE_ADVANCED_DISTORTION_METER,
+    MODULE_TRANSMISSION_ANALYZER,
     MODULE_BNIM_METER,
     MODULE_BOXCAR_AVERAGER,
     MODULE_DISTORTION_ANALYZER,
@@ -103,6 +104,7 @@ MODULE_REGISTRY = {
     MODULE_PROCESSOR_BENCHMARK: ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"),
     MODULE_SPATIAL_BINAURAL_MIXER: ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"),
     MODULE_PLOT_COMPARER: ("src.gui.widgets.plot_comparer", "PlotComparer"),
+    MODULE_TRANSMISSION_ANALYZER: ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"),
 }
 
 

@@ -38,6 +38,7 @@ MODULE_STEREO_ALIGNMENT_MONITOR = "Stereo Alignment Monitor"
 MODULE_PROCESSOR_BENCHMARK = "Processor Benchmark"
 MODULE_SPATIAL_BINAURAL_MIXER = "Spatial Binaural Mixer"
 MODULE_PLOT_COMPARER = "Plot Comparer"
+MODULE_TRANSMISSION_ANALYZER = "Transmission Analyzer"
 
 # List of all module keys in the order they should appear in the UI
 ALL_MODULE_KEYS = [
@@ -77,6 +78,7 @@ ALL_MODULE_KEYS = [
     MODULE_SPATIAL_BINAURAL_MIXER,
     MODULE_PROCESSOR_BENCHMARK,
     MODULE_PLOT_COMPARER,
+    MODULE_TRANSMISSION_ANALYZER,
 ]
 
 EXPERIMENTAL_MODULE_KEYS: list[str] = []

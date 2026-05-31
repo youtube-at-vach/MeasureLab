@@ -24,8 +24,6 @@ def test_export_traces_success():
     assert result is True
 
 
-
-
 @pytest.fixture
 def sample_traces():
     t1 = ComparisonTrace(

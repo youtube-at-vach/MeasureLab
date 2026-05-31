@@ -98,7 +98,7 @@ class StereoAlignmentMonitor(MeasurementModule):
 
     def stop_analysis(self):
         if self.is_running:
-            if self.callback_id:
+            if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
             self.is_running = False

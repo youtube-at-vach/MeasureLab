@@ -331,4 +331,3 @@ def test_load_low_level_compensation(generator_widget, tmp_path):
 
     # Adjusted coefficient should also be successfully updated
     assert module.adjusted_compensation_coeffs[1] == pytest.approx(complex(val_130db, 0.0), abs=1e-15)
-
