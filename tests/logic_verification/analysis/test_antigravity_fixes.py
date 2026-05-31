@@ -255,6 +255,28 @@ class TestAntigravityFixes(unittest.TestCase):
             t.join()
             analyzer.stop_analysis()
 
+    def test_transmission_analyzer_prbs_phase_uses_absolute_time(self):
+        """Verify PRBS phase sync is not biased by TX history ring wraps."""
+        from src.gui.widgets.transmission_analyzer import TransmissionAnalyzer
+
+        period = 32767
+        ring_len = 131072
+        physical_delay = 25502
+
+        rx_start_abs = 24 * ring_len + 79872
+        tx_start_abs = rx_start_abs - physical_delay
+        prbs_phase = tx_start_abs % period
+
+        ring_wraps = rx_start_abs // ring_len
+        period_biased_delay = (physical_delay - ring_wraps * (ring_len % period)) % period
+        resolved_tx_abs = TransmissionAnalyzer._resolve_tx_abs_from_prbs_phase(
+            rx_start_abs, prbs_phase, period
+        )
+        new_abs_delay = rx_start_abs - resolved_tx_abs
+
+        self.assertEqual(period_biased_delay, 25406)
+        self.assertEqual(new_abs_delay, physical_delay)
+
 
 if __name__ == "__main__":
     unittest.main()

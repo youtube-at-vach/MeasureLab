@@ -52,6 +52,8 @@ class TransmissionAnalyzer(MeasurementModule):
         self.tx_history_l = np.zeros(self.max_buffer_len, dtype=np.float32)
         self.tx_history_r = np.zeros(self.max_buffer_len, dtype=np.float32)
         self.tx_write_ptr = 0
+        self.tx_total_samples = 0
+        self.rx_total_samples = 0
 
         # Generator settings
         self.pattern_mode = "PRBS-15"
@@ -136,6 +138,8 @@ class TransmissionAnalyzer(MeasurementModule):
             self.tx_history_l.fill(0)
             self.tx_history_r.fill(0)
             self.tx_write_ptr = 0
+            self.tx_total_samples = 0
+            self.rx_total_samples = 0
 
             # Recreate generators
             self.generator_l = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
@@ -233,6 +237,7 @@ class TransmissionAnalyzer(MeasurementModule):
                 self.tx_history_r[ptr:] = r_samples[:space]
                 self.tx_history_r[: frames - space] = r_samples[space:]
                 self.tx_write_ptr = frames - space
+            self.tx_total_samples += frames
 
             # 2. Record Input Signal
             n = len(indata)
@@ -254,6 +259,20 @@ class TransmissionAnalyzer(MeasurementModule):
                 self.rx_write_ptr = n - rx_space
 
             self.new_samples_count = min(self.max_buffer_len, self.new_samples_count + n)
+            self.rx_total_samples += n
+
+    @staticmethod
+    def _resolve_tx_abs_from_prbs_phase(rx_start_abs: int, prbs_phase: int, period: int) -> int:
+        """Map a periodic PRBS phase to the nearest past absolute TX sample."""
+        if period <= 0:
+            return 0
+
+        phase = int(prbs_phase) % int(period)
+        if rx_start_abs <= phase:
+            return phase
+
+        cycles = (int(rx_start_abs) - phase) // int(period)
+        return phase + cycles * int(period)
 
     def process_data(self) -> dict | None:
         """Processes ring buffer samples to compute all Digital & Analog diagnostics."""
@@ -268,6 +287,7 @@ class TransmissionAnalyzer(MeasurementModule):
 
             rx_w = self.rx_write_ptr
             rx_r = (rx_w - block_size) % self.max_buffer_len
+            rx_start_abs = self.rx_total_samples - block_size
 
             if rx_r + block_size <= self.max_buffer_len:
                 rx_block = self.rx_buffer[rx_r : rx_r + block_size].copy()
@@ -323,26 +343,41 @@ class TransmissionAnalyzer(MeasurementModule):
                 lock_threshold = 0.90 if self.mode == "Digital" else 0.75
 
                 if fractional_corr > lock_threshold:
-                    self.is_locked = True
-                    self.initial_fractional_delay = est_delay
-                    self.fractional_delay = est_delay
+                    tx_start_abs = self._resolve_tx_abs_from_prbs_phase(rx_start_abs, offset, self.ref_cycle_len)
+                    lock_offset_candidate = tx_start_abs % self.max_buffer_len
 
-                    # Calculate correct delay estimate modulo max_buffer_len to avoid wrap discrepancy.
-                    # We do NOT cap it modulo the PRBS sync_period here. Capping it would artificially restrict
-                    # delay_samples to [0, sync_period-1], causing a catastrophic 4-sample or 8-sample phase
-                    # discrepancy in the ring buffer when the expected_offset wraps around the buffer boundary 0.
-                    # By retaining the true delay modulo max_buffer_len, we ensure the transmission reference
-                    # alignment is always in phase across buffer wraps.
-                    delay_est = (rx_w - block_size - offset) % self.max_buffer_len
+                    # Verify and refine the phase-derived ring coordinate against the actual TX history.
+                    # The PRBS phase is periodic, while the TX history ring is not guaranteed to be an
+                    # integer multiple of that period.
+                    lock_offset, history_corr, history_frac = track_jitter_fractional(
+                        rx_block, align_tx_history, lock_offset_candidate, max_search=2
+                    )
+
+                    if history_corr <= lock_threshold:
+                        self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(
+                            history_corr
+                        )
+                        self.results["locked"] = False
+                        return None
+
+                    offset_delta = (lock_offset - lock_offset_candidate) % self.max_buffer_len
+                    if offset_delta > self.max_buffer_len / 2:
+                        offset_delta -= self.max_buffer_len
+                    tx_start_abs += int(offset_delta)
+                    delay_est = max(0, int(rx_start_abs - tx_start_abs))
+
+                    self.is_locked = True
+                    self.initial_fractional_delay = history_frac
+                    self.fractional_delay = history_frac
 
                     self.delay_samples = delay_est  # Save baseline physical loopback delay samples
                     self.initial_delay_samples = delay_est  # Save baseline for cumulative drift tracking
 
-                    # Match to absolute tx write pointer using correct delay estimate
-                    self.lock_offset = (rx_w - block_size - delay_est) % self.max_buffer_len
+                    # Match to the verified absolute TX history coordinate.
+                    self.lock_offset = lock_offset
                     self.samples_processed = 0
                     logger.debug(
-                        f"Transmission Lock Established. Offset={self.lock_offset}, Delay={self.delay_samples}, Fractional Delay={est_delay:.4f}, Correlation={fractional_corr:.4f}"
+                        f"Transmission Lock Established. Offset={self.lock_offset}, Delay={self.delay_samples}, Fractional Delay={history_frac:.4f}, Correlation={history_corr:.4f}"
                     )
                 else:
                     self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(corr)
