@@ -14,6 +14,8 @@ To help visualize differences between measurements, it features powerful compari
     * Allows you to toggle the visibility of each trace as a whole, or toggle individual components separately (such as primary Y1 data or secondary Y2 phase/distortion data).
 * **Powerful Alignment and Adjustments**
     * **Gain Offset (dB)**: Allows you to manually apply a vertical offset to a trace's amplitude, making it easy to align curves visually.
+    * **Y-Axis Offset**: Applies a linear vertical shift to the trace, useful for aligning data in the time or amplitude domains.
+    * **Invert Polarity**: Flips the waveform vertically (multiplies by -1), which is particularly helpful for analyzing out-of-phase signals in the time domain.
     * **Axis Shift (Frequency/Time Shift)**: Shifts a trace horizontally along the X-axis (in Hz for frequency, or seconds for time) to compensate for phase shifts or timing offsets.
     * **Normalize (Align Peaks)**: Automatically aligns the maximum peak of all checked traces, simplifying the comparison of frequency response shapes and peak positions.
 * **Full Secondary Y-Axis (Y2) Support**
