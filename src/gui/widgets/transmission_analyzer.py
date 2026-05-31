@@ -78,6 +78,7 @@ class TransmissionAnalyzer(MeasurementModule):
         self.initial_fractional_delay = 0.0
         self.fractional_delay = 0.0
         self.delay_samples = 0
+        self.initial_delay_samples = 0
 
         # Accumulated stats (Digital Mode)
         self.total_test_samples = 0
@@ -154,6 +155,7 @@ class TransmissionAnalyzer(MeasurementModule):
             self.initial_fractional_delay = 0.0
             self.fractional_delay = 0.0
             self.delay_samples = 0
+            self.initial_delay_samples = 0
             self.total_test_samples = 0
             self.total_bit_errors = 0
             self.bit_hist.fill(0)
@@ -330,9 +332,10 @@ class TransmissionAnalyzer(MeasurementModule):
                     self.initial_fractional_delay = est_delay
                     self.fractional_delay = est_delay
 
-                    # Calculate correct delay estimate modulo pattern length to avoid wrap discrepancy
-                    delay_est = (tx_w - block_size - offset) % self.ref_cycle_len
+                    # Calculate correct delay estimate modulo max_buffer_len to avoid wrap discrepancy
+                    delay_est = (tx_w - block_size - offset) % self.max_buffer_len
                     self.delay_samples = delay_est  # Save baseline physical loopback delay samples
+                    self.initial_delay_samples = delay_est  # Save baseline for cumulative drift tracking
 
                     # Match to absolute tx write pointer using correct delay estimate
                     self.lock_offset = (tx_w - block_size - delay_est) % self.max_buffer_len
@@ -355,7 +358,7 @@ class TransmissionAnalyzer(MeasurementModule):
         offset = self.lock_offset
 
         # 1. Slide expected offset dynamically in sync with the audio callback's write index (tx_w)
-        # This keeps the track_jitter search window [-8, +8] exactly centered around the true physical delay path
+        # This keeps the track_jitter search window [-8, +8] exactly centered around the true physical delay path.
         expected_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
 
         # 2. Track offset drift with sub-sample fractional precision using expected_offset
@@ -363,8 +366,20 @@ class TransmissionAnalyzer(MeasurementModule):
             rx_block, align_tx_history, expected_offset
         )
 
-        # 3. Update the physical delay estimate from the tracked lock_offset to absorb clock drifts smoothly
-        self.delay_samples = (tx_w - block_size - self.lock_offset) % self.max_buffer_len
+        # 3. Integer Self-Correction Feedback Loop:
+        # Detect if clock drift has slipped by one or more whole integer samples.
+        # Feeding back the integer slip to self.delay_samples dynamically centers the search window,
+        # preventing the fractional tracking boundary from ever being breached, guaranteeing perpetual sync lock.
+        drift_int = (expected_offset - self.lock_offset) % self.max_buffer_len
+        if drift_int > self.max_buffer_len / 2:
+            drift_int -= self.max_buffer_len
+
+        if drift_int != 0:
+            self.delay_samples = (self.delay_samples + drift_int) % self.max_buffer_len
+            # Recalculate expected_offset and lock_offset to reflect the corrected baseline instantly
+            expected_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
+            self.lock_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
+            logger.debug(f"Absorption of Integer Drift: Slipped {drift_int:+.0f} samples. delay_samples corrected to {self.delay_samples}.")
 
         # Calculate matching aligned TX blocks (integer matched first)
         aligned_tx_int = np.zeros(N, dtype=np.float32)
@@ -402,15 +417,13 @@ class TransmissionAnalyzer(MeasurementModule):
         diag = diagnose_bit_perfection(rx_block, aligned_tx)
 
         # Jitter estimation (convert offset variance into samples / ms)
-        # We record drift relative to initial lock offset, combining integer and fractional shifts.
-        # Since expected_offset moves in sync with tx_w, any difference (expected_offset - lock_offset)
-        # represents absolute jitter/buffer drift relative to our baseline.
-        drift_int = (expected_offset - self.lock_offset) % self.max_buffer_len
-        if drift_int > self.max_buffer_len / 2:
-            drift_int -= self.max_buffer_len
+        # Calculate cumulative integer buffer drift since initial sync baseline
+        cumulative_drift_int = (self.delay_samples - self.initial_delay_samples) % self.max_buffer_len
+        if cumulative_drift_int > self.max_buffer_len / 2:
+            cumulative_drift_int -= self.max_buffer_len
 
-        drift_frac = self.fractional_delay - prev_frac_delay
-        jitter_s = drift_int + drift_frac
+        drift_frac = self.fractional_delay
+        jitter_s = cumulative_drift_int + drift_frac
 
         # Scale and compute bit errors for histogram
         gain_scalar = 10 ** (diag["gain_db"] / 20.0)
