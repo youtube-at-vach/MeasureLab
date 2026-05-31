@@ -496,7 +496,7 @@ class TransmissionAnalyzer(MeasurementModule):
             if not recovered:
                 rx_rms = float(np.sqrt(np.mean(rx_block**2)))
                 tx_rms = float(np.sqrt(np.mean(aligned_tx**2)))
-                logger.warning(
+                logger.debug(
                     f"Transmission Analyzer lost lock due to low correlation!\n"
                     f"=== SYNC LOSS DETAILED DUMP ===\n"
                     f"  Mode                : {self.mode}\n"
@@ -526,7 +526,7 @@ class TransmissionAnalyzer(MeasurementModule):
         # Regular telemetry trace (every 10 blocks) to capture drift tendencies
         if (self.samples_processed // N) % 10 == 0:
             rx_rms_val = float(np.sqrt(np.mean(rx_block**2)))
-            logger.info(
+            logger.debug(
                 f"[Transmission Telemetry] Block={self.samples_processed // N}, "
                 f"Corr={tracking_corr:.4f}, Delay={self.delay_samples}, Frac={self.fractional_delay:.4f}, "
                 f"Slip={self.delay_slip_counter}, RxRMS={rx_rms_val:.6f}"
