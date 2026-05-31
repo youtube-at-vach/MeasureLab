@@ -93,7 +93,7 @@ class TransmissionAnalyzer(MeasurementModule):
         # Smoothing and Averaging Settings
         self.smooth_mode = 12  # Defaults to 1/12 Octave (options: 0, 3, 6, 12, 24)
         self.averaging_mode = "fast"  # Options: "none", "fast", "slow", "infinite"
-        
+
         # Averaged buffers to persist state across frames
         self.avg_impulse_response = np.zeros(1024, dtype=np.float32)
         self.avg_freq_resp_y = np.zeros(513, dtype=np.float32)
