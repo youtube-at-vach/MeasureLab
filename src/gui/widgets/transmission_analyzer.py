@@ -91,7 +91,8 @@ class TransmissionAnalyzer(MeasurementModule):
         self.freq_resp_y = np.zeros(513, dtype=np.float32)
 
         # Scrolling History Trends
-        self.history_len = 150
+        self.display_history_len = 150
+        self.max_history_len = 300  # Warmup buffer to avoid EMA edge transient effects
         self.gain_trend = []
         self.ber_trend = []
         self.jitter_trend = []
@@ -621,7 +622,7 @@ class TransmissionAnalyzer(MeasurementModule):
         self.jitter_trend.append(float(jitter_s))
 
         # Cap histories
-        if len(self.gain_trend) > self.history_len:
+        if len(self.gain_trend) > self.max_history_len:
             self.gain_trend.pop(0)
             self.ber_trend.pop(0)
             self.jitter_trend.pop(0)
@@ -1103,8 +1104,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             smooth_color = "#f1c40f"
 
         if len(y_data) > 0:
-            x_data = np.arange(len(y_data))
-            raw_arr = np.array(y_data, dtype=np.float32)
+            disp_len = self.module.display_history_len
+            raw_arr = np.array(y_data[-disp_len:], dtype=np.float32)
+            x_data = np.arange(len(raw_arr))
 
             if smooth_mode == "none":
                 # Only show raw curve, set its color to vibrant and hide smooth curve
@@ -1118,13 +1120,16 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
                 # Smooth curve is thick vibrant color
                 alpha = 0.3 if smooth_mode == "light" else 0.1
-                smooth_arr = self.calculate_ema(y_data, alpha)
+                # Calculate EMA on full buffer (including warmup points), then slice latest display_history_len
+                smooth_arr_all = self.calculate_ema(y_data, alpha)
+                smooth_arr = smooth_arr_all[-disp_len:]
+                
                 self.trend_smooth_curve.setPen(pg.mkPen(smooth_color, width=2.5))
                 self.trend_smooth_curve.setData(x_data, smooth_arr)
 
-            self.plot_trend.setXRange(0, self.module.history_len)
-            min_y = np.min(y_data)
-            max_y = np.max(y_data)
+            self.plot_trend.setXRange(0, disp_len)
+            min_y = np.min(raw_arr)
+            max_y = np.max(raw_arr)
             self.plot_trend.setYRange(min_y - 0.1 * abs(min_y) - 0.05, max_y + 0.1 * abs(max_y) + 0.05)
 
     def update_compact_layout(self):
