@@ -66,7 +66,8 @@ class TransmissionAnalyzer(MeasurementModule):
 
         # Reference cache for initial synchronization
         self.ref_cycle_len = self.generator_l.period
-        self.ref_cycle = self.generator_l.generate_reference_sequence(min(self.ref_cycle_len, 65536), self.bit_depth)
+        temp_gen = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
+        self.ref_cycle = temp_gen.generate_reference_sequence(min(self.ref_cycle_len, 65536), self.bit_depth)
 
         # Sync and Lock State
         self.is_locked = False
@@ -137,8 +138,10 @@ class TransmissionAnalyzer(MeasurementModule):
             self.generator_l = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
             self.generator_r = PRBSGenerator(self.pattern_mode, seed=0x12345678)
             self.ref_cycle_len = self.generator_l.period
+            # Use temporary generator to keep self.generator_l at its clean reset state
+            temp_gen = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
             # Cap synchronization reference length at 65536 for PRBS-23 and PRBS-31
-            self.ref_cycle = self.generator_l.generate_reference_sequence(min(self.ref_cycle_len, 65536), self.bit_depth)
+            self.ref_cycle = temp_gen.generate_reference_sequence(min(self.ref_cycle_len, 65536), self.bit_depth)
 
             self.is_locked = False
             self.lock_offset = 0
@@ -284,8 +287,10 @@ class TransmissionAnalyzer(MeasurementModule):
 
             if corr > 0.90:
                 self.is_locked = True
-                # Match to absolute tx write pointer to get transmission delay
-                self.lock_offset = (tx_w - block_size - offset) % self.max_buffer_len
+                # Calculate correct delay estimate modulo pattern length to avoid wrap discrepancy
+                delay_est = (tx_w - block_size - offset) % self.ref_cycle_len
+                # Match to absolute tx write pointer using correct delay estimate
+                self.lock_offset = (tx_w - block_size - delay_est) % self.max_buffer_len
                 self.samples_processed = 0
                 logger.debug(f"Transmission Lock Established. Offset={self.lock_offset}, Correlation={corr:.4f}")
             else:
