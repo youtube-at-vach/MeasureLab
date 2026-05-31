@@ -24,6 +24,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
 | **左右の音響特性のズレを精密に整えたい** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
 | **異なる測定から取得した複数のプロットを重ね合わせて比較したい** | [Plot Comparer](widgets/plot_comparer.md) |
+| **デジタル/アナログ伝送路の品質、遅延、完全性を総合的に評価したい** | [Transmission Analyzer (試験的)](widgets/transmission_analyzer.md) |
 
 ---
 
@@ -114,6 +115,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 
 - **[Loopback Finder](widgets/loopback_finder.md)**
     - オーディオインターフェースのループバック経路を検出します。
+
+- **[Transmission Analyzer (試験的)](widgets/transmission_analyzer.md)**
+    - PRBS信号（擬似ランダムノイズ）を用いて、デジタルオーディオのビット完全性（ビットパーフェクトやDSP処理の検出）およびアナログ伝送路のEVMやインパルス応答、遅延、ジッターを総合的に測定する試験的モジュールです。
 
 ---
 

@@ -106,6 +106,7 @@ plugins:
             HRTFプレイヤー: HRTF Player
             空間バイノーラルミキサー: Spatial Binaural Mixer
             超音波変調器: Ultrasound Modulator
+            伝送路解析: Transmission Analyzer
             タイミング・基準信号: Timing & Reference
             1PPSモニター: 1PPS Monitor
             タイムコードモニター: Timecode Monitor
@@ -188,6 +189,7 @@ nav:
           - HRTFプレイヤー: widgets/hrtf_player.md
           - 空間バイノーラルミキサー: widgets/spatial_binaural_mixer.md
           - 超音波変調器: widgets/ultrasound_modulator.md
+          - 伝送路解析: widgets/transmission_analyzer.md
       - タイミング・基準信号:
           - 1PPSモニター: widgets/one_pps_monitor.md
           - タイムコードモニター: widgets/timecode_monitor.md
