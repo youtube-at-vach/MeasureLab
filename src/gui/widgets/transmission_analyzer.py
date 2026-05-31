@@ -355,9 +355,7 @@ class TransmissionAnalyzer(MeasurementModule):
                     )
 
                     if history_corr <= lock_threshold:
-                        self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(
-                            history_corr
-                        )
+                        self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(history_corr)
                         self.results["locked"] = False
                         return None
 
@@ -878,6 +876,8 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.plot_trend.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
         self.plot_trend.setLabel("bottom", tr("History Time (Blocks)"))
         self.plot_trend.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_trend.setXRange(0, 150)
+        self.plot_trend.setYRange(-1.0, 1.0)
         self.trend_curve = self.plot_trend.plot(pen=pg.mkPen("#95a5a6", width=1.0))
         self.trend_smooth_curve = self.plot_trend.plot(pen=pg.mkPen("#f1c40f", width=2.5))
         tab_trend_layout.addWidget(self.plot_trend)
@@ -1039,8 +1039,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         )
         self.lbl_stat_evm.setText(tr("Waveform EVM: {0:.3f} %").format(res["evm"]))
 
-
-
         # Update Text Report (Tab 1)
         if self.module.mode == "Digital":
             report_text = (
@@ -1064,14 +1062,26 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         # Update Bit-Error Histogram (Tab 1)
         hist = self.module.bit_hist.copy()
         self.bar_item.setOpts(height=hist)
-        max_err = np.max(hist)
-        self.plot_hist.setYRange(0, max(10, max_err * 1.1))
+        max_err = int(np.max(hist))
+        self.plot_hist.setYRange(0, float(max(10, max_err * 1.1)))
 
         # Update Impulse Response plot (Tab 2)
         imp = self.module.impulse_response
         self.imp_curve.setData(imp)
         self.plot_imp.setXRange(0, len(imp))
-        self.plot_imp.setYRange(np.min(imp) * 1.1 - 0.05, np.max(imp) * 1.1 + 0.05)
+
+        min_imp = np.min(imp)
+        max_imp = np.max(imp)
+        if not (np.isfinite(min_imp) and np.isfinite(max_imp)):
+            min_imp, max_imp = -1.0, 1.0
+
+        min_y = float(min_imp * 1.1 - 0.05)
+        max_y = float(max_imp * 1.1 + 0.05)
+
+        # Clamp to reasonable limits to prevent pyqtgraph ViewBox overflow warnings
+        min_y = max(-1e6, min(1e6, min_y))
+        max_y = max(-1e6, min(1e6, max_y))
+        self.plot_imp.setYRange(min_y, max_y)
 
         # Update Frequency Response plot (Tab 3)
         freq_y = self.module.freq_resp_y
@@ -1088,16 +1098,16 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         # Define dynamic coloring for Raw vs Smooth lines
         if trend == "jitter":
             y_data = list(self.module.jitter_trend)
-            raw_color = "#7f8c8d"       # Low-contrast gray
-            smooth_color = "#f1c40f"    # Vibrant yellow
+            raw_color = "#7f8c8d"  # Low-contrast gray
+            smooth_color = "#f1c40f"  # Vibrant yellow
         elif trend == "gain":
             y_data = list(self.module.gain_trend)
-            raw_color = "#7f8c8d"       # Low-contrast gray
-            smooth_color = "#3498db"    # Vibrant blue
+            raw_color = "#7f8c8d"  # Low-contrast gray
+            smooth_color = "#3498db"  # Vibrant blue
         elif trend == "ber":
             y_data = list(self.module.ber_trend)
-            raw_color = "#7f8c8d"       # Low-contrast gray
-            smooth_color = "#e74c3c"    # Vibrant red
+            raw_color = "#7f8c8d"  # Low-contrast gray
+            smooth_color = "#e74c3c"  # Vibrant red
         else:
             y_data = []
             raw_color = "#95a5a6"
@@ -1123,14 +1133,33 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
                 # Calculate EMA on full buffer (including warmup points), then slice latest display_history_len
                 smooth_arr_all = self.calculate_ema(y_data, alpha)
                 smooth_arr = smooth_arr_all[-disp_len:]
-                
+
                 self.trend_smooth_curve.setPen(pg.mkPen(smooth_color, width=2.5))
                 self.trend_smooth_curve.setData(x_data, smooth_arr)
 
             self.plot_trend.setXRange(0, disp_len)
             min_y = np.min(raw_arr)
             max_y = np.max(raw_arr)
-            self.plot_trend.setYRange(min_y - 0.1 * abs(min_y) - 0.05, max_y + 0.1 * abs(max_y) + 0.05)
+
+            # Safe finite checking and range clamping to prevent pyqtgraph ViewBox overflow warnings
+            if not (np.isfinite(min_y) and np.isfinite(max_y)):
+                min_y, max_y = -1.0, 1.0
+
+            min_y = float(min_y)
+            max_y = float(max_y)
+
+            if abs(max_y - min_y) < 1e-4:
+                min_y -= 0.5
+                max_y += 0.5
+
+            y_min_val = float(min_y - 0.1 * abs(min_y) - 0.05)
+            y_max_val = float(max_y + 0.1 * abs(max_y) + 0.05)
+
+            # Clamp to reasonable limits to prevent pyqtgraph ViewBox overflow warnings
+            y_min_val = max(-1e6, min(1e6, y_min_val))
+            y_max_val = max(-1e6, min(1e6, y_max_val))
+
+            self.plot_trend.setYRange(y_min_val, y_max_val)
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
