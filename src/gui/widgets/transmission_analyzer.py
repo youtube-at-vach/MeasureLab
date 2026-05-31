@@ -451,7 +451,7 @@ class TransmissionAnalyzer(MeasurementModule):
 
 
         # Delay in samples & milliseconds
-        delay_samples = self.lock_offset
+        delay_samples = self.delay_samples
         delay_ms = (delay_samples / self.audio_engine.sample_rate) * 1000.0
 
         # Update Trend Histories
@@ -637,6 +637,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # Histogram Plot
         self.plot_hist = pg.PlotWidget()
+        self.plot_hist.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
         self.plot_hist.setLabel("bottom", tr("Bit Position (LSB 0 to MSB 23)"))
         self.plot_hist.setLabel("left", tr("Error Count"))
         self.plot_hist.showGrid(x=False, y=True, alpha=0.3)
@@ -657,6 +658,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         tab_imp_layout = QVBoxLayout(self.tab_impulse)
         tab_imp_layout.setContentsMargins(5, 5, 5, 5)
         self.plot_imp = pg.PlotWidget()
+        self.plot_imp.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
         self.plot_imp.setLabel("bottom", tr("Time Domain Index (Samples)"))
         self.plot_imp.setLabel("left", tr("Amplitude"))
         self.plot_imp.showGrid(x=True, y=True, alpha=0.3)
@@ -673,7 +675,16 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.plot_freq.setLabel("left", tr("Magnitude (dB)"))
         self.plot_freq.showGrid(x=True, y=True, alpha=0.3)
         self.plot_freq.setLogMode(x=True, y=False)
-        self.plot_freq.setXRange(1.3, 4.3)  # Log10 scale for 20Hz - 20kHz
+
+        # Custom Axis Ticks for Clean Decade Spacing matching the valid trace range (prevents label overlap)
+        axis_freq = self.plot_freq.getPlotItem().getAxis("bottom")
+        ticks = [100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+        ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
+        axis_freq.setTicks([ticks_log])
+
+        sr = self.module.audio_engine.sample_rate
+        nyquist = sr / 2.0
+        self.plot_freq.setXRange(np.log10(90), np.log10(nyquist * 1.05))
         self.freq_curve = self.plot_freq.plot(pen=pg.mkPen("#e74c3c", width=2.0))
         tab_freq_layout.addWidget(self.plot_freq)
         self.tabs.addTab(self.tab_freq, tr("Transmission Response"))
@@ -696,6 +707,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         tab_trend_layout.addLayout(trend_ctrl_row)
 
         self.plot_trend = pg.PlotWidget()
+        self.plot_trend.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
         self.plot_trend.setLabel("bottom", tr("History Time (Blocks)"))
         self.plot_trend.showGrid(x=True, y=True, alpha=0.3)
         self.trend_curve = self.plot_trend.plot(pen=pg.mkPen("#f1c40f", width=2.0))
@@ -856,7 +868,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         # Update Frequency Response plot (Tab 3)
         freq_y = self.module.freq_resp_y
         freq_x = self.module.freq_resp_x
-        self.freq_curve.setData(freq_x, freq_y)
+        # Avoid 0Hz to prevent log10(0) coordinate issues inside pyqtgraph
+        valid_mask = freq_x > 0
+        self.freq_curve.setData(freq_x[valid_mask], freq_y[valid_mask])
         self.plot_freq.setYRange(-80.0, 10.0)
 
         # Update Jitter & Trends plot (Tab 4)

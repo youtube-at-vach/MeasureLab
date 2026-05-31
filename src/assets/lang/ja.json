@@ -1610,7 +1610,7 @@
     "Warnings": "警告",
     "Wav Files (*.wav)": "WAVファイル (*.wav)",
     "Waveform": "波形",
-    "Waveform EVM: {0:.3f} %": "波形 EVM: {0:.3f} %",
+    "Waveform EVM: {0:.3f} %": "波形誤差 (EVM): {0:.3f} %",
     "Waveform Loop Player": "波形ループプレーヤー",
     "Waveform Preview": "波形プレビュー",
     "Waveform:": "波形:",
