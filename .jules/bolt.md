@@ -13,3 +13,8 @@
 
 **Learning:** Calculating signals in a tight loop inside a Python thread adds latency. Vectorizing over the time array using matrix multiplication and angle addition eliminates Python loop overhead.
 **Action:** Replace sequential element-wise numpy array additions and multiple trigonometric functions with matrix products using the angle addition formula.
+
+## 2025-03-02 - Spectrum Analyzer octave smoothing loop optimization
+
+**Learning:** When calculating fractional octave smoothing bands and mapping center frequencies to spectrum bin indices, iterating over pre-calculated arrays in Python and appending to lists is slower than using vectorized Numpy operations to filter indices (`valid = ends > starts`) and returning a list of `zip()`-ed values. Converting the zipped indices directly using `.tolist()` and then `list(zip(...))` performs the conversion mostly in C.
+**Action:** Replace `for` loops containing manual list appending with `list(zip(start_array[mask].tolist(), end_array[mask].tolist()))` when constructing a list of start/end tuple indices from NumPy arrays.

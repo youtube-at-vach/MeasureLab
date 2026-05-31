@@ -264,9 +264,6 @@ class SpectrumAnalyzer(MeasurementModule):
             f_min = 20
             f_max = freqs[-1]
 
-            smoothed_freqs_list = []
-            band_indices = []  # List of (start_idx, end_idx)
-
             current_f = f_min
             factor = 2 ** (1 / (2 * fraction))
             step_factor = 2 ** (1 / fraction)
@@ -287,16 +284,14 @@ class SpectrumAnalyzer(MeasurementModule):
 
             indices = np.searchsorted(freqs, bounds, side="left")
 
-            idx = 0
-            for c in centers:
-                idx_start = indices[idx]
-                idx_end = indices[idx + 1]
-                if idx_end > idx_start:
-                    smoothed_freqs_list.append(c)
-                    band_indices.append((idx_start, idx_end))
-                idx += 2
+            # Vectorized selection of valid bands
+            starts = indices[0::2]
+            ends = indices[1::2]
+            valid = ends > starts
 
-            smoothed_freqs = np.array(smoothed_freqs_list)
+            smoothed_freqs = np.array(centers)[valid]
+            # Convert to list of tuples as expected by the fast path iteration
+            band_indices = list(zip(starts[valid].tolist(), ends[valid].tolist(), strict=False))
             cached_data = (smoothed_freqs, band_indices)
             self._smoothing_cache[cache_key] = cached_data
 
