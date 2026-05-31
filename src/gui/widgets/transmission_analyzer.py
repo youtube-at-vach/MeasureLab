@@ -76,6 +76,7 @@ class TransmissionAnalyzer(MeasurementModule):
         self.fractional_delay = 0.0
         self.delay_samples = 0
         self.initial_delay_samples = 0
+        self.delay_slip_counter = 0
 
         # Accumulated stats (Digital Mode)
         self.total_test_samples = 0
@@ -152,6 +153,7 @@ class TransmissionAnalyzer(MeasurementModule):
             self.fractional_delay = 0.0
             self.delay_samples = 0
             self.initial_delay_samples = 0
+            self.delay_slip_counter = 0
             self.total_test_samples = 0
             self.total_bit_errors = 0
             self.bit_hist.fill(0)
@@ -326,7 +328,7 @@ class TransmissionAnalyzer(MeasurementModule):
                     self.fractional_delay = est_delay
 
                     # Calculate correct delay estimate modulo max_buffer_len to avoid wrap discrepancy
-                    delay_est = (tx_w - block_size - offset) % self.max_buffer_len
+                    delay_est = (rx_w - block_size - offset) % self.max_buffer_len
                     # Prevent wrap discrepancy by keeping the delay within the PRBS period boundary.
                     # For very long periods (PRBS-23/31), we cap it at the reference cycle length to ensure
                     # the lock offset stays close to the write pointer. This prevents catastrophic boundary
@@ -338,7 +340,7 @@ class TransmissionAnalyzer(MeasurementModule):
                     self.initial_delay_samples = delay_est  # Save baseline for cumulative drift tracking
 
                     # Match to absolute tx write pointer using correct delay estimate
-                    self.lock_offset = (tx_w - block_size - delay_est) % self.max_buffer_len
+                    self.lock_offset = (rx_w - block_size - delay_est) % self.max_buffer_len
                     self.samples_processed = 0
                     logger.debug(
                         f"Transmission Lock Established. Offset={self.lock_offset}, Delay={self.delay_samples}, Fractional Delay={est_delay:.4f}, Correlation={fractional_corr:.4f}"
@@ -358,27 +360,52 @@ class TransmissionAnalyzer(MeasurementModule):
 
         # 1. Slide expected offset dynamically in sync with the audio callback's write index (tx_w)
         # This keeps the track_jitter search window [-8, +8] exactly centered around the true physical delay path.
-        expected_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
+        expected_offset = (rx_w - block_size - self.delay_samples) % self.max_buffer_len
 
-        # 2. Track offset drift with sub-sample fractional precision using expected_offset
+        # 2. Track offset drift with sub-sample fractional precision using expected_offset.
+        # Narrow active tracking search window to max_search=2 to drastically decrease noise false-positive locks.
         self.lock_offset, tracking_corr, self.fractional_delay = track_jitter_fractional(
-            rx_block, align_tx_history, expected_offset
+            rx_block, align_tx_history, expected_offset, max_search=2
         )
 
-        # 3. Integer Self-Correction Feedback Loop:
+        # 3. Integer Self-Correction Feedback Loop with Integrator Filter:
         # Detect if clock drift has slipped by one or more whole integer samples.
-        # Feeding back the integer slip to self.delay_samples dynamically centers the search window,
-        # preventing the fractional tracking boundary from ever being breached, guaranteeing perpetual sync lock.
+        # We use a slip integrator counter to filter out transient noise spikes:
+        # We only update the delay_samples when a persistent slip in the same direction
+        # is observed over multiple consecutive blocks (threshold = 3).
         drift_int = (expected_offset - self.lock_offset) % self.max_buffer_len
         if drift_int > self.max_buffer_len / 2:
             drift_int -= self.max_buffer_len
 
         if drift_int != 0:
-            self.delay_samples = (self.delay_samples + drift_int) % self.max_buffer_len
-            # Recalculate expected_offset and lock_offset to reflect the corrected baseline instantly
-            expected_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
-            self.lock_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
-            logger.debug(f"Absorption of Integer Drift: Slipped {drift_int:+.0f} samples. delay_samples corrected to {self.delay_samples}.")
+            # Increment or decrement slip counter based on drift direction
+            slip_dir = 1 if drift_int > 0 else -1
+
+            # If the slip direction matches the current counter sign, accumulate it.
+            # Otherwise, immediately reset to the new direction to catch up quickly on real drift.
+            if (self.delay_slip_counter > 0 and slip_dir > 0) or (self.delay_slip_counter < 0 and slip_dir < 0):
+                self.delay_slip_counter += slip_dir
+            else:
+                self.delay_slip_counter = slip_dir
+
+            # Trigger delay correction only after 3 consecutive slip indications in the same direction
+            if abs(self.delay_slip_counter) >= 3:
+                self.delay_samples = (self.delay_samples + slip_dir) % self.max_buffer_len
+                # Recalculate expected_offset and lock_offset to reflect the corrected baseline instantly
+                expected_offset = (rx_w - block_size - self.delay_samples) % self.max_buffer_len
+                self.lock_offset = (rx_w - block_size - self.delay_samples) % self.max_buffer_len
+                logger.debug(
+                    f"Absorption of Integer Drift (Integrator Triggered): Slipped {slip_dir:+.0f} samples. "
+                    f"delay_samples corrected to {self.delay_samples}."
+                )
+                self.delay_slip_counter = 0
+        else:
+            # Decamp slip counter slowly to 0 when no slip is detected,
+            # allowing high resilience to sporadic isolated slip reports.
+            if self.delay_slip_counter > 0:
+                self.delay_slip_counter -= 1
+            elif self.delay_slip_counter < 0:
+                self.delay_slip_counter += 1
 
         # Calculate matching aligned TX blocks (integer matched first)
         aligned_tx_int = np.zeros(N, dtype=np.float32)
@@ -394,19 +421,82 @@ class TransmissionAnalyzer(MeasurementModule):
         aligned_tx = shift_signal_fractional(aligned_tx_int, self.fractional_delay)
 
         # Check for catastrophic unlock using precision fractional correlation.
-        # Threshold raised to 0.75 since fractional correlation is highly stable and robust.
-        # Check for catastrophic unlock using precision fractional correlation.
         # Threshold set dynamically to robustly handle physical analog line fluctuations.
         unlock_threshold = 0.75 if self.mode == "Digital" else 0.60
         if tracking_corr < unlock_threshold:
-            logger.warning(f"Transmission Analyzer lost lock due to low correlation ({tracking_corr:.4f}).")
-            self.is_locked = False
-            self.results["locked"] = False
-            self.results["reason"] = tr("Lock lost (Low correlation).")
-            return None
+            # --- Robust Buffer-Skip Recovery (Warp Search) ---
+            # Under high noise or heavy CoreAudio / sounddevice load, the OS/driver might bounce buffers
+            # or drop blocks in perfect increments of 16384 samples, 32767 samples (PRBS period),
+            # or 2048 samples (block size). Before declaring sync lost, we attempt to find the signal
+            # at these known jump destinations.
+            recovered = False
+            jump_candidates = [16384, -16384, 32767, -32767, 2048, -2048, 4096, -4096]
+
+            for jump in jump_candidates:
+                test_expected = (expected_offset + jump) % self.max_buffer_len
+                test_lock_offset, test_corr, test_frac = track_jitter_fractional(
+                    rx_block, align_tx_history, test_expected, max_search=2
+                )
+
+                # If we find a highly correlated signal at the warp destination
+                if test_corr > (unlock_threshold + 0.05):
+                    # Warp established! Update the baseline delay instantly to absorb the jump.
+                    drift_warp = (expected_offset - test_lock_offset) % self.max_buffer_len
+                    if drift_warp > self.max_buffer_len / 2:
+                        drift_warp -= self.max_buffer_len
+
+                    self.delay_samples = (self.delay_samples + drift_warp) % self.max_buffer_len
+                    expected_offset = (rx_w - block_size - self.delay_samples) % self.max_buffer_len
+                    self.lock_offset = (rx_w - block_size - self.delay_samples) % self.max_buffer_len
+                    self.fractional_delay = test_frac
+                    tracking_corr = test_corr
+                    self.delay_slip_counter = 0
+
+                    logger.info(
+                        f"[Warp Recovery Success] Absorbed sudden OS/buffer skip of {jump:+.0f} samples! "
+                        f"Delay adjusted to {self.delay_samples}. Corr recovered to {tracking_corr:.4f}."
+                    )
+                    recovered = True
+                    break
+
+            if not recovered:
+                rx_rms = float(np.sqrt(np.mean(rx_block**2)))
+                tx_rms = float(np.sqrt(np.mean(aligned_tx**2)))
+                logger.warning(
+                    f"Transmission Analyzer lost lock due to low correlation!\n"
+                    f"=== SYNC LOSS DETAILED DUMP ===\n"
+                    f"  Mode                : {self.mode}\n"
+                    f"  PRBS Pattern        : {self.pattern_mode}\n"
+                    f"  Bit Depth Setting   : {self.bit_depth}-bit\n"
+                    f"  Correlation         : {tracking_corr:.6f} (Threshold: {unlock_threshold:.2f})\n"
+                    f"  Delay Samples (int) : {self.delay_samples}\n"
+                    f"  Fractional Delay    : {self.fractional_delay:.6f}\n"
+                    f"  Expected Offset     : {expected_offset}\n"
+                    f"  Lock Offset         : {self.lock_offset}\n"
+                    f"  Slip Counter        : {self.delay_slip_counter}\n"
+                    f"  TX Write Ptr (tx_w) : {tx_w}\n"
+                    f"  RX Write Ptr (rx_w) : {self.rx_write_ptr}\n"
+                    f"  Block Size          : {N}\n"
+                    f"  Received RMS Level  : {rx_rms:.6f}\n"
+                    f"  Transmitted RMS     : {tx_rms:.6f}\n"
+                    f"================================"
+                )
+                self.is_locked = False
+                self.results["locked"] = False
+                self.results["reason"] = tr("Lock lost (Low correlation).")
+                return None
 
         self.samples_processed += N
         self.total_test_samples += N
+
+        # Regular telemetry trace (every 10 blocks) to capture drift tendencies
+        if (self.samples_processed // N) % 10 == 0:
+            rx_rms_val = float(np.sqrt(np.mean(rx_block**2)))
+            logger.info(
+                f"[Transmission Telemetry] Block={self.samples_processed // N}, "
+                f"Corr={tracking_corr:.4f}, Delay={self.delay_samples}, Frac={self.fractional_delay:.4f}, "
+                f"Slip={self.delay_slip_counter}, RxRMS={rx_rms_val:.6f}"
+            )
 
         # ---------------- 1. Digital & Analog Mode Metrics ----------------
         if self.mode == "Digital":
