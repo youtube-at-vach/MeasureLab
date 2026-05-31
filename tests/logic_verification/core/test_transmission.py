@@ -12,6 +12,7 @@ from src.core.transmission_logic import (
     extract_impulse_response,
     extract_frequency_response,
     calculate_evm,
+    calculate_equalized_evm,
     measure_crosstalk,
     diagnose_bit_perfection,
     estimate_fractional_delay,
@@ -132,6 +133,36 @@ class TestTransmissionLogic(unittest.TestCase):
         rx_altered = tx + 0.1 * np.random.normal(size=256)
         evm_noise = calculate_evm(rx_altered, tx)
         self.assertGreater(evm_noise, 1.0)
+
+    def test_calculate_equalized_evm(self):
+        """Test Equalized EVM calculations under linear frequency/phase distortions."""
+        gen = PRBSGenerator("PRBS-9")
+        tx = gen.generate_reference_sequence(512, bit_depth=24)
+
+        # 1. Exact copy should have ~0% EVM
+        evm_perfect = calculate_equalized_evm(tx, tx)
+        self.assertLess(evm_perfect, 0.01)
+
+        # 2. Simulated linear amplitude distortion (simple high-frequency roll-off filter)
+        # H(z) = 0.8 + 0.2*z^-1
+        rx_linear = 0.8 * tx + 0.2 * np.roll(tx, 1)
+
+        # Unequalized EVM should be high due to amplitude/phase mismatch
+        evm_unequalized = calculate_evm(rx_linear, tx)
+        self.assertGreater(evm_unequalized, 10.0)
+
+        # Equalized EVM should dynamically correct the transfer response H and yield a very low EVM
+        evm_equalized = calculate_equalized_evm(rx_linear, tx)
+        self.assertLess(evm_equalized, 0.5)
+
+        # 3. Altered wave with random noise (non-linear/additive noise distortion)
+        # Add high noise
+        rx_noisy = rx_linear + 0.05 * np.random.normal(size=512)
+        evm_noisy_equalized = calculate_equalized_evm(rx_noisy, tx)
+        
+        # Noise cannot be corrected by linear equalization, so EVM should still reflect the noise level
+        self.assertGreater(evm_noisy_equalized, 0.5)
+        self.assertLess(evm_noisy_equalized, evm_unequalized)  # Equalization still removes linear part
 
     def test_measure_crosstalk(self):
         """Test stereo crosstalk leakage measurement with longer block sizes for orthogonality."""
