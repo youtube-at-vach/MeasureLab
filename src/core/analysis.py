@@ -773,47 +773,51 @@ class AudioCalc:
         freqs, amplitude_spectrum, max_freq, max_amplitude, sampling_rate, search_window, min_db
     ):
         """Calculates harmonics properties."""
+        if max_freq <= 0:
+            return [], []
+
+        orders = np.arange(2, min(11, int((sampling_rate / 2) // max_freq) + 1))
+
+        if len(orders) == 0:
+            return [], []
+
+        harmonic_freqs = max_freq * orders
+
+        h_idx_mins = np.searchsorted(freqs, harmonic_freqs - search_window)
+        h_idx_maxs = np.searchsorted(freqs, harmonic_freqs + search_window)
+
+        valid_ranges = (h_idx_maxs <= len(amplitude_spectrum)) & (h_idx_maxs > h_idx_mins)
+
         harmonic_results = []
         harmonic_amplitudes_linear = []
 
-        # Up to 10th harmonic
-        for i in range(2, 11):
-            harmonic_freq = max_freq * i
-            if harmonic_freq >= sampling_rate / 2:
-                break
-
-            # Search near harmonic
-            h_idx_min = np.searchsorted(freqs, harmonic_freq - search_window)
-            h_idx_max = np.searchsorted(freqs, harmonic_freq + search_window)
-
-            if h_idx_max <= len(amplitude_spectrum) and h_idx_max > h_idx_min:
-                local_max_h = amplitude_spectrum[h_idx_min:h_idx_max].argmax()
-                h_peak_idx = h_idx_min + local_max_h
-
+        for i, h_freq, h_min, h_max, is_valid in zip(orders, harmonic_freqs, h_idx_mins, h_idx_maxs, valid_ranges, strict=False):
+            if is_valid:
+                h_peak_idx = h_min + amplitude_spectrum[h_min:h_max].argmax()
                 h_amp = amplitude_spectrum[h_peak_idx]
-                h_freq = freqs[h_peak_idx]
 
                 relative_amp = h_amp / max_amplitude if max_amplitude > 0 else 0
                 amp_db = 20 * np.log10(relative_amp + 1e-12)
 
                 harmonic_results.append(
                     {
-                        "order": i,
-                        "frequency": h_freq,
-                        "amplitude_dbr": amp_db,
-                        "amplitude_linear": h_amp,
+                        "order": int(i),
+                        "frequency": float(freqs[h_peak_idx]),
+                        "amplitude_dbr": float(amp_db),
+                        "amplitude_linear": float(h_amp),
                     }
                 )
-                harmonic_amplitudes_linear.append(h_amp)
+                harmonic_amplitudes_linear.append(float(h_amp))
             else:
                 harmonic_results.append(
                     {
-                        "order": i,
-                        "frequency": harmonic_freq,
-                        "amplitude_dbr": min_db,
-                        "amplitude_linear": 0,
+                        "order": int(i),
+                        "frequency": float(h_freq),
+                        "amplitude_dbr": float(min_db),
+                        "amplitude_linear": 0.0,
                     }
                 )
+
         return harmonic_results, harmonic_amplitudes_linear
 
     @staticmethod
