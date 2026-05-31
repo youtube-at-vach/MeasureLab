@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Optional
 
 import numpy as np
@@ -82,6 +83,7 @@ class CWTWorker(QThread):
 class TransientAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
+        self._lock = threading.Lock()
 
         # State
         self.is_recording = False
@@ -130,33 +132,43 @@ class TransientAnalyzer(MeasurementModule):
         return self.widget
 
     def start_recording(self):
-        self.recorded_data = []
-        self.is_recording = True
-        self.fs = self.audio_engine.sample_rate
-        self._recorded_samples = 0
-        duration_s = float(self.record_duration_s)
-        if duration_s <= 0:
-            duration_s = 0.01
-        if duration_s > 3.0:
-            duration_s = 3.0
-        self._target_samples = int(max(1, round(duration_s * self.fs)))
-        self._triggered = not self.trigger_enabled
-        self._prev_trigger_sample = None
+        with self._lock:
+            self.recorded_data = []
+            self.is_recording = True
+            self.fs = self.audio_engine.sample_rate
+            self._recorded_samples = 0
+            duration_s = float(self.record_duration_s)
+            if duration_s <= 0:
+                duration_s = 0.01
+            if duration_s > 3.0:
+                duration_s = 3.0
+            self._target_samples = int(max(1, round(duration_s * self.fs)))
+            self._triggered = not self.trigger_enabled
+            self._prev_trigger_sample = None
         self.callback_id = self.audio_engine.register_callback(self._audio_callback)
 
     def stop_recording(self):
-        self.is_recording = False
-        if self.callback_id is not None:
-            self.audio_engine.unregister_callback(self.callback_id)
-            self.callback_id = None
+        callback_id_to_unregister = None
+        with self._lock:
+            if not self.is_recording and self.callback_id is None:
+                return
+            self.is_recording = False
+            if self.callback_id is not None:
+                callback_id_to_unregister = self.callback_id
+                self.callback_id = None
 
-        self._target_samples = None
-        self._triggered = False
-        self._prev_trigger_sample = None
+            self._target_samples = None
+            self._triggered = False
+            self._prev_trigger_sample = None
+
+            recorded_data_copy = self.recorded_data.copy() if self.recorded_data else []
+
+        if callback_id_to_unregister is not None:
+            self.audio_engine.unregister_callback(callback_id_to_unregister)
 
         # Concatenate data
-        if self.recorded_data:
-            full_raw = np.concatenate(self.recorded_data, axis=0)
+        if recorded_data_copy:
+            full_raw = np.concatenate(recorded_data_copy, axis=0)
 
             # Select channel
             if self.input_channel == "Left":
@@ -216,37 +228,38 @@ class TransientAnalyzer(MeasurementModule):
         return int(crossings[0] + 1)
 
     def _audio_callback(self, indata, outdata, frames, time, status):
-        if self.is_recording:
-            target = self._target_samples
-            if target is None:
-                self.recorded_data.append(indata.copy())
-            else:
-                if not self._triggered:
-                    sig = self._get_trigger_signal(indata)
-                    trig_idx = self._find_trigger_index(sig)
-                    # Update prev sample for next block
-                    if sig.size > 0:
-                        self._prev_trigger_sample = float(sig[-1])
-
-                    if trig_idx is None:
-                        outdata.fill(0)
-                        return
-
-                    self._triggered = True
-                    start = int(trig_idx)
+        with self._lock:
+            if self.is_recording:
+                target = self._target_samples
+                if target is None:
+                    self.recorded_data.append(indata.copy())
                 else:
-                    start = 0
+                    if not self._triggered:
+                        sig = self._get_trigger_signal(indata)
+                        trig_idx = self._find_trigger_index(sig)
+                        # Update prev sample for next block
+                        if sig.size > 0:
+                            self._prev_trigger_sample = float(sig[-1])
 
-                remaining = target - self._recorded_samples
-                if remaining > 0:
-                    chunk = indata[start : start + remaining].copy()
-                    if chunk.size > 0:
-                        self.recorded_data.append(chunk)
-                        self._recorded_samples += chunk.shape[0]
+                        if trig_idx is None:
+                            outdata.fill(0)
+                            return
 
-                if self._recorded_samples >= target:
-                    # Stop collecting immediately; UI will finalize/unregister shortly.
-                    self.is_recording = False
+                        self._triggered = True
+                        start = int(trig_idx)
+                    else:
+                        start = 0
+
+                    remaining = target - self._recorded_samples
+                    if remaining > 0:
+                        chunk = indata[start : start + remaining].copy()
+                        if chunk.size > 0:
+                            self.recorded_data.append(chunk)
+                            self._recorded_samples += chunk.shape[0]
+
+                    if self._recorded_samples >= target:
+                        # Stop collecting immediately; UI will finalize/unregister shortly.
+                        self.is_recording = False
         outdata.fill(0)
 
     def analyze(self):

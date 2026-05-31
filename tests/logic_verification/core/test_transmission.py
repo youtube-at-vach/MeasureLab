@@ -1,0 +1,190 @@
+import unittest
+import sys
+import os
+import numpy as np
+
+sys.path.append(os.getcwd())
+
+from src.core.transmission_logic import (
+    PRBSGenerator,
+    find_sequence_delay,
+    track_jitter,
+    extract_impulse_response,
+    extract_frequency_response,
+    calculate_evm,
+    measure_crosstalk,
+    diagnose_bit_perfection,
+)
+
+class TestTransmissionLogic(unittest.TestCase):
+    def test_prbs_generator_all_modes(self):
+        """Test PRBS sequence generation, bounds and length for all PRBS7/9/15/23/31 modes."""
+        modes = ["PRBS-7", "PRBS-9", "PRBS-15", "PRBS-23", "PRBS-31"]
+        for mode in modes:
+            gen = PRBSGenerator(mode=mode)
+            self.assertEqual(gen.mode, mode)
+            
+            # Deterministic test
+            seq1 = gen.generate_reference_sequence(100, bit_depth=24)
+            seq2 = gen.generate_reference_sequence(100, bit_depth=24)
+            self.assertEqual(len(seq1), 100)
+            self.assertTrue(np.allclose(seq1, seq2))
+            
+            # Float bounds check
+            self.assertTrue(np.max(seq1) <= 1.0)
+            self.assertTrue(np.min(seq1) >= -1.0)
+
+    def test_prbs_bit_depth_output(self):
+        """Test 16-bit and 8-bit output variations."""
+        gen = PRBSGenerator("PRBS-9")
+        seq_16 = gen.generate_reference_sequence(50, bit_depth=16)
+        seq_8 = gen.generate_reference_sequence(50, bit_depth=8)
+        
+        # Test ranges
+        self.assertTrue(np.max(np.abs(seq_16)) <= 1.0)
+        self.assertTrue(np.max(np.abs(seq_8)) <= 1.0)
+
+    def test_find_sequence_delay(self):
+        """Test delay sync estimation using sliding Pearson correlation."""
+        gen = PRBSGenerator(mode="PRBS-9")
+        ref_cycle = gen.generate_reference_sequence(511, bit_depth=24)
+        
+        # Shift signal
+        delay = 45
+        rx_segment = np.roll(ref_cycle, -delay)[:128]
+        
+        offset, corr = find_sequence_delay(rx_segment, ref_cycle)
+        self.assertEqual(offset, delay)
+        self.assertGreater(corr, 0.99)
+
+        # Scale signal
+        rx_scaled = rx_segment * 0.25
+        offset_scaled, corr_scaled = find_sequence_delay(rx_scaled, ref_cycle)
+        self.assertEqual(offset_scaled, delay)
+        self.assertGreater(corr_scaled, 0.99)
+
+    def test_track_jitter(self):
+        """Test block-by-block phase/jitter tracking."""
+        gen = PRBSGenerator(mode="PRBS-9")
+        # Generate enough history
+        tx_history = gen.generate_reference_sequence(1024, bit_depth=24)
+        
+        # Simulate initial lock
+        last_offset = 200
+        rx_block = tx_history[last_offset : last_offset + 128]
+        
+        # 1. Constant offset
+        new_offset, corr = track_jitter(rx_block, tx_history, last_offset)
+        self.assertEqual(new_offset, last_offset)
+        self.assertGreater(corr, 0.99)
+        
+        # 2. Phase shift (+2 samples jitter)
+        rx_shifted = tx_history[last_offset + 2 : last_offset + 130]
+        shifted_offset, corr_shift = track_jitter(rx_shifted, tx_history, last_offset)
+        self.assertEqual(shifted_offset, last_offset + 2)
+        self.assertGreater(corr_shift, 0.99)
+
+    def test_extract_impulse_response(self):
+        """Test impulse response deconvolution."""
+        gen = PRBSGenerator("PRBS-9")
+        tx = gen.generate_reference_sequence(512, bit_depth=24)
+        
+        # Simple loopback (impulse at t=0)
+        rx = tx.copy()
+        
+        h = extract_impulse_response(rx, tx)
+        self.assertEqual(len(h), 512)
+        
+        # The peak of the impulse should be near index 0
+        peak = np.argmax(np.abs(h))
+        self.assertEqual(peak, 0)
+        self.assertGreater(np.abs(h[0]), 0.5)
+
+    def test_extract_frequency_response(self):
+        """Test magnitude frequency response extraction."""
+        gen = PRBSGenerator("PRBS-9")
+        tx = gen.generate_reference_sequence(512, bit_depth=24)
+        
+        # Flat response loopback
+        rx = tx.copy()
+        
+        freqs, mag_db = extract_frequency_response(rx, tx, 48000)
+        self.assertEqual(len(freqs), 257)
+        self.assertEqual(len(mag_db), 257)
+        
+        # Magnitude should be close to 0 dB across all frequencies
+        self.assertTrue(np.all(np.abs(mag_db) < 1.0))
+
+    def test_calculate_evm(self):
+        """Test Error Vector Magnitude calculations."""
+        gen = PRBSGenerator("PRBS-9")
+        tx = gen.generate_reference_sequence(256, bit_depth=24)
+        
+        # 1. Exact copy should have ~0% EVM
+        evm_perfect = calculate_evm(tx, tx)
+        self.assertLess(evm_perfect, 0.01)
+        
+        # 2. Altered wave should have significant EVM
+        rx_altered = tx + 0.1 * np.random.normal(size=256)
+        evm_noise = calculate_evm(rx_altered, tx)
+        self.assertGreater(evm_noise, 1.0)
+
+    def test_measure_crosstalk(self):
+        """Test stereo crosstalk leakage measurement with longer block sizes for orthogonality."""
+        gen1 = PRBSGenerator("PRBS-9")
+        gen2 = PRBSGenerator("PRBS-15")
+        
+        # Generate longer sequence for cross-channel orthogonality
+        tx_aligned = gen1.generate_reference_sequence(8192, bit_depth=24)
+        tx_leak = gen2.generate_reference_sequence(8192, bit_depth=24)
+        
+        # Crosstalk at -40 dB leakage ratio
+        leakage_db = -40.0
+        leakage_coeff = 10 ** (leakage_db / 20.0)
+        
+        rx = tx_aligned + leakage_coeff * tx_leak
+        
+        crosstalk_result = measure_crosstalk(rx, tx_leak)
+        self.assertAlmostEqual(crosstalk_result, leakage_db, delta=10.0)
+
+    def test_diagnose_bit_perfection_success(self):
+        """Test transparent bit-for-bit diagnosis."""
+        gen = PRBSGenerator(mode="PRBS-9")
+        ref = gen.generate_reference_sequence(512, bit_depth=24)
+        rx = ref.copy()
+        
+        diag = diagnose_bit_perfection(rx, ref)
+        self.assertTrue(diag["bit_perfect"])
+        self.assertEqual(diag["gain_db"], 0.0)
+        self.assertEqual(diag["bit_depth"], 24)
+        self.assertEqual(diag["bit_errors"], 0)
+
+    def test_diagnose_bit_perfection_gain(self):
+        """Test volume scaling modification diagnostics."""
+        gen = PRBSGenerator(mode="PRBS-9")
+        ref = gen.generate_reference_sequence(512, bit_depth=24)
+        
+        # Scale by -6 dB
+        rx = ref * 0.5
+        
+        diag = diagnose_bit_perfection(rx, ref)
+        self.assertFalse(diag["bit_perfect"])
+        self.assertAlmostEqual(diag["gain_db"], -6.02, places=2)
+        self.assertEqual(diag["bit_depth"], 24)
+        self.assertEqual(diag["dsp_detected"], "Volume/Gain Scaler")
+
+    def test_diagnose_bit_perfection_truncation(self):
+        """Test bit truncation detection (24 to 16 bit)."""
+        gen = PRBSGenerator(mode="PRBS-9")
+        ref = gen.generate_reference_sequence(512, bit_depth=24)
+        
+        # Truncate to 16 bit
+        rx = np.round(ref * 32768.0) / 32768.0
+        
+        diag = diagnose_bit_perfection(rx, ref)
+        self.assertFalse(diag["bit_perfect"])
+        self.assertEqual(diag["bit_depth"], 16)
+        self.assertEqual(diag["dsp_detected"], "Bit Truncation (16-bit)")
+
+if __name__ == "__main__":
+    unittest.main()
