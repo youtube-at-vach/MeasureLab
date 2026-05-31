@@ -620,7 +620,6 @@ class PlotComparerWidget(QWidget):
 
         # Iterate only through traces in the active domain
         for idx, (tid, trace) in enumerate(self._get_domain_traces(active_domain).items()):
-
             # Initialize settings if new, preserving backwards compatibility
             if tid not in self.trace_settings:
                 self.trace_settings[tid] = {
@@ -904,7 +903,6 @@ class PlotComparerWidget(QWidget):
 
         dimensions = set()
         for _, trace in self._get_domain_traces(active_domain).items():
-
             if trace.y_axis and trace.y_axis.dimension:
                 dimensions.add(trace.y_axis.dimension)
             if trace.y2_data is not None and trace.y2_axis and trace.y2_axis.dimension:

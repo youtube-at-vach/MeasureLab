@@ -6,7 +6,7 @@ import numpy as np
 import scipy.signal
 import soundfile as sf
 from scipy.optimize import minimize_scalar
-from scipy.signal import butter, get_window, sosfiltfilt, firwin
+from scipy.signal import butter, get_window, sosfiltfilt, firwin, sosfilt
 
 
 from src.core.fft_manager import fft_manager
@@ -687,30 +687,31 @@ class AudioCalc:
             if sampling_rate > 40000:
                 sos_aes = AudioCalc.design_aes17_filter(sampling_rate)
                 if sos_aes is not None:
-                    residual = sosfiltfilt(sos_aes, residual)
+                    residual = sosfilt(sos_aes, residual)
         elif filter_type == "a_weighting" and N > 51:
             sos_a = AudioCalc.design_a_weighting(sampling_rate)
-            residual = sosfiltfilt(sos_a, residual)
+            residual = sosfilt(sos_a, residual)
         elif filter_type == "c_weighting" and N > 51:
             sos_c = AudioCalc.design_c_weighting(sampling_rate)
-            residual = sosfiltfilt(sos_c, residual)
+            residual = sosfilt(sos_c, residual)
         else:
             # Default: 20Hz - 20kHz
             if N > 18:
                 if sampling_rate > 40:
                     sos_hp = _get_butter_sos(4, 20, "hp", fs=sampling_rate)
-                    residual = sosfiltfilt(sos_hp, residual)
+                    residual = sosfilt(sos_hp, residual)
 
                 # Lowpass 20kHz
                 if sampling_rate > 44100:
                     sos_lp = _get_butter_sos(4, 20000, "lp", fs=sampling_rate)
-                    residual = sosfiltfilt(sos_lp, residual)
+                    residual = sosfilt(sos_lp, residual)
 
         # 4. Calculate RMS
         # Trim edges to avoid filter transients from bandwidth limit (especially 20Hz HPF)
         # 4. Calculate RMS
         # Trim edges to avoid filter transients from bandwidth limit
-        # sosfiltfilt (zero-phase) spreads transients to both start and end.
+        # sosfilt (one-way) transients concentrate at the start, but we trim both sides symmetrically
+        # to ensure compatibility and simplicity with the rest of the engine.
         # 4th order filter at 20Hz/48kHz has long settling time.
         # 100ms trim is safer for precision measurements if length permits.
         trim_samples = int(sampling_rate * 0.1)  # 100ms

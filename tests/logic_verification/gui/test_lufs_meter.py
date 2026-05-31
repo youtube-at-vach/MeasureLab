@@ -50,9 +50,6 @@ def test_lufs_meter_widget_toggle(qtbot):
     assert not widget.timer.isActive()
 
 
-
-
-
 def test_lufs_meter_widget_update_display(qtbot):
     engine = MockAudioEngine()
     module = LufsMeter(engine)
@@ -76,9 +73,6 @@ def test_lufs_meter_widget_update_display(qtbot):
     assert "dBFS" in widget.l_val_label.text()
     assert "-10.0" in widget.r_val_label.text()
     assert "dBFS" in widget.r_val_label.text()
-
-
-
 
 
 def test_lufs_meter_widget_reset_stats(qtbot):

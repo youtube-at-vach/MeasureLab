@@ -14,7 +14,11 @@ from src.core.transmission_logic import (
     calculate_evm,
     measure_crosstalk,
     diagnose_bit_perfection,
+    estimate_fractional_delay,
+    shift_signal_fractional,
+    track_jitter_fractional,
 )
+
 
 class TestTransmissionLogic(unittest.TestCase):
     def test_prbs_generator_all_modes(self):
@@ -23,13 +27,13 @@ class TestTransmissionLogic(unittest.TestCase):
         for mode in modes:
             gen = PRBSGenerator(mode=mode)
             self.assertEqual(gen.mode, mode)
-            
+
             # Deterministic test
             seq1 = gen.generate_reference_sequence(100, bit_depth=24)
             seq2 = gen.generate_reference_sequence(100, bit_depth=24)
             self.assertEqual(len(seq1), 100)
             self.assertTrue(np.allclose(seq1, seq2))
-            
+
             # Float bounds check
             self.assertTrue(np.max(seq1) <= 1.0)
             self.assertTrue(np.min(seq1) >= -1.0)
@@ -39,7 +43,7 @@ class TestTransmissionLogic(unittest.TestCase):
         gen = PRBSGenerator("PRBS-9")
         seq_16 = gen.generate_reference_sequence(50, bit_depth=16)
         seq_8 = gen.generate_reference_sequence(50, bit_depth=8)
-        
+
         # Test ranges
         self.assertTrue(np.max(np.abs(seq_16)) <= 1.0)
         self.assertTrue(np.max(np.abs(seq_8)) <= 1.0)
@@ -48,11 +52,11 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test delay sync estimation using sliding Pearson correlation."""
         gen = PRBSGenerator(mode="PRBS-9")
         ref_cycle = gen.generate_reference_sequence(511, bit_depth=24)
-        
+
         # Shift signal
         delay = 45
         rx_segment = np.roll(ref_cycle, -delay)[:128]
-        
+
         offset, corr = find_sequence_delay(rx_segment, ref_cycle)
         self.assertEqual(offset, delay)
         self.assertGreater(corr, 0.99)
@@ -68,16 +72,16 @@ class TestTransmissionLogic(unittest.TestCase):
         gen = PRBSGenerator(mode="PRBS-9")
         # Generate enough history
         tx_history = gen.generate_reference_sequence(1024, bit_depth=24)
-        
+
         # Simulate initial lock
         last_offset = 200
         rx_block = tx_history[last_offset : last_offset + 128]
-        
+
         # 1. Constant offset
         new_offset, corr = track_jitter(rx_block, tx_history, last_offset)
         self.assertEqual(new_offset, last_offset)
         self.assertGreater(corr, 0.99)
-        
+
         # 2. Phase shift (+2 samples jitter)
         rx_shifted = tx_history[last_offset + 2 : last_offset + 130]
         shifted_offset, corr_shift = track_jitter(rx_shifted, tx_history, last_offset)
@@ -88,13 +92,13 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test impulse response deconvolution."""
         gen = PRBSGenerator("PRBS-9")
         tx = gen.generate_reference_sequence(512, bit_depth=24)
-        
+
         # Simple loopback (impulse at t=0)
         rx = tx.copy()
-        
+
         h = extract_impulse_response(rx, tx)
         self.assertEqual(len(h), 512)
-        
+
         # The peak of the impulse should be near index 0
         peak = np.argmax(np.abs(h))
         self.assertEqual(peak, 0)
@@ -104,14 +108,14 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test magnitude frequency response extraction."""
         gen = PRBSGenerator("PRBS-9")
         tx = gen.generate_reference_sequence(512, bit_depth=24)
-        
+
         # Flat response loopback
         rx = tx.copy()
-        
+
         freqs, mag_db = extract_frequency_response(rx, tx, 48000)
         self.assertEqual(len(freqs), 257)
         self.assertEqual(len(mag_db), 257)
-        
+
         # Magnitude should be close to 0 dB across all frequencies
         self.assertTrue(np.all(np.abs(mag_db) < 1.0))
 
@@ -119,11 +123,11 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test Error Vector Magnitude calculations."""
         gen = PRBSGenerator("PRBS-9")
         tx = gen.generate_reference_sequence(256, bit_depth=24)
-        
+
         # 1. Exact copy should have ~0% EVM
         evm_perfect = calculate_evm(tx, tx)
         self.assertLess(evm_perfect, 0.01)
-        
+
         # 2. Altered wave should have significant EVM
         rx_altered = tx + 0.1 * np.random.normal(size=256)
         evm_noise = calculate_evm(rx_altered, tx)
@@ -133,17 +137,17 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test stereo crosstalk leakage measurement with longer block sizes for orthogonality."""
         gen1 = PRBSGenerator("PRBS-9")
         gen2 = PRBSGenerator("PRBS-15")
-        
+
         # Generate longer sequence for cross-channel orthogonality
         tx_aligned = gen1.generate_reference_sequence(8192, bit_depth=24)
         tx_leak = gen2.generate_reference_sequence(8192, bit_depth=24)
-        
+
         # Crosstalk at -40 dB leakage ratio
         leakage_db = -40.0
         leakage_coeff = 10 ** (leakage_db / 20.0)
-        
+
         rx = tx_aligned + leakage_coeff * tx_leak
-        
+
         crosstalk_result = measure_crosstalk(rx, tx_leak)
         self.assertAlmostEqual(crosstalk_result, leakage_db, delta=10.0)
 
@@ -152,7 +156,7 @@ class TestTransmissionLogic(unittest.TestCase):
         gen = PRBSGenerator(mode="PRBS-9")
         ref = gen.generate_reference_sequence(512, bit_depth=24)
         rx = ref.copy()
-        
+
         diag = diagnose_bit_perfection(rx, ref)
         self.assertTrue(diag["bit_perfect"])
         self.assertEqual(diag["gain_db"], 0.0)
@@ -163,10 +167,10 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test volume scaling modification diagnostics."""
         gen = PRBSGenerator(mode="PRBS-9")
         ref = gen.generate_reference_sequence(512, bit_depth=24)
-        
+
         # Scale by -6 dB
         rx = ref * 0.5
-        
+
         diag = diagnose_bit_perfection(rx, ref)
         self.assertFalse(diag["bit_perfect"])
         self.assertAlmostEqual(diag["gain_db"], -6.02, places=2)
@@ -177,14 +181,82 @@ class TestTransmissionLogic(unittest.TestCase):
         """Test bit truncation detection (24 to 16 bit)."""
         gen = PRBSGenerator(mode="PRBS-9")
         ref = gen.generate_reference_sequence(512, bit_depth=24)
-        
+
         # Truncate to 16 bit
         rx = np.round(ref * 32768.0) / 32768.0
-        
+
         diag = diagnose_bit_perfection(rx, ref)
         self.assertFalse(diag["bit_perfect"])
         self.assertEqual(diag["bit_depth"], 16)
         self.assertEqual(diag["dsp_detected"], "Bit Truncation (16-bit)")
+
+    def test_shift_signal_fractional(self):
+        """Test that frequency domain fractional phase shifting acts as a perfect all-pass filter (preserves amplitude/energy)."""
+        gen = PRBSGenerator("PRBS-9")
+        tx = gen.generate_reference_sequence(512, bit_depth=24)
+
+        # Shift by a non-integer sample delay
+        shift_val = 0.45
+        tx_shifted = shift_signal_fractional(tx, shift_val)
+
+        # Verify length and shape
+        self.assertEqual(len(tx_shifted), 512)
+
+        # Energy/RMS check (places=3 to account for minor boundary circular-shift leakage)
+        rms_orig = np.sqrt(np.mean(tx**2))
+        rms_shifted = np.sqrt(np.mean(tx_shifted**2))
+        self.assertAlmostEqual(rms_orig, rms_shifted, places=3)
+
+        # Verify that the shift successfully introduced the exact fractional delay
+        est_delay = estimate_fractional_delay(tx_shifted, tx)
+        self.assertAlmostEqual(est_delay, shift_val, delta=0.02)
+
+    def test_estimate_fractional_delay(self):
+        """Test estimation accuracy of sub-sample delays using simulated fractional offsets, using clipping to avoid boundary leakage."""
+        gen = PRBSGenerator("PRBS-9")
+        # Generate longer sequence to clip margins and prevent circular convolution boundary leakage
+        tx_long = gen.generate_reference_sequence(1024, bit_depth=24)
+
+        target_shift = 0.55
+        tx_long_delayed = shift_signal_fractional(tx_long, target_shift)
+
+        # Extract middle portion
+        tx_segment = tx_long[256:768]
+        tx_delayed_segment = tx_long_delayed[256:768]
+
+        est_delay = estimate_fractional_delay(tx_delayed_segment, tx_segment)
+        self.assertAlmostEqual(est_delay, target_shift, delta=0.02)
+
+        # Negative shift check
+        target_shift_neg = -0.35
+        tx_long_delayed_neg = shift_signal_fractional(tx_long, target_shift_neg)
+        tx_delayed_neg_segment = tx_long_delayed_neg[256:768]
+        est_delay_neg = estimate_fractional_delay(tx_delayed_neg_segment, tx_segment)
+        self.assertAlmostEqual(est_delay_neg, target_shift_neg, delta=0.02)
+
+    def test_track_jitter_fractional(self):
+        """Test hybrid integer-fractional tracking under simulated drifts, validating exact integer and fractional recovery."""
+        gen = PRBSGenerator("PRBS-9")
+        tx_history = gen.generate_reference_sequence(1024, bit_depth=24)
+
+        last_offset = 200
+        target_int_offset = last_offset + 2  # 202
+        target_frac_delay = 0.42  # Keep slightly below 0.50 so the nearest integer is unambiguously target_int_offset
+
+        # 1. Extract clean integer-aligned reference block
+        rx_block_clean = tx_history[target_int_offset : target_int_offset + 256]
+        # 2. Directly apply precision fractional shift to this block
+        rx_block = shift_signal_fractional(rx_block_clean, target_frac_delay)
+
+        best_offset, frac_corr, frac_delay = track_jitter_fractional(rx_block, tx_history, last_offset)
+
+        # Validate that the integer tracker locked exactly on the target integer offset
+        self.assertEqual(best_offset, target_int_offset)
+        # Validate that the fractional estimator accurately recovered the fractional shift
+        self.assertAlmostEqual(frac_delay, target_frac_delay, delta=0.02)
+        # Validate that the final fractional correlation is extremely high
+        self.assertGreater(frac_corr, 0.98)
+
 
 if __name__ == "__main__":
     unittest.main()

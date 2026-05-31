@@ -4,52 +4,54 @@ import scipy.signal
 
 logger = logging.getLogger(__name__)
 
+
 class PRBSGenerator:
     """
     Linear Feedback Shift Register (LFSR) based PRBS Generator.
     Supports PRBS-7, PRBS-9, PRBS-15, PRBS-23, and PRBS-31.
     """
+
     def __init__(self, mode="PRBS-15", seed=0x7FFFFFFF):
         self.mode = mode
         # LFSR properties based on the selected PRBS mode (ITU-T O.150 standard taps)
         if mode == "PRBS-7":
-            self.mask = 0x7F         # 7 bits
+            self.mask = 0x7F  # 7 bits
             self.seed = seed & self.mask
             if self.seed == 0:
                 self.seed = 0x7F
-            self.tap1 = 6            # x^7 + x^6 + 1 => index 6, 5 (0-based)
+            self.tap1 = 6  # x^7 + x^6 + 1 => index 6, 5 (0-based)
             self.tap2 = 5
             self.period = 127
         elif mode == "PRBS-9":
-            self.mask = 0x01FF       # 9 bits
+            self.mask = 0x01FF  # 9 bits
             self.seed = seed & self.mask
             if self.seed == 0:
                 self.seed = 0x01FF
-            self.tap1 = 8            # x^9 + x^5 + 1 => index 8, 4 (0-based)
+            self.tap1 = 8  # x^9 + x^5 + 1 => index 8, 4 (0-based)
             self.tap2 = 4
             self.period = 511
         elif mode == "PRBS-15":
-            self.mask = 0x7FFF       # 15 bits
+            self.mask = 0x7FFF  # 15 bits
             self.seed = seed & self.mask
             if self.seed == 0:
                 self.seed = 0x7FFF
-            self.tap1 = 14           # x^15 + x^14 + 1 => index 14, 13 (0-based)
+            self.tap1 = 14  # x^15 + x^14 + 1 => index 14, 13 (0-based)
             self.tap2 = 13
             self.period = 32767
         elif mode == "PRBS-23":
-            self.mask = 0x7FFFFF     # 23 bits
+            self.mask = 0x7FFFFF  # 23 bits
             self.seed = seed & self.mask
             if self.seed == 0:
                 self.seed = 0x7FFFFF
-            self.tap1 = 22           # x^23 + x^18 + 1 => index 22, 17 (0-based)
+            self.tap1 = 22  # x^23 + x^18 + 1 => index 22, 17 (0-based)
             self.tap2 = 17
             self.period = 8388607
         elif mode == "PRBS-31":
-            self.mask = 0x7FFFFFFF   # 31 bits
+            self.mask = 0x7FFFFFFF  # 31 bits
             self.seed = seed & self.mask
             if self.seed == 0:
                 self.seed = 0x7FFFFFFF
-            self.tap1 = 30           # x^31 + x^28 + 1 => index 30, 27 (0-based)
+            self.tap1 = 30  # x^31 + x^28 + 1 => index 30, 27 (0-based)
             self.tap2 = 27
             self.period = 2147483647
         else:
@@ -122,7 +124,7 @@ def find_sequence_delay(rx_segment: np.ndarray, ref_cycle: np.ndarray) -> tuple[
     """
     Finds the integer sample delay (offset) of rx_segment in ref_cycle using
     sliding Pearson correlation.
-    
+
     rx_segment: 1D array of received signal (usually 1024 or 2048 samples)
     ref_cycle: 1D array of expected reference sequence
     Returns: (offset, correlation_coefficient)
@@ -131,7 +133,7 @@ def find_sequence_delay(rx_segment: np.ndarray, ref_cycle: np.ndarray) -> tuple[
     M = len(ref_cycle)
 
     if N >= M:
-        rx_segment = rx_segment[:M // 2]
+        rx_segment = rx_segment[: M // 2]
         N = len(rx_segment)
 
     rx_ac = rx_segment - np.mean(rx_segment)
@@ -142,13 +144,13 @@ def find_sequence_delay(rx_segment: np.ndarray, ref_cycle: np.ndarray) -> tuple[
 
     ref_double = np.concatenate((ref_cycle, ref_cycle[:N]))
 
-    corr = scipy.signal.correlate(ref_double, rx_norm, mode='valid')
+    corr = scipy.signal.correlate(ref_double, rx_norm, mode="valid")
 
     ones_window = np.ones(N)
-    sum_ref_sq = scipy.signal.convolve(ref_double ** 2, ones_window, mode='valid')
-    sum_ref = scipy.signal.convolve(ref_double, ones_window, mode='valid')
+    sum_ref_sq = scipy.signal.convolve(ref_double**2, ones_window, mode="valid")
+    sum_ref = scipy.signal.convolve(ref_double, ones_window, mode="valid")
 
-    ref_var = sum_ref_sq - (sum_ref ** 2) / N
+    ref_var = sum_ref_sq - (sum_ref**2) / N
     ref_zero_mean_norms = np.sqrt(np.maximum(0.0, ref_var))
 
     norm_corr = corr / (ref_zero_mean_norms + 1e-12)
@@ -163,12 +165,12 @@ def track_jitter(rx_block: np.ndarray, tx_history: np.ndarray, last_offset: int,
     """
     Refines and tracks synchronization offset changes (jitter/slips) block-by-block.
     Looks in a small neighborhood around last_offset.
-    
+
     Returns: (new_offset, correlation)
     """
     N = len(rx_block)
     H = len(tx_history)
-    
+
     best_corr = -1.0
     best_offset = last_offset
 
@@ -187,13 +189,13 @@ def track_jitter(rx_block: np.ndarray, tx_history: np.ndarray, last_offset: int,
         else:
             part = H - test_offset
             tx_seg = np.concatenate((tx_history[test_offset:], tx_history[: N - part]))
-            
+
         tx_ac = tx_seg - np.mean(tx_seg)
         tx_norm = np.linalg.norm(tx_ac)
         if tx_norm < 1e-6:
             continue
         tx_ac /= tx_norm
-        
+
         corr = np.dot(rx_ac, tx_ac)
         if corr > best_corr:
             best_corr = corr
@@ -210,37 +212,39 @@ def extract_impulse_response(rx_block: np.ndarray, tx_block: np.ndarray, regular
     N = len(rx_block)
     # Apply Hanning window to reduce boundary artifacts in deconvolution
     window = np.hanning(N)
-    
+
     rx_win = rx_block * window
     tx_win = tx_block * window
 
     X = np.fft.fft(tx_win)
     Y = np.fft.fft(rx_win)
-    
+
     # Regularized deconvolution
     H = (Y * np.conj(X)) / (np.abs(X) ** 2 + regularization * np.max(np.abs(X) ** 2))
     h = np.fft.ifft(H)
-    
+
     # Return real part, centered/shifted
     return np.real(h)
 
 
-def extract_frequency_response(rx_block: np.ndarray, tx_block: np.ndarray, sr: float, regularization=1e-4) -> tuple[np.ndarray, np.ndarray]:
+def extract_frequency_response(
+    rx_block: np.ndarray, tx_block: np.ndarray, sr: float, regularization=1e-4
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Computes magnitude frequency response (dB vs Hz) of the channel.
-    
+
     Returns: (freqs, magnitude_db)
     """
     N = len(rx_block)
     window = np.hanning(N)
-    
+
     X = np.fft.rfft(tx_block * window)
     Y = np.fft.rfft(rx_block * window)
-    
+
     # Regulator to avoid log(0)
     H = Y / (X + 1e-12)
     mag_db = 20 * np.log10(np.abs(H) + 1e-6)
-    
+
     freqs = np.fft.rfftfreq(N, 1.0 / sr)
     return freqs, mag_db
 
@@ -255,14 +259,14 @@ def calculate_evm(rx_block: np.ndarray, tx_block: np.ndarray) -> float:
     if dot_tx < 1e-12:
         return 100.0
     scale = np.dot(rx_block, tx_block) / dot_tx
-    
+
     error_vector = rx_block - scale * tx_block
-    rms_error = np.sqrt(np.mean(error_vector ** 2))
-    rms_reference = np.sqrt(np.mean(tx_block ** 2))
-    
+    rms_error = np.sqrt(np.mean(error_vector**2))
+    rms_reference = np.sqrt(np.mean(tx_block**2))
+
     if rms_reference < 1e-12:
         return 100.0
-    
+
     evm_percent = (rms_error / rms_reference) * 100.0
     return float(np.clip(evm_percent, 0.0, 100.0))
 
@@ -270,37 +274,37 @@ def calculate_evm(rx_block: np.ndarray, tx_block: np.ndarray) -> float:
 def measure_crosstalk(rx_block: np.ndarray, leak_reference: np.ndarray) -> float:
     """
     Measures crosstalk by finding the leakage correlation with the opposite channel's PRBS sequence.
-    
+
     Returns leakage ratio in dB.
     """
     N = len(rx_block)
     M = len(leak_reference)
-    
+
     # Sub-segment correlation
     sub_len = min(N, M)
     rx_seg = rx_block[:sub_len]
     leak_seg = leak_reference[:sub_len]
-    
+
     rx_ac = rx_seg - np.mean(rx_seg)
     leak_ac = leak_seg - np.mean(leak_seg)
-    
+
     norm_rx = np.linalg.norm(rx_ac)
     norm_leak = np.linalg.norm(leak_ac)
-    
+
     if norm_rx < 1e-6 or norm_leak < 1e-6:
         return -120.0
-        
+
     rx_ac /= norm_rx
     leak_ac /= norm_leak
-    
+
     # Calculate scalar projection of leak onto rx
     # Represents the leakage coefficient
     c_coeff = np.dot(rx_seg, leak_seg) / np.dot(leak_seg, leak_seg)
     c_coeff_abs = abs(c_coeff)
-    
+
     if c_coeff_abs < 1e-6:
         return -120.0
-        
+
     crosstalk_db = 20 * np.log10(c_coeff_abs + 1e-12)
     return float(np.clip(crosstalk_db, -120.0, 0.0))
 
@@ -324,7 +328,7 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
             "bit_errors": 0,
             "error_rate": 0.0,
             "active_bits": 24,
-            "dsp_detected": "None (Transparent)"
+            "dsp_detected": "None (Transparent)",
         }
 
     dot_ref_ref = np.dot(ref, ref)
@@ -340,8 +344,8 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
         gain_db = 0.0
 
     scaled_diff = rx - K * ref
-    scaled_rms = np.sqrt(np.mean(scaled_diff ** 2))
-    ref_rms = np.sqrt(np.mean(ref ** 2))
+    scaled_rms = np.sqrt(np.mean(scaled_diff**2))
+    ref_rms = np.sqrt(np.mean(ref**2))
     rel_error = scaled_rms / (ref_rms + epsilon)
 
     tol = 1e-6
@@ -350,11 +354,13 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
 
     # Analyze error structure for DSP heuristics
     rx_scaled = rx / (K + epsilon)
-    
+
     # 1. Check if 16-bit truncated
     rx_scaled_16 = np.round(rx_scaled * 32768.0) / 32768.0
     if np.max(np.abs(rx_scaled - rx_scaled_16)) < 1e-6:
-        reason = "Volume altered, bit depth reduced to 16-bit." if abs(gain_db) > 0.01 else "Bit depth reduced to 16-bit."
+        reason = (
+            "Volume altered, bit depth reduced to 16-bit." if abs(gain_db) > 0.01 else "Bit depth reduced to 16-bit."
+        )
         return {
             "bit_perfect": False,
             "reason": reason,
@@ -363,7 +369,7 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
             "bit_errors": errors,
             "error_rate": error_rate,
             "active_bits": 16,
-            "dsp_detected": "Bit Truncation (16-bit)"
+            "dsp_detected": "Bit Truncation (16-bit)",
         }
 
     # 2. Check if 24-bit with gain only
@@ -378,7 +384,7 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
                 "bit_errors": errors,
                 "error_rate": error_rate,
                 "active_bits": 24,
-                "dsp_detected": "Volume/Gain Scaler"
+                "dsp_detected": "Volume/Gain Scaler",
             }
 
     # 3. Check if 8-bit truncated
@@ -393,7 +399,7 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
             "bit_errors": errors,
             "error_rate": error_rate,
             "active_bits": 8,
-            "dsp_detected": "Bit Truncation (8-bit)"
+            "dsp_detected": "Bit Truncation (8-bit)",
         }
 
     # 4. Check for Dither (LSB toggle error only)
@@ -408,7 +414,7 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
             "bit_errors": errors,
             "error_rate": error_rate,
             "active_bits": 24,
-            "dsp_detected": "Dither / Noise Shaping"
+            "dsp_detected": "Dither / Noise Shaping",
         }
 
     # 5. Heavy modification (Resampling, EQ, non-linear)
@@ -421,7 +427,7 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
             "bit_errors": N,
             "error_rate": 1.0,
             "active_bits": 0,
-            "dsp_detected": "Resampling / Heavy DSP / Compressor"
+            "dsp_detected": "Resampling / Heavy DSP / Compressor",
         }
 
     return {
@@ -432,5 +438,97 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
         "bit_errors": errors,
         "error_rate": error_rate,
         "active_bits": 24,
-        "dsp_detected": "Active EQ/Filter/DSP"
+        "dsp_detected": "Active EQ/Filter/DSP",
     }
+
+
+def estimate_fractional_delay(rx_segment: np.ndarray, ref_segment: np.ndarray) -> float:
+    """
+    Estimates the fractional sample delay between rx and ref using FFT phase slope.
+    Assumes they are already roughly aligned to the nearest integer sample.
+
+    Returns: Estimated fractional delay in samples (typically in range [-1.5, 1.5]).
+    """
+    N = len(rx_segment)
+    # Apply Hanning window to mitigate boundary artifacts
+    win = np.hanning(N)
+    X = np.fft.rfft(ref_segment * win)
+    Y = np.fft.rfft(rx_segment * win)
+
+    # Compute cross-spectrum
+    Gxy = Y * np.conj(X)
+    phases = np.angle(Gxy)
+
+    # Phase shift: phi_k = -2 * pi * k * d / N where d is fractional delay.
+    # Linear phase fit over lower 25% of the spectrum (highest SNR, linear phase region)
+    max_bin = max(4, len(phases) // 4)
+    bins = np.arange(max_bin)
+
+    # Unwrap phases to resolve 2*pi jumps
+    unwrapped_phases = np.unwrap(phases[:max_bin])
+
+    # Fit line: phase = slope * bin + intercept
+    A = np.vstack([bins, np.ones_like(bins)]).T
+    slope, _ = np.linalg.lstsq(A, unwrapped_phases, rcond=None)[0]
+
+    fractional_delay = -slope * N / (2.0 * np.pi)
+    return float(np.clip(fractional_delay, -1.5, 1.5))
+
+
+def shift_signal_fractional(sig: np.ndarray, delay_samples: float) -> np.ndarray:
+    """
+    Shifts a signal by a fractional number of samples in the frequency domain.
+    Acts as a perfect all-pass filter (flat magnitude, linear phase shift).
+    """
+    N = len(sig)
+    X = np.fft.fft(sig)
+    freqs = np.fft.fftfreq(N)
+
+    # Phase shift operator: exp(-2 * pi * j * f * d)
+    shift_operator = np.exp(-2j * np.pi * freqs * delay_samples)
+    sig_shifted = np.fft.ifft(X * shift_operator)
+    return np.real(sig_shifted).astype(np.float32)
+
+
+def track_jitter_fractional(
+    rx_block: np.ndarray, tx_history: np.ndarray, last_offset: int, max_search=8
+) -> tuple[int, float, float]:
+    """
+    Refines and tracks synchronization offset changes block-by-block with sub-sample precision.
+    Uses a hybrid approach for efficiency:
+    1. Standard integer-precision coarse search (time domain).
+    2. FFT-based fractional delay estimation and shift on the best candidate.
+
+    Returns: (best_offset, fractional_correlation, fractional_delay)
+    """
+    # 1. Coarse standard integer search
+    best_integer_offset, _ = track_jitter(rx_block, tx_history, last_offset, max_search)
+
+    # 2. Extract corresponding reference segment from history
+    N = len(rx_block)
+    H = len(tx_history)
+    if best_integer_offset + N <= H:
+        tx_seg = tx_history[best_integer_offset : best_integer_offset + N]
+    else:
+        part = H - best_integer_offset
+        tx_seg = np.concatenate((tx_history[best_integer_offset:], tx_history[: N - part]))
+
+    # 3. Estimate sub-sample fractional delay
+    est_delay = estimate_fractional_delay(rx_block, tx_seg)
+
+    # 4. Shift the reference to physically align phases
+    tx_shifted = shift_signal_fractional(tx_seg, est_delay)
+
+    # 5. Compute high-precision pearson correlation
+    rx_ac = rx_block - np.mean(rx_block)
+    tx_shifted_ac = tx_shifted - np.mean(tx_shifted)
+
+    norm_rx = np.linalg.norm(rx_ac)
+    norm_tx = np.linalg.norm(tx_shifted_ac)
+
+    if norm_rx > 1e-6 and norm_tx > 1e-6:
+        fractional_corr = np.dot(rx_ac, tx_shifted_ac) / (norm_rx * norm_tx)
+    else:
+        fractional_corr = 0.0
+
+    return best_integer_offset, float(fractional_corr), float(est_delay)

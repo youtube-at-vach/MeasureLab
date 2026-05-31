@@ -8,6 +8,7 @@ sys.modules["sounddevice"] = MagicMock()
 import numpy as np  # noqa: E402
 from src.gui.widgets.boxcar_averager import BoxcarAverager  # noqa: E402
 from src.gui.widgets.lock_in_amplifier import LockInAmplifier  # noqa: E402
+from src.core.analysis import AudioCalc  # noqa: E402
 
 
 class MockCalibration:
@@ -167,6 +168,92 @@ class TestAntigravityFixes(unittest.TestCase):
 
         # Verify they are mathematically identical (continuity preserved)
         np.testing.assert_allclose(frac_phasor_before, frac_phasor_after, rtol=1e-12, atol=1e-12)
+
+    def test_a_weighting_thdn_attenuation_accuracy(self):
+        """Verify that AudioCalc.calculate_thdn_sine_fit applies correct A-weighting attenuation (~ -19.1 dB at 100Hz)."""
+        sr = 48000
+        duration = 1.0
+        t = np.arange(int(sr * duration)) / sr
+
+        # Generate a 100Hz sine wave (representing the residual noise/distortion)
+        # Signal = Fundamental(1000Hz) + Residual(100Hz)
+        fund_freq = 1000.0
+        res_freq = 100.0
+        sig = np.sin(2 * np.pi * fund_freq * t) + 0.1 * np.sin(2 * np.pi * res_freq * t)
+
+        # 1. Without A-weighting
+        _, _, nd_rms_unweighted = AudioCalc.calculate_thdn_sine_fit(sig, sr, freq_guess=fund_freq, filter_type=None)
+
+        # 2. With A-weighting
+        # Attenuation at 100Hz is exactly -19.1 dB.
+        _, _, nd_rms_weighted = AudioCalc.calculate_thdn_sine_fit(
+            sig, sr, freq_guess=fund_freq, filter_type="a_weighting"
+        )
+
+        measured_ratio = nd_rms_weighted / nd_rms_unweighted
+        measured_db = 20 * np.log10(measured_ratio)
+
+        # Target attenuation is around -19.1 dB. (Allow 0.5dB tolerance due to boundaries)
+        # Double-filtering would yield ~ -38.3 dB.
+        self.assertAlmostEqual(measured_db, -19.1, delta=0.5)
+
+    def test_c_weighting_thdn_attenuation_accuracy(self):
+        """Verify that AudioCalc.calculate_thdn_sine_fit applies correct C-weighting attenuation (~ -1.3 dB at 50Hz)."""
+        sr = 48000
+        duration = 1.0
+        t = np.arange(int(sr * duration)) / sr
+
+        fund_freq = 1000.0
+        res_freq = 50.0
+        sig = np.sin(2 * np.pi * fund_freq * t) + 0.1 * np.sin(2 * np.pi * res_freq * t)
+
+        # 1. Without C-weighting (Default HPF/LPF applies a 20Hz HPF)
+        _, _, nd_rms_unweighted = AudioCalc.calculate_thdn_sine_fit(sig, sr, freq_guess=fund_freq, filter_type=None)
+
+        # 2. With C-weighting
+        # Attenuation at 50Hz is exactly -1.35 dB.
+        _, _, nd_rms_weighted = AudioCalc.calculate_thdn_sine_fit(
+            sig, sr, freq_guess=fund_freq, filter_type="c_weighting"
+        )
+
+        measured_ratio = nd_rms_weighted / nd_rms_unweighted
+        measured_db = 20 * np.log10(measured_ratio)
+
+        # Target ratio is around -1.3 dB (exact ratio C / default HPF is ~ -1.32 dB).
+        # Double filtering would yield ~ -2.7 dB.
+        self.assertAlmostEqual(measured_db, -1.3, delta=0.2)
+
+    def test_transmission_analyzer_data_race_safety(self):
+        """Verify that TransmissionAnalyzer does not trigger concurrency errors when reading and writing simultaneously."""
+        from src.gui.widgets.transmission_analyzer import TransmissionAnalyzer
+        import time
+        import threading
+
+        engine = MockAudioEngine(sample_rate=48000)
+        analyzer = TransmissionAnalyzer(engine)
+        analyzer.start_analysis()
+
+        stop_event = threading.Event()
+
+        def audio_thread_sim():
+            while not stop_event.is_set():
+                indata = np.random.randn(256, 2)
+                outdata = np.zeros_like(indata)
+                analyzer._audio_callback(indata, outdata, 256, None, None)
+                time.sleep(0.001)
+
+        t = threading.Thread(target=audio_thread_sim)
+        t.start()
+
+        try:
+            # GUI Thread processes data concurrently
+            for _ in range(50):
+                analyzer.process_data()
+                time.sleep(0.002)
+        finally:
+            stop_event.set()
+            t.join()
+            analyzer.stop_analysis()
 
 
 if __name__ == "__main__":

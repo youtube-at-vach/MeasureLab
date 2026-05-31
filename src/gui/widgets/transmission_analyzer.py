@@ -24,12 +24,14 @@ from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.core.transmission_logic import (
     PRBSGenerator,
     find_sequence_delay,
-    track_jitter,
     extract_impulse_response,
     extract_frequency_response,
     calculate_evm,
     measure_crosstalk,
     diagnose_bit_perfection,
+    estimate_fractional_delay,
+    shift_signal_fractional,
+    track_jitter_fractional,
 )
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 
@@ -57,7 +59,7 @@ class TransmissionAnalyzer(MeasurementModule):
         self.pattern_mode = "PRBS-15"
         self.bit_depth = 24
         self.input_channel_idx = 0  # 0 for Left, 1 for Right
-        self.mode = "Digital"       # "Digital" or "Analog"
+        self.mode = "Digital"  # "Digital" or "Analog"
         self.enable_crosstalk = True
 
         # PRBS Engines (Distinct seeds to allow Crosstalk measurement)
@@ -73,6 +75,9 @@ class TransmissionAnalyzer(MeasurementModule):
         self.is_locked = False
         self.lock_offset = 0
         self.samples_processed = 0
+        self.initial_fractional_delay = 0.0
+        self.fractional_delay = 0.0
+        self.delay_samples = 0
 
         # Accumulated stats (Digital Mode)
         self.total_test_samples = 0
@@ -146,6 +151,9 @@ class TransmissionAnalyzer(MeasurementModule):
             self.is_locked = False
             self.lock_offset = 0
             self.samples_processed = 0
+            self.initial_fractional_delay = 0.0
+            self.fractional_delay = 0.0
+            self.delay_samples = 0
             self.total_test_samples = 0
             self.total_bit_errors = 0
             self.bit_hist.fill(0)
@@ -272,10 +280,15 @@ class TransmissionAnalyzer(MeasurementModule):
 
             tx_w = self.tx_write_ptr
 
-        # Determine alignment channel (which transmitter is the source of the measurement)
-        # Left TX feeds Left RX, Right TX feeds Right RX under loopback
-        align_tx_history = self.tx_history_l if self.input_channel_idx == 0 else self.tx_history_r
-        leak_tx_history = self.tx_history_r if self.input_channel_idx == 0 else self.tx_history_l
+            # Determine alignment channel (which transmitter is the source of the measurement)
+            # Left TX feeds Left RX, Right TX feeds Right RX under loopback.
+            # We perform a .copy() inside the lock to prevent data races with the audio callback thread.
+            if self.input_channel_idx == 0:
+                align_tx_history = self.tx_history_l.copy()
+                leak_tx_history = self.tx_history_r.copy()
+            else:
+                align_tx_history = self.tx_history_r.copy()
+                leak_tx_history = self.tx_history_l.copy()
 
         # Synchronization & Lock
         if not self.is_locked:
@@ -285,42 +298,98 @@ class TransmissionAnalyzer(MeasurementModule):
 
             offset, corr = find_sequence_delay(segment, self.ref_cycle)
 
-            if corr > 0.90:
-                self.is_locked = True
-                # Calculate correct delay estimate modulo pattern length to avoid wrap discrepancy
-                delay_est = (tx_w - block_size - offset) % self.ref_cycle_len
-                # Match to absolute tx write pointer using correct delay estimate
-                self.lock_offset = (tx_w - block_size - delay_est) % self.max_buffer_len
-                self.samples_processed = 0
-                logger.debug(f"Transmission Lock Established. Offset={self.lock_offset}, Correlation={corr:.4f}")
+            # Lowered integer search threshold to 0.60 to account for physical analog loopback sub-sample delay
+            if corr > 0.60:
+                # Extract exact integer-aligned reference segment
+                ref_segment = np.zeros(search_len, dtype=np.float32)
+                for idx in range(search_len):
+                    ref_segment[idx] = self.ref_cycle[(offset + idx) % self.ref_cycle_len]
+
+                # Estimate sub-sample fractional delay using FFT phase
+                est_delay = estimate_fractional_delay(segment, ref_segment)
+
+                # Shift reference segment to align phases perfectly
+                ref_shifted = shift_signal_fractional(ref_segment, est_delay)
+
+                # Calculate fractional correlation
+                seg_ac = segment - np.mean(segment)
+                ref_s_ac = ref_shifted - np.mean(ref_shifted)
+                norm_seg = np.linalg.norm(seg_ac)
+                norm_ref = np.linalg.norm(ref_s_ac)
+
+                if norm_seg > 1e-6 and norm_ref > 1e-6:
+                    fractional_corr = float(np.dot(seg_ac, ref_s_ac) / (norm_seg * norm_ref))
+                else:
+                    fractional_corr = 0.0
+
+                # Dynamically set threshold based on mode (Analog lines undergo inescapable frequency/phase distortions)
+                lock_threshold = 0.90 if self.mode == "Digital" else 0.75
+
+                if fractional_corr > lock_threshold:
+                    self.is_locked = True
+                    self.initial_fractional_delay = est_delay
+                    self.fractional_delay = est_delay
+
+                    # Calculate correct delay estimate modulo pattern length to avoid wrap discrepancy
+                    delay_est = (tx_w - block_size - offset) % self.ref_cycle_len
+                    self.delay_samples = delay_est  # Save baseline physical loopback delay samples
+
+                    # Match to absolute tx write pointer using correct delay estimate
+                    self.lock_offset = (tx_w - block_size - delay_est) % self.max_buffer_len
+                    self.samples_processed = 0
+                    logger.debug(
+                        f"Transmission Lock Established. Offset={self.lock_offset}, Delay={self.delay_samples}, Fractional Delay={est_delay:.4f}, Correlation={fractional_corr:.4f}"
+                    )
+                else:
+                    self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(corr)
+                    self.results["locked"] = False
+                    return None
             else:
                 self.results["reason"] = tr("Waiting for sync... (Correlation: {0:.2f})").format(corr)
                 self.results["locked"] = False
                 return None
 
         # Lock is active: Continuous alignment tracking (fine jitter/slip check)
-        # Get matching TX block from history
         N = len(rx_block)
-
-        # Track offset drift continuously
-        self.lock_offset, tracking_corr = track_jitter(rx_block, align_tx_history, self.lock_offset)
-
-        # Calculate matching aligned TX block
-        aligned_tx = np.zeros(N, dtype=np.float32)
-        leak_tx = np.zeros(N, dtype=np.float32)
-
+        prev_frac_delay = self.fractional_delay
         offset = self.lock_offset
-        if offset + N <= self.max_buffer_len:
-            aligned_tx = align_tx_history[offset : offset + N]
-            leak_tx = leak_tx_history[offset : offset + N]
-        else:
-            part = self.max_buffer_len - offset
-            aligned_tx = np.concatenate((align_tx_history[offset:], align_tx_history[: N - part]))
-            leak_tx = np.concatenate((leak_tx_history[offset:], leak_tx_history[: N - part]))
 
-        # Check for catastrophic unlock
-        if tracking_corr < 0.60:
-            logger.warning("Transmission Analyzer lost lock due to low correlation.")
+        # 1. Slide expected offset dynamically in sync with the audio callback's write index (tx_w)
+        # This keeps the track_jitter search window [-8, +8] exactly centered around the true physical delay path
+        expected_offset = (tx_w - block_size - self.delay_samples) % self.max_buffer_len
+
+        # 2. Track offset drift with sub-sample fractional precision using expected_offset
+        self.lock_offset, tracking_corr, self.fractional_delay = track_jitter_fractional(
+            rx_block, align_tx_history, expected_offset
+        )
+
+        # 3. Update the physical delay estimate from the tracked lock_offset to absorb clock drifts smoothly
+        self.delay_samples = (tx_w - block_size - self.lock_offset) % self.max_buffer_len
+
+        # Calculate matching aligned TX blocks (integer matched first)
+        aligned_tx_int = np.zeros(N, dtype=np.float32)
+        leak_tx_int = np.zeros(N, dtype=np.float32)
+
+        if self.lock_offset + N <= self.max_buffer_len:
+            aligned_tx_int = align_tx_history[self.lock_offset : self.lock_offset + N]
+            leak_tx_int = leak_tx_history[self.lock_offset : self.lock_offset + N]
+        else:
+            part = self.max_buffer_len - self.lock_offset
+            aligned_tx_int = np.concatenate((align_tx_history[self.lock_offset :], align_tx_history[: N - part]))
+            leak_tx_int = np.concatenate((leak_tx_history[self.lock_offset :], leak_tx_history[: N - part]))
+
+        # Apply precision fractional delay shift to both aligned primary and leakage signals in frequency domain.
+        # This aligns the reference phases perfectly to the received block down to sub-sample scale.
+        aligned_tx = shift_signal_fractional(aligned_tx_int, self.fractional_delay)
+        leak_tx = shift_signal_fractional(leak_tx_int, self.fractional_delay)
+
+        # Check for catastrophic unlock using precision fractional correlation.
+        # Threshold raised to 0.75 since fractional correlation is highly stable and robust.
+        # Check for catastrophic unlock using precision fractional correlation.
+        # Threshold set dynamically to robustly handle physical analog line fluctuations.
+        unlock_threshold = 0.75 if self.mode == "Digital" else 0.60
+        if tracking_corr < unlock_threshold:
+            logger.warning(f"Transmission Analyzer lost lock due to low correlation ({tracking_corr:.4f}).")
             self.is_locked = False
             self.results["locked"] = False
             self.results["reason"] = tr("Lock lost (Low correlation).")
@@ -333,11 +402,15 @@ class TransmissionAnalyzer(MeasurementModule):
         diag = diagnose_bit_perfection(rx_block, aligned_tx)
 
         # Jitter estimation (convert offset variance into samples / ms)
-        # Lock offset should stay constant. Any change is jitter / slip.
-        # We record drift relative to initial lock offset
-        jitter_s = (self.lock_offset - offset) % self.max_buffer_len
-        if jitter_s > self.max_buffer_len / 2:
-            jitter_s -= self.max_buffer_len
+        # We record drift relative to initial lock offset, combining integer and fractional shifts.
+        # Since expected_offset moves in sync with tx_w, any difference (expected_offset - lock_offset)
+        # represents absolute jitter/buffer drift relative to our baseline.
+        drift_int = (expected_offset - self.lock_offset) % self.max_buffer_len
+        if drift_int > self.max_buffer_len / 2:
+            drift_int -= self.max_buffer_len
+
+        drift_frac = self.fractional_delay - prev_frac_delay
+        jitter_s = drift_int + drift_frac
 
         # Scale and compute bit errors for histogram
         gain_scalar = 10 ** (diag["gain_db"] / 20.0)
@@ -402,7 +475,9 @@ class TransmissionAnalyzer(MeasurementModule):
             "gain_db": diag["gain_db"],
             "bit_depth": diag["bit_depth"],
             "bit_errors": self.total_bit_errors,
-            "error_rate": (self.total_bit_errors / self.total_test_samples) * 100.0 if self.total_test_samples > 0 else 0.0,
+            "error_rate": (self.total_bit_errors / self.total_test_samples) * 100.0
+            if self.total_test_samples > 0
+            else 0.0,
             "total_samples": self.total_test_samples,
             "active_bits": diag["active_bits"],
             "evm": evm_val,
@@ -424,7 +499,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
-        self.timer.setInterval(100)  # 10Hz updates
+        self.timer.setInterval(200)  # 5Hz updates to reduce CPU overhead and timing drift
 
         self.init_ui()
 
@@ -711,7 +786,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.module.start_analysis()
 
     def on_crosstalk_toggle(self, state):
-        self.module.enable_crosstalk = (state == Qt.CheckState.Checked.value)
+        self.module.enable_crosstalk = state == Qt.CheckState.Checked.value
 
     def on_trend_changed(self):
         self.update_trend_axes()
@@ -739,7 +814,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # Locked and evaluating!
         # Color updates
-        is_digital = (self.module.mode == "Digital")
+        is_digital = self.module.mode == "Digital"
 
         if is_digital:
             is_perfect = res["bit_perfect"]
@@ -770,11 +845,17 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.lbl_reason.setText(res["reason"])
 
         # Update Secondary Header Metrics
-        self.lbl_stat_delay.setText(tr("Delay: {0:d} samples ({1:.2f} ms)").format(res["delay_samples"], res["delay_ms"]))
+        self.lbl_stat_delay.setText(
+            tr("Delay: {0:d} samples ({1:.2f} ms)").format(res["delay_samples"], res["delay_ms"])
+        )
         self.lbl_stat_evm.setText(tr("Waveform EVM: {0:.3f} %").format(res["evm"]))
 
         if self.module.enable_crosstalk:
-            crosstalk_text = tr("Crosstalk: {0:+.1f} dB").format(res["crosstalk_db"]) if res["crosstalk_db"] > -110 else tr("Crosstalk: < -100 dB")
+            crosstalk_text = (
+                tr("Crosstalk: {0:+.1f} dB").format(res["crosstalk_db"])
+                if res["crosstalk_db"] > -110
+                else tr("Crosstalk: < -100 dB")
+            )
             self.lbl_stat_crosstalk.setText(crosstalk_text)
         else:
             self.lbl_stat_crosstalk.setText(tr("Crosstalk: Disabled"))
@@ -816,7 +897,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             y_data = list(self.module.jitter_trend)
         elif trend == "gain":
             y_data = list(self.module.gain_trend)
-        else: # "ber"
+        else:  # "ber"
             y_data = list(self.module.ber_trend)
 
         if len(y_data) > 0:
@@ -835,4 +916,5 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         if win:
             from PyQt6 import sip
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)

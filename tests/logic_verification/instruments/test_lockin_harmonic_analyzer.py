@@ -324,12 +324,12 @@ def test_lockin_harmonic_analyzer_calibration_quasi_newton_convergence():
             # Generated output comp
             c2 = analyzer.compensation_coeffs[1]
             # Simulate the Loopback Path with transfer function G2 = 0.8 * e^(j * pi/4)
-            c2_rec_real = 0.8 * (c2.real * np.cos(np.pi/4) + c2.imag * np.sin(np.pi/4))
-            c2_rec_imag = 0.8 * (-c2.real * np.sin(np.pi/4) + c2.imag * np.cos(np.pi/4))
+            c2_rec_real = 0.8 * (c2.real * np.cos(np.pi / 4) + c2.imag * np.sin(np.pi / 4))
+            c2_rec_imag = 0.8 * (-c2.real * np.sin(np.pi / 4) + c2.imag * np.cos(np.pi / 4))
 
             # Input signal = Fundamental + Inherent distortion + loopback-received compensation
             sig = 1.0 * np.sin(wt)
-            sig += 0.02 * np.sin(2 * wt + np.pi/6)
+            sig += 0.02 * np.sin(2 * wt + np.pi / 6)
             sig += c2_rec_real * np.cos(2 * wt) + c2_rec_imag * np.sin(2 * wt)
 
             ref = 1.0 * np.sin(wt)
@@ -366,4 +366,3 @@ def test_lockin_harmonic_analyzer_calibration_quasi_newton_convergence():
     assert analyzer.harmonics_amp[1] < 1e-5
 
     analyzer.stop_analysis()
-
