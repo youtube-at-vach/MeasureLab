@@ -158,7 +158,9 @@
     "Averaged Signal (N={0})": "Averaged Signal (N={0})",
     "Averages:": "Averages:",
     "Averaging Time (s)": "Averaging Time (s)",
+    "Averaging Mode:": "Averaging Mode:",
     "Averaging:": "Averaging:",
+
     "Avg": "Avg",
     "Avg Count (KF-Q & Display):": "Avg Count (KF-Q & Display):",
     "Avg Count:": "Avg Count:",
@@ -528,6 +530,8 @@
     "Fast (10Hz)": "Fast (10Hz)",
     "Fast (4096 samples)": "Fast (4096 samples)",
     "Fast (Realtime)": "Fast (Realtime)",
+    "Fast (EMA)": "Fast (EMA)",
+
     "File && Analysis": "File && Analysis",
     "Filter": "Filter",
     "Filter Response": "Filter Response",
@@ -670,7 +674,9 @@
     "Include Musical Scale": "Include Musical Scale",
     "Include Scan Targets": "Include Scan Targets",
     "Independent Columns": "Independent Columns",
+    "Infinite (Accumulate)": "Infinite (Accumulate)",
     "Inductance": "Inductance",
+
     "Info": "Info",
     "Initializing application...": "Initializing application...",
     "Input & Signal Detection": "Input & Signal Detection",
@@ -985,6 +991,9 @@
     "Nominal Rate (Hz):": "Nominal Rate (Hz):",
     "None": "None",
     "None (20Hz-20kHz)": "None (20Hz-20kHz)",
+    "None (Instant)": "None (Instant)",
+    "None (Raw)": "None (Raw)",
+
     "Normal": "Normal",
     "Normal View": "Normal View",
     "Normalize (Align Peaks)": "Normalize (Align Peaks)",
@@ -1207,7 +1216,9 @@
     "Resistance (R) / Reactance (X)": "Resistance (R) / Reactance (X)",
     "Resolution:": "Resolution:",
     "Resonance:": "Resonance:",
+    "Response Smoothing:": "Response Smoothing:",
     "Restart Required": "Restart Required",
+
     "Results": "Results",
     "Right": "Right",
     "Right (CH2)": "Right (CH2)",
@@ -1350,7 +1361,9 @@
     "Slow (131072 samples)": "Slow (131072 samples)",
     "Slow (2Hz)": "Slow (2Hz)",
     "Slow (5m)": "Slow (5m)",
+    "Slow (EMA)": "Slow (EMA)",
     "Smooth Lines": "Smooth Lines",
+
     "Smoothing:": "Smoothing:",
     "Snap to Bin Center": "Snap to Bin Center",
     "Snap to Bin:": "Snap to Bin:",

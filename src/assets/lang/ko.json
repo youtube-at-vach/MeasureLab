@@ -158,7 +158,9 @@
     "Averaged Signal (N={0})": "평균 신호 (N={0})",
     "Averages:": "평균:",
     "Averaging Time (s)": "평균 시간 (초)",
+    "Averaging Mode:": "Averaging Mode:",
     "Averaging:": "평균화:",
+
     "Avg": "평균",
     "Avg Count (KF-Q & Display):": "평균 횟수 (KF-Q & 표시):",
     "Avg Count:": "평균 횟수:",
@@ -528,6 +530,8 @@
     "Fast (10Hz)": "빠름 (10Hz)",
     "Fast (4096 samples)": "빠름 (4096 샘플)",
     "Fast (Realtime)": "빠름 (실시간)",
+    "Fast (EMA)": "Fast (EMA)",
+
     "File && Analysis": "파일 && 분석",
     "Filter": "필터",
     "Filter Response": "필터 응답",
@@ -670,7 +674,9 @@
     "Include Musical Scale": "음계 포함",
     "Include Scan Targets": "스캔 대상 포함",
     "Independent Columns": "Independent Columns",
+    "Infinite (Accumulate)": "Infinite (Accumulate)",
     "Inductance": "인덕턴스",
+
     "Info": "Info",
     "Initializing application...": "애플리케이션 초기화 중...",
     "Input & Signal Detection": "입력 및 신호 감지",
@@ -985,6 +991,9 @@
     "Nominal Rate (Hz):": "공칭 속도 (Hz):",
     "None": "없음",
     "None (20Hz-20kHz)": "없음 (20Hz-20kHz)",
+    "None (Instant)": "None (Instant)",
+    "None (Raw)": "None (Raw)",
+
     "Normal": "보통",
     "Normal View": "일반 보기",
     "Normalize (Align Peaks)": "Normalize (Align Peaks)",
@@ -1207,7 +1216,8 @@
     "Resistance (R) / Reactance (X)": "저항 (R) / 리액턴스 (X)",
     "Resolution:": "해상도:",
     "Resonance:": "공진:",
-    "Restart Required": "재시작 필요",
+    "Response Smoothing:": "응답 스무딩:",
+    "Restart Required": "재시작이 필요합니다",
     "Results": "결과",
     "Right": "오른쪽",
     "Right (CH2)": "오른쪽 (CH2)",
@@ -1350,7 +1360,9 @@
     "Slow (131072 samples)": "느림 (131072 샘플)",
     "Slow (2Hz)": "느림 (2Hz)",
     "Slow (5m)": "느림 (5분)",
+    "Slow (EMA)": "Slow (EMA)",
     "Smooth Lines": "부드러운 선",
+
     "Smoothing:": "스무딩:",
     "Snap to Bin Center": "빈 센터에 스냅",
     "Snap to Bin:": "빈에 스냅:",

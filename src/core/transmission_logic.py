@@ -532,3 +532,38 @@ def track_jitter_fractional(
         fractional_corr = 0.0
 
     return best_integer_offset, float(fractional_corr), float(est_delay)
+
+
+def apply_octave_smoothing(freqs: np.ndarray, mag_db: np.ndarray, fraction: float) -> np.ndarray:
+    """
+    Applies fractional octave smoothing (e.g., 1/3, 1/12, 1/24) to a magnitude spectrum in dB.
+    Uses variable-width moving average along the frequency axis.
+    """
+    if fraction <= 0:
+        return mag_db
+
+    smoothed = np.zeros_like(mag_db)
+    num_points = len(freqs)
+
+    # Octave bandwidth factor: 2^(1 / (2 * fraction))
+    factor = 2.0 ** (1.0 / (2.0 * fraction))
+
+    for i in range(num_points):
+        f = freqs[i]
+        if f <= 0:
+            smoothed[i] = mag_db[i]
+            continue
+
+        f_min = f / factor
+        f_max = f * factor
+
+        # Find indices within [f_min, f_max]
+        indices = np.where((freqs >= f_min) & (freqs <= f_max))[0]
+
+        if len(indices) > 0:
+            smoothed[i] = np.mean(mag_db[indices])
+        else:
+            smoothed[i] = mag_db[i]
+
+    return smoothed
+

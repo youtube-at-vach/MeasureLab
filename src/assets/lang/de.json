@@ -158,7 +158,9 @@
     "Averaged Signal (N={0})": "Gemitteltes Signal (N={0})",
     "Averages:": "Mittelungen:",
     "Averaging Time (s)": "Mittelungszeit (s)",
+    "Averaging Mode:": "Averaging Mode:",
     "Averaging:": "Mittelung:",
+
     "Avg": "Mittelwert",
     "Avg Count (KF-Q & Display):": "Mittelungsanzahl (KF-Q & Anzeige):",
     "Avg Count:": "Mittelungen:",
@@ -528,6 +530,8 @@
     "Fast (10Hz)": "Schnell (10Hz)",
     "Fast (4096 samples)": "Schnell (4096 Samples)",
     "Fast (Realtime)": "Schnell (Echtzeit)",
+    "Fast (EMA)": "Fast (EMA)",
+
     "File && Analysis": "Datei && Analyse",
     "Filter": "Filter",
     "Filter Response": "Filterantwort",
@@ -670,7 +674,9 @@
     "Include Musical Scale": "Tonleiter einschließen",
     "Include Scan Targets": "Scan-Ziele einschließen",
     "Independent Columns": "Independent Columns",
+    "Infinite (Accumulate)": "Infinite (Accumulate)",
     "Inductance": "Induktivität",
+
     "Info": "Info",
     "Initializing application...": "Anwendung wird initialisiert...",
     "Input & Signal Detection": "Eingang & Signalerkennung",
@@ -985,6 +991,9 @@
     "Nominal Rate (Hz):": "Nennrate (Hz):",
     "None": "Keine",
     "None (20Hz-20kHz)": "Keiner (20Hz-20kHz)",
+    "None (Instant)": "None (Instant)",
+    "None (Raw)": "None (Raw)",
+
     "Normal": "Normal",
     "Normal View": "Normale Ansicht",
     "Normalize (Align Peaks)": "Normalize (Align Peaks)",
@@ -1207,7 +1216,9 @@
     "Resistance (R) / Reactance (X)": "Widerstand (R) / Reaktanz (X)",
     "Resolution:": "Auflösung:",
     "Resonance:": "Resonanz:",
+    "Response Smoothing:": "Response Smoothing:",
     "Restart Required": "Neustart erforderlich",
+
     "Results": "Ergebnisse",
     "Right": "Rechts",
     "Right (CH2)": "Rechts (CH2)",
@@ -1350,7 +1361,8 @@
     "Slow (131072 samples)": "Langsam (131072 Samples)",
     "Slow (2Hz)": "Langsam (2Hz)",
     "Slow (5m)": "Langsam (5m)",
-    "Smooth Lines": "Geglättete Linien",
+    "Slow (EMA)": "Slow (EMA)",
+    "Smooth Lines": "Glatte Linien",
     "Smoothing:": "Glättung:",
     "Snap to Bin Center": "Auf Bin-Mitte einrasten",
     "Snap to Bin:": "Auf Bin einrasten:",

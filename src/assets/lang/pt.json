@@ -158,7 +158,9 @@
     "Averaged Signal (N={0})": "Sinal médio (N={0})",
     "Averages:": "Médias:",
     "Averaging Time (s)": "Tempo de média (s)",
+    "Averaging Mode:": "Averaging Mode:",
     "Averaging:": "Média:",
+
     "Avg": "Média",
     "Avg Count (KF-Q & Display):": "Número de médias (KF-Q & exibição):",
     "Avg Count:": "Média:",
@@ -528,6 +530,8 @@
     "Fast (10Hz)": "Rápido (10Hz)",
     "Fast (4096 samples)": "Rápido (4096 amostras)",
     "Fast (Realtime)": "Rápido (Tempo real)",
+    "Fast (EMA)": "Fast (EMA)",
+
     "File && Analysis": "Arquivo && Análise",
     "Filter": "Filtro",
     "Filter Response": "Resposta do filtro",
@@ -670,7 +674,9 @@
     "Include Musical Scale": "Incluir escala musical",
     "Include Scan Targets": "Incluir alvos de busca",
     "Independent Columns": "Independent Columns",
+    "Infinite (Accumulate)": "Infinite (Accumulate)",
     "Inductance": "Indutância",
+
     "Info": "Info",
     "Initializing application...": "Inicializando o aplicativo...",
     "Input & Signal Detection": "Detecção de Entrada e Sinal",
@@ -985,6 +991,9 @@
     "Nominal Rate (Hz):": "Taxa nominal (Hz):",
     "None": "Nenhum",
     "None (20Hz-20kHz)": "Nenhum (20Hz-20kHz)",
+    "None (Instant)": "None (Instant)",
+    "None (Raw)": "None (Raw)",
+
     "Normal": "Normal",
     "Normal View": "Vista normal",
     "Normalize (Align Peaks)": "Normalize (Align Peaks)",
@@ -1207,7 +1216,8 @@
     "Resistance (R) / Reactance (X)": "Resistência (R) / Reatância (X)",
     "Resolution:": "Resolução:",
     "Resonance:": "Ressonância:",
-    "Restart Required": "Reinicialização Necessária",
+    "Response Smoothing:": "Response Smoothing:",
+    "Restart Required": "Reinicialização necessária",
     "Results": "Resultados",
     "Right": "Direita",
     "Right (CH2)": "Direita (CH2)",
@@ -1350,7 +1360,9 @@
     "Slow (131072 samples)": "Lento (131072 amostras)",
     "Slow (2Hz)": "Lento (2Hz)",
     "Slow (5m)": "Lento (5m)",
+    "Slow (EMA)": "Slow (EMA)",
     "Smooth Lines": "Linhas suaves",
+
     "Smoothing:": "Suavização:",
     "Snap to Bin Center": "Ajustar ao centro do bin",
     "Snap to Bin:": "Ajustar ao bin:",

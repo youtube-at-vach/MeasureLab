@@ -90,6 +90,15 @@ class TransmissionAnalyzer(MeasurementModule):
         self.freq_resp_x = np.linspace(20, 20000, 513)
         self.freq_resp_y = np.zeros(513, dtype=np.float32)
 
+        # Smoothing and Averaging Settings
+        self.smooth_mode = 12  # Defaults to 1/12 Octave (options: 0, 3, 6, 12, 24)
+        self.averaging_mode = "fast"  # Options: "none", "fast", "slow", "infinite"
+        
+        # Averaged buffers to persist state across frames
+        self.avg_impulse_response = np.zeros(1024, dtype=np.float32)
+        self.avg_freq_resp_y = np.zeros(513, dtype=np.float32)
+
+
         # Scrolling History Trends
         self.display_history_len = 150
         self.max_history_len = 300  # Warmup buffer to avoid EMA edge transient effects
@@ -165,6 +174,9 @@ class TransmissionAnalyzer(MeasurementModule):
 
             self.impulse_response.fill(0)
             self.freq_resp_y.fill(0)
+            self.avg_impulse_response.fill(0)
+            self.avg_freq_resp_y.fill(0)
+
 
             # Clear Trends
             self.gain_trend.clear()
@@ -591,12 +603,43 @@ class TransmissionAnalyzer(MeasurementModule):
         peak_idx = np.argmax(np.abs(h))
         start_idx = max(0, peak_idx - 128)
         end_idx = min(len(h), start_idx + 512)
-        self.impulse_response = h[start_idx:end_idx]
+        h_truncated = h[start_idx:end_idx]
 
         # 2b. Frequency Response
         freqs, mag_db = extract_frequency_response(rx_block, aligned_tx, self.audio_engine.sample_rate)
         self.freq_resp_x = freqs
-        self.freq_resp_y = mag_db
+
+        # Apply Time Domain / Spectral Averaging (EMA)
+        if self.averaging_mode == "none":
+            alpha = 1.0
+        elif self.averaging_mode == "fast":
+            alpha = 0.3
+        elif self.averaging_mode == "slow":
+            alpha = 0.05
+        elif self.averaging_mode == "infinite":
+            alpha = 0.005
+        else:
+            alpha = 0.3
+
+        if np.all(self.avg_impulse_response == 0):
+            self.avg_impulse_response = h_truncated.copy()
+        else:
+            if len(self.avg_impulse_response) == len(h_truncated):
+                self.avg_impulse_response = alpha * h_truncated + (1.0 - alpha) * self.avg_impulse_response
+            else:
+                self.avg_impulse_response = h_truncated.copy()
+
+        if np.all(self.avg_freq_resp_y == 0):
+            self.avg_freq_resp_y = mag_db.copy()
+        else:
+            if len(self.avg_freq_resp_y) == len(mag_db):
+                self.avg_freq_resp_y = alpha * mag_db + (1.0 - alpha) * self.avg_freq_resp_y
+            else:
+                self.avg_freq_resp_y = mag_db.copy()
+
+        self.impulse_response = self.avg_impulse_response
+        self.freq_resp_y = self.avg_freq_resp_y
+
 
         # 2c. EVM calculation
         evm_val = calculate_evm(rx_block, aligned_tx)
@@ -725,8 +768,28 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.combo_depth.currentIndexChanged.connect(self.on_settings_changed)
         form_layout.addRow(tr("Bit Depth:"), self.combo_depth)
 
+        self.combo_smooth_res = QComboBox()
+        self.combo_smooth_res.addItem(tr("None (Raw)"), 0)
+        self.combo_smooth_res.addItem(tr("1/24 Octave"), 24)
+        self.combo_smooth_res.addItem(tr("1/12 Octave"), 12)
+        self.combo_smooth_res.addItem(tr("1/6 Octave"), 6)
+        self.combo_smooth_res.addItem(tr("1/3 Octave"), 3)
+        self.combo_smooth_res.setCurrentIndex(2)  # Defaults to 1/12
+        self.combo_smooth_res.currentIndexChanged.connect(self.on_smoothing_changed)
+        form_layout.addRow(tr("Response Smoothing:"), self.combo_smooth_res)
+
+        self.combo_avg_res = QComboBox()
+        self.combo_avg_res.addItem(tr("None (Instant)"), "none")
+        self.combo_avg_res.addItem(tr("Fast (EMA)"), "fast")
+        self.combo_avg_res.addItem(tr("Slow (EMA)"), "slow")
+        self.combo_avg_res.addItem(tr("Infinite (Accumulate)"), "infinite")
+        self.combo_avg_res.setCurrentIndex(1)  # Defaults to Fast (EMA)
+        self.combo_avg_res.currentIndexChanged.connect(self.on_averaging_changed)
+        form_layout.addRow(tr("Averaging Mode:"), self.combo_avg_res)
+
         settings_group.setLayout(form_layout)
         controls_layout.addWidget(settings_group)
+
 
         controls_layout.addStretch()
         main_layout.addWidget(self.left_panel)
@@ -918,6 +981,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.module.gain_trend.clear()
             self.module.ber_trend.clear()
             self.module.jitter_trend.clear()
+            self.module.avg_impulse_response.fill(0)
+            self.module.avg_freq_resp_y.fill(0)
+
 
     def on_mode_changed(self, idx):
         mode = self.combo_mode.currentData()
@@ -968,8 +1034,19 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         if is_running:
             self.module.start_analysis()
 
+    def on_smoothing_changed(self):
+        self.module.smooth_mode = self.combo_smooth_res.currentData()
+
+    def on_averaging_changed(self):
+        self.module.averaging_mode = self.combo_avg_res.currentData()
+        # Reset averaging history on mode change to avoid old state contamination
+        with self.module._lock:
+            self.module.avg_impulse_response.fill(0)
+            self.module.avg_freq_resp_y.fill(0)
+
     def on_trend_changed(self):
         self.update_trend_axes()
+
 
     def update_trend_axes(self):
         trend = self.combo_trend.currentData()
@@ -1084,12 +1161,19 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.plot_imp.setYRange(min_y, max_y)
 
         # Update Frequency Response plot (Tab 3)
-        freq_y = self.module.freq_resp_y
+        freq_y = self.module.freq_resp_y.copy()
         freq_x = self.module.freq_resp_x
         # Avoid 0Hz to prevent log10(0) coordinate issues inside pyqtgraph
         valid_mask = freq_x > 0
+
+        # Apply fractional octave smoothing
+        if self.module.smooth_mode > 0:
+            from src.core.transmission_logic import apply_octave_smoothing
+            freq_y = apply_octave_smoothing(freq_x, freq_y, self.module.smooth_mode)
+
         self.freq_curve.setData(freq_x[valid_mask], freq_y[valid_mask])
         self.plot_freq.setYRange(-80.0, 10.0)
+
 
         # Update Jitter & Trends plot (Tab 4)
         trend = self.combo_trend.currentData()

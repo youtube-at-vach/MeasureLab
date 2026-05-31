@@ -158,7 +158,9 @@
     "Averaged Signal (N={0})": "Усредненный сигнал (N={0})",
     "Averages:": "Усреднений:",
     "Averaging Time (s)": "Время усреднения (с)",
+    "Averaging Mode:": "Averaging Mode:",
     "Averaging:": "Усреднение:",
+
     "Avg": "Средн",
     "Avg Count (KF-Q & Display):": "Кол-во усреднений (KF-Q и отображение):",
     "Avg Count:": "Усреднение:",
@@ -528,6 +530,8 @@
     "Fast (10Hz)": "Быстро (10Гц)",
     "Fast (4096 samples)": "Быстро (4096 отсчетов)",
     "Fast (Realtime)": "Быстро (Реальное время)",
+    "Fast (EMA)": "Fast (EMA)",
+
     "File && Analysis": "Файл && Анализ",
     "Filter": "Фильтр",
     "Filter Response": "АЧХ фильтра",
@@ -670,7 +674,9 @@
     "Include Musical Scale": "Включить музыкальную шкалу",
     "Include Scan Targets": "Включить цели сканирования",
     "Independent Columns": "Independent Columns",
+    "Infinite (Accumulate)": "Infinite (Accumulate)",
     "Inductance": "Индуктивность",
+
     "Info": "Info",
     "Initializing application...": "Инициализация приложения...",
     "Input & Signal Detection": "Вход и обнаружение сигнала",
@@ -985,6 +991,9 @@
     "Nominal Rate (Hz):": "Номинальная частота (Гц):",
     "None": "Нет",
     "None (20Hz-20kHz)": "Нет (20 Гц - 20 кГц)",
+    "None (Instant)": "None (Instant)",
+    "None (Raw)": "None (Raw)",
+
     "Normal": "Нормальный",
     "Normal View": "Обычный вид",
     "Normalize (Align Peaks)": "Normalize (Align Peaks)",
@@ -1207,7 +1216,9 @@
     "Resistance (R) / Reactance (X)": "Сопротивление (R) / Реактивность (X)",
     "Resolution:": "Разрешение:",
     "Resonance:": "Резонанс:",
+    "Response Smoothing:": "Response Smoothing:",
     "Restart Required": "Требуется перезапуск",
+
     "Results": "Результаты",
     "Right": "Правый",
     "Right (CH2)": "Правый (CH2)",
@@ -1350,7 +1361,9 @@
     "Slow (131072 samples)": "Медленно (131072 отсчетов)",
     "Slow (2Hz)": "Медленно (2Гц)",
     "Slow (5m)": "Медленно (5м)",
+    "Slow (EMA)": "Slow (EMA)",
     "Smooth Lines": "Сглаженные линии",
+
     "Smoothing:": "Сглаживание:",
     "Snap to Bin Center": "Привязать к центру бина",
     "Snap to Bin:": "Привязать к бину:",
