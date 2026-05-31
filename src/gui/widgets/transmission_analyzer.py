@@ -327,6 +327,13 @@ class TransmissionAnalyzer(MeasurementModule):
 
                     # Calculate correct delay estimate modulo max_buffer_len to avoid wrap discrepancy
                     delay_est = (tx_w - block_size - offset) % self.max_buffer_len
+                    # Prevent wrap discrepancy by keeping the delay within the PRBS period boundary.
+                    # For very long periods (PRBS-23/31), we cap it at the reference cycle length to ensure
+                    # the lock offset stays close to the write pointer. This prevents catastrophic boundary
+                    # un-sync when the ring buffer wraps around.
+                    sync_period = min(self.ref_cycle_len, len(self.ref_cycle))
+                    delay_est = delay_est % sync_period
+
                     self.delay_samples = delay_est  # Save baseline physical loopback delay samples
                     self.initial_delay_samples = delay_est  # Save baseline for cumulative drift tracking
 
