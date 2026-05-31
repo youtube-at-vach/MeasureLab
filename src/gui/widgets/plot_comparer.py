@@ -1211,10 +1211,11 @@ class PlotComparerWidget(QWidget):
             active_domain = self.filter_combo.currentData()
             x_unit = "Hz" if active_domain == "frequency" else "s" if active_domain == "time" else ""
 
-            visible_traces = []
-            for tid, trace in self._get_domain_traces(active_domain).items():
-                if tid in self.trace_settings and self.trace_settings[tid]["visible"]:
-                    visible_traces.append((tid, trace))
+            visible_traces = [
+                (tid, trace)
+                for tid, trace in self._get_domain_traces(active_domain).items()
+                if tid in self.trace_settings and self.trace_settings[tid]["visible"]
+            ]
 
             use_khz = False
             if visible_traces:
