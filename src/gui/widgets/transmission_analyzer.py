@@ -861,6 +861,15 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.combo_trend = QComboBox()
         self.combo_trend.currentIndexChanged.connect(self.on_trend_changed)
         trend_ctrl_row.addWidget(self.combo_trend)
+
+        trend_ctrl_row.addWidget(QLabel(tr("Smoothing:")))
+        self.combo_smooth = QComboBox()
+        self.combo_smooth.addItem(tr("None"), "none")
+        self.combo_smooth.addItem(tr("Light (EMA)"), "light")
+        self.combo_smooth.addItem(tr("Strong (EMA)"), "strong")
+        self.combo_smooth.currentIndexChanged.connect(self.on_trend_changed)
+        trend_ctrl_row.addWidget(self.combo_smooth)
+
         trend_ctrl_row.addStretch()
         tab_trend_layout.addLayout(trend_ctrl_row)
 
@@ -868,7 +877,8 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.plot_trend.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
         self.plot_trend.setLabel("bottom", tr("History Time (Blocks)"))
         self.plot_trend.showGrid(x=True, y=True, alpha=0.3)
-        self.trend_curve = self.plot_trend.plot(pen=pg.mkPen("#f1c40f", width=2.0))
+        self.trend_curve = self.plot_trend.plot(pen=pg.mkPen("#95a5a6", width=1.0))
+        self.trend_smooth_curve = self.plot_trend.plot(pen=pg.mkPen("#f1c40f", width=2.5))
         tab_trend_layout.addWidget(self.plot_trend)
         self.tabs.addTab(self.tab_trends, tr("Trends & Jitter"))
 
@@ -966,13 +976,20 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             return
         if trend == "jitter":
             self.plot_trend.setLabel("left", tr("Jitter / Drift (samples)"))
-            self.trend_curve.setPen(pg.mkPen("#f1c40f", width=2.0))
         elif trend == "gain":
             self.plot_trend.setLabel("left", tr("Gain Deviation (dB)"))
-            self.trend_curve.setPen(pg.mkPen("#3498db", width=2.0))
         elif trend == "ber":
             self.plot_trend.setLabel("left", tr("Instantaneous BER (%)"))
-            self.trend_curve.setPen(pg.mkPen("#e74c3c", width=2.0))
+
+    def calculate_ema(self, data: list, alpha: float) -> np.ndarray:
+        if not data:
+            return np.array([], dtype=np.float32)
+        arr = np.array(data, dtype=np.float32)
+        ema = np.zeros_like(arr)
+        ema[0] = arr[0]
+        for i in range(1, len(arr)):
+            ema[i] = alpha * arr[i] + (1 - alpha) * ema[i - 1]
+        return ema
 
     def update_display(self):
         res = self.module.process_data()
@@ -1065,21 +1082,49 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # Update Jitter & Trends plot (Tab 4)
         trend = self.combo_trend.currentData()
+        smooth_mode = self.combo_smooth.currentData()
+
+        # Define dynamic coloring for Raw vs Smooth lines
         if trend == "jitter":
             y_data = list(self.module.jitter_trend)
+            raw_color = "#7f8c8d"       # Low-contrast gray
+            smooth_color = "#f1c40f"    # Vibrant yellow
         elif trend == "gain":
             y_data = list(self.module.gain_trend)
+            raw_color = "#7f8c8d"       # Low-contrast gray
+            smooth_color = "#3498db"    # Vibrant blue
         elif trend == "ber":
             y_data = list(self.module.ber_trend)
+            raw_color = "#7f8c8d"       # Low-contrast gray
+            smooth_color = "#e74c3c"    # Vibrant red
         else:
             y_data = []
+            raw_color = "#95a5a6"
+            smooth_color = "#f1c40f"
 
         if len(y_data) > 0:
-            self.trend_curve.setData(np.arange(len(y_data)), np.array(y_data))
+            x_data = np.arange(len(y_data))
+            raw_arr = np.array(y_data, dtype=np.float32)
+
+            if smooth_mode == "none":
+                # Only show raw curve, set its color to vibrant and hide smooth curve
+                self.trend_curve.setPen(pg.mkPen(smooth_color, width=2.0))
+                self.trend_curve.setData(x_data, raw_arr)
+                self.trend_smooth_curve.setData([], [])
+            else:
+                # Raw curve is thin gray
+                self.trend_curve.setPen(pg.mkPen(raw_color, width=1.0))
+                self.trend_curve.setData(x_data, raw_arr)
+
+                # Smooth curve is thick vibrant color
+                alpha = 0.3 if smooth_mode == "light" else 0.1
+                smooth_arr = self.calculate_ema(y_data, alpha)
+                self.trend_smooth_curve.setPen(pg.mkPen(smooth_color, width=2.5))
+                self.trend_smooth_curve.setData(x_data, smooth_arr)
+
             self.plot_trend.setXRange(0, self.module.history_len)
             min_y = np.min(y_data)
             max_y = np.max(y_data)
-            max_y - min_y
             self.plot_trend.setYRange(min_y - 0.1 * abs(min_y) - 0.05, max_y + 0.1 * abs(max_y) + 0.05)
 
     def update_compact_layout(self):
