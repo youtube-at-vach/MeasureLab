@@ -221,7 +221,17 @@ class AudioCalc:
         on_invalid_sos: "bypass" (return signal) or "silence" (return zeros).
         """
         if len(signal) <= min_len:
-            return signal
+            import logging
+            logger = logging.getLogger("AudioCalc")
+            logger.warning(
+                "Signal length (%d) is too short for the filter (required: > %d). "
+                "Applying fallback behavior '%s'.",
+                len(signal), min_len, on_invalid_sos
+            )
+            if on_invalid_sos == "silence":
+                return np.zeros_like(signal)
+            else:
+                return signal
 
         nyquist = 0.5 * sampling_rate
         sos = sos_factory(nyquist)
@@ -791,7 +801,9 @@ class AudioCalc:
         harmonic_results = []
         harmonic_amplitudes_linear = []
 
-        for i, h_freq, h_min, h_max, is_valid in zip(orders, harmonic_freqs, h_idx_mins, h_idx_maxs, valid_ranges, strict=False):
+        for i, h_freq, h_min, h_max, is_valid in zip(
+            orders, harmonic_freqs, h_idx_mins, h_idx_maxs, valid_ranges, strict=False
+        ):
             if is_valid:
                 h_peak_idx = h_min + amplitude_spectrum[h_min:h_max].argmax()
                 h_amp = amplitude_spectrum[h_peak_idx]

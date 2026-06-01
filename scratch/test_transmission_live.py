@@ -6,11 +6,12 @@ import logging
 sys.path.append("/Users/vach/MeasureLab")
 
 # Setup clean basic logging to stdout
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("test_transmission_live")
 
 from src.core.audio_engine import AudioEngine  # noqa: E402
 from src.gui.widgets.transmission_analyzer import TransmissionAnalyzer  # noqa: E402
+
 
 def run_live_test():
     logger.info("Initializing AudioEngine...")
@@ -55,10 +56,7 @@ def run_live_test():
                 )
             else:
                 # None means not enough samples or lost lock
-                logger.info(
-                    f"Step {step:03d} | Locked: {analyzer.is_locked} | "
-                    f"Reason: {analyzer.results['reason']}"
-                )
+                logger.info(f"Step {step:03d} | Locked: {analyzer.is_locked} | Reason: {analyzer.results['reason']}")
     except KeyboardInterrupt:
         logger.info("Test interrupted by user.")
     finally:
@@ -66,6 +64,7 @@ def run_live_test():
         analyzer.stop_analysis()
         engine.stop_stream()
         logger.info("Done.")
+
 
 if __name__ == "__main__":
     run_live_test()

@@ -5,6 +5,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -187,6 +188,13 @@ class ArbitraryHarmonicWidget(QWidget):
         self.module = module
         self._block_updates = False
         self.init_ui()
+
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plots)
         self.timer.setInterval(100)  # 10 Hz update for visual stability
@@ -203,7 +211,6 @@ class ArbitraryHarmonicWidget(QWidget):
         self.btn_toggle = QPushButton(tr("Start Generating"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle_generating)
-        self.btn_toggle.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         left_panel.addWidget(self.btn_toggle)
 
         # QTabWidget to organize controls
@@ -373,6 +380,39 @@ class ArbitraryHarmonicWidget(QWidget):
         else:
             self.module.stop_generation()
             self.btn_toggle.setText(tr("Start Generating"))
+        self.apply_theme()
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.btn_toggle.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
 
     def on_fundamental_changed(self):
         with self.module.lock:

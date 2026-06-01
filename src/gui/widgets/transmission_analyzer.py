@@ -5,6 +5,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFormLayout,
     QGroupBox,
@@ -99,7 +100,6 @@ class TransmissionAnalyzer(MeasurementModule):
         self.avg_impulse_response = np.zeros(1024, dtype=np.float32)
         self.avg_freq_resp_y = np.zeros(513, dtype=np.float32)
 
-
         # Scrolling History Trends
         self.display_history_len = 150
         self.max_history_len = 300  # Warmup buffer to avoid EMA edge transient effects
@@ -177,7 +177,6 @@ class TransmissionAnalyzer(MeasurementModule):
             self.freq_resp_y.fill(0)
             self.avg_impulse_response.fill(0)
             self.avg_freq_resp_y.fill(0)
-
 
             # Clear Trends
             self.gain_trend.clear()
@@ -641,7 +640,6 @@ class TransmissionAnalyzer(MeasurementModule):
         self.impulse_response = self.avg_impulse_response
         self.freq_resp_y = self.avg_freq_resp_y
 
-
         # 2c. EVM calculation
         if self.mode == "Analog":
             evm_val = calculate_equalized_evm(rx_block, aligned_tx)
@@ -706,6 +704,12 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.timer.setInterval(200)  # 5Hz updates to reduce CPU overhead and timing drift
 
         self.init_ui()
+
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -793,7 +797,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         settings_group.setLayout(form_layout)
         controls_layout.addWidget(settings_group)
-
 
         controls_layout.addStretch()
         main_layout.addWidget(self.left_panel)
@@ -963,7 +966,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.timer.start()
             self.btn_toggle.setText(tr("Stop Analyzer"))
             self.lbl_status.setText(tr("WAITING FOR SYNC..."))
-            self.lbl_status.setStyleSheet("color: #f39c12;")
             self.lbl_reason.setText(tr("Correlating incoming signal..."))
             self.tabs.setEnabled(True)
         else:
@@ -971,10 +973,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.timer.stop()
             self.btn_toggle.setText(tr("Start Diagnostics"))
             self.lbl_status.setText(tr("IDLE"))
-            self.lbl_status.setStyleSheet("color: #bdc3c7;")
-            self.lbl_reason.setText(tr("Start analysis to evaluate transmission characteristics."))
             self.lbl_stat_delay.setText(tr("Delay: -"))
             self.lbl_stat_evm.setText(tr("EVM: -"))
+        self.apply_theme()
 
     def on_reset_stats(self):
         with self.module._lock:
@@ -987,7 +988,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.module.jitter_trend.clear()
             self.module.avg_impulse_response.fill(0)
             self.module.avg_freq_resp_y.fill(0)
-
 
     def on_mode_changed(self, idx):
         mode = self.combo_mode.currentData()
@@ -1051,7 +1051,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
     def on_trend_changed(self):
         self.update_trend_axes()
 
-
     def update_trend_axes(self):
         trend = self.combo_trend.currentData()
         if not trend:
@@ -1073,12 +1072,102 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             ema[i] = alpha * arr[i] + (1 - alpha) * ema[i - 1]
         return ema
 
+    def get_card_color(self, theme_name: str) -> str:
+        status_text = self.lbl_status.text()
+        if "WAITING" in status_text or "SYNC" in status_text:
+            return "#4a3e1b" if theme_name == "dark" else "#fff9c4"
+        elif "BIT-PERFECT" in status_text or "FIDELITY" in status_text:
+            return "#1b4d3e" if theme_name == "dark" else "#e8f5e9"
+        elif "ALTERED" in status_text or "DISTORTION" in status_text:
+            return "#5c1d1d" if theme_name == "dark" else "#ffebee"
+        elif "ANALOG" in status_text:
+            return "#4a3e1b" if theme_name == "dark" else "#fffde7"
+        else:
+            return "#2c3e50" if theme_name == "dark" else "#eceff1"
+
+    def get_status_text_color(self, theme_name: str) -> str:
+        status_text = self.lbl_status.text()
+        if "WAITING" in status_text or "SYNC" in status_text:
+            return "#f39c12" if theme_name == "dark" else "#f57f17"
+        elif "BIT-PERFECT" in status_text or "FIDELITY" in status_text:
+            return "#2ecc71" if theme_name == "dark" else "#2e7d32"
+        elif "ALTERED" in status_text or "DISTORTION" in status_text:
+            return "#e74c3c" if theme_name == "dark" else "#c62828"
+        elif "ANALOG" in status_text:
+            return "#f1c40f" if theme_name == "dark" else "#f57f17"
+        else:
+            return "#bdc3c7" if theme_name == "dark" else "#616161"
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.btn_toggle.isChecked()
+
+        if theme_name == "dark":
+            self.tabs.setStyleSheet(
+                "QTabWidget::pane { border: 1px solid #555; border-radius: 4px; padding: 4px; background-color: #222; }"
+                "QTabBar::tab { background: #333; color: #BBB; border: 1px solid #555; border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
+                "QTabBar::tab:selected { background: #222; color: white; border-bottom-color: #222; font-weight: bold; }"
+            )
+            self.lbl_reason.setStyleSheet("color: #ecf0f1; font-size: 12px;")
+            self.lbl_stat_delay.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+            self.lbl_stat_evm.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; height: 34px; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; height: 34px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            self.tabs.setStyleSheet(
+                "QTabWidget::pane { border: 1px solid #CCC; border-radius: 4px; padding: 4px; background-color: #FFF; }"
+                "QTabBar::tab { background: #E0E0E0; color: #333; border: 1px solid #CCC; border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
+                "QTabBar::tab:selected { background: #FFF; color: black; border-bottom-color: #FFF; font-weight: bold; }"
+            )
+            self.lbl_reason.setStyleSheet("color: #333333; font-size: 12px;")
+            self.lbl_stat_delay.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
+            self.lbl_stat_evm.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
+
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; height: 34px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; height: 34px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
+
+        card_color = self.get_card_color(theme_name)
+        text_color = self.get_status_text_color(theme_name)
+        self.card_status.setStyleSheet(f"background-color: {card_color}; border-radius: 6px;")
+        self.lbl_status.setStyleSheet(f"color: {text_color}; font-weight: bold;")
+
     def update_display(self):
         res = self.module.process_data()
+        theme_name = "dark"
+        if hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+            if theme_name == "system":
+                theme_name = self.app.theme_manager.get_effective_theme()
+
         if res is None:
             if not self.module.is_locked:
                 self.lbl_status.setText(tr("WAITING FOR SYNC..."))
-                self.lbl_status.setStyleSheet("color: #f39c12;")
+                card_color = self.get_card_color(theme_name)
+                text_color = self.get_status_text_color(theme_name)
+                self.card_status.setStyleSheet(f"background-color: {card_color}; border-radius: 6px;")
+                self.lbl_status.setStyleSheet(f"color: {text_color}; font-weight: bold;")
                 self.lbl_reason.setText(self.module.results["reason"])
             return
 
@@ -1090,27 +1179,22 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             is_perfect = res["bit_perfect"]
             if is_perfect:
                 self.lbl_status.setText(tr("✔ BIT-PERFECT"))
-                self.lbl_status.setStyleSheet("color: #2ecc71; font-weight: bold;")
-                self.card_status.setStyleSheet("background-color: #1b4d3e; border-radius: 6px;")
             else:
                 self.lbl_status.setText(tr("❌ ALTERED"))
-                self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
-                self.card_status.setStyleSheet("background-color: #5c1d1d; border-radius: 6px;")
         else:
             # Analog mode color indicator (based on EVM thresholds)
             evm = res["evm"]
             if evm < 1.0:
                 self.lbl_status.setText(tr("✔ HIGH FIDELITY"))
-                self.lbl_status.setStyleSheet("color: #2ecc71; font-weight: bold;")
-                self.card_status.setStyleSheet("background-color: #1b4d3e; border-radius: 6px;")
             elif evm < 10.0:
                 self.lbl_status.setText(tr("▲ ANALOG PATH"))
-                self.lbl_status.setStyleSheet("color: #f1c40f; font-weight: bold;")
-                self.card_status.setStyleSheet("background-color: #4a3e1b; border-radius: 6px;")
             else:
                 self.lbl_status.setText(tr("❌ HIGH DISTORTION"))
-                self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
-                self.card_status.setStyleSheet("background-color: #5c1d1d; border-radius: 6px;")
+
+        card_color = self.get_card_color(theme_name)
+        text_color = self.get_status_text_color(theme_name)
+        self.card_status.setStyleSheet(f"background-color: {card_color}; border-radius: 6px;")
+        self.lbl_status.setStyleSheet(f"color: {text_color}; font-weight: bold;")
 
         self.lbl_reason.setText(res["reason"])
 
@@ -1173,11 +1257,11 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         # Apply fractional octave smoothing
         if self.module.smooth_mode > 0:
             from src.core.transmission_logic import apply_octave_smoothing
+
             freq_y = apply_octave_smoothing(freq_x, freq_y, self.module.smooth_mode)
 
         self.freq_curve.setData(freq_x[valid_mask], freq_y[valid_mask])
         self.plot_freq.setYRange(-80.0, 10.0)
-
 
         # Update Jitter & Trends plot (Tab 4)
         trend = self.combo_trend.currentData()

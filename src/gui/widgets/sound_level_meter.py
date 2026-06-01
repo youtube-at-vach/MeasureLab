@@ -7,6 +7,7 @@ import pyqtgraph as pg
 from scipy.signal import butter, lfilter, sosfilt
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QGridLayout,
     QGroupBox,
@@ -538,6 +539,12 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         self.module = module
         self.init_ui()
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         self.last_ln_update_time = 0.0
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
@@ -561,7 +568,6 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         self.btn_start = QPushButton(tr("Start"))
         self.btn_start.setCheckable(True)
         self.btn_start.setMinimumHeight(40)
-        self.btn_start.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.btn_start.toggled.connect(self.on_start_toggle)
         controls_layout.addWidget(self.btn_start)
 
@@ -771,12 +777,43 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
     def on_start_toggle(self, checked):
         if checked:
             self.btn_start.setText(tr("Stop"))
-            self.btn_start.setStyleSheet("background-color: #aa3333; font-weight: bold; font-size: 14px;")
             self.module.start_analysis()
         else:
             self.btn_start.setText(tr("Start"))
-            self.btn_start.setStyleSheet("font-weight: bold; font-size: 14px;")
             self.module.stop_analysis()
+        self.apply_theme()
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.btn_start.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.btn_start.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 14px; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.btn_start.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 14px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.btn_start.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 14px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.btn_start.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 14px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
 
     def update_display(self):
         # Check if stopped automatically

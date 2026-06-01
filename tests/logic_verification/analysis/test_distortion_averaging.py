@@ -37,6 +37,7 @@ class MockQHeaderView(MagicMock):
 
 
 class DummyQtWidgets:
+    QApplication = MagicMock
     QWidget = MockQWidget
     QHeaderView = MockQHeaderView
     QComboBox = MagicMock

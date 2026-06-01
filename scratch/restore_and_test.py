@@ -20,8 +20,9 @@ LEGITIMATE_IDENTICALS = [
     "Distribution",
     "Excellent",
     "Inductance",
-    "Triangle"
+    "Triangle",
 ]
+
 
 def restore_keys():
     print("--- Restoring legitimate identical keys to translation_whitelist.json ---")
@@ -43,6 +44,7 @@ def restore_keys():
         json.dump(wl_data, f, ensure_ascii=False, indent=4)
         f.write("\n")
     print("✓ Whitelist updated successfully.")
+
 
 if __name__ == "__main__":
     restore_keys()

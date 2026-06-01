@@ -315,8 +315,8 @@ def calculate_equalized_evm(rx_block: np.ndarray, tx_block: np.ndarray, regulari
     # Least squares gain scaling alignment
     scale = np.dot(rx_block, tx_eq) / dot_tx_eq
     error_vector = rx_block - scale * tx_eq
-    rms_error = np.sqrt(np.mean(error_vector ** 2))
-    rms_reference = np.sqrt(np.mean(rx_block ** 2))
+    rms_error = np.sqrt(np.mean(error_vector**2))
+    rms_reference = np.sqrt(np.mean(rx_block**2))
 
     if rms_reference < 1e-12:
         return 100.0
@@ -620,4 +620,3 @@ def apply_octave_smoothing(freqs: np.ndarray, mag_db: np.ndarray, fraction: floa
             smoothed[i] = mag_db[i]
 
     return smoothed
-

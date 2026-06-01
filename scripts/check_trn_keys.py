@@ -48,14 +48,15 @@ def main():
     parser = argparse.ArgumentParser(description="Check translation keys consistency.")
     parser.add_argument("--lax", action="store_true", help="Do not fail even if unused keys are found in en.json")
     parser.add_argument("--fix", action="store_true", help="Remove unused keys from all translation files")
-    parser.add_argument("--strict", action="store_true", help="Fail if untranslated placeholder keys are found in other languages")
+    parser.add_argument(
+        "--strict", action="store_true", help="Fail if untranslated placeholder keys are found in other languages"
+    )
     args = parser.parse_args()
 
     import json
     import re
 
     print("=== Translation Check Script ===")
-
 
     # 1. Load EN JSON (Source of Truth)
     en_path = os.path.join(LANG_DIR, "en.json")

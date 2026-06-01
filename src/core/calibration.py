@@ -49,6 +49,7 @@ class CalibrationManager:
         self._freq_cache = np.array([])
         self._mag_cache = np.array([])
         self._phase_cache = np.array([])
+        self._map_cache = (np.array([]), np.array([]), np.array([]))
         self.load()
 
     def load(self):
@@ -345,15 +346,20 @@ class CalibrationManager:
         if not self.frequency_map:
             return 0.0, 0.0
 
+        # Retrieve the cached tuple atomically
+        cache = getattr(self, "_map_cache", None)
+        if cache is None or len(cache[0]) == 0:
+            return 0.0, 0.0
+
+        freq_cache, mag_cache, phase_cache = cache
+
         # If out of range, clamp to nearest
         is_scalar = np.isscalar(freq)
         freq_arr = np.atleast_1d(freq)
 
         # Use cached numpy arrays for interpolation
-        # np.interp automatically clamps out-of-range values if left/right are not provided,
-        # but the default behavior of np.interp uses the end values of fp.
-        mag_corr = np.interp(freq_arr, self._freq_cache, self._mag_cache)
-        phase_corr = np.interp(freq_arr, self._freq_cache, self._phase_cache)
+        mag_corr = np.interp(freq_arr, freq_cache, mag_cache)
+        phase_corr = np.interp(freq_arr, freq_cache, phase_cache)
 
         if is_scalar:
             return float(mag_corr[0]), float(phase_corr[0])
@@ -364,9 +370,25 @@ class CalibrationManager:
             self._freq_cache = None
             self._mag_cache = None
             self._phase_cache = None
+            self._map_cache = (np.array([]), np.array([]), np.array([]))
             return
 
-        data = np.array(self.frequency_map)
-        self._freq_cache = data[:, 0]
-        self._mag_cache = data[:, 1]
-        self._phase_cache = data[:, 2]
+        try:
+            data = np.array(self.frequency_map)
+            freq_tmp = data[:, 0]
+            mag_tmp = data[:, 1]
+            phase_tmp = data[:, 2]
+
+            # Update legacy attributes (backward compatible, but may be accessed asynchronously)
+            self._freq_cache = freq_tmp
+            self._mag_cache = mag_tmp
+            self._phase_cache = phase_tmp
+
+            # Atomic update for thread-safe access
+            self._map_cache = (freq_tmp, mag_tmp, phase_tmp)
+        except Exception as e:
+            self.logger.error("Failed to update map cache: %s", e)
+            self._freq_cache = None
+            self._mag_cache = None
+            self._phase_cache = None
+            self._map_cache = (np.array([]), np.array([]), np.array([]))

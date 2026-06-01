@@ -86,7 +86,7 @@ translations = {
         "WAITING FOR SYNC...": "WARTE AUF SYNC...",
         "Waiting for signal...": "Warte auf Signal...",
         "Waiting for sync... (Correlation: {0:.2f})": "Warte auf Sync... (Korrelation: {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "Wellenform-EVM: {0:.3f} %"
+        "Waveform EVM: {0:.3f} %": "Wellenform-EVM: {0:.3f} %",
     },
     "fr": {
         "1/12 Octave": "1/12 d'octave",
@@ -168,7 +168,7 @@ translations = {
         "WAITING FOR SYNC...": "EN ATTENTE DE SYNC...",
         "Waiting for signal...": "En attente de signal...",
         "Waiting for sync... (Correlation: {0:.2f})": "En attente de synchronisation... (Corrélation : {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "EVM de forme d'onde : {0:.3f} %"
+        "Waveform EVM: {0:.3f} %": "EVM de forme d'onde : {0:.3f} %",
     },
     "zh": {
         "1/12 Octave": "1/12 倍频程",
@@ -250,7 +250,7 @@ translations = {
         "WAITING FOR SYNC...": "等待同步...",
         "Waiting for signal...": "等待信号...",
         "Waiting for sync... (Correlation: {0:.2f})": "等待同步... (相关性: {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "波形 EVM: {0:.3f} %"
+        "Waveform EVM: {0:.3f} %": "波形 EVM: {0:.3f} %",
     },
     "ko": {
         "1/12 Octave": "1/12 옥타브",
@@ -332,7 +332,7 @@ translations = {
         "WAITING FOR SYNC...": "동기화 대기 중...",
         "Waiting for signal...": "신호를 기다리는 중...",
         "Waiting for sync... (Correlation: {0:.2f})": "동기화 대기 중... (상관 관계: {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "파형 EVM: {0:.3f} %"
+        "Waveform EVM: {0:.3f} %": "파형 EVM: {0:.3f} %",
     },
     "es": {
         "1/12 Octave": "1/12 octava",
@@ -414,7 +414,7 @@ translations = {
         "WAITING FOR SYNC...": "ESPERANDO SYNC...",
         "Waiting for signal...": "Esperando señal...",
         "Waiting for sync... (Correlation: {0:.2f})": "Esperando sincronización... (Correlación: {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "EVM de forma de onda: {0:.3f} %"
+        "Waveform EVM: {0:.3f} %": "EVM de forma de onda: {0:.3f} %",
     },
     "ru": {
         "1/12 Octave": "1/12 октавы",
@@ -496,7 +496,7 @@ translations = {
         "WAITING FOR SYNC...": "ОЖИДАНИЕ СИНХР...",
         "Waiting for signal...": "Ожидание сигнала...",
         "Waiting for sync... (Correlation: {0:.2f})": "Ожидание синхронизации... (Корреляция: {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "EVM формы волны: {0:.3f} %"
+        "Waveform EVM: {0:.3f} %": "EVM формы волны: {0:.3f} %",
     },
     "pt": {
         "1/12 Octave": "1/12 oitava",
@@ -578,9 +578,10 @@ translations = {
         "WAITING FOR SYNC...": "AGUARDANDO SYNC...",
         "Waiting for signal...": "Aguardando sinal...",
         "Waiting for sync... (Correlation: {0:.2f})": "Aguardando sincronização... (Correlação: {0:.2f})",
-        "Waveform EVM: {0:.3f} %": "EVM de forma de onda: {0:.3f} %"
-    }
+        "Waveform EVM: {0:.3f} %": "EVM de forma de onda: {0:.3f} %",
+    },
 }
+
 
 def apply_translations():
     for lang, mapping in translations.items():
@@ -623,6 +624,7 @@ def apply_translations():
             f.write("\n")
 
         print(f"  Done. Added: {added_count}, Updated: {updated_count}")
+
 
 if __name__ == "__main__":
     apply_translations()

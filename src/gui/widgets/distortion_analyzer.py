@@ -5,6 +5,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal, QObject
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -580,6 +581,12 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.sweep_worker = None
         self.init_ui()
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         # Worker Thread Setup
         self.analysis_thread = QThread()
         self.worker = RealtimeAnalysisWorker()
@@ -868,7 +875,6 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.action_btn = QPushButton(tr("Start Measurement"))
         self.action_btn.setCheckable(True)
         self.action_btn.clicked.connect(self.on_action)
-        self.action_btn.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         btn_layout.addWidget(self.action_btn)
         return btn_layout
 
@@ -1253,6 +1259,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.timer.stop()
             self.action_btn.setText(tr("Start Measurement"))
             self.mode_combo.setEnabled(True)
+        self.apply_theme()
 
     def set_meters_mode(self, mode):
         if mode == "thd" or mode == "aes17":
@@ -1321,6 +1328,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.sweep_worker.result_ready.connect(self.on_sweep_result)
         self.sweep_worker.finished.connect(self.on_sweep_finished)
         self.sweep_worker.start()
+        self.apply_theme()
 
     def _update_sweep_chart(self):
         if not self.sweep_data:
@@ -1338,6 +1346,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.action_btn.setText(tr("Start Measurement"))
         self.action_btn.setChecked(False)
         self.mode_combo.setEnabled(True)
+        self.apply_theme()
 
     def on_toggle_view(self, checked):
         if checked:
@@ -1395,6 +1404,63 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.module.snap_to_bin_center = checked
         self.update_actual_frequency()
         self.module.reset_averaging_state()
+        self.apply_theme()
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.action_btn.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.action_btn.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.action_btn.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.action_btn.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.action_btn.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
+
+        snap_checked = self.snap_check.isChecked()
+        if theme_name == "dark":
+            if snap_checked:
+                self.snap_check.setStyleSheet(
+                    "QPushButton { background-color: #1b5e20; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #2e7d32; }"
+                )
+            else:
+                self.snap_check.setStyleSheet(
+                    "QPushButton { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; }"
+                    "QPushButton:hover { background-color: #444444; }"
+                )
+        else:
+            if snap_checked:
+                self.snap_check.setStyleSheet(
+                    "QPushButton { background-color: #a5d6a7; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }"
+                    "QPushButton:hover { background-color: #c8e6c9; }"
+                )
+            else:
+                self.snap_check.setStyleSheet(
+                    "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; }"
+                    "QPushButton:hover { background-color: #eeeeee; }"
+                )
 
     def on_freq_changed(self, val):
         self.update_actual_frequency()

@@ -3,6 +3,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer, QRunnable, QThreadPool, QObject, pyqtSignal
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -340,6 +341,12 @@ class AdvancedDistortionMeterWidget(QWidget):
         self.is_analyzing = False
         self.init_ui()
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_analysis)
         self.timer.setInterval(100)  # 10Hz
@@ -476,7 +483,6 @@ class AdvancedDistortionMeterWidget(QWidget):
         self.start_btn = QPushButton(tr("Start Measurement"))
         self.start_btn.setCheckable(True)
         self.start_btn.clicked.connect(self.on_start_clicked)
-        self.start_btn.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         left_panel.addWidget(self.start_btn)
 
         # Results Display
@@ -576,6 +582,39 @@ class AdvancedDistortionMeterWidget(QWidget):
             self.module.stop_analysis()
             self.timer.stop()
             self.start_btn.setText(tr("Start Measurement"))
+        self.apply_theme()
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.start_btn.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.start_btn.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.start_btn.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.start_btn.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.start_btn.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
 
     def update_analysis(self):
         if not self.module.is_running:
