@@ -5,6 +5,7 @@ from typing import Any, Optional, Tuple
 import numpy as np
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QCheckBox,
     QComboBox,
@@ -1024,6 +1025,12 @@ class SignalGeneratorWidget(QWidget):
         self._last_nyquist_freq: float | None = None
         self.init_ui()
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         self.frequency_limit_timer = QTimer(self)
         self.frequency_limit_timer.setInterval(1000)
         self.frequency_limit_timer.timeout.connect(self._refresh_frequency_limits)
@@ -1138,7 +1145,6 @@ class SignalGeneratorWidget(QWidget):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setMinimumHeight(40)
         self.toggle_btn.clicked.connect(self.on_toggle)
-        self.toggle_btn.setStyleSheet("QPushButton:checked { background-color: #ffcccc; font-weight: bold; }")
         top_bar.addWidget(self.toggle_btn, 2)
 
         # Output Routing (destination is now controlled globally from the status bar)
@@ -2288,6 +2294,28 @@ class SignalGeneratorWidget(QWidget):
         else:
             self.module.stop_generation()
             self.toggle_btn.setText(tr("Start Output"))
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        if theme_name == "dark":
+            self.toggle_btn.setStyleSheet(
+                "QPushButton { background-color: #555; color: white; border: 1px solid #777; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #777; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                "QPushButton:hover { background-color: #666; }"
+                "QPushButton:checked:hover { background-color: #d32f2f; }"
+            )
+        else:
+            self.toggle_btn.setStyleSheet(
+                "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
+                "QPushButton:hover { background-color: #eeeeee; }"
+                "QPushButton:checked:hover { background-color: #ffbbbb; }"
+            )
 
     def _get_current_crest_factor(self):
         """Returns the Crest Factor (Peak / RMS) for the current waveform."""

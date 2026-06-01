@@ -5,6 +5,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
+    QApplication,
     QDoubleSpinBox,
     QGridLayout,
     QGroupBox,
@@ -404,6 +405,12 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         self.init_ui()
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_display)
         self.timer.setInterval(50)  # 20 FPS
@@ -429,7 +436,6 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         self.toggle_btn = QPushButton(tr("Start Metering"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.setMinimumHeight(36)
-        self.toggle_btn.setStyleSheet("font-weight: bold; font-size: 13px;")
         self.toggle_btn.clicked.connect(self.on_toggle)
         controls_layout.addWidget(self.toggle_btn)
 
@@ -835,12 +841,43 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
             self.module.start_meter()
             self.timer.start()
             self.toggle_btn.setText(tr("Stop Metering"))
-            self.toggle_btn.setStyleSheet("background-color: #aa3333; font-weight: bold; font-size: 13px;")
         else:
             self.module.stop_meter()
             self.timer.stop()
             self.toggle_btn.setText(tr("Start Metering"))
-            self.toggle_btn.setStyleSheet("font-weight: bold; font-size: 13px;")
+        self.apply_theme()
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.toggle_btn.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.toggle_btn.setStyleSheet(
+                    "QPushButton { background-color: #aa3333; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #cc4444; }"
+                )
+            else:
+                self.toggle_btn.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.toggle_btn.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.toggle_btn.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
 
     def on_target_changed(self, value):
         self.module.target_lufs = value
