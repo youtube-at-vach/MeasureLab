@@ -82,38 +82,47 @@ class LoopbackFinder(MeasurementModule):
             devices = None
             has_cache = False
 
+        def get_device_info(dev_id):
+            nonlocal has_cache, devices
+            if not has_cache:
+                try:
+                    devices = sd.query_devices()
+                    has_cache = devices is not None and isinstance(devices, tuple)
+                except Exception:  # noqa: S110
+                    pass
+            if not has_cache:
+                return sd.query_devices(dev_id)
+            if isinstance(dev_id, int) and dev_id < len(devices):
+                return devices[dev_id]
+            if isinstance(dev_id, str):
+                query_string = dev_id.lower()
+                substrings = query_string.split()
+                for d in devices:
+                    if d["name"] == dev_id or d["name"].lower() == dev_id.lower():
+                        return d
+                matches = []
+                for d in devices:
+                    full_string = d["name"].lower()
+                    pos = 0
+                    for substring in substrings:
+                        pos = full_string.find(substring, pos)
+                        if pos < 0:
+                            break
+                        pos += len(substring)
+                    else:
+                        matches.append(d)
+                if matches:
+                    return matches[0]
+            return sd.query_devices(dev_id)
+
         if isinstance(device_id, tuple):
             input_device, output_device = device_id
-            try:
-                in_info = (
-                    devices[input_device]
-                    if has_cache and isinstance(input_device, int) and input_device < len(devices)
-                    else sd.query_devices(input_device)
-                )
-            except Exception:
-                in_info = sd.query_devices(input_device)
-
-            try:
-                out_info = (
-                    devices[output_device]
-                    if has_cache and isinstance(output_device, int) and output_device < len(devices)
-                    else sd.query_devices(output_device)
-                )
-            except Exception:
-                out_info = sd.query_devices(output_device)
-
+            in_info = get_device_info(input_device)
+            out_info = get_device_info(output_device)
             max_in = in_info["max_input_channels"]
             max_out = out_info["max_output_channels"]
         else:
-            try:
-                device_info = (
-                    devices[device_id]
-                    if has_cache and isinstance(device_id, int) and device_id < len(devices)
-                    else sd.query_devices(device_id)
-                )
-            except Exception:
-                device_info = sd.query_devices(device_id)
-
+            device_info = get_device_info(device_id)
             max_out = device_info["max_output_channels"]
             max_in = device_info["max_input_channels"]
 
