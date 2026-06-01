@@ -26,6 +26,7 @@ from src.core.transmission_logic import (
     extract_impulse_response,
     extract_frequency_response,
     calculate_evm,
+    calculate_equalized_evm,
     diagnose_bit_perfection,
     estimate_fractional_delay,
     shift_signal_fractional,
@@ -642,7 +643,10 @@ class TransmissionAnalyzer(MeasurementModule):
 
 
         # 2c. EVM calculation
-        evm_val = calculate_evm(rx_block, aligned_tx)
+        if self.mode == "Analog":
+            evm_val = calculate_equalized_evm(rx_block, aligned_tx)
+        else:
+            evm_val = calculate_evm(rx_block, aligned_tx)
 
         # Set analog-specific reason text if in Analog mode
         if self.mode == "Analog":

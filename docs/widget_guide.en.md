@@ -24,6 +24,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.md) |
 | **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
 | **Overlay and compare multiple plot traces from different measurements** | [Plot Comparer](widgets/plot_comparer.md) |
+| **Evaluate digital/analog transmission path quality, latency, and integrity** | [Transmission Analyzer (Experimental)](widgets/transmission_analyzer.md) |
 
 ---
 
@@ -108,6 +109,9 @@ Measures transmission characteristics, impedance, etc., of electronic circuits a
 
 - **[Loopback Finder](widgets/loopback_finder.md)**
     - Detects loopback paths of audio interfaces.
+
+- **[Transmission Analyzer (Experimental)](widgets/transmission_analyzer.md)**
+    - An experimental module that utilizes PRBS sequences (pseudo-random noise) to comprehensively measure digital audio bit-integrity (bit-perfection and DSP detection) as well as analog path metrics like EVM, impulse response, propagation delay, and clock jitter.
 
 ---
 

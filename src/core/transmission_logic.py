@@ -271,6 +271,60 @@ def calculate_evm(rx_block: np.ndarray, tx_block: np.ndarray) -> float:
     return float(np.clip(evm_percent, 0.0, 100.0))
 
 
+def calculate_equalized_evm(rx_block: np.ndarray, tx_block: np.ndarray, regularization=1e-3) -> float:
+    """
+    Calculates Equalized Error Vector Magnitude (EVM) in % for analog channels.
+    Estimates the linear channel frequency response H(f) and applies it to the
+    transmitted reference signal tx_block, removing linear distortions (frequency
+    response amplitude ripples and group delay phase variations) before EVM calculation.
+    """
+    N = len(rx_block)
+    if N < 128:
+        return calculate_evm(rx_block, tx_block)
+
+    # Adaptive Equalization Bypass:
+    # If unequalized EVM is already extremely low (e.g. < 0.5%), the channel is transparent
+    # (lossless digital loopback). We bypass equalization to guarantee perfect 0.0% EVM
+    # without regularization-induced spectral attenuation, while keeping high regularization (1e-3)
+    # for physical analog channels to robustly suppress noise overfitting.
+    evm_unequalized = calculate_evm(rx_block, tx_block)
+    if evm_unequalized < 0.5:
+        return evm_unequalized
+
+    X = np.fft.fft(tx_block)
+    Y = np.fft.fft(rx_block)
+
+    # Regularized deconvolution to estimate linear channel transfer function H(f)
+    denom = np.abs(X) ** 2
+    max_denom = np.max(denom)
+    if max_denom < 1e-12:
+        return 100.0
+
+    # H(f) = Y(f) * X*(f) / (|X(f)|^2 + reg * max(|X(f)|^2))
+    H = (Y * np.conj(X)) / (denom + regularization * max_denom)
+
+    # Apply estimated transfer function H to the transmitter reference signal spectrum
+    TX_equalized = np.fft.ifft(X * H)
+    tx_eq = np.real(TX_equalized).astype(np.float32)
+
+    # Calculate EVM between received block and equalized reference
+    dot_tx_eq = np.dot(tx_eq, tx_eq)
+    if dot_tx_eq < 1e-12:
+        return 100.0
+
+    # Least squares gain scaling alignment
+    scale = np.dot(rx_block, tx_eq) / dot_tx_eq
+    error_vector = rx_block - scale * tx_eq
+    rms_error = np.sqrt(np.mean(error_vector ** 2))
+    rms_reference = np.sqrt(np.mean(rx_block ** 2))
+
+    if rms_reference < 1e-12:
+        return 100.0
+
+    evm_percent = (rms_error / rms_reference) * 100.0
+    return float(np.clip(evm_percent, 0.0, 100.0))
+
+
 def measure_crosstalk(rx_block: np.ndarray, leak_reference: np.ndarray) -> float:
     """
     Measures crosstalk by finding the leakage correlation with the opposite channel's PRBS sequence.

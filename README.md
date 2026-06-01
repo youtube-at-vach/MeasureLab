@@ -61,6 +61,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 36 | **Waveform Loop Player** | Loads an audio file, visualizes the waveform, and loops a selected region. Useful for repeated observation of transient responses or analyzing specific phrases. |
 | 37 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 | 38 | **Plot Comparer** | Overlay and compare multiple plot traces from different measurements. Supports gain offset, axis shift, normalization (align peaks), dual Y-axis mapping (Y1/Y2), log scaling, and interactive cursor readout. |
+| 39 | **Transmission Analyzer** (Experimental) | Analyzes transmission paths (USB, Bluetooth, Analog) using multi-pattern PRBS sequences. Performs digital integrity diagnostics (bit-perfect test, bit errors, DSP detection) and analog path analysis (EVM, impulse/frequency response, propagation delay, clock jitter). |
 
 ### 🌍 Localization
 
