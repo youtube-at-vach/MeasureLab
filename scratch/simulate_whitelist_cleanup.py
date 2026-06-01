@@ -51,7 +51,7 @@ for lf in sorted(lang_files):
     path = os.path.join(LANG_DIR, lf)
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     results[lang_code] = []
     for k in translatable_candidates:
         en_val = en_data.get(k)

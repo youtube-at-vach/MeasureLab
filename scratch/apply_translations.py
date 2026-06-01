@@ -177,16 +177,16 @@ def clean_whitelist():
     if not os.path.exists(WHITELIST_PATH):
         print(f"Error: {WHITELIST_PATH} not found.")
         return False
-        
+
     with open(WHITELIST_PATH, "r", encoding="utf-8") as f:
         wl_data = json.load(f)
-        
+
     original_len = len(wl_data["exact_keys"])
     wl_data["exact_keys"] = [k for k in wl_data["exact_keys"] if k not in KEYS_TO_REMOVE]
     new_len = len(wl_data["exact_keys"])
-    
+
     print(f"Removed {original_len - new_len} keys from exact_keys in whitelist.")
-    
+
     with open(WHITELIST_PATH, "w", encoding="utf-8") as f:
         json.dump(wl_data, f, ensure_ascii=False, indent=4)
         f.write("\n")
@@ -196,14 +196,14 @@ def clean_whitelist():
 def apply_translations():
     print("--- Applying professional translations to JSON files ---")
     lang_files = [f for f in os.listdir(LANG_DIR) if f.endswith(".json") and f != "en.json"]
-    
+
     for lf in sorted(lang_files):
         lang_code = os.path.splitext(lf)[0]
         path = os.path.join(LANG_DIR, lf)
-        
+
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            
+
         updated = 0
         for key, lang_map in TRANSLATION_MAP.items():
             if key in data:
@@ -215,15 +215,15 @@ def apply_translations():
                     data[key] = translation
                     if old_val != translation:
                         updated += 1
-                        
+
         print(f"{lf}: Updated {updated} translations.")
-        
+
         # Save sorted data
         sorted_data = dict(sorted(data.items()))
         with open(path, "w", encoding="utf-8") as f:
             json.dump(sorted_data, f, ensure_ascii=False, indent=4)
             f.write("\n")
-            
+
     print("✓ Successfully localized all language files.")
 
 if __name__ == "__main__":
