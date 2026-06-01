@@ -160,9 +160,8 @@ jobs:
           mypy src main_gui.py
 
       - name: Check Translation Keys
-        continue-on-error: true
         run: |
-          python scripts/check_trn_keys.py
+          python scripts/check_trn_keys.py --strict
 
 
       - name: Tests (pytest)

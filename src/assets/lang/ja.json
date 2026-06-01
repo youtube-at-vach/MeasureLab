@@ -157,10 +157,9 @@
     "Averaged Signal": "平均信号",
     "Averaged Signal (N={0})": "平均信号 (N={0})",
     "Averages:": "平均回数:",
-    "Averaging Time (s)": "平均化時間 (秒)",
     "Averaging Mode:": "平均化モード:",
+    "Averaging Time (s)": "平均化時間 (秒)",
     "Averaging:": "平均化:",
-
     "Avg": "平均",
     "Avg Count (KF-Q & Display):": "平均回数 (KF-Q & 表示):",
     "Avg Count:": "平均回数:",
@@ -529,9 +528,8 @@
     "Falling": "立ち下がり",
     "Fast (10Hz)": "高速 (10Hz)",
     "Fast (4096 samples)": "高速 (4096サンプル)",
-    "Fast (Realtime)": "高速 (リアルタイム)",
     "Fast (EMA)": "高速 (EMA)",
-
+    "Fast (Realtime)": "高速 (リアルタイム)",
     "File && Analysis": "ファイル && 解析",
     "Filter": "フィルター",
     "Filter Response": "フィルター応答",
@@ -674,9 +672,8 @@
     "Include Musical Scale": "音階を含める",
     "Include Scan Targets": "スキャン対象を含める",
     "Independent Columns": "個別の列として出力",
-    "Infinite (Accumulate)": "無限 (蓄積)",
     "Inductance": "インダクタンス",
-
+    "Infinite (Accumulate)": "無限 (蓄積)",
     "Info": "情報",
     "Initializing application...": "アプリケーションを初期化しています...",
     "Input & Signal Detection": "入力と信号検出",
@@ -993,7 +990,6 @@
     "None (20Hz-20kHz)": "なし (20Hz-20kHz)",
     "None (Instant)": "なし (即時)",
     "None (Raw)": "なし (生データ)",
-
     "Normal": "標準",
     "Normal View": "通常表示",
     "Normalize (Align Peaks)": "正規化（ピークを揃える）",
@@ -1218,7 +1214,6 @@
     "Resonance:": "共振:",
     "Response Smoothing:": "周波数平滑化:",
     "Restart Required": "再起動が必要です",
-
     "Results": "結果",
     "Right": "右",
     "Right (CH2)": "右 (CH2)",
@@ -1363,7 +1358,6 @@
     "Slow (5m)": "低速 (5分)",
     "Slow (EMA)": "低速 (EMA)",
     "Smooth Lines": "滑らかな線",
-
     "Smoothing:": "スムージング:",
     "Snap to Bin Center": "ビンセンターに吸着",
     "Snap to Bin:": "ビンに吸着:",
