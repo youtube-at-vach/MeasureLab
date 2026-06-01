@@ -143,7 +143,7 @@ class CsvTraceExporter(BaseTraceExporter):
             writer.writerow(headers)
 
         # 2. Find maximum row length
-        max_len = max([len(t.x_data) for t in traces]) if traces else 0
+        max_len = max((len(t.x_data) for t in traces), default=0)
 
         # 3. Write Data Row by Row
         for i in range(max_len):
