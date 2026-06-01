@@ -18,3 +18,8 @@
 
 **Learning:** When calculating fractional octave smoothing bands and mapping center frequencies to spectrum bin indices, iterating over pre-calculated arrays in Python and appending to lists is slower than using vectorized Numpy operations to filter indices (`valid = ends > starts`) and returning a list of `zip()`-ed values. Converting the zipped indices directly using `.tolist()` and then `list(zip(...))` performs the conversion mostly in C.
 **Action:** Replace `for` loops containing manual list appending with `list(zip(start_array[mask].tolist(), end_array[mask].tolist()))` when constructing a list of start/end tuple indices from NumPy arrays.
+
+## 2026-06-05 - Vectorizing IIR filters with scipy.signal.lfilter
+
+**Learning:** Python `for` loops are exceptionally slow when iterating over samples to apply recursive difference equations (like Paul Kellet's Pink Noise filter).
+**Action:** Replace manual iterative loops using coefficients with fully vectorized calls to `scipy.signal.lfilter` (e.g., `lfilter([B], [1.0, -A], x, zi=state)`). Ensure boundary conditions (like `n=0`) are handled properly, and preserve instance variables correctly if public APIs or backward-compatible tests rely on them.
