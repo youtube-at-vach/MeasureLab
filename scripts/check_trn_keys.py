@@ -48,9 +48,14 @@ def main():
     parser = argparse.ArgumentParser(description="Check translation keys consistency.")
     parser.add_argument("--lax", action="store_true", help="Do not fail even if unused keys are found in en.json")
     parser.add_argument("--fix", action="store_true", help="Remove unused keys from all translation files")
+    parser.add_argument("--strict", action="store_true", help="Fail if untranslated placeholder keys are found in other languages")
     args = parser.parse_args()
 
+    import json
+    import re
+
     print("=== Translation Check Script ===")
+
 
     # 1. Load EN JSON (Source of Truth)
     en_path = os.path.join(LANG_DIR, "en.json")
@@ -140,6 +145,39 @@ def main():
         if dups:
             duplicates_map[os.path.basename(jf)] = dups
 
+    # 8. Check: Untranslated placeholders (same as English, not in whitelist)
+    whitelist_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "translation_whitelist.json")
+    exact_whitelist = set()
+    regex_whitelist = []
+    if os.path.exists(whitelist_path):
+        try:
+            with open(whitelist_path, "r", encoding="utf-8") as f:
+                wl_data = json.load(f)
+                exact_whitelist = set(wl_data.get("exact_keys", []))
+                regex_whitelist = [re.compile(p) for p in wl_data.get("regex_patterns", [])]
+        except Exception as e:
+            print(f"Warning: Failed to parse translation_whitelist.json: {e}")
+    else:
+        print("Warning: translation_whitelist.json not found. Placeholders will be checked without whitelist.")
+
+    untranslated_placeholders = {}
+    for jf in json_files:
+        fname = os.path.basename(jf)
+        if fname == "en.json":
+            continue
+        data = load_json(jf)
+        untranslated = []
+        for k, v in data.items():
+            en_val = en_data.get(k)
+            if v == en_val:
+                if v in exact_whitelist:
+                    continue
+                if any(rx.match(v) for rx in regex_whitelist):
+                    continue
+                untranslated.append(k)
+        if untranslated:
+            untranslated_placeholders[fname] = untranslated
+
     # Reporting
     has_error = False
 
@@ -186,6 +224,23 @@ def main():
             print(f"WARNING: {fname} has duplicate keys:")
             for k in keys:
                 print(f'  - "{k}"')
+    else:
+        print("OK")
+
+    print("\n--- Check 5: Untranslated Placeholders (English values left as placeholder) ---")
+    if untranslated_placeholders:
+        if args.strict:
+            has_error = True
+            print("FAIL: Untranslated placeholders found in translation files (strict mode):")
+        else:
+            print("WARNING: Untranslated placeholders found in translation files:")
+
+        for fname, keys in sorted(untranslated_placeholders.items()):
+            print(f"  {fname} ({len(keys)} keys):")
+            for k in sorted(keys)[:10]:
+                print(f"    - {k} -> {en_data.get(k)}")
+            if len(keys) > 10:
+                print(f"    ... and {len(keys) - 10} more.")
     else:
         print("OK")
 
