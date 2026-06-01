@@ -1072,30 +1072,52 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             ema[i] = alpha * arr[i] + (1 - alpha) * ema[i - 1]
         return ema
 
-    def get_card_color(self, theme_name: str) -> str:
-        status_text = self.lbl_status.text()
-        if "WAITING" in status_text or "SYNC" in status_text:
-            return "#4a3e1b" if theme_name == "dark" else "#fff9c4"
-        elif "BIT-PERFECT" in status_text or "FIDELITY" in status_text:
-            return "#1b4d3e" if theme_name == "dark" else "#e8f5e9"
-        elif "ALTERED" in status_text or "DISTORTION" in status_text:
-            return "#5c1d1d" if theme_name == "dark" else "#ffebee"
-        elif "ANALOG" in status_text:
-            return "#4a3e1b" if theme_name == "dark" else "#fffde7"
+    def get_current_status_type(self) -> str:
+        if not self.btn_toggle.isChecked():
+            return "IDLE"
+
+        if not self.module.is_locked:
+            return "WAITING"
+
+        is_digital = self.module.mode == "Digital"
+        res = self.module.results
+
+        if is_digital:
+            is_perfect = res.get("bit_perfect", False)
+            return "BIT_PERFECT" if is_perfect else "ALTERED"
         else:
+            evm = res.get("evm", 0.0)
+            if evm < 1.0:
+                return "HIGH_FIDELITY"
+            elif evm < 10.0:
+                return "ANALOG_PATH"
+            else:
+                return "HIGH_DISTORTION"
+
+    def get_card_color(self, theme_name: str) -> str:
+        status_type = self.get_current_status_type()
+        if status_type == "WAITING":
+            return "#4a3e1b" if theme_name == "dark" else "#fff9c4"
+        elif status_type in ("BIT_PERFECT", "HIGH_FIDELITY"):
+            return "#1b4d3e" if theme_name == "dark" else "#e8f5e9"
+        elif status_type in ("ALTERED", "HIGH_DISTORTION"):
+            return "#5c1d1d" if theme_name == "dark" else "#ffebee"
+        elif status_type == "ANALOG_PATH":
+            return "#4a3e1b" if theme_name == "dark" else "#fffde7"
+        else:  # IDLE
             return "#2c3e50" if theme_name == "dark" else "#eceff1"
 
     def get_status_text_color(self, theme_name: str) -> str:
-        status_text = self.lbl_status.text()
-        if "WAITING" in status_text or "SYNC" in status_text:
+        status_type = self.get_current_status_type()
+        if status_type == "WAITING":
             return "#f39c12" if theme_name == "dark" else "#f57f17"
-        elif "BIT-PERFECT" in status_text or "FIDELITY" in status_text:
+        elif status_type in ("BIT_PERFECT", "HIGH_FIDELITY"):
             return "#2ecc71" if theme_name == "dark" else "#2e7d32"
-        elif "ALTERED" in status_text or "DISTORTION" in status_text:
+        elif status_type in ("ALTERED", "HIGH_DISTORTION"):
             return "#e74c3c" if theme_name == "dark" else "#c62828"
-        elif "ANALOG" in status_text:
+        elif status_type == "ANALOG_PATH":
             return "#f1c40f" if theme_name == "dark" else "#f57f17"
-        else:
+        else:  # IDLE
             return "#bdc3c7" if theme_name == "dark" else "#616161"
 
     def apply_theme(self, theme_name=None):
