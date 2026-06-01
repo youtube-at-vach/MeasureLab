@@ -1,5 +1,50 @@
 # Changelog
 
+## [v0.7.6] - 2026-06-01
+
+### Added
+
+* **Filter Ringing Analysis**:
+    * Introduced a new `FilterRingingAnalysis` module for analyzing impulse response filter ringing behavior.
+    * Added comprehensive localized translation strings for the new module across all supported languages.
+* **Volume Gang Error Logger**:
+    * Implemented a new `VolumeGangErrorLogger` module with real-time level monitoring, target errors tracking, and CSV format export support.
+* **Signal Generator Sweep Enhancements**:
+    * Implemented customizable amplitude sweeps in the Signal Generator widget.
+    * Added multilingual translation coverage for amplitude sweep parameters and statuses.
+* **Secant-based Complex Harmonic Calibration**:
+    * Integrated a secant-based complex harmonic calibration algorithm.
+    * Extended system noise floor limits down to -140 dBFS.
+* **Test Coverage Improvements**:
+    * Added exhaustive unit tests verifying `highpass_filter` and `lowpass_filter` functions.
+    * Implemented dedicated unit tests for array inputs in frequency correction calibration (`get_frequency_correction`).
+    * Added a complete unit test suite for the localization `tr()` translation wrapper.
+
+### Changed
+
+* **Performance & Optimizations**:
+    * Throttled Linearity Analyzer threshold loops using fast array checks with `np.where`.
+    * Vectorized real-time harmonic math, inverse filter convolution calculations, and sine-fitting frequency search via Euler's formula to drastically lower processing latency.
+    * Replaced costly channel loops with NumPy broadcasting inside core audio callbacks and the power noise `Sonifier` to minimize overhead.
+    * Throttled UI redraw execution in the `Processor Benchmark` by recycling table items inside the QTableWidget.
+    * Sped up BoxcarAverager MLS generation with `scipy.signal.max_len_seq`.
+* **Documentation & Build Security**:
+    * Streamlined widget manuals by purging excessive metaphorical "coffee breaks" and redundant expressions.
+    * Consolidated GitHub Actions release and docs deployment to leverage official Actions.
+    * Secured pipeline compliance by pinning all GHA dependencies to full-length commit SHAs.
+
+### Fixed
+
+* **Security & Hardening**:
+    * 🔒 Patched a potential command injection vulnerability via `sysctl` parsing in the Processor Benchmark widget.
+    * 🔒 Resolved a cross-site scripting (XSS) vulnerability inside the real-time Log Viewer widget.
+    * 🔒 Enforced strict TLS verification when querying update catalogs in the Update Checker.
+* **Core Stability**:
+    * Resolved deadlocks inside wait loops (`wait_for_buffer`) and optimized VirtualStream exception logs.
+    * Fixed NumPy warnings/errors triggered by empty slices when computing `np.median` in the core analysis pipeline and timecode monitor.
+    * Suppressed non-critical Bandit S110 security warnings for expected pass-through exceptions.
+    * Patched silent or bare exception handlers across `settings.py`, `recorder_player.py`, `CalibrationManager.set_lockin_gain_offset`, the Network Analyzer, Timecode Monitor, and Plot Comparer's axis sync mechanism.
+
 ## [v0.7.5] - 2026-05-26
 
 ### Added
