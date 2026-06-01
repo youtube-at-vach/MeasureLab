@@ -22,13 +22,13 @@ MeasureLab supports the following units. Let's introduce them with a bit of hist
 
 To perform displays and measurements in these units, **Input Sensitivity** and **Output Gain** calibration are required.
 
-## Equipment for the Adventure 🎒
+## Required Equipment
 
 Required equipment varies depending on the items being calibrated.
 
 * **Input/Output Voltage Calibration**:
     * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
-        * 💡 **Knowledge Boost: What is TrueRMS?**<br>Cheap multimeters measure the "average" of a wave and calculate assuming it's a perfect sine wave. However, with complex waveforms like music or noise, this calculation gets thrown off. TrueRMS is a smart multimeter that accurately calculates "how much actual power there is (root mean square)" regardless of the wave's shape!
+        * **※ About TrueRMS**: Inexpensive multimeters often measure the average value and calculate assuming a perfect sine wave, which causes errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
     * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
 * **Sound Pressure Level (SPL) Calibration**:
     * **Speaker**: Required to play pink noise.
