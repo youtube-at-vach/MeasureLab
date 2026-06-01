@@ -588,14 +588,14 @@ def apply_translations():
         if not os.path.exists(lang_path):
             print(f"Error: {lang_path} not found.")
             continue
-        
+
         with open(lang_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            
+
         print(f"Applying translations to {lang}.json...")
         added_count = 0
         updated_count = 0
-        
+
         for k, v in mapping.items():
             if k not in data:
                 data[k] = v
@@ -617,11 +617,11 @@ def apply_translations():
 
         # Sort the dictionary keys to guarantee deterministic output order
         sorted_data = dict(sorted(data.items()))
-        
+
         with open(lang_path, "w", encoding="utf-8") as f:
             json.dump(sorted_data, f, ensure_ascii=False, indent=4)
             f.write("\n")
-            
+
         print(f"  Done. Added: {added_count}, Updated: {updated_count}")
 
 if __name__ == "__main__":

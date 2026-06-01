@@ -234,7 +234,7 @@ def main():
             print("FAIL: Untranslated placeholders found in translation files (strict mode):")
         else:
             print("WARNING: Untranslated placeholders found in translation files:")
-        
+
         for fname, keys in sorted(untranslated_placeholders.items()):
             print(f"  {fname} ({len(keys)} keys):")
             for k in sorted(keys)[:10]:
