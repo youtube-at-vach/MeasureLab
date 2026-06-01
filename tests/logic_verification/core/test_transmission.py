@@ -130,7 +130,8 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertLess(evm_perfect, 0.01)
 
         # 2. Altered wave should have significant EVM
-        rx_altered = tx + 0.1 * np.random.normal(size=256)
+        rng = np.random.RandomState(42)
+        rx_altered = tx + 0.1 * rng.normal(size=256)
         evm_noise = calculate_evm(rx_altered, tx)
         self.assertGreater(evm_noise, 1.0)
 
@@ -156,8 +157,9 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertLess(evm_equalized, 0.5)
 
         # 3. Altered wave with random noise (non-linear/additive noise distortion)
-        # Add high noise
-        rx_noisy = rx_linear + 0.05 * np.random.normal(size=512)
+        # Add high noise with deterministic generator
+        rng = np.random.RandomState(42)
+        rx_noisy = rx_linear + 0.15 * rng.normal(size=512)
         evm_noisy_equalized = calculate_equalized_evm(rx_noisy, tx)
 
         # Noise cannot be corrected by linear equalization, so EVM should still reflect the noise level
