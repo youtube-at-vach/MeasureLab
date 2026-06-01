@@ -142,19 +142,15 @@ class CsvTraceExporter(BaseTraceExporter):
                     headers.append(y2_lbl)
             writer.writerow(headers)
 
-        # 2. Find maximum row length
-        max_len = max((len(t.x_data) for t in traces), default=0)
+        # 2. Write Data Row by Row
+        import itertools
 
-        # 3. Write Data Row by Row
-        for i in range(max_len):
-            row: List[Any] = []
-            for t in traces:
-                if i < len(t.x_data):
-                    row.extend([t.x_data[i], t.y_data[i]])
-                    if t.y2_data is not None:
-                        row.append(t.y2_data[i])
-                else:
-                    row.extend(["", ""])
-                    if t.y2_data is not None:
-                        row.append("")
+        columns = []
+        for t in traces:
+            columns.append(t.x_data)
+            columns.append(t.y_data)
+            if t.y2_data is not None:
+                columns.append(t.y2_data)
+
+        for row in itertools.zip_longest(*columns, fillvalue=""):
             writer.writerow(row)
