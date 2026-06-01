@@ -34,6 +34,7 @@ from src.core.transmission_logic import (
     track_jitter_fractional,
     calculate_group_delay,
     calculate_step_response,
+    analyze_step_transient,
 )
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 
@@ -130,6 +131,11 @@ class TransmissionAnalyzer(MeasurementModule):
             "evm": 0.0,
             "dsp_detected": "None",
             "jitter_samples": 0.0,
+            "overshoot_pct": 0.0,
+            "settling_samples": 0,
+            "settling_ms": 0.0,
+            "droop_pct": 0.0,
+            "step_transient_valid": False,
         }
 
         self.callback_id = None
@@ -210,6 +216,11 @@ class TransmissionAnalyzer(MeasurementModule):
                 "evm": 0.0,
                 "dsp_detected": tr("Analyzing..."),
                 "jitter_samples": 0.0,
+                "overshoot_pct": 0.0,
+                "settling_samples": 0,
+                "settling_ms": 0.0,
+                "droop_pct": 0.0,
+                "step_transient_valid": False,
             }
 
         self.callback_id = self.audio_engine.register_callback(self._audio_callback)
@@ -264,7 +275,12 @@ class TransmissionAnalyzer(MeasurementModule):
                 "error_rate": 0.0,
                 "total_samples": 0 if self.mode == "Digital" else 0,
                 "jitter_samples": 0.0,
-                "evm": 0.0 if not self.is_locked else self.results.get("evm", 0.0)
+                "evm": 0.0 if not self.is_locked else self.results.get("evm", 0.0),
+                "overshoot_pct": 0.0,
+                "settling_samples": 0,
+                "settling_ms": 0.0,
+                "droop_pct": 0.0,
+                "step_transient_valid": False,
             })
 
     def _audio_callback(self, indata, outdata, frames, time, status):
@@ -748,6 +764,9 @@ class TransmissionAnalyzer(MeasurementModule):
             self.ber_trend.pop(0)
             self.jitter_trend.pop(0)
 
+        # Analyze Step Response transient metrics (Low Overhead)
+        transient_res = analyze_step_transient(self.step_response, self.audio_engine.sample_rate)
+
         # Save results
         self.results = {
             "locked": True,
@@ -766,6 +785,11 @@ class TransmissionAnalyzer(MeasurementModule):
             "jitter_samples": float(jitter_s),
             "delay_samples": delay_samples,
             "delay_ms": delay_ms,
+            "overshoot_pct": transient_res["overshoot_pct"],
+            "settling_samples": transient_res["settling_samples"],
+            "settling_ms": transient_res["settling_ms"],
+            "droop_pct": transient_res["droop_pct"],
+            "step_transient_valid": transient_res["valid"],
         }
 
         return self.results
@@ -1021,6 +1045,16 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.tab_step = QWidget()
         tab_step_layout = QVBoxLayout(self.tab_step)
         tab_step_layout.setContentsMargins(5, 5, 5, 5)
+        tab_step_layout.setSpacing(4)
+
+        # Transient stats banner at the top of the plot
+        self.lbl_step_stats = QLabel(tr("Establish lock to analyze transient characteristics..."))
+        self.lbl_step_stats.setStyleSheet(
+            f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; font-weight: bold; padding: 4px; border-radius: 4px;"
+        )
+        self.lbl_step_stats.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tab_step_layout.addWidget(self.lbl_step_stats)
+
         self.plot_step = pg.PlotWidget()
         self.plot_step.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
         self.plot_step.setLabel("bottom", tr("Time Domain Index (Samples)"))
@@ -1256,6 +1290,10 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.lbl_reason.setStyleSheet("color: #ecf0f1; font-size: 12px;")
             self.lbl_stat_delay.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
             self.lbl_stat_evm.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+            self.lbl_step_stats.setStyleSheet(
+                f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #2ecc71; font-weight: bold; "
+                "background-color: rgba(44, 62, 80, 0.7); padding: 4px; border-radius: 4px; border: 1px solid #34495e;"
+            )
 
             if checked:
                 self.btn_toggle.setStyleSheet(
@@ -1276,6 +1314,10 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.lbl_reason.setStyleSheet("color: #333333; font-size: 12px;")
             self.lbl_stat_delay.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
             self.lbl_stat_evm.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
+            self.lbl_step_stats.setStyleSheet(
+                f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #1b5e20; font-weight: bold; "
+                "background-color: rgba(236, 240, 241, 0.9); padding: 4px; border-radius: 4px; border: 1px solid #bdc3c7;"
+            )
 
             if checked:
                 self.btn_toggle.setStyleSheet(
@@ -1442,6 +1484,20 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         if not (np.isfinite(min_step) and np.isfinite(max_step)):
             min_step, max_step = -1.0, 1.0
         self.plot_step.setYRange(float(min_step * 1.1 - 0.05), float(max_step * 1.1 + 0.05))
+
+        # Update Step Response Transient stats label
+        if self.module.is_locked and res.get("step_transient_valid", False):
+            stats_text = tr(
+                "Overshoot: {0:.1f} %  |  Settling Time: {1:d} samples ({2:.3f} ms)  |  Droop: {3:.1f} %"
+            ).format(
+                res["overshoot_pct"],
+                res["settling_samples"],
+                res["settling_ms"],
+                res["droop_pct"]
+            )
+            self.lbl_step_stats.setText(stats_text)
+        else:
+            self.lbl_step_stats.setText(tr("Establish sync lock to analyze step transient metrics."))
 
         # Update Jitter & Trends plot (Tab 6)
         trend = self.combo_trend.currentData()

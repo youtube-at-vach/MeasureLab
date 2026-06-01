@@ -20,6 +20,7 @@ from src.core.transmission_logic import (
     track_jitter_fractional,
     calculate_group_delay,
     calculate_step_response,
+    analyze_step_transient,
 )
 
 
@@ -314,6 +315,30 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertEqual(len(step_resp), 128)
         # 後半のステップ値の変化特性を確認
         self.assertAlmostEqual(step_resp[0], 0.0, delta=0.1)
+
+    def test_analyze_step_transient(self):
+        """Test transient response metrics analysis (overshoot, settling time, droop)."""
+        # Simulate a clean step rising at index 128
+        step_y = np.zeros(512, dtype=np.float32)
+        step_y[128:] = 1.0
+
+        # 1. Ideal step response
+        res = analyze_step_transient(step_y, 48000)
+        self.assertTrue(res["valid"])
+        self.assertAlmostEqual(res["overshoot_pct"], 0.0, delta=0.1)
+        self.assertEqual(res["settling_samples"], 0)
+        self.assertAlmostEqual(res["droop_pct"], 0.0, delta=0.1)
+
+        # 2. Step response with overshoot & ringing settling
+        step_y_ring = np.zeros(512, dtype=np.float32)
+        step_y_ring[128:] = 1.0
+        step_y_ring[128:135] = 1.2   # 20% Overshoot
+        step_y_ring[135:150] = 1.05  # Rings outside 2% tolerance band
+
+        res_ring = analyze_step_transient(step_y_ring, 48000)
+        self.assertTrue(res_ring["valid"])
+        self.assertAlmostEqual(res_ring["overshoot_pct"], 20.0, delta=1.0)
+        self.assertGreater(res_ring["settling_samples"], 20)
 
 
 if __name__ == "__main__":
