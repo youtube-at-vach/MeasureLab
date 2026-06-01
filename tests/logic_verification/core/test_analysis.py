@@ -135,6 +135,22 @@ class TestAudioCalc:
             assert isinstance(mse, float)
             assert not np.isnan(mse)
 
+    def test_apply_filter_short_signal_bypass(self):
+        # LP filter has min_len = 27
+        signal = np.ones(10)
+        # Test bypass (default for lowpass_filter)
+        filtered = AudioCalc.lowpass_filter(signal, 48000, cutoff=1000.0)
+        # Should return the original signal with warnings logged
+        np.testing.assert_array_equal(filtered, signal)
+
+    def test_apply_filter_short_signal_silence(self):
+        # BP filter has min_len = 51 and specifies on_invalid_sos="silence"
+        signal = np.ones(10)
+        filtered = AudioCalc.bandpass_filter(signal, 48000, lowcut=100.0, highcut=1000.0)
+        # Should return a zero-filled array of same shape
+        np.testing.assert_array_equal(filtered, np.zeros(10))
+
+
 
 def test_get_cached_window():
     """Test get_cached_window caching and immutability behavior."""

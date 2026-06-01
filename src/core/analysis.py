@@ -221,7 +221,17 @@ class AudioCalc:
         on_invalid_sos: "bypass" (return signal) or "silence" (return zeros).
         """
         if len(signal) <= min_len:
-            return signal
+            import logging
+            logger = logging.getLogger("AudioCalc")
+            logger.warning(
+                "Signal length (%d) is too short for the filter (required: > %d). "
+                "Applying fallback behavior '%s'.",
+                len(signal), min_len, on_invalid_sos
+            )
+            if on_invalid_sos == "silence":
+                return np.zeros_like(signal)
+            else:
+                return signal
 
         nyquist = 0.5 * sampling_rate
         sos = sos_factory(nyquist)

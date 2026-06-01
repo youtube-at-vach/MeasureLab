@@ -511,3 +511,64 @@ def test_update_map_cache(cal_manager):
     np.testing.assert_array_equal(cal_manager._freq_cache, np.array([100.0, 1000.0, 10000.0]))
     np.testing.assert_array_equal(cal_manager._mag_cache, np.array([1.0, 2.0, 3.0]))
     np.testing.assert_array_equal(cal_manager._phase_cache, np.array([10.0, 20.0, 30.0]))
+
+
+def test_calibration_manager_thread_safety(cal_manager):
+    """Test that CalibrationManager handles concurrent cache updates and lookups safely."""
+    import threading
+    import time
+
+    stop_event = threading.Event()
+    errors = []
+
+    def writer_loop():
+        # Continuously load and update maps
+        maps = [
+            [[100.0, 1.0, 10.0], [1000.0, 2.0, 20.0]],
+            [[100.0, 1.5, 12.0], [1000.0, 2.5, 22.0], [10000.0, 3.5, 32.0]],
+            []
+        ]
+        i = 0
+        while not stop_event.is_set():
+            cal_manager.frequency_map = maps[i % len(maps)]
+            cal_manager._update_map_cache()
+            i += 1
+            time.sleep(0.001)
+
+    def reader_loop():
+        # Continuously look up frequency corrections
+        while not stop_event.is_set():
+            try:
+                # Resolve single frequency (scalar)
+                mag, phase = cal_manager.get_frequency_correction(550.0)
+                assert isinstance(mag, float)
+                assert isinstance(phase, float)
+
+                # Resolve array frequency
+                mag_arr, phase_arr = cal_manager.get_frequency_correction(np.array([120.0, 800.0]))
+                if isinstance(mag_arr, float):
+                    assert mag_arr == 0.0
+                    assert phase_arr == 0.0
+                else:
+                    assert len(mag_arr) == 2
+            except Exception as e:
+                errors.append(e)
+            time.sleep(0.001)
+
+    # Launch threads
+    writer = threading.Thread(target=writer_loop)
+    reader = threading.Thread(target=reader_loop)
+
+    writer.start()
+    reader.start()
+
+    # Let them race for 100ms
+    time.sleep(0.1)
+
+    stop_event.set()
+    writer.join()
+    reader.join()
+
+    # Verify no exception was raised in the audio-reader thread
+    assert not errors, f"Concurrent access exceptions: {errors}"
+
