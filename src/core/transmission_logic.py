@@ -622,58 +622,6 @@ def apply_octave_smoothing(freqs: np.ndarray, mag_db: np.ndarray, fraction: floa
     return smoothed
 
 
-def calculate_group_delay(
-    rx_block: np.ndarray, tx_block: np.ndarray, sr: float, regularization=1e-4
-) -> tuple[np.ndarray, np.ndarray]:
-    """
-    周波数伝達関数から群遅延 (Group Delay in ms) を極めて軽量に算出します。
-    数値微分による高周波ノイズ増幅を抑制するため、移動平均平滑化を適用します。
-    """
-    N = len(rx_block)
-    window = np.hanning(N)
-
-    X = np.fft.rfft(tx_block * window)
-    Y = np.fft.rfft(rx_block * window)
-
-    # 伝達関数 H(f) = Y(f) / (X(f) + eps)
-    # 分母のゼロ割りを保護
-    denom = np.abs(X) ** 2
-    max_denom = np.max(denom)
-    if max_denom < 1e-12:
-        freqs = np.fft.rfftfreq(N, 1.0 / sr)
-        return freqs, np.zeros_like(freqs)
-
-    H = (Y * np.conj(X)) / (denom + regularization * max_denom + 1e-12)
-    freqs = np.fft.rfftfreq(N, 1.0 / sr)
-
-    # 位相応答を取得し、np.unwrap で 2pi の不連続点を補正
-    phase = np.unwrap(np.angle(H))
-
-    # 位相の周波数数値微分 d_phase / d_omega
-    # d_omega = 2 * pi * d_freq
-    d_phase = np.diff(phase)
-    d_freq = np.diff(freqs)
-
-    # 群遅延 gd = - d_phase / d_omega = - (1 / 2*pi) * (d_phase / d_freq)
-    # 秒からミリ秒 (ms) に変換するために 1000 倍を乗算
-    gd_seconds = -d_phase / (2.0 * np.pi * (d_freq + 1e-18))
-    gd = gd_seconds * 1000.0
-
-    # 次元を合わせるために末尾要素を複製
-    gd = np.append(gd, gd[-1])
-
-    # 極端なスパイクを抑えるため、簡単な移動平均フィルタ (5点窓) で平滑化
-    # 窓サイズが大きすぎると周波数分解能が損なわれるため、軽微な5点に制限して高速処理
-    if len(gd) > 5:
-        gd_conv = np.convolve(gd, np.ones(5) / 5.0, mode="same")
-    else:
-        gd_conv = gd
-
-    # 異常値を妥当な範囲 [-500ms, 500ms] にクリップして、異常表示を防止
-    gd_clipped = np.clip(gd_conv, -500.0, 500.0)
-
-    return freqs, gd_clipped.astype(np.float32)
-
 
 def calculate_step_response(impulse_response: np.ndarray) -> np.ndarray:
     """

@@ -32,7 +32,6 @@ from src.core.transmission_logic import (
     estimate_fractional_delay,
     shift_signal_fractional,
     track_jitter_fractional,
-    calculate_group_delay,
     calculate_step_response,
     analyze_step_transient,
 )
@@ -103,12 +102,9 @@ class TransmissionAnalyzer(MeasurementModule):
         self.avg_impulse_response = np.zeros(1024, dtype=np.float32)
         self.avg_freq_resp_y = np.zeros(513, dtype=np.float32)
 
-        # Group Delay & Step Response buffers
-        self.group_delay_x = np.linspace(20, 20000, 1025)
-        self.group_delay_y = np.zeros(1025, dtype=np.float32)
+        # Step Response buffers
         self.step_response = np.zeros(512, dtype=np.float32)
 
-        self.avg_group_delay_y = np.zeros(1025, dtype=np.float32)
         self.avg_step_response = np.zeros(512, dtype=np.float32)
 
         # Scrolling History Trends
@@ -193,8 +189,6 @@ class TransmissionAnalyzer(MeasurementModule):
             self.freq_resp_y.fill(0)
             self.avg_impulse_response.fill(0)
             self.avg_freq_resp_y.fill(0)
-            self.group_delay_y.fill(0)
-            self.avg_group_delay_y.fill(0)
             self.step_response.fill(0)
             self.avg_step_response.fill(0)
 
@@ -256,8 +250,6 @@ class TransmissionAnalyzer(MeasurementModule):
             self.avg_freq_resp_y.fill(0)
             self.impulse_response.fill(0)
             self.freq_resp_y.fill(0)
-            self.avg_group_delay_y.fill(0)
-            self.group_delay_y.fill(0)
             self.avg_step_response.fill(0)
             self.step_response.fill(0)
 
@@ -678,9 +670,7 @@ class TransmissionAnalyzer(MeasurementModule):
         freqs, mag_db = extract_frequency_response(rx_block, aligned_tx, self.audio_engine.sample_rate)
         self.freq_resp_x = freqs
 
-        # 2c. Group Delay & Step Response (Low Overhead)
-        gd_freqs, gd_ms = calculate_group_delay(rx_block, aligned_tx, self.audio_engine.sample_rate)
-        self.group_delay_x = gd_freqs
+        # 2c. Step Response (Low Overhead)
         step_resp = calculate_step_response(h_truncated)
 
         # Apply Time Domain / Spectral Averaging (EMA)
@@ -711,15 +701,6 @@ class TransmissionAnalyzer(MeasurementModule):
             else:
                 self.avg_freq_resp_y = mag_db.copy()
 
-        # Average Group Delay
-        if np.all(self.avg_group_delay_y == 0):
-            self.avg_group_delay_y = gd_ms.copy()
-        else:
-            if len(self.avg_group_delay_y) == len(gd_ms):
-                self.avg_group_delay_y = alpha * gd_ms + (1.0 - alpha) * self.avg_group_delay_y
-            else:
-                self.avg_group_delay_y = gd_ms.copy()
-
         # Average Step Response
         if np.all(self.avg_step_response == 0):
             self.avg_step_response = step_resp.copy()
@@ -731,7 +712,6 @@ class TransmissionAnalyzer(MeasurementModule):
 
         self.impulse_response = self.avg_impulse_response
         self.freq_resp_y = self.avg_freq_resp_y
-        self.group_delay_y = self.avg_group_delay_y
         self.step_response = self.avg_step_response
 
         # 2c. EVM calculation
@@ -1021,25 +1001,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         tab_freq_layout.addWidget(self.plot_freq)
         self.tabs.addTab(self.tab_freq, tr("Transmission Response"))
 
-        # Tab 4: Group Delay Plot [NEW]
-        self.tab_group_delay = QWidget()
-        tab_gd_layout = QVBoxLayout(self.tab_group_delay)
-        tab_gd_layout.setContentsMargins(5, 5, 5, 5)
-        self.plot_gd = pg.PlotWidget()
-        self.plot_gd.setLabel("bottom", tr("Frequency (Hz)"))
-        self.plot_gd.setLabel("left", tr("Group Delay (ms)"))
-        self.plot_gd.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_gd.setLogMode(x=True, y=False)
 
-        # Clean Decade Ticks for logarithmic axis matching the Transmission Response tab
-        axis_gd = self.plot_gd.getPlotItem().getAxis("bottom")
-        axis_gd.setTicks([ticks_log])
-
-        self.plot_gd.setXRange(np.log10(90), np.log10(nyquist * 1.05))
-        # Deep blue/cyan pen for group delay
-        self.gd_curve = self.plot_gd.plot(pen=pg.mkPen("#3498db", width=2.0))
-        tab_gd_layout.addWidget(self.plot_gd)
-        self.tabs.addTab(self.tab_group_delay, tr("Group Delay"))
 
         # Tab 5: Step Response Plot [NEW]
         self.tab_step = QWidget()
@@ -1133,7 +1095,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.trend_smooth_curve.setData([], [])
         self.imp_curve.setData(np.zeros(1024, dtype=np.float32))
         self.freq_curve.setData([], [])
-        self.gd_curve.setData([], [])
         self.step_curve.setData(np.zeros(512, dtype=np.float32))
 
         # Force UI label refresh instantly
@@ -1197,7 +1158,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         with self.module._lock:
             self.module.avg_impulse_response.fill(0)
             self.module.avg_freq_resp_y.fill(0)
-            self.module.avg_group_delay_y.fill(0)
             self.module.avg_step_response.fill(0)
 
     def on_trend_changed(self):
@@ -1447,32 +1407,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.freq_curve.setData(freq_x[valid_mask], freq_y[valid_mask])
         self.plot_freq.setYRange(-80.0, 10.0)
 
-        # Update Group Delay plot (Tab 4) [NEW]
-        gd_y = self.module.group_delay_y.copy()
-        gd_x = self.module.group_delay_x
-        nyquist = self.module.audio_engine.sample_rate / 2.0
-        gd_mask = (gd_x > 90) & (gd_x < nyquist)
 
-        # 4点に1点ダウンサンプリングして pyqtgraph 描画負荷を削減 (低負荷設計)
-        gd_x_valid = gd_x[gd_mask][::4]
-        gd_y_valid = gd_y[gd_mask][::4]
-
-        if self.module.smooth_mode > 0 and len(gd_x_valid) > 0:
-            from src.core.transmission_logic import apply_octave_smoothing
-            gd_y_valid = apply_octave_smoothing(gd_x_valid, gd_y_valid, self.module.smooth_mode)
-
-        self.gd_curve.setData(gd_x_valid, gd_y_valid)
-
-        # 周波数軸での過度なスパイクを避けるためパーセンタイルによるYレンジスケーリング
-        if len(gd_y_valid) > 0:
-            q10 = float(np.percentile(gd_y_valid, 10))
-            q90 = float(np.percentile(gd_y_valid, 90))
-            if abs(q90 - q10) < 0.1:
-                self.plot_gd.setYRange(q10 - 1.0, q90 + 1.0)
-            else:
-                self.plot_gd.setYRange(q10 - 0.5 * abs(q10) - 0.2, q90 + 0.5 * abs(q90) + 0.2)
-        else:
-            self.plot_gd.setYRange(-10.0, 10.0)
 
         # Update Step Response plot (Tab 5) [NEW]
         step_y = self.module.step_response
@@ -1488,12 +1423,11 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         # Update Step Response Transient stats label
         if self.module.is_locked and res.get("step_transient_valid", False):
             stats_text = tr(
-                "Overshoot: {0:.1f} %  |  Settling Time: {1:d} samples ({2:.3f} ms)  |  Droop: {3:.1f} %"
+                "Overshoot: {0:.1f} %  |  Settling Time: {1:d} samples ({2:.3f} ms)"
             ).format(
                 res["overshoot_pct"],
                 res["settling_samples"],
-                res["settling_ms"],
-                res["droop_pct"]
+                res["settling_ms"]
             )
             self.lbl_step_stats.setText(stats_text)
         else:

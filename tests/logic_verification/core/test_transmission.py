@@ -18,7 +18,6 @@ from src.core.transmission_logic import (
     estimate_fractional_delay,
     shift_signal_fractional,
     track_jitter_fractional,
-    calculate_group_delay,
     calculate_step_response,
     analyze_step_transient,
 )
@@ -293,18 +292,6 @@ class TestTransmissionLogic(unittest.TestCase):
         # Validate that the final fractional correlation is extremely high
         self.assertGreater(frac_corr, 0.98)
 
-    def test_calculate_group_delay(self):
-        """Test group delay calculation with flat response."""
-        gen = PRBSGenerator("PRBS-9")
-        tx = gen.generate_reference_sequence(512, bit_depth=24)
-        rx = tx.copy()
-
-        freqs, gd = calculate_group_delay(rx, tx, 48000)
-        self.assertEqual(len(freqs), 257)
-        self.assertEqual(len(gd), 257)
-
-        # フラットなループバックでは群遅延はほぼ 0ms になるはず
-        self.assertTrue(np.all(np.abs(gd) < 1.0))
 
     def test_calculate_step_response(self):
         """Test step response calculation from impulse response."""
