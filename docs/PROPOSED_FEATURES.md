@@ -19,7 +19,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ### 🆕 New Proposals
 
-* **Automated Suites**: ASRC Benchmark Automator, Test Sequence Automator, Bit-Perfect Verifier.
+* **Automated Suites**: ASRC Benchmark Automator, Test Sequence Automator.
 * **Signal Integrity**: Continuity & Dropout Logger, Lossy Codec Artifact Analyzer, Realtime/Offline Null Comparator.
 * **Device Profiling**: Dynamics Processor Profiler, TIE Jitter & Phase Noise Profiler, Damping Factor Profiler, PSRR Evaluator.
 * **NEW: Volterra Kernel Extractor**: Analyzes non-linearities to mathematically clone an amplifier/DAC's exact distortion profile.
@@ -39,6 +39,7 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## ✅ Already Implemented
 
+* **Transmission Analyzer (PRBS)**: Evaluates digital integrity (bit-perfect verification, bit error rate, LSB-to-MSB error histogram, DSP auto-detection) and analog transmission quality (EVM, Equalized EVM, Impulse Response, Frequency Response, Physical Delay, Jitter/Drift tracking). (Incorporates *Bit-Perfect Verifier* & *Digital Interface Analyzer*)
 * Quantization/Bit Depth Analyzer, Crosstalk & Multitone, Oscilloscope Persistence, Linearity Analyzer, J-Test, RIAA EQ Matcher, IR, LUFS (True Peak), Amplitude Sweep, etc.
 
 ---
@@ -64,4 +65,4 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 
 ## 💤 Deferred / Reference (Not Planned)
 
-* DC Stability & Drift Logger, Wow & Flutter Meter, Room Acoustics (RT60) & T/S Parameters, EQ Designer, AI-Based Audio Anomaly Detection, Digital Interface Analyzer.
+* DC Stability & Drift Logger, Wow & Flutter Meter, Room Acoustics (RT60) & T/S Parameters, EQ Designer, AI-Based Audio Anomaly Detection.
