@@ -91,7 +91,7 @@ def test_generate_signals(mock_audio_engine):
     assert len(meter.output_buffer) == 1024
 
 
-def test_analysis_worker():
+def test_analysis_worker(qtbot):
     data = np.zeros(1024)
     data[0] = 1.0  # Just some mock data
     sr = 48000
