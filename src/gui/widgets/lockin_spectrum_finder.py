@@ -962,7 +962,6 @@ class LockInSpectrumFinderWidget(QWidget):
         self.btn_toggle = QPushButton(tr("Start Analysis"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle)
-        self.btn_toggle.setStyleSheet("QPushButton:checked { background-color: #ccffcc; }")
         form.addRow(self.btn_toggle)
 
         # Mode Selection
@@ -1398,6 +1397,31 @@ class LockInSpectrumFinderWidget(QWidget):
             f"font-family: {MONOSPACE_FONT_FAMILY}; color: {color}; font-weight: bold;"
         )
 
+        checked = self.btn_toggle.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
+
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""
         # Block signals to avoid triggering on_buffer_changed during refill
@@ -1482,6 +1506,7 @@ class LockInSpectrumFinderWidget(QWidget):
             self.timer.stop()
             self.btn_toggle.setText(tr("Start Analysis"))
             self.lbl_status.setText(tr("Stopped"))
+        self.apply_theme(self.app.theme_manager.get_current_theme())
 
     def on_buffer_changed(self, text):
         self.module.buffer_size = int(text)
