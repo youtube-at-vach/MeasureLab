@@ -214,6 +214,41 @@ class TransmissionAnalyzer(MeasurementModule):
         if callback_id_to_unregister is not None:
             self.audio_engine.unregister_callback(callback_id_to_unregister)
 
+    def reset_statistics(self):
+        """Thread-safe reset of all accumulated measurement statistics and baselines."""
+        with self._lock:
+            self.total_test_samples = 0
+            self.total_bit_errors = 0
+            self.bit_hist.fill(0)
+
+            # Clear trends
+            self.gain_trend.clear()
+            self.ber_trend.clear()
+            self.jitter_trend.clear()
+
+            # Clear averaging response histories
+            self.avg_impulse_response.fill(0)
+            self.avg_freq_resp_y.fill(0)
+            self.impulse_response.fill(0)
+            self.freq_resp_y.fill(0)
+
+            # Recalibrate jitter base if locked
+            if self.is_locked:
+                self.initial_delay_samples = self.delay_samples
+                self.initial_fractional_delay = self.fractional_delay
+            else:
+                self.initial_delay_samples = 0
+                self.initial_fractional_delay = 0.0
+
+            # Update results cache instantly
+            self.results.update({
+                "bit_errors": 0,
+                "error_rate": 0.0,
+                "total_samples": 0 if self.mode == "Digital" else 0,
+                "jitter_samples": 0.0,
+                "evm": 0.0 if not self.is_locked else self.results.get("evm", 0.0)
+            })
+
     def _audio_callback(self, indata, outdata, frames, time, status):
         # 1. Output distinct PRBS signals on Left and Right channels
         out_ch = outdata.shape[1]
@@ -593,7 +628,7 @@ class TransmissionAnalyzer(MeasurementModule):
 
         # Incorporate drift_int to represent the true sub-sample delay drift during transient periods
         # before the slip integrator triggers. This completely eliminates 1-sample sawtooth discontinuities.
-        drift_frac = self.fractional_delay
+        drift_frac = self.fractional_delay - self.initial_fractional_delay
         jitter_s = cumulative_drift_int + drift_int + drift_frac
 
         # ---------------- 2. Analog Mode Metrics ----------------
@@ -978,16 +1013,18 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.apply_theme()
 
     def on_reset_stats(self):
-        with self.module._lock:
-            self.module.total_test_samples = 0
-            self.module.total_bit_errors = 0
-            self.module.bit_hist.fill(0)
-            self.bar_item.setOpts(height=np.zeros(24))
-            self.module.gain_trend.clear()
-            self.module.ber_trend.clear()
-            self.module.jitter_trend.clear()
-            self.module.avg_impulse_response.fill(0)
-            self.module.avg_freq_resp_y.fill(0)
+        # Trigger thread-safe core reset
+        self.module.reset_statistics()
+
+        # Instantly clear plots to avoid ghost frames
+        self.bar_item.setOpts(height=np.zeros(24))
+        self.trend_curve.setData([], [])
+        self.trend_smooth_curve.setData([], [])
+        self.imp_curve.setData(np.zeros(1024, dtype=np.float32))
+        self.freq_curve.setData([], [])
+
+        # Force UI label refresh instantly
+        self.update_display()
 
     def on_mode_changed(self, idx):
         mode = self.combo_mode.currentData()
@@ -1184,14 +1221,16 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
                 theme_name = self.app.theme_manager.get_effective_theme()
 
         if res is None:
+            # Fallback to the current results state to allow immediate updates (e.g. after a reset)
+            res = self.module.results
             if not self.module.is_locked:
                 self.lbl_status.setText(tr("WAITING FOR SYNC..."))
                 card_color = self.get_card_color(theme_name)
                 text_color = self.get_status_text_color(theme_name)
                 self.card_status.setStyleSheet(f"background-color: {card_color}; border-radius: 6px;")
                 self.lbl_status.setStyleSheet(f"color: {text_color}; font-weight: bold;")
-                self.lbl_reason.setText(self.module.results["reason"])
-            return
+                self.lbl_reason.setText(res.get("reason", tr("Start analysis to evaluate transmission characteristics.")))
+                return
 
         # Locked and evaluating!
         # Color updates
@@ -1354,6 +1393,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             y_max_val = max(-1e6, min(1e6, y_max_val))
 
             self.plot_trend.setYRange(y_min_val, y_max_val)
+        else:
+            self.trend_curve.setData([], [])
+            self.trend_smooth_curve.setData([], [])
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
