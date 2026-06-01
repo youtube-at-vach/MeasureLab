@@ -93,13 +93,18 @@ class CsvTraceExporter(BaseTraceExporter):
                     headers.append(f"{t.name} - {dim_cap2} ({unit2})" if unit2 else f"{t.name} - {dim_cap2}")
             writer.writerow(headers)
 
-        # 3. Interpolate and Write Data
+        # 3. Precompute trace data to avoid repeatedly instantiating arrays
+        precomputed_traces = []
+        for t in traces:
+            orig_x = np.array(t.x_data, dtype=float)
+            orig_y = np.array(t.y_data, dtype=float)
+            orig_y2 = np.array(t.y2_data, dtype=float) if t.y2_data is not None else None
+            precomputed_traces.append((t, orig_x, orig_y, orig_y2))
+
+        # 4. Interpolate and Write Data
         for x_val in x_grid:
             row = [x_val]
-            for t in traces:
-                orig_x = np.array(t.x_data, dtype=float)
-                orig_y = np.array(t.y_data, dtype=float)
-
+            for t, orig_x, orig_y, orig_y2 in precomputed_traces:
                 # Check for empty data safely
                 if len(orig_x) == 0:
                     row.append("")
@@ -110,8 +115,7 @@ class CsvTraceExporter(BaseTraceExporter):
                 y_val = np.interp(x_val, orig_x, orig_y)
                 row.append(y_val)
 
-                if t.y2_data is not None:
-                    orig_y2 = np.array(t.y2_data, dtype=float)
+                if orig_y2 is not None:
                     y2_val = np.interp(x_val, orig_x, orig_y2)
                     row.append(y2_val)
             writer.writerow(row)
