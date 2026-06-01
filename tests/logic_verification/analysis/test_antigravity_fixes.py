@@ -269,9 +269,7 @@ class TestAntigravityFixes(unittest.TestCase):
 
         ring_wraps = rx_start_abs // ring_len
         period_biased_delay = (physical_delay - ring_wraps * (ring_len % period)) % period
-        resolved_tx_abs = TransmissionAnalyzer._resolve_tx_abs_from_prbs_phase(
-            rx_start_abs, prbs_phase, period
-        )
+        resolved_tx_abs = TransmissionAnalyzer._resolve_tx_abs_from_prbs_phase(rx_start_abs, prbs_phase, period)
         new_abs_delay = rx_start_abs - resolved_tx_abs
 
         self.assertEqual(period_biased_delay, 25406)

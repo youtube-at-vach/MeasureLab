@@ -882,10 +882,22 @@ class UltrasoundModulatorWidget(QWidget):
         self.update_safety_status()
 
     def update_safety_status(self):
+        theme_name = "dark"
+        if hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+            if theme_name == "system":
+                theme_name = self.app.theme_manager.get_effective_theme()
+
         if not self.module.is_running:
-            self.safety_frame.setStyleSheet("background-color: #555; border-radius: 5px; border: 2px solid #777;")
+            if theme_name == "dark":
+                self.safety_frame.setStyleSheet("background-color: #333; border-radius: 5px; border: 2px solid #555;")
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #BBB;")
+            else:
+                self.safety_frame.setStyleSheet(
+                    "background-color: #F0F0F0; border-radius: 5px; border: 2px solid #CCC;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #666;")
             self.safety_label.setText(tr("STANDBY"))
-            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #BBB;")
             return
 
         # Check Output Gain (dB)
@@ -897,19 +909,43 @@ class UltrasoundModulatorWidget(QWidget):
 
         if gain_db > 0.0:
             # Dangerous
-            self.safety_frame.setStyleSheet("background-color: #FFCDD2; border-radius: 5px; border: 2px solid #F44336;")
+            if theme_name == "dark":
+                self.safety_frame.setStyleSheet(
+                    "background-color: #4C1C1C; border-radius: 5px; border: 2px solid #F44336;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FFCDD2;")
+            else:
+                self.safety_frame.setStyleSheet(
+                    "background-color: #FFCDD2; border-radius: 5px; border: 2px solid #F44336;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #B71C1C;")
             self.safety_label.setText(tr("🔴 DANGEROUS - HIGH INTENSITY 🔴"))
-            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #B71C1C;")
         elif gain_db > -10.0:
             # Caution
-            self.safety_frame.setStyleSheet("background-color: #FFF9C4; border-radius: 5px; border: 2px solid #FBC02D;")
+            if theme_name == "dark":
+                self.safety_frame.setStyleSheet(
+                    "background-color: #4D3F00; border-radius: 5px; border: 2px solid #FBC02D;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FFF9C4;")
+            else:
+                self.safety_frame.setStyleSheet(
+                    "background-color: #FFF9C4; border-radius: 5px; border: 2px solid #FBC02D;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #F57F17;")
             self.safety_label.setText(tr("🟡 CAUTION - ULTRASOUND ACTIVE 🟡"))
-            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #F57F17;")
         else:
             # Safe
-            self.safety_frame.setStyleSheet("background-color: #C8E6C9; border-radius: 5px; border: 2px solid #4CAF50;")
+            if theme_name == "dark":
+                self.safety_frame.setStyleSheet(
+                    "background-color: #1B3D22; border-radius: 5px; border: 2px solid #4CAF50;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #C8E6C9;")
+            else:
+                self.safety_frame.setStyleSheet(
+                    "background-color: #C8E6C9; border-radius: 5px; border: 2px solid #4CAF50;"
+                )
+                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #1B5E20;")
             self.safety_label.setText(tr("🟢 SAFE - LOW INTENSITY 🟢"))
-            self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #1B5E20;")
 
     def on_predist_toggled(self, checked):
         self.module.enable_predistortion = checked
@@ -975,6 +1011,7 @@ class UltrasoundModulatorWidget(QWidget):
                     "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
                     "QPushButton:hover { background-color: #bbfebb; }"
                 )
+        self.update_safety_status()
 
     def update_ui_state(self):
         # Update button state if changed externally (though unlikely)

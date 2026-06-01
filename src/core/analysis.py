@@ -791,7 +791,9 @@ class AudioCalc:
         harmonic_results = []
         harmonic_amplitudes_linear = []
 
-        for i, h_freq, h_min, h_max, is_valid in zip(orders, harmonic_freqs, h_idx_mins, h_idx_maxs, valid_ranges, strict=False):
+        for i, h_freq, h_min, h_max, is_valid in zip(
+            orders, harmonic_freqs, h_idx_mins, h_idx_maxs, valid_ranges, strict=False
+        ):
             if is_valid:
                 h_peak_idx = h_min + amplitude_spectrum[h_min:h_max].argmax()
                 h_amp = amplitude_spectrum[h_peak_idx]

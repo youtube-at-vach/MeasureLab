@@ -4,6 +4,7 @@ from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -110,6 +111,24 @@ class DetachableWidgetWrapper(QWidget):
         self.is_comparable = isinstance(widget, ComparableWidgetInterface) or hasattr(widget, "get_comparable_data")
 
         self.init_ui()
+
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        if theme_name == "dark":
+            self.title_label.setStyleSheet("color: white; font-weight: bold; font-size: 14px;")
+        else:
+            self.title_label.setStyleSheet("color: black; font-weight: bold; font-size: 14px;")
 
     def init_ui(self):
         self.layout = QVBoxLayout(self)
