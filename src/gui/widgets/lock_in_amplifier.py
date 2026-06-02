@@ -556,15 +556,11 @@ class FRASweepWorker(QThread):
         self.log_sweep = log_sweep
         self.settle_time = settle_time
         self.is_cancelled = False
+        self._cancel_event = threading.Event()
 
     def _interruptible_sleep(self, seconds: float):
         """Sleeps for the given duration while remaining responsive to cancellation."""
-        end_time = time.time() + seconds
-        while time.time() < end_time:
-            if self.is_cancelled:
-                break
-            # Sleep in small 10ms increments to allow quick cancellation
-            self.msleep(10)
+        self._cancel_event.wait(seconds)
 
     def run(self):
         if self.log_sweep:
@@ -634,6 +630,7 @@ class FRASweepWorker(QThread):
 
     def cancel(self):
         self.is_cancelled = True
+        self._cancel_event.set()
         self.module._buffer_ready_event.set()
 
 
