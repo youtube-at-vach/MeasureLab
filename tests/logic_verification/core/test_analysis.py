@@ -151,7 +151,6 @@ class TestAudioCalc:
         np.testing.assert_array_equal(filtered, np.zeros(10))
 
 
-
 def test_get_cached_window():
     """Test get_cached_window caching and immutability behavior."""
     # Test valid inputs

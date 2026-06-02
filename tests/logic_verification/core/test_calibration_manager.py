@@ -526,7 +526,7 @@ def test_calibration_manager_thread_safety(cal_manager):
         maps = [
             [[100.0, 1.0, 10.0], [1000.0, 2.0, 20.0]],
             [[100.0, 1.5, 12.0], [1000.0, 2.5, 22.0], [10000.0, 3.5, 32.0]],
-            []
+            [],
         ]
         i = 0
         while not stop_event.is_set():
@@ -571,4 +571,3 @@ def test_calibration_manager_thread_safety(cal_manager):
 
     # Verify no exception was raised in the audio-reader thread
     assert not errors, f"Concurrent access exceptions: {errors}"
-

@@ -450,6 +450,13 @@ class SweepWorker(QThread):
         self.duration_ms = duration_ms
         self.is_running = True
 
+    def _interruptible_sleep(self, ms: int):
+        """Sleeps for the given duration while remaining responsive to cancellation."""
+        elapsed = 0
+        while elapsed < ms and self.is_running:
+            self.msleep(min(10, ms - elapsed))
+            elapsed += 10
+
     def run(self):
         # Generate steps
         if self.sweep_type == "frequency":
@@ -484,7 +491,7 @@ class SweepWorker(QThread):
             # Wait for settling (Generator update + Audio Buffer Latency)
             # Ensure at least 300ms wait
             wait_time = max(300, self.duration_ms)
-            self.msleep(wait_time)
+            self._interruptible_sleep(wait_time)
 
             self.module.reset_averaging_state()
             avg_count = max(1, self.module.average_count)
