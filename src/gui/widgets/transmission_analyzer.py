@@ -348,16 +348,48 @@ class TransmissionAnalyzer(MeasurementModule):
         cycles = (int(rx_start_abs) - phase) // int(period)
         return phase + cycles * int(period)
 
+    def _calculate_optimal_block_size(self) -> int:
+        """
+        PRBSパターンとビット深度から、PRBS周期の整数倍に最も近くなる
+        最適な2のべき乗ブロックサイズ（1024, 2048, 4096）を算出します。
+        """
+        P = self.generator_l.period
+        B = self.bit_depth
+
+        candidates = [1024, 2048, 4096]
+        best_n = 2048
+        min_error = float("inf")
+
+        for n in candidates:
+            total_bits = n * B
+            ratio = total_bits / P
+            error = abs(ratio - round(ratio))
+
+            # もし比率が 1 未満の場合は、偏りが大きくなるため少しペナルティを与える
+            if ratio < 0.95:
+                error += 0.5
+
+            if error < min_error:
+                min_error = error
+                best_n = n
+
+        # 長周期パターン（PRBS-23, PRBS-31）では、統計的なランダム性を高めるため
+        # および周波数解像度向上のため、大きめのサイズ（4096）をデフォルトにする
+        if P > 1000000:
+            best_n = 4096
+
+        return best_n
+
     def process_data(self) -> dict | None:
         """Processes ring buffer samples to compute all Digital & Analog diagnostics."""
         with self._lock:
-            if not self.is_running or self.new_samples_count < 2048:
+            optimal_size = self._calculate_optimal_block_size()
+            if not self.is_running or self.new_samples_count < optimal_size:
                 return None
 
             # Read new samples from the ring buffer
             n = self.new_samples_count
-            # Cap block-size at 2048 for live diagnostic updates
-            block_size = min(n, 2048)
+            block_size = min(n, optimal_size)
 
             rx_w = self.rx_write_ptr
             rx_r = (rx_w - block_size) % self.max_buffer_len
