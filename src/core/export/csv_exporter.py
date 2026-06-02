@@ -26,6 +26,13 @@ class CsvTraceExporter(BaseTraceExporter):
     def default_extension(self) -> str:
         return ".csv"
 
+    def _sanitize_csv_field(self, field: str) -> str:
+        """Sanitizes a string to prevent CSV injection (Formula Injection)."""
+        field_str = str(field)
+        if field_str.startswith(("=", "+", "-", "@", "\t", "\r")):
+            return f"'{field_str}"
+        return field_str
+
     def export_traces(self, filepath: str, traces: List[ComparisonTrace], options: Dict[str, Any]) -> bool:
         delimiter = "," if options.get("delimiter", "comma") == "comma" else "\t"
         layout = options.get("layout", "merged")  # "independent" or "merged"
@@ -81,16 +88,18 @@ class CsvTraceExporter(BaseTraceExporter):
                 unit = first_t.x_axis.display_unit
                 x_dim_str = f"{dim_cap} ({unit})" if unit else dim_cap
 
-            headers = [x_dim_str]
+            headers = [self._sanitize_csv_field(x_dim_str)]
             for t in traces:
                 dim_cap = tr(t.y_axis.dimension).capitalize()
                 unit = t.y_axis.display_unit
-                headers.append(f"{t.name} - {dim_cap} ({unit})" if unit else f"{t.name} - {dim_cap}")
+                y_lbl = f"{t.name} - {dim_cap} ({unit})" if unit else f"{t.name} - {dim_cap}"
+                headers.append(self._sanitize_csv_field(y_lbl))
 
                 if t.y2_data is not None and t.y2_axis:
                     dim_cap2 = tr(t.y2_axis.dimension).capitalize()
                     unit2 = t.y2_axis.display_unit
-                    headers.append(f"{t.name} - {dim_cap2} ({unit2})" if unit2 else f"{t.name} - {dim_cap2}")
+                    y2_lbl = f"{t.name} - {dim_cap2} ({unit2})" if unit2 else f"{t.name} - {dim_cap2}"
+                    headers.append(self._sanitize_csv_field(y2_lbl))
             writer.writerow(headers)
 
         # 3. Precompute trace data to avoid repeatedly instantiating arrays
@@ -133,13 +142,13 @@ class CsvTraceExporter(BaseTraceExporter):
                 y_unit = t.y_axis.display_unit
                 y_lbl = f"{t.name}_{y_dim} ({y_unit})" if y_unit else f"{t.name}_{y_dim}"
 
-                headers.extend([x_lbl, y_lbl])
+                headers.extend([self._sanitize_csv_field(x_lbl), self._sanitize_csv_field(y_lbl)])
 
                 if t.y2_data is not None and t.y2_axis:
                     y2_dim = tr(t.y2_axis.dimension).capitalize()
                     y2_unit = t.y2_axis.display_unit
                     y2_lbl = f"{t.name}_{y2_dim} ({y2_unit})" if y2_unit else f"{t.name}_{y2_dim}"
-                    headers.append(y2_lbl)
+                    headers.append(self._sanitize_csv_field(y2_lbl))
             writer.writerow(headers)
 
         # 2. Write Data Row by Row
