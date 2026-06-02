@@ -663,12 +663,12 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     # ステップ応答の最大傾斜（微分値の絶対値が最大となる位置）を探索する
     dy = np.diff(step_y)
     abs_dy = np.abs(dy)
-    
+
     # 境界付近でのノイズ誤検出を防ぐため、端部を除外した領域から探索
     margin = max(10, N // 20)
     if N - margin <= margin:
         return results
-        
+
     peak_grad_idx = int(np.argmax(abs_dy[margin:-margin])) + margin
 
     # 2. 動的なベースラインおよび収束範囲の決定
@@ -681,7 +681,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     final_start = min(N - 10, peak_grad_idx + 2 * margin)
     if final_start >= N:
         final_start = N - 1
-        
+
     v_final = float(np.mean(step_y[final_start:min(final_start + 150, N)]))
 
     # ステップ全体の高さ
@@ -694,7 +694,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
 
     # 3. 立ち上がり開始位置の特定 (v_base + 10% 閾値を超える最初のインデックス)
     v_10 = v_base + 0.10 * v_step
-    
+
     # peak_grad_idx より手前で v_10 を横切る位置を探索
     start_idx = peak_grad_idx
     if v_step > 0:
@@ -742,7 +742,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     early_start = final_start
     early_end = min(N, early_start + 30)
     v_early = float(np.mean(step_y[early_start:early_end]))
-    
+
     late_start = max(early_end, N - 30)
     v_late = float(np.mean(step_y[late_start:N]))
 
