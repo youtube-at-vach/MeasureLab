@@ -69,10 +69,9 @@ class TransmissionAnalyzer(MeasurementModule):
         self.generator_l = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
         self.generator_r = PRBSGenerator(self.pattern_mode, seed=0x12345678)
 
-        # Reference cache for initial synchronization
+        # Reference cache for initial synchronization (Lazy loaded in start_analysis)
         self.ref_cycle_len = self.generator_l.period
-        temp_gen = PRBSGenerator(self.pattern_mode, seed=0x7FFFFFFF)
-        self.ref_cycle = temp_gen.generate_reference_sequence(min(self.ref_cycle_len, 65536), self.bit_depth)
+        self.ref_cycle = None
 
         # Sync and Lock State
         self.is_locked = False

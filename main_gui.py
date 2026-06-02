@@ -113,9 +113,33 @@ def setup_app():
     return app
 
 
+def _preload_dependencies():
+    """Preload heavy dependencies in a background thread to utilize idle CPU time.
+    
+    This ensures that when the main thread imports modules utilizing these packages,
+    they are loaded instantly from sys.modules cache without blocking the GUI.
+    """
+    try:
+        import numpy  # noqa: F401
+        import scipy  # noqa: F401
+        import scipy.signal  # noqa: F401
+        import scipy.special  # noqa: F401
+        import scipy.fft  # noqa: F401
+        import scipy.linalg  # noqa: F401
+        import pywt  # noqa: F401
+    except Exception:
+        # Preload failures should never crash application startup
+        pass
+
+
 def main():
     """GUI Application Entry Point"""
     app = setup_app()
+
+    # Start preloading heavy libraries in the background immediately
+    import threading
+    preload_thread = threading.Thread(target=_preload_dependencies, daemon=True)
+    preload_thread.start()
 
     # Import other PyQt components after setup
     from PyQt6.QtCore import Qt, QTimer
@@ -181,6 +205,11 @@ def main():
         # 1. Warmup FFT Optimization (Show progress)
         # This will be fast if wisdom exists, or show progress if optimizing
         fft_manager.warmup(callback=_update_splash)
+
+        # Wait for the background preload thread to complete.
+        # This ensures the cache is populated before MainWindow loads widgets.
+        _update_splash(tr("Finishing core initialization..."))
+        preload_thread.join(timeout=5.0)
 
         # 2. Preload Modules
         window.preload_all_modules(progress_callback=_update_splash)
