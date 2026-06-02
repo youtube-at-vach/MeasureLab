@@ -64,8 +64,12 @@ class BitDepthEstimator:
 
         estimated_bits = 0.0
         if len(nonzero_diffs) > 0:
-            # Find the smallest non-zero step
-            min_delta = np.min(nonzero_diffs)
+            # 浮動小数点の端数や極めて稀な数値ゴミ（アウトライアー）の影響を排除するため、
+            # 差分配列をソートし、全体の 0.5% パーセンタイル値（出現頻度の高い最小ステップ）を
+            # 頑健な最小デルタとして採用します。データが少ない場合は np.min と同等になります。
+            sorted_diffs = np.sort(nonzero_diffs)
+            idx = max(0, min(len(sorted_diffs) - 1, len(sorted_diffs) // 200))
+            min_delta = float(sorted_diffs[idx])
 
             if min_delta > 0:
                 estimated_bits = 1 - np.log2(min_delta)

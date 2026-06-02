@@ -164,3 +164,22 @@ def test_bit_depth_8bit(estimator):
     results = estimator.analyze()
     assert results is not None
     assert abs(results["bit_depth"] - 8.0) < 0.1
+
+
+def test_bit_depth_robust_to_outliers(estimator):
+    """Verify that bit depth estimation is immune to sparse floating point outliers or rounding errors."""
+    # 16-bit steps
+    step = 2.0 / 65536.0
+    # Ramp with 400 samples
+    quantized_signal = np.arange(-200, 200) * step
+
+    # Inject a tiny outlier (e.g. 1e-11 step, representing a rounding error or jitter)
+    # The old algorithm would have detected this and reported ~37 bits instead of 16 bits.
+    quantized_signal[200] += 1e-11
+
+    estimator.add_samples(quantized_signal)
+    results = estimator.analyze()
+
+    assert results is not None
+    # Highly robust check: should still report ~16.0 bits, NOT ~37 bits!
+    assert abs(results["bit_depth"] - 16.0) < 0.2
