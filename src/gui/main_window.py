@@ -63,6 +63,7 @@ from src.core.module_constants import (
     MODULE_TRANSIENT_ANALYZER,
     MODULE_ULTRASOUND_MODULATOR,
     MODULE_WAVEFORM_LOOP_PLAYER,
+    MODULE_NONLINEAR_SYSTEM_ANALYZER,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -105,6 +106,7 @@ MODULE_REGISTRY = {
     MODULE_SPATIAL_BINAURAL_MIXER: ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"),
     MODULE_PLOT_COMPARER: ("src.gui.widgets.plot_comparer", "PlotComparer"),
     MODULE_TRANSMISSION_ANALYZER: ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"),
+    MODULE_NONLINEAR_SYSTEM_ANALYZER: ("src.gui.widgets.nonlinear_system_analyzer", "NonlinearSystemAnalyzer"),
 }
 
 
