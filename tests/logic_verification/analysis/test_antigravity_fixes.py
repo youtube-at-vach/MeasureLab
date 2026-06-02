@@ -275,6 +275,73 @@ class TestAntigravityFixes(unittest.TestCase):
         self.assertEqual(period_biased_delay, 25406)
         self.assertEqual(new_abs_delay, physical_delay)
 
+    def test_transmission_analyzer_reset_statistics(self):
+        """Verify that reset_statistics properly clears all accumulated variables, trends, and recalibrates jitter baseline."""
+        from src.gui.widgets.transmission_analyzer import TransmissionAnalyzer
+
+        engine = MockAudioEngine(sample_rate=48000)
+        analyzer = TransmissionAnalyzer(engine)
+
+        # Manually populate some mock statistics and trends
+        analyzer.total_test_samples = 10000
+        analyzer.total_bit_errors = 50
+        analyzer.bit_hist[5] = 20
+        analyzer.bit_hist[10] = 30
+
+        analyzer.gain_trend.append(0.5)
+        analyzer.ber_trend.append(0.5)
+        analyzer.jitter_trend.append(1.5)
+
+        analyzer.avg_impulse_response[10] = 0.8
+        analyzer.avg_freq_resp_y[10] = -3.0
+
+        # Test locked case with jitter recalibration
+        analyzer.is_locked = True
+        analyzer.delay_samples = 120
+        analyzer.fractional_delay = 0.25
+        analyzer.initial_delay_samples = 100
+        analyzer.initial_fractional_delay = 0.1
+
+        analyzer.results.update({
+            "bit_errors": 50,
+            "error_rate": 0.5,
+            "total_samples": 10000,
+            "jitter_samples": 21.15
+        })
+
+        # Run reset
+        analyzer.reset_statistics()
+
+        # Check accumulated variables are zeroed out
+        self.assertEqual(analyzer.total_test_samples, 0)
+        self.assertEqual(analyzer.total_bit_errors, 0)
+        self.assertEqual(analyzer.bit_hist.sum(), 0)
+
+        # Check trends are cleared
+        self.assertEqual(len(analyzer.gain_trend), 0)
+        self.assertEqual(len(analyzer.ber_trend), 0)
+        self.assertEqual(len(analyzer.jitter_trend), 0)
+
+        # Check average responses are cleared
+        self.assertEqual(analyzer.avg_impulse_response.sum(), 0.0)
+        self.assertEqual(analyzer.avg_freq_resp_y.sum(), 0.0)
+
+        # Check jitter baseline is recalibrated to current locked values
+        self.assertEqual(analyzer.initial_delay_samples, 120)
+        self.assertEqual(analyzer.initial_fractional_delay, 0.25)
+
+        # Check results are updated instantly
+        self.assertEqual(analyzer.results["bit_errors"], 0)
+        self.assertEqual(analyzer.results["error_rate"], 0.0)
+        self.assertEqual(analyzer.results["total_samples"], 0)
+        self.assertEqual(analyzer.results["jitter_samples"], 0.0)
+
+        # Check unlocked case
+        analyzer.is_locked = False
+        analyzer.reset_statistics()
+        self.assertEqual(analyzer.initial_delay_samples, 0)
+        self.assertEqual(analyzer.initial_fractional_delay, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

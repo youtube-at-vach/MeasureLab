@@ -620,3 +620,120 @@ def apply_octave_smoothing(freqs: np.ndarray, mag_db: np.ndarray, fraction: floa
             smoothed[i] = mag_db[i]
 
     return smoothed
+
+
+
+def calculate_step_response(impulse_response: np.ndarray) -> np.ndarray:
+    """
+    インパルス応答 h[t] からステップ応答 (Step Response) を累積積分により高速に算出します。
+    """
+    if len(impulse_response) == 0:
+        return np.array([], dtype=np.float32)
+
+    # np.cumsum は極めて高速（ベクトル化）
+    step_resp = np.cumsum(impulse_response)
+
+    # 正規化もしくはスケーリングを行い、インパルス応答と同様のレンジで安定表示できるようにする
+    # 直流オフセット（初期値のズレ）を防ぐため、最初の数サンプルの平均値を引いてゼロ基点にする
+    warmup = min(10, len(step_resp))
+    if warmup > 0:
+        step_resp -= np.mean(step_resp[:warmup])
+
+    return step_resp.astype(np.float32)
+
+
+def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
+    """
+    ステップ応答波形から、オーバーシュート率 (OS%)、セトリングタイム、およびドループ特性を頑健に算出します。
+    """
+    results = {
+        "overshoot_pct": 0.0,
+        "settling_samples": 0,
+        "settling_ms": 0.0,
+        "droop_pct": 0.0,
+        "step_gain": 0.0,
+        "valid": False
+    }
+
+    N = len(step_y)
+    if N < 256:
+        return results
+
+    # 1. 各種基準値の特定
+    # ベースライン V_base: ピーク（128）より前（0〜100）の平均
+    v_base = float(np.mean(step_y[:100]))
+
+    # 最終収束値 V_final: 後半（350〜500サンプル）の平均
+    v_final = float(np.mean(step_y[350:500]))
+
+    # ステップ全体の高さ
+    v_step = v_final - v_base
+    v_step_abs = abs(v_step)
+
+    # 閾値保護: ステップ信号が十分に大きくない（または無音）場合は解析不可とする
+    if v_step_abs < 0.005:
+        return results
+
+    # 2. 立ち上がり開始位置の特定 (v_base + 10% 閾値を超える最初のインデックス)
+    v_10 = v_base + 0.10 * v_step
+    start_idx = 128
+    for idx in range(100, 200):
+        if (v_step > 0 and step_y[idx] >= v_10) or (v_step < 0 and step_y[idx] <= v_10):
+            start_idx = idx
+            break
+
+    # 3. オーバーシュート率 (Overshoot %) の算出
+    # 立ち上がり後の最大変位を特定 (極性を考慮)
+    if v_step > 0:
+        v_max = float(np.max(step_y[start_idx:300]))
+        overshoot_val = max(0.0, v_max - v_final)
+    else:
+        v_min = float(np.min(step_y[start_idx:300]))
+        overshoot_val = max(0.0, v_final - v_min)
+
+    overshoot_pct = (overshoot_val / v_step_abs) * 100.0
+
+    # 4. セトリングタイム (Settling Time) の算出
+    # 最終値の ±2% 誤差バンドを定義
+    tolerance = 0.02 * v_step_abs
+    v_upper = v_final + tolerance
+    v_lower = v_final - tolerance
+
+    # 末尾から逆向きにスキャンし、許容差バンド外に飛び出している最後の要素を探索
+    settling_idx = start_idx
+    for idx in range(N - 1, start_idx, -1):
+        val = step_y[idx]
+        if val > v_upper or val < v_lower:
+            settling_idx = idx
+            break
+
+    settling_samples = max(0, settling_idx - start_idx)
+    settling_ms = (settling_samples / sr) * 1000.0
+
+    # 5. ドループ (Droop %) の算出
+    # 立ち上がり直後の安定期 (200) と末尾 (500) の差分から、低域カットオフによる減衰を評価
+    v_early = float(np.mean(step_y[200:230]))
+    v_late = float(np.mean(step_y[480:510]))
+
+    if v_step > 0:
+        droop_val = v_early - v_late
+    else:
+        droop_val = v_late - v_early
+
+    droop_pct = (droop_val / v_step_abs) * 100.0
+
+    # 負のドループ（極端な上昇など）は測定ノイズとみなして 0.0 以下はクリップ
+    droop_pct = max(0.0, droop_pct)
+
+    results.update({
+        "overshoot_pct": float(np.clip(overshoot_pct, 0.0, 200.0)),
+        "settling_samples": int(settling_samples),
+        "settling_ms": float(settling_ms),
+        "droop_pct": float(np.clip(droop_pct, 0.0, 100.0)),
+        "step_gain": float(v_step),
+        "valid": True
+    })
+
+    return results
+
+

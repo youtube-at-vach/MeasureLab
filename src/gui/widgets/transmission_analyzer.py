@@ -32,6 +32,8 @@ from src.core.transmission_logic import (
     estimate_fractional_delay,
     shift_signal_fractional,
     track_jitter_fractional,
+    calculate_step_response,
+    analyze_step_transient,
 )
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 
@@ -100,6 +102,11 @@ class TransmissionAnalyzer(MeasurementModule):
         self.avg_impulse_response = np.zeros(1024, dtype=np.float32)
         self.avg_freq_resp_y = np.zeros(513, dtype=np.float32)
 
+        # Step Response buffers
+        self.step_response = np.zeros(512, dtype=np.float32)
+
+        self.avg_step_response = np.zeros(512, dtype=np.float32)
+
         # Scrolling History Trends
         self.display_history_len = 150
         self.max_history_len = 300  # Warmup buffer to avoid EMA edge transient effects
@@ -120,6 +127,11 @@ class TransmissionAnalyzer(MeasurementModule):
             "evm": 0.0,
             "dsp_detected": "None",
             "jitter_samples": 0.0,
+            "overshoot_pct": 0.0,
+            "settling_samples": 0,
+            "settling_ms": 0.0,
+            "droop_pct": 0.0,
+            "step_transient_valid": False,
         }
 
         self.callback_id = None
@@ -177,6 +189,8 @@ class TransmissionAnalyzer(MeasurementModule):
             self.freq_resp_y.fill(0)
             self.avg_impulse_response.fill(0)
             self.avg_freq_resp_y.fill(0)
+            self.step_response.fill(0)
+            self.avg_step_response.fill(0)
 
             # Clear Trends
             self.gain_trend.clear()
@@ -196,6 +210,11 @@ class TransmissionAnalyzer(MeasurementModule):
                 "evm": 0.0,
                 "dsp_detected": tr("Analyzing..."),
                 "jitter_samples": 0.0,
+                "overshoot_pct": 0.0,
+                "settling_samples": 0,
+                "settling_ms": 0.0,
+                "droop_pct": 0.0,
+                "step_transient_valid": False,
             }
 
         self.callback_id = self.audio_engine.register_callback(self._audio_callback)
@@ -213,6 +232,48 @@ class TransmissionAnalyzer(MeasurementModule):
 
         if callback_id_to_unregister is not None:
             self.audio_engine.unregister_callback(callback_id_to_unregister)
+
+    def reset_statistics(self):
+        """Thread-safe reset of all accumulated measurement statistics and baselines."""
+        with self._lock:
+            self.total_test_samples = 0
+            self.total_bit_errors = 0
+            self.bit_hist.fill(0)
+
+            # Clear trends
+            self.gain_trend.clear()
+            self.ber_trend.clear()
+            self.jitter_trend.clear()
+
+            # Clear averaging response histories
+            self.avg_impulse_response.fill(0)
+            self.avg_freq_resp_y.fill(0)
+            self.impulse_response.fill(0)
+            self.freq_resp_y.fill(0)
+            self.avg_step_response.fill(0)
+            self.step_response.fill(0)
+
+            # Recalibrate jitter base if locked
+            if self.is_locked:
+                self.initial_delay_samples = self.delay_samples
+                self.initial_fractional_delay = self.fractional_delay
+            else:
+                self.initial_delay_samples = 0
+                self.initial_fractional_delay = 0.0
+
+            # Update results cache instantly
+            self.results.update({
+                "bit_errors": 0,
+                "error_rate": 0.0,
+                "total_samples": 0 if self.mode == "Digital" else 0,
+                "jitter_samples": 0.0,
+                "evm": 0.0 if not self.is_locked else self.results.get("evm", 0.0),
+                "overshoot_pct": 0.0,
+                "settling_samples": 0,
+                "settling_ms": 0.0,
+                "droop_pct": 0.0,
+                "step_transient_valid": False,
+            })
 
     def _audio_callback(self, indata, outdata, frames, time, status):
         # 1. Output distinct PRBS signals on Left and Right channels
@@ -593,21 +654,24 @@ class TransmissionAnalyzer(MeasurementModule):
 
         # Incorporate drift_int to represent the true sub-sample delay drift during transient periods
         # before the slip integrator triggers. This completely eliminates 1-sample sawtooth discontinuities.
-        drift_frac = self.fractional_delay
+        drift_frac = self.fractional_delay - self.initial_fractional_delay
         jitter_s = cumulative_drift_int + drift_int + drift_frac
 
         # ---------------- 2. Analog Mode Metrics ----------------
         # 2a. Impulse Response (h[t])
         h = extract_impulse_response(rx_block, aligned_tx)
-        # Center peak and truncate to 512 points for display
+        # Center peak at index 128 using circular shift to ensure pre-impulse silence is captured.
+        # This prevents the impulse from clipping at the boundaries and allows proper Step Response integration.
         peak_idx = np.argmax(np.abs(h))
-        start_idx = max(0, peak_idx - 128)
-        end_idx = min(len(h), start_idx + 512)
-        h_truncated = h[start_idx:end_idx]
+        h_rolled = np.roll(h, 128 - peak_idx)
+        h_truncated = h_rolled[:512]
 
         # 2b. Frequency Response
         freqs, mag_db = extract_frequency_response(rx_block, aligned_tx, self.audio_engine.sample_rate)
         self.freq_resp_x = freqs
+
+        # 2c. Step Response (Low Overhead)
+        step_resp = calculate_step_response(h_truncated)
 
         # Apply Time Domain / Spectral Averaging (EMA)
         if self.averaging_mode == "none":
@@ -637,8 +701,18 @@ class TransmissionAnalyzer(MeasurementModule):
             else:
                 self.avg_freq_resp_y = mag_db.copy()
 
+        # Average Step Response
+        if np.all(self.avg_step_response == 0):
+            self.avg_step_response = step_resp.copy()
+        else:
+            if len(self.avg_step_response) == len(step_resp):
+                self.avg_step_response = alpha * step_resp + (1.0 - alpha) * self.avg_step_response
+            else:
+                self.avg_step_response = step_resp.copy()
+
         self.impulse_response = self.avg_impulse_response
         self.freq_resp_y = self.avg_freq_resp_y
+        self.step_response = self.avg_step_response
 
         # 2c. EVM calculation
         if self.mode == "Analog":
@@ -670,6 +744,9 @@ class TransmissionAnalyzer(MeasurementModule):
             self.ber_trend.pop(0)
             self.jitter_trend.pop(0)
 
+        # Analyze Step Response transient metrics (Low Overhead)
+        transient_res = analyze_step_transient(self.step_response, self.audio_engine.sample_rate)
+
         # Save results
         self.results = {
             "locked": True,
@@ -688,6 +765,11 @@ class TransmissionAnalyzer(MeasurementModule):
             "jitter_samples": float(jitter_s),
             "delay_samples": delay_samples,
             "delay_ms": delay_ms,
+            "overshoot_pct": transient_res["overshoot_pct"],
+            "settling_samples": transient_res["settling_samples"],
+            "settling_ms": transient_res["settling_ms"],
+            "droop_pct": transient_res["droop_pct"],
+            "step_transient_valid": transient_res["valid"],
         }
 
         return self.results
@@ -919,7 +1001,33 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         tab_freq_layout.addWidget(self.plot_freq)
         self.tabs.addTab(self.tab_freq, tr("Transmission Response"))
 
-        # Tab 4: Jitter & scrolling histories
+
+
+        # Tab 5: Step Response Plot [NEW]
+        self.tab_step = QWidget()
+        tab_step_layout = QVBoxLayout(self.tab_step)
+        tab_step_layout.setContentsMargins(5, 5, 5, 5)
+        tab_step_layout.setSpacing(4)
+
+        # Transient stats banner at the top of the plot
+        self.lbl_step_stats = QLabel(tr("Establish lock to analyze transient characteristics..."))
+        self.lbl_step_stats.setStyleSheet(
+            f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; font-weight: bold; padding: 4px; border-radius: 4px;"
+        )
+        self.lbl_step_stats.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tab_step_layout.addWidget(self.lbl_step_stats)
+
+        self.plot_step = pg.PlotWidget()
+        self.plot_step.getPlotItem().getAxis("left").enableAutoSIPrefix(False)
+        self.plot_step.setLabel("bottom", tr("Time Domain Index (Samples)"))
+        self.plot_step.setLabel("left", tr("Amplitude"))
+        self.plot_step.showGrid(x=True, y=True, alpha=0.3)
+        # Deep orange/yellow pen for step response
+        self.step_curve = self.plot_step.plot(pen=pg.mkPen("#e67e22", width=2.0))
+        tab_step_layout.addWidget(self.plot_step)
+        self.tabs.addTab(self.tab_step, tr("Step Response"))
+
+        # Tab 6: Jitter & scrolling histories
         self.tab_trends = QWidget()
         tab_trend_layout = QVBoxLayout(self.tab_trends)
         tab_trend_layout.setContentsMargins(5, 5, 5, 5)
@@ -978,16 +1086,19 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.apply_theme()
 
     def on_reset_stats(self):
-        with self.module._lock:
-            self.module.total_test_samples = 0
-            self.module.total_bit_errors = 0
-            self.module.bit_hist.fill(0)
-            self.bar_item.setOpts(height=np.zeros(24))
-            self.module.gain_trend.clear()
-            self.module.ber_trend.clear()
-            self.module.jitter_trend.clear()
-            self.module.avg_impulse_response.fill(0)
-            self.module.avg_freq_resp_y.fill(0)
+        # Trigger thread-safe core reset
+        self.module.reset_statistics()
+
+        # Instantly clear plots to avoid ghost frames
+        self.bar_item.setOpts(height=np.zeros(24))
+        self.trend_curve.setData([], [])
+        self.trend_smooth_curve.setData([], [])
+        self.imp_curve.setData(np.zeros(1024, dtype=np.float32))
+        self.freq_curve.setData([], [])
+        self.step_curve.setData(np.zeros(512, dtype=np.float32))
+
+        # Force UI label refresh instantly
+        self.update_display()
 
     def on_mode_changed(self, idx):
         mode = self.combo_mode.currentData()
@@ -1047,6 +1158,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         with self.module._lock:
             self.module.avg_impulse_response.fill(0)
             self.module.avg_freq_resp_y.fill(0)
+            self.module.avg_step_response.fill(0)
 
     def on_trend_changed(self):
         self.update_trend_axes()
@@ -1138,6 +1250,10 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.lbl_reason.setStyleSheet("color: #ecf0f1; font-size: 12px;")
             self.lbl_stat_delay.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
             self.lbl_stat_evm.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+            self.lbl_step_stats.setStyleSheet(
+                f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #2ecc71; font-weight: bold; "
+                "background-color: rgba(44, 62, 80, 0.7); padding: 4px; border-radius: 4px; border: 1px solid #34495e;"
+            )
 
             if checked:
                 self.btn_toggle.setStyleSheet(
@@ -1158,6 +1274,10 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             self.lbl_reason.setStyleSheet("color: #333333; font-size: 12px;")
             self.lbl_stat_delay.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
             self.lbl_stat_evm.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
+            self.lbl_step_stats.setStyleSheet(
+                f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #1b5e20; font-weight: bold; "
+                "background-color: rgba(236, 240, 241, 0.9); padding: 4px; border-radius: 4px; border: 1px solid #bdc3c7;"
+            )
 
             if checked:
                 self.btn_toggle.setStyleSheet(
@@ -1184,14 +1304,16 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
                 theme_name = self.app.theme_manager.get_effective_theme()
 
         if res is None:
+            # Fallback to the current results state to allow immediate updates (e.g. after a reset)
+            res = self.module.results
             if not self.module.is_locked:
                 self.lbl_status.setText(tr("WAITING FOR SYNC..."))
                 card_color = self.get_card_color(theme_name)
                 text_color = self.get_status_text_color(theme_name)
                 self.card_status.setStyleSheet(f"background-color: {card_color}; border-radius: 6px;")
                 self.lbl_status.setStyleSheet(f"color: {text_color}; font-weight: bold;")
-                self.lbl_reason.setText(self.module.results["reason"])
-            return
+                self.lbl_reason.setText(res.get("reason", tr("Start analysis to evaluate transmission characteristics.")))
+                return
 
         # Locked and evaluating!
         # Color updates
@@ -1285,7 +1407,33 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.freq_curve.setData(freq_x[valid_mask], freq_y[valid_mask])
         self.plot_freq.setYRange(-80.0, 10.0)
 
-        # Update Jitter & Trends plot (Tab 4)
+
+
+        # Update Step Response plot (Tab 5) [NEW]
+        step_y = self.module.step_response
+        self.step_curve.setData(step_y)
+        self.plot_step.setXRange(0, len(step_y))
+
+        min_step = np.min(step_y)
+        max_step = np.max(step_y)
+        if not (np.isfinite(min_step) and np.isfinite(max_step)):
+            min_step, max_step = -1.0, 1.0
+        self.plot_step.setYRange(float(min_step * 1.1 - 0.05), float(max_step * 1.1 + 0.05))
+
+        # Update Step Response Transient stats label
+        if self.module.is_locked and res.get("step_transient_valid", False):
+            stats_text = tr(
+                "Overshoot: {0:.1f} %  |  Settling Time: {1:d} samples ({2:.3f} ms)"
+            ).format(
+                res["overshoot_pct"],
+                res["settling_samples"],
+                res["settling_ms"]
+            )
+            self.lbl_step_stats.setText(stats_text)
+        else:
+            self.lbl_step_stats.setText(tr("Establish sync lock to analyze step transient metrics."))
+
+        # Update Jitter & Trends plot (Tab 6)
         trend = self.combo_trend.currentData()
         smooth_mode = self.combo_smooth.currentData()
 
@@ -1354,6 +1502,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
             y_max_val = max(-1e6, min(1e6, y_max_val))
 
             self.plot_trend.setYRange(y_min_val, y_max_val)
+        else:
+            self.trend_curve.setData([], [])
+            self.trend_smooth_curve.setData([], [])
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
