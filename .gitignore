@@ -83,3 +83,4 @@ site/
 report.json
 measurement_report.json
 thd.json
+.vscode/settings.json
