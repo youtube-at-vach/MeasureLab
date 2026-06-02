@@ -222,11 +222,13 @@ class AudioCalc:
         """
         if len(signal) <= min_len:
             import logging
+
             logger = logging.getLogger("AudioCalc")
             logger.warning(
-                "Signal length (%d) is too short for the filter (required: > %d). "
-                "Applying fallback behavior '%s'.",
-                len(signal), min_len, on_invalid_sos
+                "Signal length (%d) is too short for the filter (required: > %d). Applying fallback behavior '%s'.",
+                len(signal),
+                min_len,
+                on_invalid_sos,
             )
             if on_invalid_sos == "silence":
                 return np.zeros_like(signal)
@@ -254,6 +256,7 @@ class AudioCalc:
         return (fs / np.pi) * np.tan(np.pi * f_clamped / fs)
 
     @staticmethod
+    @functools.lru_cache(maxsize=32)
     def design_a_weighting(sampling_rate):
         """Design A-weighting filter with pre-warping (IEC 61672). Returns SOS."""
         fs = float(sampling_rate)
@@ -294,6 +297,7 @@ class AudioCalc:
         return sos
 
     @staticmethod
+    @functools.lru_cache(maxsize=32)
     def design_c_weighting(sampling_rate):
         """Design C-weighting filter with pre-warping (IEC 61672). Returns SOS."""
         fs = float(sampling_rate)
