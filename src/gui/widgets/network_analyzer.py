@@ -720,13 +720,13 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         form.addRow(tr("Input Mode:"), self.in_combo)
 
         self.start_spin = QDoubleSpinBox(controls_group)
-        self.start_spin.setRange(10, 20000)
+        self.start_spin.setRange(2, 20000)
         self.start_spin.valueChanged.connect(lambda v: setattr(self.module, "start_freq", v))
         self.start_spin.setValue(self.module.start_freq)
         form.addRow(tr("Start Freq:"), self.start_spin)
 
         self.end_spin = QDoubleSpinBox(controls_group)
-        self.end_spin.setRange(10, 24000)
+        self.end_spin.setRange(2, 24000)
         self.end_spin.valueChanged.connect(lambda v: setattr(self.module, "end_freq", v))
         self.end_spin.setValue(self.module.end_freq)
         form.addRow(tr("End Freq:"), self.end_spin)
@@ -776,7 +776,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.limit_check.setChecked(True)
         self.limit_check.toggled.connect(self.refresh_plots)
         self.limit_spin = QDoubleSpinBox()
-        self.limit_spin.setRange(10, 24000)
+        self.limit_spin.setRange(2, 24000)
         self.limit_spin.setValue(20000)
         self.limit_spin.valueChanged.connect(self.refresh_plots)
 
@@ -789,7 +789,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.min_limit_check.setChecked(True)
         self.min_limit_check.toggled.connect(self.refresh_plots)
         self.min_limit_spin = QDoubleSpinBox()
-        self.min_limit_spin.setRange(10, 24000)
+        self.min_limit_spin.setRange(2, 24000)
         self.min_limit_spin.setValue(20)
         self.min_limit_spin.valueChanged.connect(self.refresh_plots)
 
