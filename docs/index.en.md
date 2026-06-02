@@ -8,8 +8,8 @@ This documentation summarizes the **operation methods for observing and checking
 The purpose of this tool is to **transform your everyday PC and audio interface into a "high-end measurement instrument."**
 
 !!! tip
-    **MeasureLab is a "virtual laboratory" created inside your PC.**
-    Pull the necessary instruments (widgets) out of the drawer, arrange them on your desk, and build your very own lab!
+    **MeasureLab allows you to freely build your measurement environment.**
+    Arrange the necessary instruments (widgets) on the screen to perform measurements.
 
 ---
 
