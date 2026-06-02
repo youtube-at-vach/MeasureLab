@@ -220,3 +220,28 @@ def test_export_independent(tmp_path, sample_traces):
     assert row3[2] == ""
     assert row3[3] == ""
     assert row3[4] == ""
+
+
+def test_export_csv_injection_prevention(tmp_path, sample_traces):
+    # Modify trace name to simulate CSV injection
+    sample_traces[0].name = "=cmd|' /C calc'!A0"
+
+    exporter = CsvTraceExporter()
+    filepath = str(tmp_path / "injection.csv")
+
+    options = {
+        "layout": "merged",
+        "include_headers": True,
+        "include_metadata": False,
+    }
+
+    assert exporter.export_traces(filepath, sample_traces, options) is True
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        lines = list(reader)
+
+    header = lines[0]
+    # Check that the malicious trace name was sanitized by prepending an apostrophe
+    assert header[1].startswith("'=")
+    assert header[1] == "'=cmd|' /C calc'!A0 - Voltage (dBV)"
