@@ -6,6 +6,11 @@ name = "MeasureLab"
 script = ""
 
 [[actions]]
-name = "実行する"
+name = "MeasureLab (With Full Validation)"
 icon = "run"
-command = "source .venv/bin/activate"
+command = "./.venv/bin/ruff check . && ./.venv/bin/mypy src main_gui.py && ./.venv/bin/python scripts/check_trn_keys.py --strict && ./.venv/bin/python scripts/check_ui_size_limits.py && ./.venv/bin/pytest && ./.venv/bin/python main_gui.py"
+
+[[actions]]
+name = "MeasureLab (Fast Run)"
+icon = "run"
+command = "./.venv/bin/python main_gui.py"
