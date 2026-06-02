@@ -1136,27 +1136,27 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # We block signals to prevent redundant logic execution during limits update
         self.start_spin.blockSignals(True)
-        self.start_spin.setRange(10, nyquist)
+        self.start_spin.setRange(2, nyquist)
         if self.start_spin.value() > nyquist:
             self.start_spin.setValue(min(20.0, nyquist))
             self.module.start_freq = self.start_spin.value()
         self.start_spin.blockSignals(False)
 
         self.end_spin.blockSignals(True)
-        self.end_spin.setRange(10, nyquist)
+        self.end_spin.setRange(2, nyquist)
         if self.end_spin.value() > nyquist:
             self.end_spin.setValue(nyquist)
             self.module.end_freq = nyquist
         self.end_spin.blockSignals(False)
 
         self.limit_spin.blockSignals(True)
-        self.limit_spin.setRange(10, nyquist)
+        self.limit_spin.setRange(2, nyquist)
         if self.limit_spin.value() > nyquist:
             self.limit_spin.setValue(nyquist)
         self.limit_spin.blockSignals(False)
 
         self.min_limit_spin.blockSignals(True)
-        self.min_limit_spin.setRange(10, nyquist)
+        self.min_limit_spin.setRange(2, nyquist)
         if self.min_limit_spin.value() > nyquist:
             self.min_limit_spin.setValue(nyquist)
         self.min_limit_spin.blockSignals(False)
