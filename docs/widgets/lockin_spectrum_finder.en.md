@@ -10,14 +10,9 @@ It is specialized for detecting weak signals at low noise floors or observing sp
     This widget is specialized for "finding" the presence and frequency of weak signals buried in noise.
     Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a **rough guide** for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
 
-## ☕ Coffee Break: The Magic Sieve that "Finds Gold Dust in a Sandbox"
+## ☕ Coffee Break: Lock-in as an Ultra-Narrowband Filter
 
-Imagine you want to find a single grain of "gold dust" hidden in a giant sandbox.
-A regular spectrum analyzer is like "scooping up the whole sandbox with a shovel and weighing it." If the gold dust is too small, it just gets lost in the weight of the sand, and you can't find it.
-
-The Lock-in Spectrum Finder is like having hundreds of **"special ultra-fine sieves that only let gold dust through"** and tossing the sand through them all at once.
-Because the mesh of these "sieves" is unbelievably fine, no matter how much sand (noise) there is, it can perfectly filter out only the gold dust (minuscule signal) that exactly matches that size.
-It is an incredibly powerful search tool that can uncover "secret radio waves" sunk at the bottom of an ocean of noise, which would be absolutely invisible with any other method.
+Standard spectrum analyzers calculate energy across broad frequency bands, obscuring weak signals in the noise floor. Lock-in detection functions as an ultra-narrow bandpass filter, rejecting uncorrelated noise to extract specific frequency components with high precision.
 
 ## Usage Comparison with Other Widgets
 

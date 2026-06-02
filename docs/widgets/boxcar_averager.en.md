@@ -9,12 +9,9 @@ Also called a "boxcar integrator," it is used for measuring minute signals and h
 
 This widget has both an "Internal mode," which outputs test signals itself to synchronize, and an "External mode," which synchronizes with external trigger signals.
 
-## ☕ Coffee Break: The Magic of "Averaging" to Erase Noise
+## ☕ Coffee Break: Noise Reduction via Averaging
 
-Imagine you are in a noisy crowd, and someone is whispering an important message to you. If they say it only once, it will be drowned out by the surrounding noise, and you won't understand a thing.
-But what if that person repeats the "same word" at the "same timing" 100 times?
-The surrounding noise (chatter, car sounds, etc.) is random and different every time, but the shape of the whisper is exactly the same each time. If you "overlap and average" these 100 times, the random positive and negative noise cancels each other out approaching zero, and only the whisper, which has the same shape every time, emerges clearly as if by magic!
-This is the mechanism behind the Boxcar Averager. It is an extremely powerful technique for rescuing minute signals sunken in a sea of noise.
+Signal averaging works by taking multiple synchronized captures of a repeating signal and summing them. Because the target signal is consistent while background noise is random, the noise averages towards zero over time, revealing the underlying signal.
 
 ## Operation
 
