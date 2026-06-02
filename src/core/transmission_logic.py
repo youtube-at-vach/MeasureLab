@@ -659,12 +659,30 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     if N < 256:
         return results
 
-    # 1. 各種基準値の特定
-    # ベースライン V_base: ピーク（128）より前（0〜100）の平均
-    v_base = float(np.mean(step_y[:100]))
+    # 1. 動的な立ち上がりエッジの検出
+    # ステップ応答の最大傾斜（微分値の絶対値が最大となる位置）を探索する
+    dy = np.diff(step_y)
+    abs_dy = np.abs(dy)
 
-    # 最終収束値 V_final: 後半（350〜500サンプル）の平均
-    v_final = float(np.mean(step_y[350:500]))
+    # 境界付近でのノイズ誤検出を防ぐため、端部を除外した領域から探索
+    margin = max(10, N // 20)
+    if N - margin <= margin:
+        return results
+
+    peak_grad_idx = int(np.argmax(abs_dy[margin:-margin])) + margin
+
+    # 2. 動的なベースラインおよび収束範囲の決定
+    # 立ち上がりのピーク勾配インデックスに基づいて、その前後の定常領域を定める
+    # ベースライン領域: 立ち上がり開始より十分前の領域 (0 から peak_grad_idx - margin まで)
+    base_end = max(10, peak_grad_idx - margin)
+    v_base = float(np.mean(step_y[:base_end]))
+
+    # 最終収束領域: 立ち上がりより後ろの領域 (peak_grad_idx + 2 * margin から末尾まで)
+    final_start = min(N - 10, peak_grad_idx + 2 * margin)
+    if final_start >= N:
+        final_start = N - 1
+
+    v_final = float(np.mean(step_y[final_start:min(final_start + 150, N)]))
 
     # ステップ全体の高さ
     v_step = v_final - v_base
@@ -674,26 +692,35 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     if v_step_abs < 0.005:
         return results
 
-    # 2. 立ち上がり開始位置の特定 (v_base + 10% 閾値を超える最初のインデックス)
+    # 3. 立ち上がり開始位置の特定 (v_base + 10% 閾値を超える最初のインデックス)
     v_10 = v_base + 0.10 * v_step
-    start_idx = 128
-    for idx in range(100, 200):
-        if (v_step > 0 and step_y[idx] >= v_10) or (v_step < 0 and step_y[idx] <= v_10):
-            start_idx = idx
-            break
 
-    # 3. オーバーシュート率 (Overshoot %) の算出
-    # 立ち上がり後の最大変位を特定 (極性を考慮)
+    # peak_grad_idx より手前で v_10 を横切る位置を探索
+    start_idx = peak_grad_idx
     if v_step > 0:
-        v_max = float(np.max(step_y[start_idx:300]))
+        for idx in range(base_end, peak_grad_idx + 1):
+            if step_y[idx] >= v_10:
+                start_idx = idx
+                break
+    else:
+        for idx in range(base_end, peak_grad_idx + 1):
+            if step_y[idx] <= v_10:
+                start_idx = idx
+                break
+
+    # 4. オーバーシュート率 (Overshoot %) の算出
+    # 立ち上がり後の最大変位を特定 (極性を考慮)
+    search_end = min(N, final_start + 50)
+    if v_step > 0:
+        v_max = float(np.max(step_y[start_idx:search_end]))
         overshoot_val = max(0.0, v_max - v_final)
     else:
-        v_min = float(np.min(step_y[start_idx:300]))
+        v_min = float(np.min(step_y[start_idx:search_end]))
         overshoot_val = max(0.0, v_final - v_min)
 
     overshoot_pct = (overshoot_val / v_step_abs) * 100.0
 
-    # 4. セトリングタイム (Settling Time) の算出
+    # 5. セトリングタイム (Settling Time) の算出
     # 最終値の ±2% 誤差バンドを定義
     tolerance = 0.02 * v_step_abs
     v_upper = v_final + tolerance
@@ -710,10 +737,14 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     settling_samples = max(0, settling_idx - start_idx)
     settling_ms = (settling_samples / sr) * 1000.0
 
-    # 5. ドループ (Droop %) の算出
-    # 立ち上がり直後の安定期 (200) と末尾 (500) の差分から、低域カットオフによる減衰を評価
-    v_early = float(np.mean(step_y[200:230]))
-    v_late = float(np.mean(step_y[480:510]))
+    # 6. ドループ (Droop %) の算出
+    # 立ち上がり直後の安定期と末尾の差分から、低域カットオフによる減衰を評価
+    early_start = final_start
+    early_end = min(N, early_start + 30)
+    v_early = float(np.mean(step_y[early_start:early_end]))
+
+    late_start = max(early_end, N - 30)
+    v_late = float(np.mean(step_y[late_start:N]))
 
     if v_step > 0:
         droop_val = v_early - v_late
@@ -721,8 +752,6 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
         droop_val = v_late - v_early
 
     droop_pct = (droop_val / v_step_abs) * 100.0
-
-    # 負のドループ（極端な上昇など）は測定ノイズとみなして 0.0 以下はクリップ
     droop_pct = max(0.0, droop_pct)
 
     results.update({

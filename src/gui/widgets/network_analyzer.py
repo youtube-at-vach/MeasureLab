@@ -720,13 +720,13 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         form.addRow(tr("Input Mode:"), self.in_combo)
 
         self.start_spin = QDoubleSpinBox(controls_group)
-        self.start_spin.setRange(10, 20000)
+        self.start_spin.setRange(2, 20000)
         self.start_spin.valueChanged.connect(lambda v: setattr(self.module, "start_freq", v))
         self.start_spin.setValue(self.module.start_freq)
         form.addRow(tr("Start Freq:"), self.start_spin)
 
         self.end_spin = QDoubleSpinBox(controls_group)
-        self.end_spin.setRange(10, 24000)
+        self.end_spin.setRange(2, 24000)
         self.end_spin.valueChanged.connect(lambda v: setattr(self.module, "end_freq", v))
         self.end_spin.setValue(self.module.end_freq)
         form.addRow(tr("End Freq:"), self.end_spin)
@@ -776,7 +776,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.limit_check.setChecked(True)
         self.limit_check.toggled.connect(self.refresh_plots)
         self.limit_spin = QDoubleSpinBox()
-        self.limit_spin.setRange(10, 24000)
+        self.limit_spin.setRange(2, 24000)
         self.limit_spin.setValue(20000)
         self.limit_spin.valueChanged.connect(self.refresh_plots)
 
@@ -789,7 +789,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.min_limit_check.setChecked(True)
         self.min_limit_check.toggled.connect(self.refresh_plots)
         self.min_limit_spin = QDoubleSpinBox()
-        self.min_limit_spin.setRange(10, 24000)
+        self.min_limit_spin.setRange(2, 24000)
         self.min_limit_spin.setValue(20)
         self.min_limit_spin.valueChanged.connect(self.refresh_plots)
 
@@ -1136,27 +1136,27 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # We block signals to prevent redundant logic execution during limits update
         self.start_spin.blockSignals(True)
-        self.start_spin.setRange(10, nyquist)
+        self.start_spin.setRange(2, nyquist)
         if self.start_spin.value() > nyquist:
             self.start_spin.setValue(min(20.0, nyquist))
             self.module.start_freq = self.start_spin.value()
         self.start_spin.blockSignals(False)
 
         self.end_spin.blockSignals(True)
-        self.end_spin.setRange(10, nyquist)
+        self.end_spin.setRange(2, nyquist)
         if self.end_spin.value() > nyquist:
             self.end_spin.setValue(nyquist)
             self.module.end_freq = nyquist
         self.end_spin.blockSignals(False)
 
         self.limit_spin.blockSignals(True)
-        self.limit_spin.setRange(10, nyquist)
+        self.limit_spin.setRange(2, nyquist)
         if self.limit_spin.value() > nyquist:
             self.limit_spin.setValue(nyquist)
         self.limit_spin.blockSignals(False)
 
         self.min_limit_spin.blockSignals(True)
-        self.min_limit_spin.setRange(10, nyquist)
+        self.min_limit_spin.setRange(2, nyquist)
         if self.min_limit_spin.value() > nyquist:
             self.min_limit_spin.setValue(nyquist)
         self.min_limit_spin.blockSignals(False)

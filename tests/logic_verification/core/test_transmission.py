@@ -327,6 +327,42 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertAlmostEqual(res_ring["overshoot_pct"], 20.0, delta=1.0)
         self.assertGreater(res_ring["settling_samples"], 20)
 
+    def test_analyze_step_transient_with_delay(self):
+        """Test transient response metrics under varying delays and input lengths (dynamic edge-detection)."""
+        # 1. Delayed step response (rising at index 220 in a 512-sample array)
+        step_delayed = np.zeros(512, dtype=np.float32)
+        step_delayed[220:] = 1.0
+
+        res_delayed = analyze_step_transient(step_delayed, 48000)
+        self.assertTrue(res_delayed["valid"])
+        self.assertAlmostEqual(res_delayed["overshoot_pct"], 0.0, delta=0.1)
+        self.assertEqual(res_delayed["settling_samples"], 0)
+        self.assertAlmostEqual(res_delayed["droop_pct"], 0.0, delta=0.1)
+
+        # 2. Short array (256 samples) rising at index 80
+        step_short = np.zeros(256, dtype=np.float32)
+        step_short[80:] = 1.0
+
+        res_short = analyze_step_transient(step_short, 48000)
+        self.assertTrue(res_short["valid"])
+        self.assertAlmostEqual(res_short["overshoot_pct"], 0.0, delta=0.1)
+        self.assertEqual(res_short["settling_samples"], 0)
+        self.assertAlmostEqual(res_short["droop_pct"], 0.0, delta=0.1)
+
+        # 3. Step response with droop (e.g. exponential decay due to high-pass filter)
+        step_decay = np.zeros(512, dtype=np.float32)
+        # Rising at index 128
+        step_decay[128:] = 1.0
+        # Simulated droop: decay factor after rising edge
+        decay_factor = np.exp(-np.arange(384) / 500.0) # Decay to ~46% over 384 samples
+        step_decay[128:] *= decay_factor
+
+        res_decay = analyze_step_transient(step_decay, 48000)
+        self.assertTrue(res_decay["valid"])
+        # Droop should be successfully detected (non-zero)
+        self.assertGreater(res_decay["droop_pct"], 5.0)
+        self.assertLess(res_decay["droop_pct"], 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()
