@@ -115,7 +115,7 @@ def setup_app():
 
 def _preload_dependencies():
     """Preload heavy dependencies in a background thread to utilize idle CPU time.
-    
+
     This ensures that when the main thread imports modules utilizing these packages,
     they are loaded instantly from sys.modules cache without blocking the GUI.
     """
@@ -127,7 +127,7 @@ def _preload_dependencies():
         import scipy.fft  # noqa: F401
         import scipy.linalg  # noqa: F401
         import pywt  # noqa: F401
-    except Exception:
+    except Exception:  # noqa: S110
         # Preload failures should never crash application startup
         pass
 
