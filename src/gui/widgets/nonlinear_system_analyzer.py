@@ -34,6 +34,11 @@ from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.core.nonlinear_analyzer_core import (
+    generate_sss_and_inverse,
+    calculate_chebyshev_matrix,
+    process_amplitude_responses,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +192,10 @@ class NonlinearSystemAnalyzer(MeasurementModule):
     def _dummy_callback(self, indata, outdata, frames, time, status):
         pass
 
+    @property
+    def tr(self):
+        return tr
+
     def _cleanup_dummy_callback(self):
         if self._dummy_callback_id is not None:
             self.audio_engine.unregister_callback(self._dummy_callback_id)
@@ -254,78 +263,43 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         self.signals.latency_result.emit(self.latency_sec)
         logger.info(f"Calibration successful: Latency = {self.latency_sec * 1000:.2f} ms ({lag} samples)")
 
-    def _generate_sss_and_inverse(self, sample_rate, amplitude):
+    def _generate_sss_and_inverse(self, sample_rate, amplitude=1.0):
         """
-        Generates Synchronized Sine Sweep (SSS) signal and its analytical inverse filter.
-        Ensures strict mathematical phase relationships to capture unaliased harmonics.
-        Includes frequency margins (guard bands) to push window-taper noise outside the target band.
+        Generates SSS signal and inverse match filter by delegating to the core implementation.
+        Scaled by amplitude for playback.
         """
-        num_samples = int(sample_rate * self.sweep_duration)
-        t = np.linspace(0, self.sweep_duration, num_samples, endpoint=False)
-
-        # Add frequency guard bands (margins) to keep the target band (start_freq to end_freq) flat.
-        start_margin = max(2.0, self.start_freq / 1.3)
-        nyquist = sample_rate / 2.0
-        end_margin = min(nyquist * 0.95, self.end_freq * 1.15)
-
-        w1 = 2 * np.pi * start_margin
-        T = self.sweep_duration
-        L = np.log(end_margin / start_margin)
-
-        # SSS Phase Design
-        phase = (w1 * T / L) * (np.exp(t * L / T) - 1)
-        sss_signal = amplitude * np.sin(phase)
-
-        # Tukey window to minimize transient clicks at start and end
-        window = windows.tukey(num_samples, alpha=0.02)
-        sss_signal *= window
-
-        # Analytical inverse filter (ESS/SSS Match-filter deconvolution)
-        # Apply amplitude correction (6dB/octave slope)
-        inv_envelope = np.exp(t * L / T)
-        inverse_filter = inv_envelope * np.sin(phase)
-        inverse_filter *= window
-        inverse_filter = np.flip(inverse_filter)
-
-        # Normalize the inverse filter so that the peak of the direct convolution is 1
-        direct_conv = fftconvolve(sss_signal, inverse_filter, mode="full")
-        peak = np.max(np.abs(direct_conv))
-        if peak > 1e-12:
-            inverse_filter /= peak
-
-        return sss_signal, inverse_filter
+        sss, inv_filter = generate_sss_and_inverse(
+            sample_rate, self.sweep_duration, self.start_freq, self.end_freq
+        )
+        return amplitude * sss, inv_filter
 
     def _execute_measurement(self, worker):
         sample_rate = self.audio_engine.sample_rate
-        P = 5  # We support up to P=5 orders (Fundamental, 2nd, 3rd, 4th, 5th harmonics)
+        P = 5  # We support up to P=5 orders
 
-        # 1. Define Amplitude Scanning Range (in linear scale)
-        # Scan from self.amplitude_db down by steps of 4dB or 6dB to cover linear dependency.
+        # 1. Define Amplitude Scanning Range
         max_amp = 10 ** (self.amplitude_db / 20)
-        # Step down to cover sufficient dynamic range. 5 steps: e.g. [0.25, 0.43, 0.62, 0.81, 1.0] * max_amp
         amplitudes = np.linspace(0.2, 1.0, self.num_amplitudes) * max_amp
 
         logger.info(f"Starting SSS/PHM measurement. Scanned amplitudes (linear): {amplitudes}")
 
-        # Dictionary to store measured impulse responses for each amplitude level
-        # Key: amplitude level index, Value: np.array of impulse responses
-        responses_ref = []  # reference channel (XFER mode)
-        responses_meas = []  # measurement channel
+        responses_ref = []
+        responses_meas = []
 
-        # Total sweeps to run
         total_sweeps = self.num_amplitudes * self.averages
         sweep_counter = 0
-
-        # Helper to pad output and run PlayRec
         padding_samples = int(0.5 * sample_rate)  # 500ms tail padding
+
+        # Generate the single reference sweep and matching analytical inverse filter
+        sss, inv_filter = generate_sss_and_inverse(
+            sample_rate, self.sweep_duration, self.start_freq, self.end_freq
+        )
 
         for amp_idx, amp in enumerate(amplitudes):
             if not worker.is_running:
                 return
 
-            # Generate SSS signal and match inverse filter for this amplitude
-            sss, inv_filter = self._generate_sss_and_inverse(sample_rate, amp)
-            out_signal = np.concatenate([sss, np.zeros(padding_samples)])
+            out_signal = np.concatenate([amp * sss, np.zeros(padding_samples)])
 
             # Router output allocation
             out_data = np.zeros((len(out_signal), 2), dtype=np.float32)
@@ -334,7 +308,6 @@ class NonlinearSystemAnalyzer(MeasurementModule):
             if self.output_channel in {"R", "STEREO"}:
                 out_data[:, 1] = out_signal
 
-            # Time Synchronized Averaging (TSA) buffers
             accum_data = None
             ref_peak_idx = None
 
@@ -342,11 +315,9 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                 if not worker.is_running:
                     return
 
-                # Record
                 rec_data = self.run_play_rec(out_data, input_channels=2)
 
-                # Real-world OS hardware delay jitter alignment
-                # Align based on the measurement channel (or channel 0 if single)
+                # Real-world OS hardware delay alignment using the measurement channel
                 align_sig = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
                 temp_ir = fftconvolve(align_sig, inv_filter, mode="full")
                 peak_idx = np.argmax(np.abs(temp_ir))
@@ -355,7 +326,6 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     accum_data = rec_data
                     ref_peak_idx = peak_idx
                 else:
-                    # Align other averages to sample level
                     shift = ref_peak_idx - peak_idx
                     shifted = np.roll(rec_data, shift, axis=0)
                     if shift > 0:
@@ -368,17 +338,12 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                 progress_pct = int(90 * (sweep_counter / total_sweeps))
                 self.signals.progress.emit(progress_pct)
 
-            # TSA Averaged data for this amplitude level
             averaged_data = accum_data / self.averages
 
             # Execute Offline Mode/Virtual Loopback emulation if active
             if getattr(self.audio_engine, "offline_mode", False):
-                # Simulate a nonlinear physical system (e.g. static cubic clipping + 1st order lowpass)
-                # output = x - 0.1 * x^2 + 0.15 * x^3 - 0.05 * x^4 + 0.08 * x^5
-                x_ref = averaged_data[:, self.ref_channel_index]
+                simulated_meas = amp * sss
                 # Apply simulated non-linear system transfer
-                simulated_meas = sss.copy()
-                # Apply harmonics
                 simulated_meas = (
                     simulated_meas
                     - 0.08 * (simulated_meas ** 2)
@@ -386,172 +351,44 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     - 0.04 * (simulated_meas ** 4)
                     + 0.06 * (simulated_meas ** 5)
                 )
-                # Pad to match recording size
                 simulated_meas = np.concatenate([simulated_meas, np.zeros(padding_samples)])
                 averaged_data[:, self.meas_channel_index] = simulated_meas
-                averaged_data[:, self.ref_channel_index] = np.concatenate([sss, np.zeros(padding_samples)])
+                averaged_data[:, self.ref_channel_index] = np.concatenate([amp * sss, np.zeros(padding_samples)])
 
-            # Deconvolution to get raw impulse responses g_k(t)
+            # Deconvolution to get raw impulse responses
             sig_ref = averaged_data[:, self.ref_channel_index]
             sig_meas = averaged_data[:, self.meas_channel_index]
 
             ir_ref_raw = fftconvolve(sig_ref, inv_filter, mode="full")
             ir_meas_raw = fftconvolve(sig_meas, inv_filter, mode="full")
 
-            # Peak capture time-gate to isolate system response from tail noise
-            gate_pre = int(0.005 * sample_rate)  # 5ms before peak
-            gate_post = int(0.4 * sample_rate)   # 400ms after peak (enables low-frequency response)
-            
-            # Use measurement peak index as the center of gravity
-            meas_peak = np.argmax(np.abs(ir_meas_raw))
-            start_gate = max(0, meas_peak - gate_pre)
-            end_gate = min(len(ir_meas_raw), meas_peak + gate_post)
-            gate_length = end_gate - start_gate
+            responses_ref.append(ir_ref_raw)
+            responses_meas.append(ir_meas_raw)
 
-            # Truncate and Tukey-window responses
-            win = windows.tukey(gate_length, alpha=0.05)
-            ir_ref_win = ir_ref_raw[start_gate:end_gate] * win
-            ir_meas_win = ir_meas_raw[start_gate:end_gate] * win
-
-            # Save the windowed raw impulse responses
-            responses_ref.append(ir_ref_win)
-            responses_meas.append(ir_meas_win)
-
-        # 2. Parallel Hammerstein Kernels (PHM) Separation using Chebyshev Polynomial Inversion
-        #
-        # Model: g_k(t) = sum_{p=1}^P M_{k, p} * h_p(t)
-        # Where: M_{k, p} = T_p(v_k) is the p-th Chebyshev polynomial evaluated at scaled amplitude v_k.
-        # Chebyshev Polynomials (evaluated in normalized range [-1.0, 1.0]):
-        # T_1(v) = v
-        # T_2(v) = 2v^2 - 1
-        # T_3(v) = 4v^3 - 3v
-        # T_4(v) = 8v^4 - 8v^2 + 1
-        # T_5(v) = 16v^5 - 20v^3 + 5v
-        
-        # Normalize amplitudes to range [0.1, 1.0] based on the maximum excitation amplitude
+        # 2. Parallel Hammerstein Separation and Analysis using Core Module
         norm_v = amplitudes / max_amp
+        _, M_pinv = calculate_chebyshev_matrix(self.num_amplitudes, norm_v, P)
 
-        # Construct translation matrix M
-        # Shape: (num_amplitudes, P)
-        M = np.zeros((self.num_amplitudes, P))
-        for k in range(self.num_amplitudes):
-            v = norm_v[k]
-            M[k, 0] = v                              # T1
-            M[k, 1] = 2 * (v ** 2) - 1               # T2
-            M[k, 2] = 4 * (v ** 3) - 3 * v           # T3
-            M[k, 3] = 8 * (v ** 4) - 8 * (v ** 2) + 1 # T4
-            M[k, 4] = 16 * (v ** 5) - 20 * (v ** 3) + 5 * v # T5
-
-        # Compute Pseudo-Inverse of Matrix M
-        M_pinv = np.linalg.pinv(M)  # Shape: (P, num_amplitudes)
-
-        # We will separate the Hammerstein kernels h_p(t) at each time sample.
-        # Shape of each g_k is gate_length.
-        gate_length = len(responses_meas[0])
-        
-        # h_kernels[p] will store the p-th Hammerstein kernel in time-domain
-        h_kernels_meas = np.zeros((P, gate_length))
-        h_kernels_ref = np.zeros((P, gate_length))
-
-        for t in range(gate_length):
-            # Vector of responses at time t for all amplitudes
-            g_t_meas = np.array([responses_meas[k][t] for k in range(self.num_amplitudes)])
-            g_t_ref = np.array([responses_ref[k][t] for k in range(self.num_amplitudes)])
-
-            # Matrix multiplication to separate kernels: h(t) = M_pinv * g(t)
-            h_kernels_meas[:, t] = np.dot(M_pinv, g_t_meas)
-            h_kernels_ref[:, t] = np.dot(M_pinv, g_t_ref)
-
-        # 3. Frequency Analysis and Relative XFER Normalization
-        # Calculate FFTs of separated Hammerstein Kernels
-        H_meas_list = []
-        H_ref_list = []
-
-        for p in range(P):
-            # Measure
-            H_meas = fft_manager.rfft(h_kernels_meas[p])
-            H_meas_list.append(H_meas)
-            # Reference
-            H_ref = fft_manager.rfft(h_kernels_ref[p])
-            H_ref_list.append(H_ref)
-
-        freqs = fft_manager.rfftfreq(gate_length, d=1 / sample_rate)
-
-        # Target Frequency Grid Mask
-        mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
-        valid_freqs = freqs[mask]
-
-        # Containers to emit
-        magnitudes_db_dict = {}
-        phases_deg_dict = {}
-
-        # Separation and relative conversion
-        for p in range(P):
-            h_key = f"h{p+1}"  # 'h1' = Fundamental, 'h2' = 2nd Harmonic, etc.
-            
-            H_meas_p = H_meas_list[p]
-            H_ref_p = H_ref_list[p]
-
-            if self.input_mode == "XFER":
-                # Relative 2-Channel XFER transfer function: normalize by reference channel
-                # Apply Tikhonov regularization to prevent division-by-zero noise spikes at frequency extremes.
-                # Use a small regularization factor (-60dB relative to peak reference power).
-                ref_power = np.abs(H_ref_p) ** 2
-                peak_ref_power = np.max(ref_power)
-                alpha = peak_ref_power * 1e-6 + 1e-12
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    H_xfer = (H_meas_p * np.conj(H_ref_p)) / (ref_power + alpha)
-                    H_xfer = np.nan_to_num(H_xfer)
-                valid_H = H_xfer[mask]
-            else:
-                # Single Channel Mode: 1-channel response
-                valid_H = H_meas_p[mask]
-
-                # Compensation for physical loopback latency (avoid wrap phase plots)
-                delay_samples = int(self.latency_sec * sample_rate)
-                phase_correction = 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
-                
-                # Apply correction to the complex frequency representation
-                valid_H = valid_H * np.exp(1j * phase_correction)
-
-            # Compute Gain and Phase
-            mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
-            phase_rad = np.unwrap(np.angle(valid_H))
-            phase_deg = np.degrees(phase_rad)
-            # Wrap phase to standard range [-180, 180]
-            phase_deg = (phase_deg + 180) % 360 - 180
-
-            magnitudes_db_dict[h_key] = mag_db
-            phases_deg_dict[h_key] = phase_deg
-
-        # Post-Processing: Normalize fundamental linear response (h1) near 0dB if in loopback
-        # This makes plots highly intuitive for loopback cables.
-        if self.input_mode == "XFER":
-            # The XFER relative mode is naturally normalized close to 0dB.
-            pass
+        (
+            valid_freqs,
+            magnitudes_db_dict,
+            phases_deg_dict,
+            time_ms,
+            separated_kernels_data,
+        ) = process_amplitude_responses(
+            responses_meas,
+            responses_ref,
+            sample_rate,
+            self.start_freq,
+            self.end_freq,
+            self.input_mode,
+            self.latency_sec,
+            sweep_duration=self.sweep_duration,
+            P=P,
+            M_pinv=M_pinv,
+        )
 
         self.signals.progress.emit(95)
-
-        # 4. Prepare Time-Domain Kernel display
-        # Generate time axis in milliseconds centered around system peak
-        # Center peak index
-        p1_peak = np.argmax(np.abs(h_kernels_meas[0]))
-        # We display +/- 50ms region around the peak
-        disp_pre = min(p1_peak, int(0.01 * sample_rate))  # 10ms pre-trigger
-        disp_post = min(gate_length - p1_peak, int(0.09 * sample_rate)) # 90ms post-trigger
-        
-        t_indices = np.arange(p1_peak - disp_pre, p1_peak + disp_post)
-        time_ms = (t_indices - p1_peak) / sample_rate * 1000.0
-
-        separated_kernels_data = []
-        for p in range(P):
-            # Normalize display for visual clarity
-            kernel_slice = h_kernels_meas[p][t_indices]
-            # Max amplitude of first kernel as reference to keep proportional size
-            ref_max = np.max(np.abs(h_kernels_meas[0]))
-            if ref_max > 1e-12:
-                kernel_slice = kernel_slice / ref_max
-            separated_kernels_data.append(kernel_slice)
 
         # Emit plots
         self.signals.update_plot.emit(valid_freqs, magnitudes_db_dict, phases_deg_dict)
@@ -786,6 +623,12 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_routing_changed(self):
         mode = self.in_mode_combo.currentData()
         self.module.input_mode = mode
+        if mode == "L":
+            self.module.meas_channel_index = 0
+            self.module.ref_channel_index = 0  # 1-Ch Mode has no reference but align L for safety
+        else:  # XFER
+            self.module.meas_channel_index = 1
+            self.module.ref_channel_index = 0
         # Disable calibrate button for XFER mode since delay is automatically canceled
         self.cal_btn.setEnabled(mode == "L")
 
