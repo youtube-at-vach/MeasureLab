@@ -1,0 +1,99 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Ruff Lint",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/ruff check .",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "Mypy Typecheck",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/mypy src main_gui.py",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "Check Translation Keys (Strict)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python scripts/check_trn_keys.py --strict",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "Check UI Size Limits (Windows/Low-Res)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python scripts/check_ui_size_limits.py",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "Markdown Lint",
+      "type": "shell",
+      "command": "npx markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "Pytest Run",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "Full CI Validation (Ruff + Mypy + Translation + Size Limits + Pytest)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/ruff check . && ${workspaceFolder}/.venv/bin/mypy src main_gui.py && ${workspaceFolder}/.venv/bin/python scripts/check_trn_keys.py --strict && ${workspaceFolder}/.venv/bin/python scripts/check_ui_size_limits.py && ${workspaceFolder}/.venv/bin/pytest",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "echo": true
+      }
+    },
+    {
+      "label": "Run MeasureLab",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python main_gui.py",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": true,
+        "echo": true
+      }
+    }
+  ]
+}

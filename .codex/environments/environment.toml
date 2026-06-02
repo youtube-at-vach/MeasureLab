@@ -6,6 +6,51 @@ name = "MeasureLab"
 script = ""
 
 [[actions]]
-name = "実行する"
+name = "GUI 起動"
 icon = "run"
-command = "source .venv/bin/activate"
+command = "./.venv/bin/python main_gui.py"
+
+[[actions]]
+name = "Smoke Test"
+icon = "test"
+command = "./.venv/bin/python -m pytest -q tests/logic_verification/core/test_config_manager.py tests/logic_verification/core/test_utils.py"
+
+[[actions]]
+name = "MainWindow Test"
+icon = "test"
+command = "./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_main_window_activity.py"
+
+[[actions]]
+name = "All Tests"
+icon = "test"
+command = "./.venv/bin/python -m pytest -q"
+
+[[actions]]
+name = "Lint"
+icon = "check"
+command = "./.venv/bin/ruff check ."
+
+[[actions]]
+name = "Typecheck"
+icon = "check"
+command = "./.venv/bin/mypy src main_gui.py"
+
+[[actions]]
+name = "Translation Check"
+icon = "check"
+command = "./.venv/bin/python scripts/check_trn_keys.py --strict"
+
+[[actions]]
+name = "UI Size Check"
+icon = "check"
+command = "./.venv/bin/python scripts/check_ui_size_limits.py"
+
+[[actions]]
+name = "Full Validation"
+icon = "check"
+command = "./.venv/bin/ruff check . && ./.venv/bin/mypy src main_gui.py && ./.venv/bin/python scripts/check_trn_keys.py --strict && ./.venv/bin/python scripts/check_ui_size_limits.py && ./.venv/bin/pytest"
+
+[[actions]]
+name = "Validated GUI 起動"
+icon = "run"
+command = "./.venv/bin/ruff check . && ./.venv/bin/mypy src main_gui.py && ./.venv/bin/python scripts/check_trn_keys.py --strict && ./.venv/bin/python scripts/check_ui_size_limits.py && ./.venv/bin/pytest && ./.venv/bin/python main_gui.py"
