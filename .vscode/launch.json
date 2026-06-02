@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "MeasureLab (With Full Validation)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main_gui.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "preLaunchTask": "Full CI Validation (Ruff + Mypy + Translation + Size Limits + Pytest)",
+      "justMyCode": true
+    },
+    {
+      "name": "MeasureLab (Fast Run)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main_gui.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "justMyCode": true
+    }
+  ]
+}

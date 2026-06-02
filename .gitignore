@@ -33,10 +33,10 @@ env/
 .coverage
 
 # VSCode settings
-.vscode/
+#.vscode/
 
 # Zed settings
-.zed/*
+#.zed/*
 
 # Mac
 .DS_Store

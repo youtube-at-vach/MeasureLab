@@ -1,0 +1,65 @@
+[
+  {
+    "label": "Full CI Validation and Run",
+    "command": "source .venv/bin/activate && ruff check . && mypy src main_gui.py && python scripts/check_trn_keys.py --strict && python scripts/check_ui_size_limits.py && pytest && python main_gui.py",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Full CI Validation Only",
+    "command": "source .venv/bin/activate && ruff check . && mypy src main_gui.py && python scripts/check_trn_keys.py --strict && python scripts/check_ui_size_limits.py && pytest",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Check UI Size Limits (Windows/Low-Res)",
+    "command": "source .venv/bin/activate && python scripts/check_ui_size_limits.py",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Check Translation Keys (Strict)",
+    "command": "source .venv/bin/activate && python scripts/check_trn_keys.py --strict",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Markdown Lint",
+    "command": "npx markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Ruff Lint Only",
+    "command": "source .venv/bin/activate && ruff check .",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Mypy Typecheck Only",
+    "command": "source .venv/bin/activate && mypy src main_gui.py",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Pytest Only",
+    "command": "source .venv/bin/activate && pytest",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  },
+  {
+    "label": "Run MeasureLab Only",
+    "command": "source .venv/bin/activate && python main_gui.py",
+    "shell": "bash",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false
+  }
+]
