@@ -57,6 +57,9 @@ Evaluates the signal quality of physical analog transmission paths, including ca
     * Extracts the channel's impulse response instantly via regularized FFT deconvolution and displays it in the time domain.
 * **Frequency Response**:
     * Capitalizes on the wide bandwidth of the PRBS sequence to plot real-time amplitude frequency response simultaneously.
+* **Step Response & Group Delay**:
+    * Integrates the impulse response to visualize the step response, automatically calculating transient metrics like Overshoot (%), Settling Time (ms), and Droop (%).
+    * Computes group delay to reveal phase non-linearities and time-alignment issues across the frequency spectrum.
 
 ### Shared Capabilities (Sync, Delay, and Jitter)
 
@@ -109,6 +112,8 @@ Adjust the analyzer's behavior using the left control panel.
 
 * **Impulse Response / Freq Response Tab**:
     Visualizes the physical path characteristics (time and frequency domains) when in Analog mode.
+* **Step Response / Group Delay Tab**:
+    Displays the integrated step transient waveform (useful for observing ringing and low-frequency roll-off) alongside the Group Delay (unwrapping phase delay over frequencies).
 * **Trend Charts Tab**:
     Displays scrolling timelines of "Gain Deviation (dB)," "Bit Error Rate (BER %)," and "Clock Jitter/Drift (Samples)" to evaluate long-term system stability.
 * **Bit Histogram Tab**:
