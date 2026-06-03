@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections import deque
 
 import numpy as np
@@ -90,6 +91,7 @@ class DistortionAnalyzer(MeasurementModule):
         self.sweep_results = []
 
         self.callback_id = None
+        self.lock = threading.Lock()
 
     def reset_averaging_state(self):
         """Clear cached averaging state when settings change."""
@@ -337,17 +339,18 @@ class DistortionAnalyzer(MeasurementModule):
                 new_data = indata[:, 0]
 
             # Ring buffer update
-            if len(new_data) > self.buffer_size:
-                self.input_data[:] = new_data[-self.buffer_size :]
-            else:
-                self.input_data = np.roll(self.input_data, -len(new_data))
-                self.input_data[-len(new_data) :] = new_data
+            with self.lock:
+                if len(new_data) > self.buffer_size:
+                    self.input_data[:] = new_data[-self.buffer_size :]
+                else:
+                    self.input_data = np.roll(self.input_data, -len(new_data))
+                    self.input_data[-len(new_data) :] = new_data
 
-            # Handle Capture Request (Thread-safe copy)
-            if self.capture_requested:
-                self.captured_buffer = self.input_data.copy()
-                self.capture_requested = False
-                self.capture_ready = True
+                # Handle Capture Request (Thread-safe copy)
+                if self.capture_requested:
+                    self.captured_buffer = self.input_data.copy()
+                    self.capture_requested = False
+                    self.capture_ready = True
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
@@ -520,10 +523,11 @@ class SweepWorker(QThread):
                 loop.exec()
                 check_timer.stop()
 
-                if self.module.capture_ready:
-                    data = self.module.captured_buffer
-                else:
-                    data = self.module.input_data.copy()  # Fallback
+                with self.module.lock:
+                    if self.module.capture_ready:
+                        data = self.module.captured_buffer.copy()
+                    else:
+                        data = self.module.input_data.copy()  # Fallback
 
                 sample_rate = self.module.audio_engine.sample_rate
 
@@ -1634,7 +1638,8 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         if self.analysis_pending:
             return
 
-        data = self.module.input_data.copy()
+        with self.module.lock:
+            data = self.module.input_data.copy()
         sample_rate = self.module.audio_engine.sample_rate
 
         settings = {

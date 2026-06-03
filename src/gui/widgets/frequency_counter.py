@@ -1,5 +1,6 @@
 import logging
 import time
+import threading
 from collections import deque
 
 import numpy as np
@@ -123,6 +124,7 @@ class FrequencyCounter(MeasurementModule):
         self.audio_engine = audio_engine
         self.is_running = False
         self.callback_id = None
+        self.lock = threading.Lock()
 
         # Settings
         self.gate_threshold_db = -60.0
@@ -186,11 +188,12 @@ class FrequencyCounter(MeasurementModule):
                 new_data = np.zeros(frames)
 
             # Ring buffer
-            if len(new_data) >= self.buffer_size:
-                self.input_buffer[:] = new_data[-self.buffer_size :]
-            else:
-                self.input_buffer = np.roll(self.input_buffer, -len(new_data))
-                self.input_buffer[-len(new_data) :] = new_data
+            with self.lock:
+                if len(new_data) >= self.buffer_size:
+                    self.input_buffer[:] = new_data[-self.buffer_size :]
+                else:
+                    self.input_buffer = np.roll(self.input_buffer, -len(new_data))
+                    self.input_buffer[-len(new_data) :] = new_data
 
             outdata.fill(0)
 
@@ -237,7 +240,8 @@ class FrequencyCounter(MeasurementModule):
         # Ensure buffer is full enough for the requested interval?
         # With ring buffer, it's always "full" with something (zeros initially).
 
-        data = self.input_buffer.copy()
+        with self.lock:
+            data = self.input_buffer.copy()
         sr = getattr(self.audio_engine, "sample_rate", 48000)
 
         cal_factor = 1.0
@@ -1073,7 +1077,8 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
             return
 
         # Prepare parameters for worker
-        data = self.module.input_buffer.copy()
+        with self.module.lock:
+            data = self.module.input_buffer.copy()
         sr = getattr(self.module.audio_engine, "sample_rate", 48000)
 
         cal_factor = 1.0

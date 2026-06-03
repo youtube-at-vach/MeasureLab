@@ -647,7 +647,23 @@ class AudioCalc:
 
         # Pass 2: Fine Search (Zoom in)
         zoom_width = step * 1.5
-        bounds_fine = (max(0.1, best_coarse - zoom_width), best_coarse + zoom_width)
+        lower_bound = max(0.1, best_coarse - zoom_width)
+        upper_bound = best_coarse + zoom_width
+
+        if lower_bound >= upper_bound:
+            if return_full:
+                w = 2 * np.pi * max(0.1, best_coarse)
+                np.sin(w * t, out=M[:, 0])
+                np.cos(w * t, out=M[:, 1])
+                try:
+                    coeffs, _, _, _ = np.linalg.lstsq(M, signal, rcond=None)
+                except np.linalg.LinAlgError:
+                    MT = M.T
+                    coeffs = np.linalg.solve(MT @ M, MT @ signal)
+                return max(0.1, best_coarse), coeffs, M
+            return max(0.1, best_coarse)
+
+        bounds_fine = (lower_bound, upper_bound)
         res_fine = minimize_scalar(get_residual_mse, bounds=bounds_fine, method="bounded", options={"xatol": 1e-14})
 
         # Pass 3: Candidate Selection (Fix for exact frequencies like Bin Center mode)
@@ -777,6 +793,7 @@ class AudioCalc:
             denom = alpha - 2 * beta + gamma
             if denom != 0:
                 p = 0.5 * (alpha - gamma) / denom
+                p = np.clip(p, -0.5, 0.5)
                 max_freq = freqs[peak_idx] + p * (freqs[1] - freqs[0])
                 # Optional: Refine amplitude estimate
                 # max_amplitude = beta - 0.25 * (alpha - gamma) * p
@@ -974,10 +991,19 @@ class AudioCalc:
         if amp_f2 < 1e-6:
             return {"imd": 0.0, "imd_db": -100.0}
 
+        f_nyq = freqs[-1]
+
+        def _get_aliased_frequency(f, f_nyq):
+            fs = 2.0 * f_nyq
+            f_mod = abs(f) % fs
+            if f_mod > f_nyq:
+                return fs - f_mod
+            return f_mod
+
         sum_sq_sidebands = 0.0
         for n in range(1, num_sidebands + 1):
-            sb_upper = f2 + n * f1
-            sb_lower = f2 - n * f1
+            sb_upper = _get_aliased_frequency(f2 + n * f1, f_nyq)
+            sb_lower = _get_aliased_frequency(f2 - n * f1, f_nyq)
 
             amp_upper = AudioCalc._find_peak(mag, freqs, sb_upper)
             amp_lower = AudioCalc._find_peak(mag, freqs, sb_lower)
@@ -1003,16 +1029,24 @@ class AudioCalc:
         if total_amp < 1e-6:
             return {"imd": 0.0, "imd_db": -100.0}
 
+        f_nyq = freqs[-1]
+
+        def _get_aliased_frequency(f, f_nyq):
+            fs = 2.0 * f_nyq
+            f_mod = abs(f) % fs
+            if f_mod > f_nyq:
+                return fs - f_mod
+            return f_mod
+
         # d2
-        d2_freq = abs(f2 - f1)
+        d2_freq = _get_aliased_frequency(abs(f2 - f1), f_nyq)
         amp_d2 = AudioCalc._find_peak(mag, freqs, d2_freq)
 
         # d3
-        d3_low = 2 * f1 - f2
-        d3_high = 2 * f2 - f1
-        # Use abs() because distortion products wrap around DC (negative frequencies alias to positive)
-        amp_d3_low = AudioCalc._find_peak(mag, freqs, abs(d3_low))
-        amp_d3_high = AudioCalc._find_peak(mag, freqs, abs(d3_high))
+        d3_low = _get_aliased_frequency(abs(2 * f1 - f2), f_nyq)
+        d3_high = _get_aliased_frequency(abs(2 * f2 - f1), f_nyq)
+        amp_d3_low = AudioCalc._find_peak(mag, freqs, d3_low)
+        amp_d3_high = AudioCalc._find_peak(mag, freqs, d3_high)
 
         distortion_sum_sq = amp_d2**2 + amp_d3_low**2 + amp_d3_high**2
         imd = np.sqrt(distortion_sum_sq) / total_amp
@@ -1148,6 +1182,14 @@ class AudioCalc:
 
         products = []
         sum_sq_pim = 0.0
+        f_nyq = freqs[-1]
+
+        def _get_aliased_frequency(f, f_nyq):
+            fs = 2.0 * f_nyq
+            f_mod = abs(f) % fs
+            if f_mod > f_nyq:
+                return fs - f_mod
+            return f_mod
 
         # Calculate up to specified order (must be odd)
         for n in range(3, order + 2, 2):
@@ -1166,9 +1208,12 @@ class AudioCalc:
             # Upper side
             im_high = k * f2 - m * f1
 
-            # Use abs() because IMD products can wrap around 0Hz
-            amp_low = AudioCalc._find_peak(mag, freqs, abs(im_low))
-            amp_high = AudioCalc._find_peak(mag, freqs, abs(im_high))
+            # Use aliasing helper because IMD products can wrap around 0Hz or exceed Nyquist
+            im_low_alias = _get_aliased_frequency(im_low, f_nyq)
+            im_high_alias = _get_aliased_frequency(im_high, f_nyq)
+
+            amp_low = AudioCalc._find_peak(mag, freqs, im_low_alias)
+            amp_high = AudioCalc._find_peak(mag, freqs, im_high_alias)
 
             sum_sq_pim += amp_low**2 + amp_high**2
 
