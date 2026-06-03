@@ -83,16 +83,17 @@ def test_export_manager_init_idempotent():
     assert manager._exporters is original_exporters
 
 
-def test_export_manager_register_exporter(mocker):
+def test_export_manager_register_exporter():
     """Test that register_exporter inserts the exporter and logs a message."""
+    from unittest.mock import Mock, patch
+
     manager = ExportManager()
 
-    dummy = mocker.Mock(spec=BaseTraceExporter)
+    dummy = Mock(spec=BaseTraceExporter)
     dummy.format_id = "test_format"
 
-    mock_logger = mocker.patch("src.core.export.manager.logger.info")
+    with patch("src.core.export.manager.logger.info") as mock_logger:
+        manager.register_exporter(dummy)
 
-    manager.register_exporter(dummy)
-
-    assert manager._exporters["test_format"] is dummy
-    mock_logger.assert_called_once_with("Registered exporter for format: 'test_format'")
+        assert manager._exporters["test_format"] is dummy
+        mock_logger.assert_called_once_with("Registered exporter for format: 'test_format'")
