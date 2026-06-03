@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from scipy.signal import windows
+from scipy.signal import windows, fftconvolve
 from src.core.fft_manager import fft_manager
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     inverse_filter = np.flip(inverse_filter)
 
     # Normalize the inverse filter so that the peak of the direct convolution is exactly 1.0
-    direct_conv = np.convolve(sss_signal, inverse_filter, mode="full")
+    direct_conv = fftconvolve(sss_signal, inverse_filter, mode="full")
     peak = np.max(np.abs(direct_conv))
     if peak > 1e-12:
         inverse_filter /= peak

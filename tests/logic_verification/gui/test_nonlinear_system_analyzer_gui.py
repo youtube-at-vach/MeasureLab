@@ -10,6 +10,11 @@ def test_nonlinear_analyzer_gui_start(qtbot):
     audio_engine.offline_mode = True
 
     analyzer = NonlinearSystemAnalyzer(audio_engine)
+    # Configure short parameters so the mock measurement runs within timeout limits
+    analyzer.sweep_duration = 0.1
+    analyzer.averages = 1
+    analyzer.num_amplitudes = 5
+
     widget = NonlinearSystemAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
 
