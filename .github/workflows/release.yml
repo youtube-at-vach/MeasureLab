@@ -87,7 +87,7 @@ jobs:
         }
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@v4
       with:
         name: checksums-windows
         path: dist/release/checksums_windows.txt
@@ -179,7 +179,7 @@ jobs:
         sha256sum ./* > checksums_linux.txt
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@v4
       with:
         name: checksums-linux
         path: dist/release/checksums_linux.txt
@@ -295,7 +295,7 @@ jobs:
         shasum -a 256 ./* > checksums_macos.txt
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@v4
       with:
         name: checksums-macos
         path: dist/release/checksums_macos.txt
@@ -408,7 +408,7 @@ jobs:
         shasum -a 256 ./* > checksums_macos_intel.txt
 
     - name: Upload Checksums Fragment
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/upload-artifact@v4
       with:
         name: checksums-macos-intel
         path: dist/release/checksums_macos_intel.txt

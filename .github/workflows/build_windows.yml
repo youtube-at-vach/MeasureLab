@@ -93,13 +93,13 @@ jobs:
         copy scripts/README_ASIO.txt dist/onedir/MeasureLab/
 
     - name: Upload Artifact (onefile)
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@v4
       with:
         name: MeasureLab_Windows_onefile
         path: dist/onefile/MeasureLab.exe
 
     - name: Upload Artifact (onedir)
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      uses: actions/upload-artifact@v4
       with:
         name: MeasureLab_Windows_onedir
         path: dist/onedir/MeasureLab/
