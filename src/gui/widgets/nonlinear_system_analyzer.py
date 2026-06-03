@@ -32,8 +32,8 @@ from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
-    calculate_chebyshev_matrix,
     process_amplitude_responses,
+    deconvolve_signal,
 )
 
 logger = logging.getLogger(__name__)
@@ -352,16 +352,13 @@ class NonlinearSystemAnalyzer(MeasurementModule):
             sig_ref = averaged_data[:, self.ref_channel_index]
             sig_meas = averaged_data[:, self.meas_channel_index]
 
-            ir_ref_raw = fftconvolve(sig_ref, inv_filter, mode="full")
-            ir_meas_raw = fftconvolve(sig_meas, inv_filter, mode="full")
+            ir_ref_raw = deconvolve_signal(sig_ref, sss)
+            ir_meas_raw = deconvolve_signal(sig_meas, sss)
 
             responses_ref.append(ir_ref_raw)
             responses_meas.append(ir_meas_raw)
 
         # 2. Parallel Hammerstein Separation and Analysis using Core Module
-        norm_v = amplitudes / max_amp
-        _, M_pinv = calculate_chebyshev_matrix(self.num_amplitudes, norm_v, P)
-
         (
             valid_freqs,
             magnitudes_db_dict,
@@ -378,7 +375,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
             self.latency_sec,
             sweep_duration=self.sweep_duration,
             P=P,
-            M_pinv=M_pinv,
+            amplitudes=amplitudes,
         )
 
         self.signals.progress.emit(95)
