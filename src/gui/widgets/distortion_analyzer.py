@@ -1347,12 +1347,6 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.sweep_worker.start()
         self.apply_theme()
 
-    def _update_sweep_chart(self):
-        if not self.sweep_data:
-            self.sweep_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
-            self.sweep_points.clear()
-            return
-
     def stop_sweep(self):
         if self.sweep_worker:
             self.sweep_worker.stop()
