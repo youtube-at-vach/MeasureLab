@@ -1,5 +1,8 @@
 {
     "exact_keys": [
+        " (CLIP!)",
+        " (OK - Optimal)",
+        " (Too Low)",
         "-",
         "--",
         "-- %",
@@ -48,6 +51,8 @@
         "CRT Monitor Scan / VGA (31.468kHz)",
         "CSV (Comma Separated Values)",
         "CSV Options",
+        "Calibrate (0 dBFS)",
+        "Calibrating (0 dBFS)...",
         "Cause / Note",
         "Clients: 0",
         "Color:",
@@ -99,6 +104,7 @@
         "IMD (dB):",
         "IR SNR: -- dB",
         "Inductance",
+        "Input Level:",
         "Info",
         "Inst",
         "Integral",
