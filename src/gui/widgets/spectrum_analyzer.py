@@ -325,62 +325,6 @@ class SpectrumAnalyzer(MeasurementModule):
 
         return smoothed_freqs, smoothed_mags_db
 
-    def apply_log_max_downsampling(self, freqs, magnitude, max_points=2000):
-        """
-        Apply log-space max downsampling to reduce plot points while preserving sharp peaks.
-        max_points: Target number of plot points.
-        """
-        if len(freqs) <= max_points:
-            return freqs, magnitude
-
-        # Check cache to avoid searchsorted recalculation
-        cache_key = ("log_downsample", len(freqs), float(freqs[-1]), max_points)
-        cached_data = self._smoothing_cache.get(cache_key)
-
-        if cached_data is None:
-            # Pre-calculate log bins safely avoiding log10(0)
-            f_min = freqs[0] if freqs[0] > 0 else (freqs[1] if len(freqs) > 1 and freqs[1] > 0 else 20)
-            f_max = freqs[-1]
-
-            # Generate log-spaced bin edges
-            log_bins = np.logspace(np.log10(f_min), np.log10(f_max), max_points + 1)
-
-            # Find indices for each bin
-            indices = np.searchsorted(freqs, log_bins, side="left")
-
-            band_indices = []
-            smoothed_freqs_list = []
-
-            # Calculate geometric centers for representative frequencies
-            geom_centers = np.sqrt(log_bins[:-1] * log_bins[1:])
-
-            for i in range(max_points):
-                start = indices[i]
-                end = indices[i + 1]
-                if end > start:
-                    smoothed_freqs_list.append(geom_centers[i])
-                    band_indices.append((start, end))
-
-            smoothed_freqs = np.array(smoothed_freqs_list)
-            cached_data = (smoothed_freqs, band_indices)
-            self._smoothing_cache[cache_key] = cached_data
-
-        smoothed_freqs, band_indices = cached_data
-
-        if len(band_indices) == 0:
-            return np.array([]), np.array([])
-
-        smoothed_mags_list = []
-        for start, end in band_indices:
-            if magnitude.ndim == 2:
-                # dual channel: max along axis 0
-                val = np.max(magnitude[start:end], axis=0)
-            else:
-                val = np.max(magnitude[start:end])
-            smoothed_mags_list.append(val)
-
-        return smoothed_freqs, np.array(smoothed_mags_list)
-
     def _compute_multitaper(self, data, freqs, sample_rate):
         """Helper to calculate spectrum using multitaper method."""
         windows = get_dpss_windows(len(data))  # (K, N)
