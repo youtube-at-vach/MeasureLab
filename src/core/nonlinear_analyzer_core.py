@@ -47,20 +47,41 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     return sss_signal, inverse_filter
 
 
+def deconvolve_signal(recorded_signal, sss_signal, regularization=1e-4):
+    """
+    Performs frequency-domain deconvolution: Y(f) / S(f) with regularization.
+    Uses fft_manager.rfft and irfft.
+    """
+    N_rec = len(recorded_signal)
+    N_sss = len(sss_signal)
+    # Next power of 2 for FFT speed
+    N_fft = int(2 ** np.ceil(np.log2(N_rec + N_sss)))
+
+    S = fft_manager.rfft(np.pad(sss_signal, (0, N_fft - N_sss)))
+    Y = fft_manager.rfft(np.pad(recorded_signal, (0, N_fft - N_rec)))
+
+    # Regularization
+    S_power = np.abs(S) ** 2
+    epsilon = regularization * np.max(S_power) + 1e-12
+
+    # H(f) = Y(f) * S*(f) / (|S(f)|^2 + epsilon)
+    H = (Y * np.conj(S)) / (S_power + epsilon)
+
+    g = fft_manager.irfft(H, n=N_fft)
+    return g
+
+
 def calculate_chebyshev_matrix(num_amplitudes, norm_v, P=5):
     """
-    Constructs the Power Series separation matrix M and computes its pseudo-inverse M_pinv.
-    norm_v represents normalized excitation amplitudes (v_k in range [0.0, 1.0]).
-    Using standard Power Series basis (v^p) ensures mathematically perfect, alias-free
-    separation of linear, quadratic, cubic, and higher-order Hammerstein branches.
+    Deprecated/Legacy compatibility method.
+    Previously constructed separation matrix M and computed its pseudo-inverse M_pinv.
+    Now we implement Chebyshev transform directly using algebraic equations.
     """
     M = np.zeros((num_amplitudes, P))
     for k in range(num_amplitudes):
         v = norm_v[k]
         for p in range(P):
             M[k, p] = v ** (p + 1)
-
-    # Compute Pseudo-Inverse
     M_pinv = np.linalg.pinv(M)
     return M, M_pinv
 
@@ -76,71 +97,153 @@ def process_amplitude_responses(
     sweep_duration=1.0,
     P=5,
     M_pinv=None,
+    amplitudes=None,
 ):
     """
-    Extracts isolated Hammerstein kernels (h_1 to h_5) from raw measured and reference
+    Extracts isolated Hammerstein kernels (h_1 to h_5) from deconvolved raw measured and reference
     impulse responses using Chebyshev inversion.
+
+    responses_meas: List of deconvolved impulse responses (time-domain) for each amplitude step.
+    responses_ref: List of deconvolved reference impulse responses (time-domain) for each amplitude step.
+    amplitudes: Explicit excitation amplitude values (peak linear scaling, e.g. R_j).
     """
     num_amplitudes = len(responses_meas)
-    if M_pinv is None:
-        # Fallback to linear spacing v_k
-        norm_v = np.linspace(0.2, 1.0, num_amplitudes)
-        _, M_pinv = calculate_chebyshev_matrix(num_amplitudes, norm_v, P)
+    if amplitudes is None:
+        amplitudes = np.linspace(0.2, 1.0, num_amplitudes)
 
-    # 1. Global Peak-Aligned Gating
-    # Use the maximum amplitude measurement channel response to locate the global peak.
+    # 1. Detect Linear IR Peak (t1) using the maximum amplitude measurement
     max_amp_idx = num_amplitudes - 1
-    ir_max_amp = responses_meas[max_amp_idx]
-    global_peak = np.argmax(np.abs(ir_max_amp))
+    ir_max_meas = responses_meas[max_amp_idx]
+    t1 = np.argmax(np.abs(ir_max_meas))
 
-    # Dynamically compute gate_pre to include negative latency peaks for all harmonics.
-    # The maximum negative delay is for the P-th harmonic: delay = -L * ln(P)
-    # L = sweep_duration / ln(end_freq / start_freq)
-    # We add 20% margin to ensure full capture.
+    # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0
     end_margin = min(nyquist * 0.95, end_freq * 1.15)
     start_margin = max(2.0, start_freq / 1.3)
     L = sweep_duration / np.log(end_margin / start_margin)
-    max_lead_sec = L * np.log(P) if P > 1 else 0.0
 
-    gate_pre = int(max(0.01, max_lead_sec * 1.1) * sample_rate)  # at least 10ms pre-gate
-    gate_post = int(0.4 * sample_rate)  # 400ms post-gate (to capture decay)
+    # 3. Define Gating window length (e.g. 30ms total: 10ms pre, 20ms post to avoid leakage)
+    gate_pre = int(0.01 * sample_rate)
+    gate_post = int(0.02 * sample_rate)
+    N_kernel = gate_pre + gate_post
 
-    raw_len = len(ir_max_amp)
-    start_gate = max(0, global_peak - gate_pre)
-    end_gate = min(raw_len, global_peak + gate_post)
-    gate_length = end_gate - start_gate
+    # 4. Phase correction helper for sin sweep phase alignment
+    def apply_phase_correction(g_k, k):
+        N = len(g_k)
+        G = fft_manager.rfft(g_k)
+        # Apply shift to make physical impulse responses real and symmetric
+        if k == 2:
+            G = G * 1j
+        elif k == 3:
+            G = -G
+        elif k == 4:
+            G = G * (-1j)
+        return fft_manager.irfft(G, n=N)
 
-    # Tukey window to smoothly taper the gated response
-    win = windows.tukey(gate_length, alpha=0.05)
+    # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude
+    N_total = len(ir_max_meas)
+    g_meas_all = []
+    g_ref_all = []
 
-    gated_meas = []
-    gated_ref = []
+    for j in range(num_amplitudes):
+        ir_meas_raw = responses_meas[j]
+        ir_ref_raw = responses_ref[j]
 
-    for k in range(num_amplitudes):
-        # Slice both channels at the EXACT same time interval
-        meas_slice = responses_meas[k][start_gate:end_gate] * win
-        ref_slice = responses_ref[k][start_gate:end_gate] * win
-        gated_meas.append(meas_slice)
-        gated_ref.append(ref_slice)
+        g_meas_j = {}
+        g_ref_j = {}
 
-    # 2. Chebyshev Matrix Separation
-    # Solve h_p(t) = M_pinv * g_k(t) at each time step
-    h_kernels_meas = np.zeros((P, gate_length))
-    h_kernels_ref = np.zeros((P, gate_length))
+        for k in range(1, P + 1):
+            # Calculate peak prediction index for the k-th harmonic
+            t_k = int(t1 - L * np.log(k) * sample_rate)
 
-    for t in range(gate_length):
-        g_t_meas = np.array([gated_meas[k][t] for k in range(num_amplitudes)])
-        g_t_ref = np.array([gated_ref[k][t] for k in range(num_amplitudes)])
+            # Slice with modular wrap around to protect bounds
+            idx = (np.arange(t_k - gate_pre, t_k + gate_post)) % N_total
 
-        h_kernels_meas[:, t] = np.dot(M_pinv, g_t_meas)
-        h_kernels_ref[:, t] = np.dot(M_pinv, g_t_ref)
+            # Apply cosine taper window to smooth sliced edges
+            win = windows.tukey(N_kernel, alpha=0.1)
 
-    # 3. Frequency Analysis and Relative Normalization
+            g_k_meas = ir_meas_raw[idx] * win
+            g_k_ref = ir_ref_raw[idx] * win
+
+            # Phase correction
+            g_k_meas_corr = apply_phase_correction(g_k_meas, k)
+            g_k_ref_corr = apply_phase_correction(g_k_ref, k)
+
+            g_meas_j[k] = g_k_meas_corr
+            g_ref_j[k] = g_k_ref_corr
+
+        g_meas_all.append(g_meas_j)
+        g_ref_all.append(g_ref_j)
+
+    # 6. Apply Chebyshev transform to reconstruct Hammerstein kernels h_p using weighted least-squares
+    h_kernels_meas = np.zeros((P, N_kernel))
+    h_kernels_ref = np.zeros((P, N_kernel))
+
+    R_array = np.array(amplitudes)
+    R2 = R_array ** 2
+    R3 = R_array ** 3
+    R4 = R_array ** 4
+    R5 = R_array ** 5
+
+    # Meas Channel Least-Squares Estimation
+    g_meas_k = {k: np.array([g_meas_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
+
+    g5_m = g_meas_k.get(5, np.zeros((num_amplitudes, N_kernel)))
+    h5_meas = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+
+    g4_m = g_meas_k.get(4, np.zeros((num_amplitudes, N_kernel)))
+    h4_meas = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+
+    g3_m = g_meas_k.get(3, np.zeros((num_amplitudes, N_kernel)))
+    g3_prime_m = g3_m - (5/16) * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    h3_meas = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+
+    g2_m = g_meas_k.get(2, np.zeros((num_amplitudes, N_kernel)))
+    g2_prime_m = g2_m - 0.5 * h4_meas[np.newaxis, :] * R4[:, np.newaxis]
+    h2_meas = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+
+    g1_m = g_meas_k.get(1, np.zeros((num_amplitudes, N_kernel)))
+    g1_prime_m = g1_m - 0.75 * h3_meas[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    h1_meas = np.sum(g1_prime_m * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+
+    h_kernels_meas[0] = h1_meas
+    h_kernels_meas[1] = h2_meas
+    h_kernels_meas[2] = h3_meas
+    h_kernels_meas[3] = h4_meas
+    h_kernels_meas[4] = h5_meas
+
+    # Ref Channel Least-Squares Estimation
+    g_ref_k = {k: np.array([g_ref_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
+
+    g5_r = g_ref_k.get(5, np.zeros((num_amplitudes, N_kernel)))
+    h5_ref = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+
+    g4_r = g_ref_k.get(4, np.zeros((num_amplitudes, N_kernel)))
+    h4_ref = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+
+    g3_r = g_ref_k.get(3, np.zeros((num_amplitudes, N_kernel)))
+    g3_prime_r = g3_r - (5/16) * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    h3_ref = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+
+    g2_r = g_ref_k.get(2, np.zeros((num_amplitudes, N_kernel)))
+    g2_prime_r = g2_r - 0.5 * h4_ref[np.newaxis, :] * R4[:, np.newaxis]
+    h2_ref = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+
+    g1_r = g_ref_k.get(1, np.zeros((num_amplitudes, N_kernel)))
+    g1_prime_r = g1_r - 0.75 * h3_ref[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    h1_ref = np.sum(g1_prime_r * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+
+    h_kernels_ref[0] = h1_ref
+    h_kernels_ref[1] = h2_ref
+    h_kernels_ref[2] = h3_ref
+    h_kernels_ref[3] = h4_ref
+    h_kernels_ref[4] = h5_ref
+
+    # 7. Frequency Analysis and Relative Normalization
     H_meas_list = [fft_manager.rfft(h_kernels_meas[p]) for p in range(P)]
     H_ref_list = [fft_manager.rfft(h_kernels_ref[p]) for p in range(P)]
 
-    freqs = fft_manager.rfftfreq(gate_length, d=1 / sample_rate)
+    freqs = fft_manager.rfftfreq(N_kernel, d=1 / sample_rate)
     mask = (freqs >= start_freq) & (freqs <= end_freq)
     valid_freqs = freqs[mask]
 
@@ -151,7 +254,7 @@ def process_amplitude_responses(
     H_ref_1 = H_ref_list[0]
     ref_power = np.abs(H_ref_1) ** 2
     peak_ref_power = np.max(ref_power)
-    alpha = peak_ref_power * 1e-6 + 1e-12
+    alpha = peak_ref_power * 1e-3 + 1e-12
 
     for p in range(P):
         h_key = f"h{p + 1}"
@@ -159,15 +262,13 @@ def process_amplitude_responses(
 
         if input_mode == "XFER":
             # Relative 2-Channel XFER transfer function calibration
-            # Normalize ALL kernels by the LINEAR reference kernel H_ref_1
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)
                 H_xfer = np.nan_to_num(H_xfer)
             valid_H = H_xfer[mask]
         else:
-            # Single Channel Mode: 1-channel response
+            # Single Channel Mode: 1-channel response with latency correction
             valid_H = H_meas_p[mask]
-            # Compensation for physical latency (avoid wrapped phase)
             delay_samples = int(latency_sec * sample_rate)
             phase_correction = 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
             valid_H = valid_H * np.exp(1j * phase_correction)
@@ -181,21 +282,16 @@ def process_amplitude_responses(
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
 
-    # 4. Prepare Time-Domain Kernel Display
-    # Center the display around the linear kernel peak in gated range
-    p1_peak = np.argmax(np.abs(h_kernels_meas[0]))
-    # For time domain display, we want to show the pre-trigger range capturing the negative latency peaks
-    disp_pre = min(p1_peak, int(max(0.01, max_lead_sec * 1.15) * sample_rate))  # covers negative latencies
-    disp_post = min(gate_length - p1_peak, int(0.09 * sample_rate))  # 90ms post-peak
+    # 8. Prepare Time-Domain Kernel Display
+    # Peak is at gate_pre because we aligned all g_k at that point
+    t_indices = np.arange(0, N_kernel)
+    time_ms = (t_indices - gate_pre) / sample_rate * 1000.0
 
-    t_indices = np.arange(p1_peak - disp_pre, p1_peak + disp_post)
-    time_ms = (t_indices - p1_peak) / sample_rate * 1000.0
-
+    # Return normalized display kernels (referenced to maximum amplitude of linear kernel)
     separated_kernels_data = []
     ref_max = np.max(np.abs(h_kernels_meas[0]))
-
     for p in range(P):
-        kernel_slice = h_kernels_meas[p][t_indices]
+        kernel_slice = h_kernels_meas[p]
         if ref_max > 1e-12:
             kernel_slice = kernel_slice / ref_max
         separated_kernels_data.append(kernel_slice)
@@ -207,3 +303,4 @@ def process_amplitude_responses(
         time_ms,
         separated_kernels_data,
     )
+
