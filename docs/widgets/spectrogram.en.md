@@ -12,9 +12,9 @@ It is ideal for observing the "transitions" of sound, such as voice intonation a
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the heatmap display.
 
-## ☕ Coffee Break: What is a "Voiceprint", the Fingerprint of Sound?
+## ☕ Coffee Break: Voiceprint Analysis
 
-Different pronunciations, like "Ah" and "Ee", resonate at different frequency bands. When viewed on a spectrogram, this appears as specific "colored striped patterns (formants)", allowing you to visually confirm differences in voice quality.
+Different vowel pronunciations (e.g., 'Ah' vs 'Ee') emphasize different frequency bands called formants. A spectrogram visualizes these formants as distinct horizontal bands, allowing you to objectively observe voice quality differences.
 
 ## Operation
 

@@ -12,12 +12,9 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the graph display. This is ideal for monitoring just the waveform on a large screen in a multi-monitor setup.
 
-## ☕ Coffee Break: What is the Spectrum Analyzer actually doing?
+## ☕ Coffee Break: What the Spectrum Analyzer does
 
-Sound is simply "vibration of air." An oscilloscope graphs this vibration over "time," but when a complex sound plays, the waveform becomes a messy jumble.
-
-The Spectrum Analyzer takes this complex waveform and passes it through a mathematical magic formula called **FFT (Fast Fourier Transform)**, breaking it down to show **"which pitches"** are mixed in and **"how strong"** they are.
-This is exactly the same principle as passing sunlight through a prism to separate it into its rainbow-colored components (red, green, blue, etc.). The role of this widget is to separate the "colors" of the sound and show them to you.
+While an oscilloscope displays sound as "time vs. amplitude," a spectrum analyzer uses FFT (Fast Fourier Transform) to decompose it into "intensity per frequency." This allows you to visually identify the specific components (which pitches are present and their strength) within a complex signal.
 
 ## Operation
 

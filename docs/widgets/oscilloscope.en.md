@@ -10,13 +10,9 @@ The Oscilloscope is a measurement tool that displays the waveform of the input s
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
 
-## ☕ Coffee Break: An "Ultra-High-Speed Camera" for Electricity
+## ☕ Coffee Break: What an Oscilloscope does
 
-The name "Oscilloscope" might sound intimidating, but what it does is quite simple. Think of it as an **"ultra-high-speed camera"** that takes continuous shots of how sound or electricity moves.
-
-For example, when you pluck a guitar string, you can see the string vibrating with your own eyes. But once that vibration passes through a microphone and turns into an electrical signal, it becomes invisible to the human eye. Furthermore, sound vibrations happen at breakneck speeds—thousands or even tens of thousands of times a second.
-
-An oscilloscope draws a graph of this rapidly changing electrical voltage over "time," moving from left to right. With this tool, you can clearly see the exact shape of a "plink" sound, or how noise is mixed in, revealing the true form of invisible electricity right before your eyes!
+An oscilloscope is an instrument that visually displays the instantaneous voltage of an electrical signal over time. Because audio signals fluctuate thousands of times per second, this real-time graph allows you to precisely observe the shape of the waveform and identify anomalies like noise.
 
 ## Basic Operation
 
