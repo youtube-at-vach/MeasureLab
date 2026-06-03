@@ -622,7 +622,6 @@ def apply_octave_smoothing(freqs: np.ndarray, mag_db: np.ndarray, fraction: floa
     return smoothed
 
 
-
 def calculate_step_response(impulse_response: np.ndarray) -> np.ndarray:
     """
     インパルス応答 h[t] からステップ応答 (Step Response) を累積積分により高速に算出します。
@@ -652,7 +651,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
         "settling_ms": 0.0,
         "droop_pct": 0.0,
         "step_gain": 0.0,
-        "valid": False
+        "valid": False,
     }
 
     N = len(step_y)
@@ -682,7 +681,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     if final_start >= N:
         final_start = N - 1
 
-    v_final = float(np.mean(step_y[final_start:min(final_start + 150, N)]))
+    v_final = float(np.mean(step_y[final_start : min(final_start + 150, N)]))
 
     # ステップ全体の高さ
     v_step = v_final - v_base
@@ -754,15 +753,15 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     droop_pct = (droop_val / v_step_abs) * 100.0
     droop_pct = max(0.0, droop_pct)
 
-    results.update({
-        "overshoot_pct": float(np.clip(overshoot_pct, 0.0, 200.0)),
-        "settling_samples": int(settling_samples),
-        "settling_ms": float(settling_ms),
-        "droop_pct": float(np.clip(droop_pct, 0.0, 100.0)),
-        "step_gain": float(v_step),
-        "valid": True
-    })
+    results.update(
+        {
+            "overshoot_pct": float(np.clip(overshoot_pct, 0.0, 200.0)),
+            "settling_samples": int(settling_samples),
+            "settling_ms": float(settling_ms),
+            "droop_pct": float(np.clip(droop_pct, 0.0, 100.0)),
+            "step_gain": float(v_step),
+            "valid": True,
+        }
+    )
 
     return results
-
-

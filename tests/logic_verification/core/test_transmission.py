@@ -292,7 +292,6 @@ class TestTransmissionLogic(unittest.TestCase):
         # Validate that the final fractional correlation is extremely high
         self.assertGreater(frac_corr, 0.98)
 
-
     def test_calculate_step_response(self):
         """Test step response calculation from impulse response."""
         h = np.zeros(128, dtype=np.float32)
@@ -319,7 +318,7 @@ class TestTransmissionLogic(unittest.TestCase):
         # 2. Step response with overshoot & ringing settling
         step_y_ring = np.zeros(512, dtype=np.float32)
         step_y_ring[128:] = 1.0
-        step_y_ring[128:135] = 1.2   # 20% Overshoot
+        step_y_ring[128:135] = 1.2  # 20% Overshoot
         step_y_ring[135:150] = 1.05  # Rings outside 2% tolerance band
 
         res_ring = analyze_step_transient(step_y_ring, 48000)
@@ -354,7 +353,7 @@ class TestTransmissionLogic(unittest.TestCase):
         # Rising at index 128
         step_decay[128:] = 1.0
         # Simulated droop: decay factor after rising edge
-        decay_factor = np.exp(-np.arange(384) / 500.0) # Decay to ~46% over 384 samples
+        decay_factor = np.exp(-np.arange(384) / 500.0)  # Decay to ~46% over 384 samples
         step_decay[128:] *= decay_factor
 
         res_decay = analyze_step_transient(step_decay, 48000)

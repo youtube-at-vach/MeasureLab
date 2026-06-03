@@ -138,6 +138,7 @@ def main():
 
     # Start preloading heavy libraries in the background immediately
     import threading
+
     preload_thread = threading.Thread(target=_preload_dependencies, daemon=True)
     preload_thread.start()
 
