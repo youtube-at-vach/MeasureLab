@@ -71,3 +71,30 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
     inactive_item = window.sidebar.item(2)
     assert not inactive_item.font().bold()
     assert inactive_item.foreground().color() == default_brush.color()
+
+
+def test_build_module_activity_tooltip(qtbot):
+    window = _build_window_stub(qtbot)
+
+    # Test case 1: Active module
+    window.modules[0] = _DummyModule(is_playing=True)
+    window.module_widgets[0] = _DummyWrapper(is_detached=False)
+    tooltip1 = window._build_module_activity_tooltip(0)
+    assert tr("Signal Generator") in tooltip1
+    assert tr("ACTIVE") in tooltip1
+    assert tr("Widget is detached in a separate window.") not in tooltip1
+
+    # Test case 2: Inactive and detached module
+    window.modules[1] = _DummyModule()
+    window.module_widgets[1] = _DummyWrapper(is_detached=True)
+    tooltip2 = window._build_module_activity_tooltip(1)
+    assert tr("Recorder / Player") in tooltip2
+    assert tr("ACTIVE") not in tooltip2
+    assert tr("Widget is detached in a separate window.") in tooltip2
+
+    # Test case 3: Active and detached module
+    window.modules[1] = _DummyModule(is_recording=True)
+    tooltip3 = window._build_module_activity_tooltip(1)
+    assert tr("Recorder / Player") in tooltip3
+    assert tr("ACTIVE") in tooltip3
+    assert tr("Widget is detached in a separate window.") in tooltip3
