@@ -81,3 +81,17 @@ def test_export_manager_init_idempotent():
 
     # The exporters dict should be the exact same object, not a new one
     assert manager._exporters is original_exporters
+
+
+def test_export_manager_get_exporter_explicit():
+    """Explicitly test get_exporter for existing and non-existing formats."""
+    manager = ExportManager()
+
+    # Test getting an existing default exporter
+    json_exporter = manager.get_exporter("json")
+    assert json_exporter is not None
+    assert isinstance(json_exporter, JsonTraceExporter)
+
+    # Test getting a non-existent exporter
+    missing_exporter = manager.get_exporter("unsupported_format_xyz")
+    assert missing_exporter is None
