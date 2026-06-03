@@ -81,3 +81,18 @@ def test_export_manager_init_idempotent():
 
     # The exporters dict should be the exact same object, not a new one
     assert manager._exporters is original_exporters
+
+
+def test_export_manager_register_exporter(mocker):
+    """Test that register_exporter inserts the exporter and logs a message."""
+    manager = ExportManager()
+
+    dummy = mocker.Mock(spec=BaseTraceExporter)
+    dummy.format_id = "test_format"
+
+    mock_logger = mocker.patch("src.core.export.manager.logger.info")
+
+    manager.register_exporter(dummy)
+
+    assert manager._exporters["test_format"] is dummy
+    mock_logger.assert_called_once_with("Registered exporter for format: 'test_format'")
