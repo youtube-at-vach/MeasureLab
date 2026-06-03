@@ -42,34 +42,6 @@ class MockAudioEngine:
 class TestOscilloscopeStaticMethods(unittest.TestCase):
     """Tests for static helper methods in Oscilloscope class."""
 
-    def test_interp_crossing_time(self):
-        # We need to import Oscilloscope.
-        # Ideally we import it normally if dependencies allow.
-        # Since we have numpy/scipy installed, it should work.
-        from src.gui.widgets.oscilloscope import Oscilloscope
-
-        # Rising crossing
-        t = np.array([0.0, 1.0])
-        y = np.array([-1.0, 1.0])
-        res = Oscilloscope._interp_crossing_time(t, y, 0.0, "rising")
-        self.assertAlmostEqual(res, 0.5)
-
-        # Falling crossing
-        y = np.array([1.0, -1.0])
-        res = Oscilloscope._interp_crossing_time(t, y, 0.0, "falling")
-        self.assertAlmostEqual(res, 0.5)
-
-        # No crossing
-        y = np.array([0.5, 1.0])
-        res = Oscilloscope._interp_crossing_time(t, y, 0.0, "rising")
-        self.assertIsNone(res)
-
-        # Multiple crossings (pick first)
-        t = np.array([0.0, 1.0, 2.0, 3.0])
-        y = np.array([-1.0, 1.0, -1.0, 1.0])
-        res = Oscilloscope._interp_crossing_time(t, y, 0.0, "rising")
-        self.assertAlmostEqual(res, 0.5)
-
     def test_estimate_frequency_hz(self):
         from src.gui.widgets.oscilloscope import Oscilloscope
 

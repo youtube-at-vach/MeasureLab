@@ -392,37 +392,6 @@ class Oscilloscope(MeasurementModule):
                 return None
 
     @staticmethod
-    def _interp_crossing_time(t: np.ndarray, y: np.ndarray, level: float, direction: str):
-        """Return interpolated crossing time for the first crossing in the requested direction.
-
-        direction: 'rising' or 'falling'
-        """
-        if t is None or y is None or len(t) < 2:
-            return None
-        if direction == "rising":
-            mask = (y[:-1] < level) & (y[1:] >= level)
-        else:
-            mask = (y[:-1] > level) & (y[1:] <= level)
-
-        idx = np.argmax(mask)
-        if not mask[idx]:
-            return None
-        i = int(idx)
-        y0 = float(y[i])
-        y1 = float(y[i + 1])
-        t0 = float(t[i])
-        t1 = float(t[i + 1])
-        denom = y1 - y0
-        if denom == 0:
-            return t0
-        frac = (level - y0) / denom
-        if frac < 0:
-            frac = 0
-        elif frac > 1:
-            frac = 1
-        return t0 + frac * (t1 - t0)
-
-    @staticmethod
     def estimate_frequency_hz(t: np.ndarray, y: np.ndarray):
         """Estimate frequency from rising zero-crossings (DC-removed)."""
         if t is None or y is None or len(t) < 4:
