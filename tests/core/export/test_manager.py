@@ -81,3 +81,17 @@ def test_export_manager_init_idempotent():
 
     # The exporters dict should be the exact same object, not a new one
     assert manager._exporters is original_exporters
+
+
+def test_export_manager_get_all_exporters():
+    """Test get_all_exporters returns a copy of the exporters dictionary."""
+    ExportManager._instance = None
+    manager = ExportManager.instance()
+
+    exporters = manager.get_all_exporters()
+    assert "json" in exporters
+    assert "csv" in exporters
+
+    # Verify it returns a copy, modifying it doesn't affect internal state
+    exporters["dummy"] = "fake_exporter"
+    assert "dummy" not in manager._exporters
