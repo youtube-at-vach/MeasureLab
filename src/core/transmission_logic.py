@@ -325,44 +325,6 @@ def calculate_equalized_evm(rx_block: np.ndarray, tx_block: np.ndarray, regulari
     return float(np.clip(evm_percent, 0.0, 100.0))
 
 
-def measure_crosstalk(rx_block: np.ndarray, leak_reference: np.ndarray) -> float:
-    """
-    Measures crosstalk by finding the leakage correlation with the opposite channel's PRBS sequence.
-
-    Returns leakage ratio in dB.
-    """
-    N = len(rx_block)
-    M = len(leak_reference)
-
-    # Sub-segment correlation
-    sub_len = min(N, M)
-    rx_seg = rx_block[:sub_len]
-    leak_seg = leak_reference[:sub_len]
-
-    rx_ac = rx_seg - np.mean(rx_seg)
-    leak_ac = leak_seg - np.mean(leak_seg)
-
-    norm_rx = np.linalg.norm(rx_ac)
-    norm_leak = np.linalg.norm(leak_ac)
-
-    if norm_rx < 1e-6 or norm_leak < 1e-6:
-        return -120.0
-
-    rx_ac /= norm_rx
-    leak_ac /= norm_leak
-
-    # Calculate scalar projection of leak onto rx
-    # Represents the leakage coefficient
-    c_coeff = np.dot(rx_seg, leak_seg) / np.dot(leak_seg, leak_seg)
-    c_coeff_abs = abs(c_coeff)
-
-    if c_coeff_abs < 1e-6:
-        return -120.0
-
-    crosstalk_db = 20 * np.log10(c_coeff_abs + 1e-12)
-    return float(np.clip(crosstalk_db, -120.0, 0.0))
-
-
 def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
     """
     Analyzes rx and ref to determine exact digital transmission path bit-perfection.
@@ -622,7 +584,6 @@ def apply_octave_smoothing(freqs: np.ndarray, mag_db: np.ndarray, fraction: floa
     return smoothed
 
 
-
 def calculate_step_response(impulse_response: np.ndarray) -> np.ndarray:
     """
     インパルス応答 h[t] からステップ応答 (Step Response) を累積積分により高速に算出します。
@@ -652,7 +613,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
         "settling_ms": 0.0,
         "droop_pct": 0.0,
         "step_gain": 0.0,
-        "valid": False
+        "valid": False,
     }
 
     N = len(step_y)
@@ -682,7 +643,7 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     if final_start >= N:
         final_start = N - 1
 
-    v_final = float(np.mean(step_y[final_start:min(final_start + 150, N)]))
+    v_final = float(np.mean(step_y[final_start : min(final_start + 150, N)]))
 
     # ステップ全体の高さ
     v_step = v_final - v_base
@@ -754,15 +715,15 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     droop_pct = (droop_val / v_step_abs) * 100.0
     droop_pct = max(0.0, droop_pct)
 
-    results.update({
-        "overshoot_pct": float(np.clip(overshoot_pct, 0.0, 200.0)),
-        "settling_samples": int(settling_samples),
-        "settling_ms": float(settling_ms),
-        "droop_pct": float(np.clip(droop_pct, 0.0, 100.0)),
-        "step_gain": float(v_step),
-        "valid": True
-    })
+    results.update(
+        {
+            "overshoot_pct": float(np.clip(overshoot_pct, 0.0, 200.0)),
+            "settling_samples": int(settling_samples),
+            "settling_ms": float(settling_ms),
+            "droop_pct": float(np.clip(droop_pct, 0.0, 100.0)),
+            "step_gain": float(v_step),
+            "valid": True,
+        }
+    )
 
     return results
-
-

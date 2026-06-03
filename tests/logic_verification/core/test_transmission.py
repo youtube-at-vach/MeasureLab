@@ -13,7 +13,6 @@ from src.core.transmission_logic import (
     extract_frequency_response,
     calculate_evm,
     calculate_equalized_evm,
-    measure_crosstalk,
     diagnose_bit_perfection,
     estimate_fractional_delay,
     shift_signal_fractional,
@@ -168,24 +167,6 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertGreater(evm_noisy_equalized, 0.5)
         self.assertLess(evm_noisy_equalized, evm_unequalized)  # Equalization still removes linear part
 
-    def test_measure_crosstalk(self):
-        """Test stereo crosstalk leakage measurement with longer block sizes for orthogonality."""
-        gen1 = PRBSGenerator("PRBS-9")
-        gen2 = PRBSGenerator("PRBS-15")
-
-        # Generate longer sequence for cross-channel orthogonality
-        tx_aligned = gen1.generate_reference_sequence(8192, bit_depth=24)
-        tx_leak = gen2.generate_reference_sequence(8192, bit_depth=24)
-
-        # Crosstalk at -40 dB leakage ratio
-        leakage_db = -40.0
-        leakage_coeff = 10 ** (leakage_db / 20.0)
-
-        rx = tx_aligned + leakage_coeff * tx_leak
-
-        crosstalk_result = measure_crosstalk(rx, tx_leak)
-        self.assertAlmostEqual(crosstalk_result, leakage_db, delta=10.0)
-
     def test_diagnose_bit_perfection_success(self):
         """Test transparent bit-for-bit diagnosis."""
         gen = PRBSGenerator(mode="PRBS-9")
@@ -292,7 +273,6 @@ class TestTransmissionLogic(unittest.TestCase):
         # Validate that the final fractional correlation is extremely high
         self.assertGreater(frac_corr, 0.98)
 
-
     def test_calculate_step_response(self):
         """Test step response calculation from impulse response."""
         h = np.zeros(128, dtype=np.float32)
@@ -319,7 +299,7 @@ class TestTransmissionLogic(unittest.TestCase):
         # 2. Step response with overshoot & ringing settling
         step_y_ring = np.zeros(512, dtype=np.float32)
         step_y_ring[128:] = 1.0
-        step_y_ring[128:135] = 1.2   # 20% Overshoot
+        step_y_ring[128:135] = 1.2  # 20% Overshoot
         step_y_ring[135:150] = 1.05  # Rings outside 2% tolerance band
 
         res_ring = analyze_step_transient(step_y_ring, 48000)
@@ -354,7 +334,7 @@ class TestTransmissionLogic(unittest.TestCase):
         # Rising at index 128
         step_decay[128:] = 1.0
         # Simulated droop: decay factor after rising edge
-        decay_factor = np.exp(-np.arange(384) / 500.0) # Decay to ~46% over 384 samples
+        decay_factor = np.exp(-np.arange(384) / 500.0)  # Decay to ~46% over 384 samples
         step_decay[128:] *= decay_factor
 
         res_decay = analyze_step_transient(step_decay, 48000)
