@@ -173,6 +173,8 @@ class LockInAmplifier(MeasurementModule):
         self.input_buffer_pos = 0
         self._total_samples_written = 0
         self._unwrapped_ref_phase = 0.0
+        if hasattr(self, "_last_start_idx"):
+            delattr(self, "_last_start_idx")
         self.reset_postmix_lpf()
 
         # Generator State
@@ -275,6 +277,8 @@ class LockInAmplifier(MeasurementModule):
                 self.callback_id = None
             self.is_running = False
             self._buffer_ready_event.set()
+            if hasattr(self, "_last_start_idx"):
+                delattr(self, "_last_start_idx")
             self.reset_postmix_lpf()
 
     def process_data(self):
