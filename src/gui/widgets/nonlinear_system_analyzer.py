@@ -707,11 +707,11 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         }
 
         labels = {
-            "h1": tr("Fundamental (Linear h1)"),
-            "h2": tr("2nd Harmonic (h2)"),
-            "h3": tr("3rd Harmonic (h3)"),
-            "h4": tr("4th Harmonic (h4)"),
-            "h5": tr("5th Harmonic (h5)"),
+            "h1": tr("Fundamental (Linear Kernel h1)"),
+            "h2": tr("2nd Order (Kernel h2)"),
+            "h3": tr("3rd Order (Kernel h3)"),
+            "h4": tr("4th Order (Kernel h4)"),
+            "h5": tr("5th Order (Kernel h5)"),
         }
 
         # Clear existing curves before redrawing
