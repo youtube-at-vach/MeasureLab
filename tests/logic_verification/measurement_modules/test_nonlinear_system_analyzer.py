@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from scipy.signal import fftconvolve
 
 from src.core.nonlinear_analyzer_core import (
@@ -22,9 +21,7 @@ def test_nonlinear_analyzer_linear():
     P = 5
 
     # 1. Generate sweep and inverse filter
-    sss, inv_filter = generate_sss_and_inverse(
-        sample_rate, sweep_duration, start_freq, end_freq
-    )
+    sss, inv_filter = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
 
     # 2. Setup Amplitudes
     max_amp = 0.5  # Max Peak Amplitude (-6 dBFS equivalent)
@@ -104,9 +101,7 @@ def test_nonlinear_analyzer_quadratic():
     P = 5
 
     # 1. Generate sweep and inverse filter
-    sss, inv_filter = generate_sss_and_inverse(
-        sample_rate, sweep_duration, start_freq, end_freq
-    )
+    sss, inv_filter = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
 
     # 2. Setup Amplitudes
     max_amp = 0.5
@@ -122,7 +117,7 @@ def test_nonlinear_analyzer_quadratic():
     for amp in amplitudes:
         x_sig = amp * sss
         # Non-linear quadratic transformation
-        y_sig = x_sig + a * (x_sig ** 2)
+        y_sig = x_sig + a * (x_sig**2)
 
         padding = np.zeros(int(0.1 * sample_rate))
         x_sig_padded = np.concatenate([x_sig, padding])
@@ -186,9 +181,7 @@ def test_nonlinear_analyzer_cubic():
     P = 5
 
     # 1. Generate sweep and inverse filter
-    sss, inv_filter = generate_sss_and_inverse(
-        sample_rate, sweep_duration, start_freq, end_freq
-    )
+    sss, inv_filter = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
 
     # 2. Setup Amplitudes
     max_amp = 0.5
@@ -204,7 +197,7 @@ def test_nonlinear_analyzer_cubic():
     for amp in amplitudes:
         x_sig = amp * sss
         # Non-linear cubic transformation
-        y_sig = x_sig + b * (x_sig ** 3)
+        y_sig = x_sig + b * (x_sig**3)
 
         padding = np.zeros(int(0.1 * sample_rate))
         x_sig_padded = np.concatenate([x_sig, padding])

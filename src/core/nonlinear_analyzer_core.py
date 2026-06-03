@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from scipy.signal import chirp as signal_chirp, windows, fftconvolve
+from scipy.signal import windows, fftconvolve
 from src.core.fft_manager import fft_manager
 
 logger = logging.getLogger(__name__)
@@ -102,9 +102,9 @@ def process_amplitude_responses(
     start_margin = max(2.0, start_freq / 1.3)
     L = sweep_duration / np.log(end_margin / start_margin)
     max_lead_sec = L * np.log(P) if P > 1 else 0.0
-    
+
     gate_pre = int(max(0.01, max_lead_sec * 1.1) * sample_rate)  # at least 10ms pre-gate
-    gate_post = int(0.4 * sample_rate)   # 400ms post-gate (to capture decay)
+    gate_post = int(0.4 * sample_rate)  # 400ms post-gate (to capture decay)
 
     raw_len = len(ir_max_amp)
     start_gate = max(0, global_peak - gate_pre)
@@ -154,7 +154,7 @@ def process_amplitude_responses(
     alpha = peak_ref_power * 1e-6 + 1e-12
 
     for p in range(P):
-        h_key = f"h{p+1}"
+        h_key = f"h{p + 1}"
         H_meas_p = H_meas_list[p]
 
         if input_mode == "XFER":
@@ -185,8 +185,8 @@ def process_amplitude_responses(
     # Center the display around the linear kernel peak in gated range
     p1_peak = np.argmax(np.abs(h_kernels_meas[0]))
     # For time domain display, we want to show the pre-trigger range capturing the negative latency peaks
-    disp_pre = min(p1_peak, int(max(0.01, max_lead_sec * 1.15) * sample_rate))   # covers negative latencies
-    disp_post = min(gate_length - p1_peak, int(0.09 * sample_rate))             # 90ms post-peak
+    disp_pre = min(p1_peak, int(max(0.01, max_lead_sec * 1.15) * sample_rate))  # covers negative latencies
+    disp_post = min(gate_length - p1_peak, int(0.09 * sample_rate))  # 90ms post-peak
 
     t_indices = np.arange(p1_peak - disp_pre, p1_peak + disp_post)
     time_ms = (t_indices - p1_peak) / sample_rate * 1000.0

@@ -302,12 +302,7 @@ class TestAntigravityFixes(unittest.TestCase):
         analyzer.initial_delay_samples = 100
         analyzer.initial_fractional_delay = 0.1
 
-        analyzer.results.update({
-            "bit_errors": 50,
-            "error_rate": 0.5,
-            "total_samples": 10000,
-            "jitter_samples": 21.15
-        })
+        analyzer.results.update({"bit_errors": 50, "error_rate": 0.5, "total_samples": 10000, "jitter_samples": 21.15})
 
         # Run reset
         analyzer.reset_statistics()

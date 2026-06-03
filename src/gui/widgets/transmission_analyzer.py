@@ -261,18 +261,20 @@ class TransmissionAnalyzer(MeasurementModule):
                 self.initial_fractional_delay = 0.0
 
             # Update results cache instantly
-            self.results.update({
-                "bit_errors": 0,
-                "error_rate": 0.0,
-                "total_samples": 0 if self.mode == "Digital" else 0,
-                "jitter_samples": 0.0,
-                "evm": 0.0 if not self.is_locked else self.results.get("evm", 0.0),
-                "overshoot_pct": 0.0,
-                "settling_samples": 0,
-                "settling_ms": 0.0,
-                "droop_pct": 0.0,
-                "step_transient_valid": False,
-            })
+            self.results.update(
+                {
+                    "bit_errors": 0,
+                    "error_rate": 0.0,
+                    "total_samples": 0 if self.mode == "Digital" else 0,
+                    "jitter_samples": 0.0,
+                    "evm": 0.0 if not self.is_locked else self.results.get("evm", 0.0),
+                    "overshoot_pct": 0.0,
+                    "settling_samples": 0,
+                    "settling_ms": 0.0,
+                    "droop_pct": 0.0,
+                    "step_transient_valid": False,
+                }
+            )
 
     def _audio_callback(self, indata, outdata, frames, time, status):
         # 1. Output distinct PRBS signals on Left and Right channels
@@ -1032,8 +1034,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         tab_freq_layout.addWidget(self.plot_freq)
         self.tabs.addTab(self.tab_freq, tr("Transmission Response"))
 
-
-
         # Tab 5: Step Response Plot [NEW]
         self.tab_step = QWidget()
         tab_step_layout = QVBoxLayout(self.tab_step)
@@ -1343,7 +1343,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
                 text_color = self.get_status_text_color(theme_name)
                 self.card_status.setStyleSheet(f"background-color: {card_color}; border-radius: 6px;")
                 self.lbl_status.setStyleSheet(f"color: {text_color}; font-weight: bold;")
-                self.lbl_reason.setText(res.get("reason", tr("Start analysis to evaluate transmission characteristics.")))
+                self.lbl_reason.setText(
+                    res.get("reason", tr("Start analysis to evaluate transmission characteristics."))
+                )
                 return
 
         # Locked and evaluating!
@@ -1438,8 +1440,6 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         self.freq_curve.setData(freq_x[valid_mask], freq_y[valid_mask])
         self.plot_freq.setYRange(-80.0, 10.0)
 
-
-
         # Update Step Response plot (Tab 5) [NEW]
         step_y = self.module.step_response
         self.step_curve.setData(step_y)
@@ -1453,12 +1453,8 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # Update Step Response Transient stats label
         if self.module.is_locked and res.get("step_transient_valid", False):
-            stats_text = tr(
-                "Overshoot: {0:.1f} %  |  Settling Time: {1:d} samples ({2:.3f} ms)"
-            ).format(
-                res["overshoot_pct"],
-                res["settling_samples"],
-                res["settling_ms"]
+            stats_text = tr("Overshoot: {0:.1f} %  |  Settling Time: {1:d} samples ({2:.3f} ms)").format(
+                res["overshoot_pct"], res["settling_samples"], res["settling_ms"]
             )
             self.lbl_step_stats.setText(stats_text)
         else:

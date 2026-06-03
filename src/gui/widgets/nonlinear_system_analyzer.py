@@ -3,9 +3,8 @@ import threading
 import time
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal, Qt
+from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -23,14 +22,11 @@ from PyQt6.QtWidgets import (
 )
 from scipy.signal import (
     chirp as signal_chirp,
-    windows,
     fftconvolve,
-    coherence,
     savgol_filter,
 )
 
 from src.core.audio_engine import AudioEngine
-from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
@@ -54,6 +50,7 @@ class NonlinearSystemAnalyzerSignals(QObject):
 
 class PlayRecSession:
     """Helper to run a synchronous play/record session via AudioEngine."""
+
     def __init__(self, audio_engine, output_data, input_channels=2):
         self.audio_engine = audio_engine
         self.output_data = output_data
@@ -268,9 +265,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         Generates SSS signal and inverse match filter by delegating to the core implementation.
         Scaled by amplitude for playback.
         """
-        sss, inv_filter = generate_sss_and_inverse(
-            sample_rate, self.sweep_duration, self.start_freq, self.end_freq
-        )
+        sss, inv_filter = generate_sss_and_inverse(sample_rate, self.sweep_duration, self.start_freq, self.end_freq)
         return amplitude * sss, inv_filter
 
     def _execute_measurement(self, worker):
@@ -291,11 +286,9 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         padding_samples = int(0.5 * sample_rate)  # 500ms tail padding
 
         # Generate the single reference sweep and matching analytical inverse filter
-        sss, inv_filter = generate_sss_and_inverse(
-            sample_rate, self.sweep_duration, self.start_freq, self.end_freq
-        )
+        sss, inv_filter = generate_sss_and_inverse(sample_rate, self.sweep_duration, self.start_freq, self.end_freq)
 
-        for amp_idx, amp in enumerate(amplitudes):
+        for _amp_idx, amp in enumerate(amplitudes):
             if not worker.is_running:
                 return
 
@@ -311,7 +304,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
             accum_data = None
             ref_peak_idx = None
 
-            for avg in range(self.averages):
+            for _avg in range(self.averages):
                 if not worker.is_running:
                     return
 
@@ -346,10 +339,10 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                 # Apply simulated non-linear system transfer
                 simulated_meas = (
                     simulated_meas
-                    - 0.08 * (simulated_meas ** 2)
-                    + 0.12 * (simulated_meas ** 3)
-                    - 0.04 * (simulated_meas ** 4)
-                    + 0.06 * (simulated_meas ** 5)
+                    - 0.08 * (simulated_meas**2)
+                    + 0.12 * (simulated_meas**3)
+                    - 0.04 * (simulated_meas**4)
+                    + 0.06 * (simulated_meas**5)
                 )
                 simulated_meas = np.concatenate([simulated_meas, np.zeros(padding_samples)])
                 averaged_data[:, self.meas_channel_index] = simulated_meas
@@ -401,7 +394,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         QWidget.__init__(self)
         ComparableWidgetInterface.__init__(self)
         self.module = module
-        
+
         self.init_ui()
 
         # Connect Signals
@@ -580,7 +573,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # --- Plot Content Area (Right Side, Tab Widget) ---
         self.plot_tabs = QTabWidget()
         self.plot_tabs.setMinimumHeight(450)
-        
+
         # Tab 1: Magnitude Response (Bode Plot)
         self.mag_tab = QWidget()
         mag_layout = QVBoxLayout(self.mag_tab)
@@ -661,17 +654,13 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_latency_result(self, val):
         self.latency_label.setText(f"{val * 1000:.2f} ms")
         QMessageBox.information(
-            self,
-            tr("Calibration Successful"),
-            tr("Measured loopback delay: {0:.2f} ms").format(val * 1000)
+            self, tr("Calibration Successful"), tr("Measured loopback delay: {0:.2f} ms").format(val * 1000)
         )
 
     def on_error(self, message):
         QMessageBox.critical(self, tr("Measurement Error"), message)
         self.on_sweep_finished()
 
-
-        
     def refresh_plots_with_smoothing(self):
         if self.cached_freqs is not None:
             self.on_update_plot(self.cached_freqs, self.cached_mags, self.cached_phases)
@@ -679,20 +668,20 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def apply_smoothing(self, y_data, level):
         if level == "None" or len(y_data) < 15:
             return y_data
-        
+
         window_size = 15
         if level == "Medium":
             window_size = 35
         elif level == "Heavy":
             window_size = 75
-            
+
         window_size = min(window_size, len(y_data) - 1)
         if window_size % 2 == 0:
             window_size -= 1
-            
+
         if window_size < 5:
             return y_data
-            
+
         try:
             return savgol_filter(y_data, window_size, polyorder=2)
         except Exception as e:
@@ -710,13 +699,13 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Premium Palette
         # h1: Light blue, h2: Green, h3: Amber/Orange, h4: Magenta/Pink, h5: Crimson Red
         colors = {
-            "h1": (75, 163, 227),    # #4ba3e3
-            "h2": (43, 140, 86),     # #2b8c56
-            "h3": (230, 140, 20),    # #e68c14
-            "h4": (200, 50, 160),    # #c832a0
-            "h5": (217, 83, 79),     # #d9534f
+            "h1": (75, 163, 227),  # #4ba3e3
+            "h2": (43, 140, 86),  # #2b8c56
+            "h3": (230, 140, 20),  # #e68c14
+            "h4": (200, 50, 160),  # #c832a0
+            "h5": (217, 83, 79),  # #d9534f
         }
-        
+
         labels = {
             "h1": tr("Fundamental (Linear h1)"),
             "h2": tr("2nd Harmonic (h2)"),
@@ -737,34 +726,24 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
                 # Magnitude Plot
                 pen_mag = pg.mkPen(color=colors[key], width=2)
-                self.mag_plot.plot(
-                    freqs,
-                    mag_smoothed,
-                    pen=pen_mag,
-                    name=labels[key]
-                )
+                self.mag_plot.plot(freqs, mag_smoothed, pen=pen_mag, name=labels[key])
 
                 # Phase Plot
                 pen_phase = pg.mkPen(color=colors[key], width=1.5, style=Qt.PenStyle.SolidLine)
-                self.phase_plot.plot(
-                    freqs,
-                    phase_smoothed,
-                    pen=pen_phase,
-                    name=labels[key]
-                )
+                self.phase_plot.plot(freqs, phase_smoothed, pen=pen_phase, name=labels[key])
 
     def on_update_kernels(self, time_ms, separated_kernels_data):
         self.kernel_plot.clear()
-        
+
         # Auto-fit the X Range to focus on the impulse peak details (-5ms to +35ms)
         self.kernel_plot.setXRange(-5.0, 35.0)
 
         colors = [
             (75, 163, 227),  # h1
-            (43, 140, 86),   # h2
+            (43, 140, 86),  # h2
             (230, 140, 20),  # h3
             (200, 50, 160),  # h4
-            (217, 83, 79),   # h5
+            (217, 83, 79),  # h5
         ]
 
         labels = [
@@ -777,19 +756,14 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         for p in range(len(separated_kernels_data)):
             pen = pg.mkPen(color=colors[p], width=1.8)
-            self.kernel_plot.plot(
-                time_ms,
-                separated_kernels_data[p],
-                pen=pen,
-                name=labels[p]
-            )
+            self.kernel_plot.plot(time_ms, separated_kernels_data[p], pen=pen, name=labels[p])
 
     # --- ComparableWidgetInterface ---
     def get_comparison_data(self):
         # Implements ComparableWidgetInterface for data overlay and save comparison traces
         if self.cached_freqs is None or "h1" not in self.cached_mags:
             return None
-        
+
         # We export the primary fundamental response (h1) as the default comparison trace
         return {
             "x": self.cached_freqs,
