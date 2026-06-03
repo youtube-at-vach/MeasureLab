@@ -17,11 +17,7 @@ Primary uses:
 
 ## ☕ Coffee Break: Bat Sonar and the "Chirp" Signal
 
-This widget uses a special signal called a "Fast Chirp" for measurement.
-It sounds like a rapid "Pweeeep!", sweeping from low to high pitches in an instant.
-
-Actually, this is the exact same mechanism as **the ultrasonic waves (echolocation) that bats emit to find obstacles and prey in the dark!**
-Because all pitches of sound are packed tightly into a short burst of time, simply passing this through a device and analyzing the output allows us to measure its response to all frequencies at once, and with high resistance to noise. It's a very clever measurement method that borrows wisdom from nature.
+This widget uses a "Fast Chirp" signal, which rapidly sweeps from low to high frequencies. This is the same mechanism as the ultrasonic waves (echolocation) bats use to find obstacles. Because all frequency components are packed into a short duration, a single sweep allows for fast, noise-resistant measurement of the frequency response across the entire band.
 
 ## Basic Operation
 

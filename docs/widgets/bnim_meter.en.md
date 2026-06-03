@@ -14,11 +14,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 ## ☕ Coffee Break: How do owls find mice in the dark?
 
-In a pitch-black forest, how does an owl pinpoint the exact location of a mouse on the ground? Interestingly, an owl's left and right ears are positioned at slightly different 'heights'.
-
-When a sound source (like a mouse's footsteps) is off to one side, the sound reaches the closer ear 'just a tiny bit earlier'. This is called **ITD (Interaural Time Difference)**.
-Furthermore, because the head acts as an obstacle, the sound is 'slightly quieter' in the farther ear. This is called **ILD (Interaural Level Difference)**.
-The brain of an owl (and humans too!) calculates this minute 'time difference' and 'volume difference' at ultra-high speed to determine the direction of the sound in 3D space. The BNIM meter is a tool that mimics this exact 'brain calculation' to project the direction of sound onto your screen.
+Owls (and humans) determine the direction of sound by processing minute differences in time and volume between their left and right ears. When a sound source is off to one side, the sound reaches the closer ear slightly earlier (**ITD: Interaural Time Difference**), while the farther ear hears a quieter sound due to the head acting as an obstacle (**ILD: Interaural Level Difference**). The BNIM meter simulates this auditory mechanism to visualize sound direction.
 
 ## How to Read the Screen
 
