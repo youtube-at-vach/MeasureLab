@@ -72,6 +72,7 @@ class DistortionAnalyzer(MeasurementModule):
         self.mode = "Real-time"
         self.signal_type = "sine"  # 'sine', 'smpte', 'ccif', 'aes17'
         self.filter_type = None  # None, 'aes17', 'a_weighting', 'c_weighting'
+        self.aes17_calibrating = False
 
         # State
         self.current_result = None
@@ -320,7 +321,13 @@ class DistortionAnalyzer(MeasurementModule):
                     phases = self._phase_accumulator + phase_inc * (np.arange(frames) + 1)
                     phases %= 2 * np.pi
                     self._phase_accumulator = phases[-1]
-                    sine_wave = self.gen_amplitude * np.sin(phases)
+
+                    if self.signal_type == "aes17":
+                        amp = 1.0 if getattr(self, "aes17_calibrating", False) else 0.001
+                    else:
+                        amp = self.gen_amplitude
+
+                    sine_wave = amp * np.sin(phases)
 
                 if self.output_channel == 0:
                     outdata[:, 0] = sine_wave
@@ -763,6 +770,10 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         aes17_widget = QWidget()
         aes17_layout = QFormLayout()
         aes17_layout.addRow(QLabel(tr("Standard 1kHz Tone at -60 dBFS")))
+        self.aes17_cal_btn = QPushButton(tr("Calibrate (0 dBFS)"))
+        self.aes17_cal_btn.setCheckable(True)
+        self.aes17_cal_btn.clicked.connect(self.on_aes17_cal_toggled)
+        aes17_layout.addRow(self.aes17_cal_btn)
         aes17_widget.setLayout(aes17_layout)
         self.gen_stack.addWidget(aes17_widget)
 
@@ -889,6 +900,17 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         elif idx == 3:
             self.module.filter_type = "c_weighting"
         self.module.reset_averaging_state()
+
+    def on_aes17_cal_toggled(self, checked):
+        self.module.aes17_calibrating = checked
+        self.module.reset_averaging_state()
+        if checked:
+            self.aes17_cal_btn.setText(tr("Calibrating (0 dBFS)..."))
+            self.thdn_title_label.setText(tr("Input Level:"))
+        else:
+            self.aes17_cal_btn.setText(tr("Calibrate (0 dBFS)"))
+            self.thdn_title_label.setText(tr("Dyn Range:"))
+        self.apply_theme()
 
     def _create_action_buttons(self) -> QVBoxLayout:
         """Creates the start/stop action button."""
@@ -1179,6 +1201,13 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def on_out_mode_changed(self, idx):
         # 0: Off, 1: Sine, 2: SMPTE, 3: CCIF
+        # Ensure calibration is reset when changing modes
+        if idx != 4:
+            if hasattr(self, "aes17_cal_btn"):
+                self.aes17_cal_btn.setChecked(False)
+                self.aes17_cal_btn.setText(tr("Calibrate (0 dBFS)"))
+            self.module.aes17_calibrating = False
+
         if idx == 0:  # Off
             self.module.output_enabled = False
             self.gen_stack.setVisible(False)
@@ -1224,6 +1253,13 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 self.module.signal_type = "aes17"
                 self.gen_stack.setCurrentIndex(2)
                 self.set_meters_mode("aes17")
+                # Automatically configure signal generator for AES17 standard (997Hz at -60dBFS)
+                self.freq_spin.setValue(997.0)
+                self.unit_combo.setCurrentText("dBFS")
+                self.amp_spin.setValue(-60.0)
+                # Automatically select standard AES17 20kHz low-pass filter
+                self.filter_combo.setCurrentIndex(1)
+                # Lock generator amplitude for safety/compliance
                 self.amp_spin.setEnabled(False)
                 self.unit_combo.setEnabled(False)
                 self.module.reset_averaging_state()
@@ -1289,7 +1325,9 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.imd_row_widget.setVisible(False)
 
             if mode == "aes17":
-                self.thdn_title_label.setText(tr("Dyn Range:"))
+                self.thdn_title_label.setText(
+                    tr("Input Level:") if getattr(self.module, "aes17_calibrating", False) else tr("Dyn Range:")
+                )
                 self.thdn_label.setVisible(False)
                 self.thd_title_label.setVisible(False)
                 self.thd_label.setVisible(False)
@@ -1482,6 +1520,32 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                     "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; }"
                     "QPushButton:hover { background-color: #eeeeee; }"
                 )
+
+        # AES17 Calibration Button styling
+        if hasattr(self, "aes17_cal_btn"):
+            cal_checked = getattr(self.module, "aes17_calibrating", False)
+            if theme_name == "dark":
+                if cal_checked:
+                    self.aes17_cal_btn.setStyleSheet(
+                        "QPushButton { background-color: #ff9800; color: black; border: 1px solid #555; border-radius: 4px; font-weight: bold; }"
+                        "QPushButton:hover { background-color: #ffa726; }"
+                    )
+                else:
+                    self.aes17_cal_btn.setStyleSheet(
+                        "QPushButton { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; }"
+                        "QPushButton:hover { background-color: #444444; }"
+                    )
+            else:
+                if cal_checked:
+                    self.aes17_cal_btn.setStyleSheet(
+                        "QPushButton { background-color: #ffe082; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }"
+                        "QPushButton:hover { background-color: #fff9c4; }"
+                    )
+                else:
+                    self.aes17_cal_btn.setStyleSheet(
+                        "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; }"
+                        "QPushButton:hover { background-color: #eeeeee; }"
+                    )
 
     def on_freq_changed(self, val):
         self.update_actual_frequency()
@@ -1711,9 +1775,36 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
             # Update Meters
             if self.module.signal_type == "aes17":
-                dr_db = -results["thdn_db"]
-                self.thdn_db_label.setText(tr("{0:.2f} dB").format(dr_db))
+                if getattr(self.module, "aes17_calibrating", False):
+                    input_level = results["basic_wave"]["amplitude_dbfs"]
+                    self.thdn_title_label.setText(tr("Input Level:"))
+
+                    if input_level >= -0.1:
+                        status_str = tr(" (CLIP!)")
+                        color_style = "color: #d32f2f; font-weight: bold;"  # Red for clip
+                    elif input_level >= -3.0:
+                        status_str = tr(" (OK - Optimal)")
+                        color_style = "color: #388e3c; font-weight: bold;"  # Dark green for optimal
+                    elif input_level >= -6.0:
+                        status_str = tr(" (OK)")
+                        color_style = "color: #7cb342; font-weight: bold;"  # Yellow-green for acceptable
+                    else:
+                        status_str = tr(" (Too Low)")
+                        color_style = "color: #f57c00;"  # Orange for too low
+
+                    self.thdn_db_label.setText(tr("{0:.1f} dBFS{1}").format(input_level, status_str))
+                    self.thdn_db_label.setStyleSheet(color_style)
+                else:
+                    self.thdn_title_label.setText(tr("Dyn Range:"))
+                    self.thdn_db_label.setStyleSheet("")  # Reset stylesheet
+                    # Dynamic range is full-scale (0 dBFS) relative to residual noise at -60 dBFS.
+                    # thdn_db = L_noise - L_signal = L_noise - (-60.0) = L_noise + 60.0.
+                    # DR = L_signal - L_noise + 60.0 = -60.0 - L_noise + 60.0 = -L_noise.
+                    # Thus, DR = -thdn_db + 60.0 dB.
+                    dr_db = -results["thdn_db"] + 60.0
+                    self.thdn_db_label.setText(tr("{0:.2f} dB").format(dr_db))
             else:
+                self.thdn_db_label.setStyleSheet("")  # Reset stylesheet
                 self.thdn_label.setText(self._format_percent(results["thdn_percent"]))
                 self.thdn_db_label.setText(tr("{0:.3f} dB").format(results["thdn_db"]))
 

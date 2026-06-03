@@ -150,6 +150,35 @@ class TestAudioCalc:
         # Should return a zero-filled array of same shape
         np.testing.assert_array_equal(filtered, np.zeros(10))
 
+    def test_calculate_thdn_sine_fit_aes17(self):
+        # Generate a test signal: 997Hz sine at 48kHz sample rate with length 4800 (-60dBFS)
+        # We also add some white noise
+        sr = 48000
+        N = 4800
+        t = np.arange(N) / sr
+
+        # -60dBFS = 10**(-60/20) = 0.001
+        sig_amp = 0.001
+        signal = sig_amp * np.sin(2 * np.pi * 997.0 * t)
+
+        # Add a tiny bit of noise
+        np.random.seed(42)  # For deterministic test
+        noise = 1e-6 * np.random.randn(N)
+        noisy_signal = signal + noise
+
+        # Run calculation with aes17 filter
+        thdn_db, fund_rms, nd_rms = AudioCalc.calculate_thdn_sine_fit(
+            noisy_signal, sr, freq_guess=997.0, filter_type="aes17"
+        )
+
+        # Check output sanity
+        assert np.isfinite(thdn_db)
+        assert fund_rms > 0
+        assert nd_rms > 0
+        # thdn_db = 20 * log10(nd_rms / fund_rms)
+        # nd_rms should be roughly 1e-6, fund_rms should be roughly 0.001 / sqrt(2) = 0.000707
+        # Ratio should be roughly 1e-6 / 0.000707 = 0.001414 -> ~ -57 dB
+        assert -70.0 < thdn_db < -45.0
 
 
 def test_get_cached_window():
