@@ -1,5 +1,3 @@
-import pytest
-from PyQt6.QtCore import Qt
 from src.core.audio_engine import AudioEngine
 from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer, NonlinearSystemAnalyzerWidget
 
