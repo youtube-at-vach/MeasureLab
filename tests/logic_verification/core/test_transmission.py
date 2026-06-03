@@ -13,7 +13,6 @@ from src.core.transmission_logic import (
     extract_frequency_response,
     calculate_evm,
     calculate_equalized_evm,
-    measure_crosstalk,
     diagnose_bit_perfection,
     estimate_fractional_delay,
     shift_signal_fractional,
@@ -167,24 +166,6 @@ class TestTransmissionLogic(unittest.TestCase):
         # Noise cannot be corrected by linear equalization, so EVM should still reflect the noise level
         self.assertGreater(evm_noisy_equalized, 0.5)
         self.assertLess(evm_noisy_equalized, evm_unequalized)  # Equalization still removes linear part
-
-    def test_measure_crosstalk(self):
-        """Test stereo crosstalk leakage measurement with longer block sizes for orthogonality."""
-        gen1 = PRBSGenerator("PRBS-9")
-        gen2 = PRBSGenerator("PRBS-15")
-
-        # Generate longer sequence for cross-channel orthogonality
-        tx_aligned = gen1.generate_reference_sequence(8192, bit_depth=24)
-        tx_leak = gen2.generate_reference_sequence(8192, bit_depth=24)
-
-        # Crosstalk at -40 dB leakage ratio
-        leakage_db = -40.0
-        leakage_coeff = 10 ** (leakage_db / 20.0)
-
-        rx = tx_aligned + leakage_coeff * tx_leak
-
-        crosstalk_result = measure_crosstalk(rx, tx_leak)
-        self.assertAlmostEqual(crosstalk_result, leakage_db, delta=10.0)
 
     def test_diagnose_bit_perfection_success(self):
         """Test transparent bit-for-bit diagnosis."""

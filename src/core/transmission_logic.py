@@ -325,44 +325,6 @@ def calculate_equalized_evm(rx_block: np.ndarray, tx_block: np.ndarray, regulari
     return float(np.clip(evm_percent, 0.0, 100.0))
 
 
-def measure_crosstalk(rx_block: np.ndarray, leak_reference: np.ndarray) -> float:
-    """
-    Measures crosstalk by finding the leakage correlation with the opposite channel's PRBS sequence.
-
-    Returns leakage ratio in dB.
-    """
-    N = len(rx_block)
-    M = len(leak_reference)
-
-    # Sub-segment correlation
-    sub_len = min(N, M)
-    rx_seg = rx_block[:sub_len]
-    leak_seg = leak_reference[:sub_len]
-
-    rx_ac = rx_seg - np.mean(rx_seg)
-    leak_ac = leak_seg - np.mean(leak_seg)
-
-    norm_rx = np.linalg.norm(rx_ac)
-    norm_leak = np.linalg.norm(leak_ac)
-
-    if norm_rx < 1e-6 or norm_leak < 1e-6:
-        return -120.0
-
-    rx_ac /= norm_rx
-    leak_ac /= norm_leak
-
-    # Calculate scalar projection of leak onto rx
-    # Represents the leakage coefficient
-    c_coeff = np.dot(rx_seg, leak_seg) / np.dot(leak_seg, leak_seg)
-    c_coeff_abs = abs(c_coeff)
-
-    if c_coeff_abs < 1e-6:
-        return -120.0
-
-    crosstalk_db = 20 * np.log10(c_coeff_abs + 1e-12)
-    return float(np.clip(crosstalk_db, -120.0, 0.0))
-
-
 def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
     """
     Analyzes rx and ref to determine exact digital transmission path bit-perfection.
