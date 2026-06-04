@@ -1146,7 +1146,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
             # Draw vertical bar and dot for predicted output spectrum
             pen_color = colors[h_key]
-            curve = pg.PlotCurveItem(
+            curve = pg.PlotDataItem(
                 x=[f_n, f_n],
                 y=[-120.0, mag_val_db],
                 pen=pg.mkPen(color=pen_color, width=2.5),
