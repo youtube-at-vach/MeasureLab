@@ -154,34 +154,9 @@ def run_phase_verification():
     for p in range(1, P + 1):
         h_key = f"h{p}"
         
-        # Compensate measured phase using baseline systematic offsets
-        meas_raw = phases_meas[h_key][stable_mask]
-        phase_meas_compensated = meas_raw - systematic_phase_curves[p]
-        phase_meas_compensated = (phase_meas_compensated + 180) % 360 - 180
-        
-        # Find best delay via grid search
+        # Theoretical delay: rel_delay = D_p (delay of the harmonic component itself)
+        rel_delay = test_delays[p]
         H_theory_filter = filters[p](p * eval_freqs)
-        best_mae = 1e9
-        best_delay = 0.0
-        for test_d in np.linspace(-50.0, 100.0, 1501):
-            H_theory_delay = np.exp(-1j * 2 * np.pi * eval_freqs * test_d / sample_rate)
-            H_theory = a[p] * H_theory_filter * H_theory_delay
-            
-            phase_theory_rad = np.unwrap(np.angle(H_theory))
-            phase_theory_deg = np.degrees(phase_theory_rad)
-            phase_theory_deg = (phase_theory_deg + 180) % 360 - 180
-            
-            diff = np.abs(phase_meas_compensated - phase_theory_deg)
-            diff = np.minimum(diff, 360.0 - diff)
-            mae = np.mean(diff)
-            if mae < best_mae:
-                best_mae = mae
-                best_delay = test_d
-                
-        print(f"DEBUG: Order {p} Best delay found = {best_delay:.2f} samples (MAE: {best_mae:.4f} deg)")
-        
-        # Use best delay for standard analysis output
-        rel_delay = best_delay
         H_theory_delay = np.exp(-1j * 2 * np.pi * eval_freqs * rel_delay / sample_rate)
         H_theory = a[p] * H_theory_filter * H_theory_delay
         
@@ -234,8 +209,8 @@ def run_phase_verification():
             p = idx + 1
             h_key = f"h{p}"
             
-            # Theoretical response mapping to p*f for filters and relative delay
-            rel_delay = p * test_delays[p]
+            # Recalculate theory for full plotting range
+            rel_delay = test_delays[p]
             H_theory_filter = filters[p](p * valid_freqs)
             H_theory_delay = np.exp(-1j * 2 * np.pi * valid_freqs * rel_delay / sample_rate)
             H_theory = a[p] * H_theory_filter * H_theory_delay
