@@ -99,7 +99,7 @@ def main():
         if k not in code_keys:
             unused_in_code.append(k)
 
-    # 5. Fix: Remove unused keys if requested
+    # 5. Action: Remove unused keys if requested
     if args.fix:
         removed_any = False
         json_files = get_json_files()
