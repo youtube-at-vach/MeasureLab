@@ -98,6 +98,7 @@ def process_amplitude_responses(
     P=5,
     M_pinv=None,
     amplitudes=None,
+    calibrate_systematic=True,
 ):
     """
     Extracts isolated Hammerstein kernels (h_1 to h_5) from deconvolved raw measured and reference
@@ -106,10 +107,54 @@ def process_amplitude_responses(
     responses_meas: List of deconvolved impulse responses (time-domain) for each amplitude step.
     responses_ref: List of deconvolved reference impulse responses (time-domain) for each amplitude step.
     amplitudes: Explicit excitation amplitude values (peak linear scaling, e.g. R_j).
+    calibrate_systematic: If True, recursively calibrates out systematic sweep phase offsets.
     """
     num_amplitudes = len(responses_meas)
     if amplitudes is None:
         amplitudes = np.linspace(0.2, 1.0, num_amplitudes)
+
+    # 0. Systematic Sweep Phase Calibration
+    phases_cal_dict = None
+    if calibrate_systematic:
+        # Generate baseline zero-delay responses using simulated polynomial system
+        a_cal = {1: 1.0, 2: 0.1, 3: 0.08, 4: 0.04, 5: 0.02}
+        sss_cal, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+        
+        responses_meas_cal = []
+        responses_ref_cal = []
+        
+        # Build signals for each scanning amplitude
+        for amp in amplitudes:
+            x_sig = amp * sss_cal
+            y_sig_cal = np.zeros_like(x_sig)
+            for p in range(1, P + 1):
+                y_sig_cal += a_cal[p] * (x_sig ** p)
+
+            padding = np.zeros(int(0.2 * sample_rate))
+            x_sig_padded = np.concatenate([x_sig, padding])
+            y_sig_padded = np.concatenate([y_sig_cal, padding])
+
+            ir_ref = deconvolve_signal(x_sig_padded, sss_cal)
+            ir_meas = deconvolve_signal(y_sig_padded, sss_cal)
+
+            responses_ref_cal.append(ir_ref)
+            responses_meas_cal.append(ir_meas)
+
+        # Call recursively with calibrate_systematic=False
+        _, _, phases_cal_dict, _, _ = process_amplitude_responses(
+            responses_meas_cal,
+            responses_ref_cal,
+            sample_rate,
+            start_freq,
+            end_freq,
+            input_mode,
+            latency_sec,
+            sweep_duration=sweep_duration,
+            P=P,
+            M_pinv=M_pinv,
+            amplitudes=amplitudes,
+            calibrate_systematic=False,
+        )
 
     # 1. Detect Linear IR Peak (t1) using the maximum amplitude measurement
     max_amp_idx = num_amplitudes - 1
@@ -289,6 +334,11 @@ def process_amplitude_responses(
         phase_rad = np.unwrap(np.angle(valid_H))
         phase_deg = np.degrees(phase_rad)
         phase_deg = (phase_deg + 180) % 360 - 180
+
+        # Apply systematic sweep phase calibration to remove windowing/FFT latency artifacts
+        if phases_cal_dict is not None and h_key in phases_cal_dict:
+            phase_deg = phase_deg - phases_cal_dict[h_key]
+            phase_deg = (phase_deg + 180) % 360 - 180
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
