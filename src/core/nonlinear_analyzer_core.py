@@ -142,15 +142,12 @@ def process_amplitude_responses(
 
     # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude
     N_total = len(ir_max_meas)
-    g_meas_all = []
-    g_ref_all = []
+    g_meas_k = {k: np.empty((num_amplitudes, N_kernel)) for k in range(1, P + 1)}
+    g_ref_k = {k: np.empty((num_amplitudes, N_kernel)) for k in range(1, P + 1)}
 
     for j in range(num_amplitudes):
         ir_meas_raw = responses_meas[j]
         ir_ref_raw = responses_ref[j]
-
-        g_meas_j = {}
-        g_ref_j = {}
 
         for k in range(1, P + 1):
             # Calculate peak prediction index for the k-th harmonic
@@ -166,44 +163,39 @@ def process_amplitude_responses(
             g_k_ref = ir_ref_raw[idx] * win
 
             # Phase correction
-            g_k_meas_corr = apply_phase_correction(g_k_meas, k)
-            g_k_ref_corr = apply_phase_correction(g_k_ref, k)
-
-            g_meas_j[k] = g_k_meas_corr
-            g_ref_j[k] = g_k_ref_corr
-
-        g_meas_all.append(g_meas_j)
-        g_ref_all.append(g_ref_j)
+            g_meas_k[k][j, :] = apply_phase_correction(g_k_meas, k)
+            g_ref_k[k][j, :] = apply_phase_correction(g_k_ref, k)
 
     # 6. Apply Chebyshev transform to reconstruct Hammerstein kernels h_p using weighted least-squares
     h_kernels_meas = np.zeros((P, N_kernel))
     h_kernels_ref = np.zeros((P, N_kernel))
 
     R_array = np.array(amplitudes)
-    R2 = R_array ** 2
-    R3 = R_array ** 3
-    R4 = R_array ** 4
-    R5 = R_array ** 5
+    R2 = R_array**2
+    R3 = R_array**3
+    R4 = R_array**4
+    R5 = R_array**5
 
     # Meas Channel Least-Squares Estimation
-    g_meas_k = {k: np.array([g_meas_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
 
     g5_m = g_meas_k.get(5, np.zeros((num_amplitudes, N_kernel)))
-    h5_meas = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+    h5_meas = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
 
     g4_m = g_meas_k.get(4, np.zeros((num_amplitudes, N_kernel)))
-    h4_meas = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+    h4_meas = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
 
     g3_m = g_meas_k.get(3, np.zeros((num_amplitudes, N_kernel)))
-    g3_prime_m = g3_m - (5/16) * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
-    h3_meas = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+    g3_prime_m = g3_m - (5 / 16) * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    h3_meas = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
 
     g2_m = g_meas_k.get(2, np.zeros((num_amplitudes, N_kernel)))
     g2_prime_m = g2_m - 0.5 * h4_meas[np.newaxis, :] * R4[:, np.newaxis]
-    h2_meas = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+    h2_meas = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
 
     g1_m = g_meas_k.get(1, np.zeros((num_amplitudes, N_kernel)))
-    g1_prime_m = g1_m - 0.75 * h3_meas[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    g1_prime_m = (
+        g1_m - 0.75 * h3_meas[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    )
     h1_meas = np.sum(g1_prime_m * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
     h_kernels_meas[0] = h1_meas
@@ -213,24 +205,25 @@ def process_amplitude_responses(
     h_kernels_meas[4] = h5_meas
 
     # Ref Channel Least-Squares Estimation
-    g_ref_k = {k: np.array([g_ref_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
 
     g5_r = g_ref_k.get(5, np.zeros((num_amplitudes, N_kernel)))
-    h5_ref = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+    h5_ref = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
 
     g4_r = g_ref_k.get(4, np.zeros((num_amplitudes, N_kernel)))
-    h4_ref = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+    h4_ref = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
 
     g3_r = g_ref_k.get(3, np.zeros((num_amplitudes, N_kernel)))
-    g3_prime_r = g3_r - (5/16) * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
-    h3_ref = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+    g3_prime_r = g3_r - (5 / 16) * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    h3_ref = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
 
     g2_r = g_ref_k.get(2, np.zeros((num_amplitudes, N_kernel)))
     g2_prime_r = g2_r - 0.5 * h4_ref[np.newaxis, :] * R4[:, np.newaxis]
-    h2_ref = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+    h2_ref = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
 
     g1_r = g_ref_k.get(1, np.zeros((num_amplitudes, N_kernel)))
-    g1_prime_r = g1_r - 0.75 * h3_ref[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    g1_prime_r = (
+        g1_r - 0.75 * h3_ref[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    )
     h1_ref = np.sum(g1_prime_r * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
     h_kernels_ref[0] = h1_ref
@@ -303,4 +296,3 @@ def process_amplitude_responses(
         time_ms,
         separated_kernels_data,
     )
-
