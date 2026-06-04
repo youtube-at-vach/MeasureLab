@@ -94,6 +94,18 @@
         "focus": true,
         "echo": true
       }
+    },
+    {
+      "label": "Run MeasureLab (Experimental)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python main_gui.py --experimental",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": true,
+        "echo": true
+      }
     }
   ]
 }
