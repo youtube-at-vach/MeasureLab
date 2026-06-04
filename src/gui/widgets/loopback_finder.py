@@ -100,17 +100,10 @@ class LoopbackFinder(MeasurementModule):
                 for d in devices:
                     if d["name"] == dev_id or d["name"].lower() == dev_id.lower():
                         return d
-                matches = []
-                for d in devices:
-                    full_string = d["name"].lower()
-                    pos = 0
-                    for substring in substrings:
-                        pos = full_string.find(substring, pos)
-                        if pos < 0:
-                            break
-                        pos += len(substring)
-                    else:
-                        matches.append(d)
+                import re
+
+                pattern = re.compile(".*?".join(map(re.escape, substrings)))
+                matches = [d for d in devices if pattern.search(d["name"].lower())]
                 if matches:
                     return matches[0]
             return sd.query_devices(dev_id)
