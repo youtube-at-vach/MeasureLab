@@ -938,11 +938,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             grid_layout.addWidget(lbl_amp, idx, 2)
             grid_layout.addWidget(lbl_phase, idx, 3)
 
-            self.sim_result_labels[key] = {
-                "freq": lbl_freq,
-                "amp": lbl_amp,
-                "phase": lbl_phase
-            }
+            self.sim_result_labels[key] = {"freq": lbl_freq, "amp": lbl_amp, "phase": lbl_phase}
 
         res_layout.addWidget(grid_widget)
 
@@ -963,7 +959,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def _on_mag_line_dragged(self, line):
         pos = line.value()  # log10(freq)
-        freq = 10 ** pos
+        freq = 10**pos
         if self.cached_freqs is not None and len(self.cached_freqs) > 0:
             min_f = self.cached_freqs[0]
             max_f = self.cached_freqs[-1]
@@ -990,7 +986,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def _on_phase_line_dragged(self, line):
         pos = line.value()  # log10(freq)
-        freq = 10 ** pos
+        freq = 10**pos
         if self.cached_freqs is not None and len(self.cached_freqs) > 0:
             min_f = self.cached_freqs[0]
             max_f = self.cached_freqs[-1]
@@ -1106,12 +1102,19 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         A_in = 10 ** (amp_db / 20.0)
 
         # 4. Synthesize harmonic outputs using Parallel Hammerstein model formulas
+        # Incorporate complex multipliers for sine-wave input phase alignment:
+        # 1st: +1,  2nd: -1j,  3rd: -1,  4th: +1j,  5th: +1
         Y = {}
-        Y[1] = A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5]
-        Y[2] = (0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4]
-        Y[3] = (0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5]
-        Y[4] = (0.125 * (A_in**4)) * H_interp[4][4]
-        Y[5] = (0.0625 * (A_in**5)) * H_interp[5][5]
+        Y[1] = (1.0) * (
+            A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5]
+        )
+        Y[2] = (-1j) * ((0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4])
+        Y[3] = (-1.0) * ((0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5])
+        Y[4] = (+1j) * ((0.125 * (A_in**4)) * H_interp[4][4])
+        Y[5] = (1.0) * ((0.0625 * (A_in**5)) * H_interp[5][5])
+
+        # Get fundamental phase to anchor relative harmonic phases
+        fundamental_phase_rad = np.angle(Y[1])
 
         # 5. Update UI Labels & Predictions Plot
         self.sim_plot.clear()
@@ -1130,14 +1133,17 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             labels = self.sim_result_labels[h_key]
 
             if f_n > nyquist:
-                labels["freq"].setText(f"{f_n/1000.0:.2f} kHz (N/A)")
+                labels["freq"].setText(f"{f_n / 1000.0:.2f} kHz (N/A)")
                 labels["amp"].setText("N/A (Nyquist)")
                 labels["phase"].setText("N/A")
                 continue
 
             y_val = Y[n]
             mag_val_db = 20 * np.log10(np.abs(y_val) + 1e-12)
-            phase_val_deg = np.degrees(np.angle(y_val))
+
+            # Phase calculation relative to the fundamental component (n * fundamental_phase)
+            relative_phase_rad = np.angle(y_val) - n * fundamental_phase_rad
+            phase_val_deg = np.degrees(relative_phase_rad)
             phase_val_deg = (phase_val_deg + 180) % 360 - 180
 
             labels["freq"].setText(f"{f_n:.1f} Hz")
@@ -1152,6 +1158,6 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 pen=pg.mkPen(color=pen_color, width=2.5),
                 symbol="o",
                 symbolBrush=pg.mkBrush(color=pen_color),
-                symbolSize=8
+                symbolSize=8,
             )
             self.sim_plot.addItem(curve)
