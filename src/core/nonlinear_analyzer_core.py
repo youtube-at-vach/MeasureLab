@@ -6,6 +6,66 @@ from src.core.fft_manager import fft_manager
 logger = logging.getLogger(__name__)
 
 
+def find_subsample_peak(ir):
+    """
+    Finds the peak index of the impulse response with sub-sample precision
+    using FFT-based upsampling (interpolation) around the integer peak.
+    Handles circular boundary wrap-around gracefully.
+    """
+    idx_int = np.argmax(np.abs(ir))
+    N_total = len(ir)
+
+    # Shift the signal temporarily so that the peak is far away from boundaries (to N_total // 2)
+    shift_amount = N_total // 2 - idx_int
+    ir_shifted = np.roll(ir, shift_amount)
+
+    idx_int_sh = N_total // 2
+    win_size = 32  # Use 32 samples window for high accuracy
+    half = win_size // 2
+    start = idx_int_sh - half
+    end = idx_int_sh + half
+
+    ir_crop = ir_shifted[start:end]
+    N = len(ir_crop)
+
+    # Standard DFT upsampling by a factor of 100
+    upsample_factor = 100
+    X = np.fft.fft(ir_crop)
+
+    N_up = N * upsample_factor
+    X_up = np.zeros(N_up, dtype=complex)
+
+    # Copy frequencies correctly to center the Nyquist component
+    X_up[: N // 2] = X[: N // 2]
+    X_up[N // 2] = X[N // 2] / 2.0
+    X_up[N_up - N // 2] = X[N // 2] / 2.0
+    X_up[N_up - N // 2 + 1 :] = X[N // 2 + 1 :]
+
+    ir_up = np.fft.ifft(X_up) * upsample_factor
+    idx_up = np.argmax(np.abs(ir_up))
+
+    peak_shifted = start + (idx_up / upsample_factor)
+    peak_original = peak_shifted - shift_amount
+
+    return peak_original % N_total
+
+
+
+def apply_fractional_delay(signal, delay_samples):
+    """
+    Shifts the signal by delay_samples (can be float) in the frequency domain.
+    """
+    if np.abs(delay_samples) < 1e-9:
+        return signal.copy()
+    N = len(signal)
+    S = fft_manager.rfft(signal)
+    freqs = fft_manager.rfftfreq(N, d=1.0)
+    phase_shift = np.exp(-1j * 2 * np.pi * freqs * delay_samples)
+    S_shifted = S * phase_shift
+    return fft_manager.irfft(S_shifted, n=N)
+
+
+
 def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     """
     Generates Synchronized Sine Sweep (SSS) signal at a flat reference amplitude (1.0)
@@ -98,6 +158,7 @@ def process_amplitude_responses(
     P=5,
     M_pinv=None,
     amplitudes=None,
+    calibrate_systematic=True,
 ):
     """
     Extracts isolated Hammerstein kernels (h_1 to h_5) from deconvolved raw measured and reference
@@ -106,15 +167,92 @@ def process_amplitude_responses(
     responses_meas: List of deconvolved impulse responses (time-domain) for each amplitude step.
     responses_ref: List of deconvolved reference impulse responses (time-domain) for each amplitude step.
     amplitudes: Explicit excitation amplitude values (peak linear scaling, e.g. R_j).
+    calibrate_systematic: If True, recursively calibrates out systematic sweep phase offsets.
     """
     num_amplitudes = len(responses_meas)
     if amplitudes is None:
         amplitudes = np.linspace(0.2, 1.0, num_amplitudes)
 
+    # 0. Systematic Sweep Phase Calibration
+    phases_cal_dict = None
+    if calibrate_systematic:
+        # Generate baseline zero-delay responses using simulated polynomial system
+        a_cal = {1: 1.0, 2: 0.1, 3: 0.08, 4: 0.04, 5: 0.02}
+        sss_cal, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+
+        responses_meas_cal = []
+        responses_ref_cal = []
+
+        # Build signals for each scanning amplitude
+        for amp in amplitudes:
+            x_sig = amp * sss_cal
+            y_sig_cal = np.zeros_like(x_sig)
+            for p in range(1, P + 1):
+                y_sig_cal += a_cal[p] * (x_sig ** p)
+
+            padding = np.zeros(int(0.2 * sample_rate))
+            x_sig_padded = np.concatenate([x_sig, padding])
+            y_sig_padded = np.concatenate([y_sig_cal, padding])
+
+            ir_ref = deconvolve_signal(x_sig_padded, sss_cal)
+            ir_meas = deconvolve_signal(y_sig_padded, sss_cal)
+
+            responses_ref_cal.append(ir_ref)
+            responses_meas_cal.append(ir_meas)
+
+        # Call recursively with calibrate_systematic=False
+        _, _, phases_cal_dict, _, _ = process_amplitude_responses(
+            responses_meas_cal,
+            responses_ref_cal,
+            sample_rate,
+            start_freq,
+            end_freq,
+            input_mode,
+            latency_sec,
+            sweep_duration=sweep_duration,
+            P=P,
+            M_pinv=M_pinv,
+            amplitudes=amplitudes,
+            calibrate_systematic=False,
+        )
+
+    # 0.5. Align all amplitude steps to the baseline step (maximum amplitude) using sub-sample alignment
+    aligned_ref = []
+    aligned_meas = []
+    ref_step_idx = num_amplitudes - 1
+
+    # Choose alignment signal source: Ref channel in XFER mode, Meas channel otherwise
+    if input_mode in {"XFER", "XFER_REV"}:
+        base_align_sig = responses_ref[ref_step_idx]
+    else:
+        base_align_sig = responses_meas[ref_step_idx]
+
+    t_ref_base = find_subsample_peak(base_align_sig)
+
+    for j in range(num_amplitudes):
+        if input_mode in {"XFER", "XFER_REV"}:
+            align_sig = responses_ref[j]
+        else:
+            align_sig = responses_meas[j]
+
+        t_ref_j = find_subsample_peak(align_sig)
+        delay_j = t_ref_j - t_ref_base
+
+        # Apply fractional delay shift in frequency domain (shift back by -delay_j)
+        ref_aligned = apply_fractional_delay(responses_ref[j], -delay_j)
+        meas_aligned = apply_fractional_delay(responses_meas[j], -delay_j)
+
+        aligned_ref.append(ref_aligned)
+        aligned_meas.append(meas_aligned)
+
+    responses_ref = aligned_ref
+    responses_meas = aligned_meas
+
     # 1. Detect Linear IR Peak (t1) using the maximum amplitude measurement
     max_amp_idx = num_amplitudes - 1
     ir_max_meas = responses_meas[max_amp_idx]
     t1 = np.argmax(np.abs(ir_max_meas))
+
 
     # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0
@@ -127,17 +265,26 @@ def process_amplitude_responses(
     gate_post = int(0.02 * sample_rate)
     N_kernel = gate_pre + gate_post
 
-    # 4. Phase correction helper for sin sweep phase alignment
-    def apply_phase_correction(g_k, k):
+    # 4. Phase and Fractional Delay correction helper
+    def apply_phase_correction_and_frac_delay(g_k, k, frac_delay):
         N = len(g_k)
         G = fft_manager.rfft(g_k)
-        # Apply shift to make physical impulse responses real and symmetric
+
+        # 1. Sweep-specific Phase Correction
         if k == 2:
             G = G * 1j
         elif k == 3:
             G = -G
         elif k == 4:
             G = G * (-1j)
+
+        # 2. Fractional Sample Delay Correction (frequency domain shift)
+        if np.abs(frac_delay) > 1e-9:
+            freqs = fft_manager.rfftfreq(N, d=1.0 / sample_rate)
+            # Peak was shifted by frac_delay samples, so multiply by conjugate to shift back
+            phase_shift = np.exp(1j * 2 * np.pi * freqs * frac_delay / sample_rate)
+            G = G * phase_shift
+
         return fft_manager.irfft(G, n=N)
 
     # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude
@@ -153,8 +300,10 @@ def process_amplitude_responses(
         g_ref_j = {}
 
         for k in range(1, P + 1):
-            # Calculate peak prediction index for the k-th harmonic
-            t_k = int(t1 - L * np.log(k) * sample_rate)
+            # Calculate peak prediction index with sub-sample precision
+            t_k_exact = t1 - L * np.log(k) * sample_rate
+            t_k = int(np.round(t_k_exact))
+            frac_delay = t_k_exact - t_k
 
             # Slice with modular wrap around to protect bounds
             idx = (np.arange(t_k - gate_pre, t_k + gate_post)) % N_total
@@ -165,9 +314,9 @@ def process_amplitude_responses(
             g_k_meas = ir_meas_raw[idx] * win
             g_k_ref = ir_ref_raw[idx] * win
 
-            # Phase correction
-            g_k_meas_corr = apply_phase_correction(g_k_meas, k)
-            g_k_ref_corr = apply_phase_correction(g_k_ref, k)
+            # Phase and fractional delay correction
+            g_k_meas_corr = apply_phase_correction_and_frac_delay(g_k_meas, k, frac_delay)
+            g_k_ref_corr = apply_phase_correction_and_frac_delay(g_k_ref, k, frac_delay)
 
             g_meas_j[k] = g_k_meas_corr
             g_ref_j[k] = g_k_ref_corr
@@ -260,7 +409,7 @@ def process_amplitude_responses(
         h_key = f"h{p + 1}"
         H_meas_p = H_meas_list[p]
 
-        if input_mode == "XFER":
+        if input_mode in {"XFER", "XFER_REV"}:
             # Relative 2-Channel XFER transfer function calibration
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)
@@ -278,6 +427,11 @@ def process_amplitude_responses(
         phase_rad = np.unwrap(np.angle(valid_H))
         phase_deg = np.degrees(phase_rad)
         phase_deg = (phase_deg + 180) % 360 - 180
+
+        # Apply systematic sweep phase calibration to remove windowing/FFT latency artifacts
+        if phases_cal_dict is not None and h_key in phases_cal_dict:
+            phase_deg = phase_deg - phases_cal_dict[h_key]
+            phase_deg = (phase_deg + 180) % 360 - 180
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg

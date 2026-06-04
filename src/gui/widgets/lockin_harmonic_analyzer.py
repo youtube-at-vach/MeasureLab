@@ -1068,9 +1068,14 @@ class LockInHarmonicWidget(QWidget):
         self.comp_table.setUpdatesEnabled(False)
 
         try:
+            fund_phase = self.module.harmonics_phase_deg[0]
             for i in range(self.module.max_harmonic):
                 amp_peak = self.module.harmonics_amp[i]
                 phase = self.module.harmonics_phase_deg[i]
+
+                # Convert to relative phase to the fundamental: phi_n - n * phi_1
+                rel_phase = phase - (i + 1) * fund_phase
+                rel_phase = (rel_phase + 180) % 360 - 180
 
                 amp_dbfs = 20 * np.log10(amp_peak + 1e-15)
                 dbc = amp_dbfs - fund_dbfs if i > 0 else 0.0
@@ -1088,9 +1093,9 @@ class LockInHarmonicWidget(QWidget):
                     self.table.setItem(i, 2, QTableWidgetItem(f"{dbc:.2f}" if i > 0 else tr("--")))
 
                 if item := self.table.item(i, 3):
-                    item.setText(f"{phase:.2f}")
+                    item.setText(f"{rel_phase:.2f}")
                 else:
-                    self.table.setItem(i, 3, QTableWidgetItem(f"{phase:.2f}"))
+                    self.table.setItem(i, 3, QTableWidgetItem(f"{rel_phase:.2f}"))
 
                 # Update Compensation Table inline to save loops
                 if i > 0:
