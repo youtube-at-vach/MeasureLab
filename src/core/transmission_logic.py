@@ -330,6 +330,18 @@ def diagnose_bit_perfection(rx: np.ndarray, ref: np.ndarray) -> dict:
     Analyzes rx and ref to determine exact digital transmission path bit-perfection.
     """
     N = len(rx)
+    if N == 0:
+        return {
+            "bit_perfect": False,
+            "reason": "Empty input array.",
+            "gain_db": 0.0,
+            "bit_depth": 0,
+            "bit_errors": 0,
+            "error_rate": 0.0,
+            "active_bits": 0,
+            "dsp_detected": "Unknown",
+        }
+
     epsilon = 1e-12
 
     exact_matches = np.sum(np.abs(rx - ref) < 1e-7)
