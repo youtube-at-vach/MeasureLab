@@ -436,7 +436,7 @@ def test_nonlinear_analyzer_phase_shift():
 
     for p in range(1, P + 1):
         h_key = f"h{p}"
-        
+
         # Theoretical phase delay: -2 * pi * f * delay / fs
         # (XFER relative delay after baseline calibration is exactly delays[p])
         theory_phase_rad = -2 * np.pi * eval_freqs * test_delays[p] / sample_rate
@@ -455,7 +455,7 @@ def test_nonlinear_analyzer_phase_shift():
         # Average phase error should be well under 10.0 degrees (typically < 1.5 deg, h2 is around 6.2 deg)
         mae = np.mean(diff)
         assert mae < 10.0, f"Phase reconstruction MAE for {h_key} is too high: {mae:.2f} deg"
-        
+
         # Max phase error should be under 20.0 degrees
         max_err = np.max(diff)
         assert max_err < 20.0, f"Phase reconstruction Max Error for {h_key} is too high: {max_err:.2f} deg"
@@ -520,18 +520,18 @@ def test_nonlinear_analyzer_fractional_delay_robustness():
     # Now, introduce arbitrary sub-sample delays for each step
     # e.g., steps shifted by -0.3, +0.15, -0.45, +0.2, 0.0 samples
     step_delays = [-0.3, 0.15, -0.45, 0.2, 0.0]
-    
-    from src.core.nonlinear_analyzer_core import apply_fractional_delay, find_subsample_peak
+
+    from src.core.nonlinear_analyzer_core import apply_fractional_delay
 
     responses_meas_delayed = []
     responses_ref_delayed = []
-    
+
     for j in range(num_amplitudes):
         delay = step_delays[j]
         # Shift both ref and meas by the same fractional delay
         ref_delayed = apply_fractional_delay(responses_ref_clean[j], delay)
         meas_delayed = apply_fractional_delay(responses_meas_clean[j], delay)
-        
+
         responses_ref_delayed.append(ref_delayed)
         responses_meas_delayed.append(meas_delayed)
 

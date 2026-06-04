@@ -13,7 +13,7 @@ def test_lockin_vs_nonlinear_consistency():
     Verifies the consistency of amplitude and phase measurements between:
     1. Lock-in Harmonic Analyzer's direct single-tone measurement logic.
     2. Nonlinear System Analyzer's SSS (Swept Sine) Chebyshev-inversion & simulator logic.
-    
+
     A known simulated nonlinear system with frequency-dependent phase shifts (delays) is used.
     Systematic phase offsets are now automatically calibrated out by the core module.
     """

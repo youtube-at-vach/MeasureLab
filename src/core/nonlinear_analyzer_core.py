@@ -14,39 +14,39 @@ def find_subsample_peak(ir):
     """
     idx_int = np.argmax(np.abs(ir))
     N_total = len(ir)
-    
+
     # Shift the signal temporarily so that the peak is far away from boundaries (to N_total // 2)
     shift_amount = N_total // 2 - idx_int
     ir_shifted = np.roll(ir, shift_amount)
-    
+
     idx_int_sh = N_total // 2
     win_size = 32  # Use 32 samples window for high accuracy
     half = win_size // 2
     start = idx_int_sh - half
     end = idx_int_sh + half
-    
+
     ir_crop = ir_shifted[start:end]
     N = len(ir_crop)
-    
+
     # Standard DFT upsampling by a factor of 100
     upsample_factor = 100
     X = np.fft.fft(ir_crop)
-    
+
     N_up = N * upsample_factor
     X_up = np.zeros(N_up, dtype=complex)
-    
+
     # Copy frequencies correctly to center the Nyquist component
     X_up[: N // 2] = X[: N // 2]
     X_up[N // 2] = X[N // 2] / 2.0
     X_up[N_up - N // 2] = X[N // 2] / 2.0
     X_up[N_up - N // 2 + 1 :] = X[N // 2 + 1 :]
-    
+
     ir_up = np.fft.ifft(X_up) * upsample_factor
     idx_up = np.argmax(np.abs(ir_up))
-    
+
     peak_shifted = start + (idx_up / upsample_factor)
     peak_original = peak_shifted - shift_amount
-    
+
     return peak_original % N_total
 
 
@@ -179,10 +179,10 @@ def process_amplitude_responses(
         # Generate baseline zero-delay responses using simulated polynomial system
         a_cal = {1: 1.0, 2: 0.1, 3: 0.08, 4: 0.04, 5: 0.02}
         sss_cal, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
-        
+
         responses_meas_cal = []
         responses_ref_cal = []
-        
+
         # Build signals for each scanning amplitude
         for amp in amplitudes:
             x_sig = amp * sss_cal
@@ -220,31 +220,31 @@ def process_amplitude_responses(
     aligned_ref = []
     aligned_meas = []
     ref_step_idx = num_amplitudes - 1
-    
+
     # Choose alignment signal source: Ref channel in XFER mode, Meas channel otherwise
     if input_mode in {"XFER", "XFER_REV"}:
         base_align_sig = responses_ref[ref_step_idx]
     else:
         base_align_sig = responses_meas[ref_step_idx]
-        
+
     t_ref_base = find_subsample_peak(base_align_sig)
-    
+
     for j in range(num_amplitudes):
         if input_mode in {"XFER", "XFER_REV"}:
             align_sig = responses_ref[j]
         else:
             align_sig = responses_meas[j]
-            
+
         t_ref_j = find_subsample_peak(align_sig)
         delay_j = t_ref_j - t_ref_base
-        
+
         # Apply fractional delay shift in frequency domain (shift back by -delay_j)
         ref_aligned = apply_fractional_delay(responses_ref[j], -delay_j)
         meas_aligned = apply_fractional_delay(responses_meas[j], -delay_j)
-        
+
         aligned_ref.append(ref_aligned)
         aligned_meas.append(meas_aligned)
-        
+
     responses_ref = aligned_ref
     responses_meas = aligned_meas
 
@@ -269,7 +269,7 @@ def process_amplitude_responses(
     def apply_phase_correction_and_frac_delay(g_k, k, frac_delay):
         N = len(g_k)
         G = fft_manager.rfft(g_k)
-        
+
         # 1. Sweep-specific Phase Correction
         if k == 2:
             G = G * 1j
@@ -277,14 +277,14 @@ def process_amplitude_responses(
             G = -G
         elif k == 4:
             G = G * (-1j)
-            
+
         # 2. Fractional Sample Delay Correction (frequency domain shift)
         if np.abs(frac_delay) > 1e-9:
             freqs = fft_manager.rfftfreq(N, d=1.0 / sample_rate)
             # Peak was shifted by frac_delay samples, so multiply by conjugate to shift back
             phase_shift = np.exp(1j * 2 * np.pi * freqs * frac_delay / sample_rate)
             G = G * phase_shift
-            
+
         return fft_manager.irfft(G, n=N)
 
     # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude

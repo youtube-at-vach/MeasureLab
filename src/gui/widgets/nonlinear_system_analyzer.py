@@ -320,7 +320,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                 else:
                     align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
                 align_sig = rec_data[:, align_ch]
-                
+
                 # Deconvolve alignment channel to locate peak
                 temp_ir = fftconvolve(align_sig, inv_filter, mode="full")
                 t_peak = find_subsample_peak(temp_ir)
@@ -330,12 +330,12 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     ref_peak_sub = t_peak
                 else:
                     delay = t_peak - ref_peak_sub
-                    
+
                     # Apply sub-sample fractional delay shift in frequency domain (shift back by -delay)
                     shifted = np.zeros_like(rec_data)
                     for ch in range(rec_data.shape[1]):
                         shifted[:, ch] = apply_fractional_delay(rec_data[:, ch], -delay)
-                        
+
                     accum_data += shifted
 
                 sweep_counter += 1
