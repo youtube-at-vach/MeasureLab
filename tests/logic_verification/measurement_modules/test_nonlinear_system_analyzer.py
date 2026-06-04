@@ -461,3 +461,105 @@ def test_nonlinear_analyzer_phase_shift():
         assert max_err < 20.0, f"Phase reconstruction Max Error for {h_key} is too high: {max_err:.2f} deg"
 
 
+def test_nonlinear_analyzer_fractional_delay_robustness():
+    """
+    Verifies that the process_amplitude_responses algorithm is robust against
+    fractional (sub-sample) delay variations between amplitude steps by using
+    sub-sample alignment.
+    """
+    sample_rate = 44100
+    sweep_duration = 2.0
+    start_freq = 20.0
+    end_freq = 20000.0
+    P = 5
+
+    sss, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+
+    max_amp = 0.5
+    num_amplitudes = 5
+    amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp
+
+    # Simulate basic polynomial system
+    responses_meas_clean = []
+    responses_ref_clean = []
+
+    for amp in amplitudes:
+        x_sig = amp * sss
+        y_sig = (
+            1.0 * x_sig
+            + 0.1 * (x_sig**2)
+            + 0.08 * (x_sig**3)
+            + 0.04 * (x_sig**4)
+            + 0.02 * (x_sig**5)
+        )
+
+        padding = np.zeros(int(0.2 * sample_rate))
+        x_sig_padded = np.concatenate([x_sig, padding])
+        y_sig_padded = np.concatenate([y_sig, padding])
+
+        ir_ref = deconvolve_signal(x_sig_padded, sss)
+        ir_meas = deconvolve_signal(y_sig_padded, sss)
+
+        responses_ref_clean.append(ir_ref)
+        responses_meas_clean.append(ir_meas)
+
+    # First, run baseline (no delays)
+    freqs, mags_clean, phases_clean, _, _ = process_amplitude_responses(
+        responses_meas_clean,
+        responses_ref_clean,
+        sample_rate,
+        start_freq,
+        end_freq,
+        input_mode="XFER",
+        latency_sec=0.0,
+        sweep_duration=sweep_duration,
+        P=P,
+        amplitudes=amplitudes,
+    )
+
+    # Now, introduce arbitrary sub-sample delays for each step
+    # e.g., steps shifted by -0.3, +0.15, -0.45, +0.2, 0.0 samples
+    step_delays = [-0.3, 0.15, -0.45, 0.2, 0.0]
+    
+    from src.core.nonlinear_analyzer_core import apply_fractional_delay, find_subsample_peak
+
+    responses_meas_delayed = []
+    responses_ref_delayed = []
+    
+    for j in range(num_amplitudes):
+        delay = step_delays[j]
+        # Shift both ref and meas by the same fractional delay
+        ref_delayed = apply_fractional_delay(responses_ref_clean[j], delay)
+        meas_delayed = apply_fractional_delay(responses_meas_clean[j], delay)
+        
+        responses_ref_delayed.append(ref_delayed)
+        responses_meas_delayed.append(meas_delayed)
+
+    # Run separation on the delayed responses
+    freqs_delayed, mags_delayed, phases_delayed, _, _ = process_amplitude_responses(
+        responses_meas_delayed,
+        responses_ref_delayed,
+        sample_rate,
+        start_freq,
+        end_freq,
+        input_mode="XFER",
+        latency_sec=0.0,
+        sweep_duration=sweep_duration,
+        P=P,
+        amplitudes=amplitudes,
+    )
+
+    assert_mask = (freqs >= 200.0) & (freqs <= 15000.0)
+
+    # Compare delayed and clean results. They should match very closely
+    # because the algorithm aligns them back to the maximum amplitude step.
+    for k in ["h1", "h2", "h3", "h4", "h5"]:
+        mag_diff = np.abs(mags_clean[k][assert_mask] - mags_delayed[k][assert_mask])
+        assert np.max(mag_diff) < 0.2, f"Magnitude mismatch for {k} under step delays: Max Diff = {np.max(mag_diff):.4f} dB"
+
+        phase_diff = np.abs(phases_clean[k][assert_mask] - phases_delayed[k][assert_mask])
+        phase_diff = np.minimum(phase_diff, 360.0 - phase_diff)
+        assert np.max(phase_diff) < 1.0, f"Phase mismatch for {k} under step delays: Max Diff = {np.max(phase_diff):.4f} deg"
+
+
+

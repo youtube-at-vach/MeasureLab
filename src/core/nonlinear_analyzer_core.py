@@ -6,6 +6,66 @@ from src.core.fft_manager import fft_manager
 logger = logging.getLogger(__name__)
 
 
+def find_subsample_peak(ir):
+    """
+    Finds the peak index of the impulse response with sub-sample precision
+    using FFT-based upsampling (interpolation) around the integer peak.
+    Handles circular boundary wrap-around gracefully.
+    """
+    idx_int = np.argmax(np.abs(ir))
+    N_total = len(ir)
+    
+    # Shift the signal temporarily so that the peak is far away from boundaries (to N_total // 2)
+    shift_amount = N_total // 2 - idx_int
+    ir_shifted = np.roll(ir, shift_amount)
+    
+    idx_int_sh = N_total // 2
+    win_size = 32  # Use 32 samples window for high accuracy
+    half = win_size // 2
+    start = idx_int_sh - half
+    end = idx_int_sh + half
+    
+    ir_crop = ir_shifted[start:end]
+    N = len(ir_crop)
+    
+    # Standard DFT upsampling by a factor of 100
+    upsample_factor = 100
+    X = np.fft.fft(ir_crop)
+    
+    N_up = N * upsample_factor
+    X_up = np.zeros(N_up, dtype=complex)
+    
+    # Copy frequencies correctly to center the Nyquist component
+    X_up[: N // 2] = X[: N // 2]
+    X_up[N // 2] = X[N // 2] / 2.0
+    X_up[N_up - N // 2] = X[N // 2] / 2.0
+    X_up[N_up - N // 2 + 1 :] = X[N // 2 + 1 :]
+    
+    ir_up = np.fft.ifft(X_up) * upsample_factor
+    idx_up = np.argmax(np.abs(ir_up))
+    
+    peak_shifted = start + (idx_up / upsample_factor)
+    peak_original = peak_shifted - shift_amount
+    
+    return peak_original % N_total
+
+
+
+def apply_fractional_delay(signal, delay_samples):
+    """
+    Shifts the signal by delay_samples (can be float) in the frequency domain.
+    """
+    if np.abs(delay_samples) < 1e-9:
+        return signal.copy()
+    N = len(signal)
+    S = fft_manager.rfft(signal)
+    freqs = fft_manager.rfftfreq(N, d=1.0)
+    phase_shift = np.exp(-1j * 2 * np.pi * freqs * delay_samples)
+    S_shifted = S * phase_shift
+    return fft_manager.irfft(S_shifted, n=N)
+
+
+
 def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     """
     Generates Synchronized Sine Sweep (SSS) signal at a flat reference amplitude (1.0)
@@ -156,10 +216,43 @@ def process_amplitude_responses(
             calibrate_systematic=False,
         )
 
+    # 0.5. Align all amplitude steps to the baseline step (maximum amplitude) using sub-sample alignment
+    aligned_ref = []
+    aligned_meas = []
+    ref_step_idx = num_amplitudes - 1
+    
+    # Choose alignment signal source: Ref channel in XFER mode, Meas channel otherwise
+    if input_mode in {"XFER", "XFER_REV"}:
+        base_align_sig = responses_ref[ref_step_idx]
+    else:
+        base_align_sig = responses_meas[ref_step_idx]
+        
+    t_ref_base = find_subsample_peak(base_align_sig)
+    
+    for j in range(num_amplitudes):
+        if input_mode in {"XFER", "XFER_REV"}:
+            align_sig = responses_ref[j]
+        else:
+            align_sig = responses_meas[j]
+            
+        t_ref_j = find_subsample_peak(align_sig)
+        delay_j = t_ref_j - t_ref_base
+        
+        # Apply fractional delay shift in frequency domain (shift back by -delay_j)
+        ref_aligned = apply_fractional_delay(responses_ref[j], -delay_j)
+        meas_aligned = apply_fractional_delay(responses_meas[j], -delay_j)
+        
+        aligned_ref.append(ref_aligned)
+        aligned_meas.append(meas_aligned)
+        
+    responses_ref = aligned_ref
+    responses_meas = aligned_meas
+
     # 1. Detect Linear IR Peak (t1) using the maximum amplitude measurement
     max_amp_idx = num_amplitudes - 1
     ir_max_meas = responses_meas[max_amp_idx]
     t1 = np.argmax(np.abs(ir_max_meas))
+
 
     # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0

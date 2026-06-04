@@ -36,6 +36,8 @@ from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
     process_amplitude_responses,
     deconvolve_signal,
+    find_subsample_peak,
+    apply_fractional_delay,
 )
 
 logger = logging.getLogger(__name__)
@@ -304,7 +306,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                 out_data[:, 1] = out_signal
 
             accum_data = None
-            ref_peak_idx = None
+            ref_peak_sub = None
 
             for _avg in range(self.averages):
                 if not worker.is_running:
@@ -312,21 +314,28 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
                 rec_data = self.run_play_rec(out_data, input_channels=2)
 
-                # Real-world OS hardware delay alignment using the measurement channel
-                align_sig = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
+                # Choose alignment channel: Ref channel in XFER mode, Meas channel otherwise
+                if self.input_mode in {"XFER", "XFER_REV"}:
+                    align_ch = self.ref_channel_index
+                else:
+                    align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
+                align_sig = rec_data[:, align_ch]
+                
+                # Deconvolve alignment channel to locate peak
                 temp_ir = fftconvolve(align_sig, inv_filter, mode="full")
-                peak_idx = np.argmax(np.abs(temp_ir))
+                t_peak = find_subsample_peak(temp_ir)
 
                 if accum_data is None:
-                    accum_data = rec_data
-                    ref_peak_idx = peak_idx
+                    accum_data = rec_data.copy()
+                    ref_peak_sub = t_peak
                 else:
-                    shift = ref_peak_idx - peak_idx
-                    shifted = np.roll(rec_data, shift, axis=0)
-                    if shift > 0:
-                        shifted[:shift, :] = 0
-                    elif shift < 0:
-                        shifted[shift:, :] = 0
+                    delay = t_peak - ref_peak_sub
+                    
+                    # Apply sub-sample fractional delay shift in frequency domain (shift back by -delay)
+                    shifted = np.zeros_like(rec_data)
+                    for ch in range(rec_data.shape[1]):
+                        shifted[:, ch] = apply_fractional_delay(rec_data[:, ch], -delay)
+                        
                     accum_data += shifted
 
                 sweep_counter += 1
