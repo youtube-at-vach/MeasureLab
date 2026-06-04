@@ -20,7 +20,7 @@ def test_export_manager_initializes_with_default_exporters():
     ExportManager._instance = None
     manager = ExportManager.instance()
 
-    formats = manager.get_supported_formats()
+    formats = list(manager.get_all_exporters().keys())
     assert "json" in formats
     assert "csv" in formats
 
@@ -55,7 +55,7 @@ def test_export_manager_register_and_get_exporter():
     dummy = DummyExporter()
     manager.register_exporter(dummy)
 
-    assert "dummy" in manager.get_supported_formats()
+    assert "dummy" in manager.get_all_exporters()
     assert manager.get_exporter("dummy") is dummy
 
     all_exporters = manager.get_all_exporters()
@@ -82,57 +82,3 @@ def test_export_manager_init_idempotent():
     # The exporters dict should be the exact same object, not a new one
     assert manager._exporters is original_exporters
 
-
-def test_export_manager_get_supported_formats():
-    """Test that get_supported_formats returns a list of registered format IDs."""
-    manager = ExportManager()
-
-    class DummyExporter1(BaseTraceExporter):
-        @property
-        def format_id(self) -> str:
-            return "dummy1"
-
-        @property
-        def name(self) -> str:
-            return "Dummy1 Format"
-
-        @property
-        def file_filter(self) -> str:
-            return "Dummy1 Files (*.dummy1)"
-
-        @property
-        def default_extension(self) -> str:
-            return ".dummy1"
-
-        def export_traces(self, filepath, traces, options) -> bool:
-            return True
-
-    class DummyExporter2(BaseTraceExporter):
-        @property
-        def format_id(self) -> str:
-            return "dummy2"
-
-        @property
-        def name(self) -> str:
-            return "Dummy2 Format"
-
-        @property
-        def file_filter(self) -> str:
-            return "Dummy2 Files (*.dummy2)"
-
-        @property
-        def default_extension(self) -> str:
-            return ".dummy2"
-
-        def export_traces(self, filepath, traces, options) -> bool:
-            return True
-
-    manager.register_exporter(DummyExporter1())
-    manager.register_exporter(DummyExporter2())
-
-    formats = manager.get_supported_formats()
-    assert "dummy1" in formats
-    assert "dummy2" in formats
-    # Should include default exporters + newly added dummy exporters
-    assert "json" in formats
-    assert "csv" in formats

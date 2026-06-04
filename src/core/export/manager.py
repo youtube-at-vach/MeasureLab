@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from .base import BaseTraceExporter
 from .json_exporter import JsonTraceExporter
 from .csv_exporter import CsvTraceExporter
@@ -36,6 +36,3 @@ class ExportManager:
 
     def get_all_exporters(self) -> Dict[str, BaseTraceExporter]:
         return self._exporters.copy()
-
-    def get_supported_formats(self) -> List[str]:
-        return list(self._exporters.keys())
