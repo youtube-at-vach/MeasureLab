@@ -152,7 +152,7 @@ class ConfigManager:
         # Otherwise, use user data directory
         user_dir = ConfigManager.get_user_data_dir()
         try:
-            os.makedirs(user_dir, exist_ok=True)
+            os.makedirs(user_dir, mode=0o700, exist_ok=True)
         except OSError as e:
             self.logger.warning(f"Failed to create user data directory {user_dir}: {e}")
             # Fallback to CWD if we can't write to user dir

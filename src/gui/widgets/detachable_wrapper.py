@@ -239,7 +239,7 @@ class DetachableWidgetWrapper(QWidget):
     def save_screenshot(self):
         out_dir = self._get_screenshot_output_dir()
         try:
-            os.makedirs(out_dir, exist_ok=True)
+            os.makedirs(out_dir, mode=0o700, exist_ok=True)
         except Exception as e:
             QMessageBox.warning(self, tr("Error"), tr("Failed to create output folder: {0}").format(str(e)))
             return
