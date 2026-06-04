@@ -127,17 +127,26 @@ def process_amplitude_responses(
     gate_post = int(0.02 * sample_rate)
     N_kernel = gate_pre + gate_post
 
-    # 4. Phase correction helper for sin sweep phase alignment
-    def apply_phase_correction(g_k, k):
+    # 4. Phase and Fractional Delay correction helper
+    def apply_phase_correction_and_frac_delay(g_k, k, frac_delay):
         N = len(g_k)
         G = fft_manager.rfft(g_k)
-        # Apply shift to make physical impulse responses real and symmetric
+        
+        # 1. Sweep-specific Phase Correction
         if k == 2:
             G = G * 1j
         elif k == 3:
             G = -G
         elif k == 4:
             G = G * (-1j)
+            
+        # 2. Fractional Sample Delay Correction (frequency domain shift)
+        if np.abs(frac_delay) > 1e-9:
+            freqs = fft_manager.rfftfreq(N, d=1.0 / sample_rate)
+            # Peak was shifted by frac_delay samples, so multiply by conjugate to shift back
+            phase_shift = np.exp(1j * 2 * np.pi * freqs * frac_delay / sample_rate)
+            G = G * phase_shift
+            
         return fft_manager.irfft(G, n=N)
 
     # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude
@@ -153,8 +162,10 @@ def process_amplitude_responses(
         g_ref_j = {}
 
         for k in range(1, P + 1):
-            # Calculate peak prediction index for the k-th harmonic
-            t_k = int(t1 - L * np.log(k) * sample_rate)
+            # Calculate peak prediction index with sub-sample precision
+            t_k_exact = t1 - L * np.log(k) * sample_rate
+            t_k = int(np.round(t_k_exact))
+            frac_delay = t_k_exact - t_k
 
             # Slice with modular wrap around to protect bounds
             idx = (np.arange(t_k - gate_pre, t_k + gate_post)) % N_total
@@ -165,9 +176,9 @@ def process_amplitude_responses(
             g_k_meas = ir_meas_raw[idx] * win
             g_k_ref = ir_ref_raw[idx] * win
 
-            # Phase correction
-            g_k_meas_corr = apply_phase_correction(g_k_meas, k)
-            g_k_ref_corr = apply_phase_correction(g_k_ref, k)
+            # Phase and fractional delay correction
+            g_k_meas_corr = apply_phase_correction_and_frac_delay(g_k_meas, k, frac_delay)
+            g_k_ref_corr = apply_phase_correction_and_frac_delay(g_k_ref, k, frac_delay)
 
             g_meas_j[k] = g_k_meas_corr
             g_ref_j[k] = g_k_ref_corr

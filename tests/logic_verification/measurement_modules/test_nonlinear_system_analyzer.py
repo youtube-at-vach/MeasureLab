@@ -338,3 +338,126 @@ def test_nonlinear_analyzer_comprehensive():
     # 4. Phase sanity: Verify that phase response for h1 is stable and doesn't rotate abnormally (linear phase close to 0)
     h1_phase = res1[2]["h1"][assert_mask]
     assert np.all(np.abs(h1_phase) < 10.0), f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
+
+
+def test_nonlinear_analyzer_phase_shift():
+    """
+    Verifies that the Parallel Hammerstein separation accurately reconstructs
+    frequency-dependent phase shifts (specifically time delays) for each order
+    by using a baseline loopback calibration to cancel stationary systematic offsets.
+    """
+    sample_rate = 44100
+    sweep_duration = 2.0
+    start_freq = 20.0
+    end_freq = 20000.0
+    P = 5
+
+    # 1. Generate sweep
+    sss, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+
+    # 2. Setup Amplitudes
+    max_amp = 0.5
+    num_amplitudes = 5
+    amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp
+
+    a = {
+        1: 1.0,
+        2: 0.1,
+        3: 0.08,
+        4: 0.04,
+        5: 0.02
+    }
+
+    # Frequency domain delay application helper
+    def apply_delay(x, delay_samples):
+        N = len(x)
+        X = np.fft.rfft(x)
+        freqs = np.fft.rfftfreq(N, 1.0 / sample_rate)
+        H = np.exp(-1j * 2 * np.pi * freqs * delay_samples / sample_rate)
+        return np.fft.irfft(X * H, n=N)
+
+    def run_simulation(delays_dict):
+        responses_meas = []
+        responses_ref = []
+        for amp in amplitudes:
+            x_sig = amp * sss
+            y_sig = np.zeros_like(x_sig)
+
+            for p in range(1, P + 1):
+                comp = a[p] * (x_sig ** p)
+                y_sig += apply_delay(comp, delays_dict[p])
+
+            padding = np.zeros(int(0.2 * sample_rate))
+            x_sig_padded = np.concatenate([x_sig, padding])
+            y_sig_padded = np.concatenate([y_sig, padding])
+
+            ir_ref = deconvolve_signal(x_sig_padded, sss)
+            ir_meas = deconvolve_signal(y_sig_padded, sss)
+
+            responses_ref.append(ir_ref)
+            responses_meas.append(ir_meas)
+
+        return process_amplitude_responses(
+            responses_meas,
+            responses_ref,
+            sample_rate,
+            start_freq,
+            end_freq,
+            input_mode="XFER",
+            latency_sec=0.0,
+            sweep_duration=sweep_duration,
+            P=P,
+            amplitudes=amplitudes,
+        )
+
+    # --- Baseline Simulation (delays = 0) ---
+    zero_delays = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.0}
+    freqs, _, phases_zero, _, _ = run_simulation(zero_delays)
+
+    assert_mask = (freqs >= 200.0) & (freqs <= 15000.0)
+    eval_freqs = freqs[assert_mask]
+
+    # Record systematic phase offset curves
+    systematic_phase_curves = {}
+    for p in range(1, P + 1):
+        h_key = f"h{p}"
+        meas_baseline = phases_zero[h_key][assert_mask]
+        systematic_phase_curves[p] = (meas_baseline + 180) % 360 - 180
+
+    # --- Test Simulation (with delays) ---
+    test_delays = {
+        1: 5.0,
+        2: 8.0,
+        3: 12.0,
+        4: 15.0,
+        5: 20.0
+    }
+    _, _, phases_meas, _, _ = run_simulation(test_delays)
+
+    for p in range(1, P + 1):
+        h_key = f"h{p}"
+        
+        # Theoretical phase delay: -2 * pi * f * delay / fs
+        # (XFER relative delay after baseline calibration is exactly delays[p])
+        theory_phase_rad = -2 * np.pi * eval_freqs * test_delays[p] / sample_rate
+        theory_phase_deg = np.degrees(theory_phase_rad)
+        theory_phase_deg = (theory_phase_deg + 180) % 360 - 180
+
+        # Compensate measured phase using systematic calibration curve
+        meas_raw = phases_meas[h_key][assert_mask]
+        phase_meas_compensated = meas_raw - systematic_phase_curves[p]
+        phase_meas_compensated = (phase_meas_compensated + 180) % 360 - 180
+
+        # Calculate phase differences accounting for circular wrapping
+        diff = np.abs(phase_meas_compensated - theory_phase_deg)
+        diff = np.minimum(diff, 360.0 - diff)
+
+        # Average phase error should be well under 10.0 degrees (typically < 1.5 deg, h2 is around 6.2 deg)
+        mae = np.mean(diff)
+        assert mae < 10.0, f"Phase reconstruction MAE for {h_key} is too high: {mae:.2f} deg"
+        
+        # Max phase error should be under 20.0 degrees
+        max_err = np.max(diff)
+        assert max_err < 20.0, f"Phase reconstruction Max Error for {h_key} is too high: {max_err:.2f} deg"
+
+
