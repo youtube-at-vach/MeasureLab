@@ -107,17 +107,40 @@ class PRBSGenerator:
     def generate_reference_sequence(self, length: int, bit_depth=24) -> np.ndarray:
         """Generate a sequence of samples deterministically from reset state."""
         self.reset()
-        seq = np.empty(length, dtype=np.float32)
-        if bit_depth == 24:
-            for i in range(length):
-                seq[i] = self.next_sample_24()
+        total_bits = length * bit_depth
+
+        bits = np.empty(total_bits, dtype=np.uint8)
+        state = self.state
+        tap1 = self.tap1
+        tap2 = self.tap2
+        mask = self.mask
+
+        for i in range(total_bits):
+            bit = ((state >> tap1) ^ (state >> tap2)) & 1
+            state = ((state << 1) | bit) & mask
+            bits[i] = bit
+
+        self.state = state
+
+        packed_bytes = np.packbits(bits, bitorder="big")
+
+        if bit_depth == 8:
+            int_vals = packed_bytes.view(np.int8)
+            return int_vals.astype(np.float32) / 128.0
         elif bit_depth == 16:
-            for i in range(length):
-                seq[i] = self.next_sample_16()
-        else:
-            for i in range(length):
-                seq[i] = self.next_sample_8()
-        return seq
+            high = packed_bytes[0::2].astype(np.int16)
+            low = packed_bytes[1::2].astype(np.int16)
+            int_vals = (high << 8) | low
+            return int_vals.astype(np.float32) / 32768.0
+        elif bit_depth == 24:
+            high = packed_bytes[0::3].astype(np.int32)
+            mid = packed_bytes[1::3].astype(np.int32)
+            low = packed_bytes[2::3].astype(np.int32)
+            uint_vals = (high << 16) | (mid << 8) | low
+            vals = np.where(uint_vals >= 8388608, uint_vals - 16777216, uint_vals)
+            return vals.astype(np.float32) / 8388608.0
+
+        return np.empty(0, dtype=np.float32)
 
 
 def find_sequence_delay(rx_segment: np.ndarray, ref_cycle: np.ndarray) -> tuple[int, float]:
