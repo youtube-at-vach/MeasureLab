@@ -160,7 +160,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         # Sweep Parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 3.0  # seconds
+        self.sweep_duration = 5.0  # seconds (Optimized for minimizing phase errors on UAC-232)
         self.amplitude_db = -6.0  # dBFS (peak)
         self.averages = 2  # TSA (Time Synchronized Averaging) count
         self.num_amplitudes = 5  # Number of amplitude steps for PHM (typically 5 to 7 steps)
