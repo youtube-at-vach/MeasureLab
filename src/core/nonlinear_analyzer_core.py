@@ -271,7 +271,7 @@ def process_amplitude_responses(
         h_key = f"h{p + 1}"
         H_meas_p = H_meas_list[p]
 
-        if input_mode == "XFER":
+        if input_mode in {"XFER", "XFER_REV"}:
             # Relative 2-Channel XFER transfer function calibration
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)

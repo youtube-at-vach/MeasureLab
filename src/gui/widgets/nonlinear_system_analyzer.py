@@ -347,8 +347,12 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     + 0.06 * (simulated_meas**5)
                 )
                 simulated_meas = np.concatenate([simulated_meas, np.zeros(padding_samples)])
-                averaged_data[:, self.meas_channel_index] = simulated_meas
-                averaged_data[:, self.ref_channel_index] = np.concatenate([amp * sss, np.zeros(padding_samples)])
+                clean_ref = np.concatenate([amp * sss, np.zeros(padding_samples)])
+                if self.meas_channel_index == self.ref_channel_index:
+                    averaged_data[:, self.meas_channel_index] = simulated_meas
+                else:
+                    averaged_data[:, self.meas_channel_index] = simulated_meas
+                    averaged_data[:, self.ref_channel_index] = clean_ref
 
             # Deconvolution to get raw impulse responses
             sig_ref = averaged_data[:, self.ref_channel_index]
@@ -537,10 +541,20 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         route_form.setContentsMargins(6, 8, 6, 8)
         route_form.setSpacing(6)
 
+        self.out_combo = QComboBox()
+        self.out_combo.addItem(tr("Left"), "L")
+        self.out_combo.addItem(tr("Right"), "R")
+        self.out_combo.addItem(tr("Stereo"), "STEREO")
+        self.out_combo.setCurrentIndex(2)  # Default: Stereo
+        self.out_combo.currentIndexChanged.connect(self.on_routing_changed)
+        route_form.addRow(tr("Output Ch:"), self.out_combo)
+
         self.in_mode_combo = QComboBox()
+        self.in_mode_combo.addItem(tr("Left (Ch1)"), "L")
+        self.in_mode_combo.addItem(tr("Right (Ch2)"), "R")
         self.in_mode_combo.addItem(tr("XFER (Ref=L, Meas=R)"), "XFER")
-        self.in_mode_combo.addItem(tr("1-Ch Mode (L)"), "L")
-        self.in_mode_combo.setCurrentIndex(0)
+        self.in_mode_combo.addItem(tr("XFER (Ref=R, Meas=L)"), "XFER_REV")
+        self.in_mode_combo.setCurrentIndex(2)  # Default: XFER (Ref=L, Meas=R)
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
 
@@ -641,18 +655,27 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.kernel_plot.addLegend(offset=(10, 10))
 
         main_layout.addWidget(self.plot_tabs, stretch=1)
+        self.on_routing_changed()
 
     def on_routing_changed(self):
         mode = self.in_mode_combo.currentData()
         self.module.input_mode = mode
         if mode == "L":
             self.module.meas_channel_index = 0
-            self.module.ref_channel_index = 0  # 1-Ch Mode has no reference but align L for safety
+            self.module.ref_channel_index = 0
+        elif mode == "R":
+            self.module.meas_channel_index = 1
+            self.module.ref_channel_index = 1
+        elif mode == "XFER_REV":
+            self.module.meas_channel_index = 0
+            self.module.ref_channel_index = 1
         else:  # XFER
             self.module.meas_channel_index = 1
             self.module.ref_channel_index = 0
-        # Disable calibrate button for XFER mode since delay is automatically canceled
-        self.cal_btn.setEnabled(mode == "L")
+
+        self.module.output_channel = self.out_combo.currentData()
+        # Disable calibrate button for XFER modes since delay is automatically canceled
+        self.cal_btn.setEnabled(mode in {"L", "R"})
 
     def start_measurement(self):
         # Turn off main audio engine stream if running to capture hardware exclusively
@@ -684,7 +707,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def on_sweep_finished(self):
         self.start_btn.setEnabled(True)
-        self.cal_btn.setEnabled(self.module.input_mode == "L")
+        self.cal_btn.setEnabled(self.module.input_mode in {"L", "R"})
         self.stop_btn.setEnabled(False)
 
     def on_latency_result(self, val):
