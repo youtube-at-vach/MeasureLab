@@ -206,6 +206,18 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertEqual(diag["bit_depth"], 16)
         self.assertEqual(diag["dsp_detected"], "Bit Truncation (16-bit)")
 
+    def test_diagnose_bit_perfection_empty_array(self):
+        """Test diagnose_bit_perfection with zero length inputs."""
+        rx = np.array([])
+        ref = np.array([])
+
+        diag = diagnose_bit_perfection(rx, ref)
+        self.assertFalse(diag["bit_perfect"])
+        self.assertEqual(diag["reason"], "Empty input array.")
+        self.assertEqual(diag["bit_depth"], 0)
+        self.assertEqual(diag["bit_errors"], 0)
+        self.assertEqual(diag["error_rate"], 0.0)
+
     def test_shift_signal_fractional(self):
         """Test that frequency domain fractional phase shifting acts as a perfect all-pass filter (preserves amplitude/energy)."""
         gen = PRBSGenerator("PRBS-9")
