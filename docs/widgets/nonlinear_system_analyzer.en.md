@@ -4,15 +4,11 @@ The Nonlinear System Analyzer is an advanced widget designed for detailed analys
 It uses Synchronized Swept Sine (SSS) signals to separate and extract the linear component (fundamental) and higher-order harmonic components (kernels) from the system response.
 Based on the Hammerstein model, this nonlinear analysis allows for the evaluation of complex distortion characteristics.
 
----
-
 ## ☕ Coffee Break: What is the Hammerstein Model?
 
 The Hammerstein model is a mathematical approach to represent distortion in real-world audio equipment, such as speakers or vacuum tube amplifiers.
 It assumes a series structure where the input signal first passes through a "nonlinear element" (the part that distorts) and then through a "linear element" (a filter with frequency characteristics).
 This module uses this model to reverse-calculate and separate the distortion components (kernels) of each order from the measured signal, revealing precise distortion profiles.
-
----
 
 ## Overview
 
