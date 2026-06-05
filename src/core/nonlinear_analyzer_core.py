@@ -324,73 +324,69 @@ def process_amplitude_responses(
         g_meas_all.append(g_meas_j)
         g_ref_all.append(g_ref_j)
 
-    # 6. Apply Chebyshev transform to reconstruct Hammerstein kernels h_p using weighted least-squares
-    h_kernels_meas = np.zeros((P, N_kernel))
-    h_kernels_ref = np.zeros((P, N_kernel))
-
+    # 6. Apply Chebyshev transform in the FREQUENCY domain
     R_array = np.array(amplitudes)
     R2 = R_array ** 2
     R3 = R_array ** 3
     R4 = R_array ** 4
     R5 = R_array ** 5
 
-    # Meas Channel Least-Squares Estimation
-    g_meas_k = {k: np.array([g_meas_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
+    # First, FFT all g_meas and g_ref to the frequency domain.
+    # g_meas_all[j][k] has shape (N_kernel,)
+    # We compute G_meas[k] of shape (num_amplitudes, N_fft_half)
+    N_fft_half = N_kernel // 2 + 1
 
-    g5_m = g_meas_k.get(5, np.zeros((num_amplitudes, N_kernel)))
-    h5_meas = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+    G_meas_k = {}
+    G_ref_k = {}
+    for k in range(1, P + 1):
+        G_meas_k[k] = np.array([fft_manager.rfft(g_meas_all[j][k]) for j in range(num_amplitudes)])
+        G_ref_k[k] = np.array([fft_manager.rfft(g_ref_all[j][k]) for j in range(num_amplitudes)])
 
-    g4_m = g_meas_k.get(4, np.zeros((num_amplitudes, N_kernel)))
-    h4_meas = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+    # Initialize complex H lists
+    H_meas_list = np.zeros((P, N_fft_half), dtype=complex)
+    H_ref_list = np.zeros((P, N_fft_half), dtype=complex)
 
-    g3_m = g_meas_k.get(3, np.zeros((num_amplitudes, N_kernel)))
-    g3_prime_m = g3_m - (5/16) * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
-    h3_meas = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+    # Meas Channel Least-Squares Estimation in Frequency Domain
+    g5_m = G_meas_k.get(5, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    H_meas_list[4] = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
 
-    g2_m = g_meas_k.get(2, np.zeros((num_amplitudes, N_kernel)))
-    g2_prime_m = g2_m - 0.5 * h4_meas[np.newaxis, :] * R4[:, np.newaxis]
-    h2_meas = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+    g4_m = G_meas_k.get(4, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    H_meas_list[3] = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
 
-    g1_m = g_meas_k.get(1, np.zeros((num_amplitudes, N_kernel)))
-    g1_prime_m = g1_m - 0.75 * h3_meas[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
-    h1_meas = np.sum(g1_prime_m * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+    g3_m = G_meas_k.get(3, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    g3_prime_m = g3_m - (5/16) * H_meas_list[4][np.newaxis, :] * R5[:, np.newaxis]
+    H_meas_list[2] = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
 
-    h_kernels_meas[0] = h1_meas
-    h_kernels_meas[1] = h2_meas
-    h_kernels_meas[2] = h3_meas
-    h_kernels_meas[3] = h4_meas
-    h_kernels_meas[4] = h5_meas
+    g2_m = G_meas_k.get(2, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    g2_prime_m = g2_m - 0.5 * H_meas_list[3][np.newaxis, :] * R4[:, np.newaxis]
+    H_meas_list[1] = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
 
-    # Ref Channel Least-Squares Estimation
-    g_ref_k = {k: np.array([g_ref_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
+    g1_m = G_meas_k.get(1, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    g1_prime_m = g1_m - 0.75 * H_meas_list[2][np.newaxis, :] * R3[:, np.newaxis] - 0.625 * H_meas_list[4][np.newaxis, :] * R5[:, np.newaxis]
+    H_meas_list[0] = np.sum(g1_prime_m * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
-    g5_r = g_ref_k.get(5, np.zeros((num_amplitudes, N_kernel)))
-    h5_ref = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+    # Ref Channel Least-Squares Estimation in Frequency Domain
+    g5_r = G_ref_k.get(5, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    H_ref_list[4] = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
 
-    g4_r = g_ref_k.get(4, np.zeros((num_amplitudes, N_kernel)))
-    h4_ref = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+    g4_r = G_ref_k.get(4, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    H_ref_list[3] = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
 
-    g3_r = g_ref_k.get(3, np.zeros((num_amplitudes, N_kernel)))
-    g3_prime_r = g3_r - (5/16) * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
-    h3_ref = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+    g3_r = G_ref_k.get(3, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    g3_prime_r = g3_r - (5/16) * H_ref_list[4][np.newaxis, :] * R5[:, np.newaxis]
+    H_ref_list[2] = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
 
-    g2_r = g_ref_k.get(2, np.zeros((num_amplitudes, N_kernel)))
-    g2_prime_r = g2_r - 0.5 * h4_ref[np.newaxis, :] * R4[:, np.newaxis]
-    h2_ref = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+    g2_r = G_ref_k.get(2, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    g2_prime_r = g2_r - 0.5 * H_ref_list[3][np.newaxis, :] * R4[:, np.newaxis]
+    H_ref_list[1] = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
 
-    g1_r = g_ref_k.get(1, np.zeros((num_amplitudes, N_kernel)))
-    g1_prime_r = g1_r - 0.75 * h3_ref[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
-    h1_ref = np.sum(g1_prime_r * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+    g1_r = G_ref_k.get(1, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
+    g1_prime_r = g1_r - 0.75 * H_ref_list[2][np.newaxis, :] * R3[:, np.newaxis] - 0.625 * H_ref_list[4][np.newaxis, :] * R5[:, np.newaxis]
+    H_ref_list[0] = np.sum(g1_prime_r * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
-    h_kernels_ref[0] = h1_ref
-    h_kernels_ref[1] = h2_ref
-    h_kernels_ref[2] = h3_ref
-    h_kernels_ref[3] = h4_ref
-    h_kernels_ref[4] = h5_ref
-
-    # 7. Frequency Analysis and Relative Normalization
-    H_meas_list = [fft_manager.rfft(h_kernels_meas[p]) for p in range(P)]
-    H_ref_list = [fft_manager.rfft(h_kernels_ref[p]) for p in range(P)]
+    # Reconstruct Time-Domain Kernels by IFFT for display
+    h_kernels_meas = np.array([fft_manager.irfft(H_meas_list[p], n=N_kernel) for p in range(P)])
+    np.array([fft_manager.irfft(H_ref_list[p], n=N_kernel) for p in range(P)])
 
     freqs = fft_manager.rfftfreq(N_kernel, d=1 / sample_rate)
     mask = (freqs >= start_freq) & (freqs <= end_freq)
@@ -435,6 +431,16 @@ def process_amplitude_responses(
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
+
+    # Also save the reference fundamental phase for loopback phase calibration
+    ref_phase_rad = np.unwrap(np.angle(H_ref_1))
+    ref_phase_deg = np.degrees(ref_phase_rad)
+    ref_phase_deg = (ref_phase_deg + 180) % 360 - 180
+    ref_phase_deg_masked = ref_phase_deg[mask]
+    if phases_cal_dict is not None and "ref_phase" in phases_cal_dict:
+        ref_phase_deg_masked = ref_phase_deg_masked - phases_cal_dict["ref_phase"]
+        ref_phase_deg_masked = (ref_phase_deg_masked + 180) % 360 - 180
+    phases_deg_dict["ref_phase"] = ref_phase_deg_masked
 
     # 8. Prepare Time-Domain Kernel Display
     # Peak is at gate_pre because we aligned all g_k at that point

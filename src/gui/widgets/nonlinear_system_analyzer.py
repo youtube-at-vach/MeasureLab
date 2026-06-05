@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QSlider,
     QGridLayout,
+    QCheckBox,
 )
 from scipy.signal import (
     chirp as signal_chirp,
@@ -170,9 +171,9 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
         # Routing Config
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
-        self.input_mode = "XFER"  # 'L' (Single Ch), 'XFER' (2-Ch relative)
-        self.ref_channel_index = 0
-        self.meas_channel_index = 1
+        self.input_mode = "XFER_REV"  # 'L' (Single Ch), 'XFER' (2-Ch relative)
+        self.ref_channel_index = 1
+        self.meas_channel_index = 0
 
         self.worker = None
         self.cal_worker = None
@@ -563,7 +564,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.in_mode_combo.addItem(tr("Right (Ch2)"), "R")
         self.in_mode_combo.addItem(tr("XFER (Ref=L, Meas=R)"), "XFER")
         self.in_mode_combo.addItem(tr("XFER (Ref=R, Meas=L)"), "XFER_REV")
-        self.in_mode_combo.setCurrentIndex(2)  # Default: XFER (Ref=L, Meas=R)
+        self.in_mode_combo.setCurrentIndex(3)  # Default: XFER (Ref=R, Meas=L)
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
 
@@ -920,6 +921,15 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         amp_form.addWidget(self.sim_amp_slider)
         ctrl_layout.addWidget(amp_group)
 
+        # Options group
+        opt_group = QGroupBox(tr("Simulation Options"))
+        opt_form = QVBoxLayout(opt_group)
+        self.sim_loopback_phase_chk = QCheckBox(tr("Include Audio Interface Phase"))
+        self.sim_loopback_phase_chk.setChecked(True)
+        self.sim_loopback_phase_chk.toggled.connect(self.update_simulation)
+        opt_form.addWidget(self.sim_loopback_phase_chk)
+        ctrl_layout.addWidget(opt_group)
+
         ctrl_layout.addStretch()
         container_layout.addWidget(ctrl_panel)
 
@@ -1159,6 +1169,11 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             "h5": (217, 83, 79),  # #d9534f
         }
 
+        # Interpolate reference loopback phase at fundamental frequency f0
+        ref_phase_f0 = 0.0
+        if self.sim_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
+            ref_phase_f0 = np.interp(f0, self.cached_freqs, self.cached_phases["ref_phase"])
+
         for n in range(1, 6):
             h_key = f"h{n}"
             f_n = n * f0
@@ -1176,6 +1191,13 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             # Phase calculation relative to the fundamental component (n * fundamental_phase)
             relative_phase_rad = np.angle(y_val) - n * fundamental_phase_rad
             phase_val_deg = np.degrees(relative_phase_rad)
+
+            # Apply loopback correction: ref_phase(f_n) - n * ref_phase(f_0)
+            if self.sim_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
+                ref_phase_fn = np.interp(f_n, self.cached_freqs, self.cached_phases["ref_phase"])
+                loopback_corr_deg = ref_phase_fn - n * ref_phase_f0
+                phase_val_deg += loopback_corr_deg
+
             phase_val_deg = (phase_val_deg + 180) % 360 - 180
 
             labels["freq"].setText(f"{f_n:.1f} Hz")

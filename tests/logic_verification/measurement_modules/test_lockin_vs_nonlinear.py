@@ -104,6 +104,17 @@ def test_lockin_vs_nonlinear_consistency():
         phase_rad = np.radians(phases[h_key])
         H_dict[p] = mag_linear * np.exp(1j * phase_rad)
 
+    # Print theoretical vs measured phases of H_p at 1000 Hz
+    print("\n--- Hammerstein Kernel Phase Comparison at 1000 Hz ---")
+    for p in range(1, 6):
+        h_key = f"h{p}"
+        meas_phase = np.interp(1000.0, freqs, phases[h_key])
+        # Wrap phase to [-180, 180]
+        meas_phase = (meas_phase + 180) % 360 - 180
+        theory_phase = -360.0 * 1000.0 * delays[p] / sample_rate
+        theory_phase = (theory_phase + 180) % 360 - 180
+        print(f"[{h_key}] Theory Phase={theory_phase:.2f}°, Meas Phase={meas_phase:.2f}°, Diff={meas_phase - theory_phase:.2f}°")
+
     H_interp = {}
     for n in range(1, 6):
         f_n = n * f0
@@ -119,7 +130,7 @@ def test_lockin_vs_nonlinear_consistency():
         amp_in * H_interp[1][1] + (0.75 * (amp_in**3)) * H_interp[1][3] + (0.625 * (amp_in**5)) * H_interp[1][5]
     )
     Y[2] = (-1j) * ((0.5 * (amp_in**2)) * H_interp[2][2] + (0.5 * (amp_in**4)) * H_interp[2][4])
-    Y[3] = (-1.0) * ((0.25 * (amp_in**3)) * H_interp[3][3] + (0.3125 * (amp_in**5)) * H_interp[5][5])
+    Y[3] = (-1.0) * ((0.25 * (amp_in**3)) * H_interp[3][3] + (0.3125 * (amp_in**5)) * H_interp[3][5])
     Y[4] = (+1j) * ((0.125 * (amp_in**4)) * H_interp[4][4])
     Y[5] = (1.0) * ((0.0625 * (amp_in**5)) * H_interp[5][5])
 
@@ -167,6 +178,8 @@ def test_lockin_vs_nonlinear_consistency():
         fund_phase_lockin_deg = lockin.harmonics_phase_deg[0]
         meas_rel_phase_deg = meas_phase_raw_deg - n * fund_phase_lockin_deg
         meas_rel_phase_deg = (meas_rel_phase_deg + 180) % 360 - 180
+
+        print(f"DEBUG: n={n}, raw_phase={meas_phase_raw_deg:.2f}, fund_phase={fund_phase_lockin_deg:.2f}, rel_phase={meas_rel_phase_deg:.2f}")
 
         # Amplitude discrepancy should be < 3.5 dB (due to interpolation/window leakage on high-order terms)
         amp_diff = np.abs(meas_amp_dbfs - pred_amp_dbfs)

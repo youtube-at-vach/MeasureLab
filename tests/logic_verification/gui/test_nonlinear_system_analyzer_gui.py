@@ -32,13 +32,13 @@ def test_nonlinear_analyzer_routing(qtbot):
     widget = NonlinearSystemAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
 
-    # 1. Check default XFER / Stereo routing
-    assert widget.in_mode_combo.currentData() == "XFER"
+    # 1. Check default XFER_REV / Stereo routing
+    assert widget.in_mode_combo.currentData() == "XFER_REV"
     assert widget.out_combo.currentData() == "STEREO"
-    assert analyzer.input_mode == "XFER"
+    assert analyzer.input_mode == "XFER_REV"
     assert analyzer.output_channel == "STEREO"
-    assert analyzer.ref_channel_index == 0
-    assert analyzer.meas_channel_index == 1
+    assert analyzer.ref_channel_index == 1
+    assert analyzer.meas_channel_index == 0
     assert not widget.cal_btn.isEnabled()
 
     # 2. Switch to Left (Ch1) Mode
@@ -55,11 +55,11 @@ def test_nonlinear_analyzer_routing(qtbot):
     assert analyzer.meas_channel_index == 1
     assert widget.cal_btn.isEnabled()
 
-    # 4. Switch to Reverse XFER Mode
-    widget.in_mode_combo.setCurrentIndex(widget.in_mode_combo.findData("XFER_REV"))
-    assert analyzer.input_mode == "XFER_REV"
-    assert analyzer.ref_channel_index == 1
-    assert analyzer.meas_channel_index == 0
+    # 4. Switch to Normal XFER Mode
+    widget.in_mode_combo.setCurrentIndex(widget.in_mode_combo.findData("XFER"))
+    assert analyzer.input_mode == "XFER"
+    assert analyzer.ref_channel_index == 0
+    assert analyzer.meas_channel_index == 1
     assert not widget.cal_btn.isEnabled()
 
     # 5. Modify Output Channel to Right
