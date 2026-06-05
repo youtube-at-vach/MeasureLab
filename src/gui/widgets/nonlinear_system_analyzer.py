@@ -170,9 +170,9 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
         # Routing Config
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
-        self.input_mode = "XFER"  # 'L' (Single Ch), 'XFER' (2-Ch relative)
-        self.ref_channel_index = 0
-        self.meas_channel_index = 1
+        self.input_mode = "XFER_REV"  # 'L' (Single Ch), 'XFER' (2-Ch relative)
+        self.ref_channel_index = 1
+        self.meas_channel_index = 0
 
         self.worker = None
         self.cal_worker = None
@@ -563,7 +563,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.in_mode_combo.addItem(tr("Right (Ch2)"), "R")
         self.in_mode_combo.addItem(tr("XFER (Ref=L, Meas=R)"), "XFER")
         self.in_mode_combo.addItem(tr("XFER (Ref=R, Meas=L)"), "XFER_REV")
-        self.in_mode_combo.setCurrentIndex(2)  # Default: XFER (Ref=L, Meas=R)
+        self.in_mode_combo.setCurrentIndex(3)  # Default: XFER (Ref=R, Meas=L)
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
 
