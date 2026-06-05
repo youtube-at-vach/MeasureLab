@@ -136,6 +136,21 @@ class TestTransmissionLogic(unittest.TestCase):
         evm_noise = calculate_evm(rx_altered, tx)
         self.assertGreater(evm_noise, 1.0)
 
+    def test_calculate_evm_zero_tx(self):
+        """Test Error Vector Magnitude handles effectively zero tx_block inputs."""
+        rx = np.ones(256)
+
+        # Exact zero
+        tx_zero = np.zeros(256)
+        evm_zero = calculate_evm(rx, tx_zero)
+        self.assertEqual(evm_zero, 100.0)
+
+        # Tiny tx (dot product < 1e-12)
+        # e.g., 256 * (1e-8)^2 = 256e-16 < 1e-12
+        tx_tiny = np.ones(256) * 1e-8
+        evm_tiny = calculate_evm(rx, tx_tiny)
+        self.assertEqual(evm_tiny, 100.0)
+
     def test_calculate_equalized_evm(self):
         """Test Equalized EVM calculations under linear frequency/phase distortions."""
         gen = PRBSGenerator("PRBS-9")
