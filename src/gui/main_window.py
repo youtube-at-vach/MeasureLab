@@ -128,11 +128,6 @@ def _load_module_class(module_key: str):
     return _load_class(*MODULE_REGISTRY[module_key])
 
 
-if False:
-    # Explicit imports via src.gui.pyinstaller_imports so PyInstaller can discover dynamically loaded modules.
-    from . import pyinstaller_imports  # noqa: F401
-
-
 def _load_settings_widget_class():
     # Same reasoning as _load_module_class: delay heavy imports (scipy, etc.).
     return _load_class("src.gui.widgets.settings", "SettingsWidget")
