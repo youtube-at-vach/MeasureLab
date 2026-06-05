@@ -1,5 +1,9 @@
 # Feature Proposals for MeasureLab
 
+> [!IMPORTANT]
+> **Core Principle**
+> Accurate measurement, free of charge, and all features available to everyone.
+
 **Project Direction Update (2026):**
 Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp performance, etc.) rather than Acoustic Measurement (speakers/rooms).
 
