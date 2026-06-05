@@ -262,6 +262,18 @@ class TestTransmissionLogic(unittest.TestCase):
         est_delay_neg = estimate_fractional_delay(tx_delayed_neg_segment, tx_segment)
         self.assertAlmostEqual(est_delay_neg, target_shift_neg, delta=0.02)
 
+    def test_track_jitter_fractional_empty_array(self):
+        """Test track_jitter_fractional with empty input arrays."""
+        rx_block = np.array([])
+        tx_history = np.array([])
+        last_offset = 50
+
+        best_offset, frac_corr, frac_delay = track_jitter_fractional(rx_block, tx_history, last_offset)
+
+        self.assertEqual(best_offset, last_offset)
+        self.assertEqual(frac_corr, 0.0)
+        self.assertEqual(frac_delay, 0.0)
+
     def test_track_jitter_fractional(self):
         """Test hybrid integer-fractional tracking under simulated drifts, validating exact integer and fractional recovery."""
         gen = PRBSGenerator("PRBS-9")
