@@ -552,12 +552,16 @@ def track_jitter_fractional(
 
     Returns: (best_offset, fractional_correlation, fractional_delay)
     """
+    N = len(rx_block)
+    H = len(tx_history)
+
+    if N == 0 or H == 0:
+        return last_offset, 0.0, 0.0
+
     # 1. Coarse standard integer search
     best_integer_offset, _ = track_jitter(rx_block, tx_history, last_offset, max_search)
 
     # 2. Extract corresponding reference segment from history
-    N = len(rx_block)
-    H = len(tx_history)
     if best_integer_offset + N <= H:
         tx_seg = tx_history[best_integer_offset : best_integer_offset + N]
     else:
