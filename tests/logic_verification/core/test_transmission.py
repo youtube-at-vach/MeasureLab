@@ -90,6 +90,13 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertEqual(shifted_offset, last_offset + 2)
         self.assertGreater(corr_shift, 0.99)
 
+    def test_extract_impulse_response_empty(self):
+        """Test impulse response deconvolution with empty arrays."""
+        rx = np.array([], dtype=np.float32)
+        tx = np.array([], dtype=np.float32)
+        h = extract_impulse_response(rx, tx)
+        self.assertEqual(len(h), 0)
+
     def test_extract_impulse_response(self):
         """Test impulse response deconvolution."""
         gen = PRBSGenerator("PRBS-9")

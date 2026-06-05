@@ -233,6 +233,8 @@ def extract_impulse_response(rx_block: np.ndarray, tx_block: np.ndarray, regular
     H(f) = Y(f) * X*(f) / (|X(f)|^2 + reg)
     """
     N = len(rx_block)
+    if N == 0:
+        return np.array([], dtype=np.float32)
     # Apply Hanning window to reduce boundary artifacts in deconvolution
     window = np.hanning(N)
 
