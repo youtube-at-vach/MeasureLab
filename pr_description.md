@@ -1,3 +1,0 @@
-💡 **What:** Replaced the manually nested loop logic using `.find()` inside `src/gui/widgets/loopback_finder.py` with a more efficient precompiled regular expression matching logic.
-🎯 **Why:** The previous logic split the search phrase and manually kept track of position indices using `full_string.find()`. Using a compiled regular expression avoids the explicit O(N*M) Python loops across all substrings for every device, minimizing internal method calls and simplifying the code dramatically.
-📊 **Measured Improvement:** Benchmarks show the `re.compile` approach with `search()` improves the baseline performance from 0.53 seconds per 100 runs down to 0.43 seconds per 100 runs.
