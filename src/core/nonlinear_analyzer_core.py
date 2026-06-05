@@ -386,7 +386,7 @@ def process_amplitude_responses(
 
     # Reconstruct Time-Domain Kernels by IFFT for display
     h_kernels_meas = np.array([fft_manager.irfft(H_meas_list[p], n=N_kernel) for p in range(P)])
-    h_kernels_ref = np.array([fft_manager.irfft(H_ref_list[p], n=N_kernel) for p in range(P)])
+    np.array([fft_manager.irfft(H_ref_list[p], n=N_kernel) for p in range(P)])
 
     freqs = fft_manager.rfftfreq(N_kernel, d=1 / sample_rate)
     mask = (freqs >= start_freq) & (freqs <= end_freq)
