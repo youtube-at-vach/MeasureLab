@@ -432,6 +432,16 @@ def process_amplitude_responses(
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
 
+    # Also save the reference fundamental phase for loopback phase calibration
+    ref_phase_rad = np.unwrap(np.angle(H_ref_1))
+    ref_phase_deg = np.degrees(ref_phase_rad)
+    ref_phase_deg = (ref_phase_deg + 180) % 360 - 180
+    ref_phase_deg_masked = ref_phase_deg[mask]
+    if phases_cal_dict is not None and "ref_phase" in phases_cal_dict:
+        ref_phase_deg_masked = ref_phase_deg_masked - phases_cal_dict["ref_phase"]
+        ref_phase_deg_masked = (ref_phase_deg_masked + 180) % 360 - 180
+    phases_deg_dict["ref_phase"] = ref_phase_deg_masked
+
     # 8. Prepare Time-Domain Kernel Display
     # Peak is at gate_pre because we aligned all g_k at that point
     t_indices = np.arange(0, N_kernel)
