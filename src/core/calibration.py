@@ -23,7 +23,7 @@ class CalibrationManager:
             # If just a filename, put in user data dir
             user_dir = ConfigManager.get_user_data_dir()
             try:
-                os.makedirs(user_dir, exist_ok=True)
+                os.makedirs(user_dir, mode=0o700, exist_ok=True)
                 self.config_path = os.path.join(user_dir, config_filename)
             except Exception:
                 # Fallback to current working directory
