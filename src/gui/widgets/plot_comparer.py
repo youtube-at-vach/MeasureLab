@@ -572,8 +572,8 @@ class PlotComparerWidget(QWidget):
     def update_y2_views(self):
         try:
             self.y2_view.setGeometry(self.plot_item.vb.sceneBoundingRect())
-        except Exception:  # noqa: S110
-            pass
+        except RuntimeError as e:
+            logger.debug(f"Failed to update Y2 views geometry: {e}")
 
     def toggle_controls(self):
         is_visible = self.controls_widget.isVisible()
@@ -1292,8 +1292,8 @@ class PlotComparerWidget(QWidget):
                         color = settings.get("color", "#ffffff")
                         readout_parts.append(f'<span style="color: {color};">● T{idx}: {interp_y:.2f} {unit}</span>')
                         trace_y_vals.append(interp_y)
-                    except Exception:  # noqa: S110
-                        pass
+                    except ValueError as e:
+                        logger.debug(f"Failed to interpolate Y data: {e}")
 
                 # 2. Secondary Y2 data
                 if trace.y2_data is not None and settings.get("y2_visible", True) and trace.y2_axis:
@@ -1310,8 +1310,8 @@ class PlotComparerWidget(QWidget):
                         readout_parts.append(
                             f'<span style="color: {color};">● T{idx} ({tr("Phase")}): {interp_y2:.1f} {unit2}</span>'
                         )
-                    except Exception:  # noqa: S110
-                        pass
+                    except ValueError as e:
+                        logger.debug(f"Failed to interpolate Y2 data: {e}")
 
             delta_str = ""
             if len(trace_y_vals) >= 2:
