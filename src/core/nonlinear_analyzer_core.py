@@ -50,7 +50,6 @@ def find_subsample_peak(ir):
     return peak_original % N_total
 
 
-
 def apply_fractional_delay(signal, delay_samples):
     """
     Shifts the signal by delay_samples (can be float) in the frequency domain.
@@ -63,7 +62,6 @@ def apply_fractional_delay(signal, delay_samples):
     phase_shift = np.exp(-1j * 2 * np.pi * freqs * delay_samples)
     S_shifted = S * phase_shift
     return fft_manager.irfft(S_shifted, n=N)
-
 
 
 def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
@@ -131,21 +129,6 @@ def deconvolve_signal(recorded_signal, sss_signal, regularization=1e-4):
     return g
 
 
-def calculate_chebyshev_matrix(num_amplitudes, norm_v, P=5):
-    """
-    Deprecated/Legacy compatibility method.
-    Previously constructed separation matrix M and computed its pseudo-inverse M_pinv.
-    Now we implement Chebyshev transform directly using algebraic equations.
-    """
-    M = np.zeros((num_amplitudes, P))
-    for k in range(num_amplitudes):
-        v = norm_v[k]
-        for p in range(P):
-            M[k, p] = v ** (p + 1)
-    M_pinv = np.linalg.pinv(M)
-    return M, M_pinv
-
-
 def process_amplitude_responses(
     responses_meas,
     responses_ref,
@@ -188,7 +171,7 @@ def process_amplitude_responses(
             x_sig = amp * sss_cal
             y_sig_cal = np.zeros_like(x_sig)
             for p in range(1, P + 1):
-                y_sig_cal += a_cal[p] * (x_sig ** p)
+                y_sig_cal += a_cal[p] * (x_sig**p)
 
             padding = np.zeros(int(0.2 * sample_rate))
             x_sig_padded = np.concatenate([x_sig, padding])
@@ -252,7 +235,6 @@ def process_amplitude_responses(
     max_amp_idx = num_amplitudes - 1
     ir_max_meas = responses_meas[max_amp_idx]
     t1 = np.argmax(np.abs(ir_max_meas))
-
 
     # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0
@@ -329,30 +311,32 @@ def process_amplitude_responses(
     h_kernels_ref = np.zeros((P, N_kernel))
 
     R_array = np.array(amplitudes)
-    R2 = R_array ** 2
-    R3 = R_array ** 3
-    R4 = R_array ** 4
-    R5 = R_array ** 5
+    R2 = R_array**2
+    R3 = R_array**3
+    R4 = R_array**4
+    R5 = R_array**5
 
     # Meas Channel Least-Squares Estimation
     g_meas_k = {k: np.array([g_meas_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
 
     g5_m = g_meas_k.get(5, np.zeros((num_amplitudes, N_kernel)))
-    h5_meas = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+    h5_meas = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
 
     g4_m = g_meas_k.get(4, np.zeros((num_amplitudes, N_kernel)))
-    h4_meas = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+    h4_meas = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
 
     g3_m = g_meas_k.get(3, np.zeros((num_amplitudes, N_kernel)))
-    g3_prime_m = g3_m - (5/16) * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
-    h3_meas = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+    g3_prime_m = g3_m - (5 / 16) * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    h3_meas = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
 
     g2_m = g_meas_k.get(2, np.zeros((num_amplitudes, N_kernel)))
     g2_prime_m = g2_m - 0.5 * h4_meas[np.newaxis, :] * R4[:, np.newaxis]
-    h2_meas = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+    h2_meas = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
 
     g1_m = g_meas_k.get(1, np.zeros((num_amplitudes, N_kernel)))
-    g1_prime_m = g1_m - 0.75 * h3_meas[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    g1_prime_m = (
+        g1_m - 0.75 * h3_meas[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_meas[np.newaxis, :] * R5[:, np.newaxis]
+    )
     h1_meas = np.sum(g1_prime_m * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
     h_kernels_meas[0] = h1_meas
@@ -365,21 +349,23 @@ def process_amplitude_responses(
     g_ref_k = {k: np.array([g_ref_all[j][k] for j in range(num_amplitudes)]) for k in range(1, P + 1)}
 
     g5_r = g_ref_k.get(5, np.zeros((num_amplitudes, N_kernel)))
-    h5_ref = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array ** 10)
+    h5_ref = 16 * np.sum(g5_r * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
 
     g4_r = g_ref_k.get(4, np.zeros((num_amplitudes, N_kernel)))
-    h4_ref = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array ** 8)
+    h4_ref = 8 * np.sum(g4_r * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
 
     g3_r = g_ref_k.get(3, np.zeros((num_amplitudes, N_kernel)))
-    g3_prime_r = g3_r - (5/16) * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
-    h3_ref = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array ** 6)
+    g3_prime_r = g3_r - (5 / 16) * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    h3_ref = 4 * np.sum(g3_prime_r * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
 
     g2_r = g_ref_k.get(2, np.zeros((num_amplitudes, N_kernel)))
     g2_prime_r = g2_r - 0.5 * h4_ref[np.newaxis, :] * R4[:, np.newaxis]
-    h2_ref = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array ** 4)
+    h2_ref = 2 * np.sum(g2_prime_r * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
 
     g1_r = g_ref_k.get(1, np.zeros((num_amplitudes, N_kernel)))
-    g1_prime_r = g1_r - 0.75 * h3_ref[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    g1_prime_r = (
+        g1_r - 0.75 * h3_ref[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * h5_ref[np.newaxis, :] * R5[:, np.newaxis]
+    )
     h1_ref = np.sum(g1_prime_r * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
     h_kernels_ref[0] = h1_ref
@@ -457,4 +443,3 @@ def process_amplitude_responses(
         time_ms,
         separated_kernels_data,
     )
-
