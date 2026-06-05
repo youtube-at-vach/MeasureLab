@@ -106,7 +106,7 @@ class LoopbackFinder(MeasurementModule):
                 matches = [d for d in devices if pattern.search(d["name"].lower())]
                 if matches:
                     return matches[0]
-            return sd.query_devices(dev_id)
+            raise ValueError(f"No input/output device matching '{dev_id}'")
 
         if isinstance(device_id, tuple):
             input_device, output_device = device_id
