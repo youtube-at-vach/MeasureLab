@@ -8,7 +8,7 @@ A tool like a "chart recorder" that continuously monitors and records signal cha
 While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences.
 
 💡 **What is a Chart Recorder?**
-Have you ever seen an old seismograph or lie detector where a long roll of paper slowly feeds out while a pen continuously draws a squiggly line? Raw Time Series is exactly the digital version of that. Even if you think, "I feel like I just heard a weird noise!", you can scroll back through the record to check it.
+It is an instrument that continuously records signals on a moving roll of paper. Raw Time Series is the digital version of this, allowing you to scroll back and review past events.
 
 ## Compact Mode
 
@@ -65,7 +65,7 @@ Check the operational stability of a DIY amplifier or circuit.
 3. Turn **Show DC Offset** ON.
 4. Power on the circuit and observe how the DC voltage value and graph line change over time (e.g., checking if voltage drifts due to thermal runaway).
 
-### ☕ Coffee Break: Finding Intermittent Noise
+### Finding Intermittent Noise
 
 Wait for and monitor noise that occurs sporadically, such as occasional "popping" sounds.
 
