@@ -12,8 +12,6 @@
 
 It supports both digital and analog signal paths—such as USB cables, Bluetooth connections, or physical analog circuits—measuring sampling synchronization delay, clock jitter, and signal integrity in real-time.
 
----
-
 ## ☕ Coffee Break: Why Measure Audio with "PRBS"?
 
 When we think of audio measurements, we usually picture a pure sine wave ("beep") or a frequency sweep.
@@ -28,8 +26,6 @@ By transmitting this sequence and comparing the received signal with the "expect
 2. **Analog Characteristics**: Extracting non-linear distortion, phase deviation, physical delay down to the millisecond, and sub-sample clock jitter.
 
 This allow us to diagnose the entire transmission path instantly and with extreme precision!
-
----
 
 ## Key Features & Measurement Modes
 
