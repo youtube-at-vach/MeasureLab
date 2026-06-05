@@ -454,7 +454,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # --- Sidebar Container (Left Side, Fixed Width) ---
         sidebar_container = QWidget()
-        sidebar_container.setFixedWidth(260)
+        sidebar_container.setFixedWidth(300)
         sidebar_main_layout = QVBoxLayout(sidebar_container)
         sidebar_main_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_main_layout.setSpacing(10)
@@ -876,7 +876,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # --- Left: Control Panel ---
         ctrl_panel = QWidget()
-        ctrl_panel.setFixedWidth(260)
+        ctrl_panel.setFixedWidth(300)
         ctrl_layout = QVBoxLayout(ctrl_panel)
         ctrl_layout.setContentsMargins(0, 0, 0, 0)
         ctrl_layout.setSpacing(10)
