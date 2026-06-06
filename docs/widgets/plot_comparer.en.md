@@ -37,7 +37,20 @@ To help visualize differences between measurements, it features powerful compari
 3. **Delete / Clear All Buttons**:
    Remove the currently selected trace from the tree, or wipe all loaded traces at once.
 4. **Export Selected Button**:
-   Save specific selected traces (or all checked traces if none are selected) to a local JSON file.
+   Open the Export Dialog to save specific selected traces (or all checked traces if none are selected) to local files.
+
+### Export Options
+
+When exporting traces using the **Export Selected Button**, you will be presented with several options:
+
+* **Export Targets**:
+    * Choose which traces to export (selected traces only, all checked traces, or all loaded traces).
+* **Export Scheme**:
+    * **Combine into a single file**: Export all chosen traces into a single comprehensive JSON or CSV file.
+    * **Export as individual files**: Automatically generate separate files for each trace in a selected directory.
+* **Format Options**:
+    * **JSON**: Highly detailed export including raw data arrays, axis definitions, and metadata. You can opt to compress the JSON to save space.
+    * **CSV**: Spreadsheet-compatible export. You can customize the delimiter (comma or tab) and data layout (merged on a common X-axis with interpolation, or independent columns).
 
 ### Adjusting Range and Scale (Plot Range)
 
