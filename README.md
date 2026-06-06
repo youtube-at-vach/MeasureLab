@@ -2,9 +2,17 @@
 
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 
-![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg) [![Docs](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/deploy_docs.yml/badge.svg)](https://youtube-at-vach.github.io/MeasureLab/) [Online Manual](https://youtube-at-vach.github.io/MeasureLab/)
+![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg)
+
+[![Online Manual](https://img.shields.io/badge/📖_Online_Manual-Click_Here-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://youtube-at-vach.github.io/MeasureLab/)
 
 [![MeasureLab Demo](docs/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
+
+<blockquote>
+  <h3>📖 Official MeasureLab Online Manual is Available!</h3>
+  <p>Discover detailed feature descriptions, widget guides indexed by purpose, and practical measurement recipes (e.g., connection examples) in the web-based official manual.</p>
+  <p>👉 <strong><a href="https://youtube-at-vach.github.io/MeasureLab/">https://youtube-at-vach.github.io/MeasureLab/</a></strong></p>
+</blockquote>
 
 A collection of DIY audio measurement and analysis tools, grown organically as needed. This software is compatible with standard audio devices.
 

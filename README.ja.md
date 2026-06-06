@@ -2,9 +2,17 @@
 
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 
-![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg) [![Docs](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/deploy_docs.yml/badge.svg)](https://youtube-at-vach.github.io/MeasureLab/) [オンライン・マニュアル](https://youtube-at-vach.github.io/MeasureLab/)
+![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg)
+
+[![オンライン・マニュアル](https://img.shields.io/badge/📖_オンライン・マニュアル-Click_Here-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://youtube-at-vach.github.io/MeasureLab/)
 
 [![MeasureLab Demo](docs/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
+
+<blockquote>
+  <h3>📖 MeasureLab 公式オンライン・マニュアルを公開中！</h3>
+  <p>使い方や機能の詳細、目的別のウィジェット選択ガイド、具体的な測定レシピ（接続例など）を網羅した公式マニュアルをWeb上でご覧いただけます。</p>
+  <p>👉 <strong><a href="https://youtube-at-vach.github.io/MeasureLab/">https://youtube-at-vach.github.io/MeasureLab/</a></strong></p>
+</blockquote>
 
 「必要に応じて作り足しながら育ててきた DIY のオーディオ測定・解析ツール集」です。
 
