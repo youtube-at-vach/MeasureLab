@@ -91,6 +91,7 @@ plugins:
             周波数カウンター: Frequency Counter
             高度歪みメーター: Advanced Distortion Meter
             歪み解析: Distortion Analyzer
+            非線形システム解析: Nonlinear System Analyzer
             直線性解析: Linearity Analyzer
             音響・オーディオ解析: Acoustic & Audio Analysis
             音圧レベルメーター: Sound Level Meter
@@ -115,6 +116,9 @@ plugins:
             分離ウィンドウラッパー: Detachable Wrapper
             プロット比較器: Plot Comparer
             プロセッサーベンチマーク: Processor Benchmark
+            波形ループプレイヤー: Waveform Loop Player
+            ログビューアー: Log Viewer
+            理論と実装: Theory & Implementation
             測定レシピ: Measurement Recipes
             概要: Overview
             ノイズ測定: Noise Measurement
@@ -174,6 +178,7 @@ nav:
           - 周波数カウンター: widgets/frequency_counter.md
           - 高度歪みメーター: widgets/advanced_distortion_meter.md
           - 歪み解析: widgets/distortion_analyzer.md
+          - 非線形システム解析: widgets/nonlinear_system_analyzer.md
           - 直線性解析: widgets/linearity_analyzer.md
       - 音響・オーディオ解析:
           - 音圧レベルメーター: widgets/sound_level_meter.md
@@ -198,6 +203,8 @@ nav:
           - 分離ウィンドウラッパー: widgets/detachable_wrapper.md
           - プロット比較器: widgets/plot_comparer.md
           - プロセッサーベンチマーク: widgets/processor_benchmark.md
+          - 波形ループプレイヤー: widgets/waveform_loop_player.md
+          - ログビューアー: widgets/log_viewer.md
 
   - 測定レシピ:
       - 概要: measurement_recipes/index.md
@@ -206,9 +213,15 @@ nav:
       - スピーカーインピーダンス: measurement_recipes/speaker_impedance.md
       - ロックインアンプ: measurement_recipes/lockin_amplifier.md
 
+  - 理論と実装:
+      - ロックインアンプ実装: implementation/lock_in_amplifier.md
+      - カルマンフィルター: implementation/kalman_filter.md
+
   - リファレンス:
       - 用語集: glossary.md
       - 付録: appendix.md
+      - 開発情報: development.md
+      - 提案機能: PROPOSED_FEATURES.md
       - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
     
   - ダウンロード: https://youtube-at-vach.github.io/MeasureLab/download/
