@@ -15,7 +15,8 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Extreme Physics & Quantum**: Sub-atomic Thermal Noise Sonification, Quantum Entropy DAC Sync Analyzer, Galactic IMD Topology, Tachyon Audio Synth, Fluid-Dynamic Phase Hologram.
 * **Predictive & AI Models**: AI-Driven Sonic Aging Simulator.
 * **NEW: AI-Powered "Golden Ear" Translator**: Maps objective THD/IMD measurements into subjective audiophile vocabulary (e.g., "Warm", "Analytical").
-* **NEW: Bio-feedback Audio Calibrator**: Real-time adjustment of test signals based on the operator's biometric stress response to high frequencies.
+* **NEW: Bio-feedback Audio Calibrator**: Real-time adjustment of test signals based on operator's biometric stress response.
+* **NEW: Holographic Phase Reconstructor**: Restores lost spatial phase information from legacy mono recordings using advanced neural networks.
 
 ---
 
@@ -26,26 +27,23 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Automated Suites**: ASRC Benchmark Automator, Test Sequence Automator.
 * **Signal Integrity**: Continuity & Dropout Logger, Lossy Codec Artifact Analyzer, Realtime/Offline Null Comparator.
 * **Device Profiling**: Dynamics Processor Profiler, TIE Jitter & Phase Noise Profiler, Damping Factor Profiler, PSRR Evaluator.
-* **NEW: Volterra Kernel Extractor**: Analyzes non-linearities to mathematically clone an amplifier/DAC's exact distortion profile.
-* **NEW: Multi-Tone IMD Heatmap Generator**: Specialized visualization of 2-tone frequency intermodulation matrices.
+* **Volterra Kernel Extractor**: Analyzes non-linearities to mathematically clone an amplifier/DAC's exact distortion profile.
+* **Multi-Tone IMD Heatmap Generator**: Specialized visualization of 2-tone frequency intermodulation matrices.
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **Distortion & Noise**: Add Thermal/Power Stress (Distortion), EMI/RFI Fingerprinting & Dither Detect (Noise Profiler), RF Immunity (Advanced Distortion).
-* **Spectrum & Transients**: Add DAC Aliasing (Spectrum Analyzer), Relay Bounce (Transient Analyzer).
+* **Distortion & Noise**: Add Thermal/Power Stress, EMI/RFI Fingerprinting, RF Immunity. **NEW: Add TIM/DIM (Transient Intermodulation) Mode** (extend Distortion Analyzer).
+* **Spectrum & Transients**: Add DAC Aliasing, Relay Bounce. **NEW: Add Phase Noise Density Plot & Carrier Notching** (extend Spectrum Analyzer). **NEW: Add Out-of-band / Class-D PWM Carrier Leakage Tracker** (extend Spectrum Analyzer). **NEW: Add Clipping Recovery Time Automator** (extend Transient Analyzer).
 * **Generation & Analysis**: Add Jitter/Glitch Injection (Signal Generator), Stability Margins (Network Analyzer).
-* **NEW: Oscilloscope**: Add **Digital Audio Protocol Decoder (SPDIF/I2S/AES3)** for raw bitstream analysis.
-* **NEW: Transient Analyzer**: Add **Click & Pop / Micro-Transient Classifier** for vinyl surface noise or digital dropouts tracking.
-* **NEW: Stereo Alignment Monitor**: Add **Long-term Inter-Channel Sync Drift Logger**.
-* **NEW: Sound Quality Analyzer**: Add **Psychoacoustic Masking Curve Display**.
+* **Other**: Add Digital Audio Protocol Decoder (Oscilloscope), Click & Pop Classifier (Transient Analyzer), Long-term Inter-Channel Sync Drift Logger (Stereo Alignment Monitor), Psychoacoustic Masking Curve Display (Sound Quality Analyzer).
 
 ---
 
 ## ✅ Already Implemented
 
-* **Transmission Analyzer (PRBS)**: Evaluates digital integrity (bit-perfect verification, bit error rate, LSB-to-MSB error histogram, DSP auto-detection) and analog transmission quality (EVM, Equalized EVM, Impulse Response, Frequency Response, Physical Delay, Jitter/Drift tracking). (Incorporates *Bit-Perfect Verifier* & *Digital Interface Analyzer*)
-* **DAC Ringing Analysis (Transient Analyzer)**: Evaluates DAC reconstruction filter ringing characteristics (Pre/Post Ringing Ratio, Filter Type detection such as Linear Phase, Minimum Phase, or Intermediate Phase).
-* **Allan Deviation (Frequency Counter)**: Measures frequency stability and clock jitter over various integration times (Tau) with real-time log-log plot visualization.
+* **Transmission Analyzer (PRBS)**
+* **DAC Ringing Analysis (Transient Analyzer)**
+* **Allan Deviation (Frequency Counter)**
 * Quantization/Bit Depth Analyzer, Crosstalk & Multitone, Oscilloscope Persistence, Linearity Analyzer, J-Test, RIAA EQ Matcher, IR, LUFS (True Peak), Amplitude Sweep, etc.
 
 ---
@@ -64,8 +62,9 @@ Focus is strictly **Signal Measurement** (analyzing audio signals, DAC/Amp perfo
 * **Multitone THD Analyzer**: Duplicate (Covered by Advanced Distortion Meter).
 * **Step Response Analyzer / Spectrum Analyzer THD Hot-Tracking / Multi-Channel Phase Matrix**.
 * **Slew Rate Calculator**: Cancelled (Narrow-band sound devices do not yield meaningful results).
-* **NEW: Wireless Audio Link Tester**: Duplicate (Can be achieved by combining "Continuity & Dropout Logger" and "Lossy Codec Artifact Analyzer").
-* **NEW: Multi-band Compressor Profiler**: Duplicate (Covered by "Dynamics Processor Profiler").
+* **Wireless Audio Link Tester**: Duplicate (Use Continuity & Dropout Logger + Lossy Codec Artifact Analyzer).
+* **Multi-band Compressor Profiler**: Duplicate (Covered by Dynamics Processor Profiler).
+* **NEW: Cable Microphonics Logger**: Duplicate (Covered by Noise Profiler / Transient Analyzer).
 
 ---
 
