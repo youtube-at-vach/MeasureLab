@@ -62,6 +62,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 37 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
 | 38 | **Plot Comparer** | Overlay and compare multiple plot traces from different measurements. Supports gain offset, axis shift, normalization (align peaks), dual Y-axis mapping (Y1/Y2), log scaling, and interactive cursor readout. |
 | 39 | **Transmission Analyzer** (Experimental) | Analyzes transmission paths (USB, Bluetooth, Analog) using multi-pattern PRBS sequences. Performs digital integrity diagnostics (bit-perfect test, bit errors, DSP detection) and analog path analysis (EVM, impulse/frequency response, propagation delay, clock jitter). |
+| 40 | **Nonlinear System Analyzer** (Experimental) | Extracts true linear response and 2nd-5th harmonics using SSS (Simultaneous Sweep Sinusoid) and Parallel Hammerstein modeling. |
 
 ### 🌍 Localization
 
