@@ -118,15 +118,11 @@ plugins:
             プロセッサーベンチマーク: Processor Benchmark
             波形ループプレイヤー: Waveform Loop Player
             ログビューアー: Log Viewer
-            理論と実装: Theory & Implementation
             測定レシピ: Measurement Recipes
             概要: Overview
             ノイズ測定: Noise Measurement
             歪み測定: Distortion Measurement
             スピーカーインピーダンス: Speaker Impedance
-            理論と実装: Theory & Implementation
-            ロックインアンプ実装: Lock-in Amplifier Implementation
-            カルマンフィルター: Kalman Filter
             リファレンス: Reference
             用語集: Glossary
             付録: Appendix
@@ -212,10 +208,6 @@ nav:
       - 歪み測定: measurement_recipes/distortion_measurement.md
       - スピーカーインピーダンス: measurement_recipes/speaker_impedance.md
       - ロックインアンプ: measurement_recipes/lockin_amplifier.md
-
-  - 理論と実装:
-      - ロックインアンプ実装: implementation/lock_in_amplifier.md
-      - カルマンフィルター: implementation/kalman_filter.md
 
   - リファレンス:
       - 用語集: glossary.md
