@@ -36,6 +36,7 @@ def _get_safe_colormap(name: str) -> pg.ColorMap:
         return pg.colormap.get(name)
     except Exception:
         from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
+
         if name in Gradients:
             preset = Gradients[name]
             ticks = sorted(preset["ticks"], key=lambda t: t[0])
@@ -113,16 +114,12 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         source_form.setSpacing(6)
 
         self.import_btn = QPushButton(tr("Import Model JSON..."))
-        self.import_btn.setStyleSheet(
-            "background-color: #4ba3e3; color: white; font-weight: bold; padding: 5px;"
-        )
+        self.import_btn.setStyleSheet("background-color: #4ba3e3; color: white; font-weight: bold; padding: 5px;")
         self.import_btn.clicked.connect(self.import_model_file)
         source_form.addWidget(self.import_btn)
 
         self.load_cache_btn = QPushButton(tr("Load Live Cache"))
-        self.load_cache_btn.setStyleSheet(
-            "background-color: #2b8c56; color: white; font-weight: bold; padding: 5px;"
-        )
+        self.load_cache_btn.setStyleSheet("background-color: #2b8c56; color: white; font-weight: bold; padding: 5px;")
         self.load_cache_btn.clicked.connect(self.load_live_cache)
         source_form.addWidget(self.load_cache_btn)
 
@@ -154,7 +151,6 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.map_type_combo.currentIndexChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Map Type:"), self.map_type_combo)
 
-
         self.harm_unit_combo = QComboBox()
         self.harm_unit_combo.addItem(tr("dBr (Relative)"), "dbr")
         self.harm_unit_combo.addItem(tr("dBFS (Absolute)"), "dbfs")
@@ -182,7 +178,6 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.max_level_spin.valueChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Max Level:"), self.max_level_spin)
 
-
         # Color Map
         self.color_map_combo = QComboBox()
         self.color_map_combo.addItem("Inferno", "inferno")
@@ -207,6 +202,20 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.show_contours_chk.setChecked(True)
         self.show_contours_chk.toggled.connect(self.update_2d_map)
         map_form.addRow(self.show_contours_chk)
+
+        self.enable_noise_chk = QCheckBox(tr("Enable Noise Floor"))
+        self.enable_noise_chk.setChecked(False)
+        self.enable_noise_chk.toggled.connect(self.on_noise_floor_toggled)
+        map_form.addRow(self.enable_noise_chk)
+
+        self.noise_floor_spin = QDoubleSpinBox()
+        self.noise_floor_spin.setRange(-160.0, -40.0)
+        self.noise_floor_spin.setValue(-100.0)
+        self.noise_floor_spin.setSuffix(" dBFS")
+        self.noise_floor_spin.setSingleStep(5.0)
+        self.noise_floor_spin.setEnabled(False)
+        self.noise_floor_spin.valueChanged.connect(self.update_2d_map)
+        map_form.addRow(tr("Noise Floor:"), self.noise_floor_spin)
 
         self.map_group.setEnabled(False)
         sidebar_layout.addWidget(self.map_group)
@@ -326,14 +335,10 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Reference indicator lines (permanent, showing self.ref_f0, self.ref_amp)
         self.ref_v_line = pg.InfiniteLine(
-            angle=90,
-            movable=False,
-            pen=pg.mkPen((255, 80, 0, 200), width=1.5, style=Qt.PenStyle.DashLine)
+            angle=90, movable=False, pen=pg.mkPen((255, 80, 0, 200), width=1.5, style=Qt.PenStyle.DashLine)
         )
         self.ref_h_line = pg.InfiniteLine(
-            angle=0,
-            movable=False,
-            pen=pg.mkPen((255, 80, 0, 200), width=1.5, style=Qt.PenStyle.DashLine)
+            angle=0, movable=False, pen=pg.mkPen((255, 80, 0, 200), width=1.5, style=Qt.PenStyle.DashLine)
         )
         self.map_plot_item.addItem(self.ref_v_line, ignoreBounds=True)
         self.map_plot_item.addItem(self.ref_h_line, ignoreBounds=True)
@@ -347,7 +352,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.map_plot_item.scene().sigMouseMoved.connect(self.on_mouse_moved)
         self.map_plot_item.scene().sigMouseClicked.connect(self.on_map_clicked)
 
-        self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap('thermal'))
+        self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap("thermal"))
         self.colorbar.setImageItem(self.image_item)
         self.map_graphics_widget.addItem(self.colorbar)
 
@@ -371,9 +376,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Red vertical indicator line for ref_f0
         self.curve_freq_ref_line = pg.InfiniteLine(
-            angle=90,
-            movable=False,
-            pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+            angle=90, movable=False, pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
         )
         self.curve_freq_plot.addItem(self.curve_freq_ref_line)
 
@@ -388,9 +391,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Red vertical indicator line for ref_amp
         self.curve_amp_ref_line = pg.InfiniteLine(
-            angle=90,
-            movable=False,
-            pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+            angle=90, movable=False, pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
         )
         self.curve_amp_plot.addItem(self.curve_amp_ref_line)
 
@@ -470,6 +471,14 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         main_layout.addWidget(self.tabs, stretch=1)
 
+    def on_noise_floor_toggled(self, checked):
+        self.noise_floor_spin.setEnabled(checked)
+        thd_idx = self.map_type_combo.findData("THD")
+        if thd_idx >= 0:
+            label = tr("THD+N Map") if checked else tr("THD Map")
+            self.map_type_combo.setItemText(thd_idx, label)
+        self.update_2d_map()
+
     def update_cache_button_state(self):
         available = has_active_model()
         self.load_cache_btn.setEnabled(available)
@@ -492,12 +501,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             QMessageBox.warning(self, tr("Cache Empty"), tr("No active model cached. Please perform SSS measurement."))
 
     def import_model_file(self):
-        filepath, _ = QFileDialog.getOpenFileName(
-            self,
-            tr("Import Hammerstein Model"),
-            "",
-            "JSON Files (*.json)"
-        )
+        filepath, _ = QFileDialog.getOpenFileName(self, tr("Import Hammerstein Model"), "", "JSON Files (*.json)")
         if not filepath:
             return
 
@@ -505,6 +509,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             data = load_hammerstein_model(filepath)
             self.set_model_data(data)
             import os
+
             filename = os.path.basename(filepath)
             self.lbl_status.setText(filename)
             self.lbl_status.setStyleSheet("font-weight: bold; color: #4ba3e3;")
@@ -622,13 +627,17 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Keep harm_unit_combo enabled always to allow switching dBFS/dBr for THD/Fundamental as well
         self.harm_unit_combo.setEnabled(True)
 
+        use_noise = self.enable_noise_chk.isChecked()
+        noise_db = self.noise_floor_spin.value()
+        noise_linear = 10 ** (noise_db / 20.0) if use_noise else 0.0
+        noise_sq = noise_linear**2
 
         # 1. Grids Setup
         start_f = self.model_metadata.get("start_freq", 20.0)
         end_f = self.model_metadata.get("end_freq", 20000.0)
         freqs_grid = np.logspace(np.log10(start_f), np.log10(end_f), num=N_f)
 
-        N_A = 80 # fixed amplitude steps for nice vertical gradient resolution
+        N_A = 80  # fixed amplitude steps for nice vertical gradient resolution
         amps_db = np.linspace(min_level, max_level, num=N_A)
         amps_linear = 10 ** (amps_db / 20.0)
 
@@ -661,7 +670,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                     H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
 
         # 4. Synthesize outputs
-        A = amps_linear[:, np.newaxis] # (N_A, 1)
+        A = amps_linear[:, np.newaxis]  # (N_A, 1)
 
         Y = {}
         Y[1] = (1.0) * (A * H_interp[1][1] + (0.75 * (A**3)) * H_interp[1][3] + (0.625 * (A**5)) * H_interp[1][5])
@@ -680,44 +689,70 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         if map_type == "THD":
             mag_harmonics_sq = np.zeros_like(mag_Y1)
             for n in range(2, 6):
-                mag_harmonics_sq += np.abs(Y[n])**2
-            
-            if harm_unit == "dbfs":
-                Z = 20 * np.log10(np.sqrt(mag_harmonics_sq) + 1e-12)
-                title = tr("Total Harmonic Distortion (THD)") + " [dBFS]"
-            else: # dbr
-                thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
-                Z = 20 * np.log10(thd_linear + 1e-12)
-                title = tr("Total Harmonic Distortion (THD)") + " [dBr]"
+                mag_harmonics_sq += np.abs(Y[n]) ** 2
+
+            if use_noise:
+                numerator_sq = mag_harmonics_sq + noise_sq
+                if harm_unit == "dbfs":
+                    Z = 20 * np.log10(np.sqrt(numerator_sq) + 1e-12)
+                    title = tr("Total Harmonic Distortion + Noise (THD+N)") + " [dBFS]"
+                else:  # dbr
+                    denom_sq = np.zeros_like(mag_Y1)
+                    for n in range(1, 6):
+                        denom_sq += np.abs(Y[n]) ** 2
+                    denom_sq += noise_sq
+                    Z = 20 * np.log10(np.sqrt(numerator_sq) / np.sqrt(denom_sq) + 1e-12)
+                    title = tr("Total Harmonic Distortion + Noise (THD+N)") + " [dBr]"
+            else:
+                if harm_unit == "dbfs":
+                    Z = 20 * np.log10(np.sqrt(mag_harmonics_sq) + 1e-12)
+                    title = tr("Total Harmonic Distortion (THD)") + " [dBFS]"
+                else:  # dbr
+                    thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
+                    Z = 20 * np.log10(thd_linear + 1e-12)
+                    title = tr("Total Harmonic Distortion (THD)") + " [dBr]"
         else:
             # High-order harmonic H2-H5
             order = int(map_type[1])
             mag_Yn = np.abs(Y[order])
 
-            if harm_unit == "dbfs":
-                Z = 20 * np.log10(mag_Yn + 1e-12)
-                if order == 2:
-                    title = tr("2nd Harmonic Amplitude [dBFS]")
-                elif order == 3:
-                    title = tr("3rd Harmonic Amplitude [dBFS]")
-                elif order == 4:
-                    title = tr("4th Harmonic Amplitude [dBFS]")
-                elif order == 5:
-                    title = tr("5th Harmonic Amplitude [dBFS]")
-                else:
-                    title = tr("{order}th Harmonic Amplitude [dBFS]").format(order=order)
-            else: # dbr (relative to fundamental)
-                Z = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
-                if order == 2:
-                    title = tr("2nd Harmonic Level [dBr]")
-                elif order == 3:
-                    title = tr("3rd Harmonic Level [dBr]")
-                elif order == 4:
-                    title = tr("4th Harmonic Level [dBr]")
-                elif order == 5:
-                    title = tr("5th Harmonic Level [dBr]")
-                else:
-                    title = tr("{order}th Harmonic Level [dBr]").format(order=order)
+            if use_noise:
+                val_sq = mag_Yn**2 + noise_sq
+                if harm_unit == "dbfs":
+                    Z = 20 * np.log10(np.sqrt(val_sq) + 1e-12)
+                    title = tr("{order}th Harmonic + Noise [dBFS]").format(order=order)
+                else:  # dbr
+                    denom_sq = np.zeros_like(mag_Y1)
+                    for n in range(1, 6):
+                        denom_sq += np.abs(Y[n]) ** 2
+                    denom_sq += noise_sq
+                    Z = 20 * np.log10(np.sqrt(val_sq) / np.sqrt(denom_sq) + 1e-12)
+                    title = tr("{order}th Harmonic + Noise [dBr]").format(order=order)
+            else:
+                if harm_unit == "dbfs":
+                    Z = 20 * np.log10(mag_Yn + 1e-12)
+                    if order == 2:
+                        title = tr("2nd Harmonic Amplitude [dBFS]")
+                    elif order == 3:
+                        title = tr("3rd Harmonic Amplitude [dBFS]")
+                    elif order == 4:
+                        title = tr("4th Harmonic Amplitude [dBFS]")
+                    elif order == 5:
+                        title = tr("5th Harmonic Amplitude [dBFS]")
+                    else:
+                        title = tr("{order}th Harmonic Amplitude [dBFS]").format(order=order)
+                else:  # dbr (relative to fundamental)
+                    Z = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
+                    if order == 2:
+                        title = tr("2nd Harmonic Level [dBr]")
+                    elif order == 3:
+                        title = tr("3rd Harmonic Level [dBr]")
+                    elif order == 4:
+                        title = tr("4th Harmonic Level [dBr]")
+                    elif order == 5:
+                        title = tr("5th Harmonic Level [dBr]")
+                    else:
+                        title = tr("{order}th Harmonic Level [dBr]").format(order=order)
 
         # Draw Image
         # autoLevels=False to preserve user interaction with the color bar handles
@@ -728,12 +763,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Set mapping coordinates
         log_f_min = np.log10(start_f)
         log_f_max = np.log10(end_f)
-        self.image_item.setRect(QRectF(
-            log_f_min,
-            min_level,
-            log_f_max - log_f_min,
-            max_level - min_level
-        ))
+        self.image_item.setRect(QRectF(log_f_min, min_level, log_f_max - log_f_min, max_level - min_level))
 
         if getattr(self, "first_map_draw", True):
             self.image_item.setLevels((-120.0, -40.0))
@@ -810,7 +840,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             max_level = self.max_level_spin.value()
 
             if log_f_min <= log_f <= log_f_max and min_level <= amp_db <= max_level:
-                f = 10 ** log_f
+                f = 10**log_f
 
                 # Show crosshairs
                 self.v_line.setPos(log_f)
@@ -832,19 +862,21 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
                     map_type = self.map_type_combo.currentData()
                     harm_unit = self.harm_unit_combo.currentData()
+                    use_noise = self.enable_noise_chk.isChecked()
 
                     unit_str = "dB"
                     if map_type == "THD":
-                        name_str = "THD"
+                        name_str = "THD+N" if use_noise else "THD"
                     else:
                         order = int(map_type[1])
-                        name_str = f"H{order}"
-                        if harm_unit == "dbfs":
-                            unit_str = "dBFS"
-                        else:
-                            unit_str = "dBr"
+                        name_str = f"H{order}+N" if use_noise else f"H{order}"
 
-                    f_str = f"{f/1000.0:.2f} kHz" if f >= 1000.0 else f"{f:.1f} Hz"
+                    if harm_unit == "dbfs":
+                        unit_str = "dBFS"
+                    else:
+                        unit_str = "dBr"
+
+                    f_str = f"{f / 1000.0:.2f} kHz" if f >= 1000.0 else f"{f:.1f} Hz"
                     text = f" {f_str}, {amp_db:.1f} dBFS  →  {name_str}: {val:.1f} {unit_str}"
 
                     self.hover_label_item.setText(text)
@@ -881,7 +913,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             max_level = self.max_level_spin.value()
 
             if log_f_min <= log_f <= log_f_max and min_level <= amp_db <= max_level:
-                f = 10 ** log_f
+                f = 10**log_f
                 self.update_reference_params(f, amp_db)
 
     # --- Parameter Synchronization ---
@@ -969,18 +1001,20 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             out_of_bounds = f_n > nyquist
             for p in range(1, 6):
                 if p in H_dict:
-                     real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
-                     imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
-                     val = real_val + 1j * imag_val
-                     val[out_of_bounds] = 0.0j
-                     H_interp[n][p] = val
+                    real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
+                    imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
+                    val = real_val + 1j * imag_val
+                    val[out_of_bounds] = 0.0j
+                    H_interp[n][p] = val
                 else:
-                     H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
+                    H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
 
         A_in = 10 ** (self.ref_amp / 20.0)
 
         Y = {}
-        Y[1] = (1.0) * (A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5])
+        Y[1] = (1.0) * (
+            A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5]
+        )
         Y[2] = (-1j) * ((0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4])
         Y[3] = (-1.0) * ((0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5])
         Y[4] = (+1j) * ((0.125 * (A_in**4)) * H_interp[4][4])
@@ -1000,55 +1034,85 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         curves_data = {}
 
+        use_noise = self.enable_noise_chk.isChecked()
+        noise_db = self.noise_floor_spin.value()
+        noise_linear = 10 ** (noise_db / 20.0) if use_noise else 0.0
+        noise_sq = noise_linear**2
+
         # THD
         mag_harmonics_sq = np.zeros_like(mag_Y1)
         for n in range(2, 6):
-            mag_harmonics_sq += np.abs(Y[n])**2
-        
-        if harm_unit == "dbfs":
-            curves_data["THD"] = 20 * np.log10(np.sqrt(mag_harmonics_sq) + 1e-12)
-        else: # dbr
-            thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
-            curves_data["THD"] = 20 * np.log10(thd_linear + 1e-12)
+            mag_harmonics_sq += np.abs(Y[n]) ** 2
+
+        if use_noise:
+            numerator_sq = mag_harmonics_sq + noise_sq
+            if harm_unit == "dbfs":
+                curves_data["THD"] = 20 * np.log10(np.sqrt(numerator_sq) + 1e-12)
+            else:  # dbr
+                denom_sq = np.zeros_like(mag_Y1)
+                for n in range(1, 6):
+                    denom_sq += np.abs(Y[n]) ** 2
+                denom_sq += noise_sq
+                curves_data["THD"] = 20 * np.log10(np.sqrt(numerator_sq) / np.sqrt(denom_sq) + 1e-12)
+        else:
+            if harm_unit == "dbfs":
+                curves_data["THD"] = 20 * np.log10(np.sqrt(mag_harmonics_sq) + 1e-12)
+            else:  # dbr
+                thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
+                curves_data["THD"] = 20 * np.log10(thd_linear + 1e-12)
 
         # Harmonics
         for n in range(1, 6):
             h_key = f"h{n}"
             mag_Yn = np.abs(Y[n])
-            if n == 1:
+            if use_noise:
+                val_sq = mag_Yn**2 + noise_sq
                 if harm_unit == "dbfs":
-                    curves_data[h_key] = 20 * np.log10(mag_Yn + 1e-12)
-                else: # dbr
-                    curves_data[h_key] = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
+                    curves_data[h_key] = 20 * np.log10(np.sqrt(val_sq) + 1e-12)
+                else:  # dbr
+                    denom_sq = np.zeros_like(mag_Y1)
+                    for k in range(1, 6):
+                        denom_sq += np.abs(Y[k]) ** 2
+                    denom_sq += noise_sq
+                    curves_data[h_key] = 20 * np.log10(np.sqrt(val_sq) / np.sqrt(denom_sq) + 1e-12)
             else:
-                if harm_unit == "dbfs":
-                    curves_data[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                if n == 1:
+                    if harm_unit == "dbfs":
+                        curves_data[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                    else:  # dbr
+                        curves_data[h_key] = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
                 else:
-                    curves_data[h_key] = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
+                    if harm_unit == "dbfs":
+                        curves_data[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                    else:
+                        curves_data[h_key] = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
 
         # Plot vs Frequency
         fundamental_name = tr("Fundamental (dBFS)") if harm_unit == "dbfs" else tr("Fundamental (dBr)")
         self.curve_freq_plot.plot(
-            freqs_grid, curves_data["h1"],
+            freqs_grid,
+            curves_data["h1"],
             pen=pg.mkPen(color=colors["h1"], width=1.5, style=Qt.PenStyle.DashLine),
-            name=fundamental_name
+            name=fundamental_name,
         )
         unit_label = "dBFS" if harm_unit == "dbfs" else "dBr"
 
+        thd_name = (
+            tr("THD+N ({unit})").format(unit=unit_label) if use_noise else tr("THD ({unit})").format(unit=unit_label)
+        )
         self.curve_freq_plot.plot(
-            freqs_grid, curves_data["THD"],
-            pen=pg.mkPen(color=colors["THD"], width=2.5),
-            name=tr("THD (dBFS)") if harm_unit == "dbfs" else tr("THD (dBr)")
+            freqs_grid, curves_data["THD"], pen=pg.mkPen(color=colors["THD"], width=2.5), name=thd_name
         )
         for n in range(2, 6):
             h_key = f"h{n}"
+            h_name = f"H{n} + Noise ({unit_label})" if use_noise else f"H{n} ({unit_label})"
             self.curve_freq_plot.plot(
-                freqs_grid, curves_data[h_key],
-                pen=pg.mkPen(color=colors[h_key], width=1.8),
-                name=f"H{n} ({unit_label})"
+                freqs_grid, curves_data[h_key], pen=pg.mkPen(color=colors[h_key], width=1.8), name=h_name
             )
 
-        title_freq = tr("Distortion vs Frequency") + f" (Amp = {self.ref_amp:.1f} dBFS)"
+        title_freq = (
+            tr("THD+N & Distortion vs Frequency") if use_noise else tr("THD & Distortion vs Frequency")
+        ) + f" (Amp = {self.ref_amp:.1f} dBFS)"
         self.curve_freq_plot.setTitle(title_freq)
         self.curve_freq_plot.setLabel("left", tr("Level") + f" [{unit_label}]")
 
@@ -1097,50 +1161,75 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # THD
         mag_harmonics_sq_amp = np.zeros_like(mag_Y1_amp)
         for n in range(2, 6):
-            mag_harmonics_sq_amp += np.abs(Y_amp[n])**2
-        
-        if harm_unit == "dbfs":
-            curves_data_amp["THD"] = 20 * np.log10(np.sqrt(mag_harmonics_sq_amp) + 1e-12)
-        else: # dbr
-            thd_linear_amp = np.sqrt(mag_harmonics_sq_amp) / mag_Y1_amp_safe
-            curves_data_amp["THD"] = 20 * np.log10(thd_linear_amp + 1e-12)
+            mag_harmonics_sq_amp += np.abs(Y_amp[n]) ** 2
+
+        if use_noise:
+            numerator_sq = mag_harmonics_sq_amp + noise_sq
+            if harm_unit == "dbfs":
+                curves_data_amp["THD"] = 20 * np.log10(np.sqrt(numerator_sq) + 1e-12)
+            else:  # dbr
+                denom_sq = np.zeros_like(mag_Y1_amp)
+                for n in range(1, 6):
+                    denom_sq += np.abs(Y_amp[n]) ** 2
+                denom_sq += noise_sq
+                curves_data_amp["THD"] = 20 * np.log10(np.sqrt(numerator_sq) / np.sqrt(denom_sq) + 1e-12)
+        else:
+            if harm_unit == "dbfs":
+                curves_data_amp["THD"] = 20 * np.log10(np.sqrt(mag_harmonics_sq_amp) + 1e-12)
+            else:  # dbr
+                thd_linear_amp = np.sqrt(mag_harmonics_sq_amp) / mag_Y1_amp_safe
+                curves_data_amp["THD"] = 20 * np.log10(thd_linear_amp + 1e-12)
 
         # Harmonics
         for n in range(1, 6):
             h_key = f"h{n}"
             mag_Yn = np.abs(Y_amp[n])
-            if n == 1:
+            if use_noise:
+                val_sq = mag_Yn**2 + noise_sq
                 if harm_unit == "dbfs":
-                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn + 1e-12)
-                else: # dbr
-                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn / mag_Y1_amp_safe + 1e-12)
+                    curves_data_amp[h_key] = 20 * np.log10(np.sqrt(val_sq) + 1e-12)
+                else:  # dbr
+                    denom_sq = np.zeros_like(mag_Y1_amp)
+                    for k in range(1, 6):
+                        denom_sq += np.abs(Y_amp[k]) ** 2
+                    denom_sq += noise_sq
+                    curves_data_amp[h_key] = 20 * np.log10(np.sqrt(val_sq) / np.sqrt(denom_sq) + 1e-12)
             else:
-                if harm_unit == "dbfs":
-                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                if n == 1:
+                    if harm_unit == "dbfs":
+                        curves_data_amp[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                    else:  # dbr
+                        curves_data_amp[h_key] = 20 * np.log10(mag_Yn / mag_Y1_amp_safe + 1e-12)
                 else:
-                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn / mag_Y1_amp_safe + 1e-12)
+                    if harm_unit == "dbfs":
+                        curves_data_amp[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                    else:
+                        curves_data_amp[h_key] = 20 * np.log10(mag_Yn / mag_Y1_amp_safe + 1e-12)
 
         # Plot vs Amplitude
         self.curve_amp_plot.plot(
-            amps_db, curves_data_amp["h1"],
+            amps_db,
+            curves_data_amp["h1"],
             pen=pg.mkPen(color=colors["h1"], width=1.5, style=Qt.PenStyle.DashLine),
-            name=fundamental_name
+            name=fundamental_name,
+        )
+        thd_name = (
+            tr("THD+N ({unit})").format(unit=unit_label) if use_noise else tr("THD ({unit})").format(unit=unit_label)
         )
         self.curve_amp_plot.plot(
-            amps_db, curves_data_amp["THD"],
-            pen=pg.mkPen(color=colors["THD"], width=2.5),
-            name=tr("THD (dBFS)") if harm_unit == "dbfs" else tr("THD (dBr)")
+            amps_db, curves_data_amp["THD"], pen=pg.mkPen(color=colors["THD"], width=2.5), name=thd_name
         )
         for n in range(2, 6):
             h_key = f"h{n}"
+            h_name = f"H{n} + Noise ({unit_label})" if use_noise else f"H{n} ({unit_label})"
             self.curve_amp_plot.plot(
-                amps_db, curves_data_amp[h_key],
-                pen=pg.mkPen(color=colors[h_key], width=1.8),
-                name=f"H{n} ({unit_label})"
+                amps_db, curves_data_amp[h_key], pen=pg.mkPen(color=colors[h_key], width=1.8), name=h_name
             )
 
-        f0_str = f"{self.ref_f0/1000.0:.2f} kHz" if self.ref_f0 >= 1000.0 else f"{self.ref_f0:.1f} Hz"
-        title_amp = tr("Distortion vs Amplitude") + f" (Freq = {f0_str})"
+        f0_str = f"{self.ref_f0 / 1000.0:.2f} kHz" if self.ref_f0 >= 1000.0 else f"{self.ref_f0:.1f} Hz"
+        title_amp = (
+            tr("THD+N & Distortion vs Amplitude") if use_noise else tr("THD & Distortion vs Amplitude")
+        ) + f" (Freq = {f0_str})"
         self.curve_amp_plot.setTitle(title_amp)
         self.curve_amp_plot.setLabel("left", tr("Level") + f" [{unit_label}]")
 
@@ -1250,6 +1339,19 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 symbolSize=8,
             )
             self.sim_plot.addItem(curve)
+
+        use_noise = self.enable_noise_chk.isChecked()
+        if use_noise:
+            noise_db = self.noise_floor_spin.value()
+            noise_line = pg.InfiniteLine(
+                angle=0,
+                movable=False,
+                pen=pg.mkPen(color=(150, 150, 150, 150), width=1.2, style=Qt.PenStyle.DashLine),
+                label=tr("Noise Floor"),
+                labelOpts={"position": 0.9, "color": (150, 150, 150)},
+            )
+            noise_line.setPos(noise_db)
+            self.sim_plot.addItem(noise_line)
 
     # --- ComparableWidgetInterface ---
     def get_comparison_data(self):
