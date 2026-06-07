@@ -2,7 +2,7 @@ import logging
 import time
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import QObject, Qt, QRectF
+from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -75,6 +75,10 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_time_ms = None
         self.model_metadata = {}
         self.first_map_draw = True
+        self.cached_Z = None
+
+        self.iso_curves = []
+        self.iso_labels = []
 
         self.init_ui()
 
@@ -123,7 +127,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
-        
+
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
         info_layout.addRow(tr("Status:"), self.lbl_status)
@@ -195,6 +199,11 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.color_map_combo.blockSignals(False)
         map_form.addRow(tr("Color Map:"), self.color_map_combo)
 
+        self.show_contours_chk = QCheckBox(tr("Show Contours"))
+        self.show_contours_chk.setChecked(True)
+        self.show_contours_chk.toggled.connect(self.update_2d_map)
+        map_form.addRow(self.show_contours_chk)
+
         self.map_group.setEnabled(False)
         sidebar_layout.addWidget(self.map_group)
 
@@ -213,7 +222,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.tab_bode = QWidget()
         bode_layout = QVBoxLayout(self.tab_bode)
         bode_layout.setContentsMargins(2, 2, 2, 2)
-        
+
         self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response (PHM Separation)"))
         self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
@@ -258,6 +267,22 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         self.image_item = pg.ImageItem()
         self.map_plot_item.addItem(self.image_item)
+
+        # Crosshair lines
+        self.v_line = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen((255, 255, 0, 150), width=1.0))
+        self.h_line = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen((255, 255, 0, 150), width=1.0))
+        self.v_line.hide()
+        self.h_line.hide()
+        self.map_plot_item.addItem(self.v_line, ignoreBounds=True)
+        self.map_plot_item.addItem(self.h_line, ignoreBounds=True)
+
+        # Floating coordinate overlay label
+        self.hover_label_item = pg.TextItem(text="", color=(255, 255, 255), fill=(0, 0, 0, 180), anchor=(0, 0))
+        self.hover_label_item.hide()
+        self.map_plot_item.addItem(self.hover_label_item, ignoreBounds=True)
+
+        # Connect mouse move
+        self.map_plot_item.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
         self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap('turbo'))
         self.colorbar.setImageItem(self.image_item)
@@ -434,7 +459,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_freqs = data["frequency_domain"]["freqs"]
         self.cached_mags = data["frequency_domain"]["magnitudes_db"]
         self.cached_phases = data["frequency_domain"]["phases_deg"]
-        
+
         self.cached_time_ms = data["time_domain"]["time_ms"]
         # Convert dictionary to list for kernels if needed
         kernels_dict = data["time_domain"]["kernels"]
@@ -618,6 +643,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # autoLevels=False to preserve user interaction with the color bar handles
         self.image_item.setImage(Z.T, autoLevels=False)
         self.map_plot_item.setTitle(title)
+        self.cached_Z = Z  # Cache for mouse hover query
 
         # Set mapping coordinates
         log_f_min = np.log10(start_f)
@@ -630,9 +656,43 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ))
 
         if getattr(self, "first_map_draw", True):
-            self.image_item.setLevels((-100.0, -40.0))
-            self.colorbar.setLevels((-100.0, -40.0))
+            self.image_item.setLevels((-120.0, -40.0))
+            self.colorbar.setLevels((-120.0, -40.0))
             self.first_map_draw = False
+
+        # Clear existing contours & labels
+        for iso in self.iso_curves:
+            self.map_plot_item.removeItem(iso)
+        self.iso_curves.clear()
+        for lbl in self.iso_labels:
+            self.map_plot_item.removeItem(lbl)
+        self.iso_labels.clear()
+
+        # Draw contours if enabled
+        if self.show_contours_chk.isChecked():
+            levels_range = self.colorbar.levels()
+            if levels_range is not None and len(levels_range) == 2 and levels_range[0] is not None:
+                c_min, c_max = levels_range
+            else:
+                c_min, c_max = -120.0, -40.0
+            levels = np.arange(np.ceil(c_min / 10) * 10, np.floor(c_max / 10) * 10 + 1, 10)
+
+            for lvl in levels:
+                iso = pg.IsocurveItem(data=Z.T, level=lvl)
+                iso.setParentItem(self.image_item)
+                iso.setPen(pg.mkPen(color=(255, 255, 255, 140), width=1.0))
+                self.iso_curves.append(iso)
+
+                # Right-edge labels: Z has shape (N_A, N_f), Z[:, -1] has shape (N_A) corresponding to amps_db
+                Z_right = Z[:, -1]
+                if np.min(Z_right) <= lvl <= np.max(Z_right):
+                    sort_idx = np.argsort(Z_right)
+                    y_pos = np.interp(lvl, Z_right[sort_idx], amps_db[sort_idx])
+
+                    lbl = pg.TextItem(f"{lvl:g} dB", color=(255, 255, 255, 200), anchor=(1.0, 0.5))
+                    lbl.setPos(log_f_max - 0.02, y_pos)
+                    self.map_plot_item.addItem(lbl, ignoreBounds=True)
+                    self.iso_labels.append(lbl)
 
     def update_color_map(self):
         cmap_name = self.color_map_combo.currentData()
@@ -641,6 +701,77 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.colorbar.setColorMap(cmap)
         except Exception as e:
             logger.error("Failed to set colormap %s: %s", cmap_name, e)
+
+    def on_mouse_moved(self, pos):
+        if self.cached_freqs is None:
+            return
+
+        if self.tabs.currentWidget() != self.tab_map:
+            return
+
+        vb = self.map_plot_item.vb
+        if vb.sceneBoundingRect().contains(pos):
+            mouse_point = vb.mapSceneToView(pos)
+            log_f = mouse_point.x()
+            amp_db = mouse_point.y()
+
+            start_f = self.model_metadata.get("start_freq", 20.0)
+            end_f = self.model_metadata.get("end_freq", 20000.0)
+            log_f_min = np.log10(start_f)
+            log_f_max = np.log10(end_f)
+            min_level = self.min_level_spin.value()
+            max_level = self.max_level_spin.value()
+
+            if log_f_min <= log_f <= log_f_max and min_level <= amp_db <= max_level:
+                f = 10 ** log_f
+
+                # Show crosshairs
+                self.v_line.setPos(log_f)
+                self.h_line.setPos(amp_db)
+                self.v_line.show()
+                self.h_line.show()
+
+                N_f = self.map_resolution_spin.value()
+                freqs_grid = np.logspace(np.log10(start_f), np.log10(end_f), num=N_f)
+                N_A = 80
+                amps_db = np.linspace(min_level, max_level, num=N_A)
+
+                if getattr(self, "cached_Z", None) is not None:
+                    f_idx = np.argmin(np.abs(freqs_grid - f))
+                    a_idx = np.argmin(np.abs(amps_db - amp_db))
+                    f_idx = max(0, min(N_f - 1, f_idx))
+                    a_idx = max(0, min(N_A - 1, a_idx))
+                    val = self.cached_Z[a_idx, f_idx]
+
+                    map_type = self.map_type_combo.currentData()
+                    harm_unit = self.harm_unit_combo.currentData()
+
+                    unit_str = "dB"
+                    if map_type == "THD":
+                        name_str = "THD"
+                    else:
+                        order = int(map_type[1])
+                        name_str = f"H{order}"
+                        if harm_unit == "dbfs":
+                            unit_str = "dBFS"
+                        else:
+                            unit_str = "dBc"
+
+                    f_str = f"{f/1000.0:.2f} kHz" if f >= 1000.0 else f"{f:.1f} Hz"
+                    text = f" {f_str}, {amp_db:.1f} dBFS  →  {name_str}: {val:.1f} {unit_str}"
+
+                    self.hover_label_item.setText(text)
+
+                    # Place label at the top-left corner of the viewbox
+                    label_x = log_f_min + (log_f_max - log_f_min) * 0.01
+                    label_y = max_level - (max_level - min_level) * 0.05
+                    self.hover_label_item.setPos(label_x, label_y)
+                    self.hover_label_item.show()
+                return
+
+        self.v_line.hide()
+        self.h_line.hide()
+        self.hover_label_item.hide()
 
     # --- Simulator Methods ---
     def on_tab_changed(self, index):
