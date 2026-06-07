@@ -89,3 +89,35 @@ def load_hammerstein_model(filepath):
     except Exception as e:
         logger.error("Failed to load Hammerstein model: %s", e, exc_info=True)
         raise
+
+
+# Decoupled active model cache for inter-module communication
+_ACTIVE_MODEL_CACHE = None
+
+
+def set_active_model(data):
+    """
+    Caches the active Hammerstein model in memory.
+    data: dict containing model structure (metadata, time_domain, frequency_domain).
+    """
+    global _ACTIVE_MODEL_CACHE
+    _ACTIVE_MODEL_CACHE = data
+
+
+def get_active_model():
+    """
+    Retrieves the cached active Hammerstein model.
+    Returns:
+        dict: The model data, or None if no model is cached.
+    """
+    return _ACTIVE_MODEL_CACHE
+
+
+def has_active_model():
+    """
+    Checks if an active Hammerstein model is cached.
+    Returns:
+        bool: True if cached, False otherwise.
+    """
+    return _ACTIVE_MODEL_CACHE is not None
+

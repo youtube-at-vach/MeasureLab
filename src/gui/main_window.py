@@ -64,6 +64,7 @@ from src.core.module_constants import (
     MODULE_ULTRASOUND_MODULATOR,
     MODULE_WAVEFORM_LOOP_PLAYER,
     MODULE_NONLINEAR_SYSTEM_ANALYZER,
+    MODULE_HAMMERSTEIN_ANALYZER,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -107,6 +108,7 @@ MODULE_REGISTRY = {
     MODULE_PLOT_COMPARER: ("src.gui.widgets.plot_comparer", "PlotComparer"),
     MODULE_TRANSMISSION_ANALYZER: ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"),
     MODULE_NONLINEAR_SYSTEM_ANALYZER: ("src.gui.widgets.nonlinear_system_analyzer", "NonlinearSystemAnalyzer"),
+    MODULE_HAMMERSTEIN_ANALYZER: ("src.gui.widgets.hammerstein_analyzer", "HammersteinAnalyzer"),
 }
 
 
