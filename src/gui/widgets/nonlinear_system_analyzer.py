@@ -19,9 +19,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QMessageBox,
-    QSlider,
-    QGridLayout,
-    QCheckBox,
 )
 from scipy.signal import (
     chirp as signal_chirp,
@@ -396,10 +393,50 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
         self.signals.progress.emit(95)
 
+        # Push to active model cache
+        try:
+            from src.core.hammerstein_model import set_active_model
+            ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
+
+            cache_data = {
+                "metadata": {
+                    "module": self.name,
+                    "sample_rate": sample_rate,
+                    "num_amplitudes": self.num_amplitudes,
+                    "sweep_duration": self.sweep_duration,
+                    "start_freq": self.start_freq,
+                    "end_freq": self.end_freq,
+                    "input_mode": self.input_mode,
+                    "latency_sec": self.latency_sec,
+                    "ref_max": float(ref_max),
+                    "P": len(separated_kernels_data),
+                },
+                "time_domain": {
+                    "time_ms": time_ms,
+                    "kernels": {
+                        f"h{p+1}": separated_kernels_data[p] for p in range(len(separated_kernels_data))
+                    },
+                },
+                "frequency_domain": {
+                    "freqs": valid_freqs,
+                    "magnitudes_db": {
+                        k: v for k, v in magnitudes_db_dict.items() if k.startswith("h")
+                    },
+                    "phases_deg": {
+                        k: v for k, v in phases_deg_dict.items() if k.startswith("h") or k == "ref_phase"
+                    },
+                },
+            }
+            set_active_model(cache_data)
+            logger.info("Successfully pushed measured Hammerstein model to active cache.")
+        except Exception as cache_err:
+            logger.error("Failed to push model to cache: %s", cache_err)
+
         # Emit plots
         self.signals.update_plot.emit(valid_freqs, magnitudes_db_dict, phases_deg_dict)
         self.signals.update_kernels.emit(time_ms, separated_kernels_data)
         self.signals.progress.emit(100)
+
 
 
 class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
@@ -408,28 +445,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ComparableWidgetInterface.__init__(self)
         self.module = module
 
-        # Bode plots vertical cursor synchronization lines (log scale pos)
-        self.sim_freq_line_mag = pg.InfiniteLine(
-            pos=3.0,  # log10(1000.0)
-            movable=True,
-            angle=90,
-            pen=pg.mkPen((200, 200, 200), width=1.5, style=Qt.PenStyle.DashLine),
-            label="Sim Freq: 1000 Hz",
-            labelOpts={"position": 0.9, "color": (200, 200, 200), "fill": (40, 40, 40, 200)},
-        )
-        self.sim_freq_line_phase = pg.InfiniteLine(
-            pos=3.0,  # log10(1000.0)
-            movable=True,
-            angle=90,
-            pen=pg.mkPen((200, 200, 200), width=1.5, style=Qt.PenStyle.DashLine),
-            label="Sim Freq: 1000 Hz",
-            labelOpts={"position": 0.9, "color": (200, 200, 200), "fill": (40, 40, 40, 200)},
-        )
-        self.sim_freq_line_mag.setVisible(False)
-        self.sim_freq_line_phase.setVisible(False)
 
-        self.sim_freq_line_mag.sigPositionChanged.connect(self._on_mag_line_dragged)
-        self.sim_freq_line_phase.sigPositionChanged.connect(self._on_phase_line_dragged)
 
         self.init_ui()
 
@@ -445,6 +461,9 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_freqs = None
         self.cached_mags = {}
         self.cached_phases = {}
+        self.cached_kernels = None
+        self.cached_time_ms = None
+
 
     def init_ui(self):
         # Premium layout design
@@ -607,8 +626,18 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ctrl_layout.addWidget(self.stop_btn)
         ctrl_main_layout.addLayout(ctrl_layout)
 
+        # Export Button
+        self.export_btn = QPushButton(tr("Export Model..."))
+        self.export_btn.setStyleSheet(
+            "background-color: #4ba3e3; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;"
+        )
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self.export_model)
+        ctrl_main_layout.addWidget(self.export_btn)
+
         # Progress bar
         self.progress_bar = QProgressBar()
+
         self.progress_bar.setValue(0)
         self.progress_bar.setFixedHeight(12)
         ctrl_main_layout.addWidget(self.progress_bar)
@@ -628,7 +657,6 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(True, False)
         self.mag_plot.showGrid(True, True, alpha=0.3)
-        self.mag_plot.addItem(self.sim_freq_line_mag)
         mag_layout.addWidget(self.mag_plot)
         self.plot_tabs.addTab(self.mag_tab, tr("Bode Magnitude"))
 
@@ -640,7 +668,6 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(True, False)
         self.phase_plot.showGrid(True, True, alpha=0.3)
-        self.phase_plot.addItem(self.sim_freq_line_phase)
         phase_layout.addWidget(self.phase_plot)
         self.plot_tabs.addTab(self.phase_tab, tr("Bode Phase"))
 
@@ -654,10 +681,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         kernel_layout.addWidget(self.kernel_plot)
         self.plot_tabs.addTab(self.kernel_tab, tr("Hammerstein Kernels"))
 
-        # Tab 4: Harmonic Simulator
-        self.sim_tab = QWidget()
-        self.init_simulator_tab()
-        self.plot_tabs.addTab(self.sim_tab, tr("Harmonic Simulator"))
+
 
         # Premium Plot Legends
         self.mag_plot.addLegend(offset=(10, 10))
@@ -695,19 +719,16 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.start_btn.setEnabled(False)
         self.cal_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
+        self.export_btn.setEnabled(False)
         self.progress_bar.setValue(0)
+
 
         # Clear existing plots
         self.mag_plot.clear()
         self.phase_plot.clear()
         self.kernel_plot.clear()
 
-        # Hide simulator items during active sweep
-        self.sim_freq_line_mag.setVisible(False)
-        self.sim_freq_line_phase.setVisible(False)
-        self.sim_container.setVisible(False)
-        self.sim_error_label.setVisible(True)
-        self.sim_plot.clear()
+
 
         self.module.start_measurement()
 
@@ -762,6 +783,10 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_mags = magnitudes_db_dict
         self.cached_phases = phases_deg_dict
 
+        if self.cached_kernels is not None:
+            self.export_btn.setEnabled(True)
+
+
         # Retrieve current display smoothing level
         smooth_level = self.smooth_combo.currentData()
 
@@ -787,9 +812,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.mag_plot.clear()
         self.phase_plot.clear()
 
-        # Restore InfiniteLine items as plotWidget.clear() deletes them
-        self.mag_plot.addItem(self.sim_freq_line_mag)
-        self.phase_plot.addItem(self.sim_freq_line_phase)
+
 
         for key in ["h1", "h2", "h3", "h4", "h5"]:
             if key in magnitudes_db_dict:
@@ -805,18 +828,21 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 pen_phase = pg.mkPen(color=colors[key], width=1.5, style=Qt.PenStyle.SolidLine)
                 self.phase_plot.plot(freqs, phase_smoothed, pen=pen_phase, name=labels[key])
 
-        # Enable simulator after measurement is successfully processed
-        self.sim_error_label.setVisible(False)
-        self.sim_container.setVisible(True)
-        self.sim_freq_line_mag.setVisible(True)
-        self.sim_freq_line_phase.setVisible(True)
-        self.update_simulation()
+
 
     def on_update_kernels(self, time_ms, separated_kernels_data):
+        self.cached_time_ms = time_ms
+        self.cached_kernels = separated_kernels_data
+
         self.kernel_plot.clear()
 
         # Auto-fit the X Range to focus on the impulse peak details (-5ms to +35ms)
         self.kernel_plot.setXRange(-5.0, 35.0)
+
+        # Local normalization for visual display based on the peak of fundamental kernel h1
+        ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
+        if ref_max < 1e-12:
+            ref_max = 1.0
 
         colors = [
             (75, 163, 227),  # h1
@@ -836,7 +862,77 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         for p in range(len(separated_kernels_data)):
             pen = pg.mkPen(color=colors[p], width=1.8)
-            self.kernel_plot.plot(time_ms, separated_kernels_data[p], pen=pen, name=labels[p])
+            norm_kernel = separated_kernels_data[p] / ref_max
+            self.kernel_plot.plot(time_ms, norm_kernel, pen=pen, name=labels[p])
+
+        if self.cached_freqs is not None:
+            self.export_btn.setEnabled(True)
+
+    def export_model(self):
+        if self.cached_freqs is None or self.cached_kernels is None:
+            QMessageBox.warning(self, tr("Export Failed"), tr("No measurement data available to export."))
+            return
+
+        from PyQt6.QtWidgets import QFileDialog
+        from src.core.hammerstein_model import save_hammerstein_model
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Export Hammerstein Model"),
+            "",
+            tr("JSON Files (*.json)")
+        )
+
+        if not filepath:
+            return
+
+        try:
+            ref_max = np.max(np.abs(self.cached_kernels[0])) if len(self.cached_kernels) > 0 else 1.0
+
+            data = {
+                "metadata": {
+                    "module": self.module.name,
+                    "sample_rate": self.module.audio_engine.sample_rate,
+                    "num_amplitudes": self.module.num_amplitudes,
+                    "sweep_duration": self.module.sweep_duration,
+                    "start_freq": self.module.start_freq,
+                    "end_freq": self.module.end_freq,
+                    "input_mode": self.module.input_mode,
+                    "latency_sec": self.module.latency_sec,
+                    "ref_max": float(ref_max),
+                    "P": len(self.cached_kernels),
+                },
+                "time_domain": {
+                    "time_ms": self.cached_time_ms,
+                    "kernels": {
+                        f"h{p+1}": self.cached_kernels[p] for p in range(len(self.cached_kernels))
+                    },
+                },
+                "frequency_domain": {
+                    "freqs": self.cached_freqs,
+                    "magnitudes_db": {
+                        k: v for k, v in self.cached_mags.items() if k.startswith("h")
+                    },
+                    "phases_deg": {
+                        k: v for k, v in self.cached_phases.items() if k.startswith("h") or k == "ref_phase"
+                    },
+                },
+            }
+
+            save_hammerstein_model(filepath, data)
+            QMessageBox.information(
+                self,
+                tr("Export Successful"),
+                tr("Model exported successfully.")
+            )
+        except Exception as e:
+            logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
+            QMessageBox.critical(
+                self,
+                tr("Export Failed"),
+                tr("Failed to save Hammerstein model: {0}").format(e)
+            )
+
 
     # --- ComparableWidgetInterface ---
     def get_comparison_data(self):
@@ -855,363 +951,4 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             "y_units": "dB",
         }
 
-    # --- Simulator Methods ---
-    def init_simulator_tab(self):
-        # Main layout for simulator tab
-        layout = QVBoxLayout(self.sim_tab)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
 
-        # Warning label shown when data is not yet measured
-        self.sim_error_label = QLabel(tr("Please run SSS analysis to enable the simulator."))
-        self.sim_error_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sim_error_label.setStyleSheet("font-size: 14px; color: #d9534f; font-weight: bold;")
-        layout.addWidget(self.sim_error_label)
-
-        # Simulator main container
-        self.sim_container = QWidget()
-        container_layout = QHBoxLayout(self.sim_container)
-        container_layout.setContentsMargins(0, 0, 0, 0)
-        container_layout.setSpacing(10)
-
-        # --- Left: Control Panel ---
-        ctrl_panel = QWidget()
-        ctrl_panel.setFixedWidth(300)
-        ctrl_layout = QVBoxLayout(ctrl_panel)
-        ctrl_layout.setContentsMargins(0, 0, 0, 0)
-        ctrl_layout.setSpacing(10)
-
-        # Frequency group
-        freq_group = QGroupBox(tr("Input Frequency"))
-        freq_form = QVBoxLayout(freq_group)
-        freq_form.setSpacing(6)
-
-        self.sim_f0_spin = QDoubleSpinBox()
-        self.sim_f0_spin.setRange(20.0, 20000.0)
-        self.sim_f0_spin.setSuffix(" Hz")
-        self.sim_f0_spin.setValue(1000.0)
-        self.sim_f0_spin.setSingleStep(100.0)
-        self.sim_f0_spin.valueChanged.connect(self._on_sim_freq_spin_changed)
-        freq_form.addWidget(self.sim_f0_spin)
-
-        self.sim_f0_slider = QSlider(Qt.Orientation.Horizontal)
-        self.sim_f0_slider.setRange(0, 1000)
-        self.sim_f0_slider.setValue(500)
-        self.sim_f0_slider.valueChanged.connect(self._on_sim_freq_slider_changed)
-        freq_form.addWidget(self.sim_f0_slider)
-        ctrl_layout.addWidget(freq_group)
-
-        # Amplitude group
-        amp_group = QGroupBox(tr("Input Amplitude"))
-        amp_form = QVBoxLayout(amp_group)
-        amp_form.setSpacing(6)
-
-        self.sim_amp_spin = QDoubleSpinBox()
-        self.sim_amp_spin.setRange(-60.0, 0.0)
-        self.sim_amp_spin.setSuffix(" dBFS")
-        self.sim_amp_spin.setValue(-6.0)
-        self.sim_amp_spin.setSingleStep(1.0)
-        self.sim_amp_spin.valueChanged.connect(self._on_sim_amp_spin_changed)
-        amp_form.addWidget(self.sim_amp_spin)
-
-        self.sim_amp_slider = QSlider(Qt.Orientation.Horizontal)
-        self.sim_amp_slider.setRange(-600, 0)
-        self.sim_amp_slider.setValue(-60)
-        self.sim_amp_slider.valueChanged.connect(self._on_sim_amp_slider_changed)
-        amp_form.addWidget(self.sim_amp_slider)
-        ctrl_layout.addWidget(amp_group)
-
-        # Options group
-        opt_group = QGroupBox(tr("Simulation Options"))
-        opt_form = QVBoxLayout(opt_group)
-        self.sim_loopback_phase_chk = QCheckBox(tr("Include Audio Interface Phase"))
-        self.sim_loopback_phase_chk.setChecked(True)
-        self.sim_loopback_phase_chk.toggled.connect(self.update_simulation)
-        opt_form.addWidget(self.sim_loopback_phase_chk)
-        ctrl_layout.addWidget(opt_group)
-
-        ctrl_layout.addStretch()
-        container_layout.addWidget(ctrl_panel)
-
-        # --- Right: Results Panel ---
-        result_panel = QWidget()
-        res_layout = QVBoxLayout(result_panel)
-        res_layout.setContentsMargins(0, 0, 0, 0)
-        res_layout.setSpacing(10)
-
-        # Numeric Grid Layout
-        grid_widget = QWidget()
-        grid_layout = QGridLayout(grid_widget)
-        grid_layout.setContentsMargins(5, 5, 5, 5)
-        grid_layout.setSpacing(8)
-
-        # Headers
-        grid_layout.addWidget(QLabel(f"<b>{tr('Harmonic')}</b>"), 0, 0)
-        grid_layout.addWidget(QLabel(f"<b>{tr('Frequency')}</b>"), 0, 1)
-        grid_layout.addWidget(QLabel(f"<b>{tr('Amplitude')}</b>"), 0, 2)
-        grid_layout.addWidget(QLabel(f"<b>{tr('Phase')}</b>"), 0, 3)
-
-        self.sim_result_labels = {}
-        harmonics_labels = [
-            ("h1", tr("Fundamental")),
-            ("h2", tr("2nd Harmonic")),
-            ("h3", tr("3rd Harmonic")),
-            ("h4", tr("4th Harmonic")),
-            ("h5", tr("5th Harmonic")),
-        ]
-
-        colors_hex = {
-            "h1": "#4ba3e3",
-            "h2": "#2b8c56",
-            "h3": "#e68c14",
-            "h4": "#c832a0",
-            "h5": "#d9534f",
-        }
-
-        for idx, (key, label) in enumerate(harmonics_labels, 1):
-            lbl_name = QLabel(label)
-            lbl_name.setStyleSheet(f"color: {colors_hex[key]}; font-weight: bold;")
-            lbl_freq = QLabel("-- Hz")
-            lbl_amp = QLabel("-- dBFS")
-            lbl_phase = QLabel("--°")
-
-            grid_layout.addWidget(lbl_name, idx, 0)
-            grid_layout.addWidget(lbl_freq, idx, 1)
-            grid_layout.addWidget(lbl_amp, idx, 2)
-            grid_layout.addWidget(lbl_phase, idx, 3)
-
-            self.sim_result_labels[key] = {"freq": lbl_freq, "amp": lbl_amp, "phase": lbl_phase}
-
-        res_layout.addWidget(grid_widget)
-
-        # Predicted Spectrum Bar Plot
-        self.sim_plot = pg.PlotWidget(title=tr("Output Prediction Spectrum"))
-        self.sim_plot.setLabel("left", tr("Amplitude"), units="dBFS")
-        self.sim_plot.setLabel("bottom", tr("Frequency"), units="Hz")
-        self.sim_plot.setLogMode(True, False)
-        self.sim_plot.setXRange(np.log10(20.0), np.log10(100000.0))
-        self.sim_plot.setYRange(-120.0, 10.0)
-        self.sim_plot.showGrid(True, True, alpha=0.3)
-        res_layout.addWidget(self.sim_plot, stretch=1)
-
-        container_layout.addWidget(result_panel, stretch=1)
-        layout.addWidget(self.sim_container)
-
-        self.sim_container.setVisible(False)
-
-    def _on_mag_line_dragged(self, line):
-        pos = line.value()  # log10(freq)
-        freq = 10**pos
-        if self.cached_freqs is not None and len(self.cached_freqs) > 0:
-            min_f = self.cached_freqs[0]
-            max_f = self.cached_freqs[-1]
-            freq = max(min_f, min(max_f, freq))
-            pos = np.log10(freq)
-        else:
-            freq = max(20.0, min(20000.0, freq))
-            pos = np.log10(freq)
-
-        self.sim_freq_line_phase.blockSignals(True)
-        self.sim_freq_line_phase.setValue(pos)
-        self.sim_freq_line_phase.blockSignals(False)
-
-        # Update labels dynamically
-        self.sim_freq_line_mag.label.setText(f"Sim Freq: {freq:.0f} Hz")
-        self.sim_freq_line_phase.label.setText(f"Sim Freq: {freq:.0f} Hz")
-
-        self.sim_f0_spin.blockSignals(True)
-        self.sim_f0_spin.setValue(freq)
-        self.sim_f0_spin.blockSignals(False)
-
-        self._update_slider_from_freq(freq)
-        self.update_simulation()
-
-    def _on_phase_line_dragged(self, line):
-        pos = line.value()  # log10(freq)
-        freq = 10**pos
-        if self.cached_freqs is not None and len(self.cached_freqs) > 0:
-            min_f = self.cached_freqs[0]
-            max_f = self.cached_freqs[-1]
-            freq = max(min_f, min(max_f, freq))
-            pos = np.log10(freq)
-        else:
-            freq = max(20.0, min(20000.0, freq))
-            pos = np.log10(freq)
-
-        self.sim_freq_line_mag.blockSignals(True)
-        self.sim_freq_line_mag.setValue(pos)
-        self.sim_freq_line_mag.blockSignals(False)
-
-        # Update labels dynamically
-        self.sim_freq_line_mag.label.setText(f"Sim Freq: {freq:.0f} Hz")
-        self.sim_freq_line_phase.label.setText(f"Sim Freq: {freq:.0f} Hz")
-
-        self.sim_f0_spin.blockSignals(True)
-        self.sim_f0_spin.setValue(freq)
-        self.sim_f0_spin.blockSignals(False)
-
-        self._update_slider_from_freq(freq)
-        self.update_simulation()
-
-    def _update_plot_lines(self, pos):
-        log_pos = np.log10(pos)
-        self.sim_freq_line_mag.blockSignals(True)
-        self.sim_freq_line_mag.setValue(log_pos)
-        self.sim_freq_line_mag.blockSignals(False)
-
-        self.sim_freq_line_phase.blockSignals(True)
-        self.sim_freq_line_phase.setValue(log_pos)
-        self.sim_freq_line_phase.blockSignals(False)
-
-        # Update labels dynamically
-        self.sim_freq_line_mag.label.setText(f"Sim Freq: {pos:.0f} Hz")
-        self.sim_freq_line_phase.label.setText(f"Sim Freq: {pos:.0f} Hz")
-
-    def _on_sim_freq_spin_changed(self, val):
-        self._update_slider_from_freq(val)
-        self._update_plot_lines(val)
-        self.update_simulation()
-
-    def _on_sim_freq_slider_changed(self, val):
-        freq = 20.0 * (1000.0 ** (val / 1000.0))
-        self.sim_f0_spin.blockSignals(True)
-        self.sim_f0_spin.setValue(freq)
-        self.sim_f0_spin.blockSignals(False)
-        self._update_plot_lines(freq)
-        self.update_simulation()
-
-    def _update_slider_from_freq(self, freq):
-        val = int(1000.0 * np.log(freq / 20.0) / np.log(1000.0))
-        val = max(0, min(1000, val))
-        self.sim_f0_slider.blockSignals(True)
-        self.sim_f0_slider.setValue(val)
-        self.sim_f0_slider.blockSignals(False)
-
-    def _on_sim_amp_spin_changed(self, val):
-        self.sim_amp_slider.blockSignals(True)
-        self.sim_amp_slider.setValue(int(val * 10))
-        self.sim_amp_slider.blockSignals(False)
-        self.update_simulation()
-
-    def _on_sim_amp_slider_changed(self, val):
-        amp = val / 10.0
-        self.sim_amp_spin.blockSignals(True)
-        self.sim_amp_spin.setValue(amp)
-        self.sim_amp_spin.blockSignals(False)
-        self.update_simulation()
-
-    def update_simulation(self):
-        if self.cached_freqs is None or len(self.cached_freqs) == 0:
-            return
-
-        f0 = self.sim_f0_spin.value()
-        amp_db = self.sim_amp_spin.value()
-
-        # 1. Reconstruct complex transfer functions H_p(f) from cached magnitudes and phases
-        H_dict = {}
-        for p in range(1, 6):
-            h_key = f"h{p}"
-            if h_key not in self.cached_mags or h_key not in self.cached_phases:
-                continue
-            mag_linear = 10 ** (self.cached_mags[h_key] / 20.0)
-            phase_rad = np.radians(self.cached_phases[h_key])
-            H_dict[p] = mag_linear * np.exp(1j * phase_rad)
-
-        # 2. Interpolate complex H_p(f_n) for each harmonic frequency f_n = n * f0
-        H_interp = {}
-        sample_rate = self.module.audio_engine.sample_rate
-        nyquist = sample_rate / 2.0
-
-        for n in range(1, 6):
-            f_n = n * f0
-            H_interp[n] = {}
-            if f_n > nyquist:
-                # Exceeded Nyquist, set to zero to represent out of band
-                for p in range(1, 6):
-                    H_interp[n][p] = 0.0 + 0.0j
-                continue
-
-            for p in range(1, 6):
-                if p not in H_dict:
-                    H_interp[n][p] = 0.0 + 0.0j
-                    continue
-                # Interpolate real and imaginary parts separately for smooth phase behavior
-                real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
-                imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
-                H_interp[n][p] = real_val + 1j * imag_val
-
-        # 3. Input linear amplitude
-        A_in = 10 ** (amp_db / 20.0)
-
-        # 4. Synthesize harmonic outputs using Parallel Hammerstein model formulas
-        # Incorporate complex multipliers for sine-wave input phase alignment:
-        # 1st: +1,  2nd: -1j,  3rd: -1,  4th: +1j,  5th: +1
-        Y = {}
-        Y[1] = (1.0) * (
-            A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5]
-        )
-        Y[2] = (-1j) * ((0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4])
-        Y[3] = (-1.0) * ((0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5])
-        Y[4] = (+1j) * ((0.125 * (A_in**4)) * H_interp[4][4])
-        Y[5] = (1.0) * ((0.0625 * (A_in**5)) * H_interp[5][5])
-
-        # Get fundamental phase to anchor relative harmonic phases
-        fundamental_phase_rad = np.angle(Y[1])
-
-        # 5. Update UI Labels & Predictions Plot
-        self.sim_plot.clear()
-
-        colors = {
-            "h1": (75, 163, 227),  # #4ba3e3
-            "h2": (43, 140, 86),  # #2b8c56
-            "h3": (230, 140, 20),  # #e68c14
-            "h4": (200, 50, 160),  # #c832a0
-            "h5": (217, 83, 79),  # #d9534f
-        }
-
-        # Interpolate reference loopback phase at fundamental frequency f0
-        ref_phase_f0 = 0.0
-        if self.sim_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
-            ref_phase_f0 = np.interp(f0, self.cached_freqs, self.cached_phases["ref_phase"])
-
-        for n in range(1, 6):
-            h_key = f"h{n}"
-            f_n = n * f0
-            labels = self.sim_result_labels[h_key]
-
-            if f_n > nyquist:
-                labels["freq"].setText(f"{f_n / 1000.0:.2f} kHz (N/A)")
-                labels["amp"].setText("N/A (Nyquist)")
-                labels["phase"].setText("N/A")
-                continue
-
-            y_val = Y[n]
-            mag_val_db = 20 * np.log10(np.abs(y_val) + 1e-12)
-
-            # Phase calculation relative to the fundamental component (n * fundamental_phase)
-            relative_phase_rad = np.angle(y_val) - n * fundamental_phase_rad
-            phase_val_deg = np.degrees(relative_phase_rad)
-
-            # Apply loopback correction: ref_phase(f_n) - n * ref_phase(f_0)
-            if self.sim_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
-                ref_phase_fn = np.interp(f_n, self.cached_freqs, self.cached_phases["ref_phase"])
-                loopback_corr_deg = ref_phase_fn - n * ref_phase_f0
-                phase_val_deg += loopback_corr_deg
-
-            phase_val_deg = (phase_val_deg + 180) % 360 - 180
-
-            labels["freq"].setText(f"{f_n:.1f} Hz")
-            labels["amp"].setText(f"{mag_val_db:.1f} dB")
-            labels["phase"].setText(f"{phase_val_deg:+.1f}°")
-
-            # Draw vertical bar and dot for predicted output spectrum
-            pen_color = colors[h_key]
-            curve = pg.PlotDataItem(
-                x=[f_n, f_n],
-                y=[-120.0, mag_val_db],
-                pen=pg.mkPen(color=pen_color, width=2.5),
-                symbol="o",
-                symbolBrush=pg.mkBrush(color=pen_color),
-                symbolSize=8,
-            )
-            self.sim_plot.addItem(curve)
