@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
-from PyQt6.QtWidgets import QApplication
 
 from src.gui.widgets.hammerstein_analyzer import (
     HammersteinAnalyzer,
@@ -101,14 +100,14 @@ def test_noise_floor_calculations(qtbot, mock_audio_engine, dummy_model_data):
     # The lowest amplitude step (-120.0 dBFS)
     # Z has shape (80, 200). Let's check Z[0, 100] (minimum level amplitude, middle frequency index)
     z_no_noise = widget.cached_Z[0, 100]
-    
+
     # 2. Enable Noise Floor at -90.0 dBFS
     widget.enable_noise_chk.setChecked(True)
     widget.noise_floor_spin.setValue(-90.0)
     widget.update_2d_map()
-    
+
     z_with_noise = widget.cached_Z[0, 100]
-    
+
     # With a -90 dBFS noise floor, the calculated THD+N level at -120 dBFS input
     # should be close to the noise floor (-90 dBFS) instead of being very low
     assert z_with_noise > z_no_noise
@@ -136,7 +135,7 @@ def test_noise_floor_relative_dbr_convergence(qtbot, mock_audio_engine, dummy_mo
     # Since the input signal (-120 dB) is 30 dB below the noise floor (-90 dB),
     # the relative THD+N in dBr should cap near 0 dBr (100% distortion+noise ratio)
     z_dbr_low_sig = widget.cached_Z[0, 100]
-    
+
     # Cap should be close to 0.0 dBr
     assert z_dbr_low_sig <= 0.0
     assert np.isclose(z_dbr_low_sig, 0.0, atol=0.5)
@@ -146,5 +145,5 @@ def test_noise_floor_relative_dbr_convergence(qtbot, mock_audio_engine, dummy_mo
     widget.enable_noise_chk.setChecked(False)
     widget.update_2d_map()
     z_dbr_no_noise_low_sig = widget.cached_Z[0, 100]
-    
+
     assert z_dbr_no_noise_low_sig < -20.0

@@ -772,7 +772,10 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Clear existing contours & labels
         for iso in self.iso_curves:
-            self.map_plot_item.removeItem(iso)
+            scene = iso.scene()
+            if scene is not None:
+                scene.removeItem(iso)
+            iso.setParentItem(None)
         self.iso_curves.clear()
         for lbl in self.iso_labels:
             self.map_plot_item.removeItem(lbl)
@@ -793,12 +796,20 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 iso.setPen(pg.mkPen(color=(255, 255, 255, 140), width=1.0))
                 self.iso_curves.append(iso)
 
-                # Right-edge labels: Z has shape (N_A, N_f), Z[:, -1] has shape (N_A) corresponding to amps_db
+                # Right-edge labels: find all crossings of lvl in Z_right
                 Z_right = Z[:, -1]
-                if np.min(Z_right) <= lvl <= np.max(Z_right):
-                    sort_idx = np.argsort(Z_right)
-                    y_pos = np.interp(lvl, Z_right[sort_idx], amps_db[sort_idx])
+                crossings = []
+                for i in range(len(Z_right) - 1):
+                    z_low, z_high = Z_right[i], Z_right[i+1]
+                    y_low, y_high = amps_db[i], amps_db[i+1]
+                    if (z_low <= lvl < z_high) or (z_high <= lvl < z_low) or (i == len(Z_right) - 2 and z_high == lvl):
+                        if z_high == z_low:
+                            y_pos = y_low
+                        else:
+                            y_pos = y_low + (lvl - z_low) * (y_high - y_low) / (z_high - z_low)
+                        crossings.append(y_pos)
 
+                for y_pos in crossings:
                     lbl = pg.TextItem(f"{lvl:g} dB", color=(255, 255, 255, 200), anchor=(1.0, 0.5))
                     lbl.setPos(log_f_max - 0.02, y_pos)
                     self.map_plot_item.addItem(lbl, ignoreBounds=True)

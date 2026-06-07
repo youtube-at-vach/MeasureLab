@@ -19,9 +19,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QMessageBox,
-    QSlider,
-    QGridLayout,
-    QCheckBox,
 )
 from scipy.signal import (
     chirp as signal_chirp,
