@@ -131,11 +131,6 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.map_type_combo.currentIndexChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Map Type:"), self.map_type_combo)
 
-        self.thd_unit_combo = QComboBox()
-        self.thd_unit_combo.addItem("% (Percent)", "percent")
-        self.thd_unit_combo.addItem("dB (Decibels)", "db")
-        self.thd_unit_combo.currentIndexChanged.connect(self.update_2d_map)
-        map_form.addRow(tr("THD Unit:"), self.thd_unit_combo)
 
         self.harm_unit_combo = QComboBox()
         self.harm_unit_combo.addItem("dBFS (Absolute)", "dbfs")
@@ -163,6 +158,33 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.max_level_spin.setSuffix(" dBFS")
         self.max_level_spin.valueChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Max Level:"), self.max_level_spin)
+
+        # Dist Min / Max (Color scale range)
+        self.dist_min_spin = QDoubleSpinBox()
+        self.dist_min_spin.setRange(-150.0, -10.0)
+        self.dist_min_spin.setValue(-100.0)
+        self.dist_min_spin.setSuffix(" dB")
+        self.dist_min_spin.valueChanged.connect(self.update_2d_map)
+        map_form.addRow(tr("Color Min:"), self.dist_min_spin)
+
+        self.dist_max_spin = QDoubleSpinBox()
+        self.dist_max_spin.setRange(-100.0, 10.0)
+        self.dist_max_spin.setValue(-40.0)
+        self.dist_max_spin.setSuffix(" dB")
+        self.dist_max_spin.valueChanged.connect(self.update_2d_map)
+        map_form.addRow(tr("Color Max:"), self.dist_max_spin)
+
+        # Color Map
+        self.color_map_combo = QComboBox()
+        self.color_map_combo.addItem("Inferno", "inferno")
+        self.color_map_combo.addItem("Viridis", "viridis")
+        self.color_map_combo.addItem("Plasma", "plasma")
+        self.color_map_combo.addItem("Magma", "magma")
+        self.color_map_combo.addItem("Thermal", "thermal")
+        self.color_map_combo.addItem("Flame", "flame")
+        self.color_map_combo.addItem("Greyscale", "grey")
+        self.color_map_combo.currentIndexChanged.connect(self.update_color_map)
+        map_form.addRow(tr("Color Map:"), self.color_map_combo)
 
         self.map_group.setEnabled(False)
         sidebar_layout.addWidget(self.map_group)
@@ -495,15 +517,24 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             return
 
         map_type = self.map_type_combo.currentData()
-        thd_unit = self.thd_unit_combo.currentData()
         harm_unit = self.harm_unit_combo.currentData()
         N_f = self.map_resolution_spin.value()
         min_level = self.min_level_spin.value()
         max_level = self.max_level_spin.value()
 
         # Update GUI combobox enabling states based on type
-        self.thd_unit_combo.setEnabled(map_type == "THD")
         self.harm_unit_combo.setEnabled(map_type != "THD")
+
+        # Update suffix based on current units to make it intuitive
+        if map_type == "THD":
+            self.dist_min_spin.setSuffix(" dB")
+            self.dist_max_spin.setSuffix(" dB")
+        elif harm_unit == "dbfs":
+            self.dist_min_spin.setSuffix(" dBFS")
+            self.dist_max_spin.setSuffix(" dBFS")
+        else:
+            self.dist_min_spin.setSuffix(" dBc")
+            self.dist_max_spin.setSuffix(" dBc")
 
         # 1. Grids Setup
         start_f = self.model_metadata.get("start_freq", 20.0)
@@ -557,7 +588,6 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         mag_Y1_safe = np.where(mag_Y1 < 1e-12, 1e-12, mag_Y1)
 
         Z = None
-        vmin, vmax = 0, 10
         title = ""
 
         if map_type == "THD":
@@ -566,14 +596,8 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 mag_harmonics_sq += np.abs(Y[n])**2
             thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
 
-            if thd_unit == "percent":
-                Z = thd_linear * 100.0
-                title = tr("Total Harmonic Distortion (THD)") + " [%]"
-                vmin, vmax = 0.0, min(100.0, np.max(Z) if np.max(Z) > 1e-3 else 10.0)
-            else:  # db
-                Z = 20 * np.log10(thd_linear + 1e-12)
-                title = tr("Total Harmonic Distortion (THD)") + " [dB]"
-                vmin, vmax = -80.0, 0.0
+            Z = 20 * np.log10(thd_linear + 1e-12)
+            title = tr("Total Harmonic Distortion (THD)") + " [dB]"
         else:
             # High-order harmonic H2-H5
             order = int(map_type[1])
@@ -584,13 +608,14 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 title = f"{order}rd Harmonic Amplitude [dBFS]" if order == 3 else f"{order}th Harmonic Amplitude [dBFS]"
                 if order == 2:
                     title = "2nd Harmonic Amplitude [dBFS]"
-                vmin, vmax = -100.0, 0.0
             else: # dbc (relative to fundamental)
                 Z = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
                 title = f"{order}rd Harmonic Level [dBc]" if order == 3 else f"{order}th Harmonic Level [dBc]"
                 if order == 2:
                     title = "2nd Harmonic Level [dBc]"
-                vmin, vmax = -90.0, 0.0
+
+        vmin = self.dist_min_spin.value()
+        vmax = self.dist_max_spin.value()
 
         # Draw Image
         self.image_item.setImage(Z.T)
@@ -607,6 +632,14 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ))
 
         self.colorbar.setLevels((vmin, vmax))
+
+    def update_color_map(self):
+        cmap_name = self.color_map_combo.currentData()
+        try:
+            cmap = pg.colormap.get(cmap_name)
+            self.colorbar.setColorMap(cmap)
+        except Exception as e:
+            logger.error("Failed to set colormap %s: %s", cmap_name, e)
 
     # --- Simulator Methods ---
     def on_tab_changed(self, index):
