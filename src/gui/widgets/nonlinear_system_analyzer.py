@@ -445,6 +445,9 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_freqs = None
         self.cached_mags = {}
         self.cached_phases = {}
+        self.cached_kernels = None
+        self.cached_time_ms = None
+
 
     def init_ui(self):
         # Premium layout design
@@ -607,8 +610,18 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ctrl_layout.addWidget(self.stop_btn)
         ctrl_main_layout.addLayout(ctrl_layout)
 
+        # Export Button
+        self.export_btn = QPushButton(tr("Export Model..."))
+        self.export_btn.setStyleSheet(
+            "background-color: #4ba3e3; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;"
+        )
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self.export_model)
+        ctrl_main_layout.addWidget(self.export_btn)
+
         # Progress bar
         self.progress_bar = QProgressBar()
+
         self.progress_bar.setValue(0)
         self.progress_bar.setFixedHeight(12)
         ctrl_main_layout.addWidget(self.progress_bar)
@@ -695,7 +708,9 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.start_btn.setEnabled(False)
         self.cal_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
+        self.export_btn.setEnabled(False)
         self.progress_bar.setValue(0)
+
 
         # Clear existing plots
         self.mag_plot.clear()
@@ -762,6 +777,10 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_mags = magnitudes_db_dict
         self.cached_phases = phases_deg_dict
 
+        if self.cached_kernels is not None:
+            self.export_btn.setEnabled(True)
+
+
         # Retrieve current display smoothing level
         smooth_level = self.smooth_combo.currentData()
 
@@ -813,10 +832,18 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.update_simulation()
 
     def on_update_kernels(self, time_ms, separated_kernels_data):
+        self.cached_time_ms = time_ms
+        self.cached_kernels = separated_kernels_data
+
         self.kernel_plot.clear()
 
         # Auto-fit the X Range to focus on the impulse peak details (-5ms to +35ms)
         self.kernel_plot.setXRange(-5.0, 35.0)
+
+        # Local normalization for visual display based on the peak of fundamental kernel h1
+        ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
+        if ref_max < 1e-12:
+            ref_max = 1.0
 
         colors = [
             (75, 163, 227),  # h1
@@ -836,7 +863,77 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         for p in range(len(separated_kernels_data)):
             pen = pg.mkPen(color=colors[p], width=1.8)
-            self.kernel_plot.plot(time_ms, separated_kernels_data[p], pen=pen, name=labels[p])
+            norm_kernel = separated_kernels_data[p] / ref_max
+            self.kernel_plot.plot(time_ms, norm_kernel, pen=pen, name=labels[p])
+
+        if self.cached_freqs is not None:
+            self.export_btn.setEnabled(True)
+
+    def export_model(self):
+        if self.cached_freqs is None or self.cached_kernels is None:
+            QMessageBox.warning(self, tr("Export Failed"), tr("No measurement data available to export."))
+            return
+
+        from PyQt6.QtWidgets import QFileDialog
+        from src.core.hammerstein_model import save_hammerstein_model
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Export Hammerstein Model"),
+            "",
+            tr("JSON Files (*.json)")
+        )
+
+        if not filepath:
+            return
+
+        try:
+            ref_max = np.max(np.abs(self.cached_kernels[0])) if len(self.cached_kernels) > 0 else 1.0
+
+            data = {
+                "metadata": {
+                    "module": self.module.name,
+                    "sample_rate": self.module.audio_engine.sample_rate,
+                    "num_amplitudes": self.module.num_amplitudes,
+                    "sweep_duration": self.module.sweep_duration,
+                    "start_freq": self.module.start_freq,
+                    "end_freq": self.module.end_freq,
+                    "input_mode": self.module.input_mode,
+                    "latency_sec": self.module.latency_sec,
+                    "ref_max": float(ref_max),
+                    "P": len(self.cached_kernels),
+                },
+                "time_domain": {
+                    "time_ms": self.cached_time_ms,
+                    "kernels": {
+                        f"h{p+1}": self.cached_kernels[p] for p in range(len(self.cached_kernels))
+                    },
+                },
+                "frequency_domain": {
+                    "freqs": self.cached_freqs,
+                    "magnitudes_db": {
+                        k: v for k, v in self.cached_mags.items() if k.startswith("h")
+                    },
+                    "phases_deg": {
+                        k: v for k, v in self.cached_phases.items() if k.startswith("h") or k == "ref_phase"
+                    },
+                },
+            }
+
+            save_hammerstein_model(filepath, data)
+            QMessageBox.information(
+                self,
+                tr("Export Successful"),
+                tr("Model exported successfully.")
+            )
+        except Exception as e:
+            logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
+            QMessageBox.critical(
+                self,
+                tr("Export Failed"),
+                tr("Failed to save Hammerstein model: {0}").format(e)
+            )
+
 
     # --- ComparableWidgetInterface ---
     def get_comparison_data(self):

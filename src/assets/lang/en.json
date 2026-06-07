@@ -492,8 +492,11 @@
     "Export Error": "Export Error",
     "Export Failed": "Export Failed",
     "Export Gang Error Data": "Export Gang Error Data",
+    "Export Hammerstein Model": "Export Hammerstein Model",
     "Export Metrics to CSV": "Export Metrics to CSV",
+    "Export Model...": "Export Model...",
     "Export Scheme": "Export Scheme",
+
     "Export Selected": "Export Selected",
     "Export Settings": "Export Settings",
     "Export Successful": "Export Successful",
@@ -544,8 +547,10 @@
     "Failed to read input file: {0}": "Failed to read input file: {0}",
     "Failed to retrieve selected traces.": "Failed to retrieve selected traces.",
     "Failed to save calibration map.": "Failed to save calibration map.",
+    "Failed to save Hammerstein model: {0}": "Failed to save Hammerstein model: {0}",
     "Failed to save screenshot.": "Failed to save screenshot.",
     "Failed to save:\n{0}": "Failed to save:\n{0}",
+
     "Failed to send data to comparer: {0}": "Failed to send data to comparer: {0}",
     "Failed to set devices:": "Failed to set devices:",
     "Fall": "Fall",
@@ -984,7 +989,9 @@
     "Mod. Depth (k):": "Mod. Depth (k):",
     "Mode": "Mode",
     "Mode:": "Mode:",
+    "Model exported successfully.": "Model exported successfully.",
     "Modulation": "Modulation",
+
     "Momentary": "Momentary",
     "Momentary LUFS Stats": "Momentary LUFS Stats",
     "Monitor is not running.": "Monitor is not running.",
@@ -1015,7 +1022,9 @@
     "No file loaded": "No file loaded",
     "No file selected": "No file selected",
     "No loopback paths found.": "No loopback paths found.",
+    "No measurement data available to export.": "No measurement data available to export.",
     "No output file": "No output file",
+
     "No signal detected. Please check connections.": "No signal detected. Please check connections.",
     "No signal detected. Please start measurement and check connections.": "No signal detected. Please start measurement and check connections.",
     "No valid tracks to render.": "No valid tracks to render.",

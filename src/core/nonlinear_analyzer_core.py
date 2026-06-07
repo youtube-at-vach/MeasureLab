@@ -447,14 +447,8 @@ def process_amplitude_responses(
     t_indices = np.arange(0, N_kernel)
     time_ms = (t_indices - gate_pre) / sample_rate * 1000.0
 
-    # Return normalized display kernels (referenced to maximum amplitude of linear kernel)
-    separated_kernels_data = []
-    ref_max = np.max(np.abs(h_kernels_meas[0]))
-    for p in range(P):
-        kernel_slice = h_kernels_meas[p]
-        if ref_max > 1e-12:
-            kernel_slice = kernel_slice / ref_max
-        separated_kernels_data.append(kernel_slice)
+    # Return RAW, absolute-scaled kernels (important for distortion reproduction)
+    separated_kernels_data = [h_kernels_meas[p] for p in range(P)]
 
     return (
         valid_freqs,
@@ -463,4 +457,5 @@ def process_amplitude_responses(
         time_ms,
         separated_kernels_data,
     )
+
 
