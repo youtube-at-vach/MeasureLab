@@ -80,6 +80,10 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.iso_curves = []
         self.iso_labels = []
 
+        # Global Reference Tone Parameters
+        self.ref_f0 = 1000.0
+        self.ref_amp = -6.0
+
         self.init_ui()
 
         # Check for initial live model
@@ -152,8 +156,8 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
 
         self.harm_unit_combo = QComboBox()
-        self.harm_unit_combo.addItem("dBFS (Absolute)", "dbfs")
-        self.harm_unit_combo.addItem("dBc (Relative)", "dbc")
+        self.harm_unit_combo.addItem(tr("dBr (Relative)"), "dbr")
+        self.harm_unit_combo.addItem(tr("dBFS (Absolute)"), "dbfs")
         self.harm_unit_combo.currentIndexChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Harmonic Unit:"), self.harm_unit_combo)
 
@@ -207,7 +211,51 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.map_group.setEnabled(False)
         sidebar_layout.addWidget(self.map_group)
 
+        # 3. Reference Tone Settings Group
+        self.ref_group = QGroupBox(tr("Reference Tone Settings"))
+        ref_form = QVBoxLayout(self.ref_group)
+        ref_form.setSpacing(6)
 
+        # Freq
+        ref_form.addWidget(QLabel(tr("Input Frequency")))
+        self.ref_f0_spin = QDoubleSpinBox()
+        self.ref_f0_spin.setRange(20.0, 20000.0)
+        self.ref_f0_spin.setSuffix(" Hz")
+        self.ref_f0_spin.setValue(self.ref_f0)
+        self.ref_f0_spin.setSingleStep(100.0)
+        self.ref_f0_spin.valueChanged.connect(self._on_ref_freq_spin_changed)
+        ref_form.addWidget(self.ref_f0_spin)
+
+        self.ref_f0_slider = QSlider(Qt.Orientation.Horizontal)
+        self.ref_f0_slider.setRange(0, 1000)
+        self.ref_f0_slider.setValue(500)
+        self.ref_f0_slider.valueChanged.connect(self._on_ref_freq_slider_changed)
+        ref_form.addWidget(self.ref_f0_slider)
+
+        # Amplitude
+        ref_form.addWidget(QLabel(tr("Input Amplitude")))
+        self.ref_amp_spin = QDoubleSpinBox()
+        self.ref_amp_spin.setRange(-100.0, 10.0)
+        self.ref_amp_spin.setSuffix(" dBFS")
+        self.ref_amp_spin.setValue(self.ref_amp)
+        self.ref_amp_spin.setSingleStep(1.0)
+        self.ref_amp_spin.valueChanged.connect(self._on_ref_amp_spin_changed)
+        ref_form.addWidget(self.ref_amp_spin)
+
+        self.ref_amp_slider = QSlider(Qt.Orientation.Horizontal)
+        self.ref_amp_slider.setRange(-1000, 100)
+        self.ref_amp_slider.setValue(int(self.ref_amp * 10))
+        self.ref_amp_slider.valueChanged.connect(self._on_ref_amp_slider_changed)
+        ref_form.addWidget(self.ref_amp_slider)
+
+        # Phase options
+        self.ref_loopback_phase_chk = QCheckBox(tr("Include Audio Interface Phase"))
+        self.ref_loopback_phase_chk.setChecked(True)
+        self.ref_loopback_phase_chk.toggled.connect(self.update_simulation)
+        ref_form.addWidget(self.ref_loopback_phase_chk)
+
+        self.ref_group.setEnabled(False)
+        sidebar_layout.addWidget(self.ref_group)
 
         sidebar_layout.addStretch()
         sidebar_content.setLayout(sidebar_layout)
@@ -276,13 +324,28 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.map_plot_item.addItem(self.v_line, ignoreBounds=True)
         self.map_plot_item.addItem(self.h_line, ignoreBounds=True)
 
+        # Reference indicator lines (permanent, showing self.ref_f0, self.ref_amp)
+        self.ref_v_line = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen((255, 80, 0, 200), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.ref_h_line = pg.InfiniteLine(
+            angle=0,
+            movable=False,
+            pen=pg.mkPen((255, 80, 0, 200), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.map_plot_item.addItem(self.ref_v_line, ignoreBounds=True)
+        self.map_plot_item.addItem(self.ref_h_line, ignoreBounds=True)
+
         # Floating coordinate overlay label
         self.hover_label_item = pg.TextItem(text="", color=(255, 255, 255), fill=(0, 0, 0, 180), anchor=(0, 0))
         self.hover_label_item.hide()
         self.map_plot_item.addItem(self.hover_label_item, ignoreBounds=True)
 
-        # Connect mouse move
+        # Connect mouse move & click
         self.map_plot_item.scene().sigMouseMoved.connect(self.on_mouse_moved)
+        self.map_plot_item.scene().sigMouseClicked.connect(self.on_map_clicked)
 
         self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap('thermal'))
         self.colorbar.setImageItem(self.image_item)
@@ -291,64 +354,60 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         map_layout.addWidget(self.map_graphics_widget)
         self.tabs.addTab(self.tab_map, tr("2D Distortion Map"))
 
-        # Tab 4: Simulator
+        # Tab 4: Distortion Curves
+        self.tab_curves = QWidget()
+        curves_layout = QHBoxLayout(self.tab_curves)
+        curves_layout.setContentsMargins(2, 2, 2, 2)
+        curves_layout.setSpacing(5)
+
+        # Left plot: Distortion vs Frequency (at fixed amplitude ref_amp)
+        self.curve_freq_plot = pg.PlotWidget(title=tr("Distortion vs Frequency (at Reference Amplitude)"))
+        self.curve_freq_plot.setLabel("left", tr("Level"), units="dB")
+        self.curve_freq_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.curve_freq_plot.setLogMode(True, False)
+        self.curve_freq_plot.showGrid(True, True, alpha=0.3)
+        self.curve_freq_plot.addLegend(offset=(10, 10))
+        curves_layout.addWidget(self.curve_freq_plot, stretch=1)
+
+        # Red vertical indicator line for ref_f0
+        self.curve_freq_ref_line = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.curve_freq_plot.addItem(self.curve_freq_ref_line)
+
+        # Right plot: Distortion vs Amplitude (at fixed frequency ref_f0)
+        self.curve_amp_plot = pg.PlotWidget(title=tr("Distortion vs Amplitude (at Reference Frequency)"))
+        self.curve_amp_plot.setLabel("left", tr("Level"), units="dB")
+        self.curve_amp_plot.setLabel("bottom", tr("Input Amplitude"), units="dBFS")
+        self.curve_amp_plot.setLogMode(False, False)
+        self.curve_amp_plot.showGrid(True, True, alpha=0.3)
+        self.curve_amp_plot.addLegend(offset=(10, 10))
+        curves_layout.addWidget(self.curve_amp_plot, stretch=1)
+
+        # Red vertical indicator line for ref_amp
+        self.curve_amp_ref_line = pg.InfiniteLine(
+            angle=90,
+            movable=False,
+            pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.curve_amp_plot.addItem(self.curve_amp_ref_line)
+
+        self.tabs.addTab(self.tab_curves, tr("Distortion Curves"))
+
+        # Tab 5: Simulator
         self.tab_sim = QWidget()
         sim_layout = QHBoxLayout(self.tab_sim)
         sim_layout.setContentsMargins(2, 2, 2, 2)
         sim_layout.setSpacing(5)
 
-        # Left Column for Simulator Settings & Results
+        # Left Column for Simulator Results
         sim_left_panel = QWidget()
         sim_left_panel.setFixedWidth(280)
         sim_left_layout = QVBoxLayout(sim_left_panel)
         sim_left_layout.setContentsMargins(0, 0, 0, 0)
         sim_left_layout.setSpacing(8)
-
-        # Tone Simulator Configuration Group (moved from sidebar)
-        self.sim_group = QGroupBox(tr("Tone Simulator"))
-        sim_form = QVBoxLayout(self.sim_group)
-        sim_form.setSpacing(6)
-
-        # Freq
-        sim_form.addWidget(QLabel(tr("Input Frequency")))
-        self.sim_f0_spin = QDoubleSpinBox()
-        self.sim_f0_spin.setRange(20.0, 20000.0)
-        self.sim_f0_spin.setSuffix(" Hz")
-        self.sim_f0_spin.setValue(1000.0)
-        self.sim_f0_spin.setSingleStep(100.0)
-        self.sim_f0_spin.valueChanged.connect(self._on_sim_freq_spin_changed)
-        sim_form.addWidget(self.sim_f0_spin)
-
-        self.sim_f0_slider = QSlider(Qt.Orientation.Horizontal)
-        self.sim_f0_slider.setRange(0, 1000)
-        self.sim_f0_slider.setValue(500)
-        self.sim_f0_slider.valueChanged.connect(self._on_sim_freq_slider_changed)
-        sim_form.addWidget(self.sim_f0_slider)
-
-        # Amplitude
-        sim_form.addWidget(QLabel(tr("Input Amplitude")))
-        self.sim_amp_spin = QDoubleSpinBox()
-        self.sim_amp_spin.setRange(-100.0, 10.0)
-        self.sim_amp_spin.setSuffix(" dBFS")
-        self.sim_amp_spin.setValue(-6.0)
-        self.sim_amp_spin.setSingleStep(1.0)
-        self.sim_amp_spin.valueChanged.connect(self._on_sim_amp_spin_changed)
-        sim_form.addWidget(self.sim_amp_spin)
-
-        self.sim_amp_slider = QSlider(Qt.Orientation.Horizontal)
-        self.sim_amp_slider.setRange(-1000, 100)
-        self.sim_amp_slider.setValue(-60)
-        self.sim_amp_slider.valueChanged.connect(self._on_sim_amp_slider_changed)
-        sim_form.addWidget(self.sim_amp_slider)
-
-        # Phase options
-        self.sim_loopback_phase_chk = QCheckBox(tr("Include Audio Interface Phase"))
-        self.sim_loopback_phase_chk.setChecked(True)
-        self.sim_loopback_phase_chk.toggled.connect(self.update_simulation)
-        sim_form.addWidget(self.sim_loopback_phase_chk)
-
-        self.sim_group.setEnabled(False)
-        sim_left_layout.addWidget(self.sim_group)
 
         # Simulator info grid
         grid_widget = QWidget()
@@ -471,13 +530,15 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Enable Groups
         self.map_group.setEnabled(True)
-        self.sim_group.setEnabled(True)
+        self.ref_group.setEnabled(True)
 
-        # Redraw Bode, Kernels, Maps and Simulation
+        # Redraw Bode, Kernels, Maps
         self.update_bode_plots()
         self.update_kernel_plots()
         self.update_2d_map()
-        self.update_simulation()
+
+        # Update reference parameters and dependent plots/simulation
+        self.update_reference_params(self.ref_f0, self.ref_amp)
 
     def update_bode_plots(self):
         if self.cached_freqs is None:
@@ -558,7 +619,8 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         max_level = self.max_level_spin.value()
 
         # Update GUI combobox enabling states based on type
-        self.harm_unit_combo.setEnabled(map_type != "THD")
+        # Keep harm_unit_combo enabled always to allow switching dBFS/dBr for THD/Fundamental as well
+        self.harm_unit_combo.setEnabled(True)
 
 
         # 1. Grids Setup
@@ -619,10 +681,14 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             mag_harmonics_sq = np.zeros_like(mag_Y1)
             for n in range(2, 6):
                 mag_harmonics_sq += np.abs(Y[n])**2
-            thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
-
-            Z = 20 * np.log10(thd_linear + 1e-12)
-            title = tr("Total Harmonic Distortion (THD)") + " [dB]"
+            
+            if harm_unit == "dbfs":
+                Z = 20 * np.log10(np.sqrt(mag_harmonics_sq) + 1e-12)
+                title = tr("Total Harmonic Distortion (THD)") + " [dBFS]"
+            else: # dbr
+                thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
+                Z = 20 * np.log10(thd_linear + 1e-12)
+                title = tr("Total Harmonic Distortion (THD)") + " [dBr]"
         else:
             # High-order harmonic H2-H5
             order = int(map_type[1])
@@ -630,14 +696,28 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
             if harm_unit == "dbfs":
                 Z = 20 * np.log10(mag_Yn + 1e-12)
-                title = f"{order}rd Harmonic Amplitude [dBFS]" if order == 3 else f"{order}th Harmonic Amplitude [dBFS]"
                 if order == 2:
-                    title = "2nd Harmonic Amplitude [dBFS]"
-            else: # dbc (relative to fundamental)
+                    title = tr("2nd Harmonic Amplitude [dBFS]")
+                elif order == 3:
+                    title = tr("3rd Harmonic Amplitude [dBFS]")
+                elif order == 4:
+                    title = tr("4th Harmonic Amplitude [dBFS]")
+                elif order == 5:
+                    title = tr("5th Harmonic Amplitude [dBFS]")
+                else:
+                    title = tr("{order}th Harmonic Amplitude [dBFS]").format(order=order)
+            else: # dbr (relative to fundamental)
                 Z = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
-                title = f"{order}rd Harmonic Level [dBc]" if order == 3 else f"{order}th Harmonic Level [dBc]"
                 if order == 2:
-                    title = "2nd Harmonic Level [dBc]"
+                    title = tr("2nd Harmonic Level [dBr]")
+                elif order == 3:
+                    title = tr("3rd Harmonic Level [dBr]")
+                elif order == 4:
+                    title = tr("4th Harmonic Level [dBr]")
+                elif order == 5:
+                    title = tr("5th Harmonic Level [dBr]")
+                else:
+                    title = tr("{order}th Harmonic Level [dBr]").format(order=order)
 
         # Draw Image
         # autoLevels=False to preserve user interaction with the color bar handles
@@ -693,6 +773,13 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                     lbl.setPos(log_f_max - 0.02, y_pos)
                     self.map_plot_item.addItem(lbl, ignoreBounds=True)
                     self.iso_labels.append(lbl)
+
+        # Update reference indicator lines on 2D Map
+        self.ref_v_line.setPos(np.log10(self.ref_f0))
+        self.ref_h_line.setPos(self.ref_amp)
+
+        # Update 1D distortion curves to match the current map type and unit selection
+        self.update_1d_distortion_curves()
 
     def update_color_map(self):
         cmap_name = self.color_map_combo.currentData()
@@ -755,7 +842,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                         if harm_unit == "dbfs":
                             unit_str = "dBFS"
                         else:
-                            unit_str = "dBc"
+                            unit_str = "dBr"
 
                     f_str = f"{f/1000.0:.2f} kHz" if f >= 1000.0 else f"{f:.1f} Hz"
                     text = f" {f_str}, {amp_db:.1f} dBFS  →  {name_str}: {val:.1f} {unit_str}"
@@ -773,48 +860,299 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.h_line.hide()
         self.hover_label_item.hide()
 
-    # --- Simulator Methods ---
-    def on_tab_changed(self, index):
-        # Update cache button status on tab switches
-        self.update_cache_button_state()
+    def on_map_clicked(self, event):
+        if self.cached_freqs is None:
+            return
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
 
-    def _on_sim_freq_spin_changed(self, val):
-        self._update_slider_from_freq(val)
+        vb = self.map_plot_item.vb
+        scene_pos = event.scenePos()
+        if vb.sceneBoundingRect().contains(scene_pos):
+            mouse_point = vb.mapSceneToView(scene_pos)
+            log_f = mouse_point.x()
+            amp_db = mouse_point.y()
+
+            start_f = self.model_metadata.get("start_freq", 20.0)
+            end_f = self.model_metadata.get("end_freq", 20000.0)
+            log_f_min = np.log10(start_f)
+            log_f_max = np.log10(end_f)
+            min_level = self.min_level_spin.value()
+            max_level = self.max_level_spin.value()
+
+            if log_f_min <= log_f <= log_f_max and min_level <= amp_db <= max_level:
+                f = 10 ** log_f
+                self.update_reference_params(f, amp_db)
+
+    # --- Parameter Synchronization ---
+    def update_reference_params(self, f0, amp_db):
+        f0 = max(20.0, min(20000.0, f0))
+        amp_db = max(-100.0, min(10.0, amp_db))
+
+        self.ref_f0 = f0
+        self.ref_amp = amp_db
+
+        # Block signals to prevent feedback loop
+        self.ref_f0_spin.blockSignals(True)
+        self.ref_f0_slider.blockSignals(True)
+        self.ref_amp_spin.blockSignals(True)
+        self.ref_amp_slider.blockSignals(True)
+
+        self.ref_f0_spin.setValue(f0)
+        slider_f_val = int(1000.0 * np.log(f0 / 20.0) / np.log(1000.0))
+        slider_f_val = max(0, min(1000, slider_f_val))
+        self.ref_f0_slider.setValue(slider_f_val)
+
+        self.ref_amp_spin.setValue(amp_db)
+        self.ref_amp_slider.setValue(int(amp_db * 10))
+
+        self.ref_f0_spin.blockSignals(False)
+        self.ref_f0_slider.blockSignals(False)
+        self.ref_amp_spin.blockSignals(False)
+        self.ref_amp_slider.blockSignals(False)
+
+        # Update 2D Map ref lines
+        self.ref_v_line.setPos(np.log10(f0))
+        self.ref_h_line.setPos(amp_db)
+
+        # Update 1D plot indicator lines
+        self.curve_freq_ref_line.setPos(np.log10(f0))
+        self.curve_amp_ref_line.setPos(amp_db)
+
+        # Redraw plots and simulator
+        self.update_1d_distortion_curves()
         self.update_simulation()
 
-    def _on_sim_freq_slider_changed(self, val):
+    def _on_ref_freq_spin_changed(self, val):
+        self.update_reference_params(val, self.ref_amp)
+
+    def _on_ref_freq_slider_changed(self, val):
         freq = 20.0 * (1000.0 ** (val / 1000.0))
-        self.sim_f0_spin.blockSignals(True)
-        self.sim_f0_spin.setValue(freq)
-        self.sim_f0_spin.blockSignals(False)
-        self.update_simulation()
+        self.update_reference_params(freq, self.ref_amp)
 
-    def _update_slider_from_freq(self, freq):
-        val = int(1000.0 * np.log(freq / 20.0) / np.log(1000.0))
-        val = max(0, min(1000, val))
-        self.sim_f0_slider.blockSignals(True)
-        self.sim_f0_slider.setValue(val)
-        self.sim_f0_slider.blockSignals(False)
+    def _on_ref_amp_spin_changed(self, val):
+        self.update_reference_params(self.ref_f0, val)
 
-    def _on_sim_amp_spin_changed(self, val):
-        self.sim_amp_slider.blockSignals(True)
-        self.sim_amp_slider.setValue(int(val * 10))
-        self.sim_amp_slider.blockSignals(False)
-        self.update_simulation()
-
-    def _on_sim_amp_slider_changed(self, val):
+    def _on_ref_amp_slider_changed(self, val):
         amp = val / 10.0
-        self.sim_amp_spin.blockSignals(True)
-        self.sim_amp_spin.setValue(amp)
-        self.sim_amp_spin.blockSignals(False)
-        self.update_simulation()
+        self.update_reference_params(self.ref_f0, amp)
+
+    def update_1d_distortion_curves(self):
+        if self.cached_freqs is None or len(self.cached_freqs) == 0:
+            return
+
+        harm_unit = self.harm_unit_combo.currentData()
+
+        # --- 1. Distortion vs Frequency (at self.ref_amp) ---
+        self.curve_freq_plot.clear()
+        self.curve_freq_plot.addItem(self.curve_freq_ref_line)
+
+        # Reconstruct complex frequency responses H_p
+        H_dict = {}
+        for p in range(1, 6):
+            h_key = f"h{p}"
+            if h_key not in self.cached_mags:
+                continue
+            mag_linear = 10 ** (self.cached_mags[h_key] / 20.0)
+            phase_rad = np.radians(self.cached_phases[h_key])
+            H_dict[p] = mag_linear * np.exp(1j * phase_rad)
+
+        sample_rate = self.model_metadata.get("sample_rate", 48000)
+        nyquist = sample_rate / 2.0
+
+        freqs_grid = self.cached_freqs
+        N_f = len(freqs_grid)
+
+        H_interp = {n: {} for n in range(1, 6)}
+        for n in range(1, 6):
+            f_n = n * freqs_grid
+            out_of_bounds = f_n > nyquist
+            for p in range(1, 6):
+                if p in H_dict:
+                     real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
+                     imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
+                     val = real_val + 1j * imag_val
+                     val[out_of_bounds] = 0.0j
+                     H_interp[n][p] = val
+                else:
+                     H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
+
+        A_in = 10 ** (self.ref_amp / 20.0)
+
+        Y = {}
+        Y[1] = (1.0) * (A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5])
+        Y[2] = (-1j) * ((0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4])
+        Y[3] = (-1.0) * ((0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5])
+        Y[4] = (+1j) * ((0.125 * (A_in**4)) * H_interp[4][4])
+        Y[5] = (1.0) * ((0.0625 * (A_in**5)) * H_interp[5][5])
+
+        mag_Y1 = np.abs(Y[1])
+        mag_Y1_safe = np.where(mag_Y1 < 1e-12, 1e-12, mag_Y1)
+
+        colors = {
+            "THD": (255, 255, 255),
+            "h1": (75, 163, 227),
+            "h2": (43, 140, 86),
+            "h3": (230, 140, 20),
+            "h4": (200, 50, 160),
+            "h5": (217, 83, 79),
+        }
+
+        curves_data = {}
+
+        # THD
+        mag_harmonics_sq = np.zeros_like(mag_Y1)
+        for n in range(2, 6):
+            mag_harmonics_sq += np.abs(Y[n])**2
+        
+        if harm_unit == "dbfs":
+            curves_data["THD"] = 20 * np.log10(np.sqrt(mag_harmonics_sq) + 1e-12)
+        else: # dbr
+            thd_linear = np.sqrt(mag_harmonics_sq) / mag_Y1_safe
+            curves_data["THD"] = 20 * np.log10(thd_linear + 1e-12)
+
+        # Harmonics
+        for n in range(1, 6):
+            h_key = f"h{n}"
+            mag_Yn = np.abs(Y[n])
+            if n == 1:
+                if harm_unit == "dbfs":
+                    curves_data[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                else: # dbr
+                    curves_data[h_key] = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
+            else:
+                if harm_unit == "dbfs":
+                    curves_data[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                else:
+                    curves_data[h_key] = 20 * np.log10(mag_Yn / mag_Y1_safe + 1e-12)
+
+        # Plot vs Frequency
+        fundamental_name = tr("Fundamental (dBFS)") if harm_unit == "dbfs" else tr("Fundamental (dBr)")
+        self.curve_freq_plot.plot(
+            freqs_grid, curves_data["h1"],
+            pen=pg.mkPen(color=colors["h1"], width=1.5, style=Qt.PenStyle.DashLine),
+            name=fundamental_name
+        )
+        unit_label = "dBFS" if harm_unit == "dbfs" else "dBr"
+
+        self.curve_freq_plot.plot(
+            freqs_grid, curves_data["THD"],
+            pen=pg.mkPen(color=colors["THD"], width=2.5),
+            name=tr("THD (dBFS)") if harm_unit == "dbfs" else tr("THD (dBr)")
+        )
+        for n in range(2, 6):
+            h_key = f"h{n}"
+            self.curve_freq_plot.plot(
+                freqs_grid, curves_data[h_key],
+                pen=pg.mkPen(color=colors[h_key], width=1.8),
+                name=f"H{n} ({unit_label})"
+            )
+
+        title_freq = tr("Distortion vs Frequency") + f" (Amp = {self.ref_amp:.1f} dBFS)"
+        self.curve_freq_plot.setTitle(title_freq)
+        self.curve_freq_plot.setLabel("left", tr("Level") + f" [{unit_label}]")
+
+        # --- 2. Distortion vs Amplitude (at self.ref_f0) ---
+        self.curve_amp_plot.clear()
+        self.curve_amp_plot.addItem(self.curve_amp_ref_line)
+
+        min_level = self.min_level_spin.value()
+        max_level = self.max_level_spin.value()
+        amps_db = np.linspace(min_level, max_level, num=100)
+        amps_linear = 10 ** (amps_db / 20.0)
+
+        H_at_f0 = {}
+        for n in range(1, 6):
+            f_n = n * self.ref_f0
+            H_at_f0[n] = {}
+            if f_n > nyquist:
+                for p in range(1, 6):
+                    H_at_f0[n][p] = 0.0 + 0.0j
+                continue
+            for p in range(1, 6):
+                if p in H_dict:
+                    real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
+                    imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
+                    H_at_f0[n][p] = real_val + 1j * imag_val
+                else:
+                    H_at_f0[n][p] = 0.0 + 0.0j
+
+        A = amps_linear[:, np.newaxis]
+
+        Y_amp = {}
+        Y_amp[1] = (1.0) * (A * H_at_f0[1][1] + (0.75 * (A**3)) * H_at_f0[1][3] + (0.625 * (A**5)) * H_at_f0[1][5])
+        Y_amp[2] = (-1j) * ((0.5 * (A**2)) * H_at_f0[2][2] + (0.5 * (A**4)) * H_at_f0[2][4])
+        Y_amp[3] = (-1.0) * ((0.25 * (A**3)) * H_at_f0[3][3] + (0.3125 * (A**5)) * H_at_f0[3][5])
+        Y_amp[4] = (+1j) * ((0.125 * (A**4)) * H_at_f0[4][4])
+        Y_amp[5] = (1.0) * ((0.0625 * (A**5)) * H_at_f0[5][5])
+
+        for k in Y_amp:
+            Y_amp[k] = Y_amp[k].flatten()
+
+        mag_Y1_amp = np.abs(Y_amp[1])
+        mag_Y1_amp_safe = np.where(mag_Y1_amp < 1e-12, 1e-12, mag_Y1_amp)
+
+        curves_data_amp = {}
+
+        # THD
+        mag_harmonics_sq_amp = np.zeros_like(mag_Y1_amp)
+        for n in range(2, 6):
+            mag_harmonics_sq_amp += np.abs(Y_amp[n])**2
+        
+        if harm_unit == "dbfs":
+            curves_data_amp["THD"] = 20 * np.log10(np.sqrt(mag_harmonics_sq_amp) + 1e-12)
+        else: # dbr
+            thd_linear_amp = np.sqrt(mag_harmonics_sq_amp) / mag_Y1_amp_safe
+            curves_data_amp["THD"] = 20 * np.log10(thd_linear_amp + 1e-12)
+
+        # Harmonics
+        for n in range(1, 6):
+            h_key = f"h{n}"
+            mag_Yn = np.abs(Y_amp[n])
+            if n == 1:
+                if harm_unit == "dbfs":
+                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                else: # dbr
+                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn / mag_Y1_amp_safe + 1e-12)
+            else:
+                if harm_unit == "dbfs":
+                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn + 1e-12)
+                else:
+                    curves_data_amp[h_key] = 20 * np.log10(mag_Yn / mag_Y1_amp_safe + 1e-12)
+
+        # Plot vs Amplitude
+        self.curve_amp_plot.plot(
+            amps_db, curves_data_amp["h1"],
+            pen=pg.mkPen(color=colors["h1"], width=1.5, style=Qt.PenStyle.DashLine),
+            name=fundamental_name
+        )
+        self.curve_amp_plot.plot(
+            amps_db, curves_data_amp["THD"],
+            pen=pg.mkPen(color=colors["THD"], width=2.5),
+            name=tr("THD (dBFS)") if harm_unit == "dbfs" else tr("THD (dBr)")
+        )
+        for n in range(2, 6):
+            h_key = f"h{n}"
+            self.curve_amp_plot.plot(
+                amps_db, curves_data_amp[h_key],
+                pen=pg.mkPen(color=colors[h_key], width=1.8),
+                name=f"H{n} ({unit_label})"
+            )
+
+        f0_str = f"{self.ref_f0/1000.0:.2f} kHz" if self.ref_f0 >= 1000.0 else f"{self.ref_f0:.1f} Hz"
+        title_amp = tr("Distortion vs Amplitude") + f" (Freq = {f0_str})"
+        self.curve_amp_plot.setTitle(title_amp)
+        self.curve_amp_plot.setLabel("left", tr("Level") + f" [{unit_label}]")
+
+    def on_tab_changed(self, index):
+        self.update_cache_button_state()
 
     def update_simulation(self):
         if self.cached_freqs is None or len(self.cached_freqs) == 0:
             return
 
-        f0 = self.sim_f0_spin.value()
-        amp_db = self.sim_amp_spin.value()
+        f0 = self.ref_f0
+        amp_db = self.ref_amp
 
         H_dict = {}
         for p in range(1, 6):
@@ -870,7 +1208,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         }
 
         ref_phase_f0 = 0.0
-        if self.sim_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
+        if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
             ref_phase_f0 = np.interp(f0, self.cached_freqs, self.cached_phases["ref_phase"])
 
         for n in range(1, 6):
@@ -890,7 +1228,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             relative_phase_rad = np.angle(y_val) - n * fundamental_phase_rad
             phase_val_deg = np.degrees(relative_phase_rad)
 
-            if self.sim_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
+            if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
                 ref_phase_fn = np.interp(f_n, self.cached_freqs, self.cached_phases["ref_phase"])
                 loopback_corr_deg = ref_phase_fn - n * ref_phase_f0
                 phase_val_deg += loopback_corr_deg
