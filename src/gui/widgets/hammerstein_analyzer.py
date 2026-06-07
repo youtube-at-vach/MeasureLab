@@ -469,6 +469,103 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         self.tabs.addTab(self.tab_sim, tr("Harmonic Simulator"))
 
+        # Tab 6: I/O & Gain Compression
+        self.tab_io_comp = QWidget()
+        io_comp_layout = QHBoxLayout(self.tab_io_comp)
+        io_comp_layout.setContentsMargins(2, 2, 2, 2)
+        io_comp_layout.setSpacing(5)
+
+        self.io_plot = pg.PlotWidget(title=tr("Input-Output Transfer Curve"))
+        self.io_plot.setLabel("left", tr("Output Amplitude"), units="dBFS")
+        self.io_plot.setLabel("bottom", tr("Input Amplitude"), units="dBFS")
+        self.io_plot.showGrid(True, True, alpha=0.3)
+        self.io_plot.addLegend(offset=(10, 10))
+        io_comp_layout.addWidget(self.io_plot, stretch=1)
+
+        # Reference indicator lines for io_plot
+        self.io_ref_v_line = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.io_ref_h_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.io_plot.addItem(self.io_ref_v_line)
+        self.io_plot.addItem(self.io_ref_h_line)
+
+        # 1dB Compression Point guide lines and marker for io_plot
+        self.io_p1db_v_line = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen((0, 200, 255, 180), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.io_p1db_h_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen((0, 200, 255, 180), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.io_plot.addItem(self.io_p1db_v_line)
+        self.io_plot.addItem(self.io_p1db_h_line)
+        self.io_p1db_marker = pg.PlotDataItem(
+            symbol="o",
+            symbolBrush=pg.mkBrush((0, 200, 255)),
+            symbolPen=pg.mkPen((255, 255, 255)),
+            symbolSize=10,
+        )
+        self.io_plot.addItem(self.io_p1db_marker)
+
+        self.comp_plot = pg.PlotWidget(title=tr("Gain Compression (Compression Error)"))
+        self.comp_plot.setLabel("left", tr("Compression Error"), units="dB")
+        self.comp_plot.setLabel("bottom", tr("Input Amplitude"), units="dBFS")
+        self.comp_plot.showGrid(True, True, alpha=0.3)
+        self.comp_plot.addLegend(offset=(10, 10))
+        io_comp_layout.addWidget(self.comp_plot, stretch=1)
+
+        # Permanent line at 0 dB representing the ideal linear gain
+        self.comp_linear_ref_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen((120, 120, 120, 150), width=1.2, style=Qt.PenStyle.DashLine)
+        )
+        self.comp_plot.addItem(self.comp_linear_ref_line)
+
+        # Reference indicator lines for comp_plot
+        self.comp_ref_v_line = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.comp_ref_h_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen((255, 80, 0, 150), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.comp_plot.addItem(self.comp_ref_v_line)
+        self.comp_plot.addItem(self.comp_ref_h_line)
+
+        # 1dB Compression Point limit line (-1 dB)
+        self.comp_1db_limit_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen((200, 0, 0, 150), width=1.2, style=Qt.PenStyle.DashLine)
+        )
+        self.comp_1db_limit_line.setPos(-1.0)
+        self.comp_plot.addItem(self.comp_1db_limit_line)
+
+        # 1dB Compression Point guide lines and marker for comp_plot
+        self.comp_p1db_v_line = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen((0, 200, 255, 180), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.comp_p1db_h_line = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen((0, 200, 255, 180), width=1.5, style=Qt.PenStyle.DashLine)
+        )
+        self.comp_plot.addItem(self.comp_p1db_v_line)
+        self.comp_plot.addItem(self.comp_p1db_h_line)
+        self.comp_p1db_marker = pg.PlotDataItem(
+            symbol="o",
+            symbolBrush=pg.mkBrush((0, 200, 255)),
+            symbolPen=pg.mkPen((255, 255, 255)),
+            symbolSize=10,
+        )
+        self.comp_plot.addItem(self.comp_p1db_marker)
+
+        # Initially hide the 1dB compression lines & markers
+        self.io_p1db_v_line.hide()
+        self.io_p1db_h_line.hide()
+        self.io_p1db_marker.setData([], [])
+        self.comp_p1db_v_line.hide()
+        self.comp_p1db_h_line.hide()
+        self.comp_p1db_marker.setData([], [])
+
+        self.tabs.addTab(self.tab_io_comp, tr("I/O & Compression"))
+
         main_layout.addWidget(self.tabs, stretch=1)
 
     def on_noise_floor_toggled(self, checked):
@@ -821,6 +918,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Update 1D distortion curves to match the current map type and unit selection
         self.update_1d_distortion_curves()
+        self.update_io_compression_plots()
 
     def update_color_map(self):
         cmap_name = self.color_map_combo.currentData()
@@ -965,6 +1063,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Redraw plots and simulator
         self.update_1d_distortion_curves()
         self.update_simulation()
+        self.update_io_compression_plots()
 
     def _on_ref_freq_spin_changed(self, val):
         self.update_reference_params(val, self.ref_amp)
@@ -1363,6 +1462,148 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             )
             noise_line.setPos(noise_db)
             self.sim_plot.addItem(noise_line)
+
+    def update_io_compression_plots(self):
+        if self.cached_freqs is None or len(self.cached_freqs) == 0:
+            return
+
+        f0 = self.ref_f0
+        amp_db = self.ref_amp
+
+        # Get interpolation data for kernels 1, 3, 5
+        H_dict = {}
+        for p in range(1, 6):
+            h_key = f"h{p}"
+            if h_key not in self.cached_mags or h_key not in self.cached_phases:
+                continue
+            mag_linear = 10 ** (self.cached_mags[h_key] / 20.0)
+            phase_rad = np.radians(self.cached_phases[h_key])
+            H_dict[p] = mag_linear * np.exp(1j * phase_rad)
+
+        sample_rate = self.model_metadata.get("sample_rate", 48000)
+        nyquist = sample_rate / 2.0
+
+        H_at_f0 = {}
+        for p in [1, 3, 5]:
+            if f0 > nyquist or p not in H_dict:
+                H_at_f0[p] = 0.0 + 0.0j
+                continue
+            real_val = np.interp(f0, self.cached_freqs, np.real(H_dict[p]))
+            imag_val = np.interp(f0, self.cached_freqs, np.imag(H_dict[p]))
+            H_at_f0[p] = real_val + 1j * imag_val
+
+        # Setup amplitudes grid
+        min_level = self.min_level_spin.value()
+        max_level = self.max_level_spin.value()
+        amps_db = np.linspace(min_level, max_level, num=500)
+        amps_linear = 10 ** (amps_db / 20.0)
+
+        # Synthesize output component Y1 at f0
+        # Y1 = A * H1 + 0.75 * A^3 * H3 + 0.625 * A^5 * H5
+        Y1 = (
+            amps_linear * H_at_f0[1]
+            + 0.75 * (amps_linear**3) * H_at_f0[3]
+            + 0.625 * (amps_linear**5) * H_at_f0[5]
+        )
+
+        out_db = 20 * np.log10(np.abs(Y1) + 1e-12)
+        lin_gain_mag = np.abs(H_at_f0[1])
+        if lin_gain_mag < 1e-12:
+            lin_gain_mag = 1e-12
+        ideal_out_db = amps_db + 20 * np.log10(lin_gain_mag)
+        comp_error = out_db - ideal_out_db
+
+        # Clear and replot
+        self.io_plot.clear()
+        self.io_plot.addItem(self.io_ref_v_line)
+        self.io_plot.addItem(self.io_ref_h_line)
+        self.io_plot.addItem(self.io_p1db_v_line)
+        self.io_plot.addItem(self.io_p1db_h_line)
+        self.io_plot.addItem(self.io_p1db_marker)
+
+        self.comp_plot.clear()
+        self.comp_plot.addItem(self.comp_linear_ref_line)
+        self.comp_plot.addItem(self.comp_ref_v_line)
+        self.comp_plot.addItem(self.comp_ref_h_line)
+        self.comp_plot.addItem(self.comp_1db_limit_line)
+        self.comp_plot.addItem(self.comp_p1db_v_line)
+        self.comp_plot.addItem(self.comp_p1db_h_line)
+        self.comp_plot.addItem(self.comp_p1db_marker)
+
+        # Find reference output and error to position reference lines
+        ref_amp_linear = 10 ** (amp_db / 20.0)
+        ref_Y1 = (
+            ref_amp_linear * H_at_f0[1]
+            + 0.75 * (ref_amp_linear**3) * H_at_f0[3]
+            + 0.625 * (ref_amp_linear**5) * H_at_f0[5]
+        )
+        ref_out = 20 * np.log10(np.abs(ref_Y1) + 1e-12)
+        ref_ideal = amp_db + 20 * np.log10(lin_gain_mag)
+        ref_error = ref_out - ref_ideal
+
+        self.io_ref_v_line.setPos(amp_db)
+        self.io_ref_h_line.setPos(ref_out)
+        self.comp_ref_v_line.setPos(amp_db)
+        self.comp_ref_h_line.setPos(ref_error)
+
+        # Search for 1dB compression point (where comp_error <= -1.0)
+        p1db_in = None
+        p1db_out = None
+
+        crossing_idx = np.where(comp_error <= -1.0)[0]
+        if len(crossing_idx) > 0:
+            idx = crossing_idx[0]
+            if idx > 0:
+                y0, y1 = comp_error[idx-1], comp_error[idx]
+                x0, x1 = amps_db[idx-1], amps_db[idx]
+                p1db_in = x0 + (-1.0 - y0) * (x1 - x0) / (y1 - y0)
+
+                out0, out1 = out_db[idx-1], out_db[idx]
+                p1db_out = out0 + (p1db_in - x0) * (out1 - out0) / (x1 - x0)
+            else:
+                p1db_in = amps_db[0]
+                p1db_out = out_db[0]
+
+        # Draw 1dB Compression lines & markers if found
+        if p1db_in is not None:
+            self.io_p1db_v_line.setPos(p1db_in)
+            self.io_p1db_h_line.setPos(p1db_out)
+            self.io_p1db_v_line.show()
+            self.io_p1db_h_line.show()
+            self.io_p1db_marker.setData([p1db_in], [p1db_out])
+
+            self.comp_p1db_v_line.setPos(p1db_in)
+            self.comp_p1db_h_line.setPos(-1.0)
+            self.comp_p1db_v_line.show()
+            self.comp_p1db_h_line.show()
+            self.comp_p1db_marker.setData([p1db_in], [-1.0])
+
+            p1db_str = f"{p1db_in:.1f} dBFS"
+        else:
+            self.io_p1db_v_line.hide()
+            self.io_p1db_h_line.hide()
+            self.io_p1db_marker.setData([], [])
+
+            self.comp_p1db_v_line.hide()
+            self.comp_p1db_h_line.hide()
+            self.comp_p1db_marker.setData([], [])
+
+            p1db_str = tr("N/A")
+
+        # Plot transfer curves
+        pen_ideal = pg.mkPen(color=(120, 120, 120), width=1.5, style=Qt.PenStyle.DashLine)
+        pen_actual = pg.mkPen(color=(43, 140, 86), width=2)
+        pen_error = pg.mkPen(color=(217, 83, 79), width=2)
+
+        self.io_plot.plot(amps_db, ideal_out_db, pen=pen_ideal, name=tr("Ideal Linear Output"))
+        self.io_plot.plot(amps_db, out_db, pen=pen_actual, name=tr("Actual Output"))
+
+        self.comp_plot.plot(amps_db, comp_error, pen=pen_error, name=tr("Compression Error"))
+
+        # Setup titles with Freq and P1dB
+        f_str = f"{f0 / 1000.0:.2f} kHz" if f0 >= 1000.0 else f"{f0:.1f} Hz"
+        self.io_plot.setTitle(tr("Input-Output Curve (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
+        self.comp_plot.setTitle(tr("Gain Compression (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
 
     # --- ComparableWidgetInterface ---
     def get_comparison_data(self):
