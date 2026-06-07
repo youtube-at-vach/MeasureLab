@@ -195,7 +195,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.color_map_combo.addItem("Greyscale", "grey")
         self.color_map_combo.currentIndexChanged.connect(self.update_color_map)
         self.color_map_combo.blockSignals(True)
-        self.color_map_combo.setCurrentIndex(self.color_map_combo.findData("turbo"))
+        self.color_map_combo.setCurrentIndex(self.color_map_combo.findData("thermal"))
         self.color_map_combo.blockSignals(False)
         map_form.addRow(tr("Color Map:"), self.color_map_combo)
 
@@ -284,7 +284,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Connect mouse move
         self.map_plot_item.scene().sigMouseMoved.connect(self.on_mouse_moved)
 
-        self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap('turbo'))
+        self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap('thermal'))
         self.colorbar.setImageItem(self.image_item)
         self.map_graphics_widget.addItem(self.colorbar)
 
