@@ -536,6 +536,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.comp_1db_limit_line = pg.InfiniteLine(
             angle=0, movable=False, pen=pg.mkPen((200, 0, 0, 150), width=1.2, style=Qt.PenStyle.DashLine)
         )
+        self.comp_1db_limit_line.setPos(-1.0)
         self.comp_plot.addItem(self.comp_1db_limit_line)
 
         # 1dB Compression Point guide lines and marker for comp_plot
