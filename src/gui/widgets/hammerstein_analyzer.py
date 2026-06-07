@@ -31,6 +31,20 @@ from src.core.hammerstein_model import load_hammerstein_model, get_active_model,
 logger = logging.getLogger(__name__)
 
 
+def _get_safe_colormap(name: str) -> pg.ColorMap:
+    try:
+        return pg.colormap.get(name)
+    except Exception:
+        from pyqtgraph.graphicsItems.GradientEditorItem import Gradients
+        if name in Gradients:
+            preset = Gradients[name]
+            ticks = sorted(preset["ticks"], key=lambda t: t[0])
+            pos = [t[0] for t in ticks]
+            color = [t[1] for t in ticks]
+            return pg.ColorMap(pos, color)
+        raise
+
+
 class HammersteinAnalyzer(MeasurementModule):
     def __init__(self, audio_engine):
         self.audio_engine = audio_engine
@@ -60,6 +74,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.cached_kernels = None
         self.cached_time_ms = None
         self.model_metadata = {}
+        self.first_map_draw = True
 
         self.init_ui()
 
@@ -159,20 +174,6 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.max_level_spin.valueChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Max Level:"), self.max_level_spin)
 
-        # Dist Min / Max (Color scale range)
-        self.dist_min_spin = QDoubleSpinBox()
-        self.dist_min_spin.setRange(-150.0, -10.0)
-        self.dist_min_spin.setValue(-100.0)
-        self.dist_min_spin.setSuffix(" dB")
-        self.dist_min_spin.valueChanged.connect(self.update_2d_map)
-        map_form.addRow(tr("Color Min:"), self.dist_min_spin)
-
-        self.dist_max_spin = QDoubleSpinBox()
-        self.dist_max_spin.setRange(-100.0, 10.0)
-        self.dist_max_spin.setValue(-40.0)
-        self.dist_max_spin.setSuffix(" dB")
-        self.dist_max_spin.valueChanged.connect(self.update_2d_map)
-        map_form.addRow(tr("Color Max:"), self.dist_max_spin)
 
         # Color Map
         self.color_map_combo = QComboBox()
@@ -180,10 +181,18 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.color_map_combo.addItem("Viridis", "viridis")
         self.color_map_combo.addItem("Plasma", "plasma")
         self.color_map_combo.addItem("Magma", "magma")
+        self.color_map_combo.addItem("Turbo", "turbo")
         self.color_map_combo.addItem("Thermal", "thermal")
         self.color_map_combo.addItem("Flame", "flame")
+        self.color_map_combo.addItem("Yellowy", "yellowy")
+        self.color_map_combo.addItem("Bipolar", "bipolar")
+        self.color_map_combo.addItem("Spectrum", "spectrum")
+        self.color_map_combo.addItem("Cyclic", "cyclic")
         self.color_map_combo.addItem("Greyscale", "grey")
         self.color_map_combo.currentIndexChanged.connect(self.update_color_map)
+        self.color_map_combo.blockSignals(True)
+        self.color_map_combo.setCurrentIndex(self.color_map_combo.findData("turbo"))
+        self.color_map_combo.blockSignals(False)
         map_form.addRow(tr("Color Map:"), self.color_map_combo)
 
         self.map_group.setEnabled(False)
@@ -250,7 +259,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.image_item = pg.ImageItem()
         self.map_plot_item.addItem(self.image_item)
 
-        self.colorbar = pg.ColorBarItem(colorMap=pg.colormap.get('inferno'))
+        self.colorbar = pg.ColorBarItem(colorMap=_get_safe_colormap('turbo'))
         self.colorbar.setImageItem(self.image_item)
         self.map_graphics_widget.addItem(self.colorbar)
 
@@ -420,6 +429,7 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             QMessageBox.critical(self, tr("Import Error"), f"Failed to parse model file: {e}")
 
     def set_model_data(self, data):
+        self.first_map_draw = True
         self.model_metadata = data.get("metadata", {})
         self.cached_freqs = data["frequency_domain"]["freqs"]
         self.cached_mags = data["frequency_domain"]["magnitudes_db"]
@@ -525,16 +535,6 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Update GUI combobox enabling states based on type
         self.harm_unit_combo.setEnabled(map_type != "THD")
 
-        # Update suffix based on current units to make it intuitive
-        if map_type == "THD":
-            self.dist_min_spin.setSuffix(" dB")
-            self.dist_max_spin.setSuffix(" dB")
-        elif harm_unit == "dbfs":
-            self.dist_min_spin.setSuffix(" dBFS")
-            self.dist_max_spin.setSuffix(" dBFS")
-        else:
-            self.dist_min_spin.setSuffix(" dBc")
-            self.dist_max_spin.setSuffix(" dBc")
 
         # 1. Grids Setup
         start_f = self.model_metadata.get("start_freq", 20.0)
@@ -614,11 +614,9 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 if order == 2:
                     title = "2nd Harmonic Level [dBc]"
 
-        vmin = self.dist_min_spin.value()
-        vmax = self.dist_max_spin.value()
-
         # Draw Image
-        self.image_item.setImage(Z.T)
+        # autoLevels=False to preserve user interaction with the color bar handles
+        self.image_item.setImage(Z.T, autoLevels=False)
         self.map_plot_item.setTitle(title)
 
         # Set mapping coordinates
@@ -631,12 +629,15 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
             max_level - min_level
         ))
 
-        self.colorbar.setLevels((vmin, vmax))
+        if getattr(self, "first_map_draw", True):
+            self.image_item.setLevels((-100.0, -40.0))
+            self.colorbar.setLevels((-100.0, -40.0))
+            self.first_map_draw = False
 
     def update_color_map(self):
         cmap_name = self.color_map_combo.currentData()
         try:
-            cmap = pg.colormap.get(cmap_name)
+            cmap = _get_safe_colormap(cmap_name)
             self.colorbar.setColorMap(cmap)
         except Exception as e:
             logger.error("Failed to set colormap %s: %s", cmap_name, e)
