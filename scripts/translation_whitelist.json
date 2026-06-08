@@ -223,6 +223,7 @@
         "Signal",
         "Slot",
         "Solo",
+        "Standard",
         "Standard Test Tone (1kHz) / USB Frame (1ms)",
         "Standard Test Tone (997Hz)",
         "Start (s):",

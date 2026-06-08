@@ -563,3 +563,41 @@ def test_nonlinear_analyzer_fractional_delay_robustness():
 
 
 
+
+
+def test_nonlinear_system_analyzer_module_measurement(qtbot):
+    """
+    Verifies that NonlinearSystemAnalyzer performs measurement steps,
+    successfully calculates noise floor if enabled, and pushes the model to cache.
+    """
+    from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer
+    from src.core.audio_engine import AudioEngine
+    from src.core.hammerstein_model import get_active_model
+
+    # Setup dummy audio engine in offline mode
+    audio_engine = AudioEngine()
+    audio_engine.offline_mode = True
+    audio_engine.sample_rate = 44100
+
+    analyzer = NonlinearSystemAnalyzer(audio_engine)
+    analyzer.num_amplitudes = 5
+    analyzer.sweep_duration = 0.5  # Short sweep for fast test
+    analyzer.measure_noise_floor = True
+
+    # Dummy worker
+    class DummyWorker:
+        def __init__(self):
+            self.is_running = True
+
+    worker = DummyWorker()
+    analyzer._execute_measurement(worker)
+
+    # Check that noise floor was calculated and stored
+    assert analyzer.measured_noise_floor_dbfs is not None
+    # Offline mode simulates -100 dBFS noise floor
+    assert -110.0 < analyzer.measured_noise_floor_dbfs < -90.0
+
+    # Verify model cache
+    cached_model = get_active_model()
+    assert cached_model is not None
+    assert cached_model["metadata"]["noise_floor_dbfs"] == analyzer.measured_noise_floor_dbfs

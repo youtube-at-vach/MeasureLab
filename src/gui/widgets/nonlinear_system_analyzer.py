@@ -1,6 +1,5 @@
 import logging
 import threading
-import time
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt
@@ -19,17 +18,19 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QMessageBox,
+    QCheckBox,
 )
 from scipy.signal import (
     chirp as signal_chirp,
     fftconvolve,
     savgol_filter,
+    butter,
+    sosfilt,
 )
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
     process_amplitude_responses,
@@ -165,6 +166,8 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         self.averages = 2  # TSA (Time Synchronized Averaging) count
         self.num_amplitudes = 5  # Number of amplitude steps for PHM (typically 5 to 7 steps)
         self.latency_sec = 0.0
+        self.measure_noise_floor = True
+        self.measured_noise_floor_dbfs = None
 
         # Routing Config
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -371,7 +374,49 @@ class NonlinearSystemAnalyzer(MeasurementModule):
             responses_ref.append(ir_ref_raw)
             responses_meas.append(ir_meas_raw)
 
-        # 2. Parallel Hammerstein Separation and Analysis using Core Module
+        # 2. Noise Floor Measurement (Optional)
+        noise_floor_dbfs = None
+        if getattr(self, "measure_noise_floor", True):
+            if worker.is_running:
+                logger.info("Measuring noise floor (1.0 second silence play/record)...")
+                noise_duration = 1.0
+                noise_len = int(sample_rate * noise_duration)
+                noise_out = np.zeros((noise_len, 2), dtype=np.float32)
+                try:
+                    rec_data = self.run_play_rec(noise_out, input_channels=2)
+                    if getattr(self.audio_engine, "offline_mode", False):
+                        # Simulate -100 dBFS noise floor
+                        noise_sig = np.random.normal(0, 1e-5, noise_len)
+                    else:
+                        noise_sig = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
+
+                    # Apply 20Hz-20kHz bandpass filtering (removes DC offset and out-of-band noise)
+                    nyquist = sample_rate / 2.0
+                    # 20Hz HPF (4th order)
+                    sos_hp = butter(4, 20.0 / nyquist, btype='highpass', output='sos')
+                    filtered_sig = sosfilt(sos_hp, noise_sig)
+
+                    # 20kHz LPF (4th order) if sampling rate supports it
+                    if sample_rate > 44100:
+                        sos_lp = butter(4, 20000.0 / nyquist, btype='lowpass', output='sos')
+                        filtered_sig = sosfilt(sos_lp, filtered_sig)
+
+                    # Trim edges (especially start) to avoid sweep decay transients and filter settling times
+                    trim_start = int(sample_rate * 0.20)  # 200ms trim for sweep decay & HPF transients
+                    trim_end = int(sample_rate * 0.10)    # 100ms trim for end filter transients
+                    if len(filtered_sig) > (trim_start + trim_end):
+                        trimmed_sig = filtered_sig[trim_start:-trim_end]
+                    else:
+                        trimmed_sig = filtered_sig
+
+                    rms = np.sqrt(np.mean(trimmed_sig**2))
+                    noise_floor_dbfs = float(20 * np.log10(rms + 1e-12))
+                    logger.info("Measured noise floor (filtered/trimmed): %.2f dBFS", noise_floor_dbfs)
+                except Exception as e:
+                    logger.error("Failed to measure noise floor: %s", e)
+        self.measured_noise_floor_dbfs = noise_floor_dbfs
+
+        # 3. Parallel Hammerstein Separation and Analysis using Core Module
         (
             valid_freqs,
             magnitudes_db_dict,
@@ -410,6 +455,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     "latency_sec": self.latency_sec,
                     "ref_max": float(ref_max),
                     "P": len(separated_kernels_data),
+                    "noise_floor_dbfs": noise_floor_dbfs,
                 },
                 "time_domain": {
                     "time_ms": time_ms,
@@ -439,10 +485,9 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
 
 
-class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
+class NonlinearSystemAnalyzerWidget(QWidget):
     def __init__(self, module: NonlinearSystemAnalyzer):
         QWidget.__init__(self)
-        ComparableWidgetInterface.__init__(self)
         self.module = module
 
 
@@ -502,7 +547,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         scroll_layout.setSpacing(10)
 
         # Group 1: General Sweep Parameters
-        sweep_group = QGroupBox(tr("SSS Parameters"))
+        sweep_group = QGroupBox(tr("Swept Sine Settings"))
         sweep_form = QFormLayout(sweep_group)
         sweep_form.setContentsMargins(6, 8, 6, 8)
         sweep_form.setSpacing(6)
@@ -530,12 +575,17 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.tsa_spin.setRange(1, 20)
         self.tsa_spin.setValue(self.module.averages)
         self.tsa_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
-        sweep_form.addRow(tr("TSA Averages:"), self.tsa_spin)
+        sweep_form.addRow(tr("Averages (Time-Sync):"), self.tsa_spin)
+
+        self.measure_noise_chk = QCheckBox(tr("Measure Noise Floor"))
+        self.measure_noise_chk.setChecked(self.module.measure_noise_floor)
+        self.measure_noise_chk.toggled.connect(lambda v: setattr(self.module, "measure_noise_floor", v))
+        sweep_form.addRow(self.measure_noise_chk)
 
         scroll_layout.addWidget(sweep_group)
 
         # Group 2: Parallel Hammerstein Model Parameters
-        phm_group = QGroupBox(tr("Hammerstein Modeling"))
+        phm_group = QGroupBox(tr("Nonlinear Modeling"))
         phm_form = QFormLayout(phm_group)
         phm_form.setContentsMargins(6, 8, 6, 8)
         phm_form.setSpacing(6)
@@ -551,16 +601,16 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.steps_spin.setRange(5, 10)  # Safe range to keep execution < 30s
         self.steps_spin.setValue(self.module.num_amplitudes)
         self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, "num_amplitudes", v))
-        phm_form.addRow(tr("Amp Scans (P=5):"), self.steps_spin)
+        phm_form.addRow(tr("Amplitude Steps (Max Order 5):"), self.steps_spin)
 
         self.smooth_combo = QComboBox()
         self.smooth_combo.addItem(tr("None"), "None")
-        self.smooth_combo.addItem(tr("Light (Savitzky-Golay)"), "Light")
-        self.smooth_combo.addItem(tr("Medium (Savitzky-Golay)"), "Medium")
-        self.smooth_combo.addItem(tr("Heavy (Savitzky-Golay)"), "Heavy")
+        self.smooth_combo.addItem(tr("Low Smoothing"), "Light")
+        self.smooth_combo.addItem(tr("Medium Smoothing"), "Medium")
+        self.smooth_combo.addItem(tr("High Smoothing"), "Heavy")
         self.smooth_combo.setCurrentIndex(1)  # Default: Light
         self.smooth_combo.currentIndexChanged.connect(self.refresh_plots_with_smoothing)
-        phm_form.addRow(tr("Display Smoothing:"), self.smooth_combo)
+        phm_form.addRow(tr("Graph Smoothing:"), self.smooth_combo)
 
         scroll_layout.addWidget(phm_group)
 
@@ -579,10 +629,10 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         route_form.addRow(tr("Output Ch:"), self.out_combo)
 
         self.in_mode_combo = QComboBox()
-        self.in_mode_combo.addItem(tr("Left (Ch1)"), "L")
-        self.in_mode_combo.addItem(tr("Right (Ch2)"), "R")
-        self.in_mode_combo.addItem(tr("XFER (Ref=L, Meas=R)"), "XFER")
-        self.in_mode_combo.addItem(tr("XFER (Ref=R, Meas=L)"), "XFER_REV")
+        self.in_mode_combo.addItem(tr("Single Ch (Left Ch1)"), "L")
+        self.in_mode_combo.addItem(tr("Single Ch (Right Ch2)"), "R")
+        self.in_mode_combo.addItem(tr("2-Ch Relative (Ref=L, Meas=R)"), "XFER")
+        self.in_mode_combo.addItem(tr("2-Ch Relative (Ref=R, Meas=L)"), "XFER_REV")
         self.in_mode_combo.setCurrentIndex(3)  # Default: XFER (Ref=R, Meas=L)
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
@@ -590,10 +640,10 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Latency Display
         self.latency_label = QLabel("0.00 ms")
         self.latency_label.setStyleSheet("font-weight: bold; color: #4ba3e3;")
-        route_form.addRow(tr("Latency:"), self.latency_label)
+        route_form.addRow(tr("Delay Time:"), self.latency_label)
 
         # Calibrate Button
-        self.cal_btn = QPushButton(tr("Calibrate Delay"))
+        self.cal_btn = QPushButton(tr("Measure Delay"))
         self.cal_btn.clicked.connect(self.module.start_latency_calibration)
         route_form.addRow(self.cal_btn)
 
@@ -652,34 +702,34 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Tab 1: Magnitude Response (Bode Plot)
         self.mag_tab = QWidget()
         mag_layout = QVBoxLayout(self.mag_tab)
-        self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response (PHM Separation)"))
+        self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response"))
         self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(True, False)
         self.mag_plot.showGrid(True, True, alpha=0.3)
         mag_layout.addWidget(self.mag_plot)
-        self.plot_tabs.addTab(self.mag_tab, tr("Bode Magnitude"))
+        self.plot_tabs.addTab(self.mag_tab, tr("Magnitude Response"))
 
         # Tab 2: Phase Response
         self.phase_tab = QWidget()
         phase_layout = QVBoxLayout(self.phase_tab)
-        self.phase_plot = pg.PlotWidget(title=tr("Bode Phase Response (PHM Separation)"))
+        self.phase_plot = pg.PlotWidget(title=tr("Bode Phase Response"))
         self.phase_plot.setLabel("left", tr("Phase"), units="deg")
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(True, False)
         self.phase_plot.showGrid(True, True, alpha=0.3)
         phase_layout.addWidget(self.phase_plot)
-        self.plot_tabs.addTab(self.phase_tab, tr("Bode Phase"))
+        self.plot_tabs.addTab(self.phase_tab, tr("Phase Response"))
 
         # Tab 3: Time Domain Kernels h_p(t)
         self.kernel_tab = QWidget()
         kernel_layout = QVBoxLayout(self.kernel_tab)
-        self.kernel_plot = pg.PlotWidget(title=tr("Separated Parallel Hammerstein Kernels"))
+        self.kernel_plot = pg.PlotWidget(title=tr("Nonlinear Impulse Responses (Kernels)"))
         self.kernel_plot.setLabel("left", tr("Normalized Amplitude"))
         self.kernel_plot.setLabel("bottom", tr("Time"), units="ms")
         self.kernel_plot.showGrid(True, True, alpha=0.3)
         kernel_layout.addWidget(self.kernel_plot)
-        self.plot_tabs.addTab(self.kernel_tab, tr("Hammerstein Kernels"))
+        self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
 
 
 
@@ -801,11 +851,11 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         }
 
         labels = {
-            "h1": tr("Fundamental (Linear Kernel h1)"),
-            "h2": tr("2nd Order (Kernel h2)"),
-            "h3": tr("3rd Order (Kernel h3)"),
-            "h4": tr("4th Order (Kernel h4)"),
-            "h5": tr("5th Order (Kernel h5)"),
+            "h1": tr("Fundamental (1st Order)"),
+            "h2": tr("2nd Order Harmonic"),
+            "h3": tr("3rd Order Harmonic"),
+            "h4": tr("4th Order Harmonic"),
+            "h5": tr("5th Order Harmonic"),
         }
 
         # Clear existing curves before redrawing
@@ -853,11 +903,11 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ]
 
         labels = [
-            tr("Kernel h1"),
-            tr("Kernel h2"),
-            tr("Kernel h3"),
-            tr("Kernel h4"),
-            tr("Kernel h5"),
+            tr("1st Order (h1)"),
+            tr("2nd Order (h2)"),
+            tr("3rd Order (h3)"),
+            tr("4th Order (h4)"),
+            tr("5th Order (h5)"),
         ]
 
         for p in range(len(separated_kernels_data)):
@@ -901,6 +951,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
                     "latency_sec": self.module.latency_sec,
                     "ref_max": float(ref_max),
                     "P": len(self.cached_kernels),
+                    "noise_floor_dbfs": self.module.measured_noise_floor_dbfs,
                 },
                 "time_domain": {
                     "time_ms": self.cached_time_ms,
@@ -934,21 +985,5 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             )
 
 
-    # --- ComparableWidgetInterface ---
-    def get_comparison_data(self):
-        # Implements ComparableWidgetInterface for data overlay and save comparison traces
-        if self.cached_freqs is None or "h1" not in self.cached_mags:
-            return None
-
-        # We export the primary fundamental response (h1) as the default comparison trace
-        return {
-            "x": self.cached_freqs,
-            "y": self.cached_mags["h1"],
-            "title": f"PHM Fundamental (h1) Sweep - {time.strftime('%H:%M:%S')}",
-            "x_label": "Frequency",
-            "x_units": "Hz",
-            "y_label": "Gain",
-            "y_units": "dB",
-        }
 
 
