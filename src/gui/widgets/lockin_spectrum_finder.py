@@ -1,4 +1,5 @@
 import json
+import tempfile
 from dataclasses import dataclass
 import logging
 import os
@@ -455,14 +456,19 @@ class LockInSpectrumFinder(MeasurementModule):
             try:
                 path = os.path.join(ConfigManager.get_user_data_dir(), "user_scan_targets.json")
                 os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
-                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {str(k): v for k, v in targets_copy.items()},
-                        f,
-                        indent=4,
-                        ensure_ascii=False,
-                    )
+                fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(path), text=True)
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        json.dump(
+                            {str(k): v for k, v in targets_copy.items()},
+                            f,
+                            indent=4,
+                            ensure_ascii=False,
+                        )
+                    os.replace(temp_path, path)
+                except Exception:
+                    os.unlink(temp_path)
+                    raise
             except Exception as e:
                 logger.error(f"Failed to save user targets: {e}")
 
@@ -1820,10 +1826,15 @@ class LockInSpectrumFinderWidget(QWidget):
         )
         if file_path:
             try:
-                fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    data = {str(k): v for k, v in self.module.current_targets.items()}
-                    json.dump(data, f, indent=4, ensure_ascii=False)
+                fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(file_path), text=True)
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        data = {str(k): v for k, v in self.module.current_targets.items()}
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                    os.replace(temp_path, file_path)
+                except Exception:
+                    os.unlink(temp_path)
+                    raise
                 QMessageBox.information(self, tr("Success"), tr("Targets exported successfully."))
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to export targets:')}\n{e}")
