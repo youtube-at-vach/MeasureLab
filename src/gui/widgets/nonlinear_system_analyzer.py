@@ -502,7 +502,7 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         scroll_layout.setSpacing(10)
 
         # Group 1: General Sweep Parameters
-        sweep_group = QGroupBox(tr("SSS Parameters"))
+        sweep_group = QGroupBox(tr("Swept Sine Settings"))
         sweep_form = QFormLayout(sweep_group)
         sweep_form.setContentsMargins(6, 8, 6, 8)
         sweep_form.setSpacing(6)
@@ -530,12 +530,12 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.tsa_spin.setRange(1, 20)
         self.tsa_spin.setValue(self.module.averages)
         self.tsa_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
-        sweep_form.addRow(tr("TSA Averages:"), self.tsa_spin)
+        sweep_form.addRow(tr("Averages (Time-Sync):"), self.tsa_spin)
 
         scroll_layout.addWidget(sweep_group)
 
         # Group 2: Parallel Hammerstein Model Parameters
-        phm_group = QGroupBox(tr("Hammerstein Modeling"))
+        phm_group = QGroupBox(tr("Nonlinear Modeling"))
         phm_form = QFormLayout(phm_group)
         phm_form.setContentsMargins(6, 8, 6, 8)
         phm_form.setSpacing(6)
@@ -551,16 +551,16 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.steps_spin.setRange(5, 10)  # Safe range to keep execution < 30s
         self.steps_spin.setValue(self.module.num_amplitudes)
         self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, "num_amplitudes", v))
-        phm_form.addRow(tr("Amp Scans (P=5):"), self.steps_spin)
+        phm_form.addRow(tr("Amplitude Steps (Max Order 5):"), self.steps_spin)
 
         self.smooth_combo = QComboBox()
         self.smooth_combo.addItem(tr("None"), "None")
-        self.smooth_combo.addItem(tr("Light (Savitzky-Golay)"), "Light")
-        self.smooth_combo.addItem(tr("Medium (Savitzky-Golay)"), "Medium")
-        self.smooth_combo.addItem(tr("Heavy (Savitzky-Golay)"), "Heavy")
+        self.smooth_combo.addItem(tr("Low Smoothing"), "Light")
+        self.smooth_combo.addItem(tr("Medium Smoothing"), "Medium")
+        self.smooth_combo.addItem(tr("High Smoothing"), "Heavy")
         self.smooth_combo.setCurrentIndex(1)  # Default: Light
         self.smooth_combo.currentIndexChanged.connect(self.refresh_plots_with_smoothing)
-        phm_form.addRow(tr("Display Smoothing:"), self.smooth_combo)
+        phm_form.addRow(tr("Graph Smoothing:"), self.smooth_combo)
 
         scroll_layout.addWidget(phm_group)
 
@@ -579,10 +579,10 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         route_form.addRow(tr("Output Ch:"), self.out_combo)
 
         self.in_mode_combo = QComboBox()
-        self.in_mode_combo.addItem(tr("Left (Ch1)"), "L")
-        self.in_mode_combo.addItem(tr("Right (Ch2)"), "R")
-        self.in_mode_combo.addItem(tr("XFER (Ref=L, Meas=R)"), "XFER")
-        self.in_mode_combo.addItem(tr("XFER (Ref=R, Meas=L)"), "XFER_REV")
+        self.in_mode_combo.addItem(tr("Single Ch (Left Ch1)"), "L")
+        self.in_mode_combo.addItem(tr("Single Ch (Right Ch2)"), "R")
+        self.in_mode_combo.addItem(tr("2-Ch Relative (Ref=L, Meas=R)"), "XFER")
+        self.in_mode_combo.addItem(tr("2-Ch Relative (Ref=R, Meas=L)"), "XFER_REV")
         self.in_mode_combo.setCurrentIndex(3)  # Default: XFER (Ref=R, Meas=L)
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
@@ -590,10 +590,10 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Latency Display
         self.latency_label = QLabel("0.00 ms")
         self.latency_label.setStyleSheet("font-weight: bold; color: #4ba3e3;")
-        route_form.addRow(tr("Latency:"), self.latency_label)
+        route_form.addRow(tr("Delay Time:"), self.latency_label)
 
         # Calibrate Button
-        self.cal_btn = QPushButton(tr("Calibrate Delay"))
+        self.cal_btn = QPushButton(tr("Measure Delay"))
         self.cal_btn.clicked.connect(self.module.start_latency_calibration)
         route_form.addRow(self.cal_btn)
 
@@ -652,34 +652,34 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         # Tab 1: Magnitude Response (Bode Plot)
         self.mag_tab = QWidget()
         mag_layout = QVBoxLayout(self.mag_tab)
-        self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response (PHM Separation)"))
+        self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response"))
         self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(True, False)
         self.mag_plot.showGrid(True, True, alpha=0.3)
         mag_layout.addWidget(self.mag_plot)
-        self.plot_tabs.addTab(self.mag_tab, tr("Bode Magnitude"))
+        self.plot_tabs.addTab(self.mag_tab, tr("Magnitude Response"))
 
         # Tab 2: Phase Response
         self.phase_tab = QWidget()
         phase_layout = QVBoxLayout(self.phase_tab)
-        self.phase_plot = pg.PlotWidget(title=tr("Bode Phase Response (PHM Separation)"))
+        self.phase_plot = pg.PlotWidget(title=tr("Bode Phase Response"))
         self.phase_plot.setLabel("left", tr("Phase"), units="deg")
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(True, False)
         self.phase_plot.showGrid(True, True, alpha=0.3)
         phase_layout.addWidget(self.phase_plot)
-        self.plot_tabs.addTab(self.phase_tab, tr("Bode Phase"))
+        self.plot_tabs.addTab(self.phase_tab, tr("Phase Response"))
 
         # Tab 3: Time Domain Kernels h_p(t)
         self.kernel_tab = QWidget()
         kernel_layout = QVBoxLayout(self.kernel_tab)
-        self.kernel_plot = pg.PlotWidget(title=tr("Separated Parallel Hammerstein Kernels"))
+        self.kernel_plot = pg.PlotWidget(title=tr("Nonlinear Impulse Responses (Kernels)"))
         self.kernel_plot.setLabel("left", tr("Normalized Amplitude"))
         self.kernel_plot.setLabel("bottom", tr("Time"), units="ms")
         self.kernel_plot.showGrid(True, True, alpha=0.3)
         kernel_layout.addWidget(self.kernel_plot)
-        self.plot_tabs.addTab(self.kernel_tab, tr("Hammerstein Kernels"))
+        self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
 
 
 
@@ -801,11 +801,11 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         }
 
         labels = {
-            "h1": tr("Fundamental (Linear Kernel h1)"),
-            "h2": tr("2nd Order (Kernel h2)"),
-            "h3": tr("3rd Order (Kernel h3)"),
-            "h4": tr("4th Order (Kernel h4)"),
-            "h5": tr("5th Order (Kernel h5)"),
+            "h1": tr("Fundamental (1st Order)"),
+            "h2": tr("2nd Order Harmonic"),
+            "h3": tr("3rd Order Harmonic"),
+            "h4": tr("4th Order Harmonic"),
+            "h5": tr("5th Order Harmonic"),
         }
 
         # Clear existing curves before redrawing
@@ -853,11 +853,11 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
         ]
 
         labels = [
-            tr("Kernel h1"),
-            tr("Kernel h2"),
-            tr("Kernel h3"),
-            tr("Kernel h4"),
-            tr("Kernel h5"),
+            tr("1st Order (h1)"),
+            tr("2nd Order (h2)"),
+            tr("3rd Order (h3)"),
+            tr("4th Order (h4)"),
+            tr("5th Order (h5)"),
         ]
 
         for p in range(len(separated_kernels_data)):
