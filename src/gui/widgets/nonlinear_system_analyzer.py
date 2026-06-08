@@ -19,11 +19,14 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QMessageBox,
+    QCheckBox,
 )
 from scipy.signal import (
     chirp as signal_chirp,
     fftconvolve,
     savgol_filter,
+    butter,
+    sosfilt,
 )
 
 from src.core.audio_engine import AudioEngine
@@ -164,6 +167,8 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         self.averages = 2  # TSA (Time Synchronized Averaging) count
         self.num_amplitudes = 5  # Number of amplitude steps for PHM (typically 5 to 7 steps)
         self.latency_sec = 0.0
+        self.measure_noise_floor = True
+        self.measured_noise_floor_dbfs = None
 
         # Routing Config
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -370,7 +375,49 @@ class NonlinearSystemAnalyzer(MeasurementModule):
             responses_ref.append(ir_ref_raw)
             responses_meas.append(ir_meas_raw)
 
-        # 2. Parallel Hammerstein Separation and Analysis using Core Module
+        # 2. Noise Floor Measurement (Optional)
+        noise_floor_dbfs = None
+        if getattr(self, "measure_noise_floor", True):
+            if worker.is_running:
+                logger.info("Measuring noise floor (1.0 second silence play/record)...")
+                noise_duration = 1.0
+                noise_len = int(sample_rate * noise_duration)
+                noise_out = np.zeros((noise_len, 2), dtype=np.float32)
+                try:
+                    rec_data = self.run_play_rec(noise_out, input_channels=2)
+                    if getattr(self.audio_engine, "offline_mode", False):
+                        # Simulate -100 dBFS noise floor
+                        noise_sig = np.random.normal(0, 1e-5, noise_len)
+                    else:
+                        noise_sig = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
+                    
+                    # Apply 20Hz-20kHz bandpass filtering (removes DC offset and out-of-band noise)
+                    nyquist = sample_rate / 2.0
+                    # 20Hz HPF (4th order)
+                    sos_hp = butter(4, 20.0 / nyquist, btype='highpass', output='sos')
+                    filtered_sig = sosfilt(sos_hp, noise_sig)
+                    
+                    # 20kHz LPF (4th order) if sampling rate supports it
+                    if sample_rate > 44100:
+                        sos_lp = butter(4, 20000.0 / nyquist, btype='lowpass', output='sos')
+                        filtered_sig = sosfilt(sos_lp, filtered_sig)
+                    
+                    # Trim edges (especially start) to avoid sweep decay transients and filter settling times
+                    trim_start = int(sample_rate * 0.20)  # 200ms trim for sweep decay & HPF transients
+                    trim_end = int(sample_rate * 0.10)    # 100ms trim for end filter transients
+                    if len(filtered_sig) > (trim_start + trim_end):
+                        trimmed_sig = filtered_sig[trim_start:-trim_end]
+                    else:
+                        trimmed_sig = filtered_sig
+                        
+                    rms = np.sqrt(np.mean(trimmed_sig**2))
+                    noise_floor_dbfs = float(20 * np.log10(rms + 1e-12))
+                    logger.info("Measured noise floor (filtered/trimmed): %.2f dBFS", noise_floor_dbfs)
+                except Exception as e:
+                    logger.error("Failed to measure noise floor: %s", e)
+        self.measured_noise_floor_dbfs = noise_floor_dbfs
+
+        # 3. Parallel Hammerstein Separation and Analysis using Core Module
         (
             valid_freqs,
             magnitudes_db_dict,
@@ -409,6 +456,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     "latency_sec": self.latency_sec,
                     "ref_max": float(ref_max),
                     "P": len(separated_kernels_data),
+                    "noise_floor_dbfs": noise_floor_dbfs,
                 },
                 "time_domain": {
                     "time_ms": time_ms,
@@ -529,6 +577,11 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         self.tsa_spin.setValue(self.module.averages)
         self.tsa_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
         sweep_form.addRow(tr("Averages (Time-Sync):"), self.tsa_spin)
+
+        self.measure_noise_chk = QCheckBox(tr("Measure Noise Floor"))
+        self.measure_noise_chk.setChecked(self.module.measure_noise_floor)
+        self.measure_noise_chk.toggled.connect(lambda v: setattr(self.module, "measure_noise_floor", v))
+        sweep_form.addRow(self.measure_noise_chk)
 
         scroll_layout.addWidget(sweep_group)
 
@@ -899,6 +952,7 @@ class NonlinearSystemAnalyzerWidget(QWidget):
                     "latency_sec": self.module.latency_sec,
                     "ref_max": float(ref_max),
                     "P": len(self.cached_kernels),
+                    "noise_floor_dbfs": self.module.measured_noise_floor_dbfs,
                 },
                 "time_domain": {
                     "time_ms": self.cached_time_ms,

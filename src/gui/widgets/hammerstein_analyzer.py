@@ -155,12 +155,13 @@ class HammersteinAnalyzerWidget(QWidget):
         self.harm_unit_combo.currentIndexChanged.connect(self.update_2d_map)
         map_form.addRow(tr("Harmonic Unit:"), self.harm_unit_combo)
 
-        self.map_resolution_spin = QSpinBox()
-        self.map_resolution_spin.setRange(50, 500)
-        self.map_resolution_spin.setSingleStep(50)
-        self.map_resolution_spin.setValue(200)
-        self.map_resolution_spin.valueChanged.connect(self.update_2d_map)
-        map_form.addRow(tr("Resolution:"), self.map_resolution_spin)
+        self.map_resolution_combo = QComboBox()
+        self.map_resolution_combo.addItem(tr("Overview"), 100)
+        self.map_resolution_combo.addItem(tr("Standard"), 300)
+        self.map_resolution_combo.addItem(tr("Detail"), 600)
+        self.map_resolution_combo.setCurrentIndex(1)  # Default to Standard (300)
+        self.map_resolution_combo.currentIndexChanged.connect(self.update_2d_map)
+        map_form.addRow(tr("Resolution:"), self.map_resolution_combo)
 
         self.min_level_spin = QDoubleSpinBox()
         self.min_level_spin.setRange(-120.0, -10.0)
@@ -206,6 +207,18 @@ class HammersteinAnalyzerWidget(QWidget):
         self.enable_noise_chk.toggled.connect(self.on_noise_floor_toggled)
         map_form.addRow(self.enable_noise_chk)
 
+        self.noise_source_combo = QComboBox()
+        self.noise_source_combo.addItem(tr("Measured Value"), "Measured")
+        self.noise_source_combo.addItem(tr("Manual Setting"), "Manual")
+        self.noise_source_combo.setCurrentIndex(1)  # Default to Manual setting
+        self.noise_source_combo.setEnabled(False)
+        self.noise_source_combo.currentIndexChanged.connect(self.on_noise_source_changed)
+        map_form.addRow(tr("Noise Floor Source:"), self.noise_source_combo)
+
+        self.measured_noise_label = QLabel(tr("N/A"))
+        self.measured_noise_label.setStyleSheet("font-weight: bold; color: #2b8c56;")
+        map_form.addRow(tr("Measured:"), self.measured_noise_label)
+
         self.noise_floor_spin = QDoubleSpinBox()
         self.noise_floor_spin.setRange(-160.0, -40.0)
         self.noise_floor_spin.setValue(-100.0)
@@ -213,7 +226,7 @@ class HammersteinAnalyzerWidget(QWidget):
         self.noise_floor_spin.setSingleStep(5.0)
         self.noise_floor_spin.setEnabled(False)
         self.noise_floor_spin.valueChanged.connect(self.update_2d_map)
-        map_form.addRow(tr("Noise Floor:"), self.noise_floor_spin)
+        map_form.addRow(tr("Manual Noise Floor:"), self.noise_floor_spin)
 
         self.map_group.setEnabled(False)
         sidebar_layout.addWidget(self.map_group)
@@ -567,12 +580,39 @@ class HammersteinAnalyzerWidget(QWidget):
         main_layout.addWidget(self.tabs, stretch=1)
 
     def on_noise_floor_toggled(self, checked):
-        self.noise_floor_spin.setEnabled(checked)
+        self.noise_source_combo.setEnabled(checked)
+        self.update_noise_floor_ui_states()
         thd_idx = self.map_type_combo.findData("THD")
         if thd_idx >= 0:
             label = tr("THD+N Map") if checked else tr("THD Map")
             self.map_type_combo.setItemText(thd_idx, label)
         self.update_2d_map()
+
+    def on_noise_source_changed(self, index):
+        self.update_noise_floor_ui_states()
+        self.update_2d_map()
+
+    def update_noise_floor_ui_states(self):
+        checked = self.enable_noise_chk.isChecked()
+        source = self.noise_source_combo.currentData()
+        self.noise_floor_spin.setEnabled(checked and source == "Manual")
+
+    def get_current_noise_floor(self):
+        """Returns (use_noise, noise_dbfs) based on UI states and loaded model metadata."""
+        if not self.enable_noise_chk.isChecked():
+            return False, -160.0
+
+        source = self.noise_source_combo.currentData()
+        measured_val = self.model_metadata.get("noise_floor_dbfs", None)
+
+        if source == "Measured":
+            if measured_val is not None:
+                return True, float(measured_val)
+            else:
+                # Fallback to manual if measured value is missing
+                return True, self.noise_floor_spin.value()
+        else:
+            return True, self.noise_floor_spin.value()
 
     def update_cache_button_state(self):
         available = has_active_model()
@@ -627,6 +667,25 @@ class HammersteinAnalyzerWidget(QWidget):
         # Update Sidebar stats
         self.lbl_sr.setText(f"{self.model_metadata.get('sample_rate', 48000):g} Hz")
         self.lbl_order.setText(str(self.model_metadata.get("P", 5)))
+
+        # Update measured noise floor label and source choices
+        measured_val = self.model_metadata.get("noise_floor_dbfs", None)
+        if measured_val is not None:
+            self.measured_noise_label.setText(f"{measured_val:.1f} dBFS")
+            self.noise_source_combo.model().item(0).setEnabled(True)
+            # Switch to Measured if available
+            self.noise_source_combo.blockSignals(True)
+            self.noise_source_combo.setCurrentIndex(0)  # Measured
+            self.noise_source_combo.blockSignals(False)
+        else:
+            self.measured_noise_label.setText(tr("N/A"))
+            self.noise_source_combo.model().item(0).setEnabled(False)
+            if self.noise_source_combo.currentData() == "Measured":
+                self.noise_source_combo.blockSignals(True)
+                self.noise_source_combo.setCurrentIndex(1)  # Manual
+                self.noise_source_combo.blockSignals(False)
+
+        self.update_noise_floor_ui_states()
 
         # Enable Groups
         self.map_group.setEnabled(True)
@@ -714,7 +773,7 @@ class HammersteinAnalyzerWidget(QWidget):
 
         map_type = self.map_type_combo.currentData()
         harm_unit = self.harm_unit_combo.currentData()
-        N_f = self.map_resolution_spin.value()
+        N_f = self.map_resolution_combo.currentData() or 300
         min_level = self.min_level_spin.value()
         max_level = self.max_level_spin.value()
 
@@ -722,8 +781,7 @@ class HammersteinAnalyzerWidget(QWidget):
         # Keep harm_unit_combo enabled always to allow switching dBFS/dBr for THD/Fundamental as well
         self.harm_unit_combo.setEnabled(True)
 
-        use_noise = self.enable_noise_chk.isChecked()
-        noise_db = self.noise_floor_spin.value()
+        use_noise, noise_db = self.get_current_noise_floor()
         noise_linear = 10 ** (noise_db / 20.0) if use_noise else 0.0
         noise_sq = noise_linear**2
 
@@ -955,7 +1013,7 @@ class HammersteinAnalyzerWidget(QWidget):
                 self.v_line.show()
                 self.h_line.show()
 
-                N_f = self.map_resolution_spin.value()
+                N_f = self.map_resolution_combo.currentData() or 300
                 freqs_grid = np.logspace(np.log10(start_f), np.log10(end_f), num=N_f)
                 N_A = 80
                 amps_db = np.linspace(min_level, max_level, num=N_A)
@@ -1142,8 +1200,7 @@ class HammersteinAnalyzerWidget(QWidget):
 
         curves_data = {}
 
-        use_noise = self.enable_noise_chk.isChecked()
-        noise_db = self.noise_floor_spin.value()
+        use_noise, noise_db = self.get_current_noise_floor()
         noise_linear = 10 ** (noise_db / 20.0) if use_noise else 0.0
         noise_sq = noise_linear**2
 
@@ -1448,9 +1505,8 @@ class HammersteinAnalyzerWidget(QWidget):
             )
             self.sim_plot.addItem(curve)
 
-        use_noise = self.enable_noise_chk.isChecked()
+        use_noise, noise_db = self.get_current_noise_floor()
         if use_noise:
-            noise_db = self.noise_floor_spin.value()
             noise_line = pg.InfiniteLine(
                 angle=0,
                 movable=False,
