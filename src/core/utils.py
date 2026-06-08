@@ -71,7 +71,7 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
     prefix = _SI_PREFIXES.get(exp3, "")
 
     # Avoid displaying '-0' which can happen with rounding.
-    if number in ("-0", "-0.0", "-0.00"):
+    if number in {"-0", "-0.0", "-0.00"}:
         number = number[1:]
 
     return f"{number}{space}{prefix}{unit}".rstrip()
