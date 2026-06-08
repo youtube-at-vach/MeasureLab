@@ -93,7 +93,7 @@ class HammersteinAnalyzerWidget(QWidget):
 
         # --- Left Panel: Sidebar (Fixed Width, Wrapped in Scroll Area) ---
         sidebar_scroll = QScrollArea()
-        sidebar_scroll.setFixedWidth(290)
+        sidebar_scroll.setFixedWidth(330)
         sidebar_scroll.setWidgetResizable(True)
         sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         sidebar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
