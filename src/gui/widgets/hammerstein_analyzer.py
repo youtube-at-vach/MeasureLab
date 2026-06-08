@@ -1,5 +1,4 @@
 import logging
-import time
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QRectF
@@ -12,7 +11,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,

@@ -1,6 +1,5 @@
 import logging
 import threading
-import time
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt
@@ -390,18 +389,18 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                         noise_sig = np.random.normal(0, 1e-5, noise_len)
                     else:
                         noise_sig = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
-                    
+
                     # Apply 20Hz-20kHz bandpass filtering (removes DC offset and out-of-band noise)
                     nyquist = sample_rate / 2.0
                     # 20Hz HPF (4th order)
                     sos_hp = butter(4, 20.0 / nyquist, btype='highpass', output='sos')
                     filtered_sig = sosfilt(sos_hp, noise_sig)
-                    
+
                     # 20kHz LPF (4th order) if sampling rate supports it
                     if sample_rate > 44100:
                         sos_lp = butter(4, 20000.0 / nyquist, btype='lowpass', output='sos')
                         filtered_sig = sosfilt(sos_lp, filtered_sig)
-                    
+
                     # Trim edges (especially start) to avoid sweep decay transients and filter settling times
                     trim_start = int(sample_rate * 0.20)  # 200ms trim for sweep decay & HPF transients
                     trim_end = int(sample_rate * 0.10)    # 100ms trim for end filter transients
@@ -409,7 +408,7 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                         trimmed_sig = filtered_sig[trim_start:-trim_end]
                     else:
                         trimmed_sig = filtered_sig
-                        
+
                     rms = np.sqrt(np.mean(trimmed_sig**2))
                     noise_floor_dbfs = float(20 * np.log10(rms + 1e-12))
                     logger.info("Measured noise floor (filtered/trimmed): %.2f dBFS", noise_floor_dbfs)
