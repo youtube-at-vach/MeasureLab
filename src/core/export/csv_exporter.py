@@ -111,22 +111,23 @@ class CsvTraceExporter(BaseTraceExporter):
             precomputed_traces.append((t, orig_x, orig_y, orig_y2))
 
         # 4. Interpolate and Write Data
-        for x_val in x_grid:
-            row = [x_val]
-            for t, orig_x, orig_y, orig_y2 in precomputed_traces:
-                # Check for empty data safely
-                if len(orig_x) == 0:
-                    row.append("")
-                    if t.y2_data is not None:
-                        row.append("")
-                    continue
+        cols = [x_grid]
+        for t, orig_x, orig_y, orig_y2 in precomputed_traces:
+            # Check for empty data safely
+            if len(orig_x) == 0:
+                cols.append([""] * len(x_grid))
+                if t.y2_data is not None:
+                    cols.append([""] * len(x_grid))
+                continue
 
-                y_val = np.interp(x_val, orig_x, orig_y)
-                row.append(y_val)
+            y_vals = np.interp(x_grid, orig_x, orig_y)
+            cols.append(y_vals)
 
-                if orig_y2 is not None:
-                    y2_val = np.interp(x_val, orig_x, orig_y2)
-                    row.append(y2_val)
+            if orig_y2 is not None:
+                y2_vals = np.interp(x_grid, orig_x, orig_y2)
+                cols.append(y2_vals)
+
+        for row in zip(*cols, strict=False):
             writer.writerow(row)
 
     def _export_independent(self, writer, traces: List[ComparisonTrace], include_headers: bool):
