@@ -1468,7 +1468,9 @@ class HammersteinAnalyzerWidget(QWidget):
 
         ref_phase_f0 = 0.0
         if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
-            ref_phase_f0 = np.interp(f0, self.cached_freqs, self.cached_phases["ref_phase"])
+            # Unwrap ref_phase before interpolation to avoid linear interpolation errors at wrap boundaries
+            ref_phase_unwrapped = np.degrees(np.unwrap(np.radians(self.cached_phases["ref_phase"])))
+            ref_phase_f0 = np.interp(f0, self.cached_freqs, ref_phase_unwrapped)
 
         for n in range(1, 6):
             h_key = f"h{n}"
@@ -1488,7 +1490,8 @@ class HammersteinAnalyzerWidget(QWidget):
             phase_val_deg = np.degrees(relative_phase_rad)
 
             if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
-                ref_phase_fn = np.interp(f_n, self.cached_freqs, self.cached_phases["ref_phase"])
+                # Use the unwrapped reference phase array to prevent phase wrap interpolation issues
+                ref_phase_fn = np.interp(f_n, self.cached_freqs, ref_phase_unwrapped)
                 loopback_corr_deg = ref_phase_fn - n * ref_phase_f0
                 phase_val_deg += loopback_corr_deg
 

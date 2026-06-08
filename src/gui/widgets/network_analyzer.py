@@ -1644,7 +1644,9 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
             # Phase Subtraction
             if len(ref["phases"]) > 1:
-                interp_phases = np.interp(freqs_to_plot, ref["freqs"], ref["phases"])
+                # Unwrap reference phases to prevent incorrect interpolation results around wrap boundaries
+                ref_phases_unwrapped = np.degrees(np.unwrap(np.radians(ref["phases"])))
+                interp_phases = np.interp(freqs_to_plot, ref["freqs"], ref_phases_unwrapped)
                 phases_to_plot -= interp_phases
                 # Wrap to [-180, 180]
                 phases_to_plot = (phases_to_plot + 180) % 360 - 180

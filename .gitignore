@@ -84,3 +84,4 @@ report.json
 measurement_report.json
 thd.json
 .vscode/settings.json
+hammerstein_kernel_sample*.json

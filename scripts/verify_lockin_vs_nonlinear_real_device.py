@@ -258,7 +258,9 @@ def main():
         meas_fund_phase_deg = meas_phases[0]
 
         # Interpolate reference loopback phase at fundamental frequency f0
-        ref_phase_f0 = np.interp(f0, freqs, phases.get("ref_phase", np.zeros_like(freqs)))
+        ref_phase_raw = phases.get("ref_phase", np.zeros_like(freqs))
+        ref_phase_unwrapped = np.degrees(np.unwrap(np.radians(ref_phase_raw)))
+        ref_phase_f0 = np.interp(f0, freqs, ref_phase_unwrapped)
 
         print(f"\n--- Comparative Verification at {f0} Hz (Measured Freq: {lockin_data['measured_freq']:.2f} Hz) ---")
         print(f"{'Harmonic':<10} | {'Pred Amp':<10} | {'Meas Amp':<10} | {'Amp Diff':<10} | {'Pred Ph':<10} | {'Corr Pred':<10} | {'Meas Ph':<10} | {'Ph Diff':<10} | {'Corr PhDiff':<12}")
@@ -280,7 +282,7 @@ def main():
             pred_rel_phase_deg = (pred_rel_phase_deg + 180) % 360 - 180
 
             # Apply loopback correction: ref_phase(f_n) - n * ref_phase(f_0)
-            ref_phase_fn = np.interp(f_n, freqs, phases.get("ref_phase", np.zeros_like(freqs)))
+            ref_phase_fn = np.interp(f_n, freqs, ref_phase_unwrapped)
             loopback_corr_deg = ref_phase_fn - n * ref_phase_f0
             pred_rel_phase_corr_deg = pred_rel_phase_deg + loopback_corr_deg
             pred_rel_phase_corr_deg = (pred_rel_phase_corr_deg + 180) % 360 - 180

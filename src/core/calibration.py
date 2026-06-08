@@ -359,7 +359,10 @@ class CalibrationManager:
 
         # Use cached numpy arrays for interpolation
         mag_corr = np.interp(freq_arr, freq_cache, mag_cache)
-        phase_corr = np.interp(freq_arr, freq_cache, phase_cache)
+        # Unwrap phase before interpolation to avoid linear interpolation errors at wrap boundaries
+        phase_unwrapped = np.degrees(np.unwrap(np.radians(phase_cache)))
+        phase_corr = np.interp(freq_arr, freq_cache, phase_unwrapped)
+        phase_corr = (phase_corr + 180) % 360 - 180
 
         if is_scalar:
             return float(mag_corr[0]), float(phase_corr[0])
