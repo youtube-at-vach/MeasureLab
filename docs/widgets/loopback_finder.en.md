@@ -10,11 +10,7 @@ Here, "loopback" means any path where sound sent to an output comes back into an
 
 With multi-channel interfaces, it is easy to end up in situations like "I thought Output 3 would come back to Input 5, but it actually reached Input 1" or "an unintended monitor path was mixed in." This tool lets you quickly inventory those paths for the input and output devices currently selected in MeasureLab.
 
-### ☕ Coffee Break: Why check routing before doing serious measurement?
-
-When a measurement goes wrong, it is tempting to blame the FFT settings, filters, or math. In practice, though, many confusing results come from a much simpler cause: the signal is taking a different path than you expected.
-
-Loopback Finder is like a traffic map for your audio. Before you do deeper analysis, it helps you confirm that the roads themselves are correct.
+When a measurement goes wrong, before blaming the FFT settings, filters, or math, it is important to first isolate routing issues and confirm the signal is taking the expected path.
 
 ## Operations
 

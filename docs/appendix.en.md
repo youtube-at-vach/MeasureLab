@@ -4,10 +4,7 @@
 
 This software is a **simple signal analysis and observation tool** using a PC and an audio interface.
 While it is useful for learning, hobbies, or initial estimations in development, it cannot be used for strict quality assurance or standards compliance testing.
-
-### ☕ Coffee Break: Why is "Perfect Measurement" difficult?
-
-Dedicated measuring instruments are expensive because they have an "absolutely unwavering standard" that is unaffected by the environment. MeasureLab is excellent for observing relative changes, but for legal proof or absolute precision, dedicated instruments are required.
+Unlike expensive dedicated measuring instruments that possess an "absolutely unwavering standard," MeasureLab is designed specifically for observing relative changes rather than providing legally binding absolute precision.
 
 ### Reliable Range and Reference-Only Range
 
