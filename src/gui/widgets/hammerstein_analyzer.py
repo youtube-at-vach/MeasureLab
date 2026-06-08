@@ -813,17 +813,21 @@ class HammersteinAnalyzerWidget(QWidget):
 
         # 3. Vectorized Interpolation for each harmonic frequency
         H_interp = {n: {} for n in range(1, 6)}
-        for n in range(1, 6):
-            f_n = n * freqs_grid
-            out_of_bounds = f_n > nyquist
-            for p in range(1, 6):
-                if p in H_dict:
-                    real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
-                    imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
-                    val = real_val + 1j * imag_val
-                    val[out_of_bounds] = 0.0j
-                    H_interp[n][p] = val
-                else:
+        f_n_list = [n * freqs_grid for n in range(1, 6)]
+        f_all = np.concatenate(f_n_list)
+        out_of_bounds_all = f_all > nyquist
+        for p in range(1, 6):
+            if p in H_dict:
+                real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_dict[p]))
+                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(H_dict[p]))
+                val_all = real_val_all + 1j * imag_val_all
+                val_all[out_of_bounds_all] = 0.0j
+                for n in range(1, 6):
+                    start_idx = (n - 1) * N_f
+                    end_idx = n * N_f
+                    H_interp[n][p] = val_all[start_idx:end_idx]
+            else:
+                for n in range(1, 6):
                     H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
 
         # 4. Synthesize outputs
@@ -958,8 +962,8 @@ class HammersteinAnalyzerWidget(QWidget):
                 Z_right = Z[:, -1]
                 crossings = []
                 for i in range(len(Z_right) - 1):
-                    z_low, z_high = Z_right[i], Z_right[i+1]
-                    y_low, y_high = amps_db[i], amps_db[i+1]
+                    z_low, z_high = Z_right[i], Z_right[i + 1]
+                    y_low, y_high = amps_db[i], amps_db[i + 1]
                     if (z_low <= lvl < z_high) or (z_high <= lvl < z_low) or (i == len(Z_right) - 2 and z_high == lvl):
                         if z_high == z_low:
                             y_pos = y_low
@@ -1167,17 +1171,21 @@ class HammersteinAnalyzerWidget(QWidget):
         N_f = len(freqs_grid)
 
         H_interp = {n: {} for n in range(1, 6)}
-        for n in range(1, 6):
-            f_n = n * freqs_grid
-            out_of_bounds = f_n > nyquist
-            for p in range(1, 6):
-                if p in H_dict:
-                    real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
-                    imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
-                    val = real_val + 1j * imag_val
-                    val[out_of_bounds] = 0.0j
-                    H_interp[n][p] = val
-                else:
+        f_n_list = [n * freqs_grid for n in range(1, 6)]
+        f_all = np.concatenate(f_n_list)
+        out_of_bounds_all = f_all > nyquist
+        for p in range(1, 6):
+            if p in H_dict:
+                real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_dict[p]))
+                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(H_dict[p]))
+                val_all = real_val_all + 1j * imag_val_all
+                val_all[out_of_bounds_all] = 0.0j
+                for n in range(1, 6):
+                    start_idx = (n - 1) * N_f
+                    end_idx = n * N_f
+                    H_interp[n][p] = val_all[start_idx:end_idx]
+            else:
+                for n in range(1, 6):
                     H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
 
         A_in = 10 ** (self.ref_amp / 20.0)
@@ -1295,20 +1303,20 @@ class HammersteinAnalyzerWidget(QWidget):
         amps_db = np.linspace(min_level, max_level, num=100)
         amps_linear = 10 ** (amps_db / 20.0)
 
-        H_at_f0 = {}
-        for n in range(1, 6):
-            f_n = n * self.ref_f0
-            H_at_f0[n] = {}
-            if f_n > nyquist:
-                for p in range(1, 6):
-                    H_at_f0[n][p] = 0.0 + 0.0j
-                continue
-            for p in range(1, 6):
-                if p in H_dict:
-                    real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
-                    imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
-                    H_at_f0[n][p] = real_val + 1j * imag_val
-                else:
+        H_at_f0 = {n: {} for n in range(1, 6)}
+        f_array = np.arange(1, 6) * self.ref_f0
+
+        for p in range(1, 6):
+            if p in H_dict:
+                real_vals = np.interp(f_array, self.cached_freqs, np.real(H_dict[p]))
+                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(H_dict[p]))
+                for n in range(1, 6):
+                    if f_array[n - 1] > nyquist:
+                        H_at_f0[n][p] = 0.0 + 0.0j
+                    else:
+                        H_at_f0[n][p] = real_vals[n - 1] + 1j * imag_vals[n - 1]
+            else:
+                for n in range(1, 6):
                     H_at_f0[n][p] = 0.0 + 0.0j
 
         A = amps_linear[:, np.newaxis]
@@ -1422,25 +1430,23 @@ class HammersteinAnalyzerWidget(QWidget):
             phase_rad = np.radians(self.cached_phases[h_key])
             H_dict[p] = mag_linear * np.exp(1j * phase_rad)
 
-        H_interp = {}
+        H_interp = {n: {} for n in range(1, 6)}
         sample_rate = self.model_metadata.get("sample_rate", 48000)
         nyquist = sample_rate / 2.0
+        f_array = np.arange(1, 6) * f0
 
-        for n in range(1, 6):
-            f_n = n * f0
-            H_interp[n] = {}
-            if f_n > nyquist:
-                for p in range(1, 6):
+        for p in range(1, 6):
+            if p in H_dict:
+                real_vals = np.interp(f_array, self.cached_freqs, np.real(H_dict[p]))
+                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(H_dict[p]))
+                for n in range(1, 6):
+                    if f_array[n - 1] > nyquist:
+                        H_interp[n][p] = 0.0 + 0.0j
+                    else:
+                        H_interp[n][p] = real_vals[n - 1] + 1j * imag_vals[n - 1]
+            else:
+                for n in range(1, 6):
                     H_interp[n][p] = 0.0 + 0.0j
-                continue
-
-            for p in range(1, 6):
-                if p not in H_dict:
-                    H_interp[n][p] = 0.0 + 0.0j
-                    continue
-                real_val = np.interp(f_n, self.cached_freqs, np.real(H_dict[p]))
-                imag_val = np.interp(f_n, self.cached_freqs, np.imag(H_dict[p]))
-                H_interp[n][p] = real_val + 1j * imag_val
 
         A_in = 10 ** (amp_db / 20.0)
 
@@ -1467,14 +1473,16 @@ class HammersteinAnalyzerWidget(QWidget):
         }
 
         ref_phase_f0 = 0.0
+        f_array = np.arange(1, 6) * f0
         if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
             # Unwrap ref_phase before interpolation to avoid linear interpolation errors at wrap boundaries
             ref_phase_unwrapped = np.degrees(np.unwrap(np.radians(self.cached_phases["ref_phase"])))
             ref_phase_f0 = np.interp(f0, self.cached_freqs, ref_phase_unwrapped)
+            ref_phase_fn_all = np.interp(f_array, self.cached_freqs, ref_phase_unwrapped)
 
         for n in range(1, 6):
             h_key = f"h{n}"
-            f_n = n * f0
+            f_n = f_array[n - 1]
             labels = self.sim_result_labels[h_key]
 
             if f_n > nyquist:
@@ -1491,7 +1499,7 @@ class HammersteinAnalyzerWidget(QWidget):
 
             if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
                 # Use the unwrapped reference phase array to prevent phase wrap interpolation issues
-                ref_phase_fn = np.interp(f_n, self.cached_freqs, ref_phase_unwrapped)
+                ref_phase_fn = ref_phase_fn_all[n - 1]
                 loopback_corr_deg = ref_phase_fn - n * ref_phase_f0
                 phase_val_deg += loopback_corr_deg
 
@@ -1562,11 +1570,7 @@ class HammersteinAnalyzerWidget(QWidget):
 
         # Synthesize output component Y1 at f0
         # Y1 = A * H1 + 0.75 * A^3 * H3 + 0.625 * A^5 * H5
-        Y1 = (
-            amps_linear * H_at_f0[1]
-            + 0.75 * (amps_linear**3) * H_at_f0[3]
-            + 0.625 * (amps_linear**5) * H_at_f0[5]
-        )
+        Y1 = amps_linear * H_at_f0[1] + 0.75 * (amps_linear**3) * H_at_f0[3] + 0.625 * (amps_linear**5) * H_at_f0[5]
 
         out_db = 20 * np.log10(np.abs(Y1) + 1e-12)
         lin_gain_mag = np.abs(H_at_f0[1])
@@ -1616,11 +1620,11 @@ class HammersteinAnalyzerWidget(QWidget):
         if len(crossing_idx) > 0:
             idx = crossing_idx[0]
             if idx > 0:
-                y0, y1 = comp_error[idx-1], comp_error[idx]
-                x0, x1 = amps_db[idx-1], amps_db[idx]
+                y0, y1 = comp_error[idx - 1], comp_error[idx]
+                x0, x1 = amps_db[idx - 1], amps_db[idx]
                 p1db_in = x0 + (-1.0 - y0) * (x1 - x0) / (y1 - y0)
 
-                out0, out1 = out_db[idx-1], out_db[idx]
+                out0, out1 = out_db[idx - 1], out_db[idx]
                 p1db_out = out0 + (p1db_in - x0) * (out1 - out0) / (x1 - x0)
             else:
                 p1db_in = amps_db[0]
@@ -1666,4 +1670,3 @@ class HammersteinAnalyzerWidget(QWidget):
         f_str = f"{f0 / 1000.0:.2f} kHz" if f0 >= 1000.0 else f"{f0:.1f} Hz"
         self.io_plot.setTitle(tr("Input-Output Curve (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
         self.comp_plot.setTitle(tr("Gain Compression (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
-
