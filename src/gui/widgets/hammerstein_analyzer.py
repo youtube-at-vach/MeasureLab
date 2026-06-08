@@ -406,6 +406,12 @@ class HammersteinAnalyzerWidget(QWidget):
         )
         self.curve_amp_plot.addItem(self.curve_amp_ref_line)
 
+        # Set default Y range to match distortion_analyzer sweep plot (-140 to 0 dB)
+        self.curve_amp_plot.setYRange(-140, 0)
+
+        # Synchronize Y-axes ranges of left and right plots, defaulting to the right plot's scale
+        self.curve_freq_plot.setYLink(self.curve_amp_plot)
+
         self.tabs.addTab(self.tab_curves, tr("Distortion Curves"))
 
         # Tab 5: Simulator
@@ -921,6 +927,7 @@ class HammersteinAnalyzerWidget(QWidget):
         if getattr(self, "first_map_draw", True):
             self.image_item.setLevels((-120.0, -40.0))
             self.colorbar.setLevels((-120.0, -40.0))
+            self.curve_amp_plot.setYRange(-140, 0)
             self.first_map_draw = False
 
         # Clear existing contours & labels
