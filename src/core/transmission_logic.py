@@ -204,14 +204,27 @@ def track_jitter(rx_block: np.ndarray, tx_history: np.ndarray, last_offset: int,
         return last_offset, 0.0
     rx_ac /= rx_norm
 
+    # Pre-extract the entire search window to avoid repeated concatenations
+    start_idx = (last_offset - max_search) % H
+    req_len = 2 * max_search + N
+
+    if start_idx + req_len <= H:
+        search_window = tx_history[start_idx : start_idx + req_len]
+    else:
+        search_window = np.empty(req_len, dtype=tx_history.dtype)
+        part = H - start_idx
+        search_window[:part] = tx_history[start_idx:]
+        rem = req_len - part
+        if rem <= H:
+            search_window[part:] = tx_history[:rem]
+        else:
+            indices = np.arange(start_idx, start_idx + req_len) % H
+            search_window[:] = np.take(tx_history, indices)
+
     for delta in range(-max_search, max_search + 1):
         test_offset = (last_offset + delta) % H
-        # Extract corresponding TX segment from history
-        if test_offset + N <= H:
-            tx_seg = tx_history[test_offset : test_offset + N]
-        else:
-            part = H - test_offset
-            tx_seg = np.concatenate((tx_history[test_offset:], tx_history[: N - part]))
+        idx = delta + max_search
+        tx_seg = search_window[idx : idx + N]
 
         tx_ac = tx_seg - np.mean(tx_seg)
         tx_norm = np.linalg.norm(tx_ac)
@@ -568,7 +581,14 @@ def track_jitter_fractional(
         tx_seg = tx_history[best_integer_offset : best_integer_offset + N]
     else:
         part = H - best_integer_offset
-        tx_seg = np.concatenate((tx_history[best_integer_offset:], tx_history[: N - part]))
+        tx_seg = np.empty(N, dtype=tx_history.dtype)
+        tx_seg[:part] = tx_history[best_integer_offset:]
+        rem = N - part
+        if rem <= H:
+            tx_seg[part:] = tx_history[:rem]
+        else:
+            indices = np.arange(best_integer_offset, best_integer_offset + N) % H
+            tx_seg[:] = np.take(tx_history, indices)
 
     # 3. Estimate sub-sample fractional delay
     est_delay = estimate_fractional_delay(rx_block, tx_seg)
