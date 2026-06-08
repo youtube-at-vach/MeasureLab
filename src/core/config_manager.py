@@ -546,14 +546,18 @@ class ConfigManager:
         if loc and loc[0]:
             candidates.append(loc[0])
 
+        ignore = {"C", "POSIX", "c", "posix"}
         for env_name in ("LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"):
             env_value = os.environ.get(env_name)
             if not env_value:
                 continue
             # LANGUAGE may contain a priority list such as "fr_FR:en_US".
-            for item in env_value.split(":"):
-                lang = item.split(".", 1)[0].split("@", 1)[0]
-                if lang and lang.upper() not in {"C", "POSIX"}:
-                    candidates.append(lang)
+            candidates.extend(
+                [
+                    lang
+                    for item in env_value.split(":")
+                    if (lang := item.split(".", 1)[0].split("@", 1)[0]) and lang not in ignore
+                ]
+            )
 
         return candidates
