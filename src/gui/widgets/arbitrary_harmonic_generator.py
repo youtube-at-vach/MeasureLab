@@ -619,10 +619,17 @@ class ArbitraryHarmonicWidget(QWidget):
             with open(filename, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
+            if not isinstance(data, dict):
+                raise ValueError("Invalid JSON format: expected an object")
+
             if data.get("format") != "MeasureLab_Harmonic_Compensation":
                 raise ValueError("Invalid file format")
 
             f_cal = data.get("fundamental_frequency", 1000.0)
+            if not isinstance(f_cal, (int, float)):
+                raise ValueError("fundamental_frequency must be a number")
+            f_cal = float(f_cal)
+
             f_curr = self.freq_spin.value()
 
             # Warning if frequency mismatch by more than 1%
@@ -643,13 +650,28 @@ class ArbitraryHarmonicWidget(QWidget):
                     return
 
             coeffs_data = data.get("compensation_coeffs", [])
+            if not isinstance(coeffs_data, list):
+                raise ValueError("compensation_coeffs must be a list")
+
             coeffs = np.zeros(MAX_HARMONICS, dtype=complex)
             for item in coeffs_data:
+                if not isinstance(item, dict):
+                    raise ValueError("Each compensation coefficient must be an object")
+
                 h = item.get("harmonic")
+                if not isinstance(h, int):
+                    continue  # or raise ValueError("harmonic must be an integer")
+
                 if 2 <= h <= MAX_HARMONICS:
-                    coeffs[h - 1] = complex(item.get("real", 0.0), item.get("imag", 0.0))
+                    real = item.get("real", 0.0)
+                    imag = item.get("imag", 0.0)
+                    if not isinstance(real, (int, float)) or not isinstance(imag, (int, float)):
+                        raise ValueError("real and imag must be numbers")
+                    coeffs[h - 1] = complex(float(real), float(imag))
 
             f_amp = data.get("fundamental_amplitude")
+            if f_amp is not None and not isinstance(f_amp, (int, float)):
+                raise ValueError("fundamental_amplitude must be a number")
 
             with self.module.lock:
                 self.module.compensation_coeffs = coeffs
