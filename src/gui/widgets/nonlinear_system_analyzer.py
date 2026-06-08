@@ -29,7 +29,6 @@ from scipy.signal import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
     process_amplitude_responses,
@@ -439,10 +438,9 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
 
 
-class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
+class NonlinearSystemAnalyzerWidget(QWidget):
     def __init__(self, module: NonlinearSystemAnalyzer):
         QWidget.__init__(self)
-        ComparableWidgetInterface.__init__(self)
         self.module = module
 
 
@@ -934,21 +932,5 @@ class NonlinearSystemAnalyzerWidget(QWidget, ComparableWidgetInterface):
             )
 
 
-    # --- ComparableWidgetInterface ---
-    def get_comparison_data(self):
-        # Implements ComparableWidgetInterface for data overlay and save comparison traces
-        if self.cached_freqs is None or "h1" not in self.cached_mags:
-            return None
-
-        # We export the primary fundamental response (h1) as the default comparison trace
-        return {
-            "x": self.cached_freqs,
-            "y": self.cached_mags["h1"],
-            "title": f"PHM Fundamental (h1) Sweep - {time.strftime('%H:%M:%S')}",
-            "x_label": "Frequency",
-            "x_units": "Hz",
-            "y_label": "Gain",
-            "y_units": "dB",
-        }
 
 

@@ -25,7 +25,6 @@ from PyQt6.QtWidgets import (
 
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.core.hammerstein_model import load_hammerstein_model, get_active_model, has_active_model
 
 logger = logging.getLogger(__name__)
@@ -62,10 +61,9 @@ class HammersteinAnalyzer(MeasurementModule):
         return HammersteinAnalyzerWidget(self)
 
 
-class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
+class HammersteinAnalyzerWidget(QWidget):
     def __init__(self, module: HammersteinAnalyzer):
         QWidget.__init__(self)
-        ComparableWidgetInterface.__init__(self)
         self.module = module
 
         # Model Data Cache
@@ -1605,17 +1603,3 @@ class HammersteinAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.io_plot.setTitle(tr("Input-Output Curve (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
         self.comp_plot.setTitle(tr("Gain Compression (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
 
-    # --- ComparableWidgetInterface ---
-    def get_comparison_data(self):
-        if self.cached_freqs is None or "h1" not in self.cached_mags:
-            return None
-
-        return {
-            "x": self.cached_freqs,
-            "y": self.cached_mags["h1"],
-            "title": f"PHM Fundamental (h1) Sweep - {time.strftime('%H:%M:%S')}",
-            "x_label": "Frequency",
-            "x_units": "Hz",
-            "y_label": "Gain",
-            "y_units": "dB",
-        }
