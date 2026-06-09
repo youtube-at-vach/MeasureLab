@@ -290,8 +290,8 @@ class SpectrumAnalyzer(MeasurementModule):
             valid = ends > starts
 
             smoothed_freqs = np.array(centers)[valid]
-            # Convert to list of tuples as expected by the fast path iteration
-            band_indices = list(zip(starts[valid].tolist(), ends[valid].tolist(), strict=False))
+            # Combine into an array as expected by the fast path iteration
+            band_indices = np.column_stack((starts[valid], ends[valid]))
             cached_data = (smoothed_freqs, band_indices)
             self._smoothing_cache[cache_key] = cached_data
 
