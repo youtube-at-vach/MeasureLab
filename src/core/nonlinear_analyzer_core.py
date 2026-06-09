@@ -283,15 +283,13 @@ def process_amplitude_responses(
 
     # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude
     N_total = len(ir_max_meas)
-    g_meas_all = []
-    g_ref_all = []
+    # Pre-allocate arrays instead of appending to lists to avoid memory reallocation overhead
+    g_meas_all = np.empty((num_amplitudes, P, N_kernel))
+    g_ref_all = np.empty((num_amplitudes, P, N_kernel))
 
     for j in range(num_amplitudes):
         ir_meas_raw = responses_meas[j]
         ir_ref_raw = responses_ref[j]
-
-        g_meas_j = {}
-        g_ref_j = {}
 
         for k in range(1, P + 1):
             # Calculate peak prediction index with sub-sample precision
@@ -312,11 +310,9 @@ def process_amplitude_responses(
             g_k_meas_corr = apply_phase_correction_and_frac_delay(g_k_meas, k, frac_delay)
             g_k_ref_corr = apply_phase_correction_and_frac_delay(g_k_ref, k, frac_delay)
 
-            g_meas_j[k] = g_k_meas_corr
-            g_ref_j[k] = g_k_ref_corr
-
-        g_meas_all.append(g_meas_j)
-        g_ref_all.append(g_ref_j)
+            # Store in pre-allocated array (k is 1-indexed, so we use k-1)
+            g_meas_all[j, k - 1] = g_k_meas_corr
+            g_ref_all[j, k - 1] = g_k_ref_corr
 
     # 6. Apply Chebyshev transform in the FREQUENCY domain
     R_array = np.array(amplitudes)
@@ -326,15 +322,25 @@ def process_amplitude_responses(
     R5 = R_array**5
 
     # First, FFT all g_meas and g_ref to the frequency domain.
-    # g_meas_all[j][k] has shape (N_kernel,)
+    # g_meas_all[j, k-1] has shape (N_kernel,)
     # We compute G_meas[k] of shape (num_amplitudes, N_fft_half)
     N_fft_half = N_kernel // 2 + 1
 
     G_meas_k = {}
     G_ref_k = {}
     for k in range(1, P + 1):
-        G_meas_k[k] = np.array([fft_manager.rfft(g_meas_all[j][k]) for j in range(num_amplitudes)])
-        G_ref_k[k] = np.array([fft_manager.rfft(g_ref_all[j][k]) for j in range(num_amplitudes)])
+        # Pre-allocate for the num_amplitudes FFT results
+        g_m_k_fft = np.empty((num_amplitudes, N_fft_half), dtype=complex)
+        g_r_k_fft = np.empty((num_amplitudes, N_fft_half), dtype=complex)
+
+        # Calculate FFTs directly into the pre-allocated array
+        for j in range(num_amplitudes):
+            # We assign to the slice instead of passing out as a kwarg, avoiding potential backend compatibility issues
+            g_m_k_fft[j] = fft_manager.rfft(g_meas_all[j, k - 1])
+            g_r_k_fft[j] = fft_manager.rfft(g_ref_all[j, k - 1])
+
+        G_meas_k[k] = g_m_k_fft
+        G_ref_k[k] = g_r_k_fft
 
     # Initialize complex H lists
     H_meas_list = np.zeros((P, N_fft_half), dtype=complex)
