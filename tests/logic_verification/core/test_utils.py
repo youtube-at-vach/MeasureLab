@@ -111,31 +111,36 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(format_si(999.95e-6, "Hz", sig_figs=4), "1 mHz")
 
-    def test_amplitude_to_linear(self):
-        # Linear (0-1) / Amplitude
+    def test_amplitude_to_linear_parameterized(self):
         import numpy as np
         from src.core import utils
 
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(0.5, "Linear (0-1)"), 0.5))
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(0.5, "Amplitude"), 0.5))
+        # Test cases for amplitude_to_linear parameterized mapping (val, unit, gain, crest_factor, expected)
+        test_cases = [
+            (0.5, "Linear (0-1)", 1.0, np.sqrt(2), 0.5),
+            (0.5, "Amplitude", 1.0, np.sqrt(2), 0.5),
+            (0.0, "dBFS", 1.0, np.sqrt(2), 1.0),
+            (-20.0, "dBFS", 1.0, np.sqrt(2), 0.1),
+            (0.0, "dBV", np.sqrt(2), np.sqrt(2), 1.0),
+            (-20.0, "dBV", np.sqrt(2), np.sqrt(2), 0.1),
+            (0.0, "dBu", 0.7746 * np.sqrt(2), np.sqrt(2), 1.0),
+            (-20.0, "dBu", 0.7746 * np.sqrt(2), np.sqrt(2), 0.1),
+            (1.0, "Vrms", np.sqrt(2), np.sqrt(2), 1.0),
+            (0.5, "Vrms", np.sqrt(2), np.sqrt(2), 0.5),
+            (1.0, "Vpeak", 1.0, np.sqrt(2), 1.0),
+            (0.5, "Vpeak", 1.0, np.sqrt(2), 0.5),
+        ]
 
-        # dBFS
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBFS"), 1.0))
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(-20, "dBFS"), 0.1))
+        for val, unit, gain, crest_factor, expected in test_cases:
+            with self.subTest(unit=unit, val=val, gain=gain, crest_factor=crest_factor):
+                result = utils.amplitude_to_linear(val, unit, gain, crest_factor)
+                self.assertTrue(
+                    np.isclose(result, expected, atol=1e-5), f"Failed for {unit}: Expected {expected}, got {result}"
+                )
 
-        # dBV
-        self.assertTrue(
-            np.isclose(utils.amplitude_to_linear(0, "dBV", gain=np.sqrt(2)), 1.0)
-        )  # 1 Vrms -> sqrt(2) Vpeak -> 1.0 Linear
-
-        # dBu
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(0, "dBu", gain=0.7746 * np.sqrt(2)), 1.0))
-
-        # Vrms
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(1.0, "Vrms", gain=np.sqrt(2)), 1.0))
-
-        # Vpeak
-        self.assertTrue(np.isclose(utils.amplitude_to_linear(1.0, "Vpeak", gain=1.0), 1.0))
+    def test_amplitude_to_linear_clamping(self):
+        import numpy as np
+        from src.core import utils
 
         # Clamping
         self.assertTrue(np.isclose(utils.amplitude_to_linear(2.0, "Linear (0-1)"), 1.0))
