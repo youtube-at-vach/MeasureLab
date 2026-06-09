@@ -41,5 +41,51 @@ class TestFrequencyAnalysisCore(unittest.TestCase):
         self.assertAlmostEqual(freq, 1010.0, delta=10.0)
 
 
+
+    def test_calculate_frequency_metrics_exception(self):
+        from unittest.mock import patch
+        with patch('src.core.analysis.AudioCalc.optimize_frequency', side_effect=Exception("mocked error")):
+            t = np.arange(2048) / 48000
+            signal = 1.0 * np.sin(2 * np.pi * 1000.0 * t)
+            freq, db = calculate_frequency_metrics(signal, 48000, -60.0)
+            self.assertIsNotNone(freq)
+            # Should fallback to coarse freq
+            self.assertAlmostEqual(freq, 1000.0, delta=25.0)
+
+    def test_calculate_frequency_metrics_low_freq(self):
+        t = np.arange(2048) / 48000
+        # 5 Hz is below the > 10 Hz coarse estimate threshold
+        signal = 1.0 * np.sin(2 * np.pi * 5.0 * t)
+        freq, db = calculate_frequency_metrics(signal, 48000, -60.0)
+        self.assertIsNotNone(freq)
+        self.assertLess(freq, 10.0)
+
+    def test_calculate_allan_deviation_normal(self):
+        from src.core.frequency_analysis import calculate_allan_deviation
+        data = np.array([1.0, 1.1, 1.2, 1.1, 1.0, 0.9, 0.8, 0.9, 1.0])
+        taus, devs = calculate_allan_deviation(data, 1.0)
+        self.assertEqual(len(taus), 3)
+        self.assertEqual(len(devs), 3)
+        self.assertEqual(taus[0], 1.0)
+        self.assertAlmostEqual(devs[0], 0.070710678)
+        self.assertEqual(taus[2], 4.0)
+
+
+
+
+    def test_calculate_allan_deviation_short_data(self):
+        from src.core.frequency_analysis import calculate_allan_deviation
+        data = np.array([1.0])
+        taus, devs = calculate_allan_deviation(data, 1.0)
+        self.assertEqual(len(taus), 0)
+        self.assertEqual(len(devs), 0)
+
+        data = np.array([1.0, 1.1])
+        taus, devs = calculate_allan_deviation(data, 1.0)
+        self.assertEqual(len(taus), 1)
+        self.assertEqual(len(devs), 1)
+
+
 if __name__ == "__main__":
+
     unittest.main()
