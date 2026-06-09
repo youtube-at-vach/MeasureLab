@@ -848,8 +848,8 @@ class HammersteinAnalyzerWidget(QWidget):
         title = ""
 
         if map_type == "THD":
-            mag_harmonics_sq = np.zeros_like(mag_Y1)
-            for n in range(2, 6):
+            mag_harmonics_sq = np.abs(Y[2]) ** 2
+            for n in range(3, 6):
                 mag_harmonics_sq += np.abs(Y[n]) ** 2
 
             if use_noise:
@@ -858,10 +858,7 @@ class HammersteinAnalyzerWidget(QWidget):
                     Z = 20 * np.log10(np.sqrt(numerator_sq) + 1e-12)
                     title = tr("Total Harmonic Distortion + Noise (THD+N)") + " [dBFS]"
                 else:  # dbr
-                    denom_sq = np.zeros_like(mag_Y1)
-                    for n in range(1, 6):
-                        denom_sq += np.abs(Y[n]) ** 2
-                    denom_sq += noise_sq
+                    denom_sq = mag_Y1**2 + numerator_sq
                     Z = 20 * np.log10(np.sqrt(numerator_sq) / np.sqrt(denom_sq) + 1e-12)
                     title = tr("Total Harmonic Distortion + Noise (THD+N)") + " [dBr]"
             else:
@@ -883,8 +880,8 @@ class HammersteinAnalyzerWidget(QWidget):
                     Z = 20 * np.log10(np.sqrt(val_sq) + 1e-12)
                     title = tr("{order}th Harmonic + Noise [dBFS]").format(order=order)
                 else:  # dbr
-                    denom_sq = np.zeros_like(mag_Y1)
-                    for n in range(1, 6):
+                    denom_sq = mag_Y1**2
+                    for n in range(2, 6):
                         denom_sq += np.abs(Y[n]) ** 2
                     denom_sq += noise_sq
                     Z = 20 * np.log10(np.sqrt(val_sq) / np.sqrt(denom_sq) + 1e-12)
