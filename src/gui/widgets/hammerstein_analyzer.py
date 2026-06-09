@@ -833,12 +833,17 @@ class HammersteinAnalyzerWidget(QWidget):
         # 4. Synthesize outputs
         A = amps_linear[:, np.newaxis]  # (N_A, 1)
 
+        A2 = A * A
+        A3 = A2 * A
+        A4 = A2 * A2
+        A5 = A4 * A
+
         Y = {}
-        Y[1] = (1.0) * (A * H_interp[1][1] + (0.75 * (A**3)) * H_interp[1][3] + (0.625 * (A**5)) * H_interp[1][5])
-        Y[2] = (-1j) * ((0.5 * (A**2)) * H_interp[2][2] + (0.5 * (A**4)) * H_interp[2][4])
-        Y[3] = (-1.0) * ((0.25 * (A**3)) * H_interp[3][3] + (0.3125 * (A**5)) * H_interp[3][5])
-        Y[4] = (+1j) * ((0.125 * (A**4)) * H_interp[4][4])
-        Y[5] = (1.0) * ((0.0625 * (A**5)) * H_interp[5][5])
+        Y[1] = (1.0) * (A * H_interp[1][1] + (0.75 * A3) * H_interp[1][3] + (0.625 * A5) * H_interp[1][5])
+        Y[2] = (-1j) * ((0.5 * A2) * H_interp[2][2] + (0.5 * A4) * H_interp[2][4])
+        Y[3] = (-1.0) * ((0.25 * A3) * H_interp[3][3] + (0.3125 * A5) * H_interp[3][5])
+        Y[4] = (+1j) * ((0.125 * A4) * H_interp[4][4])
+        Y[5] = (1.0) * ((0.0625 * A5) * H_interp[5][5])
 
         # 5. Extract Map value
         mag_Y1 = np.abs(Y[1])
@@ -1190,14 +1195,17 @@ class HammersteinAnalyzerWidget(QWidget):
 
         A_in = 10 ** (self.ref_amp / 20.0)
 
+        A_in2 = A_in * A_in
+        A_in3 = A_in2 * A_in
+        A_in4 = A_in2 * A_in2
+        A_in5 = A_in4 * A_in
+
         Y = {}
-        Y[1] = (1.0) * (
-            A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5]
-        )
-        Y[2] = (-1j) * ((0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4])
-        Y[3] = (-1.0) * ((0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5])
-        Y[4] = (+1j) * ((0.125 * (A_in**4)) * H_interp[4][4])
-        Y[5] = (1.0) * ((0.0625 * (A_in**5)) * H_interp[5][5])
+        Y[1] = (1.0) * (A_in * H_interp[1][1] + (0.75 * A_in3) * H_interp[1][3] + (0.625 * A_in5) * H_interp[1][5])
+        Y[2] = (-1j) * ((0.5 * A_in2) * H_interp[2][2] + (0.5 * A_in4) * H_interp[2][4])
+        Y[3] = (-1.0) * ((0.25 * A_in3) * H_interp[3][3] + (0.3125 * A_in5) * H_interp[3][5])
+        Y[4] = (+1j) * ((0.125 * A_in4) * H_interp[4][4])
+        Y[5] = (1.0) * ((0.0625 * A_in5) * H_interp[5][5])
 
         mag_Y1 = np.abs(Y[1])
         mag_Y1_safe = np.where(mag_Y1 < 1e-12, 1e-12, mag_Y1)
@@ -1321,12 +1329,17 @@ class HammersteinAnalyzerWidget(QWidget):
 
         A = amps_linear[:, np.newaxis]
 
+        A2 = A * A
+        A3 = A2 * A
+        A4 = A2 * A2
+        A5 = A4 * A
+
         Y_amp = {}
-        Y_amp[1] = (1.0) * (A * H_at_f0[1][1] + (0.75 * (A**3)) * H_at_f0[1][3] + (0.625 * (A**5)) * H_at_f0[1][5])
-        Y_amp[2] = (-1j) * ((0.5 * (A**2)) * H_at_f0[2][2] + (0.5 * (A**4)) * H_at_f0[2][4])
-        Y_amp[3] = (-1.0) * ((0.25 * (A**3)) * H_at_f0[3][3] + (0.3125 * (A**5)) * H_at_f0[3][5])
-        Y_amp[4] = (+1j) * ((0.125 * (A**4)) * H_at_f0[4][4])
-        Y_amp[5] = (1.0) * ((0.0625 * (A**5)) * H_at_f0[5][5])
+        Y_amp[1] = (1.0) * (A * H_at_f0[1][1] + (0.75 * A3) * H_at_f0[1][3] + (0.625 * A5) * H_at_f0[1][5])
+        Y_amp[2] = (-1j) * ((0.5 * A2) * H_at_f0[2][2] + (0.5 * A4) * H_at_f0[2][4])
+        Y_amp[3] = (-1.0) * ((0.25 * A3) * H_at_f0[3][3] + (0.3125 * A5) * H_at_f0[3][5])
+        Y_amp[4] = (+1j) * ((0.125 * A4) * H_at_f0[4][4])
+        Y_amp[5] = (1.0) * ((0.0625 * A5) * H_at_f0[5][5])
 
         for k in Y_amp:
             Y_amp[k] = Y_amp[k].flatten()
@@ -1451,14 +1464,17 @@ class HammersteinAnalyzerWidget(QWidget):
         A_in = 10 ** (amp_db / 20.0)
 
         # Synthesize harmonic outputs
+        A_in2 = A_in * A_in
+        A_in3 = A_in2 * A_in
+        A_in4 = A_in2 * A_in2
+        A_in5 = A_in4 * A_in
+
         Y = {}
-        Y[1] = (1.0) * (
-            A_in * H_interp[1][1] + (0.75 * (A_in**3)) * H_interp[1][3] + (0.625 * (A_in**5)) * H_interp[1][5]
-        )
-        Y[2] = (-1j) * ((0.5 * (A_in**2)) * H_interp[2][2] + (0.5 * (A_in**4)) * H_interp[2][4])
-        Y[3] = (-1.0) * ((0.25 * (A_in**3)) * H_interp[3][3] + (0.3125 * (A_in**5)) * H_interp[3][5])
-        Y[4] = (+1j) * ((0.125 * (A_in**4)) * H_interp[4][4])
-        Y[5] = (1.0) * ((0.0625 * (A_in**5)) * H_interp[5][5])
+        Y[1] = (1.0) * (A_in * H_interp[1][1] + (0.75 * A_in3) * H_interp[1][3] + (0.625 * A_in5) * H_interp[1][5])
+        Y[2] = (-1j) * ((0.5 * A_in2) * H_interp[2][2] + (0.5 * A_in4) * H_interp[2][4])
+        Y[3] = (-1.0) * ((0.25 * A_in3) * H_interp[3][3] + (0.3125 * A_in5) * H_interp[3][5])
+        Y[4] = (+1j) * ((0.125 * A_in4) * H_interp[4][4])
+        Y[5] = (1.0) * ((0.0625 * A_in5) * H_interp[5][5])
 
         fundamental_phase_rad = np.angle(Y[1])
 

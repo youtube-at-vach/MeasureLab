@@ -81,4 +81,3 @@ def test_export_manager_init_idempotent():
 
     # The exporters dict should be the exact same object, not a new one
     assert manager._exporters is original_exporters
-

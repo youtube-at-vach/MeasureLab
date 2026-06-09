@@ -30,18 +30,12 @@ def save_hammerstein_model(filepath, data):
             },
             "time_domain": {
                 "time_ms": list(data["time_domain"]["time_ms"]),
-                "kernels": {
-                    k: list(v) for k, v in data["time_domain"]["kernels"].items()
-                },
+                "kernels": {k: list(v) for k, v in data["time_domain"]["kernels"].items()},
             },
             "frequency_domain": {
                 "freqs": list(data["frequency_domain"]["freqs"]),
-                "magnitudes_db": {
-                    k: list(v) for k, v in data["frequency_domain"]["magnitudes_db"].items()
-                },
-                "phases_deg": {
-                    k: list(v) for k, v in data["frequency_domain"]["phases_deg"].items()
-                },
+                "magnitudes_db": {k: list(v) for k, v in data["frequency_domain"]["magnitudes_db"].items()},
+                "phases_deg": {k: list(v) for k, v in data["frequency_domain"]["phases_deg"].items()},
             },
         }
 
@@ -68,19 +62,15 @@ def load_hammerstein_model(filepath):
             "metadata": raw_data.get("metadata", {}),
             "time_domain": {
                 "time_ms": np.array(raw_data["time_domain"]["time_ms"], dtype=np.float32),
-                "kernels": {
-                    k: np.array(v, dtype=np.float32) for k, v in raw_data["time_domain"]["kernels"].items()
-                },
+                "kernels": {k: np.array(v, dtype=np.float32) for k, v in raw_data["time_domain"]["kernels"].items()},
             },
             "frequency_domain": {
                 "freqs": np.array(raw_data["frequency_domain"]["freqs"], dtype=np.float32),
                 "magnitudes_db": {
-                    k: np.array(v, dtype=np.float32)
-                    for k, v in raw_data["frequency_domain"]["magnitudes_db"].items()
+                    k: np.array(v, dtype=np.float32) for k, v in raw_data["frequency_domain"]["magnitudes_db"].items()
                 },
                 "phases_deg": {
-                    k: np.array(v, dtype=np.float32)
-                    for k, v in raw_data["frequency_domain"]["phases_deg"].items()
+                    k: np.array(v, dtype=np.float32) for k, v in raw_data["frequency_domain"]["phases_deg"].items()
                 },
             },
         }
@@ -120,4 +110,3 @@ def has_active_model():
         bool: True if cached, False otherwise.
     """
     return _ACTIVE_MODEL_CACHE is not None
-
