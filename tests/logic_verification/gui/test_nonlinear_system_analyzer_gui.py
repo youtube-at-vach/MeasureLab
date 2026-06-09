@@ -65,6 +65,3 @@ def test_nonlinear_analyzer_routing(qtbot):
     # 5. Modify Output Channel to Right
     widget.out_combo.setCurrentIndex(widget.out_combo.findData("R"))
     assert analyzer.output_channel == "R"
-
-
-

@@ -64,10 +64,10 @@ class ComparisonTrace:
     y_axis: AxisMetadata
     y2_axis: Optional[AxisMetadata] = None
 
-    # Data arrays (Always stored as float list in base_unit)
-    x_data: List[float] = field(default_factory=list)
-    y_data: List[float] = field(default_factory=list)
-    y2_data: Optional[List[float]] = None
+    # Data arrays (Can be list or numpy array)
+    x_data: Any = field(default_factory=list)
+    y_data: Any = field(default_factory=list)
+    y2_data: Optional[Any] = None
 
     # Calibration info
     calibration: CalibrationInfo = field(default_factory=CalibrationInfo)
@@ -76,6 +76,12 @@ class ComparisonTrace:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        import numpy as np
+
+        x_val = self.x_data.tolist() if isinstance(self.x_data, np.ndarray) else self.x_data
+        y_val = self.y_data.tolist() if isinstance(self.y_data, np.ndarray) else self.y_data
+        y2_val = self.y2_data.tolist() if isinstance(self.y2_data, np.ndarray) else self.y2_data
+
         return {
             "id": self.id,
             "name": self.name,
@@ -85,19 +91,23 @@ class ComparisonTrace:
             "x_axis": self.x_axis.to_dict(),
             "y_axis": self.y_axis.to_dict(),
             "y2_axis": self.y2_axis.to_dict() if self.y2_axis else None,
-            "x_data": self.x_data,
-            "y_data": self.y_data,
-            "y2_data": self.y2_data,
+            "x_data": x_val,
+            "y_data": y_val,
+            "y2_data": y2_val,
             "calibration": self.calibration.to_dict(),
             "metadata": self.metadata,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ComparisonTrace":
+        import numpy as np
+
         # Convert list of floats (handling potential NumPy conversions upstream if necessary)
-        def _clean_float_list(lst: Optional[List[Any]]) -> Optional[List[float]]:
+        def _clean_float_list(lst: Any) -> Optional[Any]:
             if lst is None:
                 return None
+            if isinstance(lst, np.ndarray):
+                return lst
             return [float(x) for x in lst]
 
         x_axis_data = data.get("x_axis")

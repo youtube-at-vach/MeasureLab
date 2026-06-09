@@ -983,7 +983,3 @@ class NonlinearSystemAnalyzerWidget(QWidget):
                 tr("Export Failed"),
                 tr("Failed to save Hammerstein model: {0}").format(e)
             )
-
-
-
-
