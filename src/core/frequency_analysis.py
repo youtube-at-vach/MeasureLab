@@ -73,16 +73,10 @@ def calculate_allan_deviation(data, dt_seconds):
     # Optimization: Don't calculate EVERY m if n is huge.
     while m <= max_m:
         num_samples = (n // m) * m
-        if num_samples < 2 * m:
-            break
-
         # Efficient mean calculation
         # Reshape data to (N//m, m) and take mean along axis 1
         # This gives us the sequence of averages y_k
         y = data[:num_samples].reshape(-1, m).mean(axis=1)
-
-        if len(y) < 2:
-            break
 
         diffs = np.diff(y)
         sigma = float(np.sqrt(0.5 * np.mean(diffs**2)))
