@@ -244,8 +244,9 @@ class LTCDecoder:
             # and calculate consecutive differences between all other positions.
             diffs = np.diff(crossing_positions, prepend=-self.samples_since_last_zc)
 
-            for pos, d in zip(crossing_positions.tolist(), diffs.tolist(), strict=False):
-                if d > 0 and self._process_pulse(float(d)):
+            valid = diffs > 0
+            for pos, d in zip(crossing_positions[valid].tolist(), diffs[valid].tolist(), strict=False):
+                if self._process_pulse(float(d)):
                     self.last_frame_offset_in_chunk = int(pos)
                     decoded_any = True
 
