@@ -55,11 +55,6 @@ Selects the input and output devices. Previous settings have been split into tab
 * **Buffer Optimization**: Selects the optimization level of the buffer size according to the application.
 * **Buffer Size**: Actual size of the audio buffer.
 
-## ☕ Coffee Break: Buffer Size and Dithering
-
-* **Buffer Size**: Determines the amount of audio data processed at once. Larger sizes increase latency but prevent dropouts, making them ideal for stable measurement.
-* **Dithering**: A process of adding low-level noise to audio before bit-depth reduction. It prevents quantization distortion from becoming harmonic noise, maintaining dynamic range.
-
 * **Input/Output Channels**: Selects the channel mode (Stereo, Left, Right).
 * **Enable Dithering (TPDF)**: Adds dither to the output signal to reduce quantization distortion.
 * **Dithering Bit Depth**: Selects the bit depth for dithering application (8-bit, 16-bit, 24-bit).
