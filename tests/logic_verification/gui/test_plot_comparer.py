@@ -165,8 +165,8 @@ def test_spectrum_analyzer_comparable_data(qtbot):
     assert trace.x_axis.dimension == "frequency"
     assert trace.x_axis.is_log is True
     assert trace.y_axis.display_unit == "dBFS"
-    assert trace.x_data == [20.0, 100.0, 1000.0]
-    assert trace.y_data == [-10.0, -20.0, -30.0]
+    assert np.array_equal(trace.x_data, np.array([20.0, 100.0, 1000.0]))
+    assert np.array_equal(trace.y_data, np.array([-10.0, -20.0, -30.0]))
 
     # Mock caching data (Dual Mode)
     module.analysis_mode = "Spectrum"
@@ -177,8 +177,8 @@ def test_spectrum_analyzer_comparable_data(qtbot):
     assert len(traces) == 2
     assert " - L " in traces[0].name
     assert " - R " in traces[1].name
-    assert traces[0].y_data == [-10.0, -20.0, -30.0]
-    assert traces[1].y_data == [-15.0, -25.0, -35.0]
+    assert np.array_equal(traces[0].y_data, np.array([-10.0, -20.0, -30.0]))
+    assert np.array_equal(traces[1].y_data, np.array([-15.0, -25.0, -35.0]))
 
 
 def test_plot_comparer_log_axis_for_spectrum(qtbot, clean_manager):

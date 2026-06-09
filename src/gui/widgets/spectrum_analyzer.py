@@ -1318,8 +1318,8 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     plot_type="spectrum",
                     x_axis=x_axis,
                     y_axis=y_axis_metadata,
-                    x_data=freqs.tolist(),
-                    y_data=mags[:, 0].tolist(),
+                    x_data=freqs,
+                    y_data=mags[:, 0],
                     calibration=CalibrationInfo(
                         is_calibrated=is_calibrated,
                         input_sensitivity=input_sensitivity,
@@ -1345,8 +1345,8 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     plot_type="spectrum",
                     x_axis=x_axis,
                     y_axis=y_axis_metadata,
-                    x_data=freqs.tolist(),
-                    y_data=mags[:, 1].tolist(),
+                    x_data=freqs,
+                    y_data=mags[:, 1],
                     calibration=CalibrationInfo(
                         is_calibrated=is_calibrated,
                         input_sensitivity=input_sensitivity,
@@ -1367,7 +1367,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
             trace_name = f"{tr('Spectrum Analyzer')} - {ch_mode_tr} ({datetime.now().strftime('%H:%M:%S')})"
 
             # Ensure 1D mags data
-            y_data_list = mags[:, 0].tolist() if mags.ndim == 2 else mags.tolist()
+            y_data_list = mags[:, 0] if mags.ndim == 2 else mags
 
             trace = ComparisonTrace(
                 id=trace_id,
@@ -1377,7 +1377,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 plot_type="spectrum",
                 x_axis=x_axis,
                 y_axis=y_axis_metadata,
-                x_data=freqs.tolist(),
+                x_data=freqs,
                 y_data=y_data_list,
                 calibration=CalibrationInfo(
                     is_calibrated=is_calibrated,
