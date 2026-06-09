@@ -120,4 +120,3 @@ def has_active_model():
         bool: True if cached, False otherwise.
     """
     return _ACTIVE_MODEL_CACHE is not None
-
