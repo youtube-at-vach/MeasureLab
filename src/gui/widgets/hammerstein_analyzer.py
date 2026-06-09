@@ -816,6 +816,7 @@ class HammersteinAnalyzerWidget(QWidget):
         f_n_list = [n * freqs_grid for n in range(1, 6)]
         f_all = np.concatenate(f_n_list)
         out_of_bounds_all = f_all > nyquist
+        zero_arr = np.zeros(N_f, dtype=np.complex128)
         for p in range(1, 6):
             if p in H_dict:
                 real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_dict[p]))
@@ -828,7 +829,7 @@ class HammersteinAnalyzerWidget(QWidget):
                     H_interp[n][p] = val_all[start_idx:end_idx]
             else:
                 for n in range(1, 6):
-                    H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
+                    H_interp[n][p] = zero_arr
 
         # 4. Synthesize outputs
         A = amps_linear[:, np.newaxis]  # (N_A, 1)
@@ -1173,6 +1174,7 @@ class HammersteinAnalyzerWidget(QWidget):
         f_n_list = [n * freqs_grid for n in range(1, 6)]
         f_all = np.concatenate(f_n_list)
         out_of_bounds_all = f_all > nyquist
+        zero_arr = np.zeros(N_f, dtype=np.complex128)
         for p in range(1, 6):
             if p in H_dict:
                 real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_dict[p]))
@@ -1185,7 +1187,7 @@ class HammersteinAnalyzerWidget(QWidget):
                     H_interp[n][p] = val_all[start_idx:end_idx]
             else:
                 for n in range(1, 6):
-                    H_interp[n][p] = np.zeros(N_f, dtype=np.complex128)
+                    H_interp[n][p] = zero_arr
 
         A_in = 10 ** (self.ref_amp / 20.0)
 
