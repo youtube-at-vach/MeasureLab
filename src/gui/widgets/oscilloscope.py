@@ -1511,11 +1511,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
             if is_calibrated:
                 y_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="V", is_log=False)
-                y_data = (data[:, 0] * input_sensitivity).tolist()
+                y_data = data[:, 0] * input_sensitivity
                 ref_lvl = "absolute"
             else:
                 y_axis = AxisMetadata(dimension="voltage", base_unit="FS", display_unit="FS", is_log=False)
-                y_data = data[:, 0].tolist()
+                y_data = data[:, 0]
                 ref_lvl = "relative"
 
             trace_l = ComparisonTrace(
@@ -1526,7 +1526,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 plot_type="time_series",
                 x_axis=x_axis,
                 y_axis=y_axis,
-                x_data=t.tolist(),
+                x_data=t,
                 y_data=y_data,
                 calibration=CalibrationInfo(
                     is_calibrated=is_calibrated,
@@ -1550,11 +1550,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
             if is_calibrated:
                 y_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="V", is_log=False)
-                y_data = (data[:, 1] * input_sensitivity).tolist()
+                y_data = data[:, 1] * input_sensitivity
                 ref_lvl = "absolute"
             else:
                 y_axis = AxisMetadata(dimension="voltage", base_unit="FS", display_unit="FS", is_log=False)
-                y_data = data[:, 1].tolist()
+                y_data = data[:, 1]
                 ref_lvl = "relative"
 
             trace_r = ComparisonTrace(
@@ -1565,7 +1565,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 plot_type="time_series",
                 x_axis=x_axis,
                 y_axis=y_axis,
-                x_data=t.tolist(),
+                x_data=t,
                 y_data=y_data,
                 calibration=CalibrationInfo(
                     is_calibrated=is_calibrated,
