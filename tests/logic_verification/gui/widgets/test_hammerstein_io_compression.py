@@ -40,7 +40,7 @@ def dummy_model_data_compressing():
                 "h3": np.array([180.0, 180.0, 180.0]),
                 "h4": np.array([0.0, 0.0, 0.0]),
                 "h5": np.array([0.0, 0.0, 0.0]),
-            },
+            }
         },
         "time_domain": {
             "time_ms": np.array([0.0, 1.0, 2.0]),
@@ -50,8 +50,8 @@ def dummy_model_data_compressing():
                 "h3": np.array([-0.316, 0.0, 0.0]),
                 "h4": np.array([0.0, 0.0, 0.0]),
                 "h5": np.array([0.0, 0.0, 0.0]),
-            },
-        },
+            }
+        }
     }
 
 
@@ -80,7 +80,7 @@ def dummy_model_data_expanding():
                 "h3": np.array([0.0, 0.0, 0.0]),
                 "h4": np.array([0.0, 0.0, 0.0]),
                 "h5": np.array([0.0, 0.0, 0.0]),
-            },
+            }
         },
         "time_domain": {
             "time_ms": np.array([0.0, 1.0, 2.0]),
@@ -90,8 +90,8 @@ def dummy_model_data_expanding():
                 "h3": np.array([0.316, 0.0, 0.0]),
                 "h4": np.array([0.0, 0.0, 0.0]),
                 "h5": np.array([0.0, 0.0, 0.0]),
-            },
-        },
+            }
+        }
     }
 
 

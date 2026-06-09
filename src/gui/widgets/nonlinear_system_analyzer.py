@@ -393,17 +393,17 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                     # Apply 20Hz-20kHz bandpass filtering (removes DC offset and out-of-band noise)
                     nyquist = sample_rate / 2.0
                     # 20Hz HPF (4th order)
-                    sos_hp = butter(4, 20.0 / nyquist, btype="highpass", output="sos")
+                    sos_hp = butter(4, 20.0 / nyquist, btype='highpass', output='sos')
                     filtered_sig = sosfilt(sos_hp, noise_sig)
 
                     # 20kHz LPF (4th order) if sampling rate supports it
                     if sample_rate > 44100:
-                        sos_lp = butter(4, 20000.0 / nyquist, btype="lowpass", output="sos")
+                        sos_lp = butter(4, 20000.0 / nyquist, btype='lowpass', output='sos')
                         filtered_sig = sosfilt(sos_lp, filtered_sig)
 
                     # Trim edges (especially start) to avoid sweep decay transients and filter settling times
                     trim_start = int(sample_rate * 0.20)  # 200ms trim for sweep decay & HPF transients
-                    trim_end = int(sample_rate * 0.10)  # 100ms trim for end filter transients
+                    trim_end = int(sample_rate * 0.10)    # 100ms trim for end filter transients
                     if len(filtered_sig) > (trim_start + trim_end):
                         trimmed_sig = filtered_sig[trim_start:-trim_end]
                     else:
@@ -441,7 +441,6 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         # Push to active model cache
         try:
             from src.core.hammerstein_model import set_active_model
-
             ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
 
             cache_data = {
@@ -460,12 +459,18 @@ class NonlinearSystemAnalyzer(MeasurementModule):
                 },
                 "time_domain": {
                     "time_ms": time_ms,
-                    "kernels": {f"h{p + 1}": separated_kernels_data[p] for p in range(len(separated_kernels_data))},
+                    "kernels": {
+                        f"h{p+1}": separated_kernels_data[p] for p in range(len(separated_kernels_data))
+                    },
                 },
                 "frequency_domain": {
                     "freqs": valid_freqs,
-                    "magnitudes_db": {k: v for k, v in magnitudes_db_dict.items() if k.startswith("h")},
-                    "phases_deg": {k: v for k, v in phases_deg_dict.items() if k.startswith("h") or k == "ref_phase"},
+                    "magnitudes_db": {
+                        k: v for k, v in magnitudes_db_dict.items() if k.startswith("h")
+                    },
+                    "phases_deg": {
+                        k: v for k, v in phases_deg_dict.items() if k.startswith("h") or k == "ref_phase"
+                    },
                 },
             }
             set_active_model(cache_data)
@@ -479,10 +484,13 @@ class NonlinearSystemAnalyzer(MeasurementModule):
         self.signals.progress.emit(100)
 
 
+
 class NonlinearSystemAnalyzerWidget(QWidget):
     def __init__(self, module: NonlinearSystemAnalyzer):
         QWidget.__init__(self)
         self.module = module
+
+
 
         self.init_ui()
 
@@ -500,6 +508,7 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         self.cached_phases = {}
         self.cached_kernels = None
         self.cached_time_ms = None
+
 
     def init_ui(self):
         # Premium layout design
@@ -722,6 +731,8 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         kernel_layout.addWidget(self.kernel_plot)
         self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
 
+
+
         # Premium Plot Legends
         self.mag_plot.addLegend(offset=(10, 10))
         self.phase_plot.addLegend(offset=(10, 10))
@@ -761,10 +772,13 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         self.export_btn.setEnabled(False)
         self.progress_bar.setValue(0)
 
+
         # Clear existing plots
         self.mag_plot.clear()
         self.phase_plot.clear()
         self.kernel_plot.clear()
+
+
 
         self.module.start_measurement()
 
@@ -822,6 +836,7 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         if self.cached_kernels is not None:
             self.export_btn.setEnabled(True)
 
+
         # Retrieve current display smoothing level
         smooth_level = self.smooth_combo.currentData()
 
@@ -847,6 +862,8 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         self.mag_plot.clear()
         self.phase_plot.clear()
 
+
+
         for key in ["h1", "h2", "h3", "h4", "h5"]:
             if key in magnitudes_db_dict:
                 # Apply Savitzky-Golay Smoothing
@@ -860,6 +877,8 @@ class NonlinearSystemAnalyzerWidget(QWidget):
                 # Phase Plot
                 pen_phase = pg.mkPen(color=colors[key], width=1.5, style=Qt.PenStyle.SolidLine)
                 self.phase_plot.plot(freqs, phase_smoothed, pen=pen_phase, name=labels[key])
+
+
 
     def on_update_kernels(self, time_ms, separated_kernels_data):
         self.cached_time_ms = time_ms
@@ -907,7 +926,12 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         from PyQt6.QtWidgets import QFileDialog
         from src.core.hammerstein_model import save_hammerstein_model
 
-        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Hammerstein Model"), "", tr("JSON Files (*.json)"))
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Export Hammerstein Model"),
+            "",
+            tr("JSON Files (*.json)")
+        )
 
         if not filepath:
             return
@@ -931,11 +955,15 @@ class NonlinearSystemAnalyzerWidget(QWidget):
                 },
                 "time_domain": {
                     "time_ms": self.cached_time_ms,
-                    "kernels": {f"h{p + 1}": self.cached_kernels[p] for p in range(len(self.cached_kernels))},
+                    "kernels": {
+                        f"h{p+1}": self.cached_kernels[p] for p in range(len(self.cached_kernels))
+                    },
                 },
                 "frequency_domain": {
                     "freqs": self.cached_freqs,
-                    "magnitudes_db": {k: v for k, v in self.cached_mags.items() if k.startswith("h")},
+                    "magnitudes_db": {
+                        k: v for k, v in self.cached_mags.items() if k.startswith("h")
+                    },
                     "phases_deg": {
                         k: v for k, v in self.cached_phases.items() if k.startswith("h") or k == "ref_phase"
                     },
@@ -943,7 +971,15 @@ class NonlinearSystemAnalyzerWidget(QWidget):
             }
 
             save_hammerstein_model(filepath, data)
-            QMessageBox.information(self, tr("Export Successful"), tr("Model exported successfully."))
+            QMessageBox.information(
+                self,
+                tr("Export Successful"),
+                tr("Model exported successfully.")
+            )
         except Exception as e:
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
-            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save Hammerstein model: {0}").format(e))
+            QMessageBox.critical(
+                self,
+                tr("Export Failed"),
+                tr("Failed to save Hammerstein model: {0}").format(e)
+            )

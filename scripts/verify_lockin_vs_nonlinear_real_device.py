@@ -9,7 +9,6 @@ from src.core.audio_engine import AudioEngine
 from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer
 from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer
 
-
 def main():
     # Initialize Qt Application
     QApplication(sys.argv)
@@ -22,11 +21,7 @@ def main():
     uac_idx = None
     for idx, dev in enumerate(devices):
         name = dev.get("name", "")
-        if (
-            "uac-232" in name.lower()
-            and dev.get("max_input_channels", 0) >= 2
-            and dev.get("max_output_channels", 0) >= 2
-        ):
+        if "uac-232" in name.lower() and dev.get("max_input_channels", 0) >= 2 and dev.get("max_output_channels", 0) >= 2:
             uac_idx = idx
             break
 
@@ -58,9 +53,9 @@ def main():
     sweep_results = {}
 
     def on_update_plot(freqs, mags, phases):
-        sweep_results["freqs"] = freqs
-        sweep_results["mags"] = mags
-        sweep_results["phases"] = phases
+        sweep_results['freqs'] = freqs
+        sweep_results['mags'] = mags
+        sweep_results['phases'] = phases
 
     nonlin_analyzer.signals.update_plot.connect(on_update_plot)
 
@@ -75,8 +70,8 @@ def main():
 
     def debug_run_play_rec(output_data, input_channels=2):
         rec_data = orig_run_play_rec(output_data, input_channels)
-        meas_rms = np.sqrt(np.mean(rec_data[:, 0] ** 2))
-        ref_rms = np.sqrt(np.mean(rec_data[:, 1] ** 2))
+        meas_rms = np.sqrt(np.mean(rec_data[:, 0]**2))
+        ref_rms = np.sqrt(np.mean(rec_data[:, 1]**2))
         meas_db = 20 * np.log10(meas_rms * np.sqrt(2) + 1e-12)
         ref_db = 20 * np.log10(ref_rms * np.sqrt(2) + 1e-12)
         print(f"    [SSS PlayRec Step] Raw Meas(Ch1): {meas_db:.2f} dBFS, Raw Ref(Ch2): {ref_db:.2f} dBFS")
@@ -102,7 +97,7 @@ def main():
     print("\n=== Phase B: Lock-in Harmonic Analyzer (Single-Tone) ===")
     lockin = LockInHarmonicAnalyzer(engine)
     lockin.signal_channel = 0  # Ch 1 (L)
-    lockin.ref_channel = 1  # Ch 2 (R)
+    lockin.ref_channel = 1     # Ch 2 (R)
     lockin.max_harmonic = 5
     lockin.buffer_size = 262144
     lockin.output_enabled = True
@@ -188,23 +183,21 @@ def main():
 
         with lockin.lock:
             data_copy = lockin.input_data.copy()
-        raw_sig_rms = np.sqrt(np.mean(data_copy[:, lockin.signal_channel] ** 2))
-        raw_ref_rms = np.sqrt(np.mean(data_copy[:, lockin.ref_channel] ** 2))
+        raw_sig_rms = np.sqrt(np.mean(data_copy[:, lockin.signal_channel]**2))
+        raw_ref_rms = np.sqrt(np.mean(data_copy[:, lockin.ref_channel]**2))
         raw_sig_db = 20 * np.log10(raw_sig_rms * np.sqrt(2) + 1e-12)
         raw_ref_db = 20 * np.log10(raw_ref_rms * np.sqrt(2) + 1e-12)
         print(f"    [Lock-in Raw Check] Sig(Ch1): {raw_sig_db:.2f} dBFS, Ref(Ch2): {raw_ref_db:.2f} dBFS")
 
         if engine.last_callback_error:
-            print(
-                f"    [-] AudioEngine Callback Error detected: {engine.last_callback_error} (count: {engine.callback_error_count})"
-            )
+            print(f"    [-] AudioEngine Callback Error detected: {engine.last_callback_error} (count: {engine.callback_error_count})")
 
         lockin.process()
 
         lockin_results[f0] = {
-            "measured_freq": lockin.measured_freq,
-            "amps": lockin.harmonics_amp.copy(),
-            "phases": lockin.harmonics_phase_deg.copy(),
+            'measured_freq': lockin.measured_freq,
+            'amps': lockin.harmonics_amp.copy(),
+            'phases': lockin.harmonics_phase_deg.copy()
         }
 
         lockin.stop_analysis()
@@ -214,9 +207,9 @@ def main():
 
     # 5. Phase C: Compare SSS Model Predictions vs Lock-in Measurements
     print("\n=== Phase C: Consistency Analysis ===")
-    freqs = sweep_results["freqs"]
-    mags = sweep_results["mags"]
-    phases = sweep_results["phases"]
+    freqs = sweep_results['freqs']
+    mags = sweep_results['mags']
+    phases = sweep_results['phases']
 
     H_dict = {}
     for p in range(1, 6):
@@ -260,8 +253,8 @@ def main():
             print(f"[-] No Lock-in data for {f0} Hz")
             continue
 
-        meas_amps = lockin_data["amps"]
-        meas_phases = lockin_data["phases"]
+        meas_amps = lockin_data['amps']
+        meas_phases = lockin_data['phases']
         meas_fund_phase_deg = meas_phases[0]
 
         # Interpolate reference loopback phase at fundamental frequency f0
@@ -270,9 +263,7 @@ def main():
         ref_phase_f0 = np.interp(f0, freqs, ref_phase_unwrapped)
 
         print(f"\n--- Comparative Verification at {f0} Hz (Measured Freq: {lockin_data['measured_freq']:.2f} Hz) ---")
-        print(
-            f"{'Harmonic':<10} | {'Pred Amp':<10} | {'Meas Amp':<10} | {'Amp Diff':<10} | {'Pred Ph':<10} | {'Corr Pred':<10} | {'Meas Ph':<10} | {'Ph Diff':<10} | {'Corr PhDiff':<12}"
-        )
+        print(f"{'Harmonic':<10} | {'Pred Amp':<10} | {'Meas Amp':<10} | {'Amp Diff':<10} | {'Pred Ph':<10} | {'Corr Pred':<10} | {'Meas Ph':<10} | {'Ph Diff':<10} | {'Corr PhDiff':<12}")
         print("-" * 115)
 
         harmonic_comparison = []
@@ -280,9 +271,7 @@ def main():
         for n in range(1, 6):
             f_n = n * f0
             if f_n > nyquist:
-                print(
-                    f"{n:<10} | {'N/A (Nyquist)':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>12}"
-                )
+                print(f"{n:<10} | {'N/A (Nyquist)':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>10} | {'N/A':>12}")
                 continue
 
             y_val = Y[n]
@@ -298,8 +287,8 @@ def main():
             pred_rel_phase_corr_deg = pred_rel_phase_deg + loopback_corr_deg
             pred_rel_phase_corr_deg = (pred_rel_phase_corr_deg + 180) % 360 - 180
 
-            meas_amp_db = 20 * np.log10(meas_amps[n - 1] + 1e-12)
-            meas_rel_phase_deg = meas_phases[n - 1] - n * meas_fund_phase_deg
+            meas_amp_db = 20 * np.log10(meas_amps[n-1] + 1e-12)
+            meas_rel_phase_deg = meas_phases[n-1] - n * meas_fund_phase_deg
             meas_rel_phase_deg = (meas_rel_phase_deg + 180) % 360 - 180
 
             amp_diff = meas_amp_db - pred_amp_db
@@ -310,41 +299,32 @@ def main():
             phase_diff_corr = meas_rel_phase_deg - pred_rel_phase_corr_deg
             phase_diff_corr = (phase_diff_corr + 180) % 360 - 180
 
-            print(
-                f"{n:<10} | {pred_amp_db:>10.2f} | {meas_amp_db:>10.2f} | {amp_diff:>10.2f} | {pred_rel_phase_deg:>10.2f} | {pred_rel_phase_corr_deg:>10.2f} | {meas_rel_phase_deg:>10.2f} | {phase_diff:>10.2f} | {phase_diff_corr:>12.2f}"
-            )
+            print(f"{n:<10} | {pred_amp_db:>10.2f} | {meas_amp_db:>10.2f} | {amp_diff:>10.2f} | {pred_rel_phase_deg:>10.2f} | {pred_rel_phase_corr_deg:>10.2f} | {meas_rel_phase_deg:>10.2f} | {phase_diff:>10.2f} | {phase_diff_corr:>12.2f}")
 
-            harmonic_comparison.append(
-                {
-                    "order": n,
-                    "freq_hz": f_n,
-                    "pred_amp_db": pred_amp_db,
-                    "meas_amp_db": meas_amp_db,
-                    "amp_diff_db": amp_diff,
-                    "pred_phase_deg": pred_rel_phase_deg,
-                    "pred_phase_corr_deg": pred_rel_phase_corr_deg,
-                    "meas_phase_deg": meas_rel_phase_deg,
-                    "phase_diff_deg": phase_diff,
-                    "phase_diff_corr_deg": phase_diff_corr,
-                }
-            )
+            harmonic_comparison.append({
+                'order': n,
+                'freq_hz': f_n,
+                'pred_amp_db': pred_amp_db,
+                'meas_amp_db': meas_amp_db,
+                'amp_diff_db': amp_diff,
+                'pred_phase_deg': pred_rel_phase_deg,
+                'pred_phase_corr_deg': pred_rel_phase_corr_deg,
+                'meas_phase_deg': meas_rel_phase_deg,
+                'phase_diff_deg': phase_diff,
+                'phase_diff_corr_deg': phase_diff_corr
+            })
 
         comparison_report[int(f0)] = harmonic_comparison
 
     report_path = "/Users/vach/MeasureLab/scripts/verification_results.json"
     with open(report_path, "w") as f:
-        json.dump(
-            {
-                "target_freqs": target_freqs,
-                "sample_rate": engine.sample_rate,
-                "amplitude_db": -6.0,
-                "comparison": comparison_report,
-            },
-            f,
-            indent=4,
-        )
+        json.dump({
+            "target_freqs": target_freqs,
+            "sample_rate": engine.sample_rate,
+            "amplitude_db": -6.0,
+            "comparison": comparison_report
+        }, f, indent=4)
     print(f"\n[+] Saved verification report to {report_path}")
-
 
 if __name__ == "__main__":
     main()

@@ -61,7 +61,9 @@ def test_hammerstein_model_serialization():
         assert "export_timestamp" in loaded_data["metadata"]
 
         # Assert time domain
-        np.testing.assert_allclose(loaded_data["time_domain"]["time_ms"], mock_data["time_domain"]["time_ms"])
+        np.testing.assert_allclose(
+            loaded_data["time_domain"]["time_ms"], mock_data["time_domain"]["time_ms"]
+        )
         for k in ["h1", "h2", "h3", "h4", "h5"]:
             np.testing.assert_allclose(
                 loaded_data["time_domain"]["kernels"][k],
@@ -69,7 +71,9 @@ def test_hammerstein_model_serialization():
             )
 
         # Assert frequency domain
-        np.testing.assert_allclose(loaded_data["frequency_domain"]["freqs"], mock_data["frequency_domain"]["freqs"])
+        np.testing.assert_allclose(
+            loaded_data["frequency_domain"]["freqs"], mock_data["frequency_domain"]["freqs"]
+        )
         for k in ["h1", "h2", "h3", "h4", "h5"]:
             np.testing.assert_allclose(
                 loaded_data["frequency_domain"]["magnitudes_db"][k],
