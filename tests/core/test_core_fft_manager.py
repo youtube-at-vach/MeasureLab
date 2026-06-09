@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from src.core.fft_manager import FFTManager
 
 def test_fft_manager_rfft_irfft():
