@@ -16,6 +16,34 @@ class TestVersionComparison(unittest.TestCase):
         self.assertFalse(is_newer_version("0.4.2", "0.4.3"))
         self.assertFalse(is_newer_version("0.3.9", "0.4.3"))
 
+    def test_version_padding(self):
+        # Different lengths, effectively equal
+        self.assertFalse(is_newer_version("1.0.0.0", "1.0.0"))
+        self.assertFalse(is_newer_version("1.0.0", "1.0.0.0"))
+        self.assertFalse(is_newer_version("1.0", "1.0.0"))
+        self.assertFalse(is_newer_version("1.0.0", "1.0"))
+
+        # Different lengths, latest is newer
+        self.assertTrue(is_newer_version("2", "1.9.9"))
+        self.assertTrue(is_newer_version("1.0.1", "1.0"))
+        self.assertTrue(is_newer_version("1.1", "1.0.9"))
+
+        # Different lengths, latest is older
+        self.assertFalse(is_newer_version("1.9.9", "2"))
+        self.assertFalse(is_newer_version("1.0", "1.0.1"))
+        self.assertFalse(is_newer_version("1.0.9", "1.1"))
+
+    def test_version_leading_zeros(self):
+        # Leading zeros should be parsed as equal values
+        self.assertFalse(is_newer_version("01.02.03", "1.2.3"))
+        self.assertFalse(is_newer_version("1.2.3", "01.02.03"))
+        self.assertTrue(is_newer_version("01.02.04", "1.2.3"))
+
+    def test_version_multi_digit(self):
+        self.assertTrue(is_newer_version("10.0.0", "2.0.0"))
+        self.assertFalse(is_newer_version("2.0.0", "10.0.0"))
+        self.assertTrue(is_newer_version("1.10.0", "1.2.0"))
+
     def test_invalid_version_string(self):
         # Should return False on ValueError
         self.assertFalse(is_newer_version("invalid", "0.4.3"))
