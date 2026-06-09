@@ -817,9 +817,10 @@ class HammersteinAnalyzerWidget(QWidget):
         f_all = np.concatenate(f_n_list)
         out_of_bounds_all = f_all > nyquist
         for p in range(1, 6):
-            if p in H_dict:
-                real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_dict[p]))
-                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(H_dict[p]))
+            H_p = H_dict.get(p)
+            if H_p is not None:
+                real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_p))
+                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(H_p))
                 val_all = real_val_all + 1j * imag_val_all
                 val_all[out_of_bounds_all] = 0.0j
                 for n in range(1, 6):
@@ -1175,9 +1176,10 @@ class HammersteinAnalyzerWidget(QWidget):
         f_all = np.concatenate(f_n_list)
         out_of_bounds_all = f_all > nyquist
         for p in range(1, 6):
-            if p in H_dict:
-                real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_dict[p]))
-                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(H_dict[p]))
+            H_p = H_dict.get(p)
+            if H_p is not None:
+                real_val_all = np.interp(f_all, self.cached_freqs, np.real(H_p))
+                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(H_p))
                 val_all = real_val_all + 1j * imag_val_all
                 val_all[out_of_bounds_all] = 0.0j
                 for n in range(1, 6):
@@ -1307,9 +1309,10 @@ class HammersteinAnalyzerWidget(QWidget):
         f_array = np.arange(1, 6) * self.ref_f0
 
         for p in range(1, 6):
-            if p in H_dict:
-                real_vals = np.interp(f_array, self.cached_freqs, np.real(H_dict[p]))
-                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(H_dict[p]))
+            H_p = H_dict.get(p)
+            if H_p is not None:
+                real_vals = np.interp(f_array, self.cached_freqs, np.real(H_p))
+                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(H_p))
                 for n in range(1, 6):
                     if f_array[n - 1] > nyquist:
                         H_at_f0[n][p] = 0.0 + 0.0j
@@ -1436,9 +1439,10 @@ class HammersteinAnalyzerWidget(QWidget):
         f_array = np.arange(1, 6) * f0
 
         for p in range(1, 6):
-            if p in H_dict:
-                real_vals = np.interp(f_array, self.cached_freqs, np.real(H_dict[p]))
-                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(H_dict[p]))
+            H_p = H_dict.get(p)
+            if H_p is not None:
+                real_vals = np.interp(f_array, self.cached_freqs, np.real(H_p))
+                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(H_p))
                 for n in range(1, 6):
                     if f_array[n - 1] > nyquist:
                         H_interp[n][p] = 0.0 + 0.0j
@@ -1555,11 +1559,12 @@ class HammersteinAnalyzerWidget(QWidget):
 
         H_at_f0 = {}
         for p in [1, 3, 5]:
-            if f0 > nyquist or p not in H_dict:
+            H_p = H_dict.get(p)
+            if f0 > nyquist or H_p is None:
                 H_at_f0[p] = 0.0 + 0.0j
                 continue
-            real_val = np.interp(f0, self.cached_freqs, np.real(H_dict[p]))
-            imag_val = np.interp(f0, self.cached_freqs, np.imag(H_dict[p]))
+            real_val = np.interp(f0, self.cached_freqs, np.real(H_p))
+            imag_val = np.interp(f0, self.cached_freqs, np.imag(H_p))
             H_at_f0[p] = real_val + 1j * imag_val
 
         # Setup amplitudes grid
