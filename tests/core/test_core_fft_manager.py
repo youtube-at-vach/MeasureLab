@@ -90,13 +90,13 @@ def test_get_dpss_windows():
     windows_cached = get_dpss_windows(N=1024, NW=3)
     assert windows is windows_cached
 
-def test_warmup(mocker):
+def test_warmup(monkeypatch):
     manager = FFTManager()
 
     # Use small sizes for fast test
-    mocker.patch("src.core.fft_manager.WARMUP_SIZES", [256, 512])
-    mocker.patch("src.core.fft_manager.MEDIUM_SIZES", [1024])
-    mocker.patch("src.core.fft_manager.HUGE_SIZES", [2048])
+    monkeypatch.setattr("src.core.fft_manager.WARMUP_SIZES", [256, 512])
+    monkeypatch.setattr("src.core.fft_manager.MEDIUM_SIZES", [1024])
+    monkeypatch.setattr("src.core.fft_manager.HUGE_SIZES", [2048])
 
     callback_calls = []
     def callback(msg):
@@ -134,8 +134,8 @@ def test_save_load_wisdom(tmp_path):
     new_manager.wisdom_path = tmp_path / "wisdom.json"
     new_manager.load_wisdom()
 
-def test_fallback_numpy_fft(mocker):
-    mocker.patch("src.core.fft_manager.HAS_PYFFTW", False)
+def test_fallback_numpy_fft(monkeypatch):
+    monkeypatch.setattr("src.core.fft_manager.HAS_PYFFTW", False)
 
     manager = FFTManager()
 
@@ -193,10 +193,12 @@ def test_rfft_irfft_invalid_length():
     result = manager.irfft(truncated_fft, n=256)
     assert result.shape == (256,)
 
-def test_upgrade_plan(mocker):
+def test_upgrade_plan(monkeypatch):
+    from unittest.mock import MagicMock
     manager = FFTManager()
     # Mock to ensure we can track calls
-    spy = mocker.spy(manager, "_create_plan")
+    spy = MagicMock(side_effect=manager._create_plan)
+    monkeypatch.setattr(manager, "_create_plan", spy)
 
     # First get ESTIMATE plan
     manager.get_plan(256, "float32", flags=("FFTW_ESTIMATE",))
