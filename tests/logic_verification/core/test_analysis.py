@@ -50,7 +50,7 @@ class TestAudioCalc:
     def test_design_a_weighting_valid(self):
         sos = AudioCalc.design_a_weighting(48000)
         assert sos is not None
-        assert sos.shape == (3, 6)  # 3 cascaded biquads
+        assert sos.shape == (4, 6)  # 3 original + 1 peaking biquad
 
     def test_design_a_weighting_invalid(self):
         with pytest.raises(ValueError, match="Invalid sample rate"):
@@ -59,7 +59,7 @@ class TestAudioCalc:
     def test_design_c_weighting_valid(self):
         sos = AudioCalc.design_c_weighting(48000)
         assert sos is not None
-        assert sos.shape == (2, 6)  # 2 cascaded biquads
+        assert sos.shape == (3, 6)  # 2 original + 1 peaking biquad
 
     def test_design_c_weighting_invalid(self):
         with pytest.raises(ValueError, match="Invalid sample rate"):
