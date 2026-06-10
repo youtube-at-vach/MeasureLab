@@ -278,11 +278,11 @@ class ExportSettingsDialog(QDialog):
             return
 
         # Gather target selection states
-        selected_trace_ids = []
+        selected_trace_ids = set()
         for i in range(self.target_list.count()):
             item = self.target_list.item(i)
             if item.checkState() == Qt.CheckState.Checked:
-                selected_trace_ids.append(item.data(Qt.ItemDataRole.UserRole))
+                selected_trace_ids.add(item.data(Qt.ItemDataRole.UserRole))
 
         traces_to_export = [t for t in self.traces if t.id in selected_trace_ids]
         if not traces_to_export:
