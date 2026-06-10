@@ -924,7 +924,16 @@ def run_closed_loop_training():
     for p in range(5):
         h_key = f"h{p + 1}"
         inv_mags[h_key] = 20 * np.log10(np.abs(G_fft[p]) + 1e-12)
-        inv_phases[h_key] = np.angle(G_fft[p]) * 180.0 / np.pi
+        
+        # Compensate for the causal delay_2tau (20ms) to clean up Bode phase response
+        total_delay = delay_2tau
+        phase_correction = 2 * np.pi * freqs * total_delay
+        G_corrected = G_fft[p] * np.exp(1j * phase_correction)
+        
+        phase_rad = np.unwrap(np.angle(G_corrected))
+        phase_deg = phase_rad * 180.0 / np.pi
+        phase_deg = (phase_deg + 180) % 360 - 180
+        inv_phases[h_key] = phase_deg
 
     inv_phases["ref_phase"] = inv_phases["h1"]
 
