@@ -1,3 +1,4 @@
+import unittest.mock
 import os
 import pytest
 import numpy as np
@@ -223,3 +224,18 @@ def test_get_frequency_correction_empty_map(calibration_manager):
     mag, phase = calibration_manager.get_frequency_correction(100.0)
     assert mag == 0.0
     assert phase == 0.0
+
+
+def test_save_error(calibration_manager):
+    """Test save method handles IOError correctly."""
+    with unittest.mock.patch('src.core.calibration.os.open', side_effect=OSError('Mocked error')),          unittest.mock.patch('builtins.open', side_effect=OSError('Mocked error')):
+        with unittest.mock.patch.object(calibration_manager.logger, 'error') as mock_logger:
+            calibration_manager.save()
+            mock_logger.assert_called_once()
+
+
+def test_save_frequency_map_error(calibration_manager, temp_map_path):
+    """Test save_frequency_map handles IOError correctly."""
+    with unittest.mock.patch('src.core.calibration.os.open', side_effect=OSError('Mocked error')),          unittest.mock.patch('builtins.open', side_effect=OSError('Mocked error')):
+        result = calibration_manager.save_frequency_map(temp_map_path, [[10.0, 0.0, 0.0]])
+        assert result is False
