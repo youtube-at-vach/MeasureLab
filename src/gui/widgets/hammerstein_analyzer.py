@@ -824,10 +824,12 @@ class HammersteinAnalyzerWidget(QWidget):
                 imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(Hp))
                 val_all = real_val_all + 1j * imag_val_all
                 val_all[out_of_bounds_all] = 0.0j
-                for n in range(1, 6):
-                    start_idx = (n - 1) * N_f
-                    end_idx = n * N_f
-                    H_interp[n][p] = val_all[start_idx:end_idx]
+                val_all_reshaped = val_all.reshape(5, N_f)
+                H_interp[1][p] = val_all_reshaped[0]
+                H_interp[2][p] = val_all_reshaped[1]
+                H_interp[3][p] = val_all_reshaped[2]
+                H_interp[4][p] = val_all_reshaped[3]
+                H_interp[5][p] = val_all_reshaped[4]
             else:
                 for n in range(1, 6):
                     H_interp[n][p] = zero_arr
@@ -1183,10 +1185,12 @@ class HammersteinAnalyzerWidget(QWidget):
                 imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(Hp))
                 val_all = real_val_all + 1j * imag_val_all
                 val_all[out_of_bounds_all] = 0.0j
-                for n in range(1, 6):
-                    start_idx = (n - 1) * N_f
-                    end_idx = n * N_f
-                    H_interp[n][p] = val_all[start_idx:end_idx]
+                val_all_reshaped = val_all.reshape(5, N_f)
+                H_interp[1][p] = val_all_reshaped[0]
+                H_interp[2][p] = val_all_reshaped[1]
+                H_interp[3][p] = val_all_reshaped[2]
+                H_interp[4][p] = val_all_reshaped[3]
+                H_interp[5][p] = val_all_reshaped[4]
             else:
                 for n in range(1, 6):
                     H_interp[n][p] = zero_arr
