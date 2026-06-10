@@ -1,6 +1,7 @@
 import json
 import pytest
 import numpy as np
+from unittest.mock import patch
 from src.core.hammerstein_model import (
     save_hammerstein_model,
     load_hammerstein_model,
@@ -61,6 +62,22 @@ def test_save_and_load_hammerstein_model(tmp_path, sample_hammerstein_data):
         loaded_data["frequency_domain"]["phases_deg"]["h1"],
         sample_hammerstein_data["frequency_domain"]["phases_deg"]["h1"],
     )
+
+
+
+def test_save_hammerstein_model_error_mocked(tmp_path, sample_hammerstein_data):
+    # Use mock to force an error during JSON dumping to ensure exception handling and logging are tested
+    filepath = tmp_path / "test_model_error.json"
+    with patch("src.core.hammerstein_model.json.dump") as mock_dump:
+        mock_dump.side_effect = TypeError("Mocked JSON dump error")
+        with patch("src.core.hammerstein_model.logger") as mock_logger:
+            with pytest.raises(TypeError, match="Mocked JSON dump error"):
+                save_hammerstein_model(filepath, sample_hammerstein_data)
+
+            # Verify the error was logged
+            mock_logger.error.assert_called_once()
+            args, kwargs = mock_logger.error.call_args
+            assert "Failed to save Hammerstein model" in args[0]
 
 
 def test_save_hammerstein_model_error():
