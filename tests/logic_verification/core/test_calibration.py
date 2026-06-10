@@ -223,3 +223,15 @@ def test_get_frequency_correction_empty_map(calibration_manager):
     mag, phase = calibration_manager.get_frequency_correction(100.0)
     assert mag == 0.0
     assert phase == 0.0
+
+
+def test_save_frequency_map_error(calibration_manager, temp_map_path):
+    """Test error handling when saving frequency map fails."""
+    map_data = [[10.0, -1.0, 45.0], [100.0, 0.0, 0.0], [1000.0, 1.0, -45.0]]
+
+    # Mock os.open to raise an exception
+    import unittest.mock as mock
+    with mock.patch("os.open", side_effect=OSError("Permission denied")):
+        result = calibration_manager.save_frequency_map(temp_map_path, map_data)
+
+    assert result is False
