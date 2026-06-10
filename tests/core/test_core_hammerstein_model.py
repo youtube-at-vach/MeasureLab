@@ -1,6 +1,7 @@
 import json
 import pytest
 import numpy as np
+from unittest.mock import patch
 from src.core.hammerstein_model import (
     save_hammerstein_model,
     load_hammerstein_model,
@@ -63,7 +64,6 @@ def test_save_and_load_hammerstein_model(tmp_path, sample_hammerstein_data):
     )
 
 
-from unittest.mock import patch
 
 def test_save_hammerstein_model_error_mocked(tmp_path, sample_hammerstein_data):
     # Use mock to force an error during JSON dumping to ensure exception handling and logging are tested
