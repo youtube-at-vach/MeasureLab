@@ -386,7 +386,7 @@ def run_closed_loop_training():
     F_inv = np.conj(Q1_fft) / (F_lin_abs**2 + eps_f)
 
     # Window for predistorter time-domain regularization
-    center_idx = 2 * gate_pre
+    center_idx = gate_pre  # Fixed: center at gate_pre (1920 samples) instead of 2 * gate_pre to align with predistorter peak
     N_keep = N // 4
     N_fade = N // 8
 
@@ -419,7 +419,7 @@ def run_closed_loop_training():
         Cp = np.ones_like(Q_ffts[p])
         idx_p = np.abs(T_fft_init[p]) > 1e-6
         Cp[idx_p] = Q_ffts[p][idx_p] / T_fft_init[p][idx_p]
-        Cp = Cp * bp_filter + (1.0 - bp_filter)
+        # Cp = Cp * bp_filter + (1.0 - bp_filter)  # Fixed: Commented out to prevent Cp from transitioning to 1.0 (0 dB) in the transition band
         C_fft.append(Cp)
 
     # Evaluate Initial State Error
@@ -427,7 +427,7 @@ def run_closed_loop_training():
     T_fft = [np.fft.rfft(T_time[p]) for p in range(5)]
     E_fft = []
     T1_cal = T_fft[0] * C_fft[0]
-    E_fft.append((T1_cal - H_target) * bp_filter)
+    E_fft.append((T1_cal - Q1_fft) * bp_filter)  # Fixed: target Q1_fft directly instead of H_target
 
     for p in range(1, 5):
         Tp_cal = T_fft[p] * C_fft[p]
@@ -467,7 +467,7 @@ def run_closed_loop_training():
         T_fft_pt = [np.fft.rfft(T_time_pt[p]) for p in range(5)]
         E_fft_pt = []
         T1_cal_pt = T_fft_pt[0] * C_fft[0]
-        E_fft_pt.append((T1_cal_pt - H_target) * bp_filter)
+        E_fft_pt.append((T1_cal_pt - Q1_fft) * bp_filter)  # Fixed: target Q1_fft directly instead of H_target
         for p in range(1, 5):
             Tp_cal_pt = T_fft_pt[p] * C_fft[p]
             E_fft_pt.append(Tp_cal_pt * bp_filter)
@@ -486,7 +486,7 @@ def run_closed_loop_training():
 
         # Apply direct algebraic update
         for p in range(5):
-            phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_2tau)
+            phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_tau)  # Fixed: use delay_tau instead of delay_2tau
             update = mu_pt[p] * E_fft_pt[p] * F_inv * phase_corr
             G_fft[p] = G_fft[p] - update
             G_fft[p] = G_fft[p] * bp_filter
@@ -507,7 +507,7 @@ def run_closed_loop_training():
     T_fft = [np.fft.rfft(T_time[p]) for p in range(5)]
     E_fft = []
     T1_cal = T_fft[0] * C_fft[0]
-    E_fft.append((T1_cal - H_target) * bp_filter)
+    E_fft.append((T1_cal - Q1_fft) * bp_filter)  # Fixed: target Q1_fft directly instead of H_target
     for p in range(1, 5):
         Tp_cal = T_fft[p] * C_fft[p]
         E_fft.append(Tp_cal * bp_filter)
@@ -540,7 +540,7 @@ def run_closed_loop_training():
             # Candidate G_fft
             G_fft_cand = G_fft.copy()
             for p in range(5):
-                phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_2tau)
+                phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_tau)  # Fixed: use delay_tau instead of delay_2tau
                 update = mu_step[p] * E_fft[p] * F_inv * phase_corr
                 G_fft_cand[p] = G_fft_cand[p] - update
                 G_fft_cand[p] = G_fft_cand[p] * bp_filter
@@ -561,7 +561,7 @@ def run_closed_loop_training():
             T_fft_cand = [np.fft.rfft(T_time_cand[p]) for p in range(5)]
             E_fft_cand = []
             T1_cal_cand = T_fft_cand[0] * C_fft[0]
-            E_fft_cand.append((T1_cal_cand - H_target) * bp_filter)
+            E_fft_cand.append((T1_cal_cand - Q1_fft) * bp_filter)
             for p in range(1, 5):
                 Tp_cal_cand = T_fft_cand[p] * C_fft[p]
                 E_fft_cand.append(Tp_cal_cand * bp_filter)
