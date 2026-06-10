@@ -66,9 +66,14 @@ def run_closed_loop_training():
     for i in range(len(freqs)):
         f = freqs[i]
         if f < 60.0:
-            bp_filter[i] = np.clip((f - 10.0) / 50.0, 0, 1)
-        elif f > 17000.0 and f < 22000.0:
-            bp_filter[i] = np.clip(1.0 - (f - 17000.0) / 5000.0, 0, 1)
+            # Smooth cosine fade-in
+            bp_filter[i] = np.clip(0.5 * (1.0 - np.cos(np.pi * (f - 10.0) / 50.0)) if f >= 10.0 else 0.0, 0, 1)
+        elif f > 17000.0:
+            if f < 22000.0:
+                # Smooth cosine roll-off to minimize edge ripples (Gibbs phenomenon)
+                bp_filter[i] = np.clip(0.5 * (1.0 + np.cos(np.pi * (f - 17000.0) / 5000.0)), 0, 1)
+            else:
+                bp_filter[i] = 0.0
 
     # Anti-aliasing oversampled power evaluation in frequency domain
     def power_oversampled_fft(x, p, L=8):
@@ -487,7 +492,7 @@ def run_closed_loop_training():
             G_fft[p] = G_fft[p] * bp_filter
             g_t = np.fft.irfft(G_fft[p], n=N)
             g_t_win = g_t * g_win
-            G_fft[p] = np.fft.rfft(g_t_win)
+            G_fft[p] = np.fft.rfft(g_t_win) * bp_filter  # Re-apply filter to suppress leakage from time windowing
 
     # ==========================================
     # PHASE 2: SSS Fine-tuning (Chebyshev LS)
@@ -541,7 +546,7 @@ def run_closed_loop_training():
                 G_fft_cand[p] = G_fft_cand[p] * bp_filter
                 g_t = np.fft.irfft(G_fft_cand[p], n=N)
                 g_t_win = g_t * g_win
-                G_fft_cand[p] = np.fft.rfft(g_t_win)
+                G_fft_cand[p] = np.fft.rfft(g_t_win) * bp_filter  # Re-apply filter to suppress leakage from time windowing
 
             # Simulate measurement
             T_time_cand, clip_triggered = measure_cascade_kernels(G_fft_cand, measurement_amplitudes)
