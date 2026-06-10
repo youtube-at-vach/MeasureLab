@@ -1,0 +1,477 @@
+import os
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import windows, fftconvolve
+
+def run_closed_loop_training():
+    # 1. Load measured kernels and metadata
+    json_path = '/Users/vach/MeasureLab/hammerstein_kernel_sample_hard_condition.json'
+    if not os.path.exists(json_path):
+        raise FileNotFoundError(f"Kernel file not found at {json_path}")
+
+    with open(json_path, 'r') as f:
+        raw_data = json.load(f)
+
+    metadata = raw_data['metadata']
+    sample_rate = metadata['sample_rate']
+    kernels = {k: np.array(v) for k, v in raw_data['time_domain']['kernels'].items()}
+    time_ms = np.array(raw_data['time_domain']['time_ms'])
+
+    h1 = kernels['h1']
+    h2 = kernels['h2']
+    h3 = kernels['h3']
+    h4 = kernels['h4']
+    h5 = kernels['h5']
+    N = len(h1)
+
+    print("=== Loaded Target Nonlinear System (F) ===")
+    print(f"Sample Rate: {sample_rate} Hz")
+    print(f"Kernel Length: {N} samples ({N/sample_rate*1000.0:.2f} ms)")
+
+    # 2. Chebyshev to Power Series Conversion for the Forward Simulator F
+    q0 = -h2 + h4
+    q1 = h1 - 3*h3 + 5*h5  # True linear dynamic response
+    q2 = 2*h2 - 8*h4
+    q3 = 4*h3 - 20*h5
+    q4 = 8*h4
+    q5 = 16*h5
+
+    # Scale the system using the peak frequency response of q1
+    Q1_fft_raw = np.fft.rfft(q1)
+    G_scale = np.max(np.abs(Q1_fft_raw))
+    print(f"Linear system scale factor: {G_scale:.6e}")
+
+    # Scaled Forward Power Series Kernels
+    q0_sc = q0 / G_scale
+    q1_sc = q1 / G_scale
+    q2_sc = q2 / G_scale
+    q3_sc = q3 / G_scale
+    q4_sc = q4 / G_scale
+    q5_sc = q5 / G_scale
+
+    Q0_fft = np.fft.rfft(q0_sc)
+    Q1_fft = np.fft.rfft(q1_sc)
+    Q2_fft = np.fft.rfft(q2_sc)
+    Q3_fft = np.fft.rfft(q3_sc)
+    Q4_fft = np.fft.rfft(q4_sc)
+    Q5_fft = np.fft.rfft(q5_sc)
+
+    # 3. Define the active band filter (60 Hz to 17 kHz)
+    freqs = np.fft.rfftfreq(N, d=1.0/sample_rate)
+    passband = (freqs >= 60.0) & (freqs <= 17000.0)
+    bp_filter = np.zeros_like(freqs)
+    bp_filter[passband] = 1.0
+    for i in range(len(freqs)):
+        f = freqs[i]
+        if f < 60.0:
+            bp_filter[i] = np.clip((f - 10.0) / 50.0, 0, 1)
+        elif f > 17000.0 and f < 22000.0:
+            bp_filter[i] = np.clip(1.0 - (f - 17000.0) / 5000.0, 0, 1)
+
+    # Forward model F simulator
+    def forward_model(x):
+        y = np.zeros_like(x)
+        # Power series summation in frequency domain
+        y += np.fft.irfft(np.fft.rfft(np.ones_like(x)) * Q0_fft, n=len(x))
+        y += np.fft.irfft(np.fft.rfft(x) * Q1_fft, n=len(x))
+        y += np.fft.irfft(np.fft.rfft(x**2) * Q2_fft, n=len(x))
+        y += np.fft.irfft(np.fft.rfft(x**3) * Q3_fft, n=len(x))
+        y += np.fft.irfft(np.fft.rfft(x**4) * Q4_fft, n=len(x))
+        y += np.fft.irfft(np.fft.rfft(x**5) * Q5_fft, n=len(x))
+        return y
+
+    # 4. SSS Generation
+    sweep_duration = N / sample_rate
+    start_freq = 60.0
+    end_freq = 17000.0
+
+    # Tukey window to minimize transient clicks
+    tukey_win = windows.tukey(N, alpha=0.02)
+
+    # Generate log sweep
+    t = np.linspace(0, sweep_duration, N, endpoint=False)
+    start_margin = max(2.0, start_freq / 1.3)
+    nyquist = sample_rate / 2.0
+    end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    w1 = 2 * np.pi * start_margin
+    T = sweep_duration
+    L_param = np.log(end_margin / start_margin)
+
+    phase = (w1 * T / L_param) * (np.exp(t * L_param / T) - 1)
+    sss_signal = np.sin(phase) * tukey_win
+
+    # Analytical inverse filter
+    inv_envelope = np.exp(t * L_param / T)
+    inverse_filter = inv_envelope * np.sin(phase) * tukey_win
+    inverse_filter = np.flip(inverse_filter)
+
+    # Normalize inverse filter
+    direct_conv = fftconvolve(sss_signal, inverse_filter, mode="full")
+    peak = np.max(np.abs(direct_conv))
+    if peak > 1e-12:
+        inverse_filter /= peak
+
+    # Regularized deconvolution helper
+    def deconvolve_signal(recorded, regularization=1e-4):
+        # Circular deconvolution of length N (since simulation uses circular convolution)
+        S = np.fft.rfft(sss_signal)
+        Y = np.fft.rfft(recorded)
+        S_power = np.abs(S) ** 2
+        epsilon = regularization * np.max(S_power) + 1e-12
+        H = (Y * np.conj(S)) / (S_power + epsilon)
+        return np.fft.irfft(H, n=N)
+
+    # 5. Cascade SSS Measurement
+    # Measure the parallel kernels T_1 to T_5 of the cascade T = F o G
+    gate_pre = int(0.01 * sample_rate)
+    gate_post = int(0.02 * sample_rate)
+    N_kernel = gate_pre + gate_post
+    L_sweep = sweep_duration / np.log(end_margin / start_margin)
+
+    def apply_phase_correction_and_frac_delay(g_k, k, frac_delay):
+        N_k = len(g_k)
+        G = np.fft.rfft(g_k)
+        if k == 2: G = G * 1j
+        elif k == 3: G = -G
+        elif k == 4: G = G * (-1j)
+        if np.abs(frac_delay) > 1e-9:
+            freqs_k = np.fft.rfftfreq(N_k, d=1.0/sample_rate)
+            phase_shift = np.exp(1j * 2 * np.pi * freqs_k * frac_delay / sample_rate)
+            G = G * phase_shift
+        return np.fft.irfft(G, n=N_k)
+
+    def measure_cascade_kernels(G_fft, amplitudes):
+        # G_fft is a list/array of 5 frequency-domain kernels representing the predistorter G
+        num_amps = len(amplitudes)
+        responses_meas = []
+
+        # Run measurement sweeps for each amplitude
+        for amp in amplitudes:
+            s_A = amp * sss_signal
+            
+            # Generate predistorted signal in frequency domain to prevent time-domain convolution delay shifts
+            u_A = np.zeros(N)
+            for p in range(1, 6):
+                S_A_p_fft = np.fft.rfft(s_A**p)
+                U_p_fft = S_A_p_fft * G_fft[p - 1]
+                u_A += np.fft.irfft(U_p_fft, n=N)
+            
+            # Clip input to prevent damage/explosion (protection limit)
+            u_A = np.clip(u_A, -1.5, 1.5)
+            
+            # Feed into F
+            y_A = forward_model(u_A)
+            
+            # Deconvolve y_A using flat inverse filter
+            ir_A = deconvolve_signal(y_A)
+            responses_meas.append(ir_A)
+
+        # 0. Find the peak of the fundamental response using the maximum amplitude step
+        # Since simulation is perfectly clock-synchronized, no amplitude-relative alignment is needed.
+        ref_step_idx = num_amps - 1
+        base_align_sig = responses_meas[ref_step_idx]
+        t1_idx = np.argmax(np.abs(base_align_sig))
+        aligned_meas = responses_meas
+
+        # 1. Slice harmonic impulse responses
+        N_total = len(base_align_sig)
+        g_meas_all = np.zeros((num_amps, 5, N_kernel))
+        for j in range(num_amps):
+            ir_meas_raw = aligned_meas[j]
+            for k in range(1, 6):
+                t_k_exact = t1_idx - L_sweep * np.log(k) * sample_rate
+                t_k = int(np.round(t_k_exact))
+                frac_delay = t_k_exact - t_k
+                idx = (np.arange(t_k - gate_pre, t_k + gate_post)) % N_total
+                win = windows.tukey(N_kernel, alpha=0.1)
+                g_k_meas = ir_meas_raw[idx] * win
+                g_k_meas_corr = apply_phase_correction_and_frac_delay(g_k_meas, k, frac_delay)
+                g_meas_all[j, k - 1] = g_k_meas_corr
+
+        # 2. Chebyshev least-squares in frequency domain
+        N_fft_half = N_kernel // 2 + 1
+        G_meas_k = {}
+        for k in range(1, 6):
+            g_m_k_fft = np.empty((num_amps, N_fft_half), dtype=complex)
+            for j in range(num_amps):
+                g_m_k_fft[j] = np.fft.rfft(g_meas_all[j, k - 1])
+            G_meas_k[k] = g_m_k_fft
+
+        # Solve power series cascade kernels T_p(f)
+        R_array = np.array(amplitudes)
+        R2 = R_array**2
+        R3 = R_array**3
+        R4 = R_array**4
+        R5 = R_array**5
+
+        T_list = np.zeros((5, N_fft_half), dtype=complex)
+
+        g5_m = G_meas_k.get(5, np.zeros((num_amps, N_fft_half), dtype=complex))
+        T_list[4] = 16 * np.sum(g5_m * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
+
+        g4_m = G_meas_k.get(4, np.zeros((num_amps, N_fft_half), dtype=complex))
+        T_list[3] = 8 * np.sum(g4_m * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
+
+        g3_m = G_meas_k.get(3, np.zeros((num_amps, N_fft_half), dtype=complex))
+        g3_prime_m = g3_m - (5 / 16) * T_list[4][np.newaxis, :] * R5[:, np.newaxis]
+        T_list[2] = 4 * np.sum(g3_prime_m * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
+
+        g2_m = G_meas_k.get(2, np.zeros((num_amps, N_fft_half), dtype=complex))
+        g2_prime_m = g2_m - 0.5 * T_list[3][np.newaxis, :] * R4[:, np.newaxis]
+        T_list[1] = 2 * np.sum(g2_prime_m * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
+
+        g1_m = G_meas_k.get(1, np.zeros((num_amps, N_fft_half), dtype=complex))
+        g1_prime_m = (
+            g1_m
+            - 0.75 * T_list[2][np.newaxis, :] * R3[:, np.newaxis]
+            - 0.625 * T_list[4][np.newaxis, :] * R5[:, np.newaxis]
+        )
+        T_list[0] = np.sum(g1_prime_m * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+
+        # Convert back to time-domain to pad to length N
+        # We need to return length-N kernels for convolution
+        T_time = []
+        for p in range(5):
+            t_p = np.fft.irfft(T_list[p], n=N_kernel)
+            # The peak in t_p is located at gate_pre due to how we sliced it.
+            # Roll by -gate_pre to place the peak at index 0 (zero-delay alignment).
+            t_p_aligned = np.roll(t_p, -gate_pre)
+            # Pad or truncate to match target length N
+            if len(t_p_aligned) < N:
+                t_p_full = np.pad(t_p_aligned, (0, N - len(t_p_aligned)))
+            else:
+                t_p_full = t_p_aligned[:N]
+            T_time.append(t_p_full)
+
+        return T_time
+
+    # 6. Initialize G kernels
+    # Pre-allocate inverse kernels in frequency domain
+    # passband filter on freqs (length N_fft_half_full)
+    N_fft_half_full = N // 2 + 1
+    Q1_sc_power = np.abs(Q1_fft) ** 2
+    beta = 0.005
+    # Initial G1 is the linear inverse
+    G1_init_fft = (np.conj(Q1_fft) / (Q1_sc_power + beta)) * bp_filter
+
+    G_fft = np.zeros((5, N_fft_half_full), dtype=complex)
+    G_fft[0] = G1_init_fft # G1
+    # G2, G3, G4, G5 initialized to 0
+
+    # 7. Closed-loop Optimization loop
+    max_iter = 15
+    # Learning rates (tuned for convergence stability)
+    mu = [0.15, 0.12, 0.1, 0.08, 0.04]
+    
+    # Amplitudes for the Chebyshev decomposition measurement
+    measurement_amplitudes = np.linspace(0.05, 0.45, 10)
+    
+    # Keep track of error suppression
+    history_err_db = []
+
+    # Target system linear response (Q1_fft within passband)
+    H_target = Q1_fft * bp_filter
+
+    print("\n--- Starting Closed-Loop Kernel Training ---")
+    
+    # Precompute denominator for stability
+    # F_lin is the forward linear response Q1_fft
+    F_lin_abs = np.abs(Q1_fft)
+    eps = 1e-6
+    # Regularized inverse of F_lin for feedback scaling
+    F_inv = np.conj(Q1_fft) / (F_lin_abs**2 + eps)
+
+    # Window for predistorter time-domain regularization
+    # Keeps the predistorter causal and local around 0 delay
+    g_win = np.ones(N)
+    N_keep = N // 4
+    N_fade = N // 8
+    fade_shape = 0.5 * (1.0 + np.cos(np.pi * np.arange(N_fade) / N_fade))
+    g_win[N_keep : N_keep + N_fade] = fade_shape
+    g_win[N_keep + N_fade :] = 0.0
+    # Also fade the pre-peak if any non-causal noise exists
+    g_win_left_fade = N_fade
+    g_win[-g_win_left_fade:] = 0.0 # zero out negative delays far away
+
+    # Initial calibration measurement to align SSS measurement phase/gain with simulator true kernels
+    print("\n--- Running Initial Calibration Measurement ---")
+    T_time_init = measure_cascade_kernels(G_fft, measurement_amplitudes)
+    T_fft_init = [np.fft.rfft(T_time_init[p]) for p in range(5)]
+    
+    C_fft = []
+    # C1 calibration
+    C1 = np.ones_like(Q1_fft)
+    idx_cal = np.abs(T_fft_init[0]) > 1e-4
+    C1[idx_cal] = Q1_fft[idx_cal] / T_fft_init[0][idx_cal]
+    C_fft.append(C1)
+    
+    # C2 to C5 calibration
+    Q_ffts = [Q1_fft, Q2_fft, Q3_fft, Q4_fft, Q5_fft]
+    for p in range(1, 5):
+        Cp = np.ones_like(Q_ffts[p])
+        idx_p = np.abs(T_fft_init[p]) > 1e-6
+        Cp[idx_p] = Q_ffts[p][idx_p] / T_fft_init[p][idx_p]
+        # Smooth calibration coefficients to avoid dividing by tiny out-of-band values
+        Cp = Cp * bp_filter + (1.0 - bp_filter)
+        C_fft.append(Cp)
+
+    for iteration in range(max_iter):
+        # Measure cascade kernels T
+        T_time = measure_cascade_kernels(G_fft, measurement_amplitudes)
+        T_fft = [np.fft.rfft(T_time[p]) for p in range(5)]
+        
+        # Calculate errors and apply systematic calibration
+        E_fft = []
+        # Calibrated Fundamental: T1_cal = T1 * C1
+        T1_cal = T_fft[0] * C_fft[0]
+        E_fft.append((T1_cal - H_target) * bp_filter)
+        
+        # Calibrated Harmonics: Tp_cal = Tp * Cp
+        for p in range(1, 5):
+            Tp_cal = T_fft[p] * C_fft[p]
+            E_fft.append(Tp_cal * bp_filter)
+
+        # Calculate error metrics (total harmonic distortion power)
+        harmonic_power = 0.0
+        for p in range(1, 5):
+            harmonic_power += np.sum(np.abs(E_fft[p])**2)
+        
+        fundamental_error = np.sum(np.abs(E_fft[0])**2)
+        total_error = fundamental_error + harmonic_power
+        
+        # Convert to dB relative to fundamental power
+        ref_power = np.sum(np.abs(H_target)**2)
+        thd_db = 10 * np.log10(harmonic_power / ref_power)
+        total_err_db = 10 * np.log10(total_error / ref_power)
+        
+        history_err_db.append((total_err_db, thd_db))
+        print(f"Iteration {iteration+1:2d}/{max_iter} | Total Error: {total_err_db:6.2f} dB | THD: {thd_db:6.2f} dB")
+
+        # Check if the optimization fails or goes out of bounds
+        if np.isnan(total_error) or total_err_db > 80.0:
+            print("WARNING: Divergence detected! Stopping optimization.")
+            break
+
+        # Update G_fft
+        for p in range(5):
+            # Novak-like update step
+            update = mu[p] * E_fft[p] * F_inv
+            G_fft[p] = G_fft[p] - update
+
+            # Apply frequency-domain passband filter
+            G_fft[p] = G_fft[p] * bp_filter
+
+            # Apply time-domain windowing to keep impulse response localized
+            g_t = np.fft.irfft(G_fft[p], n=N)
+            g_t_win = g_t * g_win
+            G_fft[p] = np.fft.rfft(g_t_win)
+
+        # Decay learning rates to stabilize convergence (annealing)
+        mu = [m * 0.85 for m in mu]
+
+    # 8. Post-Optimization Verification on a Single Tone
+    print("\n--- Verifying Linearization on a 1kHz Tone ---")
+    t_verify = np.arange(N) / sample_rate
+    f_test = 1000.0
+    u_test = np.sin(2 * np.pi * f_test * t_verify)
+    U_test_fft = np.fft.rfft(u_test)
+    u_test = np.fft.irfft(U_test_fft * bp_filter, n=N)
+    
+    # 8.1. Uncompensated Output
+    # The target output we want is just the linear response Q1_fft applied to u_test
+    y_target = np.fft.irfft(np.fft.rfft(u_test) * Q1_fft, n=N)
+    y_raw = forward_model(u_test)
+    
+    # 8.2. Compensated Output using trained G
+    g_final_time = [np.fft.irfft(G_fft[p], n=N) for p in range(5)]
+    u_comp = np.zeros_like(u_test)
+    for p in range(1, 6):
+        term_p = fftconvolve(u_test**p, g_final_time[p - 1], mode='same')
+        u_comp += term_p
+        
+    y_comp = forward_model(u_comp)
+
+    # 8.3. Compute spectra
+    f_axis = np.fft.rfftfreq(N, d=1.0/sample_rate)
+    Y_target_mag = 20 * np.log10(np.abs(np.fft.rfft(y_target)) + 1e-12)
+    Y_raw_mag = 20 * np.log10(np.abs(np.fft.rfft(y_raw)) + 1e-12)
+    Y_comp_mag = 20 * np.log10(np.abs(np.fft.rfft(y_comp)) + 1e-12)
+
+    # 9. Plotting and Saving Results
+    plt.figure(figsize=(15, 10))
+
+    # Subplot 1: Convergence History
+    plt.subplot(2, 2, 1)
+    history_err_db = np.array(history_err_db)
+    plt.plot(range(1, len(history_err_db) + 1), history_err_db[:, 0], 'o-', color='#1f77b4', linewidth=2.5, label='Total Error (Linear + Nonlinear)')
+    plt.plot(range(1, len(history_err_db) + 1), history_err_db[:, 1], 's--', color='#ff7f0e', linewidth=2.5, label='Total Harmonic Distortion (THD)')
+    plt.title('Closed-Loop Optimization Convergence', fontsize=12, fontweight='bold')
+    plt.xlabel('Iteration Step', fontsize=10)
+    plt.ylabel('Error Level (dB relative to Fundamental)', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    # Subplot 2: Spectrum comparison for 1kHz Tone
+    plt.subplot(2, 2, 2)
+    plt.plot(f_axis, Y_raw_mag, color='#d62728', alpha=0.7, label='Raw Output (Uncompensated)')
+    plt.plot(f_axis, Y_comp_mag, color='#1f77b4', linewidth=1.5, label='Linearized Output (Trained G)')
+    plt.plot(f_axis, Y_target_mag, color='black', linestyle=':', label='Target Linear Output')
+    plt.xlim(100, 12000)
+    plt.ylim(-110, -20)
+    plt.title('Output Spectrum Comparison (1kHz Sine, Zoomed)', fontsize=12, fontweight='bold')
+    plt.xlabel('Frequency (Hz)', fontsize=10)
+    plt.ylabel('Magnitude (dBFS)', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    # Subplot 3: Time Domain Residual Error comparison
+    plt.subplot(2, 2, 3)
+    t_ms = t * 1000.0
+    err_raw = y_raw - y_target
+    err_comp = y_comp - y_target
+    plt.plot(t_ms, err_raw, color='#d62728', alpha=0.7, label='Raw Error')
+    plt.plot(t_ms, err_comp, color='#1f77b4', label='Compensated Error')
+    plt.xlim(10, 15) # zoom in to 5 ms
+    plt.title('Time Domain Residual Error (Output - Linear Target)', fontsize=12, fontweight='bold')
+    plt.xlabel('Time (ms)', fontsize=10)
+    plt.ylabel('Error Amplitude', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    # Subplot 4: Trained Inverse Kernels in Time Domain
+    plt.subplot(2, 2, 4)
+    # We display the centered kernels for better visibility
+    time_display_ms = (np.arange(N) - N//2) / sample_rate * 1000.0
+    plt.plot(time_display_ms, np.roll(g_final_time[0], N//2), label='g1 (fundamental)')
+    plt.plot(time_display_ms, np.roll(g_final_time[1], N//2) * 10, label='g2 * 10')
+    plt.plot(time_display_ms, np.roll(g_final_time[2], N//2) * 10, label='g3 * 10')
+    plt.plot(time_display_ms, np.roll(g_final_time[4], N//2) * 10, label='g5 * 10')
+    plt.xlim(-10, 30) # zoom near center
+    plt.title('Trained Inverse Hammerstein Kernels (g_p)', fontsize=12, fontweight='bold')
+    plt.xlabel('Time Offset (ms)', fontsize=10)
+    plt.ylabel('Kernel Amplitude', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    plt.tight_layout()
+
+    output_dir = '/Users/vach/.gemini/antigravity/brain/4a16836f-11a6-4565-af01-1ad09025797f'
+    os.makedirs(output_dir, exist_ok=True)
+    output_img_path = os.path.join(output_dir, 'closed_loop_linearization_results.png')
+    plt.savefig(output_img_path, dpi=150)
+    plt.close()
+
+    print(f"\nSuccessfully generated comparison plot at: {output_img_path}")
+
+    # Check if the suppression was successful
+    final_thd_db = history_err_db[-1, 1]
+    initial_thd_db = history_err_db[0, 1]
+    improvement = initial_thd_db - final_thd_db
+    print(f"\nOptimization Result Summary:")
+    print(f"  Initial THD Error: {initial_thd_db:.2f} dB")
+    print(f"  Final THD Error:   {final_thd_db:.2f} dB")
+    print(f"  Suppression Improvement: {improvement:.2f} dB")
+
+if __name__ == '__main__':
+    run_closed_loop_training()
