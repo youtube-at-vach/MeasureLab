@@ -279,7 +279,7 @@ def run_closed_loop_training():
     G_fft[0] = G1_init_fft # G1
 
     # 7. Closed-loop Optimization loop
-    max_iter = 72
+    max_iter = 15
     
     # Amplitudes for the Chebyshev decomposition measurement (using Chebyshev Nodes)
     a_amp, b_amp = 0.03, 0.30
