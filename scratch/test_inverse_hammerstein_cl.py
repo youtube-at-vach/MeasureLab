@@ -6,7 +6,7 @@ from scipy.signal import windows, fftconvolve
 
 def run_closed_loop_training():
     # 1. Load measured kernels and metadata
-    json_path = '/Users/vach/MeasureLab/hammerstein_kernel_sample_hard_condition.json'
+    json_path = '/Users/vach/MeasureLab/hammerstein_kernel_sample_soft_condition.json'
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"Kernel file not found at {json_path}")
 
@@ -279,7 +279,7 @@ def run_closed_loop_training():
     G_fft[0] = G1_init_fft # G1
 
     # 7. Closed-loop Optimization loop
-    max_iter = 15
+    max_iter = 150
     
     # Amplitudes for the Chebyshev decomposition measurement (using Chebyshev Nodes)
     a_amp, b_amp = 0.03, 0.30
@@ -303,15 +303,21 @@ def run_closed_loop_training():
     eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter)
     F_inv = np.conj(Q1_fft) / (F_lin_abs**2 + eps_f)
 
-    # Window for predistorter time-domain regularization
-    g_win = np.ones(N)
+    # Window for predistorter time-domain regularization (symmetric around the delay peak)
+    center_idx = 2 * gate_pre
     N_keep = N // 4
     N_fade = N // 8
+    
+    win_centered = np.zeros(N)
+    # Causal part
+    win_centered[:N_keep] = 1.0
     fade_shape = 0.5 * (1.0 + np.cos(np.pi * np.arange(N_fade) / N_fade))
-    g_win[N_keep : N_keep + N_fade] = fade_shape
-    g_win[N_keep + N_fade :] = 0.0
-    g_win_left_fade = N_fade
-    g_win[-g_win_left_fade:] = 0.0
+    win_centered[N_keep : N_keep + N_fade] = fade_shape
+    # Anti-causal part
+    win_centered[-N_keep:] = 1.0
+    win_centered[-N_keep - N_fade : -N_keep] = np.flip(fade_shape)
+    
+    g_win = np.roll(win_centered, center_idx)
 
     # Initial calibration measurement
     print("\n--- Running Initial Calibration Measurement ---")
@@ -375,8 +381,8 @@ def run_closed_loop_training():
             G_fft_cand = G_fft.copy()
             for p in range(5):
                 n_harmonic = p + 1
-                # Apply delay_tau correction and harmonic-order-dependent phase shift
-                phase_corr = np.exp(-1j * 2 * np.pi * freqs * (delay_tau + L_sweep * np.log(n_harmonic)))
+                # Apply delay_2tau correction and harmonic-order-dependent phase shift
+                phase_corr = np.exp(-1j * 2 * np.pi * freqs * (delay_2tau + L_sweep * np.log(n_harmonic)))
                 update = mu_step[p] * E_fft[p] * F_inv * phase_corr
                 G_fft_cand[p] = G_fft_cand[p] - update
                 G_fft_cand[p] = G_fft_cand[p] * bp_filter
@@ -430,33 +436,143 @@ def run_closed_loop_training():
             print("WARNING: Divergence detected! Stopping optimization.")
             break
 
-    # 8. Post-Optimization Verification on a Single Tone
-    print("\n--- Verifying Linearization on a 1kHz Tone ---")
+    # 8. Post-Optimization Verification and Validation on Untrained Signals
+    print("\n--- Verifying and Validating Linearization on Untrained Signals ---")
     t_verify = np.arange(N) / sample_rate
-    f_test = 1000.0
-    u_test = b_amp * np.sin(2 * np.pi * f_test * t_verify)
-    U_test_fft = np.fft.rfft(u_test)
-    u_test = np.fft.irfft(U_test_fft * bp_filter, n=N)
-    
-    # 8.1. Uncompensated Output
-    y_target = np.fft.irfft(np.fft.rfft(u_test) * Q1_fft, n=N)
-    y_raw = forward_model(u_test)
-    
-    # 8.2. Compensated Output using trained G (with anti-aliasing oversampling)
     g_final_time = [np.fft.irfft(G_fft[p], n=N) for p in range(5)]
-    u_comp = np.zeros_like(u_test)
-    for p in range(1, 6):
-        u_test_p = np.fft.irfft(power_oversampled_fft(u_test, p), n=N)
-        term_p = fftconvolve(u_test_p, g_final_time[p - 1], mode='same')
-        u_comp += term_p
-        
-    y_comp = forward_model(u_comp)
 
-    # 8.3. Compute spectra
-    f_axis = np.fft.rfftfreq(N, d=1.0/sample_rate)
-    Y_target_mag = 20 * np.log10(np.abs(np.fft.rfft(y_target)) + 1e-12)
-    Y_raw_mag = 20 * np.log10(np.abs(np.fft.rfft(y_raw)) + 1e-12)
-    Y_comp_mag = 20 * np.log10(np.abs(np.fft.rfft(y_comp)) + 1e-12)
+    def evaluate_test_signal(u_in, label):
+        # Apply bandpass filter
+        U_in_fft = np.fft.rfft(u_in)
+        u_in_filt = np.fft.irfft(U_in_fft * bp_filter, n=N)
+        
+        # Target Linear Output
+        y_target = np.fft.irfft(np.fft.rfft(u_in_filt) * Q1_fft, n=N)
+        
+        # Uncompensated Output
+        y_raw = forward_model(u_in_filt)
+        
+        # Compensated Output (circular convolution in frequency domain to match training)
+        u_comp = np.zeros_like(u_in_filt)
+        for p in range(1, 6):
+            U_p_fft = power_oversampled_fft(u_in_filt, p) * G_fft[p - 1]
+            u_comp += np.fft.irfft(U_p_fft, n=N)
+            
+        y_comp = forward_model(u_comp)
+        
+        # Align
+        corr_raw = np.correlate(y_raw, y_target, mode='full')
+        delay_raw = np.argmax(np.abs(corr_raw)) - (len(y_target) - 1)
+        y_raw_aligned = np.roll(y_raw, -delay_raw)
+        
+        corr_comp = np.correlate(y_comp, y_target, mode='full')
+        delay_comp = np.argmax(np.abs(corr_comp)) - (len(y_target) - 1)
+        y_comp_aligned = np.roll(y_comp, -delay_comp)
+        
+        rms_target = np.sqrt(np.mean(y_target**2))
+        
+        # Gain normalization to isolate shape/distortion from gain difference
+        y_raw_scaled = y_raw_aligned * (rms_target / (np.sqrt(np.mean(y_raw_aligned**2)) + 1e-12))
+        y_comp_scaled = y_comp_aligned * (rms_target / (np.sqrt(np.mean(y_comp_aligned**2)) + 1e-12))
+        
+        err_raw = y_raw_scaled - y_target
+        err_comp = y_comp_scaled - y_target
+        
+        rms_raw_err = np.sqrt(np.mean(err_raw**2))
+        rms_comp_err = np.sqrt(np.mean(err_comp**2))
+        
+        print(f"[{label}] RMS target: {rms_target:.6f}, RMS raw: {np.sqrt(np.mean(y_raw**2)):.6f}, RMS comp: {np.sqrt(np.mean(y_comp**2)):.6f}")
+        print(f"[{label}] delay_raw: {delay_raw}, delay_comp: {delay_comp}")
+        print(f"[{label}] RMS raw err (gain-normalized): {rms_raw_err:.6f}, RMS comp err (gain-normalized): {rms_comp_err:.6f}")
+        
+        sdr_raw = 20 * np.log10(rms_target / (rms_raw_err + 1e-12))
+        sdr_comp = 20 * np.log10(rms_target / (rms_comp_err + 1e-12))
+        improvement = sdr_comp - sdr_raw
+        
+        return {
+            'label': label,
+            'u_in': u_in_filt,
+            'y_target': y_target,
+            'y_raw': y_raw_aligned,
+            'y_comp': y_comp_aligned,
+            'sdr_raw': sdr_raw,
+            'sdr_comp': sdr_comp,
+            'improvement': improvement
+        }
+
+    def compute_thd(y_sig, f_test):
+        N_fft = len(y_sig)
+        Y_fft = np.fft.rfft(y_sig)
+        freqs_fft = np.fft.rfftfreq(N_fft, d=1.0/sample_rate)
+        
+        idx_fund = np.argmin(np.abs(freqs_fft - f_test))
+        w_bin = 3
+        fund_search_range = range(max(0, idx_fund - w_bin), min(len(freqs_fft), idx_fund + w_bin + 1))
+        idx_fund_peak = max(fund_search_range, key=lambda i: np.abs(Y_fft[i]))
+        fund_power = np.abs(Y_fft[idx_fund_peak])**2
+        
+        harmonic_powers = []
+        for h in [2, 3, 4, 5]:
+            f_h = h * f_test
+            if f_h > sample_rate / 2:
+                break
+            idx_h = np.argmin(np.abs(freqs_fft - f_h))
+            h_search_range = range(max(0, idx_h - w_bin), min(len(freqs_fft), idx_h + w_bin + 1))
+            idx_h_peak = max(h_search_range, key=lambda i: np.abs(Y_fft[i]))
+            harmonic_powers.append(np.abs(Y_fft[idx_h_peak])**2)
+            
+        thd_val = np.sqrt(sum(harmonic_powers)) / (np.sqrt(fund_power) + 1e-12)
+        return 20 * np.log10(thd_val + 1e-12)
+
+    # 1. 1 kHz Tone (Original)
+    u_1k = b_amp * np.sin(2 * np.pi * 1000.0 * t_verify)
+    res_1k = evaluate_test_signal(u_1k, "1kHz Tone")
+    res_1k['thd_raw'] = compute_thd(res_1k['y_raw'], 1000.0)
+    res_1k['thd_comp'] = compute_thd(res_1k['y_comp'], 1000.0)
+
+    # 2. 3 kHz Tone (Validation: Untrained Frequency)
+    u_3k = b_amp * np.sin(2 * np.pi * 3000.0 * t_verify)
+    res_3k = evaluate_test_signal(u_3k, "3kHz Tone (Untrained)")
+    res_3k['thd_raw'] = compute_thd(res_3k['y_raw'], 3000.0)
+    res_3k['thd_comp'] = compute_thd(res_3k['y_comp'], 3000.0)
+
+    # 3. Two-Tone Signal (Validation: Untrained Intermodulation)
+    u_2tone = (b_amp / 2) * (np.sin(2 * np.pi * 1000.0 * t_verify) + np.sin(2 * np.pi * 1500.0 * t_verify))
+    res_2tone = evaluate_test_signal(u_2tone, "Two-Tone (1.0k + 1.5k)")
+
+    # 4. Multi-Tone Signal (Validation: 5 untrained frequencies)
+    freqs_multi = [300.0, 700.0, 1300.0, 2700.0, 5500.0]
+    u_multi = np.zeros_like(t_verify)
+    for f_m in freqs_multi:
+        u_multi += np.sin(2 * np.pi * f_m * t_verify)
+    u_multi = u_multi / np.max(np.abs(u_multi)) * b_amp
+    res_multi = evaluate_test_signal(u_multi, "Multi-Tone (5 freqs)")
+
+    # 5. Broadband Noise Signal (Validation: Untrained Noise)
+    rng_val = np.random.default_rng(99)
+    u_noise = rng_val.normal(0.0, 1.0, N)
+    U_noise_fft = np.fft.rfft(u_noise)
+    u_noise_filt = np.fft.irfft(U_noise_fft * bp_filter, n=N)
+    u_noise_filt = u_noise_filt / np.max(np.abs(u_noise_filt)) * b_amp
+    res_noise = evaluate_test_signal(u_noise_filt, "Broadband Noise")
+
+    # 8.4. Print Verification and Validation Report
+    print("\n" + "="*55)
+    print("         GENERALIZATION VALIDATION REPORT")
+    print("="*55)
+    print(f"1. {res_1k['label']} (Original Verification):")
+    print(f"   - SDR: {res_1k['sdr_raw']:6.2f} dB -> {res_1k['sdr_comp']:6.2f} dB (Improvement: {res_1k['improvement']:6.2f} dB)")
+    print(f"   - THD: {res_1k['thd_raw']:6.2f} dB -> {res_1k['thd_comp']:6.2f} dB (Improvement: {res_1k['thd_raw'] - res_1k['thd_comp']:6.2f} dB)")
+    print(f"\n2. {res_3k['label']}:")
+    print(f"   - SDR: {res_3k['sdr_raw']:6.2f} dB -> {res_3k['sdr_comp']:6.2f} dB (Improvement: {res_3k['improvement']:6.2f} dB)")
+    print(f"   - THD: {res_3k['thd_raw']:6.2f} dB -> {res_3k['thd_comp']:6.2f} dB (Improvement: {res_3k['thd_raw'] - res_3k['thd_comp']:6.2f} dB)")
+    print(f"\n3. {res_2tone['label']}:")
+    print(f"   - SDR: {res_2tone['sdr_raw']:6.2f} dB -> {res_2tone['sdr_comp']:6.2f} dB (Improvement: {res_2tone['improvement']:6.2f} dB)")
+    print(f"\n4. {res_multi['label']}:")
+    print(f"   - SDR: {res_multi['sdr_raw']:6.2f} dB -> {res_multi['sdr_comp']:6.2f} dB (Improvement: {res_multi['improvement']:6.2f} dB)")
+    print(f"\n5. {res_noise['label']}:")
+    print(f"   - SDR: {res_noise['sdr_raw']:6.2f} dB -> {res_noise['sdr_comp']:6.2f} dB (Improvement: {res_noise['improvement']:6.2f} dB)")
+    print("="*55)
 
     # 9. Plotting and Saving Results
     plt.figure(figsize=(15, 10))
@@ -473,6 +589,11 @@ def run_closed_loop_training():
     plt.legend()
 
     # Subplot 2: Spectrum comparison for 1kHz Tone
+    f_axis = np.fft.rfftfreq(N, d=1.0/sample_rate)
+    Y_target_mag = 20 * np.log10(np.abs(np.fft.rfft(res_1k['y_target'])) + 1e-12)
+    Y_raw_mag = 20 * np.log10(np.abs(np.fft.rfft(res_1k['y_raw'])) + 1e-12)
+    Y_comp_mag = 20 * np.log10(np.abs(np.fft.rfft(res_1k['y_comp'])) + 1e-12)
+
     plt.subplot(2, 2, 2)
     plt.plot(f_axis, Y_raw_mag, color='#d62728', alpha=0.7, label='Raw Output (Uncompensated)')
     plt.plot(f_axis, Y_comp_mag, color='#1f77b4', linewidth=1.5, label='Linearized Output (Trained G)')
@@ -485,18 +606,15 @@ def run_closed_loop_training():
     plt.grid(True, which='both', linestyle='--', alpha=0.5)
     plt.legend()
 
-    # Subplot 3: Time Domain Residual Error comparison
+    # Subplot 3: Time Domain Residual Error comparison (1kHz Tone)
     plt.subplot(2, 2, 3)
     t_ms = t * 1000.0
-    err_raw = y_raw - y_target
-    corr = np.correlate(y_comp, y_target, mode='full')
-    delay_idx = np.argmax(np.abs(corr)) - (len(y_target) - 1)
-    y_comp_aligned = np.roll(y_comp, -delay_idx)
-    err_comp = y_comp_aligned - y_target
+    err_raw = res_1k['y_raw'] - res_1k['y_target']
+    err_comp = res_1k['y_comp'] - res_1k['y_target']
     plt.plot(t_ms, err_raw, color='#d62728', alpha=0.7, label='Raw Error')
     plt.plot(t_ms, err_comp, color='#1f77b4', label='Compensated Error')
     plt.xlim(10, 15)
-    plt.title('Time Domain Residual Error (Output - Linear Target)', fontsize=12, fontweight='bold')
+    plt.title('Time Domain Residual Error (1kHz Tone, Output - Linear Target)', fontsize=12, fontweight='bold')
     plt.xlabel('Time (ms)', fontsize=10)
     plt.ylabel('Error Amplitude', fontsize=10)
     plt.grid(True, which='both', linestyle='--', alpha=0.5)
@@ -518,22 +636,96 @@ def run_closed_loop_training():
 
     plt.tight_layout()
 
-    output_dir = '/Users/vach/.gemini/antigravity/brain/75f1ad15-d615-4414-88d1-5558908a5f96'
+    output_dir = '/Users/vach/.gemini/antigravity/brain/35c1d5e0-9c7b-4f2e-b3af-a1ff4e66f731'
     os.makedirs(output_dir, exist_ok=True)
     output_img_path = os.path.join(output_dir, 'closed_loop_linearization_results.png')
     plt.savefig(output_img_path, dpi=150)
     plt.close()
 
-    print(f"\nSuccessfully generated comparison plot at: {output_img_path}")
+    print(f"\nSuccessfully generated training comparison plot at: {output_img_path}")
 
-    # Check if the suppression was successful
+    # Generate Second Plot: Validation Signals
+    plt.figure(figsize=(15, 10))
+
+    # Subplot 1: 3kHz Tone Spectrum
+    plt.subplot(2, 2, 1)
+    Y_target_3k = 20 * np.log10(np.abs(np.fft.rfft(res_3k['y_target'])) + 1e-12)
+    Y_raw_3k = 20 * np.log10(np.abs(np.fft.rfft(res_3k['y_raw'])) + 1e-12)
+    Y_comp_3k = 20 * np.log10(np.abs(np.fft.rfft(res_3k['y_comp'])) + 1e-12)
+    plt.plot(f_axis, Y_raw_3k, color='#d62728', alpha=0.7, label='Raw Output')
+    plt.plot(f_axis, Y_comp_3k, color='#1f77b4', linewidth=1.5, label='Linearized Output')
+    plt.plot(f_axis, Y_target_3k, color='black', linestyle=':', label='Target Output')
+    plt.xlim(200, 16000)
+    plt.ylim(-110, -20)
+    plt.title(f"Validation: 3kHz Tone Spectrum (SDR Imp: {res_3k['improvement']:.1f}dB)", fontsize=12, fontweight='bold')
+    plt.xlabel('Frequency (Hz)', fontsize=10)
+    plt.ylabel('Magnitude (dBFS)', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    # Subplot 2: Two-Tone Spectrum
+    plt.subplot(2, 2, 2)
+    Y_target_2t = 20 * np.log10(np.abs(np.fft.rfft(res_2tone['y_target'])) + 1e-12)
+    Y_raw_2t = 20 * np.log10(np.abs(np.fft.rfft(res_2tone['y_raw'])) + 1e-12)
+    Y_comp_2t = 20 * np.log10(np.abs(np.fft.rfft(res_2tone['y_comp'])) + 1e-12)
+    plt.plot(f_axis, Y_raw_2t, color='#d62728', alpha=0.7, label='Raw Output')
+    plt.plot(f_axis, Y_comp_2t, color='#1f77b4', linewidth=1.5, label='Linearized Output')
+    plt.plot(f_axis, Y_target_2t, color='black', linestyle=':', label='Target Output')
+    plt.xlim(200, 10000)
+    plt.ylim(-110, -20)
+    plt.title(f"Validation: Two-Tone (1.0k+1.5k) Spectrum (SDR Imp: {res_2tone['improvement']:.1f}dB)", fontsize=12, fontweight='bold')
+    plt.xlabel('Frequency (Hz)', fontsize=10)
+    plt.ylabel('Magnitude (dBFS)', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    # Subplot 3: Multi-Tone Spectrum
+    plt.subplot(2, 2, 3)
+    Y_target_mt = 20 * np.log10(np.abs(np.fft.rfft(res_multi['y_target'])) + 1e-12)
+    Y_raw_mt = 20 * np.log10(np.abs(np.fft.rfft(res_multi['y_raw'])) + 1e-12)
+    Y_comp_mt = 20 * np.log10(np.abs(np.fft.rfft(res_multi['y_comp'])) + 1e-12)
+    plt.plot(f_axis, Y_raw_mt, color='#d62728', alpha=0.7, label='Raw Output')
+    plt.plot(f_axis, Y_comp_mt, color='#1f77b4', linewidth=1.5, label='Linearized Output')
+    plt.plot(f_axis, Y_target_mt, color='black', linestyle=':', label='Target Output')
+    plt.xlim(100, 15000)
+    plt.ylim(-110, -20)
+    plt.title(f"Validation: Multi-Tone (5 freqs) Spectrum (SDR Imp: {res_multi['improvement']:.1f}dB)", fontsize=12, fontweight='bold')
+    plt.xlabel('Frequency (Hz)', fontsize=10)
+    plt.ylabel('Magnitude (dBFS)', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    # Subplot 4: Broadband Noise Spectrum
+    plt.subplot(2, 2, 4)
+    Y_target_ns = 20 * np.log10(np.abs(np.fft.rfft(res_noise['y_target'])) + 1e-12)
+    Y_raw_ns = 20 * np.log10(np.abs(np.fft.rfft(res_noise['y_raw'])) + 1e-12)
+    Y_comp_ns = 20 * np.log10(np.abs(np.fft.rfft(res_noise['y_comp'])) + 1e-12)
+    plt.plot(f_axis, Y_raw_ns, color='#d62728', alpha=0.7, label='Raw Output')
+    plt.plot(f_axis, Y_comp_ns, color='#1f77b4', linewidth=1.5, label='Linearized Output')
+    plt.plot(f_axis, Y_target_ns, color='black', linestyle=':', label='Target Output')
+    plt.xlim(50, 20000)
+    plt.ylim(-110, -20)
+    plt.title(f"Validation: Broadband Noise Spectrum (SDR Imp: {res_noise['improvement']:.1f}dB)", fontsize=12, fontweight='bold')
+    plt.xlabel('Frequency (Hz)', fontsize=10)
+    plt.ylabel('Magnitude (dBFS)', fontsize=10)
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
+    plt.legend()
+
+    plt.tight_layout()
+    output_val_img_path = os.path.join(output_dir, 'closed_loop_validation_results.png')
+    plt.savefig(output_val_img_path, dpi=150)
+    plt.close()
+
+    print(f"Successfully generated validation comparison plot at: {output_val_img_path}")
+
+    # Check if the suppression was successful on validation
     final_thd_db = history_err_db[-1, 1]
     initial_thd_db = history_err_db[0, 1]
     improvement = initial_thd_db - final_thd_db
     print(f"\nOptimization Result Summary:")
-    print(f"  Initial THD Error: {initial_thd_db:.2f} dB")
-    print(f"  Final THD Error:   {final_thd_db:.2f} dB")
-    print(f"  Suppression Improvement: {improvement:.2f} dB")
+    print(f"  Initial Kernel THD Error: {initial_thd_db:.2f} dB")
+    print(f"  Final Kernel THD Error:   {final_thd_db:.2f} dB")
+    print(f"  Suppression Improvement:  {improvement:.2f} dB")
 
 if __name__ == '__main__':
     run_closed_loop_training()
