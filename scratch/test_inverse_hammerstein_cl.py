@@ -267,8 +267,13 @@ def run_closed_loop_training():
     N_fft_half_full = N // 2 + 1
     Q1_sc_power = np.abs(Q1_fft) ** 2
     beta = 0.005
-    # Initial G1 is the linear inverse
-    G1_init_fft = (np.conj(Q1_fft) / (Q1_sc_power + beta)) * bp_filter
+    # Define delay parameters
+    delay_tau = gate_pre / sample_rate # 10 ms = 0.01 s
+    delay_2tau = 2.0 * delay_tau       # 20 ms = 0.02 s
+    
+    # Initial G1 is the linear inverse with 2*tau delay for causality
+    phase_shift_2tau = np.exp(-1j * 2 * np.pi * freqs * delay_2tau)
+    G1_init_fft = (np.conj(Q1_fft) / (Q1_sc_power + beta)) * bp_filter * phase_shift_2tau
 
     G_fft = np.zeros((5, N_fft_half_full), dtype=complex)
     G_fft[0] = G1_init_fft # G1
@@ -277,7 +282,7 @@ def run_closed_loop_training():
     max_iter = 15
     
     # Amplitudes for the Chebyshev decomposition measurement (using Chebyshev Nodes)
-    a_amp, b_amp = 0.05, 0.45
+    a_amp, b_amp = 0.03, 0.30
     K_amp = 10
     k_arr = np.arange(1, K_amp + 1)
     cheb_nodes = 0.5 * (a_amp + b_amp) + 0.5 * (b_amp - a_amp) * np.cos((2 * k_arr - 1) / (2 * K_amp) * np.pi)
@@ -369,7 +374,10 @@ def run_closed_loop_training():
             # Candidate G_fft
             G_fft_cand = G_fft.copy()
             for p in range(5):
-                update = mu_step[p] * E_fft[p] * F_inv
+                n_harmonic = p + 1
+                # Apply delay_tau correction and harmonic-order-dependent phase shift
+                phase_corr = np.exp(-1j * 2 * np.pi * freqs * (delay_tau + L_sweep * np.log(n_harmonic)))
+                update = mu_step[p] * E_fft[p] * F_inv * phase_corr
                 G_fft_cand[p] = G_fft_cand[p] - update
                 G_fft_cand[p] = G_fft_cand[p] * bp_filter
                 g_t = np.fft.irfft(G_fft_cand[p], n=N)
@@ -426,7 +434,7 @@ def run_closed_loop_training():
     print("\n--- Verifying Linearization on a 1kHz Tone ---")
     t_verify = np.arange(N) / sample_rate
     f_test = 1000.0
-    u_test = np.sin(2 * np.pi * f_test * t_verify)
+    u_test = b_amp * np.sin(2 * np.pi * f_test * t_verify)
     U_test_fft = np.fft.rfft(u_test)
     u_test = np.fft.irfft(U_test_fft * bp_filter, n=N)
     
@@ -481,7 +489,10 @@ def run_closed_loop_training():
     plt.subplot(2, 2, 3)
     t_ms = t * 1000.0
     err_raw = y_raw - y_target
-    err_comp = y_comp - y_target
+    corr = np.correlate(y_comp, y_target, mode='full')
+    delay_idx = np.argmax(np.abs(corr)) - (len(y_target) - 1)
+    y_comp_aligned = np.roll(y_comp, -delay_idx)
+    err_comp = y_comp_aligned - y_target
     plt.plot(t_ms, err_raw, color='#d62728', alpha=0.7, label='Raw Error')
     plt.plot(t_ms, err_comp, color='#1f77b4', label='Compensated Error')
     plt.xlim(10, 15)
@@ -507,7 +518,7 @@ def run_closed_loop_training():
 
     plt.tight_layout()
 
-    output_dir = '/Users/vach/.gemini/antigravity/brain/fa8d616f-fb0d-4a48-a35c-ffa2f4a6d037'
+    output_dir = '/Users/vach/.gemini/antigravity/brain/75f1ad15-d615-4414-88d1-5558908a5f96'
     os.makedirs(output_dir, exist_ok=True)
     output_img_path = os.path.join(output_dir, 'closed_loop_linearization_results.png')
     plt.savefig(output_img_path, dpi=150)
