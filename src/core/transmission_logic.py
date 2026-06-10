@@ -749,12 +749,9 @@ def analyze_step_transient(step_y: np.ndarray, sr: float) -> dict:
     v_lower = v_final - tolerance
 
     # 末尾から逆向きにスキャンし、許容差バンド外に飛び出している最後の要素を探索
-    settling_idx = start_idx
-    for idx in range(N - 1, start_idx, -1):
-        val = step_y[idx]
-        if val > v_upper or val < v_lower:
-            settling_idx = idx
-            break
+    out_of_bounds = (step_y[start_idx:] > v_upper) | (step_y[start_idx:] < v_lower)
+    indices = np.nonzero(out_of_bounds)[0]
+    settling_idx = int(start_idx + indices[-1]) if len(indices) > 0 else start_idx
 
     settling_samples = max(0, settling_idx - start_idx)
     settling_ms = (settling_samples / sr) * 1000.0
