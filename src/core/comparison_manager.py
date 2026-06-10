@@ -191,11 +191,7 @@ class ComparisonManager(QObject):
         Export selected traces to a JSON file.
         """
         try:
-            export_data = []
-            for tid in trace_ids:
-                trace = self.get_trace(tid)
-                if trace:
-                    export_data.append(trace.to_dict())
+            export_data = [trace.to_dict() for tid in trace_ids if (trace := self.get_trace(tid)) is not None]
 
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump({"version": "1.0", "traces": export_data}, f, indent=4)
