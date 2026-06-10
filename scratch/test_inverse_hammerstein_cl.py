@@ -279,7 +279,7 @@ def run_closed_loop_training():
     G_fft[0] = G1_init_fft # G1
 
     # 7. Closed-loop Optimization loop
-    max_iter = 150
+    max_iter = 72
     
     # Amplitudes for the Chebyshev decomposition measurement (using Chebyshev Nodes)
     a_amp, b_amp = 0.03, 0.30
@@ -381,8 +381,8 @@ def run_closed_loop_training():
             G_fft_cand = G_fft.copy()
             for p in range(5):
                 n_harmonic = p + 1
-                # Apply delay_2tau correction and harmonic-order-dependent phase shift
-                phase_corr = np.exp(-1j * 2 * np.pi * freqs * (delay_2tau + L_sweep * np.log(n_harmonic)))
+                # Apply delay_2tau correction (no redundant sweep shift, as it's already deconvolved/aligned)
+                phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_2tau)
                 update = mu_step[p] * E_fft[p] * F_inv * phase_corr
                 G_fft_cand[p] = G_fft_cand[p] - update
                 G_fft_cand[p] = G_fft_cand[p] * bp_filter
@@ -446,8 +446,8 @@ def run_closed_loop_training():
         U_in_fft = np.fft.rfft(u_in)
         u_in_filt = np.fft.irfft(U_in_fft * bp_filter, n=N)
         
-        # Target Linear Output
-        y_target = np.fft.irfft(np.fft.rfft(u_in_filt) * Q1_fft, n=N)
+        # Target Linear Output is now the equalized flat input signal (since G1 acts as Q1 inverse)
+        y_target = u_in_filt.copy()
         
         # Uncompensated Output
         y_raw = forward_model(u_in_filt)
