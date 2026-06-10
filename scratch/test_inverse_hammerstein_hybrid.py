@@ -435,7 +435,7 @@ def run_closed_loop_training():
 
     harmonic_power = sum(np.sum(np.abs(E_fft[p]) ** 2) for p in range(1, 5))
     fundamental_error = np.sum(np.abs(E_fft[0]) ** 2)
-    total_error = fundamental_error + harmonic_power
+    total_error = harmonic_power  # Fixed: optimize THD only since G1 is frozen
     ref_power = np.sum(np.abs(H_target) ** 2)
     thd_db = 10 * np.log10(harmonic_power / ref_power)
     total_err_db = 10 * np.log10(total_error / ref_power)
@@ -454,7 +454,7 @@ def run_closed_loop_training():
     print("\n--- Phase 1: Pre-training using Single-Amplitude Farina Sweep (SAAKE) ---")
 
     # We use a conservative learning rate for Phase 1 to prevent unstable dynamics
-    mu_pt = [0.10, 0.08, 0.06, 0.04, 0.02]
+    mu_pt = [0.00, 0.08, 0.06, 0.04, 0.02]  # Fixed: freeze G1 (fundamental) learning rate at 0.0
 
     for iteration in range(pre_train_iter):
         T_time_pt, clip_triggered = measure_single_amplitude_kernels(G_fft, pre_train_amp)
@@ -474,7 +474,7 @@ def run_closed_loop_training():
 
         harmonic_power_pt = sum(np.sum(np.abs(E_fft_pt[p]) ** 2) for p in range(1, 5))
         fundamental_error_pt = np.sum(np.abs(E_fft_pt[0]) ** 2)
-        total_error_pt = fundamental_error_pt + harmonic_power_pt
+        total_error_pt = harmonic_power_pt  # Fixed: optimize THD only
         thd_db_pt = 10 * np.log10(harmonic_power_pt / ref_power)
         total_err_db_pt = 10 * np.log10(total_error_pt / ref_power)
 
@@ -514,7 +514,7 @@ def run_closed_loop_training():
 
     harmonic_power = sum(np.sum(np.abs(E_fft[p]) ** 2) for p in range(1, 5))
     fundamental_error = np.sum(np.abs(E_fft[0]) ** 2)
-    total_error = fundamental_error + harmonic_power
+    total_error = harmonic_power  # Fixed: optimize THD only
     thd_db = 10 * np.log10(harmonic_power / ref_power)
     total_err_db = 10 * np.log10(total_error / ref_power)
 
@@ -524,7 +524,7 @@ def run_closed_loop_training():
     print(f"Fine-tune Init  | Total Error: {total_err_db:6.2f} dB | THD: {thd_db:6.2f} dB")
 
     # Learning rates base for fine-tuning
-    mu_base = [0.10, 0.08, 0.06, 0.04, 0.02]
+    mu_base = [0.00, 0.08, 0.06, 0.04, 0.02]  # Fixed: freeze G1 learning rate at 0.0
 
     for iteration in range(max_iter_fine):
         # Update mu_base (annealing)
@@ -568,7 +568,7 @@ def run_closed_loop_training():
 
             harmonic_power_cand = sum(np.sum(np.abs(E_fft_cand[p]) ** 2) for p in range(1, 5))
             fundamental_error_cand = np.sum(np.abs(E_fft_cand[0]) ** 2)
-            total_error_cand = fundamental_error_cand + harmonic_power_cand
+            total_error_cand = harmonic_power_cand  # Fixed: optimize THD only
             thd_db_cand = 10 * np.log10(harmonic_power_cand / ref_power)
             total_err_db_cand = 10 * np.log10(total_error_cand / ref_power)
 
