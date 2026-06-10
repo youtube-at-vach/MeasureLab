@@ -12,9 +12,10 @@ It is ideal for checking the sense of localization and spread of stereo sound im
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the image map display. This is useful when you only want to monitor the spatial spread.
 
-## ☕ Coffee Break: How do owls find mice in the dark?
+## ☕ Coffee Break: Perceiving the Direction of Sound
 
-Owls (and humans) determine the direction of sound by processing minute differences in time and volume between their left and right ears. When a sound source is off to one side, the sound reaches the closer ear slightly earlier (**ITD: Interaural Time Difference**), while the farther ear hears a quieter sound due to the head acting as an obstacle (**ILD: Interaural Level Difference**). The BNIM meter simulates this auditory mechanism to visualize sound direction.
+Humans perceive the direction of sound by processing minute differences in time (ITD) and volume (ILD) between their left and right ears.
+The BNIM meter simulates this auditory mechanism to visualize the localization and spatial spread of a signal as a heatmap.
 
 ## How to Read the Screen
 
