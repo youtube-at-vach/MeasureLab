@@ -4,7 +4,9 @@ import numpy as np
 import soundfile as sf
 from unittest.mock import MagicMock
 
-from src.gui.widgets.feedforward_compensator import OfflineFFCompWorker, LICFFEngine
+from src.gui.widgets.feedforward_compensator import (
+    OfflineFFCompWorker, LICFFEngine, FeedforwardCompensator, FeedforwardCompensatorWidget
+)
 
 
 @pytest.fixture
@@ -145,4 +147,24 @@ def test_chebyshev_to_power_series_scaling(temp_wav_files):
     assert np.allclose(engine.q3[0], 0.055)
     assert np.allclose(engine.q4[0], 0.04)
     assert np.allclose(engine.q5[0], 0.02)
+
+
+def test_feedforward_compensator_widget_simulation(qtbot, dummy_model_data):
+    audio_engine = MagicMock()
+    module = FeedforwardCompensator(audio_engine)
+    widget = FeedforwardCompensatorWidget(module)
+    qtbot.addWidget(widget)
+
+    # Initially run_simulation should do nothing if no engine is loaded
+    widget.run_simulation()
+
+    # Load model
+    widget.module.engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+    widget.model_data = dummy_model_data
+
+    # Test all signal types in the combobox to ensure they compile/run without exception
+    for i in range(widget.combo_signal.count()):
+        widget.combo_signal.setCurrentIndex(i)
+        widget.run_simulation()
+
 

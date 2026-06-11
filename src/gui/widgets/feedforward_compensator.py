@@ -620,7 +620,8 @@ class FeedforwardCompensatorWidget(QWidget):
             noise_fft = np.exp(1j * rng.uniform(0, 2 * np.pi, N // 2 + 1))
             noise_fft[0] = 0.0
             noise_fft[-1] = 0.0
-            u = np.fft.irfft(noise_fft * engine.bp_filter, n=N)
+            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            u = np.fft.irfft(noise_fft * bp_filter, n=N)
             u = u / np.max(np.abs(u)) * amp
             f_test = 1000.0
 
