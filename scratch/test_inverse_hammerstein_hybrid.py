@@ -387,8 +387,8 @@ def run_closed_loop_training():
 
     # Window for predistorter time-domain regularization
     center_idx = gate_pre  # Fixed: center at gate_pre (1920 samples) instead of 2 * gate_pre to align with predistorter peak
-    N_keep = N // 4
-    N_fade = N // 8
+    N_keep = N // 3
+    N_fade = N // 6
 
     win_centered = np.zeros(N)
     # Causal part
@@ -448,13 +448,13 @@ def run_closed_loop_training():
     # ==========================================
     # PHASE 1: Pre-training (SAAKE)
     # ==========================================
-    pre_train_iter = 5
+    pre_train_iter = 0
     pre_train_amp = 0.30  # Peak calibration amplitude (Chebyshev max)
 
     print("\n--- Phase 1: Pre-training using Single-Amplitude Farina Sweep (SAAKE) ---")
 
     # We use a conservative learning rate for Phase 1 to prevent unstable dynamics
-    mu_pt = [0.00, 0.08, 0.06, 0.04, 0.02]  # Fixed: freeze G1 (fundamental) learning rate at 0.0
+    mu_pt = [0.00, 0.12, 0.10, 0.08, 0.05]  # G1 frozen
 
     for iteration in range(pre_train_iter):
         T_time_pt, clip_triggered = measure_single_amplitude_kernels(G_fft, pre_train_amp)
@@ -486,7 +486,7 @@ def run_closed_loop_training():
 
         # Apply direct algebraic update
         for p in range(5):
-            phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_tau)  # Fixed: use delay_tau instead of delay_2tau
+            phase_corr = np.exp(-1j * 2 * np.pi * freqs * 0.0)  # Set delay to 0.0 (no phase correction needed)
             update = mu_pt[p] * E_fft_pt[p] * F_inv * phase_corr
             G_fft[p] = G_fft[p] - update
             G_fft[p] = G_fft[p] * bp_filter
@@ -497,7 +497,7 @@ def run_closed_loop_training():
     # ==========================================
     # PHASE 2: SSS Fine-tuning (Chebyshev LS)
     # ==========================================
-    max_iter_fine = 5  # Only 5 iterations needed instead of 15!
+    max_iter_fine = 15  # Extended Chebyshev LS fine-tuning
 
     print("\n--- Phase 2: Fine-tuning using Multi-Amplitude SSS (Chebyshev LS) ---")
 
@@ -524,7 +524,7 @@ def run_closed_loop_training():
     print(f"Fine-tune Init  | Total Error: {total_err_db:6.2f} dB | THD: {thd_db:6.2f} dB")
 
     # Learning rates base for fine-tuning
-    mu_base = [0.00, 0.08, 0.06, 0.04, 0.02]  # Fixed: freeze G1 learning rate at 0.0
+    mu_base = [0.00, 0.20, 0.15, 0.10, 0.05]  # G1 frozen, others increased for convergence
 
     for iteration in range(max_iter_fine):
         # Update mu_base (annealing)
@@ -540,7 +540,7 @@ def run_closed_loop_training():
             # Candidate G_fft
             G_fft_cand = G_fft.copy()
             for p in range(5):
-                phase_corr = np.exp(-1j * 2 * np.pi * freqs * delay_tau)  # Fixed: use delay_tau instead of delay_2tau
+                phase_corr = np.exp(-1j * 2 * np.pi * freqs * 0.0)  # Set delay to 0.0 (no phase correction needed)
                 update = mu_step[p] * E_fft[p] * F_inv * phase_corr
                 G_fft_cand[p] = G_fft_cand[p] - update
                 G_fft_cand[p] = G_fft_cand[p] * bp_filter
@@ -620,12 +620,17 @@ def run_closed_loop_training():
 
         y_comp = forward_model(u_comp)
 
-        corr_raw = np.correlate(y_raw, y_target, mode="full")
-        delay_raw = np.argmax(np.abs(corr_raw)) - (len(y_target) - 1)
+        # Circular cross-correlation via FFT
+        C_raw = np.fft.irfft(np.fft.rfft(y_raw) * np.conj(np.fft.rfft(y_target)), n=N)
+        delay_raw = np.argmax(np.abs(C_raw))
+        if delay_raw > N // 2:
+            delay_raw -= N
         y_raw_aligned = np.roll(y_raw, -delay_raw)
 
-        corr_comp = np.correlate(y_comp, y_target, mode="full")
-        delay_comp = np.argmax(np.abs(corr_comp)) - (len(y_target) - 1)
+        C_comp = np.fft.irfft(np.fft.rfft(y_comp) * np.conj(np.fft.rfft(y_target)), n=N)
+        delay_comp = np.argmax(np.abs(C_comp))
+        if delay_comp > N // 2:
+            delay_comp -= N
         y_comp_aligned = np.roll(y_comp, -delay_comp)
 
         rms_target = np.sqrt(np.mean(y_target**2))
@@ -712,9 +717,11 @@ def run_closed_loop_training():
 
     # 5. Broadband Noise Signal (Validation: Untrained Noise)
     rng_val = np.random.default_rng(99)
-    u_noise = rng_val.normal(0.0, 1.0, N)
-    U_noise_fft = np.fft.rfft(u_noise)
-    u_noise_filt = np.fft.irfft(U_noise_fft * bp_filter, n=N)
+    # Generate in frequency domain with random phases to ensure circular continuity
+    noise_fft = np.exp(1j * rng_val.uniform(0, 2 * np.pi, N // 2 + 1))
+    noise_fft[0] = 0.0  # Zero DC
+    noise_fft[-1] = 0.0  # Zero Nyquist
+    u_noise_filt = np.fft.irfft(noise_fft * bp_filter, n=N)
     u_noise_filt = u_noise_filt / np.max(np.abs(u_noise_filt)) * b_amp
     res_noise = evaluate_test_signal(u_noise_filt, "Broadband Noise")
 
