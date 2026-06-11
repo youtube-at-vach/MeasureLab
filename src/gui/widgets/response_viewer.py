@@ -122,6 +122,7 @@ class ResponseViewerWidget(QWidget):
         # Info Labels
         self.lbl_status = QLabel(tr("No Model Loaded"))
         self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
+        self.lbl_status.setMaximumWidth(180)
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
 
@@ -317,7 +318,7 @@ class ResponseViewerWidget(QWidget):
         self.kernel_plot.showGrid(True, True, alpha=0.3)
         self.kernel_plot.addLegend(offset=(10, 10))
         kernels_layout.addWidget(self.kernel_plot)
-        self.tabs.addTab(self.tab_kernels, tr("Hammerstein Kernels"))
+        self.tabs.addTab(self.tab_kernels, tr("Kernels"))
 
         # Tab 3: 2D Distortion Map
         self.tab_map = QWidget()
@@ -366,7 +367,7 @@ class ResponseViewerWidget(QWidget):
         self.map_graphics_widget.addItem(self.colorbar)
 
         map_layout.addWidget(self.map_graphics_widget)
-        self.tabs.addTab(self.tab_map, tr("2D Distortion Map"))
+        self.tabs.addTab(self.tab_map, tr("2D Map"))
 
         # Tab 4: Distortion Curves
         self.tab_curves = QWidget()
@@ -410,7 +411,7 @@ class ResponseViewerWidget(QWidget):
         # Synchronize Y-axes ranges of left and right plots, defaulting to the right plot's scale
         self.curve_freq_plot.setYLink(self.curve_amp_plot)
 
-        self.tabs.addTab(self.tab_curves, tr("Distortion Curves"))
+        self.tabs.addTab(self.tab_curves, tr("Dist. Curves"))
 
         # Tab 5: Simulator
         self.tab_sim = QWidget()
@@ -482,7 +483,7 @@ class ResponseViewerWidget(QWidget):
         self.sim_plot.showGrid(True, True, alpha=0.3)
         sim_layout.addWidget(self.sim_plot, stretch=1)
 
-        self.tabs.addTab(self.tab_sim, tr("Harmonic Simulator"))
+        self.tabs.addTab(self.tab_sim, tr("Simulator"))
 
         # Tab 6: I/O & Gain Compression
         self.tab_io_comp = QWidget()
@@ -579,7 +580,7 @@ class ResponseViewerWidget(QWidget):
         self.comp_p1db_h_line.hide()
         self.comp_p1db_marker.setData([], [])
 
-        self.tabs.addTab(self.tab_io_comp, tr("I/O & Compression"))
+        self.tabs.addTab(self.tab_io_comp, tr("I/O & Comp"))
 
         main_layout.addWidget(self.tabs, stretch=1)
 
@@ -650,7 +651,11 @@ class ResponseViewerWidget(QWidget):
             import os
 
             filename = os.path.basename(filepath)
-            self.lbl_status.setText(filename)
+            display_name = filename
+            if len(filename) > 24:
+                display_name = filename[:21] + "..."
+            self.lbl_status.setText(display_name)
+            self.lbl_status.setToolTip(filename)
             self.lbl_status.setStyleSheet("font-weight: bold; color: #4ba3e3;")
         except Exception as e:
             logger.error("Failed to import model from %s: %s", filepath, e)

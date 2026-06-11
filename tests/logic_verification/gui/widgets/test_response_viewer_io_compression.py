@@ -103,7 +103,7 @@ def test_io_compression_plots_initialization(qtbot, mock_audio_engine):
     # Verify tab exists
     found_tab = False
     for idx in range(widget.tabs.count()):
-        if widget.tabs.tabText(idx) in ["I/O & Compression", "入出力特性と圧縮"]:
+        if widget.tabs.tabText(idx) in ["I/O & Comp", "入出力/圧縮"]:
             found_tab = True
             break
     assert found_tab
