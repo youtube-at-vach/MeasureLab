@@ -1,6 +1,6 @@
-# Nonlinear System Analyzer
+# Nonlinear Analyzer
 
-Nonlinear System Analyzer（非線形システムアナライザ）は、オーディオ機器やアンプ等の非線形特性を詳細に解析するための高度なウィジットです。
+Nonlinear Analyzer（非線形アナライザー）は、オーディオ機器やアンプ等の非線形特性を詳細に解析するための高度なウィジットです。
 Synchronized Swept Sine (SSS) を用いて、システム応答から線形成分（基本波）と各次数の高調波成分（カーネル）を分離・抽出します。
 Hammersteinモデルに基づく非線形解析により、複雑な歪み特性の評価が可能です。
 

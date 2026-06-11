@@ -12,8 +12,10 @@ if sys.platform == "darwin":
 elif sys.platform == "win32":
     MONOSPACE_FONT_FAMILY = "Consolas, Courier New"
 else:
-    # Linux and others: Use lowercase "monospace" as the primary/fallback
-    MONOSPACE_FONT_FAMILY = "monospace, Courier New, Courier"
+    # Linux and others: Use widely available monospace fonts first to avoid Qt font-alias search warnings.
+    # Generic "monospace" is appended at the end as a fallback.
+    MONOSPACE_FONT_FAMILY = "DejaVu Sans Mono, Liberation Mono, Courier New, monospace, Courier"
+
 
 
 # Toggle Button Styles (Start/Stop)

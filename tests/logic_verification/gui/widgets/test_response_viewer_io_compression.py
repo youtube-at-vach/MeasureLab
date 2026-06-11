@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 
-from src.gui.widgets.hammerstein_analyzer import (
-    HammersteinAnalyzer,
-    HammersteinAnalyzerWidget,
+from src.gui.widgets.response_viewer import (
+    ResponseViewer,
+    ResponseViewerWidget,
 )
 
 
@@ -96,8 +96,8 @@ def dummy_model_data_expanding():
 
 
 def test_io_compression_plots_initialization(qtbot, mock_audio_engine):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Verify tab exists
@@ -129,8 +129,8 @@ def test_io_compression_plots_initialization(qtbot, mock_audio_engine):
 
 
 def test_p1db_calculation_compressing(qtbot, mock_audio_engine, dummy_model_data_compressing):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set min/max levels so we capture the compression curve nicely
@@ -157,8 +157,8 @@ def test_p1db_calculation_compressing(qtbot, mock_audio_engine, dummy_model_data
 
 
 def test_p1db_calculation_expanding_or_linear(qtbot, mock_audio_engine, dummy_model_data_expanding):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     widget.min_level_spin.setValue(-40.0)
@@ -175,8 +175,8 @@ def test_p1db_calculation_expanding_or_linear(qtbot, mock_audio_engine, dummy_mo
 
 
 def test_io_compression_plots_ref_parameter_sync(qtbot, mock_audio_engine, dummy_model_data_compressing):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     widget.set_model_data(dummy_model_data_compressing)

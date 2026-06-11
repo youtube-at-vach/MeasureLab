@@ -6,7 +6,7 @@ import numpy as np
 from PyQt6.QtWidgets import QApplication
 
 from src.core.audio_engine import AudioEngine
-from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer
+from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer
 from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer
 
 def main():
@@ -38,7 +38,7 @@ def main():
 
     # 3. Phase A: Nonlinear System Sweep & Model Building
     print("\n=== Phase A: Nonlinear System Analyzer (SSS Sweep) ===")
-    nonlin_analyzer = NonlinearSystemAnalyzer(engine)
+    nonlin_analyzer = NonlinearAnalyzer(engine)
     nonlin_analyzer.amplitude_db = -6.0
     nonlin_analyzer.num_amplitudes = 5
     nonlin_analyzer.averages = 2

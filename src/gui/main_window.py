@@ -63,8 +63,9 @@ from src.core.module_constants import (
     MODULE_TRANSIENT_ANALYZER,
     MODULE_ULTRASOUND_MODULATOR,
     MODULE_WAVEFORM_LOOP_PLAYER,
-    MODULE_NONLINEAR_SYSTEM_ANALYZER,
-    MODULE_HAMMERSTEIN_ANALYZER,
+    MODULE_NONLINEAR_ANALYZER,
+    MODULE_RESPONSE_VIEWER,
+    MODULE_FEEDFORWARD_COMPENSATOR,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -107,8 +108,9 @@ MODULE_REGISTRY = {
     MODULE_SPATIAL_BINAURAL_MIXER: ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"),
     MODULE_PLOT_COMPARER: ("src.gui.widgets.plot_comparer", "PlotComparer"),
     MODULE_TRANSMISSION_ANALYZER: ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"),
-    MODULE_NONLINEAR_SYSTEM_ANALYZER: ("src.gui.widgets.nonlinear_system_analyzer", "NonlinearSystemAnalyzer"),
-    MODULE_HAMMERSTEIN_ANALYZER: ("src.gui.widgets.hammerstein_analyzer", "HammersteinAnalyzer"),
+    MODULE_NONLINEAR_ANALYZER: ("src.gui.widgets.nonlinear_analyzer", "NonlinearAnalyzer"),
+    MODULE_RESPONSE_VIEWER: ("src.gui.widgets.response_viewer", "ResponseViewer"),
+    MODULE_FEEDFORWARD_COMPENSATOR: ("src.gui.widgets.feedforward_compensator", "FeedforwardCompensator"),
 }
 
 

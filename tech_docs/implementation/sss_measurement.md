@@ -1,6 +1,6 @@
 # 同期スイープサイン（SSS）法および平行ハマーシュタインモデル（PHM）測定の技術仕様
 
-本ドキュメントでは、MeasureLab の `Nonlinear System Analyzer` において実装されている、**同期スイープサイン（Synchronized Swept Sine: SSS）法**および**平行ハマーシュタインモデル（Parallel Hammerstein Model: PHM）**を用いた非線形システム測定とカーネル分離のアルゴリズムおよび実装仕様について解説します。
+本ドキュメントでは、MeasureLab の `Nonlinear Analyzer` において実装されている、**同期スイープサイン（Synchronized Swept Sine: SSS）法**および**平行ハマーシュタインモデル（Parallel Hammerstein Model: PHM）**を用いた非線形システム測定とカーネル分離のアルゴリズムおよび実装仕様について解説します。
 
 ---
 
@@ -159,7 +159,7 @@ SSS 法および窓関数、FFT 処理に伴って必然的に発生する、系
 本ドキュメントのアルゴリズムは、以下のファイルで実装されています。
 
 * **UI / 測定シーケンス制御**:
-  [nonlinear_system_analyzer.py](file:///Users/vach/MeasureLab/src/gui/widgets/nonlinear_system_analyzer.py)
+  [nonlinear_analyzer.py](file:///Users/vach/MeasureLab/src/gui/widgets/nonlinear_analyzer.py)
   （TSAループ、再生録音スレッド制御、測定結果のプロット更新）
 * **信号処理コアロジック**:
   [nonlinear_analyzer_core.py](file:///Users/vach/MeasureLab/src/core/nonlinear_analyzer_core.py)

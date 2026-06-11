@@ -79,7 +79,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 
 - **[Distortion Analyzer](widgets/distortion_analyzer.md)**
     - THD (全高調波歪) や THD+N を測定します。基本的な歪み測定はこちらを使用します。
-- **[Nonlinear System Analyzer](widgets/nonlinear_system_analyzer.md)**
+- **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
     - Hammersteinモデルを用いて、機器の応答から1次（線形）〜5次までの高調波カーネルを分離・抽出する高度な歪み解析ツールです。
 
 - **[Linearity Analyzer](widgets/linearity_analyzer.md)**

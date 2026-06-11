@@ -42,7 +42,7 @@ from src.core.nonlinear_analyzer_core import (
 logger = logging.getLogger(__name__)
 
 
-class NonlinearSystemAnalyzerSignals(QObject):
+class NonlinearAnalyzerSignals(QObject):
     update_plot = pyqtSignal(object, dict, dict)  # freqs, magnitudes_db_dict, phases_deg_dict
     update_kernels = pyqtSignal(object, list)  # time_ms, list of kernels [h1, h2, h3, h4, h5]
     sweep_finished = pyqtSignal()
@@ -153,10 +153,10 @@ class LatencyCalWorker(QThread):
             self.analyzer.signals.error.emit(str(e))
 
 
-class NonlinearSystemAnalyzer(MeasurementModule):
+class NonlinearAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
-        self.signals = NonlinearSystemAnalyzerSignals()
+        self.signals = NonlinearAnalyzerSignals()
 
         # Sweep Parameters
         self.start_freq = 20.0
@@ -182,14 +182,14 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Nonlinear System Analyzer"
+        return "Nonlinear Analyzer"
 
     @property
     def description(self) -> str:
         return "Extracts true linear response and 2nd-5th harmonics using SSS and Parallel Hammerstein modeling."
 
     def get_widget(self):
-        return NonlinearSystemAnalyzerWidget(self)
+        return NonlinearAnalyzerWidget(self)
 
     def _dummy_callback(self, indata, outdata, frames, time, status):
         pass
@@ -485,8 +485,8 @@ class NonlinearSystemAnalyzer(MeasurementModule):
 
 
 
-class NonlinearSystemAnalyzerWidget(QWidget):
-    def __init__(self, module: NonlinearSystemAnalyzer):
+class NonlinearAnalyzerWidget(QWidget):
+    def __init__(self, module: NonlinearAnalyzer):
         QWidget.__init__(self)
         self.module = module
 
@@ -523,16 +523,9 @@ class NonlinearSystemAnalyzerWidget(QWidget):
         sidebar_main_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_main_layout.setSpacing(10)
 
-        # Module Header Info (Experimental Badge)
-        badge_layout = QHBoxLayout()
-        badge_title = QLabel(f"<b>{tr('Nonlinear System Analyzer')}</b>")
-        badge_label = QLabel(tr("Experimental"))
-        badge_label.setStyleSheet(
-            "background-color: #d9534f; color: white; border-radius: 4px; padding: 2px 5px; font-size: 10px; font-weight: bold;"
-        )
-        badge_layout.addWidget(badge_title)
-        badge_layout.addWidget(badge_label)
-        sidebar_main_layout.addLayout(badge_layout)
+        # Module Header Info
+        badge_title = QLabel(f"<b>{tr('Nonlinear Analyzer')}</b>")
+        sidebar_main_layout.addWidget(badge_title)
 
         # --- Parameter Scroll Area ---
         parameter_scroll = QScrollArea()

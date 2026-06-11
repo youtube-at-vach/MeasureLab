@@ -73,7 +73,7 @@ Tools for evaluating equipment performance and sound quality.
 
 - **[Distortion Analyzer](widgets/distortion_analyzer.md)**
     - Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
-- **[Nonlinear System Analyzer](widgets/nonlinear_system_analyzer.md)**
+- **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
     - An advanced distortion analysis tool that uses the Hammerstein model to separate and extract 1st (linear) to 5th order harmonic kernels from equipment responses.
 
 - **[Linearity Analyzer](widgets/linearity_analyzer.md)**

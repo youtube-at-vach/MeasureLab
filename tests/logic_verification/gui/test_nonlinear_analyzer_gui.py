@@ -1,5 +1,5 @@
 from src.core.audio_engine import AudioEngine
-from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer, NonlinearSystemAnalyzerWidget
+from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer, NonlinearAnalyzerWidget
 
 
 def test_nonlinear_analyzer_gui_start(qtbot):
@@ -7,13 +7,13 @@ def test_nonlinear_analyzer_gui_start(qtbot):
     audio_engine = AudioEngine()
     audio_engine.offline_mode = True
 
-    analyzer = NonlinearSystemAnalyzer(audio_engine)
+    analyzer = NonlinearAnalyzer(audio_engine)
     # Configure short parameters so the mock measurement runs within timeout limits
     analyzer.sweep_duration = 0.1
     analyzer.averages = 1
     analyzer.num_amplitudes = 5
 
-    widget = NonlinearSystemAnalyzerWidget(analyzer)
+    widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # We expect sweep_finished to be emitted eventually
@@ -28,8 +28,8 @@ def test_nonlinear_analyzer_gui_start(qtbot):
 
 def test_nonlinear_analyzer_routing(qtbot):
     audio_engine = AudioEngine()
-    analyzer = NonlinearSystemAnalyzer(audio_engine)
-    widget = NonlinearSystemAnalyzerWidget(analyzer)
+    analyzer = NonlinearAnalyzer(audio_engine)
+    widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # 1. Check default XFER_REV / Stereo routing
