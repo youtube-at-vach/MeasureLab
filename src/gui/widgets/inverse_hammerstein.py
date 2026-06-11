@@ -603,64 +603,115 @@ class WaveProcessWorker(QThread):
             metadata = self.inverse_model_data.get("metadata", {})
             model_sr = metadata.get("sample_rate", 48000)
 
-            data, _ = sf.read(self.input_path, always_2d=True)
-
             resample_msg = ""
-            if abs(file_sr - model_sr) > 1.0:
-                logger.info(f"Resampling input WAVE file from {file_sr} Hz to {model_sr} Hz")
-                data = AudioCalc.resample(data, file_sr, int(model_sr))
-                resample_msg = "\n" + tr(" (Resampled from {0} Hz to {1} Hz)").format(int(file_sr), int(model_sr))
+            infile = None
+            try:
+                if abs(file_sr - model_sr) > 1.0:
+                    logger.info(f"Resampling input WAVE file from {file_sr} Hz to {model_sr} Hz")
+                    raw_data, _ = sf.read(self.input_path, always_2d=True)
+                    data = AudioCalc.resample(raw_data, file_sr, int(model_sr))
+                    resample_msg = "\n" + tr(" (Resampled from {0} Hz to {1} Hz)").format(int(file_sr), int(model_sr))
+                    M, channels = data.shape
 
-            M, channels = data.shape
+                    def get_input_slice(start, end):
+                        if start < 0 or end > M:
+                            slice_data = data[max(0, start) : min(M, end)]
+                            pad_left = max(0, -start)
+                            pad_right = max(0, end - M)
+                            return np.pad(slice_data, ((pad_left, pad_right), (0, 0)), mode="constant")
+                        else:
+                            return data[start:end]
+                else:
+                    infile = sf.SoundFile(self.input_path, "r")
+                    M = infile.frames
+                    channels = infile.channels
 
-            kernels_dict = self.inverse_model_data.get("time_domain", {}).get("kernels", {})
-            g_final_time = [np.array(kernels_dict[f"h{p+1}"]) for p in range(5)]
+                    def get_input_slice(start, end):
+                        if start < 0:
+                            infile.seek(0)
+                            read_len = end
+                            chunk = infile.read(read_len, always_2d=True)
+                            pad_left = -start
+                            pad_right = max(0, read_len - len(chunk))
+                            return np.pad(chunk, ((pad_left, pad_right), (0, 0)), mode="constant")
+                        elif end > M:
+                            infile.seek(start)
+                            chunk = infile.read(M - start, always_2d=True)
+                            pad_left = 0
+                            pad_right = end - M
+                            return np.pad(chunk, ((pad_left, pad_right), (0, 0)), mode="constant")
+                        else:
+                            infile.seek(start)
+                            return infile.read(end - start, always_2d=True)
 
-            out_data = np.zeros_like(data)
+                kernels_dict = self.inverse_model_data.get("time_domain", {}).get("kernels", {})
+                g_final_time = [np.array(kernels_dict[f"h{p+1}"]) for p in range(5)]
 
-            def apply_power_oversampled(x, p, L=8):
-                if p == 1:
-                    return x.copy()
-                N_x = len(x)
-                X = np.fft.rfft(x)
-                N_up = L * N_x
-                X_up = np.zeros(N_up // 2 + 1, dtype=complex)
-                X_up[: len(X)] = X * L
-                x_up = np.fft.irfft(X_up, n=N_up)
-                xp_up = x_up**p
-                Xp_up = np.fft.rfft(xp_up)
-                Xp_up_filtered = np.zeros_like(Xp_up)
-                Xp_up_filtered[: len(X)] = Xp_up[: len(X)]
-                xp = np.fft.irfft(Xp_up_filtered / L, n=N_x)
-                return xp
+                out_data = np.zeros((M, channels))
 
-            for ch in range(channels):
-                if self.is_cancelled:
-                    raise InterruptedError("Cancelled")
+                def apply_power_oversampled(x, p, L=8):
+                    if p == 1:
+                        return x.copy()
+                    N_x = len(x)
+                    X = np.fft.rfft(x)
+                    N_up = L * N_x
+                    X_up = np.zeros(N_up // 2 + 1, dtype=complex)
+                    X_up[: len(X)] = X * L
+                    x_up = np.fft.irfft(X_up, n=N_up)
+                    xp_up = x_up**p
+                    Xp_up = np.fft.rfft(xp_up)
+                    Xp_up_filtered = np.zeros_like(Xp_up)
+                    Xp_up_filtered[: len(X)] = Xp_up[: len(X)]
+                    xp = np.fft.irfft(Xp_up_filtered / L, n=N_x)
+                    return xp
 
-                x_ch = data[:, ch]
-                u_ch = np.zeros(M)
+                block_size = 65536
+                overlap = 8192
+                num_blocks = (M + block_size - 1) // block_size
 
-                for p in range(1, 6):
+                for b_idx in range(num_blocks):
                     if self.is_cancelled:
                         raise InterruptedError("Cancelled")
 
-                    xp = apply_power_oversampled(x_ch, p, L=8)
-                    u_p = fftconvolve(xp, g_final_time[p - 1], mode="full")
-                    u_ch += u_p[:M]
+                    start_out = b_idx * block_size
+                    end_out = min(start_out + block_size, M)
+                    L_block = end_out - start_out
 
-                    self.progress.emit(int(((ch * 5 + p) / (channels * 5)) * 100))
+                    start_in = start_out - overlap
+                    end_in = end_out + overlap
 
-                out_data[:, ch] = u_ch
+                    chunk_padded = get_input_slice(start_in, end_in)
+                    chunk_out = np.zeros((L_block, channels))
 
-            max_val = np.max(np.abs(out_data))
-            clipping_msg = ""
-            if max_val > 1.0:
-                clipping_msg = "\n" + tr("Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping.").format(20 * np.log10(max_val))
-                out_data = out_data / max_val
+                    for ch in range(channels):
+                        x_ch = chunk_padded[:, ch]
+                        u_ch = np.zeros(len(x_ch))
 
-            sf.write(self.output_path, out_data, int(model_sr), subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16")
-            self.finished.emit(True, tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path)) + resample_msg + clipping_msg)
+                        for p in range(1, 6):
+                            if self.is_cancelled:
+                                raise InterruptedError("Cancelled")
+
+                            xp = apply_power_oversampled(x_ch, p, L=8)
+                            u_p = fftconvolve(xp, g_final_time[p - 1], mode="full")
+                            u_ch += u_p[:len(x_ch)]
+
+                        chunk_out[:, ch] = u_ch[overlap : overlap + L_block]
+
+                    out_data[start_out:end_out, :] = chunk_out
+                    self.progress.emit(int(((b_idx + 1) / num_blocks) * 100))
+
+                max_val = np.max(np.abs(out_data))
+                clipping_msg = ""
+                if max_val > 1.0:
+                    clipping_msg = "\n" + tr("Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping.").format(20 * np.log10(max_val))
+                    out_data = out_data / max_val
+
+                sf.write(self.output_path, out_data, int(model_sr), subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16")
+                self.finished.emit(True, tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path)) + resample_msg + clipping_msg)
+
+            finally:
+                if infile is not None:
+                    infile.close()
 
         except InterruptedError:
             self.finished.emit(False, tr("Cancelled"))
@@ -729,8 +780,8 @@ class InverseHammersteinWidget(QWidget):
 
         self.lbl_status = QLabel(tr("No Model Loaded"))
         self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
-        self.lbl_sr = QLabel(tr("Rate:") + " -- Hz")
-        self.lbl_order = QLabel(tr("Order:") + " --")
+        self.lbl_sr = QLabel("-- Hz")
+        self.lbl_order = QLabel("--")
 
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
@@ -887,8 +938,8 @@ class InverseHammersteinWidget(QWidget):
             metadata = data.get("metadata", {})
             self.lbl_status.setText(os.path.basename(filepath))
             self.lbl_status.setStyleSheet("font-weight: bold; color: #2b8c56;")
-            self.lbl_sr.setText(tr("Rate:") + f" {metadata.get('sample_rate', 48000):g} Hz")
-            self.lbl_order.setText(tr("Order:") + f" {metadata.get('P', 5)}")
+            self.lbl_sr.setText(f"{metadata.get('sample_rate', 48000):g} Hz")
+            self.lbl_order.setText(str(metadata.get('P', 5)))
 
             self.gen_group.setEnabled(True)
             self.wave_group.setEnabled(self.inverse_model is not None)
