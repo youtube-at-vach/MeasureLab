@@ -122,6 +122,7 @@ class ResponseViewerWidget(QWidget):
         # Info Labels
         self.lbl_status = QLabel(tr("No Model Loaded"))
         self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
+        self.lbl_status.setMaximumWidth(180)
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
 
@@ -650,7 +651,11 @@ class ResponseViewerWidget(QWidget):
             import os
 
             filename = os.path.basename(filepath)
-            self.lbl_status.setText(filename)
+            display_name = filename
+            if len(filename) > 24:
+                display_name = filename[:21] + "..."
+            self.lbl_status.setText(display_name)
+            self.lbl_status.setToolTip(filename)
             self.lbl_status.setStyleSheet("font-weight: bold; color: #4ba3e3;")
         except Exception as e:
             logger.error("Failed to import model from %s: %s", filepath, e)
