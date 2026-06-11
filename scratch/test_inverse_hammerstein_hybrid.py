@@ -835,14 +835,65 @@ def run_closed_loop_training(condition_name, json_path):
         except Exception as e:
             print(f"Failed to save copy of inverse model to {output_json_path}: {e}")
 
+    return {
+        "initial_thd_db": initial_thd_db,
+        "final_thd_db": final_thd_db,
+        "improvement": improvement,
+        "total_sweeps": total_measured_sweeps,
+        "res_1k": res_1k,
+        "res_3k": res_3k,
+        "res_2tone": res_2tone,
+        "res_multi": res_multi,
+        "res_noise": res_noise,
+    }
+
 
 if __name__ == "__main__":
     conditions = {
         "soft": "/Users/vach/MeasureLab/hammerstein_kernel_sample_soft_condition.json",
         "hard": "/Users/vach/MeasureLab/hammerstein_kernel_sample_hard_condition.json"
     }
+    results = {}
     for name, path in conditions.items():
         print("\n" + "=" * 60)
         print(f" STARTING OPTIMIZATION FOR: {name.upper()} CONDITION")
         print("=" * 60)
-        run_closed_loop_training(name, path)
+        results[name] = run_closed_loop_training(name, path)
+
+    # Print comparison report
+    print("\n" + "=" * 80)
+    print("                 HYBRID DPD COMPARISON REPORT (SOFT vs HARD)")
+    print("=" * 80)
+    print(f"  {'Metric':<28} |  {'Soft Condition':<22} |  {'Hard Condition':<22}")
+    print("-" * 80)
+
+    r_soft = results["soft"]
+    r_hard = results["hard"]
+
+    print(f"  {'Initial Kernel THD Error':<28} |  {r_soft['initial_thd_db']:>7.2f} dB              |  {r_hard['initial_thd_db']:>7.2f} dB")
+    print(f"  {'Final Kernel THD Error':<28} |  {r_soft['final_thd_db']:>7.2f} dB              |  {r_hard['final_thd_db']:>7.2f} dB")
+    print(f"  {'Suppression Improvement':<28} |  {r_soft['improvement']:>7.2f} dB              |  {r_hard['improvement']:>7.2f} dB")
+    print(f"  {'Total Sweeps Needed':<28} |  {r_soft['total_sweeps']:>5d} sweeps             |  {r_hard['total_sweeps']:>5d} sweeps")
+    print("-" * 80)
+    print("  Generalization (SDR Performance):")
+
+    # 1kHz Tone (Original)
+    print(f"  - 1kHz Tone (Original)       |  {r_soft['res_1k']['sdr_raw']:>5.1f} -> {r_soft['res_1k']['sdr_comp']:>5.1f} dB      |  {r_hard['res_1k']['sdr_raw']:>5.1f} -> {r_hard['res_1k']['sdr_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {r_soft['res_1k']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_1k']['improvement']:>6.2f} dB)")
+
+    # 3kHz Tone (Untrained)
+    print(f"  - 3kHz Tone (Untrained)      |  {r_soft['res_3k']['sdr_raw']:>5.1f} -> {r_soft['res_3k']['sdr_comp']:>5.1f} dB      |  {r_hard['res_3k']['sdr_raw']:>5.1f} -> {r_hard['res_3k']['sdr_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {r_soft['res_3k']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_3k']['improvement']:>6.2f} dB)")
+
+    # Two-Tone (Untrained)
+    print(f"  - Two-Tone (1.0k + 1.5k)     |  {r_soft['res_2tone']['sdr_raw']:>5.1f} -> {r_soft['res_2tone']['sdr_comp']:>5.1f} dB      |  {r_hard['res_2tone']['sdr_raw']:>5.1f} -> {r_hard['res_2tone']['sdr_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {r_soft['res_2tone']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_2tone']['improvement']:>6.2f} dB)")
+
+    # Multi-Tone (5 freqs)
+    print(f"  - Multi-Tone (5 freqs)       |  {r_soft['res_multi']['sdr_raw']:>5.1f} -> {r_soft['res_multi']['sdr_comp']:>5.1f} dB      |  {r_hard['res_multi']['sdr_raw']:>5.1f} -> {r_hard['res_multi']['sdr_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {r_soft['res_multi']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_multi']['improvement']:>6.2f} dB)")
+
+    # Broadband Noise
+    print(f"  - Broadband Noise            |  {r_soft['res_noise']['sdr_raw']:>5.1f} -> {r_soft['res_noise']['sdr_comp']:>5.1f} dB      |  {r_hard['res_noise']['sdr_raw']:>5.1f} -> {r_hard['res_noise']['sdr_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {r_soft['res_noise']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_noise']['improvement']:>6.2f} dB)")
+    print("=" * 80)
