@@ -25,13 +25,14 @@ def run_simulation(condition_name, json_path):
     print(f"Sample Rate: {sample_rate} Hz")
     print(f"Kernel Length: {N} samples ({N / sample_rate * 1000.0:.2f} ms)")
 
-    # 1. Chebyshev to Power Series Conversion
-    q0 = -h2 + h4
-    q1 = h1 - 3 * h3 + 5 * h5  # True linear dynamic response
-    q2 = 2 * h2 - 8 * h4
-    q3 = 4 * h3 - 20 * h5
-    q4 = 8 * h4
-    q5 = 16 * h5
+    # 1. Chebyshev to Power Series Conversion (Corrected for H_p = 2^{p-1} * h_p scaling)
+    q0 = -0.5 * h2 + 0.125 * h4
+    q1 = h1 - 0.75 * h3 + 0.3125 * h5  # True linear dynamic response
+    q2 = h2 - h4
+    q3 = h3 - 1.25 * h5
+    q4 = h4
+    q5 = h5
+
 
     # Scale the system using peak frequency response of q1
     Q1_fft_raw = np.fft.rfft(q1)

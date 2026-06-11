@@ -64,13 +64,14 @@ class LICFFEngine:
         h5 = kernels["h5"]
         self.N = len(h1)
 
-        # Chebyshev to Power Series Conversion
-        self.q0 = -h2 + h4
-        self.q1 = h1 - 3 * h3 + 5 * h5
-        self.q2 = 2 * h2 - 8 * h4
-        self.q3 = 4 * h3 - 20 * h5
-        self.q4 = 8 * h4
-        self.q5 = 16 * h5
+        # Chebyshev to Power Series Conversion (Corrected for H_p = 2^{p-1} * h_p scaling)
+        self.q0 = -0.5 * h2 + 0.125 * h4
+        self.q1 = h1 - 0.75 * h3 + 0.3125 * h5
+        self.q2 = h2 - h4
+        self.q3 = h3 - 1.25 * h5
+        self.q4 = h4
+        self.q5 = h5
+
 
         # Scale based on linear peak response
         Q1_fft_raw = np.fft.rfft(self.q1)
