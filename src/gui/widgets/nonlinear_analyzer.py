@@ -523,16 +523,9 @@ class NonlinearAnalyzerWidget(QWidget):
         sidebar_main_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_main_layout.setSpacing(10)
 
-        # Module Header Info (Experimental Badge)
-        badge_layout = QHBoxLayout()
+        # Module Header Info
         badge_title = QLabel(f"<b>{tr('Nonlinear Analyzer')}</b>")
-        badge_label = QLabel(tr("Experimental"))
-        badge_label.setStyleSheet(
-            "background-color: #d9534f; color: white; border-radius: 4px; padding: 2px 5px; font-size: 10px; font-weight: bold;"
-        )
-        badge_layout.addWidget(badge_title)
-        badge_layout.addWidget(badge_label)
-        sidebar_main_layout.addLayout(badge_layout)
+        sidebar_main_layout.addWidget(badge_title)
 
         # --- Parameter Scroll Area ---
         parameter_scroll = QScrollArea()
