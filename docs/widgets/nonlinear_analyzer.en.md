@@ -1,6 +1,6 @@
-# Nonlinear System Analyzer
+# Nonlinear Analyzer
 
-The Nonlinear System Analyzer is an advanced widget designed for detailed analysis of nonlinear characteristics in audio equipment, amplifiers, and other systems.
+The Nonlinear Analyzer is an advanced widget designed for detailed analysis of nonlinear characteristics in audio equipment, amplifiers, and other systems.
 It uses Synchronized Swept Sine (SSS) signals to separate and extract the linear component (fundamental) and higher-order harmonic components (kernels) from the system response.
 Based on the Parallel Hammerstein model, this nonlinear analysis allows for the evaluation of complex distortion characteristics.
 

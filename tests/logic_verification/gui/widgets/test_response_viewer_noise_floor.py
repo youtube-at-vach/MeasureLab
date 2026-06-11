@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 
-from src.gui.widgets.hammerstein_analyzer import (
-    HammersteinAnalyzer,
-    HammersteinAnalyzerWidget,
+from src.gui.widgets.response_viewer import (
+    ResponseViewer,
+    ResponseViewerWidget,
 )
 
 
@@ -55,8 +55,8 @@ def dummy_model_data():
 
 
 def test_noise_floor_ui_toggling(qtbot, mock_audio_engine):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Enable parent map_group to test children isEnabled status properly
@@ -79,8 +79,8 @@ def test_noise_floor_ui_toggling(qtbot, mock_audio_engine):
 
 
 def test_noise_floor_calculations(qtbot, mock_audio_engine, dummy_model_data):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set model data
@@ -115,8 +115,8 @@ def test_noise_floor_calculations(qtbot, mock_audio_engine, dummy_model_data):
 
 
 def test_noise_floor_relative_dbr_convergence(qtbot, mock_audio_engine, dummy_model_data):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set model data

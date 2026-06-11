@@ -1,4 +1,4 @@
-with open("src/gui/widgets/hammerstein_analyzer.py", "r") as f:
+with open("src/gui/widgets/response_viewer.py", "r") as f:
     content = f.read()
 
 # Instead of blindly replacing the patterns, we will find all occurrences of `np.interp(*, self.cached_freqs, np.real(H_dict[p]))`
@@ -17,5 +17,5 @@ def replacer(match):
 
 new_content = pattern.sub(replacer, content)
 
-with open("src/gui/widgets/hammerstein_analyzer.py", "w") as f:
+with open("src/gui/widgets/response_viewer.py", "w") as f:
     f.write(new_content)

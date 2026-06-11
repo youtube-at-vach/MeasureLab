@@ -40,7 +40,8 @@ if False:
     from src.gui.widgets.transient_analyzer import TransientAnalyzer
     from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
     from src.gui.widgets.waveform_loop_player import WaveformLoopPlayer
-    from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer
+    from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer
+    from src.gui.widgets.response_viewer import ResponseViewer
     from src.gui.widgets.feedforward_compensator import FeedforwardCompensator
     from src.gui.widgets.settings import SettingsWidget
     from src.gui.widgets.welcome import WelcomeWidget
@@ -80,7 +81,8 @@ if False:
         TransientAnalyzer,
         UltrasoundModulator,
         WaveformLoopPlayer,
-        NonlinearSystemAnalyzer,
+        NonlinearAnalyzer,
+        ResponseViewer,
         FeedforwardCompensator,
         SettingsWidget,
         WelcomeWidget,

@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock
 
-from src.gui.widgets.hammerstein_analyzer import (
-    HammersteinAnalyzer,
-    HammersteinAnalyzerWidget,
+from src.gui.widgets.response_viewer import (
+    ResponseViewer,
+    ResponseViewerWidget,
 )
 
 
@@ -55,8 +55,8 @@ def dummy_model_data():
 
 
 def test_contour_toggling_visibility(qtbot, mock_audio_engine, dummy_model_data):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set data
@@ -89,8 +89,8 @@ def test_contour_toggling_visibility(qtbot, mock_audio_engine, dummy_model_data)
 
 
 def test_monotonic_contour_drawing_and_label_crossing(qtbot, mock_audio_engine, dummy_model_data):
-    analyzer = HammersteinAnalyzer(mock_audio_engine)
-    widget = HammersteinAnalyzerWidget(analyzer)
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set data with a low noise floor to trigger non-monotonicity in dBr unit

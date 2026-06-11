@@ -565,12 +565,12 @@ def test_nonlinear_analyzer_fractional_delay_robustness():
 
 
 
-def test_nonlinear_system_analyzer_module_measurement(qtbot):
+def test_nonlinear_analyzer_module_measurement(qtbot):
     """
-    Verifies that NonlinearSystemAnalyzer performs measurement steps,
+    Verifies that NonlinearAnalyzer performs measurement steps,
     successfully calculates noise floor if enabled, and pushes the model to cache.
     """
-    from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer
+    from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer
     from src.core.audio_engine import AudioEngine
     from src.core.hammerstein_model import get_active_model
 
@@ -579,7 +579,7 @@ def test_nonlinear_system_analyzer_module_measurement(qtbot):
     audio_engine.offline_mode = True
     audio_engine.sample_rate = 44100
 
-    analyzer = NonlinearSystemAnalyzer(audio_engine)
+    analyzer = NonlinearAnalyzer(audio_engine)
     analyzer.num_amplitudes = 5
     analyzer.sweep_duration = 0.5  # Short sweep for fast test
     analyzer.measure_noise_floor = True

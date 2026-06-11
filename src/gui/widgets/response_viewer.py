@@ -43,24 +43,24 @@ def _get_safe_colormap(name: str) -> pg.ColorMap:
         raise
 
 
-class HammersteinAnalyzer(MeasurementModule):
+class ResponseViewer(MeasurementModule):
     def __init__(self, audio_engine):
         self.audio_engine = audio_engine
 
     @property
     def name(self) -> str:
-        return "Hammerstein Analyzer"
+        return "Response Viewer"
 
     @property
     def description(self) -> str:
         return "Visualizes Parallel Hammerstein kernels, generates 2D THD/harmonic maps, and simulates tone response."
 
     def get_widget(self):
-        return HammersteinAnalyzerWidget(self)
+        return ResponseViewerWidget(self)
 
 
-class HammersteinAnalyzerWidget(QWidget):
-    def __init__(self, module: HammersteinAnalyzer):
+class ResponseViewerWidget(QWidget):
+    def __init__(self, module: ResponseViewer):
         QWidget.__init__(self)
         self.module = module
 
