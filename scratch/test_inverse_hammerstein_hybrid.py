@@ -5,9 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.signal import windows, fftconvolve
 
 
-def run_closed_loop_training():
+def run_closed_loop_training(condition_name, json_path):
     # 1. Load measured kernels and metadata
-    json_path = "/Users/vach/MeasureLab/hammerstein_kernel_sample_soft_condition.json"
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"Kernel file not found at {json_path}")
 
@@ -434,7 +433,6 @@ def run_closed_loop_training():
         E_fft.append(Tp_cal * bp_filter)
 
     harmonic_power = sum(np.sum(np.abs(E_fft[p]) ** 2) for p in range(1, 5))
-    fundamental_error = np.sum(np.abs(E_fft[0]) ** 2)
     total_error = harmonic_power  # Fixed: optimize THD only since G1 is frozen
     ref_power = np.sum(np.abs(H_target) ** 2)
     thd_db = 10 * np.log10(harmonic_power / ref_power)
@@ -473,7 +471,6 @@ def run_closed_loop_training():
             E_fft_pt.append(Tp_cal_pt * bp_filter)
 
         harmonic_power_pt = sum(np.sum(np.abs(E_fft_pt[p]) ** 2) for p in range(1, 5))
-        fundamental_error_pt = np.sum(np.abs(E_fft_pt[0]) ** 2)
         total_error_pt = harmonic_power_pt  # Fixed: optimize THD only
         thd_db_pt = 10 * np.log10(harmonic_power_pt / ref_power)
         total_err_db_pt = 10 * np.log10(total_error_pt / ref_power)
@@ -513,7 +510,6 @@ def run_closed_loop_training():
         E_fft.append(Tp_cal * bp_filter)
 
     harmonic_power = sum(np.sum(np.abs(E_fft[p]) ** 2) for p in range(1, 5))
-    fundamental_error = np.sum(np.abs(E_fft[0]) ** 2)
     total_error = harmonic_power  # Fixed: optimize THD only
     thd_db = 10 * np.log10(harmonic_power / ref_power)
     total_err_db = 10 * np.log10(total_error / ref_power)
@@ -567,7 +563,6 @@ def run_closed_loop_training():
                 E_fft_cand.append(Tp_cal_cand * bp_filter)
 
             harmonic_power_cand = sum(np.sum(np.abs(E_fft_cand[p]) ** 2) for p in range(1, 5))
-            fundamental_error_cand = np.sum(np.abs(E_fft_cand[0]) ** 2)
             total_error_cand = harmonic_power_cand  # Fixed: optimize THD only
             thd_db_cand = 10 * np.log10(harmonic_power_cand / ref_power)
             total_err_db_cand = 10 * np.log10(total_error_cand / ref_power)
@@ -826,13 +821,13 @@ def run_closed_loop_training():
 
     plt.tight_layout()
 
-    output_dir = "/Users/vach/.gemini/antigravity/brain/5b83a14d-faba-4824-a4ce-68af49af74f3"
+    output_dir = "/Users/vach/.gemini/antigravity/brain/6a2c1991-0996-41fc-89f1-274e66f92767"
     os.makedirs(output_dir, exist_ok=True)
-    output_img_path = os.path.join(output_dir, "hybrid_linearization_results.png")
+    output_img_path = os.path.join(output_dir, f"hybrid_linearization_results_{condition_name}.png")
     plt.savefig(output_img_path, dpi=150)
     plt.close()
 
-    print(f"\nSuccessfully generated hybrid training comparison plot at: {output_img_path}")
+    print(f"\nSuccessfully generated hybrid training comparison plot ({condition_name}) at: {output_img_path}")
 
     # Generate Second Plot: Validation Signals
     plt.figure(figsize=(15, 10))
@@ -912,11 +907,11 @@ def run_closed_loop_training():
     plt.legend()
 
     plt.tight_layout()
-    output_val_img_path = os.path.join(output_dir, "hybrid_validation_results.png")
+    output_val_img_path = os.path.join(output_dir, f"hybrid_validation_results_{condition_name}.png")
     plt.savefig(output_val_img_path, dpi=150)
     plt.close()
 
-    print(f"Successfully generated hybrid validation comparison plot at: {output_val_img_path}")
+    print(f"Successfully generated hybrid validation comparison plot ({condition_name}) at: {output_val_img_path}")
 
     # Results Summary
     final_thd_db = history_err_db[-1, 1]
@@ -979,7 +974,7 @@ def run_closed_loop_training():
     }
 
     # Save to the project root directory
-    workspace_json_path = os.path.join("/Users/vach/MeasureLab", "inverse_hammerstein_model.json")
+    workspace_json_path = os.path.join("/Users/vach/MeasureLab", f"inverse_hammerstein_model_{condition_name}.json")
     try:
         with open(workspace_json_path, "w", encoding="utf-8") as f:
             json.dump(inverse_model_data, f, indent=2, ensure_ascii=False)
@@ -989,7 +984,7 @@ def run_closed_loop_training():
 
     # Also save to the output directory if it exists
     if output_dir:
-        output_json_path = os.path.join(output_dir, "inverse_hammerstein_model.json")
+        output_json_path = os.path.join(output_dir, f"inverse_hammerstein_model_{condition_name}.json")
         try:
             with open(output_json_path, "w", encoding="utf-8") as f:
                 json.dump(inverse_model_data, f, indent=2, ensure_ascii=False)
@@ -999,4 +994,12 @@ def run_closed_loop_training():
 
 
 if __name__ == "__main__":
-    run_closed_loop_training()
+    conditions = {
+        "soft": "/Users/vach/MeasureLab/hammerstein_kernel_sample_soft_condition.json",
+        "hard": "/Users/vach/MeasureLab/hammerstein_kernel_sample_hard_condition.json"
+    }
+    for name, path in conditions.items():
+        print("\n" + "=" * 60)
+        print(f" STARTING OPTIMIZATION FOR: {name.upper()} CONDITION")
+        print("=" * 60)
+        run_closed_loop_training(name, path)
