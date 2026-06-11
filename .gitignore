@@ -86,3 +86,8 @@ thd.json
 .vscode/settings.json
 hammerstein_kernel_sample*.json
 inverse_hammerstein_model*.json
+
+# Auto-generated check logs
+docs/daily_check.log
+docs/translation_check.log
+
