@@ -86,7 +86,11 @@ def run_ila_training(condition_name, json_path):
     # 5. Iterative ILA Training Loop
     num_iterations = 8
     num_realizations = 4
-    training_amps = np.linspace(0.01, 0.5, 15)
+    # Define training amplitudes (hard condition saturates early, so limit training range)
+    if condition_name == "hard":
+        training_amps = np.linspace(0.01, 0.30, 15)
+    else:
+        training_amps = np.linspace(0.01, 0.50, 15)
     N_fft_half = N // 2 + 1
 
     # Initialize W_filters with the linear inverse filter
@@ -122,7 +126,7 @@ def run_ila_training(condition_name, json_path):
     print(f"\n--- Training ILA Inverse Model ({num_iterations} iterations, {num_realizations} realizations/amp) ---")
     
     # Set step size (relaxation factor) to stabilize convergence under strong non-linearities
-    alpha = 0.35 if condition_name == "hard" else 0.60
+    alpha = 0.20 if condition_name == "hard" else 0.60
     
     for iter_idx in range(num_iterations):
         X_train_fft = []
@@ -169,11 +173,11 @@ def run_ila_training(condition_name, json_path):
             b = X_train_fft[:, fi]
             b_res = b - A_linear * Q1_inv[fi]
 
-            # WLS weights
+            # WLS weights (use uniform weights to focus on large amplitude distortions rather than low-amp noise)
             weights = []
             for amp in training_amps:
                 for _ in range(num_realizations):
-                    weights.append(1.0 / amp)
+                    weights.append(1.0)
             weights = np.array(weights)
 
             A_weighted = A_high * weights[:, np.newaxis]
@@ -183,8 +187,13 @@ def run_ila_training(condition_name, json_path):
             AH_A = np.conj(A_weighted.T) @ A_weighted
             AH_b = np.conj(A_weighted.T) @ b_weighted
 
-            # Regularization for high orders
-            lambdas = np.array([1e2, 1e-1, 1e2, 1e-1])
+            # Condition-specific regularization for high orders to prevent divergence
+            if condition_name == "hard":
+                # Moderately strong regularization to control high-order kernels
+                lambdas = np.array([3e2, 1e2, 3e2, 1e2])
+            else:
+                # Soft condition
+                lambdas = np.array([1e2, 1e1, 1e2, 1e1])
 
             try:
                 W_high = np.linalg.solve(AH_A + np.diag(lambdas), AH_b)
@@ -196,10 +205,10 @@ def run_ila_training(condition_name, json_path):
         # Apply relaxation update to stabilize the loop
         W_filters[1:] = (1.0 - alpha) * W_filters[1:] + alpha * W_filters_new[1:]
 
-        # Apply Time-Domain Windowing to smooth identified high-order filters
+        # Apply Time-Domain Windowing to smooth identified high-order filters (narrower window)
         win = np.ones(N)
-        N_keep = N // 4
-        N_fade = N // 4
+        N_keep = N // 8
+        N_fade = N // 8
         fade = 0.5 * (1.0 + np.cos(np.pi * np.arange(N_fade) / N_fade))
         win[N_keep : N_keep + N_fade] = fade
         win[N_keep + N_fade :] = 0.0
