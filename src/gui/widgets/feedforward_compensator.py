@@ -31,6 +31,7 @@ class LICFFEngine:
         self.f_max = f_max
         self.sample_rate = 48000
         self.N = 0
+        self.q0_sum = 0.0
 
         # Buffer caching for arbitrary block sizes
         self._cached_M = 0
@@ -83,6 +84,8 @@ class LICFFEngine:
         self.q3_sc = self.q3 / self.G_scale
         self.q4_sc = self.q4 / self.G_scale
         self.q5_sc = self.q5 / self.G_scale
+
+        self.q0_sum = np.sum(self.q0_sc)
 
         # Reset cache
         self.clear_cache()
@@ -157,28 +160,88 @@ class LICFFEngine:
         Xp = Xp_up[: N_x // 2 + 1] / L
         return Xp
 
-    def forward_model(self, x):
+    def nonlinear_spectrum(self, x, L=8):
         M = len(x)
+        X = np.fft.rfft(x)
+        N_up = L * M
+        X_up = np.zeros(N_up // 2 + 1, dtype=complex)
+        X_up[: len(X)] = X * L
+        x_up = np.fft.irfft(X_up, n=N_up)
+
+        x_up2 = x_up * x_up
+        x_up3 = x_up2 * x_up
+        x_up4 = x_up3 * x_up
+        x_up5 = x_up4 * x_up
+
+        Y_fft = np.zeros_like(X, dtype=complex)
         Q_fft, _, _ = self._prepare_buffers_for_length(M)
-        y = np.zeros_like(x)
-        y += np.fft.irfft(np.fft.rfft(np.ones_like(x)) * Q_fft[0], n=M)
-        for p in range(1, 6):
-            y += np.fft.irfft(self.power_oversampled_fft(x, p) * Q_fft[p], n=M)
-        return y
+
+        # p=2
+        Xp_up = np.fft.rfft(x_up2)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
+
+        # p=3
+        Xp_up = np.fft.rfft(x_up3)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
+
+        # p=4
+        Xp_up = np.fft.rfft(x_up4)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
+
+        # p=5
+        Xp_up = np.fft.rfft(x_up5)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
+
+        Y_fft[-1] = np.real(Y_fft[-1])
+        return Y_fft
+
+    def forward_model(self, x, L=8):
+        M = len(x)
+        X = np.fft.rfft(x)
+        N_up = L * M
+        X_up = np.zeros(N_up // 2 + 1, dtype=complex)
+        X_up[: len(X)] = X * L
+        x_up = np.fft.irfft(X_up, n=N_up)
+
+        x_up2 = x_up * x_up
+        x_up3 = x_up2 * x_up
+        x_up4 = x_up3 * x_up
+        x_up5 = x_up4 * x_up
+
+        Y_fft = np.zeros_like(X, dtype=complex)
+        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+
+        # p=1
+        Y_fft += X * Q_fft[1]
+
+        # p=2
+        Xp_up = np.fft.rfft(x_up2)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
+
+        # p=3
+        Xp_up = np.fft.rfft(x_up3)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
+
+        # p=4
+        Xp_up = np.fft.rfft(x_up4)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
+
+        # p=5
+        Xp_up = np.fft.rfft(x_up5)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
+
+        Y_fft[-1] = np.real(Y_fft[-1])
+        return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
     def linear_output(self, x):
         M = len(x)
         Q_fft, _, _ = self._prepare_buffers_for_length(M)
-        return np.fft.irfft(self.power_oversampled_fft(x, 1) * Q_fft[1], n=M)
+        return np.fft.irfft(np.fft.rfft(x) * Q_fft[1], n=M)
 
     def nonlinear_output(self, x):
         M = len(x)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
-        y = np.zeros_like(x)
-        y += np.fft.irfft(np.fft.rfft(np.ones_like(x)) * Q_fft[0], n=M)
-        for p in range(2, 6):
-            y += np.fft.irfft(self.power_oversampled_fft(x, p) * Q_fft[p], n=M)
-        return y
+        Y_fft = self.nonlinear_spectrum(x)
+        return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
     def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5):
         M = len(u_in)
@@ -193,10 +256,9 @@ class LICFFEngine:
 
         u_comp = u_in_filt.copy()
         for _ in range(iters):
-            y_nl = self.nonlinear_output(u_comp)
-            Y_nl = np.fft.rfft(y_nl)
+            Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter
-            y_comp_nl = np.fft.irfft(Y_nl * F_inv, n=M)
+            y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
             u_comp = u_in_filt - y_comp_nl
             u_comp = np.clip(u_comp, -clip_limit, clip_limit)
 
@@ -274,7 +336,7 @@ class OfflineFFCompWorker(QThread):
                 out_data = np.zeros((M, channels))
 
                 # Processing Block Configuration
-                block_size = 32768
+                block_size = 65536
                 overlap = 4096
                 num_blocks = (M + block_size - 1) // block_size
 
