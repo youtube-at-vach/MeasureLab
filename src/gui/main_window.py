@@ -66,6 +66,7 @@ from src.core.module_constants import (
     MODULE_NONLINEAR_SYSTEM_ANALYZER,
     MODULE_HAMMERSTEIN_ANALYZER,
     MODULE_INVERSE_HAMMERSTEIN,
+    MODULE_FEEDFORWARD_COMPENSATOR,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -111,6 +112,7 @@ MODULE_REGISTRY = {
     MODULE_NONLINEAR_SYSTEM_ANALYZER: ("src.gui.widgets.nonlinear_system_analyzer", "NonlinearSystemAnalyzer"),
     MODULE_HAMMERSTEIN_ANALYZER: ("src.gui.widgets.hammerstein_analyzer", "HammersteinAnalyzer"),
     MODULE_INVERSE_HAMMERSTEIN: ("src.gui.widgets.inverse_hammerstein", "InverseHammerstein"),
+    MODULE_FEEDFORWARD_COMPENSATOR: ("src.gui.widgets.feedforward_compensator", "FeedforwardCompensator"),
 }
 
 
