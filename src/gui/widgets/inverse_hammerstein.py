@@ -603,11 +603,14 @@ class WaveProcessWorker(QThread):
             metadata = self.inverse_model_data.get("metadata", {})
             model_sr = metadata.get("sample_rate", 48000)
 
-            if abs(file_sr - model_sr) > 1.0:
-                self.finished.emit(False, tr("Sample rate mismatch: WAVE file is {0} Hz, but inverse model requires {1} Hz.").format(int(file_sr), int(model_sr)))
-                return
-
             data, _ = sf.read(self.input_path, always_2d=True)
+
+            resample_msg = ""
+            if abs(file_sr - model_sr) > 1.0:
+                logger.info(f"Resampling input WAVE file from {file_sr} Hz to {model_sr} Hz")
+                data = AudioCalc.resample(data, file_sr, int(model_sr))
+                resample_msg = "\n" + tr(" (Resampled from {0} Hz to {1} Hz)").format(int(file_sr), int(model_sr))
+
             M, channels = data.shape
 
             kernels_dict = self.inverse_model_data.get("time_domain", {}).get("kernels", {})
@@ -657,7 +660,7 @@ class WaveProcessWorker(QThread):
                 out_data = out_data / max_val
 
             sf.write(self.output_path, out_data, int(model_sr), subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16")
-            self.finished.emit(True, tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path)) + clipping_msg)
+            self.finished.emit(True, tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path)) + resample_msg + clipping_msg)
 
         except InterruptedError:
             self.finished.emit(False, tr("Cancelled"))
