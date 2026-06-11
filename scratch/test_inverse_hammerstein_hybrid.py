@@ -1,7 +1,6 @@
 import os
 import json
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.signal import windows, fftconvolve
 
 
@@ -752,166 +751,10 @@ def run_closed_loop_training(condition_name, json_path):
     )
     print("=" * 55)
 
-    # Plotting and Saving Results
-    plt.figure(figsize=(15, 10))
-
-    # Subplot 1: Convergence History
-    plt.subplot(2, 2, 1)
     history_err_db = np.array(history_err_db)
-
-    # Adjust indexing for Phase 1 vs Phase 2 plotting
-    plt.plot(
-        range(0, len(history_err_db)), history_err_db[:, 0], "o-", color="#1f77b4", linewidth=2.5, label="Total Error"
-    )
-    plt.plot(
-        range(0, len(history_err_db)), history_err_db[:, 1], "s--", color="#ff7f0e", linewidth=2.5, label="THD Error"
-    )
-    plt.axvline(x=pre_train_iter, color="purple", linestyle=":", label="Transition to SSS")
-    plt.title("Hybrid Optimization Convergence (SAAKE + SSS)", fontsize=12, fontweight="bold")
-    plt.xlabel("Measurement Iterations", fontsize=10)
-    plt.ylabel("Error Level (dB relative to Fundamental)", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    # Subplot 2: Spectrum comparison for 1kHz Tone
-    f_axis = np.fft.rfftfreq(N, d=1.0 / sample_rate)
-    Y_target_mag = 20 * np.log10(np.abs(np.fft.rfft(res_1k["y_target"])) + 1e-12)
-    Y_raw_mag = 20 * np.log10(np.abs(np.fft.rfft(res_1k["y_raw"])) + 1e-12)
-    Y_comp_mag = 20 * np.log10(np.abs(np.fft.rfft(res_1k["y_comp"])) + 1e-12)
-
-    plt.subplot(2, 2, 2)
-    plt.plot(f_axis, Y_raw_mag, color="#d62728", alpha=0.7, label="Raw Output")
-    plt.plot(f_axis, Y_comp_mag, color="#1f77b4", linewidth=1.5, label="Linearized Output")
-    plt.plot(f_axis, Y_target_mag, color="black", linestyle=":", label="Target Linear")
-    plt.xlim(100, 12000)
-    plt.ylim(-110, -20)
-    plt.title("Output Spectrum (Hybrid, 1kHz Sine Zoom)", fontsize=12, fontweight="bold")
-    plt.xlabel("Frequency (Hz)", fontsize=10)
-    plt.ylabel("Magnitude (dBFS)", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    # Subplot 3: Time Domain Residual Error comparison (1kHz Tone)
-    plt.subplot(2, 2, 3)
-    t_ms = t * 1000.0
-    err_raw = res_1k["y_raw"] - res_1k["y_target"]
-    err_comp = res_1k["y_comp"] - res_1k["y_target"]
-    plt.plot(t_ms, err_raw, color="#d62728", alpha=0.7, label="Raw Error")
-    plt.plot(t_ms, err_comp, color="#1f77b4", label="Compensated Error")
-    plt.xlim(10, 15)
-    plt.title("Time Domain Residual Error (1kHz)", fontsize=12, fontweight="bold")
-    plt.xlabel("Time (ms)", fontsize=10)
-    plt.ylabel("Error Amplitude", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    # Subplot 4: Trained Inverse Kernels in Time Domain
-    plt.subplot(2, 2, 4)
-    time_display_ms = (np.arange(N) - N // 2) / sample_rate * 1000.0
-    plt.plot(time_display_ms, np.roll(g_final_time[0], N // 2), label="g1 (fundamental)")
-    plt.plot(time_display_ms, np.roll(g_final_time[1], N // 2) * 10, label="g2 * 10")
-    plt.plot(time_display_ms, np.roll(g_final_time[2], N // 2) * 10, label="g3 * 10")
-    plt.plot(time_display_ms, np.roll(g_final_time[4], N // 2) * 10, label="g5 * 10")
-    plt.xlim(-10, 30)
-    plt.title("Trained Inverse Kernels (g_p)", fontsize=12, fontweight="bold")
-    plt.xlabel("Time Offset (ms)", fontsize=10)
-    plt.ylabel("Kernel Amplitude", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    plt.tight_layout()
 
     output_dir = "/Users/vach/.gemini/antigravity/brain/6a2c1991-0996-41fc-89f1-274e66f92767"
     os.makedirs(output_dir, exist_ok=True)
-    output_img_path = os.path.join(output_dir, f"hybrid_linearization_results_{condition_name}.png")
-    plt.savefig(output_img_path, dpi=150)
-    plt.close()
-
-    print(f"\nSuccessfully generated hybrid training comparison plot ({condition_name}) at: {output_img_path}")
-
-    # Generate Second Plot: Validation Signals
-    plt.figure(figsize=(15, 10))
-
-    # Subplot 1: 3kHz Tone Spectrum
-    plt.subplot(2, 2, 1)
-    Y_target_3k = 20 * np.log10(np.abs(np.fft.rfft(res_3k["y_target"])) + 1e-12)
-    Y_raw_3k = 20 * np.log10(np.abs(np.fft.rfft(res_3k["y_raw"])) + 1e-12)
-    Y_comp_3k = 20 * np.log10(np.abs(np.fft.rfft(res_3k["y_comp"])) + 1e-12)
-    plt.plot(f_axis, Y_raw_3k, color="#d62728", alpha=0.7, label="Raw Output")
-    plt.plot(f_axis, Y_comp_3k, color="#1f77b4", linewidth=1.5, label="Linearized Output")
-    plt.plot(f_axis, Y_target_3k, color="black", linestyle=":", label="Target Output")
-    plt.xlim(200, 16000)
-    plt.ylim(-110, -20)
-    plt.title(
-        f"Validation: 3kHz Tone Spectrum (SDR Imp: {res_3k['improvement']:.1f}dB)", fontsize=12, fontweight="bold"
-    )
-    plt.xlabel("Frequency (Hz)", fontsize=10)
-    plt.ylabel("Magnitude (dBFS)", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    # Subplot 2: Two-Tone Spectrum
-    plt.subplot(2, 2, 2)
-    Y_target_2t = 20 * np.log10(np.abs(np.fft.rfft(res_2tone["y_target"])) + 1e-12)
-    Y_raw_2t = 20 * np.log10(np.abs(np.fft.rfft(res_2tone["y_raw"])) + 1e-12)
-    Y_comp_2t = 20 * np.log10(np.abs(np.fft.rfft(res_2tone["y_comp"])) + 1e-12)
-    plt.plot(f_axis, Y_raw_2t, color="#d62728", alpha=0.7, label="Raw Output")
-    plt.plot(f_axis, Y_comp_2t, color="#1f77b4", linewidth=1.5, label="Linearized Output")
-    plt.plot(f_axis, Y_target_2t, color="black", linestyle=":", label="Target Output")
-    plt.xlim(200, 10000)
-    plt.ylim(-110, -20)
-    plt.title(
-        f"Validation: Two-Tone Spectrum (SDR Imp: {res_2tone['improvement']:.1f}dB)", fontsize=12, fontweight="bold"
-    )
-    plt.xlabel("Frequency (Hz)", fontsize=10)
-    plt.ylabel("Magnitude (dBFS)", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    # Subplot 3: Multi-Tone Spectrum
-    plt.subplot(2, 2, 3)
-    Y_target_mt = 20 * np.log10(np.abs(np.fft.rfft(res_multi["y_target"])) + 1e-12)
-    Y_raw_mt = 20 * np.log10(np.abs(np.fft.rfft(res_multi["y_raw"])) + 1e-12)
-    Y_comp_mt = 20 * np.log10(np.abs(np.fft.rfft(res_multi["y_comp"])) + 1e-12)
-    plt.plot(f_axis, Y_raw_mt, color="#d62728", alpha=0.7, label="Raw Output")
-    plt.plot(f_axis, Y_comp_mt, color="#1f77b4", linewidth=1.5, label="Linearized Output")
-    plt.plot(f_axis, Y_target_mt, color="black", linestyle=":", label="Target Output")
-    plt.xlim(100, 15000)
-    plt.ylim(-110, -20)
-    plt.title(
-        f"Validation: Multi-Tone Spectrum (SDR Imp: {res_multi['improvement']:.1f}dB)", fontsize=12, fontweight="bold"
-    )
-    plt.xlabel("Frequency (Hz)", fontsize=10)
-    plt.ylabel("Magnitude (dBFS)", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    # Subplot 4: Broadband Noise Spectrum
-    plt.subplot(2, 2, 4)
-    Y_target_ns = 20 * np.log10(np.abs(np.fft.rfft(res_noise["y_target"])) + 1e-12)
-    Y_raw_ns = 20 * np.log10(np.abs(np.fft.rfft(res_noise["y_raw"])) + 1e-12)
-    Y_comp_ns = 20 * np.log10(np.abs(np.fft.rfft(res_noise["y_comp"])) + 1e-12)
-    plt.plot(f_axis, Y_raw_ns, color="#d62728", alpha=0.7, label="Raw Output")
-    plt.plot(f_axis, Y_comp_ns, color="#1f77b4", linewidth=1.5, label="Linearized Output")
-    plt.plot(f_axis, Y_target_ns, color="black", linestyle=":", label="Target Output")
-    plt.xlim(50, 20000)
-    plt.ylim(-110, -20)
-    plt.title(
-        f"Validation: Broadband Noise Spectrum (SDR Imp: {res_noise['improvement']:.1f}dB)",
-        fontsize=12,
-        fontweight="bold",
-    )
-    plt.xlabel("Frequency (Hz)", fontsize=10)
-    plt.ylabel("Magnitude (dBFS)", fontsize=10)
-    plt.grid(True, which="both", linestyle="--", alpha=0.5)
-    plt.legend()
-
-    plt.tight_layout()
-    output_val_img_path = os.path.join(output_dir, f"hybrid_validation_results_{condition_name}.png")
-    plt.savefig(output_val_img_path, dpi=150)
-    plt.close()
-
-    print(f"Successfully generated hybrid validation comparison plot ({condition_name}) at: {output_val_img_path}")
 
     # Results Summary
     final_thd_db = history_err_db[-1, 1]
