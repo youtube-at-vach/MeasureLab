@@ -875,13 +875,28 @@ if __name__ == "__main__":
     print(f"  {'Suppression Improvement':<28} |  {r_soft['improvement']:>7.2f} dB              |  {r_hard['improvement']:>7.2f} dB")
     print(f"  {'Total Sweeps Needed':<28} |  {r_soft['total_sweeps']:>5d} sweeps             |  {r_hard['total_sweeps']:>5d} sweeps")
     print("-" * 80)
-    print("  Generalization (SDR Performance):")
+    print("  THD Performance (Lower is Better):")
 
-    # 1kHz Tone (Original)
+    # 1kHz Tone (Original) THD
+    imp_1k_thd_soft = r_soft['res_1k']['thd_raw'] - r_soft['res_1k']['thd_comp']
+    imp_1k_thd_hard = r_hard['res_1k']['thd_raw'] - r_hard['res_1k']['thd_comp']
+    print(f"  - 1kHz Tone (Original)       |  {r_soft['res_1k']['thd_raw']:>5.1f} -> {r_soft['res_1k']['thd_comp']:>5.1f} dB      |  {r_hard['res_1k']['thd_raw']:>5.1f} -> {r_hard['res_1k']['thd_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {imp_1k_thd_soft:>6.2f} dB)         |  (Imp: {imp_1k_thd_hard:>6.2f} dB)")
+
+    # 3kHz Tone (Untrained) THD
+    imp_3k_thd_soft = r_soft['res_3k']['thd_raw'] - r_soft['res_3k']['thd_comp']
+    imp_3k_thd_hard = r_hard['res_3k']['thd_raw'] - r_hard['res_3k']['thd_comp']
+    print(f"  - 3kHz Tone (Untrained)      |  {r_soft['res_3k']['thd_raw']:>5.1f} -> {r_soft['res_3k']['thd_comp']:>5.1f} dB      |  {r_hard['res_3k']['thd_raw']:>5.1f} -> {r_hard['res_3k']['thd_comp']:>5.1f} dB")
+    print(f"                               |  (Imp: {imp_3k_thd_soft:>6.2f} dB)         |  (Imp: {imp_3k_thd_hard:>6.2f} dB)")
+
+    print("-" * 80)
+    print("  SDR Performance (Higher is Better):")
+
+    # 1kHz Tone (Original) SDR
     print(f"  - 1kHz Tone (Original)       |  {r_soft['res_1k']['sdr_raw']:>5.1f} -> {r_soft['res_1k']['sdr_comp']:>5.1f} dB      |  {r_hard['res_1k']['sdr_raw']:>5.1f} -> {r_hard['res_1k']['sdr_comp']:>5.1f} dB")
     print(f"                               |  (Imp: {r_soft['res_1k']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_1k']['improvement']:>6.2f} dB)")
 
-    # 3kHz Tone (Untrained)
+    # 3kHz Tone (Untrained) SDR
     print(f"  - 3kHz Tone (Untrained)      |  {r_soft['res_3k']['sdr_raw']:>5.1f} -> {r_soft['res_3k']['sdr_comp']:>5.1f} dB      |  {r_hard['res_3k']['sdr_raw']:>5.1f} -> {r_hard['res_3k']['sdr_comp']:>5.1f} dB")
     print(f"                               |  (Imp: {r_soft['res_3k']['improvement']:>6.2f} dB)         |  (Imp: {r_hard['res_3k']['improvement']:>6.2f} dB)")
 
