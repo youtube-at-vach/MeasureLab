@@ -41,6 +41,7 @@ if False:
     from src.gui.widgets.ultrasound_modulator import UltrasoundModulator
     from src.gui.widgets.waveform_loop_player import WaveformLoopPlayer
     from src.gui.widgets.nonlinear_system_analyzer import NonlinearSystemAnalyzer
+    from src.gui.widgets.inverse_hammerstein import InverseHammerstein
     from src.gui.widgets.settings import SettingsWidget
     from src.gui.widgets.welcome import WelcomeWidget
 
@@ -80,6 +81,7 @@ if False:
         UltrasoundModulator,
         WaveformLoopPlayer,
         NonlinearSystemAnalyzer,
+        InverseHammerstein,
         SettingsWidget,
         WelcomeWidget,
     ]

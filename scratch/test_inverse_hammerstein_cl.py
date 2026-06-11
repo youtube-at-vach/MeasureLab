@@ -79,9 +79,9 @@ def run_closed_loop_training():
         X_up = np.zeros(N_up // 2 + 1, dtype=complex)
         X_up[:len(X)] = X * L
         x_up = np.fft.irfft(X_up, n=N_up)
-        
+
         xp_up = x_up ** p
-        
+
         Xp_up = np.fft.rfft(xp_up)
         Xp = Xp_up[:N_x // 2 + 1] / L
         return Xp
@@ -167,24 +167,24 @@ def run_closed_loop_training():
         # Run measurement sweeps for each amplitude
         for amp in amplitudes:
             s_A = amp * sss_signal
-            
+
             # Generate predistorted signal in frequency domain with oversampling
             u_A = np.zeros(N)
             for p in range(1, 6):
                 S_A_p_fft = power_oversampled_fft(s_A, p)
                 U_p_fft = S_A_p_fft * G_fft[p - 1]
                 u_A += np.fft.irfft(U_p_fft, n=N)
-            
+
             # Check for safety clipping threshold
             if np.any(np.abs(u_A) >= 1.49):
                 clip_triggered = True
-            
+
             # Clip input to prevent damage/explosion (protection limit)
             u_A = np.clip(u_A, -1.5, 1.5)
-            
+
             # Feed into F
             y_A = forward_model(u_A)
-            
+
             # Deconvolve y_A using flat inverse filter
             ir_A = deconvolve_signal(y_A)
             responses_meas.append(ir_A)
@@ -270,7 +270,7 @@ def run_closed_loop_training():
     # Define delay parameters
     delay_tau = gate_pre / sample_rate # 10 ms = 0.01 s
     delay_2tau = 2.0 * delay_tau       # 20 ms = 0.02 s
-    
+
     # Initial G1 is the linear inverse with 2*tau delay for causality
     phase_shift_2tau = np.exp(-1j * 2 * np.pi * freqs * delay_2tau)
     G1_init_fft = (np.conj(Q1_fft) / (Q1_sc_power + beta)) * bp_filter * phase_shift_2tau
@@ -280,14 +280,14 @@ def run_closed_loop_training():
 
     # 7. Closed-loop Optimization loop
     max_iter = 15
-    
+
     # Amplitudes for the Chebyshev decomposition measurement (using Chebyshev Nodes)
     a_amp, b_amp = 0.03, 0.30
     K_amp = 10
     k_arr = np.arange(1, K_amp + 1)
     cheb_nodes = 0.5 * (a_amp + b_amp) + 0.5 * (b_amp - a_amp) * np.cos((2 * k_arr - 1) / (2 * K_amp) * np.pi)
     measurement_amplitudes = np.sort(cheb_nodes)
-    
+
     # Keep track of error suppression
     history_err_db = []
 
@@ -295,7 +295,7 @@ def run_closed_loop_training():
     H_target = Q1_fft * bp_filter
 
     print("\n--- Starting Closed-Loop Kernel Training ---")
-    
+
     # Precompute denominator for stability using Kirkeby regularization (frequency-dependent epsilon)
     F_lin_abs = np.abs(Q1_fft)
     eps_in = 1e-6
@@ -307,7 +307,7 @@ def run_closed_loop_training():
     center_idx = 2 * gate_pre
     N_keep = N // 4
     N_fade = N // 8
-    
+
     win_centered = np.zeros(N)
     # Causal part
     win_centered[:N_keep] = 1.0
@@ -316,21 +316,21 @@ def run_closed_loop_training():
     # Anti-causal part
     win_centered[-N_keep:] = 1.0
     win_centered[-N_keep - N_fade : -N_keep] = np.flip(fade_shape)
-    
+
     g_win = np.roll(win_centered, center_idx)
 
     # Initial calibration measurement
     print("\n--- Running Initial Calibration Measurement ---")
     T_time_init, _ = measure_cascade_kernels(G_fft, measurement_amplitudes)
     T_fft_init = [np.fft.rfft(T_time_init[p]) for p in range(5)]
-    
+
     C_fft = []
     # C1 calibration
     C1 = np.ones_like(Q1_fft)
     idx_cal = np.abs(T_fft_init[0]) > 1e-4
     C1[idx_cal] = Q1_fft[idx_cal] / T_fft_init[0][idx_cal]
     C_fft.append(C1)
-    
+
     # C2 to C5 calibration
     Q_ffts = [Q1_fft, Q2_fft, Q3_fft, Q4_fft, Q5_fft]
     for p in range(1, 5):
@@ -346,7 +346,7 @@ def run_closed_loop_training():
     E_fft = []
     T1_cal = T_fft[0] * C_fft[0]
     E_fft.append((T1_cal - H_target) * bp_filter)
-    
+
     for p in range(1, 5):
         Tp_cal = T_fft[p] * C_fft[p]
         E_fft.append(Tp_cal * bp_filter)
@@ -357,7 +357,7 @@ def run_closed_loop_training():
     ref_power = np.sum(np.abs(H_target)**2)
     thd_db = 10 * np.log10(harmonic_power / ref_power)
     total_err_db = 10 * np.log10(total_error / ref_power)
-    
+
     best_total_err_db = total_err_db
     best_thd_db = thd_db
     history_err_db.append((total_err_db, thd_db))
@@ -369,14 +369,14 @@ def run_closed_loop_training():
     for iteration in range(max_iter):
         # Update mu_base (annealing)
         mu_base = [m * 0.9 for m in mu_base]
-        
+
         # Backtracking Line Search
         success = False
         max_search_steps = 4
         for search_step in range(max_search_steps):
             factor = 0.5 ** search_step
             mu_step = [m * factor for m in mu_base]
-            
+
             # Candidate G_fft
             G_fft_cand = G_fft.copy()
             for p in range(5):
@@ -389,14 +389,14 @@ def run_closed_loop_training():
                 g_t = np.fft.irfft(G_fft_cand[p], n=N)
                 g_t_win = g_t * g_win
                 G_fft_cand[p] = np.fft.rfft(g_t_win)
-                
+
             # Simulate measurement
             T_time_cand, clip_triggered = measure_cascade_kernels(G_fft_cand, measurement_amplitudes)
-            
+
             if clip_triggered:
                 print(f"  [Line Search] Iteration {iteration+1:2d} | Step {search_step+1}: Clipping detected. Reducing step size.")
                 continue
-                
+
             # Calculate errors for candidate
             T_fft_cand = [np.fft.rfft(T_time_cand[p]) for p in range(5)]
             E_fft_cand = []
@@ -405,13 +405,13 @@ def run_closed_loop_training():
             for p in range(1, 5):
                 Tp_cal_cand = T_fft_cand[p] * C_fft[p]
                 E_fft_cand.append(Tp_cal_cand * bp_filter)
-                
+
             harmonic_power_cand = sum(np.sum(np.abs(E_fft_cand[p])**2) for p in range(1, 5))
             fundamental_error_cand = np.sum(np.abs(E_fft_cand[0])**2)
             total_error_cand = fundamental_error_cand + harmonic_power_cand
             thd_db_cand = 10 * np.log10(harmonic_power_cand / ref_power)
             total_err_db_cand = 10 * np.log10(total_error_cand / ref_power)
-            
+
             if total_err_db_cand < best_total_err_db:
                 # Accept candidate
                 G_fft = G_fft_cand
@@ -425,11 +425,11 @@ def run_closed_loop_training():
                 break
             else:
                 print(f"  [Line Search] Iteration {iteration+1:2d} | Step {search_step+1}: Error worsened ({total_err_db_cand:.2f} dB vs {best_total_err_db:.2f} dB). Reducing step size.")
-                
+
         if not success:
             print(f"Iteration {iteration+1:2d}/{max_iter} | Line search failed to improve error. Stopping optimization.")
             break
-            
+
         history_err_db.append((best_total_err_db, best_thd_db))
 
         if np.isnan(best_total_err_db) or best_total_err_db > 80.0:
@@ -445,50 +445,50 @@ def run_closed_loop_training():
         # Apply bandpass filter
         U_in_fft = np.fft.rfft(u_in)
         u_in_filt = np.fft.irfft(U_in_fft * bp_filter, n=N)
-        
+
         # Target Linear Output is now the equalized flat input signal (since G1 acts as Q1 inverse)
         y_target = u_in_filt.copy()
-        
+
         # Uncompensated Output
         y_raw = forward_model(u_in_filt)
-        
+
         # Compensated Output (circular convolution in frequency domain to match training)
         u_comp = np.zeros_like(u_in_filt)
         for p in range(1, 6):
             U_p_fft = power_oversampled_fft(u_in_filt, p) * G_fft[p - 1]
             u_comp += np.fft.irfft(U_p_fft, n=N)
-            
+
         y_comp = forward_model(u_comp)
-        
+
         # Align
         corr_raw = np.correlate(y_raw, y_target, mode='full')
         delay_raw = np.argmax(np.abs(corr_raw)) - (len(y_target) - 1)
         y_raw_aligned = np.roll(y_raw, -delay_raw)
-        
+
         corr_comp = np.correlate(y_comp, y_target, mode='full')
         delay_comp = np.argmax(np.abs(corr_comp)) - (len(y_target) - 1)
         y_comp_aligned = np.roll(y_comp, -delay_comp)
-        
+
         rms_target = np.sqrt(np.mean(y_target**2))
-        
+
         # Gain normalization to isolate shape/distortion from gain difference
         y_raw_scaled = y_raw_aligned * (rms_target / (np.sqrt(np.mean(y_raw_aligned**2)) + 1e-12))
         y_comp_scaled = y_comp_aligned * (rms_target / (np.sqrt(np.mean(y_comp_aligned**2)) + 1e-12))
-        
+
         err_raw = y_raw_scaled - y_target
         err_comp = y_comp_scaled - y_target
-        
+
         rms_raw_err = np.sqrt(np.mean(err_raw**2))
         rms_comp_err = np.sqrt(np.mean(err_comp**2))
-        
+
         print(f"[{label}] RMS target: {rms_target:.6f}, RMS raw: {np.sqrt(np.mean(y_raw**2)):.6f}, RMS comp: {np.sqrt(np.mean(y_comp**2)):.6f}")
         print(f"[{label}] delay_raw: {delay_raw}, delay_comp: {delay_comp}")
         print(f"[{label}] RMS raw err (gain-normalized): {rms_raw_err:.6f}, RMS comp err (gain-normalized): {rms_comp_err:.6f}")
-        
+
         sdr_raw = 20 * np.log10(rms_target / (rms_raw_err + 1e-12))
         sdr_comp = 20 * np.log10(rms_target / (rms_comp_err + 1e-12))
         improvement = sdr_comp - sdr_raw
-        
+
         return {
             'label': label,
             'u_in': u_in_filt,
@@ -504,13 +504,13 @@ def run_closed_loop_training():
         N_fft = len(y_sig)
         Y_fft = np.fft.rfft(y_sig)
         freqs_fft = np.fft.rfftfreq(N_fft, d=1.0/sample_rate)
-        
+
         idx_fund = np.argmin(np.abs(freqs_fft - f_test))
         w_bin = 3
         fund_search_range = range(max(0, idx_fund - w_bin), min(len(freqs_fft), idx_fund + w_bin + 1))
         idx_fund_peak = max(fund_search_range, key=lambda i: np.abs(Y_fft[i]))
         fund_power = np.abs(Y_fft[idx_fund_peak])**2
-        
+
         harmonic_powers = []
         for h in [2, 3, 4, 5]:
             f_h = h * f_test
@@ -520,7 +520,7 @@ def run_closed_loop_training():
             h_search_range = range(max(0, idx_h - w_bin), min(len(freqs_fft), idx_h + w_bin + 1))
             idx_h_peak = max(h_search_range, key=lambda i: np.abs(Y_fft[i]))
             harmonic_powers.append(np.abs(Y_fft[idx_h_peak])**2)
-            
+
         thd_val = np.sqrt(sum(harmonic_powers)) / (np.sqrt(fund_power) + 1e-12)
         return 20 * np.log10(thd_val + 1e-12)
 
@@ -722,7 +722,7 @@ def run_closed_loop_training():
     final_thd_db = history_err_db[-1, 1]
     initial_thd_db = history_err_db[0, 1]
     improvement = initial_thd_db - final_thd_db
-    print(f"\nOptimization Result Summary:")
+    print("\nOptimization Result Summary:")
     print(f"  Initial Kernel THD Error: {initial_thd_db:.2f} dB")
     print(f"  Final Kernel THD Error:   {final_thd_db:.2f} dB")
     print(f"  Suppression Improvement:  {improvement:.2f} dB")
