@@ -2,11 +2,9 @@ import os
 import json
 import logging
 import numpy as np
-import time
 import soundfile as sf
-from scipy.signal import windows
 
-from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox,
     QFormLayout, QDoubleSpinBox, QSpinBox, QFileDialog, QMessageBox,
@@ -332,9 +330,7 @@ class OfflineFFCompWorker(QThread):
 class FeedforwardCompensator(MeasurementModule):
     def __init__(self, audio_engine):
         self.audio_engine = audio_engine
-        self.is_running = False
         self.engine = None
-        self.callback_id = None
 
     @property
     def name(self) -> str:
@@ -439,7 +435,6 @@ class FeedforwardCompensatorWidget(QWidget):
         self.tabs = QTabWidget()
         self.setup_simulation_tab()
         self.setup_offline_tab()
-        self.setup_online_tab()
         main_layout.addWidget(self.tabs, stretch=1)
 
         self.chk_iterative.toggled.connect(self.spin_iters.setEnabled)
@@ -525,32 +520,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.tabs.addTab(off_tab, tr("Offline Processing"))
 
-    def setup_online_tab(self):
-        on_tab = QWidget()
-        on_layout = QVBoxLayout(on_tab)
-
-        ctrl_layout = QHBoxLayout()
-        self.btn_toggle_online = QPushButton(tr("Start Online Predistortion"))
-        self.btn_toggle_online.clicked.connect(self.toggle_online)
-        self.btn_toggle_online.setEnabled(False)
-        ctrl_layout.addWidget(self.btn_toggle_online)
-        on_layout.addLayout(ctrl_layout)
-
-        self.plot_online = pg.PlotWidget(title=tr("Real-time Input Spectrum"))
-        self.plot_online.setLabel("bottom", "Frequency", units="Hz")
-        self.plot_online.setLabel("left", "Magnitude", units="dBFS")
-        self.plot_online.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_online.setYRange(-120, 0)
-        self.curve_online = self.plot_online.plot(pen="c")
-        on_layout.addWidget(self.plot_online)
-
-        self.tabs.addTab(on_tab, tr("Online Processing"))
-
-        # Timer for live plot updates
-        self.online_timer = QTimer()
-        self.online_timer.timeout.connect(self.update_online_plot)
-        self.rt_buffer = np.zeros(0)
-        self.rt_lock = time.monotonic()
+    # Online processing features removed to optimize for standard PC performance.
 
     def load_model(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Load Forward Model"), "", tr("JSON Files (*.json)"))
@@ -572,7 +542,6 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_n.setText(f"{self.module.engine.N}")
 
                 self.btn_run_sim.setEnabled(True)
-                self.btn_toggle_online.setEnabled(True)
                 self._update_process_btn()
 
                 QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
@@ -580,7 +549,6 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_status.setText(tr("Error Loading Model"))
                 self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
                 self.btn_run_sim.setEnabled(False)
-                self.btn_toggle_online.setEnabled(False)
                 self._update_process_btn()
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load model file: {0}").format(e))
 
@@ -765,92 +733,7 @@ class FeedforwardCompensatorWidget(QWidget):
         else:
             QMessageBox.critical(self, tr("Error"), msg)
 
-    def toggle_online(self):
-        if self.module.is_running:
-            self.stop_online()
-        else:
-            self.start_online()
-
-    def start_online(self):
-        if not self.module.engine:
-            return
-
-        self.module.is_running = True
-        self.btn_toggle_online.setText(tr("Stop Online Predistortion"))
-        self.btn_toggle_online.setStyleSheet("background-color: #d9534f; color: white; font-weight: bold;")
-
-        # Initialize online variables
-        self.online_timer.start(100)  # 10Hz plot refresh
-
-        # Setup Audio callback
-        def rt_callback(indata, outdata, frames, time_info, status):
-            if not self.module.is_running:
-                outdata.fill(0)
-                return
-
-            # Predistortion signal generator: 1 kHz tone at -10 dBFS
-            t_block = (np.arange(frames) + self.module.audio_engine.stream.stream.time) / self.module.engine.sample_rate
-            u_block = 0.316 * np.sin(2 * np.pi * 1000.0 * t_block)
-
-            # Apply Predistortion (LICFF)
-            # Limit online iterations to 1-2 for real-time CPU safety
-            iterative = self.chk_iterative.isChecked()
-            iters = min(self.spin_iters.value(), 2)
-            clip_limit = self.spin_clip.value()
-
-            u_comp = self.module.engine.compensate(
-                u_block,
-                iterative=iterative,
-                iters=iters,
-                clip_limit=clip_limit
-            )
-
-            # Write compensated signal to output
-            out_ch = outdata.shape[1]
-            for ch in range(out_ch):
-                outdata[:, ch] = u_comp
-
-            # Buffer for live display (mono analysis)
-            self.rt_buffer = indata[:, 0]
-
-        self.module.callback_id = self.module.audio_engine.register_callback(rt_callback)
-
-    def stop_online(self):
-        self.module.is_running = False
-        self.btn_toggle_online.setText(tr("Start Online Predistortion"))
-        self.btn_toggle_online.setStyleSheet("background-color: #5cb85c; color: white; font-weight: bold;")
-        self.online_timer.stop()
-
-        if self.module.callback_id is not None:
-            self.module.audio_engine.unregister_callback(self.module.callback_id)
-            self.module.callback_id = None
-
-    def update_online_plot(self):
-        if len(self.rt_buffer) == 0:
-            return
-
-        data = self.rt_buffer.copy()
-        N_fft = len(data)
-        if N_fft < 128:
-            return
-
-        # Perform FFT and plot
-        win = windows.hann(N_fft)
-        data_win = data * win
-        fft_vals = np.fft.rfft(data_win)
-        mag_db = 20 * np.log10(np.abs(fft_vals) / (N_fft / 2.0) + 1e-12)
-
-        freqs = np.fft.rfftfreq(N_fft, d=1.0 / self.module.engine.sample_rate)
-
-        freqs_plot = freqs.copy()
-        freqs_plot[0] = freqs_plot[1] / 10.0
-        log_freqs = np.log10(freqs_plot)
-
-        self.curve_online.setData(log_freqs, mag_db)
-        self.plot_online.setXRange(np.log10(20), np.log10(self.module.engine.sample_rate / 2), padding=0.02)
-
     def closeEvent(self, event):
-        self.stop_online()
         if self.worker and self.worker.isRunning():
             self.worker.cancel()
             self.worker.wait()
