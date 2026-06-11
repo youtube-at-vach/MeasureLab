@@ -54,7 +54,6 @@ def test_licff_engine_basic(dummy_model_data):
     assert engine.N == 1024
 
     # Test forward_model with zeros should output zeros (modulo scaling/q0)
-    x = np.zeros(1024)
     # In our dummy, h1[0]=1.0 -> q1[0]=1.0 -> G_scale=1.0. All others are 0.
     # The linear output should be identity (with bandpass filter applied)
     # Generate 1 kHz sine inside passband

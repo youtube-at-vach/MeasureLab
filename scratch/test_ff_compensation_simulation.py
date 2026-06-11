@@ -1,7 +1,6 @@
 import os
 import json
 import numpy as np
-from scipy.signal import windows
 
 def run_simulation(condition_name, json_path):
     if not os.path.exists(json_path):
@@ -13,8 +12,6 @@ def run_simulation(condition_name, json_path):
     metadata = raw_data["metadata"]
     sample_rate = metadata["sample_rate"]
     kernels = {k: np.array(v) for k, v in raw_data["time_domain"]["kernels"].items()}
-    time_ms = np.array(raw_data["time_domain"]["time_ms"])
-
     h1 = kernels["h1"]
     h2 = kernels["h2"]
     h3 = kernels["h3"]
@@ -22,9 +19,9 @@ def run_simulation(condition_name, json_path):
     h5 = kernels["h5"]
     N = len(h1)
 
-    print(f"\n======================================================================")
+    print("\n======================================================================")
     print(f" Simulating Feedforward for: {condition_name.upper()} CONDITION")
-    print(f"======================================================================")
+    print("======================================================================")
     print(f"Sample Rate: {sample_rate} Hz")
     print(f"Kernel Length: {N} samples ({N / sample_rate * 1000.0:.2f} ms)")
 

@@ -32,7 +32,7 @@ class LICFFEngine:
         self.f_max = f_max
         self.sample_rate = 48000
         self.N = 0
-        
+
         # Buffer caching for arbitrary block sizes
         self._cached_M = 0
         self._cached_Q_fft = []

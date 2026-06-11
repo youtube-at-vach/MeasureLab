@@ -124,16 +124,16 @@ def run_ila_training(condition_name, json_path):
         return np.clip(x_pred, -1.05, 1.05)
 
     print(f"\n--- Training ILA Inverse Model ({num_iterations} iterations, {num_realizations} realizations/amp) ---")
-    
+
     # Set step size (relaxation factor) to stabilize convergence under strong non-linearities
     alpha = 0.20 if condition_name == "hard" else 0.60
-    
+
     for iter_idx in range(num_iterations):
         X_train_fft = []
         Y_powers_fft = {p: [] for p in [1, 2, 3, 4, 5]}
 
         for amp in training_amps:
-            for r in range(num_realizations):
+            for _ in range(num_realizations):
                 # Generate white noise
                 raw_noise = rng.normal(0.0, 1.0, N)
                 # Band-limit to passband
@@ -175,7 +175,7 @@ def run_ila_training(condition_name, json_path):
 
             # WLS weights (use uniform weights to focus on large amplitude distortions rather than low-amp noise)
             weights = []
-            for amp in training_amps:
+            for _ in training_amps:
                 for _ in range(num_realizations):
                     weights.append(1.0)
             weights = np.array(weights)
@@ -217,7 +217,7 @@ def run_ila_training(condition_name, json_path):
             w_time = np.fft.irfft(W_filters[p_idx], n=N)
             w_time_win = w_time * win
             W_filters[p_idx] = np.fft.rfft(w_time_win)
-            
+
         print(f"  Iteration {iter_idx + 1}/{num_iterations} completed.")
 
     # 6. Post-Optimization Verification and Validation on Untrained Signals
