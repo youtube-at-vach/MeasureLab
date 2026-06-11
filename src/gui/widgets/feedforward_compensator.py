@@ -17,6 +17,7 @@ import pyqtgraph as pg
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 logger = logging.getLogger(__name__)
 
@@ -473,7 +474,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Results Label
         self.lbl_sim_results = QLabel(tr("Run simulation to see results."))
-        self.lbl_sim_results.setStyleSheet("font-family: monospace; font-size: 11px; background-color: #2b2b2b; color: #a9b7c6; padding: 8px; border-radius: 4px;")
+        self.lbl_sim_results.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; background-color: #2b2b2b; color: #a9b7c6; padding: 8px; border-radius: 4px;")
         sim_layout.addWidget(self.lbl_sim_results)
 
         # Plot Widget
