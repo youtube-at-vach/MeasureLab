@@ -25,7 +25,7 @@ Adjust the "strength" and "detail" of the correction filter based on the loaded 
 * **FIR Taps**: The resolution of the filter. A larger value (e.g., `8192` or `16384`) allows for more precise correction, but requires more computational power. Usually, around `8192` is recommended.
 * **Smoothing**: Smooths out fine jaggedness (peaks and dips) in the characteristics. This helps prevent the sound from becoming unnatural due to overly sharp corrections.
 
-### ☕ Coffee Break: Why is Max Gain (Regularization) necessary?
+## ☕ Coffee Break: Why is Max Gain (Regularization) necessary?
 
 If there is a frequency band that the speaker cannot output, the inverse filter will increase the gain infinitely to make it flat, which causes noise to be excessively amplified.
 To prevent this, **Max Gain** limits the maximum correction value (e.g., 10dB) to prevent noise generation caused by extreme amplification.

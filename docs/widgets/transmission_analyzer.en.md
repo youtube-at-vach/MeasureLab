@@ -14,18 +14,9 @@ It supports both digital and analog signal paths—such as USB cables, Bluetooth
 
 ## ☕ Coffee Break: Why Measure Audio with "PRBS"?
 
-When we think of audio measurements, we usually picture a pure sine wave ("beep") or a frequency sweep.
-
-However, complex digital issues like "occasional single-bit flips" or "silent DSP intervention (volume scaling/EQ) breaking bit-perfect transmission" are extremely difficult to detect using simple sine waves.
-
-This is where **PRBS (Pseudo-Random Binary Sequence)** comes into play. While it sounds like pure white noise to the ear, it is a highly deterministic digital sequence where every subsequent value is mathematically "completely predictable."
-
-By transmitting this sequence and comparing the received signal with the "expected sequence," we can simultaneously and precisely evaluate:
-
-1. **Digital Integrity**: Confirming if the transmission is 100% "bit-perfect" (free from even a single sample/bit deviation) and exactly which bits are flipping.
-2. **Analog Characteristics**: Extracting non-linear distortion, phase deviation, physical delay down to the millisecond, and sub-sample clock jitter.
-
-This allow us to diagnose the entire transmission path instantly and with extreme precision!
+While audio is typically measured with sine waves, complex digital issues like "occasional single-bit flips" are extremely difficult to detect with them.
+PRBS (Pseudo-Random Binary Sequence) sounds like white noise, but it's a special deterministic signal where every subsequent value is perfectly predictable.
+By comparing the received signal with the expected sequence, we can instantly and precisely evaluate digital integrity (bit-perfectness) and minute analog distortions.
 
 ## Key Features & Measurement Modes
 
