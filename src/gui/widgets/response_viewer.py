@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QFileDialog,
 )
 
+from scipy.signal import savgol_filter
+
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.hammerstein_model import load_hammerstein_model, get_active_model, has_active_model
@@ -126,11 +128,20 @@ class ResponseViewerWidget(QWidget):
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
 
+        self.smooth_combo = QComboBox()
+        self.smooth_combo.addItem(tr("None"), "None")
+        self.smooth_combo.addItem(tr("Low Smoothing"), "Light")
+        self.smooth_combo.addItem(tr("Medium Smoothing"), "Medium")
+        self.smooth_combo.addItem(tr("High Smoothing"), "Heavy")
+        self.smooth_combo.setCurrentIndex(1)  # Default: Light
+        self.smooth_combo.currentIndexChanged.connect(self.refresh_plots_with_smoothing)
+
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
         info_layout.addRow(tr("Status:"), self.lbl_status)
         info_layout.addRow(tr("Rate:"), self.lbl_sr)
         info_layout.addRow(tr("Order:"), self.lbl_order)
+        info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
         source_form.addLayout(info_layout)
         sidebar_layout.addWidget(source_group)
 
@@ -712,12 +723,41 @@ class ResponseViewerWidget(QWidget):
         # Update reference parameters and dependent plots/simulation
         self.update_reference_params(self.ref_f0, self.ref_amp)
 
+    def refresh_plots_with_smoothing(self):
+        if self.cached_freqs is not None:
+            self.update_bode_plots()
+
+    def apply_smoothing(self, y_data, level):
+        if level == "None" or len(y_data) < 15:
+            return y_data
+
+        window_size = 15
+        if level == "Medium":
+            window_size = 35
+        elif level == "Heavy":
+            window_size = 75
+
+        window_size = min(window_size, len(y_data) - 1)
+        if window_size % 2 == 0:
+            window_size -= 1
+
+        if window_size < 5:
+            return y_data
+
+        try:
+            return savgol_filter(y_data, window_size, polyorder=2)
+        except Exception as e:
+            logger.warning("Smoothing failed: %s", e)
+            return y_data
+
     def update_bode_plots(self):
         if self.cached_freqs is None:
             return
 
         self.mag_plot.clear()
         self.phase_plot.clear()
+
+        smooth_level = self.smooth_combo.currentData()
 
         colors = {
             "h1": (75, 163, 227),  # fundamental
@@ -737,8 +777,8 @@ class ResponseViewerWidget(QWidget):
 
         for key in ["h1", "h2", "h3", "h4", "h5"]:
             if key in self.cached_mags:
-                mag_smoothed = self.cached_mags[key]
-                phase_smoothed = self.cached_phases[key]
+                mag_smoothed = self.apply_smoothing(self.cached_mags[key], smooth_level)
+                phase_smoothed = self.apply_smoothing(self.cached_phases[key], smooth_level)
 
                 # Magnitude
                 pen_mag = pg.mkPen(color=colors[key], width=2)
