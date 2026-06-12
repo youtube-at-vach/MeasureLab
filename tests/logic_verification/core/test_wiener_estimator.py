@@ -6,6 +6,7 @@ from src.core.wiener_estimator_core import (
     identify_bla_ls,
     identify_tsa_svd,
     SimulatedWienerSystem,
+    stabilize_poly,
 )
 
 def test_signal_generation():
@@ -83,3 +84,25 @@ def test_identify_tsa_svd():
     assert len(c) == 4
     assert fit_ratio > 0.90
     assert len(y_pred) == len(y)
+
+def test_stabilize_poly():
+    # 1. Already stable poly (roots inside unit circle)
+    # roots at 0.5 and -0.5 -> poly = (z-0.5)(z+0.5) = z^2 - 0.25 -> [1.0, 0.0, -0.25]
+    a_stable = np.array([1.0, 0.0, -0.25])
+    a_out = stabilize_poly(a_stable)
+    assert np.allclose(a_stable, a_out)
+
+    # 2. Unstable poly (roots outside unit circle)
+    # roots at 2.0 and -2.0 -> poly = (z-2.0)(z+2.0) = z^2 - 4.0 -> [1.0, 0.0, -4.0]
+    # stabilized roots should be 0.5 and -0.5 -> [1.0, 0.0, -0.25]
+    a_unstable = np.array([1.0, 0.0, -4.0])
+    a_stabilized = stabilize_poly(a_unstable)
+    assert np.allclose(a_stabilized, np.array([1.0, 0.0, -0.25]))
+
+    # 3. Unstable poly with root on unit circle (root at 1.0)
+    # roots at 1.0 -> poly = z - 1.0 -> [1.0, -1.0]
+    # stabilized root should be pushed slightly inside (0.99) -> [1.0, -0.99]
+    a_marginal = np.array([1.0, -1.0])
+    a_stabilized_marginal = stabilize_poly(a_marginal)
+    assert np.allclose(a_stabilized_marginal, np.array([1.0, -0.99]))
+

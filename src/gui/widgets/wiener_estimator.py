@@ -720,11 +720,16 @@ class WienerEstimatorWidget(QWidget):
 
         # Update Fit label
         fit_r2 = results["fit_ratio"]
-        self.fit_label.setText(tr("Model Fit R²: {0:.4f}").format(fit_r2))
+        if np.isfinite(fit_r2):
+            self.fit_label.setText(tr("Model Fit R²: {0:.4f}").format(fit_r2))
+        else:
+            self.fit_label.setText(tr("Model Fit R²: N/A"))
 
         # 4. Update Input Distribution
         self.dist_plot.clear()
-        # Compute histogram
-        counts, bins = np.histogram(x_est, bins=50)
-        # Plot step-like histogram
-        self.dist_plot.plot(bins, counts, stepMode="center", fillLevel=0, fillOutline=True, brush=(0, 255, 255, 80))
+        x_est_finite = x_est[np.isfinite(x_est)] if x_est is not None else np.array([])
+        if len(x_est_finite) > 0:
+            # Compute histogram
+            counts, bins = np.histogram(x_est_finite, bins=50)
+            # Plot step-like histogram
+            self.dist_plot.plot(bins, counts, stepMode="center", fillLevel=0, fillOutline=True, brush=(0, 255, 255, 80))

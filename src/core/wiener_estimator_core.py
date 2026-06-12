@@ -4,6 +4,40 @@ from scipy.signal import lfilter, butter, sosfilt
 
 logger = logging.getLogger(__name__)
 
+def stabilize_poly(a: np.ndarray) -> np.ndarray:
+    """
+    Stabilize a polynomial by reflecting roots outside the unit circle inside.
+    This ensures that G(z) = B(z)/A(z) is stable.
+    """
+    if len(a) <= 1:
+        return a.copy()
+
+    # Get roots
+    roots = np.roots(a)
+
+    # Reflect roots outside the unit circle inside
+    reflected = False
+    for i, r in enumerate(roots):
+        r_abs = np.abs(r)
+        if r_abs >= 1.0:
+            if r_abs == 1.0:
+                roots[i] = r * 0.99
+            else:
+                roots[i] = 1.0 / np.conj(r)
+            reflected = True
+
+    if reflected:
+        # Reconstruct polynomial
+        a_new = np.poly(roots)
+        if np.isrealobj(a):
+            a_new = a_new.real
+        # Ensure it is normalized with a_new[0] = 1.0
+        if np.abs(a_new[0]) > 1e-12:
+            a_new = a_new / a_new[0]
+        return a_new
+    return a.copy()
+
+
 def generate_schroeder_multisine(sample_rate: float, duration: float, start_freq: float, end_freq: float, amplitude_db: float) -> np.ndarray:
     """
     Generates a low crest-factor multisine signal using Schroeder phase formula.
@@ -122,6 +156,9 @@ def identify_bussgang(u: np.ndarray, y: np.ndarray, P: int = 4, lti_len: int = 6
     else:
         fit_ratio = 0.0
 
+    x_est = np.nan_to_num(x_est, nan=0.0, posinf=0.0, neginf=0.0)
+    y_pred = np.nan_to_num(y_pred, nan=0.0, posinf=0.0, neginf=0.0)
+
     return g, c, fit_ratio, y_pred, x_est
 
 def identify_bla_ls(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 4, nb: int = 4):
@@ -165,6 +202,8 @@ def identify_bla_ls(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 4, nb: i
         a_coefs = np.array([1.0, 0.0])
         b_coefs = np.array([1.0, 0.0])
 
+    a_coefs = stabilize_poly(a_coefs)
+
     # Scale G(z) norm to avoid scaling ambiguity (e.g. norm of impulse response = 1)
     # Simulate impulse response to normalize
     impulse = np.zeros(128)
@@ -195,6 +234,9 @@ def identify_bla_ls(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 4, nb: i
         fit_ratio = 1.0 - (np.var(y - y_pred) / var_total)
     else:
         fit_ratio = 0.0
+
+    x_est = np.nan_to_num(x_est, nan=0.0, posinf=0.0, neginf=0.0)
+    y_pred = np.nan_to_num(y_pred, nan=0.0, posinf=0.0, neginf=0.0)
 
     return b_coefs, a_coefs, c, fit_ratio, y_pred, x_est
 
@@ -317,6 +359,8 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
         a_final = a_est
         b_final = b_est
 
+    a_final = stabilize_poly(a_final)
+
     # Scale G(z) norm to avoid scaling ambiguity
     impulse = np.zeros(128)
     impulse[0] = 1.0
@@ -346,6 +390,9 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
         fit_ratio = 1.0 - (np.var(y - y_pred) / var_total)
     else:
         fit_ratio = 0.0
+
+    x_est = np.nan_to_num(x_est, nan=0.0, posinf=0.0, neginf=0.0)
+    y_pred = np.nan_to_num(y_pred, nan=0.0, posinf=0.0, neginf=0.0)
 
     return b_final, a_final, d_coeffs, fit_ratio, y_pred, x_est
 
