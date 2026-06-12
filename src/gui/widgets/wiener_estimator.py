@@ -153,10 +153,10 @@ class WienerEstimator(MeasurementModule):
 
         # Model parameters
         self.poly_order = 4
-        self.lti_len = 64
+        self.lti_len = 128
         self.na_poles = 2
         self.nb_zeros = 2
-        self.method = "Best Linear Approximation (BLA)"
+        self.method = "Bussgang Theorem"
 
         self.latency_sec = 0.0
 
@@ -392,9 +392,17 @@ class WienerEstimatorWidget(QWidget):
         stim_layout.setSpacing(4)
 
         self.stim_type_combo = QComboBox()
-        self.stim_type_combo.addItems([tr("Schroeder Multisine"), tr("Gaussian Noise")])
-        self.stim_type_combo.currentTextChanged.connect(self.on_stim_type_changed)
+        stim_types = [
+            (tr("Schroeder Multisine"), "Schroeder Multisine"),
+            (tr("Gaussian Noise"), "Gaussian Noise"),
+        ]
+        for label, data in stim_types:
+            self.stim_type_combo.addItem(label, data)
+        self.stim_type_combo.currentIndexChanged.connect(self.on_stim_type_changed)
         stim_layout.addRow(tr("Signal Type:"), self.stim_type_combo)
+        idx_stim = self.stim_type_combo.findData(self.module.stimulus_type)
+        if idx_stim >= 0:
+            self.stim_type_combo.setCurrentIndex(idx_stim)
 
         self.amp_spin = QDoubleSpinBox()
         self.amp_spin.setRange(-60.0, 0.0)
@@ -425,13 +433,18 @@ class WienerEstimatorWidget(QWidget):
         model_layout.setSpacing(4)
 
         self.method_combo = QComboBox()
-        self.method_combo.addItems([
-            tr("Best Linear Approximation (BLA)"), 
-            tr("Two-Stage Method (SVD)"),
-            tr("Bussgang Theorem")
-        ])
-        self.method_combo.currentTextChanged.connect(self.on_method_changed)
+        methods = [
+            (tr("Bussgang Theorem"), "Bussgang Theorem"),
+            (tr("Best Linear Approximation (BLA)"), "Best Linear Approximation (BLA)"),
+            (tr("Two-Stage Method (SVD)"), "Two-Stage Method (SVD)"),
+        ]
+        for label, data in methods:
+            self.method_combo.addItem(label, data)
+        self.method_combo.currentIndexChanged.connect(self.on_method_changed)
         model_layout.addRow(tr("Algorithm:"), self.method_combo)
+        idx_method = self.method_combo.findData(self.module.method)
+        if idx_method >= 0:
+            self.method_combo.setCurrentIndex(idx_method)
 
         self.poly_spin = QSpinBox()
         self.poly_spin.setRange(1, 10)
@@ -583,11 +596,11 @@ class WienerEstimatorWidget(QWidget):
         dist_layout.addWidget(self.dist_plot)
         self.tabs.addTab(self.dist_tab, tr("Input Distribution"))
 
-        self.on_stim_type_changed(self.stim_type_combo.currentText())
-        self.on_method_changed(self.method_combo.currentText())
+        self.on_stim_type_changed()
+        self.on_method_changed()
 
-    def on_stim_type_changed(self, text):
-        self.module.stimulus_type = text
+    def on_stim_type_changed(self, _index=None):
+        self.module.stimulus_type = self.stim_type_combo.currentData()
 
     def on_amp_changed(self, value):
         self.module.amplitude_db = value
@@ -598,10 +611,10 @@ class WienerEstimatorWidget(QWidget):
     def on_avg_changed(self, value):
         self.module.averages = value
 
-    def on_method_changed(self, text):
-        self.module.method = text
+    def on_method_changed(self, _index=None):
+        self.module.method = self.method_combo.currentData()
         # Dynamically toggle settings visibility
-        is_bussgang = text == tr("Bussgang Theorem")
+        is_bussgang = self.module.method == "Bussgang Theorem"
         self.lti_len_spin.setEnabled(is_bussgang)
         self.na_spin.setEnabled(not is_bussgang)
         self.nb_spin.setEnabled(not is_bussgang)
