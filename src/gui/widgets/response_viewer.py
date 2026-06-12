@@ -627,6 +627,10 @@ class ResponseViewerWidget(QWidget):
         else:
             self.load_cache_btn.setToolTip(tr("No active measurement found. Run sweep first."))
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_cache_button_state()
+
     def load_live_cache(self):
         data = get_active_model()
         if data is not None:

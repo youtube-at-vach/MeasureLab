@@ -784,6 +784,14 @@ class NonlinearAnalyzerWidget(QWidget):
         self.cal_btn.setEnabled(self.module.input_mode in {"L", "R"})
         self.stop_btn.setEnabled(False)
 
+        # Notify MainWindow that the active model has changed, so other modules (e.g. ResponseViewer) can update their cache buttons
+        from PyQt6.QtWidgets import QApplication
+        from src.gui.main_window import MainWindow
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, MainWindow):
+                widget.notify_active_model_changed()
+                break
+
     def on_latency_result(self, val):
         self.latency_label.setText(f"{val * 1000:.2f} ms")
         QMessageBox.information(
