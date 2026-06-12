@@ -287,6 +287,29 @@ class ResponseViewerWidget(QWidget):
         self.ref_group.setEnabled(False)
         sidebar_layout.addWidget(self.ref_group)
 
+        # 4. Wiener Settings Group
+        self.wiener_group = QGroupBox(tr("Wiener Settings"))
+        wiener_form = QVBoxLayout(self.wiener_group)
+        wiener_form.setSpacing(6)
+
+        wiener_form.addWidget(QLabel(tr("Equivalent Gaussian RMS Level (σ)")))
+        self.wiener_sigma_spin = QDoubleSpinBox()
+        self.wiener_sigma_spin.setRange(-100.0, 10.0)
+        self.wiener_sigma_spin.setSuffix(" dBFS")
+        self.wiener_sigma_spin.setValue(-6.0)
+        self.wiener_sigma_spin.setSingleStep(1.0)
+        self.wiener_sigma_spin.valueChanged.connect(self._on_wiener_sigma_spin_changed)
+        wiener_form.addWidget(self.wiener_sigma_spin)
+
+        self.wiener_sigma_slider = QSlider(Qt.Orientation.Horizontal)
+        self.wiener_sigma_slider.setRange(-1000, 100)
+        self.wiener_sigma_slider.setValue(-60)
+        self.wiener_sigma_slider.valueChanged.connect(self._on_wiener_sigma_slider_changed)
+        wiener_form.addWidget(self.wiener_sigma_slider)
+
+        self.wiener_group.setEnabled(False)
+        sidebar_layout.addWidget(self.wiener_group)
+
         sidebar_layout.addStretch()
         sidebar_content.setLayout(sidebar_layout)
         sidebar_scroll.setWidget(sidebar_content)
@@ -593,6 +616,44 @@ class ResponseViewerWidget(QWidget):
 
         self.tabs.addTab(self.tab_io_comp, tr("I/O & Comp"))
 
+        # Tab 7: Wiener Comparison
+        self.tab_wiener = QWidget()
+        wiener_layout = QVBoxLayout(self.tab_wiener)
+        wiener_layout.setContentsMargins(2, 2, 2, 2)
+        wiener_layout.setSpacing(5)
+
+        # Top controls
+        ctrl_layout = QHBoxLayout()
+        ctrl_layout.addWidget(QLabel(tr("Display Type:")))
+        self.wiener_disp_combo = QComboBox()
+        self.wiener_disp_combo.addItem(tr("Bode Magnitude"), "mag")
+        self.wiener_disp_combo.addItem(tr("Bode Phase"), "phase")
+        self.wiener_disp_combo.addItem(tr("Time Domain Kernels"), "kernel")
+        self.wiener_disp_combo.currentIndexChanged.connect(self.update_wiener_plots)
+        ctrl_layout.addWidget(self.wiener_disp_combo)
+        ctrl_layout.addStretch()
+        wiener_layout.addLayout(ctrl_layout)
+
+        # Plots
+        plots_layout = QHBoxLayout()
+        self.wiener_ham_plot = pg.PlotWidget(title=tr("Hammerstein Representation"))
+        self.wiener_wie_plot = pg.PlotWidget(title=tr("Wiener Representation"))
+
+        self.wiener_ham_plot.showGrid(True, True, alpha=0.3)
+        self.wiener_wie_plot.showGrid(True, True, alpha=0.3)
+        self.wiener_ham_plot.addLegend(offset=(10, 10))
+        self.wiener_wie_plot.addLegend(offset=(10, 10))
+
+        # Axis links
+        self.wiener_wie_plot.setXLink(self.wiener_ham_plot)
+        self.wiener_wie_plot.setYLink(self.wiener_ham_plot)
+
+        plots_layout.addWidget(self.wiener_ham_plot, stretch=1)
+        plots_layout.addWidget(self.wiener_wie_plot, stretch=1)
+        wiener_layout.addLayout(plots_layout)
+
+        self.tabs.addTab(self.tab_wiener, tr("Wiener Comparison"))
+
         main_layout.addWidget(self.tabs, stretch=1)
 
     def on_noise_floor_toggled(self, checked):
@@ -714,11 +775,21 @@ class ResponseViewerWidget(QWidget):
         # Enable Groups
         self.map_group.setEnabled(True)
         self.ref_group.setEnabled(True)
+        self.wiener_group.setEnabled(True)
+
+        # Sync Wiener level default with ref_amp
+        self.wiener_sigma_spin.blockSignals(True)
+        self.wiener_sigma_slider.blockSignals(True)
+        self.wiener_sigma_spin.setValue(self.ref_amp)
+        self.wiener_sigma_slider.setValue(int(self.ref_amp * 10))
+        self.wiener_sigma_spin.blockSignals(False)
+        self.wiener_sigma_slider.blockSignals(False)
 
         # Redraw Bode, Kernels, Maps
         self.update_bode_plots()
         self.update_kernel_plots()
         self.update_2d_map()
+        self.update_wiener_plots()
 
         # Update reference parameters and dependent plots/simulation
         self.update_reference_params(self.ref_f0, self.ref_amp)
@@ -1728,3 +1799,148 @@ class ResponseViewerWidget(QWidget):
         f_str = f"{f0 / 1000.0:.2f} kHz" if f0 >= 1000.0 else f"{f0:.1f} Hz"
         self.io_plot.setTitle(tr("Input-Output Curve (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
         self.comp_plot.setTitle(tr("Gain Compression (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
+
+    def _on_wiener_sigma_slider_changed(self, val):
+        self.wiener_sigma_spin.blockSignals(True)
+        self.wiener_sigma_spin.setValue(val / 10.0)
+        self.wiener_sigma_spin.blockSignals(False)
+        self.update_wiener_plots()
+
+    def _on_wiener_sigma_spin_changed(self, val):
+        self.wiener_sigma_slider.blockSignals(True)
+        self.wiener_sigma_slider.setValue(int(val * 10))
+        self.wiener_sigma_slider.blockSignals(False)
+        self.update_wiener_plots()
+
+    def update_wiener_plots(self):
+        if self.cached_freqs is None:
+            return
+
+        disp_type = self.wiener_disp_combo.currentData()
+        sigma_dbfs = self.wiener_sigma_spin.value()
+        sigma_linear = 10 ** (sigma_dbfs / 20.0)
+        sigma_sq = sigma_linear ** 2
+
+        self.wiener_ham_plot.clear()
+        self.wiener_wie_plot.clear()
+
+        colors = {
+            1: (75, 163, 227),
+            2: (43, 140, 86),
+            3: (230, 140, 20),
+            4: (200, 50, 160),
+            5: (217, 83, 79),
+        }
+
+        labels_ham = {
+            1: tr("Kernel h1"),
+            2: tr("Kernel h2"),
+            3: tr("Kernel h3"),
+            4: tr("Kernel h4"),
+            5: tr("Kernel h5"),
+        }
+
+        labels_wie = {
+            1: tr("Wiener Kernel w1"),
+            2: tr("Wiener Kernel w2"),
+            3: tr("Wiener Kernel w3"),
+            4: tr("Wiener Kernel w4"),
+            5: tr("Wiener Kernel w5"),
+        }
+
+        smooth_level = self.smooth_combo.currentData()
+
+        if disp_type == "mag" or disp_type == "phase":
+            self.wiener_ham_plot.setLogMode(True, False)
+            self.wiener_wie_plot.setLogMode(True, False)
+
+            # Reconstruct complex responses
+            H_complex = {}
+            for p in range(1, 6):
+                h_key = f"h{p}"
+                if h_key in self.cached_mags and h_key in self.cached_phases:
+                    mag_linear = 10 ** (self.cached_mags[h_key] / 20.0)
+                    phase_rad = np.radians(self.cached_phases[h_key])
+                    H_complex[p] = mag_linear * np.exp(1j * phase_rad)
+                else:
+                    H_complex[p] = np.zeros_like(self.cached_freqs, dtype=np.complex128)
+
+            # Wiener conversion (Hermite orthogonalization)
+            W_complex = {}
+            W_complex[1] = H_complex[1] + 3 * sigma_sq * H_complex[3] + 15 * (sigma_sq**2) * H_complex[5]
+            W_complex[2] = H_complex[2] + 6 * sigma_sq * H_complex[4]
+            W_complex[3] = H_complex[3] + 10 * sigma_sq * H_complex[5]
+            W_complex[4] = H_complex[4]
+            W_complex[5] = H_complex[5]
+
+            if disp_type == "mag":
+                self.wiener_ham_plot.setLabel("left", tr("Gain"), units="dB")
+                self.wiener_wie_plot.setLabel("left", tr("Gain"), units="dB")
+                self.wiener_ham_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+                self.wiener_wie_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+
+                for p in range(1, 6):
+                    h_mag_db = 20 * np.log10(np.abs(H_complex[p]) + 1e-12)
+                    h_mag_smoothed = self.apply_smoothing(h_mag_db, smooth_level)
+                    pen_ham = pg.mkPen(color=colors[p], width=1.8)
+                    self.wiener_ham_plot.plot(self.cached_freqs, h_mag_smoothed, pen=pen_ham, name=labels_ham[p])
+
+                    w_mag_db = 20 * np.log10(np.abs(W_complex[p]) + 1e-12)
+                    w_mag_smoothed = self.apply_smoothing(w_mag_db, smooth_level)
+                    pen_wie = pg.mkPen(color=colors[p], width=1.8)
+                    self.wiener_wie_plot.plot(self.cached_freqs, w_mag_smoothed, pen=pen_wie, name=labels_wie[p])
+            else:
+                self.wiener_ham_plot.setLabel("left", tr("Phase"), units="deg")
+                self.wiener_wie_plot.setLabel("left", tr("Phase"), units="deg")
+                self.wiener_ham_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+                self.wiener_wie_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+
+                for p in range(1, 6):
+                    h_phase_deg = np.degrees(np.angle(H_complex[p]))
+                    h_phase_smoothed = self.apply_smoothing(h_phase_deg, smooth_level)
+                    pen_ham = pg.mkPen(color=colors[p], width=1.5)
+                    self.wiener_ham_plot.plot(self.cached_freqs, h_phase_smoothed, pen=pen_ham, name=labels_ham[p])
+
+                    w_phase_deg = np.degrees(np.angle(W_complex[p]))
+                    w_phase_smoothed = self.apply_smoothing(w_phase_deg, smooth_level)
+                    pen_wie = pg.mkPen(color=colors[p], width=1.5)
+                    self.wiener_wie_plot.plot(self.cached_freqs, w_phase_smoothed, pen=pen_wie, name=labels_wie[p])
+        else:
+            self.wiener_ham_plot.setLogMode(False, False)
+            self.wiener_wie_plot.setLogMode(False, False)
+
+            self.wiener_ham_plot.setLabel("left", tr("Normalized Amplitude"))
+            self.wiener_wie_plot.setLabel("left", tr("Normalized Amplitude"))
+            self.wiener_ham_plot.setLabel("bottom", tr("Time"), units="ms")
+            self.wiener_wie_plot.setLabel("bottom", tr("Time"), units="ms")
+
+            self.wiener_ham_plot.setXRange(-5.0, 35.0)
+            self.wiener_wie_plot.setXRange(-5.0, 35.0)
+
+            ref_max = np.max(np.abs(self.cached_kernels[0])) if len(self.cached_kernels) > 0 else 1.0
+            if ref_max < 1e-12:
+                ref_max = 1.0
+
+            h_time = {}
+            for p in range(1, 6):
+                idx = p - 1
+                if self.cached_kernels is not None and idx < len(self.cached_kernels):
+                    h_time[p] = self.cached_kernels[idx]
+                else:
+                    h_time[p] = np.zeros_like(self.cached_kernels[0]) if self.cached_kernels is not None else np.array([])
+
+            w_time = {}
+            w_time[1] = h_time[1] + 3 * sigma_sq * h_time[3] + 15 * (sigma_sq**2) * h_time[5]
+            w_time[2] = h_time[2] + 6 * sigma_sq * h_time[4]
+            w_time[3] = h_time[3] + 10 * sigma_sq * h_time[5]
+            w_time[4] = h_time[4]
+            w_time[5] = h_time[5]
+
+            for p in range(1, 6):
+                norm_h = h_time[p] / ref_max
+                pen_ham = pg.mkPen(color=colors[p], width=1.8)
+                self.wiener_ham_plot.plot(self.cached_time_ms, norm_h, pen=pen_ham, name=labels_ham[p])
+
+                norm_w = w_time[p] / ref_max
+                pen_wie = pg.mkPen(color=colors[p], width=1.8)
+                self.wiener_wie_plot.plot(self.cached_time_ms, norm_w, pen=pen_wie, name=labels_wie[p])
