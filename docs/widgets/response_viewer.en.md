@@ -16,8 +16,8 @@ The Response Viewer is an advanced visualization tool for analyzing linear and h
 ### 2D Map
 
 * **Map Type**: Selects the type of map to display.
-  * **THD Map**: Map of Total Harmonic Distortion relative to the fundamental.
-  * **Distortion Map (nth)**: Individual maps for the 2nd to 5th harmonic components.
+    * **THD Map**: Map of Total Harmonic Distortion relative to the fundamental.
+    * **Distortion Map (nth)**: Individual maps for the 2nd to 5th harmonic components.
 * **Harmonic Unit**: Selects whether to display levels in relative (dBr) or absolute (dBFS) units.
 * **Resolution**: Adjusts the calculation resolution of the map (Overview, Standard, Detail).
 * **Min/Max Level**: Sets the display range for the input amplitude (Y-axis).

@@ -16,8 +16,8 @@ Response Viewerは、[Nonlinear Analyzer](nonlinear_analyzer.md) によって抽
 ### 2Dマップ (2D Map)
 
 * **Map Type**: 表示するマップの種類を選択します。
-  * **THD Map**: 基本波に対する全高調波歪みのマップ。
-  * **Distortion Map (nth)**: 2次〜5次の各高調波成分の個別マップ。
+    * **THD Map**: 基本波に対する全高調波歪みのマップ。
+    * **Distortion Map (nth)**: 2次〜5次の各高調波成分の個別マップ。
 * **Harmonic Unit**: マップ上のレベルの単位を相対値（dBr）または絶対値（dBFS）から選択します。
 * **Resolution**: マップの計算解像度を調整します（Overview, Standard, Detail）。
 * **Min/Max Level**: 入力振幅（Y軸）の表示範囲を設定します。
