@@ -1085,6 +1085,7 @@
     "Mode:": "模式：",
     "Model Architecture": "Model Architecture",
     "Model Fit R²: -": "Model Fit R²: -",
+    "Model Fit R²: N/A": "Model Fit R²: N/A",
     "Model Fit R²: {0:.4f}": "Model Fit R²: {0:.4f}",
     "Model Loaded": "模型已加载",
     "Model Prediction": "Model Prediction",

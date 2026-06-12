@@ -1085,6 +1085,7 @@
     "Mode:": "Modus:",
     "Model Architecture": "Model Architecture",
     "Model Fit R²: -": "Model Fit R²: -",
+    "Model Fit R²: N/A": "Model Fit R²: N/A",
     "Model Fit R²: {0:.4f}": "Model Fit R²: {0:.4f}",
     "Model Loaded": "Modell geladen",
     "Model Prediction": "Model Prediction",

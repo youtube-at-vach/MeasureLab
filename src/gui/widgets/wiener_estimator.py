@@ -389,7 +389,7 @@ class WienerEstimatorWidget(QWidget):
         # Left panel: Scroll area for controls
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setFixedWidth(280)
+        scroll_area.setFixedWidth(320)
 
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)

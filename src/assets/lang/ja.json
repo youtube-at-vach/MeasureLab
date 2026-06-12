@@ -1085,6 +1085,7 @@
     "Mode:": "モード:",
     "Model Architecture": "モデル構造",
     "Model Fit R²: -": "モデル適合度 R²: -",
+    "Model Fit R²: N/A": "モデル適合度 R²: N/A",
     "Model Fit R²: {0:.4f}": "モデル適合度 R²: {0:.4f}",
     "Model Loaded": "モデル読み込み完了",
     "Model Prediction": "モデル予測値",
