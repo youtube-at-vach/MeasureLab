@@ -155,7 +155,7 @@ class NonlinearResponseAnalyzer(MeasurementModule):
         self.averages = 1
 
         # Model parameters
-        self.poly_order = 4
+        self.poly_order = 3
         self.lti_len = 128
         self.na_poles = 2
         self.nb_zeros = 2
