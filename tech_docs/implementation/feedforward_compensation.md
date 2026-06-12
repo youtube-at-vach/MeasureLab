@@ -27,7 +27,6 @@ $$ q_3 = h_3 - 1.25 h_5 $$
 $$ q_4 = h_4 $$
 $$ q_5 = h_5 $$
 
-
 Here:
 
 * $q_1(t)$ represents the **true linear dynamic response** (impulse response).

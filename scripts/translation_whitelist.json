@@ -1,5 +1,6 @@
 {
     "exact_keys": [
+        " s",
         " (CLIP!)",
         " (OK - Optimal)",
         " (Too Low)",
@@ -272,7 +273,8 @@
         "❌ HIGH DISTORTION",
         "THD (dBr)",
         "THD (dBFS)",
-        "Fundamental (dBr)"
+        "Fundamental (dBr)",
+        "nb (Zeros):"
     ],
     "regex_patterns": [
         "^[0-9\\s/:\\-().%+,^x&*~_#<>▲✔❌\\[\\]]*$",
