@@ -2,11 +2,9 @@ import os
 import json
 import logging
 import numpy as np
-import time
 import soundfile as sf
-from scipy.signal import windows
 
-from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox,
     QFormLayout, QDoubleSpinBox, QSpinBox, QFileDialog, QMessageBox,
@@ -33,6 +31,7 @@ class LICFFEngine:
         self.f_max = f_max
         self.sample_rate = 48000
         self.N = 0
+        self.q0_sum = 0.0
 
         # Buffer caching for arbitrary block sizes
         self._cached_M = 0
@@ -64,13 +63,14 @@ class LICFFEngine:
         h5 = kernels["h5"]
         self.N = len(h1)
 
-        # Chebyshev to Power Series Conversion
-        self.q0 = -h2 + h4
-        self.q1 = h1 - 3 * h3 + 5 * h5
-        self.q2 = 2 * h2 - 8 * h4
-        self.q3 = 4 * h3 - 20 * h5
-        self.q4 = 8 * h4
-        self.q5 = 16 * h5
+        # Chebyshev to Power Series Conversion (Corrected for H_p = 2^{p-1} * h_p scaling)
+        self.q0 = -0.5 * h2 + 0.125 * h4
+        self.q1 = h1 - 0.75 * h3 + 0.3125 * h5
+        self.q2 = h2 - h4
+        self.q3 = h3 - 1.25 * h5
+        self.q4 = h4
+        self.q5 = h5
+
 
         # Scale based on linear peak response
         Q1_fft_raw = np.fft.rfft(self.q1)
@@ -84,6 +84,8 @@ class LICFFEngine:
         self.q3_sc = self.q3 / self.G_scale
         self.q4_sc = self.q4 / self.G_scale
         self.q5_sc = self.q5 / self.G_scale
+
+        self.q0_sum = np.sum(self.q0_sc)
 
         # Reset cache
         self.clear_cache()
@@ -158,28 +160,88 @@ class LICFFEngine:
         Xp = Xp_up[: N_x // 2 + 1] / L
         return Xp
 
-    def forward_model(self, x):
+    def nonlinear_spectrum(self, x, L=8):
         M = len(x)
+        X = np.fft.rfft(x)
+        N_up = L * M
+        X_up = np.zeros(N_up // 2 + 1, dtype=complex)
+        X_up[: len(X)] = X * L
+        x_up = np.fft.irfft(X_up, n=N_up)
+
+        x_up2 = x_up * x_up
+        x_up3 = x_up2 * x_up
+        x_up4 = x_up3 * x_up
+        x_up5 = x_up4 * x_up
+
+        Y_fft = np.zeros_like(X, dtype=complex)
         Q_fft, _, _ = self._prepare_buffers_for_length(M)
-        y = np.zeros_like(x)
-        y += np.fft.irfft(np.fft.rfft(np.ones_like(x)) * Q_fft[0], n=M)
-        for p in range(1, 6):
-            y += np.fft.irfft(self.power_oversampled_fft(x, p) * Q_fft[p], n=M)
-        return y
+
+        # p=2
+        Xp_up = np.fft.rfft(x_up2)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
+
+        # p=3
+        Xp_up = np.fft.rfft(x_up3)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
+
+        # p=4
+        Xp_up = np.fft.rfft(x_up4)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
+
+        # p=5
+        Xp_up = np.fft.rfft(x_up5)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
+
+        Y_fft[-1] = np.real(Y_fft[-1])
+        return Y_fft
+
+    def forward_model(self, x, L=8):
+        M = len(x)
+        X = np.fft.rfft(x)
+        N_up = L * M
+        X_up = np.zeros(N_up // 2 + 1, dtype=complex)
+        X_up[: len(X)] = X * L
+        x_up = np.fft.irfft(X_up, n=N_up)
+
+        x_up2 = x_up * x_up
+        x_up3 = x_up2 * x_up
+        x_up4 = x_up3 * x_up
+        x_up5 = x_up4 * x_up
+
+        Y_fft = np.zeros_like(X, dtype=complex)
+        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+
+        # p=1
+        Y_fft += X * Q_fft[1]
+
+        # p=2
+        Xp_up = np.fft.rfft(x_up2)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
+
+        # p=3
+        Xp_up = np.fft.rfft(x_up3)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
+
+        # p=4
+        Xp_up = np.fft.rfft(x_up4)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
+
+        # p=5
+        Xp_up = np.fft.rfft(x_up5)
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
+
+        Y_fft[-1] = np.real(Y_fft[-1])
+        return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
     def linear_output(self, x):
         M = len(x)
         Q_fft, _, _ = self._prepare_buffers_for_length(M)
-        return np.fft.irfft(self.power_oversampled_fft(x, 1) * Q_fft[1], n=M)
+        return np.fft.irfft(np.fft.rfft(x) * Q_fft[1], n=M)
 
     def nonlinear_output(self, x):
         M = len(x)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
-        y = np.zeros_like(x)
-        y += np.fft.irfft(np.fft.rfft(np.ones_like(x)) * Q_fft[0], n=M)
-        for p in range(2, 6):
-            y += np.fft.irfft(self.power_oversampled_fft(x, p) * Q_fft[p], n=M)
-        return y
+        Y_fft = self.nonlinear_spectrum(x)
+        return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
     def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5):
         M = len(u_in)
@@ -194,10 +256,9 @@ class LICFFEngine:
 
         u_comp = u_in_filt.copy()
         for _ in range(iters):
-            y_nl = self.nonlinear_output(u_comp)
-            Y_nl = np.fft.rfft(y_nl)
+            Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter
-            y_comp_nl = np.fft.irfft(Y_nl * F_inv, n=M)
+            y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
             u_comp = u_in_filt - y_comp_nl
             u_comp = np.clip(u_comp, -clip_limit, clip_limit)
 
@@ -275,7 +336,7 @@ class OfflineFFCompWorker(QThread):
                 out_data = np.zeros((M, channels))
 
                 # Processing Block Configuration
-                block_size = 32768
+                block_size = 65536
                 overlap = 4096
                 num_blocks = (M + block_size - 1) // block_size
 
@@ -331,9 +392,7 @@ class OfflineFFCompWorker(QThread):
 class FeedforwardCompensator(MeasurementModule):
     def __init__(self, audio_engine):
         self.audio_engine = audio_engine
-        self.is_running = False
         self.engine = None
-        self.callback_id = None
 
     @property
     def name(self) -> str:
@@ -438,7 +497,6 @@ class FeedforwardCompensatorWidget(QWidget):
         self.tabs = QTabWidget()
         self.setup_simulation_tab()
         self.setup_offline_tab()
-        self.setup_online_tab()
         main_layout.addWidget(self.tabs, stretch=1)
 
         self.chk_iterative.toggled.connect(self.spin_iters.setEnabled)
@@ -524,32 +582,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.tabs.addTab(off_tab, tr("Offline Processing"))
 
-    def setup_online_tab(self):
-        on_tab = QWidget()
-        on_layout = QVBoxLayout(on_tab)
-
-        ctrl_layout = QHBoxLayout()
-        self.btn_toggle_online = QPushButton(tr("Start Online Predistortion"))
-        self.btn_toggle_online.clicked.connect(self.toggle_online)
-        self.btn_toggle_online.setEnabled(False)
-        ctrl_layout.addWidget(self.btn_toggle_online)
-        on_layout.addLayout(ctrl_layout)
-
-        self.plot_online = pg.PlotWidget(title=tr("Real-time Input Spectrum"))
-        self.plot_online.setLabel("bottom", "Frequency", units="Hz")
-        self.plot_online.setLabel("left", "Magnitude", units="dBFS")
-        self.plot_online.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_online.setYRange(-120, 0)
-        self.curve_online = self.plot_online.plot(pen="c")
-        on_layout.addWidget(self.plot_online)
-
-        self.tabs.addTab(on_tab, tr("Online Processing"))
-
-        # Timer for live plot updates
-        self.online_timer = QTimer()
-        self.online_timer.timeout.connect(self.update_online_plot)
-        self.rt_buffer = np.zeros(0)
-        self.rt_lock = time.monotonic()
+    # Online processing features removed to optimize for standard PC performance.
 
     def load_model(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Load Forward Model"), "", tr("JSON Files (*.json)"))
@@ -571,7 +604,6 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_n.setText(f"{self.module.engine.N}")
 
                 self.btn_run_sim.setEnabled(True)
-                self.btn_toggle_online.setEnabled(True)
                 self._update_process_btn()
 
                 QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
@@ -579,7 +611,6 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_status.setText(tr("Error Loading Model"))
                 self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
                 self.btn_run_sim.setEnabled(False)
-                self.btn_toggle_online.setEnabled(False)
                 self._update_process_btn()
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load model file: {0}").format(e))
 
@@ -619,7 +650,8 @@ class FeedforwardCompensatorWidget(QWidget):
             noise_fft = np.exp(1j * rng.uniform(0, 2 * np.pi, N // 2 + 1))
             noise_fft[0] = 0.0
             noise_fft[-1] = 0.0
-            u = np.fft.irfft(noise_fft * engine.bp_filter, n=N)
+            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            u = np.fft.irfft(noise_fft * bp_filter, n=N)
             u = u / np.max(np.abs(u)) * amp
             f_test = 1000.0
 
@@ -763,92 +795,7 @@ class FeedforwardCompensatorWidget(QWidget):
         else:
             QMessageBox.critical(self, tr("Error"), msg)
 
-    def toggle_online(self):
-        if self.module.is_running:
-            self.stop_online()
-        else:
-            self.start_online()
-
-    def start_online(self):
-        if not self.module.engine:
-            return
-
-        self.module.is_running = True
-        self.btn_toggle_online.setText(tr("Stop Online Predistortion"))
-        self.btn_toggle_online.setStyleSheet("background-color: #d9534f; color: white; font-weight: bold;")
-
-        # Initialize online variables
-        self.online_timer.start(100)  # 10Hz plot refresh
-
-        # Setup Audio callback
-        def rt_callback(indata, outdata, frames, time_info, status):
-            if not self.module.is_running:
-                outdata.fill(0)
-                return
-
-            # Predistortion signal generator: 1 kHz tone at -10 dBFS
-            t_block = (np.arange(frames) + self.module.audio_engine.stream.stream.time) / self.module.engine.sample_rate
-            u_block = 0.316 * np.sin(2 * np.pi * 1000.0 * t_block)
-
-            # Apply Predistortion (LICFF)
-            # Limit online iterations to 1-2 for real-time CPU safety
-            iterative = self.chk_iterative.isChecked()
-            iters = min(self.spin_iters.value(), 2)
-            clip_limit = self.spin_clip.value()
-
-            u_comp = self.module.engine.compensate(
-                u_block,
-                iterative=iterative,
-                iters=iters,
-                clip_limit=clip_limit
-            )
-
-            # Write compensated signal to output
-            out_ch = outdata.shape[1]
-            for ch in range(out_ch):
-                outdata[:, ch] = u_comp
-
-            # Buffer for live display (mono analysis)
-            self.rt_buffer = indata[:, 0]
-
-        self.module.callback_id = self.module.audio_engine.register_callback(rt_callback)
-
-    def stop_online(self):
-        self.module.is_running = False
-        self.btn_toggle_online.setText(tr("Start Online Predistortion"))
-        self.btn_toggle_online.setStyleSheet("background-color: #5cb85c; color: white; font-weight: bold;")
-        self.online_timer.stop()
-
-        if self.module.callback_id is not None:
-            self.module.audio_engine.unregister_callback(self.module.callback_id)
-            self.module.callback_id = None
-
-    def update_online_plot(self):
-        if len(self.rt_buffer) == 0:
-            return
-
-        data = self.rt_buffer.copy()
-        N_fft = len(data)
-        if N_fft < 128:
-            return
-
-        # Perform FFT and plot
-        win = windows.hann(N_fft)
-        data_win = data * win
-        fft_vals = np.fft.rfft(data_win)
-        mag_db = 20 * np.log10(np.abs(fft_vals) / (N_fft / 2.0) + 1e-12)
-
-        freqs = np.fft.rfftfreq(N_fft, d=1.0 / self.module.engine.sample_rate)
-
-        freqs_plot = freqs.copy()
-        freqs_plot[0] = freqs_plot[1] / 10.0
-        log_freqs = np.log10(freqs_plot)
-
-        self.curve_online.setData(log_freqs, mag_db)
-        self.plot_online.setXRange(np.log10(20), np.log10(self.module.engine.sample_rate / 2), padding=0.02)
-
     def closeEvent(self, event):
-        self.stop_online()
         if self.worker and self.worker.isRunning():
             self.worker.cancel()
             self.worker.wait()

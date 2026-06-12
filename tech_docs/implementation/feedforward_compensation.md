@@ -20,12 +20,12 @@ The system is characterized using a **Parallel Hammerstein model** with kernels 
 
 The measured kernels $h_1 \dots h_5$ represent coefficients of Chebyshev polynomials (which are orthogonal under sinusoidal excitation). To facilitate arbitrary signal simulation, we convert these Chebyshev coefficients into standard power series kernels $q_0 \dots q_5$:
 
-$$ q_0 = -h_2 + h_4 $$
-$$ q_1 = h_1 - 3h_3 + 5h_5 $$
-$$ q_2 = 2h_2 - 8h_4 $$
-$$ q_3 = 4h_3 - 20h_5 $$
-$$ q_4 = 8h_4 $$
-$$ q_5 = 16h_5 $$
+$$ q_0 = -0.5 h_2 + 0.125 h_4 $$
+$$ q_1 = h_1 - 0.75 h_3 + 0.3125 h_5 $$
+$$ q_2 = h_2 - h_4 $$
+$$ q_3 = h_3 - 1.25 h_5 $$
+$$ q_4 = h_4 $$
+$$ q_5 = h_5 $$
 
 Here:
 

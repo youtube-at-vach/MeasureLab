@@ -43,6 +43,7 @@ if False:
     from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer
     from src.gui.widgets.response_viewer import ResponseViewer
     from src.gui.widgets.feedforward_compensator import FeedforwardCompensator
+    from src.gui.widgets.nonlinear_response_analyzer import NonlinearResponseAnalyzer
     from src.gui.widgets.settings import SettingsWidget
     from src.gui.widgets.welcome import WelcomeWidget
 
@@ -84,6 +85,7 @@ if False:
         NonlinearAnalyzer,
         ResponseViewer,
         FeedforwardCompensator,
+        NonlinearResponseAnalyzer,
         SettingsWidget,
         WelcomeWidget,
     ]

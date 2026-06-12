@@ -4,7 +4,9 @@ import numpy as np
 import soundfile as sf
 from unittest.mock import MagicMock
 
-from src.gui.widgets.feedforward_compensator import OfflineFFCompWorker, LICFFEngine
+from src.gui.widgets.feedforward_compensator import (
+    OfflineFFCompWorker, LICFFEngine, FeedforwardCompensator, FeedforwardCompensatorWidget
+)
 
 
 @pytest.fixture
@@ -93,3 +95,76 @@ def test_offline_ff_worker(qtbot, temp_wav_files, dummy_model_data):
     out_data, out_sr = sf.read(output_path)
     assert out_sr == sr
     assert len(out_data) == int(sr * 0.5)
+
+
+def test_chebyshev_to_power_series_scaling(temp_wav_files):
+    _, _, sr = temp_wav_files
+    N = 8
+    # Non-trivial test kernels:
+    # H1 = h1, H2 = 2*h2, H3 = 4*h3, H4 = 8*h4, H5 = 16*h5
+    # Let's define:
+    # h1 = [1.0], h2 = [0.1], h3 = [0.08], h4 = [0.04], h5 = [0.02]
+    # Under corrected formulas:
+    # q0 = -0.5 * h2 + 0.125 * h4 = -0.05 + 0.005 = -0.045
+    # q1 = h1 - 0.75 * h3 + 0.3125 * h5 = 1.0 - 0.06 + 0.00625 = 0.94625
+    # q2 = h2 - h4 = 0.1 - 0.04 = 0.06
+    # q3 = h3 - 1.25 * h5 = 0.08 - 0.025 = 0.055
+    # q4 = h4 = 0.04
+    # q5 = h5 = 0.02
+
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    h2 = np.zeros(N)
+    h2[0] = 0.1
+    h3 = np.zeros(N)
+    h3[0] = 0.08
+    h4 = np.zeros(N)
+    h4[0] = 0.04
+    h5 = np.zeros(N)
+    h5[0] = 0.02
+
+    model_data = {
+        "metadata": {
+            "sample_rate": sr,
+        },
+        "time_domain": {
+            "kernels": {
+                "h1": h1.tolist(),
+                "h2": h2.tolist(),
+                "h3": h3.tolist(),
+                "h4": h4.tolist(),
+                "h5": h5.tolist(),
+            }
+        }
+    }
+
+    engine = LICFFEngine(model_data, f_min=60, f_max=17000)
+
+    # Check first element of each computed power-series kernel
+    assert np.allclose(engine.q0[0], -0.045)
+    assert np.allclose(engine.q1[0], 0.94625)
+    assert np.allclose(engine.q2[0], 0.06)
+    assert np.allclose(engine.q3[0], 0.055)
+    assert np.allclose(engine.q4[0], 0.04)
+    assert np.allclose(engine.q5[0], 0.02)
+
+
+def test_feedforward_compensator_widget_simulation(qtbot, dummy_model_data):
+    audio_engine = MagicMock()
+    module = FeedforwardCompensator(audio_engine)
+    widget = FeedforwardCompensatorWidget(module)
+    qtbot.addWidget(widget)
+
+    # Initially run_simulation should do nothing if no engine is loaded
+    widget.run_simulation()
+
+    # Load model
+    widget.module.engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+    widget.model_data = dummy_model_data
+
+    # Test all signal types in the combobox to ensure they compile/run without exception
+    for i in range(widget.combo_signal.count()):
+        widget.combo_signal.setCurrentIndex(i)
+        widget.run_simulation()
+
+
