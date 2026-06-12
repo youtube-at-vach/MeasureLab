@@ -303,8 +303,19 @@ class WienerEstimator(MeasurementModule):
         u_meas = u_stim
         y_meas = averaged_rec[:, self.input_channel_idx]
 
-        # Adjust y_meas with measured latency
-        latency_samples = int(np.round(self.latency_sec * sample_rate))
+        # Calculate exact lag dynamically via cross-correlation to eliminate starting jitter
+        correlation = fftconvolve(y_meas, np.flip(u_stim), mode="full")
+        lag = np.argmax(np.abs(correlation)) - len(u_stim) + 1
+
+        # Fallback to nominal latency if correlation result is invalid
+        nominal_samples = int(np.round(self.latency_sec * sample_rate))
+        if lag < 0 or lag >= len(y_meas):
+            logger.warning(f"Correlation-based alignment failed (lag={lag}). Falling back to nominal latency.")
+            latency_samples = nominal_samples
+        else:
+            latency_samples = lag
+            logger.info(f"Dynamic alignment applied: lag = {latency_samples} samples ({latency_samples/sample_rate*1000:.2f} ms)")
+
         if latency_samples > 0 and latency_samples < len(y_meas):
             y_meas = y_meas[latency_samples : latency_samples + len(u_meas)]
             # Match lengths
