@@ -42,6 +42,7 @@ MODULE_TRANSMISSION_ANALYZER = "Transmission Analyzer"
 MODULE_NONLINEAR_ANALYZER = "Nonlinear Analyzer"
 MODULE_RESPONSE_VIEWER = "Response Viewer"
 MODULE_FEEDFORWARD_COMPENSATOR = "Feedforward Compensator"
+MODULE_WIENER_ESTIMATOR = "Wiener Estimator"
 
 # List of all module keys in the order they should appear in the UI
 ALL_MODULE_KEYS = [
@@ -85,6 +86,10 @@ ALL_MODULE_KEYS = [
     MODULE_NONLINEAR_ANALYZER,
     MODULE_RESPONSE_VIEWER,
     MODULE_FEEDFORWARD_COMPENSATOR,
+    MODULE_WIENER_ESTIMATOR,
 ]
 
-EXPERIMENTAL_MODULE_KEYS: list[str] = []
+EXPERIMENTAL_MODULE_KEYS: list[str] = [
+    MODULE_WIENER_ESTIMATOR,
+]
+
