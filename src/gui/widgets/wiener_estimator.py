@@ -295,7 +295,7 @@ class WienerEstimator(MeasurementModule):
             else:
                 accum_rec += rec
 
-            worker.signals.progress.emit(int(100 * (avg + 1) / self.averages))
+            self.signals.progress.emit(int(100 * (avg + 1) / self.averages))
 
         averaged_rec = accum_rec / self.averages
 
@@ -703,4 +703,4 @@ class WienerEstimatorWidget(QWidget):
         # Compute histogram
         counts, bins = np.histogram(x_est, bins=50)
         # Plot step-like histogram
-        self.dist_plot.plot(bins, np.concatenate([counts, [0]]), stepMode="center", fillLevel=0, fillOutline=True, brush=(0, 255, 255, 80))
+        self.dist_plot.plot(bins, counts, stepMode="center", fillLevel=0, fillOutline=True, brush=(0, 255, 255, 80))
