@@ -63,9 +63,9 @@ def test_wiener_ui_components_exist(qtbot, mock_audio_engine):
     assert widget.wiener_group is not None
     assert widget.wiener_sigma_spin is not None
     assert widget.wiener_sigma_slider is not None
-    assert widget.wiener_disp_combo is not None
-    assert widget.wiener_ham_plot is not None
-    assert widget.wiener_wie_plot is not None
+    assert widget.wie_mag_plot is not None
+    assert widget.wie_phase_plot is not None
+    assert widget.wie_energy_plot is not None
 
     # Check tab title
     tab_count = widget.tabs.count()
@@ -113,16 +113,14 @@ def test_wiener_conversion_math(qtbot, mock_audio_engine, dummy_model_data):
     expected_w4 = h_time[4]
     expected_w5 = h_time[5]
 
-    # Switch to Time Domain Kernels in combo
-    widget.wiener_disp_combo.setCurrentIndex(widget.wiener_disp_combo.findData("kernel"))
-    
     # We can test the slider sync changes update the spin box
     widget.wiener_sigma_slider.setValue(-200) # -20 dBFS
     assert widget.wiener_sigma_spin.value() == -20.0
 
-    # Ensure Magnitude and Phase plots update without errors
-    widget.wiener_disp_combo.setCurrentIndex(widget.wiener_disp_combo.findData("mag"))
+    # Ensure plots update without errors
     widget.update_wiener_plots()
 
-    widget.wiener_disp_combo.setCurrentIndex(widget.wiener_disp_combo.findData("phase"))
-    widget.update_wiener_plots()
+    # Verify that energy items were added to wie_energy_plot
+    import pyqtgraph as pg
+    bar_items = [item for item in widget.wie_energy_plot.items() if isinstance(item, pg.BarGraphItem)]
+    assert len(bar_items) == 5
