@@ -44,6 +44,7 @@ class LICFFEngine:
     def parse_model(self):
         metadata = self.model_data.get("metadata", {})
         self.sample_rate = metadata.get("sample_rate", 48000)
+        self.g_ref = metadata.get("g_ref", 1.0)
 
         time_domain = self.model_data.get("time_domain", {})
         kernels_dict = time_domain.get("kernels", {})
@@ -197,6 +198,7 @@ class LICFFEngine:
 
     def forward_model(self, x, L=8):
         M = len(x)
+        g_ref = getattr(self, "g_ref", 1.0)
         X = np.fft.rfft(x)
         N_up = L * M
         X_up = np.zeros(N_up // 2 + 1, dtype=complex)
@@ -231,7 +233,8 @@ class LICFFEngine:
         Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
 
         Y_fft[-1] = np.real(Y_fft[-1])
-        return np.fft.irfft(Y_fft, n=M) + self.q0_sum
+        y_model = np.fft.irfft(Y_fft, n=M) + self.q0_sum
+        return g_ref * y_model
 
     def linear_output(self, x):
         M = len(x)
@@ -254,14 +257,15 @@ class LICFFEngine:
         if not iterative:
             iters = 1
 
-        u_comp = u_in_filt.copy()
+        g_ref = getattr(self, "g_ref", 1.0)
+        u_comp = u_in_filt / g_ref
         for _ in range(iters):
             Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter
             y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
-            u_comp = u_in_filt - y_comp_nl
-            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+            u_comp = (u_in_filt - y_comp_nl) / g_ref
 
+        u_comp = np.clip(u_comp, -clip_limit, clip_limit)
         return u_comp
 
 

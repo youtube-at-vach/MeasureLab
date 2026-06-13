@@ -443,6 +443,11 @@ class NonlinearAnalyzer(MeasurementModule):
             from src.core.hammerstein_model import set_active_model
             ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
 
+            if self.input_mode in {"XFER", "XFER_REV"} and len(responses_ref) > 0 and len(amplitudes) > 0:
+                g_ref = float(np.max(np.abs(responses_ref[-1])) / amplitudes[-1])
+            else:
+                g_ref = 1.0
+
             cache_data = {
                 "metadata": {
                     "module": self.name,
@@ -454,6 +459,7 @@ class NonlinearAnalyzer(MeasurementModule):
                     "input_mode": self.input_mode,
                     "latency_sec": self.latency_sec,
                     "ref_max": float(ref_max),
+                    "g_ref": g_ref,
                     "P": len(separated_kernels_data),
                     "noise_floor_dbfs": noise_floor_dbfs,
                 },

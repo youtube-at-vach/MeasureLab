@@ -417,12 +417,12 @@ def process_amplitude_responses(
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer_all = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)
                 H_xfer_all = np.nan_to_num(H_xfer_all)
-            
+
             # Apply gate_pre delay to restore the peak position at t=0 (gate_pre) for display and test alignment
             delay_samples = gate_pre
             phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
             H_xfer_all = H_xfer_all * phase_shift_gate
-            
+
             valid_H = H_xfer_all[mask]
             h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
         else:

@@ -1871,11 +1871,11 @@ class ResponseViewerWidget(QWidget):
 
         # Wiener conversion (Hermite orthogonalization in frequency domain)
         W_complex = {}
-        W_complex[1] = H_complex[1] + 3 * sigma_sq * H_complex[3] + 15 * (sigma_sq**2) * H_complex[5]
-        W_complex[2] = H_complex[2] + 6 * sigma_sq * H_complex[4]
-        W_complex[3] = H_complex[3] + 10 * sigma_sq * H_complex[5]
-        W_complex[4] = H_complex[4]
-        W_complex[5] = H_complex[5]
+        W_complex[1] = sigma_linear * (H_complex[1] + 3 * sigma_sq * H_complex[3] + 15 * (sigma_sq**2) * H_complex[5])
+        W_complex[2] = (sigma_linear**2) * (H_complex[2] + 6 * sigma_sq * H_complex[4])
+        W_complex[3] = (sigma_linear**3) * (H_complex[3] + 10 * sigma_sq * H_complex[5])
+        W_complex[4] = (sigma_linear**4) * H_complex[4]
+        W_complex[5] = (sigma_linear**5) * H_complex[5]
 
         # Draw Bode plots
         for p in range(1, 6):
@@ -1902,11 +1902,11 @@ class ResponseViewerWidget(QWidget):
 
         w_time = {}
         if len(h_time[1]) > 0:
-            w_time[1] = h_time[1] + 3 * sigma_sq * h_time[3] + 15 * (sigma_sq**2) * h_time[5]
-            w_time[2] = h_time[2] + 6 * sigma_sq * h_time[4]
-            w_time[3] = h_time[3] + 10 * sigma_sq * h_time[5]
-            w_time[4] = h_time[4]
-            w_time[5] = h_time[5]
+            w_time[1] = sigma_linear * (h_time[1] + 3 * sigma_sq * h_time[3] + 15 * (sigma_sq**2) * h_time[5])
+            w_time[2] = (sigma_linear**2) * (h_time[2] + 6 * sigma_sq * h_time[4])
+            w_time[3] = (sigma_linear**3) * (h_time[3] + 10 * sigma_sq * h_time[5])
+            w_time[4] = (sigma_linear**4) * h_time[4]
+            w_time[5] = (sigma_linear**5) * h_time[5]
         else:
             for p in range(1, 6):
                 w_time[p] = np.array([])

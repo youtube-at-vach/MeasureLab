@@ -281,7 +281,7 @@ def main():
 
     # Create & configure AudioEngine
     audio_engine = AudioEngine()
-    
+
     # Overwrite configuration for reliable macOS hardware streaming (float32 fallback and disable strict CoreAudio conversion checks)
     logger.info("Enforcing float32 precision and disabling CoreAudio conversion constraints for hardware stability...")
     audio_engine.set_audio_engine_64bit(False)
@@ -299,7 +299,7 @@ def main():
             if "uac-232" in d["name"].lower() and d["max_input_channels"] >= 2 and d["max_output_channels"] >= 2:
                 uac_idx = idx
                 break
-        
+
         if uac_idx is not None:
             logger.info(f"Setting AudioEngine devices directly to ZOOM UAC-232 index: {uac_idx}")
             audio_engine.set_devices(uac_idx, uac_idx)
@@ -390,7 +390,7 @@ def main():
                     + 0.06 * (simulated_meas**5)
                 )
                 simulated_meas = np.concatenate([simulated_meas, np.zeros(padding_samples)])
-                clean_ref = np.concatenate([amp * sss, np.zeros(padding_samples)])
+                clean_ref = 0.8 * np.concatenate([amp * sss, np.zeros(padding_samples)])
 
                 # Mock channels
                 rec_data = np.zeros((len(simulated_meas), 2), dtype=np.float32)
@@ -454,6 +454,11 @@ def main():
     logger.info(f"Saving measured Hammerstein model to {temp_json_path}...")
 
     ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
+    if args.input_mode in {"XFER", "XFER_REV"} and len(responses_ref) > 0 and len(amplitudes) > 0:
+        g_ref = float(np.max(np.abs(responses_ref[-1])) / amplitudes[-1])
+    else:
+        g_ref = 1.0
+
     model_data = {
         "metadata": {
             "module": "Verify Distortion Script",
@@ -465,6 +470,7 @@ def main():
             "input_mode": args.input_mode,
             "latency_sec": 0.0,
             "ref_max": float(ref_max),
+            "g_ref": g_ref,
             "P": len(separated_kernels_data),
         },
         "time_domain": {
@@ -566,7 +572,7 @@ def main():
         # Add tiny delay and gain scale
         y_uncomp_delay = np.roll(y_uncomp, 10) * 0.95
         rec_uncomp[:, args.meas_ch] = y_uncomp_delay
-        rec_uncomp[:, args.ref_ch] = np.roll(u_in, 10) # Clean reference
+        rec_uncomp[:, args.ref_ch] = np.roll(u_in, 10) * 0.8 # Clean reference
 
         # Pattern B (Compensated): loopback system processes u_comp
         # Y_comp = f(u_comp) should result in harmonics being canceled out, leaving mostly pure tone
@@ -574,7 +580,7 @@ def main():
         y_comp_raw = engine.forward_model(u_comp) # Ideally cancels harmonics in virtual simulation!
         y_comp_delay = np.roll(y_comp_raw, 10) * 0.95
         rec_comp[:, args.meas_ch] = y_comp_delay
-        rec_comp[:, args.ref_ch] = np.roll(u_in, 10) # Clean reference
+        rec_comp[:, args.ref_ch] = np.roll(u_in, 10) * 0.8 # Clean reference
 
     # =========================================================================
     # STEP 4: Lock-In Analysis of Rec Signals
