@@ -392,10 +392,7 @@ def process_amplitude_responses(
     )
     H_ref_list[0] = np.sum(g1_prime_r * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
-    # Reconstruct Time-Domain Kernels by IFFT for display
-    h_kernels_meas = np.array([fft_manager.irfft(H_meas_list[p], n=N_kernel) for p in range(P)])
-    np.array([fft_manager.irfft(H_ref_list[p], n=N_kernel) for p in range(P)])
-
+    # Reconstruct Time-Domain Kernels by IFFT after calibration
     freqs = fft_manager.rfftfreq(N_kernel, d=1 / sample_rate)
     mask = (freqs >= start_freq) & (freqs <= end_freq)
     valid_freqs = freqs[mask]
@@ -409,22 +406,32 @@ def process_amplitude_responses(
     peak_ref_power = np.max(ref_power)
     alpha = peak_ref_power * 1e-3 + 1e-12
 
+    h_kernels_calibrated = []
+
     for p in range(P):
         h_key = f"h{p + 1}"
         H_meas_p = H_meas_list[p]
 
         if input_mode in {"XFER", "XFER_REV"}:
-            # Relative 2-Channel XFER transfer function calibration
+            # Relative 2-Channel XFER transfer function calibration over all frequency bins
             with np.errstate(divide="ignore", invalid="ignore"):
-                H_xfer = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)
-                H_xfer = np.nan_to_num(H_xfer)
-            valid_H = H_xfer[mask]
+                H_xfer_all = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)
+                H_xfer_all = np.nan_to_num(H_xfer_all)
+            
+            # Apply gate_pre delay to restore the peak position at t=0 (gate_pre) for display and test alignment
+            delay_samples = gate_pre
+            phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
+            H_xfer_all = H_xfer_all * phase_shift_gate
+            
+            valid_H = H_xfer_all[mask]
+            h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
         else:
-            # Single Channel Mode: 1-channel response with latency correction
-            valid_H = H_meas_p[mask]
+            # Single Channel Mode: Apply latency correction to all frequency bins
             delay_samples = int(latency_sec * sample_rate)
-            phase_correction = 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
-            valid_H = valid_H * np.exp(1j * phase_correction)
+            phase_correction_all = 2 * np.pi * freqs * (delay_samples / sample_rate)
+            H_corr_all = H_meas_p * np.exp(1j * phase_correction_all)
+            valid_H = H_corr_all[mask]
+            h_kernels_calibrated.append(fft_manager.irfft(H_corr_all, n=N_kernel))
 
         # Compute Gain (dB) and Phase (degrees)
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
@@ -455,8 +462,8 @@ def process_amplitude_responses(
     t_indices = np.arange(0, N_kernel)
     time_ms = (t_indices - gate_pre) / sample_rate * 1000.0
 
-    # Return RAW, absolute-scaled kernels (important for distortion reproduction)
-    separated_kernels_data = [h_kernels_meas[p] for p in range(P)]
+    # Return calibrated, delay-compensated kernels (essential for preventing time-domain wrap-around artifacts)
+    separated_kernels_data = h_kernels_calibrated
 
     return (
         valid_freqs,

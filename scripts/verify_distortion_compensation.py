@@ -281,20 +281,39 @@ def main():
 
     # Create & configure AudioEngine
     audio_engine = AudioEngine()
+    
+    # Overwrite configuration for reliable macOS hardware streaming (float32 fallback and disable strict CoreAudio conversion checks)
+    logger.info("Enforcing float32 precision and disabling CoreAudio conversion constraints for hardware stability...")
+    audio_engine.set_audio_engine_64bit(False)
+    audio_engine.set_coreaudio_fail_if_conversion_required(False)
+
     if args.virtual or audio_config.get("offline_mode", False):
         logger.info("Setting AudioEngine to OFFLINE (VIRTUAL) mode.")
         audio_engine.set_offline_mode(True)
     else:
-        # Load real devices
-        in_device = audio_config.get("input_device")
-        out_device = audio_config.get("output_device")
-        logger.info(f"Configured devices: Input='{in_device}', Output='{out_device}'")
-        audio_engine.set_devices(in_device, out_device)
+        # Resolve exact physical ZOOM UAC-232 device index for PortAudio streaming stability
+        import sounddevice as sd
+        devices = sd.query_devices()
+        uac_idx = None
+        for idx, d in enumerate(devices):
+            if "uac-232" in d["name"].lower() and d["max_input_channels"] >= 2 and d["max_output_channels"] >= 2:
+                uac_idx = idx
+                break
+        
+        if uac_idx is not None:
+            logger.info(f"Setting AudioEngine devices directly to ZOOM UAC-232 index: {uac_idx}")
+            audio_engine.set_devices(uac_idx, uac_idx)
+        else:
+            in_device = audio_config.get("input_device")
+            out_device = audio_config.get("output_device")
+            logger.info(f"Configured devices (fallback): Input='{in_device}', Output='{out_device}'")
+            audio_engine.set_devices(in_device, out_device)
         audio_engine.set_offline_mode(False)
 
     sample_rate = audio_config.get("sample_rate", 48000)
     audio_engine.set_sample_rate(sample_rate)
-    audio_engine.set_block_size(audio_config.get("block_size", 1024))
+    logger.info("Enforcing block size to 1024 for macOS hardware streaming stability...")
+    audio_engine.set_block_size(1024)
     audio_engine.set_channel_mode(
         audio_config.get("input_channels", "stereo"),
         audio_config.get("output_channels", "stereo")
