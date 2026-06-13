@@ -63,13 +63,13 @@ class LICFFEngine:
         h5 = kernels["h5"]
         self.N = len(h1)
 
-        # Chebyshev to Power Series Conversion (Corrected for H_p = 2^{p-1} * h_p scaling)
-        self.q0 = -0.5 * h2 + 0.125 * h4
-        self.q1 = h1 - 0.75 * h3 + 0.3125 * h5
-        self.q2 = h2 - h4
-        self.q3 = h3 - 1.25 * h5
-        self.q4 = h4
-        self.q5 = h5
+        # Direct mapping (measured kernels from the analyzer are already power-series coefficients)
+        self.q0 = np.zeros_like(h1)
+        self.q1 = h1.copy()
+        self.q2 = h2.copy()
+        self.q3 = h3.copy()
+        self.q4 = h4.copy()
+        self.q5 = h5.copy()
 
 
         # Scale based on linear peak response
