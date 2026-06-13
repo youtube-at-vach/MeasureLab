@@ -120,6 +120,17 @@ def analyze_harmonics_lockin(sig_full, ref_full, fs, max_harmonic=5, min_analysi
     Estimates fundamental frequency, extracts a coherent cycle segment,
     projects onto cosine/sine basis functions, and computes amplitude & phase.
     """
+    # Trim to middle 60% to discard latency gaps and transients
+    n_total = len(ref_full)
+    trim_start = int(n_total * 0.2)
+    trim_end = int(n_total * 0.8)
+    sig_full = sig_full[trim_start:trim_end]
+    ref_full = ref_full[trim_start:trim_end]
+
+    # Subtract DC offset (mean)
+    sig_full = sig_full - np.mean(sig_full)
+    ref_full = ref_full - np.mean(ref_full)
+
     ref_rms = np.sqrt(np.mean(ref_full**2))
     if ref_rms < 0.0001:
         raise ValueError("Reference signal level is too low. Check input connection or levels.")
