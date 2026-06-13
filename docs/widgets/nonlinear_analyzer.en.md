@@ -6,9 +6,8 @@ Based on the Parallel Hammerstein model, this nonlinear analysis allows for the 
 
 ## ☕ Coffee Break: What is the Hammerstein Model?
 
-The Hammerstein model is a mathematical approach to represent distortion in real-world audio equipment, such as speakers or vacuum tube amplifiers.
-It assumes a series structure where the input signal first passes through a "nonlinear element" (the part that distorts) and then through a "linear element" (a filter with frequency characteristics).
-This module uses this model to reverse-calculate and separate the distortion components (kernels) of each order from the measured signal, revealing precise distortion profiles.
+The Hammerstein model represents distortion in audio equipment as a series structure: a "nonlinear element" (the part that distorts) followed by a "linear element" (a filter with frequency characteristics).
+This module uses this model to reverse-calculate and separate distortion components (kernels) from the measured signal.
 
 ## Overview
 

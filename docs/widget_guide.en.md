@@ -76,6 +76,8 @@ Tools for evaluating equipment performance and sound quality.
 - **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
     - An advanced distortion analysis tool that uses the Hammerstein model to separate and extract 1st (linear) to 5th order harmonic kernels from equipment responses.
 
+- **[Nonlinear Response Analyzer](widgets/nonlinear_response_analyzer.md)**
+  - Identifies Wiener models to analyze dynamic nonlinear system behavior.
 - **[Linearity Analyzer](widgets/linearity_analyzer.md)**
     - Measures input/output level linearity. Used for verifying the low-level signal reproduction capability and dynamic range of DACs.
 
