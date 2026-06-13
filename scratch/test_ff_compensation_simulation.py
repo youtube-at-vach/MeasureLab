@@ -25,13 +25,13 @@ def run_simulation(condition_name, json_path):
     print(f"Sample Rate: {sample_rate} Hz")
     print(f"Kernel Length: {N} samples ({N / sample_rate * 1000.0:.2f} ms)")
 
-    # 1. Chebyshev to Power Series Conversion (Corrected for H_p = 2^{p-1} * h_p scaling)
-    q0 = -0.5 * h2 + 0.125 * h4
-    q1 = h1 - 0.75 * h3 + 0.3125 * h5  # True linear dynamic response
-    q2 = h2 - h4
-    q3 = h3 - 1.25 * h5
-    q4 = h4
-    q5 = h5
+    # Directly map kernels as they are already Power Series coefficients
+    q0 = np.zeros_like(h1)
+    q1 = h1.copy()
+    q2 = h2.copy()
+    q3 = h3.copy()
+    q4 = h4.copy()
+    q5 = h5.copy()
 
 
     # Scale the system using peak frequency response of q1

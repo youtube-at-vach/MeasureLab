@@ -859,3 +859,16 @@ class MainWindow(QMainWindow):
         elif index >= 2:
             self._ensure_module_loaded(index - 2)
         self.content_area.setCurrentIndex(index)
+
+    def notify_active_model_changed(self):
+        """Notify all loaded modules that the active Hammerstein model has been updated."""
+        for wrapper in self.module_widgets:
+            if wrapper is not None:
+                # wrapper is a DetachableWidgetWrapper
+                widget = wrapper.content_widget
+                if hasattr(widget, "update_cache_button_state"):
+                    try:
+                        widget.update_cache_button_state()
+                    except Exception as e:
+                        self.logger.warning(f"Failed to update cache button state for widget: {e}")
+

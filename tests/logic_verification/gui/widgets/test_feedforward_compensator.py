@@ -97,20 +97,12 @@ def test_offline_ff_worker(qtbot, temp_wav_files, dummy_model_data):
     assert len(out_data) == int(sr * 0.5)
 
 
-def test_chebyshev_to_power_series_scaling(temp_wav_files):
+def test_direct_kernel_mapping(temp_wav_files):
     _, _, sr = temp_wav_files
     N = 8
-    # Non-trivial test kernels:
-    # H1 = h1, H2 = 2*h2, H3 = 4*h3, H4 = 8*h4, H5 = 16*h5
-    # Let's define:
-    # h1 = [1.0], h2 = [0.1], h3 = [0.08], h4 = [0.04], h5 = [0.02]
-    # Under corrected formulas:
-    # q0 = -0.5 * h2 + 0.125 * h4 = -0.05 + 0.005 = -0.045
-    # q1 = h1 - 0.75 * h3 + 0.3125 * h5 = 1.0 - 0.06 + 0.00625 = 0.94625
-    # q2 = h2 - h4 = 0.1 - 0.04 = 0.06
-    # q3 = h3 - 1.25 * h5 = 0.08 - 0.025 = 0.055
-    # q4 = h4 = 0.04
-    # q5 = h5 = 0.02
+    # Test direct copy mapping of kernels:
+    # q0 should be all zeros.
+    # q1..q5 should be exact copies of h1..h5.
 
     h1 = np.zeros(N)
     h1[0] = 1.0
@@ -140,13 +132,13 @@ def test_chebyshev_to_power_series_scaling(temp_wav_files):
 
     engine = LICFFEngine(model_data, f_min=60, f_max=17000)
 
-    # Check first element of each computed power-series kernel
-    assert np.allclose(engine.q0[0], -0.045)
-    assert np.allclose(engine.q1[0], 0.94625)
-    assert np.allclose(engine.q2[0], 0.06)
-    assert np.allclose(engine.q3[0], 0.055)
-    assert np.allclose(engine.q4[0], 0.04)
-    assert np.allclose(engine.q5[0], 0.02)
+    # Check that computed power-series kernels match original ones directly
+    assert np.allclose(engine.q0, np.zeros(N))
+    assert np.allclose(engine.q1, h1)
+    assert np.allclose(engine.q2, h2)
+    assert np.allclose(engine.q3, h3)
+    assert np.allclose(engine.q4, h4)
+    assert np.allclose(engine.q5, h5)
 
 
 def test_feedforward_compensator_widget_simulation(qtbot, dummy_model_data):

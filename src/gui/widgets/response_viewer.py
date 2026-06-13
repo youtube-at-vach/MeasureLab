@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QFileDialog,
 )
 
+from scipy.signal import savgol_filter
+
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.hammerstein_model import load_hammerstein_model, get_active_model, has_active_model
@@ -126,11 +128,20 @@ class ResponseViewerWidget(QWidget):
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
 
+        self.smooth_combo = QComboBox()
+        self.smooth_combo.addItem(tr("None"), "None")
+        self.smooth_combo.addItem(tr("Low Smoothing"), "Light")
+        self.smooth_combo.addItem(tr("Medium Smoothing"), "Medium")
+        self.smooth_combo.addItem(tr("High Smoothing"), "Heavy")
+        self.smooth_combo.setCurrentIndex(1)  # Default: Light
+        self.smooth_combo.currentIndexChanged.connect(self.refresh_plots_with_smoothing)
+
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
         info_layout.addRow(tr("Status:"), self.lbl_status)
         info_layout.addRow(tr("Rate:"), self.lbl_sr)
         info_layout.addRow(tr("Order:"), self.lbl_order)
+        info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
         source_form.addLayout(info_layout)
         sidebar_layout.addWidget(source_group)
 
@@ -275,6 +286,29 @@ class ResponseViewerWidget(QWidget):
 
         self.ref_group.setEnabled(False)
         sidebar_layout.addWidget(self.ref_group)
+
+        # 4. Wiener Settings Group
+        self.wiener_group = QGroupBox(tr("Wiener Settings"))
+        wiener_form = QVBoxLayout(self.wiener_group)
+        wiener_form.setSpacing(6)
+
+        wiener_form.addWidget(QLabel(tr("Equivalent Gaussian RMS Level (σ)")))
+        self.wiener_sigma_spin = QDoubleSpinBox()
+        self.wiener_sigma_spin.setRange(-100.0, 10.0)
+        self.wiener_sigma_spin.setSuffix(" dBFS")
+        self.wiener_sigma_spin.setValue(-6.0)
+        self.wiener_sigma_spin.setSingleStep(1.0)
+        self.wiener_sigma_spin.valueChanged.connect(self._on_wiener_sigma_spin_changed)
+        wiener_form.addWidget(self.wiener_sigma_spin)
+
+        self.wiener_sigma_slider = QSlider(Qt.Orientation.Horizontal)
+        self.wiener_sigma_slider.setRange(-1000, 100)
+        self.wiener_sigma_slider.setValue(-60)
+        self.wiener_sigma_slider.valueChanged.connect(self._on_wiener_sigma_slider_changed)
+        wiener_form.addWidget(self.wiener_sigma_slider)
+
+        self.wiener_group.setEnabled(False)
+        sidebar_layout.addWidget(self.wiener_group)
 
         sidebar_layout.addStretch()
         sidebar_content.setLayout(sidebar_layout)
@@ -582,6 +616,60 @@ class ResponseViewerWidget(QWidget):
 
         self.tabs.addTab(self.tab_io_comp, tr("I/O & Comp"))
 
+        # Tab 7: Wiener Representation
+        self.tab_wiener = QWidget()
+        wiener_layout = QHBoxLayout(self.tab_wiener)
+        wiener_layout.setContentsMargins(2, 2, 2, 2)
+        wiener_layout.setSpacing(5)
+
+        # Left Column for Bode plots (Magnitude & Phase)
+        bode_col = QWidget()
+        bode_col_layout = QVBoxLayout(bode_col)
+        bode_col_layout.setContentsMargins(0, 0, 0, 0)
+        bode_col_layout.setSpacing(5)
+
+        self.wie_mag_plot = pg.PlotWidget(title=tr("Wiener Kernel Magnitude Response"))
+        self.wie_mag_plot.setLabel("left", tr("Gain"), units="dB")
+        self.wie_mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.wie_mag_plot.setLogMode(True, False)
+        self.wie_mag_plot.showGrid(True, True, alpha=0.3)
+        self.wie_mag_plot.addLegend(offset=(10, 10))
+        bode_col_layout.addWidget(self.wie_mag_plot)
+
+        self.wie_phase_plot = pg.PlotWidget(title=tr("Wiener Kernel Phase Response"))
+        self.wie_phase_plot.setLabel("left", tr("Phase"), units="deg")
+        self.wie_phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.wie_phase_plot.setLogMode(True, False)
+        self.wie_phase_plot.showGrid(True, True, alpha=0.3)
+        self.wie_phase_plot.addLegend(offset=(10, 10))
+        bode_col_layout.addWidget(self.wie_phase_plot)
+
+        # Sync X-axis of Wiener mag and phase plots
+        self.wie_phase_plot.setXLink(self.wie_mag_plot)
+
+        wiener_layout.addWidget(bode_col, stretch=1)
+
+        # Right Column for Energy Fraction plot
+        energy_col = QWidget()
+        energy_col_layout = QVBoxLayout(energy_col)
+        energy_col_layout.setContentsMargins(0, 0, 0, 0)
+        energy_col_layout.setSpacing(5)
+
+        self.wie_energy_plot = pg.PlotWidget(title=tr("Wiener Kernel Energy Fraction"))
+        self.wie_energy_plot.setLabel("left", tr("Energy Fraction"), units="%")
+        self.wie_energy_plot.setLabel("bottom", tr("Kernel Order"))
+        self.wie_energy_plot.setYRange(0, 100)
+        self.wie_energy_plot.showGrid(x=False, y=True, alpha=0.3)
+
+        # Set discrete ticks for orders
+        x_ticks = [(1, "w1"), (2, "w2"), (3, "w3"), (4, "w4"), (5, "w5")]
+        self.wie_energy_plot.getAxis("bottom").setTicks([x_ticks])
+        energy_col_layout.addWidget(self.wie_energy_plot)
+
+        wiener_layout.addWidget(energy_col, stretch=1)
+
+        self.tabs.addTab(self.tab_wiener, tr("Wiener Representation"))
+
         main_layout.addWidget(self.tabs, stretch=1)
 
     def on_noise_floor_toggled(self, checked):
@@ -626,6 +714,10 @@ class ResponseViewerWidget(QWidget):
             self.load_cache_btn.setToolTip(tr("Load model from the latest measurement."))
         else:
             self.load_cache_btn.setToolTip(tr("No active measurement found. Run sweep first."))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_cache_button_state()
 
     def load_live_cache(self):
         data = get_active_model()
@@ -699,14 +791,51 @@ class ResponseViewerWidget(QWidget):
         # Enable Groups
         self.map_group.setEnabled(True)
         self.ref_group.setEnabled(True)
+        self.wiener_group.setEnabled(True)
+
+        # Sync Wiener level default with ref_amp
+        self.wiener_sigma_spin.blockSignals(True)
+        self.wiener_sigma_slider.blockSignals(True)
+        self.wiener_sigma_spin.setValue(self.ref_amp)
+        self.wiener_sigma_slider.setValue(int(self.ref_amp * 10))
+        self.wiener_sigma_spin.blockSignals(False)
+        self.wiener_sigma_slider.blockSignals(False)
 
         # Redraw Bode, Kernels, Maps
         self.update_bode_plots()
         self.update_kernel_plots()
         self.update_2d_map()
+        self.update_wiener_plots()
 
         # Update reference parameters and dependent plots/simulation
         self.update_reference_params(self.ref_f0, self.ref_amp)
+
+    def refresh_plots_with_smoothing(self):
+        if self.cached_freqs is not None:
+            self.update_bode_plots()
+
+    def apply_smoothing(self, y_data, level):
+        if level == "None" or len(y_data) < 15:
+            return y_data
+
+        window_size = 15
+        if level == "Medium":
+            window_size = 35
+        elif level == "Heavy":
+            window_size = 75
+
+        window_size = min(window_size, len(y_data) - 1)
+        if window_size % 2 == 0:
+            window_size -= 1
+
+        if window_size < 5:
+            return y_data
+
+        try:
+            return savgol_filter(y_data, window_size, polyorder=2)
+        except Exception as e:
+            logger.warning("Smoothing failed: %s", e)
+            return y_data
 
     def update_bode_plots(self):
         if self.cached_freqs is None:
@@ -714,6 +843,8 @@ class ResponseViewerWidget(QWidget):
 
         self.mag_plot.clear()
         self.phase_plot.clear()
+
+        smooth_level = self.smooth_combo.currentData()
 
         colors = {
             "h1": (75, 163, 227),  # fundamental
@@ -733,8 +864,8 @@ class ResponseViewerWidget(QWidget):
 
         for key in ["h1", "h2", "h3", "h4", "h5"]:
             if key in self.cached_mags:
-                mag_smoothed = self.cached_mags[key]
-                phase_smoothed = self.cached_phases[key]
+                mag_smoothed = self.apply_smoothing(self.cached_mags[key], smooth_level)
+                phase_smoothed = self.apply_smoothing(self.cached_phases[key], smooth_level)
 
                 # Magnitude
                 pen_mag = pg.mkPen(color=colors[key], width=2)
@@ -1684,3 +1815,122 @@ class ResponseViewerWidget(QWidget):
         f_str = f"{f0 / 1000.0:.2f} kHz" if f0 >= 1000.0 else f"{f0:.1f} Hz"
         self.io_plot.setTitle(tr("Input-Output Curve (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
         self.comp_plot.setTitle(tr("Gain Compression (Freq = {freq})").format(freq=f_str) + f" [P1dB = {p1db_str}]")
+
+    def _on_wiener_sigma_slider_changed(self, val):
+        self.wiener_sigma_spin.blockSignals(True)
+        self.wiener_sigma_spin.setValue(val / 10.0)
+        self.wiener_sigma_spin.blockSignals(False)
+        self.update_wiener_plots()
+
+    def _on_wiener_sigma_spin_changed(self, val):
+        self.wiener_sigma_slider.blockSignals(True)
+        self.wiener_sigma_slider.setValue(int(val * 10))
+        self.wiener_sigma_slider.blockSignals(False)
+        self.update_wiener_plots()
+
+    def update_wiener_plots(self):
+        if self.cached_freqs is None:
+            return
+
+        sigma_dbfs = self.wiener_sigma_spin.value()
+        sigma_linear = 10 ** (sigma_dbfs / 20.0)
+        sigma_sq = sigma_linear ** 2
+
+        self.wie_mag_plot.clear()
+        self.wie_phase_plot.clear()
+        self.wie_energy_plot.clear()
+
+        colors = [
+            (75, 163, 227),  # w1
+            (43, 140, 86),   # w2
+            (230, 140, 20),  # w3
+            (200, 50, 160),  # w4
+            (217, 83, 79),   # w5
+        ]
+
+        labels_wie = {
+            1: tr("Wiener Kernel w1"),
+            2: tr("Wiener Kernel w2"),
+            3: tr("Wiener Kernel w3"),
+            4: tr("Wiener Kernel w4"),
+            5: tr("Wiener Kernel w5"),
+        }
+
+        smooth_level = self.smooth_combo.currentData()
+
+        # Reconstruct complex responses (H_complex)
+        H_complex = {}
+        for p in range(1, 6):
+            h_key = f"h{p}"
+            if h_key in self.cached_mags and h_key in self.cached_phases:
+                mag_linear = 10 ** (self.cached_mags[h_key] / 20.0)
+                phase_rad = np.radians(self.cached_phases[h_key])
+                H_complex[p] = mag_linear * np.exp(1j * phase_rad)
+            else:
+                H_complex[p] = np.zeros_like(self.cached_freqs, dtype=np.complex128)
+
+        # Wiener conversion (Hermite orthogonalization in frequency domain)
+        W_complex = {}
+        W_complex[1] = sigma_linear * (H_complex[1] + 3 * sigma_sq * H_complex[3] + 15 * (sigma_sq**2) * H_complex[5])
+        W_complex[2] = (sigma_linear**2) * (H_complex[2] + 6 * sigma_sq * H_complex[4])
+        W_complex[3] = (sigma_linear**3) * (H_complex[3] + 10 * sigma_sq * H_complex[5])
+        W_complex[4] = (sigma_linear**4) * H_complex[4]
+        W_complex[5] = (sigma_linear**5) * H_complex[5]
+
+        # Draw Bode plots
+        for p in range(1, 6):
+            # Magnitude
+            w_mag_db = 20 * np.log10(np.abs(W_complex[p]) + 1e-12)
+            w_mag_smoothed = self.apply_smoothing(w_mag_db, smooth_level)
+            pen_wie_mag = pg.mkPen(color=colors[p-1], width=1.8)
+            self.wie_mag_plot.plot(self.cached_freqs, w_mag_smoothed, pen=pen_wie_mag, name=labels_wie[p])
+
+            # Phase
+            w_phase_deg = np.degrees(np.angle(W_complex[p]))
+            w_phase_smoothed = self.apply_smoothing(w_phase_deg, smooth_level)
+            pen_wie_phase = pg.mkPen(color=colors[p-1], width=1.5)
+            self.wie_phase_plot.plot(self.cached_freqs, w_phase_smoothed, pen=pen_wie_phase, name=labels_wie[p])
+
+        # Wiener conversion in time domain (for energy calculation)
+        h_time = {}
+        for p in range(1, 6):
+            idx = p - 1
+            if self.cached_kernels is not None and idx < len(self.cached_kernels):
+                h_time[p] = self.cached_kernels[idx]
+            else:
+                h_time[p] = np.zeros_like(self.cached_kernels[0]) if self.cached_kernels is not None else np.array([])
+
+        w_time = {}
+        if len(h_time[1]) > 0:
+            w_time[1] = sigma_linear * (h_time[1] + 3 * sigma_sq * h_time[3] + 15 * (sigma_sq**2) * h_time[5])
+            w_time[2] = (sigma_linear**2) * (h_time[2] + 6 * sigma_sq * h_time[4])
+            w_time[3] = (sigma_linear**3) * (h_time[3] + 10 * sigma_sq * h_time[5])
+            w_time[4] = (sigma_linear**4) * h_time[4]
+            w_time[5] = (sigma_linear**5) * h_time[5]
+        else:
+            for p in range(1, 6):
+                w_time[p] = np.array([])
+
+        # Calculate energy and fractions
+        energies = []
+        for p in range(1, 6):
+            if len(w_time[p]) > 0:
+                e = np.sum(w_time[p] ** 2)
+            else:
+                e = 0.0
+            energies.append(e)
+        energies = np.array(energies)
+        total_energy = np.sum(energies)
+        if total_energy > 1e-15:
+            fractions_percent = (energies / total_energy) * 100.0
+        else:
+            fractions_percent = np.zeros(5)
+
+        # Plot energy fractions as a bar chart
+        x_ticks = [(1, "w1"), (2, "w2"), (3, "w3"), (4, "w4"), (5, "w5")]
+        self.wie_energy_plot.getAxis("bottom").setTicks([x_ticks])
+
+        x = np.arange(1, 6)
+        for i in range(5):
+            bar = pg.BarGraphItem(x=[x[i]], height=[fractions_percent[i]], width=0.6, brush=pg.mkBrush(colors[i]))
+            self.wie_energy_plot.addItem(bar)

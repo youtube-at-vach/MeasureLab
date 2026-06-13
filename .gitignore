@@ -91,3 +91,4 @@ inverse_hammerstein_model*.json
 docs/daily_check.log
 docs/translation_check.log
 
+temp_measured_hammerstein.json

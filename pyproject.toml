@@ -36,6 +36,10 @@ dev = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = [
+    "scratch",
+]
+
 
 [tool.ruff.lint]
 # Start with a narrow, low-noise rule set focused on correctness and

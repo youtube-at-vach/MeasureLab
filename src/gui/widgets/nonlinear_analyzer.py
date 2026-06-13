@@ -443,6 +443,11 @@ class NonlinearAnalyzer(MeasurementModule):
             from src.core.hammerstein_model import set_active_model
             ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
 
+            if self.input_mode in {"XFER", "XFER_REV"} and len(responses_ref) > 0 and len(amplitudes) > 0:
+                g_ref = float(np.max(np.abs(responses_ref[-1])) / amplitudes[-1])
+            else:
+                g_ref = 1.0
+
             cache_data = {
                 "metadata": {
                     "module": self.name,
@@ -454,6 +459,7 @@ class NonlinearAnalyzer(MeasurementModule):
                     "input_mode": self.input_mode,
                     "latency_sec": self.latency_sec,
                     "ref_max": float(ref_max),
+                    "g_ref": g_ref,
                     "P": len(separated_kernels_data),
                     "noise_floor_dbfs": noise_floor_dbfs,
                 },
@@ -783,6 +789,14 @@ class NonlinearAnalyzerWidget(QWidget):
         self.start_btn.setEnabled(True)
         self.cal_btn.setEnabled(self.module.input_mode in {"L", "R"})
         self.stop_btn.setEnabled(False)
+
+        # Notify MainWindow that the active model has changed, so other modules (e.g. ResponseViewer) can update their cache buttons
+        from PyQt6.QtWidgets import QApplication
+        from src.gui.main_window import MainWindow
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, MainWindow):
+                widget.notify_active_model_changed()
+                break
 
     def on_latency_result(self, val):
         self.latency_label.setText(f"{val * 1000:.2f} ms")
