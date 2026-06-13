@@ -425,7 +425,9 @@ def process_amplitude_responses(
 
             # Apply systematic phase calibration to the frequency response
             if phases_cal_dict is not None and h_key in phases_cal_dict:
-                phase_cal_rad = np.zeros_like(freqs)
+                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
+                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
+                # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
                 phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
                 H_xfer_all = H_xfer_all * np.exp(-1j * phase_cal_rad)
 
@@ -445,7 +447,9 @@ def process_amplitude_responses(
 
             # Apply systematic phase calibration to the frequency response
             if phases_cal_dict is not None and h_key in phases_cal_dict:
-                phase_cal_rad = np.zeros_like(freqs)
+                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
+                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
+                # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
                 phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
                 H_corr_all = H_corr_all * np.exp(-1j * phase_cal_rad)
 
