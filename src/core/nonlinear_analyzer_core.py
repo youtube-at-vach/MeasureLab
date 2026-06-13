@@ -430,7 +430,13 @@ def process_amplitude_responses(
                 H_xfer_all = H_xfer_all * np.exp(-1j * phase_cal_rad)
 
             valid_H = H_xfer_all[mask]
-            h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
+
+            H_time = H_xfer_all
+            if phases_cal_dict is not None:
+                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
+                H_time = H_time * phase_shift_gate
+
+            h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
         else:
             # Single Channel Mode: Apply latency correction to all frequency bins
             delay_samples = int(latency_sec * sample_rate)
@@ -444,7 +450,15 @@ def process_amplitude_responses(
                 H_corr_all = H_corr_all * np.exp(-1j * phase_cal_rad)
 
             valid_H = H_corr_all[mask]
-            h_kernels_calibrated.append(fft_manager.irfft(H_corr_all, n=N_kernel))
+
+            H_time = H_corr_all
+            if phases_cal_dict is not None:
+                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
+                delay_samples_gate = gate_pre
+                phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples_gate / sample_rate))
+                H_time = H_time * phase_shift_gate
+
+            h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
 
         # Compute Gain (dB) and Phase (degrees)
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
