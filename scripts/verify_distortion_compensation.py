@@ -31,11 +31,12 @@ logger = logging.getLogger("verify_distortion")
 
 class SimplePlayRecSession:
     """PyQt-free synchronous play/record session via AudioEngine."""
-    def __init__(self, audio_engine, output_data, input_channels=2):
+    def __init__(self, audio_engine, output_data, input_channels=2, sim_dist=0.0):
         self.audio_engine = audio_engine
         self.output_data = output_data
         self.total_frames = len(output_data)
         self.input_channels = input_channels
+        self.sim_dist = sim_dist
         self.input_data = np.zeros((self.total_frames, input_channels), dtype=np.float32)
         self.current_frame = 0
         self.is_complete = False
@@ -76,7 +77,14 @@ class SimplePlayRecSession:
 
                 # Playback mapping
                 ch_out = min(outdata.shape[1], self.output_data.shape[1])
-                outdata[:chunk, :ch_out] = self.output_data[self.current_frame : self.current_frame + chunk, :ch_out]
+                out_chunk = self.output_data[self.current_frame : self.current_frame + chunk, :ch_out].copy()
+                if self.sim_dist > 0.0:
+                    # Apply polynomial distortion ONLY to the measurement channel (Channel 0 / Left)
+                    # The reference channel (Channel 1 / Right) remains clean!
+                    if ch_out > 0:
+                        x0 = out_chunk[:, 0]
+                        out_chunk[:, 0] = x0 - self.sim_dist * (x0**2) + 1.5 * self.sim_dist * (x0**3)
+                outdata[:chunk, :ch_out] = out_chunk
                 if ch_out < outdata.shape[1]:
                     outdata[:chunk, ch_out:] = 0
                 if chunk < frames:
@@ -100,13 +108,13 @@ class SimplePlayRecSession:
                 self.completion_event.set()
 
 
-def run_play_rec(audio_engine, output_data, input_channels=2):
+def run_play_rec(audio_engine, output_data, input_channels=2, sim_dist=0.0):
     """Synchronously plays output_data and records input_channels."""
     # Temporarily stop active stream to ensure exclusive hardware lock
     if audio_engine.stream and audio_engine.stream.active:
         audio_engine.stop_stream()
 
-    session = SimplePlayRecSession(audio_engine, output_data, input_channels)
+    session = SimplePlayRecSession(audio_engine, output_data, input_channels, sim_dist=sim_dist)
     session.start()
     expected_duration = len(output_data) / audio_engine.sample_rate
     session.wait(timeout=expected_duration + 3.0)
@@ -120,6 +128,17 @@ def analyze_harmonics_lockin(sig_full, ref_full, fs, max_harmonic=5, min_analysi
     Estimates fundamental frequency, extracts a coherent cycle segment,
     projects onto cosine/sine basis functions, and computes amplitude & phase.
     """
+    # Trim to middle 60% to discard latency gaps and transients
+    n_total = len(ref_full)
+    trim_start = int(n_total * 0.2)
+    trim_end = int(n_total * 0.8)
+    sig_full = sig_full[trim_start:trim_end]
+    ref_full = ref_full[trim_start:trim_end]
+
+    # Subtract DC offset (mean)
+    sig_full = sig_full - np.mean(sig_full)
+    ref_full = ref_full - np.mean(ref_full)
+
     ref_rms = np.sqrt(np.mean(ref_full**2))
     if ref_rms < 0.0001:
         raise ValueError("Reference signal level is too low. Check input connection or levels.")
@@ -271,6 +290,8 @@ def main():
     parser.add_argument("--fmax", type=float, default=17000.0, help="Active band fmax in Hz (default: 17000.0)")
     parser.add_argument("--num-amps", type=int, default=5, help="Number of scan amplitudes (default: 5)")
     parser.add_argument("--tsa", type=int, default=2, help="TSA averages (default: 2)")
+    parser.add_argument("--sim-dist", type=float, default=0.0, help="Amount of simulated hardware distortion to inject (default: 0.0)")
+    parser.add_argument("--threshold-db", type=float, default=-70.0, help="Noise threshold for high-order kernels in dB (default: -70.0)")
     parser.add_argument("--virtual", action="store_true", help="Run in offline virtual mode (no real device)")
     args = parser.parse_args()
 
@@ -375,7 +396,7 @@ def main():
             logger.info(f"  Sweep average {avg+1}/{args.tsa}...")
 
             # play & record
-            rec_data = run_play_rec(audio_engine, out_data, input_channels=2)
+            rec_data = run_play_rec(audio_engine, out_data, input_channels=2, sim_dist=args.sim_dist)
 
             if audio_engine.offline_mode:
                 # Simulate a nonlinear loopback system
@@ -508,7 +529,7 @@ def main():
         loaded_model_json = json.load(f)
 
     logger.info("Initializing LICFFEngine for compensation...")
-    engine = LICFFEngine(loaded_model_json, f_min=args.fmin, f_max=args.fmax)
+    engine = LICFFEngine(loaded_model_json, f_min=args.fmin, f_max=args.fmax, threshold_db=args.threshold_db)
 
     # Verify linear scaling factor and scaled kernels
     logger.info(f"LICFF Linear scaling G_scale: {engine.G_scale:.6f}")
@@ -551,7 +572,7 @@ def main():
     if args.out_ch in {"R", "STEREO"}:
         out_uncomp[:, 1] = u_in
 
-    rec_uncomp = run_play_rec(audio_engine, out_uncomp, input_channels=2)
+    rec_uncomp = run_play_rec(audio_engine, out_uncomp, input_channels=2, sim_dist=args.sim_dist)
 
     # Pattern B: Compensated
     logger.info("Pattern B: Playing & Recording COMPENSATED pure tone...")
@@ -561,7 +582,7 @@ def main():
     if args.out_ch in {"R", "STEREO"}:
         out_comp[:, 1] = u_comp
 
-    rec_comp = run_play_rec(audio_engine, out_comp, input_channels=2)
+    rec_comp = run_play_rec(audio_engine, out_comp, input_channels=2, sim_dist=args.sim_dist)
 
     if audio_engine.offline_mode:
         # Mock nonlinear recording output
@@ -646,6 +667,13 @@ def main():
     print("   - check if the system nonlinearity is time-variant or thermal-dependent (soft/warm state differences).")
     print("   - inspect the phase angle of the remaining harmonics in Compensated mode: if they are shifted by ~180°")
     print("     relative to the Uncompensated harmonics, the compensation might be slightly over-correcting or scaling.")
+    print("3. For high-linearity audio interfaces (e.g. ZOOM UAC-232 with intrinsic THD < -90 dB):")
+    print("   - The intrinsic distortion is extremely low and lies below the noise floor, which naturally limits measured suppression.")
+    print("   - Use the `--sim-dist <value>` flag (e.g., `--sim-dist 0.05`) to inject software-defined")
+    print("     nonlinearity in the physical loopback path. This verifies the complete measurement")
+    print("     and correction pipeline over real hardware with high, controlled distortion.")
+    print("   - High-order kernels below `--threshold-db` (default: -70.0) are auto-zeroed out to prevent")
+    print("     compensating for noise. Adjust this threshold using `--threshold-db` if needed.")
     print("="*80)
 
     # Stop AudioEngine

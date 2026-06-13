@@ -423,26 +423,52 @@ def process_amplitude_responses(
             phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
             H_xfer_all = H_xfer_all * phase_shift_gate
 
+            # Apply systematic phase calibration to the frequency response
+            if phases_cal_dict is not None and h_key in phases_cal_dict:
+                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
+                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
+                # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
+                phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
+                H_xfer_all = H_xfer_all * np.exp(-1j * phase_cal_rad)
+
             valid_H = H_xfer_all[mask]
-            h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
+
+            H_time = H_xfer_all
+            if phases_cal_dict is not None:
+                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
+                H_time = H_time * phase_shift_gate
+
+            h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
         else:
             # Single Channel Mode: Apply latency correction to all frequency bins
             delay_samples = int(latency_sec * sample_rate)
             phase_correction_all = 2 * np.pi * freqs * (delay_samples / sample_rate)
             H_corr_all = H_meas_p * np.exp(1j * phase_correction_all)
+
+            # Apply systematic phase calibration to the frequency response
+            if phases_cal_dict is not None and h_key in phases_cal_dict:
+                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
+                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
+                # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
+                phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
+                H_corr_all = H_corr_all * np.exp(-1j * phase_cal_rad)
+
             valid_H = H_corr_all[mask]
-            h_kernels_calibrated.append(fft_manager.irfft(H_corr_all, n=N_kernel))
+
+            H_time = H_corr_all
+            if phases_cal_dict is not None:
+                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
+                delay_samples_gate = gate_pre
+                phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples_gate / sample_rate))
+                H_time = H_time * phase_shift_gate
+
+            h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
 
         # Compute Gain (dB) and Phase (degrees)
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
         phase_rad = np.unwrap(np.angle(valid_H))
         phase_deg = np.degrees(phase_rad)
         phase_deg = (phase_deg + 180) % 360 - 180
-
-        # Apply systematic sweep phase calibration to remove windowing/FFT latency artifacts
-        if phases_cal_dict is not None and h_key in phases_cal_dict:
-            phase_deg = phase_deg - phases_cal_dict[h_key]
-            phase_deg = (phase_deg + 180) % 360 - 180
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
