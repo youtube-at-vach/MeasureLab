@@ -6,9 +6,22 @@ import soundfile as sf
 
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QGroupBox,
-    QFormLayout, QDoubleSpinBox, QSpinBox, QFileDialog, QMessageBox,
-    QTabWidget, QScrollArea, QProgressBar, QCheckBox, QComboBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QGroupBox,
+    QFormLayout,
+    QDoubleSpinBox,
+    QSpinBox,
+    QFileDialog,
+    QMessageBox,
+    QTabWidget,
+    QScrollArea,
+    QProgressBar,
+    QCheckBox,
+    QComboBox,
 )
 import pyqtgraph as pg
 
@@ -25,6 +38,7 @@ class LICFFEngine:
     Core engine to perform Linear-Inverse Compensated Feedforward (LICFF)
     based on a loaded Hammerstein system model.
     """
+
     def __init__(self, model_data, f_min=60.0, f_max=17000.0):
         self.model_data = model_data
         self.f_min = f_min
@@ -72,7 +86,6 @@ class LICFFEngine:
         self.q4 = h4.copy()
         self.q5 = h5.copy()
 
-
         # Scale based on linear peak response
         Q1_fft_raw = np.fft.rfft(self.q1)
         self.G_scale = np.max(np.abs(Q1_fft_raw))
@@ -111,7 +124,7 @@ class LICFFEngine:
             np.fft.rfft(self.q2_sc, n=M),
             np.fft.rfft(self.q3_sc, n=M),
             np.fft.rfft(self.q4_sc, n=M),
-            np.fft.rfft(self.q5_sc, n=M)
+            np.fft.rfft(self.q5_sc, n=M),
         ]
 
         # Design active band filter for length M
@@ -122,12 +135,16 @@ class LICFFEngine:
         for i in range(len(freqs)):
             f = freqs[i]
             if f < self.f_min:
-                bp_filter_M[i] = np.clip(0.5 * (1.0 - np.cos(np.pi * (f - 10.0) / (self.f_min - 10.0))) if f >= 10.0 else 0.0, 0, 1)
+                bp_filter_M[i] = np.clip(
+                    0.5 * (1.0 - np.cos(np.pi * (f - 10.0) / (self.f_min - 10.0))) if f >= 10.0 else 0.0, 0, 1
+                )
             elif f > self.f_max:
                 nyquist = self.sample_rate / 2.0
                 roll_limit = min(nyquist * 0.95, self.f_max * 1.2)
                 if f < roll_limit:
-                    bp_filter_M[i] = np.clip(0.5 * (1.0 + np.cos(np.pi * (f - self.f_max) / (roll_limit - self.f_max))), 0, 1)
+                    bp_filter_M[i] = np.clip(
+                        0.5 * (1.0 + np.cos(np.pi * (f - self.f_max) / (roll_limit - self.f_max))), 0, 1
+                    )
                 else:
                     bp_filter_M[i] = 0.0
 
@@ -199,10 +216,14 @@ class LICFFEngine:
     def forward_model(self, x, L=8):
         M = len(x)
         g_ref = getattr(self, "g_ref", 1.0)
-        X = np.fft.rfft(x)
+
+        # Scale the input signal to ADC level (reference channel scale)
+        x_adc = x * g_ref
+
+        X_adc = np.fft.rfft(x_adc)
         N_up = L * M
         X_up = np.zeros(N_up // 2 + 1, dtype=complex)
-        X_up[: len(X)] = X * L
+        X_up[: len(X_adc)] = X_adc * L
         x_up = np.fft.irfft(X_up, n=N_up)
 
         x_up2 = x_up * x_up
@@ -210,31 +231,31 @@ class LICFFEngine:
         x_up4 = x_up3 * x_up
         x_up5 = x_up4 * x_up
 
-        Y_fft = np.zeros_like(X, dtype=complex)
+        Y_fft = np.zeros_like(X_adc, dtype=complex)
         Q_fft, _, _ = self._prepare_buffers_for_length(M)
 
         # p=1
-        Y_fft += X * Q_fft[1]
+        Y_fft += X_adc * Q_fft[1]
 
         # p=2
         Xp_up = np.fft.rfft(x_up2)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
+        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[2]
 
         # p=3
         Xp_up = np.fft.rfft(x_up3)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
+        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[3]
 
         # p=4
         Xp_up = np.fft.rfft(x_up4)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
+        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[4]
 
         # p=5
         Xp_up = np.fft.rfft(x_up5)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
+        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[5]
 
         Y_fft[-1] = np.real(Y_fft[-1])
         y_model = np.fft.irfft(Y_fft, n=M) + self.q0_sum
-        return g_ref * y_model
+        return y_model
 
     def linear_output(self, x):
         M = len(x)
@@ -258,16 +279,16 @@ class LICFFEngine:
             iters = 1
 
         g_ref = getattr(self, "g_ref", 1.0)
-        u_comp = u_in_filt / g_ref
+        u_comp = u_in_filt.copy()
         for _ in range(iters):
-            Y_fft = self.nonlinear_spectrum(u_comp)
+            u_adc = u_comp * g_ref
+            Y_fft = self.nonlinear_spectrum(u_adc)
             # Apply linear inverse filter
             y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
-            u_comp = (u_in_filt - y_comp_nl) / g_ref
+            u_comp = u_in_filt - (y_comp_nl / g_ref)
 
         u_comp = np.clip(u_comp, -clip_limit, clip_limit)
         return u_comp
-
 
 
 class OfflineFFCompWorker(QThread):
@@ -362,10 +383,7 @@ class OfflineFFCompWorker(QThread):
                         x_ch = chunk_padded[:, ch]
                         # Apply compensation on the overlap block
                         u_comp = self.engine.compensate(
-                            x_ch,
-                            iterative=self.iterative,
-                            iters=self.iters,
-                            clip_limit=self.clip_limit
+                            x_ch, iterative=self.iterative, iters=self.iters, clip_limit=self.clip_limit
                         )
                         # Extract the valid non-overlapped part
                         chunk_out[:, ch] = u_comp[overlap : overlap + L_block]
@@ -376,11 +394,23 @@ class OfflineFFCompWorker(QThread):
                 max_val = np.max(np.abs(out_data))
                 clipping_msg = ""
                 if max_val > 1.0:
-                    clipping_msg = "\n" + tr("Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping.").format(20 * np.log10(max_val))
+                    clipping_msg = "\n" + tr(
+                        "Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping."
+                    ).format(20 * np.log10(max_val))
                     out_data = out_data / max_val
 
-                sf.write(self.output_path, out_data, int(model_sr), subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16")
-                self.finished.emit(True, tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path)) + resample_msg + clipping_msg)
+                sf.write(
+                    self.output_path,
+                    out_data,
+                    int(model_sr),
+                    subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
+                )
+                self.finished.emit(
+                    True,
+                    tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path))
+                    + resample_msg
+                    + clipping_msg,
+                )
 
             finally:
                 if infile is not None:
@@ -511,13 +541,15 @@ class FeedforwardCompensatorWidget(QWidget):
 
         ctrl_layout = QHBoxLayout()
         self.combo_signal = QComboBox()
-        self.combo_signal.addItems([
-            tr("1kHz Tone"),
-            tr("3kHz Tone (Untrained)"),
-            tr("Two-Tone (1.0k + 1.5k)"),
-            tr("Multi-Tone (5 freqs)"),
-            tr("Broadband Noise")
-        ])
+        self.combo_signal.addItems(
+            [
+                tr("1kHz Tone"),
+                tr("3kHz Tone (Untrained)"),
+                tr("Two-Tone (1.0k + 1.5k)"),
+                tr("Multi-Tone (5 freqs)"),
+                tr("Broadband Noise"),
+            ]
+        )
         ctrl_layout.addWidget(QLabel(tr("Test Signal:")))
         ctrl_layout.addWidget(self.combo_signal)
 
@@ -536,7 +568,9 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Results Label
         self.lbl_sim_results = QLabel(tr("Run simulation to see results."))
-        self.lbl_sim_results.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; background-color: #2b2b2b; color: #a9b7c6; padding: 8px; border-radius: 4px;")
+        self.lbl_sim_results.setStyleSheet(
+            f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; background-color: #2b2b2b; color: #a9b7c6; padding: 8px; border-radius: 4px;"
+        )
         sim_layout.addWidget(self.lbl_sim_results)
 
         # Plot Widget
@@ -595,11 +629,7 @@ class FeedforwardCompensatorWidget(QWidget):
                 with open(path, "r") as f:
                     data = json.load(f)
 
-                self.module.engine = LICFFEngine(
-                    data,
-                    f_min=self.spin_fmin.value(),
-                    f_max=self.spin_fmax.value()
-                )
+                self.module.engine = LICFFEngine(data, f_min=self.spin_fmin.value(), f_max=self.spin_fmax.value())
                 self.model_data = data
 
                 self.lbl_status.setText(tr("Model Loaded"))
@@ -755,7 +785,9 @@ class FeedforwardCompensatorWidget(QWidget):
             self.lbl_out_file.setText(base + "_comp" + ext)
 
     def select_output_file(self):
-        path, _ = QFileDialog.getSaveFileName(self, tr("Save Wav File"), self.lbl_out_file.text(), tr("Wav Files (*.wav)"))
+        path, _ = QFileDialog.getSaveFileName(
+            self, tr("Save Wav File"), self.lbl_out_file.text(), tr("Wav Files (*.wav)")
+        )
         if path:
             self.lbl_out_file.setText(path)
             self._update_process_btn()
@@ -779,14 +811,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.btn_process_off.setText(tr("Processing..."))
         self.progress_off.setValue(0)
 
-        self.worker = OfflineFFCompWorker(
-            input_path,
-            output_path,
-            self.module.engine,
-            iterative,
-            iters,
-            clip_limit
-        )
+        self.worker = OfflineFFCompWorker(input_path, output_path, self.module.engine, iterative, iters, clip_limit)
         self.worker.progress.connect(self.progress_off.setValue)
         self.worker.finished.connect(self.on_offline_finished)
         self.worker.start()
