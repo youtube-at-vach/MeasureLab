@@ -83,7 +83,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     - Hammersteinモデルを用いて、機器の応答から1次（線形）〜5次までの高調波カーネルを分離・抽出する高度な歪み解析ツールです。
 
 - **[Nonlinear Response Analyzer](widgets/nonlinear_response_analyzer.md)**
-  - Wienerモデルを同定し、動的な非線形システムの挙動を解析します。
+    - Wienerモデルを同定し、動的な非線形システムの挙動を解析します。
 - **[Linearity Analyzer](widgets/linearity_analyzer.md)**
     - 入出力のレベル直線性を測定します。DACの微小信号再現能力やダイナミックレンジの検証に使用します。
 
