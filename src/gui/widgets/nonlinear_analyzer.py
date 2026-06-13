@@ -203,12 +203,28 @@ class NonlinearAnalyzer(MeasurementModule):
             self.audio_engine.unregister_callback(self._dummy_callback_id)
             self._dummy_callback_id = None
 
-    def run_play_rec(self, output_data, input_channels=2):
+    def run_play_rec(self, output_data, input_channels=2, progress_callback=None):
+        import time
         session = PlayRecSession(self.audio_engine, output_data, input_channels)
         session.start()
         expected_duration = len(output_data) / self.audio_engine.sample_rate
-        session.wait(timeout=expected_duration + 2.0)
+        start_time = time.time()
+
+        while not session.is_complete:
+            if time.time() - start_time > expected_duration + 5.0:
+                session.stop()
+                raise RuntimeError(tr("Audio playback timed out. Audio device may have stopped responding."))
+            if session.error:
+                session.stop()
+                raise RuntimeError(str(session.error))
+            if progress_callback:
+                progress_pct = int(90.0 * (session.current_frame / session.total_frames))
+                progress_callback(progress_pct)
+            time.sleep(0.05)
+
         session.stop()
+        if session.error:
+            raise RuntimeError(str(session.error))
         return session.input_data
 
     def start_measurement(self):
@@ -281,88 +297,111 @@ class NonlinearAnalyzer(MeasurementModule):
         max_amp = 10 ** (self.amplitude_db / 20)
         amplitudes = np.linspace(0.2, 1.0, self.num_amplitudes) * max_amp
 
-        logger.info(f"Starting SSS/PHM measurement. Scanned amplitudes (linear): {amplitudes}")
+        logger.info(f"Starting Batch SSS/PHM measurement. Scanned amplitudes (linear): {amplitudes}")
 
         responses_ref = []
         responses_meas = []
 
         total_sweeps = self.num_amplitudes * self.averages
-        sweep_counter = 0
         padding_samples = int(0.5 * sample_rate)  # 500ms tail padding
 
         # Generate the single reference sweep and matching analytical inverse filter
         sss, inv_filter = generate_sss_and_inverse(sample_rate, self.sweep_duration, self.start_freq, self.end_freq)
+        single_sweep_len = len(sss)
+        block_len = single_sweep_len + padding_samples
 
-        for _amp_idx, amp in enumerate(amplitudes):
+        # Add 1.0 second silence at the end for noise floor measurement if enabled
+        noise_samples = int(1.0 * sample_rate) if getattr(self, "measure_noise_floor", True) else 0
+        total_len = total_sweeps * block_len + noise_samples
+
+        # 1. Construct unified continuous playback signal
+        cont_signal = np.zeros(total_len, dtype=np.float32)
+        for amp_idx, amp in enumerate(amplitudes):
+            for avg in range(self.averages):
+                sweep_idx = amp_idx * self.averages + avg
+                start_pt = sweep_idx * block_len
+                cont_signal[start_pt : start_pt + single_sweep_len] = amp * sss
+
+        # Router output allocation
+        out_data = np.zeros((total_len, 2), dtype=np.float32)
+        if self.output_channel in {"L", "STEREO"}:
+            out_data[:, 0] = cont_signal
+        if self.output_channel in {"R", "STEREO"}:
+            out_data[:, 1] = cont_signal
+
+        if not worker.is_running:
+            return
+
+        # Progress reporting callback from play/record session
+        def progress_cb(pct):
+            if worker.is_running:
+                self.signals.progress.emit(int(pct))
+
+        # Execute PlayRec session (Single open/close session)
+        try:
+            rec_data = self.run_play_rec(out_data, input_channels=2, progress_callback=progress_cb)
+        except Exception as e:
+            logger.error("Batch play/record session failed: %s", e)
+            raise e
+
+        # Execute Offline Mode/Virtual Loopback emulation if active
+        if getattr(self.audio_engine, "offline_mode", False):
+            rec_data = np.zeros((total_len, 2), dtype=np.float32)
+            simulated_meas = (
+                cont_signal
+                - 0.08 * (cont_signal**2)
+                + 0.12 * (cont_signal**3)
+                - 0.04 * (cont_signal**4)
+                + 0.06 * (cont_signal**5)
+            )
+            rec_data[:, self.meas_channel_index] = simulated_meas
+            rec_data[:, self.ref_channel_index] = cont_signal
+            if getattr(self, "measure_noise_floor", True):
+                noise_start = total_sweeps * block_len
+                noise_sig = np.random.normal(0, 1e-5, noise_samples) # -100 dBFS noise floor
+                rec_data[noise_start:, self.meas_channel_index] = noise_sig
+
+        # Choose alignment channel: Ref channel in XFER mode, Meas channel otherwise
+        if self.input_mode in {"XFER", "XFER_REV"}:
+            align_ch = self.ref_channel_index
+        else:
+            align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
+
+        # 2. Slice and Average in Memory
+        for amp_idx, _amp in enumerate(amplitudes):
             if not worker.is_running:
                 return
-
-            out_signal = np.concatenate([amp * sss, np.zeros(padding_samples)])
-
-            # Router output allocation
-            out_data = np.zeros((len(out_signal), 2), dtype=np.float32)
-            if self.output_channel in {"L", "STEREO"}:
-                out_data[:, 0] = out_signal
-            if self.output_channel in {"R", "STEREO"}:
-                out_data[:, 1] = out_signal
 
             accum_data = None
             ref_peak_sub = None
 
-            for _avg in range(self.averages):
-                if not worker.is_running:
-                    return
+            for avg in range(self.averages):
+                sweep_idx = amp_idx * self.averages + avg
+                start_pt = sweep_idx * block_len
+                end_pt = start_pt + block_len
 
-                rec_data = self.run_play_rec(out_data, input_channels=2)
-
-                # Choose alignment channel: Ref channel in XFER mode, Meas channel otherwise
-                if self.input_mode in {"XFER", "XFER_REV"}:
-                    align_ch = self.ref_channel_index
-                else:
-                    align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
-                align_sig = rec_data[:, align_ch]
+                # Extract the sweep block
+                rec_block = rec_data[start_pt:end_pt, :].copy()
+                align_sig = rec_block[:, align_ch]
 
                 # Deconvolve alignment channel to locate peak
                 temp_ir = fftconvolve(align_sig, inv_filter, mode="full")
                 t_peak = find_subsample_peak(temp_ir)
 
-                if accum_data is None:
-                    accum_data = rec_data.copy()
+                if avg == 0:
+                    accum_data = rec_block
                     ref_peak_sub = t_peak
                 else:
                     delay = t_peak - ref_peak_sub
 
-                    # Apply sub-sample fractional delay shift in frequency domain (shift back by -delay)
-                    shifted = np.zeros_like(rec_data)
-                    for ch in range(rec_data.shape[1]):
-                        shifted[:, ch] = apply_fractional_delay(rec_data[:, ch], -delay)
+                    # Apply sub-sample fractional delay shift in frequency domain
+                    shifted = np.zeros_like(rec_block)
+                    for ch in range(rec_block.shape[1]):
+                        shifted[:, ch] = apply_fractional_delay(rec_block[:, ch], -delay)
 
                     accum_data += shifted
 
-                sweep_counter += 1
-                progress_pct = int(90 * (sweep_counter / total_sweeps))
-                self.signals.progress.emit(progress_pct)
-
             averaged_data = accum_data / self.averages
-
-            # Execute Offline Mode/Virtual Loopback emulation if active
-            if getattr(self.audio_engine, "offline_mode", False):
-                simulated_meas = amp * sss
-                # Apply simulated non-linear system transfer
-                simulated_meas = (
-                    simulated_meas
-                    - 0.08 * (simulated_meas**2)
-                    + 0.12 * (simulated_meas**3)
-                    - 0.04 * (simulated_meas**4)
-                    + 0.06 * (simulated_meas**5)
-                )
-                simulated_meas = np.concatenate([simulated_meas, np.zeros(padding_samples)])
-                clean_ref = np.concatenate([amp * sss, np.zeros(padding_samples)])
-                if self.meas_channel_index == self.ref_channel_index:
-                    averaged_data[:, self.meas_channel_index] = simulated_meas
-                else:
-                    averaged_data[:, self.meas_channel_index] = simulated_meas
-                    averaged_data[:, self.ref_channel_index] = clean_ref
 
             # Deconvolution to get raw impulse responses
             sig_ref = averaged_data[:, self.ref_channel_index]
@@ -374,36 +413,31 @@ class NonlinearAnalyzer(MeasurementModule):
             responses_ref.append(ir_ref_raw)
             responses_meas.append(ir_meas_raw)
 
-        # 2. Noise Floor Measurement (Optional)
-        noise_floor_dbfs = None
-        if getattr(self, "measure_noise_floor", True):
-            if worker.is_running:
-                logger.info("Measuring noise floor (1.0 second silence play/record)...")
-                noise_duration = 1.0
-                noise_len = int(sample_rate * noise_duration)
-                noise_out = np.zeros((noise_len, 2), dtype=np.float32)
-                try:
-                    rec_data = self.run_play_rec(noise_out, input_channels=2)
-                    if getattr(self.audio_engine, "offline_mode", False):
-                        # Simulate -100 dBFS noise floor
-                        noise_sig = np.random.normal(0, 1e-5, noise_len)
-                    else:
-                        noise_sig = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
+            # Update DSP progress (90% to 95%)
+            progress_pct = 90 + int(5.0 * (amp_idx + 1) / self.num_amplitudes)
+            self.signals.progress.emit(progress_pct)
 
-                    # Apply 20Hz-20kHz bandpass filtering (removes DC offset and out-of-band noise)
+        # 3. Noise Floor Measurement Extraction (Optional)
+        noise_floor_dbfs = None
+        if getattr(self, "measure_noise_floor", True) and noise_samples > 0:
+            if worker.is_running:
+                logger.info("Extracting noise floor from continuous recording...")
+                noise_start = total_sweeps * block_len
+                noise_sig = rec_data[noise_start:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
+
+                try:
+                    # Apply 20Hz-20kHz bandpass filtering
                     nyquist = sample_rate / 2.0
-                    # 20Hz HPF (4th order)
                     sos_hp = butter(4, 20.0 / nyquist, btype='highpass', output='sos')
                     filtered_sig = sosfilt(sos_hp, noise_sig)
 
-                    # 20kHz LPF (4th order) if sampling rate supports it
                     if sample_rate > 44100:
                         sos_lp = butter(4, 20000.0 / nyquist, btype='lowpass', output='sos')
                         filtered_sig = sosfilt(sos_lp, filtered_sig)
 
-                    # Trim edges (especially start) to avoid sweep decay transients and filter settling times
-                    trim_start = int(sample_rate * 0.20)  # 200ms trim for sweep decay & HPF transients
-                    trim_end = int(sample_rate * 0.10)    # 100ms trim for end filter transients
+                    # Trim edges to avoid transients
+                    trim_start = int(sample_rate * 0.20)
+                    trim_end = int(sample_rate * 0.10)
                     if len(filtered_sig) > (trim_start + trim_end):
                         trimmed_sig = filtered_sig[trim_start:-trim_end]
                     else:
@@ -411,9 +445,9 @@ class NonlinearAnalyzer(MeasurementModule):
 
                     rms = np.sqrt(np.mean(trimmed_sig**2))
                     noise_floor_dbfs = float(20 * np.log10(rms + 1e-12))
-                    logger.info("Measured noise floor (filtered/trimmed): %.2f dBFS", noise_floor_dbfs)
+                    logger.info("Extracted noise floor: %.2f dBFS", noise_floor_dbfs)
                 except Exception as e:
-                    logger.error("Failed to measure noise floor: %s", e)
+                    logger.error("Failed to extract noise floor: %s", e)
         self.measured_noise_floor_dbfs = noise_floor_dbfs
 
         # 3. Parallel Hammerstein Separation and Analysis using Core Module

@@ -68,8 +68,8 @@ def main():
 
     # Wrap run_play_rec to log raw levels
     orig_run_play_rec = nonlin_analyzer.run_play_rec
-    def debug_run_play_rec(output_data, input_channels=2):
-        rec_data = orig_run_play_rec(output_data, input_channels)
+    def debug_run_play_rec(output_data, input_channels=2, *args, **kwargs):
+        rec_data = orig_run_play_rec(output_data, input_channels, *args, **kwargs)
         meas_rms = np.sqrt(np.mean(rec_data[:, 0]**2))
         ref_rms = np.sqrt(np.mean(rec_data[:, 1]**2))
         meas_db = 20 * np.log10(meas_rms * np.sqrt(2) + 1e-12)
