@@ -39,10 +39,11 @@ class LICFFEngine:
     based on a loaded Hammerstein system model.
     """
 
-    def __init__(self, model_data, f_min=60.0, f_max=17000.0):
+    def __init__(self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None):
         self.model_data = model_data
         self.f_min = f_min
         self.f_max = f_max
+        self.threshold_db = threshold_db
         self.sample_rate = 48000
         self.N = 0
         self.q0_sum = 0.0
@@ -85,6 +86,23 @@ class LICFFEngine:
         self.q3 = h3.copy()
         self.q4 = h4.copy()
         self.q5 = h5.copy()
+
+        # Noise thresholding for high-order kernels
+        if self.threshold_db is not None:
+            peak_h1 = np.max(np.abs(self.q1))
+            threshold_linear = 10 ** (self.threshold_db / 20.0)
+            for p in range(2, 6):
+                qp_name = f"q{p}"
+                qp = getattr(self, qp_name)
+                peak_qp = np.max(np.abs(qp))
+                if peak_qp < peak_h1 * threshold_linear:
+                    setattr(self, qp_name, np.zeros_like(qp))
+                    logger.info(
+                        "LICFFEngine: Kernel h%d peak (%e) is below relative threshold (%e). Zeroed out.",
+                        p,
+                        peak_qp,
+                        peak_h1 * threshold_linear,
+                    )
 
         # Scale based on linear peak response
         Q1_fft_raw = np.fft.rfft(self.q1)
@@ -215,15 +233,10 @@ class LICFFEngine:
 
     def forward_model(self, x, L=8):
         M = len(x)
-        g_ref = getattr(self, "g_ref", 1.0)
-
-        # Scale the input signal to ADC level (reference channel scale)
-        x_adc = x * g_ref
-
-        X_adc = np.fft.rfft(x_adc)
+        X = np.fft.rfft(x)
         N_up = L * M
         X_up = np.zeros(N_up // 2 + 1, dtype=complex)
-        X_up[: len(X_adc)] = X_adc * L
+        X_up[: len(X)] = X * L
         x_up = np.fft.irfft(X_up, n=N_up)
 
         x_up2 = x_up * x_up
@@ -231,27 +244,27 @@ class LICFFEngine:
         x_up4 = x_up3 * x_up
         x_up5 = x_up4 * x_up
 
-        Y_fft = np.zeros_like(X_adc, dtype=complex)
+        Y_fft = np.zeros_like(X, dtype=complex)
         Q_fft, _, _ = self._prepare_buffers_for_length(M)
 
         # p=1
-        Y_fft += X_adc * Q_fft[1]
+        Y_fft += X * Q_fft[1]
 
         # p=2
         Xp_up = np.fft.rfft(x_up2)
-        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[2]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
 
         # p=3
         Xp_up = np.fft.rfft(x_up3)
-        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[3]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
 
         # p=4
         Xp_up = np.fft.rfft(x_up4)
-        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[4]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
 
         # p=5
         Xp_up = np.fft.rfft(x_up5)
-        Y_fft += (Xp_up[: len(X_adc)] / L) * Q_fft[5]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
 
         Y_fft[-1] = np.real(Y_fft[-1])
         y_model = np.fft.irfft(Y_fft, n=M) + self.q0_sum
@@ -278,14 +291,12 @@ class LICFFEngine:
         if not iterative:
             iters = 1
 
-        g_ref = getattr(self, "g_ref", 1.0)
         u_comp = u_in_filt.copy()
         for _ in range(iters):
-            u_adc = u_comp * g_ref
-            Y_fft = self.nonlinear_spectrum(u_adc)
+            Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter
             y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
-            u_comp = u_in_filt - (y_comp_nl / g_ref)
+            u_comp = u_in_filt - y_comp_nl
 
         u_comp = np.clip(u_comp, -clip_limit, clip_limit)
         return u_comp

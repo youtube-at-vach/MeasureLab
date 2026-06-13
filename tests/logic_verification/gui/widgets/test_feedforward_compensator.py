@@ -141,6 +141,45 @@ def test_direct_kernel_mapping(temp_wav_files):
     assert np.allclose(engine.q5, h5)
 
 
+def test_noise_thresholding(temp_wav_files):
+    _, _, sr = temp_wav_files
+    N = 8
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    h2 = np.zeros(N)
+    h2[0] = 0.1     # -20 dB -> should NOT be zeroed if threshold is -40 dB
+    h3 = np.zeros(N)
+    h3[0] = 0.001   # -60 dB -> SHOULD be zeroed if threshold is -40 dB
+    h4 = np.zeros(N)
+    h4[0] = 0.03    # -30.4 dB -> should NOT be zeroed if threshold is -40 dB
+    h5 = np.zeros(N)
+    h5[0] = 0.0001  # -80 dB -> SHOULD be zeroed if threshold is -40 dB
+
+    model_data = {
+        "metadata": {
+            "sample_rate": sr,
+        },
+        "time_domain": {
+            "kernels": {
+                "h1": h1.tolist(),
+                "h2": h2.tolist(),
+                "h3": h3.tolist(),
+                "h4": h4.tolist(),
+                "h5": h5.tolist(),
+            }
+        }
+    }
+
+    # threshold_db = -40.0 dB
+    engine = LICFFEngine(model_data, f_min=60, f_max=17000, threshold_db=-40.0)
+
+    assert np.allclose(engine.q1, h1)
+    assert np.allclose(engine.q2, h2)
+    assert np.allclose(engine.q3, np.zeros(N)) # zeroed out!
+    assert np.allclose(engine.q4, h4)
+    assert np.allclose(engine.q5, np.zeros(N)) # zeroed out!
+
+
 def test_feedforward_compensator_widget_simulation(qtbot, dummy_model_data):
     audio_engine = MagicMock()
     module = FeedforwardCompensator(audio_engine)

@@ -423,6 +423,12 @@ def process_amplitude_responses(
             phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
             H_xfer_all = H_xfer_all * phase_shift_gate
 
+            # Apply systematic phase calibration to the frequency response
+            if phases_cal_dict is not None and h_key in phases_cal_dict:
+                phase_cal_rad = np.zeros_like(freqs)
+                phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
+                H_xfer_all = H_xfer_all * np.exp(-1j * phase_cal_rad)
+
             valid_H = H_xfer_all[mask]
             h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
         else:
@@ -430,6 +436,13 @@ def process_amplitude_responses(
             delay_samples = int(latency_sec * sample_rate)
             phase_correction_all = 2 * np.pi * freqs * (delay_samples / sample_rate)
             H_corr_all = H_meas_p * np.exp(1j * phase_correction_all)
+
+            # Apply systematic phase calibration to the frequency response
+            if phases_cal_dict is not None and h_key in phases_cal_dict:
+                phase_cal_rad = np.zeros_like(freqs)
+                phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
+                H_corr_all = H_corr_all * np.exp(-1j * phase_cal_rad)
+
             valid_H = H_corr_all[mask]
             h_kernels_calibrated.append(fft_manager.irfft(H_corr_all, n=N_kernel))
 
@@ -438,11 +451,6 @@ def process_amplitude_responses(
         phase_rad = np.unwrap(np.angle(valid_H))
         phase_deg = np.degrees(phase_rad)
         phase_deg = (phase_deg + 180) % 360 - 180
-
-        # Apply systematic sweep phase calibration to remove windowing/FFT latency artifacts
-        if phases_cal_dict is not None and h_key in phases_cal_dict:
-            phase_deg = phase_deg - phases_cal_dict[h_key]
-            phase_deg = (phase_deg + 180) % 360 - 180
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
