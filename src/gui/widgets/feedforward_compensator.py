@@ -541,6 +541,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # Right Panel: Tabs
         self.tabs = QTabWidget()
         self.setup_simulation_tab()
+        self.setup_linear_response_tab()
         self.setup_offline_tab()
         main_layout.addWidget(self.tabs, stretch=1)
 
@@ -631,6 +632,80 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.tabs.addTab(off_tab, tr("Offline Processing"))
 
+    def setup_linear_response_tab(self):
+        lin_tab = QWidget()
+        lin_layout = QVBoxLayout(lin_tab)
+        lin_layout.setContentsMargins(5, 5, 5, 5)
+        lin_layout.setSpacing(5)
+
+        # Magnitude Plot
+        self.plot_lin_mag = pg.PlotWidget(title=tr("Magnitude Response"))
+        self.plot_lin_mag.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_lin_mag.setLabel("left", tr("Magnitude"), units="dB")
+        self.plot_lin_mag.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_lin_mag.addLegend()
+        self.plot_lin_mag.getPlotItem().getAxis("bottom").setLogMode(True)
+
+        self.curve_lin_mag_orig = self.plot_lin_mag.plot(pen="r", name=tr("Uncompensated (Linear)"))
+        self.curve_lin_mag_filter = self.plot_lin_mag.plot(pen="g", name=tr("Inverse Filter"))
+        self.curve_lin_mag_corr = self.plot_lin_mag.plot(pen="b", name=tr("Compensated (Overall)"))
+        lin_layout.addWidget(self.plot_lin_mag, stretch=1)
+
+        # Phase Plot
+        self.plot_lin_phase = pg.PlotWidget(title=tr("Phase Response"))
+        self.plot_lin_phase.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_lin_phase.setLabel("left", tr("Phase"), units="deg")
+        self.plot_lin_phase.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_lin_phase.addLegend()
+        self.plot_lin_phase.getPlotItem().getAxis("bottom").setLogMode(True)
+
+        self.curve_lin_phase_orig = self.plot_lin_phase.plot(pen="r", name=tr("Uncompensated (Linear)"))
+        self.curve_lin_phase_filter = self.plot_lin_phase.plot(pen="g", name=tr("Inverse Filter"))
+        self.curve_lin_phase_corr = self.plot_lin_phase.plot(pen="b", name=tr("Compensated (Overall)"))
+        lin_layout.addWidget(self.plot_lin_phase, stretch=1)
+
+        self.tabs.addTab(lin_tab, tr("Linear Response"))
+
+    def update_linear_response_plot(self):
+        if not self.module.engine:
+            return
+
+        engine = self.module.engine
+        M = engine.N
+        sr = engine.sample_rate
+
+        Q_fft, F_inv, bp_filter = engine._prepare_buffers_for_length(M)
+
+        # Q_fft[1] is H1 (linear response)
+        # F_inv is the inverse filter for H1
+        # Compensated overall is H1 * F_inv
+        mag_orig = 20 * np.log10(np.abs(Q_fft[1]) + 1e-12)
+        mag_filter = 20 * np.log10(np.abs(F_inv) + 1e-12)
+        mag_corr = 20 * np.log10(np.abs(Q_fft[1] * F_inv) + 1e-12)
+
+        phase_orig = np.degrees(np.angle(Q_fft[1]))
+        phase_filter = np.degrees(np.angle(F_inv))
+        phase_corr = np.degrees(np.angle(Q_fft[1] * F_inv))
+
+        freqs = np.fft.rfftfreq(M, d=1.0 / sr)
+        freqs_plot = freqs.copy()
+        freqs_plot[0] = freqs_plot[1] / 10.0
+        log_freqs = np.log10(freqs_plot)
+
+        self.curve_lin_mag_orig.setData(log_freqs, mag_orig)
+        self.curve_lin_mag_filter.setData(log_freqs, mag_filter)
+        self.curve_lin_mag_corr.setData(log_freqs, mag_corr)
+
+        self.curve_lin_phase_orig.setData(log_freqs, phase_orig)
+        self.curve_lin_phase_filter.setData(log_freqs, phase_filter)
+        self.curve_lin_phase_corr.setData(log_freqs, phase_corr)
+
+        self.plot_lin_mag.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
+        self.plot_lin_mag.setYRange(-60, 20, padding=0.0)
+
+        self.plot_lin_phase.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
+        self.plot_lin_phase.setYRange(-190, 190, padding=0.0)
+
     # Online processing features removed to optimize for standard PC performance.
 
     def load_model(self):
@@ -650,6 +725,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
                 self.btn_run_sim.setEnabled(True)
                 self._update_process_btn()
+                self.update_linear_response_plot()
 
                 QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
             except Exception as e:
@@ -664,6 +740,7 @@ class FeedforwardCompensatorWidget(QWidget):
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
             self.module.engine.rebuild_filter()
+            self.update_linear_response_plot()
 
     def run_simulation(self):
         if not self.module.engine:
