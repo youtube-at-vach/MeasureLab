@@ -39,3 +39,15 @@ The Response Viewer is an advanced visualization tool for analyzing linear and h
 
 * **Input-Output Transfer Curve**: Visualizes the transfer characteristics (ideal linear output vs actual output) at the reference frequency and estimates the system's 1dB compression point (P1dB).
 * **Gain Compression**: Plots the deviation (compression error) from the ideal linear gain.
+
+### Wiener Settings
+
+* **Equivalent Gaussian RMS Level (σ)**: Configures the equivalent RMS level ($\sigma$) in dBFS of an input Gaussian noise signal. By default, it is synchronized with the Reference Amplitude.
+
+### Wiener Representation
+
+Converts the measured Hammerstein kernels into Wiener kernels ($w_1 \sim w_5$) in both the frequency and time domains using Hermite orthogonalization relative to the input RMS level ($\sigma$). This allows you to evaluate the orthogonalized distortion profile at specific operational levels.
+
+* **Wiener Kernel Magnitude Response**: Plots the gain frequency response of each Wiener kernel (dB vs Hz, logarithmic X-axis).
+* **Wiener Kernel Phase Response**: Plots the phase frequency response of each Wiener kernel (deg vs Hz, logarithmic X-axis).
+* **Wiener Kernel Energy Fraction**: Renders the time-domain energy fraction (%) of each Wiener kernel as a bar graph, visualizing the contribution of distortion energy for each order.
