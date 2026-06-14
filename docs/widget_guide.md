@@ -16,6 +16,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | **特定の周波数を極めて高い分解能で確認したい** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
 | **波形の形をそのまま見たい** | [Oscilloscope](widgets/oscilloscope.md) |
 | **アンプや部品の歪み(THD)を測りたい** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
+| **アンプやスピーカーの歪みをフィードフォワード補正したい** | [Feedforward Compensator](widgets/feedforward_compensator.md) |
 | **アンプ等の周波数特性(F特)を測りたい** | [Network Analyzer](widgets/network_analyzer.md) |
 | **スピーカーのインピーダンスを測りたい** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
 | **超低歪み(THD)を高精度に測りたい** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md) |
@@ -81,6 +82,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     - THD (全高調波歪) や THD+N を測定します。基本的な歪み測定はこちらを使用します。
 - **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
     - Hammersteinモデルを用いて、機器の応答から1次（線形）〜5次までの高調波カーネルを分離・抽出する高度な歪み解析ツールです。
+
+- **[Feedforward Compensator](widgets/feedforward_compensator.md)**
+    - Hammersteinシステムモデルを利用し、音声信号に対してフィードフォワード歪み補正（LICFF: Linear-Inverse Compensated Feedforward）を適用します。
 
 - **[Nonlinear Response Analyzer](widgets/nonlinear_response_analyzer.md)**
     - Wienerモデルを同定し、動的な非線形システムの挙動を解析します。

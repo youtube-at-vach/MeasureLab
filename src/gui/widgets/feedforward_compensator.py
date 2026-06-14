@@ -280,9 +280,15 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5):
+    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False):
         M = len(u_in)
         _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
+
+        if linear_only:
+            U_in_fft = np.fft.rfft(u_in)
+            u_comp = np.fft.irfft(U_in_fft * F_inv, n=M)
+            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+            return u_comp
 
         # Filter signal to active band
         U_in_fft = np.fft.rfft(u_in)
@@ -306,7 +312,7 @@ class OfflineFFCompWorker(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit):
+    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False):
         super().__init__()
         self.input_path = input_path
         self.output_path = output_path
@@ -314,6 +320,7 @@ class OfflineFFCompWorker(QThread):
         self.iterative = iterative
         self.iters = iters
         self.clip_limit = clip_limit
+        self.linear_only = linear_only
         self.is_cancelled = False
 
     def cancel(self):
@@ -394,7 +401,11 @@ class OfflineFFCompWorker(QThread):
                         x_ch = chunk_padded[:, ch]
                         # Apply compensation on the overlap block
                         u_comp = self.engine.compensate(
-                            x_ch, iterative=self.iterative, iters=self.iters, clip_limit=self.clip_limit
+                            x_ch,
+                            iterative=self.iterative,
+                            iters=self.iters,
+                            clip_limit=self.clip_limit,
+                            linear_only=self.linear_only,
                         )
                         # Extract the valid non-overlapped part
                         chunk_out[:, ch] = u_comp[overlap : overlap + L_block]
@@ -503,6 +514,11 @@ class FeedforwardCompensatorWidget(QWidget):
         settings_form = QFormLayout(settings_group)
         settings_form.setSpacing(6)
 
+        self.chk_linear_only = QCheckBox(tr("Linear-Only Compensation"))
+        self.chk_linear_only.setChecked(False)
+        self.chk_linear_only.toggled.connect(self.on_linear_only_toggled)
+        settings_form.addRow(self.chk_linear_only)
+
         self.chk_iterative = QCheckBox(tr("Enable Iterative Compensation"))
         self.chk_iterative.setChecked(True)
         self.chk_iterative.toggled.connect(self.update_engine_params)
@@ -541,10 +557,17 @@ class FeedforwardCompensatorWidget(QWidget):
         # Right Panel: Tabs
         self.tabs = QTabWidget()
         self.setup_simulation_tab()
+        self.setup_linear_response_tab()
         self.setup_offline_tab()
         main_layout.addWidget(self.tabs, stretch=1)
 
         self.chk_iterative.toggled.connect(self.spin_iters.setEnabled)
+
+    def on_linear_only_toggled(self, checked):
+        self.chk_iterative.setEnabled(not checked)
+        self.spin_iters.setEnabled(not checked and self.chk_iterative.isChecked())
+        if self.module.engine:
+            self.run_simulation()
 
     def setup_simulation_tab(self):
         sim_tab = QWidget()
@@ -587,7 +610,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # Plot Widget
         self.plot_sim = pg.PlotWidget(title=tr("Spectrum Comparison"))
         self.plot_sim.setLabel("bottom", "Frequency", units="Hz")
-        self.plot_sim.setLabel("left", "Magnitude", units="dB")
+        self.plot_sim.setLabel("left", "Magnitude", units="dBr")
         self.plot_sim.showGrid(x=True, y=True, alpha=0.3)
         self.plot_sim.addLegend()
         self.plot_sim.getPlotItem().getAxis("bottom").setLogMode(True)
@@ -631,6 +654,97 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.tabs.addTab(off_tab, tr("Offline Processing"))
 
+    def setup_linear_response_tab(self):
+        lin_tab = QWidget()
+        lin_layout = QVBoxLayout(lin_tab)
+        lin_layout.setContentsMargins(5, 5, 5, 5)
+        lin_layout.setSpacing(5)
+
+        # Magnitude Plot
+        self.plot_lin_mag = pg.PlotWidget(title=tr("Magnitude Response"))
+        self.plot_lin_mag.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_lin_mag.setLabel("left", tr("Magnitude"), units="dB")
+        self.plot_lin_mag.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_lin_mag.addLegend()
+        self.plot_lin_mag.getPlotItem().getAxis("bottom").setLogMode(True)
+
+        self.curve_lin_mag_orig = self.plot_lin_mag.plot(pen="r", name=tr("Uncompensated (Linear)"))
+        self.curve_lin_mag_filter = self.plot_lin_mag.plot(pen="g", name=tr("Inverse Filter"))
+        self.curve_lin_mag_corr = self.plot_lin_mag.plot(pen="b", name=tr("Compensated (Overall)"))
+        lin_layout.addWidget(self.plot_lin_mag, stretch=1)
+
+        # Phase Plot
+        self.plot_lin_phase = pg.PlotWidget(title=tr("Phase Response"))
+        self.plot_lin_phase.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_lin_phase.setLabel("left", tr("Phase"), units="deg")
+        self.plot_lin_phase.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_lin_phase.addLegend()
+        self.plot_lin_phase.getPlotItem().getAxis("bottom").setLogMode(True)
+
+        self.curve_lin_phase_orig = self.plot_lin_phase.plot(pen="r", name=tr("Uncompensated (Linear)"))
+        self.curve_lin_phase_filter = self.plot_lin_phase.plot(pen="g", name=tr("Inverse Filter"))
+        self.curve_lin_phase_corr = self.plot_lin_phase.plot(pen="b", name=tr("Compensated (Overall)"))
+        lin_layout.addWidget(self.plot_lin_phase, stretch=1)
+
+        self.tabs.addTab(lin_tab, tr("Linear Response"))
+
+    def update_linear_response_plot(self):
+        if not self.module.engine:
+            return
+
+        engine = self.module.engine
+        M = engine.N
+        sr = engine.sample_rate
+
+        Q_fft, F_inv, bp_filter = engine._prepare_buffers_for_length(M)
+
+        # H1 peak index corresponds to the gate_pre offset inserted during kernel extraction.
+        # Align the time origin to this peak for clear phase visualization without linear delay phase rotation.
+        t_peak = np.argmax(np.abs(engine.q1_sc))
+        freqs = np.fft.rfftfreq(M, d=1.0 / sr)
+        phase_shift = np.exp(1j * 2 * np.pi * freqs * t_peak / sr)
+
+        Q_fft_aligned = Q_fft[1] * phase_shift
+        F_inv_aligned = F_inv * np.conj(phase_shift)
+
+        # Q_fft[1] is H1 (linear response)
+        # F_inv is the inverse filter for H1
+        # Compensated overall is H1 * F_inv
+        mag_orig = 20 * np.log10(np.abs(Q_fft_aligned) + 1e-12)
+        mag_filter = 20 * np.log10(np.abs(F_inv_aligned) + 1e-12)
+        mag_corr = 20 * np.log10(np.abs(Q_fft[1] * F_inv) + 1e-12)
+
+        phase_orig = np.degrees(np.angle(Q_fft_aligned))
+        phase_filter = np.degrees(np.angle(F_inv_aligned))
+        phase_corr = np.degrees(np.angle(Q_fft[1] * F_inv))
+
+        freqs = np.fft.rfftfreq(M, d=1.0 / sr)
+        freqs_plot = freqs.copy()
+        freqs_plot[0] = freqs_plot[1] / 10.0
+        log_freqs = np.log10(freqs_plot)
+
+        # Plot magnitudes (they do not contain NaN)
+        self.curve_lin_mag_orig.setData(log_freqs, mag_orig)
+        self.curve_lin_mag_filter.setData(log_freqs, mag_filter)
+        self.curve_lin_mag_corr.setData(log_freqs, mag_corr)
+
+        # Mask out phase where the magnitude is extremely low (e.g. below -60 dB)
+        # to prevent noisy phase oscillation in stopbands or zero-energy bins.
+        # Filter the arrays directly to prevent PyQtGraph/Qt C++ crash with NaN values.
+        mask_orig = mag_orig > -60.0
+        mask_filter = mag_filter > -60.0
+        mask_corr = mag_corr > -60.0
+
+        self.curve_lin_phase_orig.setData(log_freqs[mask_orig], phase_orig[mask_orig])
+        self.curve_lin_phase_filter.setData(log_freqs[mask_filter], phase_filter[mask_filter])
+        self.curve_lin_phase_corr.setData(log_freqs[mask_corr], phase_corr[mask_corr])
+
+        self.plot_lin_mag.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
+        self.plot_lin_mag.setYRange(-60, 20, padding=0.0)
+
+        self.plot_lin_phase.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
+        self.plot_lin_phase.setYRange(-190, 190, padding=0.0)
+
     # Online processing features removed to optimize for standard PC performance.
 
     def load_model(self):
@@ -650,6 +764,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
                 self.btn_run_sim.setEnabled(True)
                 self._update_process_btn()
+                self.update_linear_response_plot()
 
                 QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
             except Exception as e:
@@ -664,6 +779,7 @@ class FeedforwardCompensatorWidget(QWidget):
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
             self.module.engine.rebuild_filter()
+            self.update_linear_response_plot()
 
     def run_simulation(self):
         if not self.module.engine:
@@ -704,8 +820,11 @@ class FeedforwardCompensatorWidget(QWidget):
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
+        linear_only = self.chk_linear_only.isChecked()
 
-        u_comp = engine.compensate(u, iterative=iterative, iters=iters, clip_limit=clip_limit)
+        u_comp = engine.compensate(
+            u, iterative=iterative, iters=iters, clip_limit=clip_limit, linear_only=linear_only
+        )
 
         # Output
         y_uncomp = engine.forward_model(u)
@@ -714,9 +833,15 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Plot Spectrum
         freqs = np.fft.rfftfreq(N, d=1.0 / sr)
-        Y_uncomp = 20 * np.log10(np.abs(np.fft.rfft(y_uncomp)) + 1e-12)
-        Y_comp = 20 * np.log10(np.abs(np.fft.rfft(y_comp)) + 1e-12)
-        Y_linear = 20 * np.log10(np.abs(np.fft.rfft(y_linear)) + 1e-12)
+        Y_uncomp_raw = 20 * np.log10(np.abs(np.fft.rfft(y_uncomp)) + 1e-12)
+        Y_comp_raw = 20 * np.log10(np.abs(np.fft.rfft(y_comp)) + 1e-12)
+        Y_linear_raw = 20 * np.log10(np.abs(np.fft.rfft(y_linear)) + 1e-12)
+
+        # Normalize relative to the peak of the ideal linear response (dBr)
+        ref_level = np.max(Y_linear_raw)
+        Y_uncomp = Y_uncomp_raw - ref_level
+        Y_comp = Y_comp_raw - ref_level
+        Y_linear = Y_linear_raw - ref_level
 
         # Limit plot bounds to avoid log(0) issues
         freqs_plot = freqs.copy()
@@ -727,6 +852,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.curve_comp.setData(log_freqs, Y_comp)
         self.curve_linear.setData(log_freqs, Y_linear)
         self.plot_sim.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
+        self.plot_sim.setYRange(-140, 10, padding=0.0)
 
         # Metrics calculation
         def calculate_thd_db(y_sig, f_ref):
@@ -773,18 +899,50 @@ class FeedforwardCompensatorWidget(QWidget):
             sdr = 20 * np.log10(rms_ref / (np.sqrt(np.mean(err**2)) + 1e-12))
             return sdr
 
-        thd_uncomp = calculate_thd_db(y_uncomp, f_test)
-        thd_comp = calculate_thd_db(y_comp, f_test)
+        is_multitone = sig_type in [tr("Two-Tone (1.0k + 1.5k)"), tr("Multi-Tone (5 freqs)")]
+        is_noise = sig_type == tr("Broadband Noise")
+
+        if is_multitone:
+            dist_name = "TD+N"
+            if sig_type == tr("Two-Tone (1.0k + 1.5k)"):
+                expected_tones = [1000.0, 1500.0]
+            else:
+                expected_tones = [300.0, 700.0, 1300.0, 2700.0, 5500.0]
+
+            freqs_fft = np.fft.rfftfreq(N, d=1.0 / sr)
+            mag_uncomp = np.abs(np.fft.rfft(y_uncomp))
+            mag_comp = np.abs(np.fft.rfft(y_comp))
+
+            dist_uncomp = AudioCalc.calculate_multitone_tdn(mag_uncomp, freqs_fft, expected_tones)["tdn_db"]
+            dist_comp = AudioCalc.calculate_multitone_tdn(mag_comp, freqs_fft, expected_tones)["tdn_db"]
+        elif is_noise:
+            dist_name = "TD+N"
+            dist_uncomp = None
+            dist_comp = None
+        else:
+            dist_name = "THD"
+            dist_uncomp = calculate_thd_db(y_uncomp, f_test)
+            dist_comp = calculate_thd_db(y_comp, f_test)
+
         sdr_uncomp = calculate_sdr_db(y_uncomp, y_linear)
         sdr_comp = calculate_sdr_db(y_comp, y_linear)
 
-        results_txt = (
-            f"=== {sig_type} Simulation Results ===\n"
-            f"Uncompensated THD: {thd_uncomp:6.2f} dB | SDR: {sdr_uncomp:6.2f} dB\n"
-            f"Compensated   THD: {thd_comp:6.2f} dB | SDR: {sdr_comp:6.2f} dB\n"
-            f"THD Suppression:   {thd_uncomp - thd_comp:+.2f} dB\n"
-            f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
-        )
+        if is_noise:
+            results_txt = (
+                f"=== {sig_type} Simulation Results ===\n"
+                f"Uncompensated SDR: {sdr_uncomp:6.2f} dB\n"
+                f"Compensated   SDR: {sdr_comp:6.2f} dB\n"
+                f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
+            )
+        else:
+            suppression = dist_uncomp - dist_comp
+            results_txt = (
+                f"=== {sig_type} Simulation Results ===\n"
+                f"Uncompensated {dist_name}: {dist_uncomp:6.2f} dB | SDR: {sdr_uncomp:6.2f} dB\n"
+                f"Compensated   {dist_name}: {dist_comp:6.2f} dB | SDR: {sdr_comp:6.2f} dB\n"
+                f"{dist_name} Suppression:   {suppression:+.2f} dB\n"
+                f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
+            )
         self.lbl_sim_results.setText(results_txt)
 
     def select_input_file(self):
@@ -817,12 +975,21 @@ class FeedforwardCompensatorWidget(QWidget):
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
+        linear_only = self.chk_linear_only.isChecked()
 
         self.btn_process_off.setEnabled(False)
         self.btn_process_off.setText(tr("Processing..."))
         self.progress_off.setValue(0)
 
-        self.worker = OfflineFFCompWorker(input_path, output_path, self.module.engine, iterative, iters, clip_limit)
+        self.worker = OfflineFFCompWorker(
+            input_path,
+            output_path,
+            self.module.engine,
+            iterative,
+            iters,
+            clip_limit,
+            linear_only=linear_only,
+        )
         self.worker.progress.connect(self.progress_off.setValue)
         self.worker.finished.connect(self.on_offline_finished)
         self.worker.start()
