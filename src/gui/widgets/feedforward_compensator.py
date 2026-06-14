@@ -290,9 +290,9 @@ class LICFFEngine:
             u_comp = np.clip(u_comp, -clip_limit, clip_limit)
             return u_comp
 
-        # Filter signal to active band
+        # Apply linear inverse filter to active band
         U_in_fft = np.fft.rfft(u_in)
-        u_in_filt = np.fft.irfft(U_in_fft * bp_filter, n=M)
+        u_in_filt = np.fft.irfft(U_in_fft * F_inv, n=M)
 
         if not iterative:
             iters = 1
