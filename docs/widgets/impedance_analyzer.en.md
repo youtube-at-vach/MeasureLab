@@ -17,10 +17,9 @@ It has the same functions as instruments generally called "LCR meters" and can m
 
 ## ☕ Coffee Break: Resistance vs. Impedance
 
-"Resistance" is like friction when pushing something steadily.
-"Impedance," on the other hand, is the difficulty of shaking something back and forth.
-Depending on the weight (coil) or spring stiffness (capacitor), the energy needed to shake it quickly changes.
-Because audio signals are alternating current (AC) waves, measuring this "resistance to being shaken" is crucial.
+"Resistance" represents the opposition to the flow of direct current (DC).
+"Impedance," on the other hand, represents the opposition to alternating current (AC).
+Because components like capacitors and coils change their opposition based on the signal's frequency, measuring impedance is crucial for audio signals, which are constantly changing AC waves.
 
 ## Basic Knowledge for Beginners
 
