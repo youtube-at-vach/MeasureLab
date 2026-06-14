@@ -16,6 +16,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Check specific frequencies with extremely high resolution** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
 | **View original waveform shape** | [Oscilloscope](widgets/oscilloscope.md) |
 | **Measure distortion (THD) of amps or components** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
+| **Apply feedforward distortion compensation to an audio signal** | [Feedforward Compensator](widgets/feedforward_compensator.md) |
 | **Measure frequency response of amps, etc.** | [Network Analyzer](widgets/network_analyzer.md) |
 | **Measure impedance of speakers** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
 | **Measure ultra-low distortion (THD) with high precision** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md) |
@@ -75,6 +76,9 @@ Tools for evaluating equipment performance and sound quality.
     - Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
 - **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
     - An advanced distortion analysis tool that uses the Hammerstein model to separate and extract 1st (linear) to 5th order harmonic kernels from equipment responses.
+
+- **[Feedforward Compensator](widgets/feedforward_compensator.md)**
+    - Applies feedforward distortion compensation (LICFF) to audio signals using Hammerstein system models.
 
 - **[Nonlinear Response Analyzer](widgets/nonlinear_response_analyzer.md)**
     - Identifies Wiener models to analyze dynamic nonlinear system behavior.

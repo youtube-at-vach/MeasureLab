@@ -93,6 +93,7 @@ plugins:
             歪み解析: Distortion Analyzer
             非線形解析: Nonlinear Analyzer
             応答ビューア: Response Viewer
+            フィードフォワード歪み補正: Feedforward Compensator
             直線性解析: Linearity Analyzer
             音響・オーディオ解析: Acoustic & Audio Analysis
             音圧レベルメーター: Sound Level Meter
@@ -177,6 +178,7 @@ nav:
           - 歪み解析: widgets/distortion_analyzer.md
           - 非線形解析: widgets/nonlinear_analyzer.md
           - 応答ビューア: widgets/response_viewer.md
+          - フィードフォワード歪み補正: widgets/feedforward_compensator.md
           - 直線性解析: widgets/linearity_analyzer.md
       - 音響・オーディオ解析:
           - 音圧レベルメーター: widgets/sound_level_meter.md
