@@ -698,15 +698,24 @@ class FeedforwardCompensatorWidget(QWidget):
 
         Q_fft, F_inv, bp_filter = engine._prepare_buffers_for_length(M)
 
+        # H1 peak index corresponds to the gate_pre offset inserted during kernel extraction.
+        # Align the time origin to this peak for clear phase visualization without linear delay phase rotation.
+        t_peak = np.argmax(np.abs(engine.q1_sc))
+        freqs = np.fft.rfftfreq(M, d=1.0 / sr)
+        phase_shift = np.exp(1j * 2 * np.pi * freqs * t_peak / sr)
+
+        Q_fft_aligned = Q_fft[1] * phase_shift
+        F_inv_aligned = F_inv * np.conj(phase_shift)
+
         # Q_fft[1] is H1 (linear response)
         # F_inv is the inverse filter for H1
         # Compensated overall is H1 * F_inv
-        mag_orig = 20 * np.log10(np.abs(Q_fft[1]) + 1e-12)
-        mag_filter = 20 * np.log10(np.abs(F_inv) + 1e-12)
+        mag_orig = 20 * np.log10(np.abs(Q_fft_aligned) + 1e-12)
+        mag_filter = 20 * np.log10(np.abs(F_inv_aligned) + 1e-12)
         mag_corr = 20 * np.log10(np.abs(Q_fft[1] * F_inv) + 1e-12)
 
-        phase_orig = np.degrees(np.angle(Q_fft[1]))
-        phase_filter = np.degrees(np.angle(F_inv))
+        phase_orig = np.degrees(np.angle(Q_fft_aligned))
+        phase_filter = np.degrees(np.angle(F_inv_aligned))
         phase_corr = np.degrees(np.angle(Q_fft[1] * F_inv))
 
         freqs = np.fft.rfftfreq(M, d=1.0 / sr)
