@@ -39,3 +39,15 @@ Response Viewerは、[Nonlinear Analyzer](nonlinear_analyzer.md) によって抽
 
 * **Input-Output Transfer Curve**: 基準周波数における入出力の伝達特性（リニア成分と実際の出力）を可視化し、システムの1dBコンプレッションポイント（P1dB）を推定します。
 * **Gain Compression**: リニアゲインからのずれ（圧縮誤差）をプロットします。
+
+### Wiener設定 (Wiener Settings)
+
+* **Equivalent Gaussian RMS Level (σ)**: 指定されたdBFS値に基づいて、入力されるガウス雑音の等価RMSレベル（$\sigma$）を設定します。デフォルトでは基準振幅（Reference Amplitude）と同期します。
+
+### Wiener表現 (Wiener Representation)
+
+測定されたハマーシュタイン（Hammerstein）カーネルを、入力RMSレベル（$\sigma$）に対するエルミート直交化（Hermite orthogonalization）によって、周波数・時間領域でウィーナー（Wiener）カーネル（$w_1 \sim w_5$）へ変換・表示します。これにより、特定の動作レベルにおける直交化された歪みプロファイルを評価できます。
+
+* **Wiener Kernel Magnitude Response**: 各ウィーナーカーネルのゲイン周波数特性（dB vs Hz、対数軸表示）を表示します。
+* **Wiener Kernel Phase Response**: 各ウィーナーカーネルの位相周波数特性（deg vs Hz、対数軸表示）を表示します。
+* **Wiener Kernel Energy Fraction**: 各ウィーナーカーネルが持つ時間領域のエネルギー割合（％）を棒グラフで表示し、次数ごとの歪みエネルギーの寄与率を視覚化します。
