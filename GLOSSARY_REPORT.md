@@ -29,6 +29,10 @@ MeasureLab のドキュメントから、一般ユーザーにとって難解と
 | **Network Analyzer** (`network_analyzer.md`) | コヒーレンス (Coherence), 群遅延 (Group Delay) |
 | **Noise Profiler** (`noise_profiler.md`) | 1/fノイズ (Flicker Noise) と ハムノイズ (Hum Noise), 熱雑音 (Thermal Noise), 入力換算ノイズ (Equivalent Input Noise / EIN) |
 | **Nonlinear Response Analyzer** (`nonlinear_response_analyzer.md`) | (非線形モデリングや混変調歪に関連) |
+| **Oscilloscope** (`oscilloscope.md`) | トリガー (Trigger), 立ち上がり時間 / 立ち下がり時間 (Rise Time / Fall Time), Vpp (Peak-to-Peak 電圧) |
+| **Sound Level Meter** (`sound_level_meter.md`) | 等価騒音レベル (Leq), 時間重み付け (Time Weighting), Z特性 (Z-Weighting) |
+| **Spectrogram** (`spectrogram.md`) | フォルマント (Formant), メル尺度 (Mel Scale), ウォーターフォール表示 (Waterfall Display) |
+| **Transient Analyzer** (`transient_analyzer.md`) | ウェーブレット変換 (Wavelet Transform) |
 
 ---
 
@@ -43,22 +47,18 @@ MeasureLab のドキュメントから、一般ユーザーにとって難解と
 5. **Log Viewer** (`log_viewer.md` / `*.en.md`)
 6. **Loopback Finder** (`loopback_finder.md` / `*.en.md`)
 7. **Nonlinear Analyzer** (`nonlinear_analyzer.md` / `*.en.md`)
-8. **Oscilloscope** (`oscilloscope.md` / `*.en.md`)
-9. **Plot Comparer** (`plot_comparer.md` / `*.en.md`)
-10. **Processor Benchmark** (`processor_benchmark.md` / `*.en.md`)
-11. **Raw Time Series** (`raw_time_series.md` / `*.en.md`)
-12. **Recorder Player** (`recorder_player.md` / `*.en.md`)
-13. **Response Viewer** (`response_viewer.md` / `*.en.md`)
-14. **Settings** (`settings.md` / `*.en.md`)
-15. **Signal Generator** (`signal_generator.md` / `*.en.md`)
-16. **Sound Level Meter** (`sound_level_meter.md` / `*.en.md`)
-17. **Sound Quality Analyzer** (`sound_quality_analyzer.md` / `*.en.md`)
-18. **Spatial Binaural Mixer** (`spatial_binaural_mixer.md` / `*.en.md`)
-19. **Spectrogram** (`spectrogram.md` / `*.en.md`)
-20. **Stereo Alignment Monitor** (`stereo_alignment_monitor.md` / `*.en.md`)
-21. **Timecode Monitor** (`timecode_monitor.md` / `*.en.md`)
-22. **Transient Analyzer** (`transient_analyzer.md` / `*.en.md`)
-23. **Transmission Analyzer** (`transmission_analyzer.md` / `*.en.md`)
-24. **Ultrasound Modulator** (`ultrasound_modulator.md` / `*.en.md`)
-25. **Waveform Loop Player** (`waveform_loop_player.md` / `*.en.md`)
-26. **Welcome** (`welcome.md` / `*.en.md`)
+8. **Plot Comparer** (`plot_comparer.md` / `*.en.md`)
+9. **Processor Benchmark** (`processor_benchmark.md` / `*.en.md`)
+10. **Raw Time Series** (`raw_time_series.md` / `*.en.md`)
+11. **Recorder Player** (`recorder_player.md` / `*.en.md`)
+12. **Response Viewer** (`response_viewer.md` / `*.en.md`)
+13. **Settings** (`settings.md` / `*.en.md`)
+14. **Signal Generator** (`signal_generator.md` / `*.en.md`)
+15. **Sound Quality Analyzer** (`sound_quality_analyzer.md` / `*.en.md`)
+16. **Spatial Binaural Mixer** (`spatial_binaural_mixer.md` / `*.en.md`)
+17. **Stereo Alignment Monitor** (`stereo_alignment_monitor.md` / `*.en.md`)
+18. **Timecode Monitor** (`timecode_monitor.md` / `*.en.md`)
+19. **Transmission Analyzer** (`transmission_analyzer.md` / `*.en.md`)
+20. **Ultrasound Modulator** (`ultrasound_modulator.md` / `*.en.md`)
+21. **Waveform Loop Player** (`waveform_loop_player.md` / `*.en.md`)
+22. **Welcome** (`welcome.md` / `*.en.md`)
