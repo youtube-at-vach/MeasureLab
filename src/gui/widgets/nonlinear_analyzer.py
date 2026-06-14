@@ -203,7 +203,7 @@ class NonlinearAnalyzer(MeasurementModule):
             self.audio_engine.unregister_callback(self._dummy_callback_id)
             self._dummy_callback_id = None
 
-    def run_play_rec(self, output_data, input_channels=2, progress_callback=None):
+    def run_play_rec(self, output_data, input_channels=2, progress_callback=None, check_cancelled=None):
         import time
         session = PlayRecSession(self.audio_engine, output_data, input_channels)
         session.start()
@@ -211,6 +211,9 @@ class NonlinearAnalyzer(MeasurementModule):
         start_time = time.time()
 
         while not session.is_complete:
+            if check_cancelled and check_cancelled():
+                session.stop()
+                raise RuntimeError(tr("Measurement stopped by user."))
             if time.time() - start_time > expected_duration + 5.0:
                 session.stop()
                 raise RuntimeError(tr("Audio playback timed out. Audio device may have stopped responding."))
@@ -339,8 +342,16 @@ class NonlinearAnalyzer(MeasurementModule):
 
         # Execute PlayRec session (Single open/close session)
         try:
-            rec_data = self.run_play_rec(out_data, input_channels=2, progress_callback=progress_cb)
+            rec_data = self.run_play_rec(
+                out_data,
+                input_channels=2,
+                progress_callback=progress_cb,
+                check_cancelled=lambda: not worker.is_running
+            )
         except Exception as e:
+            if not worker.is_running:
+                logger.info("Measurement was stopped by user.")
+                return
             logger.error("Batch play/record session failed: %s", e)
             raise e
 

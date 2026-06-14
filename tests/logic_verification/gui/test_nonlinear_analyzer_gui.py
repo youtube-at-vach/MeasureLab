@@ -65,3 +65,44 @@ def test_nonlinear_analyzer_routing(qtbot):
     # 5. Modify Output Channel to Right
     widget.out_combo.setCurrentIndex(widget.out_combo.findData("R"))
     assert analyzer.output_channel == "R"
+
+
+def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
+    # Setup dummy audio engine in offline mode
+    audio_engine = AudioEngine()
+    audio_engine.offline_mode = True
+
+    analyzer = NonlinearAnalyzer(audio_engine)
+    # Set longer parameters to give enough time to click stop
+    analyzer.sweep_duration = 2.0
+    analyzer.averages = 1
+    analyzer.num_amplitudes = 5
+
+    widget = NonlinearAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Mock QMessageBox.critical to verify it is NOT called (no error dialogs on user abort)
+    critical_called = False
+    def mock_critical(*args, **kwargs):
+        nonlocal critical_called
+        critical_called = True
+
+    from PyQt6.QtWidgets import QMessageBox
+    monkeypatch.setattr(QMessageBox, "critical", mock_critical)
+
+    # Click start analysis
+    widget.start_btn.click()
+
+    # Wait for the worker to start and stop button to become active
+    qtbot.waitUntil(lambda: widget.stop_btn.isEnabled(), timeout=1000)
+    assert not widget.start_btn.isEnabled()
+
+    # Click stop
+    widget.stop_btn.click()
+
+    # The worker should stop quickly
+    qtbot.waitUntil(lambda: widget.start_btn.isEnabled() and not widget.stop_btn.isEnabled(), timeout=2000)
+
+    # QMessageBox.critical should not have been called
+    assert not critical_called
+
