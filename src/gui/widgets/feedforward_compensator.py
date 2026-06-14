@@ -718,6 +718,12 @@ class FeedforwardCompensatorWidget(QWidget):
         phase_filter = np.degrees(np.angle(F_inv_aligned))
         phase_corr = np.degrees(np.angle(Q_fft[1] * F_inv))
 
+        # Mask out phase where the magnitude is extremely low (e.g. below -60 dB)
+        # to prevent noisy phase oscillation in stopbands or zero-energy bins.
+        phase_orig = np.where(mag_orig > -60.0, phase_orig, np.nan)
+        phase_filter = np.where(mag_filter > -60.0, phase_filter, np.nan)
+        phase_corr = np.where(mag_corr > -60.0, phase_corr, np.nan)
+
         freqs = np.fft.rfftfreq(M, d=1.0 / sr)
         freqs_plot = freqs.copy()
         freqs_plot[0] = freqs_plot[1] / 10.0
