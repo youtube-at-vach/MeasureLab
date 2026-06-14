@@ -280,9 +280,15 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5):
+    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False):
         M = len(u_in)
         _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
+
+        if linear_only:
+            U_in_fft = np.fft.rfft(u_in)
+            u_comp = np.fft.irfft(U_in_fft * F_inv, n=M)
+            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+            return u_comp
 
         # Filter signal to active band
         U_in_fft = np.fft.rfft(u_in)
@@ -306,7 +312,7 @@ class OfflineFFCompWorker(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit):
+    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False):
         super().__init__()
         self.input_path = input_path
         self.output_path = output_path
@@ -314,6 +320,7 @@ class OfflineFFCompWorker(QThread):
         self.iterative = iterative
         self.iters = iters
         self.clip_limit = clip_limit
+        self.linear_only = linear_only
         self.is_cancelled = False
 
     def cancel(self):
@@ -394,7 +401,11 @@ class OfflineFFCompWorker(QThread):
                         x_ch = chunk_padded[:, ch]
                         # Apply compensation on the overlap block
                         u_comp = self.engine.compensate(
-                            x_ch, iterative=self.iterative, iters=self.iters, clip_limit=self.clip_limit
+                            x_ch,
+                            iterative=self.iterative,
+                            iters=self.iters,
+                            clip_limit=self.clip_limit,
+                            linear_only=self.linear_only,
                         )
                         # Extract the valid non-overlapped part
                         chunk_out[:, ch] = u_comp[overlap : overlap + L_block]
@@ -503,6 +514,11 @@ class FeedforwardCompensatorWidget(QWidget):
         settings_form = QFormLayout(settings_group)
         settings_form.setSpacing(6)
 
+        self.chk_linear_only = QCheckBox(tr("Linear-Only Compensation"))
+        self.chk_linear_only.setChecked(False)
+        self.chk_linear_only.toggled.connect(self.on_linear_only_toggled)
+        settings_form.addRow(self.chk_linear_only)
+
         self.chk_iterative = QCheckBox(tr("Enable Iterative Compensation"))
         self.chk_iterative.setChecked(True)
         self.chk_iterative.toggled.connect(self.update_engine_params)
@@ -546,6 +562,12 @@ class FeedforwardCompensatorWidget(QWidget):
         main_layout.addWidget(self.tabs, stretch=1)
 
         self.chk_iterative.toggled.connect(self.spin_iters.setEnabled)
+
+    def on_linear_only_toggled(self, checked):
+        self.chk_iterative.setEnabled(not checked)
+        self.spin_iters.setEnabled(not checked and self.chk_iterative.isChecked())
+        if self.module.engine:
+            self.run_simulation()
 
     def setup_simulation_tab(self):
         sim_tab = QWidget()
@@ -781,8 +803,11 @@ class FeedforwardCompensatorWidget(QWidget):
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
+        linear_only = self.chk_linear_only.isChecked()
 
-        u_comp = engine.compensate(u, iterative=iterative, iters=iters, clip_limit=clip_limit)
+        u_comp = engine.compensate(
+            u, iterative=iterative, iters=iters, clip_limit=clip_limit, linear_only=linear_only
+        )
 
         # Output
         y_uncomp = engine.forward_model(u)
@@ -933,12 +958,21 @@ class FeedforwardCompensatorWidget(QWidget):
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
+        linear_only = self.chk_linear_only.isChecked()
 
         self.btn_process_off.setEnabled(False)
         self.btn_process_off.setText(tr("Processing..."))
         self.progress_off.setValue(0)
 
-        self.worker = OfflineFFCompWorker(input_path, output_path, self.module.engine, iterative, iters, clip_limit)
+        self.worker = OfflineFFCompWorker(
+            input_path,
+            output_path,
+            self.module.engine,
+            iterative,
+            iters,
+            clip_limit,
+            linear_only=linear_only,
+        )
         self.worker.progress.connect(self.progress_off.setValue)
         self.worker.finished.connect(self.on_offline_finished)
         self.worker.start()
