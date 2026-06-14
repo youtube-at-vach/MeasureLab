@@ -587,7 +587,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # Plot Widget
         self.plot_sim = pg.PlotWidget(title=tr("Spectrum Comparison"))
         self.plot_sim.setLabel("bottom", "Frequency", units="Hz")
-        self.plot_sim.setLabel("left", "Magnitude", units="dB")
+        self.plot_sim.setLabel("left", "Magnitude", units="dBr")
         self.plot_sim.showGrid(x=True, y=True, alpha=0.3)
         self.plot_sim.addLegend()
         self.plot_sim.getPlotItem().getAxis("bottom").setLogMode(True)
@@ -714,9 +714,15 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Plot Spectrum
         freqs = np.fft.rfftfreq(N, d=1.0 / sr)
-        Y_uncomp = 20 * np.log10(np.abs(np.fft.rfft(y_uncomp)) + 1e-12)
-        Y_comp = 20 * np.log10(np.abs(np.fft.rfft(y_comp)) + 1e-12)
-        Y_linear = 20 * np.log10(np.abs(np.fft.rfft(y_linear)) + 1e-12)
+        Y_uncomp_raw = 20 * np.log10(np.abs(np.fft.rfft(y_uncomp)) + 1e-12)
+        Y_comp_raw = 20 * np.log10(np.abs(np.fft.rfft(y_comp)) + 1e-12)
+        Y_linear_raw = 20 * np.log10(np.abs(np.fft.rfft(y_linear)) + 1e-12)
+
+        # Normalize relative to the peak of the ideal linear response (dBr)
+        ref_level = np.max(Y_linear_raw)
+        Y_uncomp = Y_uncomp_raw - ref_level
+        Y_comp = Y_comp_raw - ref_level
+        Y_linear = Y_linear_raw - ref_level
 
         # Limit plot bounds to avoid log(0) issues
         freqs_plot = freqs.copy()
@@ -727,6 +733,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.curve_comp.setData(log_freqs, Y_comp)
         self.curve_linear.setData(log_freqs, Y_linear)
         self.plot_sim.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
+        self.plot_sim.setYRange(-140, 10, padding=0.0)
 
         # Metrics calculation
         def calculate_thd_db(y_sig, f_ref):
@@ -773,18 +780,50 @@ class FeedforwardCompensatorWidget(QWidget):
             sdr = 20 * np.log10(rms_ref / (np.sqrt(np.mean(err**2)) + 1e-12))
             return sdr
 
-        thd_uncomp = calculate_thd_db(y_uncomp, f_test)
-        thd_comp = calculate_thd_db(y_comp, f_test)
+        is_multitone = sig_type in [tr("Two-Tone (1.0k + 1.5k)"), tr("Multi-Tone (5 freqs)")]
+        is_noise = sig_type == tr("Broadband Noise")
+
+        if is_multitone:
+            dist_name = "TD+N"
+            if sig_type == tr("Two-Tone (1.0k + 1.5k)"):
+                expected_tones = [1000.0, 1500.0]
+            else:
+                expected_tones = [300.0, 700.0, 1300.0, 2700.0, 5500.0]
+
+            freqs_fft = np.fft.rfftfreq(N, d=1.0 / sr)
+            mag_uncomp = np.abs(np.fft.rfft(y_uncomp))
+            mag_comp = np.abs(np.fft.rfft(y_comp))
+
+            dist_uncomp = AudioCalc.calculate_multitone_tdn(mag_uncomp, freqs_fft, expected_tones)["tdn_db"]
+            dist_comp = AudioCalc.calculate_multitone_tdn(mag_comp, freqs_fft, expected_tones)["tdn_db"]
+        elif is_noise:
+            dist_name = "TD+N"
+            dist_uncomp = None
+            dist_comp = None
+        else:
+            dist_name = "THD"
+            dist_uncomp = calculate_thd_db(y_uncomp, f_test)
+            dist_comp = calculate_thd_db(y_comp, f_test)
+
         sdr_uncomp = calculate_sdr_db(y_uncomp, y_linear)
         sdr_comp = calculate_sdr_db(y_comp, y_linear)
 
-        results_txt = (
-            f"=== {sig_type} Simulation Results ===\n"
-            f"Uncompensated THD: {thd_uncomp:6.2f} dB | SDR: {sdr_uncomp:6.2f} dB\n"
-            f"Compensated   THD: {thd_comp:6.2f} dB | SDR: {sdr_comp:6.2f} dB\n"
-            f"THD Suppression:   {thd_uncomp - thd_comp:+.2f} dB\n"
-            f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
-        )
+        if is_noise:
+            results_txt = (
+                f"=== {sig_type} Simulation Results ===\n"
+                f"Uncompensated SDR: {sdr_uncomp:6.2f} dB\n"
+                f"Compensated   SDR: {sdr_comp:6.2f} dB\n"
+                f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
+            )
+        else:
+            suppression = dist_uncomp - dist_comp
+            results_txt = (
+                f"=== {sig_type} Simulation Results ===\n"
+                f"Uncompensated {dist_name}: {dist_uncomp:6.2f} dB | SDR: {sdr_uncomp:6.2f} dB\n"
+                f"Compensated   {dist_name}: {dist_comp:6.2f} dB | SDR: {sdr_comp:6.2f} dB\n"
+                f"{dist_name} Suppression:   {suppression:+.2f} dB\n"
+                f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
+            )
         self.lbl_sim_results.setText(results_txt)
 
     def select_input_file(self):
