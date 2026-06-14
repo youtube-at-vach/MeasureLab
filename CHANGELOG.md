@@ -1,5 +1,44 @@
 # Changelog
 
+## [v0.7.7] - 2026-06-14
+
+### Added
+
+* **Feedforward Compensator**:
+    * Introduced a new `Feedforward Compensator` widget for pre-distortion filter design.
+    * Implemented the Linear-Inverse Compensation Feedforward (LICFF) algorithm in the core engine.
+    * Added a "Linear Response" visualization tab with magnitude and phase plots.
+    * Aligned H1 response and inverse filter phases to signal peaks to eliminate linear delay phase rotation.
+* **Nonlinear Response Analyzer & Response Viewer**:
+    * Added `Nonlinear Response Analyzer` and `Response Viewer` widgets.
+    * Implemented Wiener model system identification (Wiener Estimator) and visualization (frequency response, energy fraction plots).
+    * Implemented polynomial stabilization to ensure Wiener model stability and robustness against NaNs.
+    * Integrated frequency-domain deconvolution and harmonic-specific peak-gating for high-order nonlinear analysis.
+* **Transmission Analyzer**:
+    * Added transient analysis for step responses, calculating overshoot, settling time, and droop.
+    * Added group delay calculations and a dedicated visualization tab.
+    * Implemented thread-safe statistics reset with jitter recalibration.
+* **Distortion Analyzer**:
+    * Added an AES17 calibration mode with automated configuration and input level monitoring.
+
+### Changed
+
+* **Network Analyzer**:
+    * Lowered the minimum frequency limit in the GUI spinbox to 2 Hz.
+* **Performance & Optimizations**:
+    * Optimized Chebyshev matrix calculations, exponents evaluation, and denominator zeros evaluation for Hammerstein models.
+    * Vectorized CSV trace exports and audio device list dictionary conversions to minimize latency.
+    * Implemented a cross-module notification system to synchronize cache button states when the active Hammerstein model changes.
+    * Optimized the SweepWorker waiting loop with QEventLoop.
+
+### Fixed
+
+* **Security & Reliability**:
+    * 🔒 Patched security vulnerability in Lock-in Spectrum Finder.
+    * Implemented validation for JSON system model loading to prevent parsing issues.
+    * Mitigated IIR filter transients and bilinear warping issues in A/C weighting filters.
+    * Prevented crashes by filtering NaN values from phase plots and masking noise-induced phase oscillations.
+
 ## [v0.7.6] - 2026-06-01
 
 ### Added
