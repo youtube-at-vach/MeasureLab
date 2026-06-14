@@ -718,24 +718,26 @@ class FeedforwardCompensatorWidget(QWidget):
         phase_filter = np.degrees(np.angle(F_inv_aligned))
         phase_corr = np.degrees(np.angle(Q_fft[1] * F_inv))
 
-        # Mask out phase where the magnitude is extremely low (e.g. below -60 dB)
-        # to prevent noisy phase oscillation in stopbands or zero-energy bins.
-        phase_orig = np.where(mag_orig > -60.0, phase_orig, np.nan)
-        phase_filter = np.where(mag_filter > -60.0, phase_filter, np.nan)
-        phase_corr = np.where(mag_corr > -60.0, phase_corr, np.nan)
-
         freqs = np.fft.rfftfreq(M, d=1.0 / sr)
         freqs_plot = freqs.copy()
         freqs_plot[0] = freqs_plot[1] / 10.0
         log_freqs = np.log10(freqs_plot)
 
+        # Plot magnitudes (they do not contain NaN)
         self.curve_lin_mag_orig.setData(log_freqs, mag_orig)
         self.curve_lin_mag_filter.setData(log_freqs, mag_filter)
         self.curve_lin_mag_corr.setData(log_freqs, mag_corr)
 
-        self.curve_lin_phase_orig.setData(log_freqs, phase_orig)
-        self.curve_lin_phase_filter.setData(log_freqs, phase_filter)
-        self.curve_lin_phase_corr.setData(log_freqs, phase_corr)
+        # Mask out phase where the magnitude is extremely low (e.g. below -60 dB)
+        # to prevent noisy phase oscillation in stopbands or zero-energy bins.
+        # Filter the arrays directly to prevent PyQtGraph/Qt C++ crash with NaN values.
+        mask_orig = mag_orig > -60.0
+        mask_filter = mag_filter > -60.0
+        mask_corr = mag_corr > -60.0
+
+        self.curve_lin_phase_orig.setData(log_freqs[mask_orig], phase_orig[mask_orig])
+        self.curve_lin_phase_filter.setData(log_freqs[mask_filter], phase_filter[mask_filter])
+        self.curve_lin_phase_corr.setData(log_freqs[mask_corr], phase_corr[mask_corr])
 
         self.plot_lin_mag.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
         self.plot_lin_mag.setYRange(-60, 20, padding=0.0)
