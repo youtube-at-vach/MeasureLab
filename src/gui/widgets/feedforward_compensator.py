@@ -131,6 +131,15 @@ class LICFFEngine:
     def rebuild_filter(self):
         self.clear_cache()
 
+    def get_max_inverse_filter_boost_db(self):
+        if self.N <= 0:
+            return 0.0
+        _, F_inv, _ = self._prepare_buffers_for_length(self.N)
+        max_val = np.max(np.abs(F_inv))
+        if max_val <= 0:
+            return 0.0
+        return 20 * np.log10(max_val)
+
     def _prepare_buffers_for_length(self, M):
         if self._cached_M == M:
             return self._cached_Q_fft, self._cached_F_inv, self._cached_bp_filter
@@ -310,7 +319,7 @@ class OfflineFFCompWorker(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False):
+    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none"):
         super().__init__()
         self.input_path = input_path
         self.output_path = output_path
@@ -319,6 +328,7 @@ class OfflineFFCompWorker(QThread):
         self.iters = iters
         self.clip_limit = clip_limit
         self.linear_only = linear_only
+        self.volume_matching = volume_matching
         self.is_cancelled = False
 
     def cancel(self):
@@ -375,6 +385,9 @@ class OfflineFFCompWorker(QThread):
                             return infile.read(end - start, always_2d=True)
 
                 out_data = np.zeros((M, channels))
+                sum_sq_in = np.zeros(channels)
+                sum_sq_out = np.zeros(channels)
+                peak_in = 0.0
 
                 # Processing Block Configuration
                 block_size = 65536
@@ -406,18 +419,50 @@ class OfflineFFCompWorker(QThread):
                             linear_only=self.linear_only,
                         )
                         # Extract the valid non-overlapped part
-                        chunk_out[:, ch] = u_comp[overlap : overlap + L_block]
+                        chunk_out_ch = u_comp[overlap : overlap + L_block]
+                        chunk_out[:, ch] = chunk_out_ch
+
+                        # Accumulate metrics for volume matching
+                        x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
+                        sum_sq_in[ch] += np.sum(x_ch_valid ** 2)
+                        sum_sq_out[ch] += np.sum(chunk_out_ch ** 2)
+                        peak_in = max(peak_in, np.max(np.abs(x_ch_valid)))
 
                     out_data[start_out:end_out, :] = chunk_out
                     self.progress.emit(int(((b_idx + 1) / num_blocks) * 100))
 
-                max_val = np.max(np.abs(out_data))
+                rms_in = np.sqrt(np.sum(sum_sq_in) / max(1, M * channels))
+                rms_out = np.sqrt(np.sum(sum_sq_out) / max(1, M * channels))
+                peak_out = np.max(np.abs(out_data))
+
                 clipping_msg = ""
-                if max_val > 1.0:
-                    clipping_msg = "\n" + tr(
-                        "Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping."
-                    ).format(20 * np.log10(max_val))
-                    out_data = out_data / max_val
+                write_matched_orig = False
+                matched_orig_path = ""
+                scale_factor = 1.0
+
+                if self.volume_matching == "rms":
+                    g_y = rms_in / max(1e-12, rms_out)
+                    peak_y_scaled = g_y * peak_out
+                    if peak_y_scaled <= 1.0:
+                        out_data = out_data * g_y
+                    else:
+                        scale_factor = 1.0 / max(1e-12, peak_y_scaled)
+                        out_data = out_data * (g_y * scale_factor)
+                        applied_attenuation_db = 20 * np.log10(peak_y_scaled)
+                        clipping_msg = "\n" + tr(
+                            "Warning: Output would clip (+{0:.2f} dBFS) at matched RMS volume. "
+                            "Both output and original files were attenuated by {0:.2f} dB to prevent clipping."
+                        ).format(applied_attenuation_db)
+                        write_matched_orig = True
+                elif self.volume_matching == "peak":
+                    g_y = peak_in / max(1e-12, peak_out)
+                    out_data = out_data * g_y
+                else:
+                    if peak_out > 1.0:
+                        clipping_msg = "\n" + tr(
+                            "Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping."
+                        ).format(20 * np.log10(peak_out))
+                        out_data = out_data / peak_out
 
                 sf.write(
                     self.output_path,
@@ -425,12 +470,38 @@ class OfflineFFCompWorker(QThread):
                     int(model_sr),
                     subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
                 )
-                self.finished.emit(
-                    True,
-                    tr("Successfully exported to {0}").format(os.path.basename(self.output_path))
-                    + resample_msg
-                    + clipping_msg,
-                )
+
+                if write_matched_orig:
+                    if abs(file_sr - model_sr) > 1.0:
+                        matched_orig_data = data * scale_factor
+                    else:
+                        raw_data, _ = sf.read(self.input_path, always_2d=True)
+                        matched_orig_data = raw_data * scale_factor
+
+                    base, ext = os.path.splitext(self.output_path)
+                    matched_orig_path = base + "_matched_orig" + ext
+                    sf.write(
+                        matched_orig_path,
+                        matched_orig_data,
+                        int(model_sr if abs(file_sr - model_sr) > 1.0 else file_sr),
+                        subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
+                    )
+                    self.finished.emit(
+                        True,
+                        tr("Successfully exported to {0}\nGain-matched original saved to {1}").format(
+                            os.path.basename(self.output_path),
+                            os.path.basename(matched_orig_path)
+                        )
+                        + resample_msg
+                        + clipping_msg,
+                    )
+                else:
+                    self.finished.emit(
+                        True,
+                        tr("Successfully exported to {0}").format(os.path.basename(self.output_path))
+                        + resample_msg
+                        + clipping_msg,
+                    )
 
             finally:
                 if infile is not None:
@@ -498,12 +569,14 @@ class FeedforwardCompensatorWidget(QWidget):
         self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
         self.lbl_sr = QLabel("-- Hz")
         self.lbl_n = QLabel("--")
+        self.lbl_max_boost = QLabel("-- dB")
 
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
         info_layout.addRow(tr("Status:"), self.lbl_status)
         info_layout.addRow(tr("Rate:"), self.lbl_sr)
         info_layout.addRow(tr("N Samples:"), self.lbl_n)
+        info_layout.addRow(tr("Max Filter Boost:"), self.lbl_max_boost)
         source_form.addLayout(info_layout)
         sidebar_layout.addWidget(source_group)
 
@@ -684,6 +757,17 @@ class FeedforwardCompensatorWidget(QWidget):
         out_layout.addWidget(btn_out)
         off_layout.addRow(tr("Output File:"), out_layout)
 
+        # Volume Matching
+        self.combo_vol_match = QComboBox()
+        self.combo_vol_match.addItems(
+            [
+                tr("None"),
+                tr("Match RMS (Gain-Matched original output)"),
+                tr("Match Peak"),
+            ]
+        )
+        off_layout.addRow(tr("Volume Matching:"), self.combo_vol_match)
+
         self.btn_process_off = QPushButton(tr("Run Export"))
         self.btn_process_off.clicked.connect(self.start_offline_processing)
         self.btn_process_off.setEnabled(False)
@@ -801,6 +885,7 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_status.setStyleSheet("font-weight: bold; color: #5cb85c;")
                 self.lbl_sr.setText(f"{self.module.engine.sample_rate} Hz")
                 self.lbl_n.setText(f"{self.module.engine.N}")
+                self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
 
                 self.btn_run_sim.setEnabled(True)
                 self._update_process_btn()
@@ -819,6 +904,7 @@ class FeedforwardCompensatorWidget(QWidget):
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
             self.module.engine.rebuild_filter()
+            self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
             self.update_linear_response_plot()
 
     def run_simulation(self):
@@ -1067,6 +1153,10 @@ class FeedforwardCompensatorWidget(QWidget):
         clip_limit = self.spin_clip.value()
         linear_only = self.chk_linear_only.isChecked()
 
+        vol_match_mode = self.combo_vol_match.currentIndex()
+        match_modes = ["none", "rms", "peak"]
+        vol_match = match_modes[vol_match_mode]
+
         self.btn_process_off.setEnabled(False)
         self.btn_process_off.setText(tr("Exporting..."))
         self.progress_off.setValue(0)
@@ -1079,6 +1169,7 @@ class FeedforwardCompensatorWidget(QWidget):
             iters,
             clip_limit,
             linear_only=linear_only,
+            volume_matching=vol_match,
         )
         self.worker.progress.connect(self.progress_off.setValue)
         self.worker.finished.connect(self.on_offline_finished)
