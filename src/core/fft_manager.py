@@ -47,11 +47,15 @@ class FFTManager:
         # Store wisdom in XDG compliant user data directory
         # This fixes the issue where wisdom cannot be saved in read-only AppImage environments
         # We also use JSON with Base64 encoding instead of pickle for security (prevents arbitrary code execution)
-        xdg_data_home = os.environ.get("XDG_DATA_HOME")
-        if not xdg_data_home:
-            xdg_data_home = os.path.join(os.path.expanduser("~"), ".local", "share")
+        if os.environ.get("MEASURELAB_TESTING") == "1":
+            import tempfile
+            self.wisdom_dir = Path(tempfile.gettempdir()) / "MeasureLab_test" / "wisdom"
+        else:
+            xdg_data_home = os.environ.get("XDG_DATA_HOME")
+            if not xdg_data_home:
+                xdg_data_home = os.path.join(os.path.expanduser("~"), ".local", "share")
+            self.wisdom_dir = Path(xdg_data_home) / "MeasureLab" / "wisdom"
 
-        self.wisdom_dir = Path(xdg_data_home) / "MeasureLab" / "wisdom"
         self.wisdom_path = self.wisdom_dir / "pyfftw_wisdom"
 
         # Create directory if it doesn't exist
@@ -60,6 +64,7 @@ class FFTManager:
         except Exception as e:
             logger.warning(f"Failed to create wisdom directory: {e}")
 
+        self._in_warmup = False
         self.load_wisdom()
 
     def load_wisdom(self):
@@ -181,7 +186,7 @@ class FFTManager:
             # Save wisdom only if we did a measurement (MEASURE or PATIENT etc),
             # though ESTIMATE doesn't generate wisdom worth saving usually, saving doesn't hurt.
             # But typically we only care about saving after costly optimizations.
-            if "FFTW_MEASURE" in flags:
+            if "FFTW_MEASURE" in flags and not getattr(self, "_in_warmup", False):
                 self.save_wisdom()
 
             self._plans[(size, dtype_str, direction)] = {
@@ -315,15 +320,19 @@ class FFTManager:
             if include_huge:
                 sizes_to_optimize += HUGE_SIZES
 
-        total = len(sizes_to_optimize)
-        for _i, size in enumerate(sizes_to_optimize):
-            if callback:
-                # Progress ranges from 0 to total-1 during optimization
-                callback(tr("Optimizing FFT... (Size {0}) {1}/{2}").format(size, _i + 1, total))
+        self._in_warmup = True
+        try:
+            total = len(sizes_to_optimize)
+            for _i, size in enumerate(sizes_to_optimize):
+                if callback:
+                    # Progress ranges from 0 to total-1 during optimization
+                    callback(tr("Optimizing FFT... (Size {0}) {1}/{2}").format(size, _i + 1, total))
 
-            # Use MEASURE for warmup to ensure peak performance
-            self.get_plan(size, "float64", flags=("FFTW_MEASURE",))
-            self.get_plan(size, "float32", flags=("FFTW_MEASURE",))
+                # Use MEASURE for warmup to ensure peak performance
+                self.get_plan(size, "float64", flags=("FFTW_MEASURE",))
+                self.get_plan(size, "float32", flags=("FFTW_MEASURE",))
+        finally:
+            self._in_warmup = False
 
         # Save wisdom at the end of warmup to capture any new measurements
         if callback:
