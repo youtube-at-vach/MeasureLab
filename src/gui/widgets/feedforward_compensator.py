@@ -429,7 +429,7 @@ class OfflineFFCompWorker(QThread):
                 )
                 self.finished.emit(
                     True,
-                    tr("Successfully processed and saved to {0}").format(os.path.basename(self.output_path))
+                    tr("Successfully exported to {0}").format(os.path.basename(self.output_path))
                     + resample_msg
                     + clipping_msg,
                 )
@@ -551,6 +551,39 @@ class FeedforwardCompensatorWidget(QWidget):
         settings_form.addRow(tr("Active Band Fmax:"), self.spin_fmax)
 
         sidebar_layout.addWidget(settings_group)
+
+        # Group 3: Simulation Control
+        sim_ctrl_group = QGroupBox(tr("Simulation Control"))
+        sim_ctrl_form = QFormLayout(sim_ctrl_group)
+        sim_ctrl_form.setSpacing(6)
+
+        self.combo_signal = QComboBox()
+        self.combo_signal.addItems(
+            [
+                tr("1kHz Tone"),
+                tr("3kHz Tone (Untrained)"),
+                tr("Two-Tone (1.0k + 1.5k)"),
+                tr("Multi-Tone (5 freqs)"),
+                tr("Broadband Noise"),
+                tr("Step Response"),
+                tr("Impulse Response"),
+            ]
+        )
+        sim_ctrl_form.addRow(tr("Test Signal:"), self.combo_signal)
+
+        self.spin_amp = QDoubleSpinBox()
+        self.spin_amp.setRange(0.01, 1.0)
+        self.spin_amp.setSingleStep(0.05)
+        self.spin_amp.setValue(0.30)
+        sim_ctrl_form.addRow(tr("Amplitude:"), self.spin_amp)
+
+        self.btn_run_sim = QPushButton(tr("Run Simulation"))
+        self.btn_run_sim.clicked.connect(self.run_simulation)
+        self.btn_run_sim.setEnabled(False)
+        sim_ctrl_form.addRow(self.btn_run_sim)
+
+        sidebar_layout.addWidget(sim_ctrl_group)
+
         sidebar_scroll.setWidget(sidebar_content)
         main_layout.addWidget(sidebar_scroll)
 
@@ -574,36 +607,6 @@ class FeedforwardCompensatorWidget(QWidget):
         sim_tab = QWidget()
         sim_layout = QVBoxLayout(sim_tab)
 
-        ctrl_layout = QHBoxLayout()
-        self.combo_signal = QComboBox()
-        self.combo_signal.addItems(
-            [
-                tr("1kHz Tone"),
-                tr("3kHz Tone (Untrained)"),
-                tr("Two-Tone (1.0k + 1.5k)"),
-                tr("Multi-Tone (5 freqs)"),
-                tr("Broadband Noise"),
-                tr("Step Response (Ideal)"),
-                tr("Step Response (Band-limited)"),
-                tr("Impulse Response"),
-            ]
-        )
-        ctrl_layout.addWidget(QLabel(tr("Test Signal:")))
-        ctrl_layout.addWidget(self.combo_signal)
-
-        self.spin_amp = QDoubleSpinBox()
-        self.spin_amp.setRange(0.01, 1.0)
-        self.spin_amp.setSingleStep(0.05)
-        self.spin_amp.setValue(0.30)
-        ctrl_layout.addWidget(QLabel(tr("Amplitude:")))
-        ctrl_layout.addWidget(self.spin_amp)
-
-        self.btn_run_sim = QPushButton(tr("Run Simulation"))
-        self.btn_run_sim.clicked.connect(self.run_simulation)
-        self.btn_run_sim.setEnabled(False)
-        ctrl_layout.addWidget(self.btn_run_sim)
-        sim_layout.addLayout(ctrl_layout)
-
         # Results Label
         self.lbl_sim_results = QLabel(tr("Run simulation to see results."))
         self.lbl_sim_results.setStyleSheet(
@@ -624,7 +627,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.curve_linear = self.plot_sim.plot(pen="b", name=tr("Ideal Linear"))
         sim_layout.addWidget(self.plot_sim)
 
-        self.tabs.addTab(sim_tab, tr("Simulation"))
+        self.tabs.addTab(sim_tab, tr("Spectrum"))
 
     def setup_transient_tab(self):
         trans_tab = QWidget()
@@ -634,16 +637,16 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Control / Description
         ctrl_layout = QHBoxLayout()
-        self.chk_show_bl_ideal = QCheckBox(tr("Show Band-Limited Ideal Reference"))
-        self.chk_show_bl_ideal.setChecked(True)
-        self.chk_show_bl_ideal.toggled.connect(self.run_simulation)
-        ctrl_layout.addWidget(self.chk_show_bl_ideal)
 
         # Add warning/explanation label
-        lbl_info = QLabel(tr("Note: Step transitions cause Gibbs ringing due to the Active Band filter (Fmin/Fmax) required for inverse filter stability."))
+        lbl_info = QLabel(
+            tr(
+                "Note: Step transitions cause Gibbs ringing due to the Active Band filter (Fmin/Fmax) required for inverse filter stability."
+            )
+        )
         lbl_info.setStyleSheet("color: #e0a800; font-size: 10px;")
         lbl_info.setWordWrap(True)
-        
+
         ctrl_layout.addWidget(lbl_info, stretch=1)
         trans_layout.addLayout(ctrl_layout)
 
@@ -656,11 +659,10 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.curve_t_uncomp = self.plot_trans.plot(pen="r", name=tr("Uncompensated"))
         self.curve_t_comp = self.plot_trans.plot(pen="g", name=tr("Compensated"))
-        self.curve_t_linear = self.plot_trans.plot(pen="b", name=tr("Ideal Linear"))
-        self.curve_t_bl_ideal = self.plot_trans.plot(pen="c", name=tr("Band-Limited Ideal"))
-        
+        self.curve_t_ideal_ref = self.plot_trans.plot(pen="b", name=tr("Ideal Reference"))
+
         trans_layout.addWidget(self.plot_trans)
-        self.tabs.addTab(trans_tab, tr("Transient Simulation"))
+        self.tabs.addTab(trans_tab, tr("Waveform"))
 
     def setup_offline_tab(self):
         off_tab = QWidget()
@@ -669,22 +671,22 @@ class FeedforwardCompensatorWidget(QWidget):
         # Input File
         in_layout = QHBoxLayout()
         self.lbl_in_file = QLabel(tr("No file selected"))
-        btn_in = QPushButton(tr("Select Input Wav..."))
+        btn_in = QPushButton(tr("Browse..."))
         btn_in.clicked.connect(self.select_input_file)
         in_layout.addWidget(self.lbl_in_file, stretch=1)
         in_layout.addWidget(btn_in)
-        off_layout.addRow(tr("Input Wav:"), in_layout)
+        off_layout.addRow(tr("Input File:"), in_layout)
 
         # Output File
         out_layout = QHBoxLayout()
         self.lbl_out_file = QLabel(tr("No output file"))
-        btn_out = QPushButton(tr("Select Output Wav..."))
+        btn_out = QPushButton(tr("Browse..."))
         btn_out.clicked.connect(self.select_output_file)
         out_layout.addWidget(self.lbl_out_file, stretch=1)
         out_layout.addWidget(btn_out)
-        off_layout.addRow(tr("Output Wav:"), out_layout)
+        off_layout.addRow(tr("Output File:"), out_layout)
 
-        self.btn_process_off = QPushButton(tr("Process & Save"))
+        self.btn_process_off = QPushButton(tr("Run Export"))
         self.btn_process_off.clicked.connect(self.start_offline_processing)
         self.btn_process_off.setEnabled(False)
         off_layout.addRow(self.btn_process_off)
@@ -692,7 +694,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.progress_off = QProgressBar()
         off_layout.addRow(self.progress_off)
 
-        self.tabs.addTab(off_tab, tr("Offline Processing"))
+        self.tabs.addTab(off_tab, tr("File Export"))
 
     def setup_linear_response_tab(self):
         lin_tab = QWidget()
@@ -726,7 +728,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.curve_lin_phase_corr = self.plot_lin_phase.plot(pen="b", name=tr("Compensated (Overall)"))
         lin_layout.addWidget(self.plot_lin_phase, stretch=1)
 
-        self.tabs.addTab(lin_tab, tr("Linear Response"))
+        self.tabs.addTab(lin_tab, tr("Filter Response"))
 
     def update_linear_response_plot(self):
         if not self.module.engine:
@@ -846,11 +848,7 @@ class FeedforwardCompensatorWidget(QWidget):
         elif sig_type == tr("Multi-Tone (5 freqs)"):
             u = (amp / 2.5) * sum(np.sin(2 * np.pi * f * t) for f in [300, 700, 1300, 2700, 5500])
             f_test = 1300.0
-        elif sig_type == tr("Step Response (Ideal)"):
-            u = np.zeros(N)
-            u[N // 10 :] = amp
-            f_test = 1000.0
-        elif sig_type == tr("Step Response (Band-limited)"):
+        elif sig_type == tr("Step Response"):
             u_raw = np.zeros(N)
             u_raw[N // 10 :] = amp
             _, _, bp_filter = engine._prepare_buffers_for_length(N)
@@ -880,9 +878,7 @@ class FeedforwardCompensatorWidget(QWidget):
         clip_limit = self.spin_clip.value()
         linear_only = self.chk_linear_only.isChecked()
 
-        u_comp = engine.compensate(
-            u, iterative=iterative, iters=iters, clip_limit=clip_limit, linear_only=linear_only
-        )
+        u_comp = engine.compensate(u, iterative=iterative, iters=iters, clip_limit=clip_limit, linear_only=linear_only)
 
         # Output
         y_uncomp = engine.forward_model(u)
@@ -932,13 +928,8 @@ class FeedforwardCompensatorWidget(QWidget):
             y_comp_aligned = y_comp
 
         self.curve_t_comp.setData(t_axis, y_comp_aligned)
-        self.curve_t_linear.setData(t_axis, y_linear)
-
-        if self.chk_show_bl_ideal.isChecked():
-            self.curve_t_bl_ideal.setData(t_axis, y_bl_linear)
-            self.curve_t_bl_ideal.show()
-        else:
-            self.curve_t_bl_ideal.hide()
+        self.curve_t_ideal_ref.setData(t_axis, y_bl_linear)
+        self.curve_t_ideal_ref.show()
 
         if "Step" in sig_type or "Impulse" in sig_type:
             self.plot_trans.setXRange(-0.002, 0.010, padding=0.0)
@@ -1070,7 +1061,7 @@ class FeedforwardCompensatorWidget(QWidget):
         linear_only = self.chk_linear_only.isChecked()
 
         self.btn_process_off.setEnabled(False)
-        self.btn_process_off.setText(tr("Processing..."))
+        self.btn_process_off.setText(tr("Exporting..."))
         self.progress_off.setValue(0)
 
         self.worker = OfflineFFCompWorker(
@@ -1088,7 +1079,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
     def on_offline_finished(self, success, msg):
         self.btn_process_off.setEnabled(True)
-        self.btn_process_off.setText(tr("Process & Save"))
+        self.btn_process_off.setText(tr("Run Export"))
         if success:
             QMessageBox.information(self, tr("Success"), msg)
         else:
