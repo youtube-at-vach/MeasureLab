@@ -276,13 +276,13 @@ class NonlinearAnalyzer(MeasurementModule):
         # Use measurement channel (or channel 0) to align
         recorded = rec_data[:, self.meas_channel_index if rec_data.shape[1] > 1 else 0]
 
-        # Calculate cross-correlation to find peak delay
+        # Calculate cross-correlation to find peak delay with sub-sample precision
         correlation = fftconvolve(recorded, np.flip(chirp), mode="full")
-        lag = np.argmax(np.abs(correlation)) - len(chirp) + 1
+        lag = find_subsample_peak(correlation) - len(chirp) + 1
 
         self.latency_sec = max(0.0, lag / sample_rate)
         self.signals.latency_result.emit(self.latency_sec)
-        logger.info(f"Calibration successful: Latency = {self.latency_sec * 1000:.2f} ms ({lag} samples)")
+        logger.info(f"Calibration successful: Latency = {self.latency_sec * 1000:.2f} ms ({lag:.2f} samples)")
 
     def _generate_sss_and_inverse(self, sample_rate, amplitude=1.0):
         """

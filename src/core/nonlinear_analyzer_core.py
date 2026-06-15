@@ -25,7 +25,9 @@ def find_subsample_peak(ir):
     start = idx_int_sh - half
     end = idx_int_sh + half
 
-    ir_crop = ir_shifted[start:end]
+    ir_crop = ir_shifted[start:end].copy()
+    win = windows.tukey(len(ir_crop), alpha=0.25)
+    ir_crop *= win
     N = len(ir_crop)
 
     # Standard DFT upsampling by a factor of 100
@@ -456,8 +458,8 @@ def process_amplitude_responses(
 
             h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
         else:
-            # Single Channel Mode: Apply latency correction to all frequency bins
-            delay_samples = int(latency_sec * sample_rate)
+            # Single Channel Mode: Apply latency correction to all frequency bins with float precision
+            delay_samples = latency_sec * sample_rate
             phase_correction_all = 2 * np.pi * freqs * (delay_samples / sample_rate)
             H_corr_all = H_meas_p * np.exp(1j * phase_correction_all)
 
