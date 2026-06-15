@@ -284,27 +284,25 @@ class LICFFEngine:
         M = len(u_in)
         _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
 
-        if linear_only:
-            U_in_fft = np.fft.rfft(u_in)
-            u_comp = np.fft.irfft(U_in_fft * F_inv, n=M)
-            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
-            return u_comp
-
-        # Filter signal to active band
+        # Base linear compensation (equalization & delay cancellation)
         U_in_fft = np.fft.rfft(u_in)
-        u_in_filt = np.fft.irfft(U_in_fft * bp_filter, n=M)
+        u_comp_linear = np.fft.irfft(U_in_fft * F_inv, n=M)
+        u_comp_linear = np.clip(u_comp_linear, -clip_limit, clip_limit)
+
+        if linear_only:
+            return u_comp_linear
 
         if not iterative:
             iters = 1
 
-        u_comp = u_in_filt.copy()
+        u_comp = u_comp_linear.copy()
         for _ in range(iters):
             Y_fft = self.nonlinear_spectrum(u_comp)
-            # Apply linear inverse filter
+            # Apply linear inverse filter to the nonlinear distortion components
             y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
-            u_comp = u_in_filt - y_comp_nl
+            u_comp = u_comp_linear - y_comp_nl
+            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
 
-        u_comp = np.clip(u_comp, -clip_limit, clip_limit)
         return u_comp
 
 
@@ -918,14 +916,23 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.curve_t_uncomp.setData(t_axis, y_uncomp)
 
-        # When linear_only is enabled, the group delay (t_peak) has already been cancelled
-        # in the input-referred compensation filter (u_comp = F_inv * u_in).
+        # Both linear-only and nonlinear compensation cancel the group delay (t_peak).
         # To align the compensated output with the other reference curves (which are left-shifted by t_peak),
         # we shift y_comp forward in time (right-shift by t_peak).
-        if linear_only:
-            y_comp_aligned = np.roll(y_comp, t_peak)
+        is_transient = "Step" in sig_type or "Impulse" in sig_type
+        if is_transient:
+            # Shift and pad with zeros to avoid wrap-around artifacts in transient responses
+            if t_peak > 0:
+                y_comp_aligned = np.zeros_like(y_comp)
+                y_comp_aligned[t_peak:] = y_comp[:-t_peak]
+            elif t_peak < 0:
+                y_comp_aligned = np.zeros_like(y_comp)
+                y_comp_aligned[:t_peak] = y_comp[-t_peak:]
+            else:
+                y_comp_aligned = y_comp.copy()
         else:
-            y_comp_aligned = y_comp
+            # For periodic signals (tones/noise), np.roll is fine
+            y_comp_aligned = np.roll(y_comp, t_peak)
 
         self.curve_t_comp.setData(t_axis, y_comp_aligned)
         self.curve_t_ideal_ref.setData(t_axis, y_bl_linear)

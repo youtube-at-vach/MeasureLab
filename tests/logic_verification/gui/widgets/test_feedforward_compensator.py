@@ -5,7 +5,10 @@ import soundfile as sf
 from unittest.mock import MagicMock
 
 from src.gui.widgets.feedforward_compensator import (
-    OfflineFFCompWorker, LICFFEngine, FeedforwardCompensator, FeedforwardCompensatorWidget
+    OfflineFFCompWorker,
+    LICFFEngine,
+    FeedforwardCompensator,
+    FeedforwardCompensatorWidget,
 )
 
 
@@ -44,9 +47,7 @@ def dummy_model_data(temp_wav_files):
         "metadata": {
             "sample_rate": sr,
         },
-        "time_domain": {
-            "kernels": kernels
-        }
+        "time_domain": {"kernels": kernels},
     }
 
 
@@ -71,14 +72,7 @@ def test_offline_ff_worker(qtbot, temp_wav_files, dummy_model_data):
     input_path, output_path, sr = temp_wav_files
 
     engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
-    worker = OfflineFFCompWorker(
-        input_path,
-        output_path,
-        engine,
-        iterative=True,
-        iters=3,
-        clip_limit=1.5
-    )
+    worker = OfflineFFCompWorker(input_path, output_path, engine, iterative=True, iters=3, clip_limit=1.5)
 
     finished_spy = MagicMock()
     worker.finished.connect(finished_spy)
@@ -127,7 +121,7 @@ def test_direct_kernel_mapping(temp_wav_files):
                 "h4": h4.tolist(),
                 "h5": h5.tolist(),
             }
-        }
+        },
     }
 
     engine = LICFFEngine(model_data, f_min=60, f_max=17000)
@@ -147,11 +141,11 @@ def test_noise_thresholding(temp_wav_files):
     h1 = np.zeros(N)
     h1[0] = 1.0
     h2 = np.zeros(N)
-    h2[0] = 0.1     # -20 dB -> should NOT be zeroed if threshold is -40 dB
+    h2[0] = 0.1  # -20 dB -> should NOT be zeroed if threshold is -40 dB
     h3 = np.zeros(N)
-    h3[0] = 0.001   # -60 dB -> SHOULD be zeroed if threshold is -40 dB
+    h3[0] = 0.001  # -60 dB -> SHOULD be zeroed if threshold is -40 dB
     h4 = np.zeros(N)
-    h4[0] = 0.03    # -30.4 dB -> should NOT be zeroed if threshold is -40 dB
+    h4[0] = 0.03  # -30.4 dB -> should NOT be zeroed if threshold is -40 dB
     h5 = np.zeros(N)
     h5[0] = 0.0001  # -80 dB -> SHOULD be zeroed if threshold is -40 dB
 
@@ -167,7 +161,7 @@ def test_noise_thresholding(temp_wav_files):
                 "h4": h4.tolist(),
                 "h5": h5.tolist(),
             }
-        }
+        },
     }
 
     # threshold_db = -40.0 dB
@@ -175,9 +169,9 @@ def test_noise_thresholding(temp_wav_files):
 
     assert np.allclose(engine.q1, h1)
     assert np.allclose(engine.q2, h2)
-    assert np.allclose(engine.q3, np.zeros(N)) # zeroed out!
+    assert np.allclose(engine.q3, np.zeros(N))  # zeroed out!
     assert np.allclose(engine.q4, h4)
-    assert np.allclose(engine.q5, np.zeros(N)) # zeroed out!
+    assert np.allclose(engine.q5, np.zeros(N))  # zeroed out!
 
 
 def test_feedforward_compensator_widget_simulation(qtbot, dummy_model_data):
@@ -199,3 +193,68 @@ def test_feedforward_compensator_widget_simulation(qtbot, dummy_model_data):
         widget.run_simulation()
 
 
+def test_compensate_delay_cancellation_nonlinear(dummy_model_data):
+    # Setup model with a known delay of 10 samples
+    N = 128
+    h1 = np.zeros(N)
+    h1[10] = 1.0  # 10 samples delay
+
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # Test signal: sine wave
+    t = np.arange(N) / 48000.0
+    u = 0.5 * np.sin(2 * np.pi * 1000.0 * t)
+
+    # Original linear compensate cancels delay
+    u_comp_lin = engine.compensate(u, linear_only=True)
+    y_comp_lin = engine.forward_model(u_comp_lin)
+
+    # Corrected nonlinear compensate should ALSO cancel delay!
+    u_comp_nonlin = engine.compensate(u, linear_only=False, iterative=True, iters=2)
+    y_comp_nonlin = engine.forward_model(u_comp_nonlin)
+
+    # Calculate cross-correlation to find peak delay relative to input u
+    C_lin = np.fft.irfft(np.fft.rfft(y_comp_lin) * np.conj(np.fft.rfft(u)), n=N)
+    delay_lin = np.argmax(np.abs(C_lin))
+    if delay_lin > N // 2:
+        delay_lin -= N
+
+    C_nonlin = np.fft.irfft(np.fft.rfft(y_comp_nonlin) * np.conj(np.fft.rfft(u)), n=N)
+    delay_nonlin = np.argmax(np.abs(C_nonlin))
+    if delay_nonlin > N // 2:
+        delay_nonlin -= N
+
+    # Both should have 0 delay (fully cancelled) instead of 10 samples delay
+    assert abs(delay_lin) <= 1
+    assert abs(delay_nonlin) <= 1
+
+
+def test_transient_no_wraparound(qtbot, dummy_model_data):
+    # Setup model with delay
+    N = 256
+    h1 = np.zeros(N)
+    h1[20] = 1.0  # 20 samples delay
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+
+    audio_engine = MagicMock()
+    module = FeedforwardCompensator(audio_engine)
+    widget = FeedforwardCompensatorWidget(module)
+    qtbot.addWidget(widget)
+
+    widget.module.engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+    widget.model_data = dummy_model_data
+
+    # Run Step Response simulation
+    widget.combo_signal.setCurrentText("Step Response")
+    widget.run_simulation()
+
+    # Verify the aligned compensated data
+    t_axis, y_comp_aligned = widget.curve_t_comp.getData()
+
+    # The peak of linear kernel is at 20. So t_peak = 20.
+    # The first 20 samples of y_comp_aligned should be padded with y_comp[0] (which is close to 0),
+    # NOT with the tail of the step response (which is close to 'amp' = 0.5).
+    # If wrap-around occurred, the first 20 samples would have values close to 0.5.
+    assert np.all(np.abs(y_comp_aligned[:20]) < 0.05)
