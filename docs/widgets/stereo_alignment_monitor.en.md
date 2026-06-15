@@ -7,15 +7,15 @@
 A comprehensive tool for analyzing the alignment and consistency between L/R channels.  
 It monitors L/R balance, frequency response match, center focus, and phase issues in real-time, providing both quantitative and visual evaluations. Extremely useful for verifying speaker setups and measuring channel imbalances in audio equipment.
 
-## ☕ Coffee Break: Stereo Alignment
+## What is Stereo Alignment?
 
-In stereo playback, when the sound from the left and right speakers reaches the listener in a perfectly matched state, it is said to be in "alignment".
+In stereo playback, when the sound from the left and right speakers reaches the listener in a perfectly matched state, it is said to be in "alignment". Poor alignment typically causes the following issues:
 
-* **Volume Balance Issues**: The sound feels like it's pulling to one side.
+* **Volume Balance Issues**: The sound feels like it is pulling to one side.
 * **Phase Issues**: The sound arrival timing shifts, making the stereo image blurry or unnatural.
 * **Phase Inversion**: The left and right waveforms cancel each other out, making the sound thin.
 
-The Stereo Alignment Monitor helps you visually monitor these discrepancies and verify the accuracy of your speaker setup.
+This tool helps you visually monitor these discrepancies to verify the accuracy of your speaker setup and troubleshoot alignment problems.
 
 ## Operation
 

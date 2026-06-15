@@ -12,13 +12,12 @@ It is an essential tool for discovering phase cancellation problems in mixdown a
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the Lissajous figure. This is ideal when you want to keep it constantly displayed as a meter.
 
-## ☕ Coffee Break: The "Lissajous Figure" Kaleidoscope of Sound
+## ☕ Coffee Break: Lissajous Figures
 
-The mysterious patterns dancing on the Goniometer screen are known in the mathematical world as "Lissajous figures."
-If you imagine the sound from the left speaker pulling a pen "up and down," and the sound from the right speaker pulling it "left and right," they work together to draw these shapes.
+The waveforms displayed on the Goniometer screen are known as "Lissajous figures."
+By plotting the left channel signal on the Y-axis (vertical) and the right channel signal on the X-axis (horizontal) simultaneously, it visually represents the spread and phase difference of the stereo signal.
 
-When exactly the same sound reaches both ears, it draws a single, straight diagonal line at 45 degrees. But as subtle differences (spread and depth) are introduced between the left and right sounds, the line blooms into a circle, tangling and changing beautifully like a "kaleidoscope of sound."
-By peering into this magic window, you can see exactly how musicians and engineers scattered sounds across the space, revealing the "secrets of stereo" right before your eyes!
+When exactly the same sound is input from both left and right, it draws a straight line. As phase or volume differences occur between the left and right signals, the figure changes into circles or complex curves.
 
 ## How to Read the Screen
 
