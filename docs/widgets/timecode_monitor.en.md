@@ -11,9 +11,7 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 
 ## ☕ Coffee Break: Timecode (LTC)
 
-If you play a timecode (LTC) signal through speakers, it sounds like a harsh, modem-like noise. However, this signal contains precise time information: `hour:minute:second:frame`.
-
-On a shooting set, by sending and recording this audio to multiple cameras and recorders via cables, editing software can later use the audio as a reference to automatically synchronize the timelines perfectly.
+If you play a timecode (LTC) signal through speakers, it sounds like a harsh, modem-like noise. However, this signal contains precise time information: `hour:minute:second:frame`. By recording this audio to multiple cameras and recorders, editing software can later use it as a reference to automatically synchronize the timelines.
 
 ### What this tool does in one sentence
 
