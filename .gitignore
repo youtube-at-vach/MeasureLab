@@ -92,3 +92,4 @@ docs/daily_check.log
 docs/translation_check.log
 
 temp_measured_hammerstein.json
+scripts/variability_results.json
