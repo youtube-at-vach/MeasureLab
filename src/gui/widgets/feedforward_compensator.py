@@ -557,6 +557,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # Right Panel: Tabs
         self.tabs = QTabWidget()
         self.setup_simulation_tab()
+        self.setup_transient_tab()
         self.setup_linear_response_tab()
         self.setup_offline_tab()
         main_layout.addWidget(self.tabs, stretch=1)
@@ -582,6 +583,9 @@ class FeedforwardCompensatorWidget(QWidget):
                 tr("Two-Tone (1.0k + 1.5k)"),
                 tr("Multi-Tone (5 freqs)"),
                 tr("Broadband Noise"),
+                tr("Step Response (Ideal)"),
+                tr("Step Response (Band-limited)"),
+                tr("Impulse Response"),
             ]
         )
         ctrl_layout.addWidget(QLabel(tr("Test Signal:")))
@@ -621,6 +625,42 @@ class FeedforwardCompensatorWidget(QWidget):
         sim_layout.addWidget(self.plot_sim)
 
         self.tabs.addTab(sim_tab, tr("Simulation"))
+
+    def setup_transient_tab(self):
+        trans_tab = QWidget()
+        trans_layout = QVBoxLayout(trans_tab)
+        trans_layout.setContentsMargins(5, 5, 5, 5)
+        trans_layout.setSpacing(5)
+
+        # Control / Description
+        ctrl_layout = QHBoxLayout()
+        self.chk_show_bl_ideal = QCheckBox(tr("Show Band-Limited Ideal Reference"))
+        self.chk_show_bl_ideal.setChecked(True)
+        self.chk_show_bl_ideal.toggled.connect(self.run_simulation)
+        ctrl_layout.addWidget(self.chk_show_bl_ideal)
+
+        # Add warning/explanation label
+        lbl_info = QLabel(tr("Note: Step transitions cause Gibbs ringing due to the Active Band filter (Fmin/Fmax) required for inverse filter stability."))
+        lbl_info.setStyleSheet("color: #e0a800; font-size: 10px;")
+        lbl_info.setWordWrap(True)
+        
+        ctrl_layout.addWidget(lbl_info, stretch=1)
+        trans_layout.addLayout(ctrl_layout)
+
+        # Plot Widget
+        self.plot_trans = pg.PlotWidget(title=tr("Transient Response (Time Domain)"))
+        self.plot_trans.setLabel("bottom", tr("Time"), units="s")
+        self.plot_trans.setLabel("left", tr("Amplitude"))
+        self.plot_trans.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_trans.addLegend()
+
+        self.curve_t_uncomp = self.plot_trans.plot(pen="r", name=tr("Uncompensated"))
+        self.curve_t_comp = self.plot_trans.plot(pen="g", name=tr("Compensated"))
+        self.curve_t_linear = self.plot_trans.plot(pen="b", name=tr("Ideal Linear"))
+        self.curve_t_bl_ideal = self.plot_trans.plot(pen="c", name=tr("Band-Limited Ideal"))
+        
+        trans_layout.addWidget(self.plot_trans)
+        self.tabs.addTab(trans_tab, tr("Transient Simulation"))
 
     def setup_offline_tab(self):
         off_tab = QWidget()
@@ -806,6 +846,24 @@ class FeedforwardCompensatorWidget(QWidget):
         elif sig_type == tr("Multi-Tone (5 freqs)"):
             u = (amp / 2.5) * sum(np.sin(2 * np.pi * f * t) for f in [300, 700, 1300, 2700, 5500])
             f_test = 1300.0
+        elif sig_type == tr("Step Response (Ideal)"):
+            u = np.zeros(N)
+            u[N // 10 :] = amp
+            f_test = 1000.0
+        elif sig_type == tr("Step Response (Band-limited)"):
+            u_raw = np.zeros(N)
+            u_raw[N // 10 :] = amp
+            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            U_fft = np.fft.rfft(u_raw)
+            u = np.fft.irfft(U_fft * bp_filter, n=N)
+            max_val = np.max(np.abs(u))
+            if max_val > 1e-12:
+                u = u * (amp / max_val)
+            f_test = 1000.0
+        elif sig_type == tr("Impulse Response"):
+            u = np.zeros(N)
+            u[N // 10] = amp
+            f_test = 1000.0
         else:  # Broadband Noise
             rng = np.random.default_rng(99)
             noise_fft = np.exp(1j * rng.uniform(0, 2 * np.pi, N // 2 + 1))
@@ -854,6 +912,39 @@ class FeedforwardCompensatorWidget(QWidget):
         self.plot_sim.setXRange(np.log10(20), np.log10(sr / 2), padding=0.02)
         self.plot_sim.setYRange(-140, 10, padding=0.0)
 
+        # Band-limited ideal linear response: H1 * bp_filter * u
+        Q_fft, _, bp_filter = engine._prepare_buffers_for_length(N)
+        y_bl_linear = np.fft.irfft(np.fft.rfft(u) * bp_filter * Q_fft[1], n=N)
+
+        # Update Transient Plot
+        t_peak = np.argmax(np.abs(engine.q1_sc))
+        t_axis = (np.arange(N) - t_peak) / sr
+
+        self.curve_t_uncomp.setData(t_axis, y_uncomp)
+
+        # When linear_only is enabled, the group delay (t_peak) has already been cancelled
+        # in the input-referred compensation filter (u_comp = F_inv * u_in).
+        # To align the compensated output with the other reference curves (which are left-shifted by t_peak),
+        # we shift y_comp forward in time (right-shift by t_peak).
+        if linear_only:
+            y_comp_aligned = np.roll(y_comp, t_peak)
+        else:
+            y_comp_aligned = y_comp
+
+        self.curve_t_comp.setData(t_axis, y_comp_aligned)
+        self.curve_t_linear.setData(t_axis, y_linear)
+
+        if self.chk_show_bl_ideal.isChecked():
+            self.curve_t_bl_ideal.setData(t_axis, y_bl_linear)
+            self.curve_t_bl_ideal.show()
+        else:
+            self.curve_t_bl_ideal.hide()
+
+        if "Step" in sig_type or "Impulse" in sig_type:
+            self.plot_trans.setXRange(-0.002, 0.010, padding=0.0)
+        else:
+            self.plot_trans.setXRange(-0.002, 0.020, padding=0.0)
+
         # Metrics calculation
         def calculate_thd_db(y_sig, f_ref):
             N_fft = len(y_sig)
@@ -901,6 +992,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
         is_multitone = sig_type in [tr("Two-Tone (1.0k + 1.5k)"), tr("Multi-Tone (5 freqs)")]
         is_noise = sig_type == tr("Broadband Noise")
+        is_transient = "Step" in sig_type or "Impulse" in sig_type
 
         if is_multitone:
             dist_name = "TD+N"
@@ -915,7 +1007,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
             dist_uncomp = AudioCalc.calculate_multitone_tdn(mag_uncomp, freqs_fft, expected_tones)["tdn_db"]
             dist_comp = AudioCalc.calculate_multitone_tdn(mag_comp, freqs_fft, expected_tones)["tdn_db"]
-        elif is_noise:
+        elif is_noise or is_transient:
             dist_name = "TD+N"
             dist_uncomp = None
             dist_comp = None
@@ -927,7 +1019,7 @@ class FeedforwardCompensatorWidget(QWidget):
         sdr_uncomp = calculate_sdr_db(y_uncomp, y_linear)
         sdr_comp = calculate_sdr_db(y_comp, y_linear)
 
-        if is_noise:
+        if is_noise or is_transient:
             results_txt = (
                 f"=== {sig_type} Simulation Results ===\n"
                 f"Uncompensated SDR: {sdr_uncomp:6.2f} dB\n"
