@@ -743,11 +743,15 @@ class LockInSpectrumFinder(MeasurementModule):
             s_f = max(0.1, start_f)
             freqs = np.logspace(np.log10(s_f), np.log10(stop_f), points)
         elif spacing == "Integer":
-            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points)))
+            freqs = np.round(np.linspace(start_f, stop_f, points))
+            if freqs.size > 0:
+                freqs = freqs[np.concatenate(([True], freqs[1:] != freqs[:-1]))]
             freqs = freqs[freqs >= 1.0]  # Prevent 0 Hz
         elif spacing == "Int x Sync":
             df = fs / N
-            freqs = np.unique(np.round(np.linspace(start_f, stop_f, points) / df) * df)
+            freqs = np.round(np.linspace(start_f, stop_f, points) / df) * df
+            if freqs.size > 0:
+                freqs = freqs[np.concatenate(([True], freqs[1:] != freqs[:-1]))]
             freqs = freqs[freqs >= df]  # Prevent 0 Hz and extremely low frequencies
             if len(freqs) == 0:
                 freqs = np.array([df])
@@ -812,7 +816,10 @@ class LockInSpectrumFinder(MeasurementModule):
                             merged.append(mf)
                     else:
                         merged.append(mf)
-                freqs = np.unique(merged)
+                freqs = np.array(merged)
+                freqs.sort()
+                if freqs.size > 0:
+                    freqs = freqs[np.concatenate(([True], freqs[1:] != freqs[:-1]))]
 
         points = len(freqs)
 
