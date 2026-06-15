@@ -783,7 +783,30 @@ class NonlinearAnalyzerWidget(QWidget):
         self.kernel_plot.addLegend(offset=(10, 10))
 
         main_layout.addWidget(self.plot_tabs, stretch=1)
+        self.update_frequency_limits()
         self.on_routing_changed()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_frequency_limits()
+
+    def update_frequency_limits(self):
+        sample_rate = self.module.audio_engine.sample_rate
+        nyquist = sample_rate / 2.0
+
+        self.start_spin.blockSignals(True)
+        self.start_spin.setRange(2.0, nyquist)
+        if self.start_spin.value() > nyquist:
+            self.start_spin.setValue(min(20.0, nyquist))
+            self.module.start_freq = self.start_spin.value()
+        self.start_spin.blockSignals(False)
+
+        self.end_spin.blockSignals(True)
+        self.end_spin.setRange(20.0, nyquist)
+        if self.end_spin.value() > nyquist:
+            self.end_spin.setValue(nyquist)
+            self.module.end_freq = nyquist
+        self.end_spin.blockSignals(False)
 
     def on_routing_changed(self):
         mode = self.in_mode_combo.currentData()
