@@ -1249,7 +1249,7 @@ class PlotComparerWidget(QWidget):
 
             for idx, (tid, trace) in enumerate(visible_traces, start=1):
                 settings = self.trace_settings[tid]
-                x_arr = np.array(trace.x_data, dtype=float)
+                x_arr = trace.x_data
                 if use_khz:
                     x_arr = x_arr / 1000.0
 
@@ -1261,7 +1261,7 @@ class PlotComparerWidget(QWidget):
 
                 # 1. Primary Y data
                 if settings.get("y_visible", True) and trace.y_data is not None:
-                    y_arr = np.array(trace.y_data, dtype=float)[sort_idx]
+                    y_arr = trace.y_data[sort_idx]
 
                     if settings["offset_db"] != 0.0:
                         if trace.y_axis.display_unit in {"dB", "dBFS", "dBV", "dBu"}:
@@ -1297,7 +1297,7 @@ class PlotComparerWidget(QWidget):
 
                 # 2. Secondary Y2 data
                 if trace.y2_data is not None and settings.get("y2_visible", True) and trace.y2_axis:
-                    y2_arr = np.array(trace.y2_data, dtype=float)[sort_idx]
+                    y2_arr = trace.y2_data[sort_idx]
 
                     # Apply Polarity Inversion (time domain only)
                     if active_domain == "time" and settings.get("invert", False):
@@ -1536,11 +1536,11 @@ class PlotComparerWidget(QWidget):
             settings = self.trace_settings[tid]
 
             # Arrays
-            x = np.array(trace.x_data, dtype=float)
+            x = trace.x_data
             if use_khz:
                 x = x / 1000.0
-            y = np.array(trace.y_data, dtype=float)
-            y2 = np.array(trace.y2_data, dtype=float) if trace.y2_data is not None else None
+            y = trace.y_data
+            y2 = trace.y2_data
 
             if len(x) == 0:
                 continue

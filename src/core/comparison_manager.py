@@ -75,6 +75,26 @@ class ComparisonTrace:
     # Extra parameters/settings
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self):
+        import numpy as np
+
+        # Convert data to numpy arrays of float to avoid repetitive conversions in drawing loop
+        if not isinstance(self.x_data, np.ndarray):
+            self.x_data = np.array(self.x_data, dtype=float) if self.x_data is not None else np.array([], dtype=float)
+        elif self.x_data.dtype != float:
+            self.x_data = self.x_data.astype(float)
+
+        if not isinstance(self.y_data, np.ndarray):
+            self.y_data = np.array(self.y_data, dtype=float) if self.y_data is not None else np.array([], dtype=float)
+        elif self.y_data.dtype != float:
+            self.y_data = self.y_data.astype(float)
+
+        if self.y2_data is not None:
+            if not isinstance(self.y2_data, np.ndarray):
+                self.y2_data = np.array(self.y2_data, dtype=float)
+            elif self.y2_data.dtype != float:
+                self.y2_data = self.y2_data.astype(float)
+
     def to_dict(self) -> Dict[str, Any]:
         import numpy as np
 
