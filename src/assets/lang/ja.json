@@ -1093,7 +1093,7 @@
     "Minimum Level": "最小レベル",
     "Minimum Phase": "最小位相 (Minimum Phase)",
     "Minor Issues": "軽微な位相問題",
-    "Missing required kernel: {0}": "必要なカーネルが不足しています: {0}",
+    "Missing required linear kernel: h1": "必要な線形カーネルが不足しています: h1",
     "Mixed / Intermediate Phase": "混合/中間位相",
     "Mod Freq (Hz):": "変調周波数 (Hz):",
     "Mod. Depth (k):": "変調度 (k):",
