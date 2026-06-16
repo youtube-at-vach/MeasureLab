@@ -127,8 +127,7 @@ class CsvTraceExporter(BaseTraceExporter):
                 y2_vals = np.interp(x_grid, orig_x, orig_y2)
                 cols.append(y2_vals)
 
-        for row in zip(*cols, strict=False):
-            writer.writerow(row)
+        writer.writerows(zip(*cols, strict=False))
 
     def _export_independent(self, writer, traces: List[ComparisonTrace], include_headers: bool):
         # 1. Write Headers
@@ -162,5 +161,4 @@ class CsvTraceExporter(BaseTraceExporter):
             if t.y2_data is not None:
                 columns.append(t.y2_data)
 
-        for row in itertools.zip_longest(*columns, fillvalue=""):
-            writer.writerow(row)
+        writer.writerows(itertools.zip_longest(*columns, fillvalue=""))
