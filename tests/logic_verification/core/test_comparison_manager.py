@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import sys
 import tempfile
 import unittest
@@ -118,7 +119,7 @@ class TestComparisonManager(unittest.TestCase):
 
         restored = self.ComparisonTrace.from_dict(d)
         self.assertEqual(restored.id, "test-trace-1")
-        self.assertEqual(restored.x_data, [0.0, 1.0, 2.0])
+        self.assertTrue(np.array_equal(restored.x_data, [0.0, 1.0, 2.0]))
         self.assertEqual(restored.calibration.input_sensitivity, 2.0)
         self.assertEqual(restored.metadata["param"], 42)
 
@@ -175,8 +176,8 @@ class TestComparisonManager(unittest.TestCase):
         t2 = self.manager.get_trace("t2")
         self.assertEqual(t1.name, "Trace 1")
         self.assertEqual(t2.name, "Trace 2")
-        self.assertEqual(t1.x_data, [1.0, 2.0])
-        self.assertEqual(t2.y_data, [3.0, 4.0])
+        self.assertTrue(np.array_equal(t1.x_data, [1.0, 2.0]))
+        self.assertTrue(np.array_equal(t2.y_data, [3.0, 4.0]))
 
 
 if __name__ == "__main__":
