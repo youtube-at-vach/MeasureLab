@@ -57,7 +57,7 @@ def main():
     nonlin_analyzer = NonlinearAnalyzer(engine)
     nonlin_analyzer.amplitude_db = -6.0
     nonlin_analyzer.num_amplitudes = 5
-    nonlin_analyzer.averages = 2
+    nonlin_analyzer.averages = 3
     nonlin_analyzer.sweep_duration = 5.0
     nonlin_analyzer.start_freq = 20.0
     nonlin_analyzer.end_freq = 20000.0
@@ -83,6 +83,10 @@ def main():
             self.is_running = True
     worker = DummyWorker()
 
+    # Register a dummy callback to keep the audio stream active across all SSS runs,
+    # preventing startup latency jitter from closing and reopening the stream.
+    dummy_cb_id = engine.register_callback(lambda *args, **kwargs: None)
+
     sss_runs_results = []
 
     for run in range(num_runs):
@@ -100,11 +104,13 @@ def main():
             print(f"[+] SSS Run {run+1} completed.")
         except Exception as e:
             print(f"[-] SSS Run {run+1} failed: {e}")
+            engine.unregister_callback(dummy_cb_id)
             engine.stop_stream()
             sys.exit(1)
 
         if not sweep_results:
             print(f"[-] Error: SSS Run {run+1} did not return any measurement results.")
+            engine.unregister_callback(dummy_cb_id)
             engine.stop_stream()
             sys.exit(1)
 
@@ -156,6 +162,9 @@ def main():
                 'phase_deg': pred_rel_phase_deg
             })
         sss_runs_results.append(run_data)
+
+    # Unregister the dummy callback to allow the stream to stop if needed
+    engine.unregister_callback(dummy_cb_id)
 
     # ----------------------------------------------------
     # Phase B: Lock-in Harmonic Analyzer - Multiple Runs
