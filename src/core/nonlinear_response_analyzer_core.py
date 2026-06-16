@@ -4,6 +4,7 @@ from scipy.signal import lfilter, butter, sosfilt
 
 logger = logging.getLogger(__name__)
 
+
 def stabilize_poly(a: np.ndarray) -> np.ndarray:
     """
     Stabilize a polynomial by reflecting roots outside the unit circle inside.
@@ -38,13 +39,15 @@ def stabilize_poly(a: np.ndarray) -> np.ndarray:
     return a.copy()
 
 
-def generate_schroeder_multisine(sample_rate: float, duration: float, start_freq: float, end_freq: float, amplitude_db: float) -> np.ndarray:
+def generate_schroeder_multisine(
+    sample_rate: float, duration: float, start_freq: float, end_freq: float, amplitude_db: float
+) -> np.ndarray:
     """
     Generates a low crest-factor multisine signal using Schroeder phase formula.
     """
     num_samples = int(sample_rate * duration)
     # Perform FFT-based synthesis
-    freq_bins = np.fft.rfftfreq(num_samples, d=1.0/sample_rate)
+    freq_bins = np.fft.rfftfreq(num_samples, d=1.0 / sample_rate)
 
     # Identify bin indices in range
     bin_idx = np.where((freq_bins >= start_freq) & (freq_bins <= end_freq))[0]
@@ -73,7 +76,10 @@ def generate_schroeder_multisine(sample_rate: float, duration: float, start_freq
     amp_linear = 10 ** (amplitude_db / 20.0)
     return signal * amp_linear
 
-def generate_gaussian_noise(sample_rate: float, duration: float, start_freq: float, end_freq: float, amplitude_db: float) -> np.ndarray:
+
+def generate_gaussian_noise(
+    sample_rate: float, duration: float, start_freq: float, end_freq: float, amplitude_db: float
+) -> np.ndarray:
     """
     Generates bandpass-filtered Gaussian noise normalized to the target peak amplitude.
     """
@@ -87,7 +93,7 @@ def generate_gaussian_noise(sample_rate: float, duration: float, start_freq: flo
     high = min(nyquist * 0.99, end_freq) / nyquist
 
     try:
-        sos = butter(4, [low, high], btype='bandpass', output='sos')
+        sos = butter(4, [low, high], btype="bandpass", output="sos")
         filtered = sosfilt(sos, noise)
     except Exception as e:
         logger.warning(f"Failed to design Butterworth bandpass filter: {e}. Using raw noise.")
@@ -100,6 +106,7 @@ def generate_gaussian_noise(sample_rate: float, duration: float, start_freq: flo
 
     amp_linear = 10 ** (amplitude_db / 20.0)
     return filtered * amp_linear
+
 
 def identify_bussgang(u: np.ndarray, y: np.ndarray, P: int = 4, lti_len: int = 64):
     """
@@ -136,16 +143,14 @@ def identify_bussgang(u: np.ndarray, y: np.ndarray, P: int = 4, lti_len: int = 6
 
     # 3. Fit static polynomial nonlinearity: y = sum_{i=1}^P c_i * x^i
     # Build regression matrix
-    X_reg = np.zeros((N, P))
-    for i in range(1, P + 1):
-        X_reg[:, i - 1] = x_est ** i
+    X_reg = x_est[:, np.newaxis] ** np.arange(1, P + 1)
 
     # Solve least-squares
     try:
         c, _, _, _ = np.linalg.lstsq(X_reg, y, rcond=None)
     except np.linalg.LinAlgError:
         c = np.zeros(P)
-        c[0] = 1.0 # fallback
+        c[0] = 1.0  # fallback
 
     y_pred = X_reg @ c
 
@@ -160,6 +165,7 @@ def identify_bussgang(u: np.ndarray, y: np.ndarray, P: int = 4, lti_len: int = 6
     y_pred = np.nan_to_num(y_pred, nan=0.0, posinf=0.0, neginf=0.0)
 
     return g, c, fit_ratio, y_pred, x_est
+
 
 def identify_bla_ls(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 4, nb: int = 4):
     """
@@ -217,9 +223,7 @@ def identify_bla_ls(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 4, nb: i
     x_est = lfilter(b_coefs, a_coefs, u)
 
     # 3. Fit static polynomial nonlinearity y = sum_{i=1}^P c_i * x^i
-    X_reg = np.zeros((N, P))
-    for i in range(1, P + 1):
-        X_reg[:, i - 1] = x_est ** i
+    X_reg = x_est[:, np.newaxis] ** np.arange(1, P + 1)
 
     try:
         c, _, _, _ = np.linalg.lstsq(X_reg, y, rcond=None)
@@ -239,6 +243,7 @@ def identify_bla_ls(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 4, nb: i
     y_pred = np.nan_to_num(y_pred, nan=0.0, posinf=0.0, neginf=0.0)
 
     return b_coefs, a_coefs, c, fit_ratio, y_pred, x_est
+
 
 def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: int = 2):
     """
@@ -283,12 +288,12 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
     # 1. c_i terms: -y(t)^i for i = 2...P
     for i in range(2, P + 1):
         col_idx = i - 2
-        X_reg[:, col_idx] = - (y[max_n:] ** i)
+        X_reg[:, col_idx] = -(y[max_n:] ** i)
 
     # 2. a_j terms: -y(t-j) for j = 1...na
     for j in range(1, na + 1):
         col_idx = num_c + (j - 1)
-        X_reg[:, col_idx] = - y[max_n - j : N - j]
+        X_reg[:, col_idx] = -y[max_n - j : N - j]
 
     # 3. w_{i,j} terms: -y(t-j)^i for j = 1...na, i = 2...P
     w_start = num_c + num_a
@@ -296,7 +301,7 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
     for j in range(1, na + 1):
         for i in range(2, P + 1):
             col_idx = w_start + idx
-            X_reg[:, col_idx] = - (y[max_n - j : N - j] ** i)
+            X_reg[:, col_idx] = -(y[max_n - j : N - j] ** i)
             idx += 1
 
     # 4. b_k terms: u(t-k) for k = 0...nb
@@ -373,9 +378,7 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
     # Now generate the forward polynomial.
     x_est = lfilter(b_final, a_final, u)
 
-    X_fwd = np.zeros((N, P))
-    for i in range(1, P + 1):
-        X_fwd[:, i - 1] = x_est ** i
+    X_fwd = x_est[:, np.newaxis] ** np.arange(1, P + 1)
 
     try:
         d_coeffs, _, _, _ = np.linalg.lstsq(X_fwd, y, rcond=None)
@@ -396,18 +399,20 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
 
     return b_final, a_final, d_coeffs, fit_ratio, y_pred, x_est
 
+
 class SimulatedNonlinearResponseSystem:
     """
     A simulated physical Nonlinear Response system for loopback/offline mode.
     Simulates a 2nd-order Butterworth LPF followed by a polynomial static nonlinearity
     and optional process/measurement noise.
     """
+
     def __init__(self, sample_rate: float):
         self.sample_rate = sample_rate
         nyquist = sample_rate / 2.0
         fc = 800.0
         try:
-            self.b, self.a = butter(2, fc / nyquist, btype='low')
+            self.b, self.a = butter(2, fc / nyquist, btype="low")
         except Exception:
             self.b = np.array([0.003, 0.006, 0.003])
             self.a = np.array([1.0, -1.8, 0.82])
@@ -423,7 +428,7 @@ class SimulatedNonlinearResponseSystem:
         # 2. Static Non-Linearity
         y = np.zeros_like(x_noisy)
         for i, c in enumerate(self.poly_coeffs, start=1):
-            y += c * (x_noisy ** i)
+            y += c * (x_noisy**i)
 
         # Add measurement noise
         y_noisy = y + np.random.normal(0.0, noise_std, len(y))
