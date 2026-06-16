@@ -332,8 +332,34 @@ def process_amplitude_responses(
             g_meas_all[j, k - 1] = g_k_meas_corr
             g_ref_all[j, k - 1] = g_k_ref_corr
 
-    # 6. Apply Chebyshev transform in the FREQUENCY domain
+    # 5.5. Estimate Measurement Noise Spectral Density & Amplification Factors
+    N_total_len = len(responses_meas[0])
+    noise_len = N_kernel
+
+    noise_powers = []
+    for j in range(num_amplitudes):
+        if N_total_len >= noise_len:
+            noise_seg = responses_meas[j][-noise_len:]
+        else:
+            noise_seg = np.pad(responses_meas[j], (0, max(0, noise_len - N_total_len)))[:noise_len]
+
+        win = windows.tukey(noise_len, alpha=0.1)
+        noise_seg_win = noise_seg * win
+
+        S_noise = fft_manager.rfft(noise_seg_win)
+        noise_powers.append(np.abs(S_noise) ** 2)
+
+    mean_noise_power = np.mean(noise_powers, axis=0)
+    sigma = np.sqrt(mean_noise_power)
+
+    # Calculate noise amplification factor for each kernel from Chebyshev separation matrix M (M_j,p = R_j^p)
     R_array = np.array(amplitudes)
+    M = R_array[:, np.newaxis] ** np.arange(1, P + 1)
+    M_pinv = np.linalg.pinv(M)
+    # F_p = L2 norm of the p-th row of the pseudo-inverse matrix
+    noise_amplification = np.sqrt(np.sum(M_pinv ** 2, axis=1))
+
+    # 6. Apply Chebyshev transform in the FREQUENCY domain
     R2 = R_array**2
     R3 = R_array**3
     R4 = R_array**4
@@ -490,6 +516,19 @@ def process_amplitude_responses(
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
+
+        # Compute estimated noise floor for this kernel
+        F_p = noise_amplification[p] if p < len(noise_amplification) else 0.0
+        if input_mode in {"XFER", "XFER_REV"}:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                N_all = (sigma * F_p) / np.sqrt(ref_power + alpha)
+                N_all = np.nan_to_num(N_all)
+        else:
+            N_all = sigma * F_p
+
+        valid_N = N_all[mask]
+        mag_noise_db = 20 * np.log10(np.abs(valid_N) + 1e-12)
+        magnitudes_db_dict[f"{h_key}_noise"] = mag_noise_db
 
     # Also save the reference fundamental phase for loopback phase calibration
     ref_phase_rad = np.unwrap(np.angle(H_ref_1))

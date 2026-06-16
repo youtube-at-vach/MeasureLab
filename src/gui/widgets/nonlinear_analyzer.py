@@ -658,6 +658,8 @@ class NonlinearAnalyzerWidget(QWidget):
 
         scroll_layout.addWidget(phm_group)
 
+
+
         # Group 3: Routing & Calibration
         route_group = QGroupBox(tr("Routing & Calibration"))
         route_form = QFormLayout(route_group)
@@ -775,7 +777,58 @@ class NonlinearAnalyzerWidget(QWidget):
         kernel_layout.addWidget(self.kernel_plot)
         self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
 
+        # Tab 4: Kernel Quality (SNR)
+        self.quality_tab = QWidget()
+        quality_layout = QHBoxLayout(self.quality_tab)
+        quality_layout.setContentsMargins(5, 5, 5, 5)
+        quality_layout.setSpacing(10)
 
+        # Left: SNR Plot
+        self.snr_plot = pg.PlotWidget(title=tr("Frequency-domain SNR"))
+        self.snr_plot.setLabel("left", tr("SNR"), units="dB")
+        self.snr_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.snr_plot.setLogMode(True, False)
+        self.snr_plot.showGrid(True, True, alpha=0.3)
+        self.snr_plot.addLegend(offset=(10, 10))
+
+        # Add guide lines
+        self.snr_plot.addLine(y=0.0, pen=pg.mkPen((150, 150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
+        self.snr_plot.addLine(y=15.0, pen=pg.mkPen((200, 140, 20, 120), width=1, style=Qt.PenStyle.DashLine))
+        self.snr_plot.addLine(y=30.0, pen=pg.mkPen((43, 140, 86, 120), width=1, style=Qt.PenStyle.DashLine))
+
+        quality_layout.addWidget(self.snr_plot, stretch=1)
+
+        # Right: Overall Quality Group
+        self.quality_text_group = QGroupBox(tr("Overall Kernel Quality"))
+        quality_text_layout = QVBoxLayout(self.quality_text_group)
+        quality_text_layout.setContentsMargins(10, 15, 10, 15)
+        quality_text_layout.setSpacing(12)
+
+        self.snr_labels = {}
+        for p in range(1, 6):
+            row_widget = QWidget()
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+
+            lbl_title = QLabel(tr("{0} Order (h{0}):").format(p))
+            lbl_title.setStyleSheet("font-weight: bold;")
+            lbl_val = QLabel(tr("N/A"))
+            lbl_val.setStyleSheet("font-weight: bold; color: gray;")
+            self.snr_labels[f"h{p}"] = lbl_val
+
+            row_layout.addWidget(lbl_title)
+            row_layout.addWidget(lbl_val, alignment=Qt.AlignmentFlag.AlignRight)
+            row_widget.setLayout(row_layout)
+            quality_text_layout.addWidget(row_widget)
+
+          # Ensure the group box is not too wide
+        self.quality_text_group.setFixedWidth(240)
+
+        quality_text_layout.addStretch()
+        self.quality_text_group.setLayout(quality_text_layout)
+        quality_layout.addWidget(self.quality_text_group)
+
+        self.plot_tabs.addTab(self.quality_tab, tr("Kernel Quality (SNR)"))
 
         # Premium Plot Legends
         self.mag_plot.addLegend(offset=(10, 10))
@@ -844,8 +897,19 @@ class NonlinearAnalyzerWidget(QWidget):
         self.mag_plot.clear()
         self.phase_plot.clear()
         self.kernel_plot.clear()
+        self.snr_plot.clear()
 
+        # Add guide lines
+        self.snr_plot.addLine(y=0.0, pen=pg.mkPen((150, 150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
+        self.snr_plot.addLine(y=15.0, pen=pg.mkPen((200, 140, 20, 120), width=1, style=Qt.PenStyle.DashLine))
+        self.snr_plot.addLine(y=30.0, pen=pg.mkPen((43, 140, 86, 120), width=1, style=Qt.PenStyle.DashLine))
 
+        # Reset SNR labels
+        for p in range(1, 6):
+            lbl = self.snr_labels.get(f"h{p}")
+            if lbl:
+                lbl.setText(tr("N/A"))
+                lbl.setStyleSheet("font-weight: bold; color: gray;")
 
         self.module.start_measurement()
 
@@ -936,8 +1000,12 @@ class NonlinearAnalyzerWidget(QWidget):
         # Clear existing curves before redrawing
         self.mag_plot.clear()
         self.phase_plot.clear()
+        self.snr_plot.clear()
 
-
+        # Add guide lines
+        self.snr_plot.addLine(y=0.0, pen=pg.mkPen((150, 150, 150, 150), width=1, style=Qt.PenStyle.DashLine))
+        self.snr_plot.addLine(y=15.0, pen=pg.mkPen((200, 140, 20, 120), width=1, style=Qt.PenStyle.DashLine))
+        self.snr_plot.addLine(y=30.0, pen=pg.mkPen((43, 140, 86, 120), width=1, style=Qt.PenStyle.DashLine))
 
         for key in ["h1", "h2", "h3", "h4", "h5"]:
             if key in magnitudes_db_dict:
@@ -949,6 +1017,14 @@ class NonlinearAnalyzerWidget(QWidget):
                 pen_mag = pg.mkPen(color=colors[key], width=2)
                 self.mag_plot.plot(freqs, mag_smoothed, pen=pen_mag, name=labels[key])
 
+                # Frequency-domain SNR Plot
+                noise_key = f"{key}_noise"
+                if noise_key in magnitudes_db_dict:
+                    snr_freq = magnitudes_db_dict[key] - magnitudes_db_dict[noise_key]
+                    snr_smoothed = self.apply_smoothing(snr_freq, smooth_level)
+                    pen_snr = pg.mkPen(color=colors[key], width=1.8)
+                    self.snr_plot.plot(freqs, snr_smoothed, pen=pen_snr, name=labels[key])
+
                 # Phase Plot
                 pen_phase = pg.mkPen(color=colors[key], width=1.5, style=Qt.PenStyle.SolidLine)
                 self.phase_plot.plot(freqs, phase_smoothed, pen=pen_phase, name=labels[key])
@@ -958,6 +1034,8 @@ class NonlinearAnalyzerWidget(QWidget):
     def on_update_kernels(self, time_ms, separated_kernels_data):
         self.cached_time_ms = time_ms
         self.cached_kernels = separated_kernels_data
+
+        self.update_snr_display(time_ms, separated_kernels_data)
 
         self.kernel_plot.clear()
 
@@ -992,6 +1070,43 @@ class NonlinearAnalyzerWidget(QWidget):
 
         if self.cached_freqs is not None:
             self.export_btn.setEnabled(True)
+
+    def update_snr_display(self, time_ms, separated_kernels_data):
+        if time_ms is None or separated_kernels_data is None:
+            return
+
+        # Signal Region: [-1.0, 5.0] ms
+        # Noise Region: [-6.0, -3.0] ms and [9.0, 12.0] ms
+        sig_mask = (time_ms >= -1.0) & (time_ms <= 5.0)
+        noise_mask = ((time_ms >= -6.0) & (time_ms <= -3.0)) | ((time_ms >= 9.0) & (time_ms <= 12.0))
+
+        for p in range(len(separated_kernels_data)):
+            h_data = separated_kernels_data[p]
+
+            # Peak amplitude in signal region
+            sig_part = h_data[sig_mask]
+            peak_val = np.max(np.abs(sig_part)) if len(sig_part) > 0 else 0.0
+
+            # RMS in noise region
+            noise_part = h_data[noise_mask]
+            noise_rms = np.sqrt(np.mean(noise_part**2)) if len(noise_part) > 0 else 1e-12
+            if noise_rms < 1e-12:
+                noise_rms = 1e-12
+
+            snr_db = 20 * np.log10(peak_val / noise_rms)
+
+            # Update sidebar label
+            lbl = self.snr_labels.get(f"h{p+1}")
+            if lbl:
+                if snr_db >= 30.0:
+                    lbl.setText(f"{snr_db:.1f} dB ({tr('Excellent')})")
+                    lbl.setStyleSheet("font-weight: bold; color: #2b8c56;")
+                elif snr_db >= 15.0:
+                    lbl.setText(f"{snr_db:.1f} dB ({tr('Caution')})")
+                    lbl.setStyleSheet("font-weight: bold; color: #e68c14;")
+                else:
+                    lbl.setText(f"{snr_db:.1f} dB ({tr('Unusable')})")
+                    lbl.setStyleSheet("font-weight: bold; color: #d9534f;")
 
     def export_model(self):
         if self.cached_freqs is None or self.cached_kernels is None:

@@ -601,3 +601,72 @@ def test_nonlinear_analyzer_module_measurement(qtbot):
     cached_model = get_active_model()
     assert cached_model is not None
     assert cached_model["metadata"]["noise_floor_dbfs"] == analyzer.measured_noise_floor_dbfs
+
+
+def test_nonlinear_analyzer_noise_estimation():
+    """
+    Verifies that process_amplitude_responses calculates and returns
+    realistic noise floors (magnitudes_db_dict['hp_noise']) for each kernel.
+    """
+    sample_rate = 44100
+    sweep_duration = 1.0
+    start_freq = 20.0
+    end_freq = 20000.0
+    P = 5
+
+    sss, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+
+    max_amp = 0.5
+    num_amplitudes = 5
+    amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp
+
+    # Simulate a system with a small amount of random noise added
+    responses_meas = []
+    responses_ref = []
+
+    np.random.seed(42)
+
+    for amp in amplitudes:
+        x_sig = amp * sss
+        # Simulate measurement noise (1e-6 for realistic audio noise level)
+        noise = np.random.normal(0, 1e-6, len(x_sig))
+        y_sig = x_sig + noise
+
+        padding = np.zeros(int(0.2 * sample_rate))
+        x_sig_padded = np.concatenate([x_sig, padding])
+        y_sig_padded = np.concatenate([y_sig, padding])
+
+        ir_ref = deconvolve_signal(x_sig_padded, sss)
+        ir_meas = deconvolve_signal(y_sig_padded, sss)
+
+        responses_ref.append(ir_ref)
+        responses_meas.append(ir_meas)
+
+    (
+        freqs,
+        mags,
+        phases,
+        time_ms,
+        separated_kernels_data,
+    ) = process_amplitude_responses(
+        responses_meas,
+        responses_ref,
+        sample_rate,
+        start_freq,
+        end_freq,
+        input_mode="XFER",
+        latency_sec=0.0,
+        sweep_duration=sweep_duration,
+        P=P,
+        amplitudes=amplitudes,
+    )
+
+    # Check that the keys for noise are present in mags
+    for p in range(1, 6):
+        noise_key = f"h{p}_noise"
+        assert noise_key in mags
+        # Verify that the values are real numbers (not nan)
+        assert not np.any(np.isnan(mags[noise_key]))
+        # The noise floor should be reasonable (e.g. < 0.0 dB for 1e-6 noise level after Chebyshev separation)
+        assert np.mean(mags[noise_key]) < 0.0
+
