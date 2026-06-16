@@ -106,3 +106,52 @@ def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
     # QMessageBox.critical should not have been called
     assert not critical_called
 
+
+def test_nonlinear_analyzer_post_measurement_recalculate(qtbot):
+    audio_engine = AudioEngine()
+    audio_engine.offline_mode = True
+
+    analyzer = NonlinearAnalyzer(audio_engine)
+    analyzer.sweep_duration = 0.1
+    analyzer.averages = 1
+    analyzer.num_amplitudes = 5
+    # Initially order is 5
+    analyzer.analysis_order = 5
+
+    widget = NonlinearAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # 1. Run the initial measurement
+    with qtbot.waitSignal(analyzer.signals.sweep_finished, timeout=10000):
+        widget.start_btn.click()
+
+    # Verify cache is populated
+    assert analyzer.raw_measurement_cache is not None
+    assert len(widget.cached_kernels) == 5
+
+    # Check overall quality labels are not N/A (since they are computed for all 5)
+    assert widget.snr_labels["h1"].text() != "N/A"
+    assert widget.snr_labels["h5"].text() != "N/A"
+
+    # 2. Lower analysis order to 3
+    widget.analysis_order_spin.setValue(3)
+    assert analyzer.analysis_order == 3
+    assert len(widget.cached_kernels) == 3
+
+    # Check h1-h3 are active and h4-h5 are N/A
+    assert widget.snr_labels["h1"].text() != "N/A"
+    assert widget.snr_labels["h2"].text() != "N/A"
+    assert widget.snr_labels["h3"].text() != "N/A"
+    assert widget.snr_labels["h4"].text() == "N/A"
+    assert widget.snr_labels["h5"].text() == "N/A"
+
+    # 3. Raise analysis order back to 5
+    widget.analysis_order_spin.setValue(5)
+    assert analyzer.analysis_order == 5
+    assert len(widget.cached_kernels) == 5
+
+    # All should be populated again
+    assert widget.snr_labels["h4"].text() != "N/A"
+    assert widget.snr_labels["h5"].text() != "N/A"
+
+

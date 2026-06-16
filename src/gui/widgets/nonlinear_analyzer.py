@@ -165,9 +165,11 @@ class NonlinearAnalyzer(MeasurementModule):
         self.amplitude_db = -6.0  # dBFS (peak)
         self.averages = 3  # TSA (Time Synchronized Averaging) count
         self.num_amplitudes = 5  # Number of amplitude steps for PHM (typically 5 to 7 steps)
+        self.analysis_order = 5
         self.latency_sec = 0.0
         self.measure_noise_floor = True
         self.measured_noise_floor_dbfs = None
+        self.raw_measurement_cache = None
 
         # Routing Config
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -294,7 +296,7 @@ class NonlinearAnalyzer(MeasurementModule):
 
     def _execute_measurement(self, worker):
         sample_rate = self.audio_engine.sample_rate
-        P = 5  # We support up to P=5 orders
+        P = self.analysis_order
 
         # 1. Define Amplitude Scanning Range
         max_amp = 10 ** (self.amplitude_db / 20)
@@ -529,6 +531,19 @@ class NonlinearAnalyzer(MeasurementModule):
         except Exception as cache_err:
             logger.error("Failed to push model to cache: %s", cache_err)
 
+        # Store in raw measurement cache for post-measurement analysis order adjustment
+        self.raw_measurement_cache = {
+            "responses_meas": [r.copy() for r in responses_meas],
+            "responses_ref": [r.copy() for r in responses_ref],
+            "sample_rate": sample_rate,
+            "start_freq": self.start_freq,
+            "end_freq": self.end_freq,
+            "input_mode": self.input_mode,
+            "latency_sec": self.latency_sec,
+            "sweep_duration": self.sweep_duration,
+            "amplitudes": amplitudes.copy(),
+        }
+
         # Emit plots
         self.signals.update_plot.emit(valid_freqs, magnitudes_db_dict, phases_deg_dict)
         self.signals.update_kernels.emit(time_ms, separated_kernels_data)
@@ -646,6 +661,12 @@ class NonlinearAnalyzerWidget(QWidget):
         self.steps_spin.setValue(self.module.num_amplitudes)
         self.steps_spin.valueChanged.connect(lambda v: setattr(self.module, "num_amplitudes", v))
         phm_form.addRow(tr("Amplitude Steps (Max Order 5):"), self.steps_spin)
+
+        self.analysis_order_spin = QSpinBox()
+        self.analysis_order_spin.setRange(1, 5)
+        self.analysis_order_spin.setValue(self.module.analysis_order)
+        self.analysis_order_spin.valueChanged.connect(self.on_analysis_order_changed)
+        phm_form.addRow(tr("Analysis Order:"), self.analysis_order_spin)
 
         self.smooth_combo = QComboBox()
         self.smooth_combo.addItem(tr("None"), "None")
@@ -940,6 +961,98 @@ class NonlinearAnalyzerWidget(QWidget):
         QMessageBox.critical(self, tr("Measurement Error"), message)
         self.on_sweep_finished()
 
+    def on_analysis_order_changed(self, val):
+        self.module.analysis_order = val
+        if self.module.raw_measurement_cache is not None:
+            self.recalculate_and_update()
+
+    def recalculate_and_update(self):
+        cache = self.module.raw_measurement_cache
+        if not cache:
+            return
+
+        P = self.module.analysis_order
+        logger.info(f"Recalculating Hammerstein model with analysis order P={P}...")
+
+        from src.core.nonlinear_analyzer_core import process_amplitude_responses
+        try:
+            (
+                valid_freqs,
+                magnitudes_db_dict,
+                phases_deg_dict,
+                time_ms,
+                separated_kernels_data,
+            ) = process_amplitude_responses(
+                cache["responses_meas"],
+                cache["responses_ref"],
+                cache["sample_rate"],
+                cache["start_freq"],
+                cache["end_freq"],
+                cache["input_mode"],
+                cache["latency_sec"],
+                sweep_duration=cache["sweep_duration"],
+                P=P,
+                amplitudes=cache["amplitudes"],
+            )
+
+            # Update active model cache in memory
+            from src.core.hammerstein_model import set_active_model
+            ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
+
+            if cache["input_mode"] in {"XFER", "XFER_REV"} and len(cache["responses_ref"]) > 0 and len(cache["amplitudes"]) > 0:
+                g_ref = float(np.max(np.abs(cache["responses_ref"][-1])) / cache["amplitudes"][-1])
+            else:
+                g_ref = 1.0
+
+            cache_data = {
+                "metadata": {
+                    "module": self.module.name,
+                    "sample_rate": cache["sample_rate"],
+                    "num_amplitudes": len(cache["amplitudes"]),
+                    "sweep_duration": cache["sweep_duration"],
+                    "start_freq": cache["start_freq"],
+                    "end_freq": cache["end_freq"],
+                    "input_mode": cache["input_mode"],
+                    "latency_sec": cache["latency_sec"],
+                    "ref_max": float(ref_max),
+                    "g_ref": g_ref,
+                    "P": len(separated_kernels_data),
+                    "noise_floor_dbfs": self.module.measured_noise_floor_dbfs,
+                },
+                "time_domain": {
+                    "time_ms": time_ms,
+                    "kernels": {
+                        f"h{p+1}": separated_kernels_data[p] for p in range(len(separated_kernels_data))
+                    },
+                },
+                "frequency_domain": {
+                    "freqs": valid_freqs,
+                    "magnitudes_db": {
+                        k: v for k, v in magnitudes_db_dict.items() if k.startswith("h")
+                    },
+                    "phases_deg": {
+                        k: v for k, v in phases_deg_dict.items() if k.startswith("h") or k == "ref_phase"
+                    },
+                },
+            }
+            set_active_model(cache_data)
+            logger.info("Successfully updated active Hammerstein model in cache.")
+
+            # Update plots and SNR sidebar
+            self.on_update_plot(valid_freqs, magnitudes_db_dict, phases_deg_dict)
+            self.on_update_kernels(time_ms, separated_kernels_data)
+
+            # Notify MainWindow that the active model has changed
+            from PyQt6.QtWidgets import QApplication
+            from src.gui.main_window import MainWindow
+            for widget in QApplication.topLevelWidgets():
+                if isinstance(widget, MainWindow):
+                    widget.notify_active_model_changed()
+                    break
+        except Exception as e:
+            logger.error("Failed to recalculate Hammerstein model: %s", e, exc_info=True)
+            QMessageBox.critical(self, tr("Recalculation Error"), tr("Failed to recalculate model: {0}").format(e))
+
     def refresh_plots_with_smoothing(self):
         if self.cached_freqs is not None:
             self.on_update_plot(self.cached_freqs, self.cached_mags, self.cached_phases)
@@ -1080,24 +1193,26 @@ class NonlinearAnalyzerWidget(QWidget):
         sig_mask = (time_ms >= -1.0) & (time_ms <= 5.0)
         noise_mask = ((time_ms >= -6.0) & (time_ms <= -3.0)) | ((time_ms >= 9.0) & (time_ms <= 12.0))
 
-        for p in range(len(separated_kernels_data)):
-            h_data = separated_kernels_data[p]
-
-            # Peak amplitude in signal region
-            sig_part = h_data[sig_mask]
-            peak_val = np.max(np.abs(sig_part)) if len(sig_part) > 0 else 0.0
-
-            # RMS in noise region
-            noise_part = h_data[noise_mask]
-            noise_rms = np.sqrt(np.mean(noise_part**2)) if len(noise_part) > 0 else 1e-12
-            if noise_rms < 1e-12:
-                noise_rms = 1e-12
-
-            snr_db = 20 * np.log10(peak_val / noise_rms)
-
-            # Update sidebar label
+        for p in range(5):
             lbl = self.snr_labels.get(f"h{p+1}")
-            if lbl:
+            if not lbl:
+                continue
+
+            if p < len(separated_kernels_data):
+                h_data = separated_kernels_data[p]
+
+                # Peak amplitude in signal region
+                sig_part = h_data[sig_mask]
+                peak_val = np.max(np.abs(sig_part)) if len(sig_part) > 0 else 0.0
+
+                # RMS in noise region
+                noise_part = h_data[noise_mask]
+                noise_rms = np.sqrt(np.mean(noise_part**2)) if len(noise_part) > 0 else 1e-12
+                if noise_rms < 1e-12:
+                    noise_rms = 1e-12
+
+                snr_db = 20 * np.log10(peak_val / noise_rms)
+
                 if snr_db >= 30.0:
                     lbl.setText(f"{snr_db:.1f} dB ({tr('Excellent')})")
                     lbl.setStyleSheet("font-weight: bold; color: #2b8c56;")
@@ -1107,6 +1222,9 @@ class NonlinearAnalyzerWidget(QWidget):
                 else:
                     lbl.setText(f"{snr_db:.1f} dB ({tr('Unusable')})")
                     lbl.setStyleSheet("font-weight: bold; color: #d9534f;")
+            else:
+                lbl.setText(tr("N/A"))
+                lbl.setStyleSheet("font-weight: bold; color: gray;")
 
     def export_model(self):
         if self.cached_freqs is None or self.cached_kernels is None:

@@ -386,9 +386,9 @@ def process_amplitude_responses(
         G_meas_k[k] = g_m_k_fft
         G_ref_k[k] = g_r_k_fft
 
-    # Initialize complex H lists
-    H_meas_list = np.zeros((P, N_fft_half), dtype=complex)
-    H_ref_list = np.zeros((P, N_fft_half), dtype=complex)
+    # Initialize complex H lists (always size 5 internally to support formulas)
+    H_meas_list = np.zeros((5, N_fft_half), dtype=complex)
+    H_ref_list = np.zeros((5, N_fft_half), dtype=complex)
 
     # Meas Channel Least-Squares Estimation in Frequency Domain
     g5_m = G_meas_k.get(5, np.zeros((num_amplitudes, N_fft_half), dtype=complex))
