@@ -12,6 +12,8 @@ def test_nonlinear_analyzer_gui_start(qtbot):
     analyzer.sweep_duration = 0.1
     analyzer.averages = 1
     analyzer.num_amplitudes = 5
+    analyzer.padding_duration = 0.05
+    analyzer.noise_duration = 0.05
 
     widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
@@ -74,9 +76,11 @@ def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
 
     analyzer = NonlinearAnalyzer(audio_engine)
     # Set longer parameters to give enough time to click stop
-    analyzer.sweep_duration = 2.0
+    analyzer.sweep_duration = 0.5
     analyzer.averages = 1
     analyzer.num_amplitudes = 5
+    analyzer.padding_duration = 0.1
+    analyzer.noise_duration = 0.1
 
     widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
@@ -115,6 +119,8 @@ def test_nonlinear_analyzer_post_measurement_recalculate(qtbot):
     analyzer.sweep_duration = 0.1
     analyzer.averages = 1
     analyzer.num_amplitudes = 5
+    analyzer.padding_duration = 0.05
+    analyzer.noise_duration = 0.05
     # Initially order is 5
     analyzer.analysis_order = 5
 

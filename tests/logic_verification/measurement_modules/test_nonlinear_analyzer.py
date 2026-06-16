@@ -13,7 +13,7 @@ def test_nonlinear_analyzer_linear():
     and higher-order kernels h2 to h5 are highly suppressed (<-50 dB).
     """
     sample_rate = 44100
-    sweep_duration = 2.0
+    sweep_duration = 0.5
     start_freq = 20.0
     end_freq = 20000.0
     P = 5
@@ -88,7 +88,7 @@ def test_nonlinear_analyzer_quadratic():
     the simulated polynomial coefficient of 0.1 (-20 dB).
     """
     sample_rate = 44100
-    sweep_duration = 2.0
+    sweep_duration = 0.5
     start_freq = 20.0
     end_freq = 20000.0
     P = 5
@@ -163,7 +163,7 @@ def test_nonlinear_analyzer_cubic():
     the simulated polynomial coefficient of 0.15 (-16.48 dB).
     """
     sample_rate = 44100
-    sweep_duration = 2.0
+    sweep_duration = 0.5
     start_freq = 20.0
     end_freq = 20000.0
     P = 5
@@ -239,7 +239,7 @@ def test_nonlinear_analyzer_comprehensive():
     5. Phase sanity: Phase does not wrap or rotate abnormally across the sweep band.
     """
     sample_rate = 44100
-    sweep_duration = 2.0
+    sweep_duration = 0.5
     start_freq = 20.0
     end_freq = 20000.0
     P = 5
@@ -347,7 +347,7 @@ def test_nonlinear_analyzer_phase_shift():
     by using a baseline loopback calibration to cancel stationary systematic offsets.
     """
     sample_rate = 44100
-    sweep_duration = 2.0
+    sweep_duration = 1.0
     start_freq = 20.0
     end_freq = 20000.0
     P = 5
@@ -468,7 +468,7 @@ def test_nonlinear_analyzer_fractional_delay_robustness():
     sub-sample alignment.
     """
     sample_rate = 44100
-    sweep_duration = 2.0
+    sweep_duration = 0.5
     start_freq = 20.0
     end_freq = 20000.0
     P = 5
@@ -580,8 +580,11 @@ def test_nonlinear_analyzer_module_measurement(qtbot):
     audio_engine.sample_rate = 44100
 
     analyzer = NonlinearAnalyzer(audio_engine)
+    analyzer.averages = 1
     analyzer.num_amplitudes = 5
-    analyzer.sweep_duration = 0.5  # Short sweep for fast test
+    analyzer.sweep_duration = 0.1  # Short sweep for fast test
+    analyzer.padding_duration = 0.05
+    analyzer.noise_duration = 0.05
     analyzer.measure_noise_floor = True
 
     # Dummy worker
@@ -609,7 +612,7 @@ def test_nonlinear_analyzer_noise_estimation():
     realistic noise floors (magnitudes_db_dict['hp_noise']) for each kernel.
     """
     sample_rate = 44100
-    sweep_duration = 1.0
+    sweep_duration = 0.5
     start_freq = 20.0
     end_freq = 20000.0
     P = 5

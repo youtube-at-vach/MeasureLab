@@ -55,7 +55,7 @@ class TestTransientAnalyzerAnalysis(unittest.TestCase):
     def test_analyze_sine_wave(self):
         """Test CWT analysis on a simple sine wave."""
         fs = 48000
-        duration = 1.0
+        duration = 0.2
         t = np.linspace(0, duration, int(fs * duration), endpoint=False)
         f_sig = 1000
         sig = np.sin(2 * np.pi * f_sig * t)

@@ -167,6 +167,8 @@ class NonlinearAnalyzer(MeasurementModule):
         self.analysis_order = 5
         self.latency_sec = 0.0
         self.measure_noise_floor = True
+        self.padding_duration = 0.5
+        self.noise_duration = 1.0
         self.measured_noise_floor_dbfs = None
         self.raw_measurement_cache = None
 
@@ -307,15 +309,15 @@ class NonlinearAnalyzer(MeasurementModule):
         responses_meas = []
 
         total_sweeps = self.num_amplitudes * self.averages
-        padding_samples = int(0.5 * sample_rate)  # 500ms tail padding
+        padding_samples = int(self.padding_duration * sample_rate)  # tail padding
 
         # Generate the single reference sweep and matching analytical inverse filter
         sss, inv_filter = generate_sss_and_inverse(sample_rate, self.sweep_duration, self.start_freq, self.end_freq)
         single_sweep_len = len(sss)
         block_len = single_sweep_len + padding_samples
 
-        # Add 1.0 second silence at the end for noise floor measurement if enabled
-        noise_samples = int(1.0 * sample_rate) if getattr(self, "measure_noise_floor", True) else 0
+        # Add silence at the end for noise floor measurement if enabled
+        noise_samples = int(self.noise_duration * sample_rate) if getattr(self, "measure_noise_floor", True) else 0
         total_len = total_sweeps * block_len + noise_samples
 
         # 1. Construct unified continuous playback signal
