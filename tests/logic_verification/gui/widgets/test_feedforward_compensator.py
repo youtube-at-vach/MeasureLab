@@ -258,3 +258,35 @@ def test_transient_no_wraparound(qtbot, dummy_model_data):
     # NOT with the tail of the step response (which is close to 'amp' = 0.5).
     # If wrap-around occurred, the first 20 samples would have values close to 0.5.
     assert np.all(np.abs(y_comp_aligned[:20]) < 0.05)
+
+
+def test_licff_engine_variable_order():
+    # Model data with only h1, h2, h3 (no h4, h5)
+    N = 128
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    h2 = np.ones(N) * 0.1
+    h3 = np.ones(N) * -0.05
+
+    data = {
+        "metadata": {
+            "sample_rate": 48000,
+            "g_ref": 1.0,
+        },
+        "time_domain": {
+            "kernels": {
+                "h1": h1.tolist(),
+                "h2": h2.tolist(),
+                "h3": h3.tolist(),
+            }
+        }
+    }
+
+    # This should load successfully without raising ValueError
+    engine = LICFFEngine(data, f_min=60, f_max=17000)
+    assert engine.sample_rate == 48000
+    assert np.all(engine.q4 == 0.0)
+    assert np.all(engine.q5 == 0.0)
+    assert np.all(engine.q1 == h1)
+    assert np.all(engine.q2 == h2)
+    assert np.all(engine.q3 == h3)

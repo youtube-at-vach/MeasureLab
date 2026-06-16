@@ -67,16 +67,14 @@ class LICFFEngine:
             raise ValueError(tr("No kernels found in the JSON file."))
 
         kernels = {k: np.array(v) for k, v in kernels_dict.items()}
-        required_keys = ["h1", "h2", "h3", "h4", "h5"]
-        for rk in required_keys:
-            if rk not in kernels:
-                raise ValueError(tr("Missing required kernel: {0}").format(rk))
+        if "h1" not in kernels:
+            raise ValueError(tr("Missing required linear kernel: h1"))
 
         h1 = kernels["h1"]
-        h2 = kernels["h2"]
-        h3 = kernels["h3"]
-        h4 = kernels["h4"]
-        h5 = kernels["h5"]
+        h2 = kernels.get("h2", np.zeros_like(h1))
+        h3 = kernels.get("h3", np.zeros_like(h1))
+        h4 = kernels.get("h4", np.zeros_like(h1))
+        h5 = kernels.get("h5", np.zeros_like(h1))
         self.N = len(h1)
 
         # Direct mapping (measured kernels from the analyzer are already power-series coefficients)
