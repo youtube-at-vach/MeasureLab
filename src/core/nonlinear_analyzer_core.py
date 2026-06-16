@@ -352,12 +352,53 @@ def process_amplitude_responses(
     mean_noise_power = np.mean(noise_powers, axis=0)
     sigma = np.sqrt(mean_noise_power)
 
-    # Calculate noise amplification factor for each kernel from Chebyshev separation matrix M (M_j,p = R_j^p)
+    # Calculate noise amplification factor numerically based on actual SSS/PHM math formulas
     R_array = np.array(amplitudes)
-    M = R_array[:, np.newaxis] ** np.arange(1, P + 1)
-    M_pinv = np.linalg.pinv(M)
-    # F_p = L2 norm of the p-th row of the pseudo-inverse matrix
-    noise_amplification = np.sqrt(np.sum(M_pinv ** 2, axis=1))
+    J = len(amplitudes)
+    R2 = R_array**2
+    R3 = R_array**3
+    R4 = R_array**4
+    R5 = R_array**5
+
+    # Sensitivity matrix T of shape (5, J, P + 1)
+    T = np.zeros((5, J, P + 1))
+    for j_target in range(J):
+        for k_target in range(1, P + 1):
+            g_test = {}
+            for k in range(1, P + 1):
+                g_test[k] = np.zeros(J)
+            g_test[k_target][j_target] = 1.0
+
+            H_test = np.zeros(5)
+            # 5th order
+            if P >= 5:
+                H_test[4] = 16 * np.sum(g_test[5] * R5) / np.sum(R_array**10)
+            # 4th order
+            if P >= 4:
+                H_test[3] = 8 * np.sum(g_test[4] * R4) / np.sum(R_array**8)
+            # 3rd order
+            if P >= 3:
+                g3_prime = g_test[3] - (5.0 / 16.0) * H_test[4] * R5
+                H_test[2] = 4 * np.sum(g3_prime * R3) / np.sum(R_array**6)
+            # 2nd order
+            if P >= 2:
+                g2_prime = g_test[2] - 0.5 * H_test[3] * R4
+                H_test[1] = 2 * np.sum(g2_prime * R2) / np.sum(R_array**4)
+            # 1st order
+            if P >= 1:
+                g1_prime = (
+                    g_test[1]
+                    - 0.75 * H_test[2] * R3
+                    - 0.625 * H_test[4] * R5
+                )
+                H_test[0] = np.sum(g1_prime * R_array) / np.sum(R2)
+
+            for p in range(5):
+                T[p, j_target, k_target] = H_test[p]
+
+    noise_amplification = np.zeros(P)
+    for p in range(P):
+        noise_amplification[p] = np.sqrt(np.sum(T[p, :, :] ** 2))
 
     # 6. Apply Chebyshev transform in the FREQUENCY domain
     R2 = R_array**2
