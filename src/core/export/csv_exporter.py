@@ -29,7 +29,8 @@ class CsvTraceExporter(BaseTraceExporter):
     def _sanitize_csv_field(self, field: str) -> str:
         """Sanitizes a string to prevent CSV injection (Formula Injection)."""
         field_str = str(field)
-        if field_str.startswith(("=", "+", "-", "@", "\t", "\r")):
+        field_str = field_str.replace("\n", " ").replace("\r", " ")
+        if field_str.startswith(("=", "+", "-", "@", "\t")):
             return f"'{field_str}"
         return field_str
 
@@ -47,7 +48,9 @@ class CsvTraceExporter(BaseTraceExporter):
                 if include_metadata:
                     writer.writerow(["# MeasureLab Exported Traces"])
                     for t in traces:
-                        writer.writerow([f"# Trace: {t.name} (Source: {t.source_module}, Timestamp: {t.timestamp})"])
+                        safe_name = self._sanitize_csv_field(t.name)
+                        safe_source = self._sanitize_csv_field(t.source_module)
+                        writer.writerow([f"# Trace: {safe_name} (Source: {safe_source}, Timestamp: {t.timestamp})"])
                     writer.writerow([])  # empty line separator
 
                 if layout == "merged":

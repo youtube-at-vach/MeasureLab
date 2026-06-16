@@ -226,13 +226,16 @@ def test_export_csv_injection_prevention(tmp_path, sample_traces):
     # Modify trace name to simulate CSV injection
     sample_traces[0].name = "=cmd|' /C calc'!A0"
 
+    # Test another injection vector with newlines
+    sample_traces[1].name = "Normal\n=cmd|' /C calc'!A0"
+
     exporter = CsvTraceExporter()
     filepath = str(tmp_path / "injection.csv")
 
     options = {
         "layout": "merged",
         "include_headers": True,
-        "include_metadata": False,
+        "include_metadata": True,
     }
 
     assert exporter.export_traces(filepath, sample_traces, options) is True
@@ -241,7 +244,23 @@ def test_export_csv_injection_prevention(tmp_path, sample_traces):
         reader = csv.reader(f)
         lines = list(reader)
 
-    header = lines[0]
+    # Check metadata rows
+    metadata_row_1 = lines[1]
+    # Because _sanitize_csv_field removes newlines but doesn't prepend quote unless it starts with "="
+    # The string "# Trace: =cmd..." does not start with "=" so it isn't prepended with quote.
+    # BUT we must ensure the newline injection doesn't create a new row starting with "="
+
+    metadata_row_2 = lines[2]
+    # The newline should be replaced by a space
+    assert "\n" not in metadata_row_2[0]
+    assert "Normal =cmd" in metadata_row_2[0]
+
+    header_idx = 6 # title, t1, t2, t3, t4, empty
+    header = lines[header_idx]
     # Check that the malicious trace name was sanitized by prepending an apostrophe
     assert header[1].startswith("'=")
     assert header[1] == "'=cmd|' /C calc'!A0 - Voltage (dBV)"
+
+    # Check that the newline injection was sanitized in header
+    assert "\n" not in header[2]
+    assert "Normal =cmd" in header[2]
