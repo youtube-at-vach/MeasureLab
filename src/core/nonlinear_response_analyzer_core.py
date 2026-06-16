@@ -281,9 +281,8 @@ def identify_tsa_svd(u: np.ndarray, y: np.ndarray, P: int = 4, na: int = 2, nb: 
 
     # Fill regressor matrix
     # 1. c_i terms: -y(t)^i for i = 2...P
-    for i in range(2, P + 1):
-        col_idx = i - 2
-        X_reg[:, col_idx] = - (y[max_n:] ** i)
+    if P >= 2:
+        X_reg[:, 0:P-1] = - (y[max_n:, None] ** np.arange(2, P + 1))
 
     # 2. a_j terms: -y(t-j) for j = 1...na
     for j in range(1, na + 1):
