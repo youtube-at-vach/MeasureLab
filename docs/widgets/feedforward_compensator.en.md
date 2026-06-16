@@ -80,15 +80,18 @@ Simulates the effect of distortion compensation on test signals using the loaded
     * **Compensated (Green):** The output spectrum when distortion compensation is applied before passing through the model (harmonic distortion peaks are significantly reduced).
     * **Ideal Linear (Blue):** The spectrum when passing through an ideal linear response without any distortion.
 
-### 2. Offline Processing
+### 2. Transient Simulation
 
-Applies the distortion compensation algorithm offline to a WAV audio file and saves the result.
+Simulates and visualizes the time-domain transient response (e.g., Step Response, Impulse Response) of the compensation.
 
-* **Input Wav / Output Wav:** Specifies the input and destination files.
-* **Process & Save Button:** Starts processing on a background thread.
-    * Automatic resampling is performed if the input audio's sampling rate differs from the model's rate.
-    * Segmented processing with sufficient overlap is used to prevent boundary artifacts during block-by-block processing.
-    * If the processed peak level exceeds 0 dBFS and digital clipping is about to occur, normalization is automatically applied, and a warning message is shown.
+* **Show Band-Limited Ideal Reference:** If checked, plots the ideal linear response band-limited by the active band filter ($f_{min} \sim f_{max}$) to serve as a realistic reference for step response targets.
+* **Plots:**
+    * **Uncompensated (Red):** The transient response when passing through the uncompensated model.
+    * **Compensated (Green):** The transient response after compensation is applied.
+    * **Ideal Linear (Blue):** The ideal, theoretically perfect linear transient response.
+    * **Band-Limited Ideal (Cyan):** The ideal reference constrained by the active band filter.
+
+> **Note:** Step transitions cause Gibbs ringing due to the Active Band filter ($f_{min} \sim f_{max}$) required for inverse filter stability.
 
 ### 3. Linear Response
 
@@ -102,3 +105,13 @@ Displays the characteristics of the linear inverse filter and the overall compen
     * Displays the phase response for each condition.
     * **Phase Rotation Correction:** To prevent apparent rapid phase rotation caused by delay components (such as gate pre-alignment offsets) introduced during measurement, the curves are plotted using the peak location of the 1st-order kernel $h_1$ as the time reference. This allows clear observation of physical phase changes.
     * **Noise Masking:** In frequency ranges where the signal level is extremely low (below -60 dB), phase values are automatically masked to prevent wild oscillations caused by noise, ensuring clean visualization and preventing plotting library crashes.
+
+### 4. Offline Processing
+
+Applies the distortion compensation algorithm offline to a WAV audio file and saves the result.
+
+* **Input Wav / Output Wav:** Specifies the input and destination files.
+* **Process & Save Button:** Starts processing on a background thread.
+    * Automatic resampling is performed if the input audio's sampling rate differs from the model's rate.
+    * Segmented processing with sufficient overlap is used to prevent boundary artifacts during block-by-block processing.
+    * If the processed peak level exceeds 0 dBFS and digital clipping is about to occur, normalization is automatically applied, and a warning message is shown.
