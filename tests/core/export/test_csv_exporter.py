@@ -246,9 +246,7 @@ def test_export_csv_injection_prevention(tmp_path, sample_traces):
 
     # Check metadata rows
     metadata_row_1 = lines[1]
-    # Because _sanitize_csv_field removes newlines but doesn't prepend quote unless it starts with "="
-    # The string "# Trace: =cmd..." does not start with "=" so it isn't prepended with quote.
-    # BUT we must ensure the newline injection doesn't create a new row starting with "="
+    assert metadata_row_1[0].startswith("# Trace: '=")
 
     metadata_row_2 = lines[2]
     # The newline should be replaced by a space
