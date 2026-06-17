@@ -14,7 +14,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 ## ☕ Coffee Break: What the Spectrum Analyzer does
 
-While an oscilloscope displays sound as "time vs. amplitude," a spectrum analyzer uses FFT (Fast Fourier Transform) to decompose it into "intensity per frequency." This allows you to visually identify the specific components (which pitches are present and their strength) within a complex signal.
+While an oscilloscope displays sound as "time vs. amplitude," a spectrum analyzer uses FFT (Fast Fourier Transform) to decompose it into "intensity per frequency." This allows you to visually identify the specific components within a complex signal.
 
 ## Operation
 

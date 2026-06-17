@@ -14,7 +14,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 ## ☕ Coffee Break: Voiceprint Analysis
 
-Different vowel pronunciations (e.g., 'Ah' vs 'Ee') emphasize different frequency bands called formants. A spectrogram visualizes these formants as distinct horizontal bands, allowing you to objectively observe voice quality differences.
+Different vowel pronunciations emphasize different frequency bands called formants. A spectrogram visualizes these formants as distinct horizontal bands, allowing you to objectively observe voice quality differences.
 
 ## Operation
 
