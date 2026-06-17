@@ -290,3 +290,109 @@ def test_licff_engine_variable_order():
     assert np.all(engine.q1 == h1)
     assert np.all(engine.q2 == h2)
     assert np.all(engine.q3 == h3)
+
+
+def test_licff_engine_geometric_mean_scaling():
+    sr = 48000
+    N = 1024
+    freqs = np.fft.rfftfreq(N, d=1.0/sr)
+    Q1_fft = np.ones(len(freqs))
+
+    active_mask = (freqs >= 60.0) & (freqs <= 17000.0)
+    Q1_fft[active_mask] = 0.1
+    active_indices = np.where(active_mask)[0]
+    if len(active_indices) > 0:
+        Q1_fft[active_indices[0]] = 1.0
+
+    h1 = np.fft.irfft(Q1_fft, n=N)
+
+    model_data = {
+        "metadata": {"sample_rate": sr},
+        "time_domain": {
+            "kernels": {
+                "h1": h1.tolist(),
+                "h2": np.zeros(N).tolist(),
+                "h3": np.zeros(N).tolist(),
+                "h4": np.zeros(N).tolist(),
+                "h5": np.zeros(N).tolist(),
+            }
+        }
+    }
+
+    engine = LICFFEngine(model_data, f_min=60, f_max=17000)
+    assert engine.G_scale < 0.5
+    assert engine.G_scale > 0.09
+
+
+def test_licff_engine_max_boost_limit():
+    sr = 48000
+    N = 1024
+    freqs = np.fft.rfftfreq(N, d=1.0/sr)
+    Q1_fft = np.ones_like(freqs)
+
+    idx_1k = np.argmin(np.abs(freqs - 1000.0))
+    Q1_fft[idx_1k] = 0.01
+
+    h1 = np.fft.irfft(Q1_fft, n=N)
+
+    model_data = {
+        "metadata": {"sample_rate": sr},
+        "time_domain": {
+            "kernels": {
+                "h1": h1.tolist(),
+                "h2": np.zeros(N).tolist(),
+                "h3": np.zeros(N).tolist(),
+                "h4": np.zeros(N).tolist(),
+                "h5": np.zeros(N).tolist(),
+            }
+        }
+    }
+
+    engine_12 = LICFFEngine(model_data, f_min=60, f_max=17000, max_boost_db=12.0)
+    boost_12 = engine_12.get_max_inverse_filter_boost_db()
+    assert boost_12 <= 12.01
+
+    engine_6 = LICFFEngine(model_data, f_min=60, f_max=17000, max_boost_db=6.0)
+    boost_6 = engine_6.get_max_inverse_filter_boost_db()
+    assert boost_6 <= 6.01
+
+
+def test_licff_engine_dynamic_headroom_compensation():
+    sr = 48000
+    N = 1024
+    freqs = np.fft.rfftfreq(N, d=1.0/sr)
+    Q1_fft = np.ones_like(freqs)
+
+    idx_1k = np.argmin(np.abs(freqs - 1000.0))
+    Q1_fft[idx_1k] = 0.1
+
+    h1 = np.fft.irfft(Q1_fft, n=N)
+
+    model_data = {
+        "metadata": {"sample_rate": sr},
+        "time_domain": {
+            "kernels": {
+                "h1": h1.tolist(),
+                "h2": np.zeros(N).tolist(),
+                "h3": np.zeros(N).tolist(),
+                "h4": np.zeros(N).tolist(),
+                "h5": np.zeros(N).tolist(),
+            }
+        }
+    }
+
+    engine = LICFFEngine(model_data, f_min=60, f_max=17000, max_boost_db=20.0)
+
+    t = np.arange(N) / sr
+    # Small signal (0.05). 1kHz boosted by ~10x -> 0.5. Should not be clipped at clip_limit = 1.5.
+    u_small = 0.05 * np.sin(2 * np.pi * 1000.0 * t)
+
+    u_comp_small = engine.compensate(u_small, iterative=False, clip_limit=1.5)
+    assert np.max(np.abs(u_comp_small)) > 0.4
+    assert np.max(np.abs(u_comp_small)) < 0.6
+
+    # Large signal (0.5). 1kHz boosted by ~10x -> 5.0. Should be clipped to clip_limit = 1.5.
+    u_large = 0.5 * np.sin(2 * np.pi * 1000.0 * t)
+    u_comp_large = engine.compensate(u_large, iterative=False, clip_limit=1.5)
+    # Allow a minor tolerance for numerical precision
+    assert np.max(np.abs(u_comp_large)) <= 1.501

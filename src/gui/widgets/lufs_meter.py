@@ -71,12 +71,14 @@ class LufsMeter(MeasurementModule):
         self._i_sample_count = 0
         self._i_block_step = 0
         self._i_since_last_block = 0
-        self._i_block_ms = []  # per-block mean-square (Lk^2+Rk^2), 400 ms blocks, 75% overlap
+        self._i_block_ms = np.zeros(10000, dtype=np.float64)
+        self._i_block_count = 0
         self._i_abs_gate_ms = float(10 ** ((-70.0 + 0.691) / 10.0))
         self._i_dirty = False
         self._i_lock = threading.Lock()
 
-        self._lra_blocks = []
+        self._lra_blocks = np.zeros(2000, dtype=np.float64)
+        self._lra_block_count = 0
         self._lra_step_frames = 0
 
         # Stereo RMS & Peak
@@ -133,8 +135,11 @@ class LufsMeter(MeasurementModule):
         self._i_block_step = int(round(0.1 * float(self.sample_rate)))
         self._lra_step_frames = 0
         with self._i_lock:
-            self._i_block_ms = []
-            self._lra_blocks = []
+            if not hasattr(self, "_i_block_ms") or not isinstance(self._i_block_ms, np.ndarray):
+                self._i_block_ms = np.zeros(10000, dtype=np.float64)
+                self._lra_blocks = np.zeros(2000, dtype=np.float64)
+            self._i_block_count = 0
+            self._lra_block_count = 0
             self._i_dirty = False
 
     def update_integrated_lufs_if_dirty(self):
@@ -145,8 +150,8 @@ class LufsMeter(MeasurementModule):
         with self._i_lock:
             if not self._i_dirty:
                 return
-            blocks = np.asarray(self._i_block_ms, dtype=np.float64)
-            lra_blocks = np.asarray(self._lra_blocks, dtype=np.float64)
+            blocks = self._i_block_ms[:self._i_block_count]
+            lra_blocks = self._lra_blocks[:self._lra_block_count]
             self._i_dirty = False
 
         if blocks.size == 0:
@@ -203,6 +208,9 @@ class LufsMeter(MeasurementModule):
 
         # Reset session accumulators
         self.reset_integration()
+
+        # Drift reset counter to periodically recompute running sum and avoid float precision drift
+        drift_reset_counter = 0
 
         # Initialize buffers (ring of per-sample power)
         self.buffer_size_m = int(round(self.momentary_window * float(self.sample_rate)))
@@ -319,6 +327,14 @@ class LufsMeter(MeasurementModule):
                 self._p_ring_s, self._p_pos_s, self._p_filled_s, self._p_sum_s, p_chunk
             )
 
+            # Periodically recalculate the exact sum to prevent floating-point drift accumulation
+            nonlocal drift_reset_counter
+            drift_reset_counter += 1
+            if drift_reset_counter >= 100:
+                drift_reset_counter = 0
+                self._p_sum_m = float(np.sum(self._p_ring_m, dtype=np.float64))
+                self._p_sum_s = float(np.sum(self._p_ring_s, dtype=np.float64))
+
             # Track session time
             self._i_sample_count += int(frames)
 
@@ -339,7 +355,12 @@ class LufsMeter(MeasurementModule):
                     block_ms = float(self._p_sum_m / float(self.buffer_size_m))
                     if block_ms > abs_gate_ms:
                         with self._i_lock:
-                            self._i_block_ms.append(block_ms)
+                            if self._i_block_count >= len(self._i_block_ms):
+                                new_arr = np.zeros(len(self._i_block_ms) * 2, dtype=np.float64)
+                                new_arr[:len(self._i_block_ms)] = self._i_block_ms
+                                self._i_block_ms = new_arr
+                            self._i_block_ms[self._i_block_count] = block_ms
+                            self._i_block_count += 1
                             self._i_dirty = True
             else:
                 self._i_since_last_block += int(frames)
@@ -351,7 +372,12 @@ class LufsMeter(MeasurementModule):
                 if self._p_filled_s >= self.buffer_size_s:
                     block_s_ms = float(self._p_sum_s / float(self.buffer_size_s))
                     with self._i_lock:
-                        self._lra_blocks.append(block_s_ms)
+                        if self._lra_block_count >= len(self._lra_blocks):
+                            new_arr = np.zeros(len(self._lra_blocks) * 2, dtype=np.float64)
+                            new_arr[:len(self._lra_blocks)] = self._lra_blocks
+                            self._lra_blocks = new_arr
+                        self._lra_blocks[self._lra_block_count] = block_s_ms
+                        self._lra_block_count += 1
                         self._i_dirty = True
 
             # No output (meter is analysis-only). AudioEngine provides a fresh zeroed buffer.

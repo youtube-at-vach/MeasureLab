@@ -39,11 +39,12 @@ class LICFFEngine:
     based on a loaded Hammerstein system model.
     """
 
-    def __init__(self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None):
+    def __init__(self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, max_boost_db=12.0):
         self.model_data = model_data
         self.f_min = f_min
         self.f_max = f_max
         self.threshold_db = threshold_db
+        self.max_boost_db = max_boost_db
         self.sample_rate = 48000
         self.N = 0
         self.q0_sum = 0.0
@@ -102,9 +103,17 @@ class LICFFEngine:
                         peak_h1 * threshold_linear,
                     )
 
-        # Scale based on linear peak response
+        # Scale based on active-band geometric mean response
         Q1_fft_raw = np.fft.rfft(self.q1)
-        self.G_scale = np.max(np.abs(Q1_fft_raw))
+        freqs = np.fft.rfftfreq(self.N, d=1.0 / self.sample_rate)
+        active_mask = (freqs >= self.f_min) & (freqs <= self.f_max)
+        if np.any(active_mask):
+            active_gains = np.abs(Q1_fft_raw[active_mask])
+            log_gains = np.log(active_gains + 1e-12)
+            self.G_scale = np.exp(np.mean(log_gains))
+        else:
+            self.G_scale = np.max(np.abs(Q1_fft_raw))
+
         if self.G_scale < 1e-12:
             self.G_scale = 1.0
 
@@ -181,6 +190,15 @@ class LICFFEngine:
         F_inv_M = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
         F_inv_M = F_inv_M * bp_filter_M
 
+        # Apply Max Boost Limit (Solution B)
+        if self.max_boost_db is not None:
+            max_boost_gain = 10 ** (self.max_boost_db / 20.0)
+            F_inv_abs = np.abs(F_inv_M)
+            scale = np.ones_like(F_inv_abs)
+            mask = F_inv_abs > max_boost_gain
+            scale[mask] = max_boost_gain / F_inv_abs[mask]
+            F_inv_M = F_inv_M * scale
+
         # Cache it
         self._cached_M = M
         self._cached_Q_fft = Q_fft_M
@@ -203,7 +221,7 @@ class LICFFEngine:
         Xp = Xp_up[: N_x // 2 + 1] / L
         return Xp
 
-    def nonlinear_spectrum(self, x, L=8):
+    def nonlinear_spectrum(self, x, L=8, scale_factor=1.0):
         M = len(x)
         X = np.fft.rfft(x)
         N_up = L * M
@@ -221,19 +239,19 @@ class LICFFEngine:
 
         # p=2
         Xp_up = np.fft.rfft(x_up2)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[2] * (scale_factor ** 1)
 
         # p=3
         Xp_up = np.fft.rfft(x_up3)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[3] * (scale_factor ** 2)
 
         # p=4
         Xp_up = np.fft.rfft(x_up4)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[4] * (scale_factor ** 3)
 
         # p=5
         Xp_up = np.fft.rfft(x_up5)
-        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5]
+        Y_fft += (Xp_up[: len(X)] / L) * Q_fft[5] * (scale_factor ** 4)
 
         Y_fft[-1] = np.real(Y_fft[-1])
         return Y_fft
@@ -291,26 +309,36 @@ class LICFFEngine:
         M = len(u_in)
         _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
 
+        # Calculate headroom attenuation factor (Solution C)
+        F_inv_abs = np.abs(F_inv)
+        G_max = np.max(F_inv_abs) if len(F_inv_abs) > 0 else 1.0
+        if G_max < 1.0:
+            G_max = 1.0
+
+        # Scale input and clip limit for dynamic headroom allocation
+        u_in_scaled = u_in / G_max
+        clip_limit_scaled = clip_limit / G_max
+
         # Base linear compensation (equalization & delay cancellation)
-        U_in_fft = np.fft.rfft(u_in)
+        U_in_fft = np.fft.rfft(u_in_scaled)
         u_comp_linear = np.fft.irfft(U_in_fft * F_inv, n=M)
-        u_comp_linear = np.clip(u_comp_linear, -clip_limit, clip_limit)
+        u_comp_linear = np.clip(u_comp_linear, -clip_limit_scaled, clip_limit_scaled)
 
         if linear_only:
-            return u_comp_linear
+            return u_comp_linear * G_max
 
         if not iterative:
             iters = 1
 
         u_comp = u_comp_linear.copy()
         for _ in range(iters):
-            Y_fft = self.nonlinear_spectrum(u_comp)
+            Y_fft = self.nonlinear_spectrum(u_comp, scale_factor=G_max)
             # Apply linear inverse filter to the nonlinear distortion components
             y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
             u_comp = u_comp_linear - y_comp_nl
-            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+            u_comp = np.clip(u_comp, -clip_limit_scaled, clip_limit_scaled)
 
-        return u_comp
+        return u_comp * G_max
 
 
 class OfflineFFCompWorker(QThread):
@@ -619,6 +647,13 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_fmax.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Active Band Fmax:"), self.spin_fmax)
 
+        self.spin_max_boost = QDoubleSpinBox()
+        self.spin_max_boost.setRange(0.0, 24.0)
+        self.spin_max_boost.setValue(12.0)
+        self.spin_max_boost.setSuffix(" dB")
+        self.spin_max_boost.valueChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Max Filter Boost Limit:"), self.spin_max_boost)
+
         sidebar_layout.addWidget(settings_group)
 
         # Group 3: Simulation Control
@@ -876,7 +911,12 @@ class FeedforwardCompensatorWidget(QWidget):
                 with open(path, "r") as f:
                     data = json.load(f)
 
-                self.module.engine = LICFFEngine(data, f_min=self.spin_fmin.value(), f_max=self.spin_fmax.value())
+                self.module.engine = LICFFEngine(
+                    data,
+                    f_min=self.spin_fmin.value(),
+                    f_max=self.spin_fmax.value(),
+                    max_boost_db=self.spin_max_boost.value(),
+                )
                 self.model_data = data
 
                 self.lbl_status.setText(tr("Model Loaded"))
@@ -901,6 +941,7 @@ class FeedforwardCompensatorWidget(QWidget):
         if self.module.engine:
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
+            self.module.engine.max_boost_db = self.spin_max_boost.value()
             self.module.engine.rebuild_filter()
             self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
             self.update_linear_response_plot()

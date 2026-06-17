@@ -107,3 +107,69 @@ def test_lufs_meter_widget_target_changed(qtbot):
     assert module.target_lufs == -14.0
     # Also test the visual line placement
     assert widget.target_line.value() == -14.0
+
+
+def test_lufs_meter_long_running_preallocation():
+    import numpy as np
+    engine = MockAudioEngine()
+    captured_callback = None
+    def mock_register(cb):
+        nonlocal captured_callback
+        captured_callback = cb
+        return 1
+    engine.register_callback = mock_register
+
+    module = LufsMeter(engine)
+    module.start_meter()
+
+    assert captured_callback is not None
+
+    # Call the callback to generate 10500 blocks for i_block_ms.
+    # self._i_block_step = 0.1 * 48000 = 4800 samples.
+    # Each callback call with 4800 samples adds 1 block.
+    # Use an alternating signal (high frequency) to pass through the high-pass weighting filter.
+    single_channel = np.tile(np.array([0.1, -0.1], dtype=np.float32), 2400)
+    indata = np.column_stack((single_channel, single_channel))
+    for _ in range(10500):
+        captured_callback(indata, None, 4800, None, None)
+
+    assert module._i_block_count == 10500
+    assert len(module._i_block_ms) >= 10500
+
+    # Verify update_integrated_lufs_if_dirty doesn't crash and updates correctly
+    module.update_integrated_lufs_if_dirty()
+    assert module._i_dirty is False
+
+
+def test_lufs_meter_drift_correction():
+    import numpy as np
+    engine = MockAudioEngine()
+    captured_callback = None
+    def mock_register(cb):
+        nonlocal captured_callback
+        captured_callback = cb
+        return 1
+    engine.register_callback = mock_register
+
+    module = LufsMeter(engine)
+    module.start_meter()
+
+    assert captured_callback is not None
+
+    # Make 99 calls
+    # Use alternating signal
+    single_channel = np.tile(np.array([0.1, -0.1], dtype=np.float32), 128)
+    indata = np.column_stack((single_channel, single_channel))
+    for _ in range(99):
+        captured_callback(indata, None, 256, None, None)
+
+    # Inject a manual drift to _p_sum_m
+    module._p_sum_m += 10.0
+
+    # 100th call should trigger drift correction
+    captured_callback(indata, None, 256, None, None)
+
+    expected_sum = float(np.sum(module._p_ring_m, dtype=np.float64))
+    assert np.isclose(module._p_sum_m, expected_sum, atol=1e-7)
+
+
