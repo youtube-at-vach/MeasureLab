@@ -466,11 +466,12 @@ class OfflineFFCompWorker(QThread):
                 matched_orig_path = ""
                 scale_factor = 1.0
 
-                if self.volume_matching == "rms":
+                if self.volume_matching == "match_rms":
                     g_y = rms_in / max(1e-12, rms_out)
                     peak_y_scaled = g_y * peak_out
                     if peak_y_scaled <= 1.0:
                         out_data = out_data * g_y
+                        scale_factor_orig = 1.0
                     else:
                         scale_factor = 1.0 / max(1e-12, peak_y_scaled)
                         out_data = out_data * (g_y * scale_factor)
@@ -479,30 +480,43 @@ class OfflineFFCompWorker(QThread):
                             "Warning: Output would clip (+{0:.2f} dBFS) at matched RMS volume. "
                             "Both output and original files were attenuated by {0:.2f} dB to prevent clipping."
                         ).format(applied_attenuation_db)
-                        write_matched_orig = True
-                elif self.volume_matching == "peak":
+                        scale_factor_orig = scale_factor
+                    write_matched_orig = True
+                elif self.volume_matching == "match_peak":
                     g_y = peak_in / max(1e-12, peak_out)
-                    out_data = out_data * g_y
-                else:
+                    peak_y_scaled = g_y * peak_out
+                    if peak_y_scaled > 1.0:
+                        scale_factor = 1.0 / max(1e-12, peak_y_scaled)
+                        out_data = out_data * (g_y * scale_factor)
+                        applied_attenuation_db = 20 * np.log10(peak_y_scaled)
+                        clipping_msg = "\n" + tr(
+                            "Warning: Output would clip (+{0:.2f} dBFS) at matched peak volume. "
+                            "Output file was attenuated by {0:.2f} dB to prevent clipping."
+                        ).format(applied_attenuation_db)
+                    else:
+                        out_data = out_data * g_y
+                elif self.volume_matching == "normalize_peak":
+                    if peak_out > 0.0:
+                        out_data = out_data / peak_out
+                else: # none
                     if peak_out > 1.0:
                         clipping_msg = "\n" + tr(
-                            "Warning: Output signal peaks at {0:.2f} dBFS. Output was normalized to avoid digital clipping."
+                            "Warning: Output signal peaks at {0:.2f} dBFS. Digital clipping may occur."
                         ).format(20 * np.log10(peak_out))
-                        out_data = out_data / peak_out
 
                 sf.write(
                     self.output_path,
                     out_data,
                     int(model_sr),
-                    subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
+                    subtype="FLOAT",
                 )
 
                 if write_matched_orig:
                     if abs(file_sr - model_sr) > 1.0:
-                        matched_orig_data = data * scale_factor
+                        matched_orig_data = data * scale_factor_orig
                     else:
                         raw_data, _ = sf.read(self.input_path, always_2d=True)
-                        matched_orig_data = raw_data * scale_factor
+                        matched_orig_data = raw_data * scale_factor_orig
 
                     base, ext = os.path.splitext(self.output_path)
                     matched_orig_path = base + "_matched_orig" + ext
@@ -510,7 +524,7 @@ class OfflineFFCompWorker(QThread):
                         matched_orig_path,
                         matched_orig_data,
                         int(model_sr if abs(file_sr - model_sr) > 1.0 else file_sr),
-                        subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
+                        subtype="FLOAT",
                     )
                     self.finished.emit(
                         True,
@@ -794,11 +808,13 @@ class FeedforwardCompensatorWidget(QWidget):
         self.combo_vol_match = QComboBox()
         self.combo_vol_match.addItems(
             [
-                tr("None"),
-                tr("Match RMS (Gain-Matched original output)"),
-                tr("Match Peak"),
+                tr("None (Raw Output)"),
+                tr("Normalize Peak (0 dBFS)"),
+                tr("Match Input Peak"),
+                tr("Match Input RMS (Exports matched original)"),
             ]
         )
+        self.combo_vol_match.setCurrentIndex(1) # Normalize Peak as default
         off_layout.addRow(tr("Volume Matching:"), self.combo_vol_match)
 
         self.btn_process_off = QPushButton(tr("Run Export"))
@@ -1193,7 +1209,7 @@ class FeedforwardCompensatorWidget(QWidget):
         linear_only = self.chk_linear_only.isChecked()
 
         vol_match_mode = self.combo_vol_match.currentIndex()
-        match_modes = ["none", "rms", "peak"]
+        match_modes = ["none", "normalize_peak", "match_peak", "match_rms"]
         vol_match = match_modes[vol_match_mode]
 
         self.btn_process_off.setEnabled(False)
