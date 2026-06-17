@@ -22,8 +22,8 @@ This widget provides the following analysis capabilities:
 
 ### SSS Parameters
 
-* **Start Freq (Hz):** Sets the start frequency for the sweep signal (2.0 to 20000 Hz).
-* **End Freq (Hz):** Sets the end frequency for the sweep signal (20 to 24000 Hz).
+* **Start Freq (Hz):** Sets the start frequency for the sweep signal (2.0 to Nyquist frequency).
+* **End Freq (Hz):** Sets the end frequency for the sweep signal (20 to Nyquist frequency).
 * **Sweep Time (s):** Sets the duration of a single sweep (0.5 to 30.0 s).
 * **Averages (Time-Sync):** Sets the number of Time Synchronized Averaging (TSA) iterations (1 to 20). Increasing averages effectively reduces the impact of environmental noise.
 * **Measure Noise Floor:** If checked, inserts a 1-second silence at the end of the measurement to calculate the environmental noise floor (dBFS) within the 20Hz–20kHz range.
