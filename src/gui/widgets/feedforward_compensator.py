@@ -1180,9 +1180,9 @@ class FeedforwardCompensatorWidget(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, tr("Open Wav File"), "", tr("Wav Files (*.wav)"))
         if path:
             self.lbl_in_file.setText(path)
-            self._update_process_btn()
             base, ext = os.path.splitext(path)
             self.lbl_out_file.setText(base + "_comp" + ext)
+            self._update_process_btn()
 
     def select_output_file(self):
         path, _ = QFileDialog.getSaveFileName(
@@ -1203,6 +1203,18 @@ class FeedforwardCompensatorWidget(QWidget):
 
         input_path = self.lbl_in_file.text()
         output_path = self.lbl_out_file.text()
+
+        # Overwrite confirmation
+        if os.path.exists(output_path):
+            reply = QMessageBox.question(
+                self,
+                tr("Confirm Overwrite"),
+                tr("The output file already exists. Do you want to overwrite it?"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
