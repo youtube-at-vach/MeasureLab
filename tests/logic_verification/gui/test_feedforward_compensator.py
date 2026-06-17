@@ -197,3 +197,19 @@ def test_offline_ff_comp_worker_match_rms_mode(tmp_path, engine):
     rms_out = np.sqrt(np.mean(out_data**2))
     rms_orig = np.sqrt(np.mean(orig_data**2))
     assert np.allclose(rms_out, rms_orig, rtol=1e-2)
+
+
+def test_compensate_linear_only_no_clipping(engine):
+    # Setup a signal that exceeds the clip limit (1.0)
+    # We use a 1 kHz sine wave, which is inside the passband.
+    t = np.arange(1024) / engine.sample_rate
+    u = 1.5 * np.sin(2 * np.pi * 1000.0 * t)
+    
+    # linear_only=True: output should not be clipped (peaks at around 1.5)
+    u_comp_linear = engine.compensate(u, linear_only=True, clip_limit=1.0)
+    assert np.max(np.abs(u_comp_linear)) > 1.4
+    
+    # linear_only=False: output should be clipped (peaks at 1.0)
+    u_comp_nonlinear = engine.compensate(u, linear_only=False, clip_limit=1.0)
+    assert np.max(np.abs(u_comp_nonlinear)) <= 1.01
+

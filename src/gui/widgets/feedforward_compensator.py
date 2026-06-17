@@ -322,10 +322,11 @@ class LICFFEngine:
         # Base linear compensation (equalization & delay cancellation)
         U_in_fft = np.fft.rfft(u_in_scaled)
         u_comp_linear = np.fft.irfft(U_in_fft * F_inv, n=M)
-        u_comp_linear = np.clip(u_comp_linear, -clip_limit_scaled, clip_limit_scaled)
 
         if linear_only:
             return u_comp_linear * G_max
+
+        u_comp_linear = np.clip(u_comp_linear, -clip_limit_scaled, clip_limit_scaled)
 
         if not iterative:
             iters = 1
