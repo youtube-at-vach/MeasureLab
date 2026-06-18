@@ -8,7 +8,7 @@ The LUFS Meter is a tool for measuring "Loudness" (the perceived volume by human
 
 ## ☕ Coffee Break: The "Loudness War" and the Birth of LUFS
 
-In the past, the music industry experienced a "Loudness War" where volume was maximized to make tracks stand out. However, volume variations between tracks are inconvenient for listeners. To solve this, **LUFS** was created to standardize volume based on "perceived human loudness" rather than mechanical peak values. Today, platforms like YouTube and Spotify use LUFS to automatically normalize all songs to a consistent volume.
+In the past, the music industry experienced a "Loudness War" to make tracks stand out, but volume variations are inconvenient for listeners. To solve this, **LUFS** was created to standardize volume based on "perceived human loudness" rather than mechanical peaks. Today, streaming platforms use LUFS to automatically normalize songs to a consistent volume.
 
 ## Key Indicators
 

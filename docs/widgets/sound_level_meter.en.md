@@ -8,9 +8,7 @@ The Sound Level Meter is a precision tool for measuring environmental noise and 
 
 ## ☕ Coffee Break: What is dB?
 
-Sound level is expressed in "dB (decibels)," which is a logarithmic unit representing a ratio.
-The "dB SPL" measured by a sound level meter uses the minimum sound pressure that humans can hear as its "0 dB" baseline.
-Because the human ear can perceive an extremely wide range of sound pressures, a logarithmic scale is used to keep the numerical values manageable.
+Sound level is expressed in "dB (decibels)." The "dB SPL" measured by a sound level meter uses the minimum sound pressure humans can hear as its "0 dB" baseline. Because the human ear can perceive an extremely wide range of sound pressures, a logarithmic scale is used to keep the numerical values manageable.
 
 ## Compact Mode
 
