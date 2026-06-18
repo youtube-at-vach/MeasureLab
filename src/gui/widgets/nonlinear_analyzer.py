@@ -378,6 +378,43 @@ class NonlinearAnalyzer(MeasurementModule):
         else:
             align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
 
+        # Estimate and compensate clock drift between sweeps
+        if total_sweeps > 1:
+            try:
+                # 1. Estimate peak of the first sweep block
+                first_block = rec_data[0:block_len, align_ch]
+                first_ir = fftconvolve(first_block, inv_filter, mode="full")
+                t_peak_first = find_subsample_peak(first_ir)
+
+                # 2. Estimate peak of the last sweep block
+                last_start = (total_sweeps - 1) * block_len
+                last_end = last_start + block_len
+                last_block = rec_data[last_start:last_end, align_ch]
+                last_ir = fftconvolve(last_block, inv_filter, mode="full")
+                t_peak_last = find_subsample_peak(last_ir)
+
+                # 3. Compute drift factor (measured distance / expected distance)
+                expected_distance = (total_sweeps - 1) * block_len
+                measured_distance = expected_distance + (t_peak_last - t_peak_first)
+                drift_factor = measured_distance / expected_distance
+                drift_ppm = (drift_factor - 1.0) * 1e6
+
+                logger.info("Estimated clock drift: %.2f ppm (factor: %.8f)", drift_ppm, drift_factor)
+
+                # 4. Apply resampling if drift is significant (> 1.0 ppm)
+                if np.abs(drift_ppm) > 1.0:
+                    logger.info("Applying clock drift compensation via linear resampling...")
+                    t_orig = np.arange(total_len, dtype=np.float64)
+                    t_corrected = t_orig / drift_factor
+
+                    rec_data_corrected = np.zeros_like(rec_data)
+                    for ch in range(rec_data.shape[1]):
+                        rec_data_corrected[:, ch] = np.interp(t_orig, t_corrected, rec_data[:, ch])
+                    rec_data = rec_data_corrected
+                    logger.info("Clock drift compensation completed.")
+            except Exception as e:
+                logger.error("Failed to compensate clock drift: %s", e)
+
         # 2. Slice and Average in Memory
         for amp_idx, _amp in enumerate(amplitudes):
             if not worker.is_running:
