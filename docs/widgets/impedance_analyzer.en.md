@@ -15,12 +15,6 @@ It has the same functions as instruments generally called "LCR meters" and can m
 * **Quality Factor ($Q$)**
 * **Dissipation Factor ($D$)**
 
-## ☕ Coffee Break: Resistance vs. Impedance
-
-"Resistance" represents the opposition to the flow of direct current (DC).
-"Impedance," on the other hand, represents the opposition to alternating current (AC).
-Because components like capacitors and coils change their opposition based on the signal's frequency, measuring impedance is crucial for audio signals, which are constantly changing AC waves.
-
 ## Basic Knowledge for Beginners
 
 ### What is Impedance?
