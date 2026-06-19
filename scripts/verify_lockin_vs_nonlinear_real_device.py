@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import json
+import argparse
 import numpy as np
 
 # Add project root to sys.path
@@ -18,31 +19,47 @@ from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer
 from src.gui.widgets.lockin_harmonic_analyzer import LockInHarmonicAnalyzer
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Verify Lock-in vs Nonlinear Analyzer")
+    parser.add_argument(
+        "--virtual",
+        action="store_true",
+        help="Run in virtual simulation loop mode instead of real device mode"
+    )
+    args = parser.parse_args()
+
     # Initialize Qt Application
     QApplication(sys.argv)
 
     # 1. Initialize Audio Engine
     engine = AudioEngine()
 
-    # 2. Find ZOOM UAC-232 Device Index
-    devices = engine.list_devices()
-    uac_idx = None
-    for idx, dev in enumerate(devices):
-        name = dev.get("name", "")
-        if "uac-232" in name.lower() and dev.get("max_input_channels", 0) >= 2 and dev.get("max_output_channels", 0) >= 2:
-            uac_idx = idx
-            break
+    if args.virtual:
+        print("[+] Running in Virtual Simulation Mode")
+        engine.set_offline_mode(True)
+        engine.set_loopback(True)
+        engine.set_sample_rate(48000)
+        engine.set_block_size(1024)
+    else:
+        # 2. Find ZOOM UAC-232 Device Index
+        devices = engine.list_devices()
+        uac_idx = None
+        for idx, dev in enumerate(devices):
+            name = dev.get("name", "")
+            if "uac-232" in name.lower() and dev.get("max_input_channels", 0) >= 2 and dev.get("max_output_channels", 0) >= 2:
+                uac_idx = idx
+                break
 
-    if uac_idx is None:
-        print("[-] Error: ZOOM UAC-232 not found.")
-        sys.exit(1)
+        if uac_idx is None:
+            print("[-] Error: ZOOM UAC-232 not found.")
+            sys.exit(1)
 
-    print(f"[+] Found ZOOM UAC-232 at index {uac_idx}")
-    engine.set_devices(uac_idx, uac_idx)
-    engine.set_sample_rate(48000)
-    engine.set_block_size(1024)
-    engine.set_loopback(False)
-    engine.offline_mode = False
+        print(f"[+] Found ZOOM UAC-232 at index {uac_idx}")
+        engine.set_devices(uac_idx, uac_idx)
+        engine.set_sample_rate(48000)
+        engine.set_block_size(1024)
+        engine.set_loopback(False)
+        engine.offline_mode = False
 
     num_runs = 5
     f0 = 1000.0
@@ -202,6 +219,25 @@ def main():
 
     lockin._estimate_ref_phase_params = patched_estimate
     lockin._extract_coherent_segment = patched_extract
+
+    # Add patch for offline simulation loopback mode if active
+    orig_get_ordered = lockin._get_ordered_input_data
+    def patched_get_ordered():
+        data = orig_get_ordered().copy()
+        if engine.offline_mode:
+            # Apply typical nonlinear distortion to the signal channel (Ch1 / Left)
+            sig = data[:, lockin.signal_channel]
+            # y(t) = x(t) - 0.08*x(t)^2 + 0.12*x(t)^3 - 0.04*x(t)^4 + 0.06*x(t)^5
+            simulated_meas = (
+                sig
+                - 0.08 * (sig**2)
+                + 0.12 * (sig**3)
+                - 0.04 * (sig**4)
+                + 0.06 * (sig**5)
+            )
+            data[:, lockin.signal_channel] = simulated_meas
+        return data
+    lockin._get_ordered_input_data = patched_get_ordered
 
     lockin_runs_results = []
 
