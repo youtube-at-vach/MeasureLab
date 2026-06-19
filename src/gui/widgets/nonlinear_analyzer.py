@@ -379,7 +379,10 @@ class NonlinearAnalyzer(MeasurementModule):
             align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
 
         # Estimate and compensate clock drift between sweeps
-        if total_sweeps > 1:
+        is_same_device = (
+            getattr(self.audio_engine, "input_device", None) == getattr(self.audio_engine, "output_device", None)
+        )
+        if total_sweeps > 1 and not is_same_device:
             try:
                 # 1. Estimate peak of the first sweep block
                 first_block = rec_data[0:block_len, align_ch]

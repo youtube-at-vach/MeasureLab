@@ -253,10 +253,11 @@ def process_amplitude_responses(
     t1_sub_meas = find_subsample_peak(ir_max_meas)
     t1_sub_ref = find_subsample_peak(ir_max_ref)
 
+    # Choose the base peak to align both channels (common slicing)
     if input_mode in {"XFER", "XFER_REV"}:
-        D = t1_sub_meas - t1_sub_ref
+        t1_base = t1_sub_ref
     else:
-        D = 0.0
+        t1_base = t1_sub_meas
 
     # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0
@@ -302,26 +303,20 @@ def process_amplitude_responses(
         ir_ref_raw = responses_ref[j]
 
         for k in range(1, P + 1):
-            # Calculate peak prediction index with sub-sample precision for each channel
-            t_k_exact_meas = t1_sub_meas - L * np.log(k) * sample_rate
-            t_k_exact_ref = t1_sub_ref - L * np.log(k) * sample_rate
+            # Calculate peak prediction index based on COMMON baseline
+            t_k_exact = t1_base - L * np.log(k) * sample_rate
+            t_k = int(np.round(t_k_exact))
+            frac_delay = t_k_exact - t_k
 
-            t_k_meas = int(np.round(t_k_exact_meas))
-            t_k_ref = int(np.round(t_k_exact_ref))
+            # Slice both channels with identical index (common slicing)
+            idx = (np.arange(t_k - gate_pre, t_k + gate_post)) % N_total
 
-            frac_delay_meas = t_k_exact_meas - t_k_meas
-            frac_delay_ref = t_k_exact_ref - t_k_ref
+            g_k_meas = ir_meas_raw[idx]
+            g_k_ref = ir_ref_raw[idx]
 
-            # Slice with modular wrap around to protect bounds (without windowing first)
-            idx_meas = (np.arange(t_k_meas - gate_pre, t_k_meas + gate_post)) % N_total
-            idx_ref = (np.arange(t_k_ref - gate_pre, t_k_ref + gate_post)) % N_total
-
-            g_k_meas = ir_meas_raw[idx_meas]
-            g_k_ref = ir_ref_raw[idx_ref]
-
-            # Phase and fractional delay correction
-            g_k_meas_corr = apply_phase_correction_and_frac_delay(g_k_meas, k, frac_delay_meas)
-            g_k_ref_corr = apply_phase_correction_and_frac_delay(g_k_ref, k, frac_delay_ref)
+            # Phase and fractional delay correction using common frac_delay
+            g_k_meas_corr = apply_phase_correction_and_frac_delay(g_k_meas, k, frac_delay)
+            g_k_ref_corr = apply_phase_correction_and_frac_delay(g_k_ref, k, frac_delay)
 
             # Apply Tukey window AFTER fractional delay correction
             win = windows.tukey(N_kernel, alpha=0.1)
@@ -436,15 +431,15 @@ def process_amplitude_responses(
                 H_xfer_all = (H_meas_p * np.conj(H_ref_1)) / (ref_power + alpha)
                 H_xfer_all = np.nan_to_num(H_xfer_all)
 
-            # Apply gate_pre and physical delay D to restore the peak position for display and test alignment
-            delay_samples = gate_pre + D
-            phase_shift_total = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
-            H_xfer_all = H_xfer_all * phase_shift_total
+            # Apply gate_pre delay to restore the peak position at t=0 (gate_pre) for display and test alignment
+            delay_samples = gate_pre
+            phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
+            H_xfer_all = H_xfer_all * phase_shift_gate
 
             # Apply systematic phase calibration to the frequency response
             if phases_cal_dict is not None and h_key in phases_cal_dict:
-                # Initialize with the pure delay phase slope for all frequencies (delay is negative phase)
-                phase_cal_rad = -2 * np.pi * freqs * ((gate_pre + D) / sample_rate)
+                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
+                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
                 # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
                 phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
                 H_xfer_all = H_xfer_all * np.exp(-1j * phase_cal_rad)
@@ -453,8 +448,8 @@ def process_amplitude_responses(
 
             H_time = H_xfer_all
             if phases_cal_dict is not None:
-                # Re-apply phase_shift_total to restore peak to gate_pre + D (since systematic phase calibration canceled it)
-                H_time = H_time * phase_shift_total
+                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
+                H_time = H_time * phase_shift_gate
 
             h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
         else:
