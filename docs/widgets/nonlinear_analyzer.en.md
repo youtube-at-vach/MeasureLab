@@ -13,6 +13,7 @@ This module uses this model to reverse-calculate and separate distortion compone
 
 This widget provides the following analysis capabilities:
 
+* **Automatic Clock Drift Compensation:** Automatically estimates and compensates for clock drift (> 1.0 ppm) between the input and output devices using linear resampling, ensuring highly accurate high-frequency phase measurements over long sweeps.
 * **Hammerstein Kernel Extraction:** Extracts kernels from 1st (linear) up to 5th order from the measured response.
 * **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel.
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
