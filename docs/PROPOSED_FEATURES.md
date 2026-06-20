@@ -10,14 +10,11 @@
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Psycho-Acoustics & Neuro-Sensory**: Temporal-Smearing Renderer, Neuro-Acoustic Profiler, Masking Threshold Mapper, Synesthetic Sonification.
-* **Extreme Physics & Quantum**: Sub-atomic Thermal Noise Sonification, Quantum Entropy DAC Sync Analyzer, Galactic IMD Topology, Tachyon Audio Synth, Fluid-Dynamic Phase Hologram.
-* **Predictive & AI Models**: AI-Driven Sonic Aging Simulator, AI "Golden Ear" Translator.
-* **Bio/Neuro**: Bio-feedback Audio Calibrator, Holographic Phase Reconstructor.
+* **Psycho-Acoustics & Bio-Sensory**: Temporal-Smearing Renderer, Masking Threshold Mapper, Synesthetic Sonification, Bio-feedback Calibrator.
+* **Physics & AI Models**: Thermal Noise Sonification, Galactic IMD Topology, AI Sonic Aging, AI "Golden Ear" Translator.
 * **NEW:** Psychoacoustic AI-driven Listener Fatigue Simulator
 * **NEW:** Chronological Audio-DNA Sequencer
 * **NEW:** Non-Euclidean Spatial Audio Mapper
-* **NEW:** Infinite-Resolution Sub-Noise Floor Excavator
 
 ---
 
@@ -37,7 +34,8 @@
 * **Transient Analyzer**: Add Clipping Recovery Time Automator, Click & Pop Classifier.
 * **Signal Generator & Network**: Add Jitter/Glitch Injection, Stability Margins.
 * **Oscilloscope & SAM**: Digital Protocol Decoder, Inter-Channel Sync Drift Logger.
-* **Sound Quality Analyzer**: Psychoacoustic Masking Curve Display, **NEW: Listener Fatigue Index**.
+* **Nonlinear Analyzer**: **NEW: Artifact Sonification Engine**.
+* **Sound Quality Analyzer**: Psychoacoustic Masking Curve Display, **NEW: Listener Fatigue Index**, **NEW: AI-Powered "Golden Ear" Reviewer**.
 * **Frequency Counter**: **NEW: Hardware Clock Signature Fingerprinting**.
 * **Goniometer**: **NEW: Multi-Band 3D Soundstage Width Mapper**.
 
@@ -65,6 +63,7 @@
 * **Multi-band Compressor Profiler**: Dup (Dynamics Processor).
 * **Cable Microphonics Logger**: Dup (Noise Profiler / Transient).
 * **NEW: Infinite-Resolution Sub-Noise Floor Excavator**: Dup (Lock-in Spectrum Finder / Boxcar Averager).
+* **NEW: 4D Holographic Soundstage Time-Machine**: Dup (Waveform Loop Player / Goniometer).
 
 ---
 
