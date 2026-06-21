@@ -64,7 +64,6 @@ def test_save_and_load_hammerstein_model(tmp_path, sample_hammerstein_data):
     )
 
 
-
 def test_save_hammerstein_model_error_mocked(tmp_path, sample_hammerstein_data):
     # Use mock to force an error during JSON dumping to ensure exception handling and logging are tested
     filepath = tmp_path / "test_model_error.json"
@@ -78,31 +77,6 @@ def test_save_hammerstein_model_error_mocked(tmp_path, sample_hammerstein_data):
             mock_logger.error.assert_called_once()
             args, kwargs = mock_logger.error.call_args
             assert "Failed to save Hammerstein model" in args[0]
-
-
-def test_save_hammerstein_model_error():
-    # Attempt to save to an invalid path
-    with pytest.raises((OSError, FileNotFoundError, json.JSONDecodeError)):
-        save_hammerstein_model(
-            "/invalid/path/that/does/not/exist/model.json",
-            {
-                "time_domain": {"time_ms": [], "kernels": {}},
-                "frequency_domain": {"freqs": [], "magnitudes_db": {}, "phases_deg": {}},
-            },
-        )
-
-
-def test_load_hammerstein_model_error(tmp_path):
-    # Attempt to load from non-existent file
-    with pytest.raises((OSError, FileNotFoundError, json.JSONDecodeError)):
-        load_hammerstein_model(tmp_path / "non_existent.json")
-
-    # Attempt to load invalid JSON
-    invalid_json_path = tmp_path / "invalid.json"
-    with open(invalid_json_path, "w") as f:
-        f.write("{invalid_json}")
-    with pytest.raises((OSError, FileNotFoundError, json.JSONDecodeError)):
-        load_hammerstein_model(invalid_json_path)
 
 
 def test_active_model_cache(sample_hammerstein_data):

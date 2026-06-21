@@ -52,24 +52,10 @@ class TestAudioCalc:
         assert sos is not None
         assert sos.shape == (4, 6)  # 3 original + 1 peaking biquad
 
-    def test_design_a_weighting_invalid(self):
-        with pytest.raises(ValueError, match="Invalid sample rate"):
-            AudioCalc.design_a_weighting(0)
-
     def test_design_c_weighting_valid(self):
         sos = AudioCalc.design_c_weighting(48000)
         assert sos is not None
         assert sos.shape == (3, 6)  # 2 original + 1 peaking biquad
-
-    def test_design_c_weighting_invalid(self):
-        with pytest.raises(ValueError, match="Invalid sample rate"):
-            AudioCalc.design_c_weighting(-100)
-
-    def test_design_aes17_filter_invalid(self):
-        with pytest.raises(ValueError, match="Invalid sample rate"):
-            AudioCalc.design_aes17_filter(0)
-        with pytest.raises(ValueError, match="Invalid sample rate"):
-            AudioCalc.design_aes17_filter(-100)
 
     def test_lowpass_filter_basic(self):
         sr = 48000

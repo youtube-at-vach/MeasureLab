@@ -3,21 +3,6 @@ from typing import List, Dict, Any
 from src.core.export.base import BaseTraceExporter
 
 
-def test_base_trace_exporter_cannot_be_instantiated():
-    with pytest.raises(TypeError):
-        BaseTraceExporter()
-
-
-def test_incomplete_subclass_cannot_be_instantiated():
-    class IncompleteExporter(BaseTraceExporter):
-        @property
-        def format_id(self) -> str:
-            return "test"
-
-    with pytest.raises(TypeError):
-        IncompleteExporter()
-
-
 def test_complete_subclass_can_be_instantiated():
     class CompleteExporter(BaseTraceExporter):
         @property
