@@ -1,4 +1,3 @@
-import pytest
 from typing import List, Dict, Any
 from src.core.export.base import BaseTraceExporter
 

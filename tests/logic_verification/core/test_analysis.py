@@ -1,6 +1,5 @@
 from unittest.mock import patch, MagicMock
 import numpy as np
-import pytest
 
 from src.core.analysis import AudioCalc, get_cached_window, _calculate_ra_raw
 
