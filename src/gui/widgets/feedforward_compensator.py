@@ -39,11 +39,16 @@ class LICFFEngine:
     based on a loaded Hammerstein system model.
     """
 
-    def __init__(self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None):
+    def __init__(
+        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6
+    ):
         self.model_data = model_data
         self.f_min = f_min
         self.f_max = f_max
         self.threshold_db = threshold_db
+        self.reg_mode = reg_mode
+        self.reg_val = reg_val
+        self.last_resolved_eps_in = 1e-6
         self.sample_rate = 48000
         self.N = 0
         self.q0_sum = 0.0
@@ -140,6 +145,33 @@ class LICFFEngine:
             return 0.0
         return 20 * np.log10(max_val)
 
+    def solve_eps_in(self, target_boost_db, Q1_fft, bp_filter):
+        """
+        Solve for eps_in that results in exactly target_boost_db peak gain in the passband
+        using logarithmic bisection search.
+        """
+        target_gain = 10 ** (target_boost_db / 20.0)
+        eps_approx = 1.0 / (4.0 * target_gain**2)
+
+        H1_abs = np.abs(Q1_fft)
+        mask = bp_filter > 0.05
+        H1_pass = H1_abs[mask]
+        if len(H1_pass) == 0:
+            return eps_approx
+
+        low = 1e-12
+        high = 1.0
+        for _ in range(25):
+            mid = np.sqrt(low * high)
+            eps_f_pass = mid + (0.5 - mid) * (1.0 - bp_filter[mask])
+            gains = H1_pass / (H1_pass**2 + eps_f_pass)
+            max_gain = np.max(gains)
+            if max_gain > target_gain:
+                low = mid
+            else:
+                high = mid
+        return np.sqrt(low * high)
+
     def _prepare_buffers_for_length(self, M):
         if self._cached_M == M:
             return self._cached_Q_fft, self._cached_F_inv, self._cached_bp_filter
@@ -175,9 +207,24 @@ class LICFFEngine:
                 else:
                     bp_filter_M[i] = 0.0
 
+        # Determine eps_in
+        if self.reg_mode == "auto_broadband":
+            target_boost_db = 3.0
+        elif self.reg_mode == "auto_tones":
+            target_boost_db = 20.0
+        elif self.reg_mode == "manual_boost":
+            target_boost_db = self.reg_val
+        else:  # manual_tikhonov
+            target_boost_db = None
+            eps_in = self.reg_val
+
+        if target_boost_db is not None:
+            eps_in = self.solve_eps_in(target_boost_db, Q_fft_M[1], bp_filter_M)
+
+        self.last_resolved_eps_in = eps_in
+
         # Linear inverse filter F_inv for length M
         F_lin_abs = np.abs(Q_fft_M[1])
-        eps_in = 1e-6
         eps_out = 0.5
         eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter_M)
         F_inv_M = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
@@ -319,7 +366,9 @@ class OfflineFFCompWorker(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none"):
+    def __init__(
+        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none"
+    ):
         super().__init__()
         self.input_path = input_path
         self.output_path = output_path
@@ -424,8 +473,8 @@ class OfflineFFCompWorker(QThread):
 
                         # Accumulate metrics for volume matching
                         x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
-                        sum_sq_in[ch] += np.sum(x_ch_valid ** 2)
-                        sum_sq_out[ch] += np.sum(chunk_out_ch ** 2)
+                        sum_sq_in[ch] += np.sum(x_ch_valid**2)
+                        sum_sq_out[ch] += np.sum(chunk_out_ch**2)
                         peak_in = max(peak_in, np.max(np.abs(x_ch_valid)))
 
                     out_data[start_out:end_out, :] = chunk_out
@@ -489,8 +538,7 @@ class OfflineFFCompWorker(QThread):
                     self.finished.emit(
                         True,
                         tr("Successfully exported to {0}\nGain-matched original saved to {1}").format(
-                            os.path.basename(self.output_path),
-                            os.path.basename(matched_orig_path)
+                            os.path.basename(self.output_path), os.path.basename(matched_orig_path)
                         )
                         + resample_msg
                         + clipping_msg,
@@ -570,6 +618,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.lbl_sr = QLabel("-- Hz")
         self.lbl_n = QLabel("--")
         self.lbl_max_boost = QLabel("-- dB")
+        self.lbl_resolved_eps = QLabel("--")
 
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
@@ -577,6 +626,7 @@ class FeedforwardCompensatorWidget(QWidget):
         info_layout.addRow(tr("Rate:"), self.lbl_sr)
         info_layout.addRow(tr("N Samples:"), self.lbl_n)
         info_layout.addRow(tr("Max Filter Boost:"), self.lbl_max_boost)
+        info_layout.addRow(tr("Resolved eps_in:"), self.lbl_resolved_eps)
         source_form.addLayout(info_layout)
         sidebar_layout.addWidget(source_group)
 
@@ -620,6 +670,27 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_fmax.setSuffix(" Hz")
         self.spin_fmax.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Active Band Fmax:"), self.spin_fmax)
+
+        self.combo_reg_mode = QComboBox()
+        self.combo_reg_mode.addItems(
+            [
+                tr("Auto (Broadband / Music)"),
+                tr("Auto (Pure Tones)"),
+                tr("Manual (Max Boost)"),
+                tr("Manual (Tikhonov)"),
+            ]
+        )
+        self.combo_reg_mode.currentIndexChanged.connect(self.on_reg_mode_changed)
+        settings_form.addRow(tr("Regularization Mode:"), self.combo_reg_mode)
+
+        self.spin_reg_val = QDoubleSpinBox()
+        self.spin_reg_val.setEnabled(False)
+        self.spin_reg_val.setRange(0.0, 40.0)
+        self.spin_reg_val.setValue(3.0)
+        self.spin_reg_val.setSuffix(" dB")
+        self.spin_reg_val.setDecimals(1)
+        self.spin_reg_val.valueChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Reg. Value:"), self.spin_reg_val)
 
         sidebar_layout.addWidget(settings_group)
 
@@ -871,6 +942,53 @@ class FeedforwardCompensatorWidget(QWidget):
 
     # Online processing features removed to optimize for standard PC performance.
 
+    def get_reg_params(self):
+        mode_idx = self.combo_reg_mode.currentIndex()
+        modes = ["auto_broadband", "auto_tones", "manual_boost", "manual_tikhonov"]
+        reg_mode = modes[mode_idx]
+        reg_val = self.spin_reg_val.value()
+        return reg_mode, reg_val
+
+    def on_reg_mode_changed(self):
+        mode_idx = self.combo_reg_mode.currentIndex()
+        # Modes:
+        # 0: Auto (Broadband / Music)
+        # 1: Auto (Pure Tones)
+        # 2: Manual (Max Boost)
+        # 3: Manual (Tikhonov)
+
+        self.spin_reg_val.blockSignals(True)
+
+        if mode_idx == 0:  # Auto (Broadband / Music)
+            self.spin_reg_val.setEnabled(False)
+            self.spin_reg_val.setSuffix(" dB")
+            self.spin_reg_val.setDecimals(1)
+            self.spin_reg_val.setRange(0.0, 40.0)
+            self.spin_reg_val.setValue(3.0)
+        elif mode_idx == 1:  # Auto (Pure Tones)
+            self.spin_reg_val.setEnabled(False)
+            self.spin_reg_val.setSuffix(" dB")
+            self.spin_reg_val.setDecimals(1)
+            self.spin_reg_val.setRange(0.0, 40.0)
+            self.spin_reg_val.setValue(20.0)
+        elif mode_idx == 2:  # Manual (Max Boost)
+            self.spin_reg_val.setEnabled(True)
+            self.spin_reg_val.setSuffix(" dB")
+            self.spin_reg_val.setDecimals(1)
+            self.spin_reg_val.setRange(0.0, 40.0)
+            self.spin_reg_val.setSingleStep(0.5)
+            self.spin_reg_val.setValue(12.0)
+        elif mode_idx == 3:  # Manual (Tikhonov)
+            self.spin_reg_val.setEnabled(True)
+            self.spin_reg_val.setSuffix("")
+            self.spin_reg_val.setDecimals(6)
+            self.spin_reg_val.setRange(1e-6, 1.0)
+            self.spin_reg_val.setSingleStep(0.01)
+            self.spin_reg_val.setValue(0.20)
+
+        self.spin_reg_val.blockSignals(False)
+        self.update_engine_params()
+
     def load_model(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Load Forward Model"), "", tr("JSON Files (*.json)"))
         if path:
@@ -878,7 +996,10 @@ class FeedforwardCompensatorWidget(QWidget):
                 with open(path, "r") as f:
                     data = json.load(f)
 
-                self.module.engine = LICFFEngine(data, f_min=self.spin_fmin.value(), f_max=self.spin_fmax.value())
+                reg_mode, reg_val = self.get_reg_params()
+                self.module.engine = LICFFEngine(
+                    data, f_min=self.spin_fmin.value(), f_max=self.spin_fmax.value(), reg_mode=reg_mode, reg_val=reg_val
+                )
                 self.model_data = data
 
                 self.lbl_status.setText(tr("Model Loaded"))
@@ -886,6 +1007,7 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_sr.setText(f"{self.module.engine.sample_rate} Hz")
                 self.lbl_n.setText(f"{self.module.engine.N}")
                 self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
+                self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
 
                 self.btn_run_sim.setEnabled(True)
                 self._update_process_btn()
@@ -901,10 +1023,14 @@ class FeedforwardCompensatorWidget(QWidget):
 
     def update_engine_params(self):
         if self.module.engine:
+            reg_mode, reg_val = self.get_reg_params()
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
+            self.module.engine.reg_mode = reg_mode
+            self.module.engine.reg_val = reg_val
             self.module.engine.rebuild_filter()
             self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
+            self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
             self.update_linear_response_plot()
 
     def run_simulation(self):

@@ -253,8 +253,58 @@ def test_transient_no_wraparound(qtbot, dummy_model_data):
     # Verify the aligned compensated data
     t_axis, y_comp_aligned = widget.curve_t_comp.getData()
 
-    # The peak of linear kernel is at 20. So t_peak = 20.
-    # The first 20 samples of y_comp_aligned should be padded with y_comp[0] (which is close to 0),
-    # NOT with the tail of the step response (which is close to 'amp' = 0.5).
-    # If wrap-around occurred, the first 20 samples would have values close to 0.5.
     assert np.all(np.abs(y_comp_aligned[:20]) < 0.05)
+
+
+def test_regularization_modes(qtbot, dummy_model_data):
+    audio_engine = MagicMock()
+    module = FeedforwardCompensator(audio_engine)
+    widget = FeedforwardCompensatorWidget(module)
+    qtbot.addWidget(widget)
+
+    # Initially configure and load model
+    widget.module.engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+    widget.model_data = dummy_model_data
+
+    # Test get_reg_params and UI combo settings
+    # 0: Auto (Broadband / Music)
+    widget.combo_reg_mode.setCurrentIndex(0)
+    mode, val = widget.get_reg_params()
+    assert mode == "auto_broadband"
+    assert not widget.spin_reg_val.isEnabled()
+    assert widget.spin_reg_val.suffix() == " dB"
+
+    # 1: Auto (Pure Tones)
+    widget.combo_reg_mode.setCurrentIndex(1)
+    mode, val = widget.get_reg_params()
+    assert mode == "auto_tones"
+    assert not widget.spin_reg_val.isEnabled()
+
+    # 2: Manual (Max Boost)
+    widget.combo_reg_mode.setCurrentIndex(2)
+    mode, val = widget.get_reg_params()
+    assert mode == "manual_boost"
+    assert widget.spin_reg_val.isEnabled()
+
+    # 3: Manual (Tikhonov)
+    widget.combo_reg_mode.setCurrentIndex(3)
+    mode, val = widget.get_reg_params()
+    assert mode == "manual_tikhonov"
+    assert widget.spin_reg_val.isEnabled()
+    assert widget.spin_reg_val.suffix() == ""
+
+    # Test engine bisection solver with a custom model having a deep notch
+    N = 1024
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    h1[2] = -0.9  # Creates a deep notch in frequency response
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000, reg_mode="manual_boost", reg_val=6.0)
+
+    # Check that resolved eps_in limits the maximum filter boost to exactly 6 dB
+    _, F_inv, _ = engine._prepare_buffers_for_length(N)
+    max_boost = np.max(np.abs(F_inv))
+    max_boost_db = 20 * np.log10(max_boost)
+    # The actual boost should be very close to the target of 6.0 dB
+    assert abs(max_boost_db - 6.0) < 0.1
+
