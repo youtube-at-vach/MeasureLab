@@ -390,7 +390,7 @@ class OfflineFFCompWorker(QThread):
     finished = pyqtSignal(bool, str)
 
     def __init__(
-        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none"
+        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none", abort_on_instability=False
     ):
         super().__init__()
         self.input_path = input_path
@@ -401,6 +401,7 @@ class OfflineFFCompWorker(QThread):
         self.clip_limit = clip_limit
         self.linear_only = linear_only
         self.volume_matching = volume_matching
+        self.abort_on_instability = abort_on_instability
         self.is_cancelled = False
 
     def cancel(self):
@@ -506,6 +507,8 @@ class OfflineFFCompWorker(QThread):
 
                         if block_stats.get("instability_detected", False):
                             instability_detected[ch] = True
+                            if self.abort_on_instability:
+                                raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
 
                         # Accumulate metrics for volume matching
                         x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
@@ -885,6 +888,11 @@ class FeedforwardCompensatorWidget(QWidget):
             ]
         )
         off_layout.addRow(tr("Volume Matching:"), self.combo_vol_match)
+
+        # Abort on Instability
+        self.chk_abort_on_instability = QCheckBox(tr("Abort on Instability"))
+        self.chk_abort_on_instability.setChecked(True)
+        off_layout.addRow(self.chk_abort_on_instability)
 
         self.btn_process_off = QPushButton(tr("Run Export"))
         self.btn_process_off.clicked.connect(self.start_offline_processing)
@@ -1325,6 +1333,7 @@ class FeedforwardCompensatorWidget(QWidget):
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
         linear_only = self.chk_linear_only.isChecked()
+        abort_on_instability = self.chk_abort_on_instability.isChecked()
 
         vol_match_mode = self.combo_vol_match.currentIndex()
         match_modes = ["none", "rms", "peak"]
@@ -1343,6 +1352,7 @@ class FeedforwardCompensatorWidget(QWidget):
             clip_limit,
             linear_only=linear_only,
             volume_matching=vol_match,
+            abort_on_instability=abort_on_instability,
         )
         self.worker.progress.connect(self.progress_off.setValue)
         self.worker.finished.connect(self.on_offline_finished)

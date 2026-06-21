@@ -343,3 +343,41 @@ def test_clipping_and_instability_detection(temp_wav_files, dummy_model_data):
     assert "Oscillation" in msg or "発振" in msg
 
 
+def test_abort_on_instability(temp_wav_files, dummy_model_data):
+    input_path, output_path, sr = temp_wav_files
+
+    # We do not overwrite the input file. The default input has peak amplitude 1.0.
+    # By setting clip_limit=0.05, the signal peak (1.0) exceeds 10 * clip_limit (0.5),
+    # which triggers the instability detection logic.
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # When abort_on_instability=True, it should fail (success=False) with an instability error message.
+    worker = OfflineFFCompWorker(
+        input_path, output_path, engine, iterative=True, iters=3, clip_limit=0.05, abort_on_instability=True
+    )
+
+    finished_spy = MagicMock()
+    worker.finished.connect(finished_spy)
+    worker.run()
+
+    finished_spy.assert_called_once()
+    success, msg = finished_spy.call_args[0]
+    assert not success
+    assert "Instability/runaway detected" in msg or "フィルターの暴走" in msg
+
+    # When abort_on_instability=False, it should complete successfully (success=True) even with instability warnings.
+    worker_no_abort = OfflineFFCompWorker(
+        input_path, output_path, engine, iterative=True, iters=3, clip_limit=0.05, abort_on_instability=False
+    )
+
+    finished_spy_no_abort = MagicMock()
+    worker_no_abort.finished.connect(finished_spy_no_abort)
+    worker_no_abort.run()
+
+    finished_spy_no_abort.assert_called_once()
+    success_na, msg_na = finished_spy_no_abort.call_args[0]
+    assert success_na
+
+
+
+
