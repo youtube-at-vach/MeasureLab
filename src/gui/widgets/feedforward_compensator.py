@@ -336,28 +336,51 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False):
+    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False, stats=None):
         M = len(u_in)
         _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
 
         # Base linear compensation (equalization & delay cancellation)
         U_in_fft = np.fft.rfft(u_in)
         u_comp_linear = np.fft.irfft(U_in_fft * F_inv, n=M)
-        u_comp_linear = np.clip(u_comp_linear, -clip_limit, clip_limit)
+
+        if stats is not None:
+            stats["clipping_count"] = 0
+            stats["instability_detected"] = False
 
         if linear_only:
-            return u_comp_linear
+            u_comp_linear_clipped = np.clip(u_comp_linear, -clip_limit, clip_limit)
+            if stats is not None:
+                stats["clipping_count"] = int(np.sum(np.abs(u_comp_linear) >= clip_limit))
+                if np.any(np.isnan(u_comp_linear)) or np.any(np.isinf(u_comp_linear)) or np.max(np.abs(u_comp_linear)) > 10.0 * clip_limit:
+                    stats["instability_detected"] = True
+            return u_comp_linear_clipped
 
         if not iterative:
             iters = 1
 
         u_comp = u_comp_linear.copy()
+        instability = False
+
+        if np.any(np.isnan(u_comp)) or np.any(np.isinf(u_comp)) or np.max(np.abs(u_comp)) > 10.0 * clip_limit:
+            instability = True
+
+        u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+
         for _ in range(iters):
             Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter to the nonlinear distortion components
             y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
-            u_comp = u_comp_linear - y_comp_nl
-            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+            u_comp_raw = u_comp_linear - y_comp_nl
+
+            if np.any(np.isnan(u_comp_raw)) or np.any(np.isinf(u_comp_raw)) or np.max(np.abs(u_comp_raw)) > 10.0 * clip_limit:
+                instability = True
+
+            u_comp = np.clip(u_comp_raw, -clip_limit, clip_limit)
+
+        if stats is not None:
+            stats["clipping_count"] = int(np.sum(np.abs(u_comp) >= (clip_limit - 1e-7)))
+            stats["instability_detected"] = instability
 
         return u_comp
 
@@ -438,6 +461,10 @@ class OfflineFFCompWorker(QThread):
                 sum_sq_out = np.zeros(channels)
                 peak_in = 0.0
 
+                # Statistics tracking
+                total_clipping_count = [0] * channels
+                instability_detected = [False] * channels
+
                 # Processing Block Configuration
                 block_size = 65536
                 overlap = 4096
@@ -460,16 +487,25 @@ class OfflineFFCompWorker(QThread):
                     for ch in range(channels):
                         x_ch = chunk_padded[:, ch]
                         # Apply compensation on the overlap block
+                        block_stats = {}
                         u_comp = self.engine.compensate(
                             x_ch,
                             iterative=self.iterative,
                             iters=self.iters,
                             clip_limit=self.clip_limit,
                             linear_only=self.linear_only,
+                            stats=block_stats,
                         )
                         # Extract the valid non-overlapped part
                         chunk_out_ch = u_comp[overlap : overlap + L_block]
                         chunk_out[:, ch] = chunk_out_ch
+
+                        # Track clipping in the valid non-overlapped chunk
+                        ch_clip_count = np.sum(np.abs(chunk_out_ch) >= (self.clip_limit - 1e-7))
+                        total_clipping_count[ch] += int(ch_clip_count)
+
+                        if block_stats.get("instability_detected", False):
+                            instability_detected[ch] = True
 
                         # Accumulate metrics for volume matching
                         x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
@@ -520,6 +556,15 @@ class OfflineFFCompWorker(QThread):
                     subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
                 )
 
+                stats_msg = "\n\n" + tr("--- Processing Stats ---")
+                for ch in range(channels):
+                    ch_clip = total_clipping_count[ch]
+                    ch_clip_pct = (ch_clip / max(1, M)) * 100
+                    inst_str = tr("Yes (Runaway Warning!)") if instability_detected[ch] else tr("No")
+                    stats_msg += "\n" + tr("Channel {0}: Clips: {1} ({2:.3f}%), Oscillation: {3}").format(
+                        ch + 1, ch_clip, ch_clip_pct, inst_str
+                    )
+
                 if write_matched_orig:
                     if abs(file_sr - model_sr) > 1.0:
                         matched_orig_data = data * scale_factor
@@ -541,14 +586,16 @@ class OfflineFFCompWorker(QThread):
                             os.path.basename(self.output_path), os.path.basename(matched_orig_path)
                         )
                         + resample_msg
-                        + clipping_msg,
+                        + clipping_msg
+                        + stats_msg,
                     )
                 else:
                     self.finished.emit(
                         True,
                         tr("Successfully exported to {0}").format(os.path.basename(self.output_path))
                         + resample_msg
-                        + clipping_msg,
+                        + clipping_msg
+                        + stats_msg,
                     )
 
             finally:

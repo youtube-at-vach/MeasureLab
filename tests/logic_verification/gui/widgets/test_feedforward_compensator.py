@@ -308,3 +308,38 @@ def test_regularization_modes(qtbot, dummy_model_data):
     # The actual boost should be very close to the target of 6.0 dB
     assert abs(max_boost_db - 6.0) < 0.1
 
+
+def test_clipping_and_instability_detection(temp_wav_files, dummy_model_data):
+    input_path, output_path, sr = temp_wav_files
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # 1. Test compensate statistics with intentional clipping
+    t = np.arange(1024) / 48000.0
+    u_large = 2.0 * np.sin(2 * np.pi * 1000.0 * t)  # Amp = 2.0 > clip_limit = 1.5
+
+    stats_clip = {}
+    _ = engine.compensate(u_large, iterative=True, iters=3, clip_limit=1.5, stats=stats_clip)
+    assert stats_clip["clipping_count"] > 0
+    assert not stats_clip["instability_detected"]
+
+    # 2. Test compensate instability detection (force huge signal or NaN to trigger runaway)
+    u_huge = 100.0 * np.sin(2 * np.pi * 1000.0 * t)
+    stats_instability = {}
+    _ = engine.compensate(u_huge, iterative=True, iters=3, clip_limit=1.5, stats=stats_instability)
+    assert stats_instability["instability_detected"]
+
+    # 3. Test OfflineFFCompWorker output message containing stats
+    worker = OfflineFFCompWorker(input_path, output_path, engine, iterative=True, iters=3, clip_limit=0.5)
+
+    finished_spy = MagicMock()
+    worker.finished.connect(finished_spy)
+    worker.run()
+
+    finished_spy.assert_called_once()
+    success, msg = finished_spy.call_args[0]
+    assert success
+    # Check that message contains statistical labels
+    assert "Clips" in msg or "クリップ数" in msg or "Stats" in msg or "統計" in msg
+    assert "Oscillation" in msg or "発振" in msg
+
+
