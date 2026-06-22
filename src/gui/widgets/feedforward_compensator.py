@@ -401,6 +401,46 @@ class LICFFEngine:
         return u_comp
 
 
+def process_block_task(engine, chunk_padded, iterative, iters, clip_limit, linear_only, b_idx, L_block, overlap):
+    """
+    Worker function to process a single block across all channels.
+    Runs in a separate process.
+    """
+    channels = chunk_padded.shape[1]
+    chunk_out = np.zeros((L_block, channels))
+    block_stats_list = []
+
+    for ch in range(channels):
+        x_ch = chunk_padded[:, ch]
+        stats = {}
+        u_comp = engine.compensate(
+            x_ch,
+            iterative=iterative,
+            iters=iters,
+            clip_limit=clip_limit,
+            linear_only=linear_only,
+            stats=stats,
+        )
+        chunk_out_ch = u_comp[overlap : overlap + L_block]
+        chunk_out[:, ch] = chunk_out_ch
+
+        ch_clip_count = int(np.sum(np.abs(chunk_out_ch) >= (clip_limit - 1e-7)))
+        x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
+        sum_sq_in = float(np.sum(x_ch_valid**2))
+        sum_sq_out = float(np.sum(chunk_out_ch**2))
+        peak_in = float(np.max(np.abs(x_ch_valid)))
+
+        block_stats_list.append({
+            "clipping_count": ch_clip_count,
+            "instability_detected": bool(stats.get("instability_detected", False)),
+            "sum_sq_in": sum_sq_in,
+            "sum_sq_out": sum_sq_out,
+            "peak_in": peak_in
+        })
+
+    return chunk_out, block_stats_list
+
+
 class OfflineFFCompWorker(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(bool, str)
@@ -487,53 +527,126 @@ class OfflineFFCompWorker(QThread):
                 overlap = 4096
                 num_blocks = (M + block_size - 1) // block_size
 
-                for b_idx in range(num_blocks):
-                    if self.is_cancelled:
-                        raise InterruptedError("Cancelled")
+                # Decide whether to use multiprocessing based on workload and core count
+                use_multiprocessing = num_blocks > 2 and (os.cpu_count() or 1) > 1
 
-                    start_out = b_idx * block_size
-                    end_out = min(start_out + block_size, M)
-                    L_block = end_out - start_out
+                if use_multiprocessing:
+                    # Pre-warm LICFFEngine buffers in the parent process to avoid redundant FFT design computations in children
+                    self.engine._prepare_buffers_for_length(block_size + 2 * overlap)
+                    last_block_size = M - (num_blocks - 1) * block_size
+                    if last_block_size != block_size:
+                        self.engine._prepare_buffers_for_length(last_block_size + 2 * overlap)
 
-                    start_in = start_out - overlap
-                    end_in = end_out + overlap
+                    max_workers = max(1, (os.cpu_count() or 2) - 1)
 
-                    chunk_padded = get_input_slice(start_in, end_in)
-                    chunk_out = np.zeros((L_block, channels))
+                    import concurrent.futures
 
-                    for ch in range(channels):
-                        x_ch = chunk_padded[:, ch]
-                        # Apply compensation on the overlap block
-                        block_stats = {}
-                        u_comp = self.engine.compensate(
-                            x_ch,
-                            iterative=self.iterative,
-                            iters=self.iters,
-                            clip_limit=self.clip_limit,
-                            linear_only=self.linear_only,
-                            stats=block_stats,
-                        )
-                        # Extract the valid non-overlapped part
-                        chunk_out_ch = u_comp[overlap : overlap + L_block]
-                        chunk_out[:, ch] = chunk_out_ch
+                    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                        futures = {}
+                        for b_idx in range(num_blocks):
+                            start_out = b_idx * block_size
+                            end_out = min(start_out + block_size, M)
+                            L_block = end_out - start_out
 
-                        # Track clipping in the valid non-overlapped chunk
-                        ch_clip_count = np.sum(np.abs(chunk_out_ch) >= (self.clip_limit - 1e-7))
-                        total_clipping_count[ch] += int(ch_clip_count)
+                            start_in = start_out - overlap
+                            end_in = end_out + overlap
 
-                        if block_stats.get("instability_detected", False):
-                            instability_detected[ch] = True
-                            if self.abort_on_instability:
-                                raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
+                            chunk_padded = get_input_slice(start_in, end_in)
 
-                        # Accumulate metrics for volume matching
-                        x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
-                        sum_sq_in[ch] += np.sum(x_ch_valid**2)
-                        sum_sq_out[ch] += np.sum(chunk_out_ch**2)
-                        peak_in = max(peak_in, np.max(np.abs(x_ch_valid)))
+                            future = executor.submit(
+                                process_block_task,
+                                self.engine,
+                                chunk_padded,
+                                self.iterative,
+                                self.iters,
+                                self.clip_limit,
+                                self.linear_only,
+                                b_idx,
+                                L_block,
+                                overlap,
+                            )
+                            futures[future] = b_idx
 
-                    out_data[start_out:end_out, :] = chunk_out
-                    self.progress.emit(int(((b_idx + 1) / num_blocks) * 100))
+                        completed_count = 0
+                        for future in concurrent.futures.as_completed(futures):
+                            if self.is_cancelled:
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                raise InterruptedError("Cancelled")
+
+                            b_idx = futures[future]
+                            try:
+                                chunk_out, block_stats_list = future.result()
+                            except Exception as e:
+                                executor.shutdown(wait=False, cancel_futures=True)
+                                raise e
+
+                            start_out = b_idx * block_size
+                            end_out = min(start_out + block_size, M)
+                            L_block = end_out - start_out
+
+                            out_data[start_out:end_out, :] = chunk_out
+
+                            for ch in range(channels):
+                                block_stats = block_stats_list[ch]
+                                total_clipping_count[ch] += block_stats["clipping_count"]
+                                
+                                if block_stats["instability_detected"]:
+                                    instability_detected[ch] = True
+                                    if self.abort_on_instability:
+                                        executor.shutdown(wait=False, cancel_futures=True)
+                                        raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
+
+                                sum_sq_in[ch] += block_stats["sum_sq_in"]
+                                sum_sq_out[ch] += block_stats["sum_sq_out"]
+                                peak_in = max(peak_in, block_stats["peak_in"])
+
+                            completed_count += 1
+                            self.progress.emit(int((completed_count / num_blocks) * 100))
+                else:
+                    # Single-threaded fallback
+                    for b_idx in range(num_blocks):
+                        if self.is_cancelled:
+                            raise InterruptedError("Cancelled")
+
+                        start_out = b_idx * block_size
+                        end_out = min(start_out + block_size, M)
+                        L_block = end_out - start_out
+
+                        start_in = start_out - overlap
+                        end_in = end_out + overlap
+
+                        chunk_padded = get_input_slice(start_in, end_in)
+                        chunk_out = np.zeros((L_block, channels))
+
+                        for ch in range(channels):
+                            x_ch = chunk_padded[:, ch]
+                            block_stats = {}
+                            u_comp = self.engine.compensate(
+                                x_ch,
+                                iterative=self.iterative,
+                                iters=self.iters,
+                                clip_limit=self.clip_limit,
+                                linear_only=self.linear_only,
+                                stats=block_stats,
+                            )
+                            chunk_out_ch = u_comp[overlap : overlap + L_block]
+                            chunk_out[:, ch] = chunk_out_ch
+
+                            ch_clip_count = np.sum(np.abs(chunk_out_ch) >= (self.clip_limit - 1e-7))
+                            total_clipping_count[ch] += int(ch_clip_count)
+
+                            if block_stats.get("instability_detected", False):
+                                instability_detected[ch] = True
+                                if self.abort_on_instability:
+                                    raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
+
+                            x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
+                            sum_sq_in[ch] += np.sum(x_ch_valid**2)
+                            sum_sq_out[ch] += np.sum(chunk_out_ch**2)
+                            peak_in = max(peak_in, np.max(np.abs(x_ch_valid)))
+
+                        out_data[start_out:end_out, :] = chunk_out
+                        self.progress.emit(int(((b_idx + 1) / num_blocks) * 100))
 
                 rms_in = np.sqrt(np.sum(sum_sq_in) / max(1, M * channels))
                 rms_out = np.sqrt(np.sum(sum_sq_out) / max(1, M * channels))
