@@ -549,6 +549,7 @@ class OfflineFFCompWorker(QThread):
                     peak_y_scaled = g_y * peak_out
                     if peak_y_scaled <= 1.0:
                         out_data = out_data * g_y
+                        scale_factor = 1.0
                     else:
                         scale_factor = 1.0 / max(1e-12, peak_y_scaled)
                         out_data = out_data * (g_y * scale_factor)
@@ -557,7 +558,7 @@ class OfflineFFCompWorker(QThread):
                             "Warning: Output would clip (+{0:.2f} dBFS) at matched RMS volume. "
                             "Both output and original files were attenuated by {0:.2f} dB to prevent clipping."
                         ).format(applied_attenuation_db)
-                        write_matched_orig = True
+                    write_matched_orig = True
                 elif self.volume_matching == "peak":
                     g_y = peak_in / max(1e-12, peak_out)
                     out_data = out_data * g_y
@@ -723,11 +724,6 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_iters.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Iterations:"), self.spin_iters)
 
-        self.spin_clip = QDoubleSpinBox()
-        self.spin_clip.setRange(0.5, 2.0)
-        self.spin_clip.setSingleStep(0.1)
-        self.spin_clip.setValue(1.5)
-        settings_form.addRow(tr("Clip Limit:"), self.spin_clip)
 
         self.spin_fmin = QDoubleSpinBox()
         self.spin_fmin.setRange(10, 20000)
@@ -915,15 +911,9 @@ class FeedforwardCompensatorWidget(QWidget):
         off_layout.addRow(tr("Output File:"), out_layout)
 
         # Volume Matching
-        self.combo_vol_match = QComboBox()
-        self.combo_vol_match.addItems(
-            [
-                tr("None"),
-                tr("Match RMS (Gain-Matched original output)"),
-                tr("Match Peak"),
-            ]
-        )
-        off_layout.addRow(tr("Volume Matching:"), self.combo_vol_match)
+        self.chk_output_matched_orig = QCheckBox(tr("Export Gain-Matched Original for Comparison"))
+        self.chk_output_matched_orig.setChecked(True)
+        off_layout.addRow(self.chk_output_matched_orig)
 
         # Abort on Instability
         self.chk_abort_on_instability = QCheckBox(tr("Abort on Instability"))
@@ -1189,7 +1179,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # Compensate
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
-        clip_limit = self.spin_clip.value()
+        clip_limit = 2.0
         linear_only = self.chk_linear_only.isChecked()
 
         u_comp = engine.compensate(u, iterative=iterative, iters=iters, clip_limit=clip_limit, linear_only=linear_only)
@@ -1380,13 +1370,10 @@ class FeedforwardCompensatorWidget(QWidget):
         output_path = self.lbl_out_file.text()
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
-        clip_limit = self.spin_clip.value()
+        clip_limit = 2.0
         linear_only = self.chk_linear_only.isChecked()
         abort_on_instability = self.chk_abort_on_instability.isChecked()
-
-        vol_match_mode = self.combo_vol_match.currentIndex()
-        match_modes = ["none", "rms", "peak"]
-        vol_match = match_modes[vol_match_mode]
+        vol_match = "rms" if self.chk_output_matched_orig.isChecked() else "none"
 
         self.btn_process_off.setEnabled(False)
         self.btn_process_off.setText(tr("Exporting..."))
