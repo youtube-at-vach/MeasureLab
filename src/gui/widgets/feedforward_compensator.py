@@ -40,7 +40,7 @@ class LICFFEngine:
     """
 
     def __init__(
-        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6, out_of_band_mode="cut"
+        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6, out_of_band_mode="bypass_aligned"
     ):
         self.model_data = model_data
         self.f_min = f_min
@@ -353,7 +353,7 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False, stats=None):
+    def compensate(self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, stats=None):
         M = len(u_in)
         _, F_inv_lin, F_inv_nl, bp_filter = self._prepare_buffers_for_length(M)
 
@@ -659,16 +659,15 @@ class FeedforwardCompensatorWidget(QWidget):
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
 
-        # Left Panel: Sidebar wrapped in Scroll Area
-        sidebar_scroll = QScrollArea()
-        sidebar_scroll.setFixedWidth(380)
-        sidebar_scroll.setWidgetResizable(True)
-        sidebar_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        # Left Panel: Sidebar TabWidget
+        sidebar_tabs = QTabWidget()
+        sidebar_tabs.setFixedWidth(380)
 
-        sidebar_content = QWidget()
-        sidebar_layout = QVBoxLayout(sidebar_content)
-        sidebar_layout.setContentsMargins(0, 0, 4, 0)
-        sidebar_layout.setSpacing(8)
+        # Tab 1: Model Source
+        tab_model = QWidget()
+        tab_model_layout = QVBoxLayout(tab_model)
+        tab_model_layout.setContentsMargins(4, 4, 4, 4)
+        tab_model_layout.setSpacing(8)
 
         # Group 1: Model Source
         source_group = QGroupBox(tr("Model Source"))
@@ -695,7 +694,14 @@ class FeedforwardCompensatorWidget(QWidget):
         info_layout.addRow(tr("Max Filter Boost:"), self.lbl_max_boost)
         info_layout.addRow(tr("Resolved eps_in:"), self.lbl_resolved_eps)
         source_form.addLayout(info_layout)
-        sidebar_layout.addWidget(source_group)
+        tab_model_layout.addWidget(source_group)
+        tab_model_layout.addStretch()
+
+        # Tab 2: Compensation Settings
+        tab_settings = QWidget()
+        tab_settings_layout = QVBoxLayout(tab_settings)
+        tab_settings_layout.setContentsMargins(4, 4, 4, 4)
+        tab_settings_layout.setSpacing(8)
 
         # Group 2: Compensation Settings
         settings_group = QGroupBox(tr("Compensation Settings"))
@@ -708,7 +714,7 @@ class FeedforwardCompensatorWidget(QWidget):
         settings_form.addRow(self.chk_linear_only)
 
         self.chk_iterative = QCheckBox(tr("Enable Iterative Compensation"))
-        self.chk_iterative.setChecked(True)
+        self.chk_iterative.setChecked(False)
         self.chk_iterative.toggled.connect(self.update_engine_params)
         settings_form.addRow(self.chk_iterative)
 
@@ -746,7 +752,7 @@ class FeedforwardCompensatorWidget(QWidget):
                 tr("Bypass (Pure)"),
             ]
         )
-        self.combo_oob_mode.setCurrentIndex(0)
+        self.combo_oob_mode.setCurrentIndex(1)
         self.combo_oob_mode.currentIndexChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Out-of-band Mode:"), self.combo_oob_mode)
 
@@ -770,8 +776,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_reg_val.setDecimals(1)
         self.spin_reg_val.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Reg. Value:"), self.spin_reg_val)
-
-        sidebar_layout.addWidget(settings_group)
+        tab_settings_layout.addWidget(settings_group)
 
         # Group 3: Simulation Control
         sim_ctrl_group = QGroupBox(tr("Simulation Control"))
@@ -802,11 +807,13 @@ class FeedforwardCompensatorWidget(QWidget):
         self.btn_run_sim.clicked.connect(self.run_simulation)
         self.btn_run_sim.setEnabled(False)
         sim_ctrl_form.addRow(self.btn_run_sim)
+        tab_settings_layout.addWidget(sim_ctrl_group)
+        tab_settings_layout.addStretch()
 
-        sidebar_layout.addWidget(sim_ctrl_group)
+        sidebar_tabs.addTab(tab_model, tr("Model Source"))
+        sidebar_tabs.addTab(tab_settings, tr("Compensation Settings"))
 
-        sidebar_scroll.setWidget(sidebar_content)
-        main_layout.addWidget(sidebar_scroll)
+        main_layout.addWidget(sidebar_tabs)
 
         # Right Panel: Tabs
         self.tabs = QTabWidget()
