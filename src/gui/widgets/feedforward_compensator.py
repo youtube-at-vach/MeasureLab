@@ -661,7 +661,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Left Panel: Sidebar wrapped in Scroll Area
         sidebar_scroll = QScrollArea()
-        sidebar_scroll.setFixedWidth(330)
+        sidebar_scroll.setFixedWidth(380)
         sidebar_scroll.setWidgetResizable(True)
         sidebar_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
@@ -810,6 +810,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
         # Right Panel: Tabs
         self.tabs = QTabWidget()
+        self.tabs.setMinimumWidth(200)
         self.setup_simulation_tab()
         self.setup_transient_tab()
         self.setup_linear_response_tab()
