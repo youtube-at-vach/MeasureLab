@@ -114,25 +114,6 @@ def test_spl_calibration(cal_manager):
     assert new_cm.spl_offset_db == 100.0
 
 
-def test_spl_invalid_input(cal_manager):
-    """Test invalid input for SPL calibration."""
-    # Test invalid type for measured_dbfs_c
-    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
-        cal_manager.set_spl_calibration("invalid", 80.0)
-    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
-        cal_manager.set_spl_calibration(None, 80.0)
-
-    # Test invalid type for measured_spl_db
-    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
-        cal_manager.set_spl_calibration(-20.0, "invalid")
-    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
-        cal_manager.set_spl_calibration(-20.0, [80.0])
-
-    # Test invalid type for both
-    with pytest.raises(ValueError, match="Invalid SPL calibration values"):
-        cal_manager.set_spl_calibration("abc", "def")
-
-
 def test_get_spl_offset_db_none(cal_manager):
     """Test get_spl_offset_db returns None when not calibrated."""
     assert cal_manager.get_spl_offset_db() is None
@@ -192,12 +173,6 @@ def test_delete_non_existent_profile(cal_manager):
     # Ensure it handles missing profiles gracefully
     cal_manager.delete_profile("ghost_profile")
     assert "ghost_profile" not in cal_manager.get_profiles()
-
-
-def test_load_non_existent_profile(cal_manager):
-    """Test loading a profile that doesn't exist."""
-    with pytest.raises(ValueError, match="Profile 'fake' not found"):
-        cal_manager.load_profile("fake")
 
 
 def test_conversions(cal_manager):

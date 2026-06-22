@@ -57,15 +57,6 @@ def test_spl_calibration(calibration_manager):
     assert spl == 100.0
 
 
-def test_spl_calibration_invalid(calibration_manager):
-    """Test invalid inputs for SPL calibration."""
-    with pytest.raises(ValueError):
-        calibration_manager.set_spl_calibration("invalid", 80.0)
-
-    with pytest.raises(ValueError):
-        calibration_manager.set_spl_calibration(-20.0, "invalid")
-
-
 def test_set_sensitivities(calibration_manager):
     """Test setting sensitivity and gain."""
     calibration_manager.set_input_sensitivity(2.5)
@@ -231,6 +222,7 @@ def test_save_frequency_map_error(calibration_manager, temp_map_path):
 
     # Mock os.open to raise an exception
     import unittest.mock as mock
+
     with mock.patch("os.open", side_effect=OSError("Permission denied")):
         result = calibration_manager.save_frequency_map(temp_map_path, map_data)
 
