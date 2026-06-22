@@ -302,8 +302,8 @@ def test_regularization_modes(qtbot, dummy_model_data):
     engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000, reg_mode="manual_boost", reg_val=6.0)
 
     # Check that resolved eps_in limits the maximum filter boost to exactly 6 dB
-    _, F_inv, _ = engine._prepare_buffers_for_length(N)
-    max_boost = np.max(np.abs(F_inv))
+    _, F_inv_lin, _, _ = engine._prepare_buffers_for_length(N)
+    max_boost = np.max(np.abs(F_inv_lin))
     max_boost_db = 20 * np.log10(max_boost)
     # The actual boost should be very close to the target of 6.0 dB
     assert abs(max_boost_db - 6.0) < 0.1
@@ -377,6 +377,67 @@ def test_abort_on_instability(temp_wav_files, dummy_model_data):
     finished_spy_no_abort.assert_called_once()
     success_na, msg_na = finished_spy_no_abort.call_args[0]
     assert success_na
+
+
+def test_out_of_band_modes(dummy_model_data):
+    # Setup model with flat response (identity)
+    N = 1024
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+
+    # Out of band (low): 5 Hz (below 10Hz roll-off threshold)
+    # Out of band (high): 15000 Hz
+
+    # 1. Test "cut" mode (default)
+    engine_cut = LICFFEngine(dummy_model_data, f_min=1000.0, f_max=10000.0, out_of_band_mode="cut")
+    _, F_inv_lin_cut, F_inv_nl_cut, bp_filter = engine_cut._prepare_buffers_for_length(N)
+
+    freqs = np.fft.rfftfreq(N, d=1.0 / 48000)
+    idx_low = np.argmin(np.abs(freqs - 5.0))
+    idx_mid = np.argmin(np.abs(freqs - 3000.0))
+    idx_high = np.argmin(np.abs(freqs - 15000.0))
+
+    # In cut mode, out-of-band should be 0
+    assert np.abs(F_inv_lin_cut[idx_low]) < 1e-5
+    assert np.abs(F_inv_lin_cut[idx_high]) < 1e-5
+    # In-band should be normal inverse filter
+    assert np.abs(F_inv_lin_cut[idx_mid]) > 0.5
+    # Nonlinear filter should be the same
+    assert np.allclose(F_inv_lin_cut, F_inv_nl_cut)
+
+    # 2. Test "bypass_pure" mode
+    engine_pure = LICFFEngine(dummy_model_data, f_min=1000.0, f_max=10000.0, out_of_band_mode="bypass_pure")
+    _, F_inv_lin_pure, F_inv_nl_pure, _ = engine_pure._prepare_buffers_for_length(N)
+
+    # Out-of-band in pure bypass should be 1.0 (real)
+    assert np.allclose(F_inv_lin_pure[idx_low], 1.0)
+    assert np.allclose(F_inv_lin_pure[idx_high], 1.0)
+    # In-band should still be inverse filter
+    assert np.abs(F_inv_lin_pure[idx_mid]) > 0.5
+    # Nonlinear filter must still be cut
+    assert np.abs(F_inv_nl_pure[idx_low]) < 1e-5
+
+    # 3. Test "bypass_aligned" mode with a delayed model
+    h1_delay = np.zeros(N)
+    h1_delay[10] = 1.0
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1_delay.tolist()
+
+    engine_aligned = LICFFEngine(dummy_model_data, f_min=1000.0, f_max=10000.0, out_of_band_mode="bypass_aligned")
+    _, F_inv_lin_aligned, F_inv_nl_aligned, _ = engine_aligned._prepare_buffers_for_length(N)
+
+    # For out-of-band: phase of F_inv_lin_aligned should align with H1 conjugate.
+    assert np.abs(np.abs(F_inv_lin_aligned[idx_low]) - 1.0) < 1e-5
+
+    # Phase comparison: F_inv_lin_aligned * H1 should have phase 0 (be real and positive)
+    Q1_fft = np.fft.rfft(h1_delay)
+    response_low = F_inv_lin_aligned[idx_low] * Q1_fft[idx_low]
+    assert np.abs(np.angle(response_low)) < 1e-5
+    assert np.real(response_low) > 0.9
+
+    # Nonlinear filter must still be cut
+    assert np.abs(F_inv_nl_aligned[idx_low]) < 1e-5
+
 
 
 

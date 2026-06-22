@@ -40,7 +40,7 @@ class LICFFEngine:
     """
 
     def __init__(
-        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6
+        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6, out_of_band_mode="cut"
     ):
         self.model_data = model_data
         self.f_min = f_min
@@ -48,6 +48,7 @@ class LICFFEngine:
         self.threshold_db = threshold_db
         self.reg_mode = reg_mode
         self.reg_val = reg_val
+        self.out_of_band_mode = out_of_band_mode
         self.last_resolved_eps_in = 1e-6
         self.sample_rate = 48000
         self.N = 0
@@ -56,7 +57,8 @@ class LICFFEngine:
         # Buffer caching for arbitrary block sizes
         self._cached_M = 0
         self._cached_Q_fft = []
-        self._cached_F_inv = None
+        self._cached_F_inv_lin = None
+        self._cached_F_inv_nl = None
         self._cached_bp_filter = None
 
         self.parse_model()
@@ -130,7 +132,8 @@ class LICFFEngine:
     def clear_cache(self):
         self._cached_M = 0
         self._cached_Q_fft = []
-        self._cached_F_inv = None
+        self._cached_F_inv_lin = None
+        self._cached_F_inv_nl = None
         self._cached_bp_filter = None
 
     def rebuild_filter(self):
@@ -139,8 +142,8 @@ class LICFFEngine:
     def get_max_inverse_filter_boost_db(self):
         if self.N <= 0:
             return 0.0
-        _, F_inv, _ = self._prepare_buffers_for_length(self.N)
-        max_val = np.max(np.abs(F_inv))
+        _, F_inv_lin, _, _ = self._prepare_buffers_for_length(self.N)
+        max_val = np.max(np.abs(F_inv_lin))
         if max_val <= 0:
             return 0.0
         return 20 * np.log10(max_val)
@@ -174,7 +177,7 @@ class LICFFEngine:
 
     def _prepare_buffers_for_length(self, M):
         if self._cached_M == M:
-            return self._cached_Q_fft, self._cached_F_inv, self._cached_bp_filter
+            return self._cached_Q_fft, self._cached_F_inv_lin, self._cached_F_inv_nl, self._cached_bp_filter
 
         # Compute M-point FFT of the scaled kernels (padded with zeros automatically)
         Q_fft_M = [
@@ -227,16 +230,30 @@ class LICFFEngine:
         F_lin_abs = np.abs(Q_fft_M[1])
         eps_out = 0.5
         eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter_M)
-        F_inv_M = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
-        F_inv_M = F_inv_M * bp_filter_M
+        F_inv_raw = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
+
+        # Decouple filters: nonlinear distortion feedback is active band only
+        F_inv_nl_M = F_inv_raw * bp_filter_M
+
+        # Linear inverse filter: depends on out_of_band_mode
+        if self.out_of_band_mode == "bypass_aligned":
+            # Out-of-band: gain is 1.0, phase is conjugate of Q1 (aligned delay)
+            F_thru = np.conj(Q_fft_M[1]) / np.maximum(F_lin_abs, 1e-12)
+            F_inv_lin_M = F_inv_raw * bp_filter_M + F_thru * (1.0 - bp_filter_M)
+        elif self.out_of_band_mode == "bypass_pure":
+            # Pure bypass: gain 1.0, phase 0
+            F_inv_lin_M = F_inv_raw * bp_filter_M + 1.0 * (1.0 - bp_filter_M)
+        else:  # "cut"
+            F_inv_lin_M = F_inv_raw * bp_filter_M
 
         # Cache it
         self._cached_M = M
         self._cached_Q_fft = Q_fft_M
-        self._cached_F_inv = F_inv_M
+        self._cached_F_inv_lin = F_inv_lin_M
+        self._cached_F_inv_nl = F_inv_nl_M
         self._cached_bp_filter = bp_filter_M
 
-        return Q_fft_M, F_inv_M, bp_filter_M
+        return Q_fft_M, F_inv_lin_M, F_inv_nl_M, bp_filter_M
 
     def power_oversampled_fft(self, x, p, L=8):
         if p == 1:
@@ -266,7 +283,7 @@ class LICFFEngine:
         x_up5 = x_up4 * x_up
 
         Y_fft = np.zeros_like(X, dtype=complex)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+        Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
 
         # p=2
         Xp_up = np.fft.rfft(x_up2)
@@ -301,7 +318,7 @@ class LICFFEngine:
         x_up5 = x_up4 * x_up
 
         Y_fft = np.zeros_like(X, dtype=complex)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+        Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
 
         # p=1
         Y_fft += X * Q_fft[1]
@@ -328,7 +345,7 @@ class LICFFEngine:
 
     def linear_output(self, x):
         M = len(x)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+        Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
         return np.fft.irfft(np.fft.rfft(x) * Q_fft[1], n=M)
 
     def nonlinear_output(self, x):
@@ -338,11 +355,11 @@ class LICFFEngine:
 
     def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False, stats=None):
         M = len(u_in)
-        _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
+        _, F_inv_lin, F_inv_nl, bp_filter = self._prepare_buffers_for_length(M)
 
         # Base linear compensation (equalization & delay cancellation)
         U_in_fft = np.fft.rfft(u_in)
-        u_comp_linear = np.fft.irfft(U_in_fft * F_inv, n=M)
+        u_comp_linear = np.fft.irfft(U_in_fft * F_inv_lin, n=M)
 
         if stats is not None:
             stats["clipping_count"] = 0
@@ -370,7 +387,7 @@ class LICFFEngine:
         for _ in range(iters):
             Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter to the nonlinear distortion components
-            y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
+            y_comp_nl = np.fft.irfft(Y_fft * F_inv_nl, n=M)
             u_comp_raw = u_comp_linear - y_comp_nl
 
             if np.any(np.isnan(u_comp_raw)) or np.any(np.isinf(u_comp_raw)) or np.max(np.abs(u_comp_raw)) > 10.0 * clip_limit:
@@ -721,6 +738,18 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_fmax.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Active Band Fmax:"), self.spin_fmax)
 
+        self.combo_oob_mode = QComboBox()
+        self.combo_oob_mode.addItems(
+            [
+                tr("Cut"),
+                tr("Bypass (Phase Aligned)"),
+                tr("Bypass (Pure)"),
+            ]
+        )
+        self.combo_oob_mode.setCurrentIndex(0)
+        self.combo_oob_mode.currentIndexChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Out-of-band Mode:"), self.combo_oob_mode)
+
         self.combo_reg_mode = QComboBox()
         self.combo_reg_mode.addItems(
             [
@@ -946,7 +975,7 @@ class FeedforwardCompensatorWidget(QWidget):
         M = engine.N
         sr = engine.sample_rate
 
-        Q_fft, F_inv, bp_filter = engine._prepare_buffers_for_length(M)
+        Q_fft, F_inv, _, bp_filter = engine._prepare_buffers_for_length(M)
 
         # H1 peak index corresponds to the gate_pre offset inserted during kernel extraction.
         # Align the time origin to this peak for clear phase visualization without linear delay phase rotation.
@@ -996,6 +1025,11 @@ class FeedforwardCompensatorWidget(QWidget):
         self.plot_lin_phase.setYRange(-190, 190, padding=0.0)
 
     # Online processing features removed to optimize for standard PC performance.
+
+    def get_oob_mode(self):
+        mode_idx = self.combo_oob_mode.currentIndex()
+        modes = ["cut", "bypass_aligned", "bypass_pure"]
+        return modes[mode_idx]
 
     def get_reg_params(self):
         mode_idx = self.combo_reg_mode.currentIndex()
@@ -1052,8 +1086,14 @@ class FeedforwardCompensatorWidget(QWidget):
                     data = json.load(f)
 
                 reg_mode, reg_val = self.get_reg_params()
+                oob_mode = self.get_oob_mode()
                 self.module.engine = LICFFEngine(
-                    data, f_min=self.spin_fmin.value(), f_max=self.spin_fmax.value(), reg_mode=reg_mode, reg_val=reg_val
+                    data,
+                    f_min=self.spin_fmin.value(),
+                    f_max=self.spin_fmax.value(),
+                    reg_mode=reg_mode,
+                    reg_val=reg_val,
+                    out_of_band_mode=oob_mode,
                 )
                 self.model_data = data
 
@@ -1079,10 +1119,12 @@ class FeedforwardCompensatorWidget(QWidget):
     def update_engine_params(self):
         if self.module.engine:
             reg_mode, reg_val = self.get_reg_params()
+            oob_mode = self.get_oob_mode()
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
             self.module.engine.reg_mode = reg_mode
             self.module.engine.reg_val = reg_val
+            self.module.engine.out_of_band_mode = oob_mode
             self.module.engine.rebuild_filter()
             self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
             self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
@@ -1116,7 +1158,7 @@ class FeedforwardCompensatorWidget(QWidget):
         elif sig_type == tr("Step Response"):
             u_raw = np.zeros(N)
             u_raw[N // 10 :] = amp
-            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            _, _, _, bp_filter = engine._prepare_buffers_for_length(N)
             U_fft = np.fft.rfft(u_raw)
             u = np.fft.irfft(U_fft * bp_filter, n=N)
             max_val = np.max(np.abs(u))
@@ -1132,7 +1174,7 @@ class FeedforwardCompensatorWidget(QWidget):
             noise_fft = np.exp(1j * rng.uniform(0, 2 * np.pi, N // 2 + 1))
             noise_fft[0] = 0.0
             noise_fft[-1] = 0.0
-            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            _, _, _, bp_filter = engine._prepare_buffers_for_length(N)
             u = np.fft.irfft(noise_fft * bp_filter, n=N)
             u = u / np.max(np.abs(u)) * amp
             f_test = 1000.0
@@ -1174,7 +1216,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.plot_sim.setYRange(-140, 10, padding=0.0)
 
         # Band-limited ideal linear response: H1 * bp_filter * u
-        Q_fft, _, bp_filter = engine._prepare_buffers_for_length(N)
+        Q_fft, _, _, bp_filter = engine._prepare_buffers_for_length(N)
         y_bl_linear = np.fft.irfft(np.fft.rfft(u) * bp_filter * Q_fft[1], n=N)
 
         # Update Transient Plot
