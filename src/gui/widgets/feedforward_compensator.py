@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QTabWidget,
-    QScrollArea,
     QProgressBar,
     QCheckBox,
     QComboBox,
