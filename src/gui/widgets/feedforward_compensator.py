@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QTabWidget,
-    QScrollArea,
     QProgressBar,
     QCheckBox,
     QComboBox,
@@ -39,11 +38,17 @@ class LICFFEngine:
     based on a loaded Hammerstein system model.
     """
 
-    def __init__(self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None):
+    def __init__(
+        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6, out_of_band_mode="bypass_aligned"
+    ):
         self.model_data = model_data
         self.f_min = f_min
         self.f_max = f_max
         self.threshold_db = threshold_db
+        self.reg_mode = reg_mode
+        self.reg_val = reg_val
+        self.out_of_band_mode = out_of_band_mode
+        self.last_resolved_eps_in = 1e-6
         self.sample_rate = 48000
         self.N = 0
         self.q0_sum = 0.0
@@ -51,7 +56,8 @@ class LICFFEngine:
         # Buffer caching for arbitrary block sizes
         self._cached_M = 0
         self._cached_Q_fft = []
-        self._cached_F_inv = None
+        self._cached_F_inv_lin = None
+        self._cached_F_inv_nl = None
         self._cached_bp_filter = None
 
         self.parse_model()
@@ -125,7 +131,8 @@ class LICFFEngine:
     def clear_cache(self):
         self._cached_M = 0
         self._cached_Q_fft = []
-        self._cached_F_inv = None
+        self._cached_F_inv_lin = None
+        self._cached_F_inv_nl = None
         self._cached_bp_filter = None
 
     def rebuild_filter(self):
@@ -134,15 +141,42 @@ class LICFFEngine:
     def get_max_inverse_filter_boost_db(self):
         if self.N <= 0:
             return 0.0
-        _, F_inv, _ = self._prepare_buffers_for_length(self.N)
-        max_val = np.max(np.abs(F_inv))
+        _, F_inv_lin, _, _ = self._prepare_buffers_for_length(self.N)
+        max_val = np.max(np.abs(F_inv_lin))
         if max_val <= 0:
             return 0.0
         return 20 * np.log10(max_val)
 
+    def solve_eps_in(self, target_boost_db, Q1_fft, bp_filter):
+        """
+        Solve for eps_in that results in exactly target_boost_db peak gain in the passband
+        using logarithmic bisection search.
+        """
+        target_gain = 10 ** (target_boost_db / 20.0)
+        eps_approx = 1.0 / (4.0 * target_gain**2)
+
+        H1_abs = np.abs(Q1_fft)
+        mask = bp_filter > 0.05
+        H1_pass = H1_abs[mask]
+        if len(H1_pass) == 0:
+            return eps_approx
+
+        low = 1e-12
+        high = 1.0
+        for _ in range(25):
+            mid = np.sqrt(low * high)
+            eps_f_pass = mid + (0.5 - mid) * (1.0 - bp_filter[mask])
+            gains = H1_pass / (H1_pass**2 + eps_f_pass)
+            max_gain = np.max(gains)
+            if max_gain > target_gain:
+                low = mid
+            else:
+                high = mid
+        return np.sqrt(low * high)
+
     def _prepare_buffers_for_length(self, M):
         if self._cached_M == M:
-            return self._cached_Q_fft, self._cached_F_inv, self._cached_bp_filter
+            return self._cached_Q_fft, self._cached_F_inv_lin, self._cached_F_inv_nl, self._cached_bp_filter
 
         # Compute M-point FFT of the scaled kernels (padded with zeros automatically)
         Q_fft_M = [
@@ -175,21 +209,50 @@ class LICFFEngine:
                 else:
                     bp_filter_M[i] = 0.0
 
+        # Determine eps_in
+        if self.reg_mode == "auto_broadband":
+            target_boost_db = 3.0
+        elif self.reg_mode == "auto_tones":
+            target_boost_db = 20.0
+        elif self.reg_mode == "manual_boost":
+            target_boost_db = self.reg_val
+        else:  # manual_tikhonov
+            target_boost_db = None
+            eps_in = self.reg_val
+
+        if target_boost_db is not None:
+            eps_in = self.solve_eps_in(target_boost_db, Q_fft_M[1], bp_filter_M)
+
+        self.last_resolved_eps_in = eps_in
+
         # Linear inverse filter F_inv for length M
         F_lin_abs = np.abs(Q_fft_M[1])
-        eps_in = 1e-6
         eps_out = 0.5
         eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter_M)
-        F_inv_M = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
-        F_inv_M = F_inv_M * bp_filter_M
+        F_inv_raw = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
+
+        # Decouple filters: nonlinear distortion feedback is active band only
+        F_inv_nl_M = F_inv_raw * bp_filter_M
+
+        # Linear inverse filter: depends on out_of_band_mode
+        if self.out_of_band_mode == "bypass_aligned":
+            # Out-of-band: gain is 1.0, phase is conjugate of Q1 (aligned delay)
+            F_thru = np.conj(Q_fft_M[1]) / np.maximum(F_lin_abs, 1e-12)
+            F_inv_lin_M = F_inv_raw * bp_filter_M + F_thru * (1.0 - bp_filter_M)
+        elif self.out_of_band_mode == "bypass_pure":
+            # Pure bypass: gain 1.0, phase 0
+            F_inv_lin_M = F_inv_raw * bp_filter_M + 1.0 * (1.0 - bp_filter_M)
+        else:  # "cut"
+            F_inv_lin_M = F_inv_raw * bp_filter_M
 
         # Cache it
         self._cached_M = M
         self._cached_Q_fft = Q_fft_M
-        self._cached_F_inv = F_inv_M
+        self._cached_F_inv_lin = F_inv_lin_M
+        self._cached_F_inv_nl = F_inv_nl_M
         self._cached_bp_filter = bp_filter_M
 
-        return Q_fft_M, F_inv_M, bp_filter_M
+        return Q_fft_M, F_inv_lin_M, F_inv_nl_M, bp_filter_M
 
     def power_oversampled_fft(self, x, p, L=8):
         if p == 1:
@@ -219,7 +282,7 @@ class LICFFEngine:
         x_up5 = x_up4 * x_up
 
         Y_fft = np.zeros_like(X, dtype=complex)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+        Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
 
         # p=2
         Xp_up = np.fft.rfft(x_up2)
@@ -254,7 +317,7 @@ class LICFFEngine:
         x_up5 = x_up4 * x_up
 
         Y_fft = np.zeros_like(X, dtype=complex)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+        Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
 
         # p=1
         Y_fft += X * Q_fft[1]
@@ -281,7 +344,7 @@ class LICFFEngine:
 
     def linear_output(self, x):
         M = len(x)
-        Q_fft, _, _ = self._prepare_buffers_for_length(M)
+        Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
         return np.fft.irfft(np.fft.rfft(x) * Q_fft[1], n=M)
 
     def nonlinear_output(self, x):
@@ -289,28 +352,51 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=True, iters=3, clip_limit=1.5, linear_only=False):
+    def compensate(self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, stats=None):
         M = len(u_in)
-        _, F_inv, bp_filter = self._prepare_buffers_for_length(M)
+        _, F_inv_lin, F_inv_nl, bp_filter = self._prepare_buffers_for_length(M)
 
         # Base linear compensation (equalization & delay cancellation)
         U_in_fft = np.fft.rfft(u_in)
-        u_comp_linear = np.fft.irfft(U_in_fft * F_inv, n=M)
-        u_comp_linear = np.clip(u_comp_linear, -clip_limit, clip_limit)
+        u_comp_linear = np.fft.irfft(U_in_fft * F_inv_lin, n=M)
+
+        if stats is not None:
+            stats["clipping_count"] = 0
+            stats["instability_detected"] = False
 
         if linear_only:
-            return u_comp_linear
+            u_comp_linear_clipped = np.clip(u_comp_linear, -clip_limit, clip_limit)
+            if stats is not None:
+                stats["clipping_count"] = int(np.sum(np.abs(u_comp_linear) >= clip_limit))
+                if np.any(np.isnan(u_comp_linear)) or np.any(np.isinf(u_comp_linear)) or np.max(np.abs(u_comp_linear)) > 10.0 * clip_limit:
+                    stats["instability_detected"] = True
+            return u_comp_linear_clipped
 
         if not iterative:
             iters = 1
 
         u_comp = u_comp_linear.copy()
+        instability = False
+
+        if np.any(np.isnan(u_comp)) or np.any(np.isinf(u_comp)) or np.max(np.abs(u_comp)) > 10.0 * clip_limit:
+            instability = True
+
+        u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+
         for _ in range(iters):
             Y_fft = self.nonlinear_spectrum(u_comp)
             # Apply linear inverse filter to the nonlinear distortion components
-            y_comp_nl = np.fft.irfft(Y_fft * F_inv, n=M)
-            u_comp = u_comp_linear - y_comp_nl
-            u_comp = np.clip(u_comp, -clip_limit, clip_limit)
+            y_comp_nl = np.fft.irfft(Y_fft * F_inv_nl, n=M)
+            u_comp_raw = u_comp_linear - y_comp_nl
+
+            if np.any(np.isnan(u_comp_raw)) or np.any(np.isinf(u_comp_raw)) or np.max(np.abs(u_comp_raw)) > 10.0 * clip_limit:
+                instability = True
+
+            u_comp = np.clip(u_comp_raw, -clip_limit, clip_limit)
+
+        if stats is not None:
+            stats["clipping_count"] = int(np.sum(np.abs(u_comp) >= (clip_limit - 1e-7)))
+            stats["instability_detected"] = instability
 
         return u_comp
 
@@ -319,7 +405,9 @@ class OfflineFFCompWorker(QThread):
     progress = pyqtSignal(int)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none"):
+    def __init__(
+        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none", abort_on_instability=False
+    ):
         super().__init__()
         self.input_path = input_path
         self.output_path = output_path
@@ -329,6 +417,7 @@ class OfflineFFCompWorker(QThread):
         self.clip_limit = clip_limit
         self.linear_only = linear_only
         self.volume_matching = volume_matching
+        self.abort_on_instability = abort_on_instability
         self.is_cancelled = False
 
     def cancel(self):
@@ -389,6 +478,10 @@ class OfflineFFCompWorker(QThread):
                 sum_sq_out = np.zeros(channels)
                 peak_in = 0.0
 
+                # Statistics tracking
+                total_clipping_count = [0] * channels
+                instability_detected = [False] * channels
+
                 # Processing Block Configuration
                 block_size = 65536
                 overlap = 4096
@@ -411,21 +504,32 @@ class OfflineFFCompWorker(QThread):
                     for ch in range(channels):
                         x_ch = chunk_padded[:, ch]
                         # Apply compensation on the overlap block
+                        block_stats = {}
                         u_comp = self.engine.compensate(
                             x_ch,
                             iterative=self.iterative,
                             iters=self.iters,
                             clip_limit=self.clip_limit,
                             linear_only=self.linear_only,
+                            stats=block_stats,
                         )
                         # Extract the valid non-overlapped part
                         chunk_out_ch = u_comp[overlap : overlap + L_block]
                         chunk_out[:, ch] = chunk_out_ch
 
+                        # Track clipping in the valid non-overlapped chunk
+                        ch_clip_count = np.sum(np.abs(chunk_out_ch) >= (self.clip_limit - 1e-7))
+                        total_clipping_count[ch] += int(ch_clip_count)
+
+                        if block_stats.get("instability_detected", False):
+                            instability_detected[ch] = True
+                            if self.abort_on_instability:
+                                raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
+
                         # Accumulate metrics for volume matching
                         x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
-                        sum_sq_in[ch] += np.sum(x_ch_valid ** 2)
-                        sum_sq_out[ch] += np.sum(chunk_out_ch ** 2)
+                        sum_sq_in[ch] += np.sum(x_ch_valid**2)
+                        sum_sq_out[ch] += np.sum(chunk_out_ch**2)
                         peak_in = max(peak_in, np.max(np.abs(x_ch_valid)))
 
                     out_data[start_out:end_out, :] = chunk_out
@@ -471,6 +575,15 @@ class OfflineFFCompWorker(QThread):
                     subtype="PCM_24" if info.subtype == "PCM_24" else "PCM_16",
                 )
 
+                stats_msg = "\n\n" + tr("--- Processing Stats ---")
+                for ch in range(channels):
+                    ch_clip = total_clipping_count[ch]
+                    ch_clip_pct = (ch_clip / max(1, M)) * 100
+                    inst_str = tr("Yes (Runaway Warning!)") if instability_detected[ch] else tr("No")
+                    stats_msg += "\n" + tr("Channel {0}: Clips: {1} ({2:.3f}%), Oscillation: {3}").format(
+                        ch + 1, ch_clip, ch_clip_pct, inst_str
+                    )
+
                 if write_matched_orig:
                     if abs(file_sr - model_sr) > 1.0:
                         matched_orig_data = data * scale_factor
@@ -489,18 +602,19 @@ class OfflineFFCompWorker(QThread):
                     self.finished.emit(
                         True,
                         tr("Successfully exported to {0}\nGain-matched original saved to {1}").format(
-                            os.path.basename(self.output_path),
-                            os.path.basename(matched_orig_path)
+                            os.path.basename(self.output_path), os.path.basename(matched_orig_path)
                         )
                         + resample_msg
-                        + clipping_msg,
+                        + clipping_msg
+                        + stats_msg,
                     )
                 else:
                     self.finished.emit(
                         True,
                         tr("Successfully exported to {0}").format(os.path.basename(self.output_path))
                         + resample_msg
-                        + clipping_msg,
+                        + clipping_msg
+                        + stats_msg,
                     )
 
             finally:
@@ -544,16 +658,15 @@ class FeedforwardCompensatorWidget(QWidget):
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
 
-        # Left Panel: Sidebar wrapped in Scroll Area
-        sidebar_scroll = QScrollArea()
-        sidebar_scroll.setFixedWidth(330)
-        sidebar_scroll.setWidgetResizable(True)
-        sidebar_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        # Left Panel: Sidebar TabWidget
+        sidebar_tabs = QTabWidget()
+        sidebar_tabs.setFixedWidth(380)
 
-        sidebar_content = QWidget()
-        sidebar_layout = QVBoxLayout(sidebar_content)
-        sidebar_layout.setContentsMargins(0, 0, 4, 0)
-        sidebar_layout.setSpacing(8)
+        # Tab 1: Model Source
+        tab_model = QWidget()
+        tab_model_layout = QVBoxLayout(tab_model)
+        tab_model_layout.setContentsMargins(4, 4, 4, 4)
+        tab_model_layout.setSpacing(8)
 
         # Group 1: Model Source
         source_group = QGroupBox(tr("Model Source"))
@@ -570,6 +683,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.lbl_sr = QLabel("-- Hz")
         self.lbl_n = QLabel("--")
         self.lbl_max_boost = QLabel("-- dB")
+        self.lbl_resolved_eps = QLabel("--")
 
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
@@ -577,8 +691,16 @@ class FeedforwardCompensatorWidget(QWidget):
         info_layout.addRow(tr("Rate:"), self.lbl_sr)
         info_layout.addRow(tr("N Samples:"), self.lbl_n)
         info_layout.addRow(tr("Max Filter Boost:"), self.lbl_max_boost)
+        info_layout.addRow(tr("Resolved eps_in:"), self.lbl_resolved_eps)
         source_form.addLayout(info_layout)
-        sidebar_layout.addWidget(source_group)
+        tab_model_layout.addWidget(source_group)
+        tab_model_layout.addStretch()
+
+        # Tab 2: Compensation Settings
+        tab_settings = QWidget()
+        tab_settings_layout = QVBoxLayout(tab_settings)
+        tab_settings_layout.setContentsMargins(4, 4, 4, 4)
+        tab_settings_layout.setSpacing(8)
 
         # Group 2: Compensation Settings
         settings_group = QGroupBox(tr("Compensation Settings"))
@@ -591,7 +713,7 @@ class FeedforwardCompensatorWidget(QWidget):
         settings_form.addRow(self.chk_linear_only)
 
         self.chk_iterative = QCheckBox(tr("Enable Iterative Compensation"))
-        self.chk_iterative.setChecked(True)
+        self.chk_iterative.setChecked(False)
         self.chk_iterative.toggled.connect(self.update_engine_params)
         settings_form.addRow(self.chk_iterative)
 
@@ -621,7 +743,39 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_fmax.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Active Band Fmax:"), self.spin_fmax)
 
-        sidebar_layout.addWidget(settings_group)
+        self.combo_oob_mode = QComboBox()
+        self.combo_oob_mode.addItems(
+            [
+                tr("Cut"),
+                tr("Bypass (Phase Aligned)"),
+                tr("Bypass (Pure)"),
+            ]
+        )
+        self.combo_oob_mode.setCurrentIndex(1)
+        self.combo_oob_mode.currentIndexChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Out-of-band Mode:"), self.combo_oob_mode)
+
+        self.combo_reg_mode = QComboBox()
+        self.combo_reg_mode.addItems(
+            [
+                tr("Auto (Broadband / Music)"),
+                tr("Auto (Pure Tones)"),
+                tr("Manual (Max Boost)"),
+                tr("Manual (Tikhonov)"),
+            ]
+        )
+        self.combo_reg_mode.currentIndexChanged.connect(self.on_reg_mode_changed)
+        settings_form.addRow(tr("Regularization Mode:"), self.combo_reg_mode)
+
+        self.spin_reg_val = QDoubleSpinBox()
+        self.spin_reg_val.setEnabled(False)
+        self.spin_reg_val.setRange(0.0, 40.0)
+        self.spin_reg_val.setValue(3.0)
+        self.spin_reg_val.setSuffix(" dB")
+        self.spin_reg_val.setDecimals(1)
+        self.spin_reg_val.valueChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Reg. Value:"), self.spin_reg_val)
+        tab_settings_layout.addWidget(settings_group)
 
         # Group 3: Simulation Control
         sim_ctrl_group = QGroupBox(tr("Simulation Control"))
@@ -652,14 +806,17 @@ class FeedforwardCompensatorWidget(QWidget):
         self.btn_run_sim.clicked.connect(self.run_simulation)
         self.btn_run_sim.setEnabled(False)
         sim_ctrl_form.addRow(self.btn_run_sim)
+        tab_settings_layout.addWidget(sim_ctrl_group)
+        tab_settings_layout.addStretch()
 
-        sidebar_layout.addWidget(sim_ctrl_group)
+        sidebar_tabs.addTab(tab_model, tr("Model Source"))
+        sidebar_tabs.addTab(tab_settings, tr("Compensation Settings"))
 
-        sidebar_scroll.setWidget(sidebar_content)
-        main_layout.addWidget(sidebar_scroll)
+        main_layout.addWidget(sidebar_tabs)
 
         # Right Panel: Tabs
         self.tabs = QTabWidget()
+        self.tabs.setMinimumWidth(200)
         self.setup_simulation_tab()
         self.setup_transient_tab()
         self.setup_linear_response_tab()
@@ -768,6 +925,11 @@ class FeedforwardCompensatorWidget(QWidget):
         )
         off_layout.addRow(tr("Volume Matching:"), self.combo_vol_match)
 
+        # Abort on Instability
+        self.chk_abort_on_instability = QCheckBox(tr("Abort on Instability"))
+        self.chk_abort_on_instability.setChecked(True)
+        off_layout.addRow(self.chk_abort_on_instability)
+
         self.btn_process_off = QPushButton(tr("Run Export"))
         self.btn_process_off.clicked.connect(self.start_offline_processing)
         self.btn_process_off.setEnabled(False)
@@ -820,7 +982,7 @@ class FeedforwardCompensatorWidget(QWidget):
         M = engine.N
         sr = engine.sample_rate
 
-        Q_fft, F_inv, bp_filter = engine._prepare_buffers_for_length(M)
+        Q_fft, F_inv, _, bp_filter = engine._prepare_buffers_for_length(M)
 
         # H1 peak index corresponds to the gate_pre offset inserted during kernel extraction.
         # Align the time origin to this peak for clear phase visualization without linear delay phase rotation.
@@ -871,6 +1033,58 @@ class FeedforwardCompensatorWidget(QWidget):
 
     # Online processing features removed to optimize for standard PC performance.
 
+    def get_oob_mode(self):
+        mode_idx = self.combo_oob_mode.currentIndex()
+        modes = ["cut", "bypass_aligned", "bypass_pure"]
+        return modes[mode_idx]
+
+    def get_reg_params(self):
+        mode_idx = self.combo_reg_mode.currentIndex()
+        modes = ["auto_broadband", "auto_tones", "manual_boost", "manual_tikhonov"]
+        reg_mode = modes[mode_idx]
+        reg_val = self.spin_reg_val.value()
+        return reg_mode, reg_val
+
+    def on_reg_mode_changed(self):
+        mode_idx = self.combo_reg_mode.currentIndex()
+        # Modes:
+        # 0: Auto (Broadband / Music)
+        # 1: Auto (Pure Tones)
+        # 2: Manual (Max Boost)
+        # 3: Manual (Tikhonov)
+
+        self.spin_reg_val.blockSignals(True)
+
+        if mode_idx == 0:  # Auto (Broadband / Music)
+            self.spin_reg_val.setEnabled(False)
+            self.spin_reg_val.setSuffix(" dB")
+            self.spin_reg_val.setDecimals(1)
+            self.spin_reg_val.setRange(0.0, 40.0)
+            self.spin_reg_val.setValue(3.0)
+        elif mode_idx == 1:  # Auto (Pure Tones)
+            self.spin_reg_val.setEnabled(False)
+            self.spin_reg_val.setSuffix(" dB")
+            self.spin_reg_val.setDecimals(1)
+            self.spin_reg_val.setRange(0.0, 40.0)
+            self.spin_reg_val.setValue(20.0)
+        elif mode_idx == 2:  # Manual (Max Boost)
+            self.spin_reg_val.setEnabled(True)
+            self.spin_reg_val.setSuffix(" dB")
+            self.spin_reg_val.setDecimals(1)
+            self.spin_reg_val.setRange(0.0, 40.0)
+            self.spin_reg_val.setSingleStep(0.5)
+            self.spin_reg_val.setValue(12.0)
+        elif mode_idx == 3:  # Manual (Tikhonov)
+            self.spin_reg_val.setEnabled(True)
+            self.spin_reg_val.setSuffix("")
+            self.spin_reg_val.setDecimals(6)
+            self.spin_reg_val.setRange(1e-6, 1.0)
+            self.spin_reg_val.setSingleStep(0.01)
+            self.spin_reg_val.setValue(0.20)
+
+        self.spin_reg_val.blockSignals(False)
+        self.update_engine_params()
+
     def load_model(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Load Forward Model"), "", tr("JSON Files (*.json)"))
         if path:
@@ -878,7 +1092,16 @@ class FeedforwardCompensatorWidget(QWidget):
                 with open(path, "r") as f:
                     data = json.load(f)
 
-                self.module.engine = LICFFEngine(data, f_min=self.spin_fmin.value(), f_max=self.spin_fmax.value())
+                reg_mode, reg_val = self.get_reg_params()
+                oob_mode = self.get_oob_mode()
+                self.module.engine = LICFFEngine(
+                    data,
+                    f_min=self.spin_fmin.value(),
+                    f_max=self.spin_fmax.value(),
+                    reg_mode=reg_mode,
+                    reg_val=reg_val,
+                    out_of_band_mode=oob_mode,
+                )
                 self.model_data = data
 
                 self.lbl_status.setText(tr("Model Loaded"))
@@ -886,6 +1109,7 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_sr.setText(f"{self.module.engine.sample_rate} Hz")
                 self.lbl_n.setText(f"{self.module.engine.N}")
                 self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
+                self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
 
                 self.btn_run_sim.setEnabled(True)
                 self._update_process_btn()
@@ -901,10 +1125,16 @@ class FeedforwardCompensatorWidget(QWidget):
 
     def update_engine_params(self):
         if self.module.engine:
+            reg_mode, reg_val = self.get_reg_params()
+            oob_mode = self.get_oob_mode()
             self.module.engine.f_min = self.spin_fmin.value()
             self.module.engine.f_max = self.spin_fmax.value()
+            self.module.engine.reg_mode = reg_mode
+            self.module.engine.reg_val = reg_val
+            self.module.engine.out_of_band_mode = oob_mode
             self.module.engine.rebuild_filter()
             self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
+            self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
             self.update_linear_response_plot()
 
     def run_simulation(self):
@@ -935,7 +1165,7 @@ class FeedforwardCompensatorWidget(QWidget):
         elif sig_type == tr("Step Response"):
             u_raw = np.zeros(N)
             u_raw[N // 10 :] = amp
-            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            _, _, _, bp_filter = engine._prepare_buffers_for_length(N)
             U_fft = np.fft.rfft(u_raw)
             u = np.fft.irfft(U_fft * bp_filter, n=N)
             max_val = np.max(np.abs(u))
@@ -951,7 +1181,7 @@ class FeedforwardCompensatorWidget(QWidget):
             noise_fft = np.exp(1j * rng.uniform(0, 2 * np.pi, N // 2 + 1))
             noise_fft[0] = 0.0
             noise_fft[-1] = 0.0
-            _, _, bp_filter = engine._prepare_buffers_for_length(N)
+            _, _, _, bp_filter = engine._prepare_buffers_for_length(N)
             u = np.fft.irfft(noise_fft * bp_filter, n=N)
             u = u / np.max(np.abs(u)) * amp
             f_test = 1000.0
@@ -993,7 +1223,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.plot_sim.setYRange(-140, 10, padding=0.0)
 
         # Band-limited ideal linear response: H1 * bp_filter * u
-        Q_fft, _, bp_filter = engine._prepare_buffers_for_length(N)
+        Q_fft, _, _, bp_filter = engine._prepare_buffers_for_length(N)
         y_bl_linear = np.fft.irfft(np.fft.rfft(u) * bp_filter * Q_fft[1], n=N)
 
         # Update Transient Plot
@@ -1152,6 +1382,7 @@ class FeedforwardCompensatorWidget(QWidget):
         iters = self.spin_iters.value()
         clip_limit = self.spin_clip.value()
         linear_only = self.chk_linear_only.isChecked()
+        abort_on_instability = self.chk_abort_on_instability.isChecked()
 
         vol_match_mode = self.combo_vol_match.currentIndex()
         match_modes = ["none", "rms", "peak"]
@@ -1170,6 +1401,7 @@ class FeedforwardCompensatorWidget(QWidget):
             clip_limit,
             linear_only=linear_only,
             volume_matching=vol_match,
+            abort_on_instability=abort_on_instability,
         )
         self.worker.progress.connect(self.progress_off.setValue)
         self.worker.finished.connect(self.on_offline_finished)

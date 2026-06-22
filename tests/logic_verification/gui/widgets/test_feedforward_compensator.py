@@ -253,8 +253,192 @@ def test_transient_no_wraparound(qtbot, dummy_model_data):
     # Verify the aligned compensated data
     t_axis, y_comp_aligned = widget.curve_t_comp.getData()
 
-    # The peak of linear kernel is at 20. So t_peak = 20.
-    # The first 20 samples of y_comp_aligned should be padded with y_comp[0] (which is close to 0),
-    # NOT with the tail of the step response (which is close to 'amp' = 0.5).
-    # If wrap-around occurred, the first 20 samples would have values close to 0.5.
     assert np.all(np.abs(y_comp_aligned[:20]) < 0.05)
+
+
+def test_regularization_modes(qtbot, dummy_model_data):
+    audio_engine = MagicMock()
+    module = FeedforwardCompensator(audio_engine)
+    widget = FeedforwardCompensatorWidget(module)
+    qtbot.addWidget(widget)
+
+    # Initially configure and load model
+    widget.module.engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+    widget.model_data = dummy_model_data
+
+    # Test get_reg_params and UI combo settings
+    # 0: Auto (Broadband / Music)
+    widget.combo_reg_mode.setCurrentIndex(0)
+    mode, val = widget.get_reg_params()
+    assert mode == "auto_broadband"
+    assert not widget.spin_reg_val.isEnabled()
+    assert widget.spin_reg_val.suffix() == " dB"
+
+    # 1: Auto (Pure Tones)
+    widget.combo_reg_mode.setCurrentIndex(1)
+    mode, val = widget.get_reg_params()
+    assert mode == "auto_tones"
+    assert not widget.spin_reg_val.isEnabled()
+
+    # 2: Manual (Max Boost)
+    widget.combo_reg_mode.setCurrentIndex(2)
+    mode, val = widget.get_reg_params()
+    assert mode == "manual_boost"
+    assert widget.spin_reg_val.isEnabled()
+
+    # 3: Manual (Tikhonov)
+    widget.combo_reg_mode.setCurrentIndex(3)
+    mode, val = widget.get_reg_params()
+    assert mode == "manual_tikhonov"
+    assert widget.spin_reg_val.isEnabled()
+    assert widget.spin_reg_val.suffix() == ""
+
+    # Test engine bisection solver with a custom model having a deep notch
+    N = 1024
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    h1[2] = -0.9  # Creates a deep notch in frequency response
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000, reg_mode="manual_boost", reg_val=6.0)
+
+    # Check that resolved eps_in limits the maximum filter boost to exactly 6 dB
+    _, F_inv_lin, _, _ = engine._prepare_buffers_for_length(N)
+    max_boost = np.max(np.abs(F_inv_lin))
+    max_boost_db = 20 * np.log10(max_boost)
+    # The actual boost should be very close to the target of 6.0 dB
+    assert abs(max_boost_db - 6.0) < 0.1
+
+
+def test_clipping_and_instability_detection(temp_wav_files, dummy_model_data):
+    input_path, output_path, sr = temp_wav_files
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # 1. Test compensate statistics with intentional clipping
+    t = np.arange(1024) / 48000.0
+    u_large = 2.0 * np.sin(2 * np.pi * 1000.0 * t)  # Amp = 2.0 > clip_limit = 1.5
+
+    stats_clip = {}
+    _ = engine.compensate(u_large, iterative=True, iters=3, clip_limit=1.5, stats=stats_clip)
+    assert stats_clip["clipping_count"] > 0
+    assert not stats_clip["instability_detected"]
+
+    # 2. Test compensate instability detection (force huge signal or NaN to trigger runaway)
+    u_huge = 100.0 * np.sin(2 * np.pi * 1000.0 * t)
+    stats_instability = {}
+    _ = engine.compensate(u_huge, iterative=True, iters=3, clip_limit=1.5, stats=stats_instability)
+    assert stats_instability["instability_detected"]
+
+    # 3. Test OfflineFFCompWorker output message containing stats
+    worker = OfflineFFCompWorker(input_path, output_path, engine, iterative=True, iters=3, clip_limit=0.5)
+
+    finished_spy = MagicMock()
+    worker.finished.connect(finished_spy)
+    worker.run()
+
+    finished_spy.assert_called_once()
+    success, msg = finished_spy.call_args[0]
+    assert success
+    # Check that message contains statistical labels
+    assert "Clips" in msg or "クリップ数" in msg or "Stats" in msg or "統計" in msg
+    assert "Oscillation" in msg or "発振" in msg
+
+
+def test_abort_on_instability(temp_wav_files, dummy_model_data):
+    input_path, output_path, sr = temp_wav_files
+
+    # We do not overwrite the input file. The default input has peak amplitude 1.0.
+    # By setting clip_limit=0.05, the signal peak (1.0) exceeds 10 * clip_limit (0.5),
+    # which triggers the instability detection logic.
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # When abort_on_instability=True, it should fail (success=False) with an instability error message.
+    worker = OfflineFFCompWorker(
+        input_path, output_path, engine, iterative=True, iters=3, clip_limit=0.05, abort_on_instability=True
+    )
+
+    finished_spy = MagicMock()
+    worker.finished.connect(finished_spy)
+    worker.run()
+
+    finished_spy.assert_called_once()
+    success, msg = finished_spy.call_args[0]
+    assert not success
+    assert "Instability/runaway detected" in msg or "フィルターの暴走" in msg
+
+    # When abort_on_instability=False, it should complete successfully (success=True) even with instability warnings.
+    worker_no_abort = OfflineFFCompWorker(
+        input_path, output_path, engine, iterative=True, iters=3, clip_limit=0.05, abort_on_instability=False
+    )
+
+    finished_spy_no_abort = MagicMock()
+    worker_no_abort.finished.connect(finished_spy_no_abort)
+    worker_no_abort.run()
+
+    finished_spy_no_abort.assert_called_once()
+    success_na, msg_na = finished_spy_no_abort.call_args[0]
+    assert success_na
+
+
+def test_out_of_band_modes(dummy_model_data):
+    # Setup model with flat response (identity)
+    N = 1024
+    h1 = np.zeros(N)
+    h1[0] = 1.0
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+
+    # Out of band (low): 5 Hz (below 10Hz roll-off threshold)
+    # Out of band (high): 15000 Hz
+
+    # 1. Test "cut" mode (default)
+    engine_cut = LICFFEngine(dummy_model_data, f_min=1000.0, f_max=10000.0, out_of_band_mode="cut")
+    _, F_inv_lin_cut, F_inv_nl_cut, bp_filter = engine_cut._prepare_buffers_for_length(N)
+
+    freqs = np.fft.rfftfreq(N, d=1.0 / 48000)
+    idx_low = np.argmin(np.abs(freqs - 5.0))
+    idx_mid = np.argmin(np.abs(freqs - 3000.0))
+    idx_high = np.argmin(np.abs(freqs - 15000.0))
+
+    # In cut mode, out-of-band should be 0
+    assert np.abs(F_inv_lin_cut[idx_low]) < 1e-5
+    assert np.abs(F_inv_lin_cut[idx_high]) < 1e-5
+    # In-band should be normal inverse filter
+    assert np.abs(F_inv_lin_cut[idx_mid]) > 0.5
+    # Nonlinear filter should be the same
+    assert np.allclose(F_inv_lin_cut, F_inv_nl_cut)
+
+    # 2. Test "bypass_pure" mode
+    engine_pure = LICFFEngine(dummy_model_data, f_min=1000.0, f_max=10000.0, out_of_band_mode="bypass_pure")
+    _, F_inv_lin_pure, F_inv_nl_pure, _ = engine_pure._prepare_buffers_for_length(N)
+
+    # Out-of-band in pure bypass should be 1.0 (real)
+    assert np.allclose(F_inv_lin_pure[idx_low], 1.0)
+    assert np.allclose(F_inv_lin_pure[idx_high], 1.0)
+    # In-band should still be inverse filter
+    assert np.abs(F_inv_lin_pure[idx_mid]) > 0.5
+    # Nonlinear filter must still be cut
+    assert np.abs(F_inv_nl_pure[idx_low]) < 1e-5
+
+    # 3. Test "bypass_aligned" mode with a delayed model
+    h1_delay = np.zeros(N)
+    h1_delay[10] = 1.0
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1_delay.tolist()
+
+    engine_aligned = LICFFEngine(dummy_model_data, f_min=1000.0, f_max=10000.0, out_of_band_mode="bypass_aligned")
+    _, F_inv_lin_aligned, F_inv_nl_aligned, _ = engine_aligned._prepare_buffers_for_length(N)
+
+    # For out-of-band: phase of F_inv_lin_aligned should align with H1 conjugate.
+    assert np.abs(np.abs(F_inv_lin_aligned[idx_low]) - 1.0) < 1e-5
+
+    # Phase comparison: F_inv_lin_aligned * H1 should have phase 0 (be real and positive)
+    Q1_fft = np.fft.rfft(h1_delay)
+    response_low = F_inv_lin_aligned[idx_low] * Q1_fft[idx_low]
+    assert np.abs(np.angle(response_low)) < 1e-5
+    assert np.real(response_low) > 0.9
+
+    # Nonlinear filter must still be cut
+    assert np.abs(F_inv_nl_aligned[idx_low]) < 1e-5
+
+
+
+
+
