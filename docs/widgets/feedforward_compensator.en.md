@@ -57,6 +57,10 @@ To compensate for distortion caused by nonlinear components, the following itera
 * **Iterations:** Configures the number of iterations for distortion compensation (1 to 20). Typically, 3 to 5 iterations are sufficient for convergence.
 * **Clip Limit:** Configures the maximum amplitude limit (0.5 to 2.0) of the compensated signal. The compensated waveform is clipped at this value to prevent digital clipping or overshoot caused by steep inverse filtering.
 * **Active Band Fmin (Hz) / Fmax (Hz):** Sets the lower (Fmin) and upper (Fmax) frequency limits to enable the inverse compensation filter. Protective roll-offs are automatically applied outside this range.
+* **Out-of-band Mode:** Defines how frequencies outside the active band are handled (Cut, Bypass (Pure), Bypass (Aligned)).
+* **Regularization Mode:** Configures how the $\epsilon_f$ parameter is determined (Auto (Broadband / Music), Auto (Pure Tones), Manual (Max Boost), Manual (Tikhonov)).
+* **Reg. Value:** Setting for the manual regularization modes.
+* **Abort on Instability:** A checkbox to halt offline processing if filter runaway or oscillation is detected.
 
 ---
 

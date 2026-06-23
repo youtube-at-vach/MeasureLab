@@ -57,6 +57,10 @@ F_{inv}(f) = \frac{Q_1^*(f)}{|Q_1(f)|^2 + \epsilon_f} \cdot bp\_filter(f)
 * **Iterations:** 歪み補正の反復回数（1〜20回）を設定します。通常は3〜5回で十分に収束します。
 * **Clip Limit:** 補正信号の最大振幅制限（0.5〜2.0）を設定します。急激な逆特性の適用によるオーバーシュートやデジタルクリッピングを防ぐため、補正後の波形は指定値でクリップされます。
 * **Active Band Fmin (Hz) / Fmax (Hz):** 補正逆フィルターを有効にする周波数の下限（Fmin）と上限（Fmax）を設定します。帯域外は自動的に保護ロールオフが適用されます。
+* **Out-of-band Mode (帯域外モード):** アクティブ帯域外の周波数の処理方法を定義します（Cut, Bypass (Pure), Bypass (Aligned)）。
+* **Regularization Mode (正則化モード):** $\epsilon_f$ パラメータの決定方法を設定します（Auto (Broadband / Music), Auto (Pure Tones), Manual (Max Boost), Manual (Tikhonov)）。
+* **Reg. Value (正則化値):** マニュアルモード時の設定値です。
+* **Abort on Instability (発振時に中止):** オフライン処理中にフィルターの暴走や発振が検出された場合に処理を中止する設定です。
 
 ---
 
