@@ -163,6 +163,7 @@ def process_amplitude_responses(
     M_pinv=None,
     amplitudes=None,
     calibrate_systematic=True,
+    is_cal_recursive=False,
 ):
     """
     Extracts isolated Hammerstein kernels (h_1 to h_5) from deconvolved raw measured and reference
@@ -218,6 +219,7 @@ def process_amplitude_responses(
             M_pinv=M_pinv,
             amplitudes=amplitudes,
             calibrate_systematic=False,
+            is_cal_recursive=True,
         )
 
         systematic_cal_factors = {}
@@ -465,8 +467,17 @@ def process_amplitude_responses(
             phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
             H_xfer_all = H_xfer_all * phase_shift_gate
 
+            # Apply LPF only for time domain kernel (and only for top-level call to prevent recursion issues)
+            H_xfer_lpf = H_xfer_all.copy()
+            if p >= 1 and not is_cal_recursive:
+                f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    H_lpf = 1.0 / np.sqrt(1.0 + (freqs / f_cut) ** 16)
+                    H_lpf = np.nan_to_num(H_lpf, nan=0.0, posinf=0.0, neginf=0.0)
+                H_xfer_lpf = H_xfer_lpf * H_lpf
+
             # Keep systematic calibration isolated from h_kernels_calibrated (to preserve physical delays in time-domain)
-            h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
+            h_kernels_calibrated.append(fft_manager.irfft(H_xfer_lpf, n=N_kernel))
 
             valid_H = H_xfer_all[mask]
 
@@ -474,20 +485,47 @@ def process_amplitude_responses(
             if systematic_cal_factors is not None and h_key in systematic_cal_factors:
                 valid_H = valid_H * systematic_cal_factors[h_key]
 
+            # Apply LPF to frequency response (only for top-level call)
+            if p >= 1 and not is_cal_recursive:
+                valid_freqs = freqs[mask]
+                f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    valid_H_lpf = 1.0 / np.sqrt(1.0 + (valid_freqs / f_cut) ** 16)
+                    valid_H_lpf = np.nan_to_num(valid_H_lpf, nan=0.0, posinf=0.0, neginf=0.0)
+                valid_H = valid_H * valid_H_lpf
+
         else:
             # Single Channel Mode: Apply latency correction to all frequency bins with float precision
             delay_samples = latency_sec * sample_rate
             phase_correction_all = 2 * np.pi * freqs * (delay_samples / sample_rate)
             H_corr_all = H_meas_p * np.exp(1j * phase_correction_all)
 
+            # Apply LPF only for time domain kernel (and only for top-level call)
+            H_corr_lpf = H_corr_all.copy()
+            if p >= 1 and not is_cal_recursive:
+                f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    H_lpf = 1.0 / np.sqrt(1.0 + (freqs / f_cut) ** 16)
+                    H_lpf = np.nan_to_num(H_lpf, nan=0.0, posinf=0.0, neginf=0.0)
+                H_corr_lpf = H_corr_lpf * H_lpf
+
             # Keep systematic calibration isolated from h_kernels_calibrated (to preserve physical delays in time-domain)
-            h_kernels_calibrated.append(fft_manager.irfft(H_corr_all, n=N_kernel))
+            h_kernels_calibrated.append(fft_manager.irfft(H_corr_lpf, n=N_kernel))
 
             valid_H = H_corr_all[mask]
 
             # Apply systematic phase and gain calibration to the frequency response
             if systematic_cal_factors is not None and h_key in systematic_cal_factors:
                 valid_H = valid_H * systematic_cal_factors[h_key]
+
+            # Apply LPF to frequency response (only for top-level call)
+            if p >= 1 and not is_cal_recursive:
+                valid_freqs = freqs[mask]
+                f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    valid_H_lpf = 1.0 / np.sqrt(1.0 + (valid_freqs / f_cut) ** 16)
+                    valid_H_lpf = np.nan_to_num(valid_H_lpf, nan=0.0, posinf=0.0, neginf=0.0)
+                valid_H = valid_H * valid_H_lpf
 
         # Compute Gain (dB) and Phase (degrees)
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
