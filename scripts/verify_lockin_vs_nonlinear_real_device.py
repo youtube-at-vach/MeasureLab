@@ -26,7 +26,15 @@ def main():
         action="store_true",
         help="Run in virtual simulation loop mode instead of real device mode"
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--fast",
+        action="store_true",
+        help="Run fast virtual simulation mode without audio device delays or sleeps"
+    )
+    cli_args = parser.parse_args()
+
+    if cli_args.fast:
+        cli_args.virtual = True
 
     # Initialize Qt Application
     QApplication(sys.argv)
@@ -34,7 +42,7 @@ def main():
     # 1. Initialize Audio Engine
     engine = AudioEngine()
 
-    if args.virtual:
+    if cli_args.virtual:
         print("[+] Running in Virtual Simulation Mode")
         engine.set_offline_mode(True)
         engine.set_loopback(True)
@@ -75,7 +83,7 @@ def main():
     nonlin_analyzer.amplitude_db = -6.0
     nonlin_analyzer.num_amplitudes = 5
     nonlin_analyzer.averages = 5
-    nonlin_analyzer.sweep_duration = 30.0
+    nonlin_analyzer.sweep_duration = 5
     nonlin_analyzer.start_freq = 20.0
     nonlin_analyzer.end_freq = 20000.0
     nonlin_analyzer.input_mode = "XFER_REV"  # Ref = Ch2 (R), Meas = Ch1 (L)
@@ -86,7 +94,15 @@ def main():
     # Wrap run_play_rec to log raw levels
     orig_run_play_rec = nonlin_analyzer.run_play_rec
     def debug_run_play_rec(output_data, input_channels=2, *args, **kwargs):
-        rec_data = orig_run_play_rec(output_data, input_channels, *args, **kwargs)
+        if cli_args.fast:
+            # In fast mode, bypass time-consuming play/rec and return empty buffer immediately.
+            # The offline simulation loopback emulation logic below will fill this with simulated signal.
+            rec_data = np.zeros((len(output_data), input_channels), dtype=np.float32)
+            progress_callback = kwargs.get("progress_callback")
+            if progress_callback:
+                progress_callback(100)
+        else:
+            rec_data = orig_run_play_rec(output_data, input_channels, *args, **kwargs)
         meas_rms = np.sqrt(np.mean(rec_data[:, 0]**2))
         ref_rms = np.sqrt(np.mean(rec_data[:, 1]**2))
         meas_db = 20 * np.log10(meas_rms * np.sqrt(2) + 1e-12)
@@ -151,7 +167,7 @@ def main():
                 # Unwrap phase to handle phase wrapping smoothly during linear interpolation
                 phases_rad = np.unwrap(np.radians(phases[h_key]))
                 phase_rad_interp = np.interp(f_n, freqs, phases_rad)
-                
+
                 mag_linear = 10 ** (mag_db / 20.0)
                 H_interp[n][p] = mag_linear * np.exp(1j * phase_rad_interp)
 
@@ -244,39 +260,58 @@ def main():
         lockin.gen_frequency = f0
         lockin.gen_amplitude = A_in
 
-        lockin.start_analysis()
+        if cli_args.fast:
+            # Direct buffer synthesis in fast mode
+            print("    [Fast Mode] Direct buffer synthesis...")
+            fs = engine.sample_rate
+            N = lockin.buffer_size
+            t = np.arange(N) / fs
+            ref_sig = A_in * np.sin(2 * np.pi * f0 * t)
 
-        # Stabilize transient buffer
-        timeout = 12.0
-        start_time = time.time()
-        while True:
             with lockin.lock:
-                filled = lockin.buffer_filled_samples
-            print(f"    Stabilizing transient buffer: {filled}/{lockin.buffer_size} samples", end="\r")
-            if filled >= lockin.buffer_size:
-                break
-            if time.time() - start_time > timeout:
-                print("\n    [-] Timeout during stabilization")
-                break
-            time.sleep(0.2)
+                lockin.input_data = np.zeros((N, 2))
+                # Note: patched_get_ordered will apply typical nonlinear distortion on the fly,
+                # but it expects the clean generator signal in both input channels first.
+                lockin.input_data[:, lockin.signal_channel] = ref_sig
+                lockin.input_data[:, lockin.ref_channel] = ref_sig
+                lockin.input_buffer_pos = 0
+                lockin.buffer_filled_samples = N
+                lockin.is_running = True
+            print("    [Fast Mode] Processing Lock-in DSP directly...")
+        else:
+            lockin.start_analysis()
 
-        time.sleep(1.0)
-        print("\n    [+] Stabilization complete. Discarding transient data and starting clean capture...")
-        lockin.clear_buffer()
+            # Stabilize transient buffer
+            timeout = 12.0
+            start_time = time.time()
+            while True:
+                with lockin.lock:
+                    filled = lockin.buffer_filled_samples
+                print(f"    Stabilizing transient buffer: {filled}/{lockin.buffer_size} samples", end="\r")
+                if filled >= lockin.buffer_size:
+                    break
+                if time.time() - start_time > timeout:
+                    print("\n    [-] Timeout during stabilization")
+                    break
+                time.sleep(0.2)
 
-        start_time = time.time()
-        while True:
-            with lockin.lock:
-                filled = lockin.buffer_filled_samples
-            print(f"    Steady-state buffer progress: {filled}/{lockin.buffer_size} samples", end="\r")
-            if filled >= lockin.buffer_size:
-                break
-            if time.time() - start_time > timeout:
-                print("\n    [-] Timeout waiting for steady-state buffer to fill")
-                break
-            time.sleep(0.2)
+            time.sleep(1.0)
+            print("\n    [+] Stabilization complete. Discarding transient data and starting clean capture...")
+            lockin.clear_buffer()
 
-        print("\n    [+] Buffer filled. Processing Lock-in DSP...")
+            start_time = time.time()
+            while True:
+                with lockin.lock:
+                    filled = lockin.buffer_filled_samples
+                print(f"    Steady-state buffer progress: {filled}/{lockin.buffer_size} samples", end="\r")
+                if filled >= lockin.buffer_size:
+                    break
+                if time.time() - start_time > timeout:
+                    print("\n    [-] Timeout waiting for steady-state buffer to fill")
+                    break
+                time.sleep(0.2)
+
+            print("\n    [+] Buffer filled. Processing Lock-in DSP...")
         with lockin.lock:
             data_copy = lockin.input_data.copy()
         raw_sig_rms = np.sqrt(np.mean(data_copy[:, lockin.signal_channel]**2))
