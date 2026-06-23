@@ -29,7 +29,7 @@ Adjust the "strength" and "detail" of the correction filter based on the loaded 
 
 If the speaker cannot output certain frequency bands, the inverse filter will try to raise the gain infinitely to flatten it, causing excessive noise amplification. To prevent this, **Max Gain** limits the maximum correction value (e.g., 10dB) to avoid noise generation from extreme amplification.
 
-### Audio Processing
+## Audio Processing
 
 * **Input**: Select the audio file (WAV format) you wish to process.
 * **Process & Save**: Saves the audio file with the filter applied.
