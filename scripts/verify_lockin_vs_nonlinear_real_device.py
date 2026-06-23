@@ -174,7 +174,14 @@ def main():
                 phases_rad = np.unwrap(np.radians(phases[h_key]))
                 phase_rad_interp = np.interp(f_n, freqs, phases_rad)
 
-                mag_linear = 10 ** (mag_db / 20.0)
+                # Apply Inverse LPF Correction to cancel LPF attenuation applied in SSS core
+                f_cut = min(20000.0, 1.15 * engine.sample_rate / (2 * p))
+                lpf_gain = 1.0
+                if p > 1:  # LPF is applied for 2nd harmonic and above
+                    lpf_gain = 1.0 / np.sqrt(1.0 + (f_n / f_cut) ** 16)
+                
+                mag_db_corrected = mag_db - 20 * np.log10(lpf_gain + 1e-12)
+                mag_linear = 10 ** (mag_db_corrected / 20.0)
                 H_interp[n][p] = mag_linear * np.exp(1j * phase_rad_interp)
 
         # Compute Y prediction
