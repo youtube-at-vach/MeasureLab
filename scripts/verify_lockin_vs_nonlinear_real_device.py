@@ -61,7 +61,7 @@ def main():
         engine.set_loopback(False)
         engine.offline_mode = False
 
-    num_runs = 5
+    num_runs = 1
     f0 = 1000.0
     A_in = 10 ** (-6.0 / 20.0)  # -6 dBFS
     nyquist = engine.sample_rate / 2.0
@@ -74,8 +74,8 @@ def main():
     nonlin_analyzer = NonlinearAnalyzer(engine)
     nonlin_analyzer.amplitude_db = -6.0
     nonlin_analyzer.num_amplitudes = 5
-    nonlin_analyzer.averages = 3
-    nonlin_analyzer.sweep_duration = 5.0
+    nonlin_analyzer.averages = 1
+    nonlin_analyzer.sweep_duration = 30.0
     nonlin_analyzer.start_freq = 20.0
     nonlin_analyzer.end_freq = 20000.0
     nonlin_analyzer.input_mode = "XFER_REV"  # Ref = Ch2 (R), Meas = Ch1 (L)
@@ -136,14 +136,7 @@ def main():
         mags = sweep_results['mags']
         phases = sweep_results['phases']
 
-        H_dict = {}
-        for p in range(1, 6):
-            h_key = f"h{p}"
-            mag_linear = 10 ** (mags[h_key] / 20.0)
-            phase_rad = np.radians(phases[h_key])
-            H_dict[p] = mag_linear * np.exp(1j * phase_rad)
-
-        # Interpolate H for 1kHz harmonics
+        # Interpolate H for 1kHz harmonics in polar coordinates to avoid magnitude attenuation during interpolation
         H_interp = {}
         for n in range(1, 6):
             f_n = n * f0
@@ -153,9 +146,14 @@ def main():
                     H_interp[n][p] = 0.0 + 0.0j
                 continue
             for p in range(1, 6):
-                real_val = np.interp(f_n, freqs, np.real(H_dict[p]))
-                imag_val = np.interp(f_n, freqs, np.imag(H_dict[p]))
-                H_interp[n][p] = real_val + 1j * imag_val
+                h_key = f"h{p}"
+                mag_db = np.interp(f_n, freqs, mags[h_key])
+                # Unwrap phase to handle phase wrapping smoothly during linear interpolation
+                phases_rad = np.unwrap(np.radians(phases[h_key]))
+                phase_rad_interp = np.interp(f_n, freqs, phases_rad)
+                
+                mag_linear = 10 ** (mag_db / 20.0)
+                H_interp[n][p] = mag_linear * np.exp(1j * phase_rad_interp)
 
         # Compute Y prediction
         Y = {}
