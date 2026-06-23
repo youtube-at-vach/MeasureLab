@@ -219,7 +219,8 @@ def test_nonlinear_analyzer_cubic():
 
     # h3 should be the dominant distortion component
     # y = x + 0.15 * x^3. Power series kernel h3 is 0.15 -> 20 log10(0.15) = -16.48 dB.
-    h3_avg = np.mean(mags["h3"][assert_mask])
+    h3_mask = (freqs >= 200.0) & (freqs <= 7000.0)
+    h3_avg = np.mean(mags["h3"][h3_mask])
     assert -19.5 < h3_avg < -13.5, f"h3 level {h3_avg} dB deviates from expected (~-16.5 dB)"
 
     # h2, h4, h5 should be suppressed (<-28 dB)
@@ -328,8 +329,17 @@ def test_nonlinear_analyzer_comprehensive():
     )
 
     # Higher orders should match expected coefficients within acceptable tolerances
+    # using the passband limit of each kernel (due to order-specific low-pass filtering)
+    passband_limits = {
+        "h1": 15000.0,
+        "h2": 11000.0,
+        "h3": 7000.0,
+        "h4": 4300.0,
+        "h5": 3600.0,
+    }
     for k in ["h2", "h3", "h4", "h5"]:
-        mag_avg = np.mean(res1[1][k][assert_mask])
+        k_mask = (freqs >= 200.0) & (freqs <= passband_limits[k])
+        mag_avg = np.mean(res1[1][k][k_mask])
         tolerance = 2.0
         assert np.abs(mag_avg - expected_mags[k]) < tolerance, (
             f"Power series kernel {k} deviated. Got {mag_avg:.2f} dB, expected {expected_mags[k]:.2f} dB"
@@ -688,8 +698,17 @@ def test_nonlinear_analyzer_descending_sweep():
     )
 
     # Higher orders should match expected coefficients within acceptable tolerances
+    # using the passband limit of each kernel (due to order-specific low-pass filtering)
+    passband_limits = {
+        "h1": 15000.0,
+        "h2": 11000.0,
+        "h3": 7000.0,
+        "h4": 4300.0,
+        "h5": 3600.0,
+    }
     for k in ["h2", "h3", "h4", "h5"]:
-        mag_avg = np.mean(mags[k][assert_mask])
+        k_mask = (freqs >= 200.0) & (freqs <= passband_limits[k])
+        mag_avg = np.mean(mags[k][k_mask])
         tolerance = 2.0
         assert np.abs(mag_avg - expected_mags[k]) < tolerance, (
             f"Power series kernel {k} deviated. Got {mag_avg:.2f} dB, expected {expected_mags[k]:.2f} dB"

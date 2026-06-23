@@ -69,6 +69,45 @@ def apply_fractional_delay(signal, delay_samples):
     return fft_manager.irfft(S_shifted, n=N)
 
 
+def sinc_resample(signal, drift_factor, win_size=8):
+    """
+    Resamples a signal to compensate for clock drift using chunked windowed sinc interpolation.
+    drift_factor: float (factor > 1 means recorded signal is longer/slower than output)
+    """
+    N = len(signal)
+    t_target = np.arange(N) / drift_factor
+
+    # Process in chunks to limit memory footprint
+    chunk_size = 250000
+    resampled = np.zeros_like(signal)
+
+    shifts = np.arange(-win_size, win_size)
+    kaiser_beta = 5.0
+
+    for start in range(0, N, chunk_size):
+        end = min(N, start + chunk_size)
+        t_chunk = t_target[start:end]
+
+        idx_nearest = np.round(t_chunk).astype(np.int32)
+        idx_nearest = np.clip(idx_nearest, win_size, N - 1 - win_size)
+
+        indices = idx_nearest[np.newaxis, :] + shifts[:, np.newaxis]
+        x_subset = signal[indices]
+
+        t_diff = t_chunk[np.newaxis, :] - indices
+
+        # Kaiser-windowed sinc weights
+        weights = (
+            np.sinc(t_diff)
+            * np.i0(kaiser_beta * np.sqrt(np.maximum(0.0, 1.0 - (t_diff / win_size) ** 2)))
+            / np.i0(kaiser_beta)
+        )
+
+        resampled[start:end] = np.sum(x_subset * weights, axis=0)
+
+    return resampled
+
+
 def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     """
     Generates Synchronized Sine Sweep (SSS) signal at a flat reference amplitude (1.0)
@@ -91,8 +130,8 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     T = sweep_duration
     L = np.log(end_margin / start_margin)
 
-    # SSS Phase Design
-    phase = (w1 * T / L) * (np.exp(t * L / T) - 1)
+    # SSS Phase Design (Novak et al. 2015, without -1 term for exact phase sync)
+    phase = (w1 * T / L) * np.exp(t * L / T)
     sss_signal = 1.0 * np.sin(phase)
 
     # Tukey window to minimize transient clicks at start and end
