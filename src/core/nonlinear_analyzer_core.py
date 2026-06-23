@@ -76,9 +76,13 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     t = np.linspace(0, sweep_duration, num_samples, endpoint=False)
 
     # Add frequency guard bands (margins) to keep the target band flat
-    start_margin = max(2.0, start_freq / 1.3)
     nyquist = sample_rate / 2.0
-    end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    if start_freq <= end_freq:
+        start_margin = max(2.0, start_freq / 1.3)
+        end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    else:
+        start_margin = min(nyquist * 0.95, start_freq * 1.15)
+        end_margin = max(2.0, end_freq / 1.3)
 
     w1 = 2 * np.pi * start_margin
     T = sweep_duration
@@ -261,11 +265,15 @@ def process_amplitude_responses(
 
     # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0
-    end_margin = min(nyquist * 0.95, end_freq * 1.15)
-    start_margin = max(2.0, start_freq / 1.3)
+    if start_freq <= end_freq:
+        start_margin = max(2.0, start_freq / 1.3)
+        end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    else:
+        start_margin = min(nyquist * 0.95, start_freq * 1.15)
+        end_margin = max(2.0, end_freq / 1.3)
     L = sweep_duration / np.log(end_margin / start_margin)
 
-    # 3. Define Gating window length (e.g. 20ms total: 7ms pre, 13ms post to prevent tail truncation while keeping noise low)
+    # 3. Define Gating window length
     gate_pre = int(0.007 * sample_rate)
     gate_post = int(0.013 * sample_rate)
     N_kernel = gate_pre + gate_post
@@ -275,13 +283,21 @@ def process_amplitude_responses(
         N = len(g_k)
         G = fft_manager.rfft(g_k)
 
-        # 1. Sweep-specific Phase Correction
-        if k == 2:
-            G = G * 1j
-        elif k == 3:
-            G = -G
-        elif k == 4:
-            G = G * (-1j)
+        # 1. Sweep-specific Phase Correction (conjugated for L < 0)
+        if L < 0:
+            if k == 2:
+                G = G * (-1j)
+            elif k == 3:
+                G = -G
+            elif k == 4:
+                G = G * 1j
+        else:
+            if k == 2:
+                G = G * 1j
+            elif k == 3:
+                G = -G
+            elif k == 4:
+                G = G * (-1j)
 
         # 2. Fractional Sample Delay Correction (frequency domain shift)
         if np.abs(frac_delay) > 1e-9:
@@ -292,9 +308,8 @@ def process_amplitude_responses(
 
         return fft_manager.irfft(G, n=N)
 
-    # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude
+    # 5. Extraction of harmonic IRs (g_k) for each excitation amplitude (theoretical gating)
     N_total = len(ir_max_meas)
-    # Pre-allocate arrays instead of appending to lists to avoid memory reallocation overhead
     g_meas_all = np.empty((num_amplitudes, P, N_kernel))
     g_ref_all = np.empty((num_amplitudes, P, N_kernel))
 
@@ -320,12 +335,8 @@ def process_amplitude_responses(
 
             # Apply Tukey window AFTER fractional delay correction
             win = windows.tukey(N_kernel, alpha=0.1)
-            g_k_meas_corr *= win
-            g_k_ref_corr *= win
-
-            # Store in pre-allocated array (k is 1-indexed, so we use k-1)
-            g_meas_all[j, k - 1] = g_k_meas_corr
-            g_ref_all[j, k - 1] = g_k_ref_corr
+            g_meas_all[j, k - 1] = g_k_meas_corr * win
+            g_ref_all[j, k - 1] = g_k_ref_corr * win
 
     # 6. Apply Chebyshev transform in the FREQUENCY domain
     R_array = np.array(amplitudes)
@@ -334,21 +345,16 @@ def process_amplitude_responses(
     R4 = R_array**4
     R5 = R_array**5
 
-    # First, FFT all g_meas and g_ref to the frequency domain.
-    # g_meas_all[j, k-1] has shape (N_kernel,)
-    # We compute G_meas[k] of shape (num_amplitudes, N_fft_half)
+    # First, FFT all g_meas and g_ref to the frequency domain
     N_fft_half = N_kernel // 2 + 1
 
     G_meas_k = {}
     G_ref_k = {}
     for k in range(1, P + 1):
-        # Pre-allocate for the num_amplitudes FFT results
         g_m_k_fft = np.empty((num_amplitudes, N_fft_half), dtype=complex)
         g_r_k_fft = np.empty((num_amplitudes, N_fft_half), dtype=complex)
 
-        # Calculate FFTs directly into the pre-allocated array
         for j in range(num_amplitudes):
-            # We assign to the slice instead of passing out as a kwarg, avoiding potential backend compatibility issues
             g_m_k_fft[j] = fft_manager.rfft(g_meas_all[j, k - 1])
             g_r_k_fft[j] = fft_manager.rfft(g_ref_all[j, k - 1])
 
@@ -407,7 +413,7 @@ def process_amplitude_responses(
 
     # Reconstruct Time-Domain Kernels by IFFT after calibration
     freqs = fft_manager.rfftfreq(N_kernel, d=1 / sample_rate)
-    mask = (freqs >= start_freq) & (freqs <= end_freq)
+    mask = (freqs >= min(start_freq, end_freq)) & (freqs <= max(start_freq, end_freq))
     valid_freqs = freqs[mask]
 
     magnitudes_db_dict = {}
@@ -436,46 +442,31 @@ def process_amplitude_responses(
             phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples / sample_rate))
             H_xfer_all = H_xfer_all * phase_shift_gate
 
-            # Apply systematic phase calibration to the frequency response
-            if phases_cal_dict is not None and h_key in phases_cal_dict:
-                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
-                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
-                # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
-                phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
-                H_xfer_all = H_xfer_all * np.exp(-1j * phase_cal_rad)
+            # Keep systematic calibration isolated from h_kernels_calibrated (to preserve physical delays in time-domain)
+            h_kernels_calibrated.append(fft_manager.irfft(H_xfer_all, n=N_kernel))
 
             valid_H = H_xfer_all[mask]
 
-            H_time = H_xfer_all
-            if phases_cal_dict is not None:
-                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
-                H_time = H_time * phase_shift_gate
+            # Apply systematic phase calibration to the frequency response (plot data)
+            if phases_cal_dict is not None and h_key in phases_cal_dict:
+                phase_cal_rad = np.radians(phases_cal_dict[h_key])
+                valid_H = valid_H * np.exp(-1j * phase_cal_rad)
 
-            h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
         else:
             # Single Channel Mode: Apply latency correction to all frequency bins with float precision
             delay_samples = latency_sec * sample_rate
             phase_correction_all = 2 * np.pi * freqs * (delay_samples / sample_rate)
             H_corr_all = H_meas_p * np.exp(1j * phase_correction_all)
 
-            # Apply systematic phase calibration to the frequency response
-            if phases_cal_dict is not None and h_key in phases_cal_dict:
-                # Initialize with the pure gate_pre delay phase slope for all frequencies (delay is negative phase)
-                phase_cal_rad = -2 * np.pi * freqs * (gate_pre / sample_rate)
-                # Overwrite passband with the measured systematic phase (which includes the gate_pre delay)
-                phase_cal_rad[mask] = np.radians(phases_cal_dict[h_key])
-                H_corr_all = H_corr_all * np.exp(-1j * phase_cal_rad)
+            # Keep systematic calibration isolated from h_kernels_calibrated (to preserve physical delays in time-domain)
+            h_kernels_calibrated.append(fft_manager.irfft(H_corr_all, n=N_kernel))
 
             valid_H = H_corr_all[mask]
 
-            H_time = H_corr_all
-            if phases_cal_dict is not None:
-                # Re-apply phase_shift_gate to restore peak to gate_pre (since systematic phase calibration canceled it)
-                delay_samples_gate = gate_pre
-                phase_shift_gate = np.exp(-1j * 2 * np.pi * freqs * (delay_samples_gate / sample_rate))
-                H_time = H_time * phase_shift_gate
-
-            h_kernels_calibrated.append(fft_manager.irfft(H_time, n=N_kernel))
+            # Apply systematic phase calibration to the frequency response (plot data)
+            if phases_cal_dict is not None and h_key in phases_cal_dict:
+                phase_cal_rad = np.radians(phases_cal_dict[h_key])
+                valid_H = valid_H * np.exp(-1j * phase_cal_rad)
 
         # Compute Gain (dB) and Phase (degrees)
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
@@ -501,7 +492,6 @@ def process_amplitude_responses(
     t_indices = np.arange(0, N_kernel)
     time_ms = (t_indices - gate_pre) / sample_rate * 1000.0
 
-    # Return calibrated, delay-compensated kernels (essential for preventing time-domain wrap-around artifacts)
     separated_kernels_data = h_kernels_calibrated
 
     return (

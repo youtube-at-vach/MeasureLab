@@ -601,3 +601,101 @@ def test_nonlinear_analyzer_module_measurement(qtbot):
     cached_model = get_active_model()
     assert cached_model is not None
     assert cached_model["metadata"]["noise_floor_dbfs"] == analyzer.measured_noise_floor_dbfs
+
+
+def test_nonlinear_analyzer_descending_sweep():
+    """
+    Verifies that descending sweeps (high-to-low) correctly isolate Hammerstein kernels
+    and recover expected polynomial coefficients and align peaks to t=0.
+    """
+    sample_rate = 44100
+    sweep_duration = 2.0
+    start_freq = 20000.0
+    end_freq = 20.0
+    P = 5
+
+    # 1. Generate descending sweep
+    sss, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+
+    # Expected magnitudes (dB) based on simulated power series coefficients:
+    # a1 = 1.0   -> 0.0 dB
+    # a2 = 0.1   -> -20.0 dB
+    # a3 = 0.08  -> -21.94 dB
+    # a4 = 0.04  -> -27.96 dB
+    # a5 = 0.02  -> -33.98 dB
+    expected_mags = {
+        "h1": 0.0,
+        "h2": -20.0,
+        "h3": 20 * np.log10(0.08),
+        "h4": 20 * np.log10(0.04),
+        "h5": 20 * np.log10(0.02),
+    }
+
+    num_amplitudes = 5
+    max_amp = 0.5
+    amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp
+
+    responses_meas = []
+    responses_ref = []
+
+    for amp in amplitudes:
+        x_sig = amp * sss
+        y_sig = (
+            1.0 * x_sig
+            + 0.1 * (x_sig**2)
+            + 0.08 * (x_sig**3)
+            + 0.04 * (x_sig**4)
+            + 0.02 * (x_sig**5)
+        )
+
+        padding = np.zeros(int(0.2 * sample_rate))
+        x_sig_padded = np.concatenate([x_sig, padding])
+        y_sig_padded = np.concatenate([y_sig, padding])
+
+        ir_ref = deconvolve_signal(x_sig_padded, sss)
+        ir_meas = deconvolve_signal(y_sig_padded, sss)
+
+        responses_ref.append(ir_ref)
+        responses_meas.append(ir_meas)
+
+    freqs, mags, phases, time_ms, separated_kernels_data = process_amplitude_responses(
+        responses_meas,
+        responses_ref,
+        sample_rate,
+        start_freq,
+        end_freq,
+        input_mode="XFER",
+        latency_sec=0.0,
+        sweep_duration=sweep_duration,
+        P=P,
+        amplitudes=amplitudes,
+    )
+
+    # Filter to stable frequency region (200 Hz to 15 kHz) for assertions
+    assert_mask = (freqs >= 200.0) & (freqs <= 15000.0)
+
+    # 1. Alignment validation: All separated kernels should peak at t=0
+    for p in range(P):
+        kernel = separated_kernels_data[p]
+        peak_idx = np.argmax(np.abs(kernel))
+        peak_time = time_ms[peak_idx]
+        assert np.abs(peak_time) < 0.5, f"Kernel h{p+1} peak is misaligned! Peak at {peak_time:.2f} ms"
+
+    # 2. Coefficient Recovery
+    h1_mag_avg = np.mean(mags["h1"][assert_mask])
+    assert np.abs(h1_mag_avg - expected_mags["h1"]) < 1.0, (
+        f"h1 leakage removal failed. Level: {h1_mag_avg:.2f} dB, expected: {expected_mags['h1']:.2f} dB"
+    )
+
+    # Higher orders should match expected coefficients within acceptable tolerances
+    for k in ["h2", "h3", "h4", "h5"]:
+        mag_avg = np.mean(mags[k][assert_mask])
+        tolerance = 2.0
+        assert np.abs(mag_avg - expected_mags[k]) < tolerance, (
+            f"Power series kernel {k} deviated. Got {mag_avg:.2f} dB, expected {expected_mags[k]:.2f} dB"
+        )
+
+    # 3. Phase sanity: Verify that phase response for h1 is stable and doesn't rotate abnormally (linear phase close to 0)
+    h1_phase = phases["h1"][assert_mask]
+    assert np.all(np.abs(h1_phase) < 10.0), f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
+
