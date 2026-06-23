@@ -177,8 +177,8 @@ def process_amplitude_responses(
     if amplitudes is None:
         amplitudes = np.linspace(0.2, 1.0, num_amplitudes)
 
-    # 0. Systematic Sweep Phase Calibration
-    phases_cal_dict = None
+    # 0. Systematic Sweep Calibration (Phase & Amplitude)
+    systematic_cal_factors = None
     if calibrate_systematic:
         # Generate baseline zero-delay responses using simulated polynomial system
         a_cal = {1: 1.0, 2: 0.1, 3: 0.08, 4: 0.04, 5: 0.02}
@@ -205,7 +205,7 @@ def process_amplitude_responses(
             responses_meas_cal.append(ir_meas)
 
         # Call recursively with calibrate_systematic=False
-        _, _, phases_cal_dict, _, _ = process_amplitude_responses(
+        _, mags_cal, phases_cal, _, _ = process_amplitude_responses(
             responses_meas_cal,
             responses_ref_cal,
             sample_rate,
@@ -219,6 +219,24 @@ def process_amplitude_responses(
             amplitudes=amplitudes,
             calibrate_systematic=False,
         )
+
+        systematic_cal_factors = {}
+        for p in range(1, P + 1):
+            h_key = f"h{p}"
+            if h_key in mags_cal:
+                # Reconstruct measured complex response
+                mag_meas = 10 ** (mags_cal[h_key] / 20.0)
+                phase_meas = np.radians(phases_cal[h_key])
+                H_meas_cal = mag_meas * np.exp(1j * phase_meas)
+
+                # Ideal response (pure real number matching the coefficients)
+                H_ideal = a_cal[p]
+
+                # Compensation factor
+                systematic_cal_factors[h_key] = H_ideal / (H_meas_cal + 1e-12)
+
+        if "ref_phase" in phases_cal:
+            systematic_cal_factors["ref_phase"] = phases_cal["ref_phase"]
 
     # 0.5. Align all amplitude steps to the baseline step (maximum amplitude) using sub-sample alignment
     aligned_ref = []
@@ -452,10 +470,9 @@ def process_amplitude_responses(
 
             valid_H = H_xfer_all[mask]
 
-            # Apply systematic phase calibration to the frequency response (plot data)
-            if phases_cal_dict is not None and h_key in phases_cal_dict:
-                phase_cal_rad = np.radians(phases_cal_dict[h_key])
-                valid_H = valid_H * np.exp(-1j * phase_cal_rad)
+            # Apply systematic phase and gain calibration to the frequency response
+            if systematic_cal_factors is not None and h_key in systematic_cal_factors:
+                valid_H = valid_H * systematic_cal_factors[h_key]
 
         else:
             # Single Channel Mode: Apply latency correction to all frequency bins with float precision
@@ -468,10 +485,9 @@ def process_amplitude_responses(
 
             valid_H = H_corr_all[mask]
 
-            # Apply systematic phase calibration to the frequency response (plot data)
-            if phases_cal_dict is not None and h_key in phases_cal_dict:
-                phase_cal_rad = np.radians(phases_cal_dict[h_key])
-                valid_H = valid_H * np.exp(-1j * phase_cal_rad)
+            # Apply systematic phase and gain calibration to the frequency response
+            if systematic_cal_factors is not None and h_key in systematic_cal_factors:
+                valid_H = valid_H * systematic_cal_factors[h_key]
 
         # Compute Gain (dB) and Phase (degrees)
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
@@ -487,8 +503,8 @@ def process_amplitude_responses(
     ref_phase_deg = np.degrees(ref_phase_rad)
     ref_phase_deg = (ref_phase_deg + 180) % 360 - 180
     ref_phase_deg_masked = ref_phase_deg[mask]
-    if phases_cal_dict is not None and "ref_phase" in phases_cal_dict:
-        ref_phase_deg_masked = ref_phase_deg_masked - phases_cal_dict["ref_phase"]
+    if systematic_cal_factors is not None and "ref_phase" in systematic_cal_factors:
+        ref_phase_deg_masked = ref_phase_deg_masked - systematic_cal_factors["ref_phase"]
         ref_phase_deg_masked = (ref_phase_deg_masked + 180) % 360 - 180
     phases_deg_dict["ref_phase"] = ref_phase_deg_masked
 
