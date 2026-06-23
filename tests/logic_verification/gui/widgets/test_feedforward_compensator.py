@@ -439,6 +439,48 @@ def test_out_of_band_modes(dummy_model_data):
     assert np.abs(F_inv_nl_aligned[idx_low]) < 1e-5
 
 
+def test_multiprocessing_offline_worker(temp_wav_files, dummy_model_data):
+    input_path, output_path, sr = temp_wav_files
+
+    # Create a 4.5-second sine wave to force 4 blocks (each 65536 frames)
+    # block_size = 65536, overlap = 4096. 4.5s at 48000Hz = 216000 frames.
+    # num_blocks = (216000 + 65536 - 1) // 65536 = 4 blocks.
+    t = np.linspace(0, 4.5, int(sr * 4.5), endpoint=False)
+    data = np.stack([np.sin(2 * np.pi * 1000 * t), np.sin(2 * np.pi * 2000 * t)], axis=1)
+
+    long_input_path = os.path.join(os.path.dirname(input_path), "long_input.wav")
+    long_output_path = os.path.join(os.path.dirname(input_path), "long_output.wav")
+    sf.write(long_input_path, data, sr, subtype="PCM_16")
+
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # Enable abort on instability to ensure no exceptions in tasks
+    worker = OfflineFFCompWorker(
+        long_input_path, long_output_path, engine, iterative=True, iters=3, clip_limit=1.5, abort_on_instability=True
+    )
+
+    finished_spy = MagicMock()
+    worker.finished.connect(finished_spy)
+    worker.run()
+
+    # Assert successful completion
+    finished_spy.assert_called_once()
+    success, msg = finished_spy.call_args[0]
+    assert success, f"Multiprocessing export failed: {msg}"
+
+    # Verify output file exists and has correct length
+    assert os.path.exists(long_output_path)
+    out_data, out_sr = sf.read(long_output_path)
+    assert out_sr == sr
+    assert len(out_data) == len(data)
+
+    # Clean up
+    if os.path.exists(long_input_path):
+        os.remove(long_input_path)
+    if os.path.exists(long_output_path):
+        os.remove(long_output_path)
+
+
 
 
 
