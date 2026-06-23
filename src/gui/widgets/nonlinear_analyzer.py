@@ -404,8 +404,8 @@ class NonlinearAnalyzer(MeasurementModule):
 
                 logger.info("Estimated clock drift: %.2f ppm (factor: %.8f)", drift_ppm, drift_factor)
 
-                # 4. Apply resampling if drift is significant (> 1.0 ppm)
-                if np.abs(drift_ppm) > 1.0:
+                # 4. Apply resampling if drift is significant (> 1.0 ppm) and physically plausible (< 1000.0 ppm)
+                if 1.0 < np.abs(drift_ppm) < 1000.0:
                     logger.info("Applying clock drift compensation via linear resampling...")
                     t_orig = np.arange(total_len, dtype=np.float64)
                     t_corrected = t_orig / drift_factor
@@ -415,6 +415,13 @@ class NonlinearAnalyzer(MeasurementModule):
                         rec_data_corrected[:, ch] = np.interp(t_orig, t_corrected, rec_data[:, ch])
                     rec_data = rec_data_corrected
                     logger.info("Clock drift compensation completed.")
+                elif np.abs(drift_ppm) >= 1000.0:
+                    logger.warning(
+                        "Estimated clock drift (%.2f ppm) is physically implausible. "
+                        "This likely indicates noise interference or peak-finding error. "
+                        "Skipping compensation to prevent signal degradation.",
+                        drift_ppm
+                    )
             except Exception as e:
                 logger.error("Failed to compensate clock drift: %s", e)
 

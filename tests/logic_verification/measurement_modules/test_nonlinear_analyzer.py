@@ -699,3 +699,70 @@ def test_nonlinear_analyzer_descending_sweep():
     h1_phase = phases["h1"][assert_mask]
     assert np.all(np.abs(h1_phase) < 10.0), f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
 
+
+def test_nonlinear_analyzer_single_channel_distortion():
+    """
+    Verifies that for single channel mode ("L"), the Parallel Hammerstein
+    separation accurately recovers polynomial coefficients for a quadratic system
+    without getting affected by peak-finding alignment fluctuations.
+    """
+    sample_rate = 44100
+    sweep_duration = 2.0
+    start_freq = 20.0
+    end_freq = 20000.0
+    P = 5
+
+    sss, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+
+    max_amp = 0.5
+    num_amplitudes = 5
+    amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp
+
+    responses_meas = []
+    responses_ref = []
+
+    a = 0.1
+    for amp in amplitudes:
+        x_sig = amp * sss
+        # Simulate quadratic system
+        y_sig = x_sig + a * (x_sig**2)
+
+        padding = np.zeros(int(0.2 * sample_rate))
+        x_sig_padded = np.concatenate([x_sig, padding])
+        y_sig_padded = np.concatenate([y_sig, padding])
+
+        ir_ref = deconvolve_signal(x_sig_padded, sss)
+        ir_meas = deconvolve_signal(y_sig_padded, sss)
+
+        responses_ref.append(ir_ref)
+        responses_meas.append(ir_meas)
+
+    # Process using input_mode="L"
+    freqs, mags, phases, time_ms, separated_kernels_data = process_amplitude_responses(
+        responses_meas,
+        responses_ref,
+        sample_rate,
+        start_freq,
+        end_freq,
+        input_mode="L",
+        latency_sec=0.0,
+        sweep_duration=sweep_duration,
+        P=P,
+        amplitudes=amplitudes,
+    )
+
+    assert_mask = (freqs >= 200.0) & (freqs <= 15000.0)
+
+    # h1 is fundamental (near 0 dB)
+    assert np.all(np.abs(mags["h1"][assert_mask]) < 1.5)
+
+    # h2 should be the dominant distortion component and match expected coefficient weight (~-20 dB)
+    h2_avg = np.mean(mags["h2"][assert_mask])
+    assert -23.0 < h2_avg < -17.0, f"h2 level {h2_avg} dB deviates from expected (~-20 dB)"
+
+    # h3, h4, h5 should be suppressed (<-30 dB)
+    for p in [3, 4, 5]:
+        h_key = f"h{p}"
+        max_val = np.max(mags[h_key][assert_mask])
+        assert max_val < -30.0, f"Harmonic {h_key} detected in quadratic system under single-channel mode: {max_val:.2f} dB"
+
