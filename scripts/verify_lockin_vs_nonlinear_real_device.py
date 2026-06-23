@@ -74,7 +74,7 @@ def main():
     nonlin_analyzer = NonlinearAnalyzer(engine)
     nonlin_analyzer.amplitude_db = -6.0
     nonlin_analyzer.num_amplitudes = 5
-    nonlin_analyzer.averages = 1
+    nonlin_analyzer.averages = 5
     nonlin_analyzer.sweep_duration = 30.0
     nonlin_analyzer.start_freq = 20.0
     nonlin_analyzer.end_freq = 20000.0
