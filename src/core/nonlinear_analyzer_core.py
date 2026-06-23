@@ -76,9 +76,13 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     t = np.linspace(0, sweep_duration, num_samples, endpoint=False)
 
     # Add frequency guard bands (margins) to keep the target band flat
-    start_margin = max(2.0, start_freq / 1.3)
     nyquist = sample_rate / 2.0
-    end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    if start_freq <= end_freq:
+        start_margin = max(2.0, start_freq / 1.3)
+        end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    else:
+        start_margin = min(nyquist * 0.95, start_freq * 1.15)
+        end_margin = max(2.0, end_freq / 1.3)
 
     w1 = 2 * np.pi * start_margin
     T = sweep_duration
@@ -261,8 +265,12 @@ def process_amplitude_responses(
 
     # 2. Compute Sweep Parameters for delay estimation
     nyquist = sample_rate / 2.0
-    end_margin = min(nyquist * 0.95, end_freq * 1.15)
-    start_margin = max(2.0, start_freq / 1.3)
+    if start_freq <= end_freq:
+        start_margin = max(2.0, start_freq / 1.3)
+        end_margin = min(nyquist * 0.95, end_freq * 1.15)
+    else:
+        start_margin = min(nyquist * 0.95, start_freq * 1.15)
+        end_margin = max(2.0, end_freq / 1.3)
     L = sweep_duration / np.log(end_margin / start_margin)
 
     # 3. Define Gating window length (e.g. 20ms total: 7ms pre, 13ms post to prevent tail truncation while keeping noise low)
@@ -275,13 +283,21 @@ def process_amplitude_responses(
         N = len(g_k)
         G = fft_manager.rfft(g_k)
 
-        # 1. Sweep-specific Phase Correction
-        if k == 2:
-            G = G * 1j
-        elif k == 3:
-            G = -G
-        elif k == 4:
-            G = G * (-1j)
+        # 1. Sweep-specific Phase Correction (conjugated for L < 0)
+        if L < 0:
+            if k == 2:
+                G = G * (-1j)
+            elif k == 3:
+                G = -G
+            elif k == 4:
+                G = G * 1j
+        else:
+            if k == 2:
+                G = G * 1j
+            elif k == 3:
+                G = -G
+            elif k == 4:
+                G = G * (-1j)
 
         # 2. Fractional Sample Delay Correction (frequency domain shift)
         if np.abs(frac_delay) > 1e-9:
@@ -407,7 +423,7 @@ def process_amplitude_responses(
 
     # Reconstruct Time-Domain Kernels by IFFT after calibration
     freqs = fft_manager.rfftfreq(N_kernel, d=1 / sample_rate)
-    mask = (freqs >= start_freq) & (freqs <= end_freq)
+    mask = (freqs >= min(start_freq, end_freq)) & (freqs <= max(start_freq, end_freq))
     valid_freqs = freqs[mask]
 
     magnitudes_db_dict = {}
