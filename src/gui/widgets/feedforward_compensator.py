@@ -352,13 +352,17 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, stats=None):
+    def compensate(self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, bypass_linear_eq=False, stats=None):
         M = len(u_in)
         _, F_inv_lin, F_inv_nl, bp_filter = self._prepare_buffers_for_length(M)
 
-        # Base linear compensation (equalization & delay cancellation)
-        U_in_fft = np.fft.rfft(u_in)
-        u_comp_linear = np.fft.irfft(U_in_fft * F_inv_lin, n=M)
+        if bypass_linear_eq:
+            # Keep linear response as-is (bypass EQ)
+            u_comp_linear = u_in.copy()
+        else:
+            # Base linear compensation (equalization & delay cancellation)
+            U_in_fft = np.fft.rfft(u_in)
+            u_comp_linear = np.fft.irfft(U_in_fft * F_inv_lin, n=M)
 
         if stats is not None:
             stats["clipping_count"] = 0
@@ -401,7 +405,7 @@ class LICFFEngine:
         return u_comp
 
 
-def process_block_task(engine, chunk_padded, iterative, iters, clip_limit, linear_only, b_idx, L_block, overlap):
+def process_block_task(engine, chunk_padded, iterative, iters, clip_limit, linear_only, bypass_linear_eq, b_idx, L_block, overlap):
     """
     Worker function to process a single block across all channels.
     Runs in a separate process.
@@ -419,6 +423,7 @@ def process_block_task(engine, chunk_padded, iterative, iters, clip_limit, linea
             iters=iters,
             clip_limit=clip_limit,
             linear_only=linear_only,
+            bypass_linear_eq=bypass_linear_eq,
             stats=stats,
         )
         chunk_out_ch = u_comp[overlap : overlap + L_block]
@@ -446,7 +451,7 @@ class OfflineFFCompWorker(QThread):
     finished = pyqtSignal(bool, str)
 
     def __init__(
-        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, volume_matching="none", abort_on_instability=False
+        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, bypass_linear_eq=False, volume_matching="none", abort_on_instability=False
     ):
         super().__init__()
         self.input_path = input_path
@@ -456,6 +461,7 @@ class OfflineFFCompWorker(QThread):
         self.iters = iters
         self.clip_limit = clip_limit
         self.linear_only = linear_only
+        self.bypass_linear_eq = bypass_linear_eq
         self.volume_matching = volume_matching
         self.abort_on_instability = abort_on_instability
         self.is_cancelled = False
@@ -561,6 +567,7 @@ class OfflineFFCompWorker(QThread):
                                 self.iters,
                                 self.clip_limit,
                                 self.linear_only,
+                                self.bypass_linear_eq,
                                 b_idx,
                                 L_block,
                                 overlap,
@@ -627,6 +634,7 @@ class OfflineFFCompWorker(QThread):
                                 iters=self.iters,
                                 clip_limit=self.clip_limit,
                                 linear_only=self.linear_only,
+                                bypass_linear_eq=self.bypass_linear_eq,
                                 stats=block_stats,
                             )
                             chunk_out_ch = u_comp[overlap : overlap + L_block]
@@ -821,10 +829,17 @@ class FeedforwardCompensatorWidget(QWidget):
         settings_form = QFormLayout(settings_group)
         settings_form.setSpacing(6)
 
-        self.chk_linear_only = QCheckBox(tr("Linear-Only Compensation"))
-        self.chk_linear_only.setChecked(False)
-        self.chk_linear_only.toggled.connect(self.on_linear_only_toggled)
-        settings_form.addRow(self.chk_linear_only)
+        self.combo_comp_mode = QComboBox()
+        self.combo_comp_mode.addItems(
+            [
+                tr("Linear & Nonlinear"),
+                tr("Nonlinear Only (No Linear EQ)"),
+                tr("Linear Only"),
+            ]
+        )
+        self.combo_comp_mode.setCurrentIndex(0)
+        self.combo_comp_mode.currentIndexChanged.connect(self.on_comp_mode_changed)
+        settings_form.addRow(tr("Compensation Mode:"), self.combo_comp_mode)
 
         self.chk_iterative = QCheckBox(tr("Enable Iterative Compensation"))
         self.chk_iterative.setChecked(False)
@@ -934,9 +949,14 @@ class FeedforwardCompensatorWidget(QWidget):
 
         self.chk_iterative.toggled.connect(self.spin_iters.setEnabled)
 
-    def on_linear_only_toggled(self, checked):
-        self.chk_iterative.setEnabled(not checked)
-        self.spin_iters.setEnabled(not checked and self.chk_iterative.isChecked())
+    def on_comp_mode_changed(self, index):
+        # Modes:
+        # 0: Linear & Nonlinear
+        # 1: Nonlinear Only (No Linear EQ)
+        # 2: Linear Only
+        is_linear_only = (index == 2)
+        self.chk_iterative.setEnabled(not is_linear_only)
+        self.spin_iters.setEnabled(not is_linear_only and self.chk_iterative.isChecked())
         if self.module.engine:
             self.run_simulation()
 
@@ -1085,7 +1105,19 @@ class FeedforwardCompensatorWidget(QWidget):
         M = engine.N
         sr = engine.sample_rate
 
-        Q_fft, F_inv, _, bp_filter = engine._prepare_buffers_for_length(M)
+        Q_fft, F_inv_raw, _, bp_filter = engine._prepare_buffers_for_length(M)
+
+        comp_mode_idx = self.combo_comp_mode.currentIndex()
+        bypass_linear_eq = (comp_mode_idx == 1)
+
+        if bypass_linear_eq:
+            # If linear EQ is bypassed, the inverse filter for the linear path is effectively a thru filter (1.0)
+            F_inv = np.ones_like(F_inv_raw)
+            if engine.out_of_band_mode == "bypass_aligned":
+                F_lin_abs = np.abs(Q_fft[1])
+                F_inv = np.conj(Q_fft[1]) / np.maximum(F_lin_abs, 1e-12)
+        else:
+            F_inv = F_inv_raw.copy()
 
         # H1 peak index corresponds to the gate_pre offset inserted during kernel extraction.
         # Align the time origin to this peak for clear phase visualization without linear delay phase rotation.
@@ -1293,9 +1325,19 @@ class FeedforwardCompensatorWidget(QWidget):
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = 2.0
-        linear_only = self.chk_linear_only.isChecked()
 
-        u_comp = engine.compensate(u, iterative=iterative, iters=iters, clip_limit=clip_limit, linear_only=linear_only)
+        comp_mode_idx = self.combo_comp_mode.currentIndex()
+        linear_only = (comp_mode_idx == 2)
+        bypass_linear_eq = (comp_mode_idx == 1)
+
+        u_comp = engine.compensate(
+            u,
+            iterative=iterative,
+            iters=iters,
+            clip_limit=clip_limit,
+            linear_only=linear_only,
+            bypass_linear_eq=bypass_linear_eq,
+        )
 
         # Output
         y_uncomp = engine.forward_model(u)
@@ -1484,7 +1526,11 @@ class FeedforwardCompensatorWidget(QWidget):
         iterative = self.chk_iterative.isChecked()
         iters = self.spin_iters.value()
         clip_limit = 2.0
-        linear_only = self.chk_linear_only.isChecked()
+
+        comp_mode_idx = self.combo_comp_mode.currentIndex()
+        linear_only = (comp_mode_idx == 2)
+        bypass_linear_eq = (comp_mode_idx == 1)
+
         abort_on_instability = self.chk_abort_on_instability.isChecked()
         vol_match = "rms" if self.chk_output_matched_orig.isChecked() else "none"
 
@@ -1500,6 +1546,7 @@ class FeedforwardCompensatorWidget(QWidget):
             iters,
             clip_limit,
             linear_only=linear_only,
+            bypass_linear_eq=bypass_linear_eq,
             volume_matching=vol_match,
             abort_on_instability=abort_on_instability,
         )

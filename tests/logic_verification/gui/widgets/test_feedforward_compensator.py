@@ -481,6 +481,38 @@ def test_multiprocessing_offline_worker(temp_wav_files, dummy_model_data):
         os.remove(long_output_path)
 
 
+def test_compensate_bypass_linear_eq(dummy_model_data):
+    # Setup model with a non-flat linear response (low-pass filter response)
+    # G_scale = 1.0 (at DC), but at 15 kHz it attenuates the signal.
+    N = 1024
+    h1 = np.zeros(N)
+    h1[0] = 0.5
+    h1[1] = 0.5
+    dummy_model_data["time_domain"]["kernels"]["h1"] = h1.tolist()
+
+    engine = LICFFEngine(dummy_model_data, f_min=60, f_max=17000)
+
+    # Test signal: 15 kHz sine wave inside passband
+    t = np.arange(N) / 48000.0
+    u = 0.5 * np.sin(2 * np.pi * 15000.0 * t)
+
+    # 1. With normal compensation (linear EQ active):
+    # The inverse filter should boost the signal back to around input level (0.5).
+    u_comp_normal = engine.compensate(u, linear_only=True, bypass_linear_eq=False)
+    y_normal = engine.linear_output(u_comp_normal)
+    # The output amplitude should be restored to ~0.5 (ideal linear)
+    assert np.max(np.abs(y_normal)) > 0.4
+
+    # 2. With bypass_linear_eq=True:
+    # No linear EQ should be applied. The linear output of the compensated signal
+    # should just be the system's raw response (which attenuates the 15kHz tone to ~0.27).
+    u_comp_bypass = engine.compensate(u, linear_only=True, bypass_linear_eq=True)
+    y_bypass = engine.linear_output(u_comp_bypass)
+    # The output amplitude should be around 0.27, definitely less than 0.35
+    assert np.max(np.abs(y_bypass)) < 0.35
+
+
+
 
 
 
