@@ -589,7 +589,7 @@ class OfflineFFCompWorker(QThread):
                             for ch in range(channels):
                                 block_stats = block_stats_list[ch]
                                 total_clipping_count[ch] += block_stats["clipping_count"]
-                                
+
                                 if block_stats["instability_detected"]:
                                     instability_detected[ch] = True
                                     if self.abort_on_instability:
