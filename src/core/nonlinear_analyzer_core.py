@@ -110,14 +110,11 @@ def sinc_resample(signal, drift_factor, win_size=8):
 
 def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     """
-    Generates Synchronized Sine Sweep (SSS) signal at a flat reference amplitude (1.0)
-    and its matching analytical inverse filter.
+    Generates Synchronized Sine Sweep (SSS) signal and its matching analytical inverse filter
+    according to Novak et al. (2015) phase synchronization constraints.
+    Includes frequency guard bands (margins) to suppress finite-length Gibbs ripples.
     Normalized such that the peak of their direct convolution is exactly 1.0.
     """
-    num_samples = int(sample_rate * sweep_duration)
-    t = np.linspace(0, sweep_duration, num_samples, endpoint=False)
-
-    # Add frequency guard bands (margins) to keep the target band flat
     nyquist = sample_rate / 2.0
     if start_freq <= end_freq:
         start_margin = max(2.0, start_freq / 1.3)
@@ -126,20 +123,34 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
         start_margin = min(nyquist * 0.95, start_freq * 1.15)
         end_margin = max(2.0, end_freq / 1.3)
 
-    w1 = 2 * np.pi * start_margin
-    T = sweep_duration
-    L = np.log(end_margin / start_margin)
+    f1 = float(start_margin)
+    f2 = float(end_margin)
+    T_tilde = float(sweep_duration)
 
-    # SSS Phase Design (Novak et al. 2015, without -1 term for exact phase sync)
-    phase = (w1 * T / L) * np.exp(t * L / T)
-    sss_signal = 1.0 * np.sin(phase)
+    if np.abs(f2 - f1) < 1e-3:
+        raise ValueError("Start and end frequencies must be different for sweep generation.")
 
-    # Tukey window to minimize transient clicks at start and end
+    ln_ratio = np.log(f2 / f1)
+    k = int(np.round((f1 / ln_ratio) * T_tilde))
+    if k == 0:
+        k = -1 if ln_ratio < 0 else 1
+
+    L = k / f1
+    T = L * ln_ratio
+
+    num_samples = int(np.round(sample_rate * T))
+    t = np.arange(num_samples) / sample_rate
+
+    # Novak's 2015 Phase Design (without the -1 offset term in exp for perfect phase sync)
+    phase = 2 * np.pi * k * np.exp(t / L)
+    sss_signal = np.sin(phase)
+
+    # Tukey window to minimize transient clicks at start and end (alpha=0.02 exactly as before)
     window = windows.tukey(num_samples, alpha=0.02)
     sss_signal *= window
 
-    # Analytical inverse filter (amplitude correction +6dB/octave slope)
-    inv_envelope = np.exp(t * L / T)
+    # Analytical inverse filter with +3 dB/octave slope (exp(t / 2L))
+    inv_envelope = np.exp(t / (2 * L))
     inverse_filter = inv_envelope * np.sin(phase)
     inverse_filter *= window
     inverse_filter = np.flip(inverse_filter)
@@ -156,11 +167,10 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
 def deconvolve_signal(recorded_signal, sss_signal, regularization=1e-4):
     """
     Performs frequency-domain deconvolution: Y(f) / S(f) with regularization.
-    Uses fft_manager.rfft and irfft.
+    Uses fft_manager.rfft and irfft. This cancels the finite-length sweep spectral ripples.
     """
     N_rec = len(recorded_signal)
     N_sss = len(sss_signal)
-    # Next power of 2 for FFT speed
     N_fft = int(2 ** np.ceil(np.log2(N_rec + N_sss)))
 
     S = fft_manager.rfft(np.pad(sss_signal, (0, N_fft - N_sss)))
@@ -222,7 +232,7 @@ def process_amplitude_responses(
     if calibrate_systematic:
         # Generate baseline zero-delay responses using simulated polynomial system
         a_cal = {1: 1.0, 2: 0.1, 3: 0.08, 4: 0.04, 5: 0.02}
-        sss_cal, _ = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
+        sss_cal, inv_cal = generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq)
 
         responses_meas_cal = []
         responses_ref_cal = []
@@ -335,7 +345,16 @@ def process_amplitude_responses(
     else:
         start_margin = min(nyquist * 0.95, start_freq * 1.15)
         end_margin = max(2.0, end_freq / 1.3)
-    L = sweep_duration / np.log(end_margin / start_margin)
+
+    f1 = float(start_margin)
+    f2 = float(end_margin)
+    T_tilde = float(sweep_duration)
+
+    ln_ratio = np.log(f2 / f1)
+    k_param = int(np.round((f1 / ln_ratio) * T_tilde))
+    if k_param == 0:
+        k_param = -1 if ln_ratio < 0 else 1
+    L = k_param / f1
 
     # 3. Define Gating window length
     gate_pre = int(0.007 * sample_rate)
