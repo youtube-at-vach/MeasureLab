@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 import json
-import numpy as np
 
 def main():
     json_path = "/Users/vach/MeasureLab/scripts/exploration_results.json"
     with open(json_path, 'r') as f:
         results = json.load(f)
-        
+
     print("=== MEASUREMENT PARAMETERS SENSITIVITY ANALYSIS ===")
-    
+
     # 1. Base case: default settings (Noise: -90 dB, Dur: 5.0s, Avg: 3, Amps: 5)
     default_case = [r for r in results if r['noise_level_db'] == -90 and r['sweep_duration'] == 5.0 and r['averages'] == 3 and r['num_amplitudes'] == 5]
     if default_case:
         dc = default_case[0]
-        print(f"\n[Default Config] Noise: -90 dBFS, Duration: 5.0s, Averages: 3, Amplitude Steps: 5")
+        print("\n[Default Config] Noise: -90 dBFS, Duration: 5.0s, Averages: 3, Amplitude Steps: 5")
         for p in [1, 2, 3, 5]:
             rmse = dc['metrics']['kernel_gain_rmse'][str(p)]
             print(f"  Kernel h{p} Gain RMSE: {rmse:.4f} dB")
-            
+
     # 2. Sweeping Duration (Averages=3, Steps=5, Noise=-90dB)
     print("\n--- Sensitivity: Sweep Duration (Averages=3, Steps=5, Noise=-90dB) ---")
     data_dur = [r for r in results if r['noise_level_db'] == -90 and r['averages'] == 3 and r['num_amplitudes'] == 5]

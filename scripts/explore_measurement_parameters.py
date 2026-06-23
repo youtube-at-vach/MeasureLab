@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 import sys
 import os
 import json
@@ -23,7 +24,7 @@ def make_mock_run_play_rec(noise_level_db):
     def mock_run_play_rec(output_data, input_channels=2, progress_callback=None, check_cancelled=None):
         # output_data: (total_len, 2)
         ref_sig = output_data[:, 0].copy()
-        
+
         # Apply true physical non-linear system
         # y(t) = x(t) - 0.08*x(t)^2 + 0.12*x(t)^3 - 0.04*x(t)^4 + 0.06*x(t)^5
         sig_dist = (
@@ -33,7 +34,7 @@ def make_mock_run_play_rec(noise_level_db):
             - 0.04 * (ref_sig**4)
             + 0.06 * (ref_sig**5)
         )
-        
+
         # Inject noise
         if noise_level_db is not None:
             noise_rms = 10 ** (noise_level_db / 20.0)
@@ -41,11 +42,11 @@ def make_mock_run_play_rec(noise_level_db):
             meas_sig = sig_dist + noise
         else:
             meas_sig = sig_dist
-            
+
         rec_data = np.zeros_like(output_data)
         rec_data[:, 0] = meas_sig  # Meas (Left)
         rec_data[:, 1] = ref_sig   # Ref (Right)
-        
+
         if progress_callback:
             progress_callback(100)
         return rec_data
@@ -63,21 +64,21 @@ def run_sss_simulation(engine, duration, averages, num_amplitudes, noise_level_d
     nonlin_analyzer.meas_channel_index = 0
     nonlin_analyzer.ref_channel_index = 1
     nonlin_analyzer.output_channel = "STEREO"
-    
+
     nonlin_analyzer.run_play_rec = make_mock_run_play_rec(noise_level_db)
-    
+
     sweep_results = {}
     def on_update_plot(freqs, mags, phases):
         sweep_results['freqs'] = freqs
         sweep_results['mags'] = mags
         sweep_results['phases'] = phases
-        
+
     nonlin_analyzer.signals.update_plot.connect(on_update_plot)
     worker = DummyWorker()
-    
+
     nonlin_analyzer._execute_measurement(worker)
     nonlin_analyzer.signals.update_plot.disconnect(on_update_plot)
-    
+
     return sweep_results
 
 def run_lockin_simulation(engine, noise_level_db, f0=1000.0, A_in=10**(-6.0/20.0)):
@@ -90,7 +91,7 @@ def run_lockin_simulation(engine, noise_level_db, f0=1000.0, A_in=10**(-6.0/20.0
     lockin.gen_amplitude = A_in
     lockin.output_enabled = True
     lockin.output_channel = 2
-    
+
     def patched_estimate(ref, fs):
         ref_clean = ref - np.mean(ref)
         omega = 2.0 * np.pi * lockin.gen_frequency
@@ -110,7 +111,7 @@ def run_lockin_simulation(engine, noise_level_db, f0=1000.0, A_in=10**(-6.0/20.0
             return sig_clean, ref_clean, None
         start_idx = rising_idx[0]
         end_idx = rising_idx[-1]
-        
+
         sig_seg = sig_clean[start_idx:end_idx]
         ref_seg = ref_clean[start_idx:end_idx]
         duration_sec = (end_idx - start_idx) / fs
@@ -120,7 +121,7 @@ def run_lockin_simulation(engine, noise_level_db, f0=1000.0, A_in=10**(-6.0/20.0
 
     lockin._estimate_ref_phase_params = patched_estimate
     lockin._extract_coherent_segment = patched_extract
-    
+
     fs = engine.sample_rate
     duration = 10.0  # Generate enough samples
     t = np.arange(int(fs * duration)) / fs
@@ -138,15 +139,15 @@ def run_lockin_simulation(engine, noise_level_db, f0=1000.0, A_in=10**(-6.0/20.0
         meas_sig = sig_dist + noise
     else:
         meas_sig = sig_dist
-        
+
     lockin.is_running = True
     lockin.input_data[:, lockin.signal_channel] = meas_sig[-lockin.buffer_size:]
     lockin.input_data[:, lockin.ref_channel] = ref_sig[-lockin.buffer_size:]
     lockin.input_buffer_pos = 0
     lockin.buffer_filled_samples = lockin.buffer_size
-    
+
     lockin.process()
-    
+
     meas_amps = lockin.harmonics_amp.copy()
     meas_phases = lockin.harmonics_phase_deg.copy()
     meas_fund_phase_deg = meas_phases[0]
@@ -164,11 +165,11 @@ def run_lockin_simulation(engine, noise_level_db, f0=1000.0, A_in=10**(-6.0/20.0
 
 def evaluate_metrics(sss_results, lockin_results, f0, A_in):
     h_true_vals = {1: 1.0, 2: -0.08, 3: 0.12, 4: -0.04, 5: 0.06}
-    
+
     freqs = sss_results['freqs']
     mags = sss_results['mags']
     phases = sss_results['phases']
-    
+
     # 1. Kernel Gain RMSE for each order
     kernel_gain_rmse = {}
     kernel_phase_rmse = {}
@@ -177,18 +178,18 @@ def evaluate_metrics(sss_results, lockin_results, f0, A_in):
         true_val = h_true_vals[p]
         true_gain_db = 20 * np.log10(np.abs(true_val) + 1e-12)
         true_phase_deg = 0.0 if true_val > 0 else 180.0
-        
+
         est_gain_db = mags[h_key]
         est_phase_deg = phases[h_key]
-        
+
         gain_rmse = np.sqrt(np.mean((est_gain_db - true_gain_db)**2))
-        
+
         phase_diff = (est_phase_deg - true_phase_deg + 180) % 360 - 180
         phase_rmse = np.sqrt(np.mean(phase_diff**2))
-        
+
         kernel_gain_rmse[p] = float(gain_rmse)
         kernel_phase_rmse[p] = float(phase_rmse)
-        
+
     # 2. SSS Prediction at 1kHz Harmonics
     H_dict = {}
     for p in range(1, 6):
@@ -248,19 +249,19 @@ def evaluate_metrics(sss_results, lockin_results, f0, A_in):
     errors = []
     for n in range(1, 6):
         idx = n - 1
-        
+
         # SSS vs True
         sss_amp_err = sss_pred_data[idx]['amp_db'] - true_pred_data[idx]['amp_db']
         sss_phase_err = (sss_pred_data[idx]['phase_deg'] - true_pred_data[idx]['phase_deg'] + 180) % 360 - 180
-        
+
         # Lockin vs True
         lockin_amp_err = lockin_results[idx]['amp_db'] - true_pred_data[idx]['amp_db']
         lockin_phase_err = (lockin_results[idx]['phase_deg'] - true_pred_data[idx]['phase_deg'] + 180) % 360 - 180
-        
+
         # SSS vs Lockin
         sss_vs_lockin_amp_err = sss_pred_data[idx]['amp_db'] - lockin_results[idx]['amp_db']
         sss_vs_lockin_phase_err = (sss_pred_data[idx]['phase_deg'] - lockin_results[idx]['phase_deg'] + 180) % 360 - 180
-        
+
         errors.append({
             'harmonic': n,
             'sss_vs_true': {'amp_err': sss_amp_err, 'phase_err': sss_phase_err},
@@ -281,7 +282,7 @@ def main():
     engine.set_sample_rate(48000)
     engine.set_block_size(1024)
     engine.set_offline_mode(False) # Let us mock run_play_rec
-    
+
     f0 = 1000.0
     A_in = 10**(-6.0 / 20.0)
 
@@ -301,9 +302,9 @@ def main():
 
     total_runs = len(durations) * len(averages) * len(amplitudes_counts) * len(noise_floors)
     current_run = 0
-    
+
     print(f"[*] Total grid search combinations: {total_runs}")
-    
+
     for nf in noise_floors:
         lockin_res = lockin_db_cache[nf]
         for duration in durations:
@@ -312,11 +313,11 @@ def main():
                     current_run += 1
                     if current_run % 50 == 0 or current_run == 1:
                         print(f"    Run {current_run}/{total_runs} (Noise: {nf} dBFS, Dur: {duration}s, Avg: {avg}, Amps: {num_amps})")
-                    
+
                     try:
                         sss_res = run_sss_simulation(engine, duration, avg, num_amps, nf)
                         metrics = evaluate_metrics(sss_res, lockin_res, f0, A_in)
-                        
+
                         run_info = {
                             'noise_level_db': nf,
                             'sweep_duration': duration,
@@ -341,10 +342,10 @@ def main():
 
 def generate_plots(results):
     target_noise = -90
-    
+
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     fig.suptitle(f"Nonlinear Kernel Estimation Sensitivity (Noise Floor = {target_noise} dBFS)", fontsize=16, fontweight='bold')
-    
+
     def get_rmse(metrics_dict, p):
         gain_rmse = metrics_dict['kernel_gain_rmse']
         return gain_rmse.get(p, gain_rmse.get(str(p), 0.0))
@@ -359,7 +360,7 @@ def generate_plots(results):
         h2_rmse = [get_rmse(x['metrics'], 2) for x in data_dur]
         h3_rmse = [get_rmse(x['metrics'], 3) for x in data_dur]
         h5_rmse = [get_rmse(x['metrics'], 5) for x in data_dur]
-        
+
         ax1.plot(durs, h1_rmse, 'o-', label="h1 (Linear)", color='#1f77b4')
         ax1.plot(durs, h2_rmse, 's-', label="h2 (2nd)", color='#ff7f0e')
         ax1.plot(durs, h3_rmse, '^-', label="h3 (3rd)", color='#2ca02c')
@@ -369,7 +370,7 @@ def generate_plots(results):
         ax1.set_title("Impact of Sweep Duration (Averages=3, Steps=5)")
         ax1.grid(True, linestyle='--', alpha=0.6)
         ax1.legend()
-        
+
     # Subplot 2: vs Averages (with fixed Duration=5s, Amplitude Steps=5)
     ax2 = axes[0, 1]
     data_avg = [r for r in results if r['noise_level_db'] == target_noise and r['sweep_duration'] == 5.0 and r['num_amplitudes'] == 5]
@@ -380,7 +381,7 @@ def generate_plots(results):
         h2_rmse = [get_rmse(x['metrics'], 2) for x in data_avg]
         h3_rmse = [get_rmse(x['metrics'], 3) for x in data_avg]
         h5_rmse = [get_rmse(x['metrics'], 5) for x in data_avg]
-        
+
         ax2.plot(avgs, h1_rmse, 'o-', label="h1 (Linear)", color='#1f77b4')
         ax2.plot(avgs, h2_rmse, 's-', label="h2 (2nd)", color='#ff7f0e')
         ax2.plot(avgs, h3_rmse, '^-', label="h3 (3rd)", color='#2ca02c')
@@ -401,7 +402,7 @@ def generate_plots(results):
         h2_rmse = [get_rmse(x['metrics'], 2) for x in data_amp]
         h3_rmse = [get_rmse(x['metrics'], 3) for x in data_amp]
         h5_rmse = [get_rmse(x['metrics'], 5) for x in data_amp]
-        
+
         ax3.plot(amps, h1_rmse, 'o-', label="h1 (Linear)", color='#1f77b4')
         ax3.plot(amps, h2_rmse, 's-', label="h2 (2nd)", color='#ff7f0e')
         ax3.plot(amps, h3_rmse, '^-', label="h3 (3rd)", color='#2ca02c')
@@ -422,7 +423,7 @@ def generate_plots(results):
         h2_rmse = [get_rmse(x['metrics'], 2) for x in data_noise]
         h3_rmse = [get_rmse(x['metrics'], 3) for x in data_noise]
         h5_rmse = [get_rmse(x['metrics'], 5) for x in data_noise]
-        
+
         ax4.plot(noises, h1_rmse, 'o-', label="h1 (Linear)", color='#1f77b4')
         ax4.plot(noises, h2_rmse, 's-', label="h2 (2nd)", color='#ff7f0e')
         ax4.plot(noises, h3_rmse, '^-', label="h3 (3rd)", color='#2ca02c')
