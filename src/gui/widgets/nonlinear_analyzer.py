@@ -179,6 +179,7 @@ class NonlinearAnalyzer(MeasurementModule):
         self.cal_worker = None
         self._dummy_callback_id = None
         self.signals.sweep_finished.connect(self._cleanup_dummy_callback)
+        self.warnings = []
 
     @property
     def name(self) -> str:
@@ -372,6 +373,19 @@ class NonlinearAnalyzer(MeasurementModule):
                 noise_sig = np.random.normal(0, 1e-5, noise_samples) # -100 dBFS noise floor
                 rec_data[noise_start:, self.meas_channel_index] = noise_sig
 
+        # Quality Control: Peak Input Level check
+        self.warnings = []
+        ch_meas = self.meas_channel_index if rec_data.shape[1] > self.meas_channel_index else 0
+        meas_peak = np.max(np.abs(rec_data[:, ch_meas]))
+        meas_peak_db = float(20 * np.log10(meas_peak + 1e-12))
+
+        if meas_peak >= 0.99:
+            self.warnings.append(tr("Clipping detected on input signal (Peak: {0:.1f} dBFS). Lower sweep volume or input gain.").format(meas_peak_db))
+        elif meas_peak < 1e-4:
+            self.warnings.append(tr("No input signal detected (Peak: {0:.1f} dBFS). Check cables and routing.").format(meas_peak_db))
+        elif meas_peak < 0.0316:  # -30 dBFS
+            self.warnings.append(tr("Low input level (Peak: {0:.1f} dBFS). Consider increasing volume or input gain for better accuracy.").format(meas_peak_db))
+
         # Choose alignment channel: Ref channel in XFER mode, Meas channel otherwise
         if self.input_mode in {"XFER", "XFER_REV"}:
             align_ch = self.ref_channel_index
@@ -419,6 +433,7 @@ class NonlinearAnalyzer(MeasurementModule):
                         "Skipping compensation to prevent signal degradation.",
                         drift_ppm
                     )
+                    self.warnings.append(tr("High clock drift or sync failure (Estimated: {0:.1f} ppm). Synchronization may be degraded.").format(drift_ppm))
             except Exception as e:
                 logger.error("Failed to compensate clock drift: %s", e)
 
@@ -504,6 +519,14 @@ class NonlinearAnalyzer(MeasurementModule):
                 except Exception as e:
                     logger.error("Failed to extract noise floor: %s", e)
         self.measured_noise_floor_dbfs = noise_floor_dbfs
+
+        # Check SNR if noise floor is measured and we have responses
+        if noise_floor_dbfs is not None and len(responses_meas) > 0:
+            ir_peak = np.max(np.abs(responses_meas[-1]))
+            ir_peak_db = float(20 * np.log10(ir_peak + 1e-12))
+            snr = ir_peak_db - noise_floor_dbfs
+            if snr < 20.0:
+                self.warnings.append(tr("Low SNR ({0:.1f} dB). Harmonic plots may be noisy and unreliable due to background noise.").format(snr))
 
         # 3. Parallel Hammerstein Separation and Analysis using Core Module
         (
@@ -775,6 +798,12 @@ class NonlinearAnalyzerWidget(QWidget):
         self.progress_bar.setFixedHeight(12)
         ctrl_main_layout.addWidget(self.progress_bar)
 
+        # Status/Warning label (subtle, displayed only when warnings exist)
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("font-size: 11px; font-weight: bold; color: #e68c14;")
+        self.status_label.setWordWrap(True)
+        ctrl_main_layout.addWidget(self.status_label)
+
         sidebar_main_layout.addWidget(ctrl_container)
         main_layout.addWidget(sidebar_container)
 
@@ -847,6 +876,25 @@ class NonlinearAnalyzerWidget(QWidget):
             self.module.end_freq = nyquist
         self.end_spin.blockSignals(False)
 
+    def update_latency_display(self):
+        mode = self.module.input_mode
+        if mode in {"XFER", "XFER_REV"}:
+            self.cal_btn.setEnabled(False)
+            self.latency_label.setEnabled(False)
+            self.latency_label.setText(tr("Not Required (2-Ch Relative)"))
+            self.latency_label.setStyleSheet("font-weight: bold; color: #888888;")
+        else:
+            self.cal_btn.setEnabled(True)
+            self.latency_label.setEnabled(True)
+            if self.module.latency_sec == 0.0:
+                self.latency_label.setText(tr("0.00 ms (Uncalibrated)"))
+                self.latency_label.setStyleSheet("font-weight: bold; color: #e68c14;")
+            else:
+                self.latency_label.setText(
+                    tr("{0:.2f} ms (Calibrated)").format(self.module.latency_sec * 1000)
+                )
+                self.latency_label.setStyleSheet("font-weight: bold; color: #2b8c56;")
+
     def on_routing_changed(self):
         mode = self.in_mode_combo.currentData()
         self.module.input_mode = mode
@@ -864,8 +912,7 @@ class NonlinearAnalyzerWidget(QWidget):
             self.module.ref_channel_index = 0
 
         self.module.output_channel = self.out_combo.currentData()
-        # Disable calibrate button for XFER modes since delay is automatically canceled
-        self.cal_btn.setEnabled(mode in {"L", "R"})
+        self.update_latency_display()
 
     def start_measurement(self):
         # Turn off main audio engine stream if running to capture hardware exclusively
@@ -877,6 +924,7 @@ class NonlinearAnalyzerWidget(QWidget):
         self.stop_btn.setEnabled(True)
         self.export_btn.setEnabled(False)
         self.progress_bar.setValue(0)
+        self.status_label.setText("")
 
 
         # Clear existing plots
@@ -894,7 +942,7 @@ class NonlinearAnalyzerWidget(QWidget):
 
     def on_sweep_finished(self):
         self.start_btn.setEnabled(True)
-        self.cal_btn.setEnabled(self.module.input_mode in {"L", "R"})
+        self.update_latency_display()
         self.stop_btn.setEnabled(False)
 
         # Notify MainWindow that the active model has changed, so other modules (e.g. ResponseViewer) can update their cache buttons
@@ -905,8 +953,15 @@ class NonlinearAnalyzerWidget(QWidget):
                 widget.notify_active_model_changed()
                 break
 
+        # Display quality warning issues if any
+        if getattr(self.module, "warnings", []):
+            warning_text = "\n".join([f"⚠️ {w}" for w in self.module.warnings])
+            self.status_label.setText(warning_text)
+        else:
+            self.status_label.setText("")
+
     def on_latency_result(self, val):
-        self.latency_label.setText(f"{val * 1000:.2f} ms")
+        self.update_latency_display()
         QMessageBox.information(
             self, tr("Calibration Successful"), tr("Measured loopback delay: {0:.2f} ms").format(val * 1000)
         )
@@ -975,6 +1030,12 @@ class NonlinearAnalyzerWidget(QWidget):
         # Clear existing curves before redrawing
         self.mag_plot.clear()
         self.phase_plot.clear()
+
+        # Plot measured Noise Floor if available
+        if self.module.measured_noise_floor_dbfs is not None:
+            noise_floor_arr = np.full_like(freqs, self.module.measured_noise_floor_dbfs)
+            pen_noise = pg.mkPen(color=(150, 150, 150), width=1.2, style=Qt.PenStyle.DashLine)
+            self.mag_plot.plot(freqs, noise_floor_arr, pen=pen_noise, name=tr("Noise Floor"))
 
 
 
