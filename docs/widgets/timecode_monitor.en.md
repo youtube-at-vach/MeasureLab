@@ -9,15 +9,15 @@ It can be used for checking synchronization between video and audio, and also as
 
 Since it can monitor timecode on independent left and right channels (L / R), it is also suitable for checking timecode discrepancies between different devices.
 
-## ☕ Coffee Break: Timecode (LTC)
-
-If you play a timecode (LTC) signal through speakers, it sounds like a harsh, modem-like noise. However, this signal contains precise time information: `hour:minute:second:frame`. By recording this audio to multiple cameras and recorders, editing software can later use it as a reference to automatically synchronize the timelines.
-
 ### What this tool does in one sentence
 
 * **Monitor**: Check whether incoming LTC is being decoded correctly
 * **Generator**: Output LTC from MeasureLab
 * **Compare**: Check how far the left and right channels are apart
+
+## ☕ Coffee Break: Timecode (LTC)
+
+Playing a timecode (LTC) signal through speakers produces a harsh noise, but it contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
 
 !!! note
     Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
