@@ -28,6 +28,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.core.transmission_logic import apply_octave_smoothing
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,15 @@ class LICFFEngine:
     """
 
     def __init__(
-        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6, out_of_band_mode="bypass_aligned"
+        self,
+        model_data,
+        f_min=60.0,
+        f_max=17000.0,
+        threshold_db=None,
+        reg_mode="manual_tikhonov",
+        reg_val=1e-6,
+        out_of_band_mode="bypass_aligned",
+        linear_smoothing_fraction=0.0,
     ):
         self.model_data = model_data
         self.f_min = f_min
@@ -48,6 +57,7 @@ class LICFFEngine:
         self.reg_mode = reg_mode
         self.reg_val = reg_val
         self.out_of_band_mode = out_of_band_mode
+        self.linear_smoothing_fraction = linear_smoothing_fraction
         self.last_resolved_eps_in = 1e-6
         self.sample_rate = 48000
         self.N = 0
@@ -227,9 +237,20 @@ class LICFFEngine:
 
         # Linear inverse filter F_inv for length M
         F_lin_abs = np.abs(Q_fft_M[1])
+        if self.linear_smoothing_fraction > 0.0:
+            # Apply octave smoothing in dB magnitude domain
+            F_lin_abs_db = 20 * np.log10(np.maximum(F_lin_abs, 1e-12))
+            smoothed_db = apply_octave_smoothing(freqs, F_lin_abs_db, self.linear_smoothing_fraction)
+            F_lin_abs_smooth = 10 ** (smoothed_db / 20.0)
+        else:
+            F_lin_abs_smooth = F_lin_abs
+
         eps_out = 0.5
         eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter_M)
-        F_inv_raw = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
+
+        # Form inverse filter using smoothed amplitude, preserving phase
+        F_phase = Q_fft_M[1] / np.maximum(F_lin_abs, 1e-12)
+        F_inv_raw = np.conj(F_phase) * (F_lin_abs_smooth / (F_lin_abs_smooth**2 + eps_f))
 
         # Decouple filters: nonlinear distortion feedback is active band only
         F_inv_nl_M = F_inv_raw * bp_filter_M
@@ -774,6 +795,8 @@ class FeedforwardCompensatorWidget(QWidget):
         self.model_data = None
         self.worker = None
         self.init_ui()
+        self.setAcceptDrops(True)
+        self.set_controls_enabled(False)
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -825,8 +848,8 @@ class FeedforwardCompensatorWidget(QWidget):
         tab_settings_layout.setSpacing(8)
 
         # Group 2: Compensation Settings
-        settings_group = QGroupBox(tr("Compensation Settings"))
-        settings_form = QFormLayout(settings_group)
+        self.settings_group = QGroupBox(tr("Compensation Settings"))
+        settings_form = QFormLayout(self.settings_group)
         settings_form.setSpacing(6)
 
         self.combo_comp_mode = QComboBox()
@@ -852,12 +875,12 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_iters.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Iterations:"), self.spin_iters)
 
-
         self.spin_fmin = QDoubleSpinBox()
         self.spin_fmin.setRange(10, 20000)
         self.spin_fmin.setValue(60)
         self.spin_fmin.setSuffix(" Hz")
         self.spin_fmin.valueChanged.connect(self.update_engine_params)
+        self.spin_fmin.valueChanged.connect(self.adjust_fmax_range)
         settings_form.addRow(tr("Active Band Fmin:"), self.spin_fmin)
 
         self.spin_fmax = QDoubleSpinBox()
@@ -865,6 +888,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_fmax.setValue(17000)
         self.spin_fmax.setSuffix(" Hz")
         self.spin_fmax.valueChanged.connect(self.update_engine_params)
+        self.spin_fmax.valueChanged.connect(self.adjust_min_range)
         settings_form.addRow(tr("Active Band Fmax:"), self.spin_fmax)
 
         self.combo_oob_mode = QComboBox()
@@ -878,6 +902,21 @@ class FeedforwardCompensatorWidget(QWidget):
         self.combo_oob_mode.setCurrentIndex(1)
         self.combo_oob_mode.currentIndexChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Out-of-band Mode:"), self.combo_oob_mode)
+
+        self.combo_linear_smooth = QComboBox()
+        self.combo_linear_smooth.addItems(
+            [
+                tr("None"),
+                tr("1/48 Octave"),
+                tr("1/24 Octave"),
+                tr("1/12 Octave"),
+                tr("1/6 Octave"),
+                tr("1/3 Octave"),
+            ]
+        )
+        self.combo_linear_smooth.setCurrentIndex(0)
+        self.combo_linear_smooth.currentIndexChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Linear Smoothing:"), self.combo_linear_smooth)
 
         self.combo_reg_mode = QComboBox()
         self.combo_reg_mode.addItems(
@@ -899,11 +938,11 @@ class FeedforwardCompensatorWidget(QWidget):
         self.spin_reg_val.setDecimals(1)
         self.spin_reg_val.valueChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Reg. Value:"), self.spin_reg_val)
-        tab_settings_layout.addWidget(settings_group)
+        tab_settings_layout.addWidget(self.settings_group)
 
         # Group 3: Simulation Control
-        sim_ctrl_group = QGroupBox(tr("Simulation Control"))
-        sim_ctrl_form = QFormLayout(sim_ctrl_group)
+        self.sim_ctrl_group = QGroupBox(tr("Simulation Control"))
+        sim_ctrl_form = QFormLayout(self.sim_ctrl_group)
         sim_ctrl_form.setSpacing(6)
 
         self.combo_signal = QComboBox()
@@ -918,19 +957,17 @@ class FeedforwardCompensatorWidget(QWidget):
                 tr("Impulse Response"),
             ]
         )
+        self.combo_signal.currentIndexChanged.connect(self.run_simulation)
         sim_ctrl_form.addRow(tr("Test Signal:"), self.combo_signal)
 
         self.spin_amp = QDoubleSpinBox()
         self.spin_amp.setRange(0.01, 1.0)
         self.spin_amp.setSingleStep(0.05)
         self.spin_amp.setValue(0.30)
+        self.spin_amp.valueChanged.connect(self.run_simulation)
         sim_ctrl_form.addRow(tr("Amplitude:"), self.spin_amp)
 
-        self.btn_run_sim = QPushButton(tr("Run Simulation"))
-        self.btn_run_sim.clicked.connect(self.run_simulation)
-        self.btn_run_sim.setEnabled(False)
-        sim_ctrl_form.addRow(self.btn_run_sim)
-        tab_settings_layout.addWidget(sim_ctrl_group)
+        tab_settings_layout.addWidget(self.sim_ctrl_group)
         tab_settings_layout.addStretch()
 
         sidebar_tabs.addTab(tab_model, tr("Model Source"))
@@ -948,6 +985,44 @@ class FeedforwardCompensatorWidget(QWidget):
         main_layout.addWidget(self.tabs, stretch=1)
 
         self.chk_iterative.toggled.connect(self.spin_iters.setEnabled)
+
+    def set_controls_enabled(self, enabled):
+        self.combo_comp_mode.setEnabled(enabled)
+        self.combo_linear_smooth.setEnabled(enabled)
+        self.chk_iterative.setEnabled(enabled)
+        self.spin_iters.setEnabled(enabled and self.chk_iterative.isChecked())
+        self.spin_fmin.setEnabled(enabled)
+        self.spin_fmax.setEnabled(enabled)
+        self.combo_oob_mode.setEnabled(enabled)
+        self.combo_reg_mode.setEnabled(enabled)
+        if enabled:
+            self.on_reg_mode_changed()
+        else:
+            self.spin_reg_val.setEnabled(False)
+        self.sim_ctrl_group.setEnabled(enabled)
+        self.tabs.setTabEnabled(3, enabled)
+
+    def adjust_fmax_range(self, val):
+        self.spin_fmax.setMinimum(val + 10.0)
+
+    def adjust_min_range(self, val):
+        self.spin_fmin.setMaximum(val - 10.0)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            if any(url.toLocalFile().lower().endswith(".wav") for url in urls):
+                event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            filepath = url.toLocalFile()
+            if filepath.lower().endswith(".wav"):
+                self.lbl_in_file.setText(filepath)
+                base, ext = os.path.splitext(filepath)
+                self.lbl_out_file.setText(base + "_comp" + ext)
+                self._update_process_btn()
+                break
 
     def on_comp_mode_changed(self, index):
         # Modes:
@@ -1173,6 +1248,11 @@ class FeedforwardCompensatorWidget(QWidget):
         modes = ["cut", "bypass_aligned", "bypass_pure"]
         return modes[mode_idx]
 
+    def get_linear_smoothing_fraction(self):
+        idx = self.combo_linear_smooth.currentIndex()
+        fractions = [0.0, 48.0, 24.0, 12.0, 6.0, 3.0]
+        return fractions[idx]
+
     def get_reg_params(self):
         mode_idx = self.combo_reg_mode.currentIndex()
         modes = ["auto_broadband", "auto_tones", "manual_boost", "manual_tikhonov"]
@@ -1236,6 +1316,7 @@ class FeedforwardCompensatorWidget(QWidget):
                     reg_mode=reg_mode,
                     reg_val=reg_val,
                     out_of_band_mode=oob_mode,
+                    linear_smoothing_fraction=self.get_linear_smoothing_fraction(),
                 )
                 self.model_data = data
 
@@ -1246,15 +1327,16 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
                 self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
 
-                self.btn_run_sim.setEnabled(True)
+                self.set_controls_enabled(True)
                 self._update_process_btn()
                 self.update_linear_response_plot()
+                self.run_simulation()
 
                 QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
             except Exception as e:
                 self.lbl_status.setText(tr("Error Loading Model"))
                 self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
-                self.btn_run_sim.setEnabled(False)
+                self.set_controls_enabled(False)
                 self._update_process_btn()
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load model file: {0}").format(e))
 
@@ -1267,10 +1349,12 @@ class FeedforwardCompensatorWidget(QWidget):
             self.module.engine.reg_mode = reg_mode
             self.module.engine.reg_val = reg_val
             self.module.engine.out_of_band_mode = oob_mode
+            self.module.engine.linear_smoothing_fraction = self.get_linear_smoothing_fraction()
             self.module.engine.rebuild_filter()
             self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
             self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
             self.update_linear_response_plot()
+            self.run_simulation()
 
     def run_simulation(self):
         if not self.module.engine:
@@ -1478,23 +1562,32 @@ class FeedforwardCompensatorWidget(QWidget):
         sdr_uncomp = calculate_sdr_db(y_uncomp, y_linear)
         sdr_comp = calculate_sdr_db(y_comp, y_linear)
 
+        sdr_improvement = sdr_comp - sdr_uncomp
+        sdr_imp_color = "#5cb85c" if sdr_improvement >= 0 else "#d9534f"
+
         if is_noise or is_transient:
-            results_txt = (
-                f"=== {sig_type} Simulation Results ===\n"
-                f"Uncompensated SDR: {sdr_uncomp:6.2f} dB\n"
-                f"Compensated   SDR: {sdr_comp:6.2f} dB\n"
-                f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
+            results_html = (
+                f"<h4>=== {sig_type} Simulation Results ===</h4>"
+                f"<table style='font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; border-spacing: 12px 2px; color: #a9b7c6;'>"
+                f"<tr><td><b>Metric</b></td><td><b>Uncompensated</b></td><td><b>Compensated</b></td><td><b>Improvement</b></td></tr>"
+                f"<tr><td>SDR</td><td>{sdr_uncomp:6.2f} dB</td><td>{sdr_comp:6.2f} dB</td>"
+                f"<td><span style='color: {sdr_imp_color}; font-weight: bold;'>{sdr_improvement:+.2f} dB</span></td></tr>"
+                f"</table>"
             )
         else:
             suppression = dist_uncomp - dist_comp
-            results_txt = (
-                f"=== {sig_type} Simulation Results ===\n"
-                f"Uncompensated {dist_name}: {dist_uncomp:6.2f} dB | SDR: {sdr_uncomp:6.2f} dB\n"
-                f"Compensated   {dist_name}: {dist_comp:6.2f} dB | SDR: {sdr_comp:6.2f} dB\n"
-                f"{dist_name} Suppression:   {suppression:+.2f} dB\n"
-                f"SDR Improvement:   {sdr_comp - sdr_uncomp:+.2f} dB"
+            sup_color = "#5cb85c" if suppression >= 0 else "#d9534f"
+            results_html = (
+                f"<h4>=== {sig_type} Simulation Results ===</h4>"
+                f"<table style='font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; border-spacing: 12px 2px; color: #a9b7c6;'>"
+                f"<tr><td><b>Metric</b></td><td><b>Uncompensated</b></td><td><b>Compensated</b></td><td><b>Improvement</b></td></tr>"
+                f"<tr><td>{dist_name}</td><td>{dist_uncomp:6.2f} dB</td><td>{dist_comp:6.2f} dB</td>"
+                f"<td><span style='color: {sup_color}; font-weight: bold;'>{suppression:+.2f} dB</span></td></tr>"
+                f"<tr><td>SDR</td><td>{sdr_uncomp:6.2f} dB</td><td>{sdr_comp:6.2f} dB</td>"
+                f"<td><span style='color: {sdr_imp_color}; font-weight: bold;'>{sdr_improvement:+.2f} dB</span></td></tr>"
+                f"</table>"
             )
-        self.lbl_sim_results.setText(results_txt)
+        self.lbl_sim_results.setText(results_html)
 
     def select_input_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Open Wav File"), "", tr("Wav Files (*.wav)"))
@@ -1519,6 +1612,9 @@ class FeedforwardCompensatorWidget(QWidget):
 
     def start_offline_processing(self):
         if self.worker and self.worker.isRunning():
+            self.worker.cancel()
+            self.btn_process_off.setEnabled(False)
+            self.btn_process_off.setText(tr("Cancelling..."))
             return
 
         input_path = self.lbl_in_file.text()
@@ -1534,8 +1630,7 @@ class FeedforwardCompensatorWidget(QWidget):
         abort_on_instability = self.chk_abort_on_instability.isChecked()
         vol_match = "rms" if self.chk_output_matched_orig.isChecked() else "none"
 
-        self.btn_process_off.setEnabled(False)
-        self.btn_process_off.setText(tr("Exporting..."))
+        self.btn_process_off.setText(tr("Cancel"))
         self.progress_off.setValue(0)
 
         self.worker = OfflineFFCompWorker(
@@ -1555,8 +1650,8 @@ class FeedforwardCompensatorWidget(QWidget):
         self.worker.start()
 
     def on_offline_finished(self, success, msg):
-        self.btn_process_off.setEnabled(True)
         self.btn_process_off.setText(tr("Run Export"))
+        self._update_process_btn()
         if success:
             QMessageBox.information(self, tr("Success"), msg)
         else:
