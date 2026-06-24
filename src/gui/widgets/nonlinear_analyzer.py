@@ -1061,8 +1061,9 @@ class NonlinearAnalyzerWidget(QWidget):
 
         self.kernel_plot.clear()
 
-        # Auto-fit the X Range to focus on the impulse peak details (-5ms to +35ms)
-        self.kernel_plot.setXRange(-5.0, 35.0)
+        # Auto-fit the X Range to focus on the impulse peak details
+        if len(time_ms) > 0:
+            self.kernel_plot.setXRange(time_ms[0], time_ms[-1])
 
         # Local normalization for visual display based on the peak of fundamental kernel h1
         ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
