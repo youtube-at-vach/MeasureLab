@@ -28,6 +28,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.core.transmission_logic import apply_octave_smoothing
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,15 @@ class LICFFEngine:
     """
 
     def __init__(
-        self, model_data, f_min=60.0, f_max=17000.0, threshold_db=None, reg_mode="manual_tikhonov", reg_val=1e-6, out_of_band_mode="bypass_aligned"
+        self,
+        model_data,
+        f_min=60.0,
+        f_max=17000.0,
+        threshold_db=None,
+        reg_mode="manual_tikhonov",
+        reg_val=1e-6,
+        out_of_band_mode="bypass_aligned",
+        linear_smoothing_fraction=0.0,
     ):
         self.model_data = model_data
         self.f_min = f_min
@@ -48,6 +57,7 @@ class LICFFEngine:
         self.reg_mode = reg_mode
         self.reg_val = reg_val
         self.out_of_band_mode = out_of_band_mode
+        self.linear_smoothing_fraction = linear_smoothing_fraction
         self.last_resolved_eps_in = 1e-6
         self.sample_rate = 48000
         self.N = 0
@@ -227,9 +237,20 @@ class LICFFEngine:
 
         # Linear inverse filter F_inv for length M
         F_lin_abs = np.abs(Q_fft_M[1])
+        if self.linear_smoothing_fraction > 0.0:
+            # Apply octave smoothing in dB magnitude domain
+            F_lin_abs_db = 20 * np.log10(np.maximum(F_lin_abs, 1e-12))
+            smoothed_db = apply_octave_smoothing(freqs, F_lin_abs_db, self.linear_smoothing_fraction)
+            F_lin_abs_smooth = 10 ** (smoothed_db / 20.0)
+        else:
+            F_lin_abs_smooth = F_lin_abs
+
         eps_out = 0.5
         eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter_M)
-        F_inv_raw = np.conj(Q_fft_M[1]) / (F_lin_abs**2 + eps_f)
+        
+        # Form inverse filter using smoothed amplitude, preserving phase
+        F_phase = Q_fft_M[1] / np.maximum(F_lin_abs, 1e-12)
+        F_inv_raw = np.conj(F_phase) * (F_lin_abs_smooth / (F_lin_abs_smooth**2 + eps_f))
 
         # Decouple filters: nonlinear distortion feedback is active band only
         F_inv_nl_M = F_inv_raw * bp_filter_M
@@ -882,6 +903,21 @@ class FeedforwardCompensatorWidget(QWidget):
         self.combo_oob_mode.currentIndexChanged.connect(self.update_engine_params)
         settings_form.addRow(tr("Out-of-band Mode:"), self.combo_oob_mode)
 
+        self.combo_linear_smooth = QComboBox()
+        self.combo_linear_smooth.addItems(
+            [
+                tr("None"),
+                tr("1/48 Octave"),
+                tr("1/24 Octave"),
+                tr("1/12 Octave"),
+                tr("1/6 Octave"),
+                tr("1/3 Octave"),
+            ]
+        )
+        self.combo_linear_smooth.setCurrentIndex(0)
+        self.combo_linear_smooth.currentIndexChanged.connect(self.update_engine_params)
+        settings_form.addRow(tr("Linear Smoothing:"), self.combo_linear_smooth)
+
         self.combo_reg_mode = QComboBox()
         self.combo_reg_mode.addItems(
             [
@@ -952,6 +988,7 @@ class FeedforwardCompensatorWidget(QWidget):
 
     def set_controls_enabled(self, enabled):
         self.combo_comp_mode.setEnabled(enabled)
+        self.combo_linear_smooth.setEnabled(enabled)
         self.chk_iterative.setEnabled(enabled)
         self.spin_iters.setEnabled(enabled and self.chk_iterative.isChecked())
         self.spin_fmin.setEnabled(enabled)
@@ -1211,6 +1248,11 @@ class FeedforwardCompensatorWidget(QWidget):
         modes = ["cut", "bypass_aligned", "bypass_pure"]
         return modes[mode_idx]
 
+    def get_linear_smoothing_fraction(self):
+        idx = self.combo_linear_smooth.currentIndex()
+        fractions = [0.0, 48.0, 24.0, 12.0, 6.0, 3.0]
+        return fractions[idx]
+
     def get_reg_params(self):
         mode_idx = self.combo_reg_mode.currentIndex()
         modes = ["auto_broadband", "auto_tones", "manual_boost", "manual_tikhonov"]
@@ -1274,6 +1316,7 @@ class FeedforwardCompensatorWidget(QWidget):
                     reg_mode=reg_mode,
                     reg_val=reg_val,
                     out_of_band_mode=oob_mode,
+                    linear_smoothing_fraction=self.get_linear_smoothing_fraction(),
                 )
                 self.model_data = data
 
@@ -1306,6 +1349,7 @@ class FeedforwardCompensatorWidget(QWidget):
             self.module.engine.reg_mode = reg_mode
             self.module.engine.reg_val = reg_val
             self.module.engine.out_of_band_mode = oob_mode
+            self.module.engine.linear_smoothing_fraction = self.get_linear_smoothing_fraction()
             self.module.engine.rebuild_filter()
             self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
             self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
