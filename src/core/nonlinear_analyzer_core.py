@@ -115,6 +115,10 @@ def generate_sss_and_inverse(sample_rate, sweep_duration, start_freq, end_freq):
     Includes frequency guard bands (margins) to suppress finite-length Gibbs ripples.
     Normalized such that the peak of their direct convolution is exactly 1.0.
     """
+    if sample_rate <= 0:
+        raise ValueError("Sample rate must be positive.")
+    if sweep_duration <= 0:
+        raise ValueError("Sweep duration must be positive.")
     nyquist = sample_rate / 2.0
     if start_freq <= end_freq:
         start_margin = max(2.0, start_freq / 1.3)
@@ -506,7 +510,7 @@ def process_amplitude_responses(
     H_ref_1 = H_ref_list[0]
     ref_power = np.abs(H_ref_1) ** 2
     peak_ref_power = np.max(ref_power)
-    alpha = peak_ref_power * 1e-3 + 1e-12
+    alpha = peak_ref_power * 1e-7 + 1e-12
 
     h_kernels_calibrated = []
 

@@ -558,17 +558,33 @@ class OfflineFFCompWorker(QThread):
                 use_multiprocessing = num_blocks > 2 and (os.cpu_count() or 1) > 1
 
                 if use_multiprocessing:
-                    # Pre-warm LICFFEngine buffers in the parent process to avoid redundant FFT design computations in children
-                    self.engine._prepare_buffers_for_length(block_size + 2 * overlap)
-                    last_block_size = M - (num_blocks - 1) * block_size
-                    if last_block_size != block_size:
-                        self.engine._prepare_buffers_for_length(last_block_size + 2 * overlap)
-
                     max_workers = max(1, (os.cpu_count() or 2) - 1)
+
+                    # Create thread-specific engines to prevent race conditions on cache buffers
+                    engines = [
+                        LICFFEngine(
+                            self.engine.model_data,
+                            f_min=self.engine.f_min,
+                            f_max=self.engine.f_max,
+                            threshold_db=self.engine.threshold_db,
+                            reg_mode=self.engine.reg_mode,
+                            reg_val=self.engine.reg_val,
+                            out_of_band_mode=self.engine.out_of_band_mode,
+                            linear_smoothing_fraction=self.engine.linear_smoothing_fraction,
+                        )
+                        for _ in range(max_workers)
+                    ]
+
+                    # Pre-warm LICFFEngine buffers for all thread engines
+                    for eng in engines:
+                        eng._prepare_buffers_for_length(block_size + 2 * overlap)
+                        last_block_size = M - (num_blocks - 1) * block_size
+                        if last_block_size != block_size:
+                            eng._prepare_buffers_for_length(last_block_size + 2 * overlap)
 
                     import concurrent.futures
 
-                    with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                         futures = {}
                         for b_idx in range(num_blocks):
                             start_out = b_idx * block_size
@@ -580,9 +596,12 @@ class OfflineFFCompWorker(QThread):
 
                             chunk_padded = get_input_slice(start_in, end_in)
 
+                            # Assign an engine to this worker thread in a round-robin fashion
+                            thread_engine = engines[b_idx % max_workers]
+
                             future = executor.submit(
                                 process_block_task,
-                                self.engine,
+                                thread_engine,
                                 chunk_padded,
                                 self.iterative,
                                 self.iters,
@@ -1484,9 +1503,9 @@ class FeedforwardCompensatorWidget(QWidget):
         self.curve_t_ideal_ref.show()
 
         if "Step" in sig_type or "Impulse" in sig_type:
-            self.plot_trans.setXRange(-0.002, 0.010, padding=0.0)
+            self.plot_trans.setXRange(t_axis[0], min(0.010, t_axis[-1]), padding=0.0)
         else:
-            self.plot_trans.setXRange(-0.002, 0.020, padding=0.0)
+            self.plot_trans.setXRange(t_axis[0], t_axis[-1], padding=0.0)
 
         # Metrics calculation
         def calculate_thd_db(y_sig, f_ref):

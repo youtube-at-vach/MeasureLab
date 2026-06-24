@@ -1066,7 +1066,6 @@
     "Measure Delay": "遅延測定",
     "Measure Impedance (Z) using Dual Lock-in Amplifier.": "デュアルロックインアンプを使用してインピーダンス(Z)を測定します。",
     "Measure Input Level.": "入力レベルを測定してください。",
-    "Measure Noise Floor": "ノイズフロアを測定",
     "MeasureLab Comparison Files (*.mlcomp *.json)": "MeasureLab 比較ファイル (*.mlcomp *.json)",
     "MeasureLab Comparison Files (*.mlcomp)": "MeasureLab 比較ファイル (*.mlcomp)",
     "Measured": "測定値",

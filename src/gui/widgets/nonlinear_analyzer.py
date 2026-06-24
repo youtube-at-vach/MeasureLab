@@ -18,7 +18,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QMessageBox,
-    QCheckBox,
 )
 from scipy.signal import (
     chirp as signal_chirp,
@@ -665,11 +664,6 @@ class NonlinearAnalyzerWidget(QWidget):
         self.tsa_spin.setValue(self.module.averages)
         self.tsa_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
         sweep_form.addRow(tr("Averages (Time-Sync):"), self.tsa_spin)
-
-        self.measure_noise_chk = QCheckBox(tr("Measure Noise Floor"))
-        self.measure_noise_chk.setChecked(self.module.measure_noise_floor)
-        self.measure_noise_chk.toggled.connect(lambda v: setattr(self.module, "measure_noise_floor", v))
-        sweep_form.addRow(self.measure_noise_chk)
 
         scroll_layout.addWidget(sweep_group)
 
