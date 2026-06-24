@@ -641,10 +641,6 @@ class NonlinearAnalyzerWidget(QWidget):
         sidebar_main_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_main_layout.setSpacing(10)
 
-        # Module Header Info
-        badge_title = QLabel(f"<b>{tr('Nonlinear Analyzer')}</b>")
-        sidebar_main_layout.addWidget(badge_title)
-
         # --- Parameter Scroll Area ---
         parameter_scroll = QScrollArea()
         parameter_scroll.setWidgetResizable(True)
