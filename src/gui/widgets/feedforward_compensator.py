@@ -1503,9 +1503,9 @@ class FeedforwardCompensatorWidget(QWidget):
         self.curve_t_ideal_ref.show()
 
         if "Step" in sig_type or "Impulse" in sig_type:
-            self.plot_trans.setXRange(-0.002, 0.010, padding=0.0)
+            self.plot_trans.setXRange(t_axis[0], min(0.010, t_axis[-1]), padding=0.0)
         else:
-            self.plot_trans.setXRange(-0.002, 0.020, padding=0.0)
+            self.plot_trans.setXRange(t_axis[0], t_axis[-1], padding=0.0)
 
         # Metrics calculation
         def calculate_thd_db(y_sig, f_ref):
