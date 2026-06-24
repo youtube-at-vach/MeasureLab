@@ -247,7 +247,7 @@ class LICFFEngine:
 
         eps_out = 0.5
         eps_f = eps_in + (eps_out - eps_in) * (1.0 - bp_filter_M)
-        
+
         # Form inverse filter using smoothed amplitude, preserving phase
         F_phase = Q_fft_M[1] / np.maximum(F_lin_abs, 1e-12)
         F_inv_raw = np.conj(F_phase) * (F_lin_abs_smooth / (F_lin_abs_smooth**2 + eps_f))

@@ -9,13 +9,13 @@ def test_licff_smoothing_effect():
     h1 = np.zeros(N_taps)
     h1[0] = 1.0
     h1[10] = -0.9  # 深いディップを発生させる反射成分
-    
+
     # 2次以降のカーネル（LICFFEngineに必要なモックデータ）
     h2 = np.zeros(N_taps)
     h3 = np.zeros(N_taps)
     h4 = np.zeros(N_taps)
     h5 = np.zeros(N_taps)
-    
+
     mock_model_data = {
         "metadata": {
             "sample_rate": 48000,
@@ -31,7 +31,7 @@ def test_licff_smoothing_effect():
             }
         }
     }
-    
+
     # 1. スムージングなしのエンジン
     engine_no_smooth = LICFFEngine(
         mock_model_data,
@@ -42,7 +42,7 @@ def test_licff_smoothing_effect():
         out_of_band_mode="cut",
         linear_smoothing_fraction=0.0
     )
-    
+
     # 2. スムージングありのエンジン (1/12 オクターブ平滑化)
     engine_smooth = LICFFEngine(
         mock_model_data,
@@ -53,18 +53,18 @@ def test_licff_smoothing_effect():
         out_of_band_mode="cut",
         linear_smoothing_fraction=12.0
     )
-    
+
     # バッファの準備と逆フィルターの取得
     Q_fft_no, F_inv_no, _, _ = engine_no_smooth._prepare_buffers_for_length(N_taps)
     Q_fft_sm, F_inv_sm, _, _ = engine_smooth._prepare_buffers_for_length(N_taps)
-    
+
     # 振幅特性의 比較
     mag_no = np.abs(F_inv_no)
     mag_sm = np.abs(F_inv_sm)
-    
+
     # スムージングありのほうが、急峻なディップを補うための極端な逆フィルターブーストが抑えられていることを検証
     assert np.max(mag_sm) < np.max(mag_no)
-    
+
     # 位相が正確に保存されていることを検証 (元の位相特性と一致すること)
     phase_no = np.angle(F_inv_no)
     phase_sm = np.angle(F_inv_sm)
