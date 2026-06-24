@@ -1,5 +1,47 @@
 # Changelog
 
+## [v0.7.8] - 2026-06-24
+
+### Added
+
+* **Feedforward Compensator**:
+    * Added transient response simulation tab (Step/Impulse).
+    * Implemented file drag-and-drop, interactive simulation updates, and HTML result reports.
+    * Added linear smoothing option, regularization mode configurability (Auto/Manual), and automatic epsilon calculation.
+    * Added instability detection and an optional setting to abort offline processing on instability.
+    * Decoupled linear and nonlinear inverse filter caches and introduced configurable out-of-band handling (Cut, Bypass Pure, Bypass Aligned).
+    * Replaced volume matching dropdown with a checkbox for exporting gain-matched original.
+    * Added UI labels and localization support for gain-matching, clip prevention, and `bypass_linear_eq`.
+* **Nonlinear Response Analyzer & Response Viewer / Nonlinear Analyzer**:
+    * Implemented automatic clock drift estimation and linear resampling compensation.
+    * Improved nonlinear analysis accuracy with Tukey windowing, sub-sample latency precision, and persistent audio stream callbacks.
+    * Added input quality monitoring, latency status display, and noise floor visualization.
+    * Dynamically set kernel plot X range based on time array bounds.
+
+### Changed
+
+* **Nonlinear Response Analyzer & Response Viewer / Nonlinear Analyzer**:
+    * Removed redundant module header label from the nonlinear analyzer sidebar.
+
+### Fixed
+
+* **Feedforward Compensator**:
+    * Resolved division by zero in inverse filter calculations.
+    * Dynamically set X-axis range based on input signal duration.
+* **Nonlinear Response Analyzer & Response Viewer / Nonlinear Analyzer**:
+    * Fixed measurement leakage in single channel mode.
+* **Security & Fixes**:
+    * Patched CSV injection vulnerability via trace metadata.
+
+### Optimized
+
+* **Performance & Optimizations**:
+    * Optimized CSV exporter using `writerows`.
+    * Pre-calculated numpy arrays for Plot Comparer.
+    * Vectorized polynomial basis matrix generation.
+    * Vectorized exact phase synchronization (Novak et al. 2015) for SSS.
+    * Optimized `np.unique` calls in lockin spectrum finder.
+
 ## [v0.7.7] - 2026-06-14
 
 ### Added
