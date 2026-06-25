@@ -12,10 +12,6 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the graph display. This is ideal for monitoring just the waveform on a large screen in a multi-monitor setup.
 
-## ☕ Coffee Break: What the Spectrum Analyzer does
-
-While an oscilloscope displays sound as "time vs. amplitude," a spectrum analyzer uses FFT (Fast Fourier Transform) to decompose it into "intensity per frequency." This allows you to visually identify the specific components within a complex signal.
-
 ## Operation
 
 ### Starting and Stopping Measurement

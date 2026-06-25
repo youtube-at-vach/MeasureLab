@@ -11,7 +11,6 @@ It is like a "blood test" in a health checkup, allowing you to know the basic st
 ## ☕ Coffee Break: Distortion in Audio
 
 When a pure sine wave is input into equipment such as an amplifier or DAC, components other than the original frequency (harmonics and noise) may be introduced into the output signal. This is called "distortion."
-The Distortion Analyzer is a tool that quantitatively measures how much the original signal waveform has deformed during the equipment's amplification process.
 
 ## Meaning of Key Indicators
 

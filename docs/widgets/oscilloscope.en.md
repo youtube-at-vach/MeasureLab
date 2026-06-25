@@ -10,10 +10,6 @@ The Oscilloscope is a measurement tool that displays the waveform of the input s
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
 
-## ☕ Coffee Break: What an Oscilloscope does
-
-An oscilloscope is an instrument that visually displays the instantaneous voltage of an electrical signal over time. Because audio signals fluctuate thousands of times per second, this real-time graph allows you to precisely observe the shape of the waveform and identify anomalies like noise.
-
 ## Basic Operation
 
 ### Starting and Stopping Measurement
