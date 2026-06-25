@@ -65,8 +65,8 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.lock = threading.Lock()
 
         # Default SSS parameters
-        self.start_freq = 50.0
-        self.end_freq = 15000.0
+        self.start_freq = 20.0
+        self.end_freq = 20000.0
         self.sweep_duration = 10.0
         self.output_amplitude = 0.5
         self.lpf_factor = 0.08
@@ -78,7 +78,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Channel routing
         self.output_channel = 2  # Stereo default (copies output to both L and R)
         self.signal_channel = 0  # 0: Left Input
-        self.ref_channel = 1     # 1: Right Input
+        self.ref_channel = 1  # 1: Right Input
         self.input_mode = "Single"  # "Single" or "XFER"
 
         # Engine & DSP State
@@ -397,7 +397,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # Update settings parameters for calibration sweep
         self.module.start_freq = self.spin_start_freq.value()
         self.module.end_freq = self.spin_end_freq.value()
-        self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+        self.module.output_channel = (
+            2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+        )
 
         # Sync input mode and channels
         in_idx = self.combo_in_mode.currentIndex()
@@ -460,7 +462,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.lpf_factor = self.spin_lpf_factor.value()
             self.module.max_harmonic = self.spin_max_harmonic.value()
 
-            self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+            self.module.output_channel = (
+                2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+            )
 
             # Sync input mode and channels
             in_idx = self.combo_in_mode.currentIndex()
@@ -559,7 +563,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # Display progress info
         if self.module.engine and self.module.engine.sweep_samples > 0:
             total_samples = self.module.engine.sweep_samples
-            progress_pct = min(100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0)
+            progress_pct = min(
+                100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0
+            )
             self.lbl_progress.setText(tr("Sweep Progress: {0:.1f}%").format(progress_pct))
             self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(self.plot_freqs[-1]))
 
