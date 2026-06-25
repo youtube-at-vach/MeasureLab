@@ -360,7 +360,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_mag.setLogMode(x=True, y=False)
         self.plot_mag.showGrid(x=True, y=True)
-        self.plot_mag.setYRange(-100, 10)
+        self.plot_mag.setYRange(-140, 10)
         right_panel.addWidget(self.plot_mag)
 
         # Plot 2: Phase Response
@@ -392,6 +392,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         layout.addLayout(right_panel, 2)
         self.setLayout(layout)
         self.setMinimumSize(950, 620)
+
+        # Set initial X range based on default sweep params
+        x_min = min(self.module.start_freq, self.module.end_freq)
+        x_max = max(self.module.start_freq, self.module.end_freq)
+        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
+        self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -491,6 +497,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             else:
                 self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
 
+            # Set X range based on current sweep params
+            start_val = self.module.start_freq
+            end_val = self.module.end_freq
+            x_min = min(start_val, end_val)
+            x_max = max(start_val, end_val)
+            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
+            self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+
             # Clear plot curves and reset local data store
             self.plot_freqs.clear()
             for idx in range(5):
@@ -540,7 +554,23 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             return
 
         # Add data to plotting buffers
+        start_f = self.module.start_freq
+        end_f = self.module.end_freq
+        is_forward = start_f <= end_f
+
         for f_mid, results in items:
+            # Skip invalid or out-of-range blocks (e.g., during latency compensation fade-in)
+            if is_forward:
+                if f_mid < start_f or f_mid > end_f:
+                    continue
+            else:
+                if f_mid > start_f or f_mid < end_f:
+                    continue
+
+            # Skip if all results are exactly 0 (unmeasured/invalid fallback block)
+            if all(r == 0.0j for r in results):
+                continue
+
             self.plot_freqs.append(f_mid)
             for idx in range(5):
                 if idx < len(results):
@@ -567,7 +597,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0
             )
             self.lbl_progress.setText(tr("Sweep Progress: {0:.1f}%").format(progress_pct))
-            self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(self.plot_freqs[-1]))
+            if self.plot_freqs:
+                self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(self.plot_freqs[-1]))
 
         # Redraw
         for idx in range(self.module.max_harmonic):
