@@ -123,7 +123,7 @@ class RealtimeSSSEngine:
 
     def set_latency(self, latency_samples: float):
         """Sets the physical latency correction value."""
-        self.latency_samples = float(latency_samples)
+        self.latency_samples = max(0.0, float(latency_samples))
 
     def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int, ref_in_block: np.ndarray | None = None):
         """
@@ -257,7 +257,11 @@ class RealtimeSSSEngine:
                 last_valid_idx = valid_indices[-1]
                 val_sig = out2[last_valid_idx]
                 if has_ref:
-                    results[p - 1] = val_sig / (ref_res + 1e-12)
+                    # Regularized division to avoid division by zero/near-zero complex values
+                    # and suppress noise-induced gain spikes when the reference signal is extremely weak.
+                    ref_conj = np.conj(ref_res)
+                    ref_mag2 = np.real(ref_res * ref_conj)
+                    results[p - 1] = (val_sig * ref_conj) / (ref_mag2 + 1e-12)
                 else:
                     results[p - 1] = val_sig
 
@@ -298,6 +302,11 @@ class LatencyCalibrator:
 
     def callback(self, indata, outdata, frames, time, status):
         try:
+            # Zero out output buffer first to avoid playing back garbage memory/clicks
+            outdata.fill(0.0)
+            if self.finished.is_set():
+                return
+
             # 1. Playback sweep pulse
             out_samples = min(frames, len(self.sss) - self.write_pos)
             if out_samples > 0:
@@ -363,5 +372,10 @@ def measure_system_latency(
     # Process recording to find latency
     ir = deconvolve_signal(calibrator.recorded_data, calibrator.sss)
     peak_sample = find_subsample_peak(ir)
+
+    # Ensure the detected peak is physically meaningful (non-negative)
+    if peak_sample < 0:
+        logger.warning(f"Detected negative latency peak ({peak_sample:.2f} samples). Clamping to 0.")
+        peak_sample = 0.0
 
     return peak_sample

@@ -117,3 +117,40 @@ def test_engine_process_block_xfer():
     # Ratio should converge to 0.4 / 0.8 = 0.5 for fundamental component
     assert np.abs(results[0]) > 0.0
     assert np.abs(np.abs(results[0]) - 0.5) < 1e-3
+
+
+def test_engine_process_block_xfer_zero_ref():
+    # Verify that near-zero or zero reference channel input does not cause NaN or Inf
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 0.08, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    outdata = np.zeros((frames, 1))
+
+    # Generate sweep output
+    engine.process_block(np.zeros((frames, 1)), outdata, 0)
+
+    # 1. True zero reference input
+    ref_block_zero = np.zeros((frames, 1))
+    sig_block = outdata * 0.4
+    engine.reset_filter_states()
+    f_mid, results_zero = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block_zero)
+    assert not np.any(np.isnan(results_zero))
+    assert not np.any(np.isinf(results_zero))
+
+    # 2. Extremely small / phase-cancelling reference input
+    ref_block_small = np.ones((frames, 1)) * -1e-12
+    engine.reset_filter_states()
+    f_mid, results_small = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block_small)
+    assert not np.any(np.isnan(results_small))
+    assert not np.any(np.isinf(results_small))
+
+
+def test_latency_clamping():
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 0.08, 3)
+    # Enforces non-negative latency
+    engine.set_latency(-100.5)
+    assert engine.latency_samples == 0.0
+    engine.set_latency(45.2)
+    assert engine.latency_samples == 45.2
