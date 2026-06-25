@@ -333,10 +333,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         stats_group = QGroupBox(tr("Overview"))
         stats_layout = QVBoxLayout()
         stats_layout.setContentsMargins(6, 6, 6, 6)
-        
+
         self.lbl_progress = QLabel(tr("Sweep Progress: --"))
         stats_layout.addWidget(self.lbl_progress)
-        
+
         self.lbl_current_freq = QLabel(tr("Current Freq: -- Hz"))
         stats_layout.addWidget(self.lbl_current_freq)
 
@@ -381,7 +381,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         # Add legends
         self.plot_mag.addLegend(offset=(10, 10))
-        
+
         for idx in range(5):
             lbl = tr("Fundamental") if idx == 0 else tr("{0}th Harmonic").format(idx + 1)
             mag_c = self.plot_mag.plot(pen=self.colors[idx], name=lbl)
@@ -398,7 +398,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.module.start_freq = self.spin_start_freq.value()
         self.module.end_freq = self.spin_end_freq.value()
         self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
-        
+
         # Sync input mode and channels
         in_idx = self.combo_in_mode.currentIndex()
         if in_idx == 0:
@@ -461,7 +461,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.max_harmonic = self.spin_max_harmonic.value()
 
             self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
-            
+
             # Sync input mode and channels
             in_idx = self.combo_in_mode.currentIndex()
             if in_idx == 0:
@@ -555,7 +555,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         # Update curves
         x_data = np.array(self.plot_freqs)
-        
+
         # Display progress info
         if self.module.engine and self.module.engine.sweep_samples > 0:
             total_samples = self.module.engine.sweep_samples

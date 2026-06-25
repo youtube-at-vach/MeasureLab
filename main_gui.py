@@ -189,7 +189,7 @@ def main():
     except Exception:  # noqa: S110
         pass
 
-    enable_experimental = "--experimental" in sys.argv
+    enable_experimental = "--experimental" in sys.argv or "--experimentalflag" in sys.argv
     window = MainWindow(enable_experimental=enable_experimental)
 
     # Preload all modules while splash is visible, so module switching feels instant.

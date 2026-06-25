@@ -21,7 +21,7 @@ from src.core.realtime_sss_core import measure_system_latency
 
 def main():
     # Initialize Qt Application (required for signals and components)
-    app = QApplication(sys.argv)
+    _app = QApplication(sys.argv)
 
     # 1. Initialize Audio Engine in virtual/offline mode
     engine = AudioEngine()
@@ -82,10 +82,10 @@ def main():
         nonlin_results["phases"] = phases
 
     nonlin.signals.update_plot.connect(on_nonlin_update)
-    
+
     print("[*] Running Offline Sweep...")
     nonlin._execute_measurement(DummyWorker())
-    
+
     if not nonlin_results:
         print("[-] Error: Offline Nonlinear Analyzer sweep failed.")
         sys.exit(1)
@@ -122,7 +122,7 @@ def main():
     except Exception as e:
         print(f"[-] Latency measurement failed: {e}. Defaulting to block size.")
         latency = float(engine.block_size)
-    
+
     rt_sss.latency_samples = latency
 
     # Run analysis
@@ -136,7 +136,7 @@ def main():
 
     timeout = duration + 3.0
     start_t = time.time()
-    
+
     # Process queue in a loop to simulate UI timer update
     while rt_sss.is_running:
         # Retrieve pending blocks
@@ -144,7 +144,7 @@ def main():
         with rt_sss.lock:
             while rt_sss.measurement_queue:
                 items.append(rt_sss.measurement_queue.popleft())
-        
+
         for f_mid, results in items:
             rt_freqs.append(f_mid)
             for idx in range(5):
@@ -153,7 +153,7 @@ def main():
                     amp = np.abs(c_val)
                     db = 20 * np.log10(amp + 1e-15)
                     rt_gains[idx].append(db)
-                    
+
                     phase_deg = np.degrees(np.angle(c_val))
                     rt_phases[idx].append(phase_deg)
                 else:
@@ -175,7 +175,7 @@ def main():
     # Phase C: Interpolation, Re-synthesis & Comparison
     # ----------------------------------------------------
     print("\n=== Phase C: Comparison & Verification ===")
-    
+
     # Define common frequency limits
     f_min = max(f_start, 60.0)  # Avoid transients at start limit
     f_max = min(f_end, 14000.0) # Avoid transients at end limit
@@ -193,19 +193,19 @@ def main():
 
         # Unwrap phase
         nl_phase_unwrapped = np.unwrap(np.radians(nl_phase_deg))
-        
+
         # LPF Inverse correction (only for 2nd harmonic and above)
         lpf_gain = 1.0
         if q > 1:
             f_cut = min(20000.0, 1.15 * fs / (2 * q))
             lpf_gain = 1.0 / np.sqrt(1.0 + (nonlin_freqs / f_cut) ** 16)
-        
+
         mag_db_corrected = nl_mag_db - 20 * np.log10(lpf_gain + 1e-12)
         mag_linear = 10 ** (mag_db_corrected / 20.0)
         H_clean_raw[q] = mag_linear * np.exp(1j * nl_phase_unwrapped)
 
     harmonics_to_compare = 5
-    
+
     fig, axs = plt.subplots(3, 2, figsize=(14, 12), sharex=True)
     fig.suptitle("Algorithm Verification: Real-time SSS (DDC+LPF) vs Offline SSS (Deconvolution)", fontsize=14)
 
@@ -219,7 +219,7 @@ def main():
 
     for h in range(1, harmonics_to_compare + 1):
         h_key = f"h{h}"
-        
+
         # Calculate LPF cutoff for this harmonic as used in NonlinearAnalyzer
         f_cut_h = min(20000.0, 1.15 * fs / (2 * h)) if h > 1 else f_max
         # Define evaluation grid for this specific harmonic to avoid Nyquist aliasing
@@ -234,7 +234,7 @@ def main():
         for q in range(1, 6):
             mag_linear = np.abs(H_clean_raw[q])
             phase_unwrapped = np.unwrap(np.angle(H_clean_raw[q]))
-            
+
             mag_i = np.interp(f_eval_h, nonlin_freqs, mag_linear)
             phase_i = np.interp(f_eval_h, nonlin_freqs, phase_unwrapped)
             H_clean_interp[q] = mag_i * np.exp(1j * phase_i)
@@ -259,7 +259,7 @@ def main():
         # Real-time SSS Interpolation on f_eval_h
         rt_mag_db = np.array(rt_gains[h - 1])
         rt_phase_deg = np.array(rt_phases[h - 1])
-        
+
         valid = np.isfinite(rt_mag_db) & np.isfinite(rt_phase_deg)
         if not np.any(valid):
             print(f"[-] No valid real-time SSS data for Harmonic {h}")
@@ -295,7 +295,7 @@ def main():
         # Plot predicted vs real-time
         axs[0, 0].plot(f_eval_h, nl_mag_interp, label=f"H{h} Predicted", color=colors[h-1], linestyle="-")
         axs[0, 0].plot(rt_freqs, rt_gains[h-1], label=f"H{h} Real-time", color=colors[h-1], linestyle="--")
-        
+
         axs[1, 0].plot(f_eval_h, nl_phase_interp, color=colors[h-1], linestyle="-")
         axs[1, 0].plot(rt_freqs, rt_phases[h-1], color=colors[h-1], linestyle="--")
 
@@ -392,14 +392,14 @@ def main():
         h_key = f"h{h}"
         gain_mae = summary_metrics[h_key]["gain_mae_db"]
         phase_mae = summary_metrics[h_key]["phase_mae_deg"]
-        
+
         limit_gain = 0.25 if h == 1 else 1.2
         limit_phase = 5.0 if h == 1 else 15.0
-        
+
         if gain_mae > limit_gain or phase_mae > limit_phase:
             passed = False
             print(f"[-] WARNING: Harmonic {h} exceeded error thresholds (Limit Gain: {limit_gain}dB, Phase: {limit_phase}deg)")
-    
+
     if passed:
         print("\n[+] Verification PASSED! Algorithm level correctness confirmed.")
         sys.exit(0)

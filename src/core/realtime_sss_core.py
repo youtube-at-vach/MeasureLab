@@ -58,14 +58,14 @@ class RealtimeSSSEngine:
         self.k_param = 0
         self.L_param = 0.0
         self.sweep_samples = 0
-        self.t_arr = None
-        self.phase_arr = None
-        self.out_sig = None
+        self.t_arr: np.ndarray | None = None
+        self.phase_arr: np.ndarray | None = None
+        self.out_sig: np.ndarray | None = None
 
         # Filter states for each harmonic order (1 to max_harmonic)
         # We need 2 cascade sections for a 4th-order filter: zi1, zi2 for each harmonic
-        self.zi1 = []
-        self.zi2 = []
+        self.zi1: list[np.ndarray] = []
+        self.zi2: list[np.ndarray] = []
 
         # Reset engine variables
         self.reset_filter_states()
@@ -125,14 +125,14 @@ class RealtimeSSSEngine:
         """Sets the physical latency correction value."""
         self.latency_samples = float(latency_samples)
 
-    def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int, ref_in_block: np.ndarray = None):
+    def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int, ref_in_block: np.ndarray | None = None):
         """
         Processes a single block of audio (both playing the sweep and analyzing loopback).
         indata_block: Input recorded samples of shape (frames, 1) or (frames, 2)
         outdata_block: Output generator block of shape (frames, ch)
         block_index: Index of the current block in the sweep sequence.
         ref_in_block: Optional reference input block of shape (frames, 1) or (frames, 2)
-        
+
         Returns:
             f_mid (float): The center instantaneous frequency analyzed in this block.
             results (list of complex): The demodulated response values for orders 1..max_harmonic.
@@ -148,6 +148,7 @@ class RealtimeSSSEngine:
         out_samples_written = 0
         if start_samp < self.sweep_samples:
             chunk = min(frames, self.sweep_samples - start_samp)
+            assert self.out_sig is not None
             sig_chunk = self.out_sig[start_samp : start_samp + chunk]
 
             # Copy to all channels
@@ -242,7 +243,7 @@ class RealtimeSSSEngine:
             lo = np.exp(-1j * p * theta_comp)
             # Mask out local oscillator outside the valid sweep region to prevent transient noise leakage
             lo[~valid_mask] = 0.0
-            
+
             z_p = 2.0 * y_raw * lo
 
             # Cascade IIR filtering
