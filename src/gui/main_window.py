@@ -67,6 +67,7 @@ from src.core.module_constants import (
     MODULE_RESPONSE_VIEWER,
     MODULE_FEEDFORWARD_COMPENSATOR,
     MODULE_NONLINEAR_RESPONSE_ANALYZER,
+    MODULE_REALTIME_SSS_LOCKIN_ANALYZER,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -113,6 +114,7 @@ MODULE_REGISTRY = {
     MODULE_RESPONSE_VIEWER: ("src.gui.widgets.response_viewer", "ResponseViewer"),
     MODULE_FEEDFORWARD_COMPENSATOR: ("src.gui.widgets.feedforward_compensator", "FeedforwardCompensator"),
     MODULE_NONLINEAR_RESPONSE_ANALYZER: ("src.gui.widgets.nonlinear_response_analyzer", "NonlinearResponseAnalyzer"),
+    MODULE_REALTIME_SSS_LOCKIN_ANALYZER: ("src.gui.widgets.realtime_sss_analyzer", "RealtimeSSSAnalyzer"),
 }
 
 

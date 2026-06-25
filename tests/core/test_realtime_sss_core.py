@@ -1,0 +1,91 @@
+import numpy as np
+import pytest
+
+from src.core.realtime_sss_core import RealtimeSSSEngine, LatencyCalibrator
+from src.core.nonlinear_analyzer_core import apply_fractional_delay, find_subsample_peak, deconvolve_signal
+
+
+class MockAudioEngine:
+    def __init__(self, sample_rate=48000, block_size=1024):
+        self.sample_rate = sample_rate
+        self.block_size = block_size
+        self.callback = None
+
+    def register_callback(self, cb):
+        self.callback = cb
+        return 0
+
+    def unregister_callback(self, cid):
+        self.callback = None
+
+
+def test_engine_init_and_prepare():
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=50,
+        end_freq=15000,
+        output_amplitude=0.5,
+        lpf_factor=0.08,
+        max_harmonic=3,
+    )
+    assert engine.sweep_duration == 1.0
+    engine.prepare_sweep()
+    assert engine.sweep_samples > 0
+    assert len(engine.out_sig) == engine.sweep_samples
+    assert engine.out_sig is not None
+
+
+def test_engine_process_block():
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 0.08, 3)
+    engine.prepare_sweep()
+    engine.set_latency(12.5)
+
+    frames = 1024
+    outdata = np.zeros((frames, 1))
+    indata = np.zeros((frames, 1))
+
+    f_mid, results = engine.process_block(indata, outdata, 0)
+    assert f_mid > 0
+    assert len(results) == 3
+    # Check output buffer contains SSS signal
+    assert np.any(outdata != 0.0)
+
+
+def test_latency_calibrator_simulation():
+    audio_engine = MockAudioEngine(48000, 1024)
+    calibrator = LatencyCalibrator(audio_engine, start_freq=100.0, end_freq=5000.0, duration=0.25)
+
+    # Apply a known fractional sample delay
+    target_delay = 85.45  # samples
+
+    # Pad the sweep with zeros to total_samples before applying fractional delay
+    # to simulate linear delay without wrap-around inside the sweep range.
+    padded_sss = np.pad(calibrator.sss, (0, calibrator.total_samples - len(calibrator.sss)))
+    delayed_sss = apply_fractional_delay(padded_sss, target_delay)
+
+    # Process block-by-block and feed simulated inputs
+    frames = audio_engine.block_size
+    total_len = calibrator.total_samples
+    num_blocks = int(np.ceil(total_len / frames))
+
+    for i in range(num_blocks):
+        out_block = np.zeros((frames, 1))
+        in_block = np.zeros((frames, 1))
+
+        start_idx = i * frames
+        chunk_len = min(frames, total_len - start_idx)
+
+        if chunk_len > 0:
+            in_block[:chunk_len, 0] = delayed_sss[start_idx : start_idx + chunk_len]
+
+        calibrator.callback(in_block, out_block, frames, None, None)
+
+    assert calibrator.finished.is_set()
+
+    # Verify that deconvolution + peak detection correctly retrieves the delay (using default regularization)
+    ir = deconvolve_signal(calibrator.recorded_data, calibrator.sss)
+    estimated_delay = find_subsample_peak(ir)
+
+    # Assert delay is within 0.05 sample accuracy threshold
+    assert np.abs(estimated_delay - target_delay) < 0.05

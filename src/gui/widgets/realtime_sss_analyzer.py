@@ -1,0 +1,540 @@
+import logging
+import threading
+from collections import deque
+import numpy as np
+import pyqtgraph as pg
+from PyQt6.QtCore import QTimer, QThread, pyqtSignal, QSize, Qt
+from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.core.audio_engine import AudioEngine
+from src.core.localization import tr
+from src.measurement_modules.base import MeasurementModule
+from src.core.realtime_sss_core import RealtimeSSSEngine, measure_system_latency
+
+logger = logging.getLogger(__name__)
+
+
+class LatencyCalibThread(QThread):
+    finished_sig = pyqtSignal(float)
+    error_sig = pyqtSignal(str)
+
+    def __init__(self, audio_engine, start_freq, end_freq, out_ch, in_ch):
+        super().__init__()
+        self.audio_engine = audio_engine
+        self.start_freq = start_freq
+        self.end_freq = end_freq
+        self.out_ch = out_ch
+        self.in_ch = in_ch
+
+    def run(self):
+        try:
+            latency = measure_system_latency(
+                self.audio_engine,
+                self.start_freq,
+                self.end_freq,
+                duration=0.25,
+                in_ch=self.in_ch,
+                out_ch=self.out_ch,
+            )
+            self.finished_sig.emit(latency)
+        except Exception as e:
+            logger.error(f"Latency calibration failed: {e}", exc_info=True)
+            self.error_sig.emit(str(e))
+
+
+class RealtimeSSSAnalyzer(MeasurementModule):
+    def __init__(self, audio_engine: AudioEngine):
+        self.audio_engine = audio_engine
+        self.is_running = False
+        self.lock = threading.Lock()
+
+        # Default SSS parameters
+        self.start_freq = 50.0
+        self.end_freq = 15000.0
+        self.sweep_duration = 10.0
+        self.output_amplitude = 0.5
+        self.lpf_factor = 0.08
+        self.max_harmonic = 3
+
+        # Latency state
+        self.latency_samples = 0.0
+
+        # Channel routing
+        self.output_channel = 2  # Stereo default (copies output to both L and R)
+        self.signal_channel = 0  # 0: Left Input
+        self.ref_channel = 1     # 1: Right Input
+
+        # Engine & DSP State
+        self.engine = None
+        self.callback_id = None
+        self.current_block_idx = 0
+        self.max_blocks = 0
+
+        # Dynamic measurement data queues
+        self.measurement_queue = deque()
+
+    @property
+    def name(self) -> str:
+        return "Real-time SSS Lockin Analyzer"
+
+    @property
+    def description(self) -> str:
+        return tr("Real-time frequency response and distortion sweep using SSS and digital Lock-in.")
+
+    def get_widget(self):
+        return RealtimeSSSAnalyzerWidget(self)
+
+    def start_analysis(self):
+        if self.is_running:
+            return
+        self.is_running = True
+
+        self.current_block_idx = 0
+        self.measurement_queue.clear()
+
+        # Initialize core engine
+        self.engine = RealtimeSSSEngine(
+            sample_rate=self.audio_engine.sample_rate,
+            sweep_duration=self.sweep_duration,
+            start_freq=self.start_freq,
+            end_freq=self.end_freq,
+            output_amplitude=self.output_amplitude,
+            lpf_factor=self.lpf_factor,
+            max_harmonic=self.max_harmonic,
+        )
+        self.engine.prepare_sweep()
+        self.engine.set_latency(self.latency_samples)
+
+        frames = self.audio_engine.block_size
+        self.max_blocks = int(np.ceil((self.engine.sweep_samples + self.latency_samples) / frames))
+
+        def callback(indata, outdata, frames, time, status):
+            if not self.is_running:
+                outdata.fill(0)
+                return
+
+            if self.current_block_idx >= self.max_blocks:
+                outdata.fill(0)
+                # Keep audio thread running but outputting silence
+                return
+
+            # Extract target input channel
+            sig_in = np.zeros((frames, 1))
+            if indata.shape[1] > self.signal_channel:
+                sig_in[:, 0] = indata[:, self.signal_channel]
+            elif indata.shape[1] > 0:
+                sig_in[:, 0] = indata[:, 0]
+
+            # Process SSS Block
+            f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx)
+
+            # Save results thread-safely
+            with self.lock:
+                self.measurement_queue.append((f_mid, results))
+
+            self.current_block_idx += 1
+
+        self.callback_id = self.audio_engine.register_callback(callback)
+
+    def stop_analysis(self):
+        if self.is_running:
+            self.is_running = False
+            if self.callback_id is not None:
+                self.audio_engine.unregister_callback(self.callback_id)
+                self.callback_id = None
+            if self.engine:
+                self.engine.reset_filter_states()
+
+
+class RealtimeSSSAnalyzerWidget(QWidget):
+    def __init__(self, module: RealtimeSSSAnalyzer):
+        super().__init__()
+        self.module = module
+        self.calib_thread = None
+
+        # Data store for plotting
+        self.plot_freqs = []
+        self.plot_gains = [[] for _ in range(5)]
+        self.plot_phases = [[] for _ in range(5)]
+
+        self.init_ui()
+
+        # Theme manager
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
+        # Update timer (60 Hz for fluid plotting response)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_plots)
+        self.timer.setInterval(16)
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(960, 650)
+
+    def init_ui(self):
+        layout = QHBoxLayout()
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
+
+        # LEFT PANEL: Controls (compact width, scrollable to prevent height overflow)
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        left_scroll.setFixedWidth(290)
+
+        left_container = QWidget()
+        left_panel = QVBoxLayout(left_container)
+        left_panel.setContentsMargins(0, 0, 4, 0)
+        left_panel.setSpacing(6)
+
+        # Start / Stop Control Button
+        self.btn_toggle = QPushButton(tr("Start Sweep"))
+        self.btn_toggle.setCheckable(True)
+        self.btn_toggle.clicked.connect(self.on_toggle_sweep)
+        left_panel.addWidget(self.btn_toggle)
+
+        left_tabs = QTabWidget()
+        left_tabs.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+
+        # 1. Sweep Parameters Tab
+        settings_tab = QWidget()
+        form = QFormLayout()
+        form.setContentsMargins(6, 6, 6, 6)
+        form.setSpacing(4)
+
+        self.spin_start_freq = QDoubleSpinBox()
+        self.spin_start_freq.setRange(20.0, 20000.0)
+        self.spin_start_freq.setValue(self.module.start_freq)
+        self.spin_start_freq.setSuffix(" Hz")
+        form.addRow(tr("Start Freq:"), self.spin_start_freq)
+
+        self.spin_end_freq = QDoubleSpinBox()
+        self.spin_end_freq.setRange(20.0, 20000.0)
+        self.spin_end_freq.setValue(self.module.end_freq)
+        self.spin_end_freq.setSuffix(" Hz")
+        form.addRow(tr("End Freq:"), self.spin_end_freq)
+
+        self.spin_duration = QDoubleSpinBox()
+        self.spin_duration.setRange(2.0, 30.0)
+        self.spin_duration.setValue(self.module.sweep_duration)
+        self.spin_duration.setSuffix(" s")
+        form.addRow(tr("Duration:"), self.spin_duration)
+
+        self.spin_amplitude = QDoubleSpinBox()
+        self.spin_amplitude.setRange(-100.0, 0.0)
+        # Convert output linear amplitude to dBFS
+        init_db = 20 * np.log10(self.module.output_amplitude)
+        self.spin_amplitude.setValue(init_db)
+        self.spin_amplitude.setSuffix(" dBFS")
+        form.addRow(tr("Amplitude:"), self.spin_amplitude)
+
+        self.spin_lpf_factor = QDoubleSpinBox()
+        self.spin_lpf_factor.setRange(0.01, 0.50)
+        self.spin_lpf_factor.setSingleStep(0.01)
+        self.spin_lpf_factor.setValue(self.module.lpf_factor)
+        self.spin_lpf_factor.setDecimals(3)
+        form.addRow(tr("LPF Factor:"), self.spin_lpf_factor)
+
+        self.spin_max_harmonic = QSpinBox()
+        self.spin_max_harmonic.setRange(1, 5)
+        self.spin_max_harmonic.setValue(self.module.max_harmonic)
+        form.addRow(tr("Max Harmonic:"), self.spin_max_harmonic)
+
+        settings_tab.setLayout(form)
+        left_tabs.addTab(settings_tab, tr("Settings"))
+
+        # 2. Routing Tab
+        routing_tab = QWidget()
+        r_form = QFormLayout()
+        r_form.setContentsMargins(6, 6, 6, 6)
+        r_form.setSpacing(4)
+
+        self.combo_output_ch = QComboBox()
+        self.combo_output_ch.addItems([tr("Left (Ch 1)"), tr("Right (Ch 2)"), tr("Stereo (Both)")])
+        out_idx = 2 if self.module.output_channel == 2 else self.module.output_channel
+        self.combo_output_ch.setCurrentIndex(out_idx)
+        r_form.addRow(tr("Output Ch:"), self.combo_output_ch)
+
+        self.combo_sig_in = QComboBox()
+        self.combo_sig_in.addItems([tr("Left Input"), tr("Right Input")])
+        self.combo_sig_in.setCurrentIndex(self.module.signal_channel)
+        r_form.addRow(tr("Signal Input:"), self.combo_sig_in)
+
+        routing_tab.setLayout(r_form)
+        left_tabs.addTab(routing_tab, tr("Routing"))
+
+        left_panel.addWidget(left_tabs)
+
+        # Calibration Box
+        calib_group = QGroupBox(tr("Latency Calibration"))
+        calib_layout = QVBoxLayout()
+        calib_layout.setContentsMargins(6, 6, 6, 6)
+        calib_layout.setSpacing(4)
+
+        self.btn_calibrate = QPushButton(tr("Calibrate Latency"))
+        self.btn_calibrate.clicked.connect(self.on_calibrate_latency)
+        calib_layout.addWidget(self.btn_calibrate)
+
+        self.lbl_calib_status = QLabel(tr("Uncalibrated (0.0 ms)"))
+        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
+        calib_layout.addWidget(self.lbl_calib_status)
+
+        calib_group.setLayout(calib_layout)
+        left_panel.addWidget(calib_group)
+
+        # Overview Stats
+        stats_group = QGroupBox(tr("Overview"))
+        stats_layout = QVBoxLayout()
+        stats_layout.setContentsMargins(6, 6, 6, 6)
+        
+        self.lbl_progress = QLabel(tr("Sweep Progress: --"))
+        stats_layout.addWidget(self.lbl_progress)
+        
+        self.lbl_current_freq = QLabel(tr("Current Freq: -- Hz"))
+        stats_layout.addWidget(self.lbl_current_freq)
+
+        stats_group.setLayout(stats_layout)
+        left_panel.addWidget(stats_group)
+
+        left_panel.addStretch()
+
+        left_scroll.setWidget(left_container)
+        left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
+        layout.addWidget(left_scroll)
+
+        # RIGHT PANEL: Dual PyQtGraph Plots (stacked vertically)
+        right_panel = QVBoxLayout()
+        right_panel.setSpacing(4)
+
+        # Plot 1: Magnitude Response
+        self.plot_mag = pg.PlotWidget(title=tr("Magnitude Response"))
+        self.plot_mag.setMinimumHeight(150)
+        self.plot_mag.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
+        self.plot_mag.setLogMode(x=True, y=False)
+        self.plot_mag.showGrid(x=True, y=True)
+        self.plot_mag.setYRange(-100, 10)
+        right_panel.addWidget(self.plot_mag)
+
+        # Plot 2: Phase Response
+        self.plot_phase = pg.PlotWidget(title=tr("Phase Response"))
+        self.plot_phase.setMinimumHeight(150)
+        self.plot_phase.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_phase.setLabel("left", tr("Phase"), units="deg")
+        self.plot_phase.setLogMode(x=True, y=False)
+        self.plot_phase.showGrid(x=True, y=True)
+        self.plot_phase.setYRange(-180, 180)
+        right_panel.addWidget(self.plot_phase)
+
+        # Create Plot Curves with distinct colors
+        # Colors: H1: Cyan, H2: Green, H3: Yellow, H4: Purple, H5: Red
+        self.colors = ["#00ffff", "#00ff00", "#ffff00", "#ff00ff", "#ff3333"]
+        self.mag_curves = []
+        self.phase_curves = []
+
+        # Add legends
+        self.plot_mag.addLegend(offset=(10, 10))
+        
+        for idx in range(5):
+            lbl = tr("Fundamental") if idx == 0 else tr("{0}th Harmonic").format(idx + 1)
+            mag_c = self.plot_mag.plot(pen=self.colors[idx], name=lbl)
+            phase_c = self.plot_phase.plot(pen=self.colors[idx])
+            self.mag_curves.append(mag_c)
+            self.phase_curves.append(phase_c)
+
+        layout.addLayout(right_panel, 2)
+        self.setLayout(layout)
+        self.setMinimumSize(950, 620)
+
+    def on_calibrate_latency(self):
+        # Update settings parameters for calibration sweep
+        self.module.start_freq = self.spin_start_freq.value()
+        self.module.end_freq = self.spin_end_freq.value()
+        self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+        self.module.signal_channel = self.combo_sig_in.currentIndex()
+
+        self.btn_calibrate.setEnabled(False)
+        self.btn_toggle.setEnabled(False)
+        self.lbl_calib_status.setText(tr("Calibrating Latency..."))
+        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
+
+        # Start calibration in a separate thread to keep UI interactive
+        self.calib_thread = LatencyCalibThread(
+            self.module.audio_engine,
+            self.module.start_freq,
+            self.module.end_freq,
+            self.module.output_channel,
+            self.module.signal_channel,
+        )
+        self.calib_thread.finished_sig.connect(self.on_calibration_success)
+        self.calib_thread.error_sig.connect(self.on_calibration_error)
+        self.calib_thread.start()
+
+    def on_calibration_success(self, latency_samples):
+        self.module.latency_samples = latency_samples
+        ms = latency_samples / self.module.audio_engine.sample_rate * 1000.0
+        self.lbl_calib_status.setText(tr("{0:.2f} ms ({1:.1f} samples)").format(ms, latency_samples))
+        self.lbl_calib_status.setStyleSheet("color: #00ff00; font-weight: bold;")
+        self.btn_calibrate.setEnabled(True)
+        self.btn_toggle.setEnabled(True)
+
+    def on_calibration_error(self, err_msg):
+        self.lbl_calib_status.setText(tr("Calibration Error!"))
+        self.lbl_calib_status.setStyleSheet("color: #ff3333; font-weight: bold;")
+        self.btn_calibrate.setEnabled(True)
+        self.btn_toggle.setEnabled(True)
+
+    def on_toggle_sweep(self, checked):
+        if checked:
+            # Sync parameters from GUI
+            self.module.start_freq = self.spin_start_freq.value()
+            self.module.end_freq = self.spin_end_freq.value()
+            self.module.sweep_duration = self.spin_duration.value()
+            # Convert dBFS to linear amplitude
+            self.module.output_amplitude = 10 ** (self.spin_amplitude.value() / 20.0)
+            self.module.lpf_factor = self.spin_lpf_factor.value()
+            self.module.max_harmonic = self.spin_max_harmonic.value()
+
+            self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+            self.module.signal_channel = self.combo_sig_in.currentIndex()
+
+            # Clear plot curves and reset local data store
+            self.plot_freqs.clear()
+            for idx in range(5):
+                self.plot_gains[idx].clear()
+                self.plot_phases[idx].clear()
+                self.mag_curves[idx].setData([], [])
+                self.phase_curves[idx].setData([], [])
+
+            self.btn_toggle.setText(tr("Stop Sweep"))
+            self.btn_calibrate.setEnabled(False)
+            self.set_controls_enabled(False)
+
+            self.module.start_analysis()
+            self.timer.start()
+        else:
+            self.module.stop_analysis()
+            self.timer.stop()
+            self.btn_toggle.setText(tr("Start Sweep"))
+            self.btn_calibrate.setEnabled(True)
+            self.set_controls_enabled(True)
+
+        self.apply_theme()
+
+    def set_controls_enabled(self, enabled):
+        self.spin_start_freq.setEnabled(enabled)
+        self.spin_end_freq.setEnabled(enabled)
+        self.spin_duration.setEnabled(enabled)
+        self.spin_amplitude.setEnabled(enabled)
+        self.spin_lpf_factor.setEnabled(enabled)
+        self.spin_max_harmonic.setEnabled(enabled)
+        self.combo_output_ch.setEnabled(enabled)
+        self.combo_sig_in.setEnabled(enabled)
+
+    def update_plots(self):
+        # Retrieve all pending samples from queue
+        items = []
+        with self.module.lock:
+            while self.module.measurement_queue:
+                items.append(self.module.measurement_queue.popleft())
+
+        if not items:
+            # Check if sweep is done
+            if self.module.is_running and self.module.current_block_idx >= self.module.max_blocks:
+                # Automate sweep stop once it reaches the end
+                self.btn_toggle.setChecked(False)
+                self.on_toggle_sweep(False)
+            return
+
+        # Add data to plotting buffers
+        for f_mid, results in items:
+            self.plot_freqs.append(f_mid)
+            for idx in range(5):
+                if idx < len(results):
+                    # Compute amplitude in dBFS
+                    c_val = results[idx]
+                    amp = np.abs(c_val)
+                    db = 20 * np.log10(amp + 1e-15)
+                    self.plot_gains[idx].append(db)
+
+                    # Compute phase in degrees
+                    phase_deg = np.degrees(np.angle(c_val))
+                    self.plot_phases[idx].append(phase_deg)
+                else:
+                    self.plot_gains[idx].append(np.nan)
+                    self.plot_phases[idx].append(np.nan)
+
+        # Update curves
+        x_data = np.array(self.plot_freqs)
+        
+        # Display progress info
+        if self.module.engine and self.module.engine.sweep_samples > 0:
+            total_samples = self.module.engine.sweep_samples
+            progress_pct = min(100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0)
+            self.lbl_progress.setText(tr("Sweep Progress: {0:.1f}%").format(progress_pct))
+            self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(self.plot_freqs[-1]))
+
+        # Redraw
+        for idx in range(self.module.max_harmonic):
+            y_gain = np.array(self.plot_gains[idx])
+            y_phase = np.array(self.plot_phases[idx])
+            self.mag_curves[idx].setData(x_data, y_gain)
+            self.phase_curves[idx].setData(x_data, y_phase)
+
+    def apply_theme(self, theme_name=None):
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        checked = self.btn_toggle.isChecked()
+
+        if theme_name == "dark":
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #d32f2f; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #388e3c; }"
+                )
+        else:
+            if checked:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #ffbbbb; }"
+                )
+            else:
+                self.btn_toggle.setStyleSheet(
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton:hover { background-color: #bbfebb; }"
+                )
+
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_analysis()
+        if self.calib_thread and self.calib_thread.isRunning():
+            self.calib_thread.wait()
+        super().closeEvent(event)
