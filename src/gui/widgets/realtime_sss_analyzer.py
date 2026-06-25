@@ -248,7 +248,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         form.addRow(tr("End Freq:"), self.spin_end_freq)
 
         self.spin_duration = QDoubleSpinBox()
-        self.spin_duration.setRange(2.0, 30.0)
+        self.spin_duration.setRange(2.0, 600.0)
         self.spin_duration.setValue(self.module.sweep_duration)
         self.spin_duration.setSuffix(" s")
         form.addRow(tr("Duration:"), self.spin_duration)
