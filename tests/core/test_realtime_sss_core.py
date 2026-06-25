@@ -89,3 +89,32 @@ def test_latency_calibrator_simulation():
 
     # Assert delay is within 0.05 sample accuracy threshold
     assert np.abs(estimated_delay - target_delay) < 0.05
+
+
+def test_engine_process_block_xfer():
+    # Initialize engine
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 0.08, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    outdata = np.zeros((frames, 1))
+
+    # Generate the sweep output first
+    engine.process_block(np.zeros((frames, 1)), outdata, 0)
+
+    # Simulate loopback signals: REF is scaled by 0.8, SIG is scaled by 0.4
+    ref_block = outdata * 0.8
+    sig_block = outdata * 0.4
+
+    # Reset filter states
+    engine.reset_filter_states()
+
+    # Process with XFER reference channel
+    f_mid, results = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block)
+
+    assert f_mid > 0
+    assert len(results) == 3
+    # Ratio should converge to 0.4 / 0.8 = 0.5 for fundamental component
+    assert np.abs(results[0]) > 0.0
+    assert np.abs(np.abs(results[0]) - 0.5) < 1e-3

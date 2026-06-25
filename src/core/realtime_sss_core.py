@@ -118,17 +118,20 @@ class RealtimeSSSEngine:
         """Resets the state of the cascade Biquad filters."""
         self.zi1 = [np.zeros(2, dtype=complex) for _ in range(self.max_harmonic)]
         self.zi2 = [np.zeros(2, dtype=complex) for _ in range(self.max_harmonic)]
+        self.ref_zi1 = np.zeros(2, dtype=complex)
+        self.ref_zi2 = np.zeros(2, dtype=complex)
 
     def set_latency(self, latency_samples: float):
         """Sets the physical latency correction value."""
         self.latency_samples = float(latency_samples)
 
-    def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int):
+    def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int, ref_in_block: np.ndarray = None):
         """
         Processes a single block of audio (both playing the sweep and analyzing loopback).
         indata_block: Input recorded samples of shape (frames, 1) or (frames, 2)
         outdata_block: Output generator block of shape (frames, ch)
         block_index: Index of the current block in the sweep sequence.
+        ref_in_block: Optional reference input block of shape (frames, 1) or (frames, 2)
         
         Returns:
             f_mid (float): The center instantaneous frequency analyzed in this block.
@@ -210,6 +213,30 @@ class RealtimeSSSEngine:
         b1, a1 = design_biquad_lpf(fc, fs, 0.541196)
         b2, a2 = design_biquad_lpf(fc, fs, 1.306563)
 
+        # Process REF channel if provided
+        ref_res = 1.0
+        has_ref = False
+        if ref_in_block is not None:
+            if ref_in_block.shape[1] >= 1:
+                r_raw = ref_in_block[:, 0]
+            else:
+                r_raw = np.zeros(frames)
+
+            # Demodulate reference signal at fundamental (p=1)
+            lo_r = np.exp(-1j * theta_comp)
+            lo_r[~valid_mask] = 0.0
+            z_r = 2.0 * r_raw * lo_r
+
+            # Cascade IIR filtering for REF
+            out_r1, self.ref_zi1 = scipy.signal.lfilter(b1, a1, z_r, zi=self.ref_zi1)
+            out_r2, self.ref_zi2 = scipy.signal.lfilter(b2, a2, out_r1, zi=self.ref_zi2)
+
+            valid_indices = np.flatnonzero(valid_mask)
+            if len(valid_indices) > 0:
+                last_valid_idx = valid_indices[-1]
+                ref_res = out_r2[last_valid_idx]
+                has_ref = True
+
         for p in range(1, self.max_harmonic + 1):
             # DDC mixing: z(t) = 2 * y(t) * exp(-j * p * theta)
             lo = np.exp(-1j * p * theta_comp)
@@ -227,7 +254,11 @@ class RealtimeSSSEngine:
             valid_indices = np.flatnonzero(valid_mask)
             if len(valid_indices) > 0:
                 last_valid_idx = valid_indices[-1]
-                results[p - 1] = out2[last_valid_idx]
+                val_sig = out2[last_valid_idx]
+                if has_ref:
+                    results[p - 1] = val_sig / (ref_res + 1e-12)
+                else:
+                    results[p - 1] = val_sig
 
         return f_mid, results
 

@@ -79,6 +79,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.output_channel = 2  # Stereo default (copies output to both L and R)
         self.signal_channel = 0  # 0: Left Input
         self.ref_channel = 1     # 1: Right Input
+        self.input_mode = "Single"  # "Single" or "XFER"
 
         # Engine & DSP State
         self.engine = None
@@ -124,6 +125,10 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         frames = self.audio_engine.block_size
         self.max_blocks = int(np.ceil((self.engine.sweep_samples + self.latency_samples) / frames))
 
+        input_mode = getattr(self, "input_mode", "Single")
+        sig_ch = self.signal_channel
+        ref_ch = self.ref_channel
+
         def callback(indata, outdata, frames, time, status):
             if not self.is_running:
                 outdata.fill(0)
@@ -136,13 +141,22 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
             # Extract target input channel
             sig_in = np.zeros((frames, 1))
-            if indata.shape[1] > self.signal_channel:
-                sig_in[:, 0] = indata[:, self.signal_channel]
+            if indata.shape[1] > sig_ch:
+                sig_in[:, 0] = indata[:, sig_ch]
             elif indata.shape[1] > 0:
                 sig_in[:, 0] = indata[:, 0]
 
+            # Extract reference input channel if in XFER mode
+            ref_in = None
+            if input_mode == "XFER":
+                ref_in = np.zeros((frames, 1))
+                if indata.shape[1] > ref_ch:
+                    ref_in[:, 0] = indata[:, ref_ch]
+                elif indata.shape[1] > 0:
+                    ref_in[:, 0] = indata[:, 0]
+
             # Process SSS Block
-            f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx)
+            f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx, ref_in_block=ref_in)
 
             # Save results thread-safely
             with self.lock:
@@ -274,10 +288,24 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_output_ch.setCurrentIndex(out_idx)
         r_form.addRow(tr("Output Ch:"), self.combo_output_ch)
 
-        self.combo_sig_in = QComboBox()
-        self.combo_sig_in.addItems([tr("Left Input"), tr("Right Input")])
-        self.combo_sig_in.setCurrentIndex(self.module.signal_channel)
-        r_form.addRow(tr("Signal Input:"), self.combo_sig_in)
+        self.combo_in_mode = QComboBox()
+        self.combo_in_mode.addItem(tr("Single Ch (Left Input)"), "Single_L")
+        self.combo_in_mode.addItem(tr("Single Ch (Right Input)"), "Single_R")
+        self.combo_in_mode.addItem(tr("2-Ch Relative (Ref=Left, Meas=Right)"), "XFER")
+        self.combo_in_mode.addItem(tr("2-Ch Relative (Ref=Right, Meas=Left)"), "XFER_REV")
+
+        # Determine initial selection based on module variables
+        if getattr(self.module, "input_mode", "Single") == "XFER":
+            if self.module.ref_channel == 0 and self.module.signal_channel == 1:
+                self.combo_in_mode.setCurrentIndex(2)
+            else:
+                self.combo_in_mode.setCurrentIndex(3)
+        else:
+            if self.module.signal_channel == 0:
+                self.combo_in_mode.setCurrentIndex(0)
+            else:
+                self.combo_in_mode.setCurrentIndex(1)
+        r_form.addRow(tr("Input Mode:"), self.combo_in_mode)
 
         routing_tab.setLayout(r_form)
         left_tabs.addTab(routing_tab, tr("Routing"))
@@ -370,7 +398,25 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.module.start_freq = self.spin_start_freq.value()
         self.module.end_freq = self.spin_end_freq.value()
         self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
-        self.module.signal_channel = self.combo_sig_in.currentIndex()
+        
+        # Sync input mode and channels
+        in_idx = self.combo_in_mode.currentIndex()
+        if in_idx == 0:
+            self.module.input_mode = "Single"
+            self.module.signal_channel = 0
+            self.module.ref_channel = 1
+        elif in_idx == 1:
+            self.module.input_mode = "Single"
+            self.module.signal_channel = 1
+            self.module.ref_channel = 0
+        elif in_idx == 2:
+            self.module.input_mode = "XFER"
+            self.module.ref_channel = 0
+            self.module.signal_channel = 1
+        elif in_idx == 3:
+            self.module.input_mode = "XFER"
+            self.module.ref_channel = 1
+            self.module.signal_channel = 0
 
         self.btn_calibrate.setEnabled(False)
         self.btn_toggle.setEnabled(False)
@@ -415,7 +461,31 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.max_harmonic = self.spin_max_harmonic.value()
 
             self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
-            self.module.signal_channel = self.combo_sig_in.currentIndex()
+            
+            # Sync input mode and channels
+            in_idx = self.combo_in_mode.currentIndex()
+            if in_idx == 0:
+                self.module.input_mode = "Single"
+                self.module.signal_channel = 0
+                self.module.ref_channel = 1
+            elif in_idx == 1:
+                self.module.input_mode = "Single"
+                self.module.signal_channel = 1
+                self.module.ref_channel = 0
+            elif in_idx == 2:
+                self.module.input_mode = "XFER"
+                self.module.ref_channel = 0
+                self.module.signal_channel = 1
+            elif in_idx == 3:
+                self.module.input_mode = "XFER"
+                self.module.ref_channel = 1
+                self.module.signal_channel = 0
+
+            # Update Plot Labels based on mode
+            if self.module.input_mode == "XFER":
+                self.plot_mag.setLabel("left", tr("Gain"), units="dB")
+            else:
+                self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
 
             # Clear plot curves and reset local data store
             self.plot_freqs.clear()
@@ -448,7 +518,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_lpf_factor.setEnabled(enabled)
         self.spin_max_harmonic.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
-        self.combo_sig_in.setEnabled(enabled)
+        self.combo_in_mode.setEnabled(enabled)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
