@@ -56,6 +56,7 @@ To compensate for distortion caused by nonlinear components, the following itera
 * **Enable Iterative Compensation:** If checked, uses the iterative algorithm to calculate nonlinear distortion cancellation.
 * **Iterations:** Configures the number of iterations for distortion compensation (1 to 20). Typically, 3 to 5 iterations are sufficient for convergence.
 * **Active Band Fmin (Hz) / Fmax (Hz):** Sets the lower (Fmin) and upper (Fmax) frequency limits to enable the inverse compensation filter. Protective roll-offs are automatically applied outside this range.
+* **Linear Smoothing:** Smooths the linear inverse filter using a moving average based on logarithmic frequency bins to suppress narrow peaks caused by measurement noise. Helps prevent ringing in the time domain.
 * **Out-of-band Mode:** Defines how frequencies outside the active band are handled (Cut, Bypass (Pure), Bypass (Aligned)).
 * **Regularization Mode:** Configures how the $\epsilon_f$ parameter is determined (Auto (Broadband / Music), Auto (Pure Tones), Manual (Max Boost), Manual (Tikhonov)).
 * **Reg. Value:** Setting for the manual regularization modes.
@@ -76,8 +77,9 @@ Simulates the effect of distortion compensation on test signals using the loaded
     * `Multi-Tone (5 freqs)`: A complex multi-tone signal.
     * `Broadband Noise`: Wideband noise.
 * **Amplitude:** Sets the amplitude of the test signal.
-* **Run Simulation Button:** Runs the simulation and updates the plots.
-* **Output Information:** Displays the simulated Total Harmonic Distortion (THD) and total distortion ratios (equivalent to THD+N) before and after compensation.
+* **Run Simulation Button:** Runs the simulation and updates the plots. Simulation also automatically updates when you change the test signal type or amplitude.
+* **Output Information:** Displays the simulated Total Harmonic Distortion (THD) and total distortion ratios (equivalent to THD+N) before and after compensation, presented in an easy-to-read HTML table.
+
 * **Plots:**
     * **Uncompensated (Red):** The output spectrum when the signal passes through the model without compensation (harmonic distortion peaks are visible).
     * **Compensated (Green):** The output spectrum when distortion compensation is applied before passing through the model (harmonic distortion peaks are significantly reduced).
@@ -113,8 +115,8 @@ Displays the characteristics of the linear inverse filter and the overall compen
 
 Applies the distortion compensation algorithm offline to a WAV audio file and saves the result.
 
-* **Input Wav / Output Wav:** Specifies the input and destination files.
-* **Process & Save Button:** Starts processing on a background thread.
+* **Input Wav / Output Wav:** Specifies the input and destination files. You can also drag and drop a `.wav` file into the application window to automatically set these paths.
+* **Process & Save Button:** Starts processing on a background thread. The button label changes to "Cancel" during processing, allowing you to abort the operation.
     * Automatic resampling is performed if the input audio's sampling rate differs from the model's rate.
     * Segmented processing with sufficient overlap is used to prevent boundary artifacts during block-by-block processing.
     * If the processed peak level exceeds 0 dBFS and digital clipping is about to occur, normalization is automatically applied, and a warning message is shown.

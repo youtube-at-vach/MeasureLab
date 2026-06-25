@@ -15,7 +15,7 @@ This widget provides the following analysis capabilities:
 
 * **Automatic Clock Drift Compensation:** Automatically estimates and compensates for clock drift (> 1.0 ppm) between the input and output devices using linear resampling, ensuring highly accurate high-frequency phase measurements over long sweeps. (Automatically bypassed when using the same device for both input and output).
 * **Hammerstein Kernel Extraction:** Extracts kernels from 1st (linear) up to 5th order from the measured response.
-* **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel.
+* **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel. The X-axis range is now dynamically adjusted based on the input signal's actual length, providing an optimal view for any sweep setting.
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
 * **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
 
@@ -43,7 +43,7 @@ This widget provides the following analysis capabilities:
     * **Single Ch (Right Ch2):** Uses channel 2 only.
     * **2-Ch Relative (Ref=L, Meas=R):** Transfer function measurement using channel 1 as reference and channel 2 as measurement target.
     * **2-Ch Relative (Ref=R, Meas=L):** Transfer function measurement using channel 2 as reference and channel 1 as measurement target.
-* **Delay Time:** Displays the measured loopback latency time in milliseconds (ms).
+* **Delay Time:** Displays the measured loopback latency time in milliseconds (ms) and its calibration status. In 2-Ch Relative modes, it displays "Not Required".
 * **Measure Delay Button:** Measures and calibrates the input/output latency using the physical loopback path of the device (only active when Input Mode is set to `Single Ch (Left Ch1)` or `Single Ch (Right Ch2)`. It is disabled in 2-Ch Relative modes since the delay/phase difference is automatically canceled).
 
 ## Measurement Controls
@@ -52,6 +52,7 @@ This widget provides the following analysis capabilities:
 * **Stop Button:** Aborts the active measurement sequence.
 * **Export Model... Button:** Exports the extracted Hammerstein model to a JSON file once a measurement has successfully completed.
 * **Progress Bar:** Displays the progress of the entire measurement sequence as a percentage.
+* **Quality Warnings:** If issues such as input clipping, low signal level, high clock drift, or low SNR are detected during measurement, warning messages will be displayed below the progress bar.
 
 ## Reading the Graphs and Tabs
 
@@ -60,6 +61,7 @@ The plot area is divided into tabs, allowing you to view three types of analysis
 ### 1. Bode Magnitude
 
 Displays the gain frequency response of the separated 1st to 5th order harmonic kernels (dB vs Hz, logarithmic X-axis).
+If "Measure Noise Floor" is enabled, the measured noise floor level is also plotted as a dashed line.
 
 ### 2. Bode Phase
 
