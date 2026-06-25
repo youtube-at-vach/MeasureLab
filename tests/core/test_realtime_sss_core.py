@@ -147,6 +147,35 @@ def test_engine_process_block_xfer_zero_ref():
     assert not np.any(np.isinf(results_small))
 
 
+def test_engine_ls_extractor_rejects_linear_loopback_harmonic_artifact():
+    engine = RealtimeSSSEngine(48000, 4.0, 20, 20000, 0.5, 0.07, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    h2_db = []
+    h3_db = []
+
+    for block_index in range(int(np.ceil(engine.sweep_samples / frames))):
+        outdata = np.zeros((frames, 1))
+        indata = np.zeros((frames, 1))
+
+        start = block_index * frames
+        chunk = min(frames, engine.sweep_samples - start)
+        if chunk > 0:
+            indata[:chunk, 0] = engine.out_sig[start : start + chunk]
+
+        f_mid, results = engine.process_block(indata, outdata, block_index)
+        if 140.0 <= f_mid <= 700.0:
+            h2_db.append(20 * np.log10(abs(results[1]) + 1e-15))
+            h3_db.append(20 * np.log10(abs(results[2]) + 1e-15))
+
+    assert h2_db
+    assert h3_db
+    assert np.max(h2_db) < -180.0
+    assert np.max(h3_db) < -180.0
+
+
 def test_latency_clamping():
     engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 0.08, 3)
     # Enforces non-negative latency
