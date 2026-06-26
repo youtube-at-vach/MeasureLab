@@ -122,6 +122,10 @@ class RealtimeSSSEngine:
         self.zi2 = [np.zeros(2, dtype=complex) for _ in range(self.max_harmonic)]
         self.ref_zi1 = np.zeros(2, dtype=complex)
         self.ref_zi2 = np.zeros(2, dtype=complex)
+        self.dec_y_zi1 = np.zeros(2, dtype=float)
+        self.dec_y_zi2 = np.zeros(2, dtype=float)
+        self.dec_r_zi1 = np.zeros(2, dtype=float)
+        self.dec_r_zi2 = np.zeros(2, dtype=float)
         self.reset_analysis_history()
 
     def reset_analysis_history(self):
@@ -172,7 +176,8 @@ class RealtimeSSSEngine:
                 self.sample_rate * 40.0 / max(1.0, min(self.start_freq, self.end_freq)),
             )
         )
-        while self._hist_n and sum(len(chunk) for chunk in self._hist_n) > keep_samples:
+        last_valid_n = self._hist_n[-1][-1]
+        while self._hist_n and self._hist_n[0][-1] < last_valid_n - keep_samples:
             self._hist_n.pop(0)
             self._hist_theta.pop(0)
             self._hist_signal.pop(0)
@@ -219,6 +224,7 @@ class RealtimeSSSEngine:
             else:
                 r_raw = np.zeros_like(y_raw)
 
+        # 1. Append at original rate (48 kHz)
         self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
         if not self._hist_n:
             return f_mid, [0.0j] * self.max_harmonic
@@ -240,6 +246,34 @@ class RealtimeSSSEngine:
 
         theta_win = hist_theta[mask]
         sig_win = hist_signal[mask]
+        ref_win = hist_ref[mask] if hist_ref is not None else None
+
+        # Determine decimation factor dynamically
+        P = self.max_harmonic
+        fs = self.sample_rate
+        max_d = int(np.floor(fs / (5.0 * P * max(1.0, local_freq))))
+        D = int(np.clip(max_d, 1, 10))
+
+        if D > 1 and len(sig_win) >= 15:
+            fc = fs / (2.5 * D)
+            nyq = fs / 2.0
+            # Design 4th-order Butterworth LPF
+            b, a = scipy.signal.butter(4, fc / nyq, btype="low")
+
+            # Apply zero-phase filtering
+            sig_win = scipy.signal.filtfilt(b, a, sig_win)
+            sig_win = sig_win[::D]
+            theta_win = theta_win[::D]
+            if ref_win is not None:
+                ref_win = scipy.signal.filtfilt(b, a, ref_win)
+                ref_win = ref_win[::D]
+        elif D > 1:
+            # Fallback if window is too short
+            sig_win = sig_win[::D]
+            theta_win = theta_win[::D]
+            if ref_win is not None:
+                ref_win = ref_win[::D]
+
         weights = np.hanning(len(sig_win))
         if not np.any(weights > 0):
             return f_mid, [0.0j] * self.max_harmonic
@@ -247,10 +281,10 @@ class RealtimeSSSEngine:
         sig_results = self._fit_harmonics(theta_win, sig_win, weights)
         result_freq = self._frequency_at_sample(float(np.mean(hist_n[mask])))
 
-        if hist_ref is None or len(hist_ref) != len(hist_signal):
+        if ref_win is None or len(ref_win) != len(sig_win):
             return result_freq, sig_results
 
-        ref_results = self._fit_harmonics(theta_win, hist_ref[mask], weights)
+        ref_results = self._fit_harmonics(theta_win, ref_win, weights)
         ref_h1 = ref_results[0] if ref_results else 0.0j
         ref_conj = np.conj(ref_h1)
         ref_mag2 = float(np.real(ref_h1 * ref_conj))
@@ -259,8 +293,13 @@ class RealtimeSSSEngine:
 
         return result_freq, [(value * ref_conj) / (ref_mag2 + 1e-24) for value in sig_results]
 
-
-    def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int, ref_in_block: np.ndarray | None = None):
+    def process_block(
+        self,
+        indata_block: np.ndarray,
+        outdata_block: np.ndarray,
+        block_index: int,
+        ref_in_block: np.ndarray | None = None,
+    ):
         """
         Processes a single block of audio (both playing the sweep and analyzing loopback).
         indata_block: Input recorded samples of shape (frames, 1) or (frames, 2)
@@ -423,9 +462,7 @@ class LatencyCalibrator:
         self.out_ch = out_ch
 
         # Generate SSS and inverse filter for delay estimation
-        self.sss, self.inv = generate_sss_and_inverse(
-            self.sample_rate, self.duration, start_freq, end_freq
-        )
+        self.sss, self.inv = generate_sss_and_inverse(self.sample_rate, self.duration, start_freq, end_freq)
 
         # Allocate buffer for recording (add 0.3s margin)
         self.margin_samples = int(0.3 * self.sample_rate)
@@ -461,13 +498,9 @@ class LatencyCalibrator:
             in_samples = min(frames, self.total_samples - self.read_pos)
             if in_samples > 0:
                 if indata.shape[1] > self.in_ch:
-                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[
-                        :in_samples, self.in_ch
-                    ]
+                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[:in_samples, self.in_ch]
                 else:
-                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[
-                        :in_samples, 0
-                    ]
+                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[:in_samples, 0]
                 self.read_pos += in_samples
                 if self.read_pos >= self.total_samples:
                     self.finished.set()
