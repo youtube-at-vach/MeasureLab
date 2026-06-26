@@ -302,7 +302,7 @@ class AudioEngine:
         try:
             hostapis = sd.query_hostapis()
         except Exception:
-            hostapis = None
+            hostapis = tuple()
         self._device_list_cache = devices
         self._host_apis_cache = hostapis
         self._last_cache_time = now
