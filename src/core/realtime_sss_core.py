@@ -66,8 +66,8 @@ class RealtimeSSSEngine:
 
         # Filter states for each harmonic order (1 to max_harmonic)
         # We need 2 cascade sections for a 4th-order filter: zi1, zi2 for each harmonic
-        self.zi1: list[np.ndarray] = []
-        self.zi2: list[np.ndarray] = []
+        self.zi1: np.ndarray = np.zeros((self.max_harmonic, 2), dtype=complex)
+        self.zi2: np.ndarray = np.zeros((self.max_harmonic, 2), dtype=complex)
 
         # Reset engine variables
         self.reset_filter_states()
@@ -118,8 +118,8 @@ class RealtimeSSSEngine:
 
     def reset_filter_states(self):
         """Resets the state of the cascade Biquad filters."""
-        self.zi1 = [np.zeros(2, dtype=complex) for _ in range(self.max_harmonic)]
-        self.zi2 = [np.zeros(2, dtype=complex) for _ in range(self.max_harmonic)]
+        self.zi1 = np.zeros((self.max_harmonic, 2), dtype=complex)
+        self.zi2 = np.zeros((self.max_harmonic, 2), dtype=complex)
         self.ref_zi1 = np.zeros(2, dtype=complex)
         self.ref_zi2 = np.zeros(2, dtype=complex)
         self.dec_y_zi1 = np.zeros(2, dtype=float)
@@ -187,12 +187,15 @@ class RealtimeSSSEngine:
         if len(y) < max(8, 3 * (2 * self.max_harmonic + 1)):
             return [0.0j] * self.max_harmonic
 
-        columns = [np.ones_like(theta)]
-        for p in range(1, self.max_harmonic + 1):
-            columns.append(np.cos(p * theta))
-            columns.append(np.sin(p * theta))
+        N = len(theta)
+        p_vals = np.arange(1, self.max_harmonic + 1)
+        p_theta = theta[:, None] * p_vals
 
-        design = np.column_stack(columns)
+        design = np.empty((N, 1 + 2 * self.max_harmonic))
+        design[:, 0] = 1.0
+        design[:, 1::2] = np.cos(p_theta)
+        design[:, 2::2] = np.sin(p_theta)
+
         weighted_design = design * weights[:, None]
         weighted_y = y * weights
 
@@ -201,11 +204,7 @@ class RealtimeSSSEngine:
         except np.linalg.LinAlgError:
             return [0.0j] * self.max_harmonic
 
-        results = []
-        for p in range(self.max_harmonic):
-            cos_coef = coeffs[1 + 2 * p]
-            sin_coef = coeffs[2 + 2 * p]
-            results.append(complex(cos_coef, -sin_coef))
+        results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(self.max_harmonic)]
         return results
 
     def _process_block_ls(
@@ -424,32 +423,26 @@ class RealtimeSSSEngine:
                 ref_res = out_r2[last_valid_idx]
                 has_ref = True
 
-        for p in range(1, self.max_harmonic + 1):
-            # DDC mixing: z(t) = 2 * y(t) * exp(-j * p * theta)
-            lo = np.exp(-1j * p * theta_comp)
-            # Mask out local oscillator outside the valid sweep region to prevent transient noise leakage
-            lo[~valid_mask] = 0.0
+        # Vectorized DDC mixing and IIR filtering
+        p_vals = np.arange(1, self.max_harmonic + 1)[:, np.newaxis]
+        lo_2d = np.exp(-1j * p_vals * theta_comp)
+        lo_2d[:, ~valid_mask] = 0.0
 
-            z_p = 2.0 * y_raw * lo
+        z_2d = 2.0 * y_raw * lo_2d
 
-            # Cascade IIR filtering
-            out1, self.zi1[p - 1] = scipy.signal.lfilter(b1, a1, z_p, zi=self.zi1[p - 1])
-            out2, self.zi2[p - 1] = scipy.signal.lfilter(b2, a2, out1, zi=self.zi2[p - 1])
+        out1, self.zi1 = scipy.signal.lfilter(b1, a1, z_2d, axis=1, zi=self.zi1)
+        out2, self.zi2 = scipy.signal.lfilter(b2, a2, out1, axis=1, zi=self.zi2)
 
-            # Extract the final filtered state representing the current instantaneous response
-            # We take the last valid sample's output inside the block
-            valid_indices = np.flatnonzero(valid_mask)
-            if len(valid_indices) > 0:
-                last_valid_idx = valid_indices[-1]
-                val_sig = out2[last_valid_idx]
-                if has_ref:
-                    # Regularized division to avoid division by zero/near-zero complex values
-                    # and suppress noise-induced gain spikes when the reference signal is extremely weak.
-                    ref_conj = np.conj(ref_res)
-                    ref_mag2 = np.real(ref_res * ref_conj)
-                    results[p - 1] = (val_sig * ref_conj) / (ref_mag2 + 1e-12)
-                else:
-                    results[p - 1] = val_sig
+        valid_indices = np.flatnonzero(valid_mask)
+        if len(valid_indices) > 0:
+            last_valid_idx = valid_indices[-1]
+            val_sigs = out2[:, last_valid_idx]
+            if has_ref:
+                ref_conj = np.conj(ref_res)
+                ref_mag2 = np.real(ref_res * ref_conj)
+                results = ((val_sigs * ref_conj) / (ref_mag2 + 1e-12)).tolist()
+            else:
+                results = val_sigs.tolist()
 
         return f_mid, results
 
