@@ -36,7 +36,6 @@ UIの改善と多言語化の強化から始まり、現在は高度な非線形
         - ウィジェットガイド等において、冗長な「Coffee Break」セクションが簡略化され、ドキュメントの読みやすさが向上しました。
         - "Ideal Reference"など未翻訳だった技術UI文字列が各言語資産へローカライズされ、多言語対応が強化されました。
 
-
 - **2026-06-11 (Commit: 8651f8fb)**:
     - **非線形解析（Hammerstein / Nonlinear Analyzer）の大幅な拡張と安定化**:
         - モジュール名を「Hammerstein Analyzer」から「Response Viewer」へ、「Nonlinear System Analyzer」を「Nonlinear Analyzer」へリネームし、実験的ステータスバッジを削除しました。
