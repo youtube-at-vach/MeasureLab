@@ -65,12 +65,14 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.lock = threading.Lock()
 
         # Default SSS parameters
-        self.start_freq = 50.0
-        self.end_freq = 15000.0
+        self.start_freq = 20.0
+        self.end_freq = 20000.0
         self.sweep_duration = 10.0
         self.output_amplitude = 0.5
         self.lpf_factor = 0.08
         self.max_harmonic = 3
+        self.averaging_count = 1
+        self.current_sweep_idx = 0
 
         # Latency state
         self.latency_samples = 0.0
@@ -78,7 +80,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Channel routing
         self.output_channel = 2  # Stereo default (copies output to both L and R)
         self.signal_channel = 0  # 0: Left Input
-        self.ref_channel = 1     # 1: Right Input
+        self.ref_channel = 1  # 1: Right Input
         self.input_mode = "Single"  # "Single" or "XFER"
 
         # Engine & DSP State
@@ -107,6 +109,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.is_running = True
 
         self.current_block_idx = 0
+        self.current_sweep_idx = 0
         self.measurement_queue.clear()
 
         # Initialize core engine
@@ -135,9 +138,14 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 return
 
             if self.current_block_idx >= self.max_blocks:
-                outdata.fill(0)
-                # Keep audio thread running but outputting silence
-                return
+                if self.current_sweep_idx + 1 < self.averaging_count:
+                    self.current_sweep_idx += 1
+                    self.current_block_idx = 0
+                    self.engine.reset_filter_states()
+                else:
+                    outdata.fill(0)
+                    # Keep audio thread running but outputting silence
+                    return
 
             # Extract target input channel
             sig_in = np.zeros((frames, 1))
@@ -160,7 +168,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
             # Save results thread-safely
             with self.lock:
-                self.measurement_queue.append((f_mid, results))
+                self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results))
 
             self.current_block_idx += 1
 
@@ -273,6 +281,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_max_harmonic.setValue(self.module.max_harmonic)
         form.addRow(tr("Max Harmonic:"), self.spin_max_harmonic)
 
+        self.spin_averaging = QSpinBox()
+        self.spin_averaging.setRange(1, 100)
+        self.spin_averaging.setValue(self.module.averaging_count)
+        form.addRow(tr("Averages:"), self.spin_averaging)
+
         settings_tab.setLayout(form)
         left_tabs.addTab(settings_tab, tr("Settings"))
 
@@ -360,7 +373,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_mag.setLogMode(x=True, y=False)
         self.plot_mag.showGrid(x=True, y=True)
-        self.plot_mag.setYRange(-100, 10)
+        self.plot_mag.setYRange(-140, 10)
         right_panel.addWidget(self.plot_mag)
 
         # Plot 2: Phase Response
@@ -393,11 +406,19 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.setLayout(layout)
         self.setMinimumSize(950, 620)
 
+        # Set initial X range based on default sweep params
+        x_min = min(self.module.start_freq, self.module.end_freq)
+        x_max = max(self.module.start_freq, self.module.end_freq)
+        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
+        self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
         self.module.start_freq = self.spin_start_freq.value()
         self.module.end_freq = self.spin_end_freq.value()
-        self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+        self.module.output_channel = (
+            2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+        )
 
         # Sync input mode and channels
         in_idx = self.combo_in_mode.currentIndex()
@@ -459,8 +480,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.output_amplitude = 10 ** (self.spin_amplitude.value() / 20.0)
             self.module.lpf_factor = self.spin_lpf_factor.value()
             self.module.max_harmonic = self.spin_max_harmonic.value()
+            self.module.averaging_count = self.spin_averaging.value()
 
-            self.module.output_channel = 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+            self.module.output_channel = (
+                2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
+            )
 
             # Sync input mode and channels
             in_idx = self.combo_in_mode.currentIndex()
@@ -487,11 +511,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             else:
                 self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
 
-            # Clear plot curves and reset local data store
-            self.plot_freqs.clear()
+            # Set X range based on current sweep params
+            start_val = self.module.start_freq
+            end_val = self.module.end_freq
+            x_min = min(start_val, end_val)
+            x_max = max(start_val, end_val)
+            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
+            self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+
+            # Clear plot curves
             for idx in range(5):
-                self.plot_gains[idx].clear()
-                self.plot_phases[idx].clear()
                 self.mag_curves[idx].setData([], [])
                 self.phase_curves[idx].setData([], [])
 
@@ -500,6 +529,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.set_controls_enabled(False)
 
             self.module.start_analysis()
+
+            # Initialize accumulated arrays
+            self.max_blocks = self.module.max_blocks
+            self.accumulated_results = np.zeros((self.max_blocks, 5), dtype=complex)
+            self.block_counts = np.zeros(self.max_blocks, dtype=int)
+            self.plot_freqs_array = np.zeros(self.max_blocks)
+
             self.timer.start()
         else:
             self.module.stop_analysis()
@@ -517,6 +553,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_amplitude.setEnabled(enabled)
         self.spin_lpf_factor.setEnabled(enabled)
         self.spin_max_harmonic.setEnabled(enabled)
+        self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
 
@@ -529,44 +566,59 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         if not items:
             # Check if sweep is done
-            if self.module.is_running and self.module.current_block_idx >= self.module.max_blocks:
+            if (self.module.is_running 
+                and self.module.current_sweep_idx >= self.module.averaging_count - 1
+                and self.module.current_block_idx >= self.module.max_blocks):
                 # Automate sweep stop once it reaches the end
                 self.btn_toggle.setChecked(False)
                 self.on_toggle_sweep(False)
             return
 
-        # Add data to plotting buffers
-        for f_mid, results in items:
-            self.plot_freqs.append(f_mid)
-            for idx in range(5):
-                if idx < len(results):
-                    # Compute amplitude in dBFS
-                    c_val = results[idx]
-                    amp = np.abs(c_val)
-                    db = 20 * np.log10(amp + 1e-15)
-                    self.plot_gains[idx].append(db)
+        latest_f_mid = None
+        for block_idx, _sweep_idx, f_mid, results in items:
+            if block_idx < self.max_blocks:
+                n_harm = min(len(results), 5)
+                # Accumulate complex values
+                self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
+                self.block_counts[block_idx] += 1
+                self.plot_freqs_array[block_idx] = f_mid
+                latest_f_mid = f_mid
 
-                    # Compute phase in degrees
-                    phase_deg = np.degrees(np.angle(c_val))
-                    self.plot_phases[idx].append(phase_deg)
-                else:
-                    self.plot_gains[idx].append(np.nan)
-                    self.plot_phases[idx].append(np.nan)
+        # Extract measured data
+        valid_indices = np.where(self.block_counts > 0)[0]
+        if len(valid_indices) == 0:
+            return
 
-        # Update curves
-        x_data = np.array(self.plot_freqs)
+        x_data = self.plot_freqs_array[valid_indices]
 
         # Display progress info
         if self.module.engine and self.module.engine.sweep_samples > 0:
             total_samples = self.module.engine.sweep_samples
-            progress_pct = min(100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0)
-            self.lbl_progress.setText(tr("Sweep Progress: {0:.1f}%").format(progress_pct))
-            self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(self.plot_freqs[-1]))
+            progress_pct = min(
+                100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0
+            )
+            self.lbl_progress.setText(
+                tr("Sweep Progress: {0:.1f}% (Sweep {1}/{2})").format(
+                    progress_pct,
+                    min(self.module.current_sweep_idx + 1, self.module.averaging_count),
+                    self.module.averaging_count
+                )
+            )
+            if latest_f_mid is not None:
+                self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(latest_f_mid))
 
         # Redraw
         for idx in range(self.module.max_harmonic):
-            y_gain = np.array(self.plot_gains[idx])
-            y_phase = np.array(self.plot_phases[idx])
+            counts = self.block_counts[valid_indices]
+            avg_complex = self.accumulated_results[valid_indices, idx] / counts
+
+            # Compute amplitude in dBFS
+            amp = np.abs(avg_complex)
+            y_gain = 20 * np.log10(amp + 1e-15)
+
+            # Compute phase in degrees
+            y_phase = np.degrees(np.angle(avg_complex))
+
             self.mag_curves[idx].setData(x_data, y_gain)
             self.phase_curves[idx].setData(x_data, y_phase)
 

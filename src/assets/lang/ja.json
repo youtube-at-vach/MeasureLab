@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "スイープ / 校正",
     "Sweep DUT": "DUTスイープ",
     "Sweep Progress: --": "スイープ進捗: --",
-    "Sweep Progress: {0:.1f}%": "スイープ進捗: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "スイープ進捗: {0:.1f}% (スイープ {1}/{2})",
     "Sweep Results": "スイープ結果",
     "Sweep Settings": "スイープ設定",
     "Sweep Time (s):": "スイープ時間 (秒):",

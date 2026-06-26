@@ -43,6 +43,7 @@ class RealtimeSSSEngine:
         output_amplitude: float,
         lpf_factor: float,
         max_harmonic: int = 5,
+        extraction_mode: str = "ls",
     ):
         self.sample_rate = float(sample_rate)
         self.sweep_duration = float(sweep_duration)
@@ -51,6 +52,7 @@ class RealtimeSSSEngine:
         self.output_amplitude = float(output_amplitude)
         self.lpf_factor = float(lpf_factor)
         self.max_harmonic = int(max_harmonic)
+        self.extraction_mode = str(extraction_mode)
 
         self.latency_samples = 0.0
 
@@ -120,12 +122,193 @@ class RealtimeSSSEngine:
         self.zi2 = [np.zeros(2, dtype=complex) for _ in range(self.max_harmonic)]
         self.ref_zi1 = np.zeros(2, dtype=complex)
         self.ref_zi2 = np.zeros(2, dtype=complex)
+        self.dec_y_zi1 = np.zeros(2, dtype=float)
+        self.dec_y_zi2 = np.zeros(2, dtype=float)
+        self.dec_r_zi1 = np.zeros(2, dtype=float)
+        self.dec_r_zi2 = np.zeros(2, dtype=float)
+        self.reset_analysis_history()
+
+    def reset_analysis_history(self):
+        """Resets the sample history used by the local least-squares extractor."""
+        self._hist_n: list[np.ndarray] = []
+        self._hist_theta: list[np.ndarray] = []
+        self._hist_signal: list[np.ndarray] = []
+        self._hist_ref: list[np.ndarray] = []
 
     def set_latency(self, latency_samples: float):
         """Sets the physical latency correction value."""
         self.latency_samples = max(0.0, float(latency_samples))
 
-    def process_block(self, indata_block: np.ndarray, outdata_block: np.ndarray, block_index: int, ref_in_block: np.ndarray | None = None):
+    def _frequency_at_sample(self, sample_index: float) -> float:
+        if self.L_param == 0:
+            return self.start_freq
+
+        n_eval = float(np.clip(sample_index, 0.0, max(0, self.sweep_samples - 1)))
+        if self.start_freq <= self.end_freq:
+            f1 = self.start_freq / 1.3
+        else:
+            f1 = self.start_freq * 1.15
+        return float(f1 * np.exp((n_eval / self.sample_rate) / self.L_param))
+
+    def _append_analysis_history(
+        self,
+        n_comp: np.ndarray,
+        theta_comp: np.ndarray,
+        signal: np.ndarray,
+        ref: np.ndarray | None,
+        valid_mask: np.ndarray,
+    ):
+        valid_indices = np.flatnonzero(valid_mask)
+        if len(valid_indices) == 0:
+            return
+
+        self._hist_n.append(n_comp[valid_indices].astype(float, copy=True))
+        self._hist_theta.append(theta_comp[valid_indices].astype(float, copy=True))
+        self._hist_signal.append(signal[valid_indices].astype(float, copy=True))
+        if ref is not None:
+            self._hist_ref.append(ref[valid_indices].astype(float, copy=True))
+        else:
+            self._hist_ref.append(np.empty(0, dtype=float))
+
+        keep_samples = int(
+            max(
+                self.sample_rate * 0.5,
+                self.sample_rate * 40.0 / max(1.0, min(self.start_freq, self.end_freq)),
+            )
+        )
+        last_valid_n = self._hist_n[-1][-1]
+        while self._hist_n and self._hist_n[0][-1] < last_valid_n - keep_samples:
+            self._hist_n.pop(0)
+            self._hist_theta.pop(0)
+            self._hist_signal.pop(0)
+            self._hist_ref.pop(0)
+
+    def _fit_harmonics(self, theta: np.ndarray, y: np.ndarray, weights: np.ndarray) -> list[complex]:
+        if len(y) < max(8, 3 * (2 * self.max_harmonic + 1)):
+            return [0.0j] * self.max_harmonic
+
+        columns = [np.ones_like(theta)]
+        for p in range(1, self.max_harmonic + 1):
+            columns.append(np.cos(p * theta))
+            columns.append(np.sin(p * theta))
+
+        design = np.column_stack(columns)
+        weighted_design = design * weights[:, None]
+        weighted_y = y * weights
+
+        try:
+            coeffs, *_ = np.linalg.lstsq(weighted_design, weighted_y, rcond=None)
+        except np.linalg.LinAlgError:
+            return [0.0j] * self.max_harmonic
+
+        results = []
+        for p in range(self.max_harmonic):
+            cos_coef = coeffs[1 + 2 * p]
+            sin_coef = coeffs[2 + 2 * p]
+            results.append(complex(cos_coef, -sin_coef))
+        return results
+
+    def _process_block_ls(
+        self,
+        n_comp: np.ndarray,
+        theta_comp: np.ndarray,
+        y_raw: np.ndarray,
+        f_mid: float,
+        valid_mask: np.ndarray,
+        ref_in_block: np.ndarray | None,
+    ) -> tuple[float, list[complex]]:
+        r_raw = None
+        if ref_in_block is not None:
+            if ref_in_block.shape[1] >= 1:
+                r_raw = ref_in_block[:, 0]
+            else:
+                r_raw = np.zeros_like(y_raw)
+
+        # 1. Append at original rate (48 kHz)
+        self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
+        if not self._hist_n:
+            return f_mid, [0.0j] * self.max_harmonic
+
+        hist_n = np.concatenate(self._hist_n)
+        hist_theta = np.concatenate(self._hist_theta)
+        hist_signal = np.concatenate(self._hist_signal)
+        hist_ref_chunks = [chunk for chunk in self._hist_ref if len(chunk) > 0]
+        hist_ref = np.concatenate(hist_ref_chunks) if hist_ref_chunks else None
+
+        last_valid_n = hist_n[-1]
+        local_freq = self._frequency_at_sample(last_valid_n)
+        window_seconds = np.clip(12.0 / max(local_freq, 1.0), 0.012, 0.15)
+        window_samples = max(256.0, window_seconds * self.sample_rate)
+        start_n = last_valid_n - window_samples
+        mask = hist_n >= start_n
+        if np.count_nonzero(mask) < max(64, 4 * (2 * self.max_harmonic + 1)):
+            return f_mid, [0.0j] * self.max_harmonic
+
+        theta_win = hist_theta[mask]
+        sig_win = hist_signal[mask]
+        ref_win = hist_ref[mask] if hist_ref is not None else None
+
+        # Determine decimation factor dynamically
+        P = self.max_harmonic
+        fs = self.sample_rate
+        max_d = int(np.floor(fs / (5.0 * P * max(1.0, local_freq))))
+        D = int(np.clip(max_d, 1, 10))
+
+        # 1. Bounded check to prevent sample starvation for LS fitting
+        min_samples = max(8, 3 * (2 * P + 1))
+        if D > 1 and len(sig_win) < D * min_samples:
+            D = max(1, len(sig_win) // min_samples)
+
+        if D > 1 and len(sig_win) >= 15:
+            # 2. Smooth cutoff frequency independent of discrete step D
+            fc = 2.2 * P * max(1.0, local_freq)
+            # Cap at 0.45 * fs to prevent Butterworth design errors near Nyquist limit
+            fc = min(fc, 0.45 * fs)
+            nyq = fs / 2.0
+
+            # Design 4th-order Butterworth LPF
+            b, a = scipy.signal.butter(4, fc / nyq, btype="low")
+
+            # Apply zero-phase filtering
+            sig_win = scipy.signal.filtfilt(b, a, sig_win)
+            sig_win = sig_win[::D]
+            theta_win = theta_win[::D]
+            if ref_win is not None:
+                ref_win = scipy.signal.filtfilt(b, a, ref_win)
+                ref_win = ref_win[::D]
+        elif D > 1:
+            # Fallback if window is too short
+            sig_win = sig_win[::D]
+            theta_win = theta_win[::D]
+            if ref_win is not None:
+                ref_win = ref_win[::D]
+
+        weights = np.hanning(len(sig_win))
+        if not np.any(weights > 0):
+            return f_mid, [0.0j] * self.max_harmonic
+
+        sig_results = self._fit_harmonics(theta_win, sig_win, weights)
+        result_freq = self._frequency_at_sample(float(np.mean(hist_n[mask])))
+
+        if ref_win is None or len(ref_win) != len(sig_win):
+            return result_freq, sig_results
+
+        ref_results = self._fit_harmonics(theta_win, ref_win, weights)
+        ref_h1 = ref_results[0] if ref_results else 0.0j
+        ref_conj = np.conj(ref_h1)
+        ref_mag2 = float(np.real(ref_h1 * ref_conj))
+        if ref_mag2 <= 1e-24:
+            return result_freq, [0.0j] * self.max_harmonic
+
+        return result_freq, [(value * ref_conj) / (ref_mag2 + 1e-24) for value in sig_results]
+
+    def process_block(
+        self,
+        indata_block: np.ndarray,
+        outdata_block: np.ndarray,
+        block_index: int,
+        ref_in_block: np.ndarray | None = None,
+    ):
         """
         Processes a single block of audio (both playing the sweep and analyzing loopback).
         indata_block: Input recorded samples of shape (frames, 1) or (frames, 2)
@@ -204,6 +387,9 @@ class RealtimeSSSEngine:
 
         # Zero out phase for invalid regions (before sweep reached microphone or after sweep ended)
         theta_comp[~valid_mask] = 0.0
+
+        if self.extraction_mode == "ls":
+            return self._process_block_ls(n_comp, theta_comp, y_raw, f_mid, valid_mask, ref_in_block)
 
         # Prepare LPF cutoff: fc = factor * f_mid
         fc = self.lpf_factor * f_mid
@@ -285,9 +471,7 @@ class LatencyCalibrator:
         self.out_ch = out_ch
 
         # Generate SSS and inverse filter for delay estimation
-        self.sss, self.inv = generate_sss_and_inverse(
-            self.sample_rate, self.duration, start_freq, end_freq
-        )
+        self.sss, self.inv = generate_sss_and_inverse(self.sample_rate, self.duration, start_freq, end_freq)
 
         # Allocate buffer for recording (add 0.3s margin)
         self.margin_samples = int(0.3 * self.sample_rate)
@@ -323,13 +507,9 @@ class LatencyCalibrator:
             in_samples = min(frames, self.total_samples - self.read_pos)
             if in_samples > 0:
                 if indata.shape[1] > self.in_ch:
-                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[
-                        :in_samples, self.in_ch
-                    ]
+                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[:in_samples, self.in_ch]
                 else:
-                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[
-                        :in_samples, 0
-                    ]
+                    self.recorded_data[self.read_pos : self.read_pos + in_samples] = indata[:in_samples, 0]
                 self.read_pos += in_samples
                 if self.read_pos >= self.total_samples:
                     self.finished.set()

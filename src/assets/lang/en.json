@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "Sweep / Calibration",
     "Sweep DUT": "Sweep DUT",
     "Sweep Progress: --": "Sweep Progress: --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "Sweep Results",
     "Sweep Settings": "Sweep Settings",
     "Sweep Time (s):": "Sweep Time (s):",
