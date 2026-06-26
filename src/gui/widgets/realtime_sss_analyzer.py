@@ -529,7 +529,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.set_controls_enabled(False)
 
             self.module.start_analysis()
-            
+
             # Initialize accumulated arrays
             self.max_blocks = self.module.max_blocks
             self.accumulated_results = np.zeros((self.max_blocks, 5), dtype=complex)
@@ -574,13 +574,15 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.on_toggle_sweep(False)
             return
 
-        for block_idx, sweep_idx, f_mid, results in items:
+        latest_f_mid = None
+        for block_idx, _sweep_idx, f_mid, results in items:
             if block_idx < self.max_blocks:
                 n_harm = min(len(results), 5)
                 # Accumulate complex values
                 self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
                 self.block_counts[block_idx] += 1
                 self.plot_freqs_array[block_idx] = f_mid
+                latest_f_mid = f_mid
 
         # Extract measured data
         valid_indices = np.where(self.block_counts > 0)[0]
@@ -602,13 +604,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     self.module.averaging_count
                 )
             )
-            self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(x_data[-1]))
+            if latest_f_mid is not None:
+                self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(latest_f_mid))
 
         # Redraw
         for idx in range(self.module.max_harmonic):
             counts = self.block_counts[valid_indices]
             avg_complex = self.accumulated_results[valid_indices, idx] / counts
-            
+
             # Compute amplitude in dBFS
             amp = np.abs(avg_complex)
             y_gain = 20 * np.log10(amp + 1e-15)
