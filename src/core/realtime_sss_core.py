@@ -254,9 +254,18 @@ class RealtimeSSSEngine:
         max_d = int(np.floor(fs / (5.0 * P * max(1.0, local_freq))))
         D = int(np.clip(max_d, 1, 10))
 
+        # 1. Bounded check to prevent sample starvation for LS fitting
+        min_samples = max(8, 3 * (2 * P + 1))
+        if D > 1 and len(sig_win) < D * min_samples:
+            D = max(1, len(sig_win) // min_samples)
+
         if D > 1 and len(sig_win) >= 15:
-            fc = fs / (2.5 * D)
+            # 2. Smooth cutoff frequency independent of discrete step D
+            fc = 2.2 * P * max(1.0, local_freq)
+            # Cap at 0.45 * fs to prevent Butterworth design errors near Nyquist limit
+            fc = min(fc, 0.45 * fs)
             nyq = fs / 2.0
+
             # Design 4th-order Butterworth LPF
             b, a = scipy.signal.butter(4, fc / nyq, btype="low")
 

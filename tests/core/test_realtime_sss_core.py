@@ -183,3 +183,104 @@ def test_latency_clamping():
     assert engine.latency_samples == 0.0
     engine.set_latency(45.2)
     assert engine.latency_samples == 45.2
+
+
+def test_engine_ls_extractor_early_samples_zero_check():
+    # Test that LS mode doesn't return zeros at the beginning of a sweep due to D clipping/sample count checks
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=50,
+        end_freq=15000,
+        output_amplitude=0.5,
+        lpf_factor=0.08,
+        max_harmonic=3,
+        extraction_mode="ls",
+    )
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    # Use a small block size (e.g. 128) where decimation D=10 would otherwise starve the sample count
+    frames = 128
+    outdata = np.zeros((frames, 1))
+    indata = np.zeros((frames, 1))
+
+    assert engine.out_sig is not None
+    indata[:frames, 0] = engine.out_sig[:frames]
+
+    f_mid, results = engine.process_block(indata, outdata, 0)
+
+    # Fundamental harmonic (results[0]) should have a valid non-zero amplitude
+    assert abs(results[0]) > 0.0, "Result should not be zero; D should have been scaled down to prevent starvation"
+
+
+def test_engine_ls_extractor_decimation_continuity():
+    # Test that LS mode output is continuous and doesn't exhibit sudden spikes/discontinuities when D changes
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=2.0,  # 2 seconds
+        start_freq=40,
+        end_freq=400,
+        output_amplitude=0.5,
+        lpf_factor=0.08,
+        max_harmonic=3,
+        extraction_mode="ls",
+    )
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    # We feed the clean output sweep directly back as input
+    frames = 256
+    num_blocks = int(np.ceil(engine.sweep_samples / frames))
+
+    results_list = []
+    d_values = []
+
+    for i in range(num_blocks):
+        outdata = np.zeros((frames, 1))
+        indata = np.zeros((frames, 1))
+
+        start = i * frames
+        chunk = min(frames, engine.sweep_samples - start)
+        if chunk > 0:
+            assert engine.out_sig is not None
+            indata[:chunk, 0] = engine.out_sig[start : start + chunk]
+
+        # Manually compute D that the engine will use to track transitions
+        # (mirroring the logic inside _process_block_ls)
+        n_mid = start + frames / 2.0
+        if 0 <= n_mid < engine.sweep_samples:
+            f1 = engine.start_freq / 1.3
+            f_mid = f1 * np.exp((n_mid / engine.sample_rate) / engine.L_param)
+        else:
+            f_mid = engine.start_freq
+
+        max_d = int(np.floor(engine.sample_rate / (5.0 * engine.max_harmonic * max(1.0, f_mid))))
+        D = int(np.clip(max_d, 1, 10))
+        d_values.append(D)
+
+        f_mid_ret, results = engine.process_block(indata, outdata, i)
+        results_list.append(results[0])  # store fundamental
+
+    # Filter out initial zeros and limit to active sweep range before Tukey fade-out (first 97%)
+    results_mag = np.array([abs(r) for r in results_list])
+    active_limit = int(0.97 * num_blocks)
+    valid_indices = np.array([idx for idx in np.flatnonzero(results_mag > 1e-5) if idx < active_limit])
+
+    # Check that adjacent differences in magnitude are small
+    # Especially at D boundary changes.
+    valid_mag = results_mag[valid_indices]
+    valid_d = np.array(d_values)[valid_indices]
+
+    diffs = np.abs(np.diff(valid_mag))
+
+    # Let's find index where D changed
+    d_changes = np.flatnonzero(np.diff(valid_d) != 0)
+
+    for idx in d_changes:
+        # Check diff around the change. It shouldn't be a sudden jump.
+        # Without smooth fc, the jump in magnitude at D transition can be quite large (e.g. > 0.05).
+        # We enforce that the jump is small (e.g., < 0.015).
+        assert diffs[idx] < 0.015, f"Discontinuity detected at D change index {idx} (D changed from {valid_d[idx]} to {valid_d[idx+1]}): jump was {diffs[idx]:.5f}"
+
+
