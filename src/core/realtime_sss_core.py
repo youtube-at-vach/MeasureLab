@@ -187,12 +187,12 @@ class RealtimeSSSEngine:
         if len(y) < max(8, 3 * (2 * self.max_harmonic + 1)):
             return [0.0j] * self.max_harmonic
 
-        columns = [np.ones_like(theta)]
+        design = np.empty((len(theta), 2 * self.max_harmonic + 1))
+        design[:, 0] = 1.0
         for p in range(1, self.max_harmonic + 1):
-            columns.append(np.cos(p * theta))
-            columns.append(np.sin(p * theta))
-
-        design = np.column_stack(columns)
+            phase = p * theta
+            design[:, 2 * p - 1] = np.cos(phase)
+            design[:, 2 * p] = np.sin(phase)
         weighted_design = design * weights[:, None]
         weighted_y = y * weights
 
