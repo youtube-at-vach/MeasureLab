@@ -17,7 +17,7 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 
 ## ☕ Coffee Break: Timecode (LTC)
 
-Playing a timecode (LTC) signal through speakers produces a harsh noise, but it contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
+A timecode (LTC) signal contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
 
 !!! note
     Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
