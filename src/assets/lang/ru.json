@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "Развертка / Калибровка",
     "Sweep DUT": "Развертка DUT",
     "Sweep Progress: --": "Прогресс свипирования: --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "Результаты развертки",
     "Sweep Settings": "Настройки развертки",
     "Sweep Time (s):": "Sweep Time (s):",

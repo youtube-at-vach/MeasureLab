@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "扫描 / 校准",
     "Sweep DUT": "DUT扫描",
     "Sweep Progress: --": "扫频进度: --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "扫描结果",
     "Sweep Settings": "扫描设置",
     "Sweep Time (s):": "Sweep Time (s):",

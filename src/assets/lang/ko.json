@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "스위프 / 교정",
     "Sweep DUT": "DUT 스위프",
     "Sweep Progress: --": "스윕 진행률: --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "스위프 결과",
     "Sweep Settings": "스윕 설정",
     "Sweep Time (s):": "Sweep Time (s):",

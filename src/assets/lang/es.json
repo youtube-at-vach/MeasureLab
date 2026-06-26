@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "Barrido / Calibración",
     "Sweep DUT": "Barrido DUT",
     "Sweep Progress: --": "Progreso de barrido: --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "Resultados del barrido",
     "Sweep Settings": "Configuración de barrido",
     "Sweep Time (s):": "Sweep Time (s):",

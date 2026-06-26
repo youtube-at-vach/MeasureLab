@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "Varredura / Calibração",
     "Sweep DUT": "Varredura DUT",
     "Sweep Progress: --": "Progresso da varredura: --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "Resultados da varredura",
     "Sweep Settings": "Configurações de varredura",
     "Sweep Time (s):": "Sweep Time (s):",

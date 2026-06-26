@@ -1727,7 +1727,7 @@
     "Sweep / Calibration": "Balayage / Calibration",
     "Sweep DUT": "Balayage DUT",
     "Sweep Progress: --": "Progression du balayage : --",
-    "Sweep Progress: {0:.1f}%": "Sweep Progress: {0:.1f}%",
+    "Sweep Progress: {0:.1f}% (Sweep {1}/{2})": "Sweep Progress: {0:.1f}% (Sweep {1}/{2})",
     "Sweep Results": "Résultats du balayage",
     "Sweep Settings": "Paramètres de balayage",
     "Sweep Time (s):": "Sweep Time (s):",
