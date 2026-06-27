@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
 )
 from src.core.localization import tr
-from src.core.export import ExportManager
+from src.core.export.manager import ExportManager
 from src.core.comparison_manager import ComparisonTrace
 
 
