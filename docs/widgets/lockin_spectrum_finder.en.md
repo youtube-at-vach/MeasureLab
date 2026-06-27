@@ -18,9 +18,9 @@ Standard spectrum analyzers calculate energy across broad frequency bands, obscu
 
 This widget is specialized for "finding" weak signals within a specific narrow band. For effective measurement, use it in combination with the following widgets depending on your goals:
 
-* **[Spectrum Analyzer](spectrum_analyzer.md)**
+* **[Spectrum Analyzer](spectrum_analyzer.en.md)**
     If you want to quickly grasp the frequency components and noise distribution over a wide frequency band, use the Spectrum Analyzer first. When you find a minor peak or noise that you want to examine in more detail with extremely high resolution, switch to this widget (especially utilizing the Zoom mode) for a deeper analysis.
-* **[Lock-in Amplifier](lock_in_amplifier.md)**
+* **[Lock-in Amplifier](lock_in_amplifier.en.md)**
     Once you have identified the exact frequency of the target signal using this widget, use the Lock-in Amplifier. By perfectly synchronizing (locking) to the identified frequency, you can measure the actual accurate amplitude and phase, and evaluate long-term stability.
 
 ## Modes
