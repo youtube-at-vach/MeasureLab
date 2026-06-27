@@ -1390,8 +1390,8 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
         # Ensure we don't keep decoding/generating LTC after the widget is closed.
         try:
             self._set_monitor_running(False)
-        except Exception:  # noqa: S110
-            pass
+        except Exception as e:
+            logger.warning(f"Error stopping timecode monitor during closure: {e}")
         return super().closeEvent(event)
 
     def on_link_toggled(self, checked: bool):
