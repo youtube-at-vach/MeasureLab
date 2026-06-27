@@ -70,10 +70,6 @@ Allows real-time confirmation of the detected pulse waveform and adjustment of t
     * **Mean / Std Dev**: The average value and standard deviation of the deviation.
     * **Min / Max**: The minimum and maximum deviation since the start of measurement.
 
-## ☕ Coffee Break: What is "Clock Drift"?
-
-When a clock gradually runs fast or slow, it's called "drift". Audio equipment is the same; its internal clock can gradually shift over time. This graph visualizes that shift.
-
 ## Reading the Graph
 
 * **Instantaneous (Dotted Line, Yellow)**: Displays the instantaneous deviation for each pulse. Suitable for checking jitter and short-term fluctuations.
