@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import sounddevice as sd
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -18,6 +19,8 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+
+logger = logging.getLogger(__name__)
 
 
 class LoopbackWorker(QThread):
@@ -78,7 +81,8 @@ class LoopbackFinder(MeasurementModule):
         try:
             devices, _ = self.audio_engine._get_cached_audio_info()
             has_cache = devices is not None and isinstance(devices, tuple)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get cached audio info: {e}")
             devices = None
             has_cache = False
 
@@ -88,8 +92,8 @@ class LoopbackFinder(MeasurementModule):
                 try:
                     devices = sd.query_devices()
                     has_cache = devices is not None and isinstance(devices, tuple)
-                except Exception:  # noqa: S110
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to query sound devices: {e}")
             if not has_cache:
                 return sd.query_devices(dev_id)
             if isinstance(dev_id, int) and dev_id < len(devices):
