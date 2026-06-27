@@ -289,11 +289,17 @@ class RealtimeSSSEngine:
         sig_results = self._fit_harmonics(theta_win, sig_win, weights)
         result_freq = self._frequency_at_sample(float(np.mean(hist_n[mask])))
 
+        # Apply 90-degree phase correction (multiply by 1j) to match sine excitation
+        # and maintain consistency with the IIR DDC demodulator.
+        sig_results = [val * 1j for val in sig_results]
+
         if ref_win is None or len(ref_win) != len(sig_win):
             return result_freq, sig_results
 
         ref_results = self._fit_harmonics(theta_win, ref_win, weights)
         ref_h1 = ref_results[0] if ref_results else 0.0j
+        # Also apply 90-degree phase correction to the reference fundamental
+        ref_h1 = ref_h1 * 1j
         ref_conj = np.conj(ref_h1)
         ref_mag2 = float(np.real(ref_h1 * ref_conj))
         if ref_mag2 <= 1e-24:
