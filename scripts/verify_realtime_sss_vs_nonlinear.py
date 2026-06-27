@@ -145,7 +145,7 @@ def main():
             while rt_sss.measurement_queue:
                 items.append(rt_sss.measurement_queue.popleft())
 
-        for block_idx, sweep_idx, f_mid, results in items:
+        for _block_idx, _sweep_idx, f_mid, results in items:
             rt_freqs.append(f_mid)
             for idx in range(5):
                 if idx < len(results):
