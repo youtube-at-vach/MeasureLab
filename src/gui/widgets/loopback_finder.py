@@ -100,12 +100,13 @@ class LoopbackFinder(MeasurementModule):
                 for d in devices:
                     if d["name"] == dev_id or d["name"].lower() == dev_id.lower():
                         return d
-                import re
-
-                pattern = re.compile(".*?".join(map(re.escape, substrings)))
-                matches = [d for d in devices if pattern.search(d["name"].lower())]
-                if matches:
-                    return matches[0]
+                for d in devices:
+                    name_lower = d["name"].lower()
+                    for s in substrings:
+                        if s not in name_lower:
+                            break
+                    else:
+                        return d
             raise ValueError(f"No input/output device matching '{dev_id}'")
 
         if isinstance(device_id, tuple):
