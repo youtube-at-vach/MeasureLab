@@ -92,16 +92,26 @@ class CsvTraceExporter(BaseTraceExporter):
                 x_dim_str = f"{dim_cap} ({unit})" if unit else dim_cap
 
             headers = [self._sanitize_csv_field(x_dim_str)]
+            # Cache formatted axis strings
+            axis_cache = {}
             for t in traces:
-                dim_cap = tr(t.y_axis.dimension).capitalize()
-                unit = t.y_axis.display_unit
-                y_lbl = f"{t.name} - {dim_cap} ({unit})" if unit else f"{t.name} - {dim_cap}"
+                y_dim_key = (t.y_axis.dimension, t.y_axis.display_unit)
+                if y_dim_key not in axis_cache:
+                    dim_cap = tr(t.y_axis.dimension).capitalize()
+                    unit = t.y_axis.display_unit
+                    axis_cache[y_dim_key] = f" - {dim_cap} ({unit})" if unit else f" - {dim_cap}"
+
+                y_lbl = f"{t.name}{axis_cache[y_dim_key]}"
                 headers.append(self._sanitize_csv_field(y_lbl))
 
                 if t.y2_data is not None and t.y2_axis:
-                    dim_cap2 = tr(t.y2_axis.dimension).capitalize()
-                    unit2 = t.y2_axis.display_unit
-                    y2_lbl = f"{t.name} - {dim_cap2} ({unit2})" if unit2 else f"{t.name} - {dim_cap2}"
+                    y2_dim_key = (t.y2_axis.dimension, t.y2_axis.display_unit)
+                    if y2_dim_key not in axis_cache:
+                        dim_cap2 = tr(t.y2_axis.dimension).capitalize()
+                        unit2 = t.y2_axis.display_unit
+                        axis_cache[y2_dim_key] = f" - {dim_cap2} ({unit2})" if unit2 else f" - {dim_cap2}"
+
+                    y2_lbl = f"{t.name}{axis_cache[y2_dim_key]}"
                     headers.append(self._sanitize_csv_field(y2_lbl))
             writer.writerow(headers)
 
@@ -136,21 +146,31 @@ class CsvTraceExporter(BaseTraceExporter):
         # 1. Write Headers
         if include_headers:
             headers = []
+            axis_cache = {}
             for t in traces:
-                x_dim = tr(t.x_axis.dimension).capitalize()
-                x_unit = t.x_axis.display_unit
-                x_lbl = f"{t.name}_{x_dim} ({x_unit})" if x_unit else f"{t.name}_{x_dim}"
+                x_dim_key = (t.x_axis.dimension, t.x_axis.display_unit)
+                if x_dim_key not in axis_cache:
+                    x_dim = tr(t.x_axis.dimension).capitalize()
+                    x_unit = t.x_axis.display_unit
+                    axis_cache[x_dim_key] = f"_{x_dim} ({x_unit})" if x_unit else f"_{x_dim}"
+                x_lbl = f"{t.name}{axis_cache[x_dim_key]}"
 
-                y_dim = tr(t.y_axis.dimension).capitalize()
-                y_unit = t.y_axis.display_unit
-                y_lbl = f"{t.name}_{y_dim} ({y_unit})" if y_unit else f"{t.name}_{y_dim}"
+                y_dim_key = (t.y_axis.dimension, t.y_axis.display_unit)
+                if y_dim_key not in axis_cache:
+                    y_dim = tr(t.y_axis.dimension).capitalize()
+                    y_unit = t.y_axis.display_unit
+                    axis_cache[y_dim_key] = f"_{y_dim} ({y_unit})" if y_unit else f"_{y_dim}"
+                y_lbl = f"{t.name}{axis_cache[y_dim_key]}"
 
                 headers.extend([self._sanitize_csv_field(x_lbl), self._sanitize_csv_field(y_lbl)])
 
                 if t.y2_data is not None and t.y2_axis:
-                    y2_dim = tr(t.y2_axis.dimension).capitalize()
-                    y2_unit = t.y2_axis.display_unit
-                    y2_lbl = f"{t.name}_{y2_dim} ({y2_unit})" if y2_unit else f"{t.name}_{y2_dim}"
+                    y2_dim_key = (t.y2_axis.dimension, t.y2_axis.display_unit)
+                    if y2_dim_key not in axis_cache:
+                        y2_dim = tr(t.y2_axis.dimension).capitalize()
+                        y2_unit = t.y2_axis.display_unit
+                        axis_cache[y2_dim_key] = f"_{y2_dim} ({y2_unit})" if y2_unit else f"_{y2_dim}"
+                    y2_lbl = f"{t.name}{axis_cache[y2_dim_key]}"
                     headers.append(self._sanitize_csv_field(y2_lbl))
             writer.writerow(headers)
 
