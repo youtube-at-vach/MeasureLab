@@ -284,3 +284,57 @@ def test_engine_ls_extractor_decimation_continuity():
         assert diffs[idx] < 0.015, f"Discontinuity detected at D change index {idx} (D changed from {valid_d[idx]} to {valid_d[idx+1]}): jump was {diffs[idx]:.5f}"
 
 
+def test_engine_ls_vs_iir_phase_consistency():
+    # IIR
+    engine_iir = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=100,
+        end_freq=1000,
+        output_amplitude=0.5,
+        lpf_factor=0.08,
+        max_harmonic=3,
+        extraction_mode="iir",
+    )
+    engine_iir.prepare_sweep()
+    engine_iir.set_latency(0)
+
+    # LS
+    engine_ls = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=100,
+        end_freq=1000,
+        output_amplitude=0.5,
+        lpf_factor=0.08,
+        max_harmonic=3,
+        extraction_mode="ls",
+    )
+    engine_ls.prepare_sweep()
+    engine_ls.set_latency(0)
+
+    frames = 1024
+    num_blocks = 5
+    for block_idx in range(num_blocks):
+        outdata = np.zeros((frames, 1))
+        indata = np.zeros((frames, 1))
+        start = block_idx * frames
+        assert engine_iir.out_sig is not None
+        indata[:frames, 0] = engine_iir.out_sig[start : start + frames]
+
+        f_mid_iir, results_iir = engine_iir.process_block(indata, outdata, block_index=block_idx)
+        f_mid_ls, results_ls = engine_ls.process_block(indata, outdata, block_index=block_idx)
+
+    # Compare phase of fundamental for the last block
+    h1_iir = results_iir[0]
+    h1_ls = results_ls[0]
+
+    phase_iir = np.angle(h1_iir)
+    phase_ls = np.angle(h1_ls)
+    phase_diff = np.abs(phase_iir - phase_ls)
+    # Normalize phase diff to [-pi, pi]
+    phase_diff = (phase_diff + np.pi) % (2 * np.pi) - np.pi
+    assert np.abs(phase_diff) < 0.1, f"Phase mismatch between IIR ({phase_iir}) and LS ({phase_ls}) modes: {phase_diff}"
+
+
+
