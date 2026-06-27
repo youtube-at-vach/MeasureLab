@@ -826,8 +826,8 @@ class TimecodeMonitor(MeasurementModule):
         # Apply input delay compensation (if any)
         try:
             total_frames += int(ch.input_offset_frames)
-        except Exception:  # noqa: S110
-            pass
+        except (ValueError, TypeError) as e:
+            logger.debug(f"Failed to apply input delay compensation: {e}")
 
         mem = self.jam_memories[s]
         mem.valid = True
