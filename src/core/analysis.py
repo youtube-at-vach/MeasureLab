@@ -488,6 +488,8 @@ class AudioCalc:
 
         acc_v_complex = np.zeros(K, dtype=np.complex128)
         rot_buffer = np.empty(K, dtype=np.complex128)
+        rot_phase = np.empty(K, dtype=np.float64)
+        dot_prod_buffer = np.empty(K, dtype=np.complex128)
 
         for i in range(0, N, chunk_size):
             end = min(i + chunk_size, N)
@@ -495,15 +497,16 @@ class AudioCalc:
             sig_chunk = signal[i:end]
 
             if current_len == chunk_size:
-                dot_prod = E_base @ sig_chunk
+                np.matmul(E_base, sig_chunk, out=dot_prod_buffer)
             else:
-                dot_prod = E_base[:, :current_len] @ sig_chunk
+                np.matmul(E_base[:, :current_len], sig_chunk, out=dot_prod_buffer)
 
-            rot_phase = omega * t[i]
+            np.multiply(omega, t[i], out=rot_phase)
             np.cos(rot_phase, out=rot_buffer.real)
             np.sin(rot_phase, out=rot_buffer.imag)
 
-            acc_v_complex += dot_prod * rot_buffer
+            dot_prod_buffer *= rot_buffer
+            acc_v_complex += dot_prod_buffer
 
         sig_s = acc_v_complex.imag
         sig_c = acc_v_complex.real
