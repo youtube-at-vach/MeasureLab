@@ -145,7 +145,7 @@ def main():
             while rt_sss.measurement_queue:
                 items.append(rt_sss.measurement_queue.popleft())
 
-        for f_mid, results in items:
+        for _block_idx, _sweep_idx, f_mid, results in items:
             rt_freqs.append(f_mid)
             for idx in range(5):
                 if idx < len(results):
@@ -242,15 +242,15 @@ def main():
         # Synthesize predicted physical harmonic output Y_pred at f_eval_h
         A = amplitude_linear
         if h == 1:
-            y_val = (A * H_clean_interp[1] + 0.75 * (A**3) * H_clean_interp[3] + 0.625 * (A**5) * H_clean_interp[5]) / A
+            y_val = (1.0) * (A * H_clean_interp[1] + 0.75 * (A**3) * H_clean_interp[3] + 0.625 * (A**5) * H_clean_interp[5]) / A
         elif h == 2:
-            y_val = (0.5 * (A**2) * H_clean_interp[2] + 0.5 * (A**4) * H_clean_interp[4]) / A
+            y_val = (-1j) * (0.5 * (A**2) * H_clean_interp[2] + 0.5 * (A**4) * H_clean_interp[4]) / A
         elif h == 3:
-            y_val = (0.25 * (A**3) * H_clean_interp[3] + 0.3125 * (A**5) * H_clean_interp[5]) / A
+            y_val = (-1.0) * (0.25 * (A**3) * H_clean_interp[3] + 0.3125 * (A**5) * H_clean_interp[5]) / A
         elif h == 4:
-            y_val = (0.125 * (A**4) * H_clean_interp[4]) / A
+            y_val = (+1j) * (0.125 * (A**4) * H_clean_interp[4]) / A
         elif h == 5:
-            y_val = (0.0625 * (A**5) * H_clean_interp[5]) / A
+            y_val = (1.0) * (0.0625 * (A**5) * H_clean_interp[5]) / A
 
         nl_mag_interp = 20 * np.log10(np.abs(y_val) + 1e-15)
         nl_phase_interp = np.degrees(np.unwrap(np.angle(y_val)))

@@ -75,7 +75,7 @@ class RealtimeSSSEngine:
     def prepare_sweep(self):
         """
         Pre-calculates SSS phase trajectory and output signal using Novak's constraints.
-        Using cosine excitation (cos(phi(t))) as it maps directly to Chebyshev polynomials.
+        Using sine excitation (sin(phi(t))) as it is consistent with the offline NonlinearAnalyzer.
         """
         nyquist = self.sample_rate / 2.0
         if self.start_freq <= self.end_freq:
@@ -107,8 +107,8 @@ class RealtimeSSSEngine:
         # Phase trajectory
         self.phase_arr = 2.0 * np.pi * self.k_param * np.exp(self.t_arr / self.L_param)
 
-        # Output signal: Cosine sweep
-        self.out_sig = self.output_amplitude * np.cos(self.phase_arr)
+        # Output signal: Sine sweep
+        self.out_sig = self.output_amplitude * np.sin(self.phase_arr)
 
         # Apply Tukey window (fade-in / fade-out) to minimize transient clicks
         window = scipy.signal.windows.tukey(self.sweep_samples, alpha=0.02)
@@ -409,7 +409,7 @@ class RealtimeSSSEngine:
                 r_raw = np.zeros(frames)
 
             # Demodulate reference signal at fundamental (p=1)
-            lo_r = np.exp(-1j * theta_comp)
+            lo_r = 1j * np.exp(-1j * theta_comp)
             lo_r[~valid_mask] = 0.0
             z_r = 2.0 * r_raw * lo_r
 
@@ -419,13 +419,14 @@ class RealtimeSSSEngine:
 
             valid_indices = np.flatnonzero(valid_mask)
             if len(valid_indices) > 0:
-                last_valid_idx = valid_indices[-1]
-                ref_res = out_r2[last_valid_idx]
+                num_avg = min(len(valid_indices), 32)
+                avg_indices = valid_indices[-num_avg:]
+                ref_res = np.mean(out_r2[avg_indices])
                 has_ref = True
 
         # Vectorized DDC mixing and IIR filtering
         p_vals = np.arange(1, self.max_harmonic + 1)[:, np.newaxis]
-        lo_2d = np.exp(-1j * p_vals * theta_comp)
+        lo_2d = 1j * np.exp(-1j * p_vals * theta_comp)
         lo_2d[:, ~valid_mask] = 0.0
 
         z_2d = 2.0 * y_raw * lo_2d
@@ -435,8 +436,9 @@ class RealtimeSSSEngine:
 
         valid_indices = np.flatnonzero(valid_mask)
         if len(valid_indices) > 0:
-            last_valid_idx = valid_indices[-1]
-            val_sigs = out2[:, last_valid_idx]
+            num_avg = min(len(valid_indices), 32)
+            avg_indices = valid_indices[-num_avg:]
+            val_sigs = np.mean(out2[:, avg_indices], axis=1)
             if has_ref:
                 ref_conj = np.conj(ref_res)
                 ref_mag2 = np.real(ref_res * ref_conj)
