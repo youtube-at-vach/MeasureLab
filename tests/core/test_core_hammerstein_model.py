@@ -82,7 +82,7 @@ def test_active_model_cache(sample_hammerstein_data):
     import src.core.hammerstein_model as hm
 
     # Reset state before testing
-    hm._ACTIVE_MODEL_CACHE = None
+    hm.set_active_model(None)
 
     assert has_active_model() is False
     assert get_active_model() is None

@@ -92,7 +92,8 @@ def load_hammerstein_model(filepath):
 
 
 # Decoupled active model cache for inter-module communication
-_ACTIVE_MODEL_CACHE = None
+class _ActiveModelCache:
+    data = None
 
 
 def set_active_model(data):
@@ -100,8 +101,7 @@ def set_active_model(data):
     Caches the active Hammerstein model in memory.
     data: dict containing model structure (metadata, time_domain, frequency_domain).
     """
-    global _ACTIVE_MODEL_CACHE
-    _ACTIVE_MODEL_CACHE = data
+    _ActiveModelCache.data = data
 
 
 def get_active_model():
@@ -110,7 +110,7 @@ def get_active_model():
     Returns:
         dict: The model data, or None if no model is cached.
     """
-    return _ACTIVE_MODEL_CACHE
+    return _ActiveModelCache.data
 
 
 def has_active_model():
@@ -119,4 +119,4 @@ def has_active_model():
     Returns:
         bool: True if cached, False otherwise.
     """
-    return _ACTIVE_MODEL_CACHE is not None
+    return _ActiveModelCache.data is not None
