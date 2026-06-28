@@ -351,7 +351,7 @@ class CalibrationManager:
         if cache is None or len(cache[0]) == 0:
             return 0.0, 0.0
 
-        freq_cache, mag_cache, phase_cache = cache
+        freq_cache, mag_cache, phase_unwrapped = cache
 
         # If out of range, clamp to nearest
         is_scalar = np.isscalar(freq)
@@ -359,8 +359,6 @@ class CalibrationManager:
 
         # Use cached numpy arrays for interpolation
         mag_corr = np.interp(freq_arr, freq_cache, mag_cache)
-        # Unwrap phase before interpolation to avoid linear interpolation errors at wrap boundaries
-        phase_unwrapped = np.degrees(np.unwrap(np.radians(phase_cache)))
         phase_corr = np.interp(freq_arr, freq_cache, phase_unwrapped)
         phase_corr = (phase_corr + 180) % 360 - 180
 
@@ -382,13 +380,16 @@ class CalibrationManager:
             mag_tmp = data[:, 1]
             phase_tmp = data[:, 2]
 
+            # Unwrap phase before caching to avoid repeating this operation on every interpolation call
+            phase_unwrapped_tmp = np.degrees(np.unwrap(np.radians(phase_tmp)))
+
             # Update legacy attributes (backward compatible, but may be accessed asynchronously)
             self._freq_cache = freq_tmp
             self._mag_cache = mag_tmp
             self._phase_cache = phase_tmp
 
-            # Atomic update for thread-safe access
-            self._map_cache = (freq_tmp, mag_tmp, phase_tmp)
+            # Atomic update for thread-safe access (store the unwrapped phase in cache for speed)
+            self._map_cache = (freq_tmp, mag_tmp, phase_unwrapped_tmp)
         except Exception as e:
             self.logger.error("Failed to update map cache: %s", e)
             self._freq_cache = None

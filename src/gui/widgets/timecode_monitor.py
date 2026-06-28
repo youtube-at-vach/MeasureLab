@@ -169,6 +169,7 @@ class TimecodeMonitor(MeasurementModule):
 
         if not bool(prev):
             ch.generator_enabled = False
+            ch.gen.encoder.reset()
             ch.gen.frames_generated = 0
             ch.gen.gen_buffer.clear()
             ch.gen.gen_tc_buffer.clear()
@@ -265,6 +266,7 @@ class TimecodeMonitor(MeasurementModule):
             ch.decoded_tc = "--:--:--:--"
             ch.locked = False
 
+            ch.gen.encoder.reset()
             ch.gen.frames_generated = 0
             ch.gen.gen_buffer.clear()
             ch.gen.gen_tc_buffer.clear()
@@ -1567,6 +1569,7 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
         # Switch to JAM mode and restart generator state so output locks immediately.
         ch.generator_mode = "jam"
         ch.generator_enabled = True
+        ch.gen.encoder.reset()
         ch.gen.frames_generated = 0
         ch.gen.gen_buffer.clear()
         ch.gen.gen_tc_buffer.clear()
@@ -1785,6 +1788,7 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
     def _on_mode_changed(self, key: str, mode: str):
         ch = self.module.channels[key]
         ch.generator_mode = str(mode)
+        ch.gen.encoder.reset()
         ch.gen.frames_generated = 0
         ch.gen.gen_buffer.clear()
         ch.gen.gen_tc_buffer.clear()
@@ -1810,6 +1814,7 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
         # If currently generating in JAM mode, flush buffered frames so the new
         # memory slot takes effect immediately.
         if bool(getattr(ch, "generator_enabled", False)) and str(getattr(ch, "generator_mode", "")) == "jam":
+            ch.gen.encoder.reset()
             ch.gen.frames_generated = 0
             ch.gen.gen_buffer.clear()
             ch.gen.gen_tc_buffer.clear()
@@ -1833,6 +1838,7 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
         ch = self.module.channels[key]
         ch.generator_enabled = bool(checked)
         if checked:
+            ch.gen.encoder.reset()
             ch.gen.frames_generated = 0
             ch.gen.gen_buffer.clear()
             ch.gen.gen_tc_buffer.clear()
@@ -2020,6 +2026,7 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
         self.module.calibration_start(key)
         ch.generator_mode = "tod"
         ch.generator_enabled = True
+        ch.gen.encoder.reset()
         ch.gen.frames_generated = 0
         ch.gen.gen_buffer.clear()
         ch.gen.gen_tc_buffer.clear()
