@@ -115,28 +115,24 @@ class CsvTraceExporter(BaseTraceExporter):
                     headers.append(self._sanitize_csv_field(y2_lbl))
             writer.writerow(headers)
 
-        # 3. Precompute trace data to avoid repeatedly instantiating arrays
-        precomputed_traces = []
+        # 3. Interpolate and prepare columns directly
+        cols = [x_grid]
         for t in traces:
             orig_x = np.array(t.x_data, dtype=float)
-            orig_y = np.array(t.y_data, dtype=float)
-            orig_y2 = np.array(t.y2_data, dtype=float) if t.y2_data is not None else None
-            precomputed_traces.append((t, orig_x, orig_y, orig_y2))
 
-        # 4. Interpolate and Write Data
-        cols = [x_grid]
-        for t, orig_x, orig_y, orig_y2 in precomputed_traces:
-            # Check for empty data safely
             if len(orig_x) == 0:
-                cols.append([""] * len(x_grid))
+                empty_col = [""] * len(x_grid)
+                cols.append(empty_col)
                 if t.y2_data is not None:
-                    cols.append([""] * len(x_grid))
+                    cols.append(empty_col)
                 continue
 
+            orig_y = np.array(t.y_data, dtype=float)
             y_vals = np.interp(x_grid, orig_x, orig_y)
             cols.append(y_vals)
 
-            if orig_y2 is not None:
+            if t.y2_data is not None:
+                orig_y2 = np.array(t.y2_data, dtype=float)
                 y2_vals = np.interp(x_grid, orig_x, orig_y2)
                 cols.append(y2_vals)
 
