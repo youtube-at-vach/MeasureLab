@@ -72,6 +72,9 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
+        self.max_analysis_window = 0.15
+        self.max_fitting_samples = 2048
+        self.num_meas_points = 500
 
         # Latency state
         self.latency_samples = 0.0
@@ -119,6 +122,9 @@ class RealtimeSSSAnalyzer(MeasurementModule):
             end_freq=self.end_freq,
             output_amplitude=self.output_amplitude,
             max_harmonic=self.max_harmonic,
+            max_analysis_window=self.max_analysis_window,
+            max_fitting_samples=self.max_fitting_samples,
+            num_meas_points=self.num_meas_points,
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
@@ -316,6 +322,34 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         routing_tab.setLayout(r_form)
         left_tabs.addTab(routing_tab, tr("Routing"))
 
+        # 3. Advanced Tab
+        advanced_tab = QWidget()
+        adv_form = QFormLayout()
+        adv_form.setContentsMargins(6, 6, 6, 6)
+        adv_form.setSpacing(4)
+
+        self.spin_max_window = QDoubleSpinBox()
+        self.spin_max_window.setRange(0.05, 5.0)
+        self.spin_max_window.setSingleStep(0.05)
+        self.spin_max_window.setValue(self.module.max_analysis_window)
+        self.spin_max_window.setSuffix(" s")
+        adv_form.addRow(tr("Max Window:"), self.spin_max_window)
+
+        self.spin_max_samples = QSpinBox()
+        self.spin_max_samples.setRange(256, 65536)
+        self.spin_max_samples.setSingleStep(256)
+        self.spin_max_samples.setValue(self.module.max_fitting_samples)
+        adv_form.addRow(tr("Max Samples:"), self.spin_max_samples)
+
+        self.spin_meas_points = QSpinBox()
+        self.spin_meas_points.setRange(100, 5000)
+        self.spin_meas_points.setSingleStep(100)
+        self.spin_meas_points.setValue(self.module.num_meas_points)
+        adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
+
+        advanced_tab.setLayout(adv_form)
+        left_tabs.addTab(advanced_tab, tr("Advanced"))
+
         left_panel.addWidget(left_tabs)
 
         # Calibration Box
@@ -473,6 +507,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.output_amplitude = 10 ** (self.spin_amplitude.value() / 20.0)
             self.module.max_harmonic = self.spin_max_harmonic.value()
             self.module.averaging_count = self.spin_averaging.value()
+            self.module.max_analysis_window = self.spin_max_window.value()
+            self.module.max_fitting_samples = self.spin_max_samples.value()
+            self.module.num_meas_points = self.spin_meas_points.value()
 
             self.module.output_channel = (
                 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
@@ -547,6 +584,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
+        self.spin_max_window.setEnabled(enabled)
+        self.spin_max_samples.setEnabled(enabled)
+        self.spin_meas_points.setEnabled(enabled)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
