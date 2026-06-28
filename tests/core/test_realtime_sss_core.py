@@ -279,4 +279,52 @@ def test_engine_ls_extractor_decimation_continuity():
         assert diffs[idx] < 0.015, f"Discontinuity detected at D change index {idx} (D changed from {valid_d[idx]} to {valid_d[idx+1]}): jump was {diffs[idx]:.5f}"
 
 
+def test_engine_parameter_derivation():
+    # 1. Test default parameter derivation (analysis_cycles = 12.0)
+    # With start_freq=20.0, end_freq=20000.0, min_freq is 20.0.
+    # max_analysis_window should be 12.0 / (4.0 * 20.0) = 0.15.
+    # max_fitting_samples should be int(12.0 * 170) = 2040.
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=20.0,
+        end_freq=20000.0,
+        output_amplitude=0.5,
+        max_harmonic=3,
+        analysis_cycles=12.0,
+    )
+    assert np.isclose(engine.max_analysis_window, 0.15)
+    assert engine.max_fitting_samples == 2040
+
+    # 2. Test parameter derivation with custom analysis_cycles
+    engine_custom = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=40.0,
+        end_freq=20000.0,
+        output_amplitude=0.5,
+        max_harmonic=3,
+        analysis_cycles=8.0,
+    )
+    # min_freq = 40.0 -> max_analysis_window = 8.0 / (4.0 * 40.0) = 0.05
+    # max_fitting_samples = int(8.0 * 170) = 1360
+    assert np.isclose(engine_custom.max_analysis_window, 0.05)
+    assert engine_custom.max_fitting_samples == 1360
+
+    # 3. Test legacy override compatibility
+    engine_override = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=20.0,
+        end_freq=20000.0,
+        output_amplitude=0.5,
+        max_harmonic=3,
+        analysis_cycles=12.0,
+        max_analysis_window=0.5,
+        max_fitting_samples=4096,
+    )
+    assert engine_override.max_analysis_window == 0.5
+    assert engine_override.max_fitting_samples == 4096
+
+
 

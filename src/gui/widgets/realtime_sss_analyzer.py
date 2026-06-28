@@ -72,8 +72,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
-        self.max_analysis_window = 0.15
-        self.max_fitting_samples = 2048
+        self.analysis_cycles = 12.0
         self.num_meas_points = 500
 
         # Latency state
@@ -122,8 +121,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
             end_freq=self.end_freq,
             output_amplitude=self.output_amplitude,
             max_harmonic=self.max_harmonic,
-            max_analysis_window=self.max_analysis_window,
-            max_fitting_samples=self.max_fitting_samples,
+            analysis_cycles=self.analysis_cycles,
             num_meas_points=self.num_meas_points,
         )
         self.engine.prepare_sweep()
@@ -328,18 +326,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         adv_form.setContentsMargins(6, 6, 6, 6)
         adv_form.setSpacing(4)
 
-        self.spin_max_window = QDoubleSpinBox()
-        self.spin_max_window.setRange(0.05, 5.0)
-        self.spin_max_window.setSingleStep(0.05)
-        self.spin_max_window.setValue(self.module.max_analysis_window)
-        self.spin_max_window.setSuffix(" s")
-        adv_form.addRow(tr("Max Window:"), self.spin_max_window)
-
-        self.spin_max_samples = QSpinBox()
-        self.spin_max_samples.setRange(256, 65536)
-        self.spin_max_samples.setSingleStep(256)
-        self.spin_max_samples.setValue(self.module.max_fitting_samples)
-        adv_form.addRow(tr("Max Samples:"), self.spin_max_samples)
+        self.spin_analysis_cycles = QDoubleSpinBox()
+        self.spin_analysis_cycles.setRange(2.0, 50.0)
+        self.spin_analysis_cycles.setSingleStep(1.0)
+        self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
+        self.spin_analysis_cycles.setSuffix(" cycles")
+        adv_form.addRow(tr("Analysis Cycles:"), self.spin_analysis_cycles)
 
         self.spin_meas_points = QSpinBox()
         self.spin_meas_points.setRange(100, 5000)
@@ -507,8 +499,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.output_amplitude = 10 ** (self.spin_amplitude.value() / 20.0)
             self.module.max_harmonic = self.spin_max_harmonic.value()
             self.module.averaging_count = self.spin_averaging.value()
-            self.module.max_analysis_window = self.spin_max_window.value()
-            self.module.max_fitting_samples = self.spin_max_samples.value()
+            self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
 
             self.module.output_channel = (
@@ -584,8 +575,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
-        self.spin_max_window.setEnabled(enabled)
-        self.spin_max_samples.setEnabled(enabled)
+        self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
 
     def update_plots(self):

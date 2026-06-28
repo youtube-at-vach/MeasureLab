@@ -24,9 +24,10 @@ class RealtimeSSSEngine:
         end_freq: float,
         output_amplitude: float,
         max_harmonic: int = 5,
-        max_analysis_window: float = 0.15,
-        max_fitting_samples: int = 2048,
+        analysis_cycles: float = 12.0,
         num_meas_points: int = 500,
+        max_analysis_window: float | None = None,
+        max_fitting_samples: int | None = None,
     ):
         self.sample_rate = float(sample_rate)
         self.sweep_duration = float(sweep_duration)
@@ -34,9 +35,20 @@ class RealtimeSSSEngine:
         self.end_freq = float(end_freq)
         self.output_amplitude = float(output_amplitude)
         self.max_harmonic = int(max_harmonic)
-        self.max_analysis_window = float(max_analysis_window)
-        self.max_fitting_samples = int(max_fitting_samples)
+        self.analysis_cycles = float(analysis_cycles)
         self.num_meas_points = int(num_meas_points)
+
+        # Derive legacy settings dynamically from analysis_cycles if not provided
+        min_freq = min(self.start_freq, self.end_freq)
+        if max_analysis_window is not None:
+            self.max_analysis_window = float(max_analysis_window)
+        else:
+            self.max_analysis_window = self.analysis_cycles / (4.0 * max(1.0, min_freq))
+
+        if max_fitting_samples is not None:
+            self.max_fitting_samples = int(max_fitting_samples)
+        else:
+            self.max_fitting_samples = int(np.clip(self.analysis_cycles * 170, 256, 65536))
 
         self.latency_samples = 0.0
 
@@ -210,7 +222,7 @@ class RealtimeSSSEngine:
 
         last_valid_n = hist_n[-1]
         local_freq = self._frequency_at_sample(last_valid_n)
-        window_seconds = np.clip(12.0 / max(local_freq, 1.0), 0.012, self.max_analysis_window)
+        window_seconds = np.clip(self.analysis_cycles / max(local_freq, 1.0), 0.012, self.max_analysis_window)
         window_samples = max(256.0, window_seconds * self.sample_rate)
         start_n = last_valid_n - window_samples
         mask = hist_n >= start_n
