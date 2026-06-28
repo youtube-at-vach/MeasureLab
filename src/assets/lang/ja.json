@@ -902,6 +902,7 @@
     "LPF": "LPF",
     "LPF Factor:": "LPF係数:",
     "LPF Time Constant:": "LPF時定数:",
+    "LPF cutoff factor. Note: Extremely small factors (e.g. < 0.01) require a longer sweep Duration (e.g. >= 30s) to avoid filter delay distortions.": "LPFカットオフ係数。注意：極端に小さい係数（例：< 0.01）は、フィルター遅延による歪みを避けるため、より長いスイープ時間（例：>= 30秒）が必要です。",
     "LRA": "LRA",
     "LSB": "LSB",
     "LTC (Linear Timecode) Reader and Generator.": "LTC（リニアタイムコード）の読み取り／生成を行います。",

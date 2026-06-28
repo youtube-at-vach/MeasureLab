@@ -254,7 +254,10 @@ class RealtimeSSSEngine:
         P = self.max_harmonic
         fs = self.sample_rate
         max_d = int(np.floor(fs / (5.0 * P * max(1.0, local_freq))))
-        D = int(np.clip(max_d, 1, 10))
+        
+        # Limit fitting sample size to ~2048 samples to prevent CPU exhaustion on large windows
+        needed_d = len(sig_win) // 2048
+        D = int(np.clip(max(needed_d, 1), 1, max(1, max_d)))
 
         # 1. Bounded check to prevent sample starvation for LS fitting
         min_samples = max(8, 3 * (2 * P + 1))

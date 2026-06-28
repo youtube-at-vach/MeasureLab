@@ -902,6 +902,7 @@
     "LPF": "LPF",
     "LPF Factor:": "Factor LPF:",
     "LPF Time Constant:": "Constante de tiempo LPF:",
+    "LPF cutoff factor. Note: Extremely small factors (e.g. < 0.01) require a longer sweep Duration (e.g. >= 30s) to avoid filter delay distortions.": "Factor de corte LPF. Nota: Los factores extremadamente pequeños (p. ej., < 0.01) requieren una duración de barrido más larga (p. ej., >= 30 s) para evitar distorsiones por retardo del filtro.",
     "LRA": "LRA",
     "LSB": "LSB",
     "LTC (Linear Timecode) Reader and Generator.": "Lector y Generador de LTC (Código de Tiempo Lineal).",

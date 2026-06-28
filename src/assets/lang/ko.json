@@ -902,6 +902,7 @@
     "LPF": "LPF",
     "LPF Factor:": "LPF 계수:",
     "LPF Time Constant:": "LPF 시정수:",
+    "LPF cutoff factor. Note: Extremely small factors (e.g. < 0.01) require a longer sweep Duration (e.g. >= 30s) to avoid filter delay distortions.": "LPF 차단 계수. 참고: 필터 지연 왜곡을 방지하려면 매우 작은 계수(예: < 0.01)의 경우 더 긴 스위프 시간(예: >= 30초)이 필요합니다.",
     "LRA": "LRA",
     "LSB": "LSB",
     "LTC (Linear Timecode) Reader and Generator.": "LTC (선형 타임코드) 리더 및 생성기.",

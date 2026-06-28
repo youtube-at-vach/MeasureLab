@@ -270,10 +270,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         form.addRow(tr("Amplitude:"), self.spin_amplitude)
 
         self.spin_lpf_factor = QDoubleSpinBox()
-        self.spin_lpf_factor.setRange(0.01, 0.50)
-        self.spin_lpf_factor.setSingleStep(0.01)
+        self.spin_lpf_factor.setRange(0.002, 0.500)
+        self.spin_lpf_factor.setSingleStep(0.005)
         self.spin_lpf_factor.setValue(self.module.lpf_factor)
         self.spin_lpf_factor.setDecimals(3)
+        self.spin_lpf_factor.setToolTip(tr("LPF cutoff factor. Note: Extremely small factors (e.g. < 0.01) require a longer sweep Duration (e.g. >= 30s) to avoid filter delay distortions."))
         form.addRow(tr("LPF Factor:"), self.spin_lpf_factor)
 
         self.spin_max_harmonic = QSpinBox()

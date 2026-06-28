@@ -902,6 +902,7 @@
     "LPF": "LPF",
     "LPF Factor:": "LPF 系数:",
     "LPF Time Constant:": "低通时间常数：",
+    "LPF cutoff factor. Note: Extremely small factors (e.g. < 0.01) require a longer sweep Duration (e.g. >= 30s) to avoid filter delay distortions.": "LPF 截止因子。注意：极小的因子（例如 < 0.01）需要更长的扫频时间（例如 >= 30s），以避免滤波器延迟失真。",
     "LRA": "LRA",
     "LSB": "LSB",
     "LTC (Linear Timecode) Reader and Generator.": "LTC（线性时间码）读取器和发生器。",
