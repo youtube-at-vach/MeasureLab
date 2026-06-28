@@ -8,9 +8,9 @@ The widget to use depends on what kind of noise you want to see.
 
 | Purpose | Recommended Tool | Overview |
 | :--- | :--- | :--- |
-| **View noise spectrum** | [Spectrum Analyzer](../widgets/spectrum_analyzer.md) | Confirm at which frequencies and how much noise is included (distribution). This is the most common measurement. |
-| **Analyze noise types** | [Noise Profiler](../widgets/noise_profiler.md) | Decompose into components such as "hiss (white noise)" and "hum," and quantify their respective contributions. |
-| **View time-series changes in noise** | [Raw Time Series](../widgets/raw_time_series.md) | Monitor changes over time, such as "occasional pop noise" or "fluctuation of DC offset." |
+| **View noise spectrum** | [Spectrum Analyzer](../widgets/spectrum_analyzer.en.md) | Confirm at which frequencies and how much noise is included (distribution). This is the most common measurement. |
+| **Analyze noise types** | [Noise Profiler](../widgets/noise_profiler.en.md) | Decompose into components such as "hiss (white noise)" and "hum," and quantify their respective contributions. |
+| **View time-series changes in noise** | [Raw Time Series](../widgets/raw_time_series.en.md) | Monitor changes over time, such as "occasional pop noise" or "fluctuation of DC offset." |
 
 ---
 

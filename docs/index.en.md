@@ -16,11 +16,11 @@ The purpose of this tool is to **transform your everyday PC and audio interface 
 ## How to Read This Manual
 
 - For first-time users:
-  → Read the [Quickstart](quickstart.md) first.
+  → Read the [Quickstart](quickstart.en.md) first.
 - To use specific features:
-  → Refer to each [**Widget Guide**](widget_guide.md).
+  → Refer to each [**Widget Guide**](widget_guide.en.md).
 - To see actual measurement examples:
-  → Refer to the [**Measurement Recipes**](measurement_recipes/index.md).
+  → Refer to the [**Measurement Recipes**](measurement_recipes/index.en.md).
 
 ---
 

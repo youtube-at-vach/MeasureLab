@@ -23,13 +23,13 @@ The most important thing in measurement is not just reading numbers, but **"meas
 
 The following guides are currently available:
 
-* **[Noise Measurement Recipe](noise_measurement.md)**
+* **[Noise Measurement Recipe](noise_measurement.en.md)**
     * Detailed analysis of residual noise (hiss) and hum noise from amplifiers and circuits. We explain techniques for identifying and evaluating causes for each component, such as 1/f noise, thermal noise, and external induction noise.
-* **[High-Precision Gain/Phase Measurement (Lock-in Amplifier)](lockin_amplifier.md)**
+* **[High-Precision Gain/Phase Measurement (Lock-in Amplifier)](lockin_amplifier.en.md)**
     * Explains how to measure gain and phase with higher precision than FFT. Introduces precision demonstration at the 0.001 dB level through loopback tests and ultra-precise frequency response measurement using FRA mode.
-* **[Distortion (THD+N) Measurement](distortion_measurement.md)**
+* **[Distortion (THD+N) Measurement](distortion_measurement.en.md)**
     * Explains basic procedures for measuring distortion in audio equipment. Also touches on measurement limits using the digital notch filter method and choosing between it and the lock-in THD analyzer.
-* **[Speaker Impedance Measurement](speaker_impedance.md)**
+* **[Speaker Impedance Measurement](speaker_impedance.en.md)**
     * Explains how to measure the $f_0$ (lowest resonant frequency) and impedance characteristics of a speaker unit. Introduces the connection diagram using the I-V method and how to read the measurement results step by step.
 
 ---
@@ -43,4 +43,4 @@ Measurement recipes are scheduled to be added and updated sequentially according
 ## References
 
 * The precision of the measurement values obtained in each recipe depends heavily on the performance of the audio interface used and the calibration status.
-* For the reliability of measurements and the limitations of this tool, please be sure to read [**Appendix: This tool is not a "measurement instrument"**](../appendix.md).
+* For the reliability of measurements and the limitations of this tool, please be sure to read [**Appendix: This tool is not a "measurement instrument"**](../appendix.en.md).

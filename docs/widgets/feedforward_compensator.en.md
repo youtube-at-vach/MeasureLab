@@ -2,7 +2,7 @@
 
 The Feedforward Compensator is an advanced signal processing widget designed to apply real-time or offline nonlinear distortion compensation to audio signals based on a Parallel Hammerstein model.
 
-By loading a Hammerstein model (1st to 5th order impulse response kernels) measured and extracted by modules such as the [Nonlinear Analyzer](nonlinear_analyzer.md), it generates a compensated signal with inverse distortion to actively cancel (reduce) the distortion of physical audio devices.
+By loading a Hammerstein model (1st to 5th order impulse response kernels) measured and extracted by modules such as the [Nonlinear Analyzer](nonlinear_analyzer.en.md), it generates a compensated signal with inverse distortion to actively cancel (reduce) the distortion of physical audio devices.
 
 ---
 
@@ -45,7 +45,7 @@ To compensate for distortion caused by nonlinear components, the following itera
 
 ### Model Source
 
-* **Load Forward Model JSON... Button:** Loads a Hammerstein model JSON file (containing kernels `h1` through `h5`) exported from the [Nonlinear Analyzer](nonlinear_analyzer.md).
+* **Load Forward Model JSON... Button:** Loads a Hammerstein model JSON file (containing kernels `h1` through `h5`) exported from the [Nonlinear Analyzer](nonlinear_analyzer.en.md).
 * **Status:** Displays the load status of the model.
 * **Rate:** Displays the sampling rate of the loaded model.
 * **N Samples:** Displays the number of samples (model length) of the kernels (impulse responses).

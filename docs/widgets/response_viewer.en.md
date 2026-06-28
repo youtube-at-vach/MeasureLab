@@ -4,7 +4,7 @@
 
 ## Overview
 
-The Response Viewer is an advanced visualization tool for analyzing linear and harmonic response characteristics (up to the 5th order) extracted by the [Nonlinear Analyzer](nonlinear_analyzer.md). It allows you to deeply evaluate the measured Hammerstein model's frequency response and simulate the system's output behavior (e.g., gain compression) at arbitrary frequencies and amplitudes.
+The Response Viewer is an advanced visualization tool for analyzing linear and harmonic response characteristics (up to the 5th order) extracted by the [Nonlinear Analyzer](nonlinear_analyzer.en.md). It allows you to deeply evaluate the measured Hammerstein model's frequency response and simulate the system's output behavior (e.g., gain compression) at arbitrary frequencies and amplitudes.
 
 ## Key Features and Operation
 

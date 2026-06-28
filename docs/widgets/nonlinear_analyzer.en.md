@@ -17,7 +17,7 @@ This widget provides the following analysis capabilities:
 * **Hammerstein Kernel Extraction:** Extracts kernels from 1st (linear) up to 5th order from the measured response.
 * **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel. The X-axis range is now dynamically adjusted based on the input signal's actual length, providing an optimal view for any sweep setting.
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
-* **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
+* **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.en.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
 
 ## Settings
 
@@ -74,5 +74,5 @@ To observe impulse response peak details closely, the time axis (X-axis) is auto
 
 ## To Analyze Responses and Run Simulations
 
-To perform more detailed analysis using the measured Parallel Hammerstein model—such as THD maps, gain compression curves, tone response simulations, and Wiener representation conversion—please use the [Response Viewer](response_viewer.md) module.
+To perform more detailed analysis using the measured Parallel Hammerstein model—such as THD maps, gain compression curves, tone response simulations, and Wiener representation conversion—please use the [Response Viewer](response_viewer.en.md) module.
 Once a measurement completes, the model is automatically kept in the active cache. Simply open the Response Viewer and click **Load Live Cache** to start analyzing.

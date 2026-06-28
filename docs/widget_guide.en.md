@@ -10,22 +10,22 @@ Checklist to find the best tool for "what you want to do" quickly.
 
 | What you want to do | Recommended Widget |
 | :--- | :--- |
-| **Output sound / Need a signal source** | [Signal Generator](widgets/signal_generator.md) |
-| **Synthesize complex waveforms / Blend specific harmonics** | [Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md) |
-| **View frequency components (spectrum)** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
-| **Check specific frequencies with extremely high resolution** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
-| **View original waveform shape** | [Oscilloscope](widgets/oscilloscope.md) |
-| **Measure distortion (THD) of amps or components** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
-| **Apply feedforward distortion compensation to an audio signal** | [Feedforward Compensator](widgets/feedforward_compensator.md) |
-| **Measure frequency response of amps, etc.** | [Network Analyzer](widgets/network_analyzer.md) |
-| **Measure impedance of speakers** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
-| **Measure ultra-low distortion (THD) with high precision** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md) |
-| **Manage loudness (LUFS)** | [LUFS Meter](widgets/lufs_meter.md) |
-| **Know ambient noise level (SPL)** | [Sound Level Meter](widgets/sound_level_meter.md) |
-| **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.md) |
-| **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
-| **Overlay and compare multiple plot traces from different measurements** | [Plot Comparer](widgets/plot_comparer.md) |
-| **Evaluate digital/analog transmission path quality, latency, and integrity** | [Transmission Analyzer (Experimental)](widgets/transmission_analyzer.md) |
+| **Output sound / Need a signal source** | [Signal Generator](widgets/signal_generator.en.md) |
+| **Synthesize complex waveforms / Blend specific harmonics** | [Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.en.md) |
+| **View frequency components (spectrum)** | [Spectrum Analyzer](widgets/spectrum_analyzer.en.md) |
+| **Check specific frequencies with extremely high resolution** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.en.md) |
+| **View original waveform shape** | [Oscilloscope](widgets/oscilloscope.en.md) |
+| **Measure distortion (THD) of amps or components** | [Distortion Analyzer](widgets/distortion_analyzer.en.md) |
+| **Apply feedforward distortion compensation to an audio signal** | [Feedforward Compensator](widgets/feedforward_compensator.en.md) |
+| **Measure frequency response of amps, etc.** | [Network Analyzer](widgets/network_analyzer.en.md) |
+| **Measure impedance of speakers** | [Impedance Analyzer](widgets/impedance_analyzer.en.md) |
+| **Measure ultra-low distortion (THD) with high precision** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.en.md) |
+| **Manage loudness (LUFS)** | [LUFS Meter](widgets/lufs_meter.en.md) |
+| **Know ambient noise level (SPL)** | [Sound Level Meter](widgets/sound_level_meter.en.md) |
+| **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.en.md) |
+| **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.en.md) |
+| **Overlay and compare multiple plot traces from different measurements** | [Plot Comparer](widgets/plot_comparer.en.md) |
+| **Evaluate digital/analog transmission path quality, latency, and integrity** | [Transmission Analyzer (Experimental)](widgets/transmission_analyzer.en.md) |
 
 ---
 
@@ -33,13 +33,13 @@ Checklist to find the best tool for "what you want to do" quickly.
 
 Tools for outputting signals or generating reference signals.
 
-- **[Signal Generator](widgets/signal_generator.md)**
+- **[Signal Generator](widgets/signal_generator.en.md)**
     - Generates sine waves, noise, sweep signals, etc. It is the basic signal source for measurements.
 
-- **[Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md)**
+- **[Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.en.md)**
     - An advanced signal generator that allows synthesizing complex waveforms by precisely controlling the amplitude and phase of multiple harmonic components (up to the 50th order) relative to the fundamental frequency.
 
-- **[Timecode Monitor & Generator](widgets/timecode_monitor.md)**
+- **[Timecode Monitor & Generator](widgets/timecode_monitor.en.md)**
     - Generates and monitors LTC (Linear Timecode). Used for checking synchronization with video equipment.
 
 ---
@@ -48,22 +48,22 @@ Tools for outputting signals or generating reference signals.
 
 Measures basic characteristics of audio signals (spectrum, level, frequency).
 
-- **[Spectrum Analyzer](widgets/spectrum_analyzer.md)**
+- **[Spectrum Analyzer](widgets/spectrum_analyzer.en.md)**
     - Real-time display of frequency components (spectrum) using FFT.
 
-- **[Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md)**
+- **[Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.en.md)**
     - Uses lock-in detection to analyze the spectrum of a specified frequency band with high resolution. Ideal for magnifying specific peaks buried in noise.
 
-- **[Sound Level Meter](widgets/sound_level_meter.md)**
+- **[Sound Level Meter](widgets/sound_level_meter.en.md)**
     - A sound level meter. Measures sound pressure level (SPL) and equivalent continuous sound level (Leq).
 
-- **[LUFS Meter](widgets/lufs_meter.md)**
+- **[LUFS Meter](widgets/lufs_meter.en.md)**
     - Measures loudness units relative to full scale (LUFS). Suitable for level management for broadcasting and distribution.
 
-- **[Frequency Counter](widgets/frequency_counter.md)**
+- **[Frequency Counter](widgets/frequency_counter.en.md)**
     - Counts the frequency of input signals with high precision. Statistical analysis such as Allan deviation is also possible.
 
-- **[Spectrogram](widgets/spectrogram.md)**
+- **[Spectrogram](widgets/spectrogram.en.md)**
     - Visualizes changes in frequency components over time with colors (voiceprint analysis, etc.).
 
 ---
@@ -72,29 +72,29 @@ Measures basic characteristics of audio signals (spectrum, level, frequency).
 
 Tools for evaluating equipment performance and sound quality.
 
-- **[Distortion Analyzer](widgets/distortion_analyzer.md)**
+- **[Distortion Analyzer](widgets/distortion_analyzer.en.md)**
     - Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
-- **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
+- **[Nonlinear Analyzer](widgets/nonlinear_analyzer.en.md)**
     - An advanced distortion analysis tool that uses the Hammerstein model to separate and extract 1st (linear) to 5th order harmonic kernels from equipment responses.
 
-- **[Feedforward Compensator](widgets/feedforward_compensator.md)**
+- **[Feedforward Compensator](widgets/feedforward_compensator.en.md)**
     - Applies feedforward distortion compensation (LICFF) to audio signals using Hammerstein system models.
 
-- **[Nonlinear Response Analyzer](widgets/nonlinear_response_analyzer.md)**
+- **[Nonlinear Response Analyzer](widgets/nonlinear_response_analyzer.en.md)**
     - Identifies Wiener models to analyze dynamic nonlinear system behavior.
-- **[Linearity Analyzer](widgets/linearity_analyzer.md)**
+- **[Linearity Analyzer](widgets/linearity_analyzer.en.md)**
     - Measures input/output level linearity. Used for verifying the low-level signal reproduction capability and dynamic range of DACs.
 
-- **[Advanced Distortion Meter](widgets/advanced_distortion_meter.md)**
+- **[Advanced Distortion Meter](widgets/advanced_distortion_meter.en.md)**
     - Performs more advanced distortion analysis, such as multitone measurement and IMD (Intermodulation Distortion).
 
-- **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md)**
+- **[Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.en.md)**
     - An ultra-low distortion (THD) measurement module utilizing the principle of a lock-in amplifier. It achieves high precision by performing multi-parallel IQ detection (up to 200th order) strictly tuned to the fundamental and harmonics.
 
-- **[Sound Quality Analyzer](widgets/sound_quality_analyzer.md)**
+- **[Sound Quality Analyzer](widgets/sound_quality_analyzer.en.md)**
     - Calculates psychoacoustic "sound quality" metrics such as sharpness and roughness.
 
-- **[Noise Profiler](widgets/noise_profiler.md)**
+- **[Noise Profiler](widgets/noise_profiler.en.md)**
     - Analyzes noise floor characteristics (1/f noise, white noise, etc.).
 
 ---
@@ -103,22 +103,22 @@ Tools for evaluating equipment performance and sound quality.
 
 Measures transmission characteristics, impedance, etc., of electronic circuits and systems.
 
-- **[Network Analyzer](widgets/network_analyzer.md)**
+- **[Network Analyzer](widgets/network_analyzer.en.md)**
     - Measures frequency response (gain, phase, group delay). Useful for checking characteristics of amplifiers and filters. Supports RIAA curve overlay for phono-equalizer testing.
 
-- **[Impedance Analyzer](widgets/impedance_analyzer.md)**
+- **[Impedance Analyzer](widgets/impedance_analyzer.en.md)**
     - Measures impedance characteristics (LCR) of speakers and components.
 
-- **[Lock-in Amplifier](widgets/lock_in_amplifier.md)**
+- **[Lock-in Amplifier](widgets/lock_in_amplifier.en.md)**
     - Detects infinitesimal signals buried in noise. Can also be used as an FRA (Frequency Response Analyzer).
 
-- **[Lock-in Frequency Counter](widgets/lock_in_frequency_counter.md)**
+- **[Lock-in Frequency Counter](widgets/lock_in_frequency_counter.en.md)**
     - Tracks minute frequency deviations or phase fluctuations relative to a reference signal.
 
-- **[Loopback Finder](widgets/loopback_finder.md)**
+- **[Loopback Finder](widgets/loopback_finder.en.md)**
     - Detects loopback paths of audio interfaces.
 
-- **[Transmission Analyzer (Experimental)](widgets/transmission_analyzer.md)**
+- **[Transmission Analyzer (Experimental)](widgets/transmission_analyzer.en.md)**
     - An experimental module that utilizes PRBS sequences (pseudo-random noise) to comprehensively measure digital audio bit-integrity (bit-perfection and DSP detection) as well as analog path metrics like EVM, impulse response, propagation delay, and clock jitter.
 
 ---
@@ -127,16 +127,16 @@ Measures transmission characteristics, impedance, etc., of electronic circuits a
 
 Observes waveform shapes and transient changes on the time axis.
 
-- **[Oscilloscope](widgets/oscilloscope.md)**
+- **[Oscilloscope](widgets/oscilloscope.en.md)**
     - A general-purpose oscilloscope. Observes the waveform itself.
 
-- **[Raw Time Series](widgets/raw_time_series.md)**
+- **[Raw Time Series](widgets/raw_time_series.en.md)**
     - A tool like a chart recorder that records waveforms over a long period and allows you to check them by scrolling.
 
-- **[Transient Analyzer](widgets/transient_analyzer.md)**
+- **[Transient Analyzer](widgets/transient_analyzer.en.md)**
     - Triggers and analyzes transient phenomena such as impulse responses. Wavelet transform display is also possible.
 
-- **[Boxcar Averager](widgets/boxcar_averager.md)**
+- **[Boxcar Averager](widgets/boxcar_averager.en.md)**
     - Averages repetitive signals to remove noise and extract minute waveforms.
 
 ---
@@ -145,19 +145,19 @@ Observes waveform shapes and transient changes on the time axis.
 
 Handles stereo image and spatial sound reverberation.
 
-- **[Goniometer](widgets/goniometer.md)**
+- **[Goniometer](widgets/goniometer.en.md)**
     - Displays phase relationship (spread) of stereo signals using Lissajous figures, etc.
 
-- **[BNIM Meter](widgets/bnim_meter.md)**
+- **[BNIM Meter](widgets/bnim_meter.en.md)**
     - Binaural Neural Image Map. Visualizes sound source localization (ITD/ILD) based on auditory models.
 
-- **[HRTF Player](widgets/hrtf_player.md)**
+- **[HRTF Player](widgets/hrtf_player.en.md)**
     - Loads Head-Related Transfer Functions (HRTF/SOFA) and simulates 3D audio playback via convolution.
 
-- **[Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md)**
+- **[Stereo Alignment Monitor](widgets/stereo_alignment_monitor.en.md)**
     - Monitors the consistency of L/R level, frequency response, and phase in real-time to verify stereo alignment.
 
-- **[Spatial Binaural Mixer](widgets/spatial_binaural_mixer.md)**
+- **[Spatial Binaural Mixer](widgets/spatial_binaural_mixer.en.md)**
     - A high-quality offline multitrack spatial audio renderer. Load stems and independently position them in 3D space using HRTF, avoiding real-time processing artifacts.
 
 ---
@@ -166,21 +166,21 @@ Handles stereo image and spatial sound reverberation.
 
 Other useful functions.
 
-- **[Recorder & Player](widgets/recorder_player.md)**
+- **[Recorder & Player](widgets/recorder_player.en.md)**
     - Simple recording and playback function.
-- **[Waveform Loop Player](widgets/waveform_loop_player.md)**
+- **[Waveform Loop Player](widgets/waveform_loop_player.en.md)**
     - A tool that allows you to load an audio file, inspect its waveform, and loop a selected region. Useful for repeatedly observing transient responses.
-- **[Inverse Filter](widgets/inverse_filter.md)**
+- **[Inverse Filter](widgets/inverse_filter.en.md)**
     - Creates an inverse filter to cancel out the characteristics of speakers and rooms.
-- **[Detachable Wrapper](widgets/detachable_wrapper.md)**
+- **[Detachable Wrapper](widgets/detachable_wrapper.en.md)**
     - A framework for detaching any widget into a separate window.
-- **[Plot Comparer](widgets/plot_comparer.md)**
+- **[Plot Comparer](widgets/plot_comparer.en.md)**
     - Imports measurement traces saved/exported from other modules (Spectrum Analyzer, Network Analyzer, Oscilloscope, etc.) and allows detailed comparison by overlaying them with adjustable gain offsets, axis shifts, and peak alignment.
-- **[Processor Benchmark](widgets/processor_benchmark.md)**
+- **[Processor Benchmark](widgets/processor_benchmark.en.md)**
     - Tests the FFT and rendering performance of your PC to verify real-time processing limits.
-- **[Settings](widgets/settings.md)**
+- **[Settings](widgets/settings.en.md)**
     - Configure audio device settings, language settings, theme changes, etc.
 - **[Log Viewer](widgets/log_viewer.en.md)**
     - Displays real-time application logs, warnings, and errors for diagnostics and troubleshooting.
-- **[Welcome](widgets/welcome.md)**
+- **[Welcome](widgets/welcome.en.md)**
     - The startup screen.
