@@ -69,7 +69,6 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.end_freq = 20000.0
         self.sweep_duration = 10.0
         self.output_amplitude = 0.5
-        self.lpf_factor = 0.08
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
@@ -119,7 +118,6 @@ class RealtimeSSSAnalyzer(MeasurementModule):
             start_freq=self.start_freq,
             end_freq=self.end_freq,
             output_amplitude=self.output_amplitude,
-            lpf_factor=self.lpf_factor,
             max_harmonic=self.max_harmonic,
         )
         self.engine.prepare_sweep()
@@ -269,13 +267,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_amplitude.setSuffix(" dBFS")
         form.addRow(tr("Amplitude:"), self.spin_amplitude)
 
-        self.spin_lpf_factor = QDoubleSpinBox()
-        self.spin_lpf_factor.setRange(0.002, 0.500)
-        self.spin_lpf_factor.setSingleStep(0.005)
-        self.spin_lpf_factor.setValue(self.module.lpf_factor)
-        self.spin_lpf_factor.setDecimals(3)
-        self.spin_lpf_factor.setToolTip(tr("LPF cutoff factor. Note: Extremely small factors (e.g. < 0.01) require a longer sweep Duration (e.g. >= 30s) to avoid filter delay distortions."))
-        form.addRow(tr("LPF Factor:"), self.spin_lpf_factor)
+
 
         self.spin_max_harmonic = QSpinBox()
         self.spin_max_harmonic.setRange(1, 5)
@@ -479,7 +471,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.sweep_duration = self.spin_duration.value()
             # Convert dBFS to linear amplitude
             self.module.output_amplitude = 10 ** (self.spin_amplitude.value() / 20.0)
-            self.module.lpf_factor = self.spin_lpf_factor.value()
             self.module.max_harmonic = self.spin_max_harmonic.value()
             self.module.averaging_count = self.spin_averaging.value()
 
@@ -552,7 +543,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_end_freq.setEnabled(enabled)
         self.spin_duration.setEnabled(enabled)
         self.spin_amplitude.setEnabled(enabled)
-        self.spin_lpf_factor.setEnabled(enabled)
         self.spin_max_harmonic.setEnabled(enabled)
         self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)

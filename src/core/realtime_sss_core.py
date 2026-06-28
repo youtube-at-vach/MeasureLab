@@ -12,25 +12,7 @@ from src.core.nonlinear_analyzer_core import (
 logger = logging.getLogger(__name__)
 
 
-def design_biquad_lpf(fc, fs, Q):
-    """
-    Computes normalized Biquad LPF coefficients using Robert Bristow-Johnson's EQ Cookbook formula.
-    """
-    w0 = 2 * np.pi * fc / fs
-    alpha = np.sin(w0) / (2 * Q)
-    cos_w0 = np.cos(w0)
 
-    b0 = (1.0 - cos_w0) / 2.0
-    b1 = 1.0 - cos_w0
-    b2 = (1.0 - cos_w0) / 2.0
-
-    a0 = 1.0 + alpha
-    a1 = -2.0 * cos_w0
-    a2 = 1.0 - alpha
-
-    b = np.array([b0, b1, b2]) / a0
-    a = np.array([a0, a1, a2]) / a0
-    return b, a
 
 
 class RealtimeSSSEngine:
@@ -41,18 +23,14 @@ class RealtimeSSSEngine:
         start_freq: float,
         end_freq: float,
         output_amplitude: float,
-        lpf_factor: float,
         max_harmonic: int = 5,
-        extraction_mode: str = "ls",
     ):
         self.sample_rate = float(sample_rate)
         self.sweep_duration = float(sweep_duration)
         self.start_freq = float(start_freq)
         self.end_freq = float(end_freq)
         self.output_amplitude = float(output_amplitude)
-        self.lpf_factor = float(lpf_factor)
         self.max_harmonic = int(max_harmonic)
-        self.extraction_mode = str(extraction_mode)
 
         self.latency_samples = 0.0
 
@@ -61,11 +39,6 @@ class RealtimeSSSEngine:
         self.L_param = 0.0
         self.sweep_samples = 0
         self._out_sig_cached: np.ndarray | None = None
-
-        # Filter states for each harmonic order (1 to max_harmonic)
-        # We need 2 cascade sections for a 4th-order filter: zi1, zi2 for each harmonic
-        self.zi1: np.ndarray = np.zeros((self.max_harmonic, 2), dtype=complex)
-        self.zi2: np.ndarray = np.zeros((self.max_harmonic, 2), dtype=complex)
 
         # Reset engine variables
         self.reset_filter_states()
@@ -120,15 +93,7 @@ class RealtimeSSSEngine:
         return self._out_sig_cached
 
     def reset_filter_states(self):
-        """Resets the state of the cascade Biquad filters."""
-        self.zi1 = np.zeros((self.max_harmonic, 2), dtype=complex)
-        self.zi2 = np.zeros((self.max_harmonic, 2), dtype=complex)
-        self.ref_zi1 = np.zeros(2, dtype=complex)
-        self.ref_zi2 = np.zeros(2, dtype=complex)
-        self.dec_y_zi1 = np.zeros(2, dtype=float)
-        self.dec_y_zi2 = np.zeros(2, dtype=float)
-        self.dec_r_zi1 = np.zeros(2, dtype=float)
-        self.dec_r_zi2 = np.zeros(2, dtype=float)
+        """Resets the state of the analysis history."""
         self.reset_analysis_history()
 
     def reset_analysis_history(self):
@@ -422,66 +387,7 @@ class RealtimeSSSEngine:
         # Zero out phase for invalid regions (before sweep reached microphone or after sweep ended)
         theta_comp[~valid_mask] = 0.0
 
-        if self.extraction_mode == "ls":
-            return self._process_block_ls(n_comp, theta_comp, y_raw, f_mid, valid_mask, ref_in_block)
-
-        # Prepare LPF cutoff: fc = factor * f_mid
-        fc = self.lpf_factor * f_mid
-        # Clamp fc to safe Nyquist limits
-        fc = np.clip(fc, 10.0, 0.48 * fs)
-
-        # Butterworth 4th-order LPF Biquad design: Q1 = 0.541196 (low Q), Q2 = 1.306563 (high Q)
-        b1, a1 = design_biquad_lpf(fc, fs, 0.541196)
-        b2, a2 = design_biquad_lpf(fc, fs, 1.306563)
-
-        # Process REF channel if provided
-        ref_res = 1.0
-        has_ref = False
-        if ref_in_block is not None:
-            if ref_in_block.shape[1] >= 1:
-                r_raw = ref_in_block[:, 0]
-            else:
-                r_raw = np.zeros(frames)
-
-            # Demodulate reference signal at fundamental (p=1)
-            lo_r = 1j * np.exp(-1j * theta_comp)
-            lo_r[~valid_mask] = 0.0
-            z_r = 2.0 * r_raw * lo_r
-
-            # Cascade IIR filtering for REF
-            out_r1, self.ref_zi1 = scipy.signal.lfilter(b1, a1, z_r, zi=self.ref_zi1)
-            out_r2, self.ref_zi2 = scipy.signal.lfilter(b2, a2, out_r1, zi=self.ref_zi2)
-
-            valid_indices = np.flatnonzero(valid_mask)
-            if len(valid_indices) > 0:
-                num_avg = min(len(valid_indices), 32)
-                avg_indices = valid_indices[-num_avg:]
-                ref_res = np.mean(out_r2[avg_indices])
-                has_ref = True
-
-        # Vectorized DDC mixing and IIR filtering
-        p_vals = np.arange(1, self.max_harmonic + 1)[:, np.newaxis]
-        lo_2d = 1j * np.exp(-1j * p_vals * theta_comp)
-        lo_2d[:, ~valid_mask] = 0.0
-
-        z_2d = 2.0 * y_raw * lo_2d
-
-        out1, self.zi1 = scipy.signal.lfilter(b1, a1, z_2d, axis=1, zi=self.zi1)
-        out2, self.zi2 = scipy.signal.lfilter(b2, a2, out1, axis=1, zi=self.zi2)
-
-        valid_indices = np.flatnonzero(valid_mask)
-        if len(valid_indices) > 0:
-            num_avg = min(len(valid_indices), 32)
-            avg_indices = valid_indices[-num_avg:]
-            val_sigs = np.mean(out2[:, avg_indices], axis=1)
-            if has_ref:
-                ref_conj = np.conj(ref_res)
-                ref_mag2 = np.real(ref_res * ref_conj)
-                results = ((val_sigs * ref_conj) / (ref_mag2 + 1e-12)).tolist()
-            else:
-                results = val_sigs.tolist()
-
-        return f_mid, results
+        return self._process_block_ls(n_comp, theta_comp, y_raw, f_mid, valid_mask, ref_in_block)
 
 
 class LatencyCalibrator:

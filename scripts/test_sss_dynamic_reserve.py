@@ -37,8 +37,6 @@ def run_sss_sweep(
     end_freq: float,
     duration: float,
     amplitude: float,
-    mode: str,
-    lpf_factor: float,
     max_harmonic: int,
     block_size: int,
     latency_samples: float,
@@ -57,16 +55,13 @@ def run_sss_sweep(
     rng = np.random.default_rng(seed)
 
     # Initialize SSS Engine
-    # Note: extraction_mode is initialized here but we force it during process block
     engine = RealtimeSSSEngine(
         sample_rate=fs,
         sweep_duration=duration,
         start_freq=start_freq,
         end_freq=end_freq,
         output_amplitude=amplitude,
-        lpf_factor=lpf_factor,
         max_harmonic=max_harmonic,
-        extraction_mode="ls" if mode == "ls" else "default",
     )
     engine.prepare_sweep()
     engine.set_latency(latency_samples)
@@ -120,9 +115,6 @@ def run_sss_sweep(
         indata_block = y_meas[start_idx:end_idx, None]
         outdata_block = np.zeros((frames, 1))
         ref_in_block = y_ref[start_idx:end_idx, None]
-
-        # Force correct extraction mode
-        engine.extraction_mode = "default" if mode == "lpf" else "ls"
 
         f_mid, results = engine.process_block(
             indata_block, outdata_block, block_idx, ref_in_block=ref_in_block
@@ -225,8 +217,6 @@ def run_dynamic_reserve_sweep(
     end_freq: float,
     duration: float,
     amplitude: float,
-    mode: str,
-    lpf_factor: float,
     max_harmonic: int,
     block_size: int,
     latency_samples: float,
@@ -253,8 +243,6 @@ def run_dynamic_reserve_sweep(
         end_freq=end_freq,
         duration=duration,
         amplitude=amplitude,
-        mode=mode,
-        lpf_factor=lpf_factor,
         max_harmonic=max_harmonic,
         block_size=block_size,
         latency_samples=latency_samples,
@@ -297,8 +285,6 @@ def run_dynamic_reserve_sweep(
             end_freq=end_freq,
             duration=duration,
             amplitude=amplitude,
-            mode=mode,
-            lpf_factor=lpf_factor,
             max_harmonic=max_harmonic,
             block_size=block_size,
             latency_samples=latency_samples,
@@ -400,8 +386,6 @@ def run_diagnose(args: argparse.Namespace) -> int:
         "end_freq": end_freq,
         "duration": float(args.duration),
         "amplitude": amplitude_linear,
-        "mode": str(args.mode),
-        "lpf_factor": float(args.lpf_factor),
         "max_harmonic": int(args.max_harmonic),
         "block_size": int(args.block_size),
         "latency_samples": latency_samples,
@@ -426,29 +410,21 @@ def run_diagnose(args: argparse.Namespace) -> int:
         prefix = ">= " if limited else "   "
         return f"{label:<32} | DR: {prefix}{dr:7.2f} dB (amax={amax:.3g})"
 
-    # Test 1: Extraction Mode (LS vs LPF)
-    print("[*] Running Mode Comparison...")
-    res_ls = run_dynamic_reserve_sweep(**{**base_kwargs, "mode": "ls"})
-    res_lpf = run_dynamic_reserve_sweep(**{**base_kwargs, "mode": "lpf"})
-    results.append(("Mode: LS", res_ls))
-    results.append(("Mode: LPF (biquad)", res_lpf))
+    # Test 1: Base LS Mode Run
+    print("[*] Running Base LS Mode...")
+    res_ls = run_dynamic_reserve_sweep(**base_kwargs)
+    results.append(("Mode: LS (Base)", res_ls))
 
     # Test 2: Sweep Duration Impact (LS Mode)
     print("[*] Running Duration Sensitivity (LS Mode)...")
     for dur in [2.0, 5.0, 10.0, 20.0]:
-        res = run_dynamic_reserve_sweep(**{**base_kwargs, "mode": "ls", "duration": dur})
+        res = run_dynamic_reserve_sweep(**{**base_kwargs, "duration": dur})
         results.append((f"Duration={dur}s (LS)", res))
-
-    # Test 3: LPF Factor Impact (LPF Mode)
-    print("[*] Running LPF Factor Sensitivity (LPF Mode)...")
-    for factor in [0.04, 0.08, 0.16]:
-        res = run_dynamic_reserve_sweep(**{**base_kwargs, "mode": "lpf", "lpf_factor": factor})
-        results.append((f"LPF Factor={factor} (LPF)", res))
 
     # Test 4: Block Size Impact (LS Mode)
     print("[*] Running Block Size Sensitivity (LS Mode)...")
     for bs in [256, 512, 1024]:
-        res = run_dynamic_reserve_sweep(**{**base_kwargs, "mode": "ls", "block_size": bs, "latency_samples": float(bs)})
+        res = run_dynamic_reserve_sweep(**{**base_kwargs, "block_size": bs, "latency_samples": float(bs)})
         results.append((f"Block Size={bs} (LS)", res))
 
     # Print Report
@@ -478,7 +454,7 @@ def generate_plot(
 
     fig, axs = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
     fig.suptitle(
-        f"SSS Sweep Performance (Mode={args.mode}, Interferer={a_int:.3g} @ {args.interferer_freq} Hz, Noise={args.noise_dbfs} dBFS)",
+        f"SSS Sweep Performance (Interferer={a_int:.3g} @ {args.interferer_freq} Hz, Noise={args.noise_dbfs} dBFS)",
         fontsize=14,
     )
 
@@ -526,12 +502,7 @@ def main() -> int:
         description="Estimate Sweep-Sine SSS Dynamic Reserve (simulation)."
     )
 
-    parser.add_argument(
-        "--mode",
-        choices=["ls", "lpf"],
-        default="ls",
-        help="Harmonic extraction mode: 'ls' (Least Squares) or 'lpf' (IIR Butterworth filters)",
-    )
+
     parser.add_argument("--fs", type=float, default=48000.0, help="Sample rate (Hz)")
     parser.add_argument(
         "--duration",
@@ -557,12 +528,7 @@ def main() -> int:
         default=-6.0,
         help="Sweep signal amplitude in dBFS (e.g. -6)",
     )
-    parser.add_argument(
-        "--lpf-factor",
-        type=float,
-        default=0.08,
-        help="LPF cutoff factor for 'lpf' mode",
-    )
+
     parser.add_argument(
         "--block-size",
         type=int,
@@ -703,8 +669,6 @@ def main() -> int:
         end_freq=end_freq,
         duration=float(args.duration),
         amplitude=amplitude_linear,
-        mode=args.mode,
-        lpf_factor=float(args.lpf_factor),
         max_harmonic=int(args.max_harmonic),
         block_size=int(args.block_size),
         latency_samples=latency_samples,
@@ -751,8 +715,6 @@ def main() -> int:
             end_freq=end_freq,
             duration=float(args.duration),
             amplitude=amplitude_linear,
-            mode=args.mode,
-            lpf_factor=float(args.lpf_factor),
             max_harmonic=int(args.max_harmonic),
             block_size=int(args.block_size),
             latency_samples=latency_samples,
