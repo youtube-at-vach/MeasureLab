@@ -537,6 +537,10 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
         self.module = module
+
+        # State tracking for optimization
+        self._last_metrics = {}
+
         self.init_ui()
 
         # Theme handling
@@ -838,12 +842,25 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
             return f"{v + cal_db:.1f}" if not np.isinf(v) and not np.isnan(v) else "--.-"
 
         # Update Big Displays
-        self.disp_lp["label"].setText(fmt(vals.get("Lp", -np.inf)))
-        self.disp_leq["label"].setText(fmt(vals.get("Leq", -np.inf)))
+        val_lp = vals.get("Lp", -np.inf)
+        lp_text = fmt(val_lp)
+        if self._last_metrics.get("Lp") != lp_text:
+            self._last_metrics["Lp"] = lp_text
+            self.disp_lp["label"].setText(lp_text)
+
+        val_leq = vals.get("Leq", -np.inf)
+        leq_text = fmt(val_leq)
+        if self._last_metrics.get("Leq") != leq_text:
+            self._last_metrics["Leq"] = leq_text
+            self.disp_leq["label"].setText(leq_text)
 
         # Update Details
         for key, lbl in self.metric_labels.items():
-            lbl.setText(fmt(vals.get(key, -np.inf)) + " dB")
+            val = vals.get(key, -np.inf)
+            text = fmt(val) + " dB"
+            if self._last_metrics.get(key) != text:
+                self._last_metrics[key] = text
+                lbl.setText(text)
 
         # Update Stats (LN)
         # Always calculate? It might be heavy if history is huge.
