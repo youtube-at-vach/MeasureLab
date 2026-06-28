@@ -208,3 +208,36 @@ def test_ltc_encoder_decoder_roundtrip():
     assert decoder.locked is True
     assert len(decoded_tcs) > 0
     assert "10:15:30:12" in decoded_tcs
+
+
+def test_ltc_encoder_drift_prevention():
+    """Verify that LTCEncoder prevents long-term sample drift with non-integer FPS."""
+    sample_rate = 48000
+    fps = 29.97  # triggers fractional sample_per_frame (~1601.6016)
+    encoder = LTCEncoder(sample_rate, fps)
+
+    total_samples = 0
+    num_frames = 1000
+    for _ in range(num_frames):
+        samples = encoder.generate_frame(0, 0, 0, 0)
+        total_samples += len(samples)
+
+    expected = num_frames * (sample_rate / fps)
+    # The accumulated sample count must be within 1 sample of the ideal time
+    assert abs(expected - total_samples) < 1.0
+
+
+def test_ltc_encoder_reset():
+    """Test LTCEncoder reset method clears accumulators and states."""
+    encoder = LTCEncoder(48000, 29.97)
+    encoder.generate_frame(0, 0, 0, 1)
+
+    assert encoder.samples_generated > 0.0
+    assert encoder.total_frames == 1
+
+    encoder.reset()
+
+    assert encoder.samples_generated == 0.0
+    assert encoder.total_frames == 0
+    assert encoder.phase == 1.0
+

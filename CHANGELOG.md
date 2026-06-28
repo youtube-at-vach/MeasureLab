@@ -25,6 +25,8 @@
 
 ### Fixed
 
+* **LTC (Linear Timecode) Encoder**:
+    * Resolved a long-term sample-rate drift issue caused by integer accumulation of samples per frame in fractional FPS configurations (e.g. 29.97). Introduced floating-point global timeline tracking.
 * **Feedforward Compensator**:
     * Resolved division by zero in inverse filter calculations.
     * Dynamically set X-axis range based on input signal duration.
@@ -35,6 +37,8 @@
 
 ### Optimized
 
+* **Calibration Manager**:
+    * Optimized `get_frequency_correction` by caching the unwrapped phase calculations inside `_update_map_cache`, eliminating redundant trigonometric and unwrapping calculations on every real-time interpolation query.
 * **Performance & Optimizations**:
     * Optimized CSV exporter using `writerows`.
     * Pre-calculated numpy arrays for Plot Comparer.

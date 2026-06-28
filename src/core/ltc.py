@@ -19,10 +19,18 @@ class LTCEncoder:
 
         # State
         self.total_frames = 0
+        self.samples_generated = 0.0  # Accumulator to prevent drift
+
+    def reset(self):
+        """Resets the encoder state."""
+        self.samples_generated = 0.0
+        self.phase = 1.0
+        self.total_frames = 0
 
     def set_fps(self, fps: float):
         self.fps = fps
         self.samples_per_frame = self.sample_rate / fps
+        self.samples_generated = 0.0
 
     def generate_frame(
         self,
@@ -95,71 +103,58 @@ class LTCEncoder:
         # Transition at start of every bit window.
         # If '1', transition also in middle.
 
-        # Calculate samples per bit (80 bits total)
-        # Note: Samples per bit is not integer usually. We need sub-sample precision or just accumulate phase.
+        # Calculate exact start and end in global timeline
+        start_abs = self.samples_generated
+        end_abs = self.samples_generated + self.samples_per_frame
 
-        req_size = int(self.samples_per_frame) + 2
+        # Calculate how many integer samples to output in this frame
+        start_sample_idx = int(start_abs)
+        end_sample_idx = int(end_abs)
+        req_size = end_sample_idx - start_sample_idx
+
         if out_buffer is not None and len(out_buffer) >= req_size:
             samples = out_buffer
         else:
-            samples = np.zeros(req_size, dtype=np.float32)  # Over allocate slightly
-
-        samples_per_bit = self.samples_per_frame / 80.0
-
-        # We generate continuous samples.
-        # Ideally, we should treat time as continuous to avoid jitter accumulation over frames.
-        # But for snippet generation, let's keep it simple.
-
-        t = 0.0  # Time in bits
-        out_idx = 0
+            samples = np.zeros(req_size, dtype=np.float32)
 
         current_level = self.phase
 
-        # For each bit
-        for bit_val in bits:
-            # Duration of this bit is 1.0 bit-time
-            # Start of bit -> transition
-            current_level = -current_level
+        # We generate samples with sub-sample precision reference to the absolute start
+        for bit_idx, bit_val in enumerate(bits):
+            # Calculate absolute bit boundaries
+            bit_start_abs = start_abs + bit_idx * (self.samples_per_frame / 80.0)
+            bit_end_abs = start_abs + (bit_idx + 1) * (self.samples_per_frame / 80.0)
+            bit_mid_abs = start_abs + (bit_idx + 0.5) * (self.samples_per_frame / 80.0)
 
-            # Determine transition points within this bit
-            # '0': just the start transition (already did), hold for 1.0
-            # '1': start transition, hold for 0.5, transition, hold for 0.5
+            # Map to frame-relative integer indices
+            bit_start_rel = max(0, int(bit_start_abs) - start_sample_idx)
+            bit_end_rel = min(req_size, int(bit_end_abs) - start_sample_idx)
+            bit_mid_rel = max(0, min(req_size, int(bit_mid_abs) - start_sample_idx))
 
-            start_sample = int(out_idx)
-            # How many samples for this bit?
-            # We map bit_index to sample_index
-            end_sample_f = (t + 1.0) * samples_per_bit
-            end_sample = int(end_sample_f)
-
-            mid_sample_f = (t + 0.5) * samples_per_bit
-            mid_sample = int(mid_sample_f)
+            current_level = -current_level  # Transition at start of bit
 
             if bit_val == 0:
-                # Fill until end
-                count = end_sample - start_sample
+                count = bit_end_rel - bit_start_rel
                 if count > 0:
-                    samples[out_idx : out_idx + count] = current_level
-                    out_idx += count
+                    samples[bit_start_rel : bit_end_rel] = current_level
             else:
                 # 1 -> Transition at mid
-                count1 = mid_sample - start_sample
+                count1 = bit_mid_rel - bit_start_rel
                 if count1 > 0:
-                    samples[out_idx : out_idx + count1] = current_level
-                    out_idx += count1
+                    samples[bit_start_rel : bit_mid_rel] = current_level
 
                 current_level = -current_level  # Mid transition
 
-                count2 = end_sample - mid_sample
+                count2 = bit_end_rel - bit_mid_rel
                 if count2 > 0:
-                    samples[out_idx : out_idx + count2] = current_level
-                    out_idx += count2
+                    samples[bit_mid_rel : bit_end_rel] = current_level
 
-            t += 1.0
-
-        # Update phase for next frame
+        # Update phase and global accumulator for next frame
         self.phase = current_level
+        self.samples_generated = end_abs
+        self.total_frames += 1
 
-        return samples[:out_idx]
+        return samples[:req_size]
 
 
 class LTCDecoder:
