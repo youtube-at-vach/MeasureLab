@@ -60,9 +60,7 @@ class RealtimeSSSEngine:
         self.k_param = 0
         self.L_param = 0.0
         self.sweep_samples = 0
-        self.t_arr: np.ndarray | None = None
-        self.phase_arr: np.ndarray | None = None
-        self.out_sig: np.ndarray | None = None
+        self._out_sig_cached: np.ndarray | None = None
 
         # Filter states for each harmonic order (1 to max_harmonic)
         # We need 2 cascade sections for a 4th-order filter: zi1, zi2 for each harmonic
@@ -102,19 +100,24 @@ class RealtimeSSSEngine:
         T_actual = self.L_param * ln_ratio
 
         self.sweep_samples = int(np.round(self.sample_rate * T_actual))
-        self.t_arr = np.arange(self.sweep_samples) / self.sample_rate
-
-        # Phase trajectory
-        self.phase_arr = 2.0 * np.pi * self.k_param * np.exp(self.t_arr / self.L_param)
-
-        # Output signal: Sine sweep
-        self.out_sig = self.output_amplitude * np.sin(self.phase_arr)
-
-        # Apply Tukey window (fade-in / fade-out) to minimize transient clicks
-        window = scipy.signal.windows.tukey(self.sweep_samples, alpha=0.02)
-        self.out_sig *= window
+        
+        self._out_sig_cached = None
 
         self.reset_filter_states()
+
+    @property
+    def out_sig(self) -> np.ndarray | None:
+        """
+        Returns the full pre-calculated sweep signal.
+        For backward compatibility (mostly for tests). Evaluated lazily and cached.
+        """
+        if self._out_sig_cached is None and self.sweep_samples > 0:
+            t = np.arange(self.sweep_samples) / self.sample_rate
+            phase = 2.0 * np.pi * self.k_param * np.exp(t / self.L_param)
+            sig = self.output_amplitude * np.sin(phase)
+            window = scipy.signal.windows.tukey(self.sweep_samples, alpha=0.02)
+            self._out_sig_cached = sig * window
+        return self._out_sig_cached
 
     def reset_filter_states(self):
         """Resets the state of the cascade Biquad filters."""
@@ -336,8 +339,31 @@ class RealtimeSSSEngine:
         out_samples_written = 0
         if start_samp < self.sweep_samples:
             chunk = min(frames, self.sweep_samples - start_samp)
-            assert self.out_sig is not None
-            sig_chunk = self.out_sig[start_samp : start_samp + chunk]
+            
+            # Generate chunk on-the-fly
+            t_chunk = np.arange(start_samp, start_samp + chunk) / fs
+            phase_chunk = 2.0 * np.pi * self.k_param * np.exp(t_chunk / self.L_param)
+            sig_chunk = self.output_amplitude * np.sin(phase_chunk)
+            
+            # Apply Tukey window (fade-in / fade-out) on the fly
+            alpha = 0.02
+            width = int(np.floor(alpha * (self.sweep_samples - 1) / 2.0))
+            if width > 0:
+                n_global = np.arange(start_samp, start_samp + chunk)
+                win_chunk = np.ones(chunk)
+                
+                # Fade-in region
+                fade_in_mask = n_global < width
+                if np.any(fade_in_mask):
+                    win_chunk[fade_in_mask] = 0.5 * (1.0 - np.cos(np.pi * n_global[fade_in_mask] / width))
+                    
+                # Fade-out region
+                fade_out_mask = n_global >= (self.sweep_samples - width)
+                if np.any(fade_out_mask):
+                    n_fade_out = np.clip(n_global[fade_out_mask], 0, self.sweep_samples - 1)
+                    win_chunk[fade_out_mask] = 0.5 * (1.0 - np.cos(np.pi * (self.sweep_samples - 1 - n_fade_out) / width))
+                
+                sig_chunk *= win_chunk
 
             # Copy to all channels
             for ch in range(outdata_block.shape[1]):
