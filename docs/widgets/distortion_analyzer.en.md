@@ -6,7 +6,7 @@
 
 This is the most fundamental tool for measuring the "performance" of audio equipment numerically.
 It measures how accurately amplifiers, DACs, etc., are outputting the original signal (how much they are distorted).
-It is like a "blood test" in a health checkup, allowing you to know the basic strength of the equipment.
+It is an important measurement tool to grasp the basic performance indicators of the equipment.
 
 ## ☕ Coffee Break: Distortion in Audio
 

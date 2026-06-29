@@ -38,7 +38,7 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 ### How to Read Results
 
 * **💡 Knowledge Boost: What is PSD (Power Spectral Density)?**
-    * The normal `Spectrum mode` is like a **"weight scale"** suitable for measuring the level of a specific sound (like a "beep" sine wave). However, since noise is scattered across various frequencies, a simple weight scale can't measure it well.
+    * The normal `Spectrum mode` is like a simple level meter suitable for measuring the level of a specific sound (like a "beep" sine wave). However, since noise is scattered across various frequencies, a simple level meter can't measure it well.
     * This is where `PSD mode` comes in. It's a measurement method like **"population density"** that shows how much power is packed into a specific 1Hz width. When measuring noise, using this PSD mode is an ironclad rule for pros! (The unit $/√Hz$ might look a bit intimidating, but for now, just think of it as "the concentration of noise per 1Hz".)
 
 * **What Can You See?**
