@@ -63,14 +63,15 @@ class LatencyCalibThread(QThread):
 
 
 class SSSCalculationThread(QThread):
-    block_calculated = pyqtSignal(int, int, float, list, bool)  # block_idx, sweep_idx, f_mid, results, is_valid
+    block_calculated = pyqtSignal(int, int, float, list, object, bool)  # block_idx, sweep_idx, f_mid, meas_results, ref_h1, is_valid
     sweep_finished = pyqtSignal(int)  # sweep_idx
 
-    def __init__(self, engine, input_queue, prevent_underrun=False):
+    def __init__(self, engine, input_queue, prevent_underrun=False, ref_engine=None):
         super().__init__()
         self.engine = engine
         self.input_queue = input_queue
         self.prevent_underrun = prevent_underrun
+        self.ref_engine = ref_engine
         self.is_running = True
         self.pending_blocks = []
 
@@ -92,9 +93,15 @@ class SSSCalculationThread(QThread):
                             break
                         p_block_idx, p_sweep_idx, p_sig_in, p_ref_in, p_max_blocks = p_item
                         try:
-                            f_mid, results = self.engine.process_input_block(p_sig_in, p_block_idx, ref_in_block=p_ref_in)
+                            f_mid, meas_results = self.engine.process_input_block(p_sig_in, p_block_idx, ref_in_block=None)
+                            
+                            ref_h1 = None
+                            if self.ref_engine is not None and p_ref_in is not None:
+                                _, ref_results = self.ref_engine.process_input_block(p_ref_in, p_block_idx, ref_in_block=None)
+                                ref_h1 = ref_results[0]
+                                
                             is_valid = self.engine.last_block_was_valid
-                            self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, results, is_valid)
+                            self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, meas_results, ref_h1, is_valid)
                         except Exception as e:
                             logger.error(f"Error in background computation: {e}", exc_info=True)
                         if p_block_idx == p_max_blocks - 1:
@@ -103,9 +110,15 @@ class SSSCalculationThread(QThread):
             else:
                 # Perform the computationally heavy Least-Squares fit in the background
                 try:
-                    f_mid, results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
+                    f_mid, meas_results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=None)
+                    
+                    ref_h1 = None
+                    if self.ref_engine is not None and ref_in is not None:
+                        _, ref_results = self.ref_engine.process_input_block(ref_in, block_idx, ref_in_block=None)
+                        ref_h1 = ref_results[0]
+                        
                     is_valid = self.engine.last_block_was_valid
-                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid)
+                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, meas_results, ref_h1, is_valid)
                 except Exception as e:
                     logger.error(f"Error in background computation: {e}", exc_info=True)
 
@@ -204,6 +217,23 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
 
+        # XFER mode reference engine
+        if getattr(self, "input_mode", "Single") == "XFER":
+            self.ref_engine = RealtimeSSSEngine(
+                sample_rate=self.audio_engine.sample_rate,
+                sweep_duration=self.sweep_duration,
+                start_freq=self.start_freq,
+                end_freq=self.end_freq,
+                output_amplitude=start_amp,
+                max_harmonic=1,  # fundamental only
+                analysis_cycles=self.analysis_cycles,
+                num_meas_points=self.num_meas_points,
+            )
+            self.ref_engine.prepare_sweep()
+            self.ref_engine.set_latency(self.latency_samples)
+        else:
+            self.ref_engine = None
+
         frames = self.audio_engine.block_size
         self.max_blocks = int(np.ceil((self.engine.sweep_samples + self.latency_samples) / frames))
 
@@ -263,6 +293,8 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 self.callback_id = None
             if self.engine:
                 self.engine.reset_filter_states()
+            if getattr(self, "ref_engine", None):
+                self.ref_engine.reset_filter_states()
 
 
 class RealtimeSSSAnalyzerWidget(QWidget):
@@ -765,6 +797,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             # Initialize accumulated arrays
             self.max_blocks = self.module.max_blocks
             self.accumulated_results = np.zeros((self.max_blocks, 5), dtype=complex)
+            self.accumulated_meas_results = np.zeros((self.max_blocks, 5), dtype=complex)
+            self.accumulated_ref_results = np.zeros(self.max_blocks, dtype=complex)
             self.block_counts = np.zeros(self.max_blocks, dtype=int)
             self.plot_freqs_array = np.zeros(self.max_blocks)
             self.current_analysis_freq = None
@@ -775,12 +809,21 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     (self.module.num_amplitudes, self.max_blocks, 5),
                     dtype=complex
                 )
+                self.module.accumulated_meas_sweeps = np.zeros(
+                    (self.module.num_amplitudes, self.max_blocks, 5),
+                    dtype=complex
+                )
+                self.module.accumulated_ref_sweeps = np.zeros(
+                    (self.module.num_amplitudes, self.max_blocks),
+                    dtype=complex
+                )
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
                 self.module.engine,
                 self.module.input_queue,
-                prevent_underrun=self.module.prevent_buffer_underrun
+                prevent_underrun=self.module.prevent_buffer_underrun,
+                ref_engine=getattr(self.module, "ref_engine", None)
             )
             self.calc_thread.block_calculated.connect(self.on_block_calculated)
             self.calc_thread.sweep_finished.connect(self.on_sweep_finished)
@@ -858,12 +901,25 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         f_min = min(self.module.start_freq, self.module.end_freq)
         f_max = max(self.module.start_freq, self.module.end_freq)
 
-        for block_idx, _sweep_idx, f_mid, results, is_valid in items:
+        for block_idx, _sweep_idx, f_mid, meas_results, ref_h1, is_valid in items:
             if is_valid and block_idx < self.max_blocks:
                 if f_min <= f_mid <= f_max:
-                    n_harm = min(len(results), 5)
-                    # Accumulate complex values
-                    self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
+                    n_harm = min(len(meas_results), 5)
+                    self.accumulated_meas_results[block_idx, :n_harm] += meas_results[:n_harm]
+                    if ref_h1 is not None:
+                        self.accumulated_ref_results[block_idx] += ref_h1
+
+                    if ref_h1 is not None:
+                        ref_conj = np.conj(ref_h1)
+                        ref_mag2 = float(np.real(ref_h1 * ref_conj))
+                        if ref_mag2 > 1e-24:
+                            ratio_results = [(val * ref_conj) / (ref_mag2 + 1e-24) for val in meas_results]
+                        else:
+                            ratio_results = [0.0j] * n_harm
+                    else:
+                        ratio_results = meas_results
+
+                    self.accumulated_results[block_idx, :n_harm] += ratio_results[:n_harm]
                     self.block_counts[block_idx] += 1
                     self.plot_freqs_array[block_idx] = f_mid
                     latest_f_mid = f_mid
@@ -962,9 +1018,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.mag_curves[idx].setData(x_data, y_gain)
             self.phase_curves[idx].setData(x_data, y_phase)
 
-    def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
+    def on_block_calculated(self, block_idx, sweep_idx, f_mid, meas_results, ref_h1, is_valid):
         with self.module.lock:
-            self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, results, is_valid))
+            self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, meas_results, ref_h1, is_valid))
 
     def on_sweep_finished(self, sweep_idx):
         with self.module.lock:
@@ -974,11 +1030,25 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             f_min = min(self.module.start_freq, self.module.end_freq)
             f_max = max(self.module.start_freq, self.module.end_freq)
             while self.module.measurement_queue:
-                block_idx, _, f_mid, results, is_valid = self.module.measurement_queue.popleft()
+                block_idx, _, f_mid, meas_results, ref_h1, is_valid = self.module.measurement_queue.popleft()
                 if is_valid and block_idx < self.max_blocks:
                     if f_min <= f_mid <= f_max:
-                        n_harm = min(len(results), 5)
-                        self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
+                        n_harm = min(len(meas_results), 5)
+                        self.accumulated_meas_results[block_idx, :n_harm] += meas_results[:n_harm]
+                        if ref_h1 is not None:
+                            self.accumulated_ref_results[block_idx] += ref_h1
+                        
+                        if ref_h1 is not None:
+                            ref_conj = np.conj(ref_h1)
+                            ref_mag2 = float(np.real(ref_h1 * ref_conj))
+                            if ref_mag2 > 1e-24:
+                                ratio_results = [(val * ref_conj) / (ref_mag2 + 1e-24) for val in meas_results]
+                            else:
+                                ratio_results = [0.0j] * n_harm
+                        else:
+                            ratio_results = meas_results
+
+                        self.accumulated_results[block_idx, :n_harm] += ratio_results[:n_harm]
                         self.block_counts[block_idx] += 1
                         self.plot_freqs_array[block_idx] = f_mid
                         self.current_analysis_freq = f_mid
@@ -988,18 +1058,32 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.module.current_sweep_idx += 1
                 self.module.current_block_idx = 0
                 self.module.engine.reset_filter_states()
+                if self.module.ref_engine:
+                    self.module.ref_engine.reset_filter_states()
                 self.module.state = "PLAYING"
             else:
                 # Average for this amplitude step completed
                 if self.module.meas_mode == "Hammerstein":
                     j = self.module.current_amplitude_idx
                     counts = np.clip(self.block_counts, 1, None)
+                    
+                    avg_meas = self.accumulated_meas_results / counts[:, None]
+                    avg_meas[self.block_counts == 0] = 0.0j
+                    self.module.accumulated_meas_sweeps[j] = avg_meas
+                    
+                    if self.module.input_mode == "XFER":
+                        avg_ref = self.accumulated_ref_results / counts
+                        avg_ref[self.block_counts == 0] = 0.0j
+                        self.module.accumulated_ref_sweeps[j] = avg_ref
+                    
                     avg_results = self.accumulated_results / counts[:, None]
                     avg_results[self.block_counts == 0] = 0.0j
                     self.module.accumulated_sweeps[j] = avg_results
 
                     # Reset accumulated arrays for the next amplitude step
                     self.accumulated_results.fill(0.0)
+                    self.accumulated_meas_results.fill(0.0)
+                    self.accumulated_ref_results.fill(0.0)
                     self.block_counts.fill(0)
 
                     if self.module.current_amplitude_idx + 1 < self.module.num_amplitudes:
@@ -1011,6 +1095,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                         next_amp = self.module.amplitude_steps[self.module.current_amplitude_idx]
                         self.module.engine.output_amplitude = next_amp
                         self.module.engine.prepare_sweep()
+                        if self.module.ref_engine:
+                            self.module.ref_engine.output_amplitude = next_amp
+                            self.module.ref_engine.prepare_sweep()
                         self.module.state = "PLAYING"
                     else:
                         self.module.state = "FINISHED"
@@ -1034,10 +1121,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             sample_rate = self.module.audio_engine.sample_rate
 
             # shape: (num_amplitudes, max_blocks, max_harmonic)
-            G = self.module.accumulated_sweeps[:, :max_blocks, :max_harm]
+            G_meas = self.module.accumulated_meas_sweeps[:, :max_blocks, :max_harm]
             R = np.array(self.module.amplitude_steps)
 
-            H_f = np.zeros((max_harm, max_blocks), dtype=complex)
+            H_meas_f = np.zeros((max_harm, max_blocks), dtype=complex)
 
             R2 = R**2
             R3 = R**3
@@ -1046,34 +1133,51 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             # 5次 (harm_idx = 4)
             if max_harm >= 5:
-                H_f[4] = 16.0 * np.sum(G[:, :, 4] * R5[:, np.newaxis], axis=0) / np.sum(R**10)
+                H_meas_f[4] = 16.0 * np.sum(G_meas[:, :, 4] * R5[:, np.newaxis], axis=0) / np.sum(R**10)
 
             # 4次 (harm_idx = 3)
             if max_harm >= 4:
-                H_f[3] = 8.0 * np.sum(G[:, :, 3] * R4[:, np.newaxis], axis=0) / np.sum(R**8)
+                H_meas_f[3] = 8.0 * np.sum(G_meas[:, :, 3] * R4[:, np.newaxis], axis=0) / np.sum(R**8)
 
             # 3次 (harm_idx = 2)
             if max_harm >= 3:
-                g3_prime = G[:, :, 2].copy()
+                g3_prime = G_meas[:, :, 2].copy()
                 if max_harm >= 5:
-                    g3_prime -= (5.0 / 16.0) * H_f[4][np.newaxis, :] * R5[:, np.newaxis]
-                H_f[2] = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R**6)
+                    g3_prime -= (5.0 / 16.0) * H_meas_f[4][np.newaxis, :] * R5[:, np.newaxis]
+                H_meas_f[2] = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R**6)
 
             # 2次 (harm_idx = 1)
             if max_harm >= 2:
-                g2_prime = G[:, :, 1].copy()
+                g2_prime = G_meas[:, :, 1].copy()
                 if max_harm >= 4:
-                    g2_prime -= 0.5 * H_f[3][np.newaxis, :] * R4[:, np.newaxis]
-                H_f[1] = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R**4)
+                    g2_prime -= 0.5 * H_meas_f[3][np.newaxis, :] * R4[:, np.newaxis]
+                H_meas_f[1] = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R**4)
 
             # 1次 (harm_idx = 0)
             if max_harm >= 1:
-                g1_prime = G[:, :, 0].copy()
+                g1_prime = G_meas[:, :, 0].copy()
                 if max_harm >= 3:
-                    g1_prime -= 0.75 * H_f[2][np.newaxis, :] * R3[:, np.newaxis]
+                    g1_prime -= 0.75 * H_meas_f[2][np.newaxis, :] * R3[:, np.newaxis]
                 if max_harm >= 5:
-                    g1_prime -= 0.625 * H_f[4][np.newaxis, :] * R5[:, np.newaxis]
-                H_f[0] = np.sum(g1_prime * R[:, np.newaxis], axis=0) / np.sum(R2)
+                    g1_prime -= 0.625 * H_meas_f[4][np.newaxis, :] * R5[:, np.newaxis]
+                H_meas_f[0] = np.sum(g1_prime * R[:, np.newaxis], axis=0) / np.sum(R2)
+
+            # Reference separation (fundamental only)
+            if self.module.input_mode == "XFER":
+                G_ref = self.module.accumulated_ref_sweeps[:, :max_blocks]
+                H_ref_f = np.sum(G_ref * R[:, np.newaxis], axis=0) / np.sum(R2)
+            else:
+                H_ref_f = np.ones(max_blocks, dtype=complex)
+
+            # Divide by reference fundamental to get relative H_f
+            H_f = np.zeros((max_harm, max_blocks), dtype=complex)
+            ref_mag2 = np.real(H_ref_f * np.conj(H_ref_f))
+            alpha = np.max(ref_mag2) * 1e-7 + 1e-12
+            for p in range(max_harm):
+                if self.module.input_mode == "XFER":
+                    H_f[p] = (H_meas_f[p] * np.conj(H_ref_f)) / (ref_mag2 + alpha)
+                else:
+                    H_f[p] = H_meas_f[p]
 
             # Calculate frequency response for valid indices
             # Find which blocks were actually populated during the sweep
@@ -1090,7 +1194,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 H_p = H_f[p, valid_indices]
                 amp = np.abs(H_p)
                 mag_db = 20 * np.log10(amp + 1e-15)
+                
+                # Unwrap and wrap phase to [-180, 180] deg range
                 phase_deg = np.degrees(np.unwrap(np.angle(H_p)))
+                phase_deg = (phase_deg + 180) % 360 - 180
 
                 self.separated_H_mag.append(mag_db)
                 self.separated_H_phase.append(phase_deg)
