@@ -1020,7 +1020,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
     def perform_hammerstein_separation(self):
         try:
-            num_amps = self.module.num_amplitudes
             max_blocks = self.max_blocks
             max_harm = min(self.module.max_harmonic, 5)
             sample_rate = self.module.audio_engine.sample_rate
