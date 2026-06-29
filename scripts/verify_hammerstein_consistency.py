@@ -86,7 +86,6 @@ def realtime_hammerstein_separation(accumulated_sweeps, amplitude_steps, max_blo
     Ported from RealtimeSSSAnalyzerWidget.perform_hammerstein_separation.
     Extracts H_f from accumulated harmonic sweeps G.
     """
-    num_amps = len(amplitude_steps)
     max_harm = 5
 
     # shape: (num_amplitudes, max_blocks, max_harmonic)
@@ -344,8 +343,7 @@ def main():
     f_max_eval = min(f_end, 15000.0)
     eval_freqs = np.logspace(np.log10(f_min_eval), np.log10(f_max_eval), 300)
 
-    # Get theoretical kernels on eval grid for reference
-    theo_kernels = get_theoretical_kernels(eval_freqs, fs)
+
 
     # Interpolate kernels to eval_freqs
     rt_kernels_interp = {}
@@ -410,7 +408,6 @@ def main():
 
     rt_pred_response = predict_harmonic_responses(rt_kernels_interp, eval_freqs, test_amp)
     nl_pred_response = predict_harmonic_responses(nl_kernels_interp, eval_freqs, test_amp)
-    theo_pred_response = predict_harmonic_responses(theo_kernels, eval_freqs, test_amp)
 
     harmonic_mae_gain = {}
     harmonic_mae_phase = {}
