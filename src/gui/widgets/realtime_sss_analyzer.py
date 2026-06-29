@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -67,12 +66,13 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Default SSS parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 10.0
+        self.sweep_duration = 20.0
         self.output_amplitude = 0.5
-        self.lpf_factor = 0.08
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
+        self.analysis_cycles = 16.0
+        self.num_meas_points = 500
 
         # Latency state
         self.latency_samples = 0.0
@@ -119,8 +119,9 @@ class RealtimeSSSAnalyzer(MeasurementModule):
             start_freq=self.start_freq,
             end_freq=self.end_freq,
             output_amplitude=self.output_amplitude,
-            lpf_factor=self.lpf_factor,
             max_harmonic=self.max_harmonic,
+            analysis_cycles=self.analysis_cycles,
+            num_meas_points=self.num_meas_points,
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
@@ -165,10 +166,11 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
             # Process SSS Block
             f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx, ref_in_block=ref_in)
+            is_valid = self.engine.last_block_was_valid
 
             # Save results thread-safely
             with self.lock:
-                self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results))
+                self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results, is_valid))
 
             self.current_block_idx += 1
 
@@ -209,7 +211,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.timer.setInterval(16)
 
     def minimumSizeHint(self) -> QSize:
-        return QSize(960, 650)
+        return QSize(1000, 650)
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -221,7 +223,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.Shape.NoFrame)
         left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        left_scroll.setFixedWidth(290)
+        left_scroll.setFixedWidth(330)
 
         left_container = QWidget()
         left_panel = QVBoxLayout(left_container)
@@ -235,7 +237,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         left_panel.addWidget(self.btn_toggle)
 
         left_tabs = QTabWidget()
-        left_tabs.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         # 1. Sweep Parameters Tab
         settings_tab = QWidget()
@@ -269,12 +270,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_amplitude.setSuffix(" dBFS")
         form.addRow(tr("Amplitude:"), self.spin_amplitude)
 
-        self.spin_lpf_factor = QDoubleSpinBox()
-        self.spin_lpf_factor.setRange(0.01, 0.50)
-        self.spin_lpf_factor.setSingleStep(0.01)
-        self.spin_lpf_factor.setValue(self.module.lpf_factor)
-        self.spin_lpf_factor.setDecimals(3)
-        form.addRow(tr("LPF Factor:"), self.spin_lpf_factor)
+
 
         self.spin_max_harmonic = QSpinBox()
         self.spin_max_harmonic.setRange(1, 5)
@@ -322,6 +318,28 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         routing_tab.setLayout(r_form)
         left_tabs.addTab(routing_tab, tr("Routing"))
+
+        # 3. Advanced Tab
+        advanced_tab = QWidget()
+        adv_form = QFormLayout()
+        adv_form.setContentsMargins(6, 6, 6, 6)
+        adv_form.setSpacing(4)
+
+        self.spin_analysis_cycles = QDoubleSpinBox()
+        self.spin_analysis_cycles.setRange(2.0, 128.0)
+        self.spin_analysis_cycles.setSingleStep(1.0)
+        self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
+        self.spin_analysis_cycles.setSuffix(" cycles")
+        adv_form.addRow(tr("Analysis Cycles:"), self.spin_analysis_cycles)
+
+        self.spin_meas_points = QSpinBox()
+        self.spin_meas_points.setRange(100, 5000)
+        self.spin_meas_points.setSingleStep(100)
+        self.spin_meas_points.setValue(self.module.num_meas_points)
+        adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
+
+        advanced_tab.setLayout(adv_form)
+        left_tabs.addTab(advanced_tab, tr("Advanced"))
 
         left_panel.addWidget(left_tabs)
 
@@ -384,6 +402,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_phase.setLogMode(x=True, y=False)
         self.plot_phase.showGrid(x=True, y=True)
         self.plot_phase.setYRange(-180, 180)
+        self.plot_phase.setXLink(self.plot_mag)
         right_panel.addWidget(self.plot_phase)
 
         # Create Plot Curves with distinct colors
@@ -404,13 +423,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         layout.addLayout(right_panel, 2)
         self.setLayout(layout)
-        self.setMinimumSize(950, 620)
+        self.setMinimumSize(990, 620)
 
         # Set initial X range based on default sweep params
         x_min = min(self.module.start_freq, self.module.end_freq)
         x_max = max(self.module.start_freq, self.module.end_freq)
-        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
-        self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -478,9 +496,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.sweep_duration = self.spin_duration.value()
             # Convert dBFS to linear amplitude
             self.module.output_amplitude = 10 ** (self.spin_amplitude.value() / 20.0)
-            self.module.lpf_factor = self.spin_lpf_factor.value()
             self.module.max_harmonic = self.spin_max_harmonic.value()
             self.module.averaging_count = self.spin_averaging.value()
+            self.module.analysis_cycles = self.spin_analysis_cycles.value()
+            self.module.num_meas_points = self.spin_meas_points.value()
 
             self.module.output_channel = (
                 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
@@ -516,8 +535,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             end_val = self.module.end_freq
             x_min = min(start_val, end_val)
             x_max = max(start_val, end_val)
-            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
-            self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
 
             # Clear plot curves
             for idx in range(5):
@@ -551,11 +569,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_end_freq.setEnabled(enabled)
         self.spin_duration.setEnabled(enabled)
         self.spin_amplitude.setEnabled(enabled)
-        self.spin_lpf_factor.setEnabled(enabled)
         self.spin_max_harmonic.setEnabled(enabled)
         self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
+        self.spin_analysis_cycles.setEnabled(enabled)
+        self.spin_meas_points.setEnabled(enabled)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
@@ -575,14 +594,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             return
 
         latest_f_mid = None
-        for block_idx, _sweep_idx, f_mid, results in items:
-            if block_idx < self.max_blocks:
-                n_harm = min(len(results), 5)
-                # Accumulate complex values
-                self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
-                self.block_counts[block_idx] += 1
-                self.plot_freqs_array[block_idx] = f_mid
-                latest_f_mid = f_mid
+        f_min = min(self.module.start_freq, self.module.end_freq)
+        f_max = max(self.module.start_freq, self.module.end_freq)
+
+        for block_idx, _sweep_idx, f_mid, results, is_valid in items:
+            if is_valid and block_idx < self.max_blocks:
+                if f_min <= f_mid <= f_max:
+                    n_harm = min(len(results), 5)
+                    # Accumulate complex values
+                    self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
+                    self.block_counts[block_idx] += 1
+                    self.plot_freqs_array[block_idx] = f_mid
+                    latest_f_mid = f_mid
 
         # Extract measured data
         valid_indices = np.where(self.block_counts > 0)[0]

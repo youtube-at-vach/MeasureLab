@@ -92,7 +92,7 @@ def main():
     print("[+] Offline Sweep completed.")
 
     # ----------------------------------------------------
-    # Phase B: Real-time SSS Lock-in Analyzer (DDC + LPF)
+    # Phase B: Real-time SSS Lock-in Analyzer (DDC + LS)
     # ----------------------------------------------------
     print("\n=== Phase B: Real-time SSS Lock-in Sweep ===")
     rt_sss = RealtimeSSSAnalyzer(engine)
@@ -100,7 +100,6 @@ def main():
     rt_sss.end_freq = f_end
     rt_sss.sweep_duration = duration
     rt_sss.output_amplitude = amplitude_linear
-    rt_sss.lpf_factor = 0.08
     rt_sss.max_harmonic = 5
     rt_sss.input_mode = "XFER"
     rt_sss.signal_channel = 0  # Meas = Ch 1 (Left)
@@ -207,7 +206,7 @@ def main():
     harmonics_to_compare = 5
 
     fig, axs = plt.subplots(3, 2, figsize=(14, 12), sharex=True)
-    fig.suptitle("Algorithm Verification: Real-time SSS (DDC+LPF) vs Offline SSS (Deconvolution)", fontsize=14)
+    fig.suptitle("Algorithm Verification: Real-time SSS (DDC+LS) vs Offline SSS (Deconvolution)", fontsize=14)
 
     colors = ["#1f77b4", "#2ca02c", "#bcbd22", "#9467bd", "#d62728"]
     summary_metrics = {}

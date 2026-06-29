@@ -12,25 +12,7 @@ from src.core.nonlinear_analyzer_core import (
 logger = logging.getLogger(__name__)
 
 
-def design_biquad_lpf(fc, fs, Q):
-    """
-    Computes normalized Biquad LPF coefficients using Robert Bristow-Johnson's EQ Cookbook formula.
-    """
-    w0 = 2 * np.pi * fc / fs
-    alpha = np.sin(w0) / (2 * Q)
-    cos_w0 = np.cos(w0)
 
-    b0 = (1.0 - cos_w0) / 2.0
-    b1 = 1.0 - cos_w0
-    b2 = (1.0 - cos_w0) / 2.0
-
-    a0 = 1.0 + alpha
-    a1 = -2.0 * cos_w0
-    a2 = 1.0 - alpha
-
-    b = np.array([b0, b1, b2]) / a0
-    a = np.array([a0, a1, a2]) / a0
-    return b, a
 
 
 class RealtimeSSSEngine:
@@ -41,18 +23,32 @@ class RealtimeSSSEngine:
         start_freq: float,
         end_freq: float,
         output_amplitude: float,
-        lpf_factor: float,
         max_harmonic: int = 5,
-        extraction_mode: str = "ls",
+        analysis_cycles: float = 12.0,
+        num_meas_points: int = 500,
+        max_analysis_window: float | None = None,
+        max_fitting_samples: int | None = None,
     ):
         self.sample_rate = float(sample_rate)
         self.sweep_duration = float(sweep_duration)
         self.start_freq = float(start_freq)
         self.end_freq = float(end_freq)
         self.output_amplitude = float(output_amplitude)
-        self.lpf_factor = float(lpf_factor)
         self.max_harmonic = int(max_harmonic)
-        self.extraction_mode = str(extraction_mode)
+        self.analysis_cycles = float(analysis_cycles)
+        self.num_meas_points = int(num_meas_points)
+
+        # Derive legacy settings dynamically from analysis_cycles if not provided
+        min_freq = min(self.start_freq, self.end_freq)
+        if max_analysis_window is not None:
+            self.max_analysis_window = float(max_analysis_window)
+        else:
+            self.max_analysis_window = self.analysis_cycles / (4.0 * max(1.0, min_freq))
+
+        if max_fitting_samples is not None:
+            self.max_fitting_samples = int(max_fitting_samples)
+        else:
+            self.max_fitting_samples = int(np.clip(self.analysis_cycles * 170, 256, 65536))
 
         self.latency_samples = 0.0
 
@@ -60,14 +56,13 @@ class RealtimeSSSEngine:
         self.k_param = 0
         self.L_param = 0.0
         self.sweep_samples = 0
-        self.t_arr: np.ndarray | None = None
-        self.phase_arr: np.ndarray | None = None
-        self.out_sig: np.ndarray | None = None
+        self._out_sig_cached: np.ndarray | None = None
 
-        # Filter states for each harmonic order (1 to max_harmonic)
-        # We need 2 cascade sections for a 4th-order filter: zi1, zi2 for each harmonic
-        self.zi1: np.ndarray = np.zeros((self.max_harmonic, 2), dtype=complex)
-        self.zi2: np.ndarray = np.zeros((self.max_harmonic, 2), dtype=complex)
+        # Cache for decimation optimization
+        self.last_results = [0.0j] * self.max_harmonic
+        self.meas_freqs = np.zeros(0)
+        self.next_meas_idx = 0
+        self.is_ascending = True
 
         # Reset engine variables
         self.reset_filter_states()
@@ -81,9 +76,11 @@ class RealtimeSSSEngine:
         if self.start_freq <= self.end_freq:
             start_margin = max(2.0, self.start_freq / 1.3)
             end_margin = min(nyquist * 0.95, self.end_freq * 1.15)
+            self.is_ascending = True
         else:
             start_margin = min(nyquist * 0.95, self.start_freq * 1.15)
             end_margin = max(2.0, self.end_freq / 1.3)
+            self.is_ascending = False
 
         f1 = float(start_margin)
         f2 = float(end_margin)
@@ -102,31 +99,38 @@ class RealtimeSSSEngine:
         T_actual = self.L_param * ln_ratio
 
         self.sweep_samples = int(np.round(self.sample_rate * T_actual))
-        self.t_arr = np.arange(self.sweep_samples) / self.sample_rate
 
-        # Phase trajectory
-        self.phase_arr = 2.0 * np.pi * self.k_param * np.exp(self.t_arr / self.L_param)
+        self._out_sig_cached = None
 
-        # Output signal: Sine sweep
-        self.out_sig = self.output_amplitude * np.sin(self.phase_arr)
-
-        # Apply Tukey window (fade-in / fade-out) to minimize transient clicks
-        window = scipy.signal.windows.tukey(self.sweep_samples, alpha=0.02)
-        self.out_sig *= window
+        # Generate logarithmic frequency grid for measurement points
+        self.meas_freqs = np.logspace(
+            np.log10(self.start_freq),
+            np.log10(self.end_freq),
+            self.num_meas_points
+        )
 
         self.reset_filter_states()
 
+    @property
+    def out_sig(self) -> np.ndarray | None:
+        """
+        Returns the full pre-calculated sweep signal.
+        For backward compatibility (mostly for tests). Evaluated lazily and cached.
+        """
+        if self._out_sig_cached is None and self.sweep_samples > 0:
+            t = np.arange(self.sweep_samples) / self.sample_rate
+            phase = 2.0 * np.pi * self.k_param * np.exp(t / self.L_param)
+            sig = self.output_amplitude * np.sin(phase)
+            window = scipy.signal.windows.tukey(self.sweep_samples, alpha=0.02)
+            self._out_sig_cached = sig * window
+        return self._out_sig_cached
+
     def reset_filter_states(self):
-        """Resets the state of the cascade Biquad filters."""
-        self.zi1 = np.zeros((self.max_harmonic, 2), dtype=complex)
-        self.zi2 = np.zeros((self.max_harmonic, 2), dtype=complex)
-        self.ref_zi1 = np.zeros(2, dtype=complex)
-        self.ref_zi2 = np.zeros(2, dtype=complex)
-        self.dec_y_zi1 = np.zeros(2, dtype=float)
-        self.dec_y_zi2 = np.zeros(2, dtype=float)
-        self.dec_r_zi1 = np.zeros(2, dtype=float)
-        self.dec_r_zi2 = np.zeros(2, dtype=float)
+        """Resets the state of the analysis history."""
         self.reset_analysis_history()
+        self.next_meas_idx = 0
+        self.last_results = [0.0j] * self.max_harmonic
+        self.last_block_was_valid = False
 
     def reset_analysis_history(self):
         """Resets the sample history used by the local least-squares extractor."""
@@ -172,7 +176,7 @@ class RealtimeSSSEngine:
 
         keep_samples = int(
             max(
-                self.sample_rate * 0.5,
+                self.sample_rate * self.max_analysis_window,
                 self.sample_rate * 40.0 / max(1.0, min(self.start_freq, self.end_freq)),
             )
         )
@@ -207,24 +211,7 @@ class RealtimeSSSEngine:
         results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(self.max_harmonic)]
         return results
 
-    def _process_block_ls(
-        self,
-        n_comp: np.ndarray,
-        theta_comp: np.ndarray,
-        y_raw: np.ndarray,
-        f_mid: float,
-        valid_mask: np.ndarray,
-        ref_in_block: np.ndarray | None,
-    ) -> tuple[float, list[complex]]:
-        r_raw = None
-        if ref_in_block is not None:
-            if ref_in_block.shape[1] >= 1:
-                r_raw = ref_in_block[:, 0]
-            else:
-                r_raw = np.zeros_like(y_raw)
-
-        # 1. Append at original rate (48 kHz)
-        self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
+    def _execute_ls_fit(self, f_mid: float, has_ref: bool) -> tuple[float, list[complex]]:
         if not self._hist_n:
             return f_mid, [0.0j] * self.max_harmonic
 
@@ -236,7 +223,7 @@ class RealtimeSSSEngine:
 
         last_valid_n = hist_n[-1]
         local_freq = self._frequency_at_sample(last_valid_n)
-        window_seconds = np.clip(12.0 / max(local_freq, 1.0), 0.012, 0.15)
+        window_seconds = np.clip(self.analysis_cycles / max(local_freq, 1.0), 0.012, self.max_analysis_window)
         window_samples = max(256.0, window_seconds * self.sample_rate)
         start_n = last_valid_n - window_samples
         mask = hist_n >= start_n
@@ -251,7 +238,10 @@ class RealtimeSSSEngine:
         P = self.max_harmonic
         fs = self.sample_rate
         max_d = int(np.floor(fs / (5.0 * P * max(1.0, local_freq))))
-        D = int(np.clip(max_d, 1, 10))
+
+        # Limit fitting sample size to prevent CPU exhaustion on large windows
+        needed_d = len(sig_win) // self.max_fitting_samples
+        D = int(np.clip(max(needed_d, 1), 1, max(1, max_d)))
 
         # 1. Bounded check to prevent sample starvation for LS fitting
         min_samples = max(8, 3 * (2 * P + 1))
@@ -293,7 +283,7 @@ class RealtimeSSSEngine:
         # and maintain consistency with the IIR DDC demodulator.
         sig_results = [val * 1j for val in sig_results]
 
-        if ref_win is None or len(ref_win) != len(sig_win):
+        if not has_ref or ref_win is None or len(ref_win) != len(sig_win):
             return result_freq, sig_results
 
         ref_results = self._fit_harmonics(theta_win, ref_win, weights)
@@ -306,6 +296,25 @@ class RealtimeSSSEngine:
             return result_freq, [0.0j] * self.max_harmonic
 
         return result_freq, [(value * ref_conj) / (ref_mag2 + 1e-24) for value in sig_results]
+
+    def _process_block_ls(
+        self,
+        n_comp: np.ndarray,
+        theta_comp: np.ndarray,
+        y_raw: np.ndarray,
+        f_mid: float,
+        valid_mask: np.ndarray,
+        ref_in_block: np.ndarray | None,
+    ) -> tuple[float, list[complex]]:
+        r_raw = None
+        if ref_in_block is not None:
+            if ref_in_block.shape[1] >= 1:
+                r_raw = ref_in_block[:, 0]
+            else:
+                r_raw = np.zeros_like(y_raw)
+
+        self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
+        return self._execute_ls_fit(f_mid, ref_in_block is not None)
 
     def process_block(
         self,
@@ -336,8 +345,31 @@ class RealtimeSSSEngine:
         out_samples_written = 0
         if start_samp < self.sweep_samples:
             chunk = min(frames, self.sweep_samples - start_samp)
-            assert self.out_sig is not None
-            sig_chunk = self.out_sig[start_samp : start_samp + chunk]
+
+            # Generate chunk on-the-fly
+            t_chunk = np.arange(start_samp, start_samp + chunk) / fs
+            phase_chunk = 2.0 * np.pi * self.k_param * np.exp(t_chunk / self.L_param)
+            sig_chunk = self.output_amplitude * np.sin(phase_chunk)
+
+            # Apply Tukey window (fade-in / fade-out) on the fly
+            alpha = 0.02
+            width = int(np.floor(alpha * (self.sweep_samples - 1) / 2.0))
+            if width > 0:
+                n_global = np.arange(start_samp, start_samp + chunk)
+                win_chunk = np.ones(chunk)
+
+                # Fade-in region
+                fade_in_mask = n_global < width
+                if np.any(fade_in_mask):
+                    win_chunk[fade_in_mask] = 0.5 * (1.0 - np.cos(np.pi * n_global[fade_in_mask] / width))
+
+                # Fade-out region
+                fade_out_mask = n_global >= (self.sweep_samples - width)
+                if np.any(fade_out_mask):
+                    n_fade_out = np.clip(n_global[fade_out_mask], 0, self.sweep_samples - 1)
+                    win_chunk[fade_out_mask] = 0.5 * (1.0 - np.cos(np.pi * (self.sweep_samples - 1 - n_fade_out) / width))
+
+                sig_chunk *= win_chunk
 
             # Copy to all channels
             for ch in range(outdata_block.shape[1]):
@@ -371,13 +403,11 @@ class RealtimeSSSEngine:
             f_mid = self.start_freq if n_mid < 0 else self.end_freq
 
         # We demodulate the signal if there is at least one valid sample in this block
-        results = [0.0j] * self.max_harmonic
-
         if not np.any(valid_mask):
-            return f_mid, results
+            self.last_block_was_valid = False
+            return f_mid, [0.0j] * self.max_harmonic
 
         # Construct input signal
-        # For simplicity, if stereo input is provided, we default to Ch 0
         if indata_block.shape[1] >= 1:
             y_raw = indata_block[:, 0]
         else:
@@ -385,74 +415,41 @@ class RealtimeSSSEngine:
 
         # Calculate phase for delayed time indices
         t_comp = n_comp / fs
-        # To avoid exp overflow or math errors on negative or out-of-bound indices,
-        # we clip the evaluation of exponent to [0, sweep_samples) time range
         t_eval = np.clip(t_comp, 0.0, (self.sweep_samples - 1.0) / fs)
         theta_comp = 2.0 * np.pi * self.k_param * np.exp(t_eval / self.L_param)
 
-        # Zero out phase for invalid regions (before sweep reached microphone or after sweep ended)
+        # Zero out phase for invalid regions
         theta_comp[~valid_mask] = 0.0
 
-        if self.extraction_mode == "ls":
-            return self._process_block_ls(n_comp, theta_comp, y_raw, f_mid, valid_mask, ref_in_block)
-
-        # Prepare LPF cutoff: fc = factor * f_mid
-        fc = self.lpf_factor * f_mid
-        # Clamp fc to safe Nyquist limits
-        fc = np.clip(fc, 10.0, 0.48 * fs)
-
-        # Butterworth 4th-order LPF Biquad design: Q1 = 0.541196 (low Q), Q2 = 1.306563 (high Q)
-        b1, a1 = design_biquad_lpf(fc, fs, 0.541196)
-        b2, a2 = design_biquad_lpf(fc, fs, 1.306563)
-
-        # Process REF channel if provided
-        ref_res = 1.0
-        has_ref = False
+        r_raw = None
         if ref_in_block is not None:
             if ref_in_block.shape[1] >= 1:
                 r_raw = ref_in_block[:, 0]
             else:
-                r_raw = np.zeros(frames)
+                r_raw = np.zeros_like(y_raw)
 
-            # Demodulate reference signal at fundamental (p=1)
-            lo_r = 1j * np.exp(-1j * theta_comp)
-            lo_r[~valid_mask] = 0.0
-            z_r = 2.0 * r_raw * lo_r
+        # 1. Append history block-by-block
+        self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
 
-            # Cascade IIR filtering for REF
-            out_r1, self.ref_zi1 = scipy.signal.lfilter(b1, a1, z_r, zi=self.ref_zi1)
-            out_r2, self.ref_zi2 = scipy.signal.lfilter(b2, a2, out_r1, zi=self.ref_zi2)
+        # 2. Check if we need to perform LS calculation based on the log grid
+        should_calc = False
+        if self.next_meas_idx == 0:
+            should_calc = True
 
-            valid_indices = np.flatnonzero(valid_mask)
-            if len(valid_indices) > 0:
-                num_avg = min(len(valid_indices), 32)
-                avg_indices = valid_indices[-num_avg:]
-                ref_res = np.mean(out_r2[avg_indices])
-                has_ref = True
-
-        # Vectorized DDC mixing and IIR filtering
-        p_vals = np.arange(1, self.max_harmonic + 1)[:, np.newaxis]
-        lo_2d = 1j * np.exp(-1j * p_vals * theta_comp)
-        lo_2d[:, ~valid_mask] = 0.0
-
-        z_2d = 2.0 * y_raw * lo_2d
-
-        out1, self.zi1 = scipy.signal.lfilter(b1, a1, z_2d, axis=1, zi=self.zi1)
-        out2, self.zi2 = scipy.signal.lfilter(b2, a2, out1, axis=1, zi=self.zi2)
-
-        valid_indices = np.flatnonzero(valid_mask)
-        if len(valid_indices) > 0:
-            num_avg = min(len(valid_indices), 32)
-            avg_indices = valid_indices[-num_avg:]
-            val_sigs = np.mean(out2[:, avg_indices], axis=1)
-            if has_ref:
-                ref_conj = np.conj(ref_res)
-                ref_mag2 = np.real(ref_res * ref_conj)
-                results = ((val_sigs * ref_conj) / (ref_mag2 + 1e-12)).tolist()
+        while self.next_meas_idx < self.num_meas_points:
+            target_f = self.meas_freqs[self.next_meas_idx]
+            if (self.is_ascending and f_mid >= target_f) or (not self.is_ascending and f_mid <= target_f):
+                should_calc = True
+                self.next_meas_idx += 1
             else:
-                results = val_sigs.tolist()
+                break
 
-        return f_mid, results
+        if should_calc:
+            _, results = self._execute_ls_fit(f_mid, ref_in_block is not None)
+            self.last_results = results
+
+        self.last_block_was_valid = True
+        return f_mid, self.last_results
 
 
 class LatencyCalibrator:
