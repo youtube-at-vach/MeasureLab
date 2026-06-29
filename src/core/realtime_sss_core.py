@@ -315,32 +315,15 @@ class RealtimeSSSEngine:
         self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
         return self._execute_ls_fit(f_mid, ref_in_block is not None)
 
-    def process_block(
-        self,
-        indata_block: np.ndarray,
-        outdata_block: np.ndarray,
-        block_index: int,
-        ref_in_block: np.ndarray | None = None,
-    ):
+    def generate_output_block(self, outdata_block: np.ndarray, block_index: int):
         """
-        Processes a single block of audio (both playing the sweep and analyzing loopback).
-        indata_block: Input recorded samples of shape (frames, 1) or (frames, 2)
-        outdata_block: Output generator block of shape (frames, ch)
-        block_index: Index of the current block in the sweep sequence.
-        ref_in_block: Optional reference input block of shape (frames, 1) or (frames, 2)
-
-        Returns:
-            f_mid (float): The center instantaneous frequency analyzed in this block.
-            results (list of complex): The demodulated response values for orders 1..max_harmonic.
+        Generates output sweep signal block and writes it to outdata_block.
+        This is a lightweight operation meant to be called directly in the audio callback.
         """
         frames = len(outdata_block)
         fs = self.sample_rate
-
-        # 1. Output Generation
         start_samp = block_index * frames
-        end_samp = start_samp + frames
 
-        # Write sweep signal if inside sweep limits
         out_samples_written = 0
         if start_samp < self.sweep_samples:
             chunk = min(frames, self.sweep_samples - start_samp)
@@ -379,7 +362,21 @@ class RealtimeSSSEngine:
         if out_samples_written < frames:
             outdata_block[out_samples_written:, :] = 0.0
 
-        # 2. Input Capture & Demodulation
+    def process_input_block(
+        self,
+        indata_block: np.ndarray,
+        block_index: int,
+        ref_in_block: np.ndarray | None = None,
+    ) -> tuple[float, list[complex]]:
+        """
+        Buffers recorded loops and runs lock-in Least-Squares demodulation.
+        This can be computationally heavy and is safe to be called in a background thread.
+        """
+        frames = len(indata_block)
+        fs = self.sample_rate
+        start_samp = block_index * frames
+        end_samp = start_samp + frames
+
         # Retrieve delay in samples
         d = self.latency_samples
 
@@ -449,6 +446,27 @@ class RealtimeSSSEngine:
 
         self.last_block_was_valid = True
         return f_mid, self.last_results
+
+    def process_block(
+        self,
+        indata_block: np.ndarray,
+        outdata_block: np.ndarray,
+        block_index: int,
+        ref_in_block: np.ndarray | None = None,
+    ):
+        """
+        Processes a single block of audio (both playing the sweep and analyzing loopback).
+        indata_block: Input recorded samples of shape (frames, 1) or (frames, 2)
+        outdata_block: Output generator block of shape (frames, ch)
+        block_index: Index of the current block in the sweep sequence.
+        ref_in_block: Optional reference input block of shape (frames, 1) or (frames, 2)
+
+        Returns:
+            f_mid (float): The center instantaneous frequency analyzed in this block.
+            results (list of complex): The demodulated response values for orders 1..max_harmonic.
+        """
+        self.generate_output_block(outdata_block, block_index)
+        return self.process_input_block(indata_block, block_index, ref_in_block=ref_in_block)
 
 
 class LatencyCalibrator:

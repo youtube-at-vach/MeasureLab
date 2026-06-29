@@ -1,4 +1,5 @@
 import logging
+import queue
 import threading
 from collections import deque
 import numpy as np
@@ -6,6 +7,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import QTimer, QThread, pyqtSignal, QSize, Qt
 from PyQt6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -57,6 +59,43 @@ class LatencyCalibThread(QThread):
             self.error_sig.emit(str(e))
 
 
+class SSSCalculationThread(QThread):
+    block_calculated = pyqtSignal(int, int, float, list, bool)  # block_idx, sweep_idx, f_mid, results, is_valid
+    sweep_finished = pyqtSignal(int)  # sweep_idx
+
+    def __init__(self, engine, input_queue):
+        super().__init__()
+        self.engine = engine
+        self.input_queue = input_queue
+        self.is_running = True
+
+    def run(self):
+        while self.is_running:
+            try:
+                # Use a timeout to periodically check if the thread should be stopped
+                item = self.input_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+
+            block_idx, sweep_idx, sig_in, ref_in, max_blocks = item
+
+            # Perform the computationally heavy Least-Squares fit in the background
+            try:
+                f_mid, results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
+                is_valid = self.engine.last_block_was_valid
+                self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid)
+            except Exception as e:
+                logger.error(f"Error in background computation: {e}", exc_info=True)
+
+            if block_idx == max_blocks - 1:
+                self.sweep_finished.emit(sweep_idx)
+
+            self.input_queue.task_done()
+
+    def stop(self):
+        self.is_running = False
+
+
 class RealtimeSSSAnalyzer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -91,6 +130,9 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
         # Dynamic measurement data queues
         self.measurement_queue = deque()
+        self.async_mode = False
+        self.input_queue = None
+        self.state = "IDLE"  # "IDLE", "PLAYING", "WAITING", "FINISHED"
 
     @property
     def name(self) -> str:
@@ -133,20 +175,44 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         sig_ch = self.signal_channel
         ref_ch = self.ref_channel
 
+        if self.async_mode:
+            self.input_queue = queue.Queue()
+            self.state = "PLAYING"
+        else:
+            self.state = "PLAYING"
+
         def callback(indata, outdata, frames, time, status):
             if not self.is_running:
                 outdata.fill(0)
                 return
 
+            with self.lock:
+                if self.async_mode and self.state == "WAITING":
+                    outdata.fill(0)
+                    return
+
             if self.current_block_idx >= self.max_blocks:
                 if self.current_sweep_idx + 1 < self.averaging_count:
-                    self.current_sweep_idx += 1
-                    self.current_block_idx = 0
-                    self.engine.reset_filter_states()
+                    if self.async_mode:
+                        # Hold sweep transition until calculations of current sweep are complete
+                        with self.lock:
+                            self.state = "WAITING"
+                        outdata.fill(0)
+                        return
+                    else:
+                        self.current_sweep_idx += 1
+                        self.current_block_idx = 0
+                        self.engine.reset_filter_states()
                 else:
-                    outdata.fill(0)
-                    # Keep audio thread running but outputting silence
-                    return
+                    if self.async_mode:
+                        with self.lock:
+                            self.state = "WAITING"
+                        outdata.fill(0)
+                        return
+                    else:
+                        outdata.fill(0)
+                        # Keep audio thread running but outputting silence
+                        return
 
             # Extract target input channel
             sig_in = np.zeros((frames, 1))
@@ -164,13 +230,19 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 elif indata.shape[1] > 0:
                     ref_in[:, 0] = indata[:, 0]
 
-            # Process SSS Block
-            f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx, ref_in_block=ref_in)
-            is_valid = self.engine.last_block_was_valid
+            if self.async_mode:
+                # 1. Output Generation (Lightweight)
+                self.engine.generate_output_block(outdata, self.current_block_idx)
+                # 2. Add raw data to background processing queue
+                self.input_queue.put((self.current_block_idx, self.current_sweep_idx, sig_in, ref_in, self.max_blocks))
+            else:
+                # Process SSS Block (Synchronous / Real-time)
+                f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx, ref_in_block=ref_in)
+                is_valid = self.engine.last_block_was_valid
 
-            # Save results thread-safely
-            with self.lock:
-                self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results, is_valid))
+                # Save results thread-safely
+                with self.lock:
+                    self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results, is_valid))
 
             self.current_block_idx += 1
 
@@ -338,6 +410,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_meas_points.setValue(self.module.num_meas_points)
         adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
 
+        self.chk_async_mode = QCheckBox(tr("Asynchronous Calculation"))
+        self.chk_async_mode.setChecked(self.module.async_mode)
+        adv_form.addRow(tr("Async Mode:"), self.chk_async_mode)
+
         advanced_tab.setLayout(adv_form)
         left_tabs.addTab(advanced_tab, tr("Advanced"))
 
@@ -500,6 +576,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.averaging_count = self.spin_averaging.value()
             self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
+            self.module.async_mode = self.chk_async_mode.isChecked()
 
             self.module.output_channel = (
                 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
@@ -554,10 +631,26 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.block_counts = np.zeros(self.max_blocks, dtype=int)
             self.plot_freqs_array = np.zeros(self.max_blocks)
 
+            # Spawn calculation thread if asynchronous mode is requested
+            self.calc_thread = None
+            if self.module.async_mode:
+                self.calc_thread = SSSCalculationThread(self.module.engine, self.module.input_queue)
+                self.calc_thread.block_calculated.connect(self.on_block_calculated)
+                self.calc_thread.sweep_finished.connect(self.on_sweep_finished)
+                self.calc_thread.start()
+
             self.timer.start()
         else:
             self.module.stop_analysis()
             self.timer.stop()
+
+            # Terminate and clean up the async calculation thread
+            if hasattr(self, "calc_thread") and self.calc_thread:
+                self.calc_thread.stop()
+                self.calc_thread.wait()
+                self.calc_thread = None
+            self.module.state = "IDLE"
+
             self.btn_toggle.setText(tr("Start Sweep"))
             self.btn_calibrate.setEnabled(True)
             self.set_controls_enabled(True)
@@ -575,6 +668,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_in_mode.setEnabled(enabled)
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
+        self.chk_async_mode.setEnabled(enabled)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
@@ -586,9 +680,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if not items:
             # Check if sweep is done
             if (self.module.is_running 
+                and not self.module.async_mode
                 and self.module.current_sweep_idx >= self.module.averaging_count - 1
-                and self.module.current_block_idx >= self.module.max_blocks):
-                # Automate sweep stop once it reaches the end
+                and self.module.current_block_idx >= self.max_blocks):
+                # Automate sweep stop once it reaches the end (only for synchronous mode)
                 self.btn_toggle.setChecked(False)
                 self.on_toggle_sweep(False)
             return
@@ -617,16 +712,24 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # Display progress info
         if self.module.engine and self.module.engine.sweep_samples > 0:
             total_samples = self.module.engine.sweep_samples
-            progress_pct = min(
-                100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0
-            )
-            self.lbl_progress.setText(
-                tr("Sweep Progress: {0:.1f}% (Sweep {1}/{2})").format(
-                    progress_pct,
-                    min(self.module.current_sweep_idx + 1, self.module.averaging_count),
-                    self.module.averaging_count
+            if self.module.async_mode and self.module.state == "WAITING":
+                self.lbl_progress.setText(
+                    tr("Sweep Progress: Calculations catching up... (Sweep {0}/{1})").format(
+                        min(self.module.current_sweep_idx + 1, self.module.averaging_count),
+                        self.module.averaging_count
+                    )
                 )
-            )
+            else:
+                progress_pct = min(
+                    100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0
+                )
+                self.lbl_progress.setText(
+                    tr("Sweep Progress: {0:.1f}% (Sweep {1}/{2})").format(
+                        progress_pct,
+                        min(self.module.current_sweep_idx + 1, self.module.averaging_count),
+                        self.module.averaging_count
+                    )
+                )
             if latest_f_mid is not None:
                 self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(latest_f_mid))
 
@@ -644,6 +747,26 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             self.mag_curves[idx].setData(x_data, y_gain)
             self.phase_curves[idx].setData(x_data, y_phase)
+
+    def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
+        with self.module.lock:
+            self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, results, is_valid))
+
+    def on_sweep_finished(self, sweep_idx):
+        with self.module.lock:
+            if sweep_idx + 1 < self.module.averaging_count:
+                # Proceed to next sweep and reset filter states
+                self.module.current_sweep_idx += 1
+                self.module.current_block_idx = 0
+                self.module.engine.reset_filter_states()
+                self.module.state = "PLAYING"
+            else:
+                self.module.state = "FINISHED"
+
+        if self.module.state == "FINISHED":
+            # Deactivate sweep button safely on main UI thread
+            self.btn_toggle.setChecked(False)
+            self.on_toggle_sweep(False)
 
     def apply_theme(self, theme_name=None):
         if not theme_name and hasattr(self.app, "theme_manager"):
@@ -682,4 +805,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.module.stop_analysis()
         if self.calib_thread and self.calib_thread.isRunning():
             self.calib_thread.wait()
+        if hasattr(self, "calc_thread") and self.calc_thread and self.calc_thread.isRunning():
+            self.calc_thread.stop()
+            self.calc_thread.wait()
         super().closeEvent(event)

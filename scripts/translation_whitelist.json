@@ -36,6 +36,8 @@
         "Amp Scans (P=5):",
         "Amplitude",
         "Amplitude:",
+        "Async Mode:",
+        "Asynchronous Calculation",
         "Audio",
         "Audio Sample Rate (8kHz) / USB Audio Packet (125µs)",
         "Audio playback timed out. Audio device may have stopped responding.",
