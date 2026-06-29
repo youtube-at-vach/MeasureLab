@@ -172,7 +172,7 @@ class RealtimeSSSEngine:
         if ref is not None:
             self._hist_ref.append(ref[valid_indices].astype(float, copy=True))
         else:
-            self._hist_ref.append(np.empty(0, dtype=float))
+            self._hist_ref.append(np.zeros(len(valid_indices), dtype=float))
 
         keep_samples = int(
             max(
@@ -218,8 +218,7 @@ class RealtimeSSSEngine:
         hist_n = np.concatenate(self._hist_n)
         hist_theta = np.concatenate(self._hist_theta)
         hist_signal = np.concatenate(self._hist_signal)
-        hist_ref_chunks = [chunk for chunk in self._hist_ref if len(chunk) > 0]
-        hist_ref = np.concatenate(hist_ref_chunks) if hist_ref_chunks else None
+        hist_ref = np.concatenate(self._hist_ref) if self._hist_ref else None
 
         last_valid_n = hist_n[-1]
         local_freq = self._frequency_at_sample(last_valid_n)

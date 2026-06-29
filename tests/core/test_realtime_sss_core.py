@@ -327,4 +327,28 @@ def test_engine_parameter_derivation():
     assert engine_override.max_fitting_samples == 4096
 
 
+def test_engine_process_block_xfer_mixed_reference():
+    # Verify that mixing None and non-None reference inputs does not raise IndexError
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 512
+    outdata = np.zeros((frames, 1))
+
+    # Process first block with no reference
+    engine.process_block(np.zeros((frames, 1)), outdata, 0, ref_in_block=None)
+
+    # Process second block with reference
+    ref_block = outdata * 0.8
+    sig_block = outdata * 0.4
+    f_mid, results = engine.process_block(sig_block, outdata, 1, ref_in_block=ref_block)
+
+    # We expect results to be corrected (0.4 / 0.8 = 0.5)
+    # If the bug is present, this will either raise IndexError or return uncorrected 0.4
+    assert np.abs(results[0]) > 0.0
+    assert np.abs(np.abs(results[0]) - 0.5) < 1e-2
+
+
+
 
