@@ -109,6 +109,7 @@
         "Fundamental",
         "Fundamental (dBFS)",
         "Fundamental (Linear h1)",
+        "Fundamental (h1)",
         "Gain",
         "Gate",
         "Gate (dB):",
