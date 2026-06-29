@@ -212,7 +212,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.timer.setInterval(16)
 
     def minimumSizeHint(self) -> QSize:
-        return QSize(960, 650)
+        return QSize(1000, 650)
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -224,7 +224,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         left_scroll.setWidgetResizable(True)
         left_scroll.setFrameShape(QFrame.Shape.NoFrame)
         left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        left_scroll.setFixedWidth(290)
+        left_scroll.setFixedWidth(330)
 
         left_container = QWidget()
         left_panel = QVBoxLayout(left_container)
@@ -238,7 +238,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         left_panel.addWidget(self.btn_toggle)
 
         left_tabs = QTabWidget()
-        left_tabs.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
 
         # 1. Sweep Parameters Tab
         settings_tab = QWidget()
@@ -425,7 +424,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         layout.addLayout(right_panel, 2)
         self.setLayout(layout)
-        self.setMinimumSize(950, 620)
+        self.setMinimumSize(990, 620)
 
         # Set initial X range based on default sweep params
         x_min = min(self.module.start_freq, self.module.end_freq)
