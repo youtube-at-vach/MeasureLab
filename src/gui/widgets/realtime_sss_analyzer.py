@@ -1172,18 +1172,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 "input_mode": self.module.input_mode,
             },
             "time_domain": {
-                "time_ms": self.separated_time_ms.tolist(),
+                "time_ms": self.separated_time_ms,
                 "kernels": {
-                    f"h{p+1}": self.separated_kernels_time[p].tolist() for p in range(max_harm)
+                    f"h{p+1}": self.separated_kernels_time[p] for p in range(max_harm)
                 }
             },
             "frequency_domain": {
-                "freqs": self.separated_freqs.tolist(),
+                "freqs": self.separated_freqs,
                 "magnitudes_db": {
-                    f"h{p+1}": self.separated_H_mag[p].tolist() for p in range(max_harm)
+                    f"h{p+1}": self.separated_H_mag[p] for p in range(max_harm)
                 },
                 "phases_deg": {
-                    f"h{p+1}": self.separated_H_phase[p].tolist() for p in range(max_harm)
+                    f"h{p+1}": self.separated_H_phase[p] for p in range(max_harm)
                 }
             }
         }
