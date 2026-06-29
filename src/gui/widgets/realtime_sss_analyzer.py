@@ -21,12 +21,15 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QMessageBox,
+    QFileDialog,
 )
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.realtime_sss_core import RealtimeSSSEngine, measure_system_latency
+from src.core.hammerstein_model import set_active_model, save_hammerstein_model
 
 logger = logging.getLogger(__name__)
 
@@ -478,6 +481,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.lbl_current_freq = QLabel(tr("Current Freq: -- Hz"))
         stats_layout.addWidget(self.lbl_current_freq)
 
+        self.btn_export = QPushButton(tr("Export Model..."))
+        self.btn_export.setEnabled(False)
+        self.btn_export.clicked.connect(self.on_export_model)
+        stats_layout.addWidget(self.btn_export)
+
         stats_group.setLayout(stats_layout)
         left_panel.addWidget(stats_group)
 
@@ -750,6 +758,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.btn_toggle.setText(tr("Stop Sweep"))
             self.btn_calibrate.setEnabled(False)
             self.set_controls_enabled(False)
+            self.btn_export.setEnabled(False)
 
             self.module.start_analysis()
 
@@ -1137,8 +1146,79 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             # Switch right tab to Time Domain for user confirmation
             self.right_tabs.setCurrentIndex(1)
+
+            # Build and cache active model data
+            model_data = self._build_model_data()
+            if model_data:
+                set_active_model(model_data)
+                self.btn_export.setEnabled(True)
         except Exception as e:
             logger.error(f"Error in Hammerstein separation: {e}", exc_info=True)
+
+    def _build_model_data(self) -> dict | None:
+        if self.separated_freqs is None or len(self.separated_H_mag) == 0:
+            return None
+        max_harm = len(self.separated_H_mag)
+
+        # Build standard model format
+        return {
+            "metadata": {
+                "sample_rate": self.module.audio_engine.sample_rate,
+                "P": max_harm,
+                "start_freq": self.module.start_freq,
+                "end_freq": self.module.end_freq,
+                "sweep_duration": self.module.sweep_duration,
+                "output_amplitude_dbfs": 20 * np.log10(self.module.output_amplitude),
+                "input_mode": self.module.input_mode,
+            },
+            "time_domain": {
+                "time_ms": self.separated_time_ms.tolist(),
+                "kernels": {
+                    f"h{p+1}": self.separated_kernels_time[p].tolist() for p in range(max_harm)
+                }
+            },
+            "frequency_domain": {
+                "freqs": self.separated_freqs.tolist(),
+                "magnitudes_db": {
+                    f"h{p+1}": self.separated_H_mag[p].tolist() for p in range(max_harm)
+                },
+                "phases_deg": {
+                    f"h{p+1}": self.separated_H_phase[p].tolist() for p in range(max_harm)
+                }
+            }
+        }
+
+    def on_export_model(self):
+        model_data = self._build_model_data()
+        if not model_data:
+            QMessageBox.warning(self, tr("Export Warning"), tr("No Hammerstein model data available to export."))
+            return
+
+        import os
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Export Hammerstein Model"),
+            "",
+            "JSON Files (*.json)"
+        )
+        if not filepath:
+            return
+
+        try:
+            save_hammerstein_model(filepath, model_data)
+            QMessageBox.information(
+                self,
+                tr("Export Complete"),
+                tr("Successfully exported Hammerstein model to:\n{0}").format(os.path.basename(filepath))
+            )
+        except Exception as e:
+            logger.error("Failed to export Hammerstein model to %s: %s", filepath, e, exc_info=True)
+            QMessageBox.critical(
+                self,
+                tr("Export Error"),
+                tr("Failed to save model file:\n{0}").format(str(e))
+            )
 
     def apply_theme(self, theme_name=None):
         if not theme_name and hasattr(self.app, "theme_manager"):
