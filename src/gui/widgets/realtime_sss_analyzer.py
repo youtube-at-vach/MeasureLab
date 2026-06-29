@@ -67,7 +67,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Default SSS parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 10.0
+        self.sweep_duration = 20.0
         self.output_amplitude = 0.5
         self.max_harmonic = 3
         self.averaging_count = 1
@@ -167,10 +167,11 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
             # Process SSS Block
             f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx, ref_in_block=ref_in)
+            is_valid = self.engine.last_block_was_valid
 
             # Save results thread-safely
             with self.lock:
-                self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results))
+                self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results, is_valid))
 
             self.current_block_idx += 1
 
@@ -403,6 +404,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_phase.setLogMode(x=True, y=False)
         self.plot_phase.showGrid(x=True, y=True)
         self.plot_phase.setYRange(-180, 180)
+        self.plot_phase.setXLink(self.plot_mag)
         right_panel.addWidget(self.plot_phase)
 
         # Create Plot Curves with distinct colors
@@ -428,8 +430,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # Set initial X range based on default sweep params
         x_min = min(self.module.start_freq, self.module.end_freq)
         x_max = max(self.module.start_freq, self.module.end_freq)
-        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
-        self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -536,8 +537,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             end_val = self.module.end_freq
             x_min = min(start_val, end_val)
             x_max = max(start_val, end_val)
-            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max))
-            self.plot_phase.setXRange(np.log10(x_min), np.log10(x_max))
+            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
 
             # Clear plot curves
             for idx in range(5):
@@ -596,14 +596,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             return
 
         latest_f_mid = None
-        for block_idx, _sweep_idx, f_mid, results in items:
-            if block_idx < self.max_blocks:
-                n_harm = min(len(results), 5)
-                # Accumulate complex values
-                self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
-                self.block_counts[block_idx] += 1
-                self.plot_freqs_array[block_idx] = f_mid
-                latest_f_mid = f_mid
+        f_min = min(self.module.start_freq, self.module.end_freq)
+        f_max = max(self.module.start_freq, self.module.end_freq)
+
+        for block_idx, _sweep_idx, f_mid, results, is_valid in items:
+            if is_valid and block_idx < self.max_blocks:
+                if f_min <= f_mid <= f_max:
+                    n_harm = min(len(results), 5)
+                    # Accumulate complex values
+                    self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
+                    self.block_counts[block_idx] += 1
+                    self.plot_freqs_array[block_idx] = f_mid
+                    latest_f_mid = f_mid
 
         # Extract measured data
         valid_indices = np.where(self.block_counts > 0)[0]

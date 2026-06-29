@@ -130,6 +130,7 @@ class RealtimeSSSEngine:
         self.reset_analysis_history()
         self.next_meas_idx = 0
         self.last_results = [0.0j] * self.max_harmonic
+        self.last_block_was_valid = False
 
     def reset_analysis_history(self):
         """Resets the sample history used by the local least-squares extractor."""
@@ -403,6 +404,7 @@ class RealtimeSSSEngine:
 
         # We demodulate the signal if there is at least one valid sample in this block
         if not np.any(valid_mask):
+            self.last_block_was_valid = False
             return f_mid, [0.0j] * self.max_harmonic
 
         # Construct input signal
@@ -446,6 +448,7 @@ class RealtimeSSSEngine:
             _, results = self._execute_ls_fit(f_mid, ref_in_block is not None)
             self.last_results = results
 
+        self.last_block_was_valid = True
         return f_mid, self.last_results
 
 
