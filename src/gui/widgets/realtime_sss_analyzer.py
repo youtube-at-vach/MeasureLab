@@ -130,7 +130,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
         # Dynamic measurement data queues
         self.measurement_queue = deque()
-        self.async_mode = False
+        self.async_mode = True
         self.input_queue = None
         self.state = "IDLE"  # "IDLE", "PLAYING", "WAITING", "FINISHED"
 
