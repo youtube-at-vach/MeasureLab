@@ -959,6 +959,21 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
     def on_sweep_finished(self, sweep_idx):
         with self.module.lock:
+            # Process any remaining calculation blocks from the queue first.
+            # This ensures that the accumulated results for the completed sweep
+            # are fully updated before we save them or clear the buffers.
+            f_min = min(self.module.start_freq, self.module.end_freq)
+            f_max = max(self.module.start_freq, self.module.end_freq)
+            while self.module.measurement_queue:
+                block_idx, _, f_mid, results, is_valid = self.module.measurement_queue.popleft()
+                if is_valid and block_idx < self.max_blocks:
+                    if f_min <= f_mid <= f_max:
+                        n_harm = min(len(results), 5)
+                        self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
+                        self.block_counts[block_idx] += 1
+                        self.plot_freqs_array[block_idx] = f_mid
+                        self.current_analysis_freq = f_mid
+
             if sweep_idx + 1 < self.module.averaging_count:
                 # Proceed to next sweep and reset filter states
                 self.module.current_sweep_idx += 1
