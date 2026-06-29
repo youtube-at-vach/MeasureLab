@@ -40,13 +40,13 @@ def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
 
     # 3. Simulate first sweep (sweep_idx=0)
     # Feed block 0
-    analyzer.measurement_queue.append((0, 0, 100.0, np.zeros(5, dtype=complex), True))
+    analyzer.measurement_queue.append((0, 0, 100.0, np.zeros(5, dtype=complex), None, True))
     widget.update_plots()
     assert "100.0 Hz" in widget.lbl_current_freq.text()
 
     # Feed final block of first sweep
     last_block_idx = widget.max_blocks - 1
-    analyzer.measurement_queue.append((last_block_idx, 0, 20000.0, np.zeros(5, dtype=complex), True))
+    analyzer.measurement_queue.append((last_block_idx, 0, 20000.0, np.zeros(5, dtype=complex), None, True))
     widget.update_plots()
     assert "20000.0 Hz" in widget.lbl_current_freq.text()
 
@@ -55,7 +55,7 @@ def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
     # Increment current_sweep_idx to simulate audio thread state
     analyzer.current_sweep_idx = 1
     analyzer.current_block_idx = 1
-    analyzer.measurement_queue.append((0, 1, 150.0, np.zeros(5, dtype=complex), True))
+    analyzer.measurement_queue.append((0, 1, 150.0, np.zeros(5, dtype=complex), None, True))
     widget.update_plots()
 
     # Verify that the frequency display updates to the new sweep's frequency (150.0 Hz)
