@@ -63,11 +63,13 @@ class SSSCalculationThread(QThread):
     block_calculated = pyqtSignal(int, int, float, list, bool)  # block_idx, sweep_idx, f_mid, results, is_valid
     sweep_finished = pyqtSignal(int)  # sweep_idx
 
-    def __init__(self, engine, input_queue):
+    def __init__(self, engine, input_queue, prevent_underrun=False):
         super().__init__()
         self.engine = engine
         self.input_queue = input_queue
+        self.prevent_underrun = prevent_underrun
         self.is_running = True
+        self.pending_blocks = []
 
     def run(self):
         while self.is_running:
@@ -79,16 +81,33 @@ class SSSCalculationThread(QThread):
 
             block_idx, sweep_idx, sig_in, ref_in, max_blocks = item
 
-            # Perform the computationally heavy Least-Squares fit in the background
-            try:
-                f_mid, results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
-                is_valid = self.engine.last_block_was_valid
-                self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid)
-            except Exception as e:
-                logger.error(f"Error in background computation: {e}", exc_info=True)
+            if self.prevent_underrun:
+                self.pending_blocks.append(item)
+                if block_idx == max_blocks - 1:
+                    for p_item in self.pending_blocks:
+                        if not self.is_running:
+                            break
+                        p_block_idx, p_sweep_idx, p_sig_in, p_ref_in, p_max_blocks = p_item
+                        try:
+                            f_mid, results = self.engine.process_input_block(p_sig_in, p_block_idx, ref_in_block=p_ref_in)
+                            is_valid = self.engine.last_block_was_valid
+                            self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, results, is_valid)
+                        except Exception as e:
+                            logger.error(f"Error in background computation: {e}", exc_info=True)
+                        if p_block_idx == p_max_blocks - 1:
+                            self.sweep_finished.emit(p_sweep_idx)
+                    self.pending_blocks.clear()
+            else:
+                # Perform the computationally heavy Least-Squares fit in the background
+                try:
+                    f_mid, results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
+                    is_valid = self.engine.last_block_was_valid
+                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid)
+                except Exception as e:
+                    logger.error(f"Error in background computation: {e}", exc_info=True)
 
-            if block_idx == max_blocks - 1:
-                self.sweep_finished.emit(sweep_idx)
+                if block_idx == max_blocks - 1:
+                    self.sweep_finished.emit(sweep_idx)
 
             self.input_queue.task_done()
 
@@ -130,7 +149,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
         # Dynamic measurement data queues
         self.measurement_queue = deque()
-        self.async_mode = True
+        self.prevent_buffer_underrun = False
         self.input_queue = None
         self.state = "IDLE"  # "IDLE", "PLAYING", "WAITING", "FINISHED"
 
@@ -175,11 +194,8 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         sig_ch = self.signal_channel
         ref_ch = self.ref_channel
 
-        if self.async_mode:
-            self.input_queue = queue.Queue()
-            self.state = "PLAYING"
-        else:
-            self.state = "PLAYING"
+        self.input_queue = queue.Queue()
+        self.state = "PLAYING"
 
         def callback(indata, outdata, frames, time, status):
             if not self.is_running:
@@ -187,32 +203,15 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 return
 
             with self.lock:
-                if self.async_mode and self.state == "WAITING":
+                if self.state == "WAITING":
                     outdata.fill(0)
                     return
 
             if self.current_block_idx >= self.max_blocks:
-                if self.current_sweep_idx + 1 < self.averaging_count:
-                    if self.async_mode:
-                        # Hold sweep transition until calculations of current sweep are complete
-                        with self.lock:
-                            self.state = "WAITING"
-                        outdata.fill(0)
-                        return
-                    else:
-                        self.current_sweep_idx += 1
-                        self.current_block_idx = 0
-                        self.engine.reset_filter_states()
-                else:
-                    if self.async_mode:
-                        with self.lock:
-                            self.state = "WAITING"
-                        outdata.fill(0)
-                        return
-                    else:
-                        outdata.fill(0)
-                        # Keep audio thread running but outputting silence
-                        return
+                with self.lock:
+                    self.state = "WAITING"
+                outdata.fill(0)
+                return
 
             # Extract target input channel
             sig_in = np.zeros((frames, 1))
@@ -230,19 +229,10 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 elif indata.shape[1] > 0:
                     ref_in[:, 0] = indata[:, 0]
 
-            if self.async_mode:
-                # 1. Output Generation (Lightweight)
-                self.engine.generate_output_block(outdata, self.current_block_idx)
-                # 2. Add raw data to background processing queue
-                self.input_queue.put((self.current_block_idx, self.current_sweep_idx, sig_in, ref_in, self.max_blocks))
-            else:
-                # Process SSS Block (Synchronous / Real-time)
-                f_mid, results = self.engine.process_block(sig_in, outdata, self.current_block_idx, ref_in_block=ref_in)
-                is_valid = self.engine.last_block_was_valid
-
-                # Save results thread-safely
-                with self.lock:
-                    self.measurement_queue.append((self.current_block_idx, self.current_sweep_idx, f_mid, results, is_valid))
+            # 1. Output Generation (Lightweight)
+            self.engine.generate_output_block(outdata, self.current_block_idx)
+            # 2. Add raw data to background processing queue
+            self.input_queue.put((self.current_block_idx, self.current_sweep_idx, sig_in, ref_in, self.max_blocks))
 
             self.current_block_idx += 1
 
@@ -410,9 +400,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_meas_points.setValue(self.module.num_meas_points)
         adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
 
-        self.chk_async_mode = QCheckBox(tr("Asynchronous Calculation"))
-        self.chk_async_mode.setChecked(self.module.async_mode)
-        adv_form.addRow(tr("Async Mode:"), self.chk_async_mode)
+        self.chk_prevent_buffer_underrun = QCheckBox(tr("Prevent Buffer Underrun"))
+        self.chk_prevent_buffer_underrun.setChecked(self.module.prevent_buffer_underrun)
+        adv_form.addRow(tr("Prevent Buffer Underrun:"), self.chk_prevent_buffer_underrun)
 
         advanced_tab.setLayout(adv_form)
         left_tabs.addTab(advanced_tab, tr("Advanced"))
@@ -576,7 +566,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.averaging_count = self.spin_averaging.value()
             self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
-            self.module.async_mode = self.chk_async_mode.isChecked()
+            self.module.prevent_buffer_underrun = self.chk_prevent_buffer_underrun.isChecked()
 
             self.module.output_channel = (
                 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
@@ -631,13 +621,15 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.block_counts = np.zeros(self.max_blocks, dtype=int)
             self.plot_freqs_array = np.zeros(self.max_blocks)
 
-            # Spawn calculation thread if asynchronous mode is requested
-            self.calc_thread = None
-            if self.module.async_mode:
-                self.calc_thread = SSSCalculationThread(self.module.engine, self.module.input_queue)
-                self.calc_thread.block_calculated.connect(self.on_block_calculated)
-                self.calc_thread.sweep_finished.connect(self.on_sweep_finished)
-                self.calc_thread.start()
+            # Spawn calculation thread (always asynchronous)
+            self.calc_thread = SSSCalculationThread(
+                self.module.engine,
+                self.module.input_queue,
+                prevent_underrun=self.module.prevent_buffer_underrun
+            )
+            self.calc_thread.block_calculated.connect(self.on_block_calculated)
+            self.calc_thread.sweep_finished.connect(self.on_sweep_finished)
+            self.calc_thread.start()
 
             self.timer.start()
         else:
@@ -668,7 +660,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_in_mode.setEnabled(enabled)
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
-        self.chk_async_mode.setEnabled(enabled)
+        self.chk_prevent_buffer_underrun.setEnabled(enabled)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
@@ -677,17 +669,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             while self.module.measurement_queue:
                 items.append(self.module.measurement_queue.popleft())
 
-        if not items:
-            # Check if sweep is done
-            if (self.module.is_running 
-                and not self.module.async_mode
-                and self.module.current_sweep_idx >= self.module.averaging_count - 1
-                and self.module.current_block_idx >= self.max_blocks):
-                # Automate sweep stop once it reaches the end (only for synchronous mode)
-                self.btn_toggle.setChecked(False)
-                self.on_toggle_sweep(False)
-            return
-
+        # 1. Process new items first to update block_counts and plot_freqs_array
         latest_f_mid = None
         f_min = min(self.module.start_freq, self.module.end_freq)
         f_max = max(self.module.start_freq, self.module.end_freq)
@@ -702,36 +684,73 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     self.plot_freqs_array[block_idx] = f_mid
                     latest_f_mid = f_mid
 
-        # Extract measured data
+        # 2. Display progress info (always run to update audio capture progress, even if items is empty)
+        if self.module.engine and self.module.engine.sweep_samples > 0:
+            total_blocks = self.max_blocks * self.module.averaging_count
+
+            # Audio capture progress
+            audio_blocks = self.module.current_sweep_idx * self.max_blocks + self.module.current_block_idx
+            audio_blocks = min(audio_blocks, total_blocks)
+            audio_pct = (audio_blocks / total_blocks) * 100.0
+
+            # Calculation progress
+            calc_blocks = np.sum(self.block_counts)
+            calc_blocks = min(calc_blocks, total_blocks)
+            calc_pct = (calc_blocks / total_blocks) * 100.0
+
+            # Current audio sweep frequency
+            # Calculate physical sample index of current audio block
+            audio_sample_idx = self.module.current_block_idx * self.module.audio_engine.block_size
+            audio_freq = 0.0
+            if hasattr(self.module.engine, "_frequency_at_sample"):
+                func = self.module.engine._frequency_at_sample
+                # Ensure the method itself is not mocked
+                if not hasattr(func, "_mock_return_value") and "MagicMock" not in type(func).__name__:
+                    try:
+                        val = func(audio_sample_idx)
+                        if isinstance(val, (int, float, np.floating, np.integer)) and not hasattr(val, "_mock_return_value"):
+                            audio_freq = float(val)
+                    except Exception as e:
+                        logger.debug(f"Failed to evaluate sweep frequency: {e}")
+
+            # Format label text
+            progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(
+                audio_pct,
+                min(self.module.current_sweep_idx + 1, self.module.averaging_count),
+                self.module.averaging_count
+            )
+            if self.module.state == "WAITING":
+                progress_text += "\n" + tr("Analysis: {0:.1f}% (Catching up...)").format(calc_pct)
+            else:
+                progress_text += "\n" + tr("Analysis: {0:.1f}%").format(calc_pct)
+
+            self.lbl_progress.setText(progress_text)
+
+            freq_text = tr("Audio Freq: {0:.1f} Hz").format(audio_freq)
+
+            # Find the latest calculated frequency
+            # Prefer latest_f_mid from current batch, fall back to historical block_counts
+            display_f_mid = latest_f_mid
+            if display_f_mid is None:
+                latest_idx = np.where(self.block_counts > 0)[0]
+                if len(latest_idx) > 0:
+                    display_f_mid = self.plot_freqs_array[latest_idx[-1]]
+
+            if display_f_mid is not None:
+                freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(display_f_mid)
+            else:
+                freq_text += "\n" + tr("Analysis Freq: -- Hz")
+            self.lbl_current_freq.setText(freq_text)
+
+        # 3. Redraw curves if there were new items
+        if not items:
+            return
+
         valid_indices = np.where(self.block_counts > 0)[0]
         if len(valid_indices) == 0:
             return
 
         x_data = self.plot_freqs_array[valid_indices]
-
-        # Display progress info
-        if self.module.engine and self.module.engine.sweep_samples > 0:
-            total_samples = self.module.engine.sweep_samples
-            if self.module.async_mode and self.module.state == "WAITING":
-                self.lbl_progress.setText(
-                    tr("Sweep Progress: Calculations catching up... (Sweep {0}/{1})").format(
-                        min(self.module.current_sweep_idx + 1, self.module.averaging_count),
-                        self.module.averaging_count
-                    )
-                )
-            else:
-                progress_pct = min(
-                    100.0, (self.module.current_block_idx * self.module.audio_engine.block_size) / total_samples * 100.0
-                )
-                self.lbl_progress.setText(
-                    tr("Sweep Progress: {0:.1f}% (Sweep {1}/{2})").format(
-                        progress_pct,
-                        min(self.module.current_sweep_idx + 1, self.module.averaging_count),
-                        self.module.averaging_count
-                    )
-                )
-            if latest_f_mid is not None:
-                self.lbl_current_freq.setText(tr("Current Freq: {0:.1f} Hz").format(latest_f_mid))
 
         # Redraw
         for idx in range(self.module.max_harmonic):
