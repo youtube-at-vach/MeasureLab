@@ -2,7 +2,6 @@
 # ruff: noqa: E402, B023
 import sys
 import os
-import time
 import json
 import numpy as np
 import matplotlib.pyplot as plt
@@ -89,7 +88,7 @@ def realtime_hammerstein_separation(accumulated_sweeps, amplitude_steps, max_blo
     """
     num_amps = len(amplitude_steps)
     max_harm = 5
-    
+
     # shape: (num_amplitudes, max_blocks, max_harmonic)
     G = accumulated_sweeps[:, :max_blocks, :max_harm]
     R = np.array(amplitude_steps)
@@ -125,7 +124,7 @@ def realtime_hammerstein_separation(accumulated_sweeps, amplitude_steps, max_blo
 
     # Filter out invalid sweep regions (plot_freqs_array == 0)
     valid_indices = np.where(plot_freqs_array > 0)[0]
-    
+
     rt_freqs = plot_freqs_array[valid_indices]
     rt_kernels = {}
     for p in range(max_harm):
@@ -143,13 +142,13 @@ def predict_harmonic_responses(H_kernels, freqs, amplitude):
     """
     A = amplitude
     H_pred = {}
-    
+
     H_pred[1] = H_kernels[1] + 0.75 * (A**2) * H_kernels[3] + 0.625 * (A**4) * H_kernels[5]
     H_pred[2] = (-1j) * (0.5 * A * H_kernels[2] + 0.5 * (A**3) * H_kernels[4])
     H_pred[3] = (-1.0) * (0.25 * (A**2) * H_kernels[3] + 0.3125 * (A**4) * H_kernels[5])
     H_pred[4] = (+1j) * (0.125 * (A**3) * H_kernels[4])
     H_pred[5] = (1.0) * (0.0625 * (A**4) * H_kernels[5])
-    
+
     return H_pred
 
 # -----------------------------------------------------------------------------
@@ -166,12 +165,12 @@ def main():
     f_end = 18000.0
     duration = 5.0
     block_size = 1024
-    
+
     # Scanning amplitudes (5 steps, from -20dBFS to -6dBFS)
     amplitudes_db = np.linspace(-20.0, -6.0, 5)
     amplitudes_linear = 10 ** (amplitudes_db / 20.0)
     print(f"Amplitudes (linear): {np.round(amplitudes_linear, 4)}")
-    
+
     # Latency setting (virtual loopback delay)
     latency_samples = 1024.0
     latency_sec = latency_samples / fs
@@ -180,7 +179,7 @@ def main():
     # Route 1: Real-time SSS Engine Loop (DDC + LS)
     # -------------------------------------------------------------------------
     print("\n[*] Running Route 1: Real-time SSS Lock-in Loop...")
-    
+
     # Setup dummy engine to determine blocks and sweep samples
     test_eng = RealtimeSSSEngine(
         sample_rate=fs,
@@ -194,11 +193,11 @@ def main():
     )
     test_eng.prepare_sweep()
     max_blocks = int(np.ceil((test_eng.sweep_samples + latency_samples) / block_size))
-    
+
     # Allocate accumulated sweep buffer
     accumulated_sweeps = np.zeros((len(amplitudes_linear), max_blocks, 5), dtype=complex)
     plot_freqs_array = np.zeros(max_blocks)
-    
+
     for amp_idx, amp in enumerate(amplitudes_linear):
         # Create fresh engine for this amplitude step
         rt_engine = RealtimeSSSEngine(
@@ -213,7 +212,7 @@ def main():
         )
         rt_engine.prepare_sweep()
         rt_engine.set_latency(latency_samples)
-        
+
         # 1. Output Generation & Virtual DUT application
         # To simulate a physical audio loop, we generate the entire sweep block-by-block,
         # concatenate it, apply the delay and DUT, and feed it block-by-block.
@@ -222,21 +221,21 @@ def main():
             out_block = np.zeros((block_size, 1))
             rt_engine.generate_output_block(out_block, b)
             out_signal[b * block_size : (b + 1) * block_size] = out_block[:, 0]
-            
+
         # Apply latency delay (pure shift)
         out_delayed = np.zeros_like(out_signal)
         delay_idx = int(latency_samples)
         out_delayed[delay_idx:] = out_signal[:-delay_idx]
-        
+
         # Pass through the virtual non-linear dynamic system (DUT)
         meas_signal = apply_virtual_dut(out_delayed, fs)
         ref_signal = out_delayed  # Clean reference channel (Ch2)
-        
+
         # 2. Block Processing Loop (Lock-in extraction)
         for b in range(max_blocks):
             sig_in = meas_signal[b * block_size : (b + 1) * block_size, np.newaxis]
             ref_in = ref_signal[b * block_size : (b + 1) * block_size, np.newaxis]
-            
+
             f_mid, results = rt_engine.process_input_block(sig_in, b, ref_in_block=ref_in)
             if rt_engine.last_block_was_valid:
                 accumulated_sweeps[amp_idx, b, :] = results[:5]
@@ -264,47 +263,47 @@ def main():
     # Route 2: Offline Nonlinear Analyzer (Deconvolution)
     # -------------------------------------------------------------------------
     print("\n[*] Running Route 2: Offline Nonlinear Sweep (Deconvolution)...")
-    
+
     # SSS sweep signal generation
     sss, inv_filter = generate_sss_and_inverse(fs, duration, f_start, f_end)
     single_sweep_len = len(sss)
     padding_samples = int(0.5 * fs)
     block_len = single_sweep_len + padding_samples
-    
+
     total_len = len(amplitudes_linear) * block_len
     cont_signal = np.zeros(total_len, dtype=np.float32)
-    
+
     # Construct continuous sweep sequence (analogous to NonlinearAnalyzer._execute_measurement)
     for amp_idx, amp in enumerate(amplitudes_linear):
         start_pt = amp_idx * block_len
         cont_signal[start_pt : start_pt + single_sweep_len] = amp * sss
-        
+
     # Apply virtual delay (latency_samples)
     cont_delayed = np.zeros_like(cont_signal)
     delay_idx = int(latency_samples)
     cont_delayed[delay_idx:] = cont_signal[:-delay_idx]
-    
+
     # Pass through virtual DUT
     meas_recorded = apply_virtual_dut(cont_delayed, fs)
     ref_recorded = cont_delayed  # Clean reference
-    
+
     # Slice and average (using averages = 1 in this test)
     responses_ref = []
     responses_meas = []
-    
+
     for amp_idx in range(len(amplitudes_linear)):
         start_pt = amp_idx * block_len
         end_pt = start_pt + block_len
-        
+
         rec_block = meas_recorded[start_pt:end_pt]
         ref_block = ref_recorded[start_pt:end_pt]
-        
+
         ir_meas = deconvolve_signal(rec_block, sss)
         ir_ref = deconvolve_signal(ref_block, sss)
-        
+
         responses_meas.append(ir_meas)
         responses_ref.append(ir_ref)
-        
+
     # Run Hammerstein separation (calibrate_systematic = False for exact match)
     # input_mode = 'XFER_REV' (Meas on Ch1, Ref on Ch2)
     valid_freqs, nl_mags_db, nl_phases_deg, time_ms, separated_kernels = process_amplitude_responses(
@@ -320,7 +319,7 @@ def main():
         amplitudes=amplitudes_linear,
         calibrate_systematic=False,
     )
-    
+
     # Reconstruct complex kernels from Nonlinear Analyzer output and compensate the gate_pre delay.
     # Nonlinear Analyzer shifts the time-domain kernel peak to gate_pre.
     # To compare it with the Real-time SSS (which is at t=0), we shift it back in the frequency domain.
@@ -332,26 +331,26 @@ def main():
         # Apply phase lead to cancel gate_pre delay (positive phase shift)
         phase_corrected = phase_rad + 2.0 * np.pi * valid_freqs * (gate_pre / fs)
         nl_kernels[p] = mag_lin * np.exp(1j * phase_corrected)
-        
+
     print(f"[+] Route 2 finished. Valid points: {len(valid_freqs)}")
 
     # -------------------------------------------------------------------------
     # 4. Evaluation and Comparison
     # -------------------------------------------------------------------------
     print("\n[*] Evaluating Consistency between RT SSS and Offline SSS...")
-    
+
     # Find common frequency range to avoid edges/transients
     f_min_eval = max(f_start, 100.0)
     f_max_eval = min(f_end, 15000.0)
     eval_freqs = np.logspace(np.log10(f_min_eval), np.log10(f_max_eval), 300)
-    
+
     # Get theoretical kernels on eval grid for reference
     theo_kernels = get_theoretical_kernels(eval_freqs, fs)
 
     # Interpolate kernels to eval_freqs
     rt_kernels_interp = {}
     nl_kernels_interp = {}
-    
+
     for p in range(1, 6):
         # RT SSS Interpolation
         # The RT frequency axis is based on fundamental frequency f.
@@ -359,12 +358,12 @@ def main():
         # Therefore, we must scale the RT frequency axis by factor p to compare it with the physical frequency.
         rt_mag_lin = np.abs(rt_kernels[p])
         rt_phase_unwrapped = np.unwrap(np.angle(rt_kernels[p]))
-        
+
         # Use left=nan, right=nan to prevent extrapolation error at low/high limits
         rt_mag_i = np.interp(eval_freqs, p * rt_freqs, rt_mag_lin, left=np.nan, right=np.nan)
         rt_phase_i = np.interp(eval_freqs, p * rt_freqs, rt_phase_unwrapped, left=np.nan, right=np.nan)
         rt_kernels_interp[p] = rt_mag_i * np.exp(1j * rt_phase_i)
-        
+
         # Offline SSS Interpolation
         nl_mag_lin = np.abs(nl_kernels[p])
         nl_phase_unwrapped = np.unwrap(np.angle(nl_kernels[p]))
@@ -376,31 +375,31 @@ def main():
     print("\n--- Kernel Accuracy (RT vs Offline vs Theory) ---")
     kernel_mae_gain = {}
     kernel_mae_phase = {}
-    
+
     for p in range(1, 6):
         rt_mag_db = 20 * np.log10(np.abs(rt_kernels_interp[p]) + 1e-15)
         nl_mag_db = 20 * np.log10(np.abs(nl_kernels_interp[p]) + 1e-15)
-        
+
         rt_phase_deg = np.degrees(np.angle(rt_kernels_interp[p]))
         nl_phase_deg = np.degrees(np.angle(nl_kernels_interp[p]))
-        
+
         # Limit evaluation to the region below the order's LPF cutoff (which is in the Offline analyzer)
         # and above the physical sweep start to avoid transient / out-of-bound edge artifacts.
         f_cut = min(20000.0, 1.15 * fs / (2 * p)) if p > 1 else 15000.0
         mask_p = (eval_freqs > p * f_start * 1.25) & (eval_freqs < f_cut * 0.85) & ~np.isnan(rt_mag_db) & ~np.isnan(nl_mag_db)
-        
+
         gain_diff = rt_mag_db[mask_p] - nl_mag_db[mask_p]
         phase_diff = (rt_phase_deg[mask_p] - nl_phase_deg[mask_p] + 180) % 360 - 180
-        
+
         # Use nanmean/nanmax as a safeguard (mask_p already removes nans)
         mae_gain = np.nanmean(np.abs(gain_diff)) if len(gain_diff) > 0 else 0.0
         max_gain = np.nanmax(np.abs(gain_diff)) if len(gain_diff) > 0 else 0.0
         mae_phase = np.nanmean(np.abs(phase_diff)) if len(phase_diff) > 0 else 0.0
         max_phase = np.nanmax(np.abs(phase_diff)) if len(phase_diff) > 0 else 0.0
-        
+
         kernel_mae_gain[p] = float(mae_gain)
         kernel_mae_phase[p] = float(mae_phase)
-        
+
         print(f"Kernel H{p}:")
         print(f"  RT vs Offline Gain Difference: MAE = {mae_gain:.4f} dB, Max = {max_gain:.4f} dB")
         print(f"  RT vs Offline Phase Difference: MAE = {mae_phase:.4f} deg, Max = {max_phase:.4f} deg")
@@ -408,39 +407,39 @@ def main():
     # Predict Single-Tone harmonic response for a testing amplitude (e.g. A = 0.4)
     test_amp = 0.4
     print(f"\n[*] Predicting Single-Tone response (Gain/Phase) at Amplitude = {test_amp}...")
-    
+
     rt_pred_response = predict_harmonic_responses(rt_kernels_interp, eval_freqs, test_amp)
     nl_pred_response = predict_harmonic_responses(nl_kernels_interp, eval_freqs, test_amp)
     theo_pred_response = predict_harmonic_responses(theo_kernels, eval_freqs, test_amp)
-    
+
     harmonic_mae_gain = {}
     harmonic_mae_phase = {}
-    
+
     print("\n--- Predicted Harmonic Response Accuracy (RT vs Offline) ---")
     for h in range(1, 6):
         rt_harm_mag_db = 20 * np.log10(np.abs(rt_pred_response[h]) + 1e-15)
         nl_harm_mag_db = 20 * np.log10(np.abs(nl_pred_response[h]) + 1e-15)
-        
+
         rt_harm_phase_deg = np.degrees(np.angle(rt_pred_response[h]))
         nl_harm_phase_deg = np.degrees(np.angle(nl_pred_response[h]))
-        
+
         # Limit evaluation to the region below the order's LPF cutoff
         # and above the physical sweep start to avoid transient / out-of-bound edge artifacts.
         f_cut = min(20000.0, 1.15 * fs / (2 * h)) if h > 1 else 15000.0
         mask_h = (eval_freqs > h * f_start * 1.25) & (eval_freqs < f_cut * 0.85) & ~np.isnan(rt_harm_mag_db) & ~np.isnan(nl_harm_mag_db)
-        
+
         gain_diff = rt_harm_mag_db[mask_h] - nl_harm_mag_db[mask_h]
         phase_diff = (rt_harm_phase_deg[mask_h] - nl_harm_phase_deg[mask_h] + 180) % 360 - 180
-        
+
         # Use nanmean/nanmax as a safeguard
         mae_gain = np.nanmean(np.abs(gain_diff)) if len(gain_diff) > 0 else 0.0
         max_gain = np.nanmax(np.abs(gain_diff)) if len(gain_diff) > 0 else 0.0
         mae_phase = np.nanmean(np.abs(phase_diff)) if len(phase_diff) > 0 else 0.0
         max_phase = np.nanmax(np.abs(phase_diff)) if len(phase_diff) > 0 else 0.0
-        
+
         harmonic_mae_gain[h] = float(mae_gain)
         harmonic_mae_phase[h] = float(mae_phase)
-        
+
         print(f"Harmonic {h} Response:")
         print(f"  Gain Error (RT vs Offline): MAE = {mae_gain:.4f} dB, Max = {max_gain:.4f} dB")
         print(f"  Phase Error (RT vs Offline): MAE = {mae_phase:.4f} deg, Max = {max_phase:.4f} deg")
@@ -451,67 +450,67 @@ def main():
     print("\n[*] Plotting verification results...")
     fig, axs = plt.subplots(3, 2, figsize=(14, 12), sharex=True)
     fig.suptitle(f"Hammerstein Kernel & Response Consistency\nRT SSS (DDC+LS) vs Offline SSS (Deconvolution) [Amp = {test_amp}]", fontsize=14)
-    
+
     colors = ["#1f77b4", "#2ca02c", "#bcbd22", "#9467bd", "#d62728"]
-    
+
     # Kernel Gain / Phase Plot
     for p in range(1, 6):
         axs[0, 0].plot(eval_freqs, 20 * np.log10(np.abs(rt_kernels_interp[p]) + 1e-12), color=colors[p-1], linestyle="--", alpha=0.8)
         axs[0, 0].plot(eval_freqs, 20 * np.log10(np.abs(nl_kernels_interp[p]) + 1e-12), color=colors[p-1], linestyle="-", label=f"H{p}")
-        
+
         rt_phase_unwrapped = np.unwrap(np.angle(rt_kernels_interp[p]))
         nl_phase_unwrapped = np.unwrap(np.angle(nl_kernels_interp[p]))
         axs[1, 0].plot(eval_freqs, np.degrees(rt_phase_unwrapped), color=colors[p-1], linestyle="--", alpha=0.8)
         axs[1, 0].plot(eval_freqs, np.degrees(nl_phase_unwrapped), color=colors[p-1], linestyle="-")
-        
+
     axs[0, 0].set_ylabel("Kernel Gain H_p(f) [dB]")
     axs[0, 0].set_title("Hammerstein Kernels (Solid: Offline, Dashed: Real-time)")
     axs[0, 0].legend()
     axs[0, 0].grid(True)
-    
+
     axs[1, 0].set_ylabel("Kernel Phase [deg]")
     axs[1, 0].grid(True)
-    
+
     # Predicted Response Gain / Phase Plot (Single-Tone)
     for h in range(1, 6):
         axs[0, 1].plot(eval_freqs, 20 * np.log10(np.abs(rt_pred_response[h]) + 1e-12), color=colors[h-1], linestyle="--", alpha=0.8)
         axs[0, 1].plot(eval_freqs, 20 * np.log10(np.abs(nl_pred_response[h]) + 1e-12), color=colors[h-1], linestyle="-", label=f"Harm {h}")
-        
+
         rt_phase_unwrapped = np.unwrap(np.angle(rt_pred_response[h]))
         nl_phase_unwrapped = np.unwrap(np.angle(nl_pred_response[h]))
         axs[1, 1].plot(eval_freqs, np.degrees(rt_phase_unwrapped), color=colors[h-1], linestyle="--", alpha=0.8)
         axs[1, 1].plot(eval_freqs, np.degrees(nl_phase_unwrapped), color=colors[h-1], linestyle="-")
-        
+
     axs[0, 1].set_ylabel("Predicted Response [dB]")
     axs[0, 1].set_title(f"Predicted Single-Tone Response (Solid: Offline, Dashed: Real-time, A={test_amp})")
     axs[0, 1].legend()
     axs[0, 1].grid(True)
-    
+
     axs[1, 1].set_ylabel("Response Phase [deg]")
     axs[1, 1].grid(True)
-    
+
     # Error Plots (RT - Offline)
     for p in range(1, 6):
         gain_err = 20 * np.log10(np.abs(rt_kernels_interp[p]) + 1e-15) - 20 * np.log10(np.abs(nl_kernels_interp[p]) + 1e-15)
         phase_err = (np.degrees(np.unwrap(np.angle(rt_kernels_interp[p]))) - np.degrees(np.unwrap(np.angle(nl_kernels_interp[p]))) + 180) % 360 - 180
         axs[2, 0].plot(eval_freqs, gain_err, color=colors[p-1], label=f"H{p}")
         axs[2, 1].plot(eval_freqs, phase_err, color=colors[p-1], label=f"H{p}")
-        
+
     axs[2, 0].set_ylabel("Kernel Gain Error [dB]")
     axs[2, 0].set_xlabel("Frequency [Hz]")
     axs[2, 0].set_xscale("log")
     axs[2, 0].grid(True)
-    
+
     axs[2, 1].set_ylabel("Kernel Phase Error [deg]")
     axs[2, 1].set_xlabel("Frequency [Hz]")
     axs[2, 1].set_xscale("log")
     axs[2, 1].grid(True)
-    
+
     plt.tight_layout()
     plot_path = os.path.join(project_root, "scripts", "hammerstein_consistency_results.png")
     plt.savefig(plot_path, dpi=150)
     print(f"\n[+] Saved verification plot to {plot_path}")
-    
+
     # Save JSON metrics
     metrics = {
         "kernel_errors": {
@@ -525,7 +524,7 @@ def main():
     with open(json_path, "w") as f:
         json.dump(metrics, f, indent=4)
     print(f"[+] Saved metrics JSON to {json_path}")
-    
+
     # -------------------------------------------------------------------------
     # 6. Pass/Fail Decision
     # -------------------------------------------------------------------------
@@ -539,14 +538,14 @@ def main():
     for p in range(1, 6):
         gain_mae = kernel_mae_gain[p]
         phase_mae = kernel_mae_phase[p]
-        
+
         limit_gain = 0.25 if p == 1 else 1.5
         limit_phase = 5.0 if p == 1 else 10.0
-        
+
         if gain_mae > limit_gain or phase_mae > limit_phase:
             passed = False
             print(f"[-] WARNING: Kernel H{p} exceeded consistency threshold (Limit Gain: {limit_gain}dB, Phase: {limit_phase}deg)")
-            
+
     if passed:
         print("\n[+] Verification SUCCESS: RT SSS and Offline SSS Hammerstein separation are highly consistent!")
         sys.exit(0)
