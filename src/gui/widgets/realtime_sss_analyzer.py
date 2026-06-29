@@ -490,7 +490,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # RIGHT PANEL: QTabWidget for Domain switching
         self.right_tabs = QTabWidget()
 
-        # Plot 1: Magnitude Response
+        # Plot 1: Magnitude Response (Live Sweep)
         self.plot_mag = pg.PlotWidget(title=tr("Magnitude Response"))
         self.plot_mag.setMinimumHeight(150)
         self.plot_mag.setLabel("bottom", tr("Frequency"), units="Hz")
@@ -499,7 +499,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_mag.showGrid(x=True, y=True)
         self.plot_mag.setYRange(-140, 10)
 
-        # Plot 2: Phase Response
+        # Plot 2: Phase Response (Live Sweep)
         self.plot_phase = pg.PlotWidget(title=tr("Phase Response"))
         self.plot_phase.setMinimumHeight(150)
         self.plot_phase.setLabel("bottom", tr("Frequency"), units="Hz")
@@ -509,6 +509,25 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_phase.setYRange(-180, 180)
         self.plot_phase.setXLink(self.plot_mag)
 
+        # Plot 4: Hammerstein Magnitude Response (Separated Kernels Freq)
+        self.plot_ham_mag = pg.PlotWidget(title=tr("Hammerstein Magnitude Response"))
+        self.plot_ham_mag.setMinimumHeight(150)
+        self.plot_ham_mag.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_ham_mag.setLabel("left", tr("Gain"), units="dB")
+        self.plot_ham_mag.setLogMode(x=True, y=False)
+        self.plot_ham_mag.showGrid(x=True, y=True)
+        self.plot_ham_mag.setYRange(-140, 10)
+
+        # Plot 5: Hammerstein Phase Response (Separated Kernels Freq)
+        self.plot_ham_phase = pg.PlotWidget(title=tr("Hammerstein Phase Response"))
+        self.plot_ham_phase.setMinimumHeight(150)
+        self.plot_ham_phase.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_ham_phase.setLabel("left", tr("Phase"), units="deg")
+        self.plot_ham_phase.setLogMode(x=True, y=False)
+        self.plot_ham_phase.showGrid(x=True, y=True)
+        self.plot_ham_phase.setYRange(-180, 180)
+        self.plot_ham_phase.setXLink(self.plot_ham_mag)
+
         # Plot 3: Time Domain Kernels
         self.plot_time = pg.PlotWidget(title=tr("Hammerstein Time Kernels (h1 - h5)"))
         self.plot_time.setMinimumHeight(300)
@@ -517,32 +536,44 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_time.showGrid(x=True, y=True)
         self.plot_time.setYRange(-1.1, 1.1)
 
-        # Tab 1: Frequency Domain
+        # Tab 1: Frequency Domain (Live Sweep)
         freq_widget = QWidget()
         freq_layout = QVBoxLayout(freq_widget)
         freq_layout.setContentsMargins(0, 0, 0, 0)
         freq_layout.setSpacing(4)
         freq_layout.addWidget(self.plot_mag)
         freq_layout.addWidget(self.plot_phase)
-        self.right_tabs.addTab(freq_widget, tr("Frequency Domain"))
+        self.right_tabs.addTab(freq_widget, tr("Frequency Domain (Live)"))
 
-        # Tab 2: Time Domain
+        # Tab 2: Hammerstein Frequency Domain (Separated Kernels)
+        ham_freq_widget = QWidget()
+        ham_freq_layout = QVBoxLayout(ham_freq_widget)
+        ham_freq_layout.setContentsMargins(0, 0, 0, 0)
+        ham_freq_layout.setSpacing(4)
+        ham_freq_layout.addWidget(self.plot_ham_mag)
+        ham_freq_layout.addWidget(self.plot_ham_phase)
+        self.right_tabs.addTab(ham_freq_widget, tr("Hammerstein (Freq)"))
+
+        # Tab 3: Time Domain (Kernels)
         time_widget = QWidget()
         time_layout = QVBoxLayout(time_widget)
         time_layout.setContentsMargins(0, 0, 0, 0)
         time_layout.setSpacing(4)
         time_layout.addWidget(self.plot_time)
-        self.right_tabs.addTab(time_widget, tr("Time Domain"))
+        self.right_tabs.addTab(time_widget, tr("Time Domain (Kernels)"))
 
         # Create Plot Curves with distinct colors
         # Colors: H1: Cyan, H2: Green, H3: Yellow, H4: Purple, H5: Red
         self.colors = ["#00ffff", "#00ff00", "#ffff00", "#ff00ff", "#ff3333"]
         self.mag_curves = []
         self.phase_curves = []
+        self.ham_mag_curves = []
+        self.ham_phase_curves = []
         self.time_curves = []
 
         # Add legends
         self.plot_mag.addLegend(offset=(10, 10))
+        self.plot_ham_mag.addLegend(offset=(10, 10))
         self.plot_time.addLegend(offset=(10, 10))
 
         for idx in range(5):
@@ -551,6 +582,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             phase_c = self.plot_phase.plot(pen=self.colors[idx])
             self.mag_curves.append(mag_c)
             self.phase_curves.append(phase_c)
+
+            ham_mag_c = self.plot_ham_mag.plot(pen=self.colors[idx], name=lbl)
+            ham_phase_c = self.plot_ham_phase.plot(pen=self.colors[idx])
+            self.ham_mag_curves.append(ham_mag_c)
+            self.ham_phase_curves.append(ham_phase_c)
 
             lbl_time = tr("Fundamental (h1)") if idx == 0 else tr("Kernel h{0}").format(idx + 1)
             time_c = self.plot_time.plot(pen=self.colors[idx], name=lbl_time)
@@ -564,6 +600,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         x_min = min(self.module.start_freq, self.module.end_freq)
         x_max = max(self.module.start_freq, self.module.end_freq)
         self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
+        self.plot_ham_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
 
         self.on_meas_mode_changed()
 
@@ -571,6 +608,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         is_hammerstein = (self.combo_meas_mode.currentData() == "Hammerstein")
         self.spin_amp_steps.setEnabled(is_hammerstein)
         self.spin_min_amp.setEnabled(is_hammerstein)
+
+        # Tab index: 0 is Live, 1 is Hammerstein (Freq), 2 is Time Domain (Kernels)
+        self.right_tabs.setTabVisible(1, is_hammerstein)
+        self.right_tabs.setTabVisible(2, is_hammerstein)
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -683,11 +724,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             x_min = min(start_val, end_val)
             x_max = max(start_val, end_val)
             self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
+            self.plot_ham_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
 
             # Clear plot curves
             for idx in range(5):
                 self.mag_curves[idx].setData([], [])
                 self.phase_curves[idx].setData([], [])
+                self.ham_mag_curves[idx].setData([], [])
+                self.ham_phase_curves[idx].setData([], [])
                 self.time_curves[idx].setData([], [])
 
             # Reset tabs to frequency domain
@@ -950,13 +994,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     self.module.state = "FINISHED"
 
         if self.module.state == "FINISHED":
+            # Deactivate sweep button safely on main UI thread
+            # This triggers on_toggle_sweep(False) which stops calculations and runs final update_plots()
+            self.btn_toggle.setChecked(False)
+            self.on_toggle_sweep(False)
+
             # Apply Hammerstein kernel separation if selected
             if self.module.meas_mode == "Hammerstein":
                 self.perform_hammerstein_separation()
-
-            # Deactivate sweep button safely on main UI thread
-            self.btn_toggle.setChecked(False)
-            self.on_toggle_sweep(False)
 
     def perform_hammerstein_separation(self):
         try:
@@ -1028,8 +1073,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.separated_H_phase.append(phase_deg)
 
                 # Update Frequency curves with separated Hammerstein kernels
-                self.mag_curves[p].setData(x_freqs, mag_db)
-                self.phase_curves[p].setData(x_freqs, phase_deg)
+                self.ham_mag_curves[p].setData(x_freqs, mag_db)
+                self.ham_phase_curves[p].setData(x_freqs, phase_deg)
 
             # --- Time Domain Kernel Computation ---
             # Interpolate from log-spaced sweep points to a linear grid for IFFT
