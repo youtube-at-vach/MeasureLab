@@ -256,6 +256,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         # Data store for plotting
         self.plot_freqs = []
+        self.current_analysis_freq = None
         self.plot_gains = [[] for _ in range(5)]
         self.plot_phases = [[] for _ in range(5)]
 
@@ -620,6 +621,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.accumulated_results = np.zeros((self.max_blocks, 5), dtype=complex)
             self.block_counts = np.zeros(self.max_blocks, dtype=int)
             self.plot_freqs_array = np.zeros(self.max_blocks)
+            self.current_analysis_freq = None
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
@@ -702,6 +704,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     self.block_counts[block_idx] += 1
                     self.plot_freqs_array[block_idx] = f_mid
                     latest_f_mid = f_mid
+                    self.current_analysis_freq = latest_f_mid
 
         # 2. Display progress info (always run to update audio capture progress, even if items is empty)
         if self.module.engine and self.module.engine.sweep_samples > 0:
@@ -748,12 +751,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             freq_text = tr("Audio Freq: {0:.1f} Hz").format(audio_freq)
 
             # Find the latest calculated frequency
-            # Prefer latest_f_mid from current batch, fall back to historical block_counts
-            display_f_mid = latest_f_mid
-            if display_f_mid is None:
-                latest_idx = np.where(self.block_counts > 0)[0]
-                if len(latest_idx) > 0:
-                    display_f_mid = self.plot_freqs_array[latest_idx[-1]]
+            # Use persistent current_analysis_freq to avoid flickering back to previous sweep end
+            display_f_mid = self.current_analysis_freq
 
             if display_f_mid is not None:
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(display_f_mid)
