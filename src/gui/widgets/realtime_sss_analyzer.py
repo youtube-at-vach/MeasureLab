@@ -633,6 +633,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             self.timer.start()
         else:
+            was_finished = (self.module.state == "FINISHED")
             self.module.stop_analysis()
             self.timer.stop()
 
@@ -642,6 +643,24 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.calc_thread.wait()
                 self.calc_thread = None
             self.module.state = "IDLE"
+
+            # Render any remaining calculation blocks from the queue
+            self.update_plots()
+
+            # If the sweep completed successfully, force UI to show 100% progress and final frequency
+            if was_finished:
+                total_sweeps = self.module.averaging_count
+                progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(
+                    100.0,
+                    total_sweeps,
+                    total_sweeps
+                )
+                progress_text += "\n" + tr("Analysis: {0:.1f}%").format(100.0)
+                self.lbl_progress.setText(progress_text)
+
+                freq_text = tr("Audio Freq: {0:.1f} Hz").format(self.module.end_freq)
+                freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(self.module.end_freq)
+                self.lbl_current_freq.setText(freq_text)
 
             self.btn_toggle.setText(tr("Start Sweep"))
             self.btn_calibrate.setEnabled(True)
