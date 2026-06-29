@@ -67,12 +67,12 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Default SSS parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 20.0
+        self.sweep_duration = 10.0
         self.output_amplitude = 0.5
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
-        self.analysis_cycles = 12.0
+        self.analysis_cycles = 8.0
         self.num_meas_points = 500
 
         # Latency state
@@ -327,7 +327,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         adv_form.setSpacing(4)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
-        self.spin_analysis_cycles.setRange(2.0, 50.0)
+        self.spin_analysis_cycles.setRange(2.0, 128.0)
         self.spin_analysis_cycles.setSingleStep(1.0)
         self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
         self.spin_analysis_cycles.setSuffix(" cycles")
