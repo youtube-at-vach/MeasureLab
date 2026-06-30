@@ -1855,6 +1855,7 @@
     "Unknown": "알 수 없음",
     "Unlocked ({0:.1f} Hz, Coh: {1:.2f})": "잠금 해제 ({0:.1f} Hz, 일관성: {1:.2f})",
     "Unstable ({0:.1f} Hz, Coh: {1:.2f})": "불안정 ({0:.1f} Hz, 일관성: {1:.2f})",
+    "Unwrap Phase": "위상 언랩",
     "Update Rate:": "업데이트 속도:",
     "Upper Hearing Limit / SMPS Noise (20kHz)": "Upper Hearing Limit / SMPS Noise (20kHz)",
     "Use 64-bit integers for accumulation (zero precision loss)": "누적에 64비트 정수 사용 (정밀도 손실 없음)",

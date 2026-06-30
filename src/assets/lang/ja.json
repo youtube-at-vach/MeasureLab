@@ -1855,6 +1855,7 @@
     "Unknown": "不明",
     "Unlocked ({0:.1f} Hz, Coh: {1:.2f})": "アンロック ({0:.1f} Hz, コヒーレンス: {1:.2f})",
     "Unstable ({0:.1f} Hz, Coh: {1:.2f})": "不安定 ({0:.1f} Hz, コヒーレンス: {1:.2f})",
+    "Unwrap Phase": "位相アンラップ",
     "Update Rate:": "更新レート:",
     "Upper Hearing Limit / SMPS Noise (20kHz)": "Upper Hearing Limit / SMPS Noise (20kHz)",
     "Use 64-bit integers for accumulation (zero precision loss)": "累積に64ビット整数を使用します（精度損失ゼロ）",

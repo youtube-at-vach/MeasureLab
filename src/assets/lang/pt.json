@@ -1855,6 +1855,7 @@
     "Unknown": "Desconhecido",
     "Unlocked ({0:.1f} Hz, Coh: {1:.2f})": "Desbloqueado ({0:.1f} Hz, Coh: {1:.2f})",
     "Unstable ({0:.1f} Hz, Coh: {1:.2f})": "Instável ({0:.1f} Hz, Coh: {1:.2f})",
+    "Unwrap Phase": "Desenrolar fase",
     "Update Rate:": "Taxa de atualização:",
     "Upper Hearing Limit / SMPS Noise (20kHz)": "Upper Hearing Limit / SMPS Noise (20kHz)",
     "Use 64-bit integers for accumulation (zero precision loss)": "Usar inteiros de 64 bits para acumulação (zero perda de precisão)",

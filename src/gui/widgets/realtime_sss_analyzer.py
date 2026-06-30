@@ -452,6 +452,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.chk_relative.toggled.connect(self.redraw_plots)
         display_layout.addWidget(self.chk_relative)
 
+        self.chk_unwrap = QCheckBox(tr("Unwrap Phase"))
+        self.chk_unwrap.setChecked(False)
+        self.chk_unwrap.toggled.connect(self.redraw_plots)
+        display_layout.addWidget(self.chk_unwrap)
+
         display_group.setLayout(display_layout)
         left_panel.addWidget(display_group)
 
@@ -806,7 +811,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             y_gain = 20 * np.log10(amp + 1e-15)
 
             # Compute phase in degrees
-            y_phase = np.degrees(np.angle(avg_complex))
+            if self.chk_unwrap.isChecked():
+                y_phase = np.degrees(np.unwrap(np.angle(avg_complex)))
+            else:
+                y_phase = np.degrees(np.angle(avg_complex))
 
             self.mag_curves[idx].setData(x_data, y_gain)
             self.phase_curves[idx].setData(x_data, y_phase)
