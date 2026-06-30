@@ -20,6 +20,7 @@ def mock_audio_engine():
 def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
     analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0  # Set mock latency so Start Sweep button is enabled
     widget = RealtimeSSSAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
 

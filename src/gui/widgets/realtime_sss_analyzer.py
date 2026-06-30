@@ -299,6 +299,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.btn_toggle = QPushButton(tr("Start Sweep"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle_sweep)
+        self.btn_toggle.setEnabled(self.module.latency_samples > 0.0)
         left_panel.addWidget(self.btn_toggle)
 
         left_tabs = QTabWidget()
@@ -566,13 +567,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.lbl_calib_status.setText(tr("{0:.2f} ms ({1:.1f} samples)").format(ms, latency_samples))
         self.lbl_calib_status.setStyleSheet("color: #00ff00; font-weight: bold;")
         self.btn_calibrate.setEnabled(True)
-        self.btn_toggle.setEnabled(True)
+        self.btn_toggle.setEnabled(self.module.latency_samples > 0.0)
 
     def on_calibration_error(self, err_msg):
+        self.module.latency_samples = 0.0
         self.lbl_calib_status.setText(tr("Calibration Error!"))
         self.lbl_calib_status.setStyleSheet("color: #ff3333; font-weight: bold;")
         self.btn_calibrate.setEnabled(True)
-        self.btn_toggle.setEnabled(True)
+        self.btn_toggle.setEnabled(False)
 
     def on_toggle_sweep(self, checked):
         if checked:
