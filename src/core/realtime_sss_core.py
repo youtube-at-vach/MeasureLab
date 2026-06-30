@@ -289,12 +289,22 @@ class RealtimeSSSEngine:
         ref_h1 = ref_results[0] if ref_results else 0.0j
         # Also apply 90-degree phase correction to the reference fundamental
         ref_h1 = ref_h1 * 1j
-        ref_conj = np.conj(ref_h1)
-        ref_mag2 = float(np.real(ref_h1 * ref_conj))
-        if ref_mag2 <= 1e-24:
+        ref_mag = np.abs(ref_h1)
+        if ref_mag <= 1e-24:
             return result_freq, [0.0j] * self.max_harmonic
 
-        return result_freq, [(value * ref_conj) / (ref_mag2 + 1e-24) for value in sig_results]
+        ref_u = ref_h1 / ref_mag
+
+        corrected_results = []
+        for p, value in enumerate(sig_results):
+            k = p + 1
+            ref_u_k = ref_u ** k
+            # Correct the phase rotation of order k using ref_u_k
+            # and scale amplitude relative to the fundamental magnitude
+            corrected = value * np.conj(ref_u_k) / ref_mag
+            corrected_results.append(corrected)
+
+        return result_freq, corrected_results
 
     def _process_block_ls(
         self,

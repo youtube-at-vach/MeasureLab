@@ -217,6 +217,7 @@ def process_amplitude_responses(
     amplitudes=None,
     calibrate_systematic=True,
     is_cal_recursive=False,
+    unwrap_phase=False,
 ):
     """
     Extracts isolated Hammerstein kernels (h_1 to h_5) from deconvolved raw measured and reference
@@ -593,7 +594,8 @@ def process_amplitude_responses(
         mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
         phase_rad = np.unwrap(np.angle(valid_H))
         phase_deg = np.degrees(phase_rad)
-        phase_deg = (phase_deg + 180) % 360 - 180
+        if not unwrap_phase:
+            phase_deg = (phase_deg + 180) % 360 - 180
 
         magnitudes_db_dict[h_key] = mag_db
         phases_deg_dict[h_key] = phase_deg
@@ -601,11 +603,13 @@ def process_amplitude_responses(
     # Also save the reference fundamental phase for loopback phase calibration
     ref_phase_rad = np.unwrap(np.angle(H_ref_1))
     ref_phase_deg = np.degrees(ref_phase_rad)
-    ref_phase_deg = (ref_phase_deg + 180) % 360 - 180
+    if not unwrap_phase:
+        ref_phase_deg = (ref_phase_deg + 180) % 360 - 180
     ref_phase_deg_masked = ref_phase_deg[mask]
     if systematic_cal_factors is not None and "ref_phase" in systematic_cal_factors:
         ref_phase_deg_masked = ref_phase_deg_masked - systematic_cal_factors["ref_phase"]
-        ref_phase_deg_masked = (ref_phase_deg_masked + 180) % 360 - 180
+        if not unwrap_phase:
+            ref_phase_deg_masked = (ref_phase_deg_masked + 180) % 360 - 180
     phases_deg_dict["ref_phase"] = ref_phase_deg_masked
 
     # 8. Prepare Time-Domain Kernel Display

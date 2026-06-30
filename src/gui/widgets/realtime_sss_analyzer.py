@@ -4,6 +4,8 @@ import threading
 from collections import deque
 import numpy as np
 import pyqtgraph as pg
+import scipy.signal
+from scipy.signal import savgol_filter
 from PyQt6.QtCore import QTimer, QThread, pyqtSignal, QSize, Qt
 from PyQt6.QtWidgets import (
     QApplication,
@@ -21,12 +23,14 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QVBoxLayout,
     QWidget,
+    QMessageBox,
 )
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.realtime_sss_core import RealtimeSSSEngine, measure_system_latency
+from src.core.hammerstein_model import save_hammerstein_model, set_active_model
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +266,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_gains = [[] for _ in range(5)]
         self.plot_phases = [[] for _ in range(5)]
 
+        # Hammerstein parameters
+        self.is_hammerstein_mode = False
+        self.num_amplitudes = 5
+        self.amplitudes = []
+        self.current_amp_idx = 0
+        self.current_avg_idx = 0
+        self.H_freqs = []
+        self.kernels_time = []
+        self.time_ms = []
+        self.raw_responses = None
+        self.raw_counts = None
+
         self.init_ui()
 
         # Theme manager
@@ -302,6 +318,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.btn_toggle.setEnabled(self.module.latency_samples > 0.0)
         left_panel.addWidget(self.btn_toggle)
 
+        # Export Button (visible/enabled after Hammerstein calibration)
+        self.export_btn = QPushButton(tr("Export Model..."))
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self.on_export_model)
+        left_panel.addWidget(self.export_btn)
+
         left_tabs = QTabWidget()
 
         # 1. Sweep Parameters Tab
@@ -309,6 +331,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         form = QFormLayout()
         form.setContentsMargins(6, 6, 6, 6)
         form.setSpacing(4)
+        self.settings_form = form
+
+        self.combo_meas_mode = QComboBox()
+        self.combo_meas_mode.addItem(tr("Real-time Sweep (Default)"), "sweep")
+        self.combo_meas_mode.addItem(tr("Hammerstein Model"), "hammerstein")
+        self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
+        form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
         self.spin_start_freq = QDoubleSpinBox()
         self.spin_start_freq.setRange(20.0, 20000.0)
@@ -345,6 +374,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_averaging.setRange(1, 100)
         self.spin_averaging.setValue(self.module.averaging_count)
         form.addRow(tr("Averages:"), self.spin_averaging)
+
+        self.spin_amp_steps = QSpinBox()
+        self.spin_amp_steps.setRange(5, 10)
+        self.spin_amp_steps.setValue(5)
+        form.addRow(tr("Amplitude Steps:"), self.spin_amp_steps)
+        self.spin_amp_steps.setVisible(False)
 
         settings_tab.setLayout(form)
         left_tabs.addTab(settings_tab, tr("Settings"))
@@ -458,6 +493,19 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.chk_unwrap.toggled.connect(self.redraw_plots)
         display_layout.addWidget(self.chk_unwrap)
 
+        self.lbl_smoothing = QLabel(tr("Graph Smoothing:"))
+        self.combo_smoothing = QComboBox()
+        self.combo_smoothing.addItem(tr("None"), "None")
+        self.combo_smoothing.addItem(tr("Low Smoothing"), "Light")
+        self.combo_smoothing.addItem(tr("Medium Smoothing"), "Medium")
+        self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
+        self.combo_smoothing.setCurrentIndex(1)
+        self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
+        display_layout.addWidget(self.lbl_smoothing)
+        display_layout.addWidget(self.combo_smoothing)
+        self.lbl_smoothing.setVisible(False)
+        self.combo_smoothing.setVisible(False)
+
         display_group.setLayout(display_layout)
         left_panel.addWidget(display_group)
 
@@ -467,11 +515,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
         layout.addWidget(left_scroll)
 
-        # RIGHT PANEL: Dual PyQtGraph Plots (stacked vertically)
-        right_panel = QVBoxLayout()
-        right_panel.setSpacing(4)
+        # RIGHT PANEL: Tab Widget
+        self.plot_tabs = QTabWidget()
+        self.plot_tabs.setMinimumHeight(450)
 
-        # Plot 1: Magnitude Response
+        # Tab 1: Magnitude Response
+        self.mag_tab = QWidget()
+        mag_layout = QVBoxLayout(self.mag_tab)
         self.plot_mag = pg.PlotWidget(title=tr("Magnitude Response"))
         self.plot_mag.setMinimumHeight(150)
         self.plot_mag.setLabel("bottom", tr("Frequency"), units="Hz")
@@ -479,9 +529,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_mag.setLogMode(x=True, y=False)
         self.plot_mag.showGrid(x=True, y=True)
         self.plot_mag.setYRange(-140, 10)
-        right_panel.addWidget(self.plot_mag)
+        mag_layout.addWidget(self.plot_mag)
+        self.plot_tabs.addTab(self.mag_tab, tr("Magnitude Response"))
 
-        # Plot 2: Phase Response
+        # Tab 2: Phase Response
+        self.phase_tab = QWidget()
+        phase_layout = QVBoxLayout(self.phase_tab)
         self.plot_phase = pg.PlotWidget(title=tr("Phase Response"))
         self.plot_phase.setMinimumHeight(150)
         self.plot_phase.setLabel("bottom", tr("Frequency"), units="Hz")
@@ -490,16 +543,31 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.plot_phase.showGrid(x=True, y=True)
         self.plot_phase.setYRange(-180, 180)
         self.plot_phase.setXLink(self.plot_mag)
-        right_panel.addWidget(self.plot_phase)
+        phase_layout.addWidget(self.plot_phase)
+        self.plot_tabs.addTab(self.phase_tab, tr("Phase Response"))
+
+        # Tab 3: Impulse Responses (Kernels)
+        self.kernel_tab = QWidget()
+        kernel_layout = QVBoxLayout(self.kernel_tab)
+        self.plot_kernel = pg.PlotWidget(title=tr("Impulse Responses (Kernels)"))
+        self.plot_kernel.setMinimumHeight(150)
+        self.plot_kernel.setLabel("bottom", tr("Time"), units="ms")
+        self.plot_kernel.setLabel("left", tr("Normalized Amplitude"))
+        self.plot_kernel.showGrid(x=True, y=True)
+        kernel_layout.addWidget(self.plot_kernel)
+        self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
+        self.plot_tabs.setTabEnabled(2, False)  # Disabled by default
 
         # Create Plot Curves with distinct colors
         # Colors: H1: Cyan, H2: Green, H3: Yellow, H4: Purple, H5: Red
         self.colors = ["#00ffff", "#00ff00", "#ffff00", "#ff00ff", "#ff3333"]
         self.mag_curves = []
         self.phase_curves = []
+        self.kernel_curves = []
 
         # Add legends
         self.plot_mag.addLegend(offset=(10, 10))
+        self.plot_kernel.addLegend(offset=(10, 10))
 
         for idx in range(5):
             lbl = tr("Fundamental") if idx == 0 else tr("{0}th Harmonic").format(idx + 1)
@@ -508,7 +576,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.mag_curves.append(mag_c)
             self.phase_curves.append(phase_c)
 
-        layout.addLayout(right_panel, 2)
+            lbl_k = tr("1st Order (h1)") if idx == 0 else tr("{0}th Order (h{1})").format(idx + 1, idx + 1)
+            kernel_c = self.plot_kernel.plot(pen=self.colors[idx], name=lbl_k)
+            self.kernel_curves.append(kernel_c)
+
+        layout.addWidget(self.plot_tabs, 2)
         self.setLayout(layout)
         self.setMinimumSize(990, 620)
 
@@ -516,6 +588,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         x_min = min(self.module.start_freq, self.module.end_freq)
         x_max = max(self.module.start_freq, self.module.end_freq)
         self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
+
+        # Sync settings on initialization
+        self.on_meas_mode_changed(0)
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -613,6 +688,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.module.ref_channel = 1
                 self.module.signal_channel = 0
 
+            self.is_hammerstein_mode = (self.combo_meas_mode.currentData() == "hammerstein")
+            if self.is_hammerstein_mode:
+                self.num_amplitudes = self.spin_amp_steps.value()
+                max_amp_db = self.spin_amplitude.value()
+                max_amp = 10 ** (max_amp_db / 20.0)
+                self.amplitudes = np.linspace(0.2, 1.0, self.num_amplitudes) * max_amp
+                self.current_amp_idx = 0
+                self.current_avg_idx = 0
+
+                self.module.output_amplitude = self.amplitudes[0]
+                self.module.averaging_count = self.num_amplitudes * self.spin_averaging.value()
+
             # Update Plot Labels based on mode
             self.redraw_plots()
 
@@ -627,10 +714,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             for idx in range(5):
                 self.mag_curves[idx].setData([], [])
                 self.phase_curves[idx].setData([], [])
+                self.kernel_curves[idx].setData([], [])
 
             self.btn_toggle.setText(tr("Stop Sweep"))
             self.btn_calibrate.setEnabled(False)
             self.set_controls_enabled(False)
+            self.export_btn.setEnabled(False)
 
             self.module.start_analysis()
 
@@ -640,6 +729,15 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.block_counts = np.zeros(self.max_blocks, dtype=int)
             self.plot_freqs_array = np.zeros(self.max_blocks)
             self.current_analysis_freq = None
+
+            if self.is_hammerstein_mode:
+                self.raw_responses = np.zeros((self.num_amplitudes, self.max_blocks, self.module.max_harmonic), dtype=complex)
+                self.raw_counts = np.zeros((self.num_amplitudes, self.max_blocks), dtype=int)
+                self.H_freqs = []
+                self.kernels_time = []
+                self.time_ms = []
+                self.plot_kernel.clear()
+                self.plot_tabs.setTabEnabled(2, False)
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
@@ -665,7 +763,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             # Render any remaining calculation blocks from the queue
             self.update_plots()
 
-            # If the sweep completed successfully, force UI to show 100% progress and final frequency
             if was_finished:
                 total_sweeps = self.module.averaging_count
                 progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(100.0, total_sweeps, total_sweeps)
@@ -676,6 +773,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(self.module.end_freq)
                 self.lbl_current_freq.setText(freq_text)
 
+                if self.is_hammerstein_mode:
+                    self.calculate_hammerstein_kernels()
+                    self.redraw_plots()
+            else:
+                self.export_btn.setEnabled(False)
+
             self.btn_toggle.setText(tr("Start Sweep"))
             self.btn_calibrate.setEnabled(True)
             self.set_controls_enabled(True)
@@ -683,6 +786,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.apply_theme()
 
     def set_controls_enabled(self, enabled):
+        self.combo_meas_mode.setEnabled(enabled)
+        self.spin_amp_steps.setEnabled(enabled)
         self.spin_start_freq.setEnabled(enabled)
         self.spin_end_freq.setEnabled(enabled)
         self.spin_duration.setEnabled(enabled)
@@ -694,6 +799,19 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
         self.chk_prevent_buffer_underrun.setEnabled(enabled)
+
+    def on_meas_mode_changed(self, index):
+        is_ham = self.combo_meas_mode.currentData() == "hammerstein"
+        self.spin_amp_steps.setVisible(is_ham)
+        label = self.settings_form.labelForField(self.spin_amp_steps)
+        if label:
+            label.setVisible(is_ham)
+
+        self.combo_smoothing.setVisible(is_ham)
+        self.lbl_smoothing.setVisible(is_ham)
+
+        self.plot_tabs.setTabEnabled(2, is_ham)
+        self.redraw_plots()
 
     def update_plots(self):
         # Retrieve all pending samples from queue
@@ -707,7 +825,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         f_min = min(self.module.start_freq, self.module.end_freq)
         f_max = max(self.module.start_freq, self.module.end_freq)
 
-        for block_idx, _sweep_idx, f_mid, results, is_valid in items:
+        for block_idx, sweep_idx, f_mid, results, is_valid in items:
             if is_valid and block_idx < self.max_blocks:
                 if f_min <= f_mid <= f_max:
                     n_harm = min(len(results), 5)
@@ -717,6 +835,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     self.plot_freqs_array[block_idx] = f_mid
                     latest_f_mid = f_mid
                     self.current_analysis_freq = latest_f_mid
+
+                    if getattr(self, "is_hammerstein_mode", False):
+                        N_avg = self.spin_averaging.value()
+                        amp_idx = sweep_idx // N_avg
+                        if amp_idx < self.num_amplitudes:
+                            self.raw_responses[amp_idx, block_idx, :n_harm] += results[:n_harm]
+                            self.raw_counts[amp_idx, block_idx] += 1
 
         # 2. Display progress info (always run to update audio capture progress, even if items is empty)
         if self.module.engine and self.module.engine.sweep_samples > 0:
@@ -728,7 +853,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             audio_pct = (audio_blocks / total_blocks) * 100.0
 
             # Calculation progress
-            calc_blocks = np.sum(self.block_counts)
+            if getattr(self, "is_hammerstein_mode", False):
+                calc_blocks = int(np.sum(self.raw_counts))
+            else:
+                calc_blocks = np.sum(self.block_counts)
             calc_blocks = min(calc_blocks, total_blocks)
             calc_pct = (calc_blocks / total_blocks) * 100.0
 
@@ -799,7 +927,41 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         x_data = self.plot_freqs_array[valid_indices]
 
-        # Redraw
+        # Check if we should draw the final Hammerstein kernels
+        is_ham = getattr(self, "is_hammerstein_mode", False)
+        has_kernels = len(getattr(self, "H_freqs", [])) > 0
+        is_measuring = (self.module.state in {"PLAYING", "WAITING"})
+
+        if is_ham and has_kernels and not is_measuring:
+            # Draw Hammerstein Kernels
+            sort_idx = np.argsort(x_data)
+            x_data_sorted = x_data[sort_idx]
+            smooth_level = self.combo_smoothing.currentData()
+
+            for idx in range(len(self.H_freqs)):
+                H_p = self.H_freqs[idx][valid_indices][sort_idx]
+                mag_db = 20 * np.log10(np.abs(H_p) + 1e-12)
+                phase_deg = np.degrees(np.angle(H_p))
+
+                # Apply smoothing
+                mag_smoothed = self.apply_smoothing(mag_db, smooth_level)
+                phase_smoothed = self.apply_smoothing(phase_deg, smooth_level)
+
+                self.mag_curves[idx].setData(x_data_sorted, mag_smoothed)
+                self.phase_curves[idx].setData(x_data_sorted, phase_smoothed)
+
+            if len(self.kernels_time) > 0:
+                ref_max = np.max(np.abs(self.kernels_time[0]))
+                if ref_max < 1e-12:
+                    ref_max = 1.0
+                for idx in range(len(self.kernels_time)):
+                    norm_kernel = self.kernels_time[idx] / ref_max
+                    self.kernel_curves[idx].setData(self.time_ms, norm_kernel)
+
+            self.plot_tabs.setTabEnabled(2, True)
+            return
+
+        # Redraw standard real-time sweeps
         for idx in range(self.module.max_harmonic):
             counts = self.block_counts[valid_indices]
             avg_complex = self.accumulated_results[valid_indices, idx] / counts
@@ -821,6 +983,244 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.mag_curves[idx].setData(x_data, y_gain)
             self.phase_curves[idx].setData(x_data, y_phase)
 
+    def apply_smoothing(self, y_data, level):
+        if level == "None" or len(y_data) < 15:
+            return y_data
+
+        window_size = 15
+        if level == "Medium":
+            window_size = 35
+        elif level == "Heavy":
+            window_size = 75
+
+        window_size = min(window_size, len(y_data) - 1)
+        if window_size % 2 == 0:
+            window_size -= 1
+
+        if window_size < 5:
+            return y_data
+
+        try:
+            return savgol_filter(y_data, window_size, polyorder=2)
+        except Exception as e:
+            logger.warning("Smoothing failed: %s", e)
+            return y_data
+
+    def calculate_hammerstein_kernels(self):
+        sample_rate = self.module.audio_engine.sample_rate
+        nyquist = sample_rate / 2.0
+        P = self.module.max_harmonic
+        max_blocks = self.max_blocks
+
+        # 1. Compute averaged responses for each amplitude
+        avg_responses = np.zeros_like(self.raw_responses)
+        for amp_idx in range(self.num_amplitudes):
+            for block_idx in range(max_blocks):
+                cnt = self.raw_counts[amp_idx, block_idx]
+                if cnt > 0:
+                    avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
+
+        # 2. Scale responses by amplitude and apply phase correction
+        # To compensate for sine expansion phase offsets:
+        # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
+        phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
+        R_array = self.amplitudes
+        g_scaled = np.zeros_like(avg_responses)
+        for amp_idx in range(self.num_amplitudes):
+            amp = R_array[amp_idx]
+            for p in range(P):
+                val = avg_responses[amp_idx, :, p]
+                if self.module.input_mode == "XFER":
+                    g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+                else:
+                    g_scaled[amp_idx, :, p] = val * phase_corrections[p]
+
+        g1 = g_scaled[:, :, 0]
+        g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
+        g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
+        g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
+        g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
+
+        R2 = R_array**2
+        R3 = R_array**3
+        R4 = R_array**4
+        R5 = R_array**5
+
+        H5 = 16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10) if P >= 5 else np.zeros(max_blocks, dtype=complex)
+        H4 = 8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8) if P >= 4 else np.zeros(max_blocks, dtype=complex)
+
+        if P >= 5:
+            g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+        else:
+            g3_prime = g3
+        H3 = 4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6) if P >= 3 else np.zeros(max_blocks, dtype=complex)
+
+        if P >= 4:
+            g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
+        else:
+            g2_prime = g2
+        H2 = 2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4) if P >= 2 else np.zeros(max_blocks, dtype=complex)
+
+        g1_prime = g1.copy()
+        if P >= 3:
+            g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
+        if P >= 5:
+            g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
+        H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+
+        self.H_freqs = [H1, H2, H3, H4, H5][:P]
+
+        # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
+        # H_p_mapped(f) = H_p_raw(f / p)
+        plot_freqs = self.plot_freqs_array
+        valid_idx = np.where(plot_freqs > 0)[0]
+        if len(valid_idx) > 0:
+            sort_idx = np.argsort(plot_freqs[valid_idx])
+            sorted_freqs = plot_freqs[valid_idx][sort_idx]
+
+            H_mapped_list = []
+            for p in range(len(self.H_freqs)):
+                H_raw = self.H_freqs[p][valid_idx][sort_idx]
+                f_lookups = sorted_freqs / (p + 1)
+
+                # Interpolate real and imaginary parts to map from f_lookups to sorted_freqs
+                real_mapped = np.interp(f_lookups, sorted_freqs, np.real(H_raw), left=np.nan, right=np.nan)
+                imag_mapped = np.interp(f_lookups, sorted_freqs, np.imag(H_raw), left=np.nan, right=np.nan)
+
+                H_mapped = real_mapped + 1j * imag_mapped
+                H_mapped_list.append(H_mapped)
+
+            # Apply Butterworth lowpass filter to higher order mapped kernels
+            for p in range(len(self.H_freqs)):
+                H_p = H_mapped_list[p]
+                if p >= 1:
+                    f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
+                    lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
+                    H_p = H_p * lpf
+
+                # Pad back to max_blocks length
+                H_full = np.zeros(max_blocks, dtype=complex)
+                H_full[valid_idx[sort_idx]] = H_p
+                self.H_freqs[p] = H_full
+
+        # 4. Reconstruct time domain kernels
+        if len(valid_idx) == 0:
+            return
+
+        sorted_freqs = plot_freqs[valid_idx][sort_idx]
+        gate_pre = int(0.007 * sample_rate)
+        N_kernel = int(0.02 * sample_rate)
+
+        # Calculate dynamic N_fft based on N_kernel to prevent shape mismatches at higher sample rates
+        N_fft = int(2 ** np.ceil(np.log2(N_kernel)))
+        N_fft = max(2048, N_fft)
+
+        freqs_lin = np.linspace(0, nyquist, N_fft // 2 + 1)
+
+        self.time_ms = (np.arange(N_kernel) - gate_pre) / sample_rate * 1000.0
+        self.kernels_time = []
+
+        for p in range(len(self.H_freqs)):
+            H_p = self.H_freqs[p][valid_idx][sort_idx]
+            # Replace NaNs from frequency mapping with 0.0 before IFFT
+            mask_nan = np.isnan(H_p)
+            H_p_clean = H_p.copy()
+            H_p_clean[mask_nan] = 0.0
+
+            H_real = np.interp(freqs_lin, sorted_freqs, np.real(H_p_clean), left=0.0, right=0.0)
+            H_imag = np.interp(freqs_lin, sorted_freqs, np.imag(H_p_clean), left=0.0, right=0.0)
+            H_lin = H_real + 1j * H_imag
+
+            phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / sample_rate))
+            H_lin_shifted = H_lin * phase_shift
+
+            h_full = np.fft.irfft(H_lin_shifted, n=N_fft)
+            h_cropped = h_full[:N_kernel]
+
+            win = scipy.signal.windows.tukey(N_kernel, alpha=0.1)
+            self.kernels_time.append(h_cropped * win)
+
+        # 5. Push to active model cache
+        ref_max = np.max(np.abs(self.kernels_time[0])) if len(self.kernels_time) > 0 else 1.0
+        if ref_max < 1e-12:
+            ref_max = 1.0
+
+        cache_data = {
+            "metadata": {
+                "module": self.module.name,
+                "sample_rate": sample_rate,
+                "num_amplitudes": self.num_amplitudes,
+                "sweep_duration": self.module.sweep_duration,
+                "start_freq": self.module.start_freq,
+                "end_freq": self.module.end_freq,
+                "input_mode": self.module.input_mode,
+                "latency_sec": self.module.latency_samples / sample_rate,
+                "ref_max": float(ref_max),
+                "P": len(self.kernels_time),
+                "noise_floor_dbfs": None,
+            },
+            "time_domain": {
+                "time_ms": self.time_ms,
+                "kernels": {
+                    f"h{p+1}": self.kernels_time[p] for p in range(len(self.kernels_time))
+                },
+            },
+            "frequency_domain": {
+                "freqs": sorted_freqs,
+                "magnitudes_db": {
+                    f"h{p+1}": 20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12)
+                    for p in range(len(self.H_freqs))
+                },
+                "phases_deg": {
+                    f"h{p+1}": np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx]))
+                    for p in range(len(self.H_freqs))
+                },
+            },
+        }
+        set_active_model(cache_data)
+        self.export_btn.setEnabled(True)
+
+        from PyQt6.QtWidgets import QApplication
+        from src.gui.main_window import MainWindow
+        for widget in QApplication.topLevelWidgets():
+            if isinstance(widget, MainWindow):
+                widget.notify_active_model_changed()
+                break
+
+    def on_export_model(self):
+        from src.core.hammerstein_model import get_active_model, has_active_model
+        if not has_active_model():
+            QMessageBox.warning(self, tr("Export Failed"), tr("No measurement data available to export."))
+            return
+
+        from PyQt6.QtWidgets import QFileDialog
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Export Hammerstein Model"),
+            "",
+            tr("JSON Files (*.json)")
+        )
+
+        if not filepath:
+            return
+
+        try:
+            data = get_active_model()
+            save_hammerstein_model(filepath, data)
+            QMessageBox.information(
+                self,
+                tr("Export Successful"),
+                tr("Model exported successfully.")
+            )
+        except Exception as e:
+            logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
+            QMessageBox.critical(
+                self,
+                tr("Export Failed"),
+                tr("Failed to save Hammerstein model: {0}").format(e)
+            )
+
     def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
         with self.module.lock:
             self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, results, is_valid))
@@ -831,6 +1231,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 # Proceed to next sweep and reset filter states
                 self.module.current_sweep_idx += 1
                 self.module.current_block_idx = 0
+
+                if getattr(self, "is_hammerstein_mode", False):
+                    N_avg = self.spin_averaging.value()
+                    old_amp_idx = sweep_idx // N_avg
+                    new_amp_idx = (sweep_idx + 1) // N_avg
+                    if new_amp_idx != old_amp_idx:
+                        self.accumulated_results.fill(0.0j)
+                        self.block_counts.fill(0)
+                    self.module.engine.output_amplitude = self.amplitudes[new_amp_idx]
+
                 self.module.engine.reset_filter_states()
                 self.module.state = "PLAYING"
             else:
