@@ -944,7 +944,15 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     H_p = H_p / (H_fundamental + 1e-30)
 
                 mag_db = 20 * np.log10(np.abs(H_p) + 1e-12)
-                phase_deg = np.degrees(np.angle(H_p))
+                if self.chk_unwrap.isChecked():
+                    # H_p may contain NaNs from frequency mapping. Unwrap only non-NaN elements.
+                    nan_mask = np.isnan(H_p)
+                    phase_deg = np.zeros_like(H_p, dtype=float)
+                    if not np.all(nan_mask):
+                        phase_deg[~nan_mask] = np.degrees(np.unwrap(np.angle(H_p[~nan_mask])))
+                    phase_deg[nan_mask] = np.nan
+                else:
+                    phase_deg = np.degrees(np.angle(H_p))
 
                 # Apply smoothing
                 mag_smoothed = self.apply_smoothing(mag_db, smooth_level)

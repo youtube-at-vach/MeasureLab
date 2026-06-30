@@ -215,3 +215,54 @@ def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
     widget.chk_relative.setChecked(False)
 
 
+def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "sweep" (standard sweep mode)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # 2. Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with dummy values
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.zeros(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Generate a large phase wrap (e.g., phase jumping by 200 degrees each step)
+    for i in range(widget.max_blocks):
+        phase_rad = (200.0 * i) * (np.pi / 180.0)
+        widget.accumulated_results[i, 0] = np.exp(1j * phase_rad)
+        widget.block_counts[i] = 1
+
+    # 3. Finish sweep (triggers kernel calculation and H_freqs mapping)
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic
+
+    # 4. Unwrap option checked = False
+    widget.chk_unwrap.setChecked(False)
+    h1_phase_wrapped = widget.phase_curves[0].yData
+    h1_phase_wrapped_valid = h1_phase_wrapped[~np.isnan(h1_phase_wrapped)]
+    assert np.all(h1_phase_wrapped_valid >= -180.0)
+    assert np.all(h1_phase_wrapped_valid <= 180.0)
+
+    # 5. Unwrap option checked = True
+    widget.chk_unwrap.setChecked(True)
+    h1_phase_unwrapped = widget.phase_curves[0].yData
+    h1_phase_unwrapped_valid = h1_phase_unwrapped[~np.isnan(h1_phase_unwrapped)]
+    
+    # Check if unwrapping actually happened (i.e. phase exceeds 180 or is continuous without wrap)
+    assert np.any(np.abs(h1_phase_unwrapped_valid) > 180.0)
+
+
+
