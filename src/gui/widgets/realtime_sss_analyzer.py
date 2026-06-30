@@ -1020,15 +1020,20 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 if cnt > 0:
                     avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
 
-        # 2. Scale responses by amplitude if in XFER mode
+        # 2. Scale responses by amplitude and apply phase correction
+        # To compensate for sine expansion phase offsets:
+        # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
+        phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
         R_array = self.amplitudes
         g_scaled = np.zeros_like(avg_responses)
         for amp_idx in range(self.num_amplitudes):
             amp = R_array[amp_idx]
-            if self.module.input_mode == "XFER":
-                g_scaled[amp_idx] = avg_responses[amp_idx] * amp
-            else:
-                g_scaled[amp_idx] = avg_responses[amp_idx]
+            for p in range(P):
+                val = avg_responses[amp_idx, :, p]
+                if self.module.input_mode == "XFER":
+                    g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+                else:
+                    g_scaled[amp_idx, :, p] = val * phase_corrections[p]
 
         g1 = g_scaled[:, :, 0]
         g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
@@ -1065,18 +1070,38 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         self.H_freqs = [H1, H2, H3, H4, H5][:P]
 
-        # 3. Apply Butterworth lowpass filter to higher order kernels
+        # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
+        # H_p_mapped(f) = H_p_raw(f / p)
         plot_freqs = self.plot_freqs_array
         valid_idx = np.where(plot_freqs > 0)[0]
         if len(valid_idx) > 0:
             sort_idx = np.argsort(plot_freqs[valid_idx])
             sorted_freqs = plot_freqs[valid_idx][sort_idx]
+            
+            H_mapped_list = []
             for p in range(len(self.H_freqs)):
+                H_raw = self.H_freqs[p][valid_idx][sort_idx]
+                f_lookups = sorted_freqs / (p + 1)
+                
+                # Interpolate real and imaginary parts to map from f_lookups to sorted_freqs
+                real_mapped = np.interp(f_lookups, sorted_freqs, np.real(H_raw), left=np.nan, right=np.nan)
+                imag_mapped = np.interp(f_lookups, sorted_freqs, np.imag(H_raw), left=np.nan, right=np.nan)
+                
+                H_mapped = real_mapped + 1j * imag_mapped
+                H_mapped_list.append(H_mapped)
+
+            # Apply Butterworth lowpass filter to higher order mapped kernels
+            for p in range(len(self.H_freqs)):
+                H_p = H_mapped_list[p]
                 if p >= 1:
                     f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
                     lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
-                    H_p = self.H_freqs[p][valid_idx][sort_idx]
-                    self.H_freqs[p][valid_idx[sort_idx]] = H_p * lpf
+                    H_p = H_p * lpf
+                
+                # Pad back to max_blocks length
+                H_full = np.zeros(max_blocks, dtype=complex)
+                H_full[valid_idx[sort_idx]] = H_p
+                self.H_freqs[p] = H_full
 
         # 4. Reconstruct time domain kernels
         if len(valid_idx) == 0:
@@ -1097,8 +1122,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         for p in range(len(self.H_freqs)):
             H_p = self.H_freqs[p][valid_idx][sort_idx]
-            H_real = np.interp(freqs_lin, sorted_freqs, np.real(H_p), left=0.0, right=0.0)
-            H_imag = np.interp(freqs_lin, sorted_freqs, np.imag(H_p), left=0.0, right=0.0)
+            # Replace NaNs from frequency mapping with 0.0 before IFFT
+            mask_nan = np.isnan(H_p)
+            H_p_clean = H_p.copy()
+            H_p_clean[mask_nan] = 0.0
+
+            H_real = np.interp(freqs_lin, sorted_freqs, np.real(H_p_clean), left=0.0, right=0.0)
+            H_imag = np.interp(freqs_lin, sorted_freqs, np.imag(H_p_clean), left=0.0, right=0.0)
             H_lin = H_real + 1j * H_imag
 
             phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / sample_rate))
