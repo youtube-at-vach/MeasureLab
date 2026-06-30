@@ -477,11 +477,22 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         stats_group.setLayout(stats_layout)
         left_panel.addWidget(stats_group)
 
-        # Display Options
-        display_group = QGroupBox(tr("Display Options"))
-        display_layout = QVBoxLayout()
-        display_layout.setContentsMargins(6, 6, 6, 6)
-        display_layout.setSpacing(4)
+        left_panel.addStretch()
+
+        left_scroll.setWidget(left_container)
+        left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
+        layout.addWidget(left_scroll)
+
+        # RIGHT PANEL: Container & Layout
+        right_container = QWidget()
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(6)
+
+        # Display Options Layout
+        display_layout = QHBoxLayout()
+        display_layout.setContentsMargins(4, 4, 4, 4)
+        display_layout.setSpacing(12)
 
         self.chk_relative = QCheckBox(tr("Show Relative to Fundamental"))
         self.chk_relative.setChecked(False)
@@ -501,19 +512,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
         self.combo_smoothing.setCurrentIndex(1)
         self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
+        
         display_layout.addWidget(self.lbl_smoothing)
         display_layout.addWidget(self.combo_smoothing)
+        display_layout.addStretch()
+
+        # Hide smoothing options initially
         self.lbl_smoothing.setVisible(False)
         self.combo_smoothing.setVisible(False)
 
-        display_group.setLayout(display_layout)
-        left_panel.addWidget(display_group)
-
-        left_panel.addStretch()
-
-        left_scroll.setWidget(left_container)
-        left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
-        layout.addWidget(left_scroll)
+        right_layout.addLayout(display_layout)
 
         # RIGHT PANEL: Tab Widget
         self.plot_tabs = QTabWidget()
@@ -580,7 +588,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             kernel_c = self.plot_kernel.plot(pen=self.colors[idx], name=lbl_k)
             self.kernel_curves.append(kernel_c)
 
-        layout.addWidget(self.plot_tabs, 2)
+        right_layout.addWidget(self.plot_tabs)
+        layout.addWidget(right_container, 2)
         self.setLayout(layout)
         self.setMinimumSize(990, 620)
 
