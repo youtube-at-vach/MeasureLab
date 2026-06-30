@@ -441,6 +441,20 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         stats_group.setLayout(stats_layout)
         left_panel.addWidget(stats_group)
 
+        # Display Options
+        display_group = QGroupBox(tr("Display Options"))
+        display_layout = QVBoxLayout()
+        display_layout.setContentsMargins(6, 6, 6, 6)
+        display_layout.setSpacing(4)
+
+        self.chk_relative = QCheckBox(tr("Show Relative to Fundamental"))
+        self.chk_relative.setChecked(False)
+        self.chk_relative.toggled.connect(self.redraw_plots)
+        display_layout.addWidget(self.chk_relative)
+
+        display_group.setLayout(display_layout)
+        left_panel.addWidget(display_group)
+
         left_panel.addStretch()
 
         left_scroll.setWidget(left_container)
@@ -593,10 +607,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.module.signal_channel = 0
 
             # Update Plot Labels based on mode
-            if self.module.input_mode == "XFER":
-                self.plot_mag.setLabel("left", tr("Gain"), units="dB")
-            else:
-                self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
+            self.redraw_plots()
 
             # Set X range based on current sweep params
             start_val = self.module.start_freq
@@ -757,7 +768,22 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.lbl_current_freq.setText(freq_text)
 
         # 3. Redraw curves if there were new items
-        if not items:
+        if items:
+            self.redraw_plots()
+
+    def redraw_plots(self):
+        # Update Plot Labels based on mode
+        if self.chk_relative.isChecked():
+            self.plot_mag.setLabel("left", tr("Relative Gain"), units="dB")
+            self.plot_phase.setLabel("left", tr("Relative Phase"), units="deg")
+        else:
+            if self.module.input_mode == "XFER":
+                self.plot_mag.setLabel("left", tr("Gain"), units="dB")
+            else:
+                self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
+            self.plot_phase.setLabel("left", tr("Phase"), units="deg")
+
+        if not hasattr(self, "block_counts") or self.block_counts is None:
             return
 
         valid_indices = np.where(self.block_counts > 0)[0]
@@ -771,7 +797,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             counts = self.block_counts[valid_indices]
             avg_complex = self.accumulated_results[valid_indices, idx] / counts
 
-            # Compute amplitude in dBFS
+            if self.chk_relative.isChecked():
+                fundamental_complex = self.accumulated_results[valid_indices, 0] / counts
+                avg_complex = avg_complex / (fundamental_complex + 1e-30)
+
+            # Compute amplitude in dBFS (or dB if relative)
             amp = np.abs(avg_complex)
             y_gain = 20 * np.log10(amp + 1e-15)
 
