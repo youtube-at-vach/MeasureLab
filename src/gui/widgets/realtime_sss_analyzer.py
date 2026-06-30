@@ -1130,19 +1130,19 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 "noise_floor_dbfs": None,
             },
             "time_domain": {
-                "time_ms": list(self.time_ms),
+                "time_ms": self.time_ms,
                 "kernels": {
-                    f"h{p+1}": list(self.kernels_time[p]) for p in range(len(self.kernels_time))
+                    f"h{p+1}": self.kernels_time[p] for p in range(len(self.kernels_time))
                 },
             },
             "frequency_domain": {
-                "freqs": list(sorted_freqs),
+                "freqs": sorted_freqs,
                 "magnitudes_db": {
-                    f"h{p+1}": list(20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12))
+                    f"h{p+1}": 20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12)
                     for p in range(len(self.H_freqs))
                 },
                 "phases_deg": {
-                    f"h{p+1}": list(np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx])))
+                    f"h{p+1}": np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx]))
                     for p in range(len(self.H_freqs))
                 },
             },
@@ -1158,7 +1158,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 break
 
     def on_export_model(self):
-        if len(self.H_freqs) == 0 or len(self.kernels_time) == 0:
+        from src.core.hammerstein_model import get_active_model, has_active_model
+        if not has_active_model():
             QMessageBox.warning(self, tr("Export Failed"), tr("No measurement data available to export."))
             return
 
@@ -1175,48 +1176,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             return
 
         try:
-            ref_max = np.max(np.abs(self.kernels_time[0]))
-            if ref_max < 1e-12:
-                ref_max = 1.0
-
-            plot_freqs = self.plot_freqs_array
-            valid_idx = np.where(plot_freqs > 0)[0]
-            sort_idx = np.argsort(plot_freqs[valid_idx])
-            sorted_freqs = plot_freqs[valid_idx][sort_idx]
-
-            data = {
-                "metadata": {
-                    "module": self.module.name,
-                    "sample_rate": self.module.audio_engine.sample_rate,
-                    "num_amplitudes": self.num_amplitudes,
-                    "sweep_duration": self.module.sweep_duration,
-                    "start_freq": self.module.start_freq,
-                    "end_freq": self.module.end_freq,
-                    "input_mode": self.module.input_mode,
-                    "latency_sec": self.module.latency_samples / self.module.audio_engine.sample_rate,
-                    "ref_max": float(ref_max),
-                    "P": len(self.kernels_time),
-                    "noise_floor_dbfs": None,
-                },
-                "time_domain": {
-                    "time_ms": list(self.time_ms),
-                    "kernels": {
-                        f"h{p+1}": list(self.kernels_time[p]) for p in range(len(self.kernels_time))
-                    },
-                },
-                "frequency_domain": {
-                    "freqs": list(sorted_freqs),
-                    "magnitudes_db": {
-                        f"h{p+1}": list(20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12))
-                        for p in range(len(self.H_freqs))
-                    },
-                    "phases_deg": {
-                        f"h{p+1}": list(np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx])))
-                        for p in range(len(self.H_freqs))
-                    },
-                },
-            }
-
+            data = get_active_model()
             save_hammerstein_model(filepath, data)
             QMessageBox.information(
                 self,
