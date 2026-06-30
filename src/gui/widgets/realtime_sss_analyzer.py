@@ -130,7 +130,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Default SSS parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 20.0
+        self.sweep_duration = 30.0
         self.output_amplitude = 0.5
         self.max_harmonic = 3
         self.averaging_count = 1
