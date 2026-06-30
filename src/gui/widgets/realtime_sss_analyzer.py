@@ -89,7 +89,9 @@ class SSSCalculationThread(QThread):
                             break
                         p_block_idx, p_sweep_idx, p_sig_in, p_ref_in, p_max_blocks = p_item
                         try:
-                            f_mid, results = self.engine.process_input_block(p_sig_in, p_block_idx, ref_in_block=p_ref_in)
+                            f_mid, results = self.engine.process_input_block(
+                                p_sig_in, p_block_idx, ref_in_block=p_ref_in
+                            )
                             is_valid = self.engine.last_block_was_valid
                             self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, results, is_valid)
                         except Exception as e:
@@ -333,8 +335,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_amplitude.setSuffix(" dBFS")
         form.addRow(tr("Amplitude:"), self.spin_amplitude)
 
-
-
         self.spin_max_harmonic = QSpinBox()
         self.spin_max_harmonic.setRange(1, 5)
         self.spin_max_harmonic.setValue(self.module.max_harmonic)
@@ -389,7 +389,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         adv_form.setSpacing(4)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
-        self.spin_analysis_cycles.setRange(2.0, 128.0)
+        self.spin_analysis_cycles.setRange(2.0, 512.0)
         self.spin_analysis_cycles.setSingleStep(1.0)
         self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
         self.spin_analysis_cycles.setSuffix(" cycles")
@@ -625,9 +625,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
-                self.module.engine,
-                self.module.input_queue,
-                prevent_underrun=self.module.prevent_buffer_underrun
+                self.module.engine, self.module.input_queue, prevent_underrun=self.module.prevent_buffer_underrun
             )
             self.calc_thread.block_calculated.connect(self.on_block_calculated)
             self.calc_thread.sweep_finished.connect(self.on_sweep_finished)
@@ -635,7 +633,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             self.timer.start()
         else:
-            was_finished = (self.module.state == "FINISHED")
+            was_finished = self.module.state == "FINISHED"
             self.module.stop_analysis()
             self.timer.stop()
 
@@ -652,11 +650,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             # If the sweep completed successfully, force UI to show 100% progress and final frequency
             if was_finished:
                 total_sweeps = self.module.averaging_count
-                progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(
-                    100.0,
-                    total_sweeps,
-                    total_sweeps
-                )
+                progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(100.0, total_sweeps, total_sweeps)
                 progress_text += "\n" + tr("Analysis: {0:.1f}%").format(100.0)
                 self.lbl_progress.setText(progress_text)
 
@@ -730,7 +724,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 if not hasattr(func, "_mock_return_value") and "MagicMock" not in type(func).__name__:
                     try:
                         val = func(audio_sample_idx)
-                        if isinstance(val, (int, float, np.floating, np.integer)) and not hasattr(val, "_mock_return_value"):
+                        if isinstance(val, (int, float, np.floating, np.integer)) and not hasattr(
+                            val, "_mock_return_value"
+                        ):
                             audio_freq = float(val)
                     except Exception as e:
                         logger.debug(f"Failed to evaluate sweep frequency: {e}")
@@ -739,7 +735,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(
                 audio_pct,
                 min(self.module.current_sweep_idx + 1, self.module.averaging_count),
-                self.module.averaging_count
+                self.module.averaging_count,
             )
             if self.module.state == "WAITING":
                 progress_text += "\n" + tr("Analysis: {0:.1f}% (Catching up...)").format(calc_pct)

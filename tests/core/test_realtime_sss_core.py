@@ -276,7 +276,9 @@ def test_engine_ls_extractor_decimation_continuity():
         # Check diff around the change. It shouldn't be a sudden jump.
         # Without smooth fc, the jump in magnitude at D transition can be quite large (e.g. > 0.05).
         # We enforce that the jump is small (e.g., < 0.015).
-        assert diffs[idx] < 0.015, f"Discontinuity detected at D change index {idx} (D changed from {valid_d[idx]} to {valid_d[idx+1]}): jump was {diffs[idx]:.5f}"
+        assert diffs[idx] < 0.015, (
+            f"Discontinuity detected at D change index {idx} (D changed from {valid_d[idx]} to {valid_d[idx + 1]}): jump was {diffs[idx]:.5f}"
+        )
 
 
 def test_engine_parameter_derivation():
@@ -326,6 +328,22 @@ def test_engine_parameter_derivation():
     assert engine_override.max_analysis_window == 0.5
     assert engine_override.max_fitting_samples == 4096
 
+    # 4. Test parameter derivation with very large analysis_cycles (512.0)
+    # With start_freq=20.0, end_freq=20000.0, min_freq is 20.0.
+    # max_analysis_window should be 512.0 / (4.0 * 20.0) = 6.4.
+    # max_fitting_samples should be clipped to 65536.
+    engine_large = RealtimeSSSEngine(
+        sample_rate=192000,
+        sweep_duration=20.0,
+        start_freq=20.0,
+        end_freq=20000.0,
+        output_amplitude=0.5,
+        max_harmonic=3,
+        analysis_cycles=512.0,
+    )
+    assert np.isclose(engine_large.max_analysis_window, 6.4)
+    assert engine_large.max_fitting_samples == 65536
+
 
 def test_engine_process_block_xfer_mixed_reference():
     # Verify that mixing None and non-None reference inputs does not raise IndexError
@@ -348,7 +366,3 @@ def test_engine_process_block_xfer_mixed_reference():
     # If the bug is present, this will either raise IndexError or return uncorrected 0.4
     assert np.abs(results[0]) > 0.0
     assert np.abs(np.abs(results[0]) - 0.5) < 1e-2
-
-
-
-
