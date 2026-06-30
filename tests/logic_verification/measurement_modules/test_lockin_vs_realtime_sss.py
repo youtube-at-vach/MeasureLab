@@ -92,13 +92,13 @@ def test_lockin_vs_realtime_sss_consistency(qtbot, mock_audio_engine):
     for j in range(num_amplitudes):
         # Wait until the analyzer transitions to the correct amplitude index and is ready to PLAY
         qtbot.waitUntil(
-            lambda: analyzer.current_amplitude_idx == j and analyzer.state == "PLAYING",
+            lambda j_val=j: analyzer.current_amplitude_idx == j_val and analyzer.state == "PLAYING",
             timeout=5000
         )
 
         last_out_sig = np.zeros(block_size)
 
-        for block_idx in range(max_blocks):
+        for _block_idx in range(max_blocks):
             # System delay simulation: feed the previous output block passed through the nonlinear system
             in_sig = run_system(last_out_sig)
 
@@ -116,7 +116,7 @@ def test_lockin_vs_realtime_sss_consistency(qtbot, mock_audio_engine):
         # Wait for the async calculation thread to finish processing the current sweep
         if j + 1 < num_amplitudes:
             qtbot.waitUntil(
-                lambda: analyzer.current_amplitude_idx == j + 1,
+                lambda next_j=j+1: analyzer.current_amplitude_idx == next_j,
                 timeout=5000
             )
         else:

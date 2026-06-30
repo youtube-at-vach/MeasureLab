@@ -94,12 +94,12 @@ class SSSCalculationThread(QThread):
                         p_block_idx, p_sweep_idx, p_sig_in, p_ref_in, p_max_blocks = p_item
                         try:
                             f_mid, meas_results = self.engine.process_input_block(p_sig_in, p_block_idx, ref_in_block=None)
-                            
+
                             ref_h1 = None
                             if self.ref_engine is not None and p_ref_in is not None:
                                 _, ref_results = self.ref_engine.process_input_block(p_ref_in, p_block_idx, ref_in_block=None)
                                 ref_h1 = ref_results[0]
-                                
+
                             is_valid = self.engine.last_block_was_valid
                             self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, meas_results, ref_h1, is_valid)
                         except Exception as e:
@@ -111,12 +111,12 @@ class SSSCalculationThread(QThread):
                 # Perform the computationally heavy Least-Squares fit in the background
                 try:
                     f_mid, meas_results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=None)
-                    
+
                     ref_h1 = None
                     if self.ref_engine is not None and ref_in is not None:
                         _, ref_results = self.ref_engine.process_input_block(ref_in, block_idx, ref_in_block=None)
                         ref_h1 = ref_results[0]
-                        
+
                     is_valid = self.engine.last_block_was_valid
                     self.block_calculated.emit(block_idx, sweep_idx, f_mid, meas_results, ref_h1, is_valid)
                 except Exception as e:
@@ -1037,7 +1037,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                         self.accumulated_meas_results[block_idx, :n_harm] += meas_results[:n_harm]
                         if ref_h1 is not None:
                             self.accumulated_ref_results[block_idx] += ref_h1
-                        
+
                         if ref_h1 is not None:
                             ref_conj = np.conj(ref_h1)
                             ref_mag2 = float(np.real(ref_h1 * ref_conj))
@@ -1066,16 +1066,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 if self.module.meas_mode == "Hammerstein":
                     j = self.module.current_amplitude_idx
                     counts = np.clip(self.block_counts, 1, None)
-                    
+
                     avg_meas = self.accumulated_meas_results / counts[:, None]
                     avg_meas[self.block_counts == 0] = 0.0j
                     self.module.accumulated_meas_sweeps[j] = avg_meas
-                    
+
                     if self.module.input_mode == "XFER":
                         avg_ref = self.accumulated_ref_results / counts
                         avg_ref[self.block_counts == 0] = 0.0j
                         self.module.accumulated_ref_sweeps[j] = avg_ref
-                    
+
                     avg_results = self.accumulated_results / counts[:, None]
                     avg_results[self.block_counts == 0] = 0.0j
                     self.module.accumulated_sweeps[j] = avg_results
@@ -1194,7 +1194,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 H_p = H_f[p, valid_indices]
                 amp = np.abs(H_p)
                 mag_db = 20 * np.log10(amp + 1e-15)
-                
+
                 # Unwrap and wrap phase to [-180, 180] deg range
                 phase_deg = np.degrees(np.unwrap(np.angle(H_p)))
                 phase_deg = (phase_deg + 180) % 360 - 180
