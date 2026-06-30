@@ -696,7 +696,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.amplitudes = np.linspace(0.2, 1.0, self.num_amplitudes) * max_amp
                 self.current_amp_idx = 0
                 self.current_avg_idx = 0
-                
+
                 self.module.output_amplitude = self.amplitudes[0]
                 self.module.averaging_count = self.num_amplitudes * self.spin_averaging.value()
 
@@ -1085,11 +1085,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         sorted_freqs = plot_freqs[valid_idx][sort_idx]
         gate_pre = int(0.007 * sample_rate)
         N_kernel = int(0.02 * sample_rate)
-        
+
         # Calculate dynamic N_fft based on N_kernel to prevent shape mismatches at higher sample rates
         N_fft = int(2 ** np.ceil(np.log2(N_kernel)))
         N_fft = max(2048, N_fft)
-        
+
         freqs_lin = np.linspace(0, nyquist, N_fft // 2 + 1)
 
         self.time_ms = (np.arange(N_kernel) - gate_pre) / sample_rate * 1000.0

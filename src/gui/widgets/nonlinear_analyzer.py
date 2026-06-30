@@ -4,6 +4,7 @@ import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
@@ -546,6 +547,7 @@ class NonlinearAnalyzer(MeasurementModule):
             sweep_duration=self.sweep_duration,
             P=P,
             amplitudes=amplitudes,
+            unwrap_phase=True,
         )
 
         self.signals.progress.emit(95)
@@ -713,6 +715,11 @@ class NonlinearAnalyzerWidget(QWidget):
         self.smooth_combo.setCurrentIndex(1)  # Default: Light
         self.smooth_combo.currentIndexChanged.connect(self.refresh_plots_with_smoothing)
         phm_form.addRow(tr("Graph Smoothing:"), self.smooth_combo)
+
+        self.chk_unwrap = QCheckBox(tr("Unwrap Phase"))
+        self.chk_unwrap.setChecked(False)
+        self.chk_unwrap.toggled.connect(self.refresh_plots_with_smoothing)
+        phm_form.addRow("", self.chk_unwrap)
 
         scroll_layout.addWidget(phm_group)
 
@@ -1040,6 +1047,8 @@ class NonlinearAnalyzerWidget(QWidget):
                 # Apply Savitzky-Golay Smoothing
                 mag_smoothed = self.apply_smoothing(magnitudes_db_dict[key], smooth_level)
                 phase_smoothed = self.apply_smoothing(phases_deg_dict[key], smooth_level)
+                if not self.chk_unwrap.isChecked():
+                    phase_smoothed = (phase_smoothed + 180) % 360 - 180
 
                 # Magnitude Plot
                 pen_mag = pg.mkPen(color=colors[key], width=2)
