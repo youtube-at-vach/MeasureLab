@@ -89,7 +89,9 @@ class SSSCalculationThread(QThread):
                             break
                         p_block_idx, p_sweep_idx, p_sig_in, p_ref_in, p_max_blocks = p_item
                         try:
-                            f_mid, results = self.engine.process_input_block(p_sig_in, p_block_idx, ref_in_block=p_ref_in)
+                            f_mid, results = self.engine.process_input_block(
+                                p_sig_in, p_block_idx, ref_in_block=p_ref_in
+                            )
                             is_valid = self.engine.last_block_was_valid
                             self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, results, is_valid)
                         except Exception as e:
@@ -297,6 +299,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.btn_toggle = QPushButton(tr("Start Sweep"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle_sweep)
+        self.btn_toggle.setEnabled(self.module.latency_samples > 0.0)
         left_panel.addWidget(self.btn_toggle)
 
         left_tabs = QTabWidget()
@@ -332,8 +335,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_amplitude.setValue(init_db)
         self.spin_amplitude.setSuffix(" dBFS")
         form.addRow(tr("Amplitude:"), self.spin_amplitude)
-
-
 
         self.spin_max_harmonic = QSpinBox()
         self.spin_max_harmonic.setRange(1, 5)
@@ -389,7 +390,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         adv_form.setSpacing(4)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
-        self.spin_analysis_cycles.setRange(2.0, 128.0)
+        self.spin_analysis_cycles.setRange(2.0, 512.0)
         self.spin_analysis_cycles.setSingleStep(1.0)
         self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
         self.spin_analysis_cycles.setSuffix(" cycles")
@@ -440,6 +441,25 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         stats_group.setLayout(stats_layout)
         left_panel.addWidget(stats_group)
+
+        # Display Options
+        display_group = QGroupBox(tr("Display Options"))
+        display_layout = QVBoxLayout()
+        display_layout.setContentsMargins(6, 6, 6, 6)
+        display_layout.setSpacing(4)
+
+        self.chk_relative = QCheckBox(tr("Show Relative to Fundamental"))
+        self.chk_relative.setChecked(False)
+        self.chk_relative.toggled.connect(self.redraw_plots)
+        display_layout.addWidget(self.chk_relative)
+
+        self.chk_unwrap = QCheckBox(tr("Unwrap Phase"))
+        self.chk_unwrap.setChecked(False)
+        self.chk_unwrap.toggled.connect(self.redraw_plots)
+        display_layout.addWidget(self.chk_unwrap)
+
+        display_group.setLayout(display_layout)
+        left_panel.addWidget(display_group)
 
         left_panel.addStretch()
 
@@ -547,13 +567,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.lbl_calib_status.setText(tr("{0:.2f} ms ({1:.1f} samples)").format(ms, latency_samples))
         self.lbl_calib_status.setStyleSheet("color: #00ff00; font-weight: bold;")
         self.btn_calibrate.setEnabled(True)
-        self.btn_toggle.setEnabled(True)
+        self.btn_toggle.setEnabled(self.module.latency_samples > 0.0)
 
     def on_calibration_error(self, err_msg):
+        self.module.latency_samples = 0.0
         self.lbl_calib_status.setText(tr("Calibration Error!"))
         self.lbl_calib_status.setStyleSheet("color: #ff3333; font-weight: bold;")
         self.btn_calibrate.setEnabled(True)
-        self.btn_toggle.setEnabled(True)
+        self.btn_toggle.setEnabled(False)
 
     def on_toggle_sweep(self, checked):
         if checked:
@@ -593,10 +614,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.module.signal_channel = 0
 
             # Update Plot Labels based on mode
-            if self.module.input_mode == "XFER":
-                self.plot_mag.setLabel("left", tr("Gain"), units="dB")
-            else:
-                self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
+            self.redraw_plots()
 
             # Set X range based on current sweep params
             start_val = self.module.start_freq
@@ -625,9 +643,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
-                self.module.engine,
-                self.module.input_queue,
-                prevent_underrun=self.module.prevent_buffer_underrun
+                self.module.engine, self.module.input_queue, prevent_underrun=self.module.prevent_buffer_underrun
             )
             self.calc_thread.block_calculated.connect(self.on_block_calculated)
             self.calc_thread.sweep_finished.connect(self.on_sweep_finished)
@@ -635,7 +651,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             self.timer.start()
         else:
-            was_finished = (self.module.state == "FINISHED")
+            was_finished = self.module.state == "FINISHED"
             self.module.stop_analysis()
             self.timer.stop()
 
@@ -652,11 +668,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             # If the sweep completed successfully, force UI to show 100% progress and final frequency
             if was_finished:
                 total_sweeps = self.module.averaging_count
-                progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(
-                    100.0,
-                    total_sweeps,
-                    total_sweeps
-                )
+                progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(100.0, total_sweeps, total_sweeps)
                 progress_text += "\n" + tr("Analysis: {0:.1f}%").format(100.0)
                 self.lbl_progress.setText(progress_text)
 
@@ -730,7 +742,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 if not hasattr(func, "_mock_return_value") and "MagicMock" not in type(func).__name__:
                     try:
                         val = func(audio_sample_idx)
-                        if isinstance(val, (int, float, np.floating, np.integer)) and not hasattr(val, "_mock_return_value"):
+                        if isinstance(val, (int, float, np.floating, np.integer)) and not hasattr(
+                            val, "_mock_return_value"
+                        ):
                             audio_freq = float(val)
                     except Exception as e:
                         logger.debug(f"Failed to evaluate sweep frequency: {e}")
@@ -739,7 +753,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             progress_text = tr("Sweep (Audio): {0:.1f}% (Sweep {1}/{2})").format(
                 audio_pct,
                 min(self.module.current_sweep_idx + 1, self.module.averaging_count),
-                self.module.averaging_count
+                self.module.averaging_count,
             )
             if self.module.state == "WAITING":
                 progress_text += "\n" + tr("Analysis: {0:.1f}% (Catching up...)").format(calc_pct)
@@ -761,7 +775,22 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.lbl_current_freq.setText(freq_text)
 
         # 3. Redraw curves if there were new items
-        if not items:
+        if items:
+            self.redraw_plots()
+
+    def redraw_plots(self):
+        # Update Plot Labels based on mode
+        if self.chk_relative.isChecked():
+            self.plot_mag.setLabel("left", tr("Relative Gain"), units="dB")
+            self.plot_phase.setLabel("left", tr("Relative Phase"), units="deg")
+        else:
+            if self.module.input_mode == "XFER":
+                self.plot_mag.setLabel("left", tr("Gain"), units="dB")
+            else:
+                self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
+            self.plot_phase.setLabel("left", tr("Phase"), units="deg")
+
+        if not hasattr(self, "block_counts") or self.block_counts is None:
             return
 
         valid_indices = np.where(self.block_counts > 0)[0]
@@ -775,12 +804,19 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             counts = self.block_counts[valid_indices]
             avg_complex = self.accumulated_results[valid_indices, idx] / counts
 
-            # Compute amplitude in dBFS
+            if self.chk_relative.isChecked():
+                fundamental_complex = self.accumulated_results[valid_indices, 0] / counts
+                avg_complex = avg_complex / (fundamental_complex + 1e-30)
+
+            # Compute amplitude in dBFS (or dB if relative)
             amp = np.abs(avg_complex)
             y_gain = 20 * np.log10(amp + 1e-15)
 
             # Compute phase in degrees
-            y_phase = np.degrees(np.angle(avg_complex))
+            if self.chk_unwrap.isChecked():
+                y_phase = np.degrees(np.unwrap(np.angle(avg_complex)))
+            else:
+                y_phase = np.degrees(np.angle(avg_complex))
 
             self.mag_curves[idx].setData(x_data, y_gain)
             self.phase_curves[idx].setData(x_data, y_phase)

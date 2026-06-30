@@ -200,6 +200,7 @@
         "R: Vrms: 0.000 V  Vpp: 0.000 V",
         "RDS / RBDS (57kHz)",
         "RTC Crystal Oscillator (32.768kHz)",
+        "Relative Phase",
         "Rate",
         "Real (Z)",
         "Rectified Mains (100Hz)",
