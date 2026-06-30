@@ -147,3 +147,71 @@ def test_realtime_sss_analyzer_hammerstein_curves_not_cleared(qtbot, mock_audio_
     widget.btn_toggle.click()
 
 
+def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "sweep" (standard sweep mode)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # 2. Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with dummy values
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.zeros(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    for i in range(widget.max_blocks):
+        # Fundamental (H1) gain = 0.5, H2 gain = 0.05
+        widget.accumulated_results[i, 0] = 0.5
+        widget.accumulated_results[i, 1] = 0.05
+        widget.block_counts[i] = 1
+
+    # 3. Finish sweep
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic
+
+    # 4. Relative option checked = False
+    widget.chk_relative.setChecked(False)
+    # Get magnitude of H1 and H2
+    h1_mag_abs = widget.mag_curves[0].yData
+    h2_mag_abs = widget.mag_curves[1].yData
+
+    # Check absolute values
+    # Filter out NaNs before asserting (frequency mapping generates NaNs at edges)
+    h1_valid = h1_mag_abs[~np.isnan(h1_mag_abs)]
+    h2_valid = h2_mag_abs[~np.isnan(h2_mag_abs)]
+    assert len(h1_valid) > 0
+    assert len(h2_valid) > 0
+    np.testing.assert_allclose(h1_valid, 20 * np.log10(0.5), atol=1.0)
+    np.testing.assert_allclose(h2_valid, 20 * np.log10(0.05), atol=1.0)
+
+    # 5. Check relative option = True
+    widget.chk_relative.setChecked(True)
+    h1_mag_rel = widget.mag_curves[0].yData
+    h2_mag_rel = widget.mag_curves[1].yData
+
+    h1_rel_valid = h1_mag_rel[~np.isnan(h1_mag_rel)]
+    h2_rel_valid = h2_mag_rel[~np.isnan(h2_mag_rel)]
+    assert len(h1_rel_valid) > 0
+    assert len(h2_rel_valid) > 0
+
+    # H1 relative gain should be exactly 0 dB (relative to itself)
+    np.testing.assert_allclose(h1_rel_valid, 0.0, atol=1e-5)
+    # H2 relative gain should be around 20*log10(0.05/0.5) = -20 dB
+    np.testing.assert_allclose(h2_rel_valid, -20.0, atol=1.0)
+
+    # Clean up
+    widget.chk_relative.setChecked(False)
+
+

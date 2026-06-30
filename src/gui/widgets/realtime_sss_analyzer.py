@@ -936,8 +936,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             x_data_sorted = x_data[sort_idx]
             smooth_level = self.combo_smoothing.currentData()
 
+            H_fundamental = self.H_freqs[0][valid_indices][sort_idx] if len(self.H_freqs) > 0 else 1.0
+
             for idx in range(len(self.H_freqs)):
                 H_p = self.H_freqs[idx][valid_indices][sort_idx]
+                if self.chk_relative.isChecked():
+                    H_p = H_p / (H_fundamental + 1e-30)
+
                 mag_db = 20 * np.log10(np.abs(H_p) + 1e-12)
                 phase_deg = np.degrees(np.angle(H_p))
 
