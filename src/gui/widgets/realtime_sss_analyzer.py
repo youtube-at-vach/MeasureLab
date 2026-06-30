@@ -914,7 +914,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if items:
             self.redraw_plots()
 
-    def redraw_plots(self):
+    def redraw_plots(self, *args):
         # Update Plot Labels based on mode
         if self.chk_relative.isChecked():
             self.plot_mag.setLabel("left", tr("Relative Gain"), units="dB")
@@ -1020,8 +1020,21 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if window_size < 5:
             return y_data
 
+        # Handle NaNs by temporarily interpolating them before passing to savgol_filter
+        nan_mask = np.isnan(y_data)
+        y_clean = np.copy(y_data)
+        
+        if np.any(nan_mask):
+            if np.all(nan_mask):
+                return y_data
+            x = np.arange(len(y_clean))
+            y_clean[nan_mask] = np.interp(x[nan_mask], x[~nan_mask], y_clean[~nan_mask])
+
         try:
-            return savgol_filter(y_data, window_size, polyorder=2)
+            smoothed = savgol_filter(y_clean, window_size, polyorder=2)
+            if np.any(nan_mask):
+                smoothed[nan_mask] = np.nan
+            return smoothed
         except Exception as e:
             logger.warning("Smoothing failed: %s", e)
             return y_data
