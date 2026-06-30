@@ -939,7 +939,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
         is_measuring = (self.module.state in {"PLAYING", "WAITING"})
 
-        if has_kernels and not is_measuring:
+        if getattr(self, "is_hammerstein_mode", False) and has_kernels and not is_measuring:
             # Draw Kernels (Hammerstein or Sweep)
             sort_idx = np.argsort(x_data)
             x_data_sorted = x_data[sort_idx]
