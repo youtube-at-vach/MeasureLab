@@ -716,6 +716,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.phase_curves[idx].setData([], [])
                 self.kernel_curves[idx].setData([], [])
 
+            self.plot_tabs.setTabEnabled(2, False)
+
             self.btn_toggle.setText(tr("Stop Sweep"))
             self.btn_calibrate.setEnabled(False)
             self.set_controls_enabled(False)
@@ -736,8 +738,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.H_freqs = []
                 self.kernels_time = []
                 self.time_ms = []
-                self.plot_kernel.clear()
-                self.plot_tabs.setTabEnabled(2, False)
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
@@ -773,9 +773,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(self.module.end_freq)
                 self.lbl_current_freq.setText(freq_text)
 
-                if self.is_hammerstein_mode:
-                    self.calculate_hammerstein_kernels()
-                    self.redraw_plots()
+                self.calculate_hammerstein_kernels()
+                self.redraw_plots()
             else:
                 self.export_btn.setEnabled(False)
 
@@ -810,7 +809,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_smoothing.setVisible(is_ham)
         self.lbl_smoothing.setVisible(is_ham)
 
-        self.plot_tabs.setTabEnabled(2, is_ham)
+        self.plot_tabs.setTabEnabled(2, True)
         self.redraw_plots()
 
     def update_plots(self):
@@ -927,13 +926,12 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         x_data = self.plot_freqs_array[valid_indices]
 
-        # Check if we should draw the final Hammerstein kernels
-        is_ham = getattr(self, "is_hammerstein_mode", False)
+        # Check if we should draw the final kernels
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
         is_measuring = (self.module.state in {"PLAYING", "WAITING"})
 
-        if is_ham and has_kernels and not is_measuring:
-            # Draw Hammerstein Kernels
+        if has_kernels and not is_measuring:
+            # Draw Kernels (Hammerstein or Sweep)
             sort_idx = np.argsort(x_data)
             x_data_sorted = x_data[sort_idx]
             smooth_level = self.combo_smoothing.currentData()
@@ -1012,63 +1010,77 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         P = self.module.max_harmonic
         max_blocks = self.max_blocks
 
-        # 1. Compute averaged responses for each amplitude
-        avg_responses = np.zeros_like(self.raw_responses)
-        for amp_idx in range(self.num_amplitudes):
-            for block_idx in range(max_blocks):
-                cnt = self.raw_counts[amp_idx, block_idx]
-                if cnt > 0:
-                    avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
+        if getattr(self, "is_hammerstein_mode", False):
+            # 1. Compute averaged responses for each amplitude
+            avg_responses = np.zeros_like(self.raw_responses)
+            for amp_idx in range(self.num_amplitudes):
+                for block_idx in range(max_blocks):
+                    cnt = self.raw_counts[amp_idx, block_idx]
+                    if cnt > 0:
+                        avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
 
-        # 2. Scale responses by amplitude and apply phase correction
-        # To compensate for sine expansion phase offsets:
-        # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
-        phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
-        R_array = self.amplitudes
-        g_scaled = np.zeros_like(avg_responses)
-        for amp_idx in range(self.num_amplitudes):
-            amp = R_array[amp_idx]
+            # 2. Scale responses by amplitude and apply phase correction
+            # To compensate for sine expansion phase offsets:
+            # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
+            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
+            R_array = self.amplitudes
+            g_scaled = np.zeros_like(avg_responses)
+            for amp_idx in range(self.num_amplitudes):
+                amp = R_array[amp_idx]
+                for p in range(P):
+                    val = avg_responses[amp_idx, :, p]
+                    if self.module.input_mode == "XFER":
+                        g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+                    else:
+                        g_scaled[amp_idx, :, p] = val * phase_corrections[p]
+
+            g1 = g_scaled[:, :, 0]
+            g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
+            g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
+            g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
+            g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
+
+            R2 = R_array**2
+            R3 = R_array**3
+            R4 = R_array**4
+            R5 = R_array**5
+
+            H5 = 16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10) if P >= 5 else np.zeros(max_blocks, dtype=complex)
+            H4 = 8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8) if P >= 4 else np.zeros(max_blocks, dtype=complex)
+
+            if P >= 5:
+                g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+            else:
+                g3_prime = g3
+            H3 = 4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6) if P >= 3 else np.zeros(max_blocks, dtype=complex)
+
+            if P >= 4:
+                g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
+            else:
+                g2_prime = g2
+            H2 = 2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4) if P >= 2 else np.zeros(max_blocks, dtype=complex)
+
+            g1_prime = g1.copy()
+            if P >= 3:
+                g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
+            if P >= 5:
+                g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
+            H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+
+            self.H_freqs = [H1, H2, H3, H4, H5][:P]
+        else:
+            # Standard Sweep Mode (Non-Hammerstein)
+            # Directly use accumulated_results and apply phase corrections
+            valid_indices = np.where(self.block_counts > 0)[0]
+            self.H_freqs = []
+            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
             for p in range(P):
-                val = avg_responses[amp_idx, :, p]
-                if self.module.input_mode == "XFER":
-                    g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
-                else:
-                    g_scaled[amp_idx, :, p] = val * phase_corrections[p]
-
-        g1 = g_scaled[:, :, 0]
-        g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-        g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-        g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-        g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
-
-        R2 = R_array**2
-        R3 = R_array**3
-        R4 = R_array**4
-        R5 = R_array**5
-
-        H5 = 16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10) if P >= 5 else np.zeros(max_blocks, dtype=complex)
-        H4 = 8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8) if P >= 4 else np.zeros(max_blocks, dtype=complex)
-
-        if P >= 5:
-            g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
-        else:
-            g3_prime = g3
-        H3 = 4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6) if P >= 3 else np.zeros(max_blocks, dtype=complex)
-
-        if P >= 4:
-            g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
-        else:
-            g2_prime = g2
-        H2 = 2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4) if P >= 2 else np.zeros(max_blocks, dtype=complex)
-
-        g1_prime = g1.copy()
-        if P >= 3:
-            g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
-        if P >= 5:
-            g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-        H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
-
-        self.H_freqs = [H1, H2, H3, H4, H5][:P]
+                H_p = np.zeros(max_blocks, dtype=complex)
+                if len(valid_indices) > 0:
+                    counts = self.block_counts[valid_indices]
+                    avg_complex = self.accumulated_results[valid_indices, p] / counts
+                    H_p[valid_indices] = avg_complex * phase_corrections[p]
+                self.H_freqs.append(H_p)
 
         # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
         # H_p_mapped(f) = H_p_raw(f / p)
@@ -1149,13 +1161,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             "metadata": {
                 "module": self.module.name,
                 "sample_rate": sample_rate,
-                "num_amplitudes": self.num_amplitudes,
+                "num_amplitudes": self.num_amplitudes if getattr(self, "is_hammerstein_mode", False) else 1,
                 "sweep_duration": self.module.sweep_duration,
                 "start_freq": self.module.start_freq,
                 "end_freq": self.module.end_freq,
                 "input_mode": self.module.input_mode,
                 "latency_sec": self.module.latency_samples / sample_rate,
                 "ref_max": float(ref_max),
+                "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
             },
