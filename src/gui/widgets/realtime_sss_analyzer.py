@@ -1077,16 +1077,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if len(valid_idx) > 0:
             sort_idx = np.argsort(plot_freqs[valid_idx])
             sorted_freqs = plot_freqs[valid_idx][sort_idx]
-            
+
             H_mapped_list = []
             for p in range(len(self.H_freqs)):
                 H_raw = self.H_freqs[p][valid_idx][sort_idx]
                 f_lookups = sorted_freqs / (p + 1)
-                
+
                 # Interpolate real and imaginary parts to map from f_lookups to sorted_freqs
                 real_mapped = np.interp(f_lookups, sorted_freqs, np.real(H_raw), left=np.nan, right=np.nan)
                 imag_mapped = np.interp(f_lookups, sorted_freqs, np.imag(H_raw), left=np.nan, right=np.nan)
-                
+
                 H_mapped = real_mapped + 1j * imag_mapped
                 H_mapped_list.append(H_mapped)
 
@@ -1097,7 +1097,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
                     lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
                     H_p = H_p * lpf
-                
+
                 # Pad back to max_blocks length
                 H_full = np.zeros(max_blocks, dtype=complex)
                 H_full[valid_idx[sort_idx]] = H_p

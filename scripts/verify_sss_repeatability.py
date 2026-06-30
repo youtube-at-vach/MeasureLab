@@ -307,7 +307,7 @@ def main():
                 jitter = 0.0
             else:
                 jitter = np.random.uniform(-0.2, 0.2)
-            
+
             if jitter != 0.0:
                 freqs = np.fft.rfftfreq(N)
                 phase_shift = np.exp(-2j * np.pi * freqs * jitter)
@@ -362,7 +362,7 @@ def main():
                 # Pass ref_in_block=None to prevent the engine from applying standard 1st-order compensation internally
                 f_mid, sig_res = run_engine_sig.process_input_block(sig_block, block_idx, ref_in_block=None)
                 _, ref_res = run_engine_ref.process_input_block(ref_block, block_idx, ref_in_block=None)
-                
+
                 # Apply harmonic-order compensation
                 # H_k = S_k * conj(R_1 / |R_1|)^k / |R_1|
                 ref_h1 = ref_res[0] if ref_res else 0.0j
