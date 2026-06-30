@@ -187,15 +187,20 @@ class RealtimeSSSEngine:
             self._hist_signal.pop(0)
             self._hist_ref.pop(0)
 
-    def _fit_harmonics(self, theta: np.ndarray, y: np.ndarray, weights: np.ndarray) -> list[complex]:
-        if len(y) < max(8, 3 * (2 * self.max_harmonic + 1)):
+    def _fit_harmonics(
+        self, theta: np.ndarray, y: np.ndarray, weights: np.ndarray, active_max_harmonic: int | None = None
+    ) -> list[complex]:
+        if active_max_harmonic is None:
+            active_max_harmonic = self.max_harmonic
+
+        if len(y) < max(8, 3 * (2 * active_max_harmonic + 1)):
             return [0.0j] * self.max_harmonic
 
         N = len(theta)
-        p_vals = np.arange(1, self.max_harmonic + 1)
+        p_vals = np.arange(1, active_max_harmonic + 1)
         p_theta = theta[:, None] * p_vals
 
-        design = np.empty((N, 1 + 2 * self.max_harmonic))
+        design = np.empty((N, 1 + 2 * active_max_harmonic))
         design[:, 0] = 1.0
         design[:, 1::2] = np.cos(p_theta)
         design[:, 2::2] = np.sin(p_theta)
@@ -208,7 +213,9 @@ class RealtimeSSSEngine:
         except np.linalg.LinAlgError:
             return [0.0j] * self.max_harmonic
 
-        results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(self.max_harmonic)]
+        results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(active_max_harmonic)]
+        if len(results) < self.max_harmonic:
+            results.extend([0.0j] * (self.max_harmonic - len(results)))
         return results
 
     def _execute_ls_fit(self, f_mid: float, has_ref: bool) -> tuple[float, list[complex]]:
@@ -271,11 +278,21 @@ class RealtimeSSSEngine:
             if ref_win is not None:
                 ref_win = ref_win[::D]
 
+        # Determine active harmonics to fit below Nyquist margin
+        nyquist = fs / 2.0
+        limit_freq = 0.9 * nyquist
+        active_max_harmonic = P
+        for k in range(1, P + 1):
+            if k * local_freq > limit_freq:
+                active_max_harmonic = k - 1
+                break
+        active_max_harmonic = max(1, active_max_harmonic)
+
         weights = np.hanning(len(sig_win))
         if not np.any(weights > 0):
             return f_mid, [0.0j] * self.max_harmonic
 
-        sig_results = self._fit_harmonics(theta_win, sig_win, weights)
+        sig_results = self._fit_harmonics(theta_win, sig_win, weights, active_max_harmonic)
         result_freq = self._frequency_at_sample(float(np.mean(hist_n[mask])))
 
         # Apply 90-degree phase correction (multiply by 1j) to match sine excitation
@@ -285,7 +302,7 @@ class RealtimeSSSEngine:
         if not has_ref or ref_win is None or len(ref_win) != len(sig_win):
             return result_freq, sig_results
 
-        ref_results = self._fit_harmonics(theta_win, ref_win, weights)
+        ref_results = self._fit_harmonics(theta_win, ref_win, weights, active_max_harmonic)
         ref_h1 = ref_results[0] if ref_results else 0.0j
         # Also apply 90-degree phase correction to the reference fundamental
         ref_h1 = ref_h1 * 1j
