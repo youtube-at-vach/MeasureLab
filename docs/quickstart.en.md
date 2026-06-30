@@ -12,7 +12,7 @@ Before starting the measurement, let's prepare to confirm **"whether the sound i
 2. **Equipment Protection**: To prevent loud noises from suddenly damaging your equipment, initially set the output volume (OUT) and input gain (IN) of the audio interface to "minimum (zero)."
 
 !!! note
-    Instead of immediately connecting the device you want to measure, starting with a loopback connection allows you to verify that your PC and audio interface can correctly output and input signals. This helps prevent configuration errors and isolate equipment issues.
+    Using this loopback connection first allows you to test whether the basic input and output between the PC and the audio interface are working properly, helping isolate the causes of configuration errors or equipment troubles.
 
 ---
 
