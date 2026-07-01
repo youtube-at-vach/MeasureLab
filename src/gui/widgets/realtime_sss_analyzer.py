@@ -137,6 +137,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         self.current_sweep_idx = 0
         self.analysis_cycles = 16.0
         self.num_meas_points = 500
+        self.min_analysis_window = 0.012
 
         # Latency state
         self.latency_samples = 0.0
@@ -189,6 +190,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
             max_harmonic=self.max_harmonic,
             analysis_cycles=self.analysis_cycles,
             num_meas_points=self.num_meas_points,
+            min_analysis_window=self.min_analysis_window,
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
@@ -425,7 +427,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         adv_form.setSpacing(4)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
-        self.spin_analysis_cycles.setRange(2.0, 512.0)
+        self.spin_analysis_cycles.setRange(2.0, 2048.0)
         self.spin_analysis_cycles.setSingleStep(1.0)
         self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
         self.spin_analysis_cycles.setSuffix(" cycles")
@@ -436,6 +438,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_meas_points.setSingleStep(100)
         self.spin_meas_points.setValue(self.module.num_meas_points)
         adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
+
+        self.spin_min_window = QDoubleSpinBox()
+        self.spin_min_window.setRange(2.0, 1000.0)
+        self.spin_min_window.setSingleStep(1.0)
+        self.spin_min_window.setValue(self.module.min_analysis_window * 1000.0)
+        self.spin_min_window.setSuffix(" ms")
+        adv_form.addRow(tr("Min Window:"), self.spin_min_window)
 
         self.chk_prevent_buffer_underrun = QCheckBox(tr("Prevent Buffer Underrun"))
         self.chk_prevent_buffer_underrun.setChecked(self.module.prevent_buffer_underrun)
@@ -473,6 +482,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         self.lbl_current_freq = QLabel(tr("Current Freq: -- Hz"))
         stats_layout.addWidget(self.lbl_current_freq)
+
+        self.lbl_resolution = QLabel(tr("Resolution (ENBW): --"))
+        stats_layout.addWidget(self.lbl_resolution)
 
         stats_group.setLayout(stats_layout)
         left_panel.addWidget(stats_group)
@@ -672,6 +684,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.averaging_count = self.spin_averaging.value()
             self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
+            self.module.min_analysis_window = self.spin_min_window.value() / 1000.0
             self.module.prevent_buffer_underrun = self.chk_prevent_buffer_underrun.isChecked()
 
             self.module.output_channel = (
@@ -782,10 +795,33 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(self.module.end_freq)
                 self.lbl_current_freq.setText(freq_text)
 
+                # Set resolution based on end frequency (handle mocked objects in tests)
+                fs = self.module.audio_engine.sample_rate
+                if isinstance(fs, (int, float)):
+                    max_win = 1.0
+                    if self.module.engine and hasattr(self.module.engine, "max_analysis_window"):
+                        val = self.module.engine.max_analysis_window
+                        if isinstance(val, (int, float)):
+                            max_win = val
+
+                    window_seconds = np.clip(
+                        self.module.analysis_cycles / max(self.module.end_freq, 1.0),
+                        self.module.min_analysis_window,
+                        max_win
+                    )
+                    window_samples = int(max(256.0, float(window_seconds * fs)))
+                    enbw = 1.5 * fs / window_samples
+                    self.lbl_resolution.setText(
+                        tr("Resolution (ENBW): {0:.1f} Hz ({1} samples)").format(enbw, window_samples)
+                    )
+                else:
+                    self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
+
                 self.calculate_hammerstein_kernels()
                 self.redraw_plots()
             else:
                 self.export_btn.setEnabled(False)
+                self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
 
             self.btn_toggle.setText(tr("Start Sweep"))
             self.btn_calibrate.setEnabled(True)
@@ -806,6 +842,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_in_mode.setEnabled(enabled)
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
+        self.spin_min_window.setEnabled(enabled)
         self.chk_prevent_buffer_underrun.setEnabled(enabled)
 
     def on_meas_mode_changed(self, index):
@@ -906,8 +943,32 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             if display_f_mid is not None:
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(display_f_mid)
+                
+                # Calculate real-time window size and ENBW safely (handle mocked objects in tests)
+                fs = self.module.audio_engine.sample_rate
+                if isinstance(fs, (int, float)) and self.module.engine:
+                    max_win = 1.0
+                    if hasattr(self.module.engine, "max_analysis_window"):
+                        val = self.module.engine.max_analysis_window
+                        if isinstance(val, (int, float)):
+                            max_win = val
+
+                    window_seconds = np.clip(
+                        self.module.analysis_cycles / max(display_f_mid, 1.0),
+                        self.module.min_analysis_window,
+                        max_win
+                    )
+                    window_samples = int(max(256.0, float(window_seconds * fs)))
+                    enbw = 1.5 * fs / window_samples
+                    
+                    self.lbl_resolution.setText(
+                        tr("Resolution (ENBW): {0:.1f} Hz ({1} samples)").format(enbw, window_samples)
+                    )
+                else:
+                    self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
             else:
                 freq_text += "\n" + tr("Analysis Freq: -- Hz")
+                self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
             self.lbl_current_freq.setText(freq_text)
 
         # 3. Redraw curves if there were new items
@@ -939,7 +1000,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
         is_measuring = (self.module.state in {"PLAYING", "WAITING"})
 
-        if getattr(self, "is_hammerstein_mode", False) and has_kernels and not is_measuring:
+        if has_kernels and not is_measuring:
             # Draw Kernels (Hammerstein or Sweep)
             sort_idx = np.argsort(x_data)
             x_data_sorted = x_data[sort_idx]
