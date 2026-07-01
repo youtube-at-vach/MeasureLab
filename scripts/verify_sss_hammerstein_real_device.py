@@ -34,7 +34,7 @@ def run_sss_sweep(audio_engine, start_freq, end_freq, sweep_duration, amplitude,
         max_harmonic=max_harmonic,
         analysis_cycles=256.0,
         num_meas_points=500,
-        min_analysis_window=0.2,
+        min_analysis_window=1,
     )
     sss_engine.prepare_sweep()
 
@@ -309,7 +309,7 @@ def run_lockin_measurement(audio_engine, f0, A_in, num_runs=5, fast_mode=False, 
     lockin = LockInHarmonicAnalyzer(audio_engine)
     lockin.signal_channel = signal_channel
     lockin.ref_channel = ref_channel
-    lockin.max_harmonic = 5
+    lockin.max_harmonic = 2
     lockin.buffer_size = 131072
     lockin.output_enabled = True
     lockin.output_channel = 2  # Stereo output (Ch1 & Ch2)
