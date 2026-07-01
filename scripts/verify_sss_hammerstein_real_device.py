@@ -32,9 +32,9 @@ def run_sss_sweep(audio_engine, start_freq, end_freq, sweep_duration, amplitude,
         end_freq=end_freq,
         output_amplitude=amplitude,
         max_harmonic=max_harmonic,
-        analysis_cycles=16.0,
+        analysis_cycles=64.0,
         num_meas_points=500,
-        min_analysis_window=0.012,
+        min_analysis_window=0.2,
     )
     sss_engine.prepare_sweep()
 
