@@ -498,7 +498,7 @@ def main():
     # Sweep configuration
     start_freq = 20.0
     end_freq = 20000.0
-    sweep_duration = 5.0  # seconds
+    sweep_duration = 30.0  # seconds
     max_harmonic = 5
     
     # Range of amplitudes for least-squares kernel separation
