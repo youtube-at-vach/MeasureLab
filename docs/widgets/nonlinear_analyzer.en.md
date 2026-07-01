@@ -15,7 +15,7 @@ This widget provides the following analysis capabilities:
 
 * **Automatic Clock Drift Compensation:** Automatically estimates and compensates for clock drift (> 1.0 ppm) between the input and output devices using linear resampling, ensuring highly accurate high-frequency phase measurements over long sweeps. (Automatically bypassed when using the same device for both input and output).
 * **Hammerstein Kernel Extraction:** Extracts kernels from 1st (linear) up to 5th order from the measured response.
-* **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel. The X-axis range is now dynamically adjusted based on the input signal's actual length, providing an optimal view for any sweep setting.
+* **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel. The X-axis range is now dynamically adjusted based on the input signal's actual length, providing an optimal view for any sweep setting. Phase unwrapping is available to smooth out phase transitions over ±180 degrees into a continuous curve.
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
 * **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.en.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
 
@@ -34,6 +34,7 @@ This widget provides the following analysis capabilities:
 * **Max Amp (dBFS):** Sets the maximum peak amplitude level for the sweep signal (-60.0 to 0.0 dBFS).
 * **Amplitude Steps (Max Order 5):** Sets the number of amplitude scanning steps used for Parallel Hammerstein Model separation (5 to 10 steps, typically 5).
 * **Graph Smoothing:** Sets the smoothing filter strength for drawing graphs ("None", "Low Smoothing", "Medium Smoothing", "High Smoothing"). Applies a Savitzky-Golay filter to smooth measurement noise.
+* **Unwrap Phase:** Toggles phase unwrapping for phase plots. When enabled, phase transitions over ±180 degrees are smoothed out into a continuous curve.
 
 ### Routing & Calibration
 

@@ -12,7 +12,7 @@ The Realtime SSS Lockin Analyzer performs real-time frequency response and disto
 
 ### Calibrating Latency
 
-* **Calibrate Latency**: Before running a sweep (especially in Relative XFER modes), it is crucial to align the input and output timing. Clicking this button sends a test signal to measure and compensate for system latency, updating the label with the measured delay.
+* **Calibrate Latency**: Before running a sweep (especially in Relative XFER modes), it is crucial to align the input and output timing. Clicking this button sends a test signal to measure and compensate for system latency, updating the label with the measured delay. The "Start Sweep" button is only enabled after a valid latency measurement is obtained.
 
 ## Settings
 
@@ -33,7 +33,9 @@ The Realtime SSS Lockin Analyzer performs real-time frequency response and disto
 
 ### Advanced Tab
 
-* **Analysis Cycles**: Number of cycles per frequency bin for the digital lock-in analysis.
+* **Analysis Cycles**: Number of cycles per frequency bin for the digital lock-in analysis (up to 512.0 cycles).
 * **Meas Points**: Total number of frequency points measured in the sweep.
 * **Prevent Buffer Underrun**: When enabled, automatically pauses data processing during high CPU load to avoid audio dropouts.
 * **Asynchronous Calculation**: Runs the heavy SSS math in a background thread to keep the UI responsive.
+* **Unwrap Phase**: Toggles phase unwrapping for phase plots. When enabled, phase transitions over ±180 degrees are smoothed out into a continuous curve.
+* **Relative to Fundamental**: When enabled, the magnitude and phase of the harmonics are plotted relative to the fundamental frequency response, rather than as absolute values.
