@@ -1,0 +1,100 @@
+{
+    "f0": 500.0,
+    "test_amplitude_dbfs": -6.0,
+    "is_virtual": true,
+    "is_fast": false,
+    "runs": 5,
+    "results": [
+        {
+            "harmonic": 1,
+            "frequency_hz": 500.0,
+            "predicted": {
+                "amp_db": -5.785766139679687,
+                "phase_deg": 0.0
+            },
+            "measured": {
+                "amp_db": -5.785750956148953,
+                "phase_deg": 0.0,
+                "amp_std": 9.66693408322425e-13,
+                "phase_std": 0.0
+            },
+            "diff": {
+                "amp_db": 1.5183530734041994e-05,
+                "phase_deg": 0.0
+            }
+        },
+        {
+            "harmonic": 2,
+            "frequency_hz": 1000.0,
+            "predicted": {
+                "amp_db": -38.93116395641614,
+                "phase_deg": 90.00000541274574
+            },
+            "measured": {
+                "amp_db": -38.931160889567984,
+                "phase_deg": 90.00000000001984,
+                "amp_std": 3.1776437161565094e-15,
+                "phase_std": 2.0465604424537892e-13
+            },
+            "diff": {
+                "amp_db": 3.0668481585394147e-06,
+                "phase_deg": 5.412725897713244e-06
+            }
+        },
+        {
+            "harmonic": 3,
+            "frequency_hz": 1500.0,
+            "predicted": {
+                "amp_db": -47.19095925218488,
+                "phase_deg": 179.9999069801271
+            },
+            "measured": {
+                "amp_db": -47.1909673536814,
+                "phase_deg": -179.9999999990239,
+                "amp_std": 1.2789769243681803e-13,
+                "phase_std": 1.2278704790606395e-12
+            },
+            "diff": {
+                "amp_db": 8.101496518975182e-06,
+                "phase_deg": 9.302084902174101e-05
+            }
+        },
+        {
+            "harmonic": 4,
+            "frequency_hz": 2000.0,
+            "predicted": {
+                "amp_db": -70.02058911669391,
+                "phase_deg": -90.00012469146084
+            },
+            "measured": {
+                "amp_db": -70.02046888792749,
+                "phase_deg": -90.00000000019085,
+                "amp_std": 3.0696761976515987e-13,
+                "phase_std": 6.139352395303197e-13
+            },
+            "diff": {
+                "amp_db": 0.00012022876641992752,
+                "phase_deg": 0.00012469127000258595
+            }
+        },
+        {
+            "harmonic": 5,
+            "frequency_hz": 2500.0,
+            "predicted": {
+                "amp_db": -78.51931808968524,
+                "phase_deg": 8.011282943698461e-05
+            },
+            "measured": {
+                "amp_db": -78.51949338746016,
+                "phase_deg": -3.509398993628565e-08,
+                "amp_std": 8.014972452317337e-13,
+                "phase_std": 3.327613740111701e-11
+            },
+            "diff": {
+                "amp_db": 0.00017529777491631648,
+                "phase_deg": 8.01479234269209e-05
+            }
+        }
+    ],
+    "success": true
+}
