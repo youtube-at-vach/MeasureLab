@@ -210,15 +210,21 @@ def estimate_hammerstein_kernels(amplitudes, raw_responses, plot_freqs_array, bl
         sort_idx = np.argsort(plot_freqs_array[valid_idx])
         sorted_freqs = plot_freqs_array[valid_idx][sort_idx]
 
+        import scipy.signal
         H_mapped_list = []
         for p in range(P):
             H_raw = H_freqs[p][valid_idx][sort_idx]
             f_lookups = sorted_freqs / (p + 1)
 
-            real_mapped = np.interp(f_lookups, sorted_freqs, np.real(H_raw), left=np.nan, right=np.nan)
-            imag_mapped = np.interp(f_lookups, sorted_freqs, np.imag(H_raw), left=np.nan, right=np.nan)
+            # Polar Interpolation to prevent phase distortion
+            mags = np.abs(H_raw)
+            # Handle wrapping smoothly before interpolation
+            phases = np.unwrap(np.angle(H_raw))
+            
+            mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
+            phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
 
-            H_mapped = real_mapped + 1j * imag_mapped
+            H_mapped = mag_mapped * np.exp(1j * phase_mapped)
             H_mapped_list.append(H_mapped)
 
         # Apply lowpass filter correction
@@ -255,9 +261,14 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
                 H_raw = H_freqs[p - 1]
                 mask = ~np.isnan(H_raw)
                 if np.sum(mask) > 1:
-                    real_val = np.interp(f_n, sorted_freqs[mask], np.real(H_raw[mask]), left=0.0, right=0.0)
-                    imag_val = np.interp(f_n, sorted_freqs[mask], np.imag(H_raw[mask]), left=0.0, right=0.0)
-                    H_interp[n][p] = real_val + 1j * imag_val
+                    # Polar Interpolation to prevent phase distortion
+                    mags = np.abs(H_raw[mask])
+                    phases = np.unwrap(np.angle(H_raw[mask]))
+                    
+                    mag_val = np.interp(f_n, sorted_freqs[mask], mags, left=0.0, right=0.0)
+                    phase_val = np.interp(f_n, sorted_freqs[mask], phases, left=0.0, right=0.0)
+                    
+                    H_interp[n][p] = mag_val * np.exp(1j * phase_val)
                 else:
                     H_interp[n][p] = 0.0 + 0.0j
             else:
