@@ -125,7 +125,7 @@ def main():
     parser.add_argument("--harmonic-jitter-comp", action="store_true", help="Enable harmonic-order jitter compensation in relative mode")
     parser.add_argument("--runs", type=int, default=5, help="Number of sweep runs to execute")
     parser.add_argument("--cycles", type=float, default=512.0, help="Number of analysis cycles")
-    parser.add_argument("--duration", type=float, default=20.0, help="Sweep duration in seconds")
+    parser.add_argument("--duration", type=float, default=30.0, help="Sweep duration in seconds")
     parser.add_argument("--amplitude", type=float, default=-6.0, help="Sweep amplitude in dBFS")
     parser.add_argument(
         "--mode",
@@ -169,7 +169,7 @@ def main():
 
         engine.set_offline_mode(False)
         engine.set_loopback(False)
-        engine.set_sample_rate(48000)
+        engine.set_sample_rate(192000)
         engine.set_block_size(1024)
 
     # Route configuration mapping

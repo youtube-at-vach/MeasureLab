@@ -130,13 +130,14 @@ class RealtimeSSSAnalyzer(MeasurementModule):
         # Default SSS parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 20.0
+        self.sweep_duration = 30.0
         self.output_amplitude = 0.5
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
         self.analysis_cycles = 16.0
         self.num_meas_points = 500
+        self.min_analysis_window = 0.012
 
         # Latency state
         self.latency_samples = 0.0
@@ -189,6 +190,7 @@ class RealtimeSSSAnalyzer(MeasurementModule):
             max_harmonic=self.max_harmonic,
             analysis_cycles=self.analysis_cycles,
             num_meas_points=self.num_meas_points,
+            min_analysis_window=self.min_analysis_window,
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
@@ -425,7 +427,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         adv_form.setSpacing(4)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
-        self.spin_analysis_cycles.setRange(2.0, 512.0)
+        self.spin_analysis_cycles.setRange(2.0, 2048.0)
         self.spin_analysis_cycles.setSingleStep(1.0)
         self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
         self.spin_analysis_cycles.setSuffix(" cycles")
@@ -436,6 +438,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.spin_meas_points.setSingleStep(100)
         self.spin_meas_points.setValue(self.module.num_meas_points)
         adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
+
+        self.spin_min_window = QDoubleSpinBox()
+        self.spin_min_window.setRange(2.0, 1000.0)
+        self.spin_min_window.setSingleStep(1.0)
+        self.spin_min_window.setValue(self.module.min_analysis_window * 1000.0)
+        self.spin_min_window.setSuffix(" ms")
+        adv_form.addRow(tr("Min Window:"), self.spin_min_window)
 
         self.chk_prevent_buffer_underrun = QCheckBox(tr("Prevent Buffer Underrun"))
         self.chk_prevent_buffer_underrun.setChecked(self.module.prevent_buffer_underrun)
@@ -474,14 +483,28 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.lbl_current_freq = QLabel(tr("Current Freq: -- Hz"))
         stats_layout.addWidget(self.lbl_current_freq)
 
+        self.lbl_resolution = QLabel(tr("Resolution (ENBW): --"))
+        stats_layout.addWidget(self.lbl_resolution)
+
         stats_group.setLayout(stats_layout)
         left_panel.addWidget(stats_group)
 
-        # Display Options
-        display_group = QGroupBox(tr("Display Options"))
-        display_layout = QVBoxLayout()
-        display_layout.setContentsMargins(6, 6, 6, 6)
-        display_layout.setSpacing(4)
+        left_panel.addStretch()
+
+        left_scroll.setWidget(left_container)
+        left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
+        layout.addWidget(left_scroll)
+
+        # RIGHT PANEL: Container & Layout
+        right_container = QWidget()
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(6)
+
+        # Display Options Layout
+        display_layout = QHBoxLayout()
+        display_layout.setContentsMargins(4, 4, 4, 4)
+        display_layout.setSpacing(12)
 
         self.chk_relative = QCheckBox(tr("Show Relative to Fundamental"))
         self.chk_relative.setChecked(False)
@@ -501,19 +524,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
         self.combo_smoothing.setCurrentIndex(1)
         self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
+
         display_layout.addWidget(self.lbl_smoothing)
         display_layout.addWidget(self.combo_smoothing)
+        display_layout.addStretch()
+
+        # Hide smoothing options initially
         self.lbl_smoothing.setVisible(False)
         self.combo_smoothing.setVisible(False)
 
-        display_group.setLayout(display_layout)
-        left_panel.addWidget(display_group)
-
-        left_panel.addStretch()
-
-        left_scroll.setWidget(left_container)
-        left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
-        layout.addWidget(left_scroll)
+        right_layout.addLayout(display_layout)
 
         # RIGHT PANEL: Tab Widget
         self.plot_tabs = QTabWidget()
@@ -580,7 +600,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             kernel_c = self.plot_kernel.plot(pen=self.colors[idx], name=lbl_k)
             self.kernel_curves.append(kernel_c)
 
-        layout.addWidget(self.plot_tabs, 2)
+        right_layout.addWidget(self.plot_tabs)
+        layout.addWidget(right_container, 2)
         self.setLayout(layout)
         self.setMinimumSize(990, 620)
 
@@ -663,6 +684,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.module.averaging_count = self.spin_averaging.value()
             self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
+            self.module.min_analysis_window = self.spin_min_window.value() / 1000.0
             self.module.prevent_buffer_underrun = self.chk_prevent_buffer_underrun.isChecked()
 
             self.module.output_channel = (
@@ -716,6 +738,8 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.phase_curves[idx].setData([], [])
                 self.kernel_curves[idx].setData([], [])
 
+            self.plot_tabs.setTabEnabled(2, False)
+
             self.btn_toggle.setText(tr("Stop Sweep"))
             self.btn_calibrate.setEnabled(False)
             self.set_controls_enabled(False)
@@ -736,8 +760,6 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.H_freqs = []
                 self.kernels_time = []
                 self.time_ms = []
-                self.plot_kernel.clear()
-                self.plot_tabs.setTabEnabled(2, False)
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
@@ -773,11 +795,33 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(self.module.end_freq)
                 self.lbl_current_freq.setText(freq_text)
 
-                if self.is_hammerstein_mode:
-                    self.calculate_hammerstein_kernels()
-                    self.redraw_plots()
+                # Set resolution based on end frequency (handle mocked objects in tests)
+                fs = self.module.audio_engine.sample_rate
+                if isinstance(fs, (int, float)):
+                    max_win = 1.0
+                    if self.module.engine and hasattr(self.module.engine, "max_analysis_window"):
+                        val = self.module.engine.max_analysis_window
+                        if isinstance(val, (int, float)):
+                            max_win = val
+
+                    window_seconds = np.clip(
+                        self.module.analysis_cycles / max(self.module.end_freq, 1.0),
+                        self.module.min_analysis_window,
+                        max_win
+                    )
+                    window_samples = int(max(256.0, float(window_seconds * fs)))
+                    enbw = 1.5 * fs / window_samples
+                    self.lbl_resolution.setText(
+                        tr("Resolution (ENBW): {0:.1f} Hz ({1} samples)").format(enbw, window_samples)
+                    )
+                else:
+                    self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
+
+                self.calculate_hammerstein_kernels()
+                self.redraw_plots()
             else:
                 self.export_btn.setEnabled(False)
+                self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
 
             self.btn_toggle.setText(tr("Start Sweep"))
             self.btn_calibrate.setEnabled(True)
@@ -798,6 +842,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_in_mode.setEnabled(enabled)
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
+        self.spin_min_window.setEnabled(enabled)
         self.chk_prevent_buffer_underrun.setEnabled(enabled)
 
     def on_meas_mode_changed(self, index):
@@ -810,7 +855,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_smoothing.setVisible(is_ham)
         self.lbl_smoothing.setVisible(is_ham)
 
-        self.plot_tabs.setTabEnabled(2, is_ham)
+        self.plot_tabs.setTabEnabled(2, True)
         self.redraw_plots()
 
     def update_plots(self):
@@ -898,15 +943,39 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             if display_f_mid is not None:
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(display_f_mid)
+
+                # Calculate real-time window size and ENBW safely (handle mocked objects in tests)
+                fs = self.module.audio_engine.sample_rate
+                if isinstance(fs, (int, float)) and self.module.engine:
+                    max_win = 1.0
+                    if hasattr(self.module.engine, "max_analysis_window"):
+                        val = self.module.engine.max_analysis_window
+                        if isinstance(val, (int, float)):
+                            max_win = val
+
+                    window_seconds = np.clip(
+                        self.module.analysis_cycles / max(display_f_mid, 1.0),
+                        self.module.min_analysis_window,
+                        max_win
+                    )
+                    window_samples = int(max(256.0, float(window_seconds * fs)))
+                    enbw = 1.5 * fs / window_samples
+
+                    self.lbl_resolution.setText(
+                        tr("Resolution (ENBW): {0:.1f} Hz ({1} samples)").format(enbw, window_samples)
+                    )
+                else:
+                    self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
             else:
                 freq_text += "\n" + tr("Analysis Freq: -- Hz")
+                self.lbl_resolution.setText(tr("Resolution (ENBW): --"))
             self.lbl_current_freq.setText(freq_text)
 
         # 3. Redraw curves if there were new items
         if items:
             self.redraw_plots()
 
-    def redraw_plots(self):
+    def redraw_plots(self, *args):
         # Update Plot Labels based on mode
         if self.chk_relative.isChecked():
             self.plot_mag.setLabel("left", tr("Relative Gain"), units="dB")
@@ -927,21 +996,33 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         x_data = self.plot_freqs_array[valid_indices]
 
-        # Check if we should draw the final Hammerstein kernels
-        is_ham = getattr(self, "is_hammerstein_mode", False)
+        # Check if we should draw the final kernels
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
         is_measuring = (self.module.state in {"PLAYING", "WAITING"})
 
-        if is_ham and has_kernels and not is_measuring:
-            # Draw Hammerstein Kernels
+        if has_kernels and not is_measuring:
+            # Draw Kernels (Hammerstein or Sweep)
             sort_idx = np.argsort(x_data)
             x_data_sorted = x_data[sort_idx]
             smooth_level = self.combo_smoothing.currentData()
 
+            H_fundamental = self.H_freqs[0][valid_indices][sort_idx] if len(self.H_freqs) > 0 else 1.0
+
             for idx in range(len(self.H_freqs)):
                 H_p = self.H_freqs[idx][valid_indices][sort_idx]
+                if self.chk_relative.isChecked():
+                    H_p = H_p / (H_fundamental + 1e-30)
+
                 mag_db = 20 * np.log10(np.abs(H_p) + 1e-12)
-                phase_deg = np.degrees(np.angle(H_p))
+                if self.chk_unwrap.isChecked():
+                    # H_p may contain NaNs from frequency mapping. Unwrap only non-NaN elements.
+                    nan_mask = np.isnan(H_p)
+                    phase_deg = np.zeros_like(H_p, dtype=float)
+                    if not np.all(nan_mask):
+                        phase_deg[~nan_mask] = np.degrees(np.unwrap(np.angle(H_p[~nan_mask])))
+                    phase_deg[nan_mask] = np.nan
+                else:
+                    phase_deg = np.degrees(np.angle(H_p))
 
                 # Apply smoothing
                 mag_smoothed = self.apply_smoothing(mag_db, smooth_level)
@@ -1000,8 +1081,21 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if window_size < 5:
             return y_data
 
+        # Handle NaNs by temporarily interpolating them before passing to savgol_filter
+        nan_mask = np.isnan(y_data)
+        y_clean = np.copy(y_data)
+
+        if np.any(nan_mask):
+            if np.all(nan_mask):
+                return y_data
+            x = np.arange(len(y_clean))
+            y_clean[nan_mask] = np.interp(x[nan_mask], x[~nan_mask], y_clean[~nan_mask])
+
         try:
-            return savgol_filter(y_data, window_size, polyorder=2)
+            smoothed = savgol_filter(y_clean, window_size, polyorder=2)
+            if np.any(nan_mask):
+                smoothed[nan_mask] = np.nan
+            return smoothed
         except Exception as e:
             logger.warning("Smoothing failed: %s", e)
             return y_data
@@ -1012,63 +1106,77 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         P = self.module.max_harmonic
         max_blocks = self.max_blocks
 
-        # 1. Compute averaged responses for each amplitude
-        avg_responses = np.zeros_like(self.raw_responses)
-        for amp_idx in range(self.num_amplitudes):
-            for block_idx in range(max_blocks):
-                cnt = self.raw_counts[amp_idx, block_idx]
-                if cnt > 0:
-                    avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
+        if getattr(self, "is_hammerstein_mode", False):
+            # 1. Compute averaged responses for each amplitude
+            avg_responses = np.zeros_like(self.raw_responses)
+            for amp_idx in range(self.num_amplitudes):
+                for block_idx in range(max_blocks):
+                    cnt = self.raw_counts[amp_idx, block_idx]
+                    if cnt > 0:
+                        avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
 
-        # 2. Scale responses by amplitude and apply phase correction
-        # To compensate for sine expansion phase offsets:
-        # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
-        phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
-        R_array = self.amplitudes
-        g_scaled = np.zeros_like(avg_responses)
-        for amp_idx in range(self.num_amplitudes):
-            amp = R_array[amp_idx]
+            # 2. Scale responses by amplitude and apply phase correction
+            # To compensate for sine expansion phase offsets:
+            # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
+            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
+            R_array = self.amplitudes
+            g_scaled = np.zeros_like(avg_responses)
+            for amp_idx in range(self.num_amplitudes):
+                amp = R_array[amp_idx]
+                for p in range(P):
+                    val = avg_responses[amp_idx, :, p]
+                    if self.module.input_mode == "XFER":
+                        g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+                    else:
+                        g_scaled[amp_idx, :, p] = val * phase_corrections[p]
+
+            g1 = g_scaled[:, :, 0]
+            g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
+            g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
+            g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
+            g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
+
+            R2 = R_array**2
+            R3 = R_array**3
+            R4 = R_array**4
+            R5 = R_array**5
+
+            H5 = 16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10) if P >= 5 else np.zeros(max_blocks, dtype=complex)
+            H4 = 8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8) if P >= 4 else np.zeros(max_blocks, dtype=complex)
+
+            if P >= 5:
+                g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+            else:
+                g3_prime = g3
+            H3 = 4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6) if P >= 3 else np.zeros(max_blocks, dtype=complex)
+
+            if P >= 4:
+                g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
+            else:
+                g2_prime = g2
+            H2 = 2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4) if P >= 2 else np.zeros(max_blocks, dtype=complex)
+
+            g1_prime = g1.copy()
+            if P >= 3:
+                g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
+            if P >= 5:
+                g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
+            H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+
+            self.H_freqs = [H1, H2, H3, H4, H5][:P]
+        else:
+            # Standard Sweep Mode (Non-Hammerstein)
+            # Directly use accumulated_results and apply phase corrections
+            valid_indices = np.where(self.block_counts > 0)[0]
+            self.H_freqs = []
+            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
             for p in range(P):
-                val = avg_responses[amp_idx, :, p]
-                if self.module.input_mode == "XFER":
-                    g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
-                else:
-                    g_scaled[amp_idx, :, p] = val * phase_corrections[p]
-
-        g1 = g_scaled[:, :, 0]
-        g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-        g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-        g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-        g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
-
-        R2 = R_array**2
-        R3 = R_array**3
-        R4 = R_array**4
-        R5 = R_array**5
-
-        H5 = 16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10) if P >= 5 else np.zeros(max_blocks, dtype=complex)
-        H4 = 8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8) if P >= 4 else np.zeros(max_blocks, dtype=complex)
-
-        if P >= 5:
-            g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
-        else:
-            g3_prime = g3
-        H3 = 4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6) if P >= 3 else np.zeros(max_blocks, dtype=complex)
-
-        if P >= 4:
-            g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
-        else:
-            g2_prime = g2
-        H2 = 2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4) if P >= 2 else np.zeros(max_blocks, dtype=complex)
-
-        g1_prime = g1.copy()
-        if P >= 3:
-            g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
-        if P >= 5:
-            g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-        H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
-
-        self.H_freqs = [H1, H2, H3, H4, H5][:P]
+                H_p = np.zeros(max_blocks, dtype=complex)
+                if len(valid_indices) > 0:
+                    counts = self.block_counts[valid_indices]
+                    avg_complex = self.accumulated_results[valid_indices, p] / counts
+                    H_p[valid_indices] = avg_complex * phase_corrections[p]
+                self.H_freqs.append(H_p)
 
         # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
         # H_p_mapped(f) = H_p_raw(f / p)
@@ -1083,11 +1191,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 H_raw = self.H_freqs[p][valid_idx][sort_idx]
                 f_lookups = sorted_freqs / (p + 1)
 
-                # Interpolate real and imaginary parts to map from f_lookups to sorted_freqs
-                real_mapped = np.interp(f_lookups, sorted_freqs, np.real(H_raw), left=np.nan, right=np.nan)
-                imag_mapped = np.interp(f_lookups, sorted_freqs, np.imag(H_raw), left=np.nan, right=np.nan)
+                # Polar Interpolation to prevent phase distortion
+                mags = np.abs(H_raw)
+                nan_mask = np.isnan(H_raw)
+                phases = np.zeros_like(H_raw, dtype=float)
+                if not np.all(nan_mask):
+                    phases[~nan_mask] = np.unwrap(np.angle(H_raw[~nan_mask]))
+                phases[nan_mask] = np.nan
 
-                H_mapped = real_mapped + 1j * imag_mapped
+                mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
+                phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
+
+                H_mapped = mag_mapped * np.exp(1j * phase_mapped)
                 H_mapped_list.append(H_mapped)
 
             # Apply Butterworth lowpass filter to higher order mapped kernels
@@ -1127,9 +1242,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             H_p_clean = H_p.copy()
             H_p_clean[mask_nan] = 0.0
 
-            H_real = np.interp(freqs_lin, sorted_freqs, np.real(H_p_clean), left=0.0, right=0.0)
-            H_imag = np.interp(freqs_lin, sorted_freqs, np.imag(H_p_clean), left=0.0, right=0.0)
-            H_lin = H_real + 1j * H_imag
+            mags = np.abs(H_p_clean)
+            phases = np.unwrap(np.angle(H_p_clean))
+            mag_lin = np.interp(freqs_lin, sorted_freqs, mags, left=0.0, right=0.0)
+            phase_lin = np.interp(freqs_lin, sorted_freqs, phases, left=0.0, right=0.0)
+            H_lin = mag_lin * np.exp(1j * phase_lin)
 
             phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / sample_rate))
             H_lin_shifted = H_lin * phase_shift
@@ -1149,13 +1266,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             "metadata": {
                 "module": self.module.name,
                 "sample_rate": sample_rate,
-                "num_amplitudes": self.num_amplitudes,
+                "num_amplitudes": self.num_amplitudes if getattr(self, "is_hammerstein_mode", False) else 1,
                 "sweep_duration": self.module.sweep_duration,
                 "start_freq": self.module.start_freq,
                 "end_freq": self.module.end_freq,
                 "input_mode": self.module.input_mode,
                 "latency_sec": self.module.latency_samples / sample_rate,
                 "ref_max": float(ref_max),
+                "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
             },

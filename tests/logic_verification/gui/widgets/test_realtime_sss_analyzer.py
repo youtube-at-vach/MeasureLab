@@ -65,3 +65,204 @@ def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
     # Clean up
     widget.btn_toggle.click()
     assert not analyzer.is_running
+
+
+def test_realtime_sss_analyzer_sweep_kernels_calculation(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "sweep" (standard sweep mode)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # 2. Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert not widget.is_hammerstein_mode
+
+    # Mock engine sweep parameters
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5  # 5s
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with dummy values (simulate a simple flat gain with phase)
+    # widget.max_blocks blocks are expected.
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.zeros(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(20, 20000, widget.max_blocks)
+
+    for i in range(widget.max_blocks):
+        # Let's mock results for 3 harmonics (Fundamental, 2nd, 3rd)
+        # Apply some phase rotation to simulate delay/impulse shape
+        freq = widget.plot_freqs_array[i]
+        phase = -2.0 * np.pi * freq * 0.002  # 2 ms delay
+        widget.accumulated_results[i, 0] = np.exp(1j * phase)
+        widget.accumulated_results[i, 1] = 0.1 * np.exp(1j * phase * 2)
+        widget.accumulated_results[i, 2] = 0.05 * np.exp(1j * phase * 3)
+        widget.block_counts[i] = 1
+
+    # 3. Simulate finish
+    analyzer.state = "FINISHED"
+    # End the sweep which triggers was_finished logic
+    widget.btn_toggle.click()
+
+    assert not analyzer.is_running
+    # Verify that kernels are calculated
+    assert len(widget.H_freqs) == 3  # self.module.max_harmonic defaults to 3
+    assert len(widget.kernels_time) == 3
+    assert widget.time_ms is not None
+    assert len(widget.time_ms) > 0
+
+    # Tab 2 (Impulse tab) should be enabled
+    assert widget.plot_tabs.isTabEnabled(2)
+
+
+def test_realtime_sss_analyzer_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "hammerstein"
+    widget.combo_meas_mode.setCurrentIndex(1)  # Hammerstein mode
+
+    # Ensure we have curves registered
+    initial_items_count = len(widget.plot_kernel.listDataItems())
+    assert initial_items_count == 5  # 5 orders of curves
+
+    # 2. Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert widget.is_hammerstein_mode
+
+    # Check that starting the sweep did NOT clear the plot curves from the widget items
+    items_count_after_start = len(widget.plot_kernel.listDataItems())
+    assert items_count_after_start == 5
+
+    # Clean up
+    widget.btn_toggle.click()
+
+
+def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "sweep" (standard sweep mode)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # 2. Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with dummy values
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.zeros(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    for i in range(widget.max_blocks):
+        # Fundamental (H1) gain = 0.5, H2 gain = 0.05
+        widget.accumulated_results[i, 0] = 0.5
+        widget.accumulated_results[i, 1] = 0.05
+        widget.block_counts[i] = 1
+
+    # 3. Finish sweep
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic
+
+    # 4. Relative option checked = False
+    widget.chk_relative.setChecked(False)
+    # Get magnitude of H1 and H2
+    h1_mag_abs = widget.mag_curves[0].yData
+    h2_mag_abs = widget.mag_curves[1].yData
+
+    # Check absolute values
+    # Filter out NaNs before asserting (frequency mapping generates NaNs at edges)
+    h1_valid = h1_mag_abs[~np.isnan(h1_mag_abs)]
+    h2_valid = h2_mag_abs[~np.isnan(h2_mag_abs)]
+    assert len(h1_valid) > 0
+    assert len(h2_valid) > 0
+    np.testing.assert_allclose(h1_valid, 20 * np.log10(0.5), atol=1.0)
+    np.testing.assert_allclose(h2_valid, 20 * np.log10(0.05), atol=1.0)
+
+    # 5. Check relative option = True
+    widget.chk_relative.setChecked(True)
+    h1_mag_rel = widget.mag_curves[0].yData
+    h2_mag_rel = widget.mag_curves[1].yData
+
+    h1_rel_valid = h1_mag_rel[~np.isnan(h1_mag_rel)]
+    h2_rel_valid = h2_mag_rel[~np.isnan(h2_mag_rel)]
+    assert len(h1_rel_valid) > 0
+    assert len(h2_rel_valid) > 0
+
+    # H1 relative gain should be exactly 0 dB (relative to itself)
+    np.testing.assert_allclose(h1_rel_valid, 0.0, atol=1e-5)
+    # H2 relative gain should be around 20*log10(0.05/0.5) = -20 dB
+    np.testing.assert_allclose(h2_rel_valid, -20.0, atol=1.0)
+
+    # Clean up
+    widget.chk_relative.setChecked(False)
+
+
+def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "sweep" (standard sweep mode)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # 2. Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with dummy values
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.zeros(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Generate a large phase wrap (e.g., phase jumping by 200 degrees each step)
+    for i in range(widget.max_blocks):
+        phase_rad = (200.0 * i) * (np.pi / 180.0)
+        widget.accumulated_results[i, 0] = np.exp(1j * phase_rad)
+        widget.block_counts[i] = 1
+
+    # 3. Finish sweep (triggers kernel calculation and H_freqs mapping)
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic
+
+    # 4. Unwrap option checked = False
+    widget.chk_unwrap.setChecked(False)
+    h1_phase_wrapped = widget.phase_curves[0].yData
+    h1_phase_wrapped_valid = h1_phase_wrapped[~np.isnan(h1_phase_wrapped)]
+    assert np.all(h1_phase_wrapped_valid >= -180.0)
+    assert np.all(h1_phase_wrapped_valid <= 180.0)
+
+    # 5. Unwrap option checked = True
+    widget.chk_unwrap.setChecked(True)
+    h1_phase_unwrapped = widget.phase_curves[0].yData
+    h1_phase_unwrapped_valid = h1_phase_unwrapped[~np.isnan(h1_phase_unwrapped)]
+
+    # Check if unwrapping actually happened (i.e. phase exceeds 180 or is continuous without wrap)
+    assert np.any(np.abs(h1_phase_unwrapped_valid) > 180.0)
+
+
+

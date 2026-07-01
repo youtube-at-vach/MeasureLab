@@ -956,9 +956,11 @@ class ResponseViewerWidget(QWidget):
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
-                real_val_all = np.interp(f_all, self.cached_freqs, np.real(Hp))
-                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(Hp))
-                val_all = real_val_all + 1j * imag_val_all
+                mags = np.abs(Hp)
+                phases = np.unwrap(np.angle(Hp))
+                mag_val_all = np.interp(f_all, self.cached_freqs, mags)
+                phase_val_all = np.interp(f_all, self.cached_freqs, phases)
+                val_all = mag_val_all * np.exp(1j * phase_val_all)
                 val_all[out_of_bounds_all] = 0.0j
                 val_all_reshaped = val_all.reshape(5, N_f)
                 H_interp[1][p] = val_all_reshaped[0]
@@ -1317,9 +1319,11 @@ class ResponseViewerWidget(QWidget):
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
-                real_val_all = np.interp(f_all, self.cached_freqs, np.real(Hp))
-                imag_val_all = np.interp(f_all, self.cached_freqs, np.imag(Hp))
-                val_all = real_val_all + 1j * imag_val_all
+                mags = np.abs(Hp)
+                phases = np.unwrap(np.angle(Hp))
+                mag_val_all = np.interp(f_all, self.cached_freqs, mags)
+                phase_val_all = np.interp(f_all, self.cached_freqs, phases)
+                val_all = mag_val_all * np.exp(1j * phase_val_all)
                 val_all[out_of_bounds_all] = 0.0j
                 val_all_reshaped = val_all.reshape(5, N_f)
                 H_interp[1][p] = val_all_reshaped[0]
@@ -1449,13 +1453,15 @@ class ResponseViewerWidget(QWidget):
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
-                real_vals = np.interp(f_array, self.cached_freqs, np.real(Hp))
-                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(Hp))
+                mags = np.abs(Hp)
+                phases = np.unwrap(np.angle(Hp))
+                mag_vals = np.interp(f_array, self.cached_freqs, mags)
+                phase_vals = np.interp(f_array, self.cached_freqs, phases)
                 for n in range(1, 6):
                     if f_array[n - 1] > nyquist:
                         H_at_f0[n][p] = 0.0 + 0.0j
                     else:
-                        H_at_f0[n][p] = real_vals[n - 1] + 1j * imag_vals[n - 1]
+                        H_at_f0[n][p] = mag_vals[n - 1] * np.exp(1j * phase_vals[n - 1])
             else:
                 for n in range(1, 6):
                     H_at_f0[n][p] = 0.0 + 0.0j
@@ -1578,13 +1584,15 @@ class ResponseViewerWidget(QWidget):
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
-                real_vals = np.interp(f_array, self.cached_freqs, np.real(Hp))
-                imag_vals = np.interp(f_array, self.cached_freqs, np.imag(Hp))
+                mags = np.abs(Hp)
+                phases = np.unwrap(np.angle(Hp))
+                mag_vals = np.interp(f_array, self.cached_freqs, mags)
+                phase_vals = np.interp(f_array, self.cached_freqs, phases)
                 for n in range(1, 6):
                     if f_array[n - 1] > nyquist:
                         H_interp[n][p] = 0.0 + 0.0j
                     else:
-                        H_interp[n][p] = real_vals[n - 1] + 1j * imag_vals[n - 1]
+                        H_interp[n][p] = mag_vals[n - 1] * np.exp(1j * phase_vals[n - 1])
             else:
                 for n in range(1, 6):
                     H_interp[n][p] = 0.0 + 0.0j
@@ -1703,9 +1711,11 @@ class ResponseViewerWidget(QWidget):
                 H_at_f0[p] = 0.0 + 0.0j
                 continue
             Hp = H_dict[p]
-            real_val = np.interp(f0, self.cached_freqs, np.real(Hp))
-            imag_val = np.interp(f0, self.cached_freqs, np.imag(Hp))
-            H_at_f0[p] = real_val + 1j * imag_val
+            mags = np.abs(Hp)
+            phases = np.unwrap(np.angle(Hp))
+            mag_val = np.interp(f0, self.cached_freqs, mags)
+            phase_val = np.interp(f0, self.cached_freqs, phases)
+            H_at_f0[p] = mag_val * np.exp(1j * phase_val)
 
         # Setup amplitudes grid
         min_level = self.min_level_spin.value()

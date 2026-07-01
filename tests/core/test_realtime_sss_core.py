@@ -344,6 +344,22 @@ def test_engine_parameter_derivation():
     assert np.isclose(engine_large.max_analysis_window, 6.4)
     assert engine_large.max_fitting_samples == 65536
 
+    # 5. Test parameter derivation with extremely large analysis_cycles (2048.0)
+    # With start_freq=20.0, end_freq=20000.0, min_freq is 20.0.
+    # max_analysis_window should be 2048.0 / (4.0 * 20.0) = 25.6.
+    # max_fitting_samples should be clipped to 65536.
+    engine_extreme = RealtimeSSSEngine(
+        sample_rate=192000,
+        sweep_duration=20.0,
+        start_freq=20.0,
+        end_freq=20000.0,
+        output_amplitude=0.5,
+        max_harmonic=3,
+        analysis_cycles=2048.0,
+    )
+    assert np.isclose(engine_extreme.max_analysis_window, 25.6)
+    assert engine_extreme.max_fitting_samples == 65536
+
 
 def test_engine_process_block_xfer_mixed_reference():
     # Verify that mixing None and non-None reference inputs does not raise IndexError
