@@ -32,7 +32,7 @@ def run_sss_sweep(audio_engine, start_freq, end_freq, sweep_duration, amplitude,
         end_freq=end_freq,
         output_amplitude=amplitude,
         max_harmonic=max_harmonic,
-        analysis_cycles=64.0,
+        analysis_cycles=256.0,
         num_meas_points=500,
         min_analysis_window=0.2,
     )
@@ -413,7 +413,7 @@ def main():
         print("[+] Running in Virtual Simulation Mode")
         engine.set_offline_mode(True)
         engine.set_loopback(True)
-        engine.set_sample_rate(48000)
+        engine.set_sample_rate(192000)
         engine.set_block_size(1024)
     else:
         # Find ZOOM UAC-232 Device Index
