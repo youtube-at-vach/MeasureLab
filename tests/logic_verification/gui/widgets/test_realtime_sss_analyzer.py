@@ -260,7 +260,7 @@ def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
     widget.chk_unwrap.setChecked(True)
     h1_phase_unwrapped = widget.phase_curves[0].yData
     h1_phase_unwrapped_valid = h1_phase_unwrapped[~np.isnan(h1_phase_unwrapped)]
-    
+
     # Check if unwrapping actually happened (i.e. phase exceeds 180 or is continuous without wrap)
     assert np.any(np.abs(h1_phase_unwrapped_valid) > 180.0)
 

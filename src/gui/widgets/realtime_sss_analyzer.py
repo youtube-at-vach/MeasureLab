@@ -524,7 +524,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
         self.combo_smoothing.setCurrentIndex(1)
         self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
-        
+
         display_layout.addWidget(self.lbl_smoothing)
         display_layout.addWidget(self.combo_smoothing)
         display_layout.addStretch()
@@ -943,7 +943,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
             if display_f_mid is not None:
                 freq_text += "\n" + tr("Analysis Freq: {0:.1f} Hz").format(display_f_mid)
-                
+
                 # Calculate real-time window size and ENBW safely (handle mocked objects in tests)
                 fs = self.module.audio_engine.sample_rate
                 if isinstance(fs, (int, float)) and self.module.engine:
@@ -960,7 +960,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     )
                     window_samples = int(max(256.0, float(window_seconds * fs)))
                     enbw = 1.5 * fs / window_samples
-                    
+
                     self.lbl_resolution.setText(
                         tr("Resolution (ENBW): {0:.1f} Hz ({1} samples)").format(enbw, window_samples)
                     )
@@ -1084,7 +1084,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # Handle NaNs by temporarily interpolating them before passing to savgol_filter
         nan_mask = np.isnan(y_data)
         y_clean = np.copy(y_data)
-        
+
         if np.any(nan_mask):
             if np.all(nan_mask):
                 return y_data
@@ -1191,11 +1191,18 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 H_raw = self.H_freqs[p][valid_idx][sort_idx]
                 f_lookups = sorted_freqs / (p + 1)
 
-                # Interpolate real and imaginary parts to map from f_lookups to sorted_freqs
-                real_mapped = np.interp(f_lookups, sorted_freqs, np.real(H_raw), left=np.nan, right=np.nan)
-                imag_mapped = np.interp(f_lookups, sorted_freqs, np.imag(H_raw), left=np.nan, right=np.nan)
+                # Polar Interpolation to prevent phase distortion
+                mags = np.abs(H_raw)
+                nan_mask = np.isnan(H_raw)
+                phases = np.zeros_like(H_raw, dtype=float)
+                if not np.all(nan_mask):
+                    phases[~nan_mask] = np.unwrap(np.angle(H_raw[~nan_mask]))
+                phases[nan_mask] = np.nan
 
-                H_mapped = real_mapped + 1j * imag_mapped
+                mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
+                phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
+
+                H_mapped = mag_mapped * np.exp(1j * phase_mapped)
                 H_mapped_list.append(H_mapped)
 
             # Apply Butterworth lowpass filter to higher order mapped kernels
@@ -1235,9 +1242,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             H_p_clean = H_p.copy()
             H_p_clean[mask_nan] = 0.0
 
-            H_real = np.interp(freqs_lin, sorted_freqs, np.real(H_p_clean), left=0.0, right=0.0)
-            H_imag = np.interp(freqs_lin, sorted_freqs, np.imag(H_p_clean), left=0.0, right=0.0)
-            H_lin = H_real + 1j * H_imag
+            mags = np.abs(H_p_clean)
+            phases = np.unwrap(np.angle(H_p_clean))
+            mag_lin = np.interp(freqs_lin, sorted_freqs, mags, left=0.0, right=0.0)
+            phase_lin = np.interp(freqs_lin, sorted_freqs, phases, left=0.0, right=0.0)
+            H_lin = mag_lin * np.exp(1j * phase_lin)
 
             phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / sample_rate))
             H_lin_shifted = H_lin * phase_shift

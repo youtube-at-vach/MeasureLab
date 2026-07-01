@@ -54,14 +54,14 @@ def run_sss_sweep(audio_engine, start_freq, end_freq, sweep_duration, amplitude,
     block_counts = np.zeros(max_blocks, dtype=int)
     plot_freqs = np.zeros(max_blocks)
 
-    for avg in range(averages):
+    for _avg in range(averages):
         sss_engine.reset_filter_states()
 
         if fast_mode:
             # Bypass play-rec loop and compute directly
             out_sig = sss_engine.out_sig
             total_len = len(out_sig) + int(np.ceil(latency))
-            
+
             # Directly simulate the loopback signal with nonlinear distortion
             indata = np.zeros((total_len, 2), dtype=np.float32)
             if audio_engine.offline_mode:
@@ -79,7 +79,7 @@ def run_sss_sweep(audio_engine, start_freq, end_freq, sweep_duration, amplitude,
             for b in range(max_blocks):
                 start_idx = b * frames
                 end_idx = min(start_idx + frames, total_len)
-                
+
                 indata_block = np.zeros((frames, 2), dtype=np.float32)
                 chunk_len = end_idx - start_idx
                 if chunk_len > 0:
@@ -157,12 +157,12 @@ def estimate_hammerstein_kernels(amplitudes, raw_responses, plot_freqs_array, bl
     """
     P = max_harmonic
     num_amplitudes = len(amplitudes)
-    
+
     # phase corrections to compensate for sine expansion phase offsets
     phase_corrections = [1.0, 1j, -1.0, -1j, 1.0][:P]
     R_array = amplitudes
     g_scaled = np.zeros_like(raw_responses)
-    
+
     for amp_idx in range(num_amplitudes):
         amp = R_array[amp_idx]
         for p in range(P):
@@ -210,7 +210,6 @@ def estimate_hammerstein_kernels(amplitudes, raw_responses, plot_freqs_array, bl
         sort_idx = np.argsort(plot_freqs_array[valid_idx])
         sorted_freqs = plot_freqs_array[valid_idx][sort_idx]
 
-        import scipy.signal
         H_mapped_list = []
         for p in range(P):
             H_raw = H_freqs[p][valid_idx][sort_idx]
@@ -220,7 +219,7 @@ def estimate_hammerstein_kernels(amplitudes, raw_responses, plot_freqs_array, bl
             mags = np.abs(H_raw)
             # Handle wrapping smoothly before interpolation
             phases = np.unwrap(np.angle(H_raw))
-            
+
             mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
             phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
 
@@ -235,7 +234,7 @@ def estimate_hammerstein_kernels(amplitudes, raw_responses, plot_freqs_array, bl
                 lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
                 H_p = H_p * lpf
             H_freqs[p] = H_p
-            
+
         return H_freqs, sorted_freqs
     else:
         raise ValueError("No valid frequency measurement points found.")
@@ -247,7 +246,7 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
     """
     nyquist = sample_rate / 2.0
     H_interp = {}
-    
+
     for n in range(1, 6):
         f_n = n * f0
         H_interp[n] = {}
@@ -255,7 +254,7 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
             for p in range(1, 6):
                 H_interp[n][p] = 0.0 + 0.0j
             continue
-            
+
         for p in range(1, 6):
             if p <= len(H_freqs):
                 H_raw = H_freqs[p - 1]
@@ -264,10 +263,10 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
                     # Polar Interpolation to prevent phase distortion
                     mags = np.abs(H_raw[mask])
                     phases = np.unwrap(np.angle(H_raw[mask]))
-                    
+
                     mag_val = np.interp(f_n, sorted_freqs[mask], mags, left=0.0, right=0.0)
                     phase_val = np.interp(f_n, sorted_freqs[mask], phases, left=0.0, right=0.0)
-                    
+
                     H_interp[n][p] = mag_val * np.exp(1j * phase_val)
                 else:
                     H_interp[n][p] = 0.0 + 0.0j
@@ -287,7 +286,7 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
     # Convert to relative amplitudes (dBFS) and relative phases (deg) relative to fundamental phase
     pred_fund_phase_rad = np.angle(Y[1])
     predictions = []
-    
+
     for n in range(1, 6):
         y_val = Y[n]
         pred_amp_db = 20 * np.log10(np.abs(y_val) + 1e-12)
@@ -299,7 +298,7 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
             "phase_deg": pred_rel_phase_deg,
             "complex": y_val
         })
-        
+
     return predictions
 
 
@@ -311,34 +310,9 @@ def run_lockin_measurement(audio_engine, f0, A_in, num_runs=5, fast_mode=False, 
     lockin.signal_channel = signal_channel
     lockin.ref_channel = ref_channel
     lockin.max_harmonic = 5
-    lockin.buffer_size = 262144
+    lockin.buffer_size = 131072
     lockin.output_enabled = True
     lockin.output_channel = 2  # Stereo output (Ch1 & Ch2)
-
-    orig_extract = lockin._extract_coherent_segment
-
-    def patched_estimate(ref, fs):
-        ref_clean = ref - np.mean(ref)
-        omega = 2.0 * np.pi * lockin.gen_frequency
-        n_samples = len(ref_clean)
-        t = np.arange(n_samples) / fs
-        ref_i = (2.0 / n_samples) * np.dot(ref_clean, np.cos(omega * t))
-        ref_q = (2.0 / n_samples) * np.dot(ref_clean, np.sin(omega * t))
-        theta_0 = np.arctan2(ref_i, ref_q)
-        return omega, theta_0
-
-    def patched_extract(sig, ref, fs):
-        sig_clean = sig - np.mean(sig)
-        ref_clean = ref - np.mean(ref)
-        sig_seg, ref_seg, phase_seed = orig_extract(sig_clean, ref_clean, fs)
-        if phase_seed is not None:
-            omega = 2.0 * np.pi * lockin.gen_frequency
-            _, theta_0 = phase_seed
-            phase_seed = (omega, theta_0)
-        return sig_seg, ref_seg, phase_seed
-
-    lockin._estimate_ref_phase_params = patched_estimate
-    lockin._extract_coherent_segment = patched_extract
 
     lockin_runs_results = []
 
@@ -357,19 +331,19 @@ def run_lockin_measurement(audio_engine, f0, A_in, num_runs=5, fast_mode=False, 
                 lockin.input_data = np.zeros((N, 2))
                 lockin.input_data[:, signal_channel] = ref_sig
                 lockin.input_data[:, ref_channel] = ref_sig
-                
+
                 # Apply nonlinear distortion on loopback in offline mode
                 if audio_engine.offline_mode:
                     sig = lockin.input_data[:, ref_channel]
                     simulated_meas = sig - 0.08 * (sig**2) + 0.12 * (sig**3) - 0.04 * (sig**4) + 0.06 * (sig**5)
                     lockin.input_data[:, signal_channel] = simulated_meas
-                    
+
                 lockin.input_buffer_pos = 0
                 lockin.buffer_filled_samples = N
                 lockin.is_running = True
         else:
             lockin.start_analysis()
-            
+
             # Wait for stabilization (transient)
             timeout = 12.0
             start_time = time.time()
@@ -413,7 +387,7 @@ def run_lockin_measurement(audio_engine, f0, A_in, num_runs=5, fast_mode=False, 
         lockin_runs_results.append(run_data)
         lockin.stop_analysis()
 
-    return lockin_runs_results
+    return lockin_runs_results, lockin.measured_freq
 
 
 def main():
@@ -423,7 +397,7 @@ def main():
     parser.add_argument("--runs", type=int, default=5, help="Number of runs for statistics and stability")
     parser.add_argument("--f0", type=float, default=500.0, help="Test frequency for lock-in vs prediction comparison")
     parser.add_argument("--amplitude", type=float, default=-6.0, help="Test amplitude in dBFS for single tone response comparison")
-    
+
     cli_args = parser.parse_args()
 
     if cli_args.fast:
@@ -475,7 +449,7 @@ def main():
             # Check signal levels to handle single-channel calibration sweeps properly
             rms0 = np.sqrt(np.mean(logical_in[:, 0]**2))
             rms1 = np.sqrt(np.mean(logical_in[:, 1]**2))
-            
+
             if rms1 < 1e-6 and rms0 > 1e-6:
                 # Left channel only (e.g. latency calibrator sweep)
                 sig = logical_in[:, 0]
@@ -494,29 +468,29 @@ def main():
     # Phase A: SSS Sweep at Multiple Amplitudes
     # ----------------------------------------------------
     print("\n=== Phase A: SSS Sweeps for Hammerstein Kernel Estimation ===")
-    
+
     # Sweep configuration
     start_freq = 20.0
     end_freq = 20000.0
     sweep_duration = 30.0  # seconds
     max_harmonic = 5
-    
+
     # Range of amplitudes for least-squares kernel separation
     num_amplitudes = 5
     max_amp_db = -6.0
     max_amp_linear = 10 ** (max_amp_db / 20.0)
     amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp_linear
-    
+
     raw_responses_list = []
-    
+
     # Dummy stream callback to prevent audio engine from shutting down/startup latency between sweeps
     dummy_cb_id = engine.register_callback(lambda *args, **kwargs: None)
-    
+
     # Run SSS sweep at each amplitude
     for amp_idx, amp in enumerate(amplitudes):
         amp_db = 20 * np.log10(amp)
         print(f"\n[*] Running SSS sweep {amp_idx + 1}/{num_amplitudes} (Amplitude: {amp_db:.2f} dBFS)...")
-        
+
         plot_freqs, averaged_results, block_counts, max_blocks = run_sss_sweep(
             engine,
             start_freq=start_freq,
@@ -530,7 +504,7 @@ def main():
             signal_channel=0,  # Ch1 (L)
             ref_channel=1      # Ch2 (R)
         )
-        
+
         raw_responses_list.append(averaged_results)
 
     engine.unregister_callback(dummy_cb_id)
@@ -552,18 +526,12 @@ def main():
     print(f"[+] Estimated {len(H_freqs)} Hammerstein kernels.")
 
     # ----------------------------------------------------
-    # Phase C: Predict Harmonic Response for target single-tone
+    # Phase C: Measuring Single Tone Response via Parallel Lock-in
     # ----------------------------------------------------
     f0 = cli_args.f0
     A_in = 10 ** (cli_args.amplitude / 20.0)
-    print(f"\n=== Phase C: Predicting Single Tone Response (f0={f0} Hz, Amp={cli_args.amplitude:.2f} dBFS) ===")
-    predictions = predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, engine.sample_rate, max_harmonic)
-
-    # ----------------------------------------------------
-    # Phase D: Measure actual response with Lock-in Harmonic Analyzer
-    # ----------------------------------------------------
-    print(f"\n=== Phase D: Measuring Single Tone Response via Parallel Lock-in ===")
-    lockin_results = run_lockin_measurement(
+    print("\n=== Phase C: Measuring Single Tone Response via Parallel Lock-in ===")
+    lockin_results, lockin_measured_freq = run_lockin_measurement(
         engine,
         f0=f0,
         A_in=A_in,
@@ -573,19 +541,25 @@ def main():
         ref_channel=1
     )
 
+    # ----------------------------------------------------
+    # Phase D: Predict Harmonic Response for target single-tone
+    # ----------------------------------------------------
+    print(f"\n=== Phase D: Predicting Single Tone Response (f0={lockin_measured_freq:.2f} Hz, Amp={cli_args.amplitude:.2f} dBFS) ===")
+    predictions = predict_harmonic_response(lockin_measured_freq, A_in, H_freqs, sorted_freqs, engine.sample_rate, max_harmonic)
+
     # Statistical averaging of lockin runs
     lockin_avg = []
     for idx_n in range(max_harmonic):
         amps = [run[idx_n]["amp_db"] for run in lockin_results]
         phases = [run[idx_n]["phase_deg"] for run in lockin_results]
-        
+
         # Align phases to avoid wrap-around averaging issues
         phases_aligned = np.array(phases)
         for idx in range(1, len(phases_aligned)):
             diff = phases_aligned[idx] - phases_aligned[0]
             diff = (diff + 180) % 360 - 180
             phases_aligned[idx] = phases_aligned[0] + diff
-            
+
         lockin_avg.append({
             "amp_db": np.mean(amps),
             "phase_deg": (np.mean(phases_aligned) + 180) % 360 - 180,
@@ -612,10 +586,10 @@ def main():
     for n in range(1, max_harmonic + 1):
         pred_amp = predictions[n - 1]["amp_db"]
         pred_phase = predictions[n - 1]["phase_deg"]
-        
+
         meas_amp = lockin_avg[n - 1]["amp_db"]
         meas_phase = lockin_avg[n - 1]["phase_deg"]
-        
+
         amp_diff = np.abs(pred_amp - meas_amp)
         phase_diff_raw = pred_phase - meas_phase
         phase_diff = np.abs((phase_diff_raw + 180) % 360 - 180)
