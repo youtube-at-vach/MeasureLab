@@ -285,6 +285,18 @@ def main():
         action="store_true",
         help="Run TSA Phase Stability Study across counts [1, 2, 4, 8, 16, 32, 64]",
     )
+    parser.add_argument(
+        "--spot-freq",
+        type=float,
+        default=None,
+        help="Specify a spot frequency (e.g. 1000) to output detailed metrics and run-by-run values.",
+    )
+    parser.add_argument(
+        "--tsa",
+        type=int,
+        default=1,
+        help="Number of Time Synchronous Averages (TSA) to perform per run",
+    )
     cli_args = parser.parse_args()
 
     # Required for AudioEngine initialization in PyQt environment
@@ -511,7 +523,7 @@ def main():
             out_data=out_data,
             frames_per_block=frames_per_block,
             max_blocks=max_blocks,
-            averages_count=1,
+            averages_count=cli_args.tsa,
             cli_args=cli_args,
         )
         raw_runs_results[run_idx, :, :] = averaged_res
@@ -638,6 +650,29 @@ def main():
             print(
                 f"  Inner Band (100Hz-10kHz): Mean Abs = {mean_error_inner:.6f} deg, Max Abs = {max_error_inner:.6f} deg"
             )
+    # Spot Frequency Detailed Analysis
+    if cli_args.spot_freq is not None:
+        target_f = cli_args.spot_freq
+        idx_nearest = np.argmin(np.abs(freqs_valid - target_f))
+        actual_f = freqs_valid[idx_nearest]
+        block_idx = valid_indices[idx_nearest]
+
+        print("\n" + "=" * 60)
+        print(f" SPOT FREQUENCY ANALYSIS AT {actual_f:.2f} Hz (Target: {target_f:.1f} Hz)")
+        print("=" * 60)
+
+        for h in range(max_harmonic):
+            h_name = "Fundamental" if h == 0 else f"{h + 1}th Harmonic"
+            complex_vals = raw_runs_results[:, block_idx, h]
+            gains = 20 * np.log10(np.abs(complex_vals) + 1e-15)
+            phases = np.degrees(np.angle(complex_vals))
+            phases_aligned = align_phases(phases)
+
+            print(f"\n--- {h_name} ---")
+            print(f"  Std Dev : Gain = {np.std(gains):.4f} dB, Phase = {np.std(phases_aligned):.4f} deg")
+            print("  Run-by-Run values:")
+            for r_idx in range(cli_args.runs):
+                print(f"    Run {r_idx+1:2d}: Gain = {gains[r_idx]:8.4f} dB, Phase = {phases_aligned[r_idx]:8.3f} deg")
 
     # 5. Plotting results
     print("\n[*] Plotting repeatability graphs...")
