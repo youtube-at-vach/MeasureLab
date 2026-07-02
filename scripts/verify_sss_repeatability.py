@@ -14,6 +14,7 @@ if project_root not in sys.path:
 
 # Set headless Matplotlib backend to avoid GUI window opening
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -117,21 +118,172 @@ def align_phases(phases, ref_phase=None):
     return phases
 
 
+def measure_sss_averaged(
+    engine,
+    sample_rate,
+    sweep_duration,
+    start_freq,
+    end_freq,
+    output_amplitude,
+    max_harmonic,
+    analysis_cycles,
+    num_meas_points,
+    latency_samples,
+    input_mode,
+    sig_ch,
+    ref_ch,
+    out_data,
+    frames_per_block,
+    max_blocks,
+    averages_count,
+    cli_args,
+):
+    """
+    Runs SSS sweep averages_count times, processes them, and returns the averaged complex response.
+    """
+    accumulated = np.zeros((max_blocks, max_harmonic), dtype=complex)
+    block_freqs = np.zeros(max_blocks)
+
+    for avg_idx in range(averages_count):
+        run_engine_sig = RealtimeSSSEngine(
+            sample_rate=sample_rate,
+            sweep_duration=sweep_duration,
+            start_freq=start_freq,
+            end_freq=end_freq,
+            output_amplitude=output_amplitude,
+            max_harmonic=max_harmonic,
+            analysis_cycles=analysis_cycles,
+            num_meas_points=num_meas_points,
+        )
+        run_engine_sig.prepare_sweep()
+        run_engine_sig.set_latency(latency_samples)
+
+        if cli_args.harmonic_jitter_comp and input_mode == "XFER":
+            run_engine_ref = RealtimeSSSEngine(
+                sample_rate=sample_rate,
+                sweep_duration=sweep_duration,
+                start_freq=start_freq,
+                end_freq=end_freq,
+                output_amplitude=output_amplitude,
+                max_harmonic=max_harmonic,
+                analysis_cycles=analysis_cycles,
+                num_meas_points=num_meas_points,
+            )
+            run_engine_ref.prepare_sweep()
+            run_engine_ref.set_latency(latency_samples)
+        else:
+            run_engine_ref = None
+
+        # Playback and record
+        rec_data = run_play_rec(engine, out_data, input_channels=2)
+
+        if cli_args.virtual:
+            meas_ch = rec_data[:, sig_ch]
+            ref_sig = rec_data[:, ref_ch]
+            N = len(meas_ch)
+
+            # Jitter: Random fractional delay in range [-0.2, 0.2] samples
+            if cli_args.no_jitter:
+                jitter = 0.0
+            else:
+                jitter = np.random.uniform(-0.2, 0.2)
+
+            if jitter != 0.0:
+                freqs = np.fft.rfftfreq(N)
+                phase_shift = np.exp(-2j * np.pi * freqs * jitter)
+                meas_fft = np.fft.rfft(meas_ch)
+                meas_delayed = np.fft.irfft(meas_fft * phase_shift, n=N)
+                ref_fft = np.fft.rfft(ref_sig)
+                ref_delayed = np.fft.irfft(ref_fft * phase_shift, n=N)
+            else:
+                meas_delayed = meas_ch.copy()
+                ref_delayed = ref_sig.copy()
+
+            # Nonlinear distortion (Hammerstein style)
+            distorted = (
+                meas_delayed
+                - 0.08 * (meas_delayed**2)
+                + 0.12 * (meas_delayed**3)
+                - 0.04 * (meas_delayed**4)
+                + 0.06 * (meas_delayed**5)
+            )
+
+            # Noise addition (-85 dBFS for measurement, -100 dBFS for reference)
+            if cli_args.no_noise:
+                noise_meas = np.zeros(N)
+                noise_ref = np.zeros(N)
+            else:
+                noise_meas = np.random.normal(scale=5e-5, size=N)
+                noise_ref = np.random.normal(scale=1e-5, size=N)
+
+            rec_data[:, sig_ch] = distorted + noise_meas
+            rec_data[:, ref_ch] = ref_delayed + noise_ref
+
+        # Process the recording block-by-block
+        for block_idx in range(max_blocks):
+            start_samp = block_idx * frames_per_block
+
+            # Slice block
+            sig_block = np.zeros((frames_per_block, 1))
+            ref_block = None
+
+            if start_samp < len(rec_data):
+                chunk = min(frames_per_block, len(rec_data) - start_samp)
+                sig_block[:chunk, 0] = rec_data[start_samp : start_samp + chunk, sig_ch]
+
+                if input_mode == "XFER":
+                    ref_block = np.zeros((frames_per_block, 1))
+                    ref_block[:chunk, 0] = rec_data[start_samp : start_samp + chunk, ref_ch]
+
+            # Demodulate
+            if run_engine_ref is not None:
+                f_mid, sig_res = run_engine_sig.process_input_block(sig_block, block_idx, ref_in_block=None)
+                _, ref_res = run_engine_ref.process_input_block(ref_block, block_idx, ref_in_block=None)
+
+                ref_h1 = ref_res[0] if ref_res else 0.0j
+                ref_mag = np.abs(ref_h1)
+                if ref_mag > 1e-24:
+                    ref_u = ref_h1 / ref_mag
+                    results = []
+                    for h_idx in range(max_harmonic):
+                        k = h_idx + 1
+                        ref_u_k = ref_u**k
+                        corrected = sig_res[h_idx] * np.conj(ref_u_k) / ref_mag
+                        results.append(corrected)
+                else:
+                    results = [0.0j] * max_harmonic
+            else:
+                f_mid, results = run_engine_sig.process_input_block(sig_block, block_idx, ref_in_block=ref_block)
+
+            accumulated[block_idx, :] += results[:max_harmonic]
+            if avg_idx == 0:
+                block_freqs[block_idx] = f_mid
+
+    return accumulated / averages_count, block_freqs
+
+
 def main():
     parser = argparse.ArgumentParser(description="Verify SSS Repeatability / Phase Variation")
     parser.add_argument("--virtual", action="store_true", help="Run in virtual simulation loop mode")
     parser.add_argument("--no-noise", action="store_true", help="Disable random noise in virtual simulation mode")
     parser.add_argument("--no-jitter", action="store_true", help="Disable random jitter in virtual simulation mode")
-    parser.add_argument("--harmonic-jitter-comp", action="store_true", help="Enable harmonic-order jitter compensation in relative mode")
+    parser.add_argument(
+        "--harmonic-jitter-comp", action="store_true", help="Enable harmonic-order jitter compensation in relative mode"
+    )
     parser.add_argument("--runs", type=int, default=5, help="Number of sweep runs to execute")
-    parser.add_argument("--cycles", type=float, default=512.0, help="Number of analysis cycles")
-    parser.add_argument("--duration", type=float, default=30.0, help="Sweep duration in seconds")
+    parser.add_argument("--cycles", type=float, default=32.0, help="Number of analysis cycles")
+    parser.add_argument("--duration", type=float, default=5.0, help="Sweep duration in seconds")
     parser.add_argument("--amplitude", type=float, default=-6.0, help="Sweep amplitude in dBFS")
     parser.add_argument(
         "--mode",
         choices=["Single_L", "Single_R", "XFER", "XFER_REV"],
         default="XFER_REV",
         help="Input routing mode",
+    )
+    parser.add_argument(
+        "--tsa-study",
+        action="store_true",
+        help="Run TSA Phase Stability Study across counts [1, 2, 4, 8, 16, 32, 64]",
     )
     cli_args = parser.parse_args()
 
@@ -236,12 +388,105 @@ def main():
         num_meas_points=num_meas_points,
     )
     temp_engine.prepare_sweep()
+    out_sig = temp_engine.out_sig
+    if out_sig is None:
+        print("[-] Error: Failed to generate output sweep signal.")
+        sys.exit(1)
+
     frames_per_block = engine.block_size
     max_blocks = int(np.ceil((temp_engine.sweep_samples + latency_samples) / frames_per_block))
     del temp_engine
 
+    # Pad the output signal to allow latency and trailing recording window once
+    margin_samples = int(0.5 * sample_rate)
+    total_playback_samples = len(out_sig) + int(latency_samples) + margin_samples
+    out_data = np.zeros((total_playback_samples, 2), dtype=np.float32)
+    out_data[: len(out_sig), 0] = out_sig
+    out_data[: len(out_sig), 1] = out_sig
+
     print(f"[+] Sweep details: {sweep_duration}s, max_blocks={max_blocks}, cycles={analysis_cycles}")
 
+    if cli_args.tsa_study:
+        tsa_counts = [1, 2, 4, 8, 16]
+        print("\n" + "=" * 60)
+        print(" TSA (Time Synchronous Averaging) PHASE STABILITY STUDY")
+        print(f" Runs per configuration: {cli_args.runs} | Sweep Duration: {sweep_duration}s")
+        print("=" * 60)
+        print("\n| TSA回数 | 位相標準偏差 |")
+        print("| ----: | -----: |")
+
+        table_rows = []
+
+        for tsa in tsa_counts:
+            # Result container for this TSA count
+            raw_runs_results = np.zeros((cli_args.runs, max_blocks, max_harmonic), dtype=complex)
+            block_freqs = np.zeros(max_blocks)
+
+            for run_idx in range(cli_args.runs):
+                averaged_res, freqs_block = measure_sss_averaged(
+                    engine=engine,
+                    sample_rate=sample_rate,
+                    sweep_duration=sweep_duration,
+                    start_freq=start_freq,
+                    end_freq=end_freq,
+                    output_amplitude=output_amplitude,
+                    max_harmonic=max_harmonic,
+                    analysis_cycles=analysis_cycles,
+                    num_meas_points=num_meas_points,
+                    latency_samples=latency_samples,
+                    input_mode=input_mode,
+                    sig_ch=sig_ch,
+                    ref_ch=ref_ch,
+                    out_data=out_data,
+                    frames_per_block=frames_per_block,
+                    max_blocks=max_blocks,
+                    averages_count=tsa,
+                    cli_args=cli_args,
+                )
+                raw_runs_results[run_idx, :, :] = averaged_res
+                if run_idx == 0:
+                    block_freqs = freqs_block
+
+            # Statistical analysis for this TSA count (Fundamental Phase Std Dev)
+            valid_mask = (block_freqs >= min(start_freq, end_freq)) & (block_freqs <= max(start_freq, end_freq))
+            valid_indices = np.where(valid_mask)[0]
+
+            phase_stds = []
+            for block_idx in valid_indices:
+                complex_vals = raw_runs_results[:, block_idx, 0]  # 0 for Fundamental
+                phases = np.degrees(np.angle(complex_vals))
+                phases_aligned = align_phases(phases)
+                phase_stds.append(np.std(phases_aligned))
+
+            mean_phase_std = np.mean(phase_stds)
+            print(f"| {tsa:5d} | {mean_phase_std:7.4f}° |")
+            table_rows.append((tsa, mean_phase_std))
+
+        print("\n[+] TSA Study Complete.")
+
+        # Save TSA study results to JSON
+        tsa_results_path = os.path.join(project_root, "scripts", "tsa_study_results.json")
+        with open(tsa_results_path, "w") as f:
+            json.dump(
+                {
+                    "metadata": {
+                        "runs": cli_args.runs,
+                        "sweep_duration": sweep_duration,
+                        "sample_rate": sample_rate,
+                        "virtual": cli_args.virtual,
+                    },
+                    "results": [{"tsa": row[0], "phase_std_deg": row[1]} for row in table_rows],
+                },
+                f,
+                indent=4,
+            )
+        print(f"[+] Saved TSA study raw metrics to {tsa_results_path}")
+
+        # Exit early as we are in study mode
+        engine.stop_stream()
+        sys.exit(0)
+
+    # Standard Measurement Mode
     # Results container: shape (runs, max_blocks, max_harmonic) of complex response
     raw_runs_results = np.zeros((cli_args.runs, max_blocks, max_harmonic), dtype=complex)
     block_freqs = np.zeros(max_blocks)
@@ -249,9 +494,8 @@ def main():
     # 3. Measurement Loop
     for run_idx in range(cli_args.runs):
         print(f"\n[*] Starting Run {run_idx + 1}/{cli_args.runs}...")
-
-        # Setup new engine(s) for each run
-        run_engine_sig = RealtimeSSSEngine(
+        averaged_res, freqs_block = measure_sss_averaged(
+            engine=engine,
             sample_rate=sample_rate,
             sweep_duration=sweep_duration,
             start_freq=start_freq,
@@ -260,131 +504,19 @@ def main():
             max_harmonic=max_harmonic,
             analysis_cycles=analysis_cycles,
             num_meas_points=num_meas_points,
+            latency_samples=latency_samples,
+            input_mode=input_mode,
+            sig_ch=sig_ch,
+            ref_ch=ref_ch,
+            out_data=out_data,
+            frames_per_block=frames_per_block,
+            max_blocks=max_blocks,
+            averages_count=1,
+            cli_args=cli_args,
         )
-        run_engine_sig.prepare_sweep()
-        run_engine_sig.set_latency(latency_samples)
-
-        if cli_args.harmonic_jitter_comp and input_mode == "XFER":
-            run_engine_ref = RealtimeSSSEngine(
-                sample_rate=sample_rate,
-                sweep_duration=sweep_duration,
-                start_freq=start_freq,
-                end_freq=end_freq,
-                output_amplitude=output_amplitude,
-                max_harmonic=max_harmonic,
-                analysis_cycles=analysis_cycles,
-                num_meas_points=num_meas_points,
-            )
-            run_engine_ref.prepare_sweep()
-            run_engine_ref.set_latency(latency_samples)
-        else:
-            run_engine_ref = None
-
-        # Get target sweep signal
-        out_sig = run_engine_sig.out_sig
-        if out_sig is None:
-            print("[-] Error: Failed to generate output sweep signal.")
-            sys.exit(1)
-
-        # Pad the output signal to allow latency and trailing recording window
-        margin_samples = int(0.5 * sample_rate)
-        total_playback_samples = len(out_sig) + int(latency_samples) + margin_samples
-        out_data = np.zeros((total_playback_samples, 2), dtype=np.float32)
-        out_data[:len(out_sig), 0] = out_sig
-        out_data[:len(out_sig), 1] = out_sig
-
-        # Playback and record
-        rec_data = run_play_rec(engine, out_data, input_channels=2)
-
-        if cli_args.virtual:
-            meas_ch = rec_data[:, sig_ch]
-            ref_sig = rec_data[:, ref_ch]
-            N = len(meas_ch)
-
-            # Jitter: Random fractional delay in range [-0.2, 0.2] samples
-            # This simulates microscopic timing drift/fluctuations (common to both channels)
-            if cli_args.no_jitter:
-                jitter = 0.0
-            else:
-                jitter = np.random.uniform(-0.2, 0.2)
-
-            if jitter != 0.0:
-                freqs = np.fft.rfftfreq(N)
-                phase_shift = np.exp(-2j * np.pi * freqs * jitter)
-                meas_fft = np.fft.rfft(meas_ch)
-                meas_delayed = np.fft.irfft(meas_fft * phase_shift, n=N)
-                ref_fft = np.fft.rfft(ref_sig)
-                ref_delayed = np.fft.irfft(ref_fft * phase_shift, n=N)
-            else:
-                meas_delayed = meas_ch.copy()
-                ref_delayed = ref_sig.copy()
-
-            # Nonlinear distortion (Hammerstein style)
-            # y(t) = x(t) - 0.08*x(t)^2 + 0.12*x(t)^3 - 0.04*x(t)^4 + 0.06*x(t)^5
-            distorted = (
-                meas_delayed
-                - 0.08 * (meas_delayed ** 2)
-                + 0.12 * (meas_delayed ** 3)
-                - 0.04 * (meas_delayed ** 4)
-                + 0.06 * (meas_delayed ** 5)
-            )
-
-            # Noise addition (-85 dBFS for measurement, -100 dBFS for reference)
-            if cli_args.no_noise:
-                noise_meas = np.zeros(N)
-                noise_ref = np.zeros(N)
-            else:
-                noise_meas = np.random.normal(scale=5e-5, size=N)
-                noise_ref = np.random.normal(scale=1e-5, size=N)
-
-            rec_data[:, sig_ch] = distorted + noise_meas
-            rec_data[:, ref_ch] = ref_delayed + noise_ref
-
-        # Process the recording block-by-block
-        for block_idx in range(max_blocks):
-            start_samp = block_idx * frames_per_block
-
-            # Slice block
-            sig_block = np.zeros((frames_per_block, 1))
-            ref_block = None
-
-            if start_samp < len(rec_data):
-                chunk = min(frames_per_block, len(rec_data) - start_samp)
-                sig_block[:chunk, 0] = rec_data[start_samp : start_samp + chunk, sig_ch]
-
-                if input_mode == "XFER":
-                    ref_block = np.zeros((frames_per_block, 1))
-                    ref_block[:chunk, 0] = rec_data[start_samp : start_samp + chunk, ref_ch]
-
-            # Demodulate
-            if run_engine_ref is not None:
-                # Process signal and reference separately to apply advanced harmonic-order jitter compensation
-                # Pass ref_in_block=None to prevent the engine from applying standard 1st-order compensation internally
-                f_mid, sig_res = run_engine_sig.process_input_block(sig_block, block_idx, ref_in_block=None)
-                _, ref_res = run_engine_ref.process_input_block(ref_block, block_idx, ref_in_block=None)
-
-                # Apply harmonic-order compensation
-                # H_k = S_k * conj(R_1 / |R_1|)^k / |R_1|
-                ref_h1 = ref_res[0] if ref_res else 0.0j
-                ref_mag = np.abs(ref_h1)
-                if ref_mag > 1e-24:
-                    ref_u = ref_h1 / ref_mag
-                    results = []
-                    for h_idx in range(max_harmonic):
-                        k = h_idx + 1  # harmonic order
-                        ref_u_k = ref_u ** k
-                        corrected = sig_res[h_idx] * np.conj(ref_u_k) / ref_mag
-                        results.append(corrected)
-                else:
-                    results = [0.0j] * max_harmonic
-            else:
-                f_mid, results = run_engine_sig.process_input_block(sig_block, block_idx, ref_in_block=ref_block)
-
-            # Save results
-            raw_runs_results[run_idx, block_idx, :] = results[:max_harmonic]
-            if run_idx == 0:
-                block_freqs[block_idx] = f_mid
-
+        raw_runs_results[run_idx, :, :] = averaged_res
+        if run_idx == 0:
+            block_freqs = freqs_block
         print(f"[+] Run {run_idx + 1} analysis complete.")
 
     engine.stop_stream()
@@ -434,7 +566,7 @@ def main():
 
     stats_report = {}
     for h in range(max_harmonic):
-        h_name = "Fundamental" if h == 0 else f"{h+1}th Harmonic"
+        h_name = "Fundamental" if h == 0 else f"{h + 1}th Harmonic"
 
         max_g_std = np.max(gain_std[:, h])
         mean_g_std = np.mean(gain_std[:, h])
@@ -472,7 +604,7 @@ def main():
         inner_mask = (freqs_valid >= 100.0) & (freqs_valid <= 10000.0)
 
         for h in range(max_harmonic):
-            h_name = "Fundamental" if h == 0 else f"{h+1}th Harmonic"
+            h_name = "Fundamental" if h == 0 else f"{h + 1}th Harmonic"
             target = theoretical_phases[h]
 
             # Calculate wrapped phase error in range [-180, 180]
@@ -503,7 +635,9 @@ def main():
 
             print(f"\n--- {h_name} (Expected: {target:.1f} deg) ---")
             print(f"  Full Sweep (20Hz-20kHz): Mean Abs = {mean_error:.6f} deg, Max Abs = {max_error:.6f} deg")
-            print(f"  Inner Band (100Hz-10kHz): Mean Abs = {mean_error_inner:.6f} deg, Max Abs = {max_error_inner:.6f} deg")
+            print(
+                f"  Inner Band (100Hz-10kHz): Mean Abs = {mean_error_inner:.6f} deg, Max Abs = {max_error_inner:.6f} deg"
+            )
 
     # 5. Plotting results
     print("\n[*] Plotting repeatability graphs...")
@@ -537,7 +671,9 @@ def main():
         fig, ax = plt.subplots(figsize=(10, 5))
         for h in range(max_harmonic):
             ax.semilogx(freqs_valid, phase_errors[:, h], color=colors[h], label=labels[h])
-        ax.set_title(f"SSS Demodulator Phase Error vs Ground Truth (Virtual, Noise={not cli_args.no_noise}, Jitter={not cli_args.no_jitter})")
+        ax.set_title(
+            f"SSS Demodulator Phase Error vs Ground Truth (Virtual, Noise={not cli_args.no_noise}, Jitter={not cli_args.no_jitter})"
+        )
         ax.set_xlabel("Frequency (Hz)")
         ax.set_ylabel("Phase Error (degrees)")
         ax.grid(True, which="both", ls="-", alpha=0.5)
@@ -571,7 +707,7 @@ def main():
         report_data["phase_accuracy"] = phase_accuracy_report
 
     for h in range(max_harmonic):
-        h_name = f"h{h+1}"
+        h_name = f"h{h + 1}"
         report_data["harmonics"][h_name] = {
             "gain_mean": gain_mean[:, h].tolist(),
             "gain_std": gain_std[:, h].tolist(),
