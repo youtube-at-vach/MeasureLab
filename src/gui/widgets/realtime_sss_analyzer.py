@@ -710,7 +710,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 self.module.ref_channel = 1
                 self.module.signal_channel = 0
 
-            self.is_hammerstein_mode = (self.combo_meas_mode.currentData() == "hammerstein")
+            self.is_hammerstein_mode = self.combo_meas_mode.currentData() == "hammerstein"
             if self.is_hammerstein_mode:
                 self.num_amplitudes = self.spin_amp_steps.value()
                 max_amp_db = self.spin_amplitude.value()
@@ -755,7 +755,9 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.current_analysis_freq = None
 
             if self.is_hammerstein_mode:
-                self.raw_responses = np.zeros((self.num_amplitudes, self.max_blocks, self.module.max_harmonic), dtype=complex)
+                self.raw_responses = np.zeros(
+                    (self.num_amplitudes, self.max_blocks, self.module.max_harmonic), dtype=complex
+                )
                 self.raw_counts = np.zeros((self.num_amplitudes, self.max_blocks), dtype=int)
                 self.H_freqs = []
                 self.kernels_time = []
@@ -807,7 +809,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     window_seconds = np.clip(
                         self.module.analysis_cycles / max(self.module.end_freq, 1.0),
                         self.module.min_analysis_window,
-                        max_win
+                        max_win,
                     )
                     window_samples = int(max(256.0, float(window_seconds * fs)))
                     enbw = 1.5 * fs / window_samples
@@ -954,9 +956,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                             max_win = val
 
                     window_seconds = np.clip(
-                        self.module.analysis_cycles / max(display_f_mid, 1.0),
-                        self.module.min_analysis_window,
-                        max_win
+                        self.module.analysis_cycles / max(display_f_mid, 1.0), self.module.min_analysis_window, max_win
                     )
                     window_samples = int(max(256.0, float(window_seconds * fs)))
                     enbw = 1.5 * fs / window_samples
@@ -998,7 +998,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         # Check if we should draw the final kernels
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
-        is_measuring = (self.module.state in {"PLAYING", "WAITING"})
+        is_measuring = self.module.state in {"PLAYING", "WAITING"}
 
         if has_kernels and not is_measuring:
             # Draw Kernels (Hammerstein or Sweep)
@@ -1141,20 +1141,36 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             R4 = R_array**4
             R5 = R_array**5
 
-            H5 = 16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10) if P >= 5 else np.zeros(max_blocks, dtype=complex)
-            H4 = 8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8) if P >= 4 else np.zeros(max_blocks, dtype=complex)
+            H5 = (
+                16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
+                if P >= 5
+                else np.zeros(max_blocks, dtype=complex)
+            )
+            H4 = (
+                8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
+                if P >= 4
+                else np.zeros(max_blocks, dtype=complex)
+            )
 
             if P >= 5:
                 g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
             else:
                 g3_prime = g3
-            H3 = 4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6) if P >= 3 else np.zeros(max_blocks, dtype=complex)
+            H3 = (
+                4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
+                if P >= 3
+                else np.zeros(max_blocks, dtype=complex)
+            )
 
             if P >= 4:
                 g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
             else:
                 g2_prime = g2
-            H2 = 2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4) if P >= 2 else np.zeros(max_blocks, dtype=complex)
+            H2 = (
+                2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
+                if P >= 2
+                else np.zeros(max_blocks, dtype=complex)
+            )
 
             g1_prime = g1.copy()
             if P >= 3:
@@ -1209,7 +1225,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             for p in range(len(self.H_freqs)):
                 H_p = H_mapped_list[p]
                 if p >= 1:
-                    f_cut = min(20000.0, 1.15 * sample_rate / (2 * (p + 1)))
+                    f_cut = min(20000.0, 1.15 * sample_rate / 2)
                     lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
                     H_p = H_p * lpf
 
@@ -1279,18 +1295,16 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             },
             "time_domain": {
                 "time_ms": self.time_ms,
-                "kernels": {
-                    f"h{p+1}": self.kernels_time[p] for p in range(len(self.kernels_time))
-                },
+                "kernels": {f"h{p + 1}": self.kernels_time[p] for p in range(len(self.kernels_time))},
             },
             "frequency_domain": {
                 "freqs": sorted_freqs,
                 "magnitudes_db": {
-                    f"h{p+1}": 20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12)
+                    f"h{p + 1}": 20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12)
                     for p in range(len(self.H_freqs))
                 },
                 "phases_deg": {
-                    f"h{p+1}": np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx]))
+                    f"h{p + 1}": np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx]))
                     for p in range(len(self.H_freqs))
                 },
             },
@@ -1300,6 +1314,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
         from PyQt6.QtWidgets import QApplication
         from src.gui.main_window import MainWindow
+
         for widget in QApplication.topLevelWidgets():
             if isinstance(widget, MainWindow):
                 widget.notify_active_model_changed()
@@ -1307,18 +1322,14 @@ class RealtimeSSSAnalyzerWidget(QWidget):
 
     def on_export_model(self):
         from src.core.hammerstein_model import get_active_model, has_active_model
+
         if not has_active_model():
             QMessageBox.warning(self, tr("Export Failed"), tr("No measurement data available to export."))
             return
 
         from PyQt6.QtWidgets import QFileDialog
 
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            tr("Export Hammerstein Model"),
-            "",
-            tr("JSON Files (*.json)")
-        )
+        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Hammerstein Model"), "", tr("JSON Files (*.json)"))
 
         if not filepath:
             return
@@ -1326,18 +1337,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         try:
             data = get_active_model()
             save_hammerstein_model(filepath, data)
-            QMessageBox.information(
-                self,
-                tr("Export Successful"),
-                tr("Model exported successfully.")
-            )
+            QMessageBox.information(self, tr("Export Successful"), tr("Model exported successfully."))
         except Exception as e:
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
-            QMessageBox.critical(
-                self,
-                tr("Export Failed"),
-                tr("Failed to save Hammerstein model: {0}").format(e)
-            )
+            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save Hammerstein model: {0}").format(e))
 
     def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
         with self.module.lock:
