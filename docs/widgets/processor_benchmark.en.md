@@ -10,7 +10,7 @@ Processor Benchmark is a tool to test the FFT and UI rendering performance of yo
 ## How to Use
 
 1. **Safety Factor**: Sets the fraction of total buffer time allowed for processing. Default is `0.8` (80%).
-    * 💡 **Why not 100%?**: If the chef is always working at 100% capacity, a slight hiccup (like another app running in the background) will immediately cause the sushi to overflow. Setting it to 80% leaves a 20% "margin of safety."
+    * 💡 **Why not 100%?**: If the processor operates at 100% capacity, any slight interruption (like a background app) will cause audio dropouts. Setting it to 80% provides a 20% safety margin.
 2. **Extreme Sizes**: When enabled, performs testing with larger FFT sizes (up to 16M). This is an option for high-end PCs aiming for ultra-high-definition measurements.
 3. **Start Benchmark**: Starts the test. Audio input is temporarily stopped during the test.
 4. **Copy Results to Clipboard**: Copies the benchmark results, including system information and performance metrics, to the clipboard.

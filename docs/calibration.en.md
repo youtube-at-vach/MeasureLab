@@ -17,7 +17,7 @@ MeasureLab supports the following units. Let's introduce them with a bit of hist
 * **dBV**: Unit of voltage where 1 Vrms is the reference (0 dBV). ($20 \log_{10}(V / 1.0)$) This is a standard commonly used in consumer (home) audio equipment.
 * **dBu**: Unit of voltage where 0.775 Vrms is the reference (0 dBu). ($20 \log_{10}(V / 0.775)$)
   💡 **Why the odd number 0.775 V?**
-  This actually originates from old telephone line standards. The voltage required to deliver 1 milliwatt of power into a 600-ohm resistor is approximately 0.775 V. Even today, this unit remains the standard in professional audio equipment.
+  This originates from old telephone line standards, where the voltage required to deliver 1 milliwatt of power into a 600-ohm resistor is approximately 0.775 V. Even today, this unit remains the standard in professional audio equipment.
 * **dB SPL**: Sound Pressure Level. A unit of sound pressure where the threshold of human hearing—an extremely tiny pressure of $20 \mu Pa$—is set as 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
 
 To perform displays and measurements in these units, **Input Sensitivity** and **Output Gain** calibration are required.
