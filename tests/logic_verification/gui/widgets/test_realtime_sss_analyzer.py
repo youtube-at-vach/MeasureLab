@@ -265,4 +265,64 @@ def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
     assert np.any(np.abs(h1_phase_unwrapped_valid) > 180.0)
 
 
+def test_realtime_sss_analyzer_nan_propagation(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget
+    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
 
+    # Set Sweep Mode to "sweep" (standard sweep mode)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # Start the sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with dummy values, but inject NaN at index 2
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.zeros(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    for i in range(widget.max_blocks):
+        widget.block_counts[i] = 1
+        widget.accumulated_results[i, 0] = 1.0 + 0.0j
+        # 2nd harmonic: inject NaN at index 2 (300 Hz)
+        if i == 2:
+            widget.accumulated_results[i, 1] = np.nan
+        else:
+            widget.accumulated_results[i, 1] = 0.5 + 0.0j
+
+    # Finish sweep (triggers kernel calculation and H_freqs mapping)
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic
+
+    # Verify 2nd harmonic (H2) values.
+    # Due to polar interpolation with NaN:
+    # f_lookups = sorted_freqs / 2 -> [50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
+    # For H2 (p=1), if sorted_freqs[2] = 300 is NaN, then:
+    # - f_lookups=250 (interpolated between 200 and 300) becomes NaN
+    # - f_lookups=300 (at 300) becomes NaN
+    # - f_lookups=350 (interpolated between 300 and 400) becomes NaN
+    # Thus, multiple points in H_mapped become NaN and are cleared to 0.0.
+    H2 = widget.H_freqs[1]
+    assert len(H2) > 0
+
+    # After our fix, NaN propagation is prevented:
+    # - Index 0 (50Hz) remains NaN because it's left of sorted_freqs range (left=np.nan).
+    # - Indices 4, 5, 6 (corresponding to 500Hz, 600Hz, 700Hz in H_full, mapped from f_lookups=250, 300, 350)
+    #   must now be successfully interpolated from the adjacent valid points (200Hz and 400Hz) and should NOT be NaN.
+    assert np.isnan(H2[0])
+    assert not np.isnan(H2[4])
+    assert not np.isnan(H2[5])
+    assert not np.isnan(H2[6])
+
+    # Check that magnitude is close to the valid 0.5 value
+    assert np.abs(H2[4]) > 0.4
+    assert np.abs(H2[5]) > 0.4
+    assert np.abs(H2[6]) > 0.4

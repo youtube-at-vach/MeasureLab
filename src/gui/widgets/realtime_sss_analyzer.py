@@ -1215,8 +1215,17 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                     phases[~nan_mask] = np.unwrap(np.angle(H_raw[~nan_mask]))
                 phases[nan_mask] = np.nan
 
-                mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
-                phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
+                valid_mask = ~nan_mask
+                if np.any(valid_mask):
+                    mag_mapped = np.interp(
+                        f_lookups, sorted_freqs[valid_mask], mags[valid_mask], left=np.nan, right=np.nan
+                    )
+                    phase_mapped = np.interp(
+                        f_lookups, sorted_freqs[valid_mask], phases[valid_mask], left=np.nan, right=np.nan
+                    )
+                else:
+                    mag_mapped = np.full_like(f_lookups, np.nan)
+                    phase_mapped = np.full_like(f_lookups, np.nan)
 
                 H_mapped = mag_mapped * np.exp(1j * phase_mapped)
                 H_mapped_list.append(H_mapped)
