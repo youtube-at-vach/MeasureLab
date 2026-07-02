@@ -427,6 +427,7 @@ def main():
     parser.add_argument(
         "--amplitude", type=float, default=-6.0, help="Test amplitude in dBFS for single tone response comparison"
     )
+    parser.add_argument("--tsa", type=int, default=1, help="Number of TSA (Time Synchronous Averaging) sweep averages")
 
     cli_args = parser.parse_args()
 
@@ -527,7 +528,7 @@ def main():
             end_freq=end_freq,
             sweep_duration=sweep_duration,
             amplitude=amp,
-            averages=1,  # 1 average per amplitude step is standard
+            averages=cli_args.tsa,
             max_harmonic=max_harmonic,
             fast_mode=cli_args.fast,
             input_mode="XFER",
