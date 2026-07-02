@@ -23,6 +23,9 @@ Realtime SSS Lockin Analyzerは、Synchronized Swept Sine (SSS) 信号とデジ�
 * **Amplitude (dBFS)**: 出力信号のレベルを設定します。
 * **Max Harmonic**: 基本波と同時に解析する最大高調波の次数を設定します。
 * **Averages**: スイープのアベレージング（平均化）回数を設定します。増やすとSNRが向上します。
+* **Mode**: 測定モードを選択します。標準スイープ（Standard Sweep）とHammerstein Modelが選択可能です。
+* **Unwrap Phase**: 有効にすると、位相特性の不連続性を防ぐためにアンラップ処理を行います。
+* **Relative Mag Mode**: 有効にすると、基本波や基準レベルに対する相対的な振幅を表示します。
 
 ### Routing タブ
 
@@ -34,6 +37,11 @@ Realtime SSS Lockin Analyzerは、Synchronized Swept Sine (SSS) 信号とデジ�
 ### Advanced タブ
 
 * **Analysis Cycles**: デジタルロックイン解析において、各周波数ビンで解析するサイクル数を設定します。
+* **Min Analysis Window (ms)**: 最小解析ウィンドウ時間をミリ秒単位で設定します。この設定に基づき、リアルタイムのENBW（等価雑音帯域幅）分解能が動的に表示されます。
 * **Meas Points**: スイープ全体で測定する周波数ポイントの総数を設定します。
 * **Prevent Buffer Underrun**: 有効にすると、CPU負荷が高い場合にデータ処理を一時停止し、音声の途切れ（バッファアンダーラン）を防ぎます。
 * **Asynchronous Calculation**: 重いSSS計算をバックグラウンドのスレッドで実行し、UIの応答性を保ちます。
+
+### Kernel タブ
+
+* Hammerstein Modelモードで動作している場合、再構築された時間領域のカーネルを表示します。このタブでは、非線形システムの特性を持続的に確認することができます。

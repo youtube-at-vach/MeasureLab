@@ -23,6 +23,9 @@ The Realtime SSS Lockin Analyzer performs real-time frequency response and disto
 * **Amplitude (dBFS)**: The output signal level.
 * **Max Harmonic**: The highest harmonic order to analyze alongside the fundamental.
 * **Averages**: The number of sweep cycles to average, improving SNR.
+* **Mode**: Selects the measurement mode. Options include Standard Sweep and Hammerstein Model.
+* **Unwrap Phase**: When enabled, unwraps the phase response to prevent discontinuities.
+* **Relative Mag Mode**: When enabled, displays magnitude relative to the fundamental or a reference level.
 
 ### Routing Tab
 
@@ -34,6 +37,11 @@ The Realtime SSS Lockin Analyzer performs real-time frequency response and disto
 ### Advanced Tab
 
 * **Analysis Cycles**: Number of cycles per frequency bin for the digital lock-in analysis.
+* **Min Analysis Window (ms)**: Sets the minimum analysis window duration in milliseconds. The real-time ENBW (Equivalent Noise Bandwidth) resolution is displayed dynamically based on this setting.
 * **Meas Points**: Total number of frequency points measured in the sweep.
 * **Prevent Buffer Underrun**: When enabled, automatically pauses data processing during high CPU load to avoid audio dropouts.
 * **Asynchronous Calculation**: Runs the heavy SSS math in a background thread to keep the UI responsive.
+
+### Kernel Tab
+
+* Displays the reconstructed time-domain kernels when operating in Hammerstein Model mode. This tab provides a persistent view of the nonlinear system characteristics.
