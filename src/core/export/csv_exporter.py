@@ -137,6 +137,7 @@ class CsvTraceExporter(BaseTraceExporter):
                 cached_orig_x = orig_x
                 is_same_as_grid = len(orig_x) == len(x_grid) and np.array_equal(orig_x, x_grid)
             else:
+                assert cached_orig_x is not None
                 orig_x = cached_orig_x
 
             if is_same_as_grid:
