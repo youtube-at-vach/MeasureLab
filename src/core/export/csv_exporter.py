@@ -117,24 +117,39 @@ class CsvTraceExporter(BaseTraceExporter):
 
         # 3. Interpolate and prepare columns directly
         cols = [x_grid]
-        for t in traces:
-            orig_x = np.array(t.x_data, dtype=float)
 
-            if len(orig_x) == 0:
+        cached_x_id = None
+        cached_orig_x = None
+        is_same_as_grid = False
+
+        for t in traces:
+            if len(t.x_data) == 0:
                 empty_col = [""] * len(x_grid)
                 cols.append(empty_col)
                 if t.y2_data is not None:
                     cols.append(empty_col)
                 continue
 
-            orig_y = np.array(t.y_data, dtype=float)
-            y_vals = np.interp(x_grid, orig_x, orig_y)
-            cols.append(y_vals)
+            x_id = id(t.x_data)
+            if x_id != cached_x_id:
+                orig_x = np.array(t.x_data, dtype=float)
+                cached_x_id = x_id
+                cached_orig_x = orig_x
+                is_same_as_grid = len(orig_x) == len(x_grid) and np.array_equal(orig_x, x_grid)
+            else:
+                orig_x = cached_orig_x
 
-            if t.y2_data is not None:
-                orig_y2 = np.array(t.y2_data, dtype=float)
-                y2_vals = np.interp(x_grid, orig_x, orig_y2)
-                cols.append(y2_vals)
+            if is_same_as_grid:
+                cols.append(t.y_data)
+                if t.y2_data is not None:
+                    cols.append(t.y2_data)
+            else:
+                orig_y = np.array(t.y_data, dtype=float)
+                cols.append(np.interp(x_grid, orig_x, orig_y))
+
+                if t.y2_data is not None:
+                    orig_y2 = np.array(t.y2_data, dtype=float)
+                    cols.append(np.interp(x_grid, orig_x, orig_y2))
 
         writer.writerows(zip(*cols, strict=False))
 
