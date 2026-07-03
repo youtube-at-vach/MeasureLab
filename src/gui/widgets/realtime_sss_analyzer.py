@@ -1119,7 +1119,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             # 2. Scale responses by amplitude and apply phase correction
             # To compensate for sine expansion phase offsets:
             # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
-            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
+            phase_corrections = [(1j) ** p for p in range(P)]
             R_array = self.amplitudes
             g_scaled = np.zeros_like(avg_responses)
             for amp_idx in range(self.num_amplitudes):
@@ -1186,7 +1186,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             # Directly use accumulated_results and apply phase corrections
             valid_indices = np.where(self.block_counts > 0)[0]
             self.H_freqs = []
-            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0]
+            phase_corrections = [(1j) ** p for p in range(P)]
             for p in range(P):
                 H_p = np.zeros(max_blocks, dtype=complex)
                 if len(valid_indices) > 0:
@@ -1269,7 +1269,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             H_p_clean[mask_nan] = 0.0
 
             mags = np.abs(H_p_clean)
-            phases = np.unwrap(np.angle(H_p_clean))
+            valid_mask = ~mask_nan
+            phases = np.zeros_like(H_p_clean, dtype=float)
+            if np.any(valid_mask):
+                phases[valid_mask] = np.unwrap(np.angle(H_p_clean[valid_mask]))
             mag_lin = np.interp(freqs_lin, sorted_freqs, mags, left=0.0, right=0.0)
             phase_lin = np.interp(freqs_lin, sorted_freqs, phases, left=0.0, right=0.0)
             H_lin = mag_lin * np.exp(1j * phase_lin)
