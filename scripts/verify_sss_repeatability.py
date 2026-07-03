@@ -271,7 +271,7 @@ def main():
         "--harmonic-jitter-comp", action="store_true", help="Enable harmonic-order jitter compensation in relative mode"
     )
     parser.add_argument("--runs", type=int, default=5, help="Number of sweep runs to execute")
-    parser.add_argument("--cycles", type=float, default=32.0, help="Number of analysis cycles")
+    parser.add_argument("--cycles", type=float, default=256.0, help="Number of analysis cycles")
     parser.add_argument("--duration", type=float, default=5.0, help="Sweep duration in seconds")
     parser.add_argument("--amplitude", type=float, default=-6.0, help="Sweep amplitude in dBFS")
     parser.add_argument(
@@ -294,7 +294,7 @@ def main():
     parser.add_argument(
         "--tsa",
         type=int,
-        default=1,
+        default=16,
         help="Number of Time Synchronous Averages (TSA) to perform per run",
     )
     cli_args = parser.parse_args()
