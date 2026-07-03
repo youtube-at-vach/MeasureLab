@@ -6,10 +6,6 @@
 
 The LUFS Meter is a tool for measuring "Loudness" (the perceived volume by humans), which is the standard used in broadcasting and streaming services (YouTube, Spotify, Netflix, etc.). It uses an algorithm compliant with the international standard ITU-R BS.1770-4. It also simultaneously displays standard peak and RMS meters.
 
-## ☕ Coffee Break: The "Loudness War" and the Birth of LUFS
-
-In the past, the music industry experienced a "Loudness War" to make tracks stand out, but volume variations are inconvenient for listeners. To solve this, **LUFS** was created to standardize volume based on "perceived human loudness" rather than mechanical peaks. Today, streaming platforms use LUFS to automatically normalize songs to a consistent volume.
-
 ## Key Indicators
 
 ### LUFS (Loudness Units Full Scale)

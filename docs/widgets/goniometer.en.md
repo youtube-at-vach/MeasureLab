@@ -12,7 +12,7 @@ It is an essential tool for discovering phase cancellation problems in mixdown a
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the Lissajous figure. This is ideal when you want to keep it constantly displayed as a meter.
 
-## ☕ Coffee Break: Lissajous Figures
+## What are Lissajous Figures?
 
 The waveforms displayed on the Goniometer screen are known as "Lissajous figures."
 By plotting the left channel signal on the Y-axis (vertical) and the right channel signal on the X-axis (horizontal) simultaneously, it visually represents the spread and phase difference of the stereo signal.

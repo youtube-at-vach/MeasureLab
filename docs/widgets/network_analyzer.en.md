@@ -15,10 +15,6 @@ Primary uses:
 * Measuring characteristics of speakers and headphones.
 * Measuring phase difference and delay between two signals.
 
-## ☕ Coffee Break: Bat Sonar and the "Chirp" Signal
-
-This widget uses a "Fast Chirp" signal, which rapidly sweeps from low to high frequencies. This is the same mechanism as the ultrasonic waves (echolocation) bats use to find obstacles. Because all frequency components are packed into a short duration, a single sweep allows for fast, noise-resistant measurement of the frequency response across the entire band.
-
 ## Basic Operation
 
 ### Starting Measurement
