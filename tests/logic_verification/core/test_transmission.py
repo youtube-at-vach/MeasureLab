@@ -389,6 +389,86 @@ class TestTransmissionLogic(unittest.TestCase):
         self.assertGreater(res_decay["droop_pct"], 5.0)
         self.assertLess(res_decay["droop_pct"], 100.0)
 
+    def test_analyze_step_transient_edge_cases(self):
+        """Test edge cases for analyze_step_transient."""
+        # Array too short
+        res_short = analyze_step_transient(np.zeros(100), 48000)
+        self.assertFalse(res_short["valid"])
+
+        # Not enough margin
+        step_no_margin = np.zeros(256, dtype=np.float32)
+        step_no_margin[250:] = 1.0
+        res_no_margin = analyze_step_transient(step_no_margin, 48000)
+        self.assertFalse(res_no_margin["valid"])
+
+        # Too small signal
+        step_small = np.zeros(512, dtype=np.float32)
+        step_small[128:] = 0.001
+        res_small = analyze_step_transient(step_small, 48000)
+        self.assertFalse(res_small["valid"])
+
+        # Negative step
+        step_neg = np.zeros(512, dtype=np.float32)
+        step_neg[:128] = 1.0
+        step_neg[128:] = 0.0
+        res_neg = analyze_step_transient(step_neg, 48000)
+        self.assertTrue(res_neg["valid"])
+        self.assertAlmostEqual(res_neg["overshoot_pct"], 0.0, delta=0.1)
+        self.assertEqual(res_neg["settling_samples"], 0)
+
+        # Negative step with overshoot
+        step_neg_os = np.zeros(512, dtype=np.float32)
+        step_neg_os[:128] = 1.0
+        step_neg_os[128:] = 0.0
+        step_neg_os[128:135] = -0.2  # 20% Overshoot on negative step
+        step_neg_os[135:150] = -0.05
+        res_neg_os = analyze_step_transient(step_neg_os, 48000)
+        self.assertTrue(res_neg_os["valid"])
+        self.assertAlmostEqual(res_neg_os["overshoot_pct"], 20.0, delta=1.0)
+        self.assertGreater(res_neg_os["settling_samples"], 20)
+
+        # Negative step with droop
+        step_neg_droop = np.ones(512, dtype=np.float32)
+        step_neg_droop[128:] = 0.0
+        step_neg_droop[128:] += (1.0 - np.exp(-np.arange(384) / 500.0)) * 0.5
+        res_neg_droop = analyze_step_transient(step_neg_droop, 48000)
+        self.assertTrue(res_neg_droop["valid"])
+        self.assertGreater(res_neg_droop["droop_pct"], 5.0)
+
+    def test_analyze_step_transient_no_cross(self):
+        """Test step transients where the signal never crosses v_10 in the search range."""
+        step_pos = np.zeros(256, dtype=np.float32)
+        step_pos[128] = 0.05
+        step_pos[129:] = 1.0
+        res_pos = analyze_step_transient(step_pos, 48000)
+        self.assertTrue(res_pos["valid"])
+        self.assertAlmostEqual(res_pos["overshoot_pct"], 0.0, delta=0.1)
+
+        step_neg = np.ones(256, dtype=np.float32)
+        step_neg[128] = 0.95
+        step_neg[129:] = 0.0
+        res_neg = analyze_step_transient(step_neg, 48000)
+        self.assertTrue(res_neg["valid"])
+        self.assertAlmostEqual(res_neg["overshoot_pct"], 0.0, delta=0.1)
+
+    def test_analyze_step_transient_cross(self):
+        """Test step transients where the signal crosses v_10 before peak_grad_idx."""
+        step_smooth = np.zeros(256, dtype=np.float32)
+        step_smooth[120:128] = 0.15
+        step_smooth[128] = 0.15
+        step_smooth[129:] = 1.0
+        res_smooth = analyze_step_transient(step_smooth, 48000)
+        self.assertTrue(res_smooth["valid"])
+        self.assertAlmostEqual(res_smooth["overshoot_pct"], 0.0, delta=0.1)
+
+        step_smooth_neg = np.ones(256, dtype=np.float32)
+        step_smooth_neg[120:128] = 0.85
+        step_smooth_neg[128] = 0.85
+        step_smooth_neg[129:] = 0.0
+        res_smooth_neg = analyze_step_transient(step_smooth_neg, 48000)
+        self.assertTrue(res_smooth_neg["valid"])
+        self.assertAlmostEqual(res_smooth_neg["overshoot_pct"], 0.0, delta=0.1)
+
 
 if __name__ == "__main__":
     unittest.main()
