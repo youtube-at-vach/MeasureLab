@@ -754,14 +754,15 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             self.plot_freqs_array = np.zeros(self.max_blocks)
             self.current_analysis_freq = None
 
+            self.H_freqs = []
+            self.kernels_time = []
+            self.time_ms = []
+
             if self.is_hammerstein_mode:
                 self.raw_responses = np.zeros(
                     (self.num_amplitudes, self.max_blocks, self.module.max_harmonic), dtype=complex
                 )
                 self.raw_counts = np.zeros((self.num_amplitudes, self.max_blocks), dtype=int)
-                self.H_freqs = []
-                self.kernels_time = []
-                self.time_ms = []
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
