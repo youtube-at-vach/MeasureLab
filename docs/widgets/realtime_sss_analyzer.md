@@ -35,6 +35,10 @@ Realtime SSS Lockin Analyzerは、Synchronized Swept Sine (SSS) 信号とデジ�
 
 * **Analysis Cycles**: デジタルロックイン解析において、各周波数ビンで解析するサイクル数を設定します（最大512.0サイクル）。
 * **Meas Points**: スイープ全体で測定する周波数ポイントの総数を設定します。
+* **Min Window**: デジタルロックイン解析における最小ウィンドウ時間（ms）を設定し、ENBW解像度の下限を制限します。
+* **Resolution (ENBW)**: 解析ウィンドウサイズに基づくENBW（等価ノイズ帯域幅）の解像度をHz単位でリアルタイムに表示します。
+* **Meas Mode**: 通常のスイープ測定とHammersteinモデル測定モードを切り替えます。
+* **Amp Steps**: Hammerstein測定モードでの振幅のステップ数（例：5）を設定します。
 * **Prevent Buffer Underrun**: 有効にすると、CPU負荷が高い場合にデータ処理を一時停止し、音声の途切れ（バッファアンダーラン）を防ぎます。
 * **Asynchronous Calculation**: 重いSSS計算をバックグラウンドのスレッドで実行し、UIの応答性を保ちます。
 * **Unwrap Phase**: 位相プロットのアンラップ（折り返し解除）を切り替えます。有効にすると、±180度を超える位相の変化が連続的な曲線として滑らかに表示されます。

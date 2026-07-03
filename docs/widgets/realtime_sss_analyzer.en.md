@@ -35,6 +35,10 @@ The Realtime SSS Lockin Analyzer performs real-time frequency response and disto
 
 * **Analysis Cycles**: Number of cycles per frequency bin for the digital lock-in analysis (up to 512.0 cycles).
 * **Meas Points**: Total number of frequency points measured in the sweep.
+* **Min Window**: Sets the minimum window time (in ms) for digital lock-in analysis, which sets a lower bound on ENBW resolution.
+* **Resolution (ENBW)**: Displays the Equivalent Noise Bandwidth (ENBW) resolution in Hz based on the analysis window size in real-time.
+* **Meas Mode**: Select between Standard Sweep and Hammerstein model measurement mode.
+* **Amp Steps**: Defines the number of amplitude steps (e.g., 5) when using Hammerstein measurement mode.
 * **Prevent Buffer Underrun**: When enabled, automatically pauses data processing during high CPU load to avoid audio dropouts.
 * **Asynchronous Calculation**: Runs the heavy SSS math in a background thread to keep the UI responsive.
 * **Unwrap Phase**: Toggles phase unwrapping for phase plots. When enabled, phase transitions over ±180 degrees are smoothed out into a continuous curve.
