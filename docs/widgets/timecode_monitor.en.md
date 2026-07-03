@@ -15,7 +15,7 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 * **Generator**: Output LTC from MeasureLab
 * **Compare**: Check how far the left and right channels are apart
 
-## ☕ Coffee Break: Timecode (LTC)
+## What is Timecode (LTC)?
 
 A timecode (LTC) signal contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
 

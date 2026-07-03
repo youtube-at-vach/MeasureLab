@@ -12,10 +12,6 @@ It is ideal for observing the "transitions" of sound, such as voice intonation a
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the heatmap display.
 
-## ☕ Coffee Break: Voiceprint Analysis
-
-Different vowel pronunciations emphasize different frequency bands called formants. A spectrogram visualizes these formants as distinct horizontal bands, allowing you to objectively observe voice quality differences.
-
 ## Operation
 
 ### Starting and Stopping Measurements
